@@ -1,28 +1,94 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Ext2-devel] [PATCH] 2/6 Detect overflows in loop counters
-Date: Wed, 30 Aug 2006 18:25:46 -0400
-Message-ID: <20060830222546.GA12544@thunk.org>
-References: <44E3855D.5040303@redhat.com> <20060830061825.GB8046@thunk.org> <44F5D66D.8030500@redhat.com>
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
+Date: Fri, 01 Sep 2006 08:50:29 -0700
+Message-ID: <1157125829.30578.6.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52885 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S932202AbWH3WZu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Aug 2006 18:25:50 -0400
-To: Eric Sandeen <esandeen@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <44F5D66D.8030500@redhat.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:25519 "EHLO
+	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1751667AbWIAPrQ
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Sep 2006 11:47:16 -0400
+To: sct@redhat.com, akpm@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-First post!  (Note new mailing list)
+Hi Andrew,
 
-On Wed, Aug 30, 2006 at 01:18:21PM -0500, Eric Sandeen wrote:
-> I've respun & refactored the remaining patches against the mercurial 
-> repo, and put changelog entries in...
+I have been running into following bug while running fsx
+tests on 1k (ext3) filesystem all the time. 
 
-Thanks, I appreciate it!  
+----------- [cut here ] --------- [please bite here ] ---------
+Kernel BUG at fs/buffer.c:2791
+invalid opcode: 0000 [1] SMP
 
-					- Ted
+Its complaining about BUG_ON(!buffer_mapped(bh)).
+
+It was hard to track it down, needed lots of debug - but here 
+is the problem & fix.  Since the fix is in __set_page_buffer_dirty()
+code - I am wondering how it would effect others :(
+
+With this fix fsx tests ran for more than 16 hours (and still
+running).
+
+Please let me know, what you think.
+
+Thanks,
+Badari 
+
+Patch to fix: Kernel BUG at fs/buffer.c:2791
+on 1k (2k) filesystems while running fsx.
+
+journal_commit_transaction collects lots of dirty buffer from
+and does a single ll_rw_block() to write them out. ll_rw_block()
+locks the buffer and checks to see if they are dirty and submits
+them for IO.
+
+In the mean while, journal_unmap_buffers() as part of
+truncate can unmap the buffer and throw it away. Since its
+a 1k (2k) filesystem - each page (4k) will have more than
+one buffer_head attached to the page and and we can't free 
+up buffer_heads attached to the page (if we are not
+invalidating the whole page).
+
+Now, any call to set_page_dirty() (like msync_interval)
+could end up setting all the buffer heads attached to
+this page again dirty, including the ones those got
+cleaned up :(
+
+If ll_rw_block() runs now and sees the dirty bit it does
+submit_bh() on those buffer_heads and triggers the assert.
+
+Fix is to check if the buffer is mapped before setting its
+dirty bit in __set_page_dirty_buffers().
+
+Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+---
+ fs/buffer.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+Index: linux-2.6.18-rc5/fs/buffer.c
+===================================================================
+--- linux-2.6.18-rc5.orig/fs/buffer.c	2006-09-01 08:20:51.000000000 -0700
++++ linux-2.6.18-rc5/fs/buffer.c	2006-09-01 08:41:01.000000000 -0700
+@@ -846,7 +846,13 @@ int __set_page_dirty_buffers(struct page
+ 		struct buffer_head *bh = head;
+ 
+ 		do {
+-			set_buffer_dirty(bh);
++			/*
++			 * Its possible that, not all buffers attached to
++			 * this page are mapped (cleaned up by truncate).
++			 * If so, skip them.
++			 */
++			if (buffer_mapped(bh))
++				set_buffer_dirty(bh);
+ 			bh = bh->b_this_page;
+ 		} while (bh != head);
+ 	}
+
+
