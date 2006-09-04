@@ -1,167 +1,82 @@
-From: Vasily Averin <vvs@sw.ru>
-Subject: [Fwd: [Devel] [PATCH] ext3: wrong error behavior]
-Date: Sat, 02 Sep 2006 16:02:19 +0400
-Message-ID: <44F972CB.1090106@sw.ru>
+From: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Subject: Re: [Ext2-devel] rfc: [patch 3/6] more e2fsprogs fixes
+Date: Mon, 4 Sep 2006 16:59:41 +0200
+Message-ID: <20060904145941.GA9427@openx1.frec.bull.fr>
+References: <20060825131138.GA20278@openx1.frec.bull.fr> <20060825131840.GC20944@openx1.frec.bull.fr> <20060825235049.GP6634@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------060507010205090101030302"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:37418 "EHLO relay.sw.ru")
-	by vger.kernel.org with ESMTP id S1751092AbWIBMCW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Sep 2006 08:02:22 -0400
-Received: from [192.168.0.157] ([192.168.0.157])
-	by relay.sw.ru (8.13.4/8.13.6) with ESMTP id k82C2JPe032370
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Sep 2006 16:02:20 +0400 (MSD)
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:56226 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1751450AbWIDPAF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Sep 2006 11:00:05 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id EF8EF19D92D
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Sep 2006 17:00:00 +0200 (CEST)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 22262-09 for <linux-ext4@vger.kernel.org>;
+ Mon,  4 Sep 2006 16:59:57 +0200 (CEST)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 5E05719D980
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Sep 2006 16:59:55 +0200 (CEST)
 To: linux-ext4@vger.kernel.org
+In-Reply-To: <20060825235049.GP6634@schatzie.adilger.int>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------060507010205090101030302
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+On Fri, Aug 25, 2006 at 05:50:49PM -0600, Andreas Dilger wrote:
+> On Aug 25, 2006  15:18 +0200, Alexandre Ratchov wrote:
+> > add bg_{block_bitmap,inode_bitmap,inode_table}_hi fields in
+> > struct ext2_group_desc and use absolute block numbers. While
+> > this is not necessary, IMHO this is simpler than relative
+> > addressing, and this change make e2fsprogs "just" work.
+> > 
+> >  {
+> > +	__u32	bg_block_bitmap;	/* Blocks bitmap block */
+> > +	__u32	bg_inode_bitmap;	/* Inodes bitmap block */
+> >  	__u32	bg_inode_table;		/* Inodes table block */
+> >  	__u16	bg_free_blocks_count;	/* Free blocks count */
+> >  	__u16	bg_free_inodes_count;	/* Free inodes count */
+> >  	__u16	bg_used_dirs_count;	/* Directories count */
+> >  	__u16	bg_flags;
+> > +	__u32	bg_block_bitmap_hi;	/* Blocks bitmap block */
+> > +	__u32	bg_inode_bitmap_hi;	/* Inodes bitmap block */
+> > +	__u32	bg_inode_table_hi;	/* Inodes table block */
+> > +	/*__u16	bg_reserved[3];*/
+> 
+> This consumes all of the blockgroup reserved fields, not leaving any
+> for checksumming.  In particular, for the UNINIT group changes this
+> needs at least 16 bits for the checksum, and it would be good to have
+> a 32-bit checksum for the block and inode bitmaps.
+> 
+> Instead, why not put a 16-bit "_block_bitmap_hi" field here and then
+> the inode bitmap and inode table are relative to that?  Alternately,
+> if we want a full 32-bit "hi" value, we can maybe live with smaller
+> checksums on the bitmaps...
+>  
 
+ok, that works for me. However there is still an issue:
 
---------------060507010205090101030302
-Content-Type: message/rfc822;
- name="[Devel] [PATCH] ext3: wrong error behavior"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="[Devel] [PATCH] ext3: wrong error behavior"
+in order tu use 48bit adressing, we have to use larger block groups (because
+all group descriptors must fit in one block group).  So we'll need 16bit
+"_hi" bits for blocks_count, inodes_count and perhaps used_dirs_count. And
+this leaves no room for additional fields.
 
-X-Account-Key: account2
-Received: from swgw.sw.ru (swgw-dmz-if.sw.ru [195.214.233.2])
-	by relay.sw.ru (8.13.4/8.13.6) with ESMTP id k82BiHKt002478
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO);
-	Sat, 2 Sep 2006 15:44:18 +0400 (MSD)
-Received: from vzorg.swsoft.net (openvz.org [69.64.46.7])
-	by swgw.sw.ru (8.13.6/8.13.6) with ESMTP id k82BhJAn028936;
-	Sat, 2 Sep 2006 15:43:25 +0400 (MSD)
-Received: from vzorg.swsoft.net (vzorg.swsoft.net [127.0.0.1])
-	by vzorg.swsoft.net (8.13.1/8.13.1) with ESMTP id k82BfCR7014238;
-	Sat, 2 Sep 2006 07:41:26 -0400
-Received: from relay.sw.ru (mailhub.sw.ru [195.214.233.200])
-	by vzorg.swsoft.net (8.13.1/8.13.1) with ESMTP id k82Bf9Bw014231
-	for <devel@openvz.org>; Sat, 2 Sep 2006 07:41:10 -0400
-Received: from [192.168.0.157] ([192.168.0.157])
-	by relay.sw.ru (8.13.4/8.13.6) with ESMTP id k82Bf4X0032112;
-	Sat, 2 Sep 2006 15:41:05 +0400 (MSD)
-Message-ID: <44F96DD0.30608@sw.ru>
-Date: Sat, 02 Sep 2006 15:41:04 +0400
-From: Vasily Averin <vvs@sw.ru>
-User-Agent: Thunderbird 1.5.0.5 (X11/20060725)
-MIME-Version: 1.0
-To: Theodore Tso <tytso@mit.edu>, Stephen Tweedie <sct@redhat.com>,
-        Andrew Morton <akpm@osdl.org>, adilger@clusterfs.com,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        ext2-devel@lists.sourceforge.net, devel@openvz.org
-X-Enigmail-Version: 0.94.0.0
-Content-Type: multipart/mixed; boundary="------------090209060903080509060206"
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-2.0.2 (vzorg.swsoft.net [127.0.0.1]); Sat, 02 Sep 2006 07:41:31 -0400 (EDT)
-X-Greylist: Sender e-mail whitelisted, not delayed by milter-greylist-2.0.2
-	(vzorg.swsoft.net [69.64.46.7]);
-	Sat, 02 Sep 2006 07:41:10 -0400 (EDT)
-Cc: 
-Subject: [Devel] [PATCH] ext3: wrong error behavior
-X-BeenThere: devel@openvz.org
-X-Mailman-Version: 2.1.5
-Precedence: list
-Reply-To: devel@openvz.org
-List-Id: devel.openvz.org
-List-Unsubscribe: <https://openvz.org/mailman/listinfo/devel>,
-	<mailto:devel-request@openvz.org?subject=unsubscribe>
-List-Archive: <http://openvz.org/pipermail/devel>
-List-Post: <mailto:devel@openvz.org>
-List-Help: <mailto:devel-request@openvz.org?subject=help>
-List-Subscribe: <https://openvz.org/mailman/listinfo/devel>,
-	<mailto:devel-request@openvz.org?subject=subscribe>
-Sender: devel-bounces@openvz.org
-Errors-To: devel-bounces@openvz.org
+There's already a patch that makes the descriptor structure size variable
+(similarly to the inode size), see marc.theaimsgroup.com/?m=114968738307171
+Here is the updated patch set:
 
-This is a multi-part message in MIME format.
---------------090209060903080509060206
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+linux-2.6.18-rc4:
 
-SWsoft Virtuozzo/OpenVZ Linux kernel team has discovered that ext3 error
-behavior was broken in linux kernels since 2.5.x versions by the following patch:
+http://www.bullopensource.org/ext4/20060904/ext4-linux-2.6.18-rc4.tar.gz
 
-2002/10/31 02:15:26-05:00 tytso@snap.thunk.org
-Default mount options from superblock for ext2/3 filesystems
-http://linux.bkbits.net:8080/linux-2.6/gnupatch@3dc0d88eKbV9ivV4ptRNM8fBuA3JBQ
+e2fsprogs-1.39:
 
-In case ext3 file system is mounted with errors=continue (EXT3_ERRORS_CONTINUE)
-errors should be ignored when possible. However at present in case of any error
-kernel aborts journal and remounts filesystem to read-only. Such behavior was
-hit number of times and noted to differ from that of 2.4.x kernels.
+http://www.bullopensource.org/ext4/20060904/ext4-e2fsprogs-1.39.tar.gz
 
-This patch fixes this:
-- do nothing in case of EXT3_ERRORS_CONTINUE,
-- set EXT3_MOUNT_ABORT and call journal_abort() in all other cases
-- panic() should be called after ext3_commit_super() to save
- sb marked as EXT3_ERROR_FS
-
-Signed-off-by: Vasily Averin <vvs@sw.ru>
-Ack-by:	Kirill Korotaev <dev@sw.ru>
-
-Thank you,
-	Vasily Averin
-
-SWsoft Virtuozzo/OpenVZ Linux kernel team
-
---------------090209060903080509060206
-Content-Type: text/plain;
- name="diff-ext3-errorbehaviour-20060902"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="diff-ext3-errorbehaviour-20060902"
-
---- linux-2.6.18-rc5/fs/ext3/super.c.orig	2006-09-02 12:54:01.000000000 +0400
-+++ linux-2.6.18-rc5/fs/ext3/super.c	2006-09-02 13:10:02.000000000 +0400
-@@ -159,20 +159,21 @@ static void ext3_handle_error(struct sup
- 	if (sb->s_flags & MS_RDONLY)
- 		return;
- 
--	if (test_opt (sb, ERRORS_RO)) {
--		printk (KERN_CRIT "Remounting filesystem read-only\n");
--		sb->s_flags |= MS_RDONLY;
--	} else {
-+	if (!test_opt (sb, ERRORS_CONT)) {
- 		journal_t *journal = EXT3_SB(sb)->s_journal;
- 
- 		EXT3_SB(sb)->s_mount_opt |= EXT3_MOUNT_ABORT;
- 		if (journal)
- 			journal_abort(journal, -EIO);
- 	}
-+	if (test_opt (sb, ERRORS_RO)) {
-+		printk (KERN_CRIT "Remounting filesystem read-only\n");
-+		sb->s_flags |= MS_RDONLY;
-+	}
-+	ext3_commit_super(sb, es, 1);
- 	if (test_opt(sb, ERRORS_PANIC))
- 		panic("EXT3-fs (device %s): panic forced after error\n",
- 			sb->s_id);
--	ext3_commit_super(sb, es, 1);
- }
- 
- void ext3_error (struct super_block * sb, const char * function,
-
---------------090209060903080509060206
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-Devel mailing list
-Devel@openvz.org
-https://openvz.org/mailman/listinfo/devel
-
---------------090209060903080509060206--
-
-
-
---------------060507010205090101030302--
+cheers,
 
 -- 
-VGER BF report: U 0.499829
+Alexandre
