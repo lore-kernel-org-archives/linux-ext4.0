@@ -1,82 +1,95 @@
-From: Will Simoneau <simoneau@ele.uri.edu>
+From: Mingming Cao <cmm@us.ibm.com>
 Subject: Re: BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-Date: Tue, 5 Sep 2006 17:47:04 -0400
-Message-ID: <20060905214703.GA16449@ele.uri.edu>
-References: <20060905171049.GB27433@ele.uri.edu> <44FDE6E5.3090009@us.ibm.com>
+Date: Tue, 05 Sep 2006 14:51:41 -0700
+Message-ID: <44FDF16D.8040505@us.ibm.com>
+References: <20060905171049.GB27433@ele.uri.edu>	 <1157479756.23501.18.camel@dyn9047017100.beaverton.ibm.com>	 <1157482632.19432.6.camel@kleikamp.austin.ibm.com>	 <44FDDA89.7080207@us.ibm.com> <1157491179.19432.11.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="VS++wcV0S1rZb1Fb"
-Cc: linux-kernel@vger.kernel.org, ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Badari Pulavarty <pbadari@us.ibm.com>,
+	Badari Pulavarty <pbadari@gmail.com>,
+	Will Simoneau <simoneau@ele.uri.edu>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from orca.ele.uri.edu ([131.128.51.63]:36588 "EHLO orca.ele.uri.edu")
-	by vger.kernel.org with ESMTP id S1751506AbWIEVpe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2006 17:45:34 -0400
-To: Badari Pulavarty <pbadari@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <44FDE6E5.3090009@us.ibm.com>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:29152 "EHLO
+	e36.co.us.ibm.com") by vger.kernel.org with ESMTP id S1751508AbWIEVwZ
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Sep 2006 17:52:25 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1157491179.19432.11.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Dave Kleikamp wrote:
+> On Tue, 2006-09-05 at 13:14 -0700, Badari Pulavarty wrote:
+> 
+>>Dave Kleikamp wrote:
+> 
+> 
+>>>I'm having a hard time figuring out exactly what ext3_get_blocks_handle
+>>>is trying to return, but it looks to me like if it is allocating one
+>>>data block, and needs to allocate an indirect block as well, then it
+>>>will return 2 rather than 1.  Is this expected, or am I just confused?
+>>>
+>>>  
+>>
+>>It would return "1" in that case.. (data block)
+>>
+>> > 0 means get_block() suceeded and indicates the number of blocks mapped
+>>= 0 lookup failed
+>>< 0 mean error case
+> 
+> 
+> Okay, I got confused looking through the code.  I still don't see how
+> ext3_get_blocks_handle() should be returning a number greater than
+> maxblocks.
+> 
 
---VS++wcV0S1rZb1Fb
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+yes ext3_get_blocks_handle() will return the number of data blocks 
+allocated(not including the indirect/double indirecto blocks), and that 
+number should not than maxblocks. In this case, it should return 1 instead.
 
-On 14:06 Tue 05 Sep     , Badari Pulavarty wrote:
-> Will Simoneau wrote:
-> >Has anyone seen this before? These three traces occured at different tim=
-es
-> >today when three new user accounts (and associated quotas) were created.=
-=20
-> >This
-> >machine is an NFS server which uses quotas on an ext3 fs (dir_index is o=
-n).
-> >Kernel is 2.6.17.11 on an x86 smp w/64G highmem; 4G ram is installed. The
-> >affected filesystem is on a software raid1 of two hardware raid0 volumes=
-=20
-> >from a
-> >megaraid card.
-> >
-> >BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-> > <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread+0x26/0x2a
-> > <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
-> > <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
-> > <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
-> > <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
-> >=20
-> Made me curious and looking around on what the warning is coming ? Few=20
-> basic questions ..
-> Do you have CONFIG_LBD ?
->=20
-> I see the ext3_getblk() used "long" for "block" &=20
-> ext3_get_blocks_handle() expects "sector_t"
-> for "block". Wondering if you are running into 64-bit -to- 32-bit=20
-> conversion issues .. ?
->=20
-> Thanks,
-> Badari
->=20
+The ext3_get_blocks_handle() behavior was changed when multiple blocks 
+map/allocation was added to ext3 via this function. Previously, the 
+behavior of ext3_get_blokc_handle() returns 0 for success case, and 
+returns non-zero(nagive) for error case. While with new behavior, the 
+success case is the thre returned value should > 0.
 
-CONFIG_LBD is on. GCC is 'Gentoo 3.3.5.20050130-r1', if it matters.
-FWIW, the machine is running 32-bit, although the cpus appear to support
-EM64T. The filesystem's size is 138410144 1k-blocks; ext3 is using 4k
-blocks/inodes.
+How many blocks is being mapped in this case? > 1? or 0? If it failed to 
+map the block (ext3_get_blocks_handle() returns 0), ext3_getblk() will 
+also WARN_ON().
 
-This was not a problem on the previous kernel which was 2.6.13-rc3 with
-the assert on net/ipv4/tcp_output.c:918 disabled (from memory, even the
-line number ;-) ).
+> 
+>>>>I did search for callers of ext3_get_blocks_handle() and found that
+>>>>ext3_readdir() seems to do wrong thing all the time with error check :(
+>>>>Need to take a closer look..
+>>>>
+>>>>	err = ext3_get_blocks_handle(NULL, inode, blk, 1,
+>>>>                                                &map_bh, 0, 0);
+>>>>        if (err > 0) {  <<<< BAD
+>>>>                  page_cache_readahead(sb->s_bdev->bd_inode->i_mapping,
+>>>>                                &filp->f_ra,
+>>>>                                filp,
+>>>>                                map_bh.b_blocknr >>
+>>>>                                (PAGE_CACHE_SHIFT - inode->i_blkbits),
+>>>>                                1);
+>>>>                        bh = ext3_bread(NULL, inode, blk, 0, &err);
+>>>>       }
+>>>>    
+>>>
+>>>Bad to do what it's doing, or bad to call name the variable "err"?
+>>>I think if it looked like this:
+>>>
+>>>	count = ext3_get_blocks_handle(NULL, inode, blk, 1,
+>>>                                                &map_bh, 0, 0);
+>>>        if (count > 0) { 
+>>>
+>>>it would be a lot less confusing.
+>>>  
+>>
+>>I am sorry !! it is doing the right thing :(
+> 
+> 
+> Not your fault.  The variable is very badly named.
 
---VS++wcV0S1rZb1Fb
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
-
-iD8DBQFE/fBXLYBaX8VDLLURAiyvAJ47xXVBg6FJlLK/u7Bn0gHOaSzmnQCgrC5t
-DIyXsVcAEbKqvQNpamDaV/g=
-=GdHi
------END PGP SIGNATURE-----
-
---VS++wcV0S1rZb1Fb--
