@@ -1,152 +1,69 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
-Date: Tue, 05 Sep 2006 09:11:42 -0700
-Message-ID: <1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>
-References: <1157125829.30578.6.camel@dyn9047017100.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0609011652420.24650@hermes-2.csi.cam.ac.uk>
-	 <1157128342.30578.14.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060901101801.7845bca2.akpm@osdl.org>
+From: Badari Pulavarty <pbadari@gmail.com>
+Subject: Re: BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
+Date: Tue, 05 Sep 2006 11:09:15 -0700
+Message-ID: <1157479756.23501.18.camel@dyn9047017100.beaverton.ibm.com>
+References: <20060905171049.GB27433@ele.uri.edu>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>, jack@suse.cz
+Cc: lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:15309 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S965018AbWIEQIY
+Received: from e33.co.us.ibm.com ([32.97.110.151]:15066 "EHLO
+	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S965262AbWIESF5
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Sep 2006 12:08:24 -0400
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20060901101801.7845bca2.akpm@osdl.org>
+	Tue, 5 Sep 2006 14:05:57 -0400
+To: Will Simoneau <simoneau@ele.uri.edu>
+In-Reply-To: <20060905171049.GB27433@ele.uri.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2006-09-01 at 10:18 -0700, Andrew Morton wrote:
-> On Fri, 01 Sep 2006 09:32:22 -0700
-> Badari Pulavarty <pbadari@us.ibm.com> wrote:
+On Tue, 2006-09-05 at 13:10 -0400, Will Simoneau wrote:
+> Has anyone seen this before? These three traces occured at different times
+> today when three new user accounts (and associated quotas) were created. This
+> machine is an NFS server which uses quotas on an ext3 fs (dir_index is on).
+> Kernel is 2.6.17.11 on an x86 smp w/64G highmem; 4G ram is installed. The
+> affected filesystem is on a software raid1 of two hardware raid0 volumes from a
+> megaraid card.
 > 
-> > > > Kernel BUG at fs/buffer.c:2791
-> > > > invalid opcode: 0000 [1] SMP
-> > > > 
-> > > > Its complaining about BUG_ON(!buffer_mapped(bh)).
-> 
-> I need to have a little think about this, remember what _should_ be
-> happening in this situation.
-> 
-> We (mainly I) used to do a huge amount of fsx-linux testing on 1k blocksize
-> filesystems.  We've done something to make this start happening.  Part of
-> resolving this bug will be working out what that was.
-> 
+> BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
+>  <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread+0x26/0x2a
+>  <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
+>  <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
+>  <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
+>  <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
+>  <c01c7986> ext3_setattr+0xc3/0x240  <c0120f66> current_fs_time+0x52/0x6a
+>  <c017320e> notify_change+0x2bd/0x30d  <c0159246> chown_common+0x9c/0xc5
+>  <c02a222c> strncpy_from_user+0x3b/0x68  <c0167fe6> do_path_lookup+0xdf/0x266
+>  <c016841b> __user_walk_fd+0x44/0x5a  <c01592b9> sys_chown+0x4a/0x55
+>  <c015a43c> vfs_write+0xe7/0x13c  <c01695d4> sys_mkdir+0x1f/0x23
+>  <c0102a97> syscall_call+0x7/0xb 
 
-It took a while to track this down. 2.6.13 is the last kernel
-which runs my fsx tests fine (72+ hours).
+I think its a bogus warning. 
 
-Here is the change that seems to cause the problem. Jana Kara
-introduced a new mode "SWRITE" for ll_rw_block() - where it
-waits for buffer to be unlocked (WRITE will skip locked
-buffers) + jbd journal_commit_transaction() has been changed
-to make use of SWRITE.
+ext3_getblk() is calling ext3_get_blocks_handle() to map "1" block for
+read. But for *some* reason ext3_get_blocks_handle() more than 1 block.
+ext3_get_blocks_handle() return "positive #of blocks" is a valid case.
+So needs to be fixed.
 
-http://marc.theaimsgroup.com/?l=linux-fsdevel&m=112109788702895&w=2
+I did search for callers of ext3_get_blocks_handle() and found that
+ext3_readdir() seems to do wrong thing all the time with error check :(
+Need to take a closer look..
 
-Theoritically same race (between journal_commit_transaction() and
-journal_unmap_buffer()+set_page_dirty()) could exist before his changes
-- which should trigger bug in submit_bh(). But I can't seem to hit
-it without his changes. My guess is ll_rw_block() is always skipping
-those cleaned up buffers, before page gets dirtied again ..
+	err = ext3_get_blocks_handle(NULL, inode, blk, 1,
+                                                &map_bh, 0, 0);
+        if (err > 0) {  <<<< BAD
+                  page_cache_readahead(sb->s_bdev->bd_inode->i_mapping,
+                                &filp->f_ra,
+                                filp,
+                                map_bh.b_blocknr >>
+                                (PAGE_CACHE_SHIFT - inode->i_blkbits),
+                                1);
+                        bh = ext3_bread(NULL, inode, blk, 0, &err);
+       }
 
-Andrew, what should we do ? Do you suggest handling this in jbd
-itself (like this patch) ?
+
 
 Thanks,
 Badari
-
-Patch to fix: Kernel BUG at fs/buffer.c:2791
-on 1k (2k) filesystems while running fsx.
-
-journal_commit_transaction collects lots of dirty buffer from
-and does a single ll_rw_block() to write them out. ll_rw_block()
-locks the buffer and checks to see if they are dirty and submits
-them for IO.
-
-In the mean while, journal_unmap_buffers() as part of
-truncate can unmap the buffer and throw it away. Since its
-a 1k (2k) filesystem - each page (4k) will have more than
-one buffer_head attached to the page and and we can't free 
-up buffer_heads attached to the page (if we are not
-invalidating the whole page).
-
-Now, any call to set_page_dirty() (like msync_interval)
-could end up setting all the buffer heads attached to
-this page again dirty, including the ones those got
-cleaned up :(
-
-So, -not-so-elegant fix would be to have make jbd skip all 
-the buffers that are not mapped.
-
-Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
----
- fs/jbd/commit.c |   32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
-
-Index: linux-2.6.18-rc5/fs/jbd/commit.c
-===================================================================
---- linux-2.6.18-rc5.orig/fs/jbd/commit.c	2006-08-27 20:41:48.000000000 -0700
-+++ linux-2.6.18-rc5/fs/jbd/commit.c	2006-09-01 10:43:54.000000000 -0700
-@@ -160,6 +160,34 @@ static int journal_write_commit_record(j
- 	return (ret == -EIO);
- }
- 
-+static void jbd_write_buffers(int nr, struct buffer_head *bhs[])
-+{
-+	int i;
-+
-+	for (i = 0; i < nr; i++) {
-+		struct buffer_head *bh = bhs[i];
-+
-+		lock_buffer(bh);
-+
-+		/*
-+		 * case 1: Buffer could have been flushed by now,
-+		 * if so nothing to do for us.
-+		 * case 2: Buffer could have been unmapped up by
-+		 * journal_unmap_buffer - but still attached to the
-+		 * page. Any calls to set_page_dirty() would dirty
-+		 * the buffer even though its not mapped.  If so,
-+		 * we need to skip them.
-+		 */
-+		if (buffer_mapped(bh) && test_clear_buffer_dirty(bh)) {
-+			bh->b_end_io = end_buffer_write_sync;
-+			get_bh(bh);
-+			submit_bh(WRITE, bh);
-+			continue;
-+		}
-+		unlock_buffer(bh);
-+	}
-+}
-+
- /*
-  * journal_commit_transaction
-  *
-@@ -356,7 +384,7 @@ write_out_data:
- 					jbd_debug(2, "submit %d writes\n",
- 							bufs);
- 					spin_unlock(&journal->j_list_lock);
--					ll_rw_block(SWRITE, bufs, wbuf);
-+					jbd_write_buffers(bufs, wbuf);
- 					journal_brelse_array(wbuf, bufs);
- 					bufs = 0;
- 					goto write_out_data;
-@@ -379,7 +407,7 @@ write_out_data:
- 
- 	if (bufs) {
- 		spin_unlock(&journal->j_list_lock);
--		ll_rw_block(SWRITE, bufs, wbuf);
-+		jbd_write_buffers(bufs, wbuf);
- 		journal_brelse_array(wbuf, bufs);
- 		spin_lock(&journal->j_list_lock);
- 	}
-
 
