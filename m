@@ -1,76 +1,50 @@
-From: Vasily Averin <vvs@sw.ru>
-Subject: Re: [PATCH] ext3: wrong error behavior
-Date: Wed, 06 Sep 2006 10:53:02 +0400
-Message-ID: <44FE704E.8000700@sw.ru>
-References: <44F96DD0.30608@sw.ru> <44FDF83A.8010707@sandeen.net>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [Ext2-devel] rfc: [patch 3/6] more e2fsprogs fixes
+Date: Wed, 6 Sep 2006 04:47:32 -0600
+Message-ID: <20060906104732.GP20105@schatzie.adilger.int>
+References: <20060825131138.GA20278@openx1.frec.bull.fr> <20060825131840.GC20944@openx1.frec.bull.fr> <20060825235049.GP6634@schatzie.adilger.int> <20060904145941.GA9427@openx1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Stephen Tweedie <sct@redhat.com>,
-	Andrew Morton <akpm@osdl.org>, adilger@clusterfs.com,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, devel@openvz.org, cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:56365 "EHLO relay.sw.ru")
-	by vger.kernel.org with ESMTP id S1751197AbWIFGxJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Sep 2006 02:53:09 -0400
-To: Eric Sandeen <sandeen@sandeen.net>,
-	Eric Lammerts <eric@lammerts.org>
-In-Reply-To: <44FDF83A.8010707@sandeen.net>
+Received: from mail.clusterfs.com ([206.168.112.78]:32395 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1750772AbWIFKsw
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Sep 2006 06:48:52 -0400
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Content-Disposition: inline
+In-Reply-To: <20060904145941.GA9427@openx1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> Vasily Averin wrote:
->> In case ext3 file system is mounted with errors=continue
->> (EXT3_ERRORS_CONTINUE)
->> errors should be ignored when possible. However at present in case of
->> any error
->> kernel aborts journal and remounts filesystem to read-only. Such
->> behavior was
->> hit number of times and noted to differ from that of 2.4.x kernels.
+On Sep 04, 2006  16:59 +0200, Alexandre Ratchov wrote:
+> in order tu use 48bit adressing, we have to use larger block groups (because
+> all group descriptors must fit in one block group).  So we'll need 16bit
+> "_hi" bits for blocks_count, inodes_count and perhaps used_dirs_count. And
+> this leaves no room for additional fields.
 > 
-> I've also noticed this differing behavior,
+> There's already a patch that makes the descriptor structure size variable
+> (similarly to the inode size), see marc.theaimsgroup.com/?m=114968738307171
+> Here is the updated patch set:
+
+It was always my desire to require the use of the larger group descriptors
+when using a filesystem with > 32-bit blocks.  That avoids the need to use
+up the small group descriptors for the 64-bit block numbers, allowing them
+to be used for other features that are still relevant for smaller filesystems
+like checksums and UNINIT groups.
+
+> linux-2.6.18-rc4:
 > 
-> http://marc.theaimsgroup.com/?l=linux-ext4&m=115376966821953&w=2
+> http://www.bullopensource.org/ext4/20060904/ext4-linux-2.6.18-rc4.tar.gz
 > 
-> It passed w/o comment.  :)
+> e2fsprogs-1.39:
+> 
+> http://www.bullopensource.org/ext4/20060904/ext4-e2fsprogs-1.39.tar.gz
 
-I would note that one of our developers has noticed it 3 year ago.
-http://marc.theaimsgroup.com/?l=linux-kernel&m=104824948712104&w=2
-it was w/o comments too.
 
-> Unless Ted had a specific reason for changing the behavior, 2.4 and 2.6
-> should probably be brought into line.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
-I did not found any arguments explaining Ted's reasons, I believe he did not
-noticed that he had inversed this condition. If otherwise he had some important
-reasons, there is another bug: he must change the documentation at least.
-
-I would like to add that our customers are really discontented by this change.
-Now they pays a high price for any minor ext3 errors: they should stop any
-processes that uses this partition, check the partition, restart the processes
-again... Downtime is too long and there is not any workarounds.
-
-> Calling ext3_commit_super()
-> before the panic may defeat (some of) the purpose of the panic option,
-> though, which is to preserve as much state as possible at the time of
-> the error for later analysis...
-
-On the other hand if error is not saved on the disc, fsck will not check this
-filesystem automatically on the next reboot and therefore node will mount
-corrupted filesystem, it's dangerous too. In the worst scenario  the node find
-the same error on the disc and rebooted again and it is real nightmare for
-remote admins.
-
-I would note that Eric Lammerts has tried to fix this issue, however I'm not
-sure that he has achieved a success:
-http://marc.theaimsgroup.com/?l=ext3-users&m=110651773907882&w=2
-
-Also I would like to add that Andrew Morton has signed off the patch and added
-it to the -mm tree.
-
-Thank you,
-	Vasily Averin
-
-SWsoft Virtuozzo/OpenVZ Linux kernel team
