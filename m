@@ -1,101 +1,115 @@
-From: Mingming Cao <cmm@us.ibm.com>
+From: Will Simoneau <simoneau@ele.uri.edu>
 Subject: Re: BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-Date: Tue, 05 Sep 2006 16:19:22 -0700
-Message-ID: <44FE05FA.2000406@us.ibm.com>
-References: <20060905171049.GB27433@ele.uri.edu>	 <44FDE6E5.3090009@us.ibm.com>  <20060905214703.GA16449@ele.uri.edu> <1157496228.23501.21.camel@dyn9047017100.beaverton.ibm.com>
+Date: Tue, 5 Sep 2006 21:53:37 -0400
+Message-ID: <20060906015337.GC16449@ele.uri.edu>
+References: <20060905171049.GB27433@ele.uri.edu> <44FDE6E5.3090009@us.ibm.com> <20060905214703.GA16449@ele.uri.edu> <1157496228.23501.21.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Will Simoneau <simoneau@ele.uri.edu>, akpm@osdl.org,
-	lkml <linux-kernel@vger.kernel.org>,
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="jy6Sn24JjFx/iggw"
+Cc: akpm@osdl.org, cmm@us.ibm.com, lkml <linux-kernel@vger.kernel.org>,
 	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:3757 "EHLO e1.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S932210AbWIEXT0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2006 19:19:26 -0400
+Received: from orca.ele.uri.edu ([131.128.51.63]:13994 "EHLO orca.ele.uri.edu")
+	by vger.kernel.org with ESMTP id S965226AbWIFBwM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2006 21:52:12 -0400
 To: Badari Pulavarty <pbadari@us.ibm.com>
+Content-Disposition: inline
 In-Reply-To: <1157496228.23501.21.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Badari Pulavarty wrote:
+
+--jy6Sn24JjFx/iggw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On 15:43 Tue 05 Sep     , Badari Pulavarty wrote:
 > On Tue, 2006-09-05 at 17:47 -0400, Will Simoneau wrote:
-> 
->>On 14:06 Tue 05 Sep     , Badari Pulavarty wrote:
->>
->>>Will Simoneau wrote:
->>>
->>>>Has anyone seen this before? These three traces occured at different times
->>>>today when three new user accounts (and associated quotas) were created. 
->>>>This
->>>>machine is an NFS server which uses quotas on an ext3 fs (dir_index is on).
->>>>Kernel is 2.6.17.11 on an x86 smp w/64G highmem; 4G ram is installed. The
->>>>affected filesystem is on a software raid1 of two hardware raid0 volumes 
->>>
->>>>from a
->>>
->>>>megaraid card.
->>>>
->>>>BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
->>>><c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread+0x26/0x2a
->>>><c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
->>>><c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
->>>><c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
->>>><c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
-> 
-> 
+> > On 14:06 Tue 05 Sep     , Badari Pulavarty wrote:
+> > > Will Simoneau wrote:
+> > > >Has anyone seen this before? These three traces occured at different=
+ times
+> > > >today when three new user accounts (and associated quotas) were crea=
+ted.=20
+> > > >This
+> > > >machine is an NFS server which uses quotas on an ext3 fs (dir_index =
+is on).
+> > > >Kernel is 2.6.17.11 on an x86 smp w/64G highmem; 4G ram is installed=
+=2E The
+> > > >affected filesystem is on a software raid1 of two hardware raid0 vol=
+umes=20
+> > > >from a
+> > > >megaraid card.
+> > > >
+> > > >BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
+> > > > <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread+0x26=
+/0x2a
+> > > > <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0=
+x1ae
+> > > > <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0=
+x107
+> > > > <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1=
+e7
+> > > > <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
+>=20
 > I think, we found your problem.
-> 
+>=20
 > ext3_getblk() is not handling HOLE correctly. Does this patch help ?
 > Mingming, what do you think ?
-
-Looks correct to me, ext3_get_blocks_handle() returning 0 is a valid 
-case when the block is not being mapped(hole).
-
-It would be nice to add a WARN_ON() in the ext3_get_blocks_handle() code 
-when we allocating more than requested (maxblocks) blocks...:)
-
-Mingming
-
-
+>=20
+> Thanks,
 > Badari
-> 
+>=20
 > ext3_get_blocks_handle() returns number of blocks it mapped.
 > It returns 0 in case of HOLE. ext3_getblk() should handle
 > HOLE properly (currently its dumping warning stack and
 > returning -EIO).
-> 
+>=20
 > Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
 > ---
 >  fs/ext3/inode.c |    9 +++++----
 >  1 file changed, 5 insertions(+), 4 deletions(-)
-> 
+>=20
 > Index: linux-2.6.18-rc5/fs/ext3/inode.c
-> ===================================================================
-> --- linux-2.6.18-rc5.orig/fs/ext3/inode.c	2006-08-27 20:41:48.000000000 -0700
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> --- linux-2.6.18-rc5.orig/fs/ext3/inode.c	2006-08-27 20:41:48.000000000 -=
+0700
 > +++ linux-2.6.18-rc5/fs/ext3/inode.c	2006-09-05 15:32:57.000000000 -0700
 > @@ -1009,11 +1009,12 @@ struct buffer_head *ext3_getblk(handle_t
 >  	buffer_trace_init(&dummy.b_history);
->  	err = ext3_get_blocks_handle(handle, inode, block, 1,
+>  	err =3D ext3_get_blocks_handle(handle, inode, block, 1,
 >  					&dummy, create, 1);
-> -	if (err == 1) {
+> -	if (err =3D=3D 1) {
 > +	/*
 > +	 * ext3_get_blocks_handle() returns number of blocks
 > +	 * mapped. 0 in case of a HOLE.
 > +	 */
 > +	if (err > 0) {
->  		err = 0;
-> -	} else if (err >= 0) {
+>  		err =3D 0;
+> -	} else if (err >=3D 0) {
 > -		WARN_ON(1);
-> -		err = -EIO;
+> -		err =3D -EIO;
 >  	}
->  	*errp = err;
+>  	*errp =3D err;
 >  	if (!err && buffer_mapped(&dummy)) {
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Unfortunately this will be difficult for me to test as the machine is a
+production server, I will try it when I get a chance to offline for a
+few minutes.
 
+--jy6Sn24JjFx/iggw
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
+
+iD8DBQFE/iohLYBaX8VDLLURAvjfAJ0fPVvauhKyhzPW6cCxqqQZd0nF6wCgie2Z
+dUGqN1QDcNtNy25WB3LSW04=
+=6oUP
+-----END PGP SIGNATURE-----
+
+--jy6Sn24JjFx/iggw--
