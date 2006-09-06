@@ -1,115 +1,76 @@
-From: Will Simoneau <simoneau@ele.uri.edu>
-Subject: Re: BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-Date: Tue, 5 Sep 2006 21:53:37 -0400
-Message-ID: <20060906015337.GC16449@ele.uri.edu>
-References: <20060905171049.GB27433@ele.uri.edu> <44FDE6E5.3090009@us.ibm.com> <20060905214703.GA16449@ele.uri.edu> <1157496228.23501.21.camel@dyn9047017100.beaverton.ibm.com>
+From: Vasily Averin <vvs@sw.ru>
+Subject: Re: [PATCH] ext3: wrong error behavior
+Date: Wed, 06 Sep 2006 10:53:02 +0400
+Message-ID: <44FE704E.8000700@sw.ru>
+References: <44F96DD0.30608@sw.ru> <44FDF83A.8010707@sandeen.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="jy6Sn24JjFx/iggw"
-Cc: akpm@osdl.org, cmm@us.ibm.com, lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Stephen Tweedie <sct@redhat.com>,
+	Andrew Morton <akpm@osdl.org>, adilger@clusterfs.com,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, devel@openvz.org, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from orca.ele.uri.edu ([131.128.51.63]:13994 "EHLO orca.ele.uri.edu")
-	by vger.kernel.org with ESMTP id S965226AbWIFBwM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Sep 2006 21:52:12 -0400
-To: Badari Pulavarty <pbadari@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <1157496228.23501.21.camel@dyn9047017100.beaverton.ibm.com>
+Received: from mailhub.sw.ru ([195.214.233.200]:56365 "EHLO relay.sw.ru")
+	by vger.kernel.org with ESMTP id S1751197AbWIFGxJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Sep 2006 02:53:09 -0400
+To: Eric Sandeen <sandeen@sandeen.net>,
+	Eric Lammerts <eric@lammerts.org>
+In-Reply-To: <44FDF83A.8010707@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Eric Sandeen wrote:
+> Vasily Averin wrote:
+>> In case ext3 file system is mounted with errors=continue
+>> (EXT3_ERRORS_CONTINUE)
+>> errors should be ignored when possible. However at present in case of
+>> any error
+>> kernel aborts journal and remounts filesystem to read-only. Such
+>> behavior was
+>> hit number of times and noted to differ from that of 2.4.x kernels.
+> 
+> I've also noticed this differing behavior,
+> 
+> http://marc.theaimsgroup.com/?l=linux-ext4&m=115376966821953&w=2
+> 
+> It passed w/o comment.  :)
 
---jy6Sn24JjFx/iggw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I would note that one of our developers has noticed it 3 year ago.
+http://marc.theaimsgroup.com/?l=linux-kernel&m=104824948712104&w=2
+it was w/o comments too.
 
-On 15:43 Tue 05 Sep     , Badari Pulavarty wrote:
-> On Tue, 2006-09-05 at 17:47 -0400, Will Simoneau wrote:
-> > On 14:06 Tue 05 Sep     , Badari Pulavarty wrote:
-> > > Will Simoneau wrote:
-> > > >Has anyone seen this before? These three traces occured at different=
- times
-> > > >today when three new user accounts (and associated quotas) were crea=
-ted.=20
-> > > >This
-> > > >machine is an NFS server which uses quotas on an ext3 fs (dir_index =
-is on).
-> > > >Kernel is 2.6.17.11 on an x86 smp w/64G highmem; 4G ram is installed=
-=2E The
-> > > >affected filesystem is on a software raid1 of two hardware raid0 vol=
-umes=20
-> > > >from a
-> > > >megaraid card.
-> > > >
-> > > >BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-> > > > <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread+0x26=
-/0x2a
-> > > > <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0=
-x1ae
-> > > > <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0=
-x107
-> > > > <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1=
-e7
-> > > > <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
->=20
-> I think, we found your problem.
->=20
-> ext3_getblk() is not handling HOLE correctly. Does this patch help ?
-> Mingming, what do you think ?
->=20
-> Thanks,
-> Badari
->=20
-> ext3_get_blocks_handle() returns number of blocks it mapped.
-> It returns 0 in case of HOLE. ext3_getblk() should handle
-> HOLE properly (currently its dumping warning stack and
-> returning -EIO).
->=20
-> Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
-> ---
->  fs/ext3/inode.c |    9 +++++----
->  1 file changed, 5 insertions(+), 4 deletions(-)
->=20
-> Index: linux-2.6.18-rc5/fs/ext3/inode.c
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- linux-2.6.18-rc5.orig/fs/ext3/inode.c	2006-08-27 20:41:48.000000000 -=
-0700
-> +++ linux-2.6.18-rc5/fs/ext3/inode.c	2006-09-05 15:32:57.000000000 -0700
-> @@ -1009,11 +1009,12 @@ struct buffer_head *ext3_getblk(handle_t
->  	buffer_trace_init(&dummy.b_history);
->  	err =3D ext3_get_blocks_handle(handle, inode, block, 1,
->  					&dummy, create, 1);
-> -	if (err =3D=3D 1) {
-> +	/*
-> +	 * ext3_get_blocks_handle() returns number of blocks
-> +	 * mapped. 0 in case of a HOLE.
-> +	 */
-> +	if (err > 0) {
->  		err =3D 0;
-> -	} else if (err >=3D 0) {
-> -		WARN_ON(1);
-> -		err =3D -EIO;
->  	}
->  	*errp =3D err;
->  	if (!err && buffer_mapped(&dummy)) {
+> Unless Ted had a specific reason for changing the behavior, 2.4 and 2.6
+> should probably be brought into line.
 
-Unfortunately this will be difficult for me to test as the machine is a
-production server, I will try it when I get a chance to offline for a
-few minutes.
+I did not found any arguments explaining Ted's reasons, I believe he did not
+noticed that he had inversed this condition. If otherwise he had some important
+reasons, there is another bug: he must change the documentation at least.
 
---jy6Sn24JjFx/iggw
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+I would like to add that our customers are really discontented by this change.
+Now they pays a high price for any minor ext3 errors: they should stop any
+processes that uses this partition, check the partition, restart the processes
+again... Downtime is too long and there is not any workarounds.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
+> Calling ext3_commit_super()
+> before the panic may defeat (some of) the purpose of the panic option,
+> though, which is to preserve as much state as possible at the time of
+> the error for later analysis...
 
-iD8DBQFE/iohLYBaX8VDLLURAvjfAJ0fPVvauhKyhzPW6cCxqqQZd0nF6wCgie2Z
-dUGqN1QDcNtNy25WB3LSW04=
-=6oUP
------END PGP SIGNATURE-----
+On the other hand if error is not saved on the disc, fsck will not check this
+filesystem automatically on the next reboot and therefore node will mount
+corrupted filesystem, it's dangerous too. In the worst scenario  the node find
+the same error on the disc and rebooted again and it is real nightmare for
+remote admins.
 
---jy6Sn24JjFx/iggw--
+I would note that Eric Lammerts has tried to fix this issue, however I'm not
+sure that he has achieved a success:
+http://marc.theaimsgroup.com/?l=ext3-users&m=110651773907882&w=2
+
+Also I would like to add that Andrew Morton has signed off the patch and added
+it to the -mm tree.
+
+Thank you,
+	Vasily Averin
+
+SWsoft Virtuozzo/OpenVZ Linux kernel team
