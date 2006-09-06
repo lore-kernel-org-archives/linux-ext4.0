@@ -1,86 +1,51 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: [PATCH] ext3_getblk should handle HOLE correctly
-Date: Wed, 06 Sep 2006 10:39:06 -0700
-Message-ID: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
+From: Dave Kleikamp <shaggy@austin.ibm.com>
+Subject: Re: [PATCH] ext3_getblk should handle HOLE correctly
+Date: Wed, 06 Sep 2006 12:42:55 -0500
+Message-ID: <1157564575.8200.16.camel@kleikamp.austin.ibm.com>
+References: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: lkml <linux-kernel@vger.kernel.org>,
+Cc: akpm@osdl.org, lkml <linux-kernel@vger.kernel.org>,
 	ext4 <linux-ext4@vger.kernel.org>,
 	Will Simoneau <simoneau@ele.uri.edu>, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:40109 "EHLO
-	e32.co.us.ibm.com") by vger.kernel.org with ESMTP id S1751782AbWIFRfq
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Sep 2006 13:35:46 -0400
-To: akpm@osdl.org
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:30936 "EHLO e5.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1751214AbWIFRnB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Sep 2006 13:43:01 -0400
+To: Badari Pulavarty <pbadari@us.ibm.com>
+In-Reply-To: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Andrew,
+On Wed, 2006-09-06 at 10:39 -0700, Badari Pulavarty wrote:
 
-Its been reported that ext3_getblk() is not doing the right thing
-and triggering following WARN():
+> Index: linux-2.6.18-rc5/fs/ext3/inode.c
+> ===================================================================
+> --- linux-2.6.18-rc5.orig/fs/ext3/inode.c	2006-08-27 20:41:48.000000000 -0700
+> +++ linux-2.6.18-rc5/fs/ext3/inode.c	2006-09-05 15:32:57.000000000 -0700
+> @@ -1009,11 +1009,12 @@ struct buffer_head *ext3_getblk(handle_t
+>  	buffer_trace_init(&dummy.b_history);
+>  	err = ext3_get_blocks_handle(handle, inode, block, 1,
+>  					&dummy, create, 1);
+> -	if (err == 1) {
+> +	/*
+> +	 * ext3_get_blocks_handle() returns number of blocks
+> +	 * mapped. 0 in case of a HOLE.
+> +	 */
+> +	if (err > 0) {
+>  		err = 0;
+> -	} else if (err >= 0) {
+> -		WARN_ON(1);
+> -		err = -EIO;
+>  	}
 
-BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
- <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread
-+0x26/0x2a
- <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
- <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
- <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
- <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
- <c01c7986> ext3_setattr+0xc3/0x240  <c0120f66> current_fs_time
-+0x52/0x6a
- <c017320e> notify_change+0x2bd/0x30d  <c0159246> chown_common+0x9c/0xc5
- <c02a222c> strncpy_from_user+0x3b/0x68  <c0167fe6> do_path_lookup
-+0xdf/0x266
- <c016841b> __user_walk_fd+0x44/0x5a  <c01592b9> sys_chown+0x4a/0x55
- <c015a43c> vfs_write+0xe7/0x13c  <c01695d4> sys_mkdir+0x1f/0x23
- <c0102a97> syscall_call+0x7/0xb 
+I'd get rid of the {} too.
 
-Looking at the code, it looks like its not handle HOLE correctly.
-It ends up returning -EIO. Here is the patch to fix it.
+>  	*errp = err;
+>  	if (!err && buffer_mapped(&dummy)) {
 
-If we really want to be paranoid, we can allow return values
-0 (HOLE), 1 (we asked for one block) and return -EIO for
-more than 1 block. But I really don't see a reason for
-doing it - all we need is the block# here. (doesn't matter
-how many blocks are mapped).
-
-Thanks,
-Badari
-
-ext3_get_blocks_handle() returns number of blocks it mapped.
-It returns 0 in case of HOLE. ext3_getblk() should handle
-HOLE properly (currently its dumping warning stack and
-returning -EIO).
-
-Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
-Acked-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext3/inode.c |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-Index: linux-2.6.18-rc5/fs/ext3/inode.c
-===================================================================
---- linux-2.6.18-rc5.orig/fs/ext3/inode.c	2006-08-27 20:41:48.000000000 -0700
-+++ linux-2.6.18-rc5/fs/ext3/inode.c	2006-09-05 15:32:57.000000000 -0700
-@@ -1009,11 +1009,12 @@ struct buffer_head *ext3_getblk(handle_t
- 	buffer_trace_init(&dummy.b_history);
- 	err = ext3_get_blocks_handle(handle, inode, block, 1,
- 					&dummy, create, 1);
--	if (err == 1) {
-+	/*
-+	 * ext3_get_blocks_handle() returns number of blocks
-+	 * mapped. 0 in case of a HOLE.
-+	 */
-+	if (err > 0) {
- 		err = 0;
--	} else if (err >= 0) {
--		WARN_ON(1);
--		err = -EIO;
- 	}
- 	*errp = err;
- 	if (!err && buffer_mapped(&dummy)) {
-
+-- 
+David Kleikamp
+IBM Linux Technology Center
 
