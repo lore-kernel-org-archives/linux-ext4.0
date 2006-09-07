@@ -1,52 +1,100 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
-Date: Thu, 07 Sep 2006 08:11:17 -0700
-Message-ID: <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
-References: <Pine.LNX.4.64.0609011652420.24650@hermes-2.csi.cam.ac.uk>
-	 <1157128342.30578.14.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060901101801.7845bca2.akpm@osdl.org>
-	 <1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906124719.GA11868@atrey.karlin.mff.cuni.cz>
-	 <1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906153449.GC18281@atrey.karlin.mff.cuni.cz>
-	 <1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906162723.GA14345@atrey.karlin.mff.cuni.cz>
-	 <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906172733.GC14345@atrey.karlin.mff.cuni.cz>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [PATCH] ext3_getblk should handle HOLE correctly
+Date: Thu, 7 Sep 2006 11:45:00 -0700
+Message-ID: <20060907114500.fe9fcf82.akpm@osdl.org>
+References: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-In-Reply-To: <20060906172733.GC14345@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>,
+	Will Simoneau <simoneau@ele.uri.edu>, cmm@us.ibm.com
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751840AbWIGSpT@vger.kernel.org>
+To: Badari Pulavarty <pbadari@us.ibm.com>
+In-Reply-To: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Wed, 06 Sep 2006 10:39:06 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
 
->   Ugh! Are you sure? For this path the buffer must be attached (only) to
-> the running transaction. But then how the commit code comes to it?
-> Somebody would have to even manage to refile the buffer from the
-> committing transaction to the running one while the buffer is in wbuf[].
-> Could you check whether someone does __journal_refile_buffer() on your
-> marked buffers, please? Or whether we move buffer to BJ_Locked list in
-> the write_out_data: loop? Thanks.
+> Hi Andrew,
 > 
-> 							
+> Its been reported that ext3_getblk() is not doing the right thing
+> and triggering following WARN():
+> 
+> BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
+>  <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread
+> +0x26/0x2a
+>  <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
+>  <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
+>  <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
+>  <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
+>  <c01c7986> ext3_setattr+0xc3/0x240  <c0120f66> current_fs_time
+> +0x52/0x6a
+>  <c017320e> notify_change+0x2bd/0x30d  <c0159246> chown_common+0x9c/0xc5
+>  <c02a222c> strncpy_from_user+0x3b/0x68  <c0167fe6> do_path_lookup
+> +0xdf/0x266
+>  <c016841b> __user_walk_fd+0x44/0x5a  <c01592b9> sys_chown+0x4a/0x55
+>  <c015a43c> vfs_write+0xe7/0x13c  <c01695d4> sys_mkdir+0x1f/0x23
+>  <c0102a97> syscall_call+0x7/0xb 
+> 
+> Looking at the code, it looks like its not handle HOLE correctly.
+> It ends up returning -EIO.
 
-I added more debug in __journal_refile_buffer() to see if the marked
-buffers are getting refiled. I am able to reproduce the problem,
-but I don't see any debug including my original prints. (It looks as 
-if none of my debug code exists) - its really confusing. 
+Strange.  The fs should be spewing these warnings all over the place.  For
+some reason this code is hard to trigger.  Why??
 
-I will keep looking and get back to you.
+> -	if (err == 1) {
+> +	/*
+> +	 * ext3_get_blocks_handle() returns number of blocks
+> +	 * mapped. 0 in case of a HOLE.
+> +	 */
+> +	if (err > 0) {
+>  		err = 0;
+> -	} else if (err >= 0) {
+> -		WARN_ON(1);
+> -		err = -EIO;
+>  	}
 
-I may try Andrew's buffer debug patch - if I get desperate.
+That removes the warning if ext3_get_blocks_handle() returned a positive
+number greater than one.  And it looks like we still need debugging support
+in this area.
 
-Thanks,
-Badari
+I reworked it like this:
 
+--- a/fs/ext3/inode.c~ext3_getblk-should-handle-hole-correctly
++++ a/fs/ext3/inode.c
+@@ -1010,11 +1010,14 @@ struct buffer_head *ext3_getblk(handle_t
+ 	buffer_trace_init(&dummy.b_history);
+ 	err = ext3_get_blocks_handle(handle, inode, block, 1,
+ 					&dummy, create, 1);
+-	if (err == 1) {
++	/*
++	 * ext3_get_blocks_handle() returns number of blocks
++	 * mapped. 0 in case of a HOLE.
++	 */
++	if (err > 0) {
++		if (err > 1)
++			WARN_ON(1);
+ 		err = 0;
+-	} else if (err >= 0) {
+-		WARN_ON(1);
+-		err = -EIO;
+ 	}
+ 	*errp = err;
+ 	if (!err && buffer_mapped(&dummy)) {
+_
+
+ie:
+
+	/*
+	 * ext3_get_blocks_handle() returns number of blocks
+	 * mapped. 0 in case of a HOLE.
+	 */
+	if (err > 0) {
+		if (err > 1)
+			WARN_ON(1);
+		err = 0;
+	}
+	*errp = err;
