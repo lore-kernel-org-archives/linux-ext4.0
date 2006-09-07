@@ -1,87 +1,55 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH] ext3_getblk should handle HOLE correctly
-Date: Thu, 7 Sep 2006 12:55:55 -0700
-Message-ID: <20060907125555.5bc44e33.akpm@osdl.org>
-References: <1157564346.23501.49.camel@dyn9047017100.beaverton.ibm.com>
-	<20060907114500.fe9fcf82.akpm@osdl.org>
-	<1157656947.7725.21.camel@dyn9047017100.beaverton.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
+Date: Thu, 7 Sep 2006 22:48:08 +0200
+Message-ID: <20060907204808.GC22549@atrey.karlin.mff.cuni.cz>
+References: <20060901101801.7845bca2.akpm@osdl.org> <1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com> <20060906124719.GA11868@atrey.karlin.mff.cuni.cz> <1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com> <20060906153449.GC18281@atrey.karlin.mff.cuni.cz> <1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com> <20060906162723.GA14345@atrey.karlin.mff.cuni.cz> <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com> <20060906172733.GC14345@atrey.karlin.mff.cuni.cz> <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>,
-	Will Simoneau <simoneau@ele.uri.edu>, cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>,
+	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:28082 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751861AbWIGT4F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2006 15:56:05 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:49284 "EHLO
+	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
+	id S1751863AbWIGUr4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Sep 2006 16:47:56 -0400
 To: Badari Pulavarty <pbadari@us.ibm.com>
-In-Reply-To: <1157656947.7725.21.camel@dyn9047017100.beaverton.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 07 Sep 2006 12:22:27 -0700
-Badari Pulavarty <pbadari@us.ibm.com> wrote:
+  Hi,
 
-> On Thu, 2006-09-07 at 11:45 -0700, Andrew Morton wrote:
-> > On Wed, 06 Sep 2006 10:39:06 -0700
-> > Badari Pulavarty <pbadari@us.ibm.com> wrote:
+> >   Ugh! Are you sure? For this path the buffer must be attached (only) to
+> > the running transaction. But then how the commit code comes to it?
+> > Somebody would have to even manage to refile the buffer from the
+> > committing transaction to the running one while the buffer is in wbuf[].
+> > Could you check whether someone does __journal_refile_buffer() on your
+> > marked buffers, please? Or whether we move buffer to BJ_Locked list in
+> > the write_out_data: loop? Thanks.
 > > 
-> > > Hi Andrew,
-> > > 
-> > > Its been reported that ext3_getblk() is not doing the right thing
-> > > and triggering following WARN():
-> > > 
-> > > BUG: warning at fs/ext3/inode.c:1016/ext3_getblk()
-> > >  <c01c5140> ext3_getblk+0x98/0x2a6  <c03b2806> md_wakeup_thread
-> > > +0x26/0x2a
-> > >  <c01c536d> ext3_bread+0x1f/0x88  <c01cedf9> ext3_quota_read+0x136/0x1ae
-> > >  <c018b683> v1_read_dqblk+0x61/0xac  <c0188f32> dquot_acquire+0xf6/0x107
-> > >  <c01ceaba> ext3_acquire_dquot+0x46/0x68  <c01897d4> dqget+0x155/0x1e7
-> > >  <c018a97b> dquot_transfer+0x3e0/0x3e9  <c016fe52> dput+0x23/0x13e
-> > >  <c01c7986> ext3_setattr+0xc3/0x240  <c0120f66> current_fs_time
-> > > +0x52/0x6a
-> > >  <c017320e> notify_change+0x2bd/0x30d  <c0159246> chown_common+0x9c/0xc5
-> > >  <c02a222c> strncpy_from_user+0x3b/0x68  <c0167fe6> do_path_lookup
-> > > +0xdf/0x266
-> > >  <c016841b> __user_walk_fd+0x44/0x5a  <c01592b9> sys_chown+0x4a/0x55
-> > >  <c015a43c> vfs_write+0xe7/0x13c  <c01695d4> sys_mkdir+0x1f/0x23
-> > >  <c0102a97> syscall_call+0x7/0xb 
-> > > 
-> > > Looking at the code, it looks like its not handle HOLE correctly.
-> > > It ends up returning -EIO.
-> > 
-> > Strange.  The fs should be spewing these warnings all over the place.  For
-> > some reason this code is hard to trigger.  Why??
+> > 							
 > 
-> I guess - ext3_getblk() mostly used by ext3_bread() and most callers 
-> to it would be reading already allocated block.
-
-OK.
-
-> > 
-> > > -	if (err == 1) {
-> > > +	/*
-> > > +	 * ext3_get_blocks_handle() returns number of blocks
-> > > +	 * mapped. 0 in case of a HOLE.
-> > > +	 */
-> > > +	if (err > 0) {
-> > >  		err = 0;
-> > > -	} else if (err >= 0) {
-> > > -		WARN_ON(1);
-> > > -		err = -EIO;
-> > >  	}
-> > 
-> > That removes the warning if ext3_get_blocks_handle() returned a positive
-> > number greater than one.  And it looks like we still need debugging support
-> > in this area.
+> I added more debug in __journal_refile_buffer() to see if the marked
+> buffers are getting refiled. I am able to reproduce the problem,
+> but I don't see any debug including my original prints. (It looks as 
+> if none of my debug code exists) - its really confusing. 
 > 
-> I am not sure why we need it ? All we care about is one block. If
-> ext3_get_blocks_handle() returns more than one (which it shouldn't) -
+> I will keep looking and get back to you.
+> 
+> I may try Andrew's buffer debug patch - if I get desperate.
+  Ho, hum, I think I see what is hapenning. I think we steal the buffer
+from commit in journal_dirty_data() (called e.g. from ext3_writepage()).
+There we also take care of writing out the buffer so it's mostly OK.
+Except that the commit code still keeps the reference to the buffer in
+wbuf[]. So the right solution along the lines of your one would be to
+check that each buffer in wbuf[] is buffer_jbd(), belongs to the right
+transaction and list and only in that case run submit_bh() on it...
 
-The operative part is "which it shouldn't".  This code is fairly fresh, and
-ext3 is paranoid.  Once it's all settled down then after a year or so we
-might decide that the debugging code is no longer needed.
-
-Then again, we have plenty of five-year-old assertions in there..
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
