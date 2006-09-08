@@ -1,84 +1,85 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
-Date: Fri, 08 Sep 2006 07:35:22 -0700
-Message-ID: <45017FAA.1070203@us.ibm.com>
-References: <20060906124719.GA11868@atrey.karlin.mff.cuni.cz> <1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com> <20060906153449.GC18281@atrey.karlin.mff.cuni.cz> <1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com> <20060906162723.GA14345@atrey.karlin.mff.cuni.cz> <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com> <20060906172733.GC14345@atrey.karlin.mff.cuni.cz> <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com> <20060907223048.GD22549@atrey.karlin.mff.cuni.cz> <4500F2B2.4010204@us.ibm.com> <20060908082531.GA28397@atrey.karlin.mff.cuni.cz>
+From: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Subject: Re: Updated ext4 patches for 2.6.18-rc6
+Date: Fri, 8 Sep 2006 18:13:24 +0200
+Message-ID: <20060908161324.GA19256@openx1.frec.bull.fr>
+References: <20060908131144sho@rifu.tnes.nec.co.jp> <1157698868.8616.20.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@osdl.org, shaggy@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:46293 "EHLO
-	e32.co.us.ibm.com") by vger.kernel.org with ESMTP id S1750758AbWIHOfc
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Sep 2006 10:35:32 -0400
-To: Jan Kara <jack@suse.cz>
-In-Reply-To: <20060908082531.GA28397@atrey.karlin.mff.cuni.cz>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:52424 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1750967AbWIHQNg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Sep 2006 12:13:36 -0400
+To: Mingming Cao <cmm@us.ibm.com>
+In-Reply-To: <1157698868.8616.20.camel@localhost.localdomain>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara wrote:
->   Hi,
+On Fri, Sep 08, 2006 at 12:01:08AM -0700, Mingming Cao wrote:
+> Hello,
+> 
+> Just give you all an update about the latest ext4 patches before I leave
+> for vacation: The latest ext4 patches (clone ext4 + 48bit ext4) is
+> against 2.6.18-rc6, as usual, could be found at:
+> 
+> http://ext2.sourceforge.net/ext4/patches/latest/
+> 
+> Haven't done series testing yet, but fsx test runs fine a few hours on
+> ext4dev filesystem mounted with extents:)
+> 
+> change log since last release (2.6.18-rc4)
+> 
+> rebase ext4/jbd2 clone patches to 2.6.18-rc6 (Mingming Cao<cmm@us.ibm.com>)
+> rename ext3dev to ext4dev (Randy  Dunlap <rdunlap@xenotime.net>, Mingming Cao <cmm@us.ibm.com)
+> register-ext4dev.patch
+> +register-jbd2.patch
+> 
+> *comment fixs in extent patch (Randy  Dunlap <rdunlap@xenotime.net>)
+> +extents_comment_fix.patch
+> 
+> *change some micro and inline functions to c fuctions(Avantika Mathur<mathur@us.ibm.com)
+> +64bitmetadata_inline_funcs_fix.patch
+> 
+> *change ext4/jbd2 block type from sector_t to unsigned long long. (Mingming Cao<cmm@us.ibm.com>). remove sector_fmt.patch
+> +ext4_blk_type_from_sector_t_to_ulonglong.patch
+> +ext4_remove_sector_t_bits_check.patch
+> +jbd2_blks_type_from_sector_t_to_ull.patch
+> -sector_fmt.patch
+> 
+> Andrew, you could pull all the patches(in quilt style) from here(a
+> series of patches)
+> http://ext2.sourceforge.net/ext4/patches/latest/broken-out/
+> 
+> Shaggy has nicely offered to maintain and forward all these patches from
+> here while I am out, thanks, Shaggy:)
 >
->   
->> Jan Kara wrote:
->>     
->>>  I've been looking more at the code and I have revived my patch fixing
->>> this part of the code. I've mildly tested the patch. Could you also give
->>> it a try? Thanks.
->>>
->>> 								Honza
->>>  
->>> ------------------------------------------------------------------------
->>>
->>> Original commit code assumes, that when a buffer on BJ_SyncData list is 
->>> locked,
->>> it is being written to disk. But this is not true and hence it can lead to 
->>> a
->>> potential data loss on crash. Also the code didn't count with the fact that
->>> journal_dirty_data() can steal buffers from committing transaction and 
->>> hence
->>> could write buffers that no longer belong to the committing transaction.
->>> Finally it could possibly happen that we tried writing out one buffer 
->>> several
->>> times.
->>>
->>> The patch below tries to solve these problems by a complete rewrite of the 
->>> data
->>> commit code. We go through buffers on t_sync_datalist, lock buffers needing
->>> write out and store them in an array. Buffers are also immediately refiled 
->>> to
->>> BJ_Locked list or unfiled (if the write out is completed). When the array 
->>> is
->>> full or we have to block on buffer lock, we submit all accumulated buffers 
->>> for
->>> IO.
->>>
->>> Signed-off-by: Jan Kara <jack@suse.cz>
->>>
->>>  
->>>       
->> I have been running 4+ hours with this patch and seems to work fine. I 
->> haven't hit any
->> assert yet :)
->>
->> I will let it run till tomorrow. I will let you know, how it goes.
->>     
->   Great, thanks. BTW: Do you have any performance tests handy? The
-> changes are big enough to cause some unexpected performance regressions,
-> livelocks... If you don't have anything ready, I can setup and run
-> something myself.  Just that I don't like this testing too much ;).
->   
-Tests are still running fine.
 
-I don't have any performance tests handy. We have some automated tests I 
-can schedule
-to run to verify the stability aspects.
+hi,
 
-Thanks,
-Badari
+there are 2 more patches:
 
+* ext4_remove_relative_block_numbers:
+
+  use 48bit absolute block numbers instead of mixed relative/absolute block
+  numbers. This is simpler and seems to fix issues with large file systems.
+   
+* ext4_allow_larger_descriptor_size:
+
+  allow larger block group descriptors: this patch will allow to add new
+  features that need more space in the block descriptor.
+
+here is the complete patch set:
+
+http://www.bullopensource.org/ext4/20060908/ext4-linux-2.6.18-rc6.tar.gz
+
+there's also a patch set for the latest e2fsprogs that is in sync with the
+kernel patches:
+
+http://www.bullopensource.org/ext4/20060908/ext4-e2fsprogs-1.39.tar.gz
+
+cheers,
+
+-- Alexandre
