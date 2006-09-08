@@ -1,39 +1,93 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [RFC:PATCH 000/002] EXT3: cleanups in preparation for ext4
- clone
-Date: Fri, 8 Sep 2006 14:56:17 -0700
-Message-ID: <20060908145617.f0d0a32a.akpm@osdl.org>
-References: <20060908213914.11498.3272.sendpatchset@kleikamp.austin.ibm.com>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: Re: [RFC:PATCH 002/002] EXT3: Fix sparse warnings
+Date: Sat, 9 Sep 2006 02:17:56 +0400
+Message-ID: <20060908221756.GB5192@martell.zuzino.mipt.ru>
+References: <20060908213914.11498.3272.sendpatchset@kleikamp.austin.ibm.com> <20060908213927.11498.18166.sendpatchset@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org, Linus Torvalds <torvalds@osdl.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:18638 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751195AbWIHV4V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Sep 2006 17:56:21 -0400
+Received: from nf-out-0910.google.com ([64.233.182.190]:64540 "EHLO
+	nf-out-0910.google.com") by vger.kernel.org with ESMTP
+	id S1751155AbWIHWSD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Sep 2006 18:18:03 -0400
+Received: by nf-out-0910.google.com with SMTP id o25so760728nfa
+        for <linux-ext4@vger.kernel.org>; Fri, 08 Sep 2006 15:18:02 -0700 (PDT)
 To: Dave Kleikamp <shaggy@austin.ibm.com>
-In-Reply-To: <20060908213914.11498.3272.sendpatchset@kleikamp.austin.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <20060908213927.11498.18166.sendpatchset@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 8 Sep 2006 17:39:17 -0400
-Dave Kleikamp <shaggy@austin.ibm.com> wrote:
+On Fri, Sep 08, 2006 at 03:39:30PM -0600, Dave Kleikamp wrote:
+> EXT3: Fix sparse warnings
 
-> I'm working on rebasing Mingming's ext4 patches on the -mm tree, and have
-> noticed a couple cleanups that would be nice to have in ext3 before the
-> code diverges.
+> --- linux001/fs/ext3/resize.c
+> +++ linux002/fs/ext3/resize.c
 
-Good idea, thanks.
+> @@ -380,7 +380,7 @@ static int add_new_gdb(handle_t *handle,
+>  	struct buffer_head *dind;
+>  	int gdbackups;
+>  	struct ext3_iloc iloc;
+> -	__u32 *data;
+> +	__le32 *data;
+>  	int err;
+>  
+>  	if (test_opt(sb, DEBUG))
+> @@ -410,14 +410,14 @@ static int add_new_gdb(handle_t *handle,
+>  		goto exit_bh;
+>  	}
+>  
+> -	data = EXT3_I(inode)->i_data + EXT3_DIND_BLOCK;
+> +	data = (__le32 *)(EXT3_I(inode)->i_data + EXT3_DIND_BLOCK);
 
-I'll try to get all pending ext3/jbd stuff flushed out for 2.6.19-rc1 and
-then we can put a plug in it for a while, get the ext4 copy-n-paste sorted
-out.  I'd suggest we aim to do this on the day after 2.6.19-rc1 is tagged. 
+Why cast is needed? i_data is __le32 * already.
 
-Or maybe -rc2.  The road to 2.6.19-rc1 is going to be rough - there's an
-unusually large amount of work pending, and there is an unusual (although
-still small) amount of overlap between the subsystem trees which people
-will need to sort out.  Because of this I expect it will take us more than
-the nominal two weeks to reach -rc1.
+> -	data = (__u32 *)dind->b_data;
+> +	data = (__le32 *)dind->b_data;
+>  	if (le32_to_cpu(data[gdb_num % EXT3_ADDR_PER_BLOCK(sb)]) != gdblock) {
+>  		ext3_warning(sb, __FUNCTION__,
+>  			     "new group %u GDT block "E3FSBLK" not reserved",
+> @@ -519,7 +519,7 @@ static int reserve_backup_gdb(handle_t *
+>  	struct buffer_head *dind;
+>  	struct ext3_iloc iloc;
+>  	ext3_fsblk_t blk;
+> -	__u32 *data, *end;
+> +	__le32 *data, *end;
+>  	int gdbackups = 0;
+>  	int res, i;
+>  	int err;
+> @@ -528,7 +528,7 @@ static int reserve_backup_gdb(handle_t *
+>  	if (!primary)
+>  		return -ENOMEM;
+>
+> -	data = EXT3_I(inode)->i_data + EXT3_DIND_BLOCK;
+> +	data = (__le32 *)(EXT3_I(inode)->i_data + EXT3_DIND_BLOCK);
+
+Ditto.
+
+> --- linux001/fs/ext3/super.c
+> +++ linux002/fs/ext3/super.c
+> @@ -2330,13 +2330,14 @@ static int ext3_remount (struct super_bl
+>  
+>  			ext3_mark_recovery_complete(sb, es);
+>  		} else {
+> -			__le32 ret;
+> -			if ((ret = EXT3_HAS_RO_COMPAT_FEATURE(sb,
+> +			int ret;
+> +			__le32 ret_le;
+> +			if ((ret_le = EXT3_HAS_RO_COMPAT_FEATURE(sb,
+>  					~EXT3_FEATURE_RO_COMPAT_SUPP))) {
+>  				printk(KERN_WARNING "EXT3-fs: %s: couldn't "
+>  				       "remount RDWR because of unsupported "
+>  				       "optional features (%x).\n",
+> -				       sb->s_id, le32_to_cpu(ret));
+> +				       sb->s_id, le32_to_cpu(ret_le));
+>  				err = -EROFS;
+>  				goto restore_opts;
+>  			}
+
+Get rid of "err = ret;" assignment below. It would be cleaner than
+introducing new var.
 
