@@ -1,67 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
-Date: Mon, 11 Sep 2006 22:52:12 +0200
-Message-ID: <20060911205212.GC23475@atrey.karlin.mff.cuni.cz>
-References: <20060906162723.GA14345@atrey.karlin.mff.cuni.cz> <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com> <20060906172733.GC14345@atrey.karlin.mff.cuni.cz> <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com> <20060907223048.GD22549@atrey.karlin.mff.cuni.cz> <4500F2B2.4010204@us.ibm.com> <20060908082531.GA28397@atrey.karlin.mff.cuni.cz> <45017FAA.1070203@us.ibm.com> <20060911094641.GA3336@atrey.karlin.mff.cuni.cz> <1158007528.30318.12.camel@dyn9047017100.beaverton.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Comments on respun 16T patches: group_desc_loops
+Date: Mon, 11 Sep 2006 22:30:55 -0400
+Message-ID: <20060912023055.GA31035@thunk.org>
+References: <44E3855D.5040303@redhat.com> <20060830061825.GB8046@thunk.org> <44F5D66D.8030500@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:64220 "EHLO
-	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
-	id S964943AbWIKUwd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Sep 2006 16:52:33 -0400
-To: Badari Pulavarty <pbadari@us.ibm.com>
+Received: from THUNK.ORG ([69.25.196.29]:30934 "EHLO thunker.thunk.org")
+	by vger.kernel.org with ESMTP id S964983AbWILJN4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Sep 2006 05:13:56 -0400
+To: Eric Sandeen <esandeen@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <1158007528.30318.12.camel@dyn9047017100.beaverton.ibm.com>
+In-Reply-To: <44F5D66D.8030500@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Mon, 2006-09-11 at 11:46 +0200, Jan Kara wrote:
-> ...
-> > > 
-> > > I don't have any performance tests handy. We have some automated tests I 
-> > > can schedule to run to verify the stability aspects.
-> >   OK. I've run IOZONE rewrite throughput test on my computer with
-> > iozone -t 10 -i 0 -s 10M -e
-> >   2.6.18-rc6 and the same kernel + my patch seem to give almost the same
-> > results. The strange thing was that both in vanilla and patched kernel there
-> > were several runs where a write througput (when iozone was creating the file)
-> > was suddenly 10% of the usual value (18MB/s vs. 2MB/s). The rewrite numbers
-> > were always fine. Maybe that has something to do with block allocation
-> > code. Anyway, it is not a regression of my patch so unless your test
-> > finds some problem I think the patch should be ready for inclusion into
-> > -mm...
-> 
-> Your patch seems to be working fine. I haven't found any major
-> regression yet. 
-> 
-> I spent lot of time trying to reproduce the problem with buffer-debug
-> Andrew sent out - I really wanted to get to bottom of whats really
-> happening here (since your patch made it go away).
-> 
-> Yes. Your theory is correct. journal_dirty_data() is moving the
-> buffer-head from commited transaction to current one and
-> journal_unmap_buffer() is discarding and cleaning up the buffer-head.
-> Later set_page_dirty() dirties the buffer-head there by causing
-> BUG() in submit_bh().
-> 
-> Here is the buffer-trace-debug output to confirm it. I can sleep better
-> now :) Now we can figure out, if your fix is the right one or not ..
-  OK, good to hear :). My patch should be prone at least to this problem
-(I'm not saying it could not have introduced any other ;). It locks the
-buffer and if it needed to drop JBD spin locks, it also checks whether
-the buffer remained in the BJ_SyncData list. Hence if the
-journal_dirty_data() steals the buffer while we are locking it we find
-that out and forget about the buffer. Once the buffer is locked,
-journal_dirty_data() won't touch it.
-  I guess the patch is good enough to send it to Andrew...
+On Wed, Aug 30, 2006 at 01:18:21PM -0500, Eric Sandeen wrote:
+> http://people.redhat.com/esandeen/ext3/e2fsprogs-1.39-16T/e2fsprogs-hg-20060830-16T-patches.tar.gz
 
-								Honza
+In the group_desc_loops patches in the above tarball:
 
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+>For loops iterating over all group descriptors, consistently define
+>first_block and last_block in a way that they are inclusive of the
+>range, and do not overflow.
+>
+>Previously on the last block group we did a test of <= first + dec_blocks;
+>this would actually wrap back to 0 for a total block count of 2^32-1
+
+As far as I can tell this is not a problem.  sb->s_last_block can be
+at most 2**32-1 --- which means that the last valid block number is
+actually 2**32-2, since block numbers are zero based.
+
+So as long as the handling of the last block group is correct, I don't
+think we actually need to make the <= to < change.  It's not wrong to
+make the change, just not necessary as far as I can see.  
+Also, there are some files for which the only change was variable
+names.  That's fine, but the changelogs should state that.
+
+So there is a last block group handling bug in ext2fs_check_desc(),
+but I didn't see any other bugs that this patch would actually affect.
+Am I missing anything?
+
+Regards,
+
+						- Ted
+
