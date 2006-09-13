@@ -1,65 +1,66 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
-Date: Wed, 13 Sep 2006 15:25:19 -0500
-Message-ID: <1158179120.11112.2.camel@kleikamp.austin.ibm.com>
-References: <20060901101801.7845bca2.akpm@osdl.org>
-	 <1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906124719.GA11868@atrey.karlin.mff.cuni.cz>
-	 <1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906153449.GC18281@atrey.karlin.mff.cuni.cz>
-	 <1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906162723.GA14345@atrey.karlin.mff.cuni.cz>
-	 <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906172733.GC14345@atrey.karlin.mff.cuni.cz>
-	 <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060907223048.GD22549@atrey.karlin.mff.cuni.cz>
+From: "Randy.Dunlap" <rdunlap@xenotime.net>
+Subject: Re: rfc: [patch] change attribute for ext3
+Date: Wed, 13 Sep 2006 13:31:36 -0700
+Message-ID: <20060913133136.449c731a.rdunlap@xenotime.net>
+References: <20060913164202.GA14838@openx1.frec.bull.fr>
+	<1158171071.6072.10.camel@lade.trondhjem.org>
+	<20060913183001.GA1702@moule.localdomain>
+	<1158174362.6072.27.camel@lade.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Badari Pulavarty <pbadari@us.ibm.com>,
-	Andrew Morton <akpm@osdl.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-In-Reply-To: <20060907223048.GD22549@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
+	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from xenotime.net ([66.160.160.81]:9699 "HELO xenotime.net")
+	by vger.kernel.org with SMTP id S1751086AbWIMUaZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Sep 2006 16:30:25 -0400
+Received: from midway.site ([71.117.233.155]) by xenotime.net for <linux-ext4@vger.kernel.org>; Wed, 13 Sep 2006 13:30:25 -0700
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1158174362.6072.27.camel@lade.trondhjem.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2006-09-08 at 00:30 +0200, Jan Kara wrote:
-> diff -rupX /home/jack/.kerndiffexclude
-> linux-2.6.18-rc6/fs/jbd/commit.c
-> linux-2.6.18-rc6-1-orderedwrite/fs/jbd/commit.c
-> --- linux-2.6.18-rc6/fs/jbd/commit.c    2006-09-06 18:20:48.000000000
-> +0200
-> +++ linux-2.6.18-rc6-1-orderedwrite/fs/jbd/commit.c     2006-09-08
-> 01:05:35.000000000 +0200
-> @@ -160,6 +160,117 @@ static int journal_write_commit_record(j
->         return (ret == -EIO);
->  }
->  
-> +void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
+On Wed, 13 Sep 2006 15:06:02 -0400 Trond Myklebust wrote:
 
-Is there any reason this couldn't be static?
+> On Wed, 2006-09-13 at 20:30 +0200, Alexandre Ratchov wrote:
+> > On Wed, Sep 13, 2006 at 02:11:11PM -0400, Trond Myklebust wrote:
+> > > On Wed, 2006-09-13 at 18:42 +0200, Alexandre Ratchov wrote:
+> > > > hello, 
+> > > > 
+> > > > here is a small patch that adds the "change attribute" for ext3
+> > > > file-systems;
+> > > > 
+> > > > the change attribute is a simple counter that is reset to zero on
+> > > > inode creation and that is incremented every time the inode data is
+> > > > modified (similarly to the "ctime" time-stamp).
+> > > 
+> > > I would really have preferred a full-blown 64-bit counter as per
+> > > RFC3530, but I suppose we could always combine this change attribute
+> > > with the high word from ctime in order to make up the NFSv4 change
+> > > attribute. That should keep us safe until someone develops a ramdisk
+> > > with < 1 nsecond access time.
+> > > 
+> > 
+> > do you mean something like "(ctime.tv_sec << 32) | change_attribute"? this
+> > would allow 2^32 inode changes per second.
+> 
+> Yes. As I said, that probably ought to suffice for now.
+> 
+> > For ext3 it's hard to find unused bits in the on-disk inode structure, but
+> > ext4 inode may become larger in the future, allowing a 64bit counter.
+> 
+> In anticipation of that event, could you please change the field in
+> 'struct stat' and 'struct stat64' to be an 'unsigned long long' instead
+> of the current 'unsigned long'?
+> 
+> All the other fields are internal to the kernel, so a future change of
+> their size should not matter.
 
-> +{
-> +       int i;
-> +
-> +       for (i = 0; i < bufs; i++) {
-> +               wbuf[i]->b_end_io = end_buffer_write_sync;
-> +               /* We use-up our safety reference in submit_bh() */
-> +               submit_bh(WRITE, wbuf[i]);
-> +       }
-> +} 
+and while you are making changes + resubmitting,
+Signed-off-by:
+needs to have name + email address.
 
-I'm rebasing the ext4 work on the latest -mm tree and would like to
-avoid renaming this function in the jbd2 clone.
-
-Thanks,
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
-
+---
+~Randy
