@@ -1,41 +1,53 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: rfc: [patch] change attribute for ext3
-Date: Wed, 13 Sep 2006 21:24:49 -0400
-Message-ID: <20060914012449.GC22224@fieldses.org>
-References: <20060913164202.GA14838@openx1.frec.bull.fr> <20060913193130.GJ6441@schatzie.adilger.int>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
+Date: Wed, 13 Sep 2006 20:38:17 -0700
+Message-ID: <20060913203817.b6711381.akpm@osdl.org>
+References: <20060901101801.7845bca2.akpm@osdl.org>
+	<1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>
+	<20060906124719.GA11868@atrey.karlin.mff.cuni.cz>
+	<1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com>
+	<20060906153449.GC18281@atrey.karlin.mff.cuni.cz>
+	<1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com>
+	<20060906162723.GA14345@atrey.karlin.mff.cuni.cz>
+	<1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com>
+	<20060906172733.GC14345@atrey.karlin.mff.cuni.cz>
+	<1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
+	<20060907223048.GD22549@atrey.karlin.mff.cuni.cz>
+	<1158179120.11112.2.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56739 "EHLO
-	pickle.fieldses.org") by vger.kernel.org with ESMTP
-	id S1751317AbWINBYw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Sep 2006 21:24:52 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
-Content-Disposition: inline
-In-Reply-To: <20060913193130.GJ6441@schatzie.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Badari Pulavarty <pbadari@us.ibm.com>,
+	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1158179120.11112.2.camel@kleikamp.austin.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 13, 2006 at 01:31:30PM -0600, Andreas Dilger wrote:
-> On Sep 13, 2006  18:42 +0200, Alexandre Ratchov wrote:
-> > The patch also adds a new ``st_change_attribute'' field in the stat
-> > structure, and modifies the stat(2) syscall accordingly. Currently the
-> > change is only visible on i386 and x86_64 archs.
+On Wed, 13 Sep 2006 15:25:19 -0500
+Dave Kleikamp <shaggy@austin.ibm.com> wrote:
+
+> > +void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
 > 
-> Is this really necessary for knfsd?
+> Is there any reason this couldn't be static?
 
-Of course knfsd is completely in kernel, so it doesn't care about the
-userspace interface.
+Nope.
 
-But I think that a change attribute is potentially an *extremely* useful
-thing, and for more than just nfs servers.  Lots of userspace programs
-also need to know whether a file has changed since they last examined
-it, and also suffer from the limitations of using ctime or mtime as an
-imperfect approximation to a real change attribute.
+> > +{
+> > +       int i;
+> > +
+> > +       for (i = 0; i < bufs; i++) {
+> > +               wbuf[i]->b_end_io = end_buffer_write_sync;
+> > +               /* We use-up our safety reference in submit_bh() */
+> > +               submit_bh(WRITE, wbuf[i]);
+> > +       }
+> > +} 
+> 
+> I'm rebasing the ext4 work on the latest -mm tree and would like to
+> avoid renaming this function in the jbd2 clone.
 
-But it would make sense to split the user space changes into a second
-patch and possibly apply it later.
-
---b.
+<edits the diff>
