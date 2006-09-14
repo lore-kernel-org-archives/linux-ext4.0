@@ -1,66 +1,41 @@
-From: "Randy.Dunlap" <rdunlap@xenotime.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: rfc: [patch] change attribute for ext3
-Date: Wed, 13 Sep 2006 13:31:36 -0700
-Message-ID: <20060913133136.449c731a.rdunlap@xenotime.net>
-References: <20060913164202.GA14838@openx1.frec.bull.fr>
-	<1158171071.6072.10.camel@lade.trondhjem.org>
-	<20060913183001.GA1702@moule.localdomain>
-	<1158174362.6072.27.camel@lade.trondhjem.org>
+Date: Wed, 13 Sep 2006 21:24:49 -0400
+Message-ID: <20060914012449.GC22224@fieldses.org>
+References: <20060913164202.GA14838@openx1.frec.bull.fr> <20060913193130.GJ6441@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
 	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from xenotime.net ([66.160.160.81]:9699 "HELO xenotime.net")
-	by vger.kernel.org with SMTP id S1751086AbWIMUaZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Sep 2006 16:30:25 -0400
-Received: from midway.site ([71.117.233.155]) by xenotime.net for <linux-ext4@vger.kernel.org>; Wed, 13 Sep 2006 13:30:25 -0700
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1158174362.6072.27.camel@lade.trondhjem.org>
+Received: from mail.fieldses.org ([66.93.2.214]:56739 "EHLO
+	pickle.fieldses.org") by vger.kernel.org with ESMTP
+	id S1751317AbWINBYw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Sep 2006 21:24:52 -0400
+To: Andreas Dilger <adilger@clusterfs.com>
+Content-Disposition: inline
+In-Reply-To: <20060913193130.GJ6441@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 13 Sep 2006 15:06:02 -0400 Trond Myklebust wrote:
+On Wed, Sep 13, 2006 at 01:31:30PM -0600, Andreas Dilger wrote:
+> On Sep 13, 2006  18:42 +0200, Alexandre Ratchov wrote:
+> > The patch also adds a new ``st_change_attribute'' field in the stat
+> > structure, and modifies the stat(2) syscall accordingly. Currently the
+> > change is only visible on i386 and x86_64 archs.
+> 
+> Is this really necessary for knfsd?
 
-> On Wed, 2006-09-13 at 20:30 +0200, Alexandre Ratchov wrote:
-> > On Wed, Sep 13, 2006 at 02:11:11PM -0400, Trond Myklebust wrote:
-> > > On Wed, 2006-09-13 at 18:42 +0200, Alexandre Ratchov wrote:
-> > > > hello, 
-> > > > 
-> > > > here is a small patch that adds the "change attribute" for ext3
-> > > > file-systems;
-> > > > 
-> > > > the change attribute is a simple counter that is reset to zero on
-> > > > inode creation and that is incremented every time the inode data is
-> > > > modified (similarly to the "ctime" time-stamp).
-> > > 
-> > > I would really have preferred a full-blown 64-bit counter as per
-> > > RFC3530, but I suppose we could always combine this change attribute
-> > > with the high word from ctime in order to make up the NFSv4 change
-> > > attribute. That should keep us safe until someone develops a ramdisk
-> > > with < 1 nsecond access time.
-> > > 
-> > 
-> > do you mean something like "(ctime.tv_sec << 32) | change_attribute"? this
-> > would allow 2^32 inode changes per second.
-> 
-> Yes. As I said, that probably ought to suffice for now.
-> 
-> > For ext3 it's hard to find unused bits in the on-disk inode structure, but
-> > ext4 inode may become larger in the future, allowing a 64bit counter.
-> 
-> In anticipation of that event, could you please change the field in
-> 'struct stat' and 'struct stat64' to be an 'unsigned long long' instead
-> of the current 'unsigned long'?
-> 
-> All the other fields are internal to the kernel, so a future change of
-> their size should not matter.
+Of course knfsd is completely in kernel, so it doesn't care about the
+userspace interface.
 
-and while you are making changes + resubmitting,
-Signed-off-by:
-needs to have name + email address.
+But I think that a change attribute is potentially an *extremely* useful
+thing, and for more than just nfs servers.  Lots of userspace programs
+also need to know whether a file has changed since they last examined
+it, and also suffer from the limitations of using ctime or mtime as an
+imperfect approximation to a real change attribute.
 
----
-~Randy
+But it would make sense to split the user space changes into a second
+patch and possibly apply it later.
+
+--b.
