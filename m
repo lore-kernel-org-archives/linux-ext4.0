@@ -1,52 +1,72 @@
-From: Alexandre Ratchov <alexandre.ratchov@bull.net>
-Subject: Re: rfc: [patch] change attribute for ext3
-Date: Thu, 14 Sep 2006 16:06:40 +0200
-Message-ID: <20060914140640.GF28663@openx1.frec.bull.fr>
-References: <20060913164202.GA14838@openx1.frec.bull.fr> <1158171071.6072.10.camel@lade.trondhjem.org> <45095D1B.8040201@redhat.com>
+From: Avantika Mathur LTC <mathur@us.ibm.com>
+Subject: ext4 devel interlock meeting minutes (Sept. 13, 2006)
+Date: Thu, 14 Sep 2006 09:20:07 -0700
+Message-ID: <45098137.5040809@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:53192 "EHLO
-	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
-	id S1750747AbWINOGs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Sep 2006 10:06:48 -0400
-To: Peter Staubach <staubach@redhat.com>
-In-Reply-To: <45095D1B.8040201@redhat.com>
-Content-Disposition: inline
+Received: from e31.co.us.ibm.com ([32.97.110.149]:7650 "EHLO e31.co.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1750974AbWINQUM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Sep 2006 12:20:12 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e31.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k8EGK9PL024155
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Sep 2006 12:20:09 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id k8EGK8cH221488
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Sep 2006 10:20:08 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k8EGK8kI016032
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Sep 2006 10:20:08 -0600
+Received: from [127.0.0.1] (IBM-DD6E2EC41B8.beaverton.ibm.com [9.47.16.82])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id k8EGK7UJ015951
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Sep 2006 10:20:08 -0600
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 14, 2006 at 09:46:03AM -0400, Peter Staubach wrote:
-> Trond Myklebust wrote:
-> >On Wed, 2006-09-13 at 18:42 +0200, Alexandre Ratchov wrote:
-> >  
-> >>hello, 
-> >>
-> >>here is a small patch that adds the "change attribute" for ext3
-> >>file-systems;
-> >>
-> >>the change attribute is a simple counter that is reset to zero on
-> >>inode creation and that is incremented every time the inode data is
-> >>modified (similarly to the "ctime" time-stamp).
-> >>    
-> >
-> >I would really have preferred a full-blown 64-bit counter as per
-> >RFC3530, but I suppose we could always combine this change attribute
-> >with the high word from ctime in order to make up the NFSv4 change
-> >attribute. That should keep us safe until someone develops a ramdisk
-> >with < 1 nsecond access time.
-> 
-> Wouldn't the generation count work better than ctime to differentiate 
-> between
-> instances of files using the same inode number?  That way, there wouldn't be
-> a clock resolution issue.
+Below are minutes from yesterday's interlock call.
+-----
 
-Yes, and afaik it's already used for that purpose by NFSv{2,3}. 
+Ext4 Developer Interlock Call: 9/13/06 Meeting Minutes
 
-Note that the change attribute is for counting changes of the same instance
-of a file using a given inode (as opposed to the generation counter that's
-used to count the number of files that have used a given inode).
+Attendees: Shaggy(Dave Kleikamp), Suparna Bhattacharya, Jean-Noel, 
+Alexadre Ratchov, Badari Pulavarty, Andreas Dilger, Eric Sandeen, 
+Avantika Mathur
 
--- Alexandre
+1. Shaggy has started porting ext4 patches to the current -mm tree.  He 
+hopes to have this done in the next few days, and will send out the 
+updated series.  Andrew Morton wants to get these patches in soon after 
+2.6.19-rc1
+
+2. Ext3 patches are in the -mm tree waiting for 2.6.19-rc1
+
+3. All of Eric's patches seem to be in e2fsprogs. There may be items 
+left to fix in e2Image.  Andreas' fixes are also in e2fsprogs
+
+4. Large group descriptor patches: The Bull Team is currently testing 
+these patches.  They are also looking at issues with compatibility with 
+current on disk filesystems with small group descriptors.
+
+5. Andreas mentioned that resizing may not work past 16 TB, it is 
+something that should be addressed for when the 64 bit incompat flag is 
+set.
+
+6. Suparna asked about Preallocation support, Shaggy is busy with 
+rebasing the ext4 patches and is not able to work on this currently.
+
+7. Andreas will be sending out partial inode patch.  Currently it needs 
+a lot of work, but will be looking for feedback and help.
+
+8. The Bull team has been working on a patch to add the 'change 
+attribute' to ext3.  This is a counter incremented each time an inode is 
+changed.  Alexandre asked about using OS dependent reserved fields in 
+the on-disk structure for this counter.  Alexandre will be posting these 
+patches today for review.
+
+
+----
+Avantika Mathur
+IBM LTC-kernel team
+
