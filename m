@@ -1,63 +1,99 @@
-From: "=?ISO-8859-2?Q?Marcin_Pr=B1czko?=" <marcin.praczko@googlemail.com>
-Subject: Ext3 - advanced config...
-Date: Tue, 19 Sep 2006 09:22:19 +0100
-Message-ID: <6c99578d0609190122o23cc0f69t71655f0a3e1b1165@mail.gmail.com>
+From: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Subject: [patch] small fix for e2p_percent()
+Date: Wed, 20 Sep 2006 10:56:08 +0200
+Message-ID: <20060920085608.GA18351@openx1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Jean-Pierre Dion <jean-pierre.dion@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.238]:7143 "EHLO
-	wx-out-0506.google.com") by vger.kernel.org with ESMTP
-	id S1751379AbWISIWU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Sep 2006 04:22:20 -0400
-Received: by wx-out-0506.google.com with SMTP id s14so4363040wxc
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Sep 2006 01:22:20 -0700 (PDT)
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:62635 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1750745AbWITI4a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Sep 2006 04:56:30 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 8B9F219D943
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Sep 2006 10:56:28 +0200 (CEST)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 22796-03 for <linux-ext4@vger.kernel.org>;
+ Wed, 20 Sep 2006 10:56:25 +0200 (CEST)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 8D8AB19D94C
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Sep 2006 10:56:09 +0200 (CEST)
 To: linux-ext4@vger.kernel.org
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dear developers of ext[23] filesystems.
+hello,
 
-I have one problem and I would like to know how execly is working ext3
-filesystem.
+e2p_percent() doesn't work for zero percent (``mke2fs -m0'' gets killed with
+SIGFPE).
 
-I red a lot of ext3 document, man pages and paper from internet.
-I tried make experiment but it didn't work so I am writting to you.
+is there a reason for not simply using 64 bit arithmetic? perhaps to avoid
+overflows for 7e+9TB file-systems :-), or just for correctness...
 
-This is the situation what I would like to do:
-[I made my experiment on ram disk - so I show you my solutions]
+So, here is the patch that fixes this. In order to avoid integer overflows,
+we pick 16 more bits to store ``base'' and do the exact division on 48 bits.
+Since ``100 * base'' always fits in 48 bits, there's never overflow. This
+still work if we remplace 'unsigned int' by 'unsigned long long'.
 
-HD [RAM0]-> Ext3 formatted
-mkfs.ext3 -vm0 -j SIZE /dev/ram0
-mount options:
-mount -orw,commit=TIME,data=journal /dev/ram0 /mnt/ram_ext3_test
+cheers,
 
-And now:
-SIZE == 1 (The size of journal-size should be 1MB ??? Is it correct
-(debian man tune2fs, mkfs.ext3)
-TIME == 120 (is sec - so it means that data from journal system will
-be send do HDD(RAM) after 2 min)
+-- Alexandre
 
-TIME is working property
-SIZE - I have problem - I am writting data to file system - but I
-wrote less that 1MB and ext3 save it from journal to harddrive.
+Signed-off-by: Alexandre Ratchov <alexandre.ratchov@bull.net>
 
-And my real question is:
-How execly works ext3 ??
-I think like that:
-SAVE DATA TO FS --->> [EXT3] Stored data in journal system (but on HD) ---->>>
-   [EXT3] after TIME or SIZE move data from journal into real place on HD
-Is it correct ??
+Index: e2fsprogs-1.39/lib/e2p/percent.c
+===================================================================
+--- e2fsprogs-1.39.orig/lib/e2p/percent.c	2006-09-20 12:07:05.000000000 +0200
++++ e2fsprogs-1.39/lib/e2p/percent.c	2006-09-20 12:33:20.000000000 +0200
+@@ -14,18 +14,41 @@
+ /*
+  * We work really hard to calculate this accurately, while avoiding
+  * an overflow.  "Is there a hyphen in anal-retentive?"  :-)
++ *
++ * -- "Yes there is, as in hair-splitting and nit-picking"
+  */
+ unsigned int e2p_percent(int percent, unsigned int base)
+ {
+-	unsigned int mask = ~((1 << (sizeof(unsigned int) - 1) * 8) - 1);
++	unsigned hi, lo, q, r;
+ 
+-	if (100 % percent == 0)
+-		return base / (100 / percent);
+-	if (mask & base) 
+-		return (base / 100) * percent;
+-	return base * percent / 100;
++	/* 
++	 * in order to avoid overflow we write 'base' as:
++	 *
++	 *	base = hi * 2^16 + lo 
++	 * 
++	 * then we do all computations separately on 'hi' and 'lo'.
++	 * By using the definition of division:
++	 *
++	 *	precent * base = result * 100 + reminder
++	 *
++	 * (reminder < 100), we obtain the exact value of 'result' 
++	 * as follows:
++	 */
++#define BITS	16
++#define MASK	((1 << BITS) - 1)
++
++	hi = percent * (base >> BITS);
++	lo = percent * (base & MASK);
++
++	q = ((hi / 100) << BITS) + lo / 100;
++	r = ((hi % 100) << BITS) + lo % 100;
++		
++	return q + r / 100;
++#undef BITS
++#undef MASK
+ }
+ 
++
+ #ifdef DEBUG
+ #include <unistd.h>
+ #include <stdio.h>
 
-But is it possible something like that??
-SAVA DATA TO FS --->> [EXT3] Stored data in ramdisk (journal file)  ->>>
-  [EXT3] after TIME or SIZE move data from journal (RAM) into real
-place on hd ??
-
-I red this information in man mkfs.ext3 (-J option: device), but with
-my knowlage and english (is not perfect :)... I don't execly
-understand how it is works.
-
-Thank you for your time and your answer.
-Marcin Praczko
