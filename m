@@ -1,42 +1,80 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 devel interlock meeting minutes (Sept. 20, 2006)
-Date: Thu, 21 Sep 2006 08:48:40 -0400
-Message-ID: <20060921124840.GH12542@thunk.org>
-References: <45117477.1030000@us.ibm.com>
+From: Johann Lombardi <johann.lombardi@bull.net>
+Subject: Re: ext4 kernel patches against linux-2.6.18-rc7-mm1
+Date: Thu, 21 Sep 2006 17:15:23 +0200
+Message-ID: <20060921151523.GA20682@lombardij>
+References: <1158767799.9276.23.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:10901 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1751163AbWIUMvG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Sep 2006 08:51:06 -0400
-To: Avantika Mathur LTC <mathur@us.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:5529 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1751240AbWIUPPZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Sep 2006 11:15:25 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1158767799.9276.23.camel@kleikamp.austin.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <45117477.1030000@us.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 20, 2006 at 10:03:51AM -0700, Avantika Mathur LTC wrote:
-> - Alexandre is waiting for feedback from Ted on e2fsprogs patches.  Plan 
-> to discuss and review through the mailing list.
+On Wed, Sep 20, 2006 at 10:56:39AM -0500, Dave Kleikamp wrote:
+> # These next 4 copy clone jdb2 from jbd and modify ext4 to use it
+> jbd2-copy.patch
+> jbd2-rename.patch
 
-My posting from earlier this week was a result of reviewing the
-clusterfs patches, althoguh perhaps I should have been more explicit
-about my complaints:
+jbd and jbd2 currently use the same slab names which must be unique.
+The patch below just renames jbd2's slabs.
 
-*) In appropriate namespace leakage (all new functions that are
-visible should have the ext2fs_ prefix)
+Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
 
-*) Interfaces that expose the on-disk extent format, and will
-therefore require changing (and thus breaking) the API and ABI when we
-add support for 48-bit or 64-bit extent patches.  
-
-I was trying to be a bit more constructive, though, and have been in
-the midst of reimplementing a better interface.  Although if Alexandre
-has time in the next week or two, things might go faster if I can just
-explain what I want the new interface to look like and he can
-implement it.  :-)
-
-						- Ted
-
+Index: linux-2.6.18-rc7-mm1/fs/jbd2/journal.c
+===================================================================
+--- linux-2.6.18-rc7-mm1.orig/fs/jbd2/journal.c	2006-09-21 16:37:49.566959224 +0200
++++ linux-2.6.18-rc7-mm1/fs/jbd2/journal.c	2006-09-21 16:38:19.145462608 +0200
+@@ -1643,7 +1643,7 @@
+ 
+ static kmem_cache_t *jbd_slab[JBD_MAX_SLABS];
+ static const char *jbd_slab_names[JBD_MAX_SLABS] = {
+-	"jbd_1k", "jbd_2k", "jbd_4k", NULL, "jbd_8k"
++	"jbd2_1k", "jbd2_2k", "jbd2_4k", NULL, "jbd2_8k"
+ };
+ 
+ static void jbd2_journal_destroy_jbd_slabs(void)
+@@ -1714,7 +1714,7 @@
+ 	int retval;
+ 
+ 	J_ASSERT(jbd2_journal_head_cache == 0);
+-	jbd2_journal_head_cache = kmem_cache_create("journal_head",
++	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
+ 				sizeof(struct journal_head),
+ 				0,		/* offset */
+ 				0,		/* flags */
+@@ -2019,7 +2019,7 @@
+ 
+ static int __init journal_init_handle_cache(void)
+ {
+-	jbd2_handle_cache = kmem_cache_create("journal_handle",
++	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
+ 				sizeof(handle_t),
+ 				0,		/* offset */
+ 				0,		/* flags */
+Index: linux-2.6.18-rc7-mm1/fs/jbd2/revoke.c
+===================================================================
+--- linux-2.6.18-rc7-mm1.orig/fs/jbd2/revoke.c	2006-09-21 16:38:28.044109808 +0200
++++ linux-2.6.18-rc7-mm1/fs/jbd2/revoke.c	2006-09-21 16:38:40.978143536 +0200
+@@ -169,13 +169,13 @@
+ 
+ int __init jbd2_journal_init_revoke_caches(void)
+ {
+-	jbd2_revoke_record_cache = kmem_cache_create("revoke_record",
++	jbd2_revoke_record_cache = kmem_cache_create("jbd2_revoke_record",
+ 					   sizeof(struct jbd2_revoke_record_s),
+ 					   0, SLAB_HWCACHE_ALIGN, NULL, NULL);
+ 	if (jbd2_revoke_record_cache == 0)
+ 		return -ENOMEM;
+ 
+-	jbd2_revoke_table_cache = kmem_cache_create("revoke_table",
++	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
+ 					   sizeof(struct jbd2_revoke_table_s),
+ 					   0, 0, NULL, NULL);
+ 	if (jbd2_revoke_table_cache == 0) {
