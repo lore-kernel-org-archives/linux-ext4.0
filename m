@@ -1,39 +1,42 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: rfc: [patch] move "_hi" block numbers
-Date: Thu, 21 Sep 2006 02:50:51 -0700
-Message-ID: <20060921095051.GA5729@schatzie.adilger.int>
-References: <20060915152252.GA1628@openx1.frec.bull.fr>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 devel interlock meeting minutes (Sept. 20, 2006)
+Date: Thu, 21 Sep 2006 08:48:40 -0400
+Message-ID: <20060921124840.GH12542@thunk.org>
+References: <45117477.1030000@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Jean-Pierre Dion <jean-pierre.dion@bull.net>
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:7141 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751098AbWIUJux
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Sep 2006 05:50:53 -0400
-To: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Received: from thunk.org ([69.25.196.29]:10901 "EHLO thunker.thunk.org")
+	by vger.kernel.org with ESMTP id S1751163AbWIUMvG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Sep 2006 08:51:06 -0400
+To: Avantika Mathur LTC <mathur@us.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <20060915152252.GA1628@openx1.frec.bull.fr>
+In-Reply-To: <45117477.1030000@us.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 15, 2006  17:22 +0200, Alexandre Ratchov wrote:
-> the attached patch moves ``_hi'' bits of bg_inode_bitmap, bg_block_bitmap
-> and bg_inode_table in the larger part of the group descriptor structure, as
-> we discussed the last week. 
-> 
-> With this patch, we let a gap in the first 32 byte part of the group
-> descriptor. It can be used to port future ext3 features to ext4 or to
-> backport features from ext4 to ext3, without interfering with the 64bit
-> support.
+On Wed, Sep 20, 2006 at 10:03:51AM -0700, Avantika Mathur LTC wrote:
+> - Alexandre is waiting for feedback from Ted on e2fsprogs patches.  Plan 
+> to discuss and review through the mailing list.
 
-Looks good to me.
+My posting from earlier this week was a result of reviewing the
+clusterfs patches, althoguh perhaps I should have been more explicit
+about my complaints:
 
+*) In appropriate namespace leakage (all new functions that are
+visible should have the ext2fs_ prefix)
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+*) Interfaces that expose the on-disk extent format, and will
+therefore require changing (and thus breaking) the API and ABI when we
+add support for 48-bit or 64-bit extent patches.  
+
+I was trying to be a bit more constructive, though, and have been in
+the midst of reimplementing a better interface.  Although if Alexandre
+has time in the next week or two, things might go faster if I can just
+explain what I want the new interface to look like and he can
+implement it.  :-)
+
+						- Ted
 
