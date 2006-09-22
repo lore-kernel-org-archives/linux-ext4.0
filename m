@@ -1,80 +1,61 @@
-From: Johann Lombardi <johann.lombardi@bull.net>
-Subject: Re: ext4 kernel patches against linux-2.6.18-rc7-mm1
-Date: Thu, 21 Sep 2006 17:15:23 +0200
-Message-ID: <20060921151523.GA20682@lombardij>
-References: <1158767799.9276.23.camel@kleikamp.austin.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: ext4 compat flag assignments
+Date: Fri, 22 Sep 2006 02:15:20 -0700
+Message-ID: <20060922091520.GC6335@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:5529 "EHLO
-	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
-	id S1751240AbWIUPPZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Sep 2006 11:15:25 -0400
-To: Dave Kleikamp <shaggy@austin.ibm.com>
-In-Reply-To: <1158767799.9276.23.camel@kleikamp.austin.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:24556 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751108AbWIVJPX
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Sep 2006 05:15:23 -0400
+To: Theodore Ts'o <tytso@mit.edu>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 20, 2006 at 10:56:39AM -0500, Dave Kleikamp wrote:
-> # These next 4 copy clone jdb2 from jbd and modify ext4 to use it
-> jbd2-copy.patch
-> jbd2-rename.patch
+Ted,
+there are several COMPAT flag assignments that have been proposed in
+the past:
 
-jbd and jbd2 currently use the same slab names which must be unique.
-The patch below just renames jbd2's slabs.
+- EXT4_FEATURE_INCOMPAT_64BIT (0x0080!) - support for 64-bit block count
+  fields in the superblock (s_blocks_count_hi, s_free_blocks_count_hi),
+  large group descriptors (s_desc_size), extents with high 16 bits
+  (ee_start_hi, ei_leaf_hi), inode ACL (i_file_acl_hi).  May also grow
+  to encompass the previously proposed BIG_BG.
 
-Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
+- EXT4_FEATURE_RO_COMPAT_HUGE_FILE (0x0008) - change i_blocks to be
+  in units of s_blocksize units instead of 512-byte sectors, use
+  l_i_frag and l_i_fsize as i_blocks_hi (could also be part of 64BIT).
+  Also uses EXT4_HUGE_FILE_FL 0x40000 for i_flags.
 
-Index: linux-2.6.18-rc7-mm1/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.18-rc7-mm1.orig/fs/jbd2/journal.c	2006-09-21 16:37:49.566959224 +0200
-+++ linux-2.6.18-rc7-mm1/fs/jbd2/journal.c	2006-09-21 16:38:19.145462608 +0200
-@@ -1643,7 +1643,7 @@
- 
- static kmem_cache_t *jbd_slab[JBD_MAX_SLABS];
- static const char *jbd_slab_names[JBD_MAX_SLABS] = {
--	"jbd_1k", "jbd_2k", "jbd_4k", NULL, "jbd_8k"
-+	"jbd2_1k", "jbd2_2k", "jbd2_4k", NULL, "jbd2_8k"
- };
- 
- static void jbd2_journal_destroy_jbd_slabs(void)
-@@ -1714,7 +1714,7 @@
- 	int retval;
- 
- 	J_ASSERT(jbd2_journal_head_cache == 0);
--	jbd2_journal_head_cache = kmem_cache_create("journal_head",
-+	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
- 				sizeof(struct journal_head),
- 				0,		/* offset */
- 				0,		/* flags */
-@@ -2019,7 +2019,7 @@
- 
- static int __init journal_init_handle_cache(void)
- {
--	jbd2_handle_cache = kmem_cache_create("journal_handle",
-+	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
- 				sizeof(handle_t),
- 				0,		/* offset */
- 				0,		/* flags */
-Index: linux-2.6.18-rc7-mm1/fs/jbd2/revoke.c
-===================================================================
---- linux-2.6.18-rc7-mm1.orig/fs/jbd2/revoke.c	2006-09-21 16:38:28.044109808 +0200
-+++ linux-2.6.18-rc7-mm1/fs/jbd2/revoke.c	2006-09-21 16:38:40.978143536 +0200
-@@ -169,13 +169,13 @@
- 
- int __init jbd2_journal_init_revoke_caches(void)
- {
--	jbd2_revoke_record_cache = kmem_cache_create("revoke_record",
-+	jbd2_revoke_record_cache = kmem_cache_create("jbd2_revoke_record",
- 					   sizeof(struct jbd2_revoke_record_s),
- 					   0, SLAB_HWCACHE_ALIGN, NULL, NULL);
- 	if (jbd2_revoke_record_cache == 0)
- 		return -ENOMEM;
- 
--	jbd2_revoke_table_cache = kmem_cache_create("revoke_table",
-+	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
- 					   sizeof(struct jbd2_revoke_table_s),
- 					   0, 0, NULL, NULL);
- 	if (jbd2_revoke_table_cache == 0) {
+- EXT4_FEATURE_RO_COMPAT_GDT_CSUM (0x0010?) - store a crc16 checksum in
+  the group descriptor (s_uuid[16] | __u32 group | ext3_group_desc
+  (excluding gd_checksum itself)).  This allows the kernel to more safely
+  manage UNINIT groups.  Incomplete patch, e2fsck support mostly done.
+
+- EXT4_FEATURE_RO_COMPAT_DIR_NLINK (0x0020?) - allow directories to have
+  > 65000 subdirectories (i_nlinks) by setting i_nlinks = 1 for such
+  directories.  RO_COMPAT protects old filesystems from unlinking such
+  directories incorrectly and losing all files therein.  Needs RO_COMPAT
+  flag handling, needs e2fsck support, but very heavily tested.
+
+- EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE (0x0040?) - add s_min_extra_isize and
+  s_want_extra_isize fields to superblock, which allow specifying
+  the minimum and desired i_extra_isize fields in large inodes
+  (for nsec+epoch timestamps, potential other uses).  Needs RO_COMPAT
+  flag handling, needs e2fsck support, patch complete, little testing.
+
+
+I'm not sure about the state of HUGE_FILE (it might be useful for ext[23]
+to allow larger sparse files, but also fits quite well with INCOMPAT_64BIT),
+but the others are definitely useful independent from INCOMPAT_64BIT.
+There are patches in various states of completion for all of the features.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
