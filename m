@@ -1,61 +1,70 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: ext4 compat flag assignments
-Date: Fri, 22 Sep 2006 02:15:20 -0700
-Message-ID: <20060922091520.GC6335@schatzie.adilger.int>
+From: Valerie Henson <val_henson@linux.intel.com>
+Subject: Re: [PATCH] EXT2: Remove superblock lock contention in ext2_statfs
+Date: Mon, 25 Sep 2006 09:46:39 -0700
+Message-ID: <20060925164637.GA30477@goober>
+References: <1158611794.11940.40.camel@kleikamp.austin.ibm.com> <1158622685.11940.52.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@osdl.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:24556 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751108AbWIVJPX
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Sep 2006 05:15:23 -0400
-To: Theodore Ts'o <tytso@mit.edu>
+Received: from mga06.intel.com ([134.134.136.21]:65098 "EHLO
+	orsmga101.jf.intel.com") by vger.kernel.org with ESMTP
+	id S1750955AbWIYQsM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Sep 2006 12:48:12 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
 Content-Disposition: inline
+In-Reply-To: <1158622685.11940.52.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ted,
-there are several COMPAT flag assignments that have been proposed in
-the past:
+On Mon, Sep 18, 2006 at 06:38:05PM -0500, Dave Kleikamp wrote:
+> On Mon, 2006-09-18 at 15:36 -0500, Dave Kleikamp wrote:
+> > EXT2: Remove superblock lock contention in ext2_statfs
+> > 
+> > Fix a performance degradation introduced in 2.6.17.  (30% degradation running
+> > dbench with 16 threads)
+> > 
+> > Patch 21730eed11de42f22afcbd43f450a1872a0b5ea1, which claims to make
+> > EXT2_DEBUG work again, moves the taking of the kernel lock out of debug-only
+> > code in ext2_count_free_inodes and ext2_count_free_blocks and into
+> > ext2_statfs.  This patch reverses that part of the patch.
+> > 
+> > Signed-off-by: Dave Kleikamp <shaggy@austin.ibm.com>
+> 
+> Eric Sandeen pointed out to me that taking the superblock lock in
+> ext2_count_free_* will cause a deadlock when EXT2FS_DEBUG is enabled,
+> since the superblock is locked in write_super().
+> 
+> We found that the same problem was fixed in ext3 with this patch
+> (forgive the long link):
+> http://git.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=5b11687924e40790deb0d5f959247ade82196665;hp=2384f55f8aa520172c995965bd2f8a9740d53095
+> 
+> The patch below just removes the use of the superblock lock in the debug
+> code.
 
-- EXT4_FEATURE_INCOMPAT_64BIT (0x0080!) - support for 64-bit block count
-  fields in the superblock (s_blocks_count_hi, s_free_blocks_count_hi),
-  large group descriptors (s_desc_size), extents with high 16 bits
-  (ee_start_hi, ei_leaf_hi), inode ACL (i_file_acl_hi).  May also grow
-  to encompass the previously proposed BIG_BG.
+(Sorry for the delay; been on vacation.)
 
-- EXT4_FEATURE_RO_COMPAT_HUGE_FILE (0x0008) - change i_blocks to be
-  in units of s_blocksize units instead of 512-byte sectors, use
-  l_i_frag and l_i_fsize as i_blocks_hi (could also be part of 64BIT).
-  Also uses EXT4_HUGE_FILE_FL 0x40000 for i_flags.
+Heh, I ran into the same lock nesting issues as you when I first tried
+to fix this; the lock debugging code found it for me.  I asked for
+feedback on the locking issue when I submitted the patch, but no one
+had any opinions then, so I chose consistency over possible
+contention.  Al Viro snorted at the idea of consistency in the results
+of statfs (I paraphrase his IRC remarks), and thinking about it
+further, I realized the debug code should not be doing these checks in
+statfs anyway; only on mount and unmount.  This is because it appears
+that the block group accounting and the overall fs accounting are done
+non-atomically - see group_reserve_blocks() for example - and part of
+what the code does is reconcile these two numbers.  It is legal for a
+valid fs to have the block group summaries and the fs-wide summaries
+out of sync, so the debug code could erroneously report an error,
+leading some poor soul on a wild goose chase.  Removing this code from
+statfs also happens to fix the locking issues nicely.
 
-- EXT4_FEATURE_RO_COMPAT_GDT_CSUM (0x0010?) - store a crc16 checksum in
-  the group descriptor (s_uuid[16] | __u32 group | ext3_group_desc
-  (excluding gd_checksum itself)).  This allows the kernel to more safely
-  manage UNINIT groups.  Incomplete patch, e2fsck support mostly done.
+Rewriting this has been on my todo list for about 6 months now -
+anyone interested in grabbing it?  I'm on #linuxfs on irc.oftc.net if
+anyone wants to chat about it.
 
-- EXT4_FEATURE_RO_COMPAT_DIR_NLINK (0x0020?) - allow directories to have
-  > 65000 subdirectories (i_nlinks) by setting i_nlinks = 1 for such
-  directories.  RO_COMPAT protects old filesystems from unlinking such
-  directories incorrectly and losing all files therein.  Needs RO_COMPAT
-  flag handling, needs e2fsck support, but very heavily tested.
-
-- EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE (0x0040?) - add s_min_extra_isize and
-  s_want_extra_isize fields to superblock, which allow specifying
-  the minimum and desired i_extra_isize fields in large inodes
-  (for nsec+epoch timestamps, potential other uses).  Needs RO_COMPAT
-  flag handling, needs e2fsck support, patch complete, little testing.
-
-
-I'm not sure about the state of HUGE_FILE (it might be useful for ext[23]
-to allow larger sparse files, but also fits quite well with INCOMPAT_64BIT),
-but the others are definitely useful independent from INCOMPAT_64BIT.
-There are patches in various states of completion for all of the features.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
-
+-VAL
