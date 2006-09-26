@@ -1,454 +1,473 @@
 From: Alexandre Ratchov <alexandre.ratchov@bull.net>
-Subject: [patch 06/12] rfc: 2fsprogs update
-Date: Tue, 26 Sep 2006 16:48:08 +0200
-Message-ID: <20060926144808.GF25755@openx1.frec.bull.fr>
+Subject: [patch 08/12] rfc: 2fsprogs update
+Date: Tue, 26 Sep 2006 16:49:15 +0200
+Message-ID: <20060926144915.GH25755@openx1.frec.bull.fr>
 References: <20060926143343.GA20020@openx1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jean-Pierre Dion <jean-pierre.dion@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:35720 "EHLO
-	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932103AbWIZOsR
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50313 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932105AbWIZOtY
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Sep 2006 10:48:17 -0400
+	Tue, 26 Sep 2006 10:49:24 -0400
 Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id BFF0A19D915
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:48:13 +0200 (CEST)
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id DC26819D915
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:49:20 +0200 (CEST)
 Received: from ecfrec.frec.bull.fr ([127.0.0.1])
  by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 12488-02 for <linux-ext4@vger.kernel.org>;
- Tue, 26 Sep 2006 16:48:10 +0200 (CEST)
+ with ESMTP id 12580-01 for <linux-ext4@vger.kernel.org>;
+ Tue, 26 Sep 2006 16:49:17 +0200 (CEST)
 Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id C1F4319D90C
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:48:09 +0200 (CEST)
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id BB82A19D90C
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:49:16 +0200 (CEST)
 To: linux-ext4@vger.kernel.org
 In-Reply-To: <20060926143343.GA20020@openx1.frec.bull.fr>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Dilger
+use 64bit offsets and block numbers (unsigned long long) in
+*_read_blk, *_write_blk, and friends.
 
-Verify in-inode EA structure.
-Allow in-inode EAs to have a checksum.
-Connect zero-length inodes that have an EA to lost+found.
+Signed-off-by: Alexandre Ratchov <alexandre.ratchov@bull.net>              
 
-Index: e2fsprogs-1.39/e2fsck/e2fsck.h
+
+Index: e2fsprogs-1.39/debugfs/debugfs.c
 ===================================================================
---- e2fsprogs-1.39.orig/e2fsck/e2fsck.h	2006-09-18 17:43:00.000000000 +0200
-+++ e2fsprogs-1.39/e2fsck/e2fsck.h	2006-09-18 17:48:52.000000000 +0200
-@@ -466,6 +466,9 @@ extern void init_resource_track(struct r
- extern int inode_has_valid_blocks(struct ext2_inode *inode);
- extern void e2fsck_read_inode(e2fsck_t ctx, unsigned long ino,
- 			      struct ext2_inode * inode, const char * proc);
-+extern void e2fsck_read_inode_full(e2fsck_t ctx, unsigned long ino,
-+				   struct ext2_inode *inode,
-+				   const int bufsize, const char *proc);
- extern void e2fsck_write_inode(e2fsck_t ctx, unsigned long ino,
- 			       struct ext2_inode * inode, const char * proc);
- extern void e2fsck_write_inode_full(e2fsck_t ctx, unsigned long ino,
-Index: e2fsprogs-1.39/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.39.orig/e2fsck/pass1.c	2006-09-18 17:45:27.000000000 +0200
-+++ e2fsprogs-1.39/e2fsck/pass1.c	2006-09-18 20:44:26.000000000 +0200
-@@ -248,13 +248,13 @@ static void check_ea_in_inode(e2fsck_t c
- 	struct ext2_super_block *sb = ctx->fs->super;
- 	struct ext2_inode_large *inode;
- 	struct ext2_ext_attr_entry *entry;
--	char *start, *end, *name;
-+	char *start, *end;
- 	int storage_size, remain, offs;
- 	int problem = 0;
- 
- 	inode = (struct ext2_inode_large *) pctx->inode;
--	storage_size = EXT2_INODE_SIZE(ctx->fs->super) - EXT2_GOOD_OLD_INODE_SIZE -
--		inode->i_extra_isize;
-+	storage_size = EXT2_INODE_SIZE(ctx->fs->super) -
-+		EXT2_GOOD_OLD_INODE_SIZE - inode->i_extra_isize;
- 	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 		inode->i_extra_isize + sizeof(__u32);
- 	end = (char *) inode + EXT2_INODE_SIZE(ctx->fs->super);
-@@ -267,6 +267,7 @@ static void check_ea_in_inode(e2fsck_t c
- 	offs = end - start;
- 
- 	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+		__u32 hash;
- 
- 		/* header eats this space */
- 		remain -= sizeof(struct ext2_ext_attr_entry);
-@@ -291,7 +292,9 @@ static void check_ea_in_inode(e2fsck_t c
- 		/* check value placement */
- 		if (entry->e_value_offs + 
- 		    EXT2_XATTR_SIZE(entry->e_value_size) != offs) {
--			printf("(entry->e_value_offs + entry->e_value_size: %d, offs: %d)\n", entry->e_value_offs + entry->e_value_size, offs);
-+			printf("entry->e_value_offs + entry->e_value_size: "
-+			       "%d, offs: %d\n",
-+			       entry->e_value_offs + entry->e_value_size, offs);
- 			pctx->num = entry->e_value_offs;
- 			problem = PR_1_ATTR_VALUE_OFFSET;
- 			goto fix;
-@@ -304,8 +307,11 @@ static void check_ea_in_inode(e2fsck_t c
- 			goto fix;
- 		}
- 		
--		/* e_hash must be 0 in inode's ea */
--		if (entry->e_hash != 0) {
-+		hash = ext2fs_ext_attr_hash_entry(entry,
-+						  start + entry->e_value_offs);
-+
-+		/* e_hash may be 0 in older inode's ea */
-+		if (entry->e_hash != 0 && entry->e_hash != hash) {
- 			pctx->num = entry->e_hash;
- 			problem = PR_1_ATTR_HASH;
- 			goto fix;
-@@ -321,15 +327,12 @@ fix:
- 	 * it seems like a corruption. it's very unlikely we could repair
- 	 * EA(s) in automatic fashion -bzzz
- 	 */
--#if 0
--	problem = PR_1_ATTR_HASH;
--#endif
- 	if (problem == 0 || !fix_problem(ctx, problem, pctx))
+--- e2fsprogs-1.39.orig/debugfs/debugfs.c	2006-09-19 17:29:59.000000000 +0200
++++ e2fsprogs-1.39/debugfs/debugfs.c	2006-09-19 17:30:00.000000000 +0200
+@@ -149,13 +149,13 @@ void do_open_filesys(int argc, char **ar
+ 			data_filename = optarg;
+ 			break;
+ 		case 'b':
+-			blocksize = parse_ulong(optarg, argv[0],
++			blocksize = parse_ullong(optarg, argv[0],
+ 						"block size", &err);
+ 			if (err)
+ 				return;
+ 			break;
+ 		case 's':
+-			superblock = parse_ulong(optarg, argv[0],
++			superblock = parse_ullong(optarg, argv[0],
+ 						 "superblock number", &err);
+ 			if (err)
+ 				return;
+@@ -232,7 +232,7 @@ void do_init_filesys(int argc, char **ar
  		return;
  
--	/* simple remove all possible EA(s) */
-+	/* simple remove all remaining EA(s) */
- 	*((__u32 *)start) = 0UL;
--	e2fsck_write_inode_full(ctx, pctx->ino, inode,
-+	e2fsck_write_inode_full(ctx, pctx->ino, pctx->inode,
- 				EXT2_INODE_SIZE(sb), "pass1");
+ 	memset(&param, 0, sizeof(struct ext2_super_block));
+-	param.s_blocks_count = parse_ulong(argv[2], argv[0],
++	param.s_blocks_count = parse_ullong(argv[2], argv[0],
+ 					   "blocks count", &err);
+ 	if (err)
+ 		return;
+@@ -1685,7 +1685,7 @@ void do_bmap(int argc, char *argv[])
+ 	ino = string_to_inode(argv[1]);
+ 	if (!ino)
+ 		return;
+-	blk = parse_ulong(argv[2], argv[0], "logical_block", &err);
++	blk = parse_ullong(argv[2], argv[0], "logical_block", &err);
+ 
+ 	errcode = ext2fs_bmap(current_fs, ino, 0, 0, 0, blk, &pblk);
+ 	if (errcode) {
+@@ -1823,11 +1823,11 @@ int main(int argc, char **argv)
+ 			open_flags |= EXT2_FLAG_RW;
+ 			break;
+ 		case 'b':
+-			blocksize = parse_ulong(optarg, argv[0], 
++			blocksize = parse_ullong(optarg, argv[0], 
+ 						"block size", 0);
+ 			break;
+ 		case 's':
+-			superblock = parse_ulong(optarg, argv[0], 
++			superblock = parse_ullong(optarg, argv[0], 
+ 						 "superblock number", 0);
+ 			break;
+ 		case 'c':
+Index: e2fsprogs-1.39/debugfs/debugfs.h
+===================================================================
+--- e2fsprogs-1.39.orig/debugfs/debugfs.h	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/debugfs/debugfs.h	2006-09-19 17:30:00.000000000 +0200
+@@ -32,7 +32,7 @@ extern int check_fs_bitmaps(char *name);
+ extern ext2_ino_t string_to_inode(char *str);
+ extern char *time_to_string(__u32);
+ extern time_t string_to_time(const char *);
+-extern unsigned long parse_ulong(const char *str, const char *cmd,
++extern unsigned long long parse_ullong(const char *str, const char *cmd,
+ 				 const char *descr, int *err);
+ extern int strtoblk(const char *cmd, const char *str, blk_t *ret);
+ extern int common_args_process(int argc, char *argv[], int min_argc,
+Index: e2fsprogs-1.39/debugfs/util.c
+===================================================================
+--- e2fsprogs-1.39.orig/debugfs/util.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/debugfs/util.c	2006-09-19 17:30:00.000000000 +0200
+@@ -238,16 +238,16 @@ extern time_t string_to_time(const char 
  }
  
-@@ -1320,10 +1323,13 @@ static int check_ext_attr(e2fsck_t ctx, 
- 	entry = (struct ext2_ext_attr_entry *)(header+1);
- 	end = block_buf + fs->blocksize;
- 	while ((char *)entry < end && *(__u32 *)entry) {
-+		__u32 hash;
-+
- 		if (region_allocate(region, (char *)entry - (char *)header,
- 			           EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
- 			if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
- 				goto clear_extattr;
-+			break;
- 		}
- 		if ((ctx->ext_attr_ver == 1 &&
- 		     (entry->e_name_len == 0 || entry->e_name_index != 0)) ||
-@@ -1331,6 +1337,7 @@ static int check_ext_attr(e2fsck_t ctx, 
- 		     entry->e_name_index == 0)) {
- 			if (fix_problem(ctx, PR_1_EA_BAD_NAME, pctx))
- 				goto clear_extattr;
-+			break;
- 		}
- 		if (entry->e_value_block != 0) {
- 			if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
-@@ -1342,6 +1349,17 @@ static int check_ext_attr(e2fsck_t ctx, 
- 			if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
- 				goto clear_extattr;
- 		}
-+
-+		hash = ext2fs_ext_attr_hash_entry(entry, block_buf +
-+							 entry->e_value_offs);
-+
-+		if (entry->e_hash != hash) {
-+			pctx->num = entry->e_hash;
-+			if (fix_problem(ctx, PR_1_ATTR_HASH, pctx))
-+				goto clear_extattr;
-+			entry->e_hash = hash;
-+		}
-+
- 		entry = EXT2_EXT_ATTR_NEXT(entry);
- 	}
- 	if (region_allocate(region, (char *)entry - (char *)header, 4)) {
-@@ -1604,8 +1622,11 @@ static void check_blocks(e2fsck_t ctx, s
- 		}
- 	}
- 
--	if (inode->i_file_acl && check_ext_attr(ctx, pctx, block_buf))
-+	if (inode->i_file_acl && check_ext_attr(ctx, pctx, block_buf)) {
-+		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-+			goto out;
- 		pb.num_blocks++;
-+	}
- 
- 	if (ext2fs_inode_has_valid_blocks(inode)) {
- 		int problem = 0;
-Index: e2fsprogs-1.39/e2fsck/pass4.c
-===================================================================
---- e2fsprogs-1.39.orig/e2fsck/pass4.c	2006-09-18 17:42:57.000000000 +0200
-+++ e2fsprogs-1.39/e2fsck/pass4.c	2006-09-18 17:51:01.000000000 +0200
-@@ -15,6 +15,7 @@
- 
- #include "e2fsck.h"
- #include "problem.h"
-+#include <ext2fs/ext2_ext_attr.h>
- 
  /*
-  * This routine is called when an inode is not connected to the
-@@ -23,31 +24,42 @@
-  * This subroutine returns 1 then the caller shouldn't bother with the
-  * rest of the pass 4 tests.
+- * This function will convert a string to an unsigned long, printing
++ * This function will convert a string to an unsigned long long, printing
+  * an error message if it fails, and returning success or failure in err.
   */
--static int disconnect_inode(e2fsck_t ctx, ext2_ino_t i)
-+static int disconnect_inode(e2fsck_t ctx, ext2_ino_t i,
-+			    struct ext2_inode *inode)
+-unsigned long parse_ulong(const char *str, const char *cmd,
++unsigned long long parse_ullong(const char *str, const char *cmd,
+ 			  const char *descr, int *err)
  {
- 	ext2_filsys fs = ctx->fs;
--	struct ext2_inode	inode;
- 	struct problem_context	pctx;
--
--	e2fsck_read_inode(ctx, i, &inode, "pass4: disconnect_inode");
-+	__u32 eamagic = 0;
-+	int extra_size = 0;
-+	int rc = 0;
-+
-+	if (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE) {
-+		e2fsck_read_inode_full(ctx, i, inode,EXT2_INODE_SIZE(fs->super),
-+				       "pass4: disconnect_inode");
-+		extra_size = ((struct ext2_inode_large *)inode)->i_extra_isize;
-+	} else {
-+		e2fsck_read_inode(ctx, i, inode, "pass4: disconnect_inode");
-+	}
- 	clear_problem_context(&pctx);
- 	pctx.ino = i;
--	pctx.inode = &inode;
-+	pctx.inode = inode;
+ 	char		*tmp;
+-	unsigned long	ret;
++	unsigned long long	ret;
  	
-+	if (EXT2_INODE_SIZE(fs->super) -EXT2_GOOD_OLD_INODE_SIZE -extra_size >0)
-+		eamagic = *(__u32 *)(((char *)inode) +EXT2_GOOD_OLD_INODE_SIZE +
-+				     extra_size);
- 	/*
- 	 * Offer to delete any zero-length files that does not have
- 	 * blocks.  If there is an EA block, it might have useful
- 	 * information, so we won't prompt to delete it, but let it be
- 	 * reconnected to lost+found.
- 	 */
--	if (!inode.i_blocks && (LINUX_S_ISREG(inode.i_mode) ||
--				LINUX_S_ISDIR(inode.i_mode))) {
-+	if (!inode->i_blocks && eamagic != EXT2_EXT_ATTR_MAGIC &&
-+	    (LINUX_S_ISREG(inode->i_mode) || LINUX_S_ISDIR(inode->i_mode))) {
- 		if (fix_problem(ctx, PR_4_ZERO_LEN_INODE, &pctx)) {
- 			ext2fs_icount_store(ctx->inode_link_info, i, 0);
--			inode.i_links_count = 0;
--			inode.i_dtime = ctx->now;
--			e2fsck_write_inode(ctx, i, &inode,
--					   "disconnect_inode");
-+			inode->i_links_count = 0;
-+			inode->i_dtime = ctx->now;
-+			e2fsck_write_inode(ctx, i, inode, "disconnect_inode");
- 			/*
- 			 * Fix up the bitmaps...
- 			 */
-@@ -55,7 +67,7 @@ static int disconnect_inode(e2fsck_t ctx
- 			ext2fs_unmark_inode_bitmap(ctx->inode_used_map, i);
- 			ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, i);
- 			ext2fs_inode_alloc_stats2(fs, i, -1,
--						  LINUX_S_ISDIR(inode.i_mode));
-+						  LINUX_S_ISDIR(inode->i_mode));
- 			return 0;
- 		}
+-	ret = strtoul(str, &tmp, 0);
++	ret = strtoull(str, &tmp, 0);
+ 	if (*tmp == 0) {
+ 		if (err)
+ 			*err = 0;
+@@ -270,7 +270,7 @@ int strtoblk(const char *cmd, const char
+ 	blk_t	blk;
+ 	int	err;
+ 
+-	blk = parse_ulong(str, cmd, "block number", &err);
++	blk = parse_ullong(str, cmd, "block number", &err);
+ 	*ret = blk;
+ 	if (err == 0 && blk == 0) {
+ 		com_err(cmd, 0, "Invalid block number 0");
+@@ -336,7 +336,7 @@ int common_block_args_process(int argc, 
+ 	if (strtoblk(argv[0], argv[1], block))
+ 		return 1;
+ 	if (argc > 2) {
+-		*count = parse_ulong(argv[2], argv[0], "count", &err);
++		*count = parse_ullong(argv[2], argv[0], "count", &err);
+ 		if (err)
+ 			return 1;
  	}
-@@ -83,7 +95,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+Index: e2fsprogs-1.39/e2fsck/ehandler.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/ehandler.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/e2fsck/ehandler.c	2006-09-19 17:30:00.000000000 +0200
+@@ -20,7 +20,7 @@
+ static const char *operation;
+ 
+ static errcode_t e2fsck_handle_read_error(io_channel channel,
+-					  unsigned long block,
++					  unsigned long long block,
+ 					  int count,
+ 					  void *data,
+ 					  size_t size EXT2FS_ATTR((unused)),
+@@ -66,7 +66,7 @@ static errcode_t e2fsck_handle_read_erro
+ }
+ 
+ static errcode_t e2fsck_handle_write_error(io_channel channel,
+-					    unsigned long block,
++					    unsigned long long block,
+ 					    int count,
+ 					    const void *data,
+ 					    size_t size EXT2FS_ATTR((unused)),
+Index: e2fsprogs-1.39/lib/e2p/e2p.h
+===================================================================
+--- e2fsprogs-1.39.orig/lib/e2p/e2p.h	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/e2p/e2p.h	2006-09-19 17:30:00.000000000 +0200
+@@ -46,7 +46,7 @@ const char *e2p_mntopt2string(unsigned i
+ int e2p_string2mntopt(char *string, unsigned int *mask);
+ int e2p_edit_mntopts(const char *str, __u32 *mntopts, __u32 ok);
+ 
+-unsigned long parse_num_blocks(const char *arg, int log_block_size);
++unsigned long long parse_num_blocks(const char *arg, int log_block_size);
+ 
+ char *e2p_os2string(int os_type);
+ int e2p_string2os(char *str);
+Index: e2fsprogs-1.39/lib/e2p/parse_num.c
+===================================================================
+--- e2fsprogs-1.39.orig/lib/e2p/parse_num.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/e2p/parse_num.c	2006-09-19 17:30:00.000000000 +0200
+@@ -11,7 +11,7 @@
+ 
+ #include <stdlib.h>
+ 
+-unsigned long parse_num_blocks(const char *arg, int log_block_size)
++unsigned long long parse_num_blocks(const char *arg, int log_block_size)
  {
- 	ext2_filsys fs = ctx->fs;
- 	ext2_ino_t	i;
--	struct ext2_inode	inode;
-+	struct ext2_inode	*inode;
- #ifdef RESOURCE_TRACK
- 	struct resource_track	rtrack;
- #endif
-@@ -111,6 +123,9 @@ void e2fsck_pass4(e2fsck_t ctx)
- 		if ((ctx->progress)(ctx, 4, 0, maxgroup))
- 			return;
+ 	char *p;
+ 	unsigned long long num;
+Index: e2fsprogs-1.39/lib/ext2fs/ext2_io.h
+===================================================================
+--- e2fsprogs-1.39.orig/lib/ext2fs/ext2_io.h	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/ext2fs/ext2_io.h	2006-09-19 17:30:00.000000000 +0200
+@@ -35,14 +35,14 @@ struct struct_io_channel {
+ 	char		*name;
+ 	int		block_size;
+ 	errcode_t	(*read_error)(io_channel channel,
+-				      unsigned long block,
++				      unsigned long long block,
+ 				      int count,
+ 				      void *data,
+ 				      size_t size,
+ 				      int actual_bytes_read,
+ 				      errcode_t	error);
+ 	errcode_t	(*write_error)(io_channel channel,
+-				       unsigned long block,
++				       unsigned long long block,
+ 				       int count,
+ 				       const void *data,
+ 				       size_t size,
+@@ -61,12 +61,12 @@ struct struct_io_manager {
+ 	errcode_t (*open)(const char *name, int flags, io_channel *channel);
+ 	errcode_t (*close)(io_channel channel);
+ 	errcode_t (*set_blksize)(io_channel channel, int blksize);
+-	errcode_t (*read_blk)(io_channel channel, unsigned long block,
++	errcode_t (*read_blk)(io_channel channel, unsigned long long block,
+ 			      int count, void *data);
+-	errcode_t (*write_blk)(io_channel channel, unsigned long block,
++	errcode_t (*write_blk)(io_channel channel, unsigned long long block,
+ 			       int count, const void *data);
+ 	errcode_t (*flush)(io_channel channel);
+-	errcode_t (*write_byte)(io_channel channel, unsigned long offset,
++	errcode_t (*write_byte)(io_channel channel, unsigned long long offset,
+ 				int count, const void *data);
+ 	errcode_t (*set_option)(io_channel channel, const char *option, 
+ 				const char *arg);
+@@ -99,9 +99,9 @@ extern io_manager unix_io_manager;
+ /* test_io.c */
+ extern io_manager test_io_manager, test_io_backing_manager;
+ extern void (*test_io_cb_read_blk)
+-	(unsigned long block, int count, errcode_t err);
++	(unsigned long long block, int count, errcode_t err);
+ extern void (*test_io_cb_write_blk)
+-	(unsigned long block, int count, errcode_t err);
++	(unsigned long long block, int count, errcode_t err);
+ extern void (*test_io_cb_set_blksize)
+ 	(int blksize, errcode_t err);
  
-+	inode = e2fsck_allocate_memory(ctx, EXT2_INODE_SIZE(fs->super),
-+				       "scratch inode");
-+
- 	/* Protect loop from wrap-around if s_inodes_count maxed */
- 	for (i=1; i <= fs->super->s_inodes_count && i > 0; i++) {
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-@@ -138,7 +153,7 @@ void e2fsck_pass4(e2fsck_t ctx)
- 				     fs->blocksize, "bad_inode buffer");
- 			if (e2fsck_process_bad_inode(ctx, 0, i, buf))
- 				continue;
--			if (disconnect_inode(ctx, i))
-+			if (disconnect_inode(ctx, i, inode))
- 				continue;
- 			ext2fs_icount_fetch(ctx->inode_link_info, i,
- 					    &link_count);
-@@ -146,18 +161,18 @@ void e2fsck_pass4(e2fsck_t ctx)
- 					    &link_counted);
- 		}
- 		if (link_counted != link_count) {
--			e2fsck_read_inode(ctx, i, &inode, "pass4");
-+			e2fsck_read_inode(ctx, i, inode, "pass4");
- 			pctx.ino = i;
--			pctx.inode = &inode;
--			if (link_count != inode.i_links_count) {
-+			pctx.inode = inode;
-+			if (link_count != inode->i_links_count) {
- 				pctx.num = link_count;
- 				fix_problem(ctx,
- 					    PR_4_INCONSISTENT_COUNT, &pctx);
- 			}
- 			pctx.num = link_counted;
- 			if (fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx)) {
--				inode.i_links_count = link_counted;
--				e2fsck_write_inode(ctx, i, &inode, "pass4");
-+				inode->i_links_count = link_counted;
-+				e2fsck_write_inode(ctx, i, inode, "pass4");
- 			}
- 		}
+Index: e2fsprogs-1.39/lib/ext2fs/inode_io.c
+===================================================================
+--- e2fsprogs-1.39.orig/lib/ext2fs/inode_io.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/ext2fs/inode_io.c	2006-09-19 17:30:00.000000000 +0200
+@@ -49,12 +49,12 @@ static int ino_unique = 0;
+ static errcode_t inode_open(const char *name, int flags, io_channel *channel);
+ static errcode_t inode_close(io_channel channel);
+ static errcode_t inode_set_blksize(io_channel channel, int blksize);
+-static errcode_t inode_read_blk(io_channel channel, unsigned long block,
++static errcode_t inode_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *data);
+-static errcode_t inode_write_blk(io_channel channel, unsigned long block,
++static errcode_t inode_write_blk(io_channel channel, unsigned long long block,
+ 				int count, const void *data);
+ static errcode_t inode_flush(io_channel channel);
+-static errcode_t inode_write_byte(io_channel channel, unsigned long offset,
++static errcode_t inode_write_byte(io_channel channel, unsigned long long offset,
+ 				int size, const void *data);
+ 
+ static struct struct_io_manager struct_inode_manager = {
+@@ -197,7 +197,7 @@ static errcode_t inode_set_blksize(io_ch
+ }
+ 
+ 
+-static errcode_t inode_read_blk(io_channel channel, unsigned long block,
++static errcode_t inode_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *buf)
+ {
+ 	struct inode_private_data *data;
+@@ -217,7 +217,7 @@ static errcode_t inode_read_blk(io_chann
+ 	return ext2fs_file_read(data->file, buf, count, 0);
+ }
+ 
+-static errcode_t inode_write_blk(io_channel channel, unsigned long block,
++static errcode_t inode_write_blk(io_channel channel, unsigned long long block,
+ 				int count, const void *buf)
+ {
+ 	struct inode_private_data *data;
+@@ -237,7 +237,7 @@ static errcode_t inode_write_blk(io_chan
+ 	return ext2fs_file_write(data->file, buf, count, 0);
+ }
+ 
+-static errcode_t inode_write_byte(io_channel channel, unsigned long offset,
++static errcode_t inode_write_byte(io_channel channel, unsigned long long offset,
+ 				 int size, const void *buf)
+ {
+ 	struct inode_private_data *data;
+Index: e2fsprogs-1.39/lib/ext2fs/test_io.c
+===================================================================
+--- e2fsprogs-1.39.orig/lib/ext2fs/test_io.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/ext2fs/test_io.c	2006-09-19 17:30:00.000000000 +0200
+@@ -48,21 +48,21 @@ struct test_private_data {
+ 	FILE *outfile;
+ 	unsigned long block;
+ 	int read_abort_count, write_abort_count;
+-	void (*read_blk)(unsigned long block, int count, errcode_t err);
+-	void (*write_blk)(unsigned long block, int count, errcode_t err);
++	void (*read_blk)(unsigned long long block, int count, errcode_t err);
++	void (*write_blk)(unsigned long long block, int count, errcode_t err);
+ 	void (*set_blksize)(int blksize, errcode_t err);
+-	void (*write_byte)(unsigned long block, int count, errcode_t err);
++	void (*write_byte)(unsigned long long block, int count, errcode_t err);
+ };
+ 
+ static errcode_t test_open(const char *name, int flags, io_channel *channel);
+ static errcode_t test_close(io_channel channel);
+ static errcode_t test_set_blksize(io_channel channel, int blksize);
+-static errcode_t test_read_blk(io_channel channel, unsigned long block,
++static errcode_t test_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *data);
+-static errcode_t test_write_blk(io_channel channel, unsigned long block,
++static errcode_t test_write_blk(io_channel channel, unsigned long long block,
+ 				int count, const void *data);
+ static errcode_t test_flush(io_channel channel);
+-static errcode_t test_write_byte(io_channel channel, unsigned long offset,
++static errcode_t test_write_byte(io_channel channel, unsigned long long offset,
+ 				 int count, const void *buf);
+ static errcode_t test_set_option(io_channel channel, const char *option, 
+ 				 const char *arg);
+@@ -88,13 +88,13 @@ io_manager test_io_manager = &struct_tes
+  */
+ io_manager test_io_backing_manager = 0;
+ void (*test_io_cb_read_blk)
+-	(unsigned long block, int count, errcode_t err) = 0;
++	(unsigned long long block, int count, errcode_t err) = 0;
+ void (*test_io_cb_write_blk)
+-	(unsigned long block, int count, errcode_t err) = 0;
++	(unsigned long long block, int count, errcode_t err) = 0;
+ void (*test_io_cb_set_blksize)
+ 	(int blksize, errcode_t err) = 0;
+ void (*test_io_cb_write_byte)
+-	(unsigned long block, int count, errcode_t err) = 0;
++	(unsigned long long block, int count, errcode_t err) = 0;
+ 
+ /*
+  * Test flags
+@@ -108,7 +108,7 @@ void (*test_io_cb_write_byte)
+ 
+ static void test_dump_block(io_channel channel,
+ 			    struct test_private_data *data,
+-			    unsigned long block, const void *buf)
++			    unsigned long long block, const void *buf)
+ {
+ 	const unsigned char *cp;
+ 	FILE *f = data->outfile;
+@@ -118,7 +118,7 @@ static void test_dump_block(io_channel c
+ 	for (i=0, cp = buf; i < channel->block_size; i++, cp++) {
+ 		cksum += *cp;
  	}
-@@ -169,6 +184,8 @@ void e2fsck_pass4(e2fsck_t ctx)
- 	ctx->inode_imagic_map = 0;
- 	if (buf)
- 		ext2fs_free_mem(&buf);
-+
-+	ext2fs_free_mem(&inode);
- #ifdef RESOURCE_TRACK
- 	if (ctx->options & E2F_OPT_TIME2) {
- 		e2fsck_clear_progbar(ctx);
-Index: e2fsprogs-1.39/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.39.orig/e2fsck/problem.c	2006-09-18 17:43:00.000000000 +0200
-+++ e2fsprogs-1.39/e2fsck/problem.c	2006-09-18 17:48:52.000000000 +0200
-@@ -771,7 +771,7 @@ static struct e2fsck_problem problem_tab
- 
- 	/* invalid ea entry->e_hash */	
- 	{ PR_1_ATTR_HASH,
--	  N_("@a in @i %i has a hash (%N) which is @n (must be 0)\n"),
-+	  N_("@a in @i %i has a hash (%N) which is @n\n"),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
- 	/* indirect block corrupt */
-Index: e2fsprogs-1.39/e2fsck/util.c
-===================================================================
---- e2fsprogs-1.39.orig/e2fsck/util.c	2006-04-24 18:18:04.000000000 +0200
-+++ e2fsprogs-1.39/e2fsck/util.c	2006-09-18 17:48:52.000000000 +0200
-@@ -361,6 +361,20 @@ void e2fsck_read_inode(e2fsck_t ctx, uns
+-	fprintf(f, "Contents of block %lu, checksum %08lu: \n", block, cksum);
++	fprintf(f, "Contents of block %llu, checksum %08lu: \n", block, cksum);
+ 	for (i=0, cp = buf; i < channel->block_size; i++, cp++) {
+ 		if ((i % 16) == 0)
+ 			fprintf(f, "%04x: ", i);
+@@ -126,7 +126,7 @@ static void test_dump_block(io_channel c
  	}
  }
  
-+void e2fsck_read_inode_full(e2fsck_t ctx, unsigned long ino,
-+			    struct ext2_inode *inode, int bufsize,
-+			    const char *proc)
-+{
-+	int retval;
-+
-+	retval = ext2fs_read_inode_full(ctx->fs, ino, inode, bufsize);
-+	if (retval) {
-+		com_err("ext2fs_read_inode_full", retval,
-+			_("while reading inode %ld in %s"), ino, proc);
-+		fatal_error(ctx, 0);
-+	}
-+}
-+
- extern void e2fsck_write_inode_full(e2fsck_t ctx, unsigned long ino,
- 			       struct ext2_inode * inode, int bufsize,
- 			       const char *proc)
-Index: e2fsprogs-1.39/lib/ext2fs/ext2_ext_attr.h
-===================================================================
---- e2fsprogs-1.39.orig/lib/ext2fs/ext2_ext_attr.h	2006-09-18 17:42:57.000000000 +0200
-+++ e2fsprogs-1.39/lib/ext2fs/ext2_ext_attr.h	2006-09-18 17:48:52.000000000 +0200
-@@ -30,7 +30,7 @@ struct ext2_ext_attr_entry {
- 	__u32	e_value_block;	/* disk block attribute is stored on (n/i) */
- 	__u32	e_value_size;	/* size of attribute value */
- 	__u32	e_hash;		/* hash value of name and value */
--#if 0
-+#if 1
- 	char	e_name[0];	/* attribute name */
- #endif
- };
-Index: e2fsprogs-1.39/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.39.orig/lib/ext2fs/ext2fs.h	2006-09-18 17:43:00.000000000 +0200
-+++ e2fsprogs-1.39/lib/ext2fs/ext2fs.h	2006-09-18 20:44:26.000000000 +0200
-@@ -83,10 +83,12 @@ typedef __u32		ext2_dirhash_t;
- #include "com_err.h"
- #include "ext2_io.h"
- #include "ext2_err.h"
-+#include "ext2_ext_attr.h"
- #else
- #include <et/com_err.h>
- #include <ext2fs/ext2_io.h>
- #include <ext2fs/ext2_err.h>
-+#include <ext2fs/ext2_ext_attr.h>
- #endif
- 
- /*
-@@ -704,6 +706,8 @@ extern errcode_t ext2fs_dup_handle(ext2_
- extern errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir);
- 
- /* ext_attr.c */
-+extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
-+					void *data);
- extern errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf);
- extern errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block,
- 				       void *buf);
-Index: e2fsprogs-1.39/lib/ext2fs/ext_attr.c
-===================================================================
---- e2fsprogs-1.39.orig/lib/ext2fs/ext_attr.c	2005-09-06 11:40:14.000000000 +0200
-+++ e2fsprogs-1.39/lib/ext2fs/ext_attr.c	2006-09-18 17:48:52.000000000 +0200
-@@ -23,6 +23,42 @@
- 
- #include "ext2fs.h"
- 
-+#define NAME_HASH_SHIFT 5
-+#define VALUE_HASH_SHIFT 16
-+
-+/*
-+ * ext2_xattr_hash_entry()
-+ *
-+ * Compute the hash of an extended attribute.
-+ */
-+__u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry, void *data)
-+{
-+	__u32 hash = 0;
-+	char *name = entry->e_name;
-+	int n;
-+
-+	for (n = 0; n < entry->e_name_len; n++) {
-+		hash = (hash << NAME_HASH_SHIFT) ^
-+		       (hash >> (8*sizeof(hash) - NAME_HASH_SHIFT)) ^
-+		       *name++;
-+	}
-+
-+	if (entry->e_value_block == 0 && entry->e_value_size != 0) {
-+		__u32 *value = (__u32 *)data;
-+		for (n = (entry->e_value_size + EXT2_EXT_ATTR_ROUND) >>
-+			 EXT2_EXT_ATTR_PAD_BITS; n; n--) {
-+			hash = (hash << VALUE_HASH_SHIFT) ^
-+			       (hash >> (8*sizeof(hash) - VALUE_HASH_SHIFT)) ^
-+			       *value++;
-+		}
-+	}
-+
-+	return hash;
-+}
-+
-+#undef NAME_HASH_SHIFT
-+#undef VALUE_HASH_SHIFT
-+
- errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
+-static void test_abort(io_channel channel, unsigned long block)
++static void test_abort(io_channel channel, unsigned long long block)
  {
- 	errcode_t	retval;
-Index: e2fsprogs-1.39/lib/ext2fs/swapfs.c
+ 	struct test_private_data *data;
+ 	FILE *f;
+@@ -135,7 +135,7 @@ static void test_abort(io_channel channe
+ 	f = data->outfile;
+ 	test_flush(channel);
+ 
+-	fprintf(f, "Aborting due to I/O to block %lu\n", block);
++	fprintf(f, "Aborting due to I/O to block %llu\n", block);
+ 	fflush(f);
+ 	abort();
+ }
+@@ -286,7 +286,7 @@ static errcode_t test_set_blksize(io_cha
+ }
+ 
+ 
+-static errcode_t test_read_blk(io_channel channel, unsigned long block,
++static errcode_t test_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *buf)
+ {
+ 	struct test_private_data *data;
+@@ -302,7 +302,7 @@ static errcode_t test_read_blk(io_channe
+ 		data->read_blk(block, count, retval);
+ 	if (data->flags & TEST_FLAG_READ)
+ 		fprintf(data->outfile,
+-			"Test_io: read_blk(%lu, %d) returned %s\n",
++			"Test_io: read_blk(%llu, %d) returned %s\n",
+ 			block, count, retval ? error_message(retval) : "OK");
+ 	if (data->block && data->block == block) {
+ 		if (data->flags & TEST_FLAG_DUMP)
+@@ -313,7 +313,7 @@ static errcode_t test_read_blk(io_channe
+ 	return retval;
+ }
+ 
+-static errcode_t test_write_blk(io_channel channel, unsigned long block,
++static errcode_t test_write_blk(io_channel channel, unsigned long long block,
+ 			       int count, const void *buf)
+ {
+ 	struct test_private_data *data;
+@@ -329,7 +329,7 @@ static errcode_t test_write_blk(io_chann
+ 		data->write_blk(block, count, retval);
+ 	if (data->flags & TEST_FLAG_WRITE)
+ 		fprintf(data->outfile,
+-			"Test_io: write_blk(%lu, %d) returned %s\n",
++			"Test_io: write_blk(%llu, %d) returned %s\n",
+ 			block, count, retval ? error_message(retval) : "OK");
+ 	if (data->block && data->block == block) {
+ 		if (data->flags & TEST_FLAG_DUMP)
+@@ -340,7 +340,7 @@ static errcode_t test_write_blk(io_chann
+ 	return retval;
+ }
+ 
+-static errcode_t test_write_byte(io_channel channel, unsigned long offset,
++static errcode_t test_write_byte(io_channel channel, unsigned long long offset,
+ 			       int count, const void *buf)
+ {
+ 	struct test_private_data *data;
+@@ -356,7 +356,7 @@ static errcode_t test_write_byte(io_chan
+ 		data->write_byte(offset, count, retval);
+ 	if (data->flags & TEST_FLAG_WRITE)
+ 		fprintf(data->outfile,
+-			"Test_io: write_byte(%lu, %d) returned %s\n",
++			"Test_io: write_byte(%llu, %d) returned %s\n",
+ 			offset, count, retval ? error_message(retval) : "OK");
+ 	return retval;
+ }
+Index: e2fsprogs-1.39/lib/ext2fs/unix_io.c
 ===================================================================
---- e2fsprogs-1.39.orig/lib/ext2fs/swapfs.c	2006-09-18 17:43:00.000000000 +0200
-+++ e2fsprogs-1.39/lib/ext2fs/swapfs.c	2006-09-18 17:48:52.000000000 +0200
-@@ -101,6 +101,7 @@ void ext2fs_swap_ext_attr(char *to, char
- 		to_header->h_magic    = ext2fs_swab32(from_header->h_magic);
- 		to_header->h_blocks   = ext2fs_swab32(from_header->h_blocks);
- 		to_header->h_refcount = ext2fs_swab32(from_header->h_refcount);
-+		to_header->h_hash     = ext2fs_swab32(from_header->h_hash);
- 		for (n=0; n<4; n++)
- 			to_header->h_reserved[n] =
- 				ext2fs_swab32(from_header->h_reserved[n]);
-@@ -115,6 +116,7 @@ void ext2fs_swap_ext_attr(char *to, char
- 			ext2fs_swab32(from_entry->e_value_block);
- 		to_entry->e_value_size  =	
- 			ext2fs_swab32(from_entry->e_value_size);
-+		to_entry->e_hash = ext2fs_swab32(from_entry->e_hash);
- 		from_entry = EXT2_EXT_ATTR_NEXT(from_entry);
- 		to_entry   = EXT2_EXT_ATTR_NEXT(to_entry);
- 	}
+--- e2fsprogs-1.39.orig/lib/ext2fs/unix_io.c	2006-09-19 17:29:54.000000000 +0200
++++ e2fsprogs-1.39/lib/ext2fs/unix_io.c	2006-09-19 17:30:42.000000000 +0200
+@@ -75,12 +75,12 @@ struct unix_private_data {
+ static errcode_t unix_open(const char *name, int flags, io_channel *channel);
+ static errcode_t unix_close(io_channel channel);
+ static errcode_t unix_set_blksize(io_channel channel, int blksize);
+-static errcode_t unix_read_blk(io_channel channel, unsigned long block,
++static errcode_t unix_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *data);
+-static errcode_t unix_write_blk(io_channel channel, unsigned long block,
++static errcode_t unix_write_blk(io_channel channel, unsigned long long block,
+ 				int count, const void *data);
+ static errcode_t unix_flush(io_channel channel);
+-static errcode_t unix_write_byte(io_channel channel, unsigned long offset,
++static errcode_t unix_write_byte(io_channel channel, unsigned long long offset,
+ 				int size, const void *data);
+ static errcode_t unix_set_option(io_channel channel, const char *option, 
+ 				 const char *arg);
+@@ -522,7 +522,7 @@ static errcode_t unix_set_blksize(io_cha
+ }
+ 
+ 
+-static errcode_t unix_read_blk(io_channel channel, unsigned long block,
++static errcode_t unix_read_blk(io_channel channel, unsigned long long block,
+ 			       int count, void *buf)
+ {
+ 	struct unix_private_data *data;
+@@ -587,7 +587,7 @@ static errcode_t unix_read_blk(io_channe
+ #endif /* NO_IO_CACHE */
+ }
+ 
+-static errcode_t unix_write_blk(io_channel channel, unsigned long block,
++static errcode_t unix_write_blk(io_channel channel, unsigned long long block,
+ 				int count, const void *buf)
+ {
+ 	struct unix_private_data *data;
+@@ -639,7 +639,7 @@ static errcode_t unix_write_blk(io_chann
+ #endif /* NO_IO_CACHE */
+ }
+ 
+-static errcode_t unix_write_byte(io_channel channel, unsigned long offset,
++static errcode_t unix_write_byte(io_channel channel, unsigned long long offset,
+ 				 int size, const void *buf)
+ {
+ 	struct unix_private_data *data;
