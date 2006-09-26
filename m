@@ -1,89 +1,59 @@
 From: Alexandre Ratchov <alexandre.ratchov@bull.net>
-Subject: rfc: 2fsprogs update
-Date: Tue, 26 Sep 2006 16:33:43 +0200
-Message-ID: <20060926143343.GA20020@openx1.frec.bull.fr>
+Subject: [patch 03/12] rfc: 2fsprogs update
+Date: Tue, 26 Sep 2006 16:46:33 +0200
+Message-ID: <20060926144633.GC25755@openx1.frec.bull.fr>
+References: <20060926143343.GA20020@openx1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jean-Pierre Dion <jean-pierre.dion@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:41959 "EHLO
-	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932083AbWIZOdw
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:34182 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932096AbWIZOqk
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Sep 2006 10:33:52 -0400
+	Tue, 26 Sep 2006 10:46:40 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4A70B19D90C
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:46:37 +0200 (CEST)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 12070-10 for <linux-ext4@vger.kernel.org>;
+ Tue, 26 Sep 2006 16:46:34 +0200 (CEST)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 57C3619D915
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2006 16:46:34 +0200 (CEST)
 To: linux-ext4@vger.kernel.org
+In-Reply-To: <20060926143343.GA20020@openx1.frec.bull.fr>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-hello, 
+Allow regular files to be preallocated on-disk up to the next multiple
+of the system PAGE_SIZE without complaining about extra blocks.
 
-i've updated e2fsprogs to be in sync with the latest kernel changes; here is
-a summary of all changes:
+Index: e2fsprogs/e2fsck/pass1.c
+===================================================================
+--- e2fsprogs.orig/e2fsck/pass1.c	2006-07-05 12:11:09.000000000 -0600
++++ e2fsprogs/e2fsck/pass1.c	2006-07-05 14:23:49.000000000 -0600
+@@ -1486,9 +1486,14 @@ static void check_blocks(e2fsck_t ctx, s
+ 				bad_size = 2;
+ 		}
+ 	} else {
++		e2_blkcnt_t blkpg = getpagesize() / fs->blocksize;
++
+ 		size = EXT2_I_SIZE(inode);
+ 		if ((pb.last_block >= 0) &&
+-		    (size < (__u64) pb.last_block * fs->blocksize))
++		    /* allow allocated blocks to end of PAGE_SIZE */
++		    (size < (__u64)pb.last_block * fs->blocksize) &&
++		    (pb.last_block / blkpg * blkpg != pb.last_block ||
++		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize))
+ 			bad_size = 3;
+ 		else if (size > ext2_max_sizes[fs->super->s_log_block_size])
+ 			bad_size = 4;
 
-01-head_20060918
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
-	this is a diff between 1.39 and a mercurial snapshot from sep 18,
-	2006. It's here just to allow people to apply the patch set on
-	e2fsprogs-1.39
-	
-02-percent
-
-	fixes division by zero in e2p_percent(), already posted few days ago
-
-The following are the patches that Andreas posted, no changes:
-
-03-inode_prealloc
-04-extents
-05-extents_htree
-06-eacheck
-
-The following are for 64bit support; they do the same as the patch set i
-posted the last time but with various bugs fixed; they are reorganised and
-cleaned up:
-
-07-pblk_ondisk_blocknum
-
-	convert all 32bit on-disk block number definitions (currently __u32,
-	blk_t, unsigned long, unsigned int...) to pblk_t that is defined as
-	__u32. In this way we are sure that blk_t is used only in memory. 
-	Later, this would allow to make blk_t 64bit without disturbing any
-	programs (this would just eat more momory and use 64bit arithmetic).
-
-
-08-use_64bit_io
-
-	use 64bit offsets and block numbers (unsigned long long) in
-	*_read_blk, *_write_blk, and friends.
-
-09-use_64bit_block_numbers
-
-	add the 64BIT incompat feature (make blk_t 64bit and add "_hi" bits
-	un super block and descruptors)
-
-10-extents_48bit_block_numbers
-
-	makes extents code use *_hi bits: updated according Andreas'
-	comments.
-
-11-desc_size
-
-	allow larger block group descriptors. The in memory ext2_group_desc
-	structure can have an arbitrary size (the on-disk on still have to
-	be a power of 2). This change is necessary in order to enlarge block
-	groups later.
-
-12-move_block_number_hi_bits
-
-	moves group descriptors "*_hi" bits to the larger part of the
-	ext2_group_desc structure.
-
-I've successfully tested them on a x84_64 arch with a 20TB device with the
-latest kernel patches.
-
-The complete e2fsprogs and kernel patch sets are available here:
-
-http://www.bullopensource.org/ext4/20060926/
-
-Comments?
-
--- Alexandre
