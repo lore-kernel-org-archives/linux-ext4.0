@@ -1,70 +1,89 @@
-From: Valerie Henson <val_henson@linux.intel.com>
-Subject: Re: [PATCH] EXT2: Remove superblock lock contention in ext2_statfs
-Date: Mon, 25 Sep 2006 09:46:39 -0700
-Message-ID: <20060925164637.GA30477@goober>
-References: <1158611794.11940.40.camel@kleikamp.austin.ibm.com> <1158622685.11940.52.camel@kleikamp.austin.ibm.com>
+From: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Subject: rfc: 2fsprogs update
+Date: Tue, 26 Sep 2006 16:33:43 +0200
+Message-ID: <20060926143343.GA20020@openx1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@osdl.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+Cc: Jean-Pierre Dion <jean-pierre.dion@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.21]:65098 "EHLO
-	orsmga101.jf.intel.com") by vger.kernel.org with ESMTP
-	id S1750955AbWIYQsM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Sep 2006 12:48:12 -0400
-To: Dave Kleikamp <shaggy@austin.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:41959 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932083AbWIZOdw
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Sep 2006 10:33:52 -0400
+To: linux-ext4@vger.kernel.org
 Content-Disposition: inline
-In-Reply-To: <1158622685.11940.52.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 18, 2006 at 06:38:05PM -0500, Dave Kleikamp wrote:
-> On Mon, 2006-09-18 at 15:36 -0500, Dave Kleikamp wrote:
-> > EXT2: Remove superblock lock contention in ext2_statfs
-> > 
-> > Fix a performance degradation introduced in 2.6.17.  (30% degradation running
-> > dbench with 16 threads)
-> > 
-> > Patch 21730eed11de42f22afcbd43f450a1872a0b5ea1, which claims to make
-> > EXT2_DEBUG work again, moves the taking of the kernel lock out of debug-only
-> > code in ext2_count_free_inodes and ext2_count_free_blocks and into
-> > ext2_statfs.  This patch reverses that part of the patch.
-> > 
-> > Signed-off-by: Dave Kleikamp <shaggy@austin.ibm.com>
-> 
-> Eric Sandeen pointed out to me that taking the superblock lock in
-> ext2_count_free_* will cause a deadlock when EXT2FS_DEBUG is enabled,
-> since the superblock is locked in write_super().
-> 
-> We found that the same problem was fixed in ext3 with this patch
-> (forgive the long link):
-> http://git.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=5b11687924e40790deb0d5f959247ade82196665;hp=2384f55f8aa520172c995965bd2f8a9740d53095
-> 
-> The patch below just removes the use of the superblock lock in the debug
-> code.
+hello, 
 
-(Sorry for the delay; been on vacation.)
+i've updated e2fsprogs to be in sync with the latest kernel changes; here is
+a summary of all changes:
 
-Heh, I ran into the same lock nesting issues as you when I first tried
-to fix this; the lock debugging code found it for me.  I asked for
-feedback on the locking issue when I submitted the patch, but no one
-had any opinions then, so I chose consistency over possible
-contention.  Al Viro snorted at the idea of consistency in the results
-of statfs (I paraphrase his IRC remarks), and thinking about it
-further, I realized the debug code should not be doing these checks in
-statfs anyway; only on mount and unmount.  This is because it appears
-that the block group accounting and the overall fs accounting are done
-non-atomically - see group_reserve_blocks() for example - and part of
-what the code does is reconcile these two numbers.  It is legal for a
-valid fs to have the block group summaries and the fs-wide summaries
-out of sync, so the debug code could erroneously report an error,
-leading some poor soul on a wild goose chase.  Removing this code from
-statfs also happens to fix the locking issues nicely.
+01-head_20060918
 
-Rewriting this has been on my todo list for about 6 months now -
-anyone interested in grabbing it?  I'm on #linuxfs on irc.oftc.net if
-anyone wants to chat about it.
+	this is a diff between 1.39 and a mercurial snapshot from sep 18,
+	2006. It's here just to allow people to apply the patch set on
+	e2fsprogs-1.39
+	
+02-percent
 
--VAL
+	fixes division by zero in e2p_percent(), already posted few days ago
+
+The following are the patches that Andreas posted, no changes:
+
+03-inode_prealloc
+04-extents
+05-extents_htree
+06-eacheck
+
+The following are for 64bit support; they do the same as the patch set i
+posted the last time but with various bugs fixed; they are reorganised and
+cleaned up:
+
+07-pblk_ondisk_blocknum
+
+	convert all 32bit on-disk block number definitions (currently __u32,
+	blk_t, unsigned long, unsigned int...) to pblk_t that is defined as
+	__u32. In this way we are sure that blk_t is used only in memory. 
+	Later, this would allow to make blk_t 64bit without disturbing any
+	programs (this would just eat more momory and use 64bit arithmetic).
+
+
+08-use_64bit_io
+
+	use 64bit offsets and block numbers (unsigned long long) in
+	*_read_blk, *_write_blk, and friends.
+
+09-use_64bit_block_numbers
+
+	add the 64BIT incompat feature (make blk_t 64bit and add "_hi" bits
+	un super block and descruptors)
+
+10-extents_48bit_block_numbers
+
+	makes extents code use *_hi bits: updated according Andreas'
+	comments.
+
+11-desc_size
+
+	allow larger block group descriptors. The in memory ext2_group_desc
+	structure can have an arbitrary size (the on-disk on still have to
+	be a power of 2). This change is necessary in order to enlarge block
+	groups later.
+
+12-move_block_number_hi_bits
+
+	moves group descriptors "*_hi" bits to the larger part of the
+	ext2_group_desc structure.
+
+I've successfully tested them on a x84_64 arch with a 20TB device with the
+latest kernel patches.
+
+The complete e2fsprogs and kernel patch sets are available here:
+
+http://www.bullopensource.org/ext4/20060926/
+
+Comments?
+
+-- Alexandre
