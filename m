@@ -1,30 +1,33 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: ext3 merge status
-Date: Wed, 27 Sep 2006 14:26:12 -0400
-Message-ID: <1159381572.5883.27.camel@lade.trondhjem.org>
-References: <20060926134156.9c2f5c57.akpm@osdl.org>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [RFC][PATCH] set_page_buffer_dirty should skip unmapped buffers
+Date: Wed, 27 Sep 2006 17:01:25 -0500
+Message-ID: <451AF4B5.1090607@sandeen.net>
+References: <20060901101801.7845bca2.akpm@osdl.org>	<1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>	<20060906124719.GA11868@atrey.karlin.mff.cuni.cz>	<1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com>	<20060906153449.GC18281@atrey.karlin.mff.cuni.cz>	<1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com>	<20060906162723.GA14345@atrey.karlin.mff.cuni.cz>	<1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com>	<20060906172733.GC14345@atrey.karlin.mff.cuni.cz>	<1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>	<20060907223048.GD22549@atrey.karlin.mff.cuni.cz>	<1158179120.11112.2.camel@kleikamp.austin.ibm.com> <20060913203817.b6711381.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jens Axboe <axboe@suse.de>, Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.4]:34557 "EHLO pat.uio.no")
-	by vger.kernel.org with ESMTP id S1030520AbWI0S0Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Sep 2006 14:26:24 -0400
+Cc: Dave Kleikamp <shaggy@austin.ibm.com>, Jan Kara <jack@suse.cz>,
+	Badari Pulavarty <pbadari@us.ibm.com>,
+	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20060926134156.9c2f5c57.akpm@osdl.org>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20060913203817.b6711381.akpm@osdl.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2006-09-26 at 13:41 -0700, Andrew Morton wrote:
+Andrew Morton wrote:
+> On Wed, 13 Sep 2006 15:25:19 -0500
+> Dave Kleikamp <shaggy@austin.ibm.com> wrote:
+> 
+>>> +void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
+>> Is there any reason this couldn't be static?
+> 
+> Nope.
 
-> I don't know if we'll be merging the fs-cache code this time around - it's
-> largely in Trond and Christoph's hands.
+With this change, journal_brelse_array can also be made static in
+recovery.c, and removed from jbd.h, I think.
 
-I'm OK with it going in.
-
-Cheers,
-  Trond
-
+-Eric
