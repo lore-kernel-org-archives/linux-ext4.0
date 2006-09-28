@@ -1,91 +1,60 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: [PATCH] JBD: Make journal_do_submit_data static
-Date: Thu, 28 Sep 2006 10:03:56 -0500
-Message-ID: <1159455836.12007.2.camel@kleikamp.austin.ibm.com>
-References: <20060901101801.7845bca2.akpm@osdl.org>
-	 <1157472702.23501.12.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906124719.GA11868@atrey.karlin.mff.cuni.cz>
-	 <1157555559.23501.25.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906153449.GC18281@atrey.karlin.mff.cuni.cz>
-	 <1157559545.23501.30.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906162723.GA14345@atrey.karlin.mff.cuni.cz>
-	 <1157563016.23501.39.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060906172733.GC14345@atrey.karlin.mff.cuni.cz>
-	 <1157641877.7725.13.camel@dyn9047017100.beaverton.ibm.com>
-	 <20060907223048.GD22549@atrey.karlin.mff.cuni.cz>
-	 <1158179120.11112.2.camel@kleikamp.austin.ibm.com>
-	 <20060913203817.b6711381.akpm@osdl.org>  <451AF4B5.1090607@sandeen.net>
+From: Andi Kleen <ak@suse.de>
+Subject: Re: ext4 compat flag assignments
+Date: 28 Sep 2006 22:29:43 +0200
+Message-ID: <p73u02rivk8.fsf@verdi.suse.de>
+References: <20060922091520.GC6335@schatzie.adilger.int>
+	<20060928085515.GC27104@openx1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>, Jan Kara <jack@suse.cz>,
-	Badari Pulavarty <pbadari@us.ibm.com>,
-	Anton Altaparmakov <aia21@cam.ac.uk>, sct@redhat.com,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:53200 "EHLO e6.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S1751224AbWI1PET (ORCPT
+Received: from mx1.suse.de ([195.135.220.2]:49598 "EHLO mx1.suse.de")
+	by vger.kernel.org with ESMTP id S1750721AbWI1U3v (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Sep 2006 11:04:19 -0400
-To: Eric Sandeen <sandeen@sandeen.net>
-In-Reply-To: <451AF4B5.1090607@sandeen.net>
+	Thu, 28 Sep 2006 16:29:51 -0400
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
+In-Reply-To: <20060928085515.GC27104@openx1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-09-27 at 17:01 -0500, Eric Sandeen wrote:
-> Andrew Morton wrote:
-> > On Wed, 13 Sep 2006 15:25:19 -0500
-> > Dave Kleikamp <shaggy@austin.ibm.com> wrote:
-> > 
-> >>> +void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
-> >> Is there any reason this couldn't be static?
-> > 
-> > Nope.
+Alexandre Ratchov <alexandre.ratchov@bull.net> writes:
+
+> here is a list of fields we plan to use for the 64bit support, they must be
+> zero on file systems without the EXT4_FEATURE_INCOMPAT_64BIT.
 > 
-> With this change, journal_brelse_array can also be made static in
-> recovery.c, and removed from jbd.h, I think.
+> struct ext4_super_block
+> {
+> 	/* at offset 0xfe */
+> 	__le32	s_desc_size;		/* Group descriptor size */
+> 	/* at offset 0x150 */
+> 	__le32	s_blocks_count_hi;	/* Blocks count */
+> 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
+> 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
+> 	__le32	s_jnl_blocks_hi[17];	/* Backup of the journal inode */
+> };
+> 
+> struct ext4_group_desc
+> {
+> 	/* at offset 0x20 */
+> 	__le32	bg_block_bitmap;	/* Blocks bitmap block hi bits */
+> 	__le32	bg_inode_bitmap;	/* Inodes bitmap block hi bits */
+> 	__le32	bg_inode_table;		/* Inodes table block hi bits */
+> 	__le16	bg_free_blocks_count;	/* Free blocks count hi bits */
+> 	__le16	bg_free_inodes_count;	/* Free inodes count hi bits */
+> 	__le16	bg_used_dirs_count;	/* Directories count hi bits */
+> };
+> 
+> basically, we make 64bit all block numbers and we double the size of all
+> xxx_count in the block group descriptor.
 
-Looks like it.  Here's a patch to do that:
+When you do this have you considered at least reserving fields in the 
+new 64bit indirect blocks for checksums for each block? 
 
-JBD: Make journal_brelse_array static
+IMHO it would be a great advantage to checksum all metadata 
+(as demonstrated by ZFS) and CPU cycles are cheap enough now that it is 
+basically free.
 
-It's always good to make symbols static when we can, and this also
-eliminates the need to rename the function in jbd2
+The checksums could be different feature flags, but it would be useful
+to reserve space in any new format. 16 byte free on each block should be enough.
 
-suggested by Eric Sandeen
-
-Signed-off-by: Dave Kleikamp <shaggy@austin.ibm.com>
-Cc: Eric Sandeen <sandeen@sandeen.net>
-
-diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
-index 445eed6..11563fe 100644
---- a/fs/jbd/recovery.c
-+++ b/fs/jbd/recovery.c
-@@ -46,7 +46,7 @@ static int scan_revoke_records(journal_t
- #ifdef __KERNEL__
- 
- /* Release readahead buffers after use */
--void journal_brelse_array(struct buffer_head *b[], int n)
-+static void journal_brelse_array(struct buffer_head *b[], int n)
- {
- 	while (--n >= 0)
- 		brelse (b[n]);
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index a6d9daa..fe89444 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -977,7 +977,6 @@ extern void	   journal_write_revoke_reco
- extern int	journal_set_revoke(journal_t *, unsigned long, tid_t);
- extern int	journal_test_revoke(journal_t *, unsigned long, tid_t);
- extern void	journal_clear_revoke(journal_t *);
--extern void	journal_brelse_array(struct buffer_head *b[], int n);
- extern void	journal_switch_revoke_table(journal_t *journal);
- 
- /*
-
--- 
-David Kleikamp
-IBM Linux Technology Center
-
+-Andi
