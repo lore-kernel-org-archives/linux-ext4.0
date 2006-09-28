@@ -1,74 +1,283 @@
-From: Andi Kleen <ak@suse.de>
-Subject: Re: ext4 compat flag assignments
-Date: Fri, 29 Sep 2006 01:06:27 +0200
-Message-ID: <200609290106.27852.ak@suse.de>
-References: <20060922091520.GC6335@schatzie.adilger.int> <p73u02rivk8.fsf@verdi.suse.de> <20060928224133.GM22010@schatzie.adilger.int>
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: [Fwd: Re: [patch 003/152] jbd: fix commit of ordered data buffers]
+Date: Thu, 28 Sep 2006 16:20:18 -0700
+Message-ID: <451C58B2.1070302@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed;
+ boundary="------------060006000201070801040801"
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:13472 "EHLO mx2.suse.de")
-	by vger.kernel.org with ESMTP id S964904AbWI1XId (ORCPT
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:38635 "EHLO e6.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S964915AbWI1XUU (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Sep 2006 19:08:33 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
-In-Reply-To: <20060928224133.GM22010@schatzie.adilger.int>
-Content-Disposition: inline
+	Thu, 28 Sep 2006 19:20:20 -0400
+To: ext4 <linux-ext4@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+This is a multi-part message in MIME format.
+--------------060006000201070801040801
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> Actually, there are several plans afoot in that direction already.
-> Some of them need at least some help in the "finish up and get it
-> into the kernel" department, some of them are just ideas previously
-> discussed..
+Forgot to CC: ext4 & lkml earlier..
 
-The important part right now is to just keep enough space in all 
-structures that are being changed anyways.
+Thanks,
+Badari
 
-> 
-> One of the reason for Alexandre pushing the 64-bit inode/block counters
-> into the "large" descriptor is because the 64-bit filesystem is already
-> incompatible with a 32-bit filesystem so there is no extra harm, and this
-> leaves space in the "original" group descriptor for checksums of the block
-> and inode bitmaps.  The bitmap checksums are a critical single-point-of-
-> failure, and having checksums allows the kernel to avoid cascading
-> filesystem corruption even if it can't (yet) do anything about it.
-> Having the checksums in the "original" group descriptor allows this
-> feature to be used on both 32-bit and 64-bit filesystems.
+--------------060006000201070801040801
+Content-Type: message/rfc822;
+ name*0="Re: [patch 003/152] jbd: fix commit of ordered data buffers"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename*0="Re: [patch 003/152] jbd: fix commit of ordered data buffers"
 
-Ok.
+Message-ID: <451C4DDE.60307@us.ibm.com>
+Date: Thu, 28 Sep 2006 15:34:06 -0700
+From: Badari Pulavarty <pbadari@us.ibm.com>
+User-Agent: Thunderbird 1.5.0.7 (Windows/20060909)
+MIME-Version: 1.0
+To: akpm@osdl.org
+CC: torvalds@osdl.org,  jack@suse.cz,  stable@kernel.org
+Subject: Re: [patch 003/152] jbd: fix commit of ordered data buffers
+References: <200609260630.k8Q6UrvQ011999@shell0.pdx.osdl.net>
+In-Reply-To: <200609260630.k8Q6UrvQ011999@shell0.pdx.osdl.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> No work has been done on this yet.  Getting checksums to be efficient
-> depends on having a generic callback mechanism from the journal code
-> to avoid repeated checksums on a block while it is being modified.
+akpm@osdl.org wrote:
+> From: Jan Kara <jack@suse.cz>
+>
+> ....
+> [suitable for 2.6.18.x around the 2.6.19-rc2 timeframe]
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Cc: Badari Pulavarty <pbadari@us.ibm.com>
+> Cc: <stable@kernel.org>
+> Signed-off-by: Andrew Morton <akpm@osdl.org>
+> ---
+>
+>  fs/jbd/commit.c |  182 ++++++++++++++++++++++++++++------------------
+>  1 file changed, 113 insertions(+), 69 deletions(-)
+>
+> diff -puN fs/jbd/commit.c~jbd-fix-commit-of-ordered-data-buffers fs/jbd/commit.c
+> --- a/fs/jbd/commit.c~jbd-fix-commit-of-ordered-data-buffers
+> +++ a/fs/jbd/commit.c
+> @@ -160,6 +160,117 @@ static int journal_write_commit_record(j
+>  	return (ret == -EIO);
+>  }
+>  
+> +static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
+> +{
+> +	int i;
+> +
+> +	for (i = 0; i < bufs; i++) {
+> +		wbuf[i]->b_end_io = end_buffer_write_sync;
+> +		/* We use-up our safety reference in submit_bh() */
+> +		submit_bh(WRITE, wbuf[i]);
+> +	}
+> +}
+> +
+> +/*
+> + *  Submit all the data buffers to disk
+> + */
+> +static void journal_submit_data_buffers(journal_t *journal,
+> +				transaction_t *commit_transaction)
+> +{
+> +	struct journal_head *jh;
+> +	struct buffer_head *bh;
+> +	int locked;
+> +	int bufs = 0;
+> +	struct buffer_head **wbuf = journal->j_wbuf;
+> +
+> +	/*
+> +	 * Whenever we unlock the journal and sleep, things can get added
+> +	 * onto ->t_sync_datalist, so we have to keep looping back to
+> +	 * write_out_data until we *know* that the list is empty.
+> +	 *
+> +	 * Cleanup any flushed data buffers from the data list.  Even in
+> +	 * abort mode, we want to flush this out as soon as possible.
+> +	 */
+> +write_out_data:
+> +	cond_resched();
+> +	spin_lock(&journal->j_list_lock);
+> +
+> +	while (commit_transaction->t_sync_datalist) {
+> +		jh = commit_transaction->t_sync_datalist;
+>   
+Don't we need                  
 
-You can just do incremental checksumming which is very cheap. 
+		commit_transaction->t_sync_datalist = jh->b_tnext;
 
-Or did you mean the flushing to disk of the checksum? If it's always in the same
-object that would be free, but that is not possible for bitmaps at least.
-But I guess the checksum write in the block descriptor 
-could be done very lazily at least, perhaps keeping track on disk if invalid
-checksums are expected or not.
+here to skip to the next "jh" for next time ?
 
-> Finally, the extents format has the capability (though no code is implemented
-> for this yet) to store a checksum in each index and extent block.  This
-> would be done by reducing the count of allowed entries in the block and
-> storing an ext3_extent_tail (checksum, inode+generation backpointer) as
-> the last entry in the block.  No work has been done on this, but I've
-> described the ext3_extent_tail a few times previously on this list.
+Thanks,
+Badari
 
-Old style indirect blocks will need them too. My thinking was
-to use another block for those (so a indirect block would be two nearby
-blocks) 
+> +		bh = jh2bh(jh);
+> +		locked = 0;
+> +
+> +		/* Get reference just to make sure buffer does not disappear
+> +		 * when we are forced to drop various locks */
+> +		get_bh(bh);
+> +		/* If the buffer is dirty, we need to submit IO and hence
+> +		 * we need the buffer lock. We try to lock the buffer without
+> +		 * blocking. If we fail, we need to drop j_list_lock and do
+> +		 * blocking lock_buffer().
+> +		 */
+> +		if (buffer_dirty(bh)) {
+> +			if (test_set_buffer_locked(bh)) {
+> +				BUFFER_TRACE(bh, "needs blocking lock");
+> +				spin_unlock(&journal->j_list_lock);
+> +				/* Write out all data to prevent deadlocks */
+> +				journal_do_submit_data(wbuf, bufs);
+> +				bufs = 0;
+> +				lock_buffer(bh);
+> +				spin_lock(&journal->j_list_lock);
+> +			}
+> +			locked = 1;
+> +		}
+> +		/* We have to get bh_state lock. Again out of order, sigh. */
+> +		if (!inverted_lock(journal, bh)) {
+> +			jbd_lock_bh_state(bh);
+> +			spin_lock(&journal->j_list_lock);
+> +		}
+> +		/* Someone already cleaned up the buffer? */
+> +		if (!buffer_jbd(bh)
+> +			|| jh->b_transaction != commit_transaction
+> +			|| jh->b_jlist != BJ_SyncData) {
+> +			jbd_unlock_bh_state(bh);
+> +			if (locked)
+> +				unlock_buffer(bh);
+> +			BUFFER_TRACE(bh, "already cleaned up");
+> +			put_bh(bh);
+> +			continue;
+> +		}
+> +		if (locked && test_clear_buffer_dirty(bh)) {
+> +			BUFFER_TRACE(bh, "needs writeout, adding to array");
+> +			wbuf[bufs++] = bh;
+> +			__journal_file_buffer(jh, commit_transaction,
+> +						BJ_Locked);
+> +			jbd_unlock_bh_state(bh);
+> +			if (bufs == journal->j_wbufsize) {
+> +				spin_unlock(&journal->j_list_lock);
+> +				journal_do_submit_data(wbuf, bufs);
+> +				bufs = 0;
+> +				goto write_out_data;
+> +			}
+> +		}
+> +		else {
+> +			BUFFER_TRACE(bh, "writeout complete: unfile");
+> +			__journal_unfile_buffer(jh);
+> +			jbd_unlock_bh_state(bh);
+> +			if (locked)
+> +				unlock_buffer(bh);
+> +			journal_remove_journal_head(bh);
+> +			/* Once for our safety reference, once for
+> +			 * journal_remove_journal_head() */
+> +			put_bh(bh);
+> +			put_bh(bh);
+> +		}
+> +
+> +		if (lock_need_resched(&journal->j_list_lock)) {
+> +			spin_unlock(&journal->j_list_lock);
+> +			goto write_out_data;
+> +		}
+> +	}
+> +	spin_unlock(&journal->j_list_lock);
+> +	journal_do_submit_data(wbuf, bufs);
+> +}
+> +
+>  /*
+>   * journal_commit_transaction
+>   *
+> @@ -313,80 +424,13 @@ void journal_commit_transaction(journal_
+>  	 * Now start flushing things to disk, in the order they appear
+>  	 * on the transaction lists.  Data blocks go first.
+>  	 */
+> -
+>  	err = 0;
+> -	/*
+> -	 * Whenever we unlock the journal and sleep, things can get added
+> -	 * onto ->t_sync_datalist, so we have to keep looping back to
+> -	 * write_out_data until we *know* that the list is empty.
+> -	 */
+> -	bufs = 0;
+> -	/*
+> -	 * Cleanup any flushed data buffers from the data list.  Even in
+> -	 * abort mode, we want to flush this out as soon as possible.
+> -	 */
+> -write_out_data:
+> -	cond_resched();
+> -	spin_lock(&journal->j_list_lock);
+> -
+> -	while (commit_transaction->t_sync_datalist) {
+> -		struct buffer_head *bh;
+> -
+> -		jh = commit_transaction->t_sync_datalist;
+> -		commit_transaction->t_sync_datalist = jh->b_tnext;
+> -		bh = jh2bh(jh);
+> -		if (buffer_locked(bh)) {
+> -			BUFFER_TRACE(bh, "locked");
+> -			if (!inverted_lock(journal, bh))
+> -				goto write_out_data;
+> -			__journal_temp_unlink_buffer(jh);
+> -			__journal_file_buffer(jh, commit_transaction,
+> -						BJ_Locked);
+> -			jbd_unlock_bh_state(bh);
+> -			if (lock_need_resched(&journal->j_list_lock)) {
+> -				spin_unlock(&journal->j_list_lock);
+> -				goto write_out_data;
+> -			}
+> -		} else {
+> -			if (buffer_dirty(bh)) {
+> -				BUFFER_TRACE(bh, "start journal writeout");
+> -				get_bh(bh);
+> -				wbuf[bufs++] = bh;
+> -				if (bufs == journal->j_wbufsize) {
+> -					jbd_debug(2, "submit %d writes\n",
+> -							bufs);
+> -					spin_unlock(&journal->j_list_lock);
+> -					ll_rw_block(SWRITE, bufs, wbuf);
+> -					journal_brelse_array(wbuf, bufs);
+> -					bufs = 0;
+> -					goto write_out_data;
+> -				}
+> -			} else {
+> -				BUFFER_TRACE(bh, "writeout complete: unfile");
+> -				if (!inverted_lock(journal, bh))
+> -					goto write_out_data;
+> -				__journal_unfile_buffer(jh);
+> -				jbd_unlock_bh_state(bh);
+> -				journal_remove_journal_head(bh);
+> -				put_bh(bh);
+> -				if (lock_need_resched(&journal->j_list_lock)) {
+> -					spin_unlock(&journal->j_list_lock);
+> -					goto write_out_data;
+> -				}
+> -			}
+> -		}
+> -	}
+> -
+> -	if (bufs) {
+> -		spin_unlock(&journal->j_list_lock);
+> -		ll_rw_block(SWRITE, bufs, wbuf);
+> -		journal_brelse_array(wbuf, bufs);
+> -		spin_lock(&journal->j_list_lock);
+> -	}
+> +	journal_submit_data_buffers(journal, commit_transaction);
+>  
+>  	/*
+>  	 * Wait for all previously submitted IO to complete.
+>  	 */
+> +	spin_lock(&journal->j_list_lock);
+>  	while (commit_transaction->t_locked_list) {
+>  		struct buffer_head *bh;
+>  
+> _
+>   
 
-Inodes need them, but with the inode extension that will be hopefully
-not a problem to keep a few bytes for this.
 
-And directories, which should be relatively easy to extend with
-the current format.
 
--Andi
+--------------060006000201070801040801--
+
