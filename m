@@ -1,87 +1,98 @@
 From: Andreas Dilger <adilger@clusterfs.com>
 Subject: Re: ext4 compat flag assignments
-Date: Thu, 28 Sep 2006 16:41:33 -0600
-Message-ID: <20060928224133.GM22010@schatzie.adilger.int>
-References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr> <p73u02rivk8.fsf@verdi.suse.de>
+Date: Thu, 28 Sep 2006 17:06:50 -0600
+Message-ID: <20060928230650.GN22010@schatzie.adilger.int>
+References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:23722 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751027AbWI1Wlg
+Received: from mail.clusterfs.com ([206.168.112.78]:25483 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1750826AbWI1XGx
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Sep 2006 18:41:36 -0400
-To: Andi Kleen <ak@suse.de>
+	Thu, 28 Sep 2006 19:06:53 -0400
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
 Content-Disposition: inline
-In-Reply-To: <p73u02rivk8.fsf@verdi.suse.de>
+In-Reply-To: <20060928085515.GC27104@openx1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 28, 2006  22:29 +0200, Andi Kleen wrote:
-> Alexandre Ratchov <alexandre.ratchov@bull.net> writes:
-> > struct ext4_group_desc
-> > {
-> > 	/* at offset 0x20 */
-> > 	__le32	bg_block_bitmap;	/* Blocks bitmap block hi bits */
-> > 	__le32	bg_inode_bitmap;	/* Inodes bitmap block hi bits */
-> > 	__le32	bg_inode_table;		/* Inodes table block hi bits */
-> > 	__le16	bg_free_blocks_count;	/* Free blocks count hi bits */
-> > 	__le16	bg_free_inodes_count;	/* Free inodes count hi bits */
-> > 	__le16	bg_used_dirs_count;	/* Directories count hi bits */
-> > };
-> > 
-> > basically, we make 64bit all block numbers and we double the size of all
-> > xxx_count in the block group descriptor.
+On Sep 28, 2006  10:55 +0200, Alexandre Ratchov wrote:
+> here is a list of fields we plan to use for the 64bit support, they must be
+> zero on file systems without the EXT4_FEATURE_INCOMPAT_64BIT.
 > 
-> When you do this have you considered at least reserving fields in the 
-> new 64bit indirect blocks for checksums for each block? 
->
-> IMHO it would be a great advantage to checksum all metadata 
-> (as demonstrated by ZFS) and CPU cycles are cheap enough now that it is 
-> basically free.
+> struct ext4_super_block
+> {
+> 	/* at offset 0xfe */
+> 	__le32	s_desc_size;		/* Group descriptor size */
 
-Actually, there are several plans afoot in that direction already.
-Some of them need at least some help in the "finish up and get it
-into the kernel" department, some of them are just ideas previously
-discussed..
+I believe this is actually a __u16 and not __u32.  The group descriptor
+can't be larger than a filesystem block anyways.  Formerly called
+s_reserved_word_pad.
 
-One of the reason for Alexandre pushing the 64-bit inode/block counters
-into the "large" descriptor is because the 64-bit filesystem is already
-incompatible with a 32-bit filesystem so there is no extra harm, and this
-leaves space in the "original" group descriptor for checksums of the block
-and inode bitmaps.  The bitmap checksums are a critical single-point-of-
-failure, and having checksums allows the kernel to avoid cascading
-filesystem corruption even if it can't (yet) do anything about it.
-Having the checksums in the "original" group descriptor allows this
-feature to be used on both 32-bit and 64-bit filesystems.
+> > - EXT4_FEATURE_RO_COMPAT_GDT_CSUM (0x0010?) - store a crc16 checksum in
+> >   the group descriptor (s_uuid[16] | __u32 group | ext3_group_desc
+> >   (excluding gd_checksum itself)).  This allows the kernel to more safely
+> >   manage UNINIT groups.  Incomplete patch, e2fsck support mostly done.
 
-No work has been done on this yet.  Getting checksums to be efficient
-depends on having a generic callback mechanism from the journal code
-to avoid repeated checksums on a block while it is being modified.
-The journal callback would do the checksum exactly once for each block
-(or sub-structure therein) at checkpoint time.
+ struct ext3_group_desc
+ {
+        __le32  bg_block_bitmap;                /* Blocks bitmap block */
+        __le32  bg_inode_bitmap;                /* Inodes bitmap block */
+        __le32  bg_inode_table;         /* Inodes table block */
+        __le16  bg_free_blocks_count;   /* Free blocks count */
+        __le16  bg_free_inodes_count;   /* Free inodes count */
+        __le16  bg_used_dirs_count;     /* Directories count */
+-       __u16   bg_pad;
+-       __le32  bg_reserved[3];
++       __le16  bg_flags;
++       __le32  bg_reserved[2];
++       __le16  bg_itable_unused;       /*Unused inodes count*/
++       __le16  bg_checksum;		/*crc16(s_uuid+group_num+group_desc)*/
+ };
 
-A second change is to add checksums to the ext3 journal commit blocks
-(per U. Wisconsin) to avoid need for 2-phase commit for transactions,
-and to provide redundancy.  Patches for the kernel and e2fsck are
-available for that already (not 100% sure if I posted them here).
+> > - EXT4_FEATURE_RO_COMPAT_DIR_NLINK (0x0020?) - allow directories to have >
+> >   65000 subdirectories (i_nlinks) by setting i_nlinks = 1 for such
+> >   directories.  RO_COMPAT protects old filesystems from unlinking such
+> >   directories incorrectly and losing all files therein.  Needs RO_COMPAT
+> >   flag handling, needs e2fsck support, but very heavily tested.
 
-Checksums for the group descriptors themselves, to allow mke2fs
-and the kernel to handle "uninitialized groups".  This means that mke2fs
-doesn't need to zero the block/inode bitmaps and inode table, and the
-kernel can selectively initialize the inode tables to avoid the need to
-read all of them during e2fsck time.  The checksum is a safety check on
-the group descriptor flags, as well as providing normal corruption detection.
-Patches for the kernel and e2fsck are in early prototype and were posted
-about a week ago.
+No extra fields needed, just compat.  Bumps EXT3_LINK_MAX to 65000.
 
-Finally, the extents format has the capability (though no code is implemented
-for this yet) to store a checksum in each index and extent block.  This
-would be done by reducing the count of allowed entries in the block and
-storing an ext3_extent_tail (checksum, inode+generation backpointer) as
-the last entry in the block.  No work has been done on this, but I've
-described the ext3_extent_tail a few times previously on this list.
+> > - EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE (0x0040?) - add s_min_extra_isize and
+> >   s_want_extra_isize fields to superblock, which allow specifying
+> >   the minimum and desired i_extra_isize fields in large inodes
+> >   (for nsec+epoch timestamps, potential other uses).  Needs RO_COMPAT
+> >   flag handling, needs e2fsck support, patch complete, little testing.
+
+No patch yet which uses s_*_extra_isize, they can go in next available slots.
+struct ext3_inode {
+        } osd2;                         /* OS dependent 2 */
+        __le16  i_extra_isize;
+        __le16  i_pad1;
+        __le32  i_ctime_extra;  /* extra Change time      (nsec << 2 | epoch) */
+        __le32  i_mtime_extra;  /* extra Modification time(nsec << 2 | epoch) */
+        __le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
+        __le32  i_extra_reserved1;
+}
+
+> There's also the change attribute patch; it currently uses the l_i_reserved2
+> field of the inode:
+> 
+> -                       __u32   l_i_reserved2;
+> +                       __le32  l_i_change_attribute;
+> 
+> -#define i_reserved2    osd2.linux2.l_i_reserved2
+> +#define i_chattr       osd2.linux2.l_i_change_attribute
+> 
+> It doesn't need RO_COMPAT/INCOMPAT flag because there are no incompatibility
+> issues with kernels that do not support the change attribute but that mount
+> file systems that have used it. Also it doesn't really need changes in fsck.
+
+Did we decide if l_i_change_attribute would also be the ctime nsec value?
+That would affect the RO_COMPAT_EXTRA_ISIZE implementation above, putting
+the i_ctime_extra in place of l_i_reserved2.  That doesn't change the
+patch significantly, though it does need the "always increment" change.
 
 Cheers, Andreas
 --
