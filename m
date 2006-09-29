@@ -1,74 +1,59 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Bug#389772: e2fsprogs: e2fsck produces broken htree on ppc
-Date: Thu, 28 Sep 2006 21:08:57 -0400
-Message-ID: <20060929010857.GC11055@thunk.org>
-References: <20060927122251.GA732@alea.gnuu.de>
+From: Dave Edwards <ext2@dpe.lusars.net>
+Subject: Newbie ext2 forensics question...
+Date: Fri, 29 Sep 2006 04:47:38 +0000 (UTC)
+Message-ID: <loom.20060929T063450-383@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: paulus@au.ibm.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:43451 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1161119AbWI2BJU (ORCPT
+Received: from main.gmane.org ([80.91.229.2]:16847 "EHLO ciao.gmane.org")
+	by vger.kernel.org with ESMTP id S932538AbWI2EzY (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Sep 2006 21:09:20 -0400
-To: =?iso-8859-1?Q?J=F6rg?= Sommer <joerg@alea.gnuu.de>,
-	389772@bugs.debian.org
-Content-Disposition: inline
-In-Reply-To: <20060927122251.GA732@alea.gnuu.de>
+	Fri, 29 Sep 2006 00:55:24 -0400
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1GTAOs-00067n-L6
+	for linux-ext4@vger.kernel.org; Fri, 29 Sep 2006 06:55:02 +0200
+Received: from c-69-143-110-97.hsd1.va.comcast.net ([69.143.110.97])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 29 Sep 2006 06:55:02 +0200
+Received: from ext2 by c-69-143-110-97.hsd1.va.comcast.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 29 Sep 2006 06:55:02 +0200
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 27, 2006 at 02:22:51PM +0200, J=F6rg Sommer wrote:
-> Package: e2fsprogs
-> Version: 1.39-1
-> Severity: important
->=20
-> you set the compiler option -fsigned-char, but on PowerPC the default=
- is
-> unsigned char. This makes the kernel uses unsigned and e2fsck uses si=
-gned
-> chars.
->=20
-> In the case of an 8 bit character, str2hashbuf() in lib/ext2fs/dirhas=
-h.c
-> produces a different buf than the kernel, which leads to the problem =
-that
-> the hash calculated by TEA_transform() is a different one.
+I'm trying to tune a linux system to spin down its (ext2-formatted) disk when
+the system is idle. I've worked down to two problematic applications that
+periodically spin up the disk, even though the (tiny) file they're writing is
+(allegedly) on a tmpfs partition (/tmp/application/datafile, as it happens).
+Enabling the vm debugging gets me output like:
 
-Oh, dear.  This is actually a kernel bug, because the on all other
-platforms, the TEA hash will be using a signed char --- and if you
-want filesystems to be portable between different systems (hint: we
-do), then all architectures should be using the same algorithm.  And
-the vast majority of the systems out there are using signed chars.
-Unfortunately PowerPC decided to be different.  :-(
+kjournald(303): WRITE block 151824 on hda1
+kjournald(303): WRITE block 151832 on hda1
+kjournald(303): WRITE block 151840 on hda1
+kjournald(303): WRITE block 151848 on hda1
+kjournald(303): WRITE block 151856 on hda1
+kjournald(303): WRITE block 151864 on hda1
+pdflush(135): WRITE block 258211840 on hda1
+pdflush(135): WRITE block 258211848 on hda1
+pdflush(135): WRITE block 258211856 on hda1
+pdflush(135): WRITE block 258310144 on hda1
+pdflush(135): WRITE block 0 on hda1
+pdflush(135): WRITE block 16 on hda1
+pdflush(135): WRITE block 64 on hda1
+pdflush(135): WRITE block 56098816 on hda1
+pdflush(135): WRITE block 56100968 on hda1
+pdflush(135): WRITE block 61079552 on hda1
 
-=46ixing this is going to be painful, because if we fix the kernel to
-suddenly use signed chars in the TEA algorithm, like all other right
-thinking architectures (joke! joke!), then existing ext3 filesystems
-with directory hashing enabled will break.
+(hda1 is an ext2-formatted partition, mounted noatime)
 
-But given that e2fsck is doing it right, and the kernel is doing it
-wrong, we have the mismatch already.  Sigh, this is going to be
-especially painful, given that all the major distributions (SLES,
-RHEL, Debian, Ubuntu, etc.) are now shipping with directory hashing
-enabled by default, and so this is going to impact a huge number of
-PowerPC Linux users and customers.
+Is there any way to work back from block to inode to (hopefully) location in the
+directory structure this is happening? For some reason, I don't get app and file
+name (like I do with other programes), just some blocks that the disk got spun
+up to write.
 
-OK, I think how are going to have to fix this is to define two new
-flags in the superblock, which indicates whether str2hashbuf is using
-signed or unsigned chars.  If neither flag is set, then new kernels
-and new e2fsprogs will set the flag for the "native" signed/unsigned
-char convention, and assume that it is correct.  I think this is only
-a PowerPC problem, but we'll probably need to do a quick check of all
-of the other architectures.
+My appologies if there's a well-known tool for doing this; the furthest down
+I've been able to dig is the inode level.
 
-Paul, since you're the PowerPC maintainer, I figured I'd better cc
-you.  Does this sound sane to you?
-
-							- Ted
--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
