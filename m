@@ -1,64 +1,42 @@
-From: Peter =?iso-8859-1?q?Kjellstr=F6m?= <cap@nsc.liu.se>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Newbie ext2 forensics question...
-Date: Fri, 29 Sep 2006 14:03:39 +0200
-Message-ID: <200609291403.43906.cap@nsc.liu.se>
+Date: Fri, 29 Sep 2006 09:37:45 -0400
+Message-ID: <20060929133745.GC5016@thunk.org>
 References: <loom.20060929T063450-383@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1430960.oOxrXa2Pa1";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.nsc.liu.se ([130.236.101.9]:21669 "EHLO papput.nsc.liu.se")
-	by vger.kernel.org with ESMTP id S932303AbWI2MDm (ORCPT
+Received: from THUNK.ORG ([69.25.196.29]:18400 "EHLO thunker.thunk.org")
+	by vger.kernel.org with ESMTP id S1751065AbWI2Nhp (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Sep 2006 08:03:42 -0400
+	Fri, 29 Sep 2006 09:37:45 -0400
 To: Dave Edwards <ext2@dpe.lusars.net>
+Content-Disposition: inline
 In-Reply-To: <loom.20060929T063450-383@post.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---nextPart1430960.oOxrXa2Pa1
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+On Fri, Sep 29, 2006 at 04:47:38AM +0000, Dave Edwards wrote:
+> I'm trying to tune a linux system to spin down its (ext2-formatted) disk when
+> the system is idle. I've worked down to two problematic applications that
+> periodically spin up the disk, even though the (tiny) file they're writing is
+> (allegedly) on a tmpfs partition (/tmp/application/datafile, as it happens).
 
-On Friday 29 September 2006 06:47, Dave Edwards wrote:
-> ...
-> Is there any way to work back from block to inode to (hopefully) location
-> in the directory structure this is happening? For some reason, I don't get
+If you are using a distribution that has SystemTap preinstalled,
+something that may be simpler to use would be a SystemTap script which
+logs which process id's are calling the write system call.  Yes,
+you'll get false negatives for processes writing to pty's and serial
+devices, et. al.  If you only have ext3 filesystems on your system,
+you can could modify the SystemTap script to print a message including
+the pid each time there is a call to ext3_file_write().
 
-from man debugfs:
-icheck block ...
-              Print a listing of the inodes which use the one or more block=
-s=20
-specified on the command line.
+(With more advanced SystemTap-foo it would be possible to extract out
+the inode information and print the inode #, but you'd have to contact
+a SystemTap user's mailing list for help doing something like that.
+Still, I suspect getting the process ID is hopefully enough for your
+purposes.)
 
-/Peter
+Regards,
 
-> app and file name (like I do with other programes), just some blocks that
-> the disk got spun up to write.
->
-> My appologies if there's a well-known tool for doing this; the furthest
-> down I've been able to dig is the inode level.
->
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---nextPart1430960.oOxrXa2Pa1
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
-
-iD8DBQBFHQufWkaLDtAygc8RAmyFAJ9KZ9Kn9fz4qaTmpBEn7VruOoH8hQCfaQmf
-92Nn1EizxpRnQp+hu+N/+D0=
-=nv1N
------END PGP SIGNATURE-----
-
---nextPart1430960.oOxrXa2Pa1--
+						- Ted
