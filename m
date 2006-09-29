@@ -1,52 +1,84 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Newbie ext2 forensics question...
-Date: Fri, 29 Sep 2006 11:24:38 -0600
-Message-ID: <20060929172438.GQ22010@schatzie.adilger.int>
-References: <loom.20060929T063450-383@post.gmane.org>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: [patch 003/152] jbd: fix commit of ordered data buffers
+Date: Fri, 29 Sep 2006 12:20:26 -0700
+Message-ID: <20060929122026.62ec29eb.akpm@osdl.org>
+References: <200609260630.k8Q6UrvQ011999@shell0.pdx.osdl.net>
+	<451C4DDE.60307@us.ibm.com>
+	<20060929090253.GA17124@atrey.karlin.mff.cuni.cz>
+	<1159546306.8780.2.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, torvalds@osdl.org, stable@kernel.org,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:28889 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161831AbWI2RYk
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Sep 2006 13:24:40 -0400
-To: Dave Edwards <ext2@dpe.lusars.net>
-Content-Disposition: inline
-In-Reply-To: <loom.20060929T063450-383@post.gmane.org>
+Received: from smtp.osdl.org ([65.172.181.4]:12948 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1422657AbWI2TWU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Sep 2006 15:22:20 -0400
+To: Badari Pulavarty <pbadari@us.ibm.com>, Ingo Molnar <mingo@elte.hu>
+In-Reply-To: <1159546306.8780.2.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 29, 2006  04:47 +0000, Dave Edwards wrote:
-> I'm trying to tune a linux system to spin down its (ext2-formatted) disk when
-> the system is idle. I've worked down to two problematic applications that
-> periodically spin up the disk, even though the (tiny) file they're writing is
-> (allegedly) on a tmpfs partition (/tmp/application/datafile, as it happens).
-> Enabling the vm debugging gets me output like:
+On Fri, 29 Sep 2006 09:11:46 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
+
+> On Fri, 2006-09-29 at 11:02 +0200, Jan Kara wrote:
+> ...
+> > > >+		}
+> > > >+		/* Someone already cleaned up the buffer? */
+> > > >+		if (!buffer_jbd(bh)
+> > > >+			|| jh->b_transaction != commit_transaction
+> > > >+			|| jh->b_jlist != BJ_SyncData) {
+> > > >+			jbd_unlock_bh_state(bh);
+> > > >+			if (locked)
+> > > >+				unlock_buffer(bh);
+> > > >+			BUFFER_TRACE(bh, "already cleaned up");
+> > > >+			put_bh(bh);
+> > > >+			continue;
+> >    ---> Here the buffer was refiled by someone else
 > 
-> kjournald(303): WRITE block 151824 on hda1
-> kjournald(303): WRITE block 151832 on hda1
-> kjournald(303): WRITE block 151840 on hda1
-> kjournald(303): WRITE block 151848 on hda1
-> kjournald(303): WRITE block 151856 on hda1
-> kjournald(303): WRITE block 151864 on hda1
+> I am little concerned about this particular code. We know that
+> some one else will do the unfile/remove - but we will keep
+> spinning on it till that happens. Isn't it ? Why don't we
+> skip it and move to next one ?
 
-This is ext3 (journal thread) not ext2.
+That check looks OK to me.  Either
 
-> pdflush(135): WRITE block 258211840 on hda1
-> pdflush(135): WRITE block 258211848 on hda1
-> pdflush(135): WRITE block 258211856 on hda1
-> pdflush(135): WRITE block 258310144 on hda1
-> pdflush(135): WRITE block 0 on hda1
-> pdflush(135): WRITE block 16 on hda1
-> pdflush(135): WRITE block 64 on hda1
-> pdflush(135): WRITE block 56098816 on hda1
-> pdflush(135): WRITE block 56100968 on hda1
-> pdflush(135): WRITE block 61079552 on hda1
+a) the buffer has been taken off the journal altogether or
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+b) it's been moved to the running transaction or
+
+c) it's jounalled, it's ont he committing transaction but it's not on
+   t_sync_datalist any more.
+
+So it shouldn't be possible for that buffer to be on
+commit_transaction->t_sync_datalist.
+
+> We are seeing few following message while running tests and
+> wondering if your patch is causing it ..
+> 
+> BUG: spinlock lockup on CPU#1, scp/30189, c00000000fb503d8 (Not tainted)
+> Call Trace:
+> [C000000018FDB320] [C0000000000102E0] .show_stack+0x68/0x1b0 (unreliable)
+> [C000000018FDB3C0] [C0000000001734F4] ._raw_spin_lock+0x138/0x184
+> [C000000018FDB460] [C00000000025AD24] ._spin_lock+0x10/0x24
+> [C000000018FDB4E0] [D000000000172E14] .journal_dirty_data+0xa4/0x2c0 [jbd]
+> [C000000018FDB580] [D000000000205BAC] .ext3_journal_dirty_data+0x28/0x70 [ext3]
+> [C000000018FDB610] [D0000000002048BC] .walk_page_buffers+0xb0/0x134 [ext3]
+> [C000000018FDB6D0] [D000000000208280] .ext3_ordered_commit_write+0x74/0x114 
+
+Presumably j_list_lock got stuck.  What we really need to see here is
+the backtrace from other CPUs.
+
+gad, there have been so many all-CPU-backtrace patches over the years.
+
+<optimistically cc's Ingo>
+
+Ingo, do you think that's something which we shuld have in the spinlock
+debugging code?  A trace to let us see which CPU is holding that lock,
+and where from?  I guess if the other cpu is stuck in spin_lock_irqsave()
+then we'll get stuck delivering the IPI, so it'd need to be async.
+
 
