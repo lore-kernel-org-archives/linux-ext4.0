@@ -1,59 +1,64 @@
-From: Dave Edwards <ext2@dpe.lusars.net>
-Subject: Newbie ext2 forensics question...
-Date: Fri, 29 Sep 2006 04:47:38 +0000 (UTC)
-Message-ID: <loom.20060929T063450-383@post.gmane.org>
+From: Peter =?iso-8859-1?q?Kjellstr=F6m?= <cap@nsc.liu.se>
+Subject: Re: Newbie ext2 forensics question...
+Date: Fri, 29 Sep 2006 14:03:39 +0200
+Message-ID: <200609291403.43906.cap@nsc.liu.se>
+References: <loom.20060929T063450-383@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed;
+  boundary="nextPart1430960.oOxrXa2Pa1";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
 Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:16847 "EHLO ciao.gmane.org")
-	by vger.kernel.org with ESMTP id S932538AbWI2EzY (ORCPT
+Received: from ns2.nsc.liu.se ([130.236.101.9]:21669 "EHLO papput.nsc.liu.se")
+	by vger.kernel.org with ESMTP id S932303AbWI2MDm (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Sep 2006 00:55:24 -0400
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1GTAOs-00067n-L6
-	for linux-ext4@vger.kernel.org; Fri, 29 Sep 2006 06:55:02 +0200
-Received: from c-69-143-110-97.hsd1.va.comcast.net ([69.143.110.97])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Sep 2006 06:55:02 +0200
-Received: from ext2 by c-69-143-110-97.hsd1.va.comcast.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Sep 2006 06:55:02 +0200
-To: linux-ext4@vger.kernel.org
+	Fri, 29 Sep 2006 08:03:42 -0400
+To: Dave Edwards <ext2@dpe.lusars.net>
+In-Reply-To: <loom.20060929T063450-383@post.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I'm trying to tune a linux system to spin down its (ext2-formatted) disk when
-the system is idle. I've worked down to two problematic applications that
-periodically spin up the disk, even though the (tiny) file they're writing is
-(allegedly) on a tmpfs partition (/tmp/application/datafile, as it happens).
-Enabling the vm debugging gets me output like:
+--nextPart1430960.oOxrXa2Pa1
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-kjournald(303): WRITE block 151824 on hda1
-kjournald(303): WRITE block 151832 on hda1
-kjournald(303): WRITE block 151840 on hda1
-kjournald(303): WRITE block 151848 on hda1
-kjournald(303): WRITE block 151856 on hda1
-kjournald(303): WRITE block 151864 on hda1
-pdflush(135): WRITE block 258211840 on hda1
-pdflush(135): WRITE block 258211848 on hda1
-pdflush(135): WRITE block 258211856 on hda1
-pdflush(135): WRITE block 258310144 on hda1
-pdflush(135): WRITE block 0 on hda1
-pdflush(135): WRITE block 16 on hda1
-pdflush(135): WRITE block 64 on hda1
-pdflush(135): WRITE block 56098816 on hda1
-pdflush(135): WRITE block 56100968 on hda1
-pdflush(135): WRITE block 61079552 on hda1
+On Friday 29 September 2006 06:47, Dave Edwards wrote:
+> ...
+> Is there any way to work back from block to inode to (hopefully) location
+> in the directory structure this is happening? For some reason, I don't get
 
-(hda1 is an ext2-formatted partition, mounted noatime)
+from man debugfs:
+icheck block ...
+              Print a listing of the inodes which use the one or more block=
+s=20
+specified on the command line.
 
-Is there any way to work back from block to inode to (hopefully) location in the
-directory structure this is happening? For some reason, I don't get app and file
-name (like I do with other programes), just some blocks that the disk got spun
-up to write.
+/Peter
 
-My appologies if there's a well-known tool for doing this; the furthest down
-I've been able to dig is the inode level.
+> app and file name (like I do with other programes), just some blocks that
+> the disk got spun up to write.
+>
+> My appologies if there's a well-known tool for doing this; the furthest
+> down I've been able to dig is the inode level.
+>
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--nextPart1430960.oOxrXa2Pa1
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.5 (GNU/Linux)
+
+iD8DBQBFHQufWkaLDtAygc8RAmyFAJ9KZ9Kn9fz4qaTmpBEn7VruOoH8hQCfaQmf
+92Nn1EizxpRnQp+hu+N/+D0=
+=nv1N
+-----END PGP SIGNATURE-----
+
+--nextPart1430960.oOxrXa2Pa1--
