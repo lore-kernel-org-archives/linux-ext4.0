@@ -1,85 +1,84 @@
-From: =?iso-8859-1?Q?J=F6rg?= Sommer <joerg@alea.gnuu.de>
-Subject: Re: Bug#389772: e2fsprogs: e2fsck produces broken htree on ppc
-Date: Sun, 1 Oct 2006 01:57:17 +0200
-Message-ID: <20060930235717.GA3403@alea.gnuu.de>
-References: <20060927122251.GA732@alea.gnuu.de> <20060929010857.GC11055@thunk.org> <20060929171547.GO22010@schatzie.adilger.int> <20060929211556.GA11017@thunk.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: ext4 compat flag assignments
+Date: Sun, 1 Oct 2006 22:34:58 -0600
+Message-ID: <20061002043458.GF22010@schatzie.adilger.int>
+References: <20060922091520.GC6335@schatzie.adilger.int> <p73u02rivk8.fsf@verdi.suse.de> <20060928224133.GM22010@schatzie.adilger.int> <200609290106.27852.ak@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="pWyiEgJYm5f9v55/"
-Cc: Andreas Dilger <adilger@clusterfs.com>, 389772@bugs.debian.org,
-	paulus@au.ibm.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from uucp.gnuu.de ([84.16.234.68]:14049 "EHLO uucp.gnuu.de")
-	by vger.kernel.org with ESMTP id S1751260AbWJAJML (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Oct 2006 05:12:11 -0400
-To: Theodore Tso <tytso@mit.edu>
+Received: from mail.clusterfs.com ([206.168.112.78]:21169 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S932413AbWJBEfB
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Oct 2006 00:35:01 -0400
+To: Andi Kleen <ak@suse.de>
 Content-Disposition: inline
-In-Reply-To: <20060929211556.GA11017@thunk.org>
+In-Reply-To: <200609290106.27852.ak@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Sep 29, 2006  01:06 +0200, Andi Kleen wrote:
+> Andreas Dilger wrote:
+> > No work has been done on this yet.  Getting checksums to be efficient
+> > depends on having a generic callback mechanism from the journal code
+> > to avoid repeated checksums on a block while it is being modified.
+> 
+> You can just do incremental checksumming which is very cheap. 
+> 
+> Or did you mean the flushing to disk of the checksum?  If it's always in
+> the same object that would be free, but that is not possible for bitmaps
+> at least.  But I guess the checksum write in the block descriptor 
+> could be done very lazily at least, perhaps keeping track on disk if invalid
+> checksums are expected or not.
 
---pWyiEgJYm5f9v55/
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I'm not sure I understand what you mean.  My goal is that the ext4 code
+modifies the block as many times as it wants during a transaction (this
+may happen from multiple threads for a single block), then just before
+the transaction is committed to disk the journal calls a callback for that
+block (inode, group descriptor, bitmap, superblock, extent, index, etc) and 
+computes the checksum only once for that block.  Then the block is flushed
+to filesystem.
 
-Hello Theodore,
+I'm not sure I like the idea of writing "this block doesn't have a valid
+checksum" to disk, since there is some risk of that block being corrupted
+during a crash and then we don't know if the block is valid or not.
 
-Theodore Tso schrieb am Fri 29. Sep, 17:15 (-0400):
-> If the filesystem is empty (or at least no no hashtree directories),
-> then when the kernel creates new directories and expands to the point
-> where they become indexed, they will be indexed with the PPC variant
-> of the hash algorithm.  This will be self consistent, and everything
-> will work fine --- until the filesystem gets corrupted to the point
-> where e2fsprogs needs to rebuild one or more hashed directories.  At
-> that point the directories will be rebuilt using the same conventions
-> used by all other conventions, but the directories will no longer be
-> useful on the PPC kernel.
->=20
-> Joerg, can you confirm this?
+> > Finally, the extents format has the capability (though no code is
+> > implemented for this yet) to store a checksum in each index and extent
+> > block... storing an ext3_extent_tail (checksum, inode+generation
+> > backpointer) as the last entry in the block.
+> 
+> Old style indirect blocks will need them too. My thinking was
+> to use another block for those (so a indirect block would be two nearby
+> blocks) 
 
-Yes.
+We couldn't do this for the existing indirect blocks easily, but what I'd
+thought is that it is possible to either have e2fsck convert block-mapped
+files to extent mapped (with extent tail of checksum + inode backpointer)
+or have a new block-mapped extent (for fragmented files), which would also
+have a header with magic (so that random garbage in a large filesystem
+doesn't look like a valid [dt]indirect block) and also have the extent
+tail to contain the checksum + inode backpointer.
 
-> On a PPC machine, can you create a smallish ext3 filesystem (say, 4-8
-> megabytes), create a directory with enough files in it that it becomes
-> indexed (verify using lsattr), and show that it works just fine on a
-> PPC.  Now take that image, and transfer it to an x86 machine;
+> Inodes need them, but with the inode extension that will be hopefully
+> not a problem to keep a few bytes for this.
 
-I don't have a x86 machine.
+Yes, it might even be valuable to put this into the "small" inode so
+that it can be used for existing ext3 filesystems.
 
-> you should find that the kernel can't look up any of the directories on
-> the x86 machine.  If you then run e2fsck -fD on that filesystem
-> (running the e2fsck on either x86 or PPC; it shouldn't make a
-> difference), then the resulting filesystem should work just fine on the
-> x86, and fail on the PPC.
+> And directories, which should be relatively easy to extend with
+> the current format.
 
-I put two files at http://www.minet.uni-jena.de/~joergs/ img-broken and
-img-working. In the last image, img-working, I can access all files,
-especially "test/broken f=FCr=DF". The first image, img-broken, is the
-image after running e2fsck -Df on img-working. So you can test if one
-of these images work on x86, especially if the file "test/broken f=FCr=DF"
-is accessable.
+Haven't thought about that specifically for directories, but I do have
+some ideas about enhancing the directory format to allow storing more
+data into the dir_entries (e.g. 64-bit inode) and possibly using the
+same code to store a tree of EAs in the same format as directories, so
+the htree code can be used to do lookups if there are lots of EAs.
 
-Bye, J=F6rg.
---=20
-Wer A sagt, mu=DF nicht B sagen. Er kann auch erkennen, da=DF A falsch war.
-      	    	      	       	       	    	(Erich K=E4stner)
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
---pWyiEgJYm5f9v55/
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.5 (GNU/Linux)
-
-iQEVAwUBRR8EXYZ13Cz2nwVYAQJlLggAtGZOiXZDYJirgI579vZFdfA2Wl/7mxXn
-HfWCrrDcYco5ZtlTJIgZ/MbZfWtb3FaUlB4H0AVEK83xX5cr0tDLLQ3sY3I0jSAK
-VJQWxJafhvFij2nqgtmr3ZhWv/tP6Ye4Fb1UGg/6apNd0RY9IAAoVdqYEkDSavO1
-YI5MNdNOav2XyboAcGCfqL6bMF4yY3A4VvxevbbUdv00yOtGrm8a4hYyZdckn1lN
-S9+j0sejYFnSQkuGd7Veb5vN0vVJy988wIuHvUUE4V3E/jCUPJS9njJH5lGq1ePF
-4qPTmHUtthZL8dTBw1H29edNjj+bHQy4xCH+5FeTBZWhxo3/DaW9JQ==
-=auh3
------END PGP SIGNATURE-----
-
---pWyiEgJYm5f9v55/--
