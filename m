@@ -1,40 +1,48 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Directories > 2GB
-Date: Wed, 4 Oct 2006 10:56:56 -0600
-Message-ID: <20061004165655.GD22010@schatzie.adilger.int>
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: different defaults in mke2fs.conf vs. the code itself?
+Date: Wed, 04 Oct 2006 12:37:02 -0500
+Message-ID: <4523F13E.5090309@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:4240 "EHLO mx1.redhat.com")
+	by vger.kernel.org with ESMTP id S964915AbWJDRhH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2006 13:37:07 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id k94Hb6pt012572
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Oct 2006 13:37:06 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id k94Hb579031309
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Oct 2006 13:37:05 -0400
+Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id k94Hb3T1031351
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Oct 2006 13:37:05 -0400
+To: ext4 development <linux-ext4@vger.kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-For ext4 we are exploring the possibility of directories being larger
-than 2GB in size.  For ext3/ext4 the 2GB limit is about 50M files, and
-the 2-level htree limit is about 25M files (this is a kernel code and not
-disk format limit).
+from mke2fs.conf in 1.39:
 
-Amusingly (or not) some users of very large filesystems hit this limit
-with their HPC batch jobs because they have 10,000 or 128,000 processes
-creating files in a directory on an hourly basis (job restart files,
-data dumps for visualization, etc) and it is not always easy to change
-the apps.
+[defaults]
+        base_features = sparse_super,filetype,resize_inode,dir_index
+        blocksize = 4096
 
-My question (esp. for XFS folks) is if anyone has looked at this problem
-before, and what kind of problems they might have hit in userspace and in
-the kernel due to "large" directory sizes (i.e. > 2GB).  It appears at
-first glance that 64-bit systems will do OK because off_t is a long
-(for telldir output), but that 32-bit systems would need to use O_LARGEFILE
-when opening the file in order to be able to read the full directory
-contents.  It might also be possible to return -EFBIG only in the case
-that telldir is used beyond 2GB (the LFS spec doesn't really talk about
-large directories at all).
+and yet (for example) in PRS():
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+        if (blocksize <= 0) {
+                profile_get_integer(profile, "defaults", "blocksize", 0,
+                                    1024, &use_bsize);
+                profile_get_integer(profile, "fs_types", fs_type,
+                                    "blocksize", use_bsize, &use_bsiz
 
+So the code itself defaults to 1k blocks, but the shipped config file
+defaults to 4k blocks?  We noticed this when mke2fs.conf went missing
+from the install environment, and formatting large filesystems took a
+-very- long time.
+
+Shouldn't these match?  Or for that matter, why should the shipped
+config file be either overriding or re-stating defaults in the code
+itself?  Seems a bit strange to me.
+
+-Eric
