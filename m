@@ -1,48 +1,39 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: Re: Directories > 2GB
-Date: Wed, 04 Oct 2006 12:51:20 -0500
-Message-ID: <1159984281.10427.7.camel@kleikamp.austin.ibm.com>
-References: <20061004165655.GD22010@schatzie.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 compat flag assignments
+Date: Wed, 4 Oct 2006 16:04:40 -0400
+Message-ID: <20061004200440.GB1656@thunk.org>
+References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030455AbWJDRva@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
-In-Reply-To: <20061004165655.GD22010@schatzie.adilger.int>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:19161 "EHLO thunker.thunk.org")
+	by vger.kernel.org with ESMTP id S1751017AbWJDUEp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2006 16:04:45 -0400
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Content-Disposition: inline
+In-Reply-To: <20060928085515.GC27104@openx1.frec.bull.fr>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-10-04 at 10:56 -0600, Andreas Dilger wrote:
-> For ext4 we are exploring the possibility of directories being larger
-> than 2GB in size.  For ext3/ext4 the 2GB limit is about 50M files, and
-> the 2-level htree limit is about 25M files (this is a kernel code and not
-> disk format limit).
-> 
-> Amusingly (or not) some users of very large filesystems hit this limit
-> with their HPC batch jobs because they have 10,000 or 128,000 processes
-> creating files in a directory on an hourly basis (job restart files,
-> data dumps for visualization, etc) and it is not always easy to change
-> the apps.
-> 
-> My question (esp. for XFS folks) is if anyone has looked at this problem
-> before, and what kind of problems they might have hit in userspace and in
-> the kernel due to "large" directory sizes (i.e. > 2GB).  It appears at
-> first glance that 64-bit systems will do OK because off_t is a long
-> (for telldir output), but that 32-bit systems would need to use O_LARGEFILE
-> when opening the file in order to be able to read the full directory
-> contents.  It might also be possible to return -EFBIG only in the case
-> that telldir is used beyond 2GB (the LFS spec doesn't really talk about
-> large directories at all).
+On Thu, Sep 28, 2006 at 10:55:15AM +0200, Alexandre Ratchov wrote:
+> struct ext4_super_block
+> {
+> 	/* at offset 0xfe */
+> 	__le32	s_desc_size;		/* Group descriptor size */
+> 	/* at offset 0x150 */
+> 	__le32	s_blocks_count_hi;	/* Blocks count */
+> 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
+> 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
+> 	__le32	s_jnl_blocks_hi[17];	/* Backup of the journal inode */
+> };
 
-ext3 directory entries are always multiples of 4 bytes in length.  So
-the lowest 2 bits of the offset are always zero.  Right?  Why not shift
-the returned offset and f_pos 2 bits right?
+Why do we need to have the high blocks # of the journal inode.
+s_jnl_blocks was just a backup of the i_blocks[] array.  But if we are
+assuming that we will only support 64-bits using extents, we shouldn't
+need s_jnl_blocks_hi[].  How specifically is this array being used in
+the patches?
 
-JFS uses an index into an array for the position (which isn't even in
-the directory traversal order) so it can handle about 2G files in a
-directory (although deleted entries aren't reused).
--- 
-David Kleikamp
-IBM Linux Technology Center
+
+						- Ted
+
