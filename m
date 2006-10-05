@@ -1,17 +1,16 @@
 From: Andrew Morton <akpm@osdl.org>
 Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Thu, 5 Oct 2006 13:19:39 -0700
-Message-ID: <20061005131939.ccd1fd48.akpm@osdl.org>
+Date: Thu, 5 Oct 2006 14:59:28 -0700
+Message-ID: <20061005145928.1c4c96ba.akpm@osdl.org>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Linus Torvalds <torvalds@osdl.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:8593 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751222AbWJEUT4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2006 16:19:56 -0400
+Received: from smtp.osdl.org ([65.172.181.4]:33202 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932312AbWJEV7g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2006 17:59:36 -0400
 To: Dave Kleikamp <shaggy@austin.ibm.com>
 In-Reply-To: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -32,7 +31,10 @@ Dave Kleikamp <shaggy@austin.ibm.com> wrote:
 > applied to the new code.  I'll continue to watch ext3/jbd for patches
 > that need to be ported to ext4/jbd2.
 
-OK...
+The only patch I can see at present in -mm and all the git trees is
+fs-cache-provide-a-filesystem-specific-syncable-page-bit.patch, which
+touches ext3.  It renames PageChecked to PageFsMisc and so it'll break the
+build nicely.
 
-Linus, what's the best way of doing this?  Will git dtrt with a patch which
-copies files, or would a script which does the mkdir's and cp's be better?
+I'll try to remember to cc this list on jbd and ext3-affecting patches.
+
