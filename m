@@ -1,30 +1,48 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 compat flag assignments
-Date: Wed, 4 Oct 2006 22:02:15 -0400
-Message-ID: <20061005020215.GD19647@thunk.org>
-References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr> <20061004200440.GB1656@thunk.org> <20061005001906.GN22010@schatzie.adilger.int>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: creation time stamps for ext4 ?
+Date: Thu, 5 Oct 2006 09:19:37 -0600
+Message-ID: <20061005151937.GV22010@schatzie.adilger.int>
+References: <E1GVUd2-0006O6-00@intern.SerNet.DE>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext3-users@redhat.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:3037 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1751324AbWJECCR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2006 22:02:17 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:53739 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751495AbWJEPTj
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Oct 2006 11:19:39 -0400
+To: =?utf-8?Q?Bj=F6rn?= JACKE <bjacke@sernet.de>
 Content-Disposition: inline
-In-Reply-To: <20061005001906.GN22010@schatzie.adilger.int>
+In-Reply-To: <E1GVUd2-0006O6-00@intern.SerNet.DE>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 04, 2006 at 06:19:06PM -0600, Andreas Dilger wrote:
-> Good question, I don't know that it is.  Even if the journal was extent
-> mapped (possible, but would need support in e2fsprogs for this) the
-> data would be stored in the same sized i_blocks array.
+On Oct 05, 2006  15:57 +0200, Bj=EF=BF=BDrn JACKE wrote:
+> I would like to know if there are any plans to introduce a creation=20
+> timestamp in future ext3/4 versions. Having a 4th timestamp saving th=
+e=20
+> creation time would be very good for projekts like Samba for example.=
+=20
+> It would be important that creation time can also be set manually=20
+> later on by some system call. Systems like FreeBSD's UFS and Solais'=20
+> ZFS already support creation times. Unfortunately Linux doesn't have=20
+> such a thing standarized anywhere but it would be geat if it would.
+>=20
+> Are there any plans to add this?
 
-That won't be too hard.  The e2fsprogs code is designed to be
-identical to the kernel code, so we just drop in a new version of
-fs/ext3/recovery.c that understands extents into e2fsck/recovery.c,
-and e2fsprogs will have support.  :-)
+I've given this some thought for adding as part of the nsec timestamp
+patch.  That is more feasable if we move the nsec ctime into the main
+inode to double as the version field.
 
-						- Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
+-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
