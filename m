@@ -1,56 +1,72 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: ext4 compat flag assignments
-Date: Fri, 06 Oct 2006 15:33:53 +0200
-Message-ID: <45265B41.6090006@bull.net>
-References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr> <20061004200440.GB1656@thunk.org>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
+Date: Fri, 6 Oct 2006 06:57:35 -0700
+Message-ID: <20061006065735.1b51cc18.akpm@osdl.org>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
+	<20061005205526.7fe744f5.akpm@osdl.org>
+	<20061005215442.310b7792.rdunlap@xenotime.net>
+	<20061006055305.GG22010@schatzie.adilger.int>
+	<20061005230401.0159e31b.akpm@osdl.org>
+	<20061006064103.GJ22010@schatzie.adilger.int>
+	<20061005235017.cbc4fdab.akpm@osdl.org>
+	<m3k63divkw.fsf@bzzz.home.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Kleikamp <shaggy@austin.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:3523 "EHLO
-	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
-	id S1422689AbWJFNfN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Oct 2006 09:35:13 -0400
-To: Theodore Tso <tytso@mit.edu>
-In-Reply-To: <20061004200440.GB1656@thunk.org>
+Received: from smtp.osdl.org ([65.172.181.4]:29377 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932200AbWJFN5n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 09:57:43 -0400
+To: Alex Tomas <alex@clusterfs.com>
+In-Reply-To: <m3k63divkw.fsf@bzzz.home.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Thu, Sep 28, 2006 at 10:55:15AM +0200, Alexandre Ratchov wrote:
->> struct ext4_super_block
->> {
->> 	/* at offset 0xfe */
->> 	__le32	s_desc_size;		/* Group descriptor size */
->> 	/* at offset 0x150 */
->> 	__le32	s_blocks_count_hi;	/* Blocks count */
->> 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
->> 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
->> 	__le32	s_jnl_blocks_hi[17];	/* Backup of the journal inode */
->> };
->=20
-> Why do we need to have the high blocks # of the journal inode.
-> s_jnl_blocks was just a backup of the i_blocks[] array.  But if we ar=
-e
-> assuming that we will only support 64-bits using extents, we shouldn'=
-t
-> need s_jnl_blocks_hi[].  How specifically is this array being used in
-> the patches?
+On Fri, 06 Oct 2006 14:31:59 +0400
+Alex Tomas <alex@clusterfs.com> wrote:
 
-The s_jnl_blocks_hi[] array is not used in the current patchset.
-Alexandre wanted to reserve these fields for a future use, for instance=
-=20
-to support larger inode sizes.
-As we'll not use them in the short term and we'll still need to think=20
-about that, you can remove this array.
+> >>>>> Andrew Morton (AM) writes:
+> 
+>  AM> On Fri, 6 Oct 2006 00:41:03 -0600
+>  AM> Andreas Dilger <adilger@clusterfs.com> wrote:
+> 
+>  >> The big performance win will come with mballoc and delalloc.  CFS has
+>  >> been using mballoc for a few years already with Lustre, and IBM + Bull
+>  >> did a lot of benchmarking on it.  The reason it isn't in the first set of
+>  >> patches is partly a manageability issue, and partly because it doesn't
+>  >> directly affect the on-disk format (outside of much better allocation)
+>  >> so it isn't critical to get into the first round of changes.  I believe
+>  >> Alex is working on a new set of patches right now.
+> 
+>  AM> Are you sure that these things will improve allocation much?  Reservations
+>  AM> made a big improvement there.
+> 
+> it depends on underlaying storage and workload. mballoc uses buddy
+> internally. it's much simpler and cheaper to find free 2^N blocks
+> compared to bitmap.
 
-Regards,
-   Val=E9rie
+So mballoc's application is to save CPU cycles?
 
--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> this is especially important for arrays like
+> DDN and raid5/6 because they require stripe-aligned/-sized requests
+> for good throughput.
+
+Does this not imply that there needs to be new linkage between the
+filesystem and the lower layers?  So that raid/etc can inform the
+filesystem driver about its alignment and striping requirements?
+
+> also, last mballoc takes logical block into
+> account and can preallocate few chunks at different logical offsets
+> for a file. imagine torrent downloading different pieces from few peers.
+
+hm.  You don't need anything as exotic as bittorrent to show up problems in
+that area:
+
+box:/usr/src/25> sudo bmap vmlinux | wc -l
+1152
+
+
