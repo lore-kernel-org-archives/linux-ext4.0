@@ -1,83 +1,56 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Fri, 06 Oct 2006 07:50:32 -0500
-Message-ID: <1160139032.8658.17.camel@kleikamp.austin.ibm.com>
-References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
-	 <20061005131939.ccd1fd48.akpm@osdl.org>
-	 <Pine.LNX.4.64.0610051619540.3952@g5.osdl.org>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: ext4 compat flag assignments
+Date: Fri, 06 Oct 2006 15:33:53 +0200
+Message-ID: <45265B41.6090006@bull.net>
+References: <20060922091520.GC6335@schatzie.adilger.int> <20060928085515.GC27104@openx1.frec.bull.fr> <20061004200440.GB1656@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:43152 "EHLO
-	e36.co.us.ibm.com") by vger.kernel.org with ESMTP id S1751257AbWJFMug
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Oct 2006 08:50:36 -0400
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e36.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k96CoZj9018837
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 08:50:35 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id k96CoZKc162488
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 06:50:35 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k96CoYhO018112
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 06:50:35 -0600
-To: Linus Torvalds <torvalds@osdl.org>
-In-Reply-To: <Pine.LNX.4.64.0610051619540.3952@g5.osdl.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:3523 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1422689AbWJFNfN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Oct 2006 09:35:13 -0400
+To: Theodore Tso <tytso@mit.edu>
+In-Reply-To: <20061004200440.GB1656@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2006-10-05 at 16:25 -0700, Linus Torvalds wrote:
-> 
-> On Thu, 5 Oct 2006, Andrew Morton wrote:
-> > 
-> > Linus, what's the best way of doing this?  Will git dtrt with a patch which
-> > copies files, or would a script which does the mkdir's and cp's be better?
-> 
-> Git should dtrt.
-> 
-> In fact, if you use
-> 
-> 	git diff -C
-> 
-> it should generate the appropriate "file copied" things automatically, and 
-> you don't need any huge file at all, you'll get a "patch" that looks 
-> something like
-> 
-> 	diff --git a/fs/ext3/inode.c b/fs/ext4/inode.c
-> 	similarity index 100%
-> 	copy from fs/ext3/inode.c
-> 	copy to fs/ext4/inode.c
-> 	diff --git a/fs/ext3/super.c b/fs/ext4/super.c
-> 	similarity index 98%
-> 	copy from fs/ext3/super.c
-> 	copy to fs/ext4/super.c
-> 	index xyz..zzy 100644
-> 	--- a/fs/ext3/super.c
-> 	+++ b/fs/ext4/super.c
-> 	  .. small diff that changes "ext3" to "ext4" goes here ..
-> 
-> 
-> ie you'll effectively get the best of both worlds: a "diff", but one that 
-> is actually readable and shows what is going on.
+Theodore Tso wrote:
+> On Thu, Sep 28, 2006 at 10:55:15AM +0200, Alexandre Ratchov wrote:
+>> struct ext4_super_block
+>> {
+>> 	/* at offset 0xfe */
+>> 	__le32	s_desc_size;		/* Group descriptor size */
+>> 	/* at offset 0x150 */
+>> 	__le32	s_blocks_count_hi;	/* Blocks count */
+>> 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
+>> 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
+>> 	__le32	s_jnl_blocks_hi[17];	/* Backup of the journal inode */
+>> };
+>=20
+> Why do we need to have the high blocks # of the journal inode.
+> s_jnl_blocks was just a backup of the i_blocks[] array.  But if we ar=
+e
+> assuming that we will only support 64-bits using extents, we shouldn'=
+t
+> need s_jnl_blocks_hi[].  How specifically is this array being used in
+> the patches?
 
-We haven't been using git to manage ext4 so far, although in hindsight
-it probably would have made things easier.  I'm assuming that you're
-just suggesting this for educational purposes and that git will handle
-the patches that Andrew picked up into -mm just fine.
+The s_jnl_blocks_hi[] array is not used in the current patchset.
+Alexandre wanted to reserve these fields for a future use, for instance=
+=20
+to support larger inode sizes.
+As we'll not use them in the short term and we'll still need to think=20
+about that, you can remove this array.
 
-I could re-generate the patches that do the copies from git, but I don't
-believe it will be that beneficial at this point.
+Regards,
+   Val=E9rie
 
-> I hate to beat my own drum (not really), but git really _is_ a lot better 
-> than anything else out there ;)
-
-No argument here :-)
-
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
-
+-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
