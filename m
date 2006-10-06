@@ -1,57 +1,39 @@
-From: Linus Torvalds <torvalds@osdl.org>
+From: Andrew Morton <akpm@osdl.org>
 Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Thu, 5 Oct 2006 16:25:39 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0610051619540.3952@g5.osdl.org>
+Date: Thu, 5 Oct 2006 17:39:33 -0700
+Message-ID: <20061005173933.f54555fb.akpm@osdl.org>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
- <20061005131939.ccd1fd48.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:5320 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751445AbWJEXZn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2006 19:25:43 -0400
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061005131939.ccd1fd48.akpm@osdl.org>
+Received: from smtp.osdl.org ([65.172.181.4]:37852 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932496AbWJFAjg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2006 20:39:36 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Thu, 05 Oct 2006 13:23:30 -0500
+Dave Kleikamp <shaggy@austin.ibm.com> wrote:
 
-
-On Thu, 5 Oct 2006, Andrew Morton wrote:
+> I have rebuilt the ext4/jbd2 patches against linux-2.6.19-rc1.  The
+> patch set is located at
+> ftp://kernel.org/pub/linux/kernel/people/shaggy/ext4/2.6.19-rc1/ext4-patches-2.6.19-rc1.tar.gz
 > 
-> Linus, what's the best way of doing this?  Will git dtrt with a patch which
-> copies files, or would a script which does the mkdir's and cp's be better?
+> Broken out patches in
+> ftp://kernel.org/pub/linux/kernel/people/shaggy/ext4/2.6.19-rc1/ext4-patches
+> 
+> The patches begin with exact copies of the rc1 version of ext3 and jbd,
+> so there are no ext3/jbd patches currently in mainline that need to be
+> applied to the new code.  I'll continue to watch ext3/jbd for patches
+> that need to be ported to ext4/jbd2.
 
-Git should dtrt.
+Could we please have a few nice words about ext4 for the record?  Like,
+what its features are, how one creates an instance, where to get the
+correct userspace tools from, stability level, any known shortcomings,
+issues, etc?
 
-In fact, if you use
-
-	git diff -C
-
-it should generate the appropriate "file copied" things automatically, and 
-you don't need any huge file at all, you'll get a "patch" that looks 
-something like
-
-	diff --git a/fs/ext3/inode.c b/fs/ext4/inode.c
-	similarity index 100%
-	copy from fs/ext3/inode.c
-	copy to fs/ext4/inode.c
-	diff --git a/fs/ext3/super.c b/fs/ext4/super.c
-	similarity index 98%
-	copy from fs/ext3/super.c
-	copy to fs/ext4/super.c
-	index xyz..zzy 100644
-	--- a/fs/ext3/super.c
-	+++ b/fs/ext4/super.c
-	  .. small diff that changes "ext3" to "ext4" goes here ..
-
-
-ie you'll effectively get the best of both worlds: a "diff", but one that 
-is actually readable and shows what is going on.
-
-I hate to beat my own drum (not really), but git really _is_ a lot better 
-than anything else out there ;)
-
-		Linus
+Thanks.
