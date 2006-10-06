@@ -1,40 +1,50 @@
-From: Alex Tomas <alex@clusterfs.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Fri, 06 Oct 2006 14:34:59 +0400
-Message-ID: <m3fye1ivfw.fsf@bzzz.home.net>
-References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
-	<20061005205526.7fe744f5.akpm@osdl.org>
-	<20061005205829.f6a5b031.akpm@osdl.org>
+Date: Fri, 6 Oct 2006 08:21:05 -0400
+Message-ID: <20061006122105.GA21816@thunk.org>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com> <20061005205526.7fe744f5.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Alexandre Ratchov <alexandre.ratchov@bull.net>
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [80.71.248.82] ([80.71.248.82]:48600 "EHLO gw.home.net")
-	by vger.kernel.org with ESMTP id S1751427AbWJFKdv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 06:33:51 -0400
+Received: from thunk.org ([69.25.196.29]:32448 "EHLO thunker.thunk.org")
+	by vger.kernel.org with ESMTP id S1751080AbWJFMVO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 08:21:14 -0400
 To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061005205829.f6a5b031.akpm@osdl.org> (Andrew Morton's message of "Thu, 5 Oct 2006 20:58:29 -0700")
+Content-Disposition: inline
+In-Reply-To: <20061005205526.7fe744f5.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> Andrew Morton (AM) writes:
+On Thu, Oct 05, 2006 at 08:55:26PM -0700, Andrew Morton wrote:
+> On Thu, 05 Oct 2006 13:23:30 -0500
+> Dave Kleikamp <shaggy@austin.ibm.com> wrote:
+> 
+> > I have rebuilt the ext4/jbd2 patches against linux-2.6.19-rc1.  The
+> > patch set is located at
+> > ftp://kernel.org/pub/linux/kernel/people/shaggy/ext4/2.6.19-rc1/ext4-patches-2.6.19-rc1.tar.gz
+> > 
+> 
+> So let me see if I have this right.
+> 
+> You grab Alexandre's kit from http://www.bullopensource.org/ext4/20060926/
+> and a plain old `mke2fs -j' gives a filesystem which will mount as ext3 or
+> ext4.
+> 
+> If you then mount this filesystem with `-t ext4dev -o extents', it becomes
+> incompatible with the ext3 driver.  Yes?
 
- AM> On Thu, 5 Oct 2006 20:55:26 -0700
- AM> Andrew Morton <akpm@osdl.org> wrote:
+I agree that's the wrong behaviour, and I've always hated the idea of
+using using mount -o options to enable ext3/4 features.  (When do it
+with EA's and acl's, sigh, and that's wrong too, but at least I was
+able to paper over that later by adding default mount option support
+into the superblock.)
 
- >> You grab Alexandre's kit from http://www.bullopensource.org/ext4/20060926/
- >> and a plain old `mke2fs -j' gives a filesystem which will mount as ext3 or
- >> ext4.
- >> 
- >> If you then mount this filesystem with `-t ext4dev -o extents', it becomes
- >> incompatible with the ext3 driver.  Yes?
+The right way to do this is to only enable a feature like extents
+after using tune2fs -O extents, or creating a filesystem with mke2fs
+-O extents.
 
- AM> `mke2fs -O extents' doesn't work.  Should it?
+Can we change the patches to do this, please?
 
-I believe we keep extents as a mount option for a while, just
-for development purposes. though there is an agreement about
-mke2fs -O extents, IIRC.
-
-thanks, Alex
+						- Ted
