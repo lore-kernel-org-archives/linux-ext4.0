@@ -1,38 +1,38 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: + ext4-rename-logic_sb_block.patch added to -mm tree
-Date: Fri, 6 Oct 2006 00:07:57 -0600
-Message-ID: <20061006060757.GI22010@schatzie.adilger.int>
-References: <200610060306.k96368Tu015253@shell0.pdx.osdl.net>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
+Date: Thu, 5 Oct 2006 23:10:56 -0700
+Message-ID: <20061005231056.174ee381.akpm@osdl.org>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
+	<20061005213133.2c4cd82d.akpm@osdl.org>
+	<20061006055829.GH22010@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:34500 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S932612AbWJFGIA
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Oct 2006 02:08:00 -0400
-To: akpm@osdl.org
-Content-Disposition: inline
-In-Reply-To: <200610060306.k96368Tu015253@shell0.pdx.osdl.net>
+Received: from smtp.osdl.org ([65.172.181.4]:58290 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932617AbWJFGLC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 02:11:02 -0400
+To: Andreas Dilger <adilger@clusterfs.com>
+In-Reply-To: <20061006055829.GH22010@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 05, 2006  20:06 -0700, akpm@osdl.org wrote:
-> Subject: ext4: rename logic_sb_block
-> From: Andrew Morton <akpm@osdl.org>
-> 
-> I assume this means "logical sb block".  So call it that.
-> 
-> I still don't understand the name though.  A block is a block.  What's
-> different about this one?
+On Thu, 5 Oct 2006 23:58:29 -0600
+Andreas Dilger <adilger@clusterfs.com> wrote:
 
-The ext3 superblock is at a 1kB offset from the start of the device.
-For 1kB blocksize filesystems this is at block 1, while for 2kB+ blocksize
-filesystems this is block 0 + 1024 bytes...
+> but the patches have not been changed for ext4 (which should really
+> default to using extents on a filesystem with the INCOMPAT_EXTENT feature
+> set unless told otherwise).  That is a necessity for filesystems larger
+> than 2^32 blocks, since there is no way to create old block-mapped files
+> past that limit.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+That's news to me.  So we only use 48-bit block numbers for extents and
+not for old-style indirect blocks?
 
+How much performance improvement do they get, btw?  CPU or IO? I'm not noticing
+any difference.
+
+Has been a while since I did any fs testing.  Boy, ext3 is beating the crap
+out of ext2 for quality of file layout.
