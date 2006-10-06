@@ -1,57 +1,34 @@
 From: Dave Kleikamp <shaggy@austin.ibm.com>
-Subject: [PATCH] Get rid of extents mount option
-Date: Fri, 06 Oct 2006 16:10:14 -0500
-Message-ID: <1160169015.8658.50.camel@kleikamp.austin.ibm.com>
+Subject: [PATCH] Get rid of extents mount option - try 2
+Date: Fri, 06 Oct 2006 16:21:40 -0500
+Message-ID: <1160169700.8658.56.camel@kleikamp.austin.ibm.com>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 	 <20061005205526.7fe744f5.akpm@osdl.org>  <20061006122105.GA21816@thunk.org>
+	 <1160169015.8658.50.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Cc: Andrew Morton <akpm@osdl.org>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:19354 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1422959AbWJFVKX
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Oct 2006 17:10:23 -0400
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e33.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k96LAKW1010826
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 17:10:20 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id k96LAIDA523010
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 15:10:20 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k96LAHYE005045
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 15:10:18 -0600
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:3272 "EHLO e1.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1422976AbWJFVVp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 17:21:45 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id k96LLhFX024830
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 17:21:43 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id k96LLgbq114228
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 17:21:42 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k96LLgY8001895
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Oct 2006 17:21:42 -0400
 To: Theodore Tso <tytso@mit.edu>
-In-Reply-To: <20061006122105.GA21816@thunk.org>
+In-Reply-To: <1160169015.8658.50.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2006-10-06 at 08:21 -0400, Theodore Tso wrote:
-> On Thu, Oct 05, 2006 at 08:55:26PM -0700, Andrew Morton wrote:
-> > So let me see if I have this right.
-> > 
-> > You grab Alexandre's kit from http://www.bullopensource.org/ext4/20060926/
-> > and a plain old `mke2fs -j' gives a filesystem which will mount as ext3 or
-> > ext4.
-> > 
-> > If you then mount this filesystem with `-t ext4dev -o extents', it becomes
-> > incompatible with the ext3 driver.  Yes?
-> 
-> I agree that's the wrong behaviour, and I've always hated the idea of
-> using using mount -o options to enable ext3/4 features.  (When do it
-> with EA's and acl's, sigh, and that's wrong too, but at least I was
-> able to paper over that later by adding default mount option support
-> into the superblock.)
-> 
-> The right way to do this is to only enable a feature like extents
-> after using tune2fs -O extents, or creating a filesystem with mke2fs
-> -O extents.
-> 
-> Can we change the patches to do this, please?
-
-Something like this?
+I rushed that out too quick.  This one cleans up the header files too.
 
 EXT4: Get rid of extents mount option
 
@@ -132,8 +109,30 @@ diff -Nurp linux-orig/fs/ext4/super.c linux/fs/ext4/super.c
  		default:
  			printk (KERN_ERR
  				"EXT4-fs: Unrecognized mount option \"%s\" "
+diff -Nurp linux-orig/include/linux/ext4_fs.h linux/include/linux/ext4_fs.h
+--- linux-orig/include/linux/ext4_fs.h	2006-10-05 07:39:08.000000000 -0500
++++ linux/include/linux/ext4_fs.h	2006-10-06 16:13:07.000000000 -0500
+@@ -399,7 +399,6 @@ struct ext4_inode {
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+ #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+ #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+-#define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
+ 
+ /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
+ #ifndef _LINUX_EXT2_FS_H
+diff -Nurp linux-orig/include/linux/ext4_jbd2.h linux/include/linux/ext4_jbd2.h
+--- linux-orig/include/linux/ext4_jbd2.h	2006-10-05 07:39:08.000000000 -0500
++++ linux/include/linux/ext4_jbd2.h	2006-10-06 16:17:20.000000000 -0500
+@@ -33,7 +33,7 @@
+ 
+ #define EXT4_SINGLEDATA_TRANS_BLOCKS(sb)				\
+ 	(EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)	\
+-		|| test_opt(sb, EXTENTS) ? 27U : 8U)
++		? 27U : 8U)
+ 
+ /* Extended attribute operations touch at most two data buffers,
+  * two bitmap buffers, and two group summaries, in addition to the inode
 
-Shaggy
 -- 
 David Kleikamp
 IBM Linux Technology Center
