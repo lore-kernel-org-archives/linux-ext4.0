@@ -1,31 +1,29 @@
 From: Andrew Morton <akpm@osdl.org>
 Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Thu, 5 Oct 2006 20:58:29 -0700
-Message-ID: <20061005205829.f6a5b031.akpm@osdl.org>
+Date: Thu, 5 Oct 2006 21:31:33 -0700
+Message-ID: <20061005213133.2c4cd82d.akpm@osdl.org>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
-	<20061005205526.7fe744f5.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:13973 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751766AbWJFD6f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2006 23:58:35 -0400
-To: Dave Kleikamp <shaggy@austin.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-In-Reply-To: <20061005205526.7fe744f5.akpm@osdl.org>
+Received: from smtp.osdl.org ([65.172.181.4]:47004 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1750751AbWJFEbg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 00:31:36 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 5 Oct 2006 20:55:26 -0700
-Andrew Morton <akpm@osdl.org> wrote:
 
-> You grab Alexandre's kit from http://www.bullopensource.org/ext4/20060926/
-> and a plain old `mke2fs -j' gives a filesystem which will mount as ext3 or
-> ext4.
-> 
-> If you then mount this filesystem with `-t ext4dev -o extents', it becomes
-> incompatible with the ext3 driver.  Yes?
+If you mount the filesystem with `-t ext4dev -o extents' then create some
+extenty files, then unount it and then mount it without `-o extents', the
+driver will then refuse to create extenty files.
 
-`mke2fs -O extents' doesn't work.  Should it?
+IOW: you need to give it `-o extents' each time.
+
+That seems fairly pointless.  In fact, if I'd created the fs with `mke2fs
+-O extents' (which doesn't work at present) then I'd expect it to use
+extents from thereon after, without requiring `mount -o extents'.
+
