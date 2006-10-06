@@ -1,72 +1,48 @@
-From: Andrew Morton <akpm@osdl.org>
+From: Linus Torvalds <torvalds@osdl.org>
 Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
-Date: Fri, 6 Oct 2006 06:57:35 -0700
-Message-ID: <20061006065735.1b51cc18.akpm@osdl.org>
+Date: Fri, 6 Oct 2006 09:11:48 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0610060908380.3952@g5.osdl.org>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
-	<20061005205526.7fe744f5.akpm@osdl.org>
-	<20061005215442.310b7792.rdunlap@xenotime.net>
-	<20061006055305.GG22010@schatzie.adilger.int>
-	<20061005230401.0159e31b.akpm@osdl.org>
-	<20061006064103.GJ22010@schatzie.adilger.int>
-	<20061005235017.cbc4fdab.akpm@osdl.org>
-	<m3k63divkw.fsf@bzzz.home.net>
+ <20061005131939.ccd1fd48.akpm@osdl.org>  <Pine.LNX.4.64.0610051619540.3952@g5.osdl.org>
+ <1160139032.8658.17.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@osdl.org>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:29377 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S932200AbWJFN5n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 09:57:43 -0400
-To: Alex Tomas <alex@clusterfs.com>
-In-Reply-To: <m3k63divkw.fsf@bzzz.home.net>
+Received: from smtp.osdl.org ([65.172.181.4]:43235 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1751562AbWJFQLx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 12:11:53 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1160139032.8658.17.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 06 Oct 2006 14:31:59 +0400
-Alex Tomas <alex@clusterfs.com> wrote:
 
-> >>>>> Andrew Morton (AM) writes:
+
+On Fri, 6 Oct 2006, Dave Kleikamp wrote:
+> On Thu, 2006-10-05 at 16:25 -0700, Linus Torvalds wrote:
 > 
->  AM> On Fri, 6 Oct 2006 00:41:03 -0600
->  AM> Andreas Dilger <adilger@clusterfs.com> wrote:
-> 
->  >> The big performance win will come with mballoc and delalloc.  CFS has
->  >> been using mballoc for a few years already with Lustre, and IBM + Bull
->  >> did a lot of benchmarking on it.  The reason it isn't in the first set of
->  >> patches is partly a manageability issue, and partly because it doesn't
->  >> directly affect the on-disk format (outside of much better allocation)
->  >> so it isn't critical to get into the first round of changes.  I believe
->  >> Alex is working on a new set of patches right now.
-> 
->  AM> Are you sure that these things will improve allocation much?  Reservations
->  AM> made a big improvement there.
-> 
-> it depends on underlaying storage and workload. mballoc uses buddy
-> internally. it's much simpler and cheaper to find free 2^N blocks
-> compared to bitmap.
+> We haven't been using git to manage ext4 so far, although in hindsight
+> it probably would have made things easier.  I'm assuming that you're
+> just suggesting this for educational purposes and that git will handle
+> the patches that Andrew picked up into -mm just fine.
 
-So mballoc's application is to save CPU cycles?
+Well, also that even if you're not using git, what any random person can 
+do is to actually just import the current state into git, and do the 
+simple "git diff -C" thing to get the nicer diff.
 
-> this is especially important for arrays like
-> DDN and raid5/6 because they require stripe-aligned/-sized requests
-> for good throughput.
+One of the advantages about git is that "intent" doesn't matter. Git only 
+tracks cold, hard data. So if you copied a file, git doesn't care one whit 
+whether you _tell_ it that you copied it or not: it will purely look at 
+the end result, and say "you copied it" if the file looks the same.
 
-Does this not imply that there needs to be new linkage between the
-filesystem and the lower layers?  So that raid/etc can inform the
-filesystem driver about its alignment and striping requirements?
+> I could re-generate the patches that do the copies from git, but I don't
+> believe it will be that beneficial at this point.
 
-> also, last mballoc takes logical block into
-> account and can preallocate few chunks at different logical offsets
-> for a file. imagine torrent downloading different pieces from few peers.
+The only advantage (but I'd argue that it's a real one, and very possibly 
+worth it) is that when this gets sent to me (or anybody else) by email, it 
+can be sent in a format that is actually readable, instead of sending it 
+as a huge patch that doesn't actually talk about what it does..
 
-hm.  You don't need anything as exotic as bittorrent to show up problems in
-that area:
-
-box:/usr/src/25> sudo bmap vmlinux | wc -l
-1152
-
-
+		Linus
