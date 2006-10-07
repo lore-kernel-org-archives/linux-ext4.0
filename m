@@ -1,7 +1,7 @@
-From: Alex Tomas <alex@clusterfs.com>
+From: Andrew Morton <akpm@osdl.org>
 Subject: Re: [PATCH] Get rid of extents mount option - try 2
-Date: Sat, 07 Oct 2006 23:45:08 +0400
-Message-ID: <m3ejtjnc57.fsf@bzzz.home.net>
+Date: Sat, 7 Oct 2006 12:57:44 -0700
+Message-ID: <20061007125744.fd5eb3b4.akpm@osdl.org>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 	<20061005205526.7fe744f5.akpm@osdl.org>
 	<20061006122105.GA21816@thunk.org>
@@ -13,30 +13,39 @@ References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 	<1160236427.14217.14.camel@kleikamp.austin.ibm.com>
 	<20061007172027.GB5478@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
-	Andrew Morton <akpm@osdl.org>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [80.71.248.82] ([80.71.248.82]:25064 "EHLO gw.home.net")
-	by vger.kernel.org with ESMTP id S932789AbWJGTnk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Oct 2006 15:43:40 -0400
+Received: from smtp.osdl.org ([65.172.181.4]:60349 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932795AbWJGT6L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Oct 2006 15:58:11 -0400
 To: Theodore Tso <tytso@mit.edu>
-In-Reply-To: <20061007172027.GB5478@thunk.org> (Theodore Tso's message of "Sat, 7 Oct 2006 13:20:27 -0400")
+In-Reply-To: <20061007172027.GB5478@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> Theodore Tso (TT) writes:
+On Sat, 7 Oct 2006 13:20:27 -0400
+Theodore Tso <tytso@mit.edu> wrote:
 
- >> Also, do we update the superblock in every transaction that creates or
- >> deletes a file?  Otherwise, how do we guarantee the count is accurate
- >> after replaying the journal?
+> > Also, do we update the superblock in every transaction that creates or
+> > deletes a file?  Otherwise, how do we guarantee the count is accurate
+> > after replaying the journal?
+> 
+> Yes, we do.  The number of free inodes has to be kept up-to-date,
+> after all, so the superblock is marked dirty and as being part of the
+> transaction.
 
- TT> Yes, we do.  The number of free inodes has to be kept up-to-date,
- TT> after all, so the superblock is marked dirty and as being part of the
- TT> transaction.
+Actually we cheat, and we don't keep the superblock free inodes counter up
+to date in real time.  Done for CPU consumptions reasons, but it was
+perhaps a false optimisation, given that we still have a system-wide
+inode_lock.
 
-actually, not any more. we use group descriptors to initialize
-free inodes counter at mount time.
+The free inode count is already triply redundant: inode table scan, inode
+bitmap scan, ext4_group_desc.bg_free_inodes_count.  Making it quadruply
+redundant seemed a bit over the top.
 
-thanks, Alex
+At runtime the definitive free-inodes count is the sum of the
+per-blockgroup free-inode counts.  On clean shutdown we regenerate that and
+write it into the superblock.
