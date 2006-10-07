@@ -1,12 +1,12 @@
 From: akpm@osdl.org
 Subject: + ext4-64-bit-divide-fix-fix.patch added to -mm tree
-Date: Fri, 06 Oct 2006 20:19:42 -0700
-Message-ID: <200610070319.k973Jgr4022943@shell0.pdx.osdl.net>
+Date: Fri, 06 Oct 2006 20:31:20 -0700
+Message-ID: <200610070331.k973VKwe023227@shell0.pdx.osdl.net>
 Cc: akpm@osdl.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:26313 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S932693AbWJGDTo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 23:19:44 -0400
+Received: from smtp.osdl.org ([65.172.181.4]:12749 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932696AbWJGDbX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Oct 2006 23:31:23 -0400
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -27,41 +27,72 @@ out what to do about this
 Subject: ext4-64-bit-divide-fix-fix
 From: Andrew Morton <akpm@osdl.org>
 
-The first arg to do_div() must be an lvalue.
+Give up.  Hope that ext4_fsblk_t is compatiblee with u64 for all do_div()
+implementations.
 
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |   11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ fs/ext4/balloc.c |    2 +-
+ fs/ext4/ialloc.c |    4 ++--
+ fs/ext4/super.c  |    4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
 diff -puN fs/ext4/balloc.c~ext4-64-bit-divide-fix-fix fs/ext4/balloc.c
 --- a/fs/ext4/balloc.c~ext4-64-bit-divide-fix-fix
 +++ a/fs/ext4/balloc.c
-@@ -30,16 +30,17 @@
- void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 		unsigned long *blockgrpp, ext4_grpblk_t *offsetp)
- {
--        struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+@@ -34,7 +34,7 @@ void ext4_get_group_no_and_offset(struct
  	ext4_grpblk_t offset;
-+	u64 b;
  
--        blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
+         blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
 -	offset = do_div((u64)blocknr, EXT4_BLOCKS_PER_GROUP(sb));
-+	blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
-+	b = blocknr;
 +	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb));
  	if (offsetp)
  		*offsetp = offset;
  	if (blockgrpp)
--	        *blockgrpp = blocknr;
--
-+		*blockgrpp = b;
- }
+diff -puN fs/ext4/ialloc.c~ext4-64-bit-divide-fix-fix fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-64-bit-divide-fix-fix
++++ a/fs/ext4/ialloc.c
+@@ -275,7 +275,7 @@ static int find_group_orlov(struct super
+ 	avefreei = freei / ngroups;
+ 	freeb = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
+ 	avefreeb = freeb;
+-	do_div((u64)avefreeb, ngroups);
++	do_div(avefreeb, ngroups);
+ 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
  
- /*
+ 	if ((parent == sb->s_root->d_inode) ||
+@@ -305,7 +305,7 @@ static int find_group_orlov(struct super
+ 	}
+ 
+ 	blocks_per_dir = ext4_blocks_count(es) - freeb;
+-	do_div((u64)blocks_per_dir, ndirs);
++	do_div(blocks_per_dir, ndirs);
+ 
+ 	max_dirs = ndirs / ngroups + inodes_per_group / 16;
+ 	min_inodes = avefreei - inodes_per_group / 4;
+diff -puN fs/ext4/super.c~ext4-64-bit-divide-fix-fix fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-64-bit-divide-fix-fix
++++ a/fs/ext4/super.c
+@@ -1485,7 +1485,7 @@ static int ext4_fill_super (struct super
+ 	 */
+ 	if (blocksize != EXT4_MIN_BLOCK_SIZE) {
+ 		logic_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
+-		offset = do_div((u64)logic_sb_block, blocksize);
++		offset = do_div(logic_sb_block, blocksize);
+ 	} else {
+ 		logic_sb_block = sb_block;
+ 	}
+@@ -1591,7 +1591,7 @@ static int ext4_fill_super (struct super
+ 		brelse (bh);
+ 		sb_set_blocksize(sb, blocksize);
+ 		logic_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
+-		offset = do_div((u64)logic_sb_block, blocksize);
++		offset = do_div(logic_sb_block, blocksize);
+ 		bh = sb_bread(sb, logic_sb_block);
+ 		if (!bh) {
+ 			printk(KERN_ERR
 _
 
 Patches currently in -mm which might be from akpm@osdl.org are
