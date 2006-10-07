@@ -1,51 +1,76 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: [PATCH] Get rid of extents mount option - try 2
-Date: Sat, 7 Oct 2006 12:57:44 -0700
-Message-ID: <20061007125744.fd5eb3b4.akpm@osdl.org>
+From: alex@clusterfs.com
+Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
+Date: Sun, 08 Oct 2006 00:09:44 +0400
+Message-ID: <m3ac47nb07.fsf@bzzz.home.net>
 References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>
 	<20061005205526.7fe744f5.akpm@osdl.org>
-	<20061006122105.GA21816@thunk.org>
-	<1160169015.8658.50.camel@kleikamp.austin.ibm.com>
-	<1160169700.8658.56.camel@kleikamp.austin.ibm.com>
-	<20061006153219.d5b62ee8.akpm@osdl.org>
-	<1160176800.8658.70.camel@kleikamp.austin.ibm.com>
-	<20061007041439.GA5478@thunk.org>
-	<1160236427.14217.14.camel@kleikamp.austin.ibm.com>
-	<20061007172027.GB5478@thunk.org>
+	<20061005215442.310b7792.rdunlap@xenotime.net>
+	<20061006055305.GG22010@schatzie.adilger.int>
+	<20061005230401.0159e31b.akpm@osdl.org>
+	<20061006064103.GJ22010@schatzie.adilger.int>
+	<20061005235017.cbc4fdab.akpm@osdl.org> <m3k63divkw.fsf@bzzz.home.net>
+	<20061006065735.1b51cc18.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Kleikamp <shaggy@austin.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	alex@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:60349 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S932795AbWJGT6L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Oct 2006 15:58:11 -0400
-To: Theodore Tso <tytso@mit.edu>
-In-Reply-To: <20061007172027.GB5478@thunk.org>
+Received: from [80.71.248.82] ([80.71.248.82]:40081 "EHLO gw.home.net")
+	by vger.kernel.org with ESMTP id S932789AbWJGUIN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Oct 2006 16:08:13 -0400
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: Alex Tomas's message of "(unknown date)"
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 7 Oct 2006 13:20:27 -0400
-Theodore Tso <tytso@mit.edu> wrote:
 
-> > Also, do we update the superblock in every transaction that creates or
-> > deletes a file?  Otherwise, how do we guarantee the count is accurate
-> > after replaying the journal?
-> 
-> Yes, we do.  The number of free inodes has to be kept up-to-date,
-> after all, so the superblock is marked dirty and as being part of the
-> transaction.
+Hi
 
-Actually we cheat, and we don't keep the superblock free inodes counter up
-to date in real time.  Done for CPU consumptions reasons, but it was
-perhaps a false optimisation, given that we still have a system-wide
-inode_lock.
+>>>>> Alex Tomas (AT) writes:
 
-The free inode count is already triply redundant: inode table scan, inode
-bitmap scan, ext4_group_desc.bg_free_inodes_count.  Making it quadruply
-redundant seemed a bit over the top.
+ >>> it depends on underlaying storage and workload. mballoc uses buddy
+ >>> internally. it's much simpler and cheaper to find free 2^N blocks
+ >>> compared to bitmap.
 
-At runtime the definitive free-inodes count is the sum of the
-per-blockgroup free-inode counts.  On clean shutdown we regenerate that and
-write it into the superblock.
+ AM> So mballoc's application is to save CPU cycles?
+
+AFAIU, we don't implement complex scanning for given size in balloc.c
+because bitmap isn't very comfortable structure for this and that would
+require many cycles. with mballoc it becomes possible. for example,
+to find 1MB free chunk one has to choose group (mballoc tracks number
+of free chunks in every buddy) and then scan just few bits). thus we
+can produce better layout and improve performance.
+
+ >>> this is especially important for arrays like
+ >>> DDN and raid5/6 because they require stripe-aligned/-sized requests
+ >>> for good throughput.
+
+ AM> Does this not imply that there needs to be new linkage between the
+ AM> filesystem and the lower layers?  So that raid/etc can inform the
+ AM> filesystem driver about its alignment and striping requirements?
+
+currently, we pass preferred I/O size with mount option (stripe=N).
+I'd like that sort of communication between block driver and fs.
+something like f_bsize.
+
+ >>> also, last mballoc takes logical block into
+ >>> account and can preallocate few chunks at different logical offsets
+ >>> for a file. imagine torrent downloading different pieces from few peers.
+
+ AM> hm.  You don't need anything as exotic as bittorrent to show up problems in
+ AM> that area:
+
+ AM> box:/usr/src/25> sudo bmap vmlinux | wc -l
+ AM> 1152
+
+well, this can be (and will be, I very hope :) solved
+by delayed allocation. I mentioned torrent because it's
+often used to get really large files. so large that they
+don't fit cache and delayed allocation won't help much.
+preallocation can help, but then few preallocations per
+file is required.
+
+thanks, Alex
