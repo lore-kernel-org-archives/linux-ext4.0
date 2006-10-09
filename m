@@ -1,190 +1,63 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Is e2fsprogs-lustre_ismounted.patch actually needed?
-Date: Sun, 08 Oct 2006 15:50:42 -0400
-Message-ID: <E1GWefa-0000r5-L8@candygram.thunk.org>
-Cc: linux-ext4@vger.kernel.org
+From: Steve Lord <lord@xfs.org>
+Subject: Re: Directories > 2GB
+Date: Mon, 09 Oct 2006 16:53:02 -0500
+Message-ID: <452AC4BE.6090905@xfs.org>
+References: <20061004165655.GD22010@schatzie.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39086 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1751371AbWJHTup (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Oct 2006 15:50:45 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
+Received: from mx2.quantum.com ([146.174.252.112]:12767 "EHLO mx2.quantum.com")
+	by vger.kernel.org with ESMTP id S964889AbWJIVx1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Oct 2006 17:53:27 -0400
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+In-Reply-To: <20061004165655.GD22010@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Andreas Dilger wrote:
+> For ext4 we are exploring the possibility of directories being larger
+> than 2GB in size.  For ext3/ext4 the 2GB limit is about 50M files, and
+> the 2-level htree limit is about 25M files (this is a kernel code and not
+> disk format limit).
+> 
+> Amusingly (or not) some users of very large filesystems hit this limit
+> with their HPC batch jobs because they have 10,000 or 128,000 processes
+> creating files in a directory on an hourly basis (job restart files,
+> data dumps for visualization, etc) and it is not always easy to change
+> the apps.
+> 
+> My question (esp. for XFS folks) is if anyone has looked at this problem
+> before, and what kind of problems they might have hit in userspace and in
+> the kernel due to "large" directory sizes (i.e. > 2GB).  It appears at
+> first glance that 64-bit systems will do OK because off_t is a long
+> (for telldir output), but that 32-bit systems would need to use O_LARGEFILE
+> when opening the file in order to be able to read the full directory
+> contents.  It might also be possible to return -EFBIG only in the case
+> that telldir is used beyond 2GB (the LFS spec doesn't really talk about
+> large directories at all).
+> 
 
-Hey Andreas,
+My first thought is to run screaming for the hills when user's want this.
+In a previous life we had a customer in the US Gov who decided to
+put all their 700 million files in one directory. Then they had a
+double disk unreported raid failure (raid vendors fault). The
+filesystem repair ran for 7 days and a heck of a lot of files
+ended up in lost+found. Fortunately they had the huge amount of
+memory and process address space available to run repair.
 
-	I've been reviewing some of your patches that you've submitted,
-and I came across e2fsprogs-lustre_ismounted.patch.  It violated a
-number of basic libext2fs rules, such as never calling printf/fprintf
-from inside a libext2fs routine, and using a non-standard return code
-convention.  So I started reworking it so it would be acceptable, and
-then I realized it defined two new static functions, neither of which
-were actually used in the patch.
+Anyone who does this and has any sense does not allow any sort of
+scanning of the namespace (i.e. anything using readdir). You tend
+to run out of process address space before you have read the
+directory.
 
-	I hooked the patch into the appropriate place, and was going to
-send it to you for review and testing, since I don't have a Lustre
-system to play with, when I came to my second realization --- perhaps
-the reason why it was never linked is because it isn't needed any more!
-At least in 2.6 kernels, hopefully devices which are in use by Lustre
-should be marked as busy, so that when they are opened O_EXCL, the
-kernel should return EBUSY --- and that should be enough for e2fsprogs
-without needing to use all sorts of complicated Lustre-specific code,
-right?
+You might want to think about keeping the directory a little
+more contiguous than individual disk blocks. XFS does have
+code in it to allocate the directory in chunks larger than
+a single file system block. It does not get used on linux
+because the code was written under the assumption you can
+see the whole chunk as a single piece of memory which does not
+work to well in the linux kernel.
 
-	So could you verify for me that without applying the patch
-below, that if you build tst_ismounted, and run it on a device which is
-currently in use by Lustre, that it is reporting the device to be busy
-(EXT2_MF_BUSY).  And if not, would you agree that is a bug that should
-be fixed in the Lustre code?
-
-	If for some reason there is a good reason why Lustre isn't
-marking the device as busy, then we can look at the attached patch, but
-hopefully it isn't required at all.
-
-	Regards,
-
-						- Ted
-
---------------
-Add checks to see if the partition is in use by Lustre
-
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-
-diff -r 32c7d2357ee2 lib/ext2fs/ismounted.c
---- a/lib/ext2fs/ismounted.c	Wed Oct 04 09:12:35 2006 -0400
-+++ b/lib/ext2fs/ismounted.c	Sun Oct 08 15:03:22 2006 -0400
-@@ -30,6 +30,8 @@
- #endif /* HAVE_GETMNTINFO */
- #include <string.h>
- #include <sys/stat.h>
-+#include <sys/types.h>
-+#include <dirent.h>
- 
- #include "ext2_fs.h"
- #include "ext2fs.h"
-@@ -276,6 +278,109 @@ static int is_swap_device(const char *fi
- 	return ret;
- }
- 
-+/*
-+ * Check to see if filesystem is in use by Lustre
-+ */
-+static errcode_t check_if_lustre_busy(const char *devname, int *mount_flags)
-+{
-+	errcode_t	retval = 0;
-+	struct dirent	*direntp;
-+	const char	*procname;
-+	char		*ptr, *mnt_device = 0, *proc_val = 0;
-+	char		*real_devname = 0, *real_mnt_device = 0;
-+	DIR		*dirp;
-+	int		fd, numr;
-+
-+	procname = "/proc/fs/lustre/obdfilter";
-+	dirp = opendir(procname);
-+	if (!dirp) {
-+		procname = "/proc/fs/lustre/mds";
-+		dirp = opendir(procname);
-+	}
-+	if (!dirp)
-+		return 0;
-+
-+	retval = ENOMEM;
-+	if ((real_devname = malloc(PATH_MAX)) == NULL)
-+		goto out;
-+	if ((mnt_device = malloc(PATH_MAX)) == NULL)
-+		goto out;
-+	if ((proc_val = malloc(PATH_MAX)) == NULL)
-+		goto out;
-+	if ((real_mnt_device = malloc(PATH_MAX)) == NULL)
-+		goto out;
-+
-+	if (realpath(devname, real_devname) == NULL) {
-+		retval = errno;
-+		goto out;
-+	}
-+
-+	while ((direntp = readdir(dirp)) != NULL) {
-+		if ((strncmp(direntp->d_name, ".", 1) == 0) ||
-+		    (strncmp(direntp->d_name, "..", 2) == 0)) {
-+			continue;
-+		}
-+
-+		memset(proc_val, 0, PATH_MAX);
-+		snprintf(proc_val, PATH_MAX, "%s/%s/mntdev", procname,
-+			 direntp->d_name);
-+		fd = open(proc_val, O_RDONLY);
-+		if (fd < 0)  {
-+			if (errno == ENOENT || errno == ENOTDIR)
-+				continue;
-+			retval = errno;
-+			goto out;
-+		}
-+
-+		memset(mnt_device, 0, PATH_MAX);
-+		numr = 0;
-+		ptr = mnt_device;
-+		do {
-+			numr = read(fd, ptr, PATH_MAX);
-+			if (numr < 0) {
-+				retval = errno;
-+				close(fd);
-+				goto out;
-+			}
-+			ptr += numr;
-+		} while (numr != 0);
-+		close(fd);
-+
-+		ptr = strchr(mnt_device, '\n');
-+		if (ptr)
-+			*ptr = '\0';
-+
-+		memset(real_mnt_device, 0, PATH_MAX);
-+		if (realpath(mnt_device, real_mnt_device) == NULL) {
-+			retval = errno;
-+			goto out;
-+		}
-+
-+		if (strcmp(real_devname, real_mnt_device) == 0) {
-+#ifdef DEBUG
-+			fprintf(stderr,
-+				"device %s mounted by lustre per %s\n",
-+				real_devname, proc_val);
-+#endif
-+			*mount_flags = EXT2_MF_BUSY;
-+			retval = 0;
-+			goto out;
-+		}
-+	}
-+
-+out:
-+	if (proc_val)
-+		free(proc_val);
-+	if (mnt_device)
-+		free(mnt_device);
-+	if (real_mnt_device)
-+		free(real_mnt_device);
-+	if (dirp)
-+		closedir(dirp);
-+
-+	return retval;
-+}
-+
- 
- /*
-  * ext2fs_check_mount_point() fills determines if the device is
-@@ -327,7 +432,10 @@ errcode_t ext2fs_check_mount_point(const
- 		close(fd);
- #endif
- 
--	return 0;
-+	if (*mount_flags == 0) 
-+		retval = check_if_lustre_busy(device, mount_flags);
-+
-+	return retval;
- }
- 
- /*
-
+Steve
