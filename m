@@ -1,73 +1,62 @@
-From: Jan-Benedict Glaw <jbglaw@lug-owl.de>
-Subject: Re: 2.6.18-mm2: ext3 BUG?
-Date: Tue, 10 Oct 2006 09:09:33 +0200
-Message-ID: <20061010070933.GE30283@lug-owl.de>
-References: <45257A6C.3060804@gmail.com> <20061005145042.fd62289a.akpm@osdl.org> <4525925C.6060807@gmail.com> <20061005171428.636c087c.akpm@osdl.org> <20061008063330.GA30283@lug-owl.de>
+From: Suparna Bhattacharya <suparna@in.ibm.com>
+Subject: Re: Updated ext4/jbd2 patches based on 2.6.19-rc1
+Date: Tue, 10 Oct 2006 13:24:02 +0530
+Message-ID: <20061010075402.GA23992@in.ibm.com>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com> <20061005173933.f54555fb.akpm@osdl.org> <20061009232927.77b667c2.akpm@osdl.org>
+Reply-To: suparna@in.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="VRy2DAmnTueP9XfJ"
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Kleikamp <shaggy@austin.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lug-owl.de ([195.71.106.12]:27534 "EHLO lug-owl.de")
-	by vger.kernel.org with ESMTP id S1751999AbWJJHJf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Oct 2006 03:09:35 -0400
-To: Andrew Morton <akpm@osdl.org>, Jiri Slaby <jirislaby@gmail.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	sct@redhat.com, adilger@clusterfs.com, linux-ext4@vger.kernel.org
+Received: from e34.co.us.ibm.com ([32.97.110.152]:61062 "EHLO
+	e34.co.us.ibm.com") by vger.kernel.org with ESMTP id S964979AbWJJHvt
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Oct 2006 03:51:49 -0400
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e34.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id k9A7pnkj032558
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Oct 2006 03:51:49 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id k9A7pma7485684
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Oct 2006 01:51:48 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id k9A7pm49002016
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Oct 2006 01:51:48 -0600
+To: Andrew Morton <akpm@osdl.org>
 Content-Disposition: inline
-In-Reply-To: <20061008063330.GA30283@lug-owl.de>
+In-Reply-To: <20061009232927.77b667c2.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Mon, Oct 09, 2006 at 11:29:27PM -0700, Andrew Morton wrote:
+> On Thu, 5 Oct 2006 17:39:33 -0700
+> Andrew Morton <akpm@osdl.org> wrote:
+> 
+> > Could we please have a few nice words about ext4 for the record?  Like,
+> > what its features are, how one creates an instance, where to get the
+> > correct userspace tools from, stability level, any known shortcomings,
+> > issues, etc?
+> 
+> So I guess I get to write this.
 
---VRy2DAmnTueP9XfJ
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Hopefully not :) 
+We should be able to put something together for a start. Where should this
+reside ? Under Documentation/filesystems/ext4.txt ?
 
-On Sun, 2006-10-08 08:33:30 +0200, Jan-Benedict Glaw <jbglaw@lug-owl.de> wr=
-ote:
-> On Thu, 2006-10-05 17:14:28 -0700, Andrew Morton <akpm@osdl.org> wrote:
+However, since this is still very clearly a "development" branch at the moment,
+with lots of ongoing work both on the kernel and even more so on the
+tools side, how much detail are you looking for ?
 
-> In one case, there was a test case mentioned. I'll run that on my
-> affected box in a non-productive LV, like this:
->=20
-> dd bs=3D1M count=3D200 if=3D/dev/zero of=3Dtest0
-> while :; do
-> 	echo "cp 0-1"; cp test0 test1 || break
-> 	echo "cp 1-2"; cp test1 test2 || break
-> 	echo "cp 2-3"; cp test2 test3 || break
-> 	echo "cp 3-4"; cp test3 test4 || break
-> 	echo "od 0" ; od test0 || break
-> 	echo "rm 1"; rm test1 || break
-> 	echo "rm 2"; rm test2 || break
-> 	echo "rm 3"; rm test3 || break
-> 	echo "rm 4"; rm test4 || break
-> done
+Regards
+Suparna
 
-While I could reproduce it with a 200MB file, it seems I can't break
-it with a 10MB file.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-MfG, JBG
+-- 
+Suparna Bhattacharya (suparna@in.ibm.com)
+Linux Technology Center
+IBM Software Lab, India
 
---=20
-      Jan-Benedict Glaw      jbglaw@lug-owl.de              +49-172-7608481
-  Signature of:                        Lauf nicht vor Deinem Gl=C3=BCck dav=
-on:
-  the second  :                             Es k=C3=B6nnte hinter Dir stehe=
-n!
-
---VRy2DAmnTueP9XfJ
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
-
-iD8DBQFFK0ctHb1edYOZ4bsRAqgNAJ9xok1m7sA8N4Tgh0sL5+eqO7VAJQCeNraU
-IXd8/BWSa2Fu9c8bHba8l8g=
-=hmYk
------END PGP SIGNATURE-----
-
---VRy2DAmnTueP9XfJ--
