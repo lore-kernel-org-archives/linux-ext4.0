@@ -1,84 +1,193 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH, RFC] A slightly different on-disk format for 64-bit support
-Date: Wed, 11 Oct 2006 01:41:53 -0400
-Message-ID: <E1GXWqn-00074k-KE@candygram.thunk.org>
+From: akpm@osdl.org
+Subject: - ext4-64-bit-divide-fix-fix.patch removed from -mm tree
+Date: Wed, 11 Oct 2006 00:28:05 -0700
+Message-ID: <200610110728.k9B7S5rA010626@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:18326 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1030277AbWJKFmA (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:36059 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S932475AbWJKH2K (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 01:42:00 -0400
-To: linux-ext4@vger.kernel.org
+	Wed, 11 Oct 2006 03:28:10 -0400
+To: akpm@osdl.org, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-I'd like to propose that we use a different group descriptor structure
-if the group descriptor size is greater than 32 bytes.  We have to code
-that checks for the bigger descriptor anyway, and this way we can more
-easily get the 64-bit information directly. 
+The patch titled
 
-What do folks tihng?
+     ext4-64-bit-divide-fix-fix
 
-						- Ted
+has been removed from the -mm tree.  Its filename is
 
+     ext4-64-bit-divide-fix-fix.patch
 
-On-disk format for 64-bit support
+This patch was dropped because it was folded into ext4-64-bit-divide-fix.patch
 
-This patch does things a little different from previous proposals.  It
-uses an entirely different group_descriptor structure if the group
-descriptor size is greater than 32 bytes.  We need to have separate
-code anyway, and this allows for a cleaner data structure on disk.
+------------------------------------------------------
+Subject: ext4-64-bit-divide-fix-fix
+From: Andrew Morton <akpm@osdl.org>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Give up.  Hope that ext4_fsblk_t is compatiblee with u64 for all do_div()
+implementations.
 
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
 
-Index: e2fsprogs/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/ext2_fs.h	2006-10-11 01:29:36.000000000 -0400
-+++ e2fsprogs/lib/ext2fs/ext2_fs.h	2006-10-11 01:30:48.000000000 -0400
-@@ -147,6 +147,19 @@
- 	__u32	bg_reserved[3];
- };
+ fs/ext4/balloc.c |    2 +-
+ fs/ext4/ialloc.c |    4 ++--
+ fs/ext4/super.c  |    4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext4/balloc.c~ext4-64-bit-divide-fix-fix fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-64-bit-divide-fix-fix
++++ a/fs/ext4/balloc.c
+@@ -34,7 +34,7 @@ void ext4_get_group_no_and_offset(struct
+ 	ext4_grpblk_t offset;
  
-+struct ext4_group_desc
-+{
-+	__u64	bg_block_bitmap;	/* Blocks bitmap block */
-+	__u64	bg_inode_bitmap;	/* Inodes bitmap block */
-+	__u64	bg_inode_table;		/* Inodes table block */
-+	__u32	bg_free_blocks_count;	/* Free blocks count */
-+	__u32	bg_free_inodes_count;	/* Free inodes count */
-+	__u32	bg_used_dirs_count;	/* Directories count */
-+	__u16	bg_flags;
-+	__u16	bg_pad;
-+	__u32	bg_reserved[6];
-+};
-+
- #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
- #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+         blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
+-	offset = do_div((u64)blocknr, EXT4_BLOCKS_PER_GROUP(sb));
++	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb));
+ 	if (offsetp)
+ 		*offsetp = offset;
+ 	if (blockgrpp)
+diff -puN fs/ext4/ialloc.c~ext4-64-bit-divide-fix-fix fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-64-bit-divide-fix-fix
++++ a/fs/ext4/ialloc.c
+@@ -275,7 +275,7 @@ static int find_group_orlov(struct super
+ 	avefreei = freei / ngroups;
+ 	freeb = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
+ 	avefreeb = freeb;
+-	do_div((u64)avefreeb, ngroups);
++	do_div(avefreeb, ngroups);
+ 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
  
-@@ -524,12 +537,15 @@
- 	__u32	s_hash_seed[4];		/* HTREE hash seed */
- 	__u8	s_def_hash_version;	/* Default hash version to use */
- 	__u8	s_jnl_backup_type; 	/* Default type of journal backup */
--	__u16	s_reserved_word_pad;
-+	__u16	s_desc_size;		/* Group desc. size: INCOMPAT_64BIT */
- 	__u32	s_default_mount_opts;
- 	__u32	s_first_meta_bg;	/* First metablock group */
- 	__u32	s_mkfs_time;		/* When the filesystem was created */
- 	__u32	s_jnl_blocks[17]; 	/* Backup of the journal inode */
--	__u32	s_reserved[172];	/* Padding to the end of the block */
-+	__u32	s_blocks_count_hi;	/* Blocks count high 32bits */
-+	__u32	s_r_blocks_count_hi;	/* Reserved blocks count high 32 bits*/
-+	__u32	s_free_blocks_hi; 	/* Free blocks count */
-+	__u32	s_reserved[169];	/* Padding to the end of the block */
- };
+ 	if ((parent == sb->s_root->d_inode) ||
+@@ -305,7 +305,7 @@ static int find_group_orlov(struct super
+ 	}
  
- /*
-@@ -586,6 +602,7 @@
- #define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV	0x0008 /* Journal device */
- #define EXT2_FEATURE_INCOMPAT_META_BG		0x0010
- #define EXT3_FEATURE_INCOMPAT_EXTENTS		0x0040
-+#define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
+ 	blocks_per_dir = ext4_blocks_count(es) - freeb;
+-	do_div((u64)blocks_per_dir, ndirs);
++	do_div(blocks_per_dir, ndirs);
  
- 
- #define EXT2_FEATURE_COMPAT_SUPP	0
+ 	max_dirs = ndirs / ngroups + inodes_per_group / 16;
+ 	min_inodes = avefreei - inodes_per_group / 4;
+diff -puN fs/ext4/super.c~ext4-64-bit-divide-fix-fix fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-64-bit-divide-fix-fix
++++ a/fs/ext4/super.c
+@@ -1485,7 +1485,7 @@ static int ext4_fill_super (struct super
+ 	 */
+ 	if (blocksize != EXT4_MIN_BLOCK_SIZE) {
+ 		logic_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
+-		offset = do_div((u64)logic_sb_block, blocksize);
++		offset = do_div(logic_sb_block, blocksize);
+ 	} else {
+ 		logic_sb_block = sb_block;
+ 	}
+@@ -1591,7 +1591,7 @@ static int ext4_fill_super (struct super
+ 		brelse (bh);
+ 		sb_set_blocksize(sb, blocksize);
+ 		logic_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
+-		offset = do_div((u64)logic_sb_block, blocksize);
++		offset = do_div(logic_sb_block, blocksize);
+ 		bh = sb_bread(sb, logic_sb_block);
+ 		if (!bh) {
+ 			printk(KERN_ERR
+_
+
+Patches currently in -mm which might be from akpm@osdl.org are
+
+origin.patch
+revert-nvidiafb-use-generic-ddc-reading.patch
+ext4_blk_type_from_sector_t_to_ulonglong.patch
+ext4-uninline-ext4_get_group_no_and_offset.patch
+ext4-64-bit-divide-fix.patch
+ext4-64-bit-divide-fix-fix.patch
+ext4-rename-logic_sb_block.patch
+ext4-whitespace-cleanups.patch
+git-acpi.patch
+i386-acpi-build-fix.patch
+acpi-asus-s3-resume-fix.patch
+sony_apci-resume.patch
+git-cifs-fixup.patch
+cifs-kconfig-dont-select-connector.patch
+git-dvb-build-fix.patch
+w1-kconfig-fix.patch
+git-geode-fixup.patch
+git-gfs2.patch
+git-infiniband.patch
+git-input-fixup.patch
+git-libata-all-fixup.patch
+mtd-maps-support-for-bios-flash-chips-on-intel-esb2-southbridge.patch
+git-netdev-all.patch
+libphy-dont-do-that.patch
+ibmveth-irq-fix.patch
+drivers-net-ns83820c-add-paramter-to-disable-auto.patch
+git-pcmcia-fixup.patch
+git-serial-fixup.patch
+git-scsi-target-fixup.patch
+git-scsi-target-vs-git-block.patch
+fix-gregkh-usb-usbatm-fix-tiny-race.patch
+xpad-dance-pad-support.patch
+git-watchdog.patch
+x86_64-dump_trace-atomicity-fix.patch
+spinlock-debug-all-cpu-backtrace.patch
+spinlock-debug-all-cpu-backtrace-fix.patch
+spinlock-debug-all-cpu-backtrace-fix-2.patch
+spinlock-debug-all-cpu-backtrace-fix-3.patch
+xfs-rename-uio_read.patch
+touchkit-ps-2-touchscreen-driver-regs-fix.patch
+direct-io-sync-and-invalidate-file-region-when-falling-back-to-buffered-write-fixes.patch
+get-rid-of-zone_table.patch
+new-scheme-to-preempt-swap-token-tidy.patch
+radix-tree-rcu-lockless-readside.patch
+acx1xx-wireless-driver.patch
+swsusp-add-resume_offset-command-line-parameter-rev-2.patch
+deprecate-smbfs-in-favour-of-cifs.patch
+edac-new-opteron-athlon64-memory-controller-driver.patch
+add-address_space_operationsbatch_write.patch
+add-config_headers_check-option-to-automatically-run-make-headers_check-nobble.patch
+kbuild-dont-put-temp-files-in-the-source-tree.patch
+grow_buffers-infinite-loop-fix.patch
+invalidate_inode_pages2_range-debug.patch
+lockdep-annotate-nfs-nfsd-in-kernel-sockets-tidy.patch
+dell_rbu-printk-warning-fix.patch
+generic-implementatation-of-bug.patch
+generic-implementatation-of-bug-fix.patch
+generic-bug-for-i386.patch
+generic-bug-for-x86-64.patch
+log2-implement-a-general-integer-log2-facility-in-the-kernel-fix.patch
+fs-cache-provide-a-filesystem-specific-syncable-page-bit-ext4.patch
+fs-cache-make-kafs-use-fs-cache-fix.patch
+fs-cache-make-kafs-use-fs-cache-vs-streamline-generic_file_-interfaces-and-filemap.patch
+nfs-use-local-caching-12-fix.patch
+fs-cache-cachefiles-a-cache-that-backs-onto-a-mounted-filesystem-log2-fix.patch
+swap_prefetch-vs-zoned-counters.patch
+readahead-sysctl-parameters.patch
+make-copy_from_user_inatomic-not-zero-the-tail-on-i386-vs-reiser4.patch
+make-kmem_cache_destroy-return-void-reiser4.patch
+reiser4-hardirq-include-fix.patch
+reiser4-run-truncate_inode_pages-in-reiser4_delete_inode.patch
+reiser4-get_sb_dev-fix.patch
+reiser4-vs-zoned-allocator.patch
+reiser4-rename-generic_sounding_globalspatch-fix.patch
+hpt3xx-rework-rate-filtering-tidy.patch
+gtod-persistent-clock-support-i386.patch
+hrtimers-state-tracking.patch
+clockevents-drivers-for-i386.patch
+kevent-core-files-fix.patch
+kevent-core-files-s390-hack.patch
+kevent-socket-notifications-fix-2.patch
+kevent-socket-notifications-fix-4.patch
+kevent-timer-notifications-fix.patch
+nr_blockdev_pages-in_interrupt-warning.patch
+device-suspend-debug.patch
+slab-leaks3-default-y.patch
+x86-kmap_atomic-debugging.patch
+restore-rogue-readahead-printk.patch
+put_bh-debug.patch
+acpi_format_exception-debug.patch
+jmicron-warning-fix.patch
+squash-ipc-warnings.patch
+squash-udf-warnings.patch
+
