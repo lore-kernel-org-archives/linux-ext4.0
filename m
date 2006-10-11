@@ -1,47 +1,51 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] Get rid of extents mount option - try 2
-Date: Wed, 11 Oct 2006 11:16:38 -0600
-Message-ID: <20061011171638.GP22010@schatzie.adilger.int>
-References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com> <20061005205526.7fe744f5.akpm@osdl.org> <20061006122105.GA21816@thunk.org> <1160169015.8658.50.camel@kleikamp.austin.ibm.com> <1160169700.8658.56.camel@kleikamp.austin.ibm.com>
+From: Dave Kleikamp <shaggy@austin.ibm.com>
+Subject: [PATCH] null dereference in fs/jbd2/journal.c
+Date: Wed, 11 Oct 2006 15:17:07 -0500
+Message-ID: <1160597827.12884.15.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Andrew Morton <akpm@osdl.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:38815 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161157AbWJKRQk
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 13:16:40 -0400
-To: Dave Kleikamp <shaggy@austin.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <1160169700.8658.56.camel@kleikamp.austin.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Eric Sesterhenn <snakebyte@gmx.de>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1161222AbWJKURN@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 06, 2006  16:21 -0500, Dave Kleikamp wrote:
-> EXT4: Get rid of extents mount option
-> 
-> Enabling an ext4 file system to use extents should be done with
-> 'tune2fs -O extents' or 'mke2fs -O extents', not with a mount option
+This is Eric Sesterhenn's jbd patch applied to jbd2.
+Commit: 41716c7c21b15e7ecf14f0caf1eef3980707fb74
 
-I would agree that the presence of INCOMPAT_EXTENTS should imply the
-EXTENTS mount option, but it is also desirable to be able to turn this
-off for testing.  In our internal patches we also have a "noextents"
-mount option to disable extents at runtime even if "extents" was given
-as a default mount option.
+His words:
 
-So, I would leave most of the code as-is (with "test_opt(sb, EXTENTS)"),
-and just have ext3_fill_super() enable EXT4_MOUNT_EXTENTS if
-INCOMPAT_EXTENTS is set.  This is a tiny bit tricky since parse_options()
-is called before the superblock is read, so I suspect we'll need a
-separate EXT4_MOUNT_NOEXTENTS to distinguish between no mount "extents"
-option given and "noextents" disabling this.
+Since commit d1807793e1e7e502e3dc047115e9dbc3b50e4534 we dereference a NULL
+pointer.  Coverity id #1432.  We set journal to NULL, and use it directly
+afterwards.
 
-The Opt_noextents handling would clear EXT4_MOUNT_EXTENTS, and vice versa.
+Signed-off-by: Dave Kleikamp <shaggy@austin.ibm.com>
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 10db92c..c60f378 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -725,6 +725,7 @@ journal_t * jbd2_journal_init_dev(struct
+ 			__FUNCTION__);
+ 		kfree(journal);
+ 		journal = NULL;
++		goto out;
+ 	}
+ 	journal->j_dev = bdev;
+ 	journal->j_fs_dev = fs_dev;
+@@ -735,7 +736,7 @@ journal_t * jbd2_journal_init_dev(struct
+ 	J_ASSERT(bh != NULL);
+ 	journal->j_sb_buffer = bh;
+ 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
+-
++out:
+ 	return journal;
+ }
+ 
 
+-- 
+David Kleikamp
+IBM Linux Technology Center
