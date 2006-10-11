@@ -1,53 +1,39 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: 2.6.19-rc1-mm1 (ext4 problem ?)
-Date: Wed, 11 Oct 2006 09:56:39 -0700
-Message-ID: <20061011095639.ad8169f7.akpm@osdl.org>
-References: <20061010000928.9d2d519a.akpm@osdl.org>
-	<452C616D.7040701@us.ibm.com>
-	<20061010210133.dda19d4c.akpm@osdl.org>
-	<1160578934.1447.1.camel@dyn9047017100.beaverton.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC] [PATCH] Documentation/filesystems/ext4.txt
+Date: Wed, 11 Oct 2006 11:03:35 -0600
+Message-ID: <20061011170335.GO22010@schatzie.adilger.int>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com> <20061005173933.f54555fb.akpm@osdl.org> <20061009232927.77b667c2.akpm@osdl.org> <20061010075402.GA23992@in.ibm.com> <20061010011434.e8e2f76b.akpm@osdl.org> <1160510555.28923.15.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, lkml <linux-kernel@vger.kernel.org>,
-	shaggy@us.ibm.com, ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>, suparna@in.ibm.com,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:27596 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1030451AbWJKQ4v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 12:56:51 -0400
-To: Badari Pulavarty <pbadari@us.ibm.com>
-In-Reply-To: <1160578934.1447.1.camel@dyn9047017100.beaverton.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:1684 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161023AbWJKRDi
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Oct 2006 13:03:38 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <1160510555.28923.15.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 11 Oct 2006 08:02:14 -0700
-Badari Pulavarty <pbadari@us.ibm.com> wrote:
+On Oct 10, 2006  15:02 -0500, Dave Kleikamp wrote:
+> +  - It's still mke2fs -j /dev/hda1
 
-> On Tue, 2006-10-10 at 21:01 -0700, Andrew Morton wrote: 
-> > 
-> > > Andrew Morton wrote:
-> > > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.19-rc1/2.6.19-rc1-mm1/
-> > > >
-> > > >
-> > > > - Added the ext4 filesystem.  Quick usage instructions:
-> > > >
-> > > >   - Grab updated e2fsprogs from
-> > > >     ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/
-> > > >   
-> 
-> ext4 did not survive my simple stress tests. 
-> 
-> I ran 4 copies of fsx on ext4dev filesystem (without extents) +
-> 4 copies of fsx on ext4dev (with extents). 
-> 
-> Machine hung after running for few hours. There are 4 fsx sigsegv
-> messages on the console and the last message on the console is
-> 
-> do_IRQ: 0.62 No irq handler for vector
-> 
+I would suggest "mke2fs -j -O dir_index -I 256 /dev/XXX" to be more
+representative of what will be used in the future.
 
-Quite a few people are hitting that - it's related to Eric's recent
-IRQ/APIC-routing changes.
+> +programs:	http://e2fsprogs.sourceforge.net/
+> +		http://ext2resize.sourceforge.net
 
-I don't know why that would cause fsx to get a sigsegv though.
+You should likely remove ext2resize from this list, it hasn't got any
+support for extent-mapped files.
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
