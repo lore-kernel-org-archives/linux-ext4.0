@@ -1,47 +1,53 @@
-From: Steve Lord <lord@xfs.org>
-Subject: Re: Directories > 2GB
-Date: Wed, 11 Oct 2006 11:49:10 -0500
-Message-ID: <452D2086.2020204@xfs.org>
-References: <20061004165655.GD22010@schatzie.adilger.int> <452AC4BE.6090905@xfs.org> <20061010015512.GQ11034@melbourne.sgi.com> <452B0240.60203@xfs.org> <20061010091904.GA395@infradead.org> <20061010233124.GX11034@melbourne.sgi.com>
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: 2.6.19-rc1-mm1 (ext4 problem ?)
+Date: Wed, 11 Oct 2006 09:56:39 -0700
+Message-ID: <20061011095639.ad8169f7.akpm@osdl.org>
+References: <20061010000928.9d2d519a.akpm@osdl.org>
+	<452C616D.7040701@us.ibm.com>
+	<20061010210133.dda19d4c.akpm@osdl.org>
+	<1160578934.1447.1.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061010233124.GX11034@melbourne.sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Theodore Tso <tytso@mit.edu>, lkml <linux-kernel@vger.kernel.org>,
+	shaggy@us.ibm.com, ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.4]:27596 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1030451AbWJKQ4v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Oct 2006 12:56:51 -0400
+To: Badari Pulavarty <pbadari@us.ibm.com>
+In-Reply-To: <1160578934.1447.1.camel@dyn9047017100.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-David Chinner wrote:
-> On Tue, Oct 10, 2006 at 10:19:04AM +0100, Christoph Hellwig wrote:
->> On Mon, Oct 09, 2006 at 09:15:28PM -0500, Steve Lord wrote:
->>> Hi Dave,
->>>
->>> My recollection is that it used to default to on, it was disabled
->>> because it needs to map the buffer into a single contiguous chunk
->>> of kernel memory. This was placing a lot of pressure on the memory
->>> remapping code, so we made it not default to on as reworking the
->>> code to deal with non contig memory was looking like a major
->>> effort.
->> Exactly.  The code works but tends to go OOM pretty fast at least
->> when the dir blocksize code is bigger than the page size.  I should
->> give the code a spin on my ppc box with 64k pages if it works better
->> there.
+On Wed, 11 Oct 2006 08:02:14 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
+
+> On Tue, 2006-10-10 at 21:01 -0700, Andrew Morton wrote: 
+> > 
+> > > Andrew Morton wrote:
+> > > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.19-rc1/2.6.19-rc1-mm1/
+> > > >
+> > > >
+> > > > - Added the ext4 filesystem.  Quick usage instructions:
+> > > >
+> > > >   - Grab updated e2fsprogs from
+> > > >     ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/
+> > > >   
 > 
-> The pagebuf code doesn't use high-order allocations anymore; it uses
-> scatter lists and remapping to allow physically discontiguous pages
-> in a multi-page buffer. That is, the pages are sourced via
-> find_or_create_page() from the address space of the backing device,
-> and then mapped via vmap() to provide a virtually contigous mapping
-> of the multi-page buffer.
+> ext4 did not survive my simple stress tests. 
 > 
-> So I don't think this problem exists anymore...
+> I ran 4 copies of fsx on ext4dev filesystem (without extents) +
+> 4 copies of fsx on ext4dev (with extents). 
+> 
+> Machine hung after running for few hours. There are 4 fsx sigsegv
+> messages on the console and the last message on the console is
+> 
+> do_IRQ: 0.62 No irq handler for vector
+> 
 
-I was not referring to high order allocations here, but the overhead
-of doing address space remapping every time a directory is accessed.
+Quite a few people are hitting that - it's related to Eric's recent
+IRQ/APIC-routing changes.
 
-Steve
-
+I don't know why that would cause fsx to get a sigsegv though.
