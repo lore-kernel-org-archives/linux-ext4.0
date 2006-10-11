@@ -1,94 +1,49 @@
-From: akpm@osdl.org
-Subject: [patch 063/100] ext3: errors behaviour fix
-Date: Wed, 11 Oct 2006 01:21:49 -0700
-Message-ID: <200610110821.k9B8LnYR012157@shell0.pdx.osdl.net>
-Cc: akpm@osdl.org, dim@openvz.org, dev@openvz.org,
-	linux-ext4@vger.kernel.org, vvs@sw.ru
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 2.6.18-mm2: ext3 BUG?
+Date: Wed, 11 Oct 2006 12:42:02 +0200
+Message-ID: <20061011104201.GD6865@atrey.karlin.mff.cuni.cz>
+References: <45257A6C.3060804@gmail.com> <20061005145042.fd62289a.akpm@osdl.org> <4525925C.6060807@gmail.com> <20061005171428.636c087c.akpm@osdl.org> <20061008063330.GA30283@lug-owl.de> <20061010070933.GE30283@lug-owl.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:49542 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S965184AbWJKIxS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 04:53:18 -0400
-To: torvalds@osdl.org
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:46040 "EHLO
+	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
+	id S1751175AbWJKKmR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Oct 2006 06:42:17 -0400
+To: Andrew Morton <akpm@osdl.org>, Jiri Slaby <jirislaby@gmail.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	sct@redhat.com, adilger@clusterfs.com, linux-ext4@vger.kernel.org
+Content-Disposition: inline
+In-Reply-To: <20061010070933.GE30283@lug-owl.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Dmitry Mishin <dim@openvz.org>
+> On Sun, 2006-10-08 08:33:30 +0200, Jan-Benedict Glaw <jbglaw@lug-owl.de> wrote:
+> > On Thu, 2006-10-05 17:14:28 -0700, Andrew Morton <akpm@osdl.org> wrote:
+> 
+> > In one case, there was a test case mentioned. I'll run that on my
+> > affected box in a non-productive LV, like this:
+> > 
+> > dd bs=1M count=200 if=/dev/zero of=test0
+> > while :; do
+> > 	echo "cp 0-1"; cp test0 test1 || break
+> > 	echo "cp 1-2"; cp test1 test2 || break
+> > 	echo "cp 2-3"; cp test2 test3 || break
+> > 	echo "cp 3-4"; cp test3 test4 || break
+> > 	echo "od 0" ; od test0 || break
+> > 	echo "rm 1"; rm test1 || break
+> > 	echo "rm 2"; rm test2 || break
+> > 	echo "rm 3"; rm test3 || break
+> > 	echo "rm 4"; rm test4 || break
+> > done
+> 
+> While I could reproduce it with a 200MB file, it seems I can't break
+> it with a 10MB file.
+  Hmm, I was running the test for several ours without any problem...
+The kernel is 2.6.17.6, ext3 in ordered data mode, standard SATA disk. I'm
+now running it again and trying my luck ;). What is your testing environment?
 
-Current error behaviour for ext2 and ext3 filesystems does not fully
-correspond to the documentation and should be fixed.
-
-According to man 8 mount, ext2 and ext3 file systems allow to set one of 3
-different on-errors behaviours:
-
----- start of quote man 8 mount ----
-
-errors=continue / errors=remount-ro / errors=panic
-
-    Define the behaviour when an error is encountered.  (Either ignore
-    errors and just mark the file system erroneous and continue, or remount
-    the file system read-only, or panic and halt the system.) The default is
-    set in the filesystem superblock, and can be changed using tune2fs(8).
-
----- end of quote ----
-
-However EXT3_ERRORS_CONTINUE is not read from the superblock, and thus
-ERRORS_CONT is not saved on the sbi->s_mount_opt.  It leads to the incorrect
-handle of errors on ext3.
-
-Then we've checked corresponding code in ext2 and discovered that it is buggy
-as well:
-
-- EXT2_ERRORS_CONTINUE is not read from the superblock (the same);
-
-- parse_option() does not clean the alternative values and thus something
-  like (ERRORS_CONT|ERRORS_RO) can be set;
-
-- if options are omitted, parse_option() does not set any of these options.
-
-Therefore it is possible to set any combination of these options on the ext2:
-
-- none of them may be set: EXT2_ERRORS_CONTINUE on superblock / empty mount
-  options;
-
-- any of them may be set using mount options;
-
-- 2 any options may be set: by using EXT2_ERRORS_RO/EXT2_ERRORS_PANIC on the
-  superblock and other value in mount options;
-
-- and finally all three options may be set by adding third option in remount.
-
-Currently ext2 uses these values only in ext2_error() and it is not leading to
-any noticeable troubles.  However somebody may be discouraged when he will try
-to workaround EXT2_ERRORS_PANIC on the superblock by using errors=continue in
-mount options.
-
-
-This patch:
-
-EXT3_ERRORS_CONTINUE should be taken from the superblock as default value for
-error behaviour.
-
-Signed-off-by:	Dmitry Mishin <dim@openvz.org>
-Acked-by:	Vasily Averin <vvs@sw.ru>
-Acked-by: 	Kirill Korotaev <dev@openvz.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext3/super.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff -puN fs/ext3/super.c~ext3-errors-behaviour-fix fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-errors-behaviour-fix
-+++ a/fs/ext3/super.c
-@@ -1470,6 +1470,8 @@ static int ext3_fill_super (struct super
- 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
- 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
- 		set_opt(sbi->s_mount_opt, ERRORS_RO);
-+	else
-+		set_opt(sbi->s_mount_opt, ERRORS_CONT);
- 
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
-_
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
