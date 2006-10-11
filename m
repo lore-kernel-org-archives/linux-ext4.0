@@ -1,14 +1,14 @@
 From: akpm@osdl.org
-Subject: [patch 036/100] ext4: errors behaviour fix
-Date: Wed, 11 Oct 2006 01:21:21 -0700
-Message-ID: <200610110821.k9B8LLVA012048@shell0.pdx.osdl.net>
+Subject: [patch 063/100] ext3: errors behaviour fix
+Date: Wed, 11 Oct 2006 01:21:49 -0700
+Message-ID: <200610110821.k9B8LnYR012157@shell0.pdx.osdl.net>
 Cc: akpm@osdl.org, dim@openvz.org, dev@openvz.org,
 	linux-ext4@vger.kernel.org, vvs@sw.ru
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:46982 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S965184AbWJKIxR (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:49542 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S965184AbWJKIxS (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 04:53:17 -0400
+	Wed, 11 Oct 2006 04:53:18 -0400
 To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -66,25 +66,25 @@ mount options.
 
 This patch:
 
-EXT4_ERRORS_CONTINUE should be taken from the superblock as default value for
+EXT3_ERRORS_CONTINUE should be taken from the superblock as default value for
 error behaviour.
 
 Signed-off-by:	Dmitry Mishin <dim@openvz.org>
-Acked-by: Vasily Averin <vvs@sw.ru>
-Acked-by: Kirill Korotaev <dev@openvz.org>
+Acked-by:	Vasily Averin <vvs@sw.ru>
+Acked-by: 	Kirill Korotaev <dev@openvz.org>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/super.c |    2 ++
+ fs/ext3/super.c |    2 ++
  1 file changed, 2 insertions(+)
 
-diff -puN fs/ext4/super.c~ext4-errors-behaviour-fix fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-errors-behaviour-fix
-+++ a/fs/ext4/super.c
-@@ -1526,6 +1526,8 @@ static int ext4_fill_super (struct super
+diff -puN fs/ext3/super.c~ext3-errors-behaviour-fix fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-errors-behaviour-fix
++++ a/fs/ext3/super.c
+@@ -1470,6 +1470,8 @@ static int ext3_fill_super (struct super
  		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
- 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_RO)
+ 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
  		set_opt(sbi->s_mount_opt, ERRORS_RO);
 +	else
 +		set_opt(sbi->s_mount_opt, ERRORS_CONT);
