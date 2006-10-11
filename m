@@ -1,61 +1,47 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: Re: 2.6.19-rc1-mm1 (ext4 problem ?)
-Date: Wed, 11 Oct 2006 10:08:30 -0700
-Message-ID: <1160586510.1447.7.camel@dyn9047017100.beaverton.ibm.com>
-References: <20061010000928.9d2d519a.akpm@osdl.org>
-	 <452C616D.7040701@us.ibm.com> <20061010210133.dda19d4c.akpm@osdl.org>
-	 <1160578934.1447.1.camel@dyn9047017100.beaverton.ibm.com>
-	 <20061011095639.ad8169f7.akpm@osdl.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] Get rid of extents mount option - try 2
+Date: Wed, 11 Oct 2006 11:16:38 -0600
+Message-ID: <20061011171638.GP22010@schatzie.adilger.int>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com> <20061005205526.7fe744f5.akpm@osdl.org> <20061006122105.GA21816@thunk.org> <1160169015.8658.50.camel@kleikamp.austin.ibm.com> <1160169700.8658.56.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, lkml <linux-kernel@vger.kernel.org>,
-	shaggy@us.ibm.com, ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, Andrew Morton <akpm@osdl.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:63927 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1161087AbWJKRIv
+Received: from mail.clusterfs.com ([206.168.112.78]:38815 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161157AbWJKRQk
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 13:08:51 -0400
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061011095639.ad8169f7.akpm@osdl.org>
+	Wed, 11 Oct 2006 13:16:40 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <1160169700.8658.56.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-10-11 at 09:56 -0700, Andrew Morton wrote:
-> On Wed, 11 Oct 2006 08:02:14 -0700
-> Badari Pulavarty <pbadari@us.ibm.com> wrote:
+On Oct 06, 2006  16:21 -0500, Dave Kleikamp wrote:
+> EXT4: Get rid of extents mount option
 > 
-> > On Tue, 2006-10-10 at 21:01 -0700, Andrew Morton wrote: 
-> > > 
-> > > > Andrew Morton wrote:
-> > > > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.19-rc1/2.6.19-rc1-mm1/
-> > > > >
-> > > > >
-> > > > > - Added the ext4 filesystem.  Quick usage instructions:
-> > > > >
-> > > > >   - Grab updated e2fsprogs from
-> > > > >     ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/
-> > > > >   
-> > 
-> > ext4 did not survive my simple stress tests. 
-> > 
-> > I ran 4 copies of fsx on ext4dev filesystem (without extents) +
-> > 4 copies of fsx on ext4dev (with extents). 
-> > 
-> > Machine hung after running for few hours. There are 4 fsx sigsegv
-> > messages on the console and the last message on the console is
-> > 
-> > do_IRQ: 0.62 No irq handler for vector
-> > 
-> 
-> Quite a few people are hitting that - it's related to Eric's recent
-> IRQ/APIC-routing changes.
-> 
-> I don't know why that would cause fsx to get a sigsegv though.
+> Enabling an ext4 file system to use extents should be done with
+> 'tune2fs -O extents' or 'mke2fs -O extents', not with a mount option
 
-I don't think they are related. Hopefully once we figure out IRQ
-problem, we can try to track down fsx problems.
+I would agree that the presence of INCOMPAT_EXTENTS should imply the
+EXTENTS mount option, but it is also desirable to be able to turn this
+off for testing.  In our internal patches we also have a "noextents"
+mount option to disable extents at runtime even if "extents" was given
+as a default mount option.
 
-Thanks,
-Badari
+So, I would leave most of the code as-is (with "test_opt(sb, EXTENTS)"),
+and just have ext3_fill_super() enable EXT4_MOUNT_EXTENTS if
+INCOMPAT_EXTENTS is set.  This is a tiny bit tricky since parse_options()
+is called before the superblock is read, so I suspect we'll need a
+separate EXT4_MOUNT_NOEXTENTS to distinguish between no mount "extents"
+option given and "noextents" disabling this.
+
+The Opt_noextents handling would clear EXT4_MOUNT_EXTENTS, and vice versa.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
