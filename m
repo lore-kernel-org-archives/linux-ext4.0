@@ -1,12 +1,12 @@
 From: akpm@osdl.org
-Subject: - ext4-errors-behaviour-fix.patch removed from -mm tree
-Date: Wed, 11 Oct 2006 17:04:37 -0700
-Message-ID: <200610120004.k9C04bvI008079@shell0.pdx.osdl.net>
+Subject: - ext3-errors-behaviour-fix.patch removed from -mm tree
+Date: Wed, 11 Oct 2006 17:05:45 -0700
+Message-ID: <200610120005.k9C05jHv008185@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:29100 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1161336AbWJLAW2 (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:29868 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1161337AbWJLAW3 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 20:22:28 -0400
+	Wed, 11 Oct 2006 20:22:29 -0400
 To: dim@openvz.org, dev@openvz.org, linux-ext4@vger.kernel.org,
 	vvs@sw.ru, mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
@@ -15,16 +15,16 @@ List-Id: linux-ext4.vger.kernel.org
 
 The patch titled
 
-     ext4: errors behaviour fix
+     ext3: errors behaviour fix
 
 has been removed from the -mm tree.  Its filename is
 
-     ext4-errors-behaviour-fix.patch
+     ext3-errors-behaviour-fix.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4: errors behaviour fix
+Subject: ext3: errors behaviour fix
 From: Dmitry Mishin <dim@openvz.org>
 
 Current error behaviour for ext2 and ext3 filesystems does not fully
@@ -78,25 +78,25 @@ mount options.
 
 This patch:
 
-EXT4_ERRORS_CONTINUE should be taken from the superblock as default value for
+EXT3_ERRORS_CONTINUE should be taken from the superblock as default value for
 error behaviour.
 
 Signed-off-by:	Dmitry Mishin <dim@openvz.org>
-Acked-by: Vasily Averin <vvs@sw.ru>
-Acked-by: Kirill Korotaev <dev@openvz.org>
+Acked-by:	Vasily Averin <vvs@sw.ru>
+Acked-by: 	Kirill Korotaev <dev@openvz.org>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/super.c |    2 ++
+ fs/ext3/super.c |    2 ++
  1 file changed, 2 insertions(+)
 
-diff -puN fs/ext4/super.c~ext4-errors-behaviour-fix fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-errors-behaviour-fix
-+++ a/fs/ext4/super.c
-@@ -1526,6 +1526,8 @@ static int ext4_fill_super (struct super
+diff -puN fs/ext3/super.c~ext3-errors-behaviour-fix fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-errors-behaviour-fix
++++ a/fs/ext3/super.c
+@@ -1470,6 +1470,8 @@ static int ext3_fill_super (struct super
  		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
- 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_RO)
+ 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
  		set_opt(sbi->s_mount_opt, ERRORS_RO);
 +	else
 +		set_opt(sbi->s_mount_opt, ERRORS_CONT);
