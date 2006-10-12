@@ -1,63 +1,52 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: Directories > 2GB
-Date: Thu, 12 Oct 2006 10:26:47 +1000
-Message-ID: <20061012002646.GP19345@melbourne.sgi.com>
-References: <20061004165655.GD22010@schatzie.adilger.int> <452AC4BE.6090905@xfs.org> <20061010015512.GQ11034@melbourne.sgi.com> <452B0240.60203@xfs.org> <20061010091904.GA395@infradead.org> <20061010233124.GX11034@melbourne.sgi.com> <452D2086.2020204@xfs.org>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [RFC] [PATCH] Documentation/filesystems/ext4.txt
+Date: Thu, 12 Oct 2006 16:18:44 +0200
+Message-ID: <452E4EC4.6030607@bull.net>
+References: <1160072610.8508.12.camel@kleikamp.austin.ibm.com>	 <20061005173933.f54555fb.akpm@osdl.org>	 <20061009232927.77b667c2.akpm@osdl.org> <20061010075402.GA23992@in.ibm.com>	 <20061010011434.e8e2f76b.akpm@osdl.org> <1160510555.28923.15.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Steve Lord <lord@xfs.org>
-Content-Disposition: inline
-In-Reply-To: <452D2086.2020204@xfs.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@osdl.org>, suparna@in.ibm.com,
+	ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:41600 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S932087AbWJLOUJ
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Oct 2006 10:20:09 -0400
+To: Dave Kleikamp <shaggy@austin.ibm.com>
+In-Reply-To: <1160510555.28923.15.camel@kleikamp.austin.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 11, 2006 at 11:49:10AM -0500, Steve Lord wrote:
-> David Chinner wrote:
-> >On Tue, Oct 10, 2006 at 10:19:04AM +0100, Christoph Hellwig wrote:
-> >>On Mon, Oct 09, 2006 at 09:15:28PM -0500, Steve Lord wrote:
-> >>>Hi Dave,
-> >>>
-> >>>My recollection is that it used to default to on, it was disabled
-> >>>because it needs to map the buffer into a single contiguous chunk
-> >>>of kernel memory. This was placing a lot of pressure on the memory
-> >>>remapping code, so we made it not default to on as reworking the
-> >>>code to deal with non contig memory was looking like a major
-> >>>effort.
-> >>Exactly.  The code works but tends to go OOM pretty fast at least
-> >>when the dir blocksize code is bigger than the page size.  I should
-> >>give the code a spin on my ppc box with 64k pages if it works better
-> >>there.
-> >
-> >The pagebuf code doesn't use high-order allocations anymore; it uses
-> >scatter lists and remapping to allow physically discontiguous pages
-> >in a multi-page buffer. That is, the pages are sourced via
-> >find_or_create_page() from the address space of the backing device,
-> >and then mapped via vmap() to provide a virtually contigous mapping
-> >of the multi-page buffer.
-> >
-> >So I don't think this problem exists anymore...
-> 
-> I was not referring to high order allocations here, but the overhead
-> of doing address space remapping every time a directory is accessed.
+Dave Kleikamp wrote:
 
-Ah - ok. contig -> non-contig and OOM is usually discussed in the
-context of higher order allocations failing. FWIW, I've not noticed
-any extra overhead - the CPU usage seems to grow roughly linearly
-with the increase in directory operations done as a result of
-higher throughput for the same number of I/Os. I'll have a look at
-the Vm stats, though, next time I run a comparison to see how bad
-this is.
+> +2.2 Candidate features for future inclusion
+> +
+> +There are several under discussion, whether they all make it in is
+> +partly a function of how much time everyone has to work on them:
+> +
+> +* improved file allocation (multi-block alloc, delayed alloc; basica=
+lly done)
+> +* fix 32000 subdirectory limit (patch exists, needs some e2fsck work=
+)
+> +* nsec timestamps for mtime, atime, ctime, create time (patch exists=
+,
+> +  needs some e2fsck work)
+> +* inode version field on disk (NFSv4, Lustre; prototype exists)
+> +* reduced mke2fs/e2fsck time via uninitialized groups (prototype exi=
+sts)
+> +* journal checksumming for robustness, performance (prototype exists=
+)
+> +* persistent file preallocation (e.g for streaming media, databases)
 
-Thanks for the clarification, Steve.
+Could you add "support of larger block group size" ?
+Currently, a prototype exists, but we still have tests to do.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Thanks,
+   Val=E9rie
+-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
