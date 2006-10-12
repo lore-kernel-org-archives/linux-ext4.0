@@ -1,111 +1,63 @@
-From: akpm@osdl.org
-Subject: - ext3-errors-behaviour-fix.patch removed from -mm tree
-Date: Wed, 11 Oct 2006 17:05:45 -0700
-Message-ID: <200610120005.k9C05jHv008185@shell0.pdx.osdl.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:29868 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1161337AbWJLAW3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Oct 2006 20:22:29 -0400
-To: dim@openvz.org, dev@openvz.org, linux-ext4@vger.kernel.org,
-	vvs@sw.ru, mm-commits@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+From: David Chinner <dgc@sgi.com>
+Subject: Re: Directories > 2GB
+Date: Thu, 12 Oct 2006 10:26:47 +1000
+Message-ID: <20061012002646.GP19345@melbourne.sgi.com>
+References: <20061004165655.GD22010@schatzie.adilger.int> <452AC4BE.6090905@xfs.org> <20061010015512.GQ11034@melbourne.sgi.com> <452B0240.60203@xfs.org> <20061010091904.GA395@infradead.org> <20061010233124.GX11034@melbourne.sgi.com> <452D2086.2020204@xfs.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>, Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Steve Lord <lord@xfs.org>
+Content-Disposition: inline
+In-Reply-To: <452D2086.2020204@xfs.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Wed, Oct 11, 2006 at 11:49:10AM -0500, Steve Lord wrote:
+> David Chinner wrote:
+> >On Tue, Oct 10, 2006 at 10:19:04AM +0100, Christoph Hellwig wrote:
+> >>On Mon, Oct 09, 2006 at 09:15:28PM -0500, Steve Lord wrote:
+> >>>Hi Dave,
+> >>>
+> >>>My recollection is that it used to default to on, it was disabled
+> >>>because it needs to map the buffer into a single contiguous chunk
+> >>>of kernel memory. This was placing a lot of pressure on the memory
+> >>>remapping code, so we made it not default to on as reworking the
+> >>>code to deal with non contig memory was looking like a major
+> >>>effort.
+> >>Exactly.  The code works but tends to go OOM pretty fast at least
+> >>when the dir blocksize code is bigger than the page size.  I should
+> >>give the code a spin on my ppc box with 64k pages if it works better
+> >>there.
+> >
+> >The pagebuf code doesn't use high-order allocations anymore; it uses
+> >scatter lists and remapping to allow physically discontiguous pages
+> >in a multi-page buffer. That is, the pages are sourced via
+> >find_or_create_page() from the address space of the backing device,
+> >and then mapped via vmap() to provide a virtually contigous mapping
+> >of the multi-page buffer.
+> >
+> >So I don't think this problem exists anymore...
+> 
+> I was not referring to high order allocations here, but the overhead
+> of doing address space remapping every time a directory is accessed.
 
-The patch titled
+Ah - ok. contig -> non-contig and OOM is usually discussed in the
+context of higher order allocations failing. FWIW, I've not noticed
+any extra overhead - the CPU usage seems to grow roughly linearly
+with the increase in directory operations done as a result of
+higher throughput for the same number of I/Os. I'll have a look at
+the Vm stats, though, next time I run a comparison to see how bad
+this is.
 
-     ext3: errors behaviour fix
+Thanks for the clarification, Steve.
 
-has been removed from the -mm tree.  Its filename is
+Cheers,
 
-     ext3-errors-behaviour-fix.patch
-
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-------------------------------------------------------
-Subject: ext3: errors behaviour fix
-From: Dmitry Mishin <dim@openvz.org>
-
-Current error behaviour for ext2 and ext3 filesystems does not fully
-correspond to the documentation and should be fixed.
-
-According to man 8 mount, ext2 and ext3 file systems allow to set one of 3
-different on-errors behaviours:
-
----- start of quote man 8 mount ----
-
-errors=continue / errors=remount-ro / errors=panic
-
-    Define the behaviour when an error is encountered.  (Either ignore
-    errors and just mark the file system erroneous and continue, or remount
-    the file system read-only, or panic and halt the system.) The default is
-    set in the filesystem superblock, and can be changed using tune2fs(8).
-
----- end of quote ----
-
-However EXT3_ERRORS_CONTINUE is not read from the superblock, and thus
-ERRORS_CONT is not saved on the sbi->s_mount_opt.  It leads to the incorrect
-handle of errors on ext3.
-
-Then we've checked corresponding code in ext2 and discovered that it is buggy
-as well:
-
-- EXT2_ERRORS_CONTINUE is not read from the superblock (the same);
-
-- parse_option() does not clean the alternative values and thus something
-  like (ERRORS_CONT|ERRORS_RO) can be set;
-
-- if options are omitted, parse_option() does not set any of these options.
-
-Therefore it is possible to set any combination of these options on the ext2:
-
-- none of them may be set: EXT2_ERRORS_CONTINUE on superblock / empty mount
-  options;
-
-- any of them may be set using mount options;
-
-- 2 any options may be set: by using EXT2_ERRORS_RO/EXT2_ERRORS_PANIC on the
-  superblock and other value in mount options;
-
-- and finally all three options may be set by adding third option in remount.
-
-Currently ext2 uses these values only in ext2_error() and it is not leading to
-any noticeable troubles.  However somebody may be discouraged when he will try
-to workaround EXT2_ERRORS_PANIC on the superblock by using errors=continue in
-mount options.
-
-
-This patch:
-
-EXT3_ERRORS_CONTINUE should be taken from the superblock as default value for
-error behaviour.
-
-Signed-off-by:	Dmitry Mishin <dim@openvz.org>
-Acked-by:	Vasily Averin <vvs@sw.ru>
-Acked-by: 	Kirill Korotaev <dev@openvz.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext3/super.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff -puN fs/ext3/super.c~ext3-errors-behaviour-fix fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-errors-behaviour-fix
-+++ a/fs/ext3/super.c
-@@ -1470,6 +1470,8 @@ static int ext3_fill_super (struct super
- 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
- 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
- 		set_opt(sbi->s_mount_opt, ERRORS_RO);
-+	else
-+		set_opt(sbi->s_mount_opt, ERRORS_CONT);
- 
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
-_
-
-Patches currently in -mm which might be from dim@openvz.org are
-
-origin.patch
-
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
