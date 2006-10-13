@@ -1,100 +1,52 @@
-From: Erik Mouw <erik@harddisk-recovery.com>
+From: Andreas Dilger <adilger@clusterfs.com>
 Subject: Re: Design alternatives for fragments/file tail support in ext4
-Date: Fri, 13 Oct 2006 14:48:41 +0200
-Message-ID: <20061013124841.GE21842@harddisk-recovery.com>
-References: <E1GXeYv-0006rP-RV@candygram.thunk.org>
+Date: Fri, 13 Oct 2006 11:47:39 -0600
+Message-ID: <20061013174739.GX6221@schatzie.adilger.int>
+References: <E1GXeYv-0006rP-RV@candygram.thunk.org> <20061013081002.GR6221@schatzie.adilger.int> <20061013104947.GB5519@thunk.org> <m3y7rkeb69.fsf@bzzz.home.net> <20061013122325.GA1668@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dtp.xs4all.nl ([80.126.206.180]:13040 "HELO abra2.bitwizard.nl")
-	by vger.kernel.org with SMTP id S1751666AbWJMMso (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Oct 2006 08:48:44 -0400
-To: Theodore Ts'o <tytso@mit.edu>
+Received: from mail.clusterfs.com ([206.168.112.78]:54233 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1751508AbWJMRrm
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Oct 2006 13:47:42 -0400
+To: Theodore Tso <tytso@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <E1GXeYv-0006rP-RV@candygram.thunk.org>
+In-Reply-To: <20061013122325.GA1668@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 11, 2006 at 09:55:57AM -0400, Theodore Ts'o wrote:
-
-[...]
-
-> 2.  Increase the ability to be able to read from the disk in contiguous
->     reads and writes.   Modern disks use internal cluster sizes of 32k
->     and up at this point.  Hence, allocating blocks in 32k chunks at a
->     time is extremely helpful.
-
-It's only useful if you can start the partition at such a 32k chunk,
-otherwise you end up having the disk reading two such chunks for every
-chunk the filesystem reads.
-
-Unfortunately the current linux fdisk implementation insists on putting
-partitions on track boundaries cause some other OS thinks that's a good
-idea cause it was indeed a good idea back when disks didn't lie about
-their physical layout. Right now disks all claim to have 63
-sectors/track so we end up having partitions starting at 32k - 512
-bytes. By overriding the physical layout in fdisk you can get a better
-layout, but unfortunately that behaviour isn't standard.
-
-> Storing the tail as an extended attribute
-> =========================================
+On Oct 13, 2006  08:23 -0400, Theodore Tso wrote:
+> On Fri, Oct 13, 2006 at 02:56:46PM +0400, Alex Tomas wrote:
+> > >>>>> Theodore Tso (TT) writes:
+> >  TT> I suggest this be tunable by superblock field, and not by a /proc
+> >  TT> tunable.  This is the sort of thing which might be different
+> >  TT> per-filesystem, and the algorithm will be most effective if the
+> >  TT> filesystem always use the same cluster size from the time when it was
+> >  TT> first created.  I'd be happy to assign a superblock field for this
+> >  TT> purpose, and add the appropriate tune2fs support if we have general
+> >  TT> agreement on this point.
+> > 
+> > that would be good. there is even a stride option to mke2fs?
 > 
-> Stephen and I have discussed this in the past, and the idea is a simple
-> one; simply store the tail as an extended attribute.  There are other
-> filesystems that have done this, most notably NTFS (post-Windows 2000).
-> However, this approach is a little unsatisfying to me, since it buys us
-> nothing if there are no other extended attributes contained by the
-> filesystem, and if we are using large inodes to accelerate extended
-> attributes, there won't be much space for any but the smallest tails
-> (i.e., if we are using 4k blocks, and 512 byte inodes, the largest tail
-> that we could store using this method is around 350 bytes or so.)
+> Yes, there is.  And just as we have -E stride=stripe-size and -E
+> resize=max-online-resize, we can also -E cluster-size=bytes parameter
+> in mke2fs.  It would also make sense to make this be something that
+> can be defaulted in /etc/mke2fs.conf, since even for IDE or SATA disks
+> it probably makes sense to make the cluster size be 16k or 32k or
+> maybe even higher.  We probably need to do some benchmarks to see
+> whether or not this makes sense.
 
-That isn't very different from NTFS, which usually has 1k sized MFT
-records (Master File Table records, which combine inode information but
-also store the name of the file) that are usually filled for around 400
-to 500 bytes. You can tell mkfs.ntfs (or whatever it is called in
-Windows) that you want larger MFT records so you have more room for
-inline files or tails.
+I think what Alex meant is that the "mke2fs -E stride=" value should
+just be put into the superblock.  This would allow tuning the mballoc code
+to match the RAID alignment, and would also make life easier for resizers
+so they can continue the RAID-stepping of bitmaps that mke2fs does
+without having to extrapolate the stride value from the bitmap locations.
 
-Although some people claim that Windows uses extended attributes quite
-often, we don't see that in practice when we recover data from broken
-disks. The last time I've seen extended attributes used was when a
-virusscanner put a checksum in an extended attribute. Oh, and there was
-a machine which served files for MacOS machines so it had the resource
-fork and finder info in separate attributes.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
-Extended attributes might be used more on Linux, especially because
-distributions are moving to selinux so the room in an inode becomes a
-lot smaller for storing tail data.
-
-> Using this technique would only require a flag in the inode indicating
-> it has a fragment, so the filesystem knows to look for the extended
-> attribute.  In theory this could also be done by checking the i_size
-> field, and assuming that last block in the file can never normally be a
-> hole, but this can be quite fragile.
-
-Better be explicit about fragments, that also makes e2fsck easier.
-
-> Tail merging
-> ============
-
-[...]
-
-Another way (and I can't find which filesystem exactly uses it) is to
-store all tails within a certain size range in a special file for that
-particular range. So for example if your filesystem has a 64k
-blocksize, it has files for 512, 1k, 1.5k, 2k till 63.5k. If a tail
-falls within 0 and 512 bytes, it's stored in the special file for 512
-bytes, it's within 512 and 1k it's stored in the 1k file, etc. The
-special files are normal files with a special meaning. Of course you
-need to do some bookkeeping for the contents of the special files but
-you need that for every way to manage tails you proposed.
-
-
-Erik
-
--- 
-+-- Erik Mouw -- www.harddisk-recovery.com -- +31 70 370 12 90 --
-| Lab address: Delftechpark 26, 2628 XH, Delft, The Netherlands
