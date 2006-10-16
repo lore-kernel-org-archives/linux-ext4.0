@@ -1,56 +1,98 @@
-From: Andi Kleen <ak@suse.de>
-Subject: Re: Directories > 2GB
-Date: 16 Oct 2006 20:17:03 +0200
-Message-ID: <p73bqoccehs.fsf@verdi.suse.de>
-References: <20061004165655.GD22010@schatzie.adilger.int>
-	<452AC4BE.6090905@xfs.org> <20061010015512.GQ11034@melbourne.sgi.com>
-	<452B0240.60203@xfs.org> <20061010091904.GA395@infradead.org>
-	<20061010233124.GX11034@melbourne.sgi.com>
-	<452D2086.2020204__28695.6273987473$1160585745$gmane$org@xfs.org>
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: [PATCH] jbd journal_dirty_data re-check for unmapped buffers
+Date: Mon, 16 Oct 2006 13:24:41 -0500
+Message-ID: <4533CE69.6050409@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Steve Lord <lord@xfs.org>
-In-Reply-To: <452D2086.2020204__28695.6273987473$1160585745$gmane$org@xfs.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:45696 "EHLO mx1.redhat.com")
+	by vger.kernel.org with ESMTP id S1422783AbWJPSYn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Oct 2006 14:24:43 -0400
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Steve Lord <lord@xfs.org> writes:
+When running several fsx's and other filesystem stress tests, we found 
+cases where an unmapped buffer was still being sent to submit_bh by the 
+ext3 dirty data journaling code.
 
-> David Chinner wrote:
-> > On Tue, Oct 10, 2006 at 10:19:04AM +0100, Christoph Hellwig wrote:
-> >> On Mon, Oct 09, 2006 at 09:15:28PM -0500, Steve Lord wrote:
-> >>> Hi Dave,
-> >>>
-> >>> My recollection is that it used to default to on, it was disabled
-> >>> because it needs to map the buffer into a single contiguous chunk
-> >>> of kernel memory. This was placing a lot of pressure on the memory
-> >>> remapping code, so we made it not default to on as reworking the
-> >>> code to deal with non contig memory was looking like a major
-> >>> effort.
-> >> Exactly.  The code works but tends to go OOM pretty fast at least
-> >> when the dir blocksize code is bigger than the page size.  I should
-> >> give the code a spin on my ppc box with 64k pages if it works better
-> >> there.
-> > The pagebuf code doesn't use high-order allocations anymore; it uses
-> > scatter lists and remapping to allow physically discontiguous pages
-> > in a multi-page buffer. That is, the pages are sourced via
-> > find_or_create_page() from the address space of the backing device,
-> > and then mapped via vmap() to provide a virtually contigous mapping
-> > of the multi-page buffer.
-> > So I don't think this problem exists anymore...
-> 
-> I was not referring to high order allocations here, but the overhead
-> of doing address space remapping every time a directory is accessed.
+I saw this happen in two ways, both related to another thread doing a 
+truncate which would unmap the buffer in question.
 
-# grep -i vmalloc /proc/meminfo 
-VmallocTotal: 34359738367 kB
+Either we would get into journal_dirty_data with a bh which was already 
+unmapped (although journal_dirty_data_fn had checked for this earlier, 
+the state was not locked at that point), or it would get unmapped in 
+the middle of journal_dirty_data when we dropped locks to call 
+sync_dirty_buffer.
 
-At least on 64bit systems it would be reasonable to keep a large
-number of directories mapped this way over a longer time. vmap() space is 
-cheap there.
+By re-checking for mapped state after we've acquired the bh state lock, 
+we should avoid these races.  If we find a buffer which is no longer 
+mapped, we essentially ignore it, because journal_unmap_buffer has 
+already decided that this buffer can go away.
 
--Andi
+I've also added tracepoints in these two cases, and made a couple other 
+tracepoint changes that I found useful in debugging this.
+
+Thanks,
+-Eric
+
+Signed-off-by: Eric Sandeen <esandeen@redhat.com>
+
+
+Index: linux-2.6.18/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.18.orig/fs/jbd/transaction.c
++++ linux-2.6.18/fs/jbd/transaction.c
+@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle,
+ 	 */
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
++
++	/* Now that we have bh_state locked, are we really still mapped? */
++	if (!buffer_mapped(bh)) {
++		JBUFFER_TRACE(jh, "unmapped buffer, bailing out");
++		goto no_journal;
++	}
++
+ 	if (jh->b_transaction) {
+ 		JBUFFER_TRACE(jh, "has transaction");
+ 		if (jh->b_transaction != handle->h_transaction) {
+@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle,
+ 				sync_dirty_buffer(bh);
+ 				jbd_lock_bh_state(bh);
+ 				spin_lock(&journal->j_list_lock);
++				/* Since we dropped the lock... */
++				if (!buffer_mapped(bh)) {
++					JBUFFER_TRACE(jh, "buffer got unmapped");
++					goto no_journal;
++				}
+ 				/* The buffer may become locked again at any
+ 				   time if it is redirtied */
+ 			}
+@@ -1823,6 +1835,7 @@ static int journal_unmap_buffer(journal_
+ 			}
+ 		}
+ 	} else if (transaction == journal->j_committing_transaction) {
++		JBUFFER_TRACE(jh, "on committing transaction");
+ 		if (jh->b_jlist == BJ_Locked) {
+ 			/*
+ 			 * The buffer is on the committing transaction's locked
+@@ -1837,7 +1850,6 @@ static int journal_unmap_buffer(journal_
+ 		 * can remove it's next_transaction pointer from the
+ 		 * running transaction if that is set, but nothing
+ 		 * else. */
+-		JBUFFER_TRACE(jh, "on committing transaction");
+ 		set_buffer_freed(bh);
+ 		if (jh->b_next_transaction) {
+ 			J_ASSERT(jh->b_next_transaction ==
+@@ -1857,6 +1869,7 @@ static int journal_unmap_buffer(journal_
+ 		 * i_size already for this truncate so recovery will not
+ 		 * expose the disk blocks we are discarding here.) */
+ 		J_ASSERT_JH(jh, transaction == journal->j_running_transaction);
++		JBUFFER_TRACE(jh, "on running transaction");
+ 		may_free = __dispose_buffer(jh, transaction);
+ 	}
+ 
