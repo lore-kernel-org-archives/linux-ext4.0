@@ -1,43 +1,37 @@
-From: Andreas Dilger <adilger@clusterfs.com>
+From: Jure =?UTF-8?B?UGXEjWFy?= <pegasus@nerv.eu.org>
 Subject: Re: ixt3
-Date: Tue, 17 Oct 2006 02:51:30 -0600
-Message-ID: <20061017085130.GX6221@schatzie.adilger.int>
+Date: Tue, 17 Oct 2006 11:06:37 +0200
+Message-ID: <20061017110637.187ae3c0.pegasus@nerv.eu.org>
 References: <20061017103617.cb1a34c2.pegasus@nerv.eu.org>
+	<20061017085130.GX6221@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:6557 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1423180AbWJQIvc
+Received: from mail.pecar.org ([193.95.219.68]:35166 "EHLO mail.pecar.org")
+	by vger.kernel.org with ESMTP id S1422745AbWJQJGo convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Oct 2006 04:51:32 -0400
-To: Jure =?utf-8?B?UGXEjWFy?= <pegasus@nerv.eu.org>
-Content-Disposition: inline
-In-Reply-To: <20061017103617.cb1a34c2.pegasus@nerv.eu.org>
+	Tue, 17 Oct 2006 05:06:44 -0400
+Received: from disko.pecar.org (unknown [192.168.0.14])
+	by mail.pecar.org (Postfix) with SMTP id 2A87E175AB
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Oct 2006 11:06:41 +0200 (CEST)
+To: Andreas Dilger <adilger@clusterfs.com>
+In-Reply-To: <20061017085130.GX6221@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 17, 2006  10:36 +0200, Jure Pe=C4=8Dar wrote:
-> http://www.cs.wisc.edu/adsl/Publications/iron-sosp05.pdf
->=20
-> I think I got this link from OLS papers or from fs workshop ... and I=
- really like what it says.
->=20
-> How many of ixt3 features are going to be implemented in ext4?=20
+On Tue, 17 Oct 2006 02:51:30 -0600
+Andreas Dilger <adilger@clusterfs.com> wrote:
 
-None, yet.  The journal checksum code has been brought into a basically
-"ready-to-go" state, and there is also work to add checksums to the gro=
-up
-descriptors, so there is some chance that this will be added before ext=
-4
-is declared "closed".
+> None of the retry code has been looked at.
 
-Nothing done yet to checksum inodes, superblock, file index
-or extent blocks.  None of the retry code has been looked at.
+This is what I'm mostly interested in ... predictable, well behaving an=
+d tested error handling & recovery. Is ext4 going to be any better here=
+ than ext3?=20
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+
+--=20
+
+Jure Pe=C4=8Dar
+http://jure.pecar.org
