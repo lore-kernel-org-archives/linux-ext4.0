@@ -1,98 +1,41 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: [PATCH] jbd journal_dirty_data re-check for unmapped buffers
-Date: Mon, 16 Oct 2006 13:24:41 -0500
-Message-ID: <4533CE69.6050409@redhat.com>
+From: Ric Wheeler <ric@emc.com>
+Subject: CFP: Linux 2007 File System & IO Workshop
+Date: Mon, 16 Oct 2006 20:40:46 -0400
+Message-ID: <4534268E.9030201@emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:45696 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1422783AbWJPSYn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Oct 2006 14:24:43 -0400
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: lsf07pc@usenix.org
+Return-path: <reiserfs-list-return-30058-reiserfs=m.gmane.org@namesys.com>
+list-help: <mailto:reiserfs-list-help@namesys.com>
+list-unsubscribe: <mailto:reiserfs-list-unsubscribe@namesys.com>
+list-post: <mailto:reiserfs-list@namesys.com>
+Errors-To: flx@namesys.com
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+        reiserfs-list@namesys.com, ext2-devel@lists.sourceforge.net,
+        linux-ide@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-scsi@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When running several fsx's and other filesystem stress tests, we found 
-cases where an unmapped buffer was still being sent to submit_bh by the 
-ext3 dirty data journaling code.
+On  February 12-13, we have put together a combined Linux file system & 
+IO 2-day workshop in San Jose, CA. Note that the USENIX File System and 
+Storage Technologies conference follows us in the same venue, so we hope 
+to get some interaction between the two groups as well as leverage the 
+USENIX people to help us get this done.
 
-I saw this happen in two ways, both related to another thread doing a 
-truncate which would unmap the buffer in question.
+For more information, please see:
 
-Either we would get into journal_dirty_data with a bh which was already 
-unmapped (although journal_dirty_data_fn had checked for this earlier, 
-the state was not locked at that point), or it would get unmapped in 
-the middle of journal_dirty_data when we dropped locks to call 
-sync_dirty_buffer.
+http://www.usenix.org/events/lsf07/
 
-By re-checking for mapped state after we've acquired the bh state lock, 
-we should avoid these races.  If we find a buffer which is no longer 
-mapped, we essentially ignore it, because journal_unmap_buffer has 
-already decided that this buffer can go away.
+Please direct question to the program committee members. If you want to 
+hit all of us in one go, you can use:
 
-I've also added tracepoints in these two cases, and made a couple other 
-tracepoint changes that I found useful in debugging this.
+lsf07pc@usenix.org
 
-Thanks,
--Eric
+Regards,
 
-Signed-off-by: Eric Sandeen <esandeen@redhat.com>
+ric
 
 
-Index: linux-2.6.18/fs/jbd/transaction.c
-===================================================================
---- linux-2.6.18.orig/fs/jbd/transaction.c
-+++ linux-2.6.18/fs/jbd/transaction.c
-@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle,
- 	 */
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
-+
-+	/* Now that we have bh_state locked, are we really still mapped? */
-+	if (!buffer_mapped(bh)) {
-+		JBUFFER_TRACE(jh, "unmapped buffer, bailing out");
-+		goto no_journal;
-+	}
-+
- 	if (jh->b_transaction) {
- 		JBUFFER_TRACE(jh, "has transaction");
- 		if (jh->b_transaction != handle->h_transaction) {
-@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle,
- 				sync_dirty_buffer(bh);
- 				jbd_lock_bh_state(bh);
- 				spin_lock(&journal->j_list_lock);
-+				/* Since we dropped the lock... */
-+				if (!buffer_mapped(bh)) {
-+					JBUFFER_TRACE(jh, "buffer got unmapped");
-+					goto no_journal;
-+				}
- 				/* The buffer may become locked again at any
- 				   time if it is redirtied */
- 			}
-@@ -1823,6 +1835,7 @@ static int journal_unmap_buffer(journal_
- 			}
- 		}
- 	} else if (transaction == journal->j_committing_transaction) {
-+		JBUFFER_TRACE(jh, "on committing transaction");
- 		if (jh->b_jlist == BJ_Locked) {
- 			/*
- 			 * The buffer is on the committing transaction's locked
-@@ -1837,7 +1850,6 @@ static int journal_unmap_buffer(journal_
- 		 * can remove it's next_transaction pointer from the
- 		 * running transaction if that is set, but nothing
- 		 * else. */
--		JBUFFER_TRACE(jh, "on committing transaction");
- 		set_buffer_freed(bh);
- 		if (jh->b_next_transaction) {
- 			J_ASSERT(jh->b_next_transaction ==
-@@ -1857,6 +1869,7 @@ static int journal_unmap_buffer(journal_
- 		 * i_size already for this truncate so recovery will not
- 		 * expose the disk blocks we are discarding here.) */
- 		J_ASSERT_JH(jh, transaction == journal->j_running_transaction);
-+		JBUFFER_TRACE(jh, "on running transaction");
- 		may_free = __dispose_buffer(jh, transaction);
- 	}
- 
+*
+*
