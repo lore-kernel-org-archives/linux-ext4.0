@@ -1,83 +1,98 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH, E2FSPROGS] On-disk format for inode extra size control
-   inode size
-Date: Wed, 18 Oct 2006 02:25:05 -0400
-Message-ID: <E1Ga4rR-000534-CE@candygram.thunk.org>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [PATCH, E2FSPROGS] On-disk format definition for 64-bit support
+Date: Wed, 18 Oct 2006 15:30:56 +0200
+Message-ID: <45362C90.4030305@bull.net>
+References: <E1Ga4l7-0003mU-46@candygram.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:3523 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S1751439AbWJRGZJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Oct 2006 02:25:09 -0400
-To: linux-ext4@vger.kernel.org
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:51690 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1751483AbWJRNch (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Oct 2006 09:32:37 -0400
+To: Theodore Ts'o <tytso@mit.edu>
+In-Reply-To: <E1Ga4l7-0003mU-46@candygram.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Theodore Ts'o wrote:
+> After thinking about it some more, and looking at the code committed
+> into the kernel git tree, I've changed my mind and agree that the
+> extending current group descriptor is simpler than having two version=
+s
+> of the structure depending on the size of the group descriptor.
+>=20
+> Does everyone agree this is what the 64-bit on-desk definition should
+> be?
+See my remarks below. Otherwise, it's good for me.
 
-Comments?
+   Should 64-bit support also imply BIG_BG support?
+Yes. There is no flag added for the support of the big block groups, we=
+=20
+just use the INCOMPAT_64BIT flag.
 
-						- Ted
+>=20
+> Index: e2fsprogs/lib/ext2fs/ext2_fs.h
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> --- e2fsprogs.orig/lib/ext2fs/ext2_fs.h	2006-10-18 00:33:56.000000000=
+ -0400
+> +++ e2fsprogs/lib/ext2fs/ext2_fs.h	2006-10-18 01:08:06.000000000 -040=
+0
+> @@ -147,6 +147,25 @@
+>  	__u32	bg_reserved[3];
+>  };
+> =20
+> +struct ext4_group_desc
 
+struct ext2_group_desc ?
 
-On-disk format for controlling the inode size
+> +{
+> +	__u32	bg_block_bitmap;		/* Blocks bitmap block */
+> +	__u32	bg_inode_bitmap;		/* Inodes bitmap block */
+> +	__u32	bg_inode_table;			/* Inodes table block */
+> +	__u16	bg_free_blocks_count;		/* Free blocks count */
+> +	__u16	bg_free_inodes_count;		/* Free inodes count */
+> +	__u16	bg_used_dirs_count;		/* Directories count */
+> +	__u16	bg_flags;
+> +	__u32	bg_reserved[3];
+> +	__u32	bg_block_bitmap_hi;		/* Blocks bitmap block MSB */
+> +	__u32	bg_inode_bitmap_hi;		/* Inodes bitmap block MSB */
+> +	__u32	bg_inode_table_hi;		/* Inodes table block MSB */
+> +	__u16	bg_free_blocks_count_hi;	/* Free blocks count MSB */
+> +	__u16	bg_free_inodes_count_hi;	/* Free inodes count MSB */
+> +	__u16	bg_used_dirs_count_hi;		/* Directories count MSB */
+> +	__u32	bg_reserved2[3];
+> +};
+> +
+>  #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initia=
+lized */
+>  #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized =
+*/
+> =20
+> @@ -524,12 +543,15 @@
+>  	__u32	s_hash_seed[4];		/* HTREE hash seed */
+>  	__u8	s_def_hash_version;	/* Default hash version to use */
+>  	__u8	s_jnl_backup_type; 	/* Default type of journal backup */
+> -	__u16	s_reserved_word_pad;
+> +	__u16	s_desc_size;		/* Group desc. size: INCOMPAT_64BIT */
+>  	__u32	s_default_mount_opts;
+>  	__u32	s_first_meta_bg;	/* First metablock group */
+>  	__u32	s_mkfs_time;		/* When the filesystem was created */
+>  	__u32	s_jnl_blocks[17]; 	/* Backup of the journal inode */
+> -	__u32	s_reserved[172];	/* Padding to the end of the block */
+> +	__u32	s_blocks_count_hi;	/* Blocks count high 32bits */
+> +	__u32	s_r_blocks_count_hi;	/* Reserved blocks count high 32 bits*/
+> +	__u32	s_free_blocks_hi; 	/* Free blocks count */
 
-- EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE (0x0040?) - add s_min_extra_isize and
-  s_want_extra_isize fields to superblock, which allow specifying
-  the minimum and desired i_extra_isize fields in large inodes
-  (for nsec+epoch timestamps, potential other uses).  Needs RO_COMPAT
-  flag handling, needs e2fsck support, patch complete, little testing.
+I'd prefer s_free_blocks_count_hi
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> +	__u32	s_reserved[169];	/* Padding to the end of the block */
+>  };
 
-Index: e2fsprogs/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/ext2_fs.h	2006-10-18 01:49:51.000000000 -0400
-+++ e2fsprogs/lib/ext2fs/ext2_fs.h	2006-10-18 02:07:35.000000000 -0400
-@@ -298,7 +298,7 @@
- 	__u16	i_uid;		/* Low 16 bits of Owner Uid */
- 	__u32	i_size;		/* Size in bytes */
- 	__u32	i_atime;	/* Access time */
--	__u32	i_ctime;	/* Creation time */
-+	__u32	i_ctime;	/* Inode Change time */
- 	__u32	i_mtime;	/* Modification time */
- 	__u32	i_dtime;	/* Deletion Time */
- 	__u16	i_gid;		/* Low 16 bits of Group Id */
-@@ -356,7 +356,7 @@
- 	__u16	i_uid;		/* Low 16 bits of Owner Uid */
- 	__u32	i_size;		/* Size in bytes */
- 	__u32	i_atime;	/* Access time */
--	__u32	i_ctime;	/* Creation time */
-+	__u32	i_ctime;	/* Inode Change time */
- 	__u32	i_mtime;	/* Modification time */
- 	__u32	i_dtime;	/* Deletion Time */
- 	__u16	i_gid;		/* Low 16 bits of Group Id */
-@@ -405,6 +405,11 @@
- 	} osd2;				/* OS dependent 2 */
- 	__u16	i_extra_isize;
- 	__u16	i_pad1;
-+	__u32	i_ctime_extra;	/* extra Change time (nsec << 2 | epoch) */
-+	__u32	i_mtime_extra;	/* extra Mod. time (nsec << 2 | epoch) */
-+	__u32	i_atime_extra;	/* extra Access time (nsec << 2 | epoch) */
-+	__u32	i_crtime;	/* File creation time */
-+	__u32	i_crtime_extra;	/* extra File creation time (nsec << 2 | epoch)*/
- };
- 
- #define i_size_high	i_dir_acl
-@@ -554,7 +559,9 @@
- 	__u32	s_blocks_count_hi;	/* Blocks count high 32bits */
- 	__u32	s_r_blocks_count_hi;	/* Reserved blocks count high 32 bits*/
- 	__u32	s_free_blocks_hi; 	/* Free blocks count */
--	__u32	s_reserved[169];	/* Padding to the end of the block */
-+	__u16	s_min_extra_isize;	/* All inodes have at least # bytes */
-+	__u16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
-+	__u32	s_reserved[168];	/* Padding to the end of the block */
- };
- 
- /*
-@@ -607,6 +614,7 @@
- #define EXT4_FEATURE_RO_COMPAT_HUGE_FILE	0x0008
- #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
-+#define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- 
- #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
+Regards,
+   Val=E9rie
