@@ -1,55 +1,47 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH, E2FSPROGS] On-disk format for large number of subdirectors
-Date: Wed, 18 Oct 2006 13:29:28 -0600
-Message-ID: <20061018192928.GF3509@schatzie.adilger.int>
-References: <E1Ga4qP-0004wH-85@candygram.thunk.org>
+Subject: Re: [PATCH, E2FSPROGS] On-disk format for inode extra size control inode size
+Date: Wed, 18 Oct 2006 13:34:38 -0600
+Message-ID: <20061018193437.GG3509@schatzie.adilger.int>
+References: <E1Ga4rR-000534-CE@candygram.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:58345 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161298AbWJRT33
+Received: from mail.clusterfs.com ([206.168.112.78]:8376 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1161322AbWJRTek
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Oct 2006 15:29:29 -0400
+	Wed, 18 Oct 2006 15:34:40 -0400
 To: Theodore Ts'o <tytso@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <E1Ga4qP-0004wH-85@candygram.thunk.org>
+In-Reply-To: <E1Ga4rR-000534-CE@candygram.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 18, 2006  02:24 -0400, Theodore Ts'o wrote:
-> On-disk format for large number of subdirectories
+On Oct 18, 2006  02:25 -0400, Theodore Ts'o wrote:
+> On-disk format for controlling the inode size
 > 
-> - EXT4_FEATURE_RO_COMPAT_DIR_NLINK (0x0020?) - allow directories to have
->   > 65000 subdirectories (i_nlinks) by setting i_nlinks = 1 for such
->   directories.  RO_COMPAT protects old filesystems from unlinking such
->   directories incorrectly and losing all files therein.  
+> - EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE (0x0040?) - add s_min_extra_isize and
+>   s_want_extra_isize fields to superblock, which allow specifying
+>   the minimum and desired i_extra_isize fields in large inodes
+>   (for nsec+epoch timestamps, potential other uses).  Needs RO_COMPAT
+>   flag handling, needs e2fsck support, patch complete, little testing.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Looks good.  Will try to get a new patch out with this support.
+> @@ -405,6 +405,11 @@
+>  	} osd2;				/* OS dependent 2 */
+>  	__u16	i_extra_isize;
+>  	__u16	i_pad1;
+> +	__u32	i_ctime_extra;	/* extra Change time (nsec << 2 | epoch) */
 
-> Index: e2fsprogs/lib/ext2fs/ext2_fs.h
-> ===================================================================
-> --- e2fsprogs.orig/lib/ext2fs/ext2_fs.h	2006-10-18 01:42:48.000000000 -0400
-> +++ e2fsprogs/lib/ext2fs/ext2_fs.h	2006-10-18 01:49:51.000000000 -0400
-> @@ -71,7 +71,7 @@
->  /*
->   * Maximal count of links to a file
->   */
-> -#define EXT2_LINK_MAX		32000
-> +#define EXT2_LINK_MAX		65000
->  
->  /*
->   * Macro-instructions used to manage several block sizes
-> @@ -606,6 +606,7 @@
->  /* #define EXT2_FEATURE_RO_COMPAT_BTREE_DIR	0x0004 not used */
->  #define EXT4_FEATURE_RO_COMPAT_HUGE_FILE	0x0008
->  #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
-> +#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
->  
->  #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
->  #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
+There was some discussion about moving the i_ctime_extra field into the
+small inode, for use as a version field by NFSV4.  The proposed field was
+l_i_reserved2 in the original Bull patch.
+
+> +	__u32	i_mtime_extra;	/* extra Mod. time (nsec << 2 | epoch) */
+                                         ^^^ Modify
+
+Looks good otherwise.
 
 Cheers, Andreas
 --
