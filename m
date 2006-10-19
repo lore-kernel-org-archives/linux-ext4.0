@@ -1,90 +1,38 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH/RFC] - make ext3 more robust in the face of filesystem
- corruption
-Date: Wed, 18 Oct 2006 19:26:42 -0500
-Message-ID: <4536C642.5020301@redhat.com>
-References: <45369869.60400@redhat.com> <20061018214022.GJ3509@schatzie.adilger.int> <4536A31F.5050604@redhat.com> <20061018222449.GK3509@schatzie.adilger.int>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH/RFC] - make ext3 more robust in the face of filesystem corruption
+Date: Thu, 19 Oct 2006 01:35:18 -0600
+Message-ID: <20061019073518.GN3509@schatzie.adilger.int>
+References: <45369869.60400@redhat.com> <20061018214022.GJ3509@schatzie.adilger.int> <4536A31F.5050604@redhat.com> <20061018222449.GK3509@schatzie.adilger.int> <4536C642.5020301@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Eric Sandeen <sandeen@redhat.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44246 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1945923AbWJSA0p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Oct 2006 20:26:45 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
-In-Reply-To: <20061018222449.GK3509@schatzie.adilger.int>
+Received: from mail.clusterfs.com ([206.168.112.78]:12496 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1946073AbWJSHfV
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Oct 2006 03:35:21 -0400
+To: Eric Sandeen <esandeen@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <4536C642.5020301@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Oct 18, 2006  16:56 -0500, Eric Sandeen wrote:
->> Andreas Dilger wrote:
->>> The directory leaf data is kept in
->>> the page cache and there is a helper function ext2_check_page() to mark
->>> the page "checked".  That means the page only needs to be checked once
->>> after being read from disk, instead of each time through readdir.
->> ah, sure.  Hm...  well, this might be a bit of a performance hit if it's
->> checking cached data... let me think on that.
-> 
-> Well, having something like "ext3_dir_bread()" that verifies the leaf block
-> once if (!uptodate()) would be almost the same as ext2 with fairly little
-> effort.  It would help performance in several places, at the slight risk
-> of not handling in-memory corruption after the block is read...
+On Oct 18, 2006  19:26 -0500, Eric Sandeen wrote:
+> >Well, it would also be possible to look into inode->i_blocks to see what
+> >blocks exist past this offset, but that is complicated by the introduction
+> > <eom>
+> introduction of ...?  :)
 
-Right, I understand what you meant; I meant that adding the check as I had it 
-was extra overhead & a performance risk.  I think missing in-memory corruption 
-is ok; if memory is getting corrupted then there are almost surely bigger 
-problems looming.
+Sorry - introduction of extents.  So we can't just look into the i_blocks
+{d,t,}indirect blocks to work out the maximum reasonable size for an inode
+without adding decoding of extents into this code.  Maybe if "SEEK_DATA"
+is added to ext3 (patch was proposed this past week) then we could seek
+past the hole efficiently.  For now I'm happy to assume i_blocks * 512 is
+a safe upper limit on the file size.
 
->>> I'm not sure whether this is a win or not.  It means that if there is ever
->>> a directory with a bad leaf block any entries beyond that block are not
->>> accessible anymore.  
->> I'm amazed at how hard ext3 works to cope with bad blocks ;-)
-> 
-> It would fail all of your tests otherwise, right?  
-
-Well, this test basically just looks for oopses or hangs.  If the filesystem 
-shut down at the first sign of trouble, that would satisfy this test.
-
-> That is one virtue of
-> ext2 having grown up in the days when bad blocks existed.  Those days are
-> (sadly) coming back again, hence desire for fs-level checksums, etc.
-
-*nod*
-
-...
-
->>> This obviously won't help if the whole inode is bogus, but then nothing
->>> will catch all errors.
->> Yep, I'd thought maybe a size vs. blocks test might make sense; I think
->> there can never legitimately be a sparse directory?
-> 
-> Not currently, though there was some desire to allow this during htree
-> development, to allow shrinking large-but-empty directories.  
-
-Yep, I wondered about that.  Any chance it'll happen?
-
-> Since this
-> already provokes an ext3_error() (which might be a panic()) to hit a hole
-> we can assume that this needs to be carefully implmemented.
-
-Well, adding it as you suggested is in a case where it will -already- be calling 
-an ext3_error; adding the test just keeps it from going too much further after 
-that.  I think it's safe, and a good idea.
-
->> I guess if the intent is to soldier on in the face of adversity, it
->> doesn't matter if it's an umappable offset or an IO error; ext3 wants to
->> go ahead & try the next one block anyway.  So the size test probably
->> makes sense as a stopping point.
-> 
-> Well, it would also be possible to look into inode->i_blocks to see what
-> blocks exist past this offset, but that is complicated by the introduction
- > <eom>
-introduction of ...?  :)
-
-Your suggested test seems pretty sane to me.
-
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
