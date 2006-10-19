@@ -1,76 +1,90 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH, E2FSPROGS] On-disk format for inode extra size control inode size
-Date: Wed, 18 Oct 2006 16:59:34 -0600
-Message-ID: <20061018225934.GL3509@schatzie.adilger.int>
-References: <E1Ga4rR-000534-CE@candygram.thunk.org> <20061018193437.GG3509@schatzie.adilger.int> <20061018221618.GA12378@thunk.org>
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: Re: [PATCH/RFC] - make ext3 more robust in the face of filesystem
+ corruption
+Date: Wed, 18 Oct 2006 19:26:42 -0500
+Message-ID: <4536C642.5020301@redhat.com>
+References: <45369869.60400@redhat.com> <20061018214022.GJ3509@schatzie.adilger.int> <4536A31F.5050604@redhat.com> <20061018222449.GK3509@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:8644 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1423140AbWJRW7j
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Oct 2006 18:59:39 -0400
-To: Theodore Tso <tytso@mit.edu>
-Content-Disposition: inline
-In-Reply-To: <20061018221618.GA12378@thunk.org>
+Received: from mx1.redhat.com ([66.187.233.31]:44246 "EHLO mx1.redhat.com")
+	by vger.kernel.org with ESMTP id S1945923AbWJSA0p (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Oct 2006 20:26:45 -0400
+To: Andreas Dilger <adilger@clusterfs.com>
+In-Reply-To: <20061018222449.GK3509@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 18, 2006  18:16 -0400, Theodore Tso wrote:
-> On Wed, Oct 18, 2006 at 01:34:38PM -0600, Andreas Dilger wrote:
-> > There was some discussion about moving the i_ctime_extra field into the
-> > small inode, for use as a version field by NFSV4.  The proposed field was
-> > l_i_reserved2 in the original Bull patch.
+Andreas Dilger wrote:
+> On Oct 18, 2006  16:56 -0500, Eric Sandeen wrote:
+>> Andreas Dilger wrote:
+>>> The directory leaf data is kept in
+>>> the page cache and there is a helper function ext2_check_page() to mark
+>>> the page "checked".  That means the page only needs to be checked once
+>>> after being read from disk, instead of each time through readdir.
+>> ah, sure.  Hm...  well, this might be a bit of a performance hit if it's
+>> checking cached data... let me think on that.
 > 
-> The potential problem with this is what if program makes a huge number
-> of changes to inodes, such that we end up having to bump the ctime
-> field into the future?
+> Well, having something like "ext3_dir_bread()" that verifies the leaf block
+> once if (!uptodate()) would be almost the same as ext2 with fairly little
+> effort.  It would help performance in several places, at the slight risk
+> of not handling in-memory corruption after the block is read...
 
-Well, if you are changing the inode billions of times/second for any
-extended amount of time, then yes that might be possible.  Normally
-setting it to the current ctime and incrementing the nsec timestamp
-on the rare cases two threads are updating it at once is sufficient.
-Note that in this version is only critical to compare for a single
-inode, and not filesystem-wide.
+Right, I understand what you meant; I meant that adding the check as I had it 
+was extra overhead & a performance risk.  I think missing in-memory corruption 
+is ok; if memory is getting corrupted then there are almost surely bigger 
+problems looming.
 
-> But I have another question --- why does this the change attribute
-> counter have to be a persistent value that takes up space in the inode
-> at all?  This is strictly a NFSv4 only hack, and NFSv4 simply requires
-> a 64-bit increasing counter when any inode attributes have changed, so
-> it can determine whether client-side caches are refreshed.
+>>> I'm not sure whether this is a win or not.  It means that if there is ever
+>>> a directory with a bad leaf block any entries beyond that block are not
+>>> accessible anymore.  
+>> I'm amazed at how hard ext3 works to cope with bad blocks ;-)
+> 
+> It would fail all of your tests otherwise, right?  
 
-Well, Lustre has a need for this also, in order to know if a particular
-modification to an inode has been done or not.  Using the nsec ctime is
-a way of saving space in the inode, while at the same time allowing two
-operations to be ordered relative to each other.  This needs to be
-persistent across a server reboot for both NFSv4 and Lustre.
+Well, this test basically just looks for oopses or hangs.  If the filesystem 
+shut down at the first sign of trouble, that would satisfy this test.
 
-Since i_ctime_extra needs to be stored on disk anyways, I don't see why
-there would be an objection to having it serve a dual purpose.  For
-Lustre we don't actually care whether it is in the core inode, since we
-always format filesystems with large inodes anyways, but in consideration
-of NFSv4 exporting existing ext3 filesystems I suggested i_ctime_extra go
-into the core inode.
+> That is one virtue of
+> ext2 having grown up in the days when bad blocks existed.  Those days are
+> (sadly) coming back again, hence desire for fs-level checksums, etc.
 
-> So let the high 32-bits of the attribute value be the time in seconds
-> that the system was booted (or the filesystem was mounted; I don't
-> care), and let the low 32-bit values be a value which is stored in the
-> in-core inode which is set to a global counter value which is
-> incremented whenever inode is changed.  If the in-core inode gets
-> dropped and then later reloaded, it will get a newer global counter
-> value, which may forced some clients to reload their cache when they
-> may not have needed to --- and the same would happen if the server
-> gets rebooted, since the high 32-bits would get bumped to the new
-> mount time.
+*nod*
 
-This would work, I suppose.  It doesn't allow this value to be exported
-to userspace without additional API changes as the i_ctime_extra one can.
-The initial Bull patch consumed an extra field in struct stat, stat64,
-struct inode, and struct iattr in order to allow userspace access also.
+...
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+>>> This obviously won't help if the whole inode is bogus, but then nothing
+>>> will catch all errors.
+>> Yep, I'd thought maybe a size vs. blocks test might make sense; I think
+>> there can never legitimately be a sparse directory?
+> 
+> Not currently, though there was some desire to allow this during htree
+> development, to allow shrinking large-but-empty directories.  
+
+Yep, I wondered about that.  Any chance it'll happen?
+
+> Since this
+> already provokes an ext3_error() (which might be a panic()) to hit a hole
+> we can assume that this needs to be carefully implmemented.
+
+Well, adding it as you suggested is in a case where it will -already- be calling 
+an ext3_error; adding the test just keeps it from going too much further after 
+that.  I think it's safe, and a good idea.
+
+>> I guess if the intent is to soldier on in the face of adversity, it
+>> doesn't matter if it's an umappable offset or an IO error; ext3 wants to
+>> go ahead & try the next one block anyway.  So the size test probably
+>> makes sense as a stopping point.
+> 
+> Well, it would also be possible to look into inode->i_blocks to see what
+> blocks exist past this offset, but that is complicated by the introduction
+ > <eom>
+introduction of ...?  :)
+
+Your suggested test seems pretty sane to me.
+
+-Eric
