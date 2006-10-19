@@ -1,104 +1,59 @@
-From: akpm@osdl.org
-Subject: + remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code.patch added to -mm tree
-Date: Thu, 19 Oct 2006 15:51:42 -0700
-Message-ID: <200610192251.k9JMpgF5028344@shell0.pdx.osdl.net>
-Cc: agruen@suse.de, linux-ext4@vger.kernel.org
+From: Andrew Morton <akpm@osdl.org>
+Subject: Re: 2.6.19-rc2-mm1 warning in invalidate_inode_pages2_range()
+Date: Thu, 19 Oct 2006 16:02:25 -0700
+Message-ID: <20061019160225.fee4c25f.akpm@osdl.org>
+References: <1161297546.26843.33.camel@dyn9047017100.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Zach Brown <zach.brown@oracle.com>,
+	ext4 <linux-ext4@vger.kernel.org>,
+	lkml <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:47808 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1946614AbWJSWvq (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:30404 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1946648AbWJSXCh (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Oct 2006 18:51:46 -0400
-To: mm-commits@vger.kernel.org
+	Thu, 19 Oct 2006 19:02:37 -0400
+To: Badari Pulavarty <pbadari@us.ibm.com>
+In-Reply-To: <1161297546.26843.33.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Thu, 19 Oct 2006 15:39:06 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
 
-The patch titled
+> Hi Zach,
+> 
+> While running IO tests I get following messages on 2.6.19-rc2-mm1
+> 
+> BUG: warning at mm/truncate.c:400/invalidate_inode_pages2_range()
+> 
+> Call Trace:
+>  [<ffffffff8020b481>] show_trace+0x41/0x70
+>  [<ffffffff8020b4c2>] dump_stack+0x12/0x20
+>  [<ffffffff80257f17>] invalidate_inode_pages2_range+0x297/0x2e0
+>  [<ffffffff8024fcb5>] generic_file_direct_IO+0xf5/0x130
+>  [<ffffffff8024fd64>] generic_file_direct_write+0x74/0x140
+>  [<ffffffff802507cc>] __generic_file_aio_write_nolock+0x36c/0x4b0
+>  [<ffffffff80250977>] generic_file_aio_write+0x67/0xd0
+>  [<ffffffff8808f6d3>] :ext4dev:ext4_file_write+0x23/0xc0
+> DWARF2 unwinder stuck at ext4_file_write+0x23/0xc0 [ext4dev]
+> Leftover inexact backtrace:
+>  [<ffffffff8027379f>] do_sync_write+0xcf/0x120
+>  [<ffffffff802772b7>] cp_new_stat+0xe7/0x100
+>  [<ffffffff8023db90>] autoremove_wake_function+0x0/0x30
+>  [<ffffffff804805bf>] __mutex_lock_slowpath+0x1df/0x1f0
+>  [<ffffffff8027408d>] vfs_write+0xbd/0x180
+>  [<ffffffff802747b3>] sys_write+0x53/0x90
+>  [<ffffffff80209c1e>] system_call+0x7e/0x83
+> 
 
-     Remove superfluous lock_super() in extN xattr code
+that's warning that we weren't able to invalidate some pagecache.  That's
+not really suprising.  Perhaps we should be more careful in deciding when
+to fail the call (ie: leaving behind a clean page is ok, leaving behind a
+dirty page is bad).
 
-has been added to the -mm tree.  Its filename is
+Probably it's leaving behind dirty pagecache and you're about to lose your
+data.  Which I bet is your own darn fault for doing silly things.
 
-     remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code.patch
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-------------------------------------------------------
-Subject: Remove superfluous lock_super() in extN xattr code
-From: Andreas Gruenbacher <agruen@suse.de>
-
-lock_super() is unnecessary for setting super-block feature flags.  Use the
-provided *_SET_COMPAT_FEATURE() macros as well.
-
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext2/xattr.c |    5 +----
- fs/ext3/xattr.c |    5 +----
- fs/ext4/xattr.c |    5 +----
- 3 files changed, 3 insertions(+), 12 deletions(-)
-
-diff -puN fs/ext2/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext2/xattr.c
---- a/fs/ext2/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
-+++ a/fs/ext2/xattr.c
-@@ -342,12 +342,9 @@ static void ext2_xattr_update_super_bloc
- 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR))
- 		return;
- 
--	lock_super(sb);
--	EXT2_SB(sb)->s_es->s_feature_compat |=
--		cpu_to_le32(EXT2_FEATURE_COMPAT_EXT_ATTR);
-+	EXT2_SET_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR);
- 	sb->s_dirt = 1;
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
--	unlock_super(sb);
- }
- 
- /*
-diff -puN fs/ext3/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
-+++ a/fs/ext3/xattr.c
-@@ -459,14 +459,11 @@ static void ext3_xattr_update_super_bloc
- 	if (EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_EXT_ATTR))
- 		return;
- 
--	lock_super(sb);
- 	if (ext3_journal_get_write_access(handle, EXT3_SB(sb)->s_sbh) == 0) {
--		EXT3_SB(sb)->s_es->s_feature_compat |=
--			cpu_to_le32(EXT3_FEATURE_COMPAT_EXT_ATTR);
-+		EXT3_SET_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_EXT_ATTR);
- 		sb->s_dirt = 1;
- 		ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
- 	}
--	unlock_super(sb);
- }
- 
- /*
-diff -puN fs/ext4/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
-+++ a/fs/ext4/xattr.c
-@@ -459,14 +459,11 @@ static void ext4_xattr_update_super_bloc
- 	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR))
- 		return;
- 
--	lock_super(sb);
- 	if (ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh) == 0) {
--		EXT4_SB(sb)->s_es->s_feature_compat |=
--			cpu_to_le32(EXT4_FEATURE_COMPAT_EXT_ATTR);
-+		EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR);
- 		sb->s_dirt = 1;
- 		ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
- 	}
--	unlock_super(sb);
- }
- 
- /*
-_
-
-Patches currently in -mm which might be from agruen@suse.de are
-
-fs-kconfig-move-generic_acl-fix-acl-call-errors.patch
-remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code.patch
+What workload was in use?
