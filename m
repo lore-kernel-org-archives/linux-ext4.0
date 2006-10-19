@@ -1,107 +1,48 @@
-From: akpm@osdl.org
-Subject: + ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop.patch added to -mm tree
-Date: Thu, 19 Oct 2006 15:32:16 -0700
-Message-ID: <200610192232.k9JMWGQU027715@shell0.pdx.osdl.net>
-Cc: hirofumi@mail.parknet.co.jp, linux-ext4@vger.kernel.org
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: 2.6.19-rc2-mm1 warning in invalidate_inode_pages2_range()
+Date: Thu, 19 Oct 2006 15:39:06 -0700
+Message-ID: <1161297546.26843.33.camel@dyn9047017100.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: lkml <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:15035 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1946596AbWJSWcZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Oct 2006 18:32:25 -0400
-To: mm-commits@vger.kernel.org
+Received: from e32.co.us.ibm.com ([32.97.110.150]:31932 "EHLO
+	e32.co.us.ibm.com") by vger.kernel.org with ESMTP id S1946604AbWJSWjS
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Oct 2006 18:39:18 -0400
+To: Zach Brown <zach.brown@oracle.com>,
+	ext4 <linux-ext4@vger.kernel.org>, akpm@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi Zach,
 
-The patch titled
+While running IO tests I get following messages on 2.6.19-rc2-mm1
 
-     ext3/4: fix J_ASSERT(transaction->t_updates > 0) in journal_stop()
+BUG: warning at mm/truncate.c:400/invalidate_inode_pages2_range()
 
-has been added to the -mm tree.  Its filename is
+Call Trace:
+ [<ffffffff8020b481>] show_trace+0x41/0x70
+ [<ffffffff8020b4c2>] dump_stack+0x12/0x20
+ [<ffffffff80257f17>] invalidate_inode_pages2_range+0x297/0x2e0
+ [<ffffffff8024fcb5>] generic_file_direct_IO+0xf5/0x130
+ [<ffffffff8024fd64>] generic_file_direct_write+0x74/0x140
+ [<ffffffff802507cc>] __generic_file_aio_write_nolock+0x36c/0x4b0
+ [<ffffffff80250977>] generic_file_aio_write+0x67/0xd0
+ [<ffffffff8808f6d3>] :ext4dev:ext4_file_write+0x23/0xc0
+DWARF2 unwinder stuck at ext4_file_write+0x23/0xc0 [ext4dev]
+Leftover inexact backtrace:
+ [<ffffffff8027379f>] do_sync_write+0xcf/0x120
+ [<ffffffff802772b7>] cp_new_stat+0xe7/0x100
+ [<ffffffff8023db90>] autoremove_wake_function+0x0/0x30
+ [<ffffffff804805bf>] __mutex_lock_slowpath+0x1df/0x1f0
+ [<ffffffff8027408d>] vfs_write+0xbd/0x180
+ [<ffffffff802747b3>] sys_write+0x53/0x90
+ [<ffffffff80209c1e>] system_call+0x7e/0x83
 
-     ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop.patch
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+FYI.
 
-------------------------------------------------------
-Subject: ext3/4: fix J_ASSERT(transaction->t_updates > 0) in journal_stop()
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-
-A disk generated some I/O error, after it, I hitted
-J_ASSERT(transaction->t_updates > 0) in journal_stop().
-
-It seems to happened on ext3_truncate() path from stack trace. Then,
-maybe the following case may trigger J_ASSERT(transaction->t_updates > 0).
-
-ext3_truncate()
-    -> ext3_free_branches()
-        -> ext3_journal_test_restart()
-	    -> ext3_journal_restart()
-                -> journal_restart()
-                transaction->t_updates--;
-                /* another process aborted journal */
-                    -> start_this_handle()
-		    returns -EROFS without transaction->t_updates++;
-
-    -> ext3_journal_stop()
-        -> journal_stop()
-	J_ASSERT(transaction->t_updates > 0)
-
-If journal was aborted in middle of journal_restart(), ext3_truncate()
-may trigger J_ASSERT().
-
-Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/jbd/transaction.c  |    5 +++--
- fs/jbd2/transaction.c |    5 +++--
- 2 files changed, 6 insertions(+), 4 deletions(-)
-
-diff -puN fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
-+++ a/fs/jbd/transaction.c
-@@ -1314,13 +1314,14 @@ int journal_stop(handle_t *handle)
- 	int old_handle_count, err;
- 	pid_t pid;
- 
--	J_ASSERT(transaction->t_updates > 0);
- 	J_ASSERT(journal_current_handle() == handle);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else
-+	else {
-+		J_ASSERT(transaction->t_updates > 0);
- 		err = 0;
-+	}
- 
- 	if (--handle->h_ref > 0) {
- 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-diff -puN fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd2/transaction.c
---- a/fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
-+++ a/fs/jbd2/transaction.c
-@@ -1314,13 +1314,14 @@ int jbd2_journal_stop(handle_t *handle)
- 	int old_handle_count, err;
- 	pid_t pid;
- 
--	J_ASSERT(transaction->t_updates > 0);
- 	J_ASSERT(journal_current_handle() == handle);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else
-+	else {
-+		J_ASSERT(transaction->t_updates > 0);
- 		err = 0;
-+	}
- 
- 	if (--handle->h_ref > 0) {
- 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-_
-
-Patches currently in -mm which might be from hirofumi@mail.parknet.co.jp are
-
-ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop.patch
+Thaks
+Badari
