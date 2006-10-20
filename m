@@ -1,104 +1,108 @@
 From: akpm@osdl.org
-Subject: - ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop.patch removed from -mm tree
-Date: Fri, 20 Oct 2006 13:40:42 -0700
-Message-ID: <200610202040.k9KKegbc001587@shell0.pdx.osdl.net>
+Subject: + handle-ext3-directory-corruption-better.patch added to -mm tree
+Date: Fri, 20 Oct 2006 16:02:26 -0700
+Message-ID: <200610202302.k9KN2Q9u006641@shell0.pdx.osdl.net>
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:16606 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1030357AbWJTUkr (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:2713 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1423328AbWJTXCf (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Oct 2006 16:40:47 -0400
-To: hirofumi@mail.parknet.co.jp, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+	Fri, 20 Oct 2006 19:02:35 -0400
+To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3/4: fix J_ASSERT(transaction->t_updates > 0) in journal_stop()
-has been removed from the -mm tree.  Its filename was
-     ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop.patch
+     handle ext3 directory corruption better
+has been added to the -mm tree.  Its filename is
+     handle-ext3-directory-corruption-better.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
 ------------------------------------------------------
-Subject: ext3/4: fix J_ASSERT(transaction->t_updates > 0) in journal_stop()
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: handle ext3 directory corruption better
+From: Eric Sandeen <sandeen@redhat.com>
 
-A disk generated some I/O error, after it, I hitted
-J_ASSERT(transaction->t_updates > 0) in journal_stop().
+I've been using Steve Grubb's purely evil "fsfuzzer" tool, at
+http://people.redhat.com/sgrubb/files/fsfuzzer-0.4.tar.gz
 
-It seems to happened on ext3_truncate() path from stack trace. Then,
-maybe the following case may trigger J_ASSERT(transaction->t_updates > 0).
+Basically it makes a filesystem, splats some random bits over it, then
+tries to mount it and do some simple filesystem actions.
 
-ext3_truncate()
-    -> ext3_free_branches()
-        -> ext3_journal_test_restart()
-	    -> ext3_journal_restart()
-                -> journal_restart()
-                transaction->t_updates--;
-                /* another process aborted journal */
-                    -> start_this_handle()
-		    returns -EROFS without transaction->t_updates++;
+At best, the filesystem catches the corruption gracefully.  At worst,
+things spin out of control.
 
-    -> ext3_journal_stop()
-        -> journal_stop()
-	J_ASSERT(transaction->t_updates > 0)
+As you might guess, we found a couple places in ext3 where things spin out
+of control :)
 
-If journal was aborted in middle of journal_restart(), ext3_truncate()
-may trigger J_ASSERT().
+First, we had a corrupted directory that was never checked for
+consistency...  it was corrupt, and pointed to another bad "entry" of
+length 0.  The for() loop looped forever, since the length of
+ext3_next_entry(de) was 0, and we kept looking at the same pointer over and
+over and over and over...  I modeled this check and subsequent action on
+what is done for other directory types in ext3_readdir...
 
-Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+(adding this check adds some computational expense; I am testing a followup
+patch to reduce the number of times we check and re-check these directory
+entries, in all cases.  Thanks for the idea, Andreas).
+
+Next we had a root directory inode which had a corrupted size, claimed to
+be > 200M on a 4M filesystem.  There was only really 1 block in the
+directory, but because the size was so large, readdir kept coming back for
+more, spewing thousands of printk's along the way.
+
+Per Andreas' suggestion, if we're in this read error condition and we're
+trying to read an offset which is greater than i_blocks worth of bytes,
+stop trying, and break out of the loop.
+
+With these two changes fsfuzz test survives quite well on ext3.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/jbd/transaction.c  |    5 +++--
- fs/jbd2/transaction.c |    5 +++--
- 2 files changed, 6 insertions(+), 4 deletions(-)
+ fs/ext3/dir.c   |    3 +++
+ fs/ext3/namei.c |    9 +++++++++
+ 2 files changed, 12 insertions(+)
 
-diff -puN fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
-+++ a/fs/jbd/transaction.c
-@@ -1314,13 +1314,14 @@ int journal_stop(handle_t *handle)
- 	int old_handle_count, err;
- 	pid_t pid;
- 
--	J_ASSERT(transaction->t_updates > 0);
- 	J_ASSERT(journal_current_handle() == handle);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else
-+	else {
-+		J_ASSERT(transaction->t_updates > 0);
- 		err = 0;
-+	}
- 
- 	if (--handle->h_ref > 0) {
- 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-diff -puN fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd2/transaction.c
---- a/fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
-+++ a/fs/jbd2/transaction.c
-@@ -1314,13 +1314,14 @@ int jbd2_journal_stop(handle_t *handle)
- 	int old_handle_count, err;
- 	pid_t pid;
- 
--	J_ASSERT(transaction->t_updates > 0);
- 	J_ASSERT(journal_current_handle() == handle);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else
-+	else {
-+		J_ASSERT(transaction->t_updates > 0);
- 		err = 0;
-+	}
- 
- 	if (--handle->h_ref > 0) {
- 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+diff -puN fs/ext3/dir.c~handle-ext3-directory-corruption-better fs/ext3/dir.c
+--- a/fs/ext3/dir.c~handle-ext3-directory-corruption-better
++++ a/fs/ext3/dir.c
+@@ -154,6 +154,9 @@ static int ext3_readdir(struct file * fi
+ 			ext3_error (sb, "ext3_readdir",
+ 				"directory #%lu contains a hole at offset %lu",
+ 				inode->i_ino, (unsigned long)filp->f_pos);
++			/* corrupt size?  Maybe no more blocks to read */
++			if (filp->f_pos > inode->i_blocks << 9)
++				break;
+ 			filp->f_pos += sb->s_blocksize - offset;
+ 			continue;
+ 		}
+diff -puN fs/ext3/namei.c~handle-ext3-directory-corruption-better fs/ext3/namei.c
+--- a/fs/ext3/namei.c~handle-ext3-directory-corruption-better
++++ a/fs/ext3/namei.c
+@@ -552,6 +552,15 @@ static int htree_dirblock_to_tree(struct
+ 					   dir->i_sb->s_blocksize -
+ 					   EXT3_DIR_REC_LEN(0));
+ 	for (; de < top; de = ext3_next_entry(de)) {
++		if (!ext3_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
++					(block<<EXT3_BLOCK_SIZE_BITS(dir->i_sb))
++						+((char *)de - bh->b_data))) {
++			/* On error, skip the f_pos to the next block. */
++			dir_file->f_pos = (dir_file->f_pos |
++					(dir->i_sb->s_blocksize - 1)) + 1;
++			brelse (bh);
++			return count;
++		}
+ 		ext3fs_dirhash(de->name, de->name_len, hinfo);
+ 		if ((hinfo->hash < start_hash) ||
+ 		    ((hinfo->hash == start_hash) &&
 _
 
-Patches currently in -mm which might be from hirofumi@mail.parknet.co.jp are
+Patches currently in -mm which might be from sandeen@redhat.com are
 
-origin.patch
-clocksource-acpi_pm-add-another-greylist-chipset.patch
+handle-ext3-directory-corruption-better.patch
+handle-ext4-directory-corruption-better.patch
