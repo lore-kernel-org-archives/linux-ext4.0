@@ -1,65 +1,48 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: Re: 2.6.19-rc2-mm1 warning in invalidate_inode_pages2_range()
-Date: Thu, 19 Oct 2006 16:12:25 -0700
-Message-ID: <1161299545.26843.41.camel@dyn9047017100.beaverton.ibm.com>
-References: <1161297546.26843.33.camel@dyn9047017100.beaverton.ibm.com>
-	 <20061019160225.fee4c25f.akpm@osdl.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH/RFC] - make ext3 more robust in the face of filesystem corruption
+Date: Thu, 19 Oct 2006 21:50:18 -0600
+Message-ID: <20061020035018.GX3509@schatzie.adilger.int>
+References: <45369869.60400@redhat.com> <20061018214022.GJ3509@schatzie.adilger.int> <4536A31F.5050604@redhat.com> <20061018222449.GK3509@schatzie.adilger.int> <4537A1FB.6030601@redhat.com> <4537FF97.2010400@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Zach Brown <zach.brown@oracle.com>,
-	ext4 <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:28052 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1946657AbWJSXMh
+Received: from mail.clusterfs.com ([206.168.112.78]:24198 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1946174AbWJTDuU
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Oct 2006 19:12:37 -0400
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061019160225.fee4c25f.akpm@osdl.org>
+	Thu, 19 Oct 2006 23:50:20 -0400
+To: Eric Sandeen <sandeen@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <4537FF97.2010400@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2006-10-19 at 16:02 -0700, Andrew Morton wrote:
-> On Thu, 19 Oct 2006 15:39:06 -0700
-> Badari Pulavarty <pbadari@us.ibm.com> wrote:
-> 
-> > Hi Zach,
+On Oct 19, 2006  17:43 -0500, Eric Sandeen wrote:
+> Eric Sandeen wrote:
+> > How about just tweaking the existing ext3_bread so that it lets the
+> > caller know whether or not it found an uptodate buffer?  Seems
+> > conceivable that more than just the dir code might want to do a data
+> > sanity check, based on if this is a fresh read or not.
 > > 
-> > While running IO tests I get following messages on 2.6.19-rc2-mm1
-> > 
-> > BUG: warning at mm/truncate.c:400/invalidate_inode_pages2_range()
-> > 
-> > Call Trace:
-> >  [<ffffffff8020b481>] show_trace+0x41/0x70
-> >  [<ffffffff8020b4c2>] dump_stack+0x12/0x20
-> >  [<ffffffff80257f17>] invalidate_inode_pages2_range+0x297/0x2e0
-> >  [<ffffffff8024fcb5>] generic_file_direct_IO+0xf5/0x130
-> >  [<ffffffff8024fd64>] generic_file_direct_write+0x74/0x140
-> >  [<ffffffff802507cc>] __generic_file_aio_write_nolock+0x36c/0x4b0
-> >  [<ffffffff80250977>] generic_file_aio_write+0x67/0xd0
-> >  [<ffffffff8808f6d3>] :ext4dev:ext4_file_write+0x23/0xc0
-> > DWARF2 unwinder stuck at ext4_file_write+0x23/0xc0 [ext4dev]
-> > Leftover inexact backtrace:
-> >  [<ffffffff8027379f>] do_sync_write+0xcf/0x120
-> >  [<ffffffff802772b7>] cp_new_stat+0xe7/0x100
-> >  [<ffffffff8023db90>] autoremove_wake_function+0x0/0x30
-> >  [<ffffffff804805bf>] __mutex_lock_slowpath+0x1df/0x1f0
-> >  [<ffffffff8027408d>] vfs_write+0xbd/0x180
-> >  [<ffffffff802747b3>] sys_write+0x53/0x90
-> >  [<ffffffff80209c1e>] system_call+0x7e/0x83
-> > 
+> > Could maybe even change the *err argument to a *retval; negative on
+> > errors, else 0 == not read (found uptodate), 1 == fresh read (not found
+> > uptodate).  Or is that too much overloading...
 > 
-> that's warning that we weren't able to invalidate some pagecache.  That's
-> not really suprising.  Perhaps we should be more careful in deciding when
-> to fail the call (ie: leaving behind a clean page is ok, leaving behind a
-> dirty page is bad).
+> I played around with this a little bit today, and it seems to have some
+> tangible results.  A fairly unsophisticated test of running "find" over
+> my whole root filesystem 10 times :) with and without re-checking cached
+> directory entries, yielded about a 10% speedup when skipping the re-checks.
 > 
-> Probably it's leaving behind dirty pagecache and you're about to lose your
-> data.  Which I bet is your own darn fault for doing silly things.
-> 
-> What workload was in use?
+> Is this something we want to do?  Are we comfortable with only checking
+> directory entries the first time they are read from disk?
 
-Running fsx and fsstress.
+Well, we already do this on ext2 without noticable problems.  As you say,
+if we are getting memory corruption we are in for a world of hurt in other
+areas.  The only case that might be worth checking inside the loop is if
+rec_len == 0, so that we don't spin on a bad entry forever.
 
-- Badari
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
