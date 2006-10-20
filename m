@@ -1,52 +1,90 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH/RFC] - make ext3 more robust in the face of filesystem
- corruption
-Date: Thu, 19 Oct 2006 23:00:20 -0500
-Message-ID: <453849D4.80601@redhat.com>
-References: <45369869.60400@redhat.com> <20061018214022.GJ3509@schatzie.adilger.int> <4536A31F.5050604@redhat.com> <20061018222449.GK3509@schatzie.adilger.int> <4537A1FB.6030601@redhat.com> <4537FF97.2010400@redhat.com> <20061020035018.GX3509@schatzie.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+From: akpm@osdl.org
+Subject: [patch 73/76] ext3/4: fix J_ASSERT(transaction->t_updates > 0) in journal_stop()
+Date: Thu, 19 Oct 2006 23:29:11 -0700
+Message-ID: <200610200629.k9K6TBTq009691@shell0.pdx.osdl.net>
+Cc: akpm@osdl.org, hirofumi@mail.parknet.co.jp,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:31134 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1946191AbWJTEAZ (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:26330 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1946316AbWJTGvB (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Oct 2006 00:00:25 -0400
-To: Andreas Dilger <adilger@clusterfs.com>
-In-Reply-To: <20061020035018.GX3509@schatzie.adilger.int>
+	Fri, 20 Oct 2006 02:51:01 -0400
+To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Oct 19, 2006  17:43 -0500, Eric Sandeen wrote:
->> Eric Sandeen wrote:
->>> How about just tweaking the existing ext3_bread so that it lets the
->>> caller know whether or not it found an uptodate buffer?  Seems
->>> conceivable that more than just the dir code might want to do a data
->>> sanity check, based on if this is a fresh read or not.
->>>
->>> Could maybe even change the *err argument to a *retval; negative on
->>> errors, else 0 == not read (found uptodate), 1 == fresh read (not found
->>> uptodate).  Or is that too much overloading...
->> I played around with this a little bit today, and it seems to have some
->> tangible results.  A fairly unsophisticated test of running "find" over
->> my whole root filesystem 10 times :) with and without re-checking cached
->> directory entries, yielded about a 10% speedup when skipping the re-checks.
->>
->> Is this something we want to do?  Are we comfortable with only checking
->> directory entries the first time they are read from disk?
-> 
-> Well, we already do this on ext2 without noticable problems.  As you say,
-> if we are getting memory corruption we are in for a world of hurt in other
-> areas.  The only case that might be worth checking inside the loop is if
-> rec_len == 0, so that we don't spin on a bad entry forever.
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
 
-Sounds good, I'll whip up a patch; probably one patch first to add the checks & 
-fix the corruptor tests, and follow up with one to be smarter about the checks 
-in all cases.
+A disk generated some I/O error, after it, I hitted
+J_ASSERT(transaction->t_updates > 0) in journal_stop().
 
-Thanks,
+It seems to happened on ext3_truncate() path from stack trace. Then,
+maybe the following case may trigger J_ASSERT(transaction->t_updates > 0).
 
--eric
+ext3_truncate()
+    -> ext3_free_branches()
+        -> ext3_journal_test_restart()
+	    -> ext3_journal_restart()
+                -> journal_restart()
+                transaction->t_updates--;
+                /* another process aborted journal */
+                    -> start_this_handle()
+		    returns -EROFS without transaction->t_updates++;
+
+    -> ext3_journal_stop()
+        -> journal_stop()
+	J_ASSERT(transaction->t_updates > 0)
+
+If journal was aborted in middle of journal_restart(), ext3_truncate()
+may trigger J_ASSERT().
+
+Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/jbd/transaction.c  |    5 +++--
+ fs/jbd2/transaction.c |    5 +++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff -puN fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
++++ a/fs/jbd/transaction.c
+@@ -1314,13 +1314,14 @@ int journal_stop(handle_t *handle)
+ 	int old_handle_count, err;
+ 	pid_t pid;
+ 
+-	J_ASSERT(transaction->t_updates > 0);
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+ 	if (is_handle_aborted(handle))
+ 		err = -EIO;
+-	else
++	else {
++		J_ASSERT(transaction->t_updates > 0);
+ 		err = 0;
++	}
+ 
+ 	if (--handle->h_ref > 0) {
+ 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+diff -puN fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop fs/jbd2/transaction.c
+--- a/fs/jbd2/transaction.c~ext3-fix-j_asserttransaction-t_updates-0-in-journal_stop
++++ a/fs/jbd2/transaction.c
+@@ -1314,13 +1314,14 @@ int jbd2_journal_stop(handle_t *handle)
+ 	int old_handle_count, err;
+ 	pid_t pid;
+ 
+-	J_ASSERT(transaction->t_updates > 0);
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+ 	if (is_handle_aborted(handle))
+ 		err = -EIO;
+-	else
++	else {
++		J_ASSERT(transaction->t_updates > 0);
+ 		err = 0;
++	}
+ 
+ 	if (--handle->h_ref > 0) {
+ 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+_
