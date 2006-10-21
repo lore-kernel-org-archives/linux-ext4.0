@@ -1,108 +1,46 @@
-From: akpm@osdl.org
-Subject: + handle-ext4-directory-corruption-better.patch added to -mm tree
-Date: Fri, 20 Oct 2006 16:02:37 -0700
-Message-ID: <200610202302.k9KN2bim006644@shell0.pdx.osdl.net>
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
+From: =?ISO-8859-1?Q?=22Andr=E9s_G=2E_Aragoneses_=5B_knocte_=5D?=
+	 =?ISO-8859-1?Q?=22?= <knocte@gmail.com>
+Subject: Discussion about a "dirty bit" in the filesystem
+Date: Sat, 21 Oct 2006 21:39:02 +0200
+Message-ID: <ehdt24$iau$1@sea.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:6041 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1423335AbWJTXCr (ORCPT
+Received: from main.gmane.org ([80.91.229.2]:42401 "EHLO ciao.gmane.org")
+	by vger.kernel.org with ESMTP id S1423387AbWJUTzF (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Oct 2006 19:02:47 -0400
-To: mm-commits@vger.kernel.org
+	Sat, 21 Oct 2006 15:55:05 -0400
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1GbMvu-0000zB-OV
+	for linux-ext4@vger.kernel.org; Sat, 21 Oct 2006 21:55:02 +0200
+Received: from 79.red-81-32-43.dynamicip.rima-tde.net ([81.32.43.79])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Oct 2006 21:55:02 +0200
+Received: from knocte by 79.red-81-32-43.dynamicip.rima-tde.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Oct 2006 21:55:02 +0200
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hello. Sorry if this is not the correct place to talk about this.
 
-The patch titled
-     handle ext4 directory corruption better
-has been added to the -mm tree.  Its filename is
-     handle-ext4-directory-corruption-better.patch
+I am writing to this list because I am a user of openSUSE that opened
+filed a bug [1] against the issue tracking software of this linux
+distribution about boot management and hibernation. There was a
+discussion and then the bug was resolved to WONTFIX, but I think we
+could extract from it a nice FEATURE that any filesystem would have, or=
+,
+in particular, ext4.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+Any opinions?
 
-------------------------------------------------------
-Subject: handle ext4 directory corruption better
-From: Eric Sandeen <sandeen@redhat.com>
+Regards,
 
-I've been using Steve Grubb's purely evil "fsfuzzer" tool, at
-http://people.redhat.com/sgrubb/files/fsfuzzer-0.4.tar.gz
+	Andr=E9s	[ knocte ]
 
-Basically it makes a filesystem, splats some random bits over it, then
-tries to mount it and do some simple filesystem actions.
 
-At best, the filesystem catches the corruption gracefully.  At worst,
-things spin out of control.
-
-As you might guess, we found a couple places in ext4 where things spin out
-of control :)
-
-First, we had a corrupted directory that was never checked for
-consistency...  it was corrupt, and pointed to another bad "entry" of
-length 0.  The for() loop looped forever, since the length of
-ext4_next_entry(de) was 0, and we kept looking at the same pointer over and
-over and over and over...  I modeled this check and subsequent action on
-what is done for other directory types in ext4_readdir...
-
-(adding this check adds some computational expense; I am testing a followup
-patch to reduce the number of times we check and re-check these directory
-entries, in all cases.  Thanks for the idea, Andreas).
-
-Next we had a root directory inode which had a corrupted size, claimed to
-be > 200M on a 4M filesystem.  There was only really 1 block in the
-directory, but because the size was so large, readdir kept coming back for
-more, spewing thousands of printk's along the way.
-
-Per Andreas' suggestion, if we're in this read error condition and we're
-trying to read an offset which is greater than i_blocks worth of bytes,
-stop trying, and break out of the loop.
-
-With these two changes fsfuzz test survives quite well on ext4.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext4/dir.c   |    3 +++
- fs/ext4/namei.c |    9 +++++++++
- 2 files changed, 12 insertions(+)
-
-diff -puN fs/ext4/dir.c~handle-ext4-directory-corruption-better fs/ext4/dir.c
---- a/fs/ext4/dir.c~handle-ext4-directory-corruption-better
-+++ a/fs/ext4/dir.c
-@@ -153,6 +153,9 @@ static int ext4_readdir(struct file * fi
- 			ext4_error (sb, "ext4_readdir",
- 				"directory #%lu contains a hole at offset %lu",
- 				inode->i_ino, (unsigned long)filp->f_pos);
-+			/* corrupt size?  Maybe no more blocks to read */
-+			if (filp->f_pos > inode->i_blocks << 9)
-+				break;
- 			filp->f_pos += sb->s_blocksize - offset;
- 			continue;
- 		}
-diff -puN fs/ext4/namei.c~handle-ext4-directory-corruption-better fs/ext4/namei.c
---- a/fs/ext4/namei.c~handle-ext4-directory-corruption-better
-+++ a/fs/ext4/namei.c
-@@ -552,6 +552,15 @@ static int htree_dirblock_to_tree(struct
- 					   dir->i_sb->s_blocksize -
- 					   EXT4_DIR_REC_LEN(0));
- 	for (; de < top; de = ext4_next_entry(de)) {
-+		if (!ext4_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
-+					(block<<EXT4_BLOCK_SIZE_BITS(dir->i_sb))
-+						+((char *)de - bh->b_data))) {
-+			/* On error, skip the f_pos to the next block. */
-+			dir_file->f_pos = (dir_file->f_pos |
-+					(dir->i_sb->s_blocksize - 1)) + 1;
-+			brelse (bh);
-+			return count;
-+		}
- 		ext4fs_dirhash(de->name, de->name_len, hinfo);
- 		if ((hinfo->hash < start_hash) ||
- 		    ((hinfo->hash == start_hash) &&
-_
-
-Patches currently in -mm which might be from sandeen@redhat.com are
-
-handle-ext3-directory-corruption-better.patch
-handle-ext4-directory-corruption-better.patch
+[1] https://bugzilla.novell.com/show_bug.cgi?id=3D175939
+--=20
