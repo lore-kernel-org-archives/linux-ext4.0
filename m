@@ -1,75 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: 2.6.18-mm2: ext3 BUG?
-Date: Mon, 23 Oct 2006 12:41:41 +0200
-Message-ID: <20061023104141.GB3162@atrey.karlin.mff.cuni.cz>
-References: <45257A6C.3060804@gmail.com> <20061005145042.fd62289a.akpm@osdl.org> <4525925C.6060807@gmail.com> <20061005171428.636c087c.akpm@osdl.org> <20061008063330.GA30283@lug-owl.de> <20061010070933.GE30283@lug-owl.de> <20061011104201.GD6865@atrey.karlin.mff.cuni.cz> <20061023081354.GK26271@lug-owl.de>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC] Ext3 online defrag
+Date: Mon, 23 Oct 2006 10:16:41 -0400
+Message-ID: <20061023141641.GA29649@thunk.org>
+References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrew Morton <akpm@osdl.org>, Jiri Slaby <jirislaby@gmail.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	sct@redhat.com, adilger@clusterfs.com, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:13285 "EHLO
-	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
-	id S1751895AbWJWKky (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Oct 2006 06:40:54 -0400
-To: Jan-Benedict Glaw <jbglaw@lug-owl.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Content-Disposition: inline
-In-Reply-To: <20061023081354.GK26271@lug-owl.de>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+On Mon, Oct 23, 2006 at 02:27:10PM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   I've written a simple patch implementing ext3 ioctl for file
+> relocation. Basically you call ioctl on a file, give it list of blocks
+> and it relocates the file into given blocks (provided they are still
+> free). The idea is to use it as a kernel part of ext3 online
+> defragmenter (or generally disk access optimizer). Now I don't have the
+> user space part that finds larger runs of free blocks and so on so that
+> it can really be used as a defragmenter. I just send this as a kind of
+> proof-of-concept to hear some comments. Attached is also a simple
+> program that demonstrates the use of the ioctl.
 
-> On Wed, 2006-10-11 12:42:02 +0200, Jan Kara <jack@suse.cz> wrote:
-> > > On Sun, 2006-10-08 08:33:30 +0200, Jan-Benedict Glaw <jbglaw@lug-=
-owl.de> wrote:
-> > > While I could reproduce it with a 200MB file, it seems I can't br=
-eak
-> > > it with a 10MB file.
-> >   Hmm, I was running the test for several ours without any problem.=
-=2E.
-> > The kernel is 2.6.17.6, ext3 in ordered data mode, standard SATA di=
-sk. I'm
-> > now running it again and trying my luck ;). What is your testing en=
-vironment?
->=20
-> kolbe34-backup:/mnt# uname -a
-  Thanks for info. This looks pretty similar to what I have (only that
-I have Athlon).
+As a suggestion, I would pass the inode number and inode generation
+number into the ext3_file_mode_data array:
 
-> Still running Debian's 2.6.17-2-686, I'm now tracking down the file
-> size when I start to see this type of corruption. Right now, it seems
-> I never get it with a 16384 KB (16 MB) large file, but I get it with =
-a
-> 21504 KB (21 MB) file.
->=20
-> Is there something important that changes handling of file contents i=
-n
-> the 16..21 MB range?
-  Umm, I've checked and found nothing obvious. We already have to use
-double-indirect block at 16MB, maybe reservation code does some
-distiction. Could you mount the filesystem with -o 'noreservation' and
-see whether you can still reproduce the problem? Also it may be useful
-to find out, whether you see the failure also with some older kernels..=
-=2E
+struct ext3_file_move_data {
+	int extents;
+	struct ext3_reloc_extent __user *ext_array;
+};
 
-								Honza
->=20
-> dumpe2fs output at http://lug-owl.de/~jbglaw/ext3-dumpe2fs.txt for
-> that filesystem.  I'll now run with a 18.5 MB file...
->=20
-> MfG, JBG
->=20
-> --=20
->       Jan-Benedict Glaw      jbglaw@lug-owl.de              +49-172-7=
-608481
->   Signature of:                           Wenn ich wach bin, tr=E4ume=
- ich.
->   the second  :
+This will be much more efficient for the userspace relocator, since it
+won't need to translate from an inode number to a pathname, and then
+try to open the file before relocating it.
+
+I'd also use an explicit 64-bit block numbers type so that we don't
+have to worry about the ABI changing when we support 64-bit block
+numbers.
 
 
---=20
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+The other problem I see with this patch is that there will be cache
+coherency problems between the buffer cache and the page cache.  I
+think you will want to pull the data blocks of the file into the page
+cache, and then write them out from the page cache, and only *then*
+update the indirect blocks and commit the transaction.
+
+So what needs to happen is the following:
+
+1) Validate that inode and generation number.  Make sure the new
+(destination) blocks passed in are valid and not in use.  Allocate
+them to prevent anyone else from using those blocks.
+
+2) Pull the blocks into the page cache (if they are not already
+there), and the write them out to the new location on disk.  If any of
+the I/O's fail, abort.
+
+3) Update the indirect blocks or extent tree to point at the newly
+allocated and copied data blocks.
+
+In the current patch, it looks like you add the inode being relocated
+to the orphan list, and then update the direct/indirect blocks first
+--- and if you fail the inode gets truncated.  That's bad since we
+don't want to lose any data if we crash in the middle of the defrag
+operation....
+
+Great to see that you're working on this problem!  I'd love to see
+this functionality into ext4.
+
+Regards,
+
+						- Ted
+
+P.S.  There is also the question of whether we'll be able to get this
+interface past the ioctl() police, but the atomicity requirements of
+such an interface are a poster child for why we really, REALLY, can't
+do this via a sysfs interface.  We might be forced to create a new
+filesystem, or create a pseudo inode which we open via a magic
+pathname, though.  That in my opinion is uglier than an ioctl, but the
+ioctl police really don't like the problem of needing to maintain
+32/64 bit translation functions, and this interface would surely cause
+problems for the x86_64 and PPC platforms, since they have to support
+32-bit and 64-bit system ABI's.
+
+
