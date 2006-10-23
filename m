@@ -1,89 +1,32 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Alex Tomas <alex@clusterfs.com>
 Subject: Re: [RFC] Ext3 online defrag
-Date: Mon, 23 Oct 2006 10:16:41 -0400
-Message-ID: <20061023141641.GA29649@thunk.org>
+Date: Mon, 23 Oct 2006 18:31:40 +0400
+Message-ID: <m3vembnlwz.fsf@bzzz.home.net>
 References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz>
+	<20061023141641.GA29649@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Content-Disposition: inline
-In-Reply-To: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz>
+To: Theodore Tso <tytso@mit.edu>
+In-Reply-To: <20061023141641.GA29649@thunk.org> (Theodore Tso's message of "Mon, 23 Oct 2006 10:16:41 -0400")
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 23, 2006 at 02:27:10PM +0200, Jan Kara wrote:
->   Hello,
-> 
->   I've written a simple patch implementing ext3 ioctl for file
-> relocation. Basically you call ioctl on a file, give it list of blocks
-> and it relocates the file into given blocks (provided they are still
-> free). The idea is to use it as a kernel part of ext3 online
-> defragmenter (or generally disk access optimizer). Now I don't have the
-> user space part that finds larger runs of free blocks and so on so that
-> it can really be used as a defragmenter. I just send this as a kind of
-> proof-of-concept to hear some comments. Attached is also a simple
-> program that demonstrates the use of the ioctl.
+>>>>> Theodore Tso (TT) writes:
 
-As a suggestion, I would pass the inode number and inode generation
-number into the ext3_file_mode_data array:
+ TT> On Mon, Oct 23, 2006 at 02:27:10PM +0200, Jan Kara wrote:
+ >> Hello,
+ >> 
+ >> I've written a simple patch implementing ext3 ioctl for file
+ >> relocation. Basically you call ioctl on a file, give it list of blocks
+ >> and it relocates the file into given blocks (provided they are still
+ >> free). The idea is to use it as a kernel part of ext3 online
+ >> defragmenter (or generally disk access optimizer). 
 
-struct ext3_file_move_data {
-	int extents;
-	struct ext3_reloc_extent __user *ext_array;
-};
+isn't that a kernel responsbility to find/allocate target blocks?
+wouldn't it better to specify desirable target group and minimal
+acceptable chunk of free blocks?
 
-This will be much more efficient for the userspace relocator, since it
-won't need to translate from an inode number to a pathname, and then
-try to open the file before relocating it.
-
-I'd also use an explicit 64-bit block numbers type so that we don't
-have to worry about the ABI changing when we support 64-bit block
-numbers.
-
-
-The other problem I see with this patch is that there will be cache
-coherency problems between the buffer cache and the page cache.  I
-think you will want to pull the data blocks of the file into the page
-cache, and then write them out from the page cache, and only *then*
-update the indirect blocks and commit the transaction.
-
-So what needs to happen is the following:
-
-1) Validate that inode and generation number.  Make sure the new
-(destination) blocks passed in are valid and not in use.  Allocate
-them to prevent anyone else from using those blocks.
-
-2) Pull the blocks into the page cache (if they are not already
-there), and the write them out to the new location on disk.  If any of
-the I/O's fail, abort.
-
-3) Update the indirect blocks or extent tree to point at the newly
-allocated and copied data blocks.
-
-In the current patch, it looks like you add the inode being relocated
-to the orphan list, and then update the direct/indirect blocks first
---- and if you fail the inode gets truncated.  That's bad since we
-don't want to lose any data if we crash in the middle of the defrag
-operation....
-
-Great to see that you're working on this problem!  I'd love to see
-this functionality into ext4.
-
-Regards,
-
-						- Ted
-
-P.S.  There is also the question of whether we'll be able to get this
-interface past the ioctl() police, but the atomicity requirements of
-such an interface are a poster child for why we really, REALLY, can't
-do this via a sysfs interface.  We might be forced to create a new
-filesystem, or create a pseudo inode which we open via a magic
-pathname, though.  That in my opinion is uglier than an ioctl, but the
-ioctl police really don't like the problem of needing to maintain
-32/64 bit translation functions, and this interface would surely cause
-problems for the x86_64 and PPC platforms, since they have to support
-32-bit and 64-bit system ABI's.
-
-
+thanks, Alex
