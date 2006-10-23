@@ -1,104 +1,141 @@
-From: Randy Dunlap <rdunlap@xenotime.net>
-Subject: [PATCH] ext4: fix printk format warnings
-Date: Sun, 22 Oct 2006 20:23:35 -0700
-Message-ID: <20061022202335.ab86073b.rdunlap@xenotime.net>
+From: Jan-Benedict Glaw <jbglaw@lug-owl.de>
+Subject: Re: 2.6.18-mm2: ext3 BUG?
+Date: Mon, 23 Oct 2006 10:13:54 +0200
+Message-ID: <20061023081354.GK26271@lug-owl.de>
+References: <45257A6C.3060804@gmail.com> <20061005145042.fd62289a.akpm@osdl.org> <4525925C.6060807@gmail.com> <20061005171428.636c087c.akpm@osdl.org> <20061008063330.GA30283@lug-owl.de> <20061010070933.GE30283@lug-owl.de> <20061011104201.GD6865@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: akpm <akpm@osdl.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="3qYtBtpdm1/OJWPn"
+Cc: Andrew Morton <akpm@osdl.org>, Jiri Slaby <jirislaby@gmail.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	sct@redhat.com, adilger@clusterfs.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from xenotime.net ([66.160.160.81]:19856 "HELO xenotime.net")
-	by vger.kernel.org with SMTP id S1751324AbWJWDV6 (ORCPT
+Received: from lug-owl.de ([195.71.106.12]:56972 "EHLO lug-owl.de")
+	by vger.kernel.org with ESMTP id S1751798AbWJWIN4 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Oct 2006 23:21:58 -0400
-Received: from midway.site ([71.117.236.95]) by xenotime.net for <linux-ext4@vger.kernel.org>; Sun, 22 Oct 2006 20:21:55 -0700
-To: linux-ext4@vger.kernel.org
+	Mon, 23 Oct 2006 04:13:56 -0400
+To: Jan Kara <jack@suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20061011104201.GD6865@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
 
-Fix ext4 printk format warnings:
-fs/ext4/resize.c:72: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:76: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:81: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:85: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:89: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:89: warning: long long unsigned int format, __u64 arg (arg 5)
-fs/ext4/resize.c:93: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:93: warning: long long unsigned int format, __u64 arg (arg 5)
-fs/ext4/resize.c:98: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:103: warning: long long unsigned int format, __u64 arg (arg 4)
-fs/ext4/resize.c:109: warning: long long unsigned int format, __u64 arg (arg 4)
+--3qYtBtpdm1/OJWPn
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
----
+On Wed, 2006-10-11 12:42:02 +0200, Jan Kara <jack@suse.cz> wrote:
+> > On Sun, 2006-10-08 08:33:30 +0200, Jan-Benedict Glaw <jbglaw@lug-owl.de=
+> wrote:
+> > While I could reproduce it with a 200MB file, it seems I can't break
+> > it with a 10MB file.
+>   Hmm, I was running the test for several ours without any problem...
+> The kernel is 2.6.17.6, ext3 in ordered data mode, standard SATA disk. I'm
+> now running it again and trying my luck ;). What is your testing environm=
+ent?
 
- fs/ext4/resize.c |   23 ++++++++++++++---------
- 1 files changed, 14 insertions(+), 9 deletions(-)
+kolbe34-backup:/mnt# uname -a
+Linux kolbe34-backup 2.6.17-2-686 #1 SMP Wed Sep 13 16:34:10 UTC 2006 i686 =
+GNU/Linux
+kolbe34-backup:/mnt# cat /proc/cpuinfo=20
+processor       : 0
+vendor_id       : GenuineIntel
+cpu family      : 6
+model           : 7
+model name      : Pentium III (Katmai)
+stepping        : 3
+cpu MHz         : 448.674
+cache size      : 512 KB
+fdiv_bug        : no
+hlt_bug         : no
+f00f_bug        : no
+coma_bug        : no
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 2
+wp              : yes
+flags           : fpu vme de pse tsc msr pae mce cx8 sep mtrr pge mca cmov =
+pat pse36 mmx fxsr sse up
+bogomips        : 898.38
+kolbe34-backup:/mnt# grep -i preem /boot/config-2.6.17-2-686=20
+CONFIG_PREEMPT_NONE=3Dy
+# CONFIG_PREEMPT_VOLUNTARY is not set
+# CONFIG_PREEMPT is not set
+# CONFIG_PREEMPT_BKL is not set
+kolbe34-backup:/mnt# lspci=20
+00:00.0 Host bridge: Intel Corporation 440BX/ZX/DX - 82443BX/ZX/DX Host bri=
+dge (rev 03)
+00:01.0 PCI bridge: Intel Corporation 440BX/ZX/DX - 82443BX/ZX/DX AGP bridg=
+e (rev 03)
+00:07.0 ISA bridge: Intel Corporation 82371AB/EB/MB PIIX4 ISA (rev 02)
+00:07.1 IDE interface: Intel Corporation 82371AB/EB/MB PIIX4 IDE (rev 01)
+00:07.2 USB Controller: Intel Corporation 82371AB/EB/MB PIIX4 USB (rev 01)
+00:07.3 Bridge: Intel Corporation 82371AB/EB/MB PIIX4 ACPI (rev 02)
+00:0e.0 Ethernet controller: Advanced Micro Devices [AMD] 79c970 [PCnet32 L=
+ANCE] (rev 16)
+01:00.0 VGA compatible controller: ATI Technologies Inc 3D Rage Pro AGP 1X/=
+2X (rev 5c)
+kolbe34-backup:/mnt# lspci -n
+00:00.0 0600: 8086:7190 (rev 03)
+00:01.0 0604: 8086:7191 (rev 03)
+00:07.0 0601: 8086:7110 (rev 02)
+00:07.1 0101: 8086:7111 (rev 01)
+00:07.2 0c03: 8086:7112 (rev 01)
+00:07.3 0680: 8086:7113 (rev 02)
+00:0e.0 0200: 1022:2000 (rev 16)
+01:00.0 0300: 1002:4742 (rev 5c)
+kolbe34-backup:~# hdparm -i /dev/hdb
 
-diff -Naurp linux-2619-rc2g4/fs/ext4/resize.c~ext4_printk linux-2619-rc2g4/fs/ext4/resize.c
---- linux-2619-rc2g4/fs/ext4/resize.c~ext4_printk	2006-10-20 17:38:30.834843000 -0700
-+++ linux-2619-rc2g4/fs/ext4/resize.c	2006-10-22 20:17:37.490397000 -0700
-@@ -69,44 +69,49 @@ static int verify_group_input(struct sup
- 	else if (outside(input->block_bitmap, start, end))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Block bitmap not in group (block %llu)",
--			     input->block_bitmap);
-+			     (unsigned long long)input->block_bitmap);
- 	else if (outside(input->inode_bitmap, start, end))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Inode bitmap not in group (block %llu)",
--			     input->inode_bitmap);
-+			     (unsigned long long)input->inode_bitmap);
- 	else if (outside(input->inode_table, start, end) ||
- 	         outside(itend - 1, start, end))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Inode table not in group (blocks %llu-%llu)",
--			     input->inode_table, itend - 1);
-+			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (input->inode_bitmap == input->block_bitmap)
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Block bitmap same as inode bitmap (%llu)",
--			     input->block_bitmap);
-+			     (unsigned long long)input->block_bitmap);
- 	else if (inside(input->block_bitmap, input->inode_table, itend))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Block bitmap (%llu) in inode table (%llu-%llu)",
--			     input->block_bitmap, input->inode_table, itend-1);
-+			     (unsigned long long)input->block_bitmap,
-+			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->inode_bitmap, input->inode_table, itend))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Inode bitmap (%llu) in inode table (%llu-%llu)",
--			     input->inode_bitmap, input->inode_table, itend-1);
-+			     (unsigned long long)input->inode_bitmap,
-+			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->block_bitmap, start, metaend))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Block bitmap (%llu) in GDT table"
- 			     " (%llu-%llu)",
--			     input->block_bitmap, start, metaend - 1);
-+			     (unsigned long long)input->block_bitmap,
-+			     start, metaend - 1);
- 	else if (inside(input->inode_bitmap, start, metaend))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Inode bitmap (%llu) in GDT table"
- 			     " (%llu-%llu)",
--			     input->inode_bitmap, start, metaend - 1);
-+			     (unsigned long long)input->inode_bitmap,
-+			     start, metaend - 1);
- 	else if (inside(input->inode_table, start, metaend) ||
- 	         inside(itend - 1, start, metaend))
- 		ext4_warning(sb, __FUNCTION__,
- 			     "Inode table (%llu-%llu) overlaps"
- 			     "GDT table (%llu-%llu)",
--			     input->inode_table, itend - 1, start, metaend - 1);
-+			     (unsigned long long)input->inode_table,
-+			     itend - 1, start, metaend - 1);
- 	else
- 		err = 0;
- 	brelse(bh);
+/dev/hdb:
+
+ Model=3DST3300822A, FwRev=3D3.AAE, SerialNo=3D5NF24YCN
+ Config=3D{ HardSect NotMFM HdSw>15uSec Fixed DTR>10Mbs RotSpdTol>.5% }
+ RawCHS=3D16383/16/63, TrkSize=3D0, SectSize=3D0, ECCbytes=3D4
+ BuffType=3Dunknown, BuffSize=3D8192kB, MaxMultSect=3D16, MultSect=3Doff
+ CurCHS=3D16383/16/63, CurSects=3D16514064, LBA=3Dyes, LBAsects=3D268435455
+ IORDY=3Don/off, tPIO=3D{min:240,w/IORDY:120}, tDMA=3D{min:120,rec:120}
+ PIO modes:  pio0 pio1 pio2 pio3 pio4=20
+ DMA modes:  mdma0 mdma1 mdma2=20
+ UDMA modes: udma0 udma1 *udma2 udma3 udma4 udma5=20
+ AdvancedPM=3Dno WriteCache=3Denabled
+ Drive conforms to: Unspecified:  ATA/ATAPI-1 ATA/ATAPI-2 ATA/ATAPI-3 ATA/A=
+TAPI-4 ATA/ATAPI-5 ATA/ATAPI-6 ATA/ATAPI-7
+
+ * signifies the current active mode
 
 
----
+Still running Debian's 2.6.17-2-686, I'm now tracking down the file
+size when I start to see this type of corruption. Right now, it seems
+I never get it with a 16384 KB (16 MB) large file, but I get it with a
+21504 KB (21 MB) file.
+
+Is there something important that changes handling of file contents in
+the 16..21 MB range?
+
+dumpe2fs output at http://lug-owl.de/~jbglaw/ext3-dumpe2fs.txt for
+that filesystem.  I'll now run with a 18.5 MB file...
+
+MfG, JBG
+
+--=20
+      Jan-Benedict Glaw      jbglaw@lug-owl.de              +49-172-7608481
+  Signature of:                           Wenn ich wach bin, tr=C3=A4ume ic=
+h.
+  the second  :
+
+--3qYtBtpdm1/OJWPn
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFFPHnCHb1edYOZ4bsRAutSAJsEbzQEyQKRBSiz3y8JrkHySMfRcwCfUwAt
+WCjUFS9/w2IBdLeZanIM99g=
+=cSaT
+-----END PGP SIGNATURE-----
+
+--3qYtBtpdm1/OJWPn--
