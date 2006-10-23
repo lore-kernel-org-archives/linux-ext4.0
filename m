@@ -1,115 +1,163 @@
-From: akpm@osdl.org
-Subject: + jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch added to -mm tree
-Date: Mon, 23 Oct 2006 12:20:33 -0700
-Message-ID: <200610231920.k9NJKXR5002593@shell0.pdx.osdl.net>
-Cc: sandeen@sandeen.net, esandeen@redhat.com,
-	linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
+Date: Mon, 23 Oct 2006 14:02:42 -0600
+Message-ID: <20061023200242.GA5015@schatzie.adilger.int>
+References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <esandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:35755 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S965054AbWJWTU6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Oct 2006 15:20:58 -0400
-To: mm-commits@vger.kernel.org
+Received: from mail.clusterfs.com ([206.168.112.78]:49092 "EHLO
+	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1030193AbWJWUCs
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Oct 2006 16:02:48 -0400
+To: Andre Noll <maan@systemlinux.org>, Theodore Ts'o <tytso@mit.edu>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Disposition: inline
+In-Reply-To: <20061023164416.GM3509@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Oct 23, 2006  10:44 -0600, Andreas Dilger wrote:
+> Hmm, this would appear to be a buglet in error handling.  If the block just
+> allocated above is in the system zone it should be marked in-use in the
+> bitmap but otherwise ignored.  We definitely should NOT be freeing it on
+> error.
+> 
+> Yikes!  It seems a patch I submitted to 2.4 that fixed the behaviour
+> of ext3_new_block() so that if we detect this block shouldn't be
+> allocated it is skipped instead of corrupting the filesystem if it
+> is running with errors=continue...
+> 
+> It looks like ext3_free_blocks() needs a similar fix - i.e. report an
+> error and don't actually free those blocks.
 
-The patch titled
-     jbd: journal_dirty_data re-check for unmapped buffers
-has been added to the -mm tree.  Its filename is
-     jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch
+I found a URL for the 2.4 version of this patch, if some kind soul would
+update it for 2.6 it might save someone's data in the future.  It looks
+at the time I wasn't working on 2.5 kernels and nobody else took it on.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+http://lkml.org/lkml/2003/4/7/252
 
-------------------------------------------------------
-Subject: jbd: journal_dirty_data re-check for unmapped buffers
-From: Eric Sandeen <sandeen@sandeen.net>
-
-When running several fsx's and other filesystem stress tests, we found
-cases where an unmapped buffer was still being sent to submit_bh by the
-ext3 dirty data journaling code.
-
-I saw this happen in two ways, both related to another thread doing a
-truncate which would unmap the buffer in question.
-
-Either we would get into journal_dirty_data with a bh which was already
-unmapped (although journal_dirty_data_fn had checked for this earlier, the
-state was not locked at that point), or it would get unmapped in the middle
-of journal_dirty_data when we dropped locks to call sync_dirty_buffer.
-
-By re-checking for mapped state after we've acquired the bh state lock, we
-should avoid these races.  If we find a buffer which is no longer mapped,
-we essentially ignore it, because journal_unmap_buffer has already decided
-that this buffer can go away.
-
-I've also added tracepoints in these two cases, and made a couple other
-tracepoint changes that I found useful in debugging this.
-
-Signed-off-by: Eric Sandeen <esandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/jbd/transaction.c |   15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
-
-diff -puN fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers
-+++ a/fs/jbd/transaction.c
-@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle,
- 	 */
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
+[patch is pasted, may not be free of whitespace munging, but then it will
+ need to be applied to 2.6 by hand anyways]
+======================= ext2-2.4.18-badalloc.diff ===========================
+--- linux-2.4.18.orig/fs/ext3/balloc.c	Wed Feb 27 10:31:59 2002
++++ linux-2.4.18-aed/fs/ext3/balloc.c	Mon Mar 18 17:15:46 2002
+@@ -276,7 +273,8 @@ void ext3_free_blocks
+ 	}
+ 	lock_super (sb);
+ 	es = sb->u.ext3_sb.s_es;
+-	if (block < le32_to_cpu(es->s_first_data_block) || 
++	if (block < le32_to_cpu(es->s_first_data_block) ||
++	    block + count < block ||
+ 	    (block + count) > le32_to_cpu(es->s_blocks_count)) {
+ 		ext3_error (sb, "ext3_free_blocks",
+ 			    "Freeing blocks not in datazone - "
+@@ -309,17 +307,6 @@ void ext3_free_blocks
+ 	if (!gdp)
+ 		goto error_return;
+ 
+-	if (in_range (le32_to_cpu(gdp->bg_block_bitmap), block, count) ||
+-	    in_range (le32_to_cpu(gdp->bg_inode_bitmap), block, count) ||
+-	    in_range (block, le32_to_cpu(gdp->bg_inode_table),
+-		      sb->u.ext3_sb.s_itb_per_group) ||
+-	    in_range (block + count - 1, le32_to_cpu(gdp->bg_inode_table),
+-		      sb->u.ext3_sb.s_itb_per_group))
+-		ext3_error (sb, "ext3_free_blocks",
+-			    "Freeing blocks in system zones - "
+-			    "Block = %lu, count = %lu",
+-			    block, count);
+-
+ 	/*
+ 	 * We are about to start releasing blocks in the bitmap,
+ 	 * so we need undo access.
+@@ -345,14 +332,24 @@ void ext3_free_blocks
+ 	if (err)
+ 		goto error_return;
+ 
+-	for (i = 0; i < count; i++) {
++	for (i = 0; i < count; i++, block++) {
++		if (block == le32_to_cpu(gdp->bg_block_bitmap) ||
++		    block == le32_to_cpu(gdp->bg_inode_bitmap) ||
++		    in_range(block, le32_to_cpu(gdp->bg_inode_table),
++			     EXT3_SB(sb)->s_itb_per_group)) {
++			ext3_error(sb, __FUNCTION__,
++				   "Freeing block in system zone - block =
+%lu",
++				   block);
++			continue;
++		}
 +
-+	/* Now that we have bh_state locked, are we really still mapped? */
-+	if (!buffer_mapped(bh)) {
-+		JBUFFER_TRACE(jh, "unmapped buffer, bailing out");
-+		goto no_journal;
+ 		/*
+ 		 * An HJ special.  This is expensive...
+ 		 */
+ #ifdef CONFIG_JBD_DEBUG
+ 		{
+ 			struct buffer_head *debug_bh;
+-			debug_bh = sb_get_hash_table(sb, block + i);
++			debug_bh = sb_get_hash_table(sb, block);
+ 			if (debug_bh) {
+ 				BUFFER_TRACE(debug_bh, "Deleted!");
+ 				if (!bh2jh(bitmap_bh)->b_committed_data)
+@@ -365,9 +362,8 @@ void ext3_free_blocks
+ #endif
+ 		BUFFER_TRACE(bitmap_bh, "clear bit");
+ 		if (!ext3_clear_bit (bit + i, bitmap_bh->b_data)) {
+-			ext3_error (sb, __FUNCTION__,
+-				      "bit already cleared for block %lu", 
+-				      block + i);
++			ext3_error(sb, __FUNCTION__,
++				   "bit already cleared for block %lu",
+block);
+ 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
+ 		} else {
+ 			dquot_freed_blocks++;
+@@ -415,7 +411,6 @@ void ext3_free_blocks
+ 	if (!err) err = ret;
+ 
+ 	if (overflow && !err) {
+-		block += count;
+ 		count = overflow;
+ 		goto do_more;
+ 	}
+@@ -575,6 +574,7 @@ int ext3_new_block
+ 
+ 	ext3_debug ("goal=%lu.\n", goal);
+ 
++repeat:
+ 	/*
+ 	 * First, test whether the goal block is free.
+ 	 */
+@@ -684,10 +684,21 @@ int ext3_new_block
+ 	if (tmp == le32_to_cpu(gdp->bg_block_bitmap) ||
+ 	    tmp == le32_to_cpu(gdp->bg_inode_bitmap) ||
+ 	    in_range (tmp, le32_to_cpu(gdp->bg_inode_table),
+-		      sb->u.ext3_sb.s_itb_per_group))
+-		ext3_error (sb, "ext3_new_block",
+-			    "Allocating block in system zone - "
+-			    "block = %u", tmp);
++		      EXT3_SB(sb)->s_itb_per_group)) {
++		ext3_error(sb, __FUNCTION__,
++			   "Allocating block in system zone - block = %u",
+tmp);
++
++		/* Note: This will potentially use up one of the handle's
++		 * buffer credits.  Normally we have way too many credits,
++		 * so that is OK.  In _very_ rare cases it might not be OK.
++		 * We will trigger an assertion if we run out of credits,
++		 * and we will have to do a full fsck of the filesystem -
++		 * better than randomly corrupting filesystem metadata.
++		 */
++		ext3_set_bit(j, bh->b_data);
++		goto repeat;
 +	}
 +
- 	if (jh->b_transaction) {
- 		JBUFFER_TRACE(jh, "has transaction");
- 		if (jh->b_transaction != handle->h_transaction) {
-@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle,
- 				sync_dirty_buffer(bh);
- 				jbd_lock_bh_state(bh);
- 				spin_lock(&journal->j_list_lock);
-+				/* Since we dropped the lock... */
-+				if (!buffer_mapped(bh)) {
-+					JBUFFER_TRACE(jh, "buffer got unmapped");
-+					goto no_journal;
-+				}
- 				/* The buffer may become locked again at any
- 				   time if it is redirtied */
- 			}
-@@ -1824,6 +1836,7 @@ static int journal_unmap_buffer(journal_
- 			}
- 		}
- 	} else if (transaction == journal->j_committing_transaction) {
-+		JBUFFER_TRACE(jh, "on committing transaction");
- 		if (jh->b_jlist == BJ_Locked) {
- 			/*
- 			 * The buffer is on the committing transaction's locked
-@@ -1838,7 +1851,6 @@ static int journal_unmap_buffer(journal_
- 		 * can remove it's next_transaction pointer from the
- 		 * running transaction if that is set, but nothing
- 		 * else. */
--		JBUFFER_TRACE(jh, "on committing transaction");
- 		set_buffer_freed(bh);
- 		if (jh->b_next_transaction) {
- 			J_ASSERT(jh->b_next_transaction ==
-@@ -1858,6 +1870,7 @@ static int journal_unmap_buffer(journal_
- 		 * i_size already for this truncate so recovery will not
- 		 * expose the disk blocks we are discarding here.) */
- 		J_ASSERT_JH(jh, transaction == journal->j_running_transaction);
-+		JBUFFER_TRACE(jh, "on running transaction");
- 		may_free = __dispose_buffer(jh, transaction);
- 	}
  
-_
+ 	/* The superblock lock should guard against anybody else beating
+ 	 * us to this point! */
 
-Patches currently in -mm which might be from sandeen@sandeen.net are
-
-jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch
-jbd2-journal_dirty_data-re-check-for-unmapped-buffers.patch
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
