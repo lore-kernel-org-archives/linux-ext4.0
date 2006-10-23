@@ -1,29 +1,29 @@
 From: akpm@osdl.org
-Subject: + jbd2-journal_dirty_data-re-check-for-unmapped-buffers.patch added to -mm tree
-Date: Mon, 23 Oct 2006 12:20:37 -0700
-Message-ID: <200610231920.k9NJKbNx002601@shell0.pdx.osdl.net>
+Subject: + jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch added to -mm tree
+Date: Mon, 23 Oct 2006 12:20:33 -0700
+Message-ID: <200610231920.k9NJKXR5002593@shell0.pdx.osdl.net>
 Cc: sandeen@sandeen.net, esandeen@redhat.com,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:37803 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S965061AbWJWTVF (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:35755 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S965054AbWJWTU6 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Oct 2006 15:21:05 -0400
+	Mon, 23 Oct 2006 15:20:58 -0400
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd2: journal_dirty_data re-check for unmapped buffers
+     jbd: journal_dirty_data re-check for unmapped buffers
 has been added to the -mm tree.  Its filename is
-     jbd2-journal_dirty_data-re-check-for-unmapped-buffers.patch
+     jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: jbd2: journal_dirty_data re-check for unmapped buffers
+Subject: jbd: journal_dirty_data re-check for unmapped buffers
 From: Eric Sandeen <sandeen@sandeen.net>
 
 When running several fsx's and other filesystem stress tests, we found
@@ -51,13 +51,13 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/jbd2/transaction.c |   15 ++++++++++++++-
+ fs/jbd/transaction.c |   15 ++++++++++++++-
  1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd2/transaction.c
---- a/fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers
-+++ a/fs/jbd2/transaction.c
-@@ -967,6 +967,13 @@ int jbd2_journal_dirty_data(handle_t *ha
+diff -puN fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers
++++ a/fs/jbd/transaction.c
+@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle,
  	 */
  	jbd_lock_bh_state(bh);
  	spin_lock(&journal->j_list_lock);
@@ -71,7 +71,7 @@ diff -puN fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-bu
  	if (jh->b_transaction) {
  		JBUFFER_TRACE(jh, "has transaction");
  		if (jh->b_transaction != handle->h_transaction) {
-@@ -1028,6 +1035,11 @@ int jbd2_journal_dirty_data(handle_t *ha
+@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle,
  				sync_dirty_buffer(bh);
  				jbd_lock_bh_state(bh);
  				spin_lock(&journal->j_list_lock);
