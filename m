@@ -1,110 +1,58 @@
-From: Ric Wheeler <ric@emc.com>
-Subject: Linux 2007 File System & IO Workshop
-Date: Tue, 24 Oct 2006 07:18:29 -0400
-Message-ID: <453DF685.9010808@emc.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] Ext3 online defrag
+Date: Tue, 24 Oct 2006 23:59:28 +1000
+Message-ID: <20061024135928.GB11034@melbourne.sgi.com>
+References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz> <20061023141641.GA29649@thunk.org> <m3vembnlwz.fsf@bzzz.home.net> <20061024041433.GB12506@havoc.gtf.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: lsf07pc@usenix.org, linux-ext4@vger.kernel.org
-Return-path: <linux-scsi-owner@vger.kernel.org>
-To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	reiserfs-list@namesys.com, ext2-devel@lists.sourceforge.net,
-	linux-ide@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-	linux-scsi@vger.kernel.org
-Sender: linux-scsi-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <alex@clusterfs.com>, Theodore Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from omx2-ext.sgi.com ([192.48.171.19]:28900 "EHLO omx2.sgi.com")
+	by vger.kernel.org with ESMTP id S1030315AbWJXOCI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Oct 2006 10:02:08 -0400
+To: Jeff Garzik <jeff@garzik.org>
+Content-Disposition: inline
+In-Reply-To: <20061024041433.GB12506@havoc.gtf.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Oct 24, 2006 at 12:14:33AM -0400, Jeff Garzik wrote:
+> On Mon, Oct 23, 2006 at 06:31:40PM +0400, Alex Tomas wrote:
+> > isn't that a kernel responsbility to find/allocate target blocks?
+> > wouldn't it better to specify desirable target group and minimal
+> > acceptable chunk of free blocks?
+> 
+> The kernel doesn't have enough knowledge to know whether or not the
+> defragger prefers one blkdev location over another.
+> 
+> When you are trying to consolidate blocks, you must specify the
+> destination as well as source blocks.
+> 
+> Certainly, to prevent corruption and other nastiness, you must fail if
+> the destination isn't available...
 
-Just a quick update, the submission process is now open through the 
-usenix hosted url below. Please note that usenix is just helping us 
-coordinate the site, no need to belong to usenix to attend.
+That's the wrong way to look at it. if you want the userspace
+process to specify a location, then you should preallocate it first
+before doing anything else. There is no need to clutter a simple
+data mover interface with all sorts of unnecessary error handling.
 
-http://www.usenix.org/events/lsf07/
+Once you've separated the destination allocation from the data
+mover, the mover is basically a splice copy from source to
+destination, an fsync and then an atomic swap blocks/extents operation.
+Most of this code is generic, and a per-fs swap-extents vector
+could be easily provided for the one bit that is not....
 
+The allocation interface, OTOH, is anything but simple and is really
+a filesystem specific interface. Seems logical to me to separate
+the two. 
 
-Full details on the workshops below,
+Cheers,
 
-ric
-
-
-2007 Linux Storage & Filesystem Workshop Call for Papers
-
-2007 Linux Storage & Filesystem Workshop
-February 12-13, 2007
-San Jose, CA
-
-Sponsored by USENIX, The Advanced Computing Systems Association
-
-Co-located with the 5th USENIX Conference on File and Storage 
-Technologies (FAST '07), which will take place February 13-16, 2007.
-
-Important Dates
-Submissions due: November 24, 2006
-Notification of acceptance: December 15, 2006
-
-Workshop Organizers
-
-Program Chair
-Ric Wheeler, EMC
-
-Program Committee
-Jens Axboe, Oracle
-James Bottomley, SteelEye
-Valerie Henson, Intel
-Andrew Morton, Google
-Trond Myklebust, Network Appliance
-Brian Pawlowski, Network Appliance
-Theodore Ts'o, IBM
-
-Overview
-The Linux Storage and Filesystem Workshop is a small, tightly focused, 
-by-invitation workshop. It is intended to bring together developers and 
-researchers interested in implementing improvements in the Linux 
-filesystem and storage subsystems that can find their way into the 
-mainline kernel and into Linux distributions in the 2-3-year timeframe. 
-The workshop will be two days, the second day overlapping with FAST '07 
-tutorials. The workshop will be separated into storage and filesystem 
-tracks, with a combined plenary session.
-
-Topics and Submissions
-Researchers and developers who are interested in attending should submit 
-a 2-3-paragraph position paper that describes the topic or topics they 
-would like to discuss during the workshop, and whether such a topic 
-would suit the filesystem track, the storage track, or the plenary 
-session. Examples of topics of interest include:
-
-     * New trends in storage technologies likely to impact Linux in the 
-next 3-5 years
-     * More realistic methods of measuring filesystem and storage 
-performance
-     * Proposed improvements to Linux filesystems, including, in particular:
-           o Handling of storage errors
-           o Filesystem repair techniques
-           o Scaling to very large (terabyte) filesystems
-     * Progress reports on implementation of features discussed at the 
-Portland Filesystem Summit
-     * Changes to the interface between the operating system and storage 
-devices
-     * Proposed improvements to existing Linux storage subsystems, 
-particularly with an emphasis on:
-           o Refactoring common code out of storage subsystems and into 
-the block layer
-           o Better robustness and error recovery
-           o Barrier implementations in the face of TCQ
-           o Making use of storage capabilities (such as block guard or 
-non-power-of-2 block sizes) for novel filesystem and application features
-     * Progress reports on implementation of features discussed at the 
-Vancouver Storage Summit
-     * Userspace tools for managing storage systems (including better 
-presentation to the user via sysfs)
-     * Storage futures, including:
-           o New transports
-           o Changes to existing standards for new storage features
-           o SAS/SATA convergence
-           o Do we yet have a use for Object-Based Storage Devices (OSD)?
-
-Submissions must be in plain text and must be submitted via the Web 
-submission form, which will be available here soon. The submissions are 
-intended as discussion topic proposals, not refereed papers.
-
-
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
