@@ -1,159 +1,110 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
-Date: Tue, 24 Oct 2006 11:14:49 +0200
-Message-ID: <20061024091449.GZ22487@skl-net.de>
-References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int> <20061023200242.GA5015@schatzie.adilger.int>
+From: Ric Wheeler <ric@emc.com>
+Subject: Linux 2007 File System & IO Workshop
+Date: Tue, 24 Oct 2006 07:18:29 -0400
+Message-ID: <453DF685.9010808@emc.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="o/BvujNCPFVhiGON"
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from systemlinux.org ([83.151.29.59]:60641 "EHLO m18s25.vlinux.de")
-	by vger.kernel.org with ESMTP id S965101AbWJXJPJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Oct 2006 05:15:09 -0400
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <20061023200242.GA5015@schatzie.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: lsf07pc@usenix.org, linux-ext4@vger.kernel.org
+Return-path: <linux-scsi-owner@vger.kernel.org>
+To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	reiserfs-list@namesys.com, ext2-devel@lists.sourceforge.net,
+	linux-ide@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	linux-scsi@vger.kernel.org
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---o/BvujNCPFVhiGON
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Just a quick update, the submission process is now open through the 
+usenix hosted url below. Please note that usenix is just helping us 
+coordinate the site, no need to belong to usenix to attend.
 
-On 14:02, Andreas Dilger wrote:
-
-> I found a URL for the 2.4 version of this patch, if some kind soul would
-> update it for 2.6 it might save someone's data in the future.
-
-Something like the this? (only compile tested). And no, I do _not_ know,
-what I'm doing ;)
-
-Thanks
-Andre
+http://www.usenix.org/events/lsf07/
 
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 063d994..da2bd51 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -359,17 +359,6 @@ do_more:
- 	if (!desc)
- 		goto error_return;
-=20
--	if (in_range (le32_to_cpu(desc->bg_block_bitmap), block, count) ||
--	    in_range (le32_to_cpu(desc->bg_inode_bitmap), block, count) ||
--	    in_range (block, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group) ||
--	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group))
--		ext3_error (sb, "ext3_free_blocks",
--			    "Freeing blocks in system zones - "
--			    "Block =3D "E3FSBLK", count =3D %lu",
--			    block, count);
--
- 	/*
- 	 * We are about to start releasing blocks in the bitmap,
- 	 * so we need undo access.
-@@ -392,7 +381,17 @@ do_more:
-=20
- 	jbd_lock_bh_state(bitmap_bh);
-=20
--	for (i =3D 0, group_freed =3D 0; i < count; i++) {
-+	for (i =3D 0, group_freed =3D 0; i < count; i++, block++) {
-+		struct ext3_group_desc *gdp =3D ext3_get_group_desc(sb, i, NULL);
-+		if (block =3D=3D le32_to_cpu(gdp->bg_block_bitmap) ||
-+			block =3D=3D le32_to_cpu(gdp->bg_inode_bitmap) ||
-+			in_range(block, le32_to_cpu(gdp->bg_inode_table),
-+				EXT3_SB(sb)->s_itb_per_group)) {
-+			ext3_error(sb, __FUNCTION__,
-+				"Freeing block in system zone - block =3D %lu",
-+				block);
-+			continue;
-+		}
- 		/*
- 		 * An HJ special.  This is expensive...
- 		 */
-@@ -400,7 +399,7 @@ #ifdef CONFIG_JBD_DEBUG
- 		jbd_unlock_bh_state(bitmap_bh);
- 		{
- 			struct buffer_head *debug_bh;
--			debug_bh =3D sb_find_get_block(sb, block + i);
-+			debug_bh =3D sb_find_get_block(sb, block);
- 			if (debug_bh) {
- 				BUFFER_TRACE(debug_bh, "Deleted!");
- 				if (!bh2jh(bitmap_bh)->b_committed_data)
-@@ -452,7 +451,7 @@ #endif
- 			jbd_unlock_bh_state(bitmap_bh);
- 			ext3_error(sb, __FUNCTION__,
- 				"bit already cleared for block "E3FSBLK,
--				 block + i);
-+				block);
- 			jbd_lock_bh_state(bitmap_bh);
- 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
- 		} else {
-@@ -479,7 +478,6 @@ #endif
- 	*pdquot_freed_blocks +=3D group_freed;
-=20
- 	if (overflow && !err) {
--		block +=3D count;
- 		count =3D overflow;
- 		goto do_more;
- 	}
-@@ -1260,7 +1258,7 @@ #endif
- 		*errp =3D -ENOSPC;
- 		goto out;
- 	}
--
-+repeat:
- 	/*
- 	 * First, test whether the goal block is free.
- 	 */
-@@ -1372,12 +1370,24 @@ allocated:
- 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
- 		      EXT3_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
--		      EXT3_SB(sb)->s_itb_per_group))
--		ext3_error(sb, "ext3_new_block",
-+		      EXT3_SB(sb)->s_itb_per_group)) {
-+		int j;
-+		ext3_error(sb, __FUNCTION__,
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
--
-+		/* Note: This will potentially use up one of the handle's
-+		 * buffer credits.  Normally we have way too many credits,
-+		 * so that is OK.  In _very_ rare cases it might not be OK.
-+		 * We will trigger an assertion if we run out of credits,
-+		 * and we will have to do a full fsck of the filesystem -
-+		 * better than randomly corrupting filesystem metadata.
-+		 */
-+		j =3D find_next_usable_block(-1, gdp, EXT3_BLOCKS_PER_GROUP(sb));
-+		if (j >=3D 0)
-+			ext3_set_bit(j, gdp_bh->b_data);
-+		goto repeat;
-+	}
- 	performed_allocation =3D 1;
-=20
- #ifdef CONFIG_JBD_DEBUG
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
+Full details on the workshops below,
 
---o/BvujNCPFVhiGON
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+ric
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
 
-iD8DBQFFPdmJWto1QDEAkw8RAvzzAJkB9TdRRg7VPrm/F0cm3Zq3Y9Qg5wCfU20S
-KHGvyUh48aymT8sTvS/4wH0=
-=Jlp3
------END PGP SIGNATURE-----
+2007 Linux Storage & Filesystem Workshop Call for Papers
 
---o/BvujNCPFVhiGON--
+2007 Linux Storage & Filesystem Workshop
+February 12-13, 2007
+San Jose, CA
+
+Sponsored by USENIX, The Advanced Computing Systems Association
+
+Co-located with the 5th USENIX Conference on File and Storage 
+Technologies (FAST '07), which will take place February 13-16, 2007.
+
+Important Dates
+Submissions due: November 24, 2006
+Notification of acceptance: December 15, 2006
+
+Workshop Organizers
+
+Program Chair
+Ric Wheeler, EMC
+
+Program Committee
+Jens Axboe, Oracle
+James Bottomley, SteelEye
+Valerie Henson, Intel
+Andrew Morton, Google
+Trond Myklebust, Network Appliance
+Brian Pawlowski, Network Appliance
+Theodore Ts'o, IBM
+
+Overview
+The Linux Storage and Filesystem Workshop is a small, tightly focused, 
+by-invitation workshop. It is intended to bring together developers and 
+researchers interested in implementing improvements in the Linux 
+filesystem and storage subsystems that can find their way into the 
+mainline kernel and into Linux distributions in the 2-3-year timeframe. 
+The workshop will be two days, the second day overlapping with FAST '07 
+tutorials. The workshop will be separated into storage and filesystem 
+tracks, with a combined plenary session.
+
+Topics and Submissions
+Researchers and developers who are interested in attending should submit 
+a 2-3-paragraph position paper that describes the topic or topics they 
+would like to discuss during the workshop, and whether such a topic 
+would suit the filesystem track, the storage track, or the plenary 
+session. Examples of topics of interest include:
+
+     * New trends in storage technologies likely to impact Linux in the 
+next 3-5 years
+     * More realistic methods of measuring filesystem and storage 
+performance
+     * Proposed improvements to Linux filesystems, including, in particular:
+           o Handling of storage errors
+           o Filesystem repair techniques
+           o Scaling to very large (terabyte) filesystems
+     * Progress reports on implementation of features discussed at the 
+Portland Filesystem Summit
+     * Changes to the interface between the operating system and storage 
+devices
+     * Proposed improvements to existing Linux storage subsystems, 
+particularly with an emphasis on:
+           o Refactoring common code out of storage subsystems and into 
+the block layer
+           o Better robustness and error recovery
+           o Barrier implementations in the face of TCQ
+           o Making use of storage capabilities (such as block guard or 
+non-power-of-2 block sizes) for novel filesystem and application features
+     * Progress reports on implementation of features discussed at the 
+Vancouver Storage Summit
+     * Userspace tools for managing storage systems (including better 
+presentation to the user via sysfs)
+     * Storage futures, including:
+           o New transports
+           o Changes to existing standards for new storage features
+           o SAS/SATA convergence
+           o Do we yet have a use for Object-Based Storage Devices (OSD)?
+
+Submissions must be in plain text and must be submitted via the Web 
+submission form, which will be available here soon. The submissions are 
+intended as discussion topic proposals, not refereed papers.
+
+
