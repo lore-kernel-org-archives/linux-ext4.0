@@ -1,80 +1,64 @@
-From: Jan Kara <jack@suse.cz>
+From: Jeff Garzik <jeff@garzik.org>
 Subject: Re: [RFC] Ext3 online defrag
-Date: Wed, 25 Oct 2006 16:54:50 +0200
-Message-ID: <20061025145450.GF21082@atrey.karlin.mff.cuni.cz>
-References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz> <20061023141641.GA29649@thunk.org> <m3vembnlwz.fsf@bzzz.home.net> <20061024041433.GB12506@havoc.gtf.org> <20061024135928.GB11034@melbourne.sgi.com> <20061024194416.GB16087@thunk.org> <20061024230020.GZ3509@schatzie.adilger.int>
+Date: Wed, 25 Oct 2006 13:00:52 -0400
+Message-ID: <20061025170052.GA19513@havoc.gtf.org>
+References: <20061025011853.GQ8394166@melbourne.sgi.com> <200610250225.MAA23029@larry.melbourne.sgi.com> <20061025024257.GA23769@havoc.gtf.org> <20061025042753.GV8394166@melbourne.sgi.com> <20061025044844.GB32486@havoc.gtf.org> <20061025053823.GX8394166@melbourne.sgi.com> <20061025060142.GD32486@havoc.gtf.org> <20061025081137.GB8394166@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:4816 "EHLO
-	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
-	id S932448AbWJYOyv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Oct 2006 10:54:51 -0400
-To: adilger@clusterfs.com, Theodore Tso <tytso@mit.edu>,
-	David Chinner <dgc@sgi.com>, Jeff Garzik <jeff@garzik.org>,
-	Alex Tomas <alex@clusterfs.com>, Jan Kara <jack@suse.cz>,
+Cc: Barry Naujok <bnaujok@melbourne.sgi.com>,
+	"'Dave Kleikamp'" <shaggy@austin.ibm.com>,
+	"'Alex Tomas'" <alex@clusterfs.com>,
+	"'Theodore Tso'" <tytso@mit.edu>, "'Jan Kara'" <jack@suse.cz>,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from havoc.gtf.org ([69.61.125.42]:17546 "EHLO havoc.gtf.org")
+	by vger.kernel.org with ESMTP id S965152AbWJYRA6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Oct 2006 13:00:58 -0400
+To: David Chinner <dgc@sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20061024230020.GZ3509@schatzie.adilger.int>
+In-Reply-To: <20061025081137.GB8394166@melbourne.sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Oct 24, 2006  15:44 -0400, Theodore Tso wrote:
-> > First of all, we would need a way of allowing userpsace to specify
-> > which blocks should be used in the preallocation.
+On Wed, Oct 25, 2006 at 06:11:37PM +1000, David Chinner wrote:
+> On Wed, Oct 25, 2006 at 02:01:42AM -0400, Jeff Garzik wrote:
+> > On Wed, Oct 25, 2006 at 03:38:23PM +1000, David Chinner wrote:
+> > > On Wed, Oct 25, 2006 at 12:48:44AM -0400, Jeff Garzik wrote:
+> > > So why are you arguing that an interface is no good because it
+> > > is fundamentally racy? ;)
+> > 
+> > My point was that it is silly to introduce obviously racy code into the
+> > kernel, when -- inside the kernel -- it could be handled race-free.
 > 
-> Presumably it could do this in the same way it will be specifying
-> which blocks to relocate in the defragger - by passing an extent.
-> You would be required to pass the file offset for which to preallocate,
-> and optionally an extent for the on-disk allocation itself (if none is
-> supplied the kernel will allocate the best extent it can).
-> 
-> > Secondly, we would need a way of marking blocks as "preallocated but
-> > not pre-zeroed"; otherwise we would have to zero out all of the blocks
-> > in order to assure security (don't want userspace programs seeing the
-> > previous contents of the data blocks), only to do the copy and the
-> > extents vector swap.
-> 
-> This could be mitigated by having the preallocation be done (in the
-> defragment case) against a temporary inode in the orphan list (as
-> the initial patch did) so if there is a crash it will be released.
-> The temporary inode will not be linked into the namespace so it cannot
-> be read - only used to hold preallocation.  If this was a write-only
-> file handle then we should be OK?
-> 
-> For defragger purposes this would need:
-> 
-> - "allocate new temporary inode" (VFS + fs, returns write-only fh if
->    fs can't properly handle uninitalized extents, or doesn't request
->    full-extent zeroing)
-> 
->    for each extent to defragment {
-> 	- "preallocate extents on temp inode" (fs specific internals)
-> 	- "copy data from orig to temp at offset X" (VFS, splice or
-> 	   e.g. sys_copyfile(src, dst, offset, count) which Linus agreed
-> 	   to at KS '05 for network filesystems)
-> 	- "migrate copied extent to original inode" (fs specific internals)
->    }
-> 
-> - "free temporary inode" (just close of temp fh, frees unmigrated extents).
-  Yes, this sounds feasible. We could split the defrag ioctl into two
-pieces (addition of given extent to a file and swapping of extents), which
-can have generic interface... 
+> So how do you then get the generic interface to allocate blocks
+> specified by userspace race free?
 
-> I don't think this is much more work than implementing all of this
-> functionality as part of a monolithic online defrag function, assuming
-> we don't require full-file copies in order to do defrag.
-  Yes, it's not more work than supporting swapping of extents in the
-middle of the file. I've just not yet decided how to handle indirect
-blocks in case of relocation in the middle of the file. Should they be
-relocated or shouldn't they? Probably they should be relocated at least
-in case they are fully contained in relocated interval or maybe better
-said when all the blocks they reference to are also in the interval
-(this handles also the case of EOF). But still if you would like to
-relocate the file by parts this is not quite what you want (you won't be
-able to relocate indirect blocks in the boundary of intervals) :(.
+As has been repeatedly stated, there is no "generic".  There MUST be
+filesystem-specific knowledge during these operations.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+
+> If userspace directed allocation requires deep knowledge of the
+> filesystem metadata (this is what you are saying they need to do,
+> right?), then these applications will never, ever make use of this
+> interface and we'll continue to have problems with them.
+
+Completely false assumptions.  There is no difference in handling of
+knowledge, be it kernel space or userspace.
+
+
+> > Further, in the case being discussed in this thread, ext2meta has
+> > already been proven a workable solution.
+> 
+> Sure, but that's not a generic solution to a problem common to
+> all filesystems....
+
+You clearly don't know what I'm talking about.  ext2meta is an example
+of a filesystem-specific metadata access method, applicable to tasks
+such as online optimization.
+
+Implement that tiny kernel module for each filesystem, and you have
+everything you need, without races.  This was discussed years ago;
+review the mailing lists.  Google for 'Alexander Viro' and 'ext2meta'.
+
+	Jeff
