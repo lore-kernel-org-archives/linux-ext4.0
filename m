@@ -1,161 +1,80 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
-Date: Wed, 25 Oct 2006 11:44:18 +0200
-Message-ID: <20061025094418.GA22487@skl-net.de>
-References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int> <20061023200242.GA5015@schatzie.adilger.int> <20061024091449.GZ22487@skl-net.de> <20061024202716.GX3509@schatzie.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC] Ext3 online defrag
+Date: Wed, 25 Oct 2006 16:54:50 +0200
+Message-ID: <20061025145450.GF21082@atrey.karlin.mff.cuni.cz>
+References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz> <20061023141641.GA29649@thunk.org> <m3vembnlwz.fsf@bzzz.home.net> <20061024041433.GB12506@havoc.gtf.org> <20061024135928.GB11034@melbourne.sgi.com> <20061024194416.GB16087@thunk.org> <20061024230020.GZ3509@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="0786ZyFfTSxuegBe"
+Content-Type: text/plain; charset=us-ascii
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from systemlinux.org ([83.151.29.59]:28359 "EHLO m18s25.vlinux.de")
-	by vger.kernel.org with ESMTP id S1423156AbWJYJos (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Oct 2006 05:44:48 -0400
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:4816 "EHLO
+	atrey.karlin.mff.cuni.cz") by vger.kernel.org with ESMTP
+	id S932448AbWJYOyv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Oct 2006 10:54:51 -0400
+To: adilger@clusterfs.com, Theodore Tso <tytso@mit.edu>,
+	David Chinner <dgc@sgi.com>, Jeff Garzik <jeff@garzik.org>,
+	Alex Tomas <alex@clusterfs.com>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Content-Disposition: inline
-In-Reply-To: <20061024202716.GX3509@schatzie.adilger.int>
+In-Reply-To: <20061024230020.GZ3509@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+> On Oct 24, 2006  15:44 -0400, Theodore Tso wrote:
+> > First of all, we would need a way of allowing userpsace to specify
+> > which blocks should be used in the preallocation.
+> 
+> Presumably it could do this in the same way it will be specifying
+> which blocks to relocate in the defragger - by passing an extent.
+> You would be required to pass the file offset for which to preallocate,
+> and optionally an extent for the on-disk allocation itself (if none is
+> supplied the kernel will allocate the best extent it can).
+> 
+> > Secondly, we would need a way of marking blocks as "preallocated but
+> > not pre-zeroed"; otherwise we would have to zero out all of the blocks
+> > in order to assure security (don't want userspace programs seeing the
+> > previous contents of the data blocks), only to do the copy and the
+> > extents vector swap.
+> 
+> This could be mitigated by having the preallocation be done (in the
+> defragment case) against a temporary inode in the orphan list (as
+> the initial patch did) so if there is a crash it will be released.
+> The temporary inode will not be linked into the namespace so it cannot
+> be read - only used to hold preallocation.  If this was a write-only
+> file handle then we should be OK?
+> 
+> For defragger purposes this would need:
+> 
+> - "allocate new temporary inode" (VFS + fs, returns write-only fh if
+>    fs can't properly handle uninitalized extents, or doesn't request
+>    full-extent zeroing)
+> 
+>    for each extent to defragment {
+> 	- "preallocate extents on temp inode" (fs specific internals)
+> 	- "copy data from orig to temp at offset X" (VFS, splice or
+> 	   e.g. sys_copyfile(src, dst, offset, count) which Linus agreed
+> 	   to at KS '05 for network filesystems)
+> 	- "migrate copied extent to original inode" (fs specific internals)
+>    }
+> 
+> - "free temporary inode" (just close of temp fh, frees unmigrated extents).
+  Yes, this sounds feasible. We could split the defrag ioctl into two
+pieces (addition of given extent to a file and swapping of extents), which
+can have generic interface... 
 
---0786ZyFfTSxuegBe
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> I don't think this is much more work than implementing all of this
+> functionality as part of a monolithic online defrag function, assuming
+> we don't require full-file copies in order to do defrag.
+  Yes, it's not more work than supporting swapping of extents in the
+middle of the file. I've just not yet decided how to handle indirect
+blocks in case of relocation in the middle of the file. Should they be
+relocated or shouldn't they? Probably they should be relocated at least
+in case they are fully contained in relocated interval or maybe better
+said when all the blocks they reference to are also in the interval
+(this handles also the case of EOF). But still if you would like to
+relocate the file by parts this is not quite what you want (you won't be
+able to relocate indirect blocks in the boundary of intervals) :(.
 
-On 14:27, Andreas Dilger wrote:
-
-> > +		j =3D find_next_usable_block(-1, gdp, EXT3_BLOCKS_PER_GROUP(sb));
->=20
-> I'm not sure why the "find_next_usable_block()" part is in here?  At this
-> point we KNOW that ret_block is not a block we should be allocating, yet
-> it is marked free in the bitmap.  So we should just mark the block(s) in-=
-use
-> in the bitmap and look for a different block(s).
-
-Are you saying that ext3_set_bit() should simply be called with
-"ret_block" as its first argument? If yes, that is what the revised
-patch below does.
-
-Thanks
-Andre
-
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 063d994..3cca317 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -359,17 +359,6 @@ do_more:
- 	if (!desc)
- 		goto error_return;
-=20
--	if (in_range (le32_to_cpu(desc->bg_block_bitmap), block, count) ||
--	    in_range (le32_to_cpu(desc->bg_inode_bitmap), block, count) ||
--	    in_range (block, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group) ||
--	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group))
--		ext3_error (sb, "ext3_free_blocks",
--			    "Freeing blocks in system zones - "
--			    "Block =3D "E3FSBLK", count =3D %lu",
--			    block, count);
--
- 	/*
- 	 * We are about to start releasing blocks in the bitmap,
- 	 * so we need undo access.
-@@ -392,7 +381,17 @@ do_more:
-=20
- 	jbd_lock_bh_state(bitmap_bh);
-=20
--	for (i =3D 0, group_freed =3D 0; i < count; i++) {
-+	for (i =3D 0, group_freed =3D 0; i < count; i++, block++) {
-+		struct ext3_group_desc *gdp =3D ext3_get_group_desc(sb, i, NULL);
-+		if (block =3D=3D le32_to_cpu(gdp->bg_block_bitmap) ||
-+			block =3D=3D le32_to_cpu(gdp->bg_inode_bitmap) ||
-+			in_range(block, le32_to_cpu(gdp->bg_inode_table),
-+				EXT3_SB(sb)->s_itb_per_group)) {
-+			ext3_error(sb, __FUNCTION__,
-+				"Freeing block in system zone - block =3D %lu",
-+				block);
-+			continue;
-+		}
- 		/*
- 		 * An HJ special.  This is expensive...
- 		 */
-@@ -400,7 +399,7 @@ #ifdef CONFIG_JBD_DEBUG
- 		jbd_unlock_bh_state(bitmap_bh);
- 		{
- 			struct buffer_head *debug_bh;
--			debug_bh =3D sb_find_get_block(sb, block + i);
-+			debug_bh =3D sb_find_get_block(sb, block);
- 			if (debug_bh) {
- 				BUFFER_TRACE(debug_bh, "Deleted!");
- 				if (!bh2jh(bitmap_bh)->b_committed_data)
-@@ -452,7 +451,7 @@ #endif
- 			jbd_unlock_bh_state(bitmap_bh);
- 			ext3_error(sb, __FUNCTION__,
- 				"bit already cleared for block "E3FSBLK,
--				 block + i);
-+				block);
- 			jbd_lock_bh_state(bitmap_bh);
- 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
- 		} else {
-@@ -479,7 +478,6 @@ #endif
- 	*pdquot_freed_blocks +=3D group_freed;
-=20
- 	if (overflow && !err) {
--		block +=3D count;
- 		count =3D overflow;
- 		goto do_more;
- 	}
-@@ -1260,7 +1258,7 @@ #endif
- 		*errp =3D -ENOSPC;
- 		goto out;
- 	}
--
-+repeat:
- 	/*
- 	 * First, test whether the goal block is free.
- 	 */
-@@ -1372,12 +1370,21 @@ allocated:
- 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
- 		      EXT3_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
--		      EXT3_SB(sb)->s_itb_per_group))
--		ext3_error(sb, "ext3_new_block",
-+		      EXT3_SB(sb)->s_itb_per_group)) {
-+		ext3_error(sb, __FUNCTION__,
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
--
-+		/* Note: This will potentially use up one of the handle's
-+		 * buffer credits.  Normally we have way too many credits,
-+		 * so that is OK.  In _very_ rare cases it might not be OK.
-+		 * We will trigger an assertion if we run out of credits,
-+		 * and we will have to do a full fsck of the filesystem -
-+		 * better than randomly corrupting filesystem metadata.
-+		 */
-+		ext3_set_bit(ret_block, gdp_bh->b_data);
-+		goto repeat;
-+	}
- 	performed_allocation =3D 1;
-=20
- #ifdef CONFIG_JBD_DEBUG
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
-
---0786ZyFfTSxuegBe
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
-
-iD8DBQFFPzHyWto1QDEAkw8RAup1AJ9c89HxQxvLlHdvC34neywKwmymYQCgkoTe
-KEK5ol6uJCqR23/mB7ryARo=
-=0Ltw
------END PGP SIGNATURE-----
-
---0786ZyFfTSxuegBe--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
