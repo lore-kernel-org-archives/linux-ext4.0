@@ -1,77 +1,161 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC] Ext3 online defrag
-Date: Wed, 25 Oct 2006 18:11:37 +1000
-Message-ID: <20061025081137.GB8394166@melbourne.sgi.com>
-References: <20061025011853.GQ8394166@melbourne.sgi.com> <200610250225.MAA23029@larry.melbourne.sgi.com> <20061025024257.GA23769@havoc.gtf.org> <20061025042753.GV8394166@melbourne.sgi.com> <20061025044844.GB32486@havoc.gtf.org> <20061025053823.GX8394166@melbourne.sgi.com> <20061025060142.GD32486@havoc.gtf.org>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
+Date: Wed, 25 Oct 2006 11:44:18 +0200
+Message-ID: <20061025094418.GA22487@skl-net.de>
+References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int> <20061023200242.GA5015@schatzie.adilger.int> <20061024091449.GZ22487@skl-net.de> <20061024202716.GX3509@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	Barry Naujok <bnaujok@melbourne.sgi.com>,
-	"'Dave Kleikamp'" <shaggy@austin.ibm.com>,
-	"'Alex Tomas'" <alex@clusterfs.com>,
-	"'Theodore Tso'" <tytso@mit.edu>, "'Jan Kara'" <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="0786ZyFfTSxuegBe"
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from omx2-ext.sgi.com ([192.48.171.19]:49343 "EHLO omx2.sgi.com")
-	by vger.kernel.org with ESMTP id S1423104AbWJYIQD (ORCPT
+Received: from systemlinux.org ([83.151.29.59]:28359 "EHLO m18s25.vlinux.de")
+	by vger.kernel.org with ESMTP id S1423156AbWJYJos (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Oct 2006 04:16:03 -0400
-To: Jeff Garzik <jeff@garzik.org>
+	Wed, 25 Oct 2006 05:44:48 -0400
+To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20061025060142.GD32486@havoc.gtf.org>
+In-Reply-To: <20061024202716.GX3509@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 25, 2006 at 02:01:42AM -0400, Jeff Garzik wrote:
-> On Wed, Oct 25, 2006 at 03:38:23PM +1000, David Chinner wrote:
-> > On Wed, Oct 25, 2006 at 12:48:44AM -0400, Jeff Garzik wrote:
-> > So why are you arguing that an interface is no good because it
-> > is fundamentally racy? ;)
-> 
-> My point was that it is silly to introduce obviously racy code into the
-> kernel, when -- inside the kernel -- it could be handled race-free.
 
-So how do you then get the generic interface to allocate blocks
-specified by userspace race free?
+--0786ZyFfTSxuegBe
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> > > Every major filesystem has a libfoofs library that makes it trivial to
-> > > read the metadata, so all you need to do is use an existing lib.
-> > 
-> > IOWs, you are advocating that any application that wants to use this
-> > special allocation technique needs to link against every different
-> > filesystem library and it then needs to implement filesystem
-> > specific searches through their metadata?  Nobody in their right
-> > mind would ever want to use an interface like this.
-> 
-> Online defrag is OBVIOUSLY highly filesystem specific. 
+On 14:27, Andreas Dilger wrote:
 
-Parts of it are, but data movement and allocation hints need to be
-provided by every filesystem that wants to implement this
-efficiently. These features are also useful outside of defrag as
-well - I can think of several applications that would benefit from
-being able to direct where in the filesystem they want data to
-reside. 
+> > +		j =3D find_next_usable_block(-1, gdp, EXT3_BLOCKS_PER_GROUP(sb));
+>=20
+> I'm not sure why the "find_next_usable_block()" part is in here?  At this
+> point we KNOW that ret_block is not a block we should be allocating, yet
+> it is marked free in the bitmap.  So we should just mark the block(s) in-=
+use
+> in the bitmap and look for a different block(s).
 
-If userspace directed allocation requires deep knowledge of the
-filesystem metadata (this is what you are saying they need to do,
-right?), then these applications will never, ever make use of this
-interface and we'll continue to have problems with them.
+Are you saying that ext3_set_bit() should simply be called with
+"ret_block" as its first argument? If yes, that is what the revised
+patch below does.
 
-I guess my point is that we are going to implement features like
-this in XFS and if other filesystems are going to be doing the same
-thing then we should try to come up with generic solutions rather
-than reinvent the wheel over an over again.
+Thanks
+Andre
 
-> Further, in the case being discussed in this thread, ext2meta has
-> already been proven a workable solution.
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 063d994..3cca317 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -359,17 +359,6 @@ do_more:
+ 	if (!desc)
+ 		goto error_return;
+=20
+-	if (in_range (le32_to_cpu(desc->bg_block_bitmap), block, count) ||
+-	    in_range (le32_to_cpu(desc->bg_inode_bitmap), block, count) ||
+-	    in_range (block, le32_to_cpu(desc->bg_inode_table),
+-		      sbi->s_itb_per_group) ||
+-	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
+-		      sbi->s_itb_per_group))
+-		ext3_error (sb, "ext3_free_blocks",
+-			    "Freeing blocks in system zones - "
+-			    "Block =3D "E3FSBLK", count =3D %lu",
+-			    block, count);
+-
+ 	/*
+ 	 * We are about to start releasing blocks in the bitmap,
+ 	 * so we need undo access.
+@@ -392,7 +381,17 @@ do_more:
+=20
+ 	jbd_lock_bh_state(bitmap_bh);
+=20
+-	for (i =3D 0, group_freed =3D 0; i < count; i++) {
++	for (i =3D 0, group_freed =3D 0; i < count; i++, block++) {
++		struct ext3_group_desc *gdp =3D ext3_get_group_desc(sb, i, NULL);
++		if (block =3D=3D le32_to_cpu(gdp->bg_block_bitmap) ||
++			block =3D=3D le32_to_cpu(gdp->bg_inode_bitmap) ||
++			in_range(block, le32_to_cpu(gdp->bg_inode_table),
++				EXT3_SB(sb)->s_itb_per_group)) {
++			ext3_error(sb, __FUNCTION__,
++				"Freeing block in system zone - block =3D %lu",
++				block);
++			continue;
++		}
+ 		/*
+ 		 * An HJ special.  This is expensive...
+ 		 */
+@@ -400,7 +399,7 @@ #ifdef CONFIG_JBD_DEBUG
+ 		jbd_unlock_bh_state(bitmap_bh);
+ 		{
+ 			struct buffer_head *debug_bh;
+-			debug_bh =3D sb_find_get_block(sb, block + i);
++			debug_bh =3D sb_find_get_block(sb, block);
+ 			if (debug_bh) {
+ 				BUFFER_TRACE(debug_bh, "Deleted!");
+ 				if (!bh2jh(bitmap_bh)->b_committed_data)
+@@ -452,7 +451,7 @@ #endif
+ 			jbd_unlock_bh_state(bitmap_bh);
+ 			ext3_error(sb, __FUNCTION__,
+ 				"bit already cleared for block "E3FSBLK,
+-				 block + i);
++				block);
+ 			jbd_lock_bh_state(bitmap_bh);
+ 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
+ 		} else {
+@@ -479,7 +478,6 @@ #endif
+ 	*pdquot_freed_blocks +=3D group_freed;
+=20
+ 	if (overflow && !err) {
+-		block +=3D count;
+ 		count =3D overflow;
+ 		goto do_more;
+ 	}
+@@ -1260,7 +1258,7 @@ #endif
+ 		*errp =3D -ENOSPC;
+ 		goto out;
+ 	}
+-
++repeat:
+ 	/*
+ 	 * First, test whether the goal block is free.
+ 	 */
+@@ -1372,12 +1370,21 @@ allocated:
+ 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
+ 		      EXT3_SB(sb)->s_itb_per_group) ||
+ 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
+-		      EXT3_SB(sb)->s_itb_per_group))
+-		ext3_error(sb, "ext3_new_block",
++		      EXT3_SB(sb)->s_itb_per_group)) {
++		ext3_error(sb, __FUNCTION__,
+ 			    "Allocating block in system zone - "
+ 			    "blocks from "E3FSBLK", length %lu",
+ 			     ret_block, num);
+-
++		/* Note: This will potentially use up one of the handle's
++		 * buffer credits.  Normally we have way too many credits,
++		 * so that is OK.  In _very_ rare cases it might not be OK.
++		 * We will trigger an assertion if we run out of credits,
++		 * and we will have to do a full fsck of the filesystem -
++		 * better than randomly corrupting filesystem metadata.
++		 */
++		ext3_set_bit(ret_block, gdp_bh->b_data);
++		goto repeat;
++	}
+ 	performed_allocation =3D 1;
+=20
+ #ifdef CONFIG_JBD_DEBUG
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
 
-Sure, but that's not a generic solution to a problem common to
-all filesystems....
+--0786ZyFfTSxuegBe
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
-Cheers,
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+iD8DBQFFPzHyWto1QDEAkw8RAup1AJ9c89HxQxvLlHdvC34neywKwmymYQCgkoTe
+KEK5ol6uJCqR23/mB7ryARo=
+=0Ltw
+-----END PGP SIGNATURE-----
+
+--0786ZyFfTSxuegBe--
