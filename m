@@ -1,96 +1,55 @@
-From: David Chinner <dgc@sgi.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [RFC] Ext3 online defrag
-Date: Thu, 26 Oct 2006 11:40:20 +1000
-Message-ID: <20061026014020.GC8394166@melbourne.sgi.com>
-References: <20061025011853.GQ8394166@melbourne.sgi.com> <200610250225.MAA23029@larry.melbourne.sgi.com> <20061025024257.GA23769@havoc.gtf.org> <20061025042753.GV8394166@melbourne.sgi.com> <20061025044844.GB32486@havoc.gtf.org> <20061025053823.GX8394166@melbourne.sgi.com> <20061025060142.GD32486@havoc.gtf.org> <20061025081137.GB8394166@melbourne.sgi.com> <20061025170052.GA19513@havoc.gtf.org>
+Date: Wed, 25 Oct 2006 23:33:16 -0400
+Message-ID: <20061026033316.GC27858@thunk.org>
+References: <20061025011853.GQ8394166@melbourne.sgi.com> <200610250225.MAA23029@larry.melbourne.sgi.com> <20061025024257.GA23769@havoc.gtf.org> <20061025042753.GV8394166@melbourne.sgi.com> <20061025044844.GB32486@havoc.gtf.org> <20061025053823.GX8394166@melbourne.sgi.com> <20061025060142.GD32486@havoc.gtf.org> <20061025081137.GB8394166@melbourne.sgi.com> <20061025170052.GA19513@havoc.gtf.org> <20061026014020.GC8394166@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
+Cc: Jeff Garzik <jeff@garzik.org>,
 	Barry Naujok <bnaujok@melbourne.sgi.com>,
-	"'Dave Kleikamp'" <shaggy@austin.ibm.com>,
-	"'Alex Tomas'" <alex@clusterfs.com>,
-	"'Theodore Tso'" <tytso@mit.edu>, "'Jan Kara'" <jack@suse.cz>,
+	'Dave Kleikamp' <shaggy@austin.ibm.com>,
+	'Alex Tomas' <alex@clusterfs.com>, 'Jan Kara' <jack@suse.cz>,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from omx2-ext.sgi.com ([192.48.171.19]:33683 "EHLO omx2.sgi.com")
-	by vger.kernel.org with ESMTP id S1422640AbWJZBlj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Oct 2006 21:41:39 -0400
-To: Jeff Garzik <jeff@garzik.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: David Chinner <dgc@sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20061025170052.GA19513@havoc.gtf.org>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20061026014020.GC8394166@melbourne.sgi.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 25, 2006 at 01:00:52PM -0400, Jeff Garzik wrote:
-> On Wed, Oct 25, 2006 at 06:11:37PM +1000, David Chinner wrote:
-> > On Wed, Oct 25, 2006 at 02:01:42AM -0400, Jeff Garzik wrote:
-> > > On Wed, Oct 25, 2006 at 03:38:23PM +1000, David Chinner wrote:
-> > > > On Wed, Oct 25, 2006 at 12:48:44AM -0400, Jeff Garzik wrote:
-> > > > So why are you arguing that an interface is no good because it
-> > > > is fundamentally racy? ;)
-> > > 
-> > > My point was that it is silly to introduce obviously racy code into the
-> > > kernel, when -- inside the kernel -- it could be handled race-free.
-> > 
-> > So how do you then get the generic interface to allocate blocks
-> > specified by userspace race free?
+On Thu, Oct 26, 2006 at 11:40:20AM +1000, David Chinner wrote:
+> We don't need to expose anything filesystem specific to userspace to
+> implement this.  Online data movement (i.e. the defrag mechanism)
+> becomes something like:
 > 
-> As has been repeatedly stated, there is no "generic".  There MUST be
-> filesystem-specific knowledge during these operations.
-
-What information? All we need to know is where the free disk space
-is, and have a method to attempt to allocate from it. That's _easy_
-to abstract into a common interface via the VFS....
-
-> > > Further, in the case being discussed in this thread, ext2meta has
-> > > already been proven a workable solution.
-> > 
-> > Sure, but that's not a generic solution to a problem common to
-> > all filesystems....
+> 	do {
+> 		get_free_list(dst_fd, location, len, list)
+> 		/* select extent to use */
+> 		alloc_from_list(dst_fd, list[X], off, len)
+> 	} while (ENOALLOC)
+> 	move_data(src_fd, dst_fd, off, len);
 > 
-> You clearly don't know what I'm talking about.  ext2meta is an example
-> of a filesystem-specific metadata access method, applicable to tasks
-> such as online optimization.
+> And this would work on any filesystem type that implemented these
+> interfaces. Hence tools like a startup file optimiser would
+> only need to be written once, rather than needing a different
+> tool for every different filesystem type.....
 
-I know exactly what ext2meta is. I said it's not a generic solution
-and you say its a filesystem specific solution.  I think we're
-agreeing here. ;)
+Yeah, but that's simply not enough.  A good defragger needs to know
+about a filesystem's allocation policies, and move files so they are
+optimally located, given the filesystem layout.  For example, in
+ext2/3/4 we will want to move blocks so they in the same block group
+as the inode.  That's filesystem specific information; other
+filesystems will require different policies.
 
-We don't need to expose anything filesystem specific to userspace to
-implement this.  Online data movement (i.e. the defrag mechanism)
-becomes something like:
+> Remember, I'm not just talking about defrag - I'm talking about
+> an interface that is actually useful to apps that might care
+> about how data is laid out on disk but the applications writers
+> don't know anyhting about how filesystem X or Y or Z is
+> implemented. Putting the burden of learning about fileystem
+> internals on application developers is not the correct solution.
 
-	do {
-		get_free_list(dst_fd, location, len, list)
-		/* select extent to use */
-		alloc_from_list(dst_fd, list[X], off, len)
-	} while (ENOALLOC)
-	move_data(src_fd, dst_fd, off, len);
+Unfortunately, if you want to do a good job, a defragger *has* to know
+about some very low-level filesystem specific information, if it wants
+to do a good job.
 
-And this would work on any filesystem type that implemented these
-interfaces. Hence tools like a startup file optimiser would
-only need to be written once, rather than needing a different
-tool for every different filesystem type.....
-
-Remember, I'm not just talking about defrag - I'm talking about
-an interface that is actually useful to apps that might care
-about how data is laid out on disk but the applications writers
-don't know anyhting about how filesystem X or Y or Z is
-implemented. Putting the burden of learning about fileystem
-internals on application developers is not the correct solution.
-
-I see substantial benefit moving forward from having filesystem
-independent interfaces. Many features that  filesystems implement
-are common, and as time goes on the common feature set of the
-different filesystems gets larger. So why shouldn't we be
-trying to make common operations generic so that every filesystem
-can benefit from the latest and greatest tool?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+						- Ted
