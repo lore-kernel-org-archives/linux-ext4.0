@@ -1,57 +1,48 @@
-From: Dave Kleikamp <shaggy@austin.ibm.com>
+From: =?iso-8859-1?Q?J=F6rn?= Engel <joern@wohnheim.fh-wedel.de>
 Subject: Re: [RFC] Ext3 online defrag
-Date: Thu, 26 Oct 2006 09:40:41 -0500
-Message-ID: <1161873641.4536.3.camel@kleikamp.austin.ibm.com>
-References: <20061025024257.GA23769@havoc.gtf.org>
-	 <20061025042753.GV8394166@melbourne.sgi.com>
-	 <20061025044844.GB32486@havoc.gtf.org>
-	 <20061025053823.GX8394166@melbourne.sgi.com>
-	 <20061025060142.GD32486@havoc.gtf.org>
-	 <20061025081137.GB8394166@melbourne.sgi.com>
-	 <20061025170052.GA19513@havoc.gtf.org>
-	 <20061026014020.GC8394166@melbourne.sgi.com>
-	 <20061026033316.GC27858@thunk.org>
-	 <20061026063648.GE8394166@melbourne.sgi.com>
-	 <20061026133737.GA31996@thunk.org>
+Date: Thu, 26 Oct 2006 17:25:22 +0200
+Message-ID: <20061026152522.GA12596@wohnheim.fh-wedel.de>
+References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz> <20061023141641.GA29649@thunk.org> <20061023151447.GL3509@schatzie.adilger.int> <20061023160310.GB11353@atrey.karlin.mff.cuni.cz> <20061023172906.GO3509@schatzie.adilger.int> <20061025183656.GD9940@atrey.karlin.mff.cuni.cz> <20061025184118.GG19513@havoc.gtf.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: David Chinner <dgc@sgi.com>, Jeff Garzik <jeff@garzik.org>,
-	Barry Naujok <bnaujok@melbourne.sgi.com>,
-	"'Alex Tomas'" <alex@clusterfs.com>, "'Jan Kara'" <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:657 "EHLO e4.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S1423530AbWJZOkz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Oct 2006 10:40:55 -0400
-To: Theodore Tso <tytso@mit.edu>
-In-Reply-To: <20061026133737.GA31996@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, adilger@clusterfs.com,
+	Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Jeff Garzik <jeff@garzik.org>
+Content-Disposition: inline
+In-Reply-To: <20061025184118.GG19513@havoc.gtf.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2006-10-26 at 09:37 -0400, Theodore Tso wrote:
-> On Thu, Oct 26, 2006 at 04:36:48PM +1000, David Chinner wrote:
-> > > > Remember, I'm not just talking about defrag - I'm talking about
-> > > > an interface that is actually useful to apps that might care
-> > > > about how data is laid out on disk but the applications writers
-> > > > don't know anyhting about how filesystem X or Y or Z is
-> > > > implemented. Putting the burden of learning about fileystem
-> > > > internals on application developers is not the correct solution.
-> 
-> If all you want is something for applicaiton developers, about all you
-> can do is to tell the filesystem, "create the file so that it will be
-> quickly accessed after accessing this file or this directory".  I
-> really don't see the point of having the application specify block
-> numbers if you're also claiming the applicaiton isn't going to know
-> anything about the filesystem layout --- or even the RAID layout of
-> the filesystem.  I don't think it's at **all** useful to be
-> half-pregnant on this score.
+On Wed, 25 October 2006 14:41:18 -0400, Jeff Garzik wrote:
+> On Wed, Oct 25, 2006 at 08:36:56PM +0200, Jan Kara wrote:
+> >   Yes, but there's a question of the interface to this operation. H=
+ow to
+> > specify which indirect block I mean? Obviously we could introduce
+> > separate call for remapping indirect blocks but I find this solutio=
+n
+> > kind of clumsy...
+>=20
+> Agreed...  that gets nasty real quick.
 
-I think a utility such as a defragmenter should know about about the
-filesystem layout.  I also think that it would be a good thing to have a
-consistent interface so that every filesystem isn't implementing a
-completely different one.
--- 
-David Kleikamp
-IBM Linux Technology Center
+Logfs has a similar problem and I introduced a "level".  Without going
+into all the gory details, data blocks reside on level 0, indirect
+blocks on level 1, doubly indirect blocks on level 2, etc.  With this,
+the tupel of (ino, pos, level) can specify any block on the
+filesystem, provided it is used for some inode.
+
+Logfs needs this for Garbage Collection, which is a fairly similar
+problem.
+
+J=F6rn
+
+--=20
+Joern's library part 3:
+http://inst.eecs.berkeley.edu/~cs152/fa05/handouts/clark-test.pdf
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
