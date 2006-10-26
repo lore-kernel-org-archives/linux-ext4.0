@@ -1,48 +1,69 @@
-From: =?iso-8859-1?Q?J=F6rn?= Engel <joern@wohnheim.fh-wedel.de>
-Subject: Re: [RFC] Ext3 online defrag
-Date: Thu, 26 Oct 2006 17:25:22 +0200
-Message-ID: <20061026152522.GA12596@wohnheim.fh-wedel.de>
-References: <20061023122710.GA12034@atrey.karlin.mff.cuni.cz> <20061023141641.GA29649@thunk.org> <20061023151447.GL3509@schatzie.adilger.int> <20061023160310.GB11353@atrey.karlin.mff.cuni.cz> <20061023172906.GO3509@schatzie.adilger.int> <20061025183656.GD9940@atrey.karlin.mff.cuni.cz> <20061025184118.GG19513@havoc.gtf.org>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
+Date: Thu, 26 Oct 2006 18:02:41 +0200
+Message-ID: <20061026160241.GB12843@skl-net.de>
+References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int> <20061023200242.GA5015@schatzie.adilger.int> <20061024091449.GZ22487@skl-net.de> <20061024202716.GX3509@schatzie.adilger.int> <20061025094418.GA22487@skl-net.de> <20061026093613.GM3509@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, adilger@clusterfs.com,
-	Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jeff Garzik <jeff@garzik.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="yEPQxsgoJgBvi8ip"
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from systemlinux.org ([83.151.29.59]:48335 "EHLO m18s25.vlinux.de")
+	by vger.kernel.org with ESMTP id S1161419AbWJZQDQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Oct 2006 12:03:16 -0400
+To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20061025184118.GG19513@havoc.gtf.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20061026093613.GM3509@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 25 October 2006 14:41:18 -0400, Jeff Garzik wrote:
-> On Wed, Oct 25, 2006 at 08:36:56PM +0200, Jan Kara wrote:
-> >   Yes, but there's a question of the interface to this operation. H=
-ow to
-> > specify which indirect block I mean? Obviously we could introduce
-> > separate call for remapping indirect blocks but I find this solutio=
-n
-> > kind of clumsy...
+
+--yEPQxsgoJgBvi8ip
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On 03:36, Andreas Dilger wrote:
+
+> On Oct 25, 2006  11:44 +0200, Andre Noll wrote:
+> > Are you saying that ext3_set_bit() should simply be called with
+> > "ret_block" as its first argument? If yes, that is what the revised
+> > patch below does.
 >=20
-> Agreed...  that gets nasty real quick.
+> You might need to call ext3_set_bit_atomic() (as claim_block() does,
+> not sure.
 
-Logfs has a similar problem and I introduced a "level".  Without going
-into all the gory details, data blocks reside on level 0, indirect
-blocks on level 1, doubly indirect blocks on level 2, etc.  With this,
-the tupel of (ino, pos, level) can specify any block on the
-filesystem, provided it is used for some inode.
+I _think_ it doesn't matter much which one is used as on most archs
+ext3_set_bit_atomic() is only a wrapper for test_and_set_bit() just like
+ext3_set_bit() is. The only exceptions seem to be those archs that use
+the generic bitops and m68knommu.
 
-Logfs needs this for Garbage Collection, which is a fairly similar
-problem.
+> The other issue is that you need to potentially set "num" bits in the
+> bitmap here, if those all overlap metadata.  In fact, it might just
+> make more sense at this stage to walk all of the bits in the bitmaps,
+> the inode table and the backup superblock and group descriptor to see
+> if they need fixing also.
 
-J=F6rn
+I tried to implement this, but I could not find out how to check at this
+point whether a given bit (in the block bitmap, say) needs fixing.
 
+Thanks
+Andre
 --=20
-Joern's library part 3:
-http://inst.eecs.berkeley.edu/~cs152/fa05/handouts/clark-test.pdf
--
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The only person who always got his work done by Friday was Robinson Crusoe
+
+--yEPQxsgoJgBvi8ip
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
+
+iD8DBQFFQNwhWto1QDEAkw8RAm+eAJ4qvpD++YZHgAeCk4E8SBSKDckMawCgnVlq
+laElebX7tAz0jKCkNl+ybC4=
+=vwEl
+-----END PGP SIGNATURE-----
+
+--yEPQxsgoJgBvi8ip--
