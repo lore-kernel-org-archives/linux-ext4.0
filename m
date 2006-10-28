@@ -1,14 +1,14 @@
 From: akpm@osdl.org
-Subject: [patch 06/38] jbd2: journal_dirty_data re-check for unmapped buffers
-Date: Sat, 28 Oct 2006 10:38:28 -0700
-Message-ID: <200610281738.k9SHcS8x030785@shell0.pdx.osdl.net>
+Subject: [patch 05/38] jbd: journal_dirty_data re-check for unmapped buffers
+Date: Sat, 28 Oct 2006 10:38:27 -0700
+Message-ID: <200610281738.k9SHcRJF030781@shell0.pdx.osdl.net>
 Cc: akpm@osdl.org, sandeen@sandeen.net, esandeen@redhat.com,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:37272 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751153AbWJ1Rio (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:37785 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1751216AbWJ1RkH (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Oct 2006 13:38:44 -0400
+	Sat, 28 Oct 2006 13:40:07 -0400
 To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -40,13 +40,13 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/jbd2/transaction.c |   15 ++++++++++++++-
+ fs/jbd/transaction.c |   15 ++++++++++++++-
  1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd2/transaction.c
---- a/fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers
-+++ a/fs/jbd2/transaction.c
-@@ -967,6 +967,13 @@ int jbd2_journal_dirty_data(handle_t *ha
+diff -puN fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buffers
++++ a/fs/jbd/transaction.c
+@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle,
  	 */
  	jbd_lock_bh_state(bh);
  	spin_lock(&journal->j_list_lock);
@@ -60,7 +60,7 @@ diff -puN fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-bu
  	if (jh->b_transaction) {
  		JBUFFER_TRACE(jh, "has transaction");
  		if (jh->b_transaction != handle->h_transaction) {
-@@ -1028,6 +1035,11 @@ int jbd2_journal_dirty_data(handle_t *ha
+@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle,
  				sync_dirty_buffer(bh);
  				jbd_lock_bh_state(bh);
  				spin_lock(&journal->j_list_lock);
