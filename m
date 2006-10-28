@@ -1,59 +1,99 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext3: bogus i_mode errors with 2.6.18.1
-Date: Sat, 28 Oct 2006 22:24:54 +0800
-Message-ID: <20061028142454.GA6182@schatzie.adilger.int>
-References: <20061023144556.GY22487@skl-net.de> <20061023164416.GM3509@schatzie.adilger.int> <20061023200242.GA5015@schatzie.adilger.int> <20061024091449.GZ22487@skl-net.de> <20061024202716.GX3509@schatzie.adilger.int> <20061025094418.GA22487@skl-net.de> <20061026093613.GM3509@schatzie.adilger.int> <20061026160241.GB12843@skl-net.de> <20061026180133.GN3509@schatzie.adilger.int> <20061027153414.GA6446@skl-net.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
+From: akpm@osdl.org
+Subject: [patch 06/38] jbd2: journal_dirty_data re-check for unmapped buffers
+Date: Sat, 28 Oct 2006 10:38:28 -0700
+Message-ID: <200610281738.k9SHcS8x030785@shell0.pdx.osdl.net>
+Cc: akpm@osdl.org, sandeen@sandeen.net, esandeen@redhat.com,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:62371 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1752074AbWJ1OZB
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Oct 2006 10:25:01 -0400
-To: Andre Noll <maan@systemlinux.org>
-Content-Disposition: inline
-In-Reply-To: <20061027153414.GA6446@skl-net.de>
+Received: from smtp.osdl.org ([65.172.181.4]:37272 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1751153AbWJ1Rio (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Oct 2006 13:38:44 -0400
+To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 27, 2006  17:34 +0200, Andre Noll wrote:
-> On 12:01, Andreas Dilger wrote:
-> > Well, since we know at least one bit needs fixing and results in the block
-> > being written to disk then setting the bits for all of the other metadata
-> > blocks in this group has no extra IO cost (only a tiny amount of CPU).
-> > Re-setting the bits if they are already set is not harmful.
-> 
-> I.e, something like
-> 
->         int i;
->         ext3_fsblk_t bit;
->         unsigned long gdblocks = EXT3_SB(sb)->s_gdb_count;
-> 
->         for (i = 0, bit = 1; i < gdblocks; i++, bit++)
->                 ext3_set_bit(bit, gdp_bh->b_data);
-> 
-> Is that correct?
+From: Eric Sandeen <sandeen@sandeen.net>
 
-Well, it needs to also handle backup superblock, bitmaps, inode table:
+When running several fsx's and other filesystem stress tests, we found
+cases where an unmapped buffer was still being sent to submit_bh by the
+ext3 dirty data journaling code.
 
-	if (ext3_bg_has_super())
-		ext3_set_bit(0, gdp_bh->b_data);
-	gdblocks = ext3_bg_num_gdb(sb, group);
-	for (i = 0, bit = 1; i < gdblocks; i++, bit++)
-		/* actually a bit more complex for INCOMPAT_META_BG fs */
-		ext3_set_bit(i, gdp_bh->b_data);
-	ext3_set_bit(gdp->bg_inode_bitmap % EXT3_BLOCKS_PER_GROUP(sb), ...);
-	ext3_set_bit(gdp->bg_block_bitmap % EXT3_BLOCKS_PER_GROUP(sb), ...);
-	for (i = 0, bit = gdp->bg_inode_table % EXT3_BLOCKS_PER_GROUP(sb);
-	     i < EXT3_SB(sb)->s_itb_per_group; i++, bit++)
-		ext3_set_bit(i, gdp_bh->b_data);
-		
-(or something close to this).
+I saw this happen in two ways, both related to another thread doing a
+truncate which would unmap the buffer in question.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Either we would get into journal_dirty_data with a bh which was already
+unmapped (although journal_dirty_data_fn had checked for this earlier, the
+state was not locked at that point), or it would get unmapped in the middle
+of journal_dirty_data when we dropped locks to call sync_dirty_buffer.
+
+By re-checking for mapped state after we've acquired the bh state lock, we
+should avoid these races.  If we find a buffer which is no longer mapped,
+we essentially ignore it, because journal_unmap_buffer has already decided
+that this buffer can go away.
+
+I've also added tracepoints in these two cases, and made a couple other
+tracepoint changes that I found useful in debugging this.
+
+Signed-off-by: Eric Sandeen <esandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/jbd2/transaction.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff -puN fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers fs/jbd2/transaction.c
+--- a/fs/jbd2/transaction.c~jbd2-journal_dirty_data-re-check-for-unmapped-buffers
++++ a/fs/jbd2/transaction.c
+@@ -967,6 +967,13 @@ int jbd2_journal_dirty_data(handle_t *ha
+ 	 */
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
++
++	/* Now that we have bh_state locked, are we really still mapped? */
++	if (!buffer_mapped(bh)) {
++		JBUFFER_TRACE(jh, "unmapped buffer, bailing out");
++		goto no_journal;
++	}
++
+ 	if (jh->b_transaction) {
+ 		JBUFFER_TRACE(jh, "has transaction");
+ 		if (jh->b_transaction != handle->h_transaction) {
+@@ -1028,6 +1035,11 @@ int jbd2_journal_dirty_data(handle_t *ha
+ 				sync_dirty_buffer(bh);
+ 				jbd_lock_bh_state(bh);
+ 				spin_lock(&journal->j_list_lock);
++				/* Since we dropped the lock... */
++				if (!buffer_mapped(bh)) {
++					JBUFFER_TRACE(jh, "buffer got unmapped");
++					goto no_journal;
++				}
+ 				/* The buffer may become locked again at any
+ 				   time if it is redirtied */
+ 			}
+@@ -1824,6 +1836,7 @@ static int journal_unmap_buffer(journal_
+ 			}
+ 		}
+ 	} else if (transaction == journal->j_committing_transaction) {
++		JBUFFER_TRACE(jh, "on committing transaction");
+ 		if (jh->b_jlist == BJ_Locked) {
+ 			/*
+ 			 * The buffer is on the committing transaction's locked
+@@ -1838,7 +1851,6 @@ static int journal_unmap_buffer(journal_
+ 		 * can remove it's next_transaction pointer from the
+ 		 * running transaction if that is set, but nothing
+ 		 * else. */
+-		JBUFFER_TRACE(jh, "on committing transaction");
+ 		set_buffer_freed(bh);
+ 		if (jh->b_next_transaction) {
+ 			J_ASSERT(jh->b_next_transaction ==
+@@ -1858,6 +1870,7 @@ static int journal_unmap_buffer(journal_
+ 		 * i_size already for this truncate so recovery will not
+ 		 * expose the disk blocks we are discarding here.) */
+ 		J_ASSERT_JH(jh, transaction == journal->j_running_transaction);
++		JBUFFER_TRACE(jh, "on running transaction");
+ 		may_free = __dispose_buffer(jh, transaction);
+ 	}
+ 
+_
