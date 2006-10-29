@@ -1,18 +1,27 @@
 From: akpm@osdl.org
-Subject: [patch 05/38] jbd: journal_dirty_data re-check for unmapped buffers
-Date: Sat, 28 Oct 2006 10:38:27 -0700
-Message-ID: <200610281738.k9SHcRJF030781@shell0.pdx.osdl.net>
-Cc: akpm@osdl.org, sandeen@sandeen.net, esandeen@redhat.com,
-	linux-ext4@vger.kernel.org
+Subject: - jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch removed from -mm tree
+Date: Sat, 28 Oct 2006 17:19:24 -0700
+Message-ID: <200610290019.k9T0JOls006804@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:37785 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1751216AbWJ1RkH (ORCPT
+Received: from smtp.osdl.org ([65.172.181.4]:20640 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1751451AbWJ2ATk (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Oct 2006 13:40:07 -0400
-To: torvalds@osdl.org
+	Sat, 28 Oct 2006 20:19:40 -0400
+To: sandeen@sandeen.net, esandeen@redhat.com,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+
+The patch titled
+     jbd: journal_dirty_data re-check for unmapped buffers
+has been removed from the -mm tree.  Its filename was
+     jbd-journal_dirty_data-re-check-for-unmapped-buffers.patch
+
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+------------------------------------------------------
+Subject: jbd: journal_dirty_data re-check for unmapped buffers
 From: Eric Sandeen <sandeen@sandeen.net>
 
 When running several fsx's and other filesystem stress tests, we found
@@ -97,3 +106,7 @@ diff -puN fs/jbd/transaction.c~jbd-journal_dirty_data-re-check-for-unmapped-buff
  	}
  
 _
+
+Patches currently in -mm which might be from sandeen@sandeen.net are
+
+origin.patch
