@@ -1,38 +1,71 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: Re: Shred mount option for ext4?
-Date: Wed, 1 Nov 2006 12:20:53 -0500
-Message-ID: <200611011720.kA1HKrJc005424@agora.fsl.cs.sunysb.edu>
-References: <Pine.GSO.4.53.0611011142120.13266@compserv1>
-Cc: Ric Wheeler <ric@emc.com>, Andreas Dilger <adilger@clusterfs.com>,
-	Erik Mouw <erik@harddisk-recovery.com>,
-	Samuel Tardieu <sam@rfc1149.net>, linux-ext4@vger.kernel.org
+From: =?ISO-8859-1?Q?=22Andr=E9s_G=2E_Aragoneses_=5B_knocte_=5D?=
+	 =?ISO-8859-1?Q?=22?= <knocte@gmail.com>
+Subject: Re: Discussion about a "dirty bit" in the filesystem
+Date: Wed, 01 Nov 2006 20:24:28 +0100
+Message-ID: <4548F46C.7030006@gmail.com>
+References: <ehdt24$iau$1@sea.gmane.org> <20061022010950.GC9082@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2]:42186 "EHLO
-	filer.fsl.cs.sunysb.edu") by vger.kernel.org with ESMTP
-	id S2992684AbWKARWR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Nov 2006 12:22:17 -0500
-To: Nikolai Joukov <kolya@cs.sunysb.edu>
-In-reply-to: Your message of "Wed, 01 Nov 2006 11:52:42 EST."
-             <Pine.GSO.4.53.0611011142120.13266@compserv1>
+Received: from main.gmane.org ([80.91.229.2]:8583 "EHLO ciao.gmane.org")
+	by vger.kernel.org with ESMTP id S2992731AbWKATYf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Nov 2006 14:24:35 -0500
+Received: from list by ciao.gmane.org with local (Exim 4.43)
+	id 1GfLgy-0004mf-BA
+	for linux-ext4@vger.kernel.org; Wed, 01 Nov 2006 20:24:05 +0100
+Received: from 106.red-83-46-75.dynamicip.rima-tde.net ([83.46.75.106])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Nov 2006 20:24:04 +0100
+Received: from knocte by 106.red-83-46-75.dynamicip.rima-tde.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Nov 2006 20:24:04 +0100
+To: linux-ext4@vger.kernel.org
+In-Reply-To: <20061022010950.GC9082@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Also of note is that some government standards for data destruction (e.g.,
-NIST and NISPOM) specifically require that files be overwritten with a
-certain pattern, and even multiple times for different security levels.  So
-those sites who have to comply with such standards won't be able to use an
-encryption-only solution to discard data.
+Thanks for your comments Theodore.
 
-The other problem with crypto on persistent media is that you can't easily
-predict how secure data will be in the really long run, say years or
-decades.  Suppose an attacker manages to get their hands on a crypto disk
-whose keys were destroyed.  With today's technology, the attacker might not
-be able to break the crypto.  But wait 10 years, and who knows what kinds of
-computing powers we will have then.  (Even ten-year old data, if recovered,
-could still be highly valuable -- eg., top-secret military files).
+Sorry for the delay answering this. See inline,
 
-Crypto is great.  But overwriting data even just a couple of times w/ random
-bits, elevates the level of attack required to recover such data, well past
-crypto.
+> I'm not at all sure what this has to do with ext4 at all.  The last
+> message indicates a major problem with your request, which is that if
+> a FAT partition is mounted by Linux, and in the middle of being
+> modified when the system is undergoing hibernation, and then Windows
+> is booted and modifies the filesystem, you can lose data.  But that's
+> because the FAT filesystem can be understood by both Windows and
+> Linux.  (Presumably this problem would also occur, in a much worse
+> case, using NTFS.)  But this has nothing to do with ext4.
 
-Erez.
+Well, forget for the moment that other filesystems exist and imagine th=
+e
+same situation with ext filesystems. Implementing the "dirty" bit we
+could avoid mounting a filesystem that is in use by an hibernated parti=
+tion.
+
+The feature, as is, is not very useful if it's only implemented in
+ext3/ext4, but it would be a nice proof of concept and probably makes
+other filesystem vendors implement the same.
+
+> I can imagine someone writing an improved hibernate script which
+> checks to see if a filesystem which could be understood by Windows
+> (i.e., FAT or NTFS) is mounted, and if any such filesystems are
+> mounted, disable the ability to boot into Windows after the
+> hibernation.  I could even imagine an improved hibernate script which
+> detects this case, and attempts to unmount the FAT and NTFS
+> filesystems, and if it could successfully unmount them all, allow the
+> user to reboot into Windows after hibernation.
+
+=46or an hibernation script to detect this, first we must implement the
+feature to allow the script to detect it, so this is what I am asking f=
+or.
+
+Perhaps now I have been clearer?
+
+Thanks,
+
+	Andr=E9s	[ knocte ]
+
+--=20
