@@ -1,71 +1,109 @@
-From: =?ISO-8859-1?Q?=22Andr=E9s_G=2E_Aragoneses_=5B_knocte_=5D?=
-	 =?ISO-8859-1?Q?=22?= <knocte@gmail.com>
-Subject: Re: Discussion about a "dirty bit" in the filesystem
-Date: Wed, 01 Nov 2006 20:24:28 +0100
-Message-ID: <4548F46C.7030006@gmail.com>
-References: <ehdt24$iau$1@sea.gmane.org> <20061022010950.GC9082@thunk.org>
+From: Dave Kleikamp <shaggy@austin.ibm.com>
+Subject: ext4 roadmap
+Date: Wed, 01 Nov 2006 17:16:37 -0600
+Message-ID: <1162422997.13777.35.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:8583 "EHLO ciao.gmane.org")
-	by vger.kernel.org with ESMTP id S2992731AbWKATYf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Nov 2006 14:24:35 -0500
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1GfLgy-0004mf-BA
-	for linux-ext4@vger.kernel.org; Wed, 01 Nov 2006 20:24:05 +0100
-Received: from 106.red-83-46-75.dynamicip.rima-tde.net ([83.46.75.106])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Nov 2006 20:24:04 +0100
-Received: from knocte by 106.red-83-46-75.dynamicip.rima-tde.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Nov 2006 20:24:04 +0100
-To: linux-ext4@vger.kernel.org
-In-Reply-To: <20061022010950.GC9082@thunk.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:17800 "EHLO e2.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1750989AbWKAXQm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Nov 2006 18:16:42 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kA1NGdYb008368
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Nov 2006 18:16:39 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kA1NGdNX125450
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Nov 2006 18:16:39 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kA1NGcr9021931
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Nov 2006 18:16:38 -0500
+Received: from kleikamp.austin.ibm.com (kleikamp.austin.ibm.com [9.53.41.164])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id kA1NGcEL021917
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Nov 2006 18:16:38 -0500
+To: ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Thanks for your comments Theodore.
+It has been discussed in the conference call that we need to better
+define the requirements for ext4 and set some kind of target for when
+new function should be added, so we can then work on stabilizing the
+code and getting it production-ready.  The list below is based on the
+candidate features list in Documentation/filesystems/ext4.txt.  It is by
+no means complete, as some other ideas are being floated around, and I
+very well may have missed some features.
 
-Sorry for the delay answering this. See inline,
+I plan to put this in a wiki, but I'm not sure what the best place is.
+Neither http://fedoraproject.org/wiki/ext3-devel nor
+https://mail.clusterfs.com/wikis/lustre/Ext3Development has been kept up
+to date, but I'd be happy to use either.
 
-> I'm not at all sure what this has to do with ext4 at all.  The last
-> message indicates a major problem with your request, which is that if
-> a FAT partition is mounted by Linux, and in the middle of being
-> modified when the system is undergoing hibernation, and then Windows
-> is booted and modifies the filesystem, you can lose data.  But that's
-> because the FAT filesystem can be understood by both Windows and
-> Linux.  (Presumably this problem would also occur, in a much worse
-> case, using NTFS.)  But this has nothing to do with ext4.
+Here's something to start with:
 
-Well, forget for the moment that other filesystems exist and imagine th=
-e
-same situation with ext filesystems. Implementing the "dirty" bit we
-could avoid mounting a filesystem that is in use by an hibernated parti=
-tion.
+Multiblock Allocation
+---------------------
+Primary developer: Alex Tomas
+Status:	Patches available
+Changes on-disk format: No
+Target Date: ?
+e2fsprogs changes: No
 
-The feature, as is, is not very useful if it's only implemented in
-ext3/ext4, but it would be a nice proof of concept and probably makes
-other filesystem vendors implement the same.
+Delayed Allocation
+------------------
+Primary developer: Alex Tomas
+Status:	Patches available
+Changes on-disk format: No
+Target Date: ?
+e2fsprogs changes: No
 
-> I can imagine someone writing an improved hibernate script which
-> checks to see if a filesystem which could be understood by Windows
-> (i.e., FAT or NTFS) is mounted, and if any such filesystems are
-> mounted, disable the ability to boot into Windows after the
-> hibernation.  I could even imagine an improved hibernate script which
-> detects this case, and attempts to unmount the FAT and NTFS
-> filesystems, and if it could successfully unmount them all, allow the
-> user to reboot into Windows after hibernation.
+Break 32000 subdirectory limit
+------------------------------
+Primary developer: Andreas? Ted?
+Status:	Patches available
+Changes on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
 
-=46or an hibernation script to detect this, first we must implement the
-feature to allow the script to detect it, so this is what I am asking f=
-or.
+nsec timestamps
+---------------
+Primary developer: Andreas? Alex?
+Status: Patches available
+Change on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
 
-Perhaps now I have been clearer?
+inode version on disk
+---------------------
+Primary developer: ?
+Status: Prototype available
+Change on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
 
-Thanks,
+uninitialized groups
+--------------------
+Primary developer: ?
+Status: Prototype available
+Change on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
 
-	Andr=E9s	[ knocte ]
+journal checksumming
+--------------------
+Primary developer: Andreas?
+Status: Prototype available
+Change on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
 
---=20
+persistent preallocation
+------------------------
+Primary developer: Suparna?
+Status: In development
+Change on-disk format: Yes
+Target Date: ?
+e2fsprogs changes: Needed
+
+-- 
+David Kleikamp
+IBM Linux Technology Center
