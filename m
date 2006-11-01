@@ -1,39 +1,38 @@
-From: "Wolber, Richard C" <richard.c.wolber@boeing.com>
-Subject: RE: Shred mount option for ext4?
-Date: Wed, 1 Nov 2006 08:57:37 -0800
-Message-ID: <8C7C41A176AC0B468BEFB2EFD9BDAB9902426639@XCH-NW-5V2.nw.nos.boeing.com>
-References: <20061101161700.GA5212@schatzie.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "Erik Mouw" <erik@harddisk-recovery.com>,
-	"Samuel Tardieu" <sam@rfc1149.net>, <linux-ext4@vger.kernel.org>
+From: Erez Zadok <ezk@cs.sunysb.edu>
+Subject: Re: Shred mount option for ext4?
+Date: Wed, 1 Nov 2006 12:20:53 -0500
+Message-ID: <200611011720.kA1HKrJc005424@agora.fsl.cs.sunysb.edu>
+References: <Pine.GSO.4.53.0611011142120.13266@compserv1>
+Cc: Ric Wheeler <ric@emc.com>, Andreas Dilger <adilger@clusterfs.com>,
+	Erik Mouw <erik@harddisk-recovery.com>,
+	Samuel Tardieu <sam@rfc1149.net>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from slb-smtpout-01.boeing.com ([130.76.64.48]:48792 "EHLO
-	slb-smtpout-01.ns.cs.boeing.com") by vger.kernel.org with ESMTP
-	id S1752222AbWKAQ66 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Nov 2006 11:58:58 -0500
-Content-class: urn:content-classes:message
-In-Reply-To: <20061101161700.GA5212@schatzie.adilger.int>
-To: "Andreas Dilger" <adilger@clusterfs.com>,
-	"Nikolai Joukov" <kolya@cs.sunysb.edu>
+Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2]:42186 "EHLO
+	filer.fsl.cs.sunysb.edu") by vger.kernel.org with ESMTP
+	id S2992684AbWKARWR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Nov 2006 12:22:17 -0500
+To: Nikolai Joukov <kolya@cs.sunysb.edu>
+In-reply-to: Your message of "Wed, 01 Nov 2006 11:52:42 EST."
+             <Pine.GSO.4.53.0611011142120.13266@compserv1>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Wednesday, November 01, 2006 8:17 AM Andreas Dilger Wrote:
-> 
-> Did anyone discuss doing this with crypto instead of actually 
-> overwriting the whole file?  It would be pretty easy to store 
-> a per-file crypto key in each inode as an EA, then to 
-> "delete" the file all that would be needed would be to erase 
-> the key in a secure matter (which is a great deal easier 
-> because inodes don't move around on disk).
+Also of note is that some government standards for data destruction (e.g.,
+NIST and NISPOM) specifically require that files be overwritten with a
+certain pattern, and even multiple times for different security levels.  So
+those sites who have to comply with such standards won't be able to use an
+encryption-only solution to discard data.
 
-If it's cheap to delete the keys, it's also cheap to harvest 
-the keys. A per file crypto-key lowers the barrier to entry.
+The other problem with crypto on persistent media is that you can't easily
+predict how secure data will be in the really long run, say years or
+decades.  Suppose an attacker manages to get their hands on a crypto disk
+whose keys were destroyed.  With today's technology, the attacker might not
+be able to break the crypto.  But wait 10 years, and who knows what kinds of
+computing powers we will have then.  (Even ten-year old data, if recovered,
+could still be highly valuable -- eg., top-secret military files).
 
-This is Schneier 101.
+Crypto is great.  But overwriting data even just a couple of times w/ random
+bits, elevates the level of attack required to recover such data, well past
+crypto.
 
-
-..Chuck..
+Erez.
