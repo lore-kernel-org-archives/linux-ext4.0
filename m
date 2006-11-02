@@ -1,194 +1,163 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC] Defragmentation interface
-Date: Fri, 3 Nov 2006 09:59:53 +1100
-Message-ID: <20061102225953.GF8394166@melbourne.sgi.com>
-References: <20061102143929.GA8607@atrey.karlin.mff.cuni.cz>
+From: Avantika Mathur <mathur@us.ibm.com>
+Subject: [PATCH] extents.c remove inlines
+Date: Thu, 02 Nov 2006 15:53:53 -0800
+Message-ID: <1162511634.10173.0.camel@dyn9047017105.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Content-Disposition: inline
-In-Reply-To: <20061102143929.GA8607@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:62385 "EHLO e4.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1752838AbWKBXyW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Nov 2006 18:54:22 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kA2NsLN0022958
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Nov 2006 18:54:21 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kA2NsKXm148760
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Nov 2006 18:54:20 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kA2NsK4A017503
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Nov 2006 18:54:20 -0500
+Received: from dyn9047017105.beaverton.ibm.com (dyn9047017105.beaverton.ibm.com [9.47.17.105])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id kA2NsK1K017256
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Nov 2006 18:54:20 -0500
+To: ext4 <linux-ext4@vger.kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 02, 2006 at 03:39:29PM +0100, Jan Kara wrote:
->   Hi,
-> 
->   from the thread after my patch implementing ext3 online
-> defragmentation I found out that probably the only (and definitely the
-> biggest) issue is the interface. Someone wants is common enough so that
-> we can profit from common tools for several filesystems, others object
-> that some applications, e.g. defragmenter, need to know something about
-> ext3 internals to work reasonably well. Moreover ioctl() is ugly and has
-> some compatibility issues, on the other hand ext2meta is too lowlevel,
-> fs-specific and it would be hard to do any reasonable application
-> crash-safe...
->   So in this email I try to propose some interface which should hopefully
-> address most of the concerns. The type of the interface is sysfs like
-> (idea taken from ext2meta) - that has a few advantages:
->  - no 32/64-bit compatibility issues
->  - easily extensible
->  - generally nice ;)
+This patch is in response to comments on too many inline functions in extents.c.
+Removes all inline keywords, since the compiler will make static functions 
+inline when it is appropriate.
 
-- complex
-- over-engineered
-- little common code between filesystems
-
-BTW, does use of sysfs mean ASCII encoding of all the data
-passing between kernel and userspace?
-
->   Each filesystem willing to support this interface implements special
-> filesystem (e.g. ext3meta, XFSmeta, ...) and admin/defrag-tool mounts it
-> to some directory.
-
-- not useful for wider audiences like applications that would like
-  to direct allocation
-
-> There are parts of this interface which should be
-> common for all filesystems (so that tools don't have to care about
-> particular filesystem and still get some useful results), other parts
-> are fs-specific. Here is basic structure I propose:
-> 
-> meta/features
->   - bitmap of features supported by the interface (ext2/3-like) so that
->     the tool can verify whether it understands the interface and don't
->     mess with it otherwise
-
-- grow very large, very quickly if it has to support all the
-  different quirks of different filesystems.
-
-> meta/allocation/free_blocks
->   - RO file - if you read from fpos F, you'll get a list of extents
->     describing areas with free blocks (as many as fits into supplied
->     buffer) starting from block F. Fpos of your file descriptor is
->     shifted to the first unreported free block.
-
-- linear search properties == Bad. (think fs sizes of hundreds of
-  terabytes - XFS is already deployed with filesystems of this size)
-- cannot use smart requests like given me free blocks near X,
-  in AG Y or Z, etc.
-- some filesystems have more than one data area - e.g. XFS has the
-  realtime volume.
-- every time you fail an allocation, you need to reread this file.
-
-> meta/super/blocksize
->   - filesystem block size
-
-fcntl(FIGETBSZ).
-
-Also:
-
-- some filesystems can use different block sizes for different
-  structures (e.g XFs directory blocks canbe larger than the fsb)
-- stripe unit and stripe width need to be exposed so defrag too
-  can make correct placement decisions.
-- extent size hints, etc.
-
-Hence this will require the spuer/ directory to be extensible
-in a filesystem specific interface.
-
-> meta/super/id
->   - filesystem ID (for paranoid tools to verify that they are accessing
->     really the right meta-filesystem)
-
-- UUID, please.
-
-> meta/nodes/<ident>
->   - this should be a directory containing things specific for a fs-object
->     with identification <ident>. In case of ext3 these would be inode
->     numbers, I guess this should be plausible also for XFS and others
->     but I'm open to suggestions...
->   - directory contains the following:
->   alloc_goal
->     - block number with current allocation goal
-
-The kernel has to store this across syscalls until you write into
-data/alloc? That sounds dangerous...
-
->   data/extents
->     - if you read from this file, you get a list of extents describing
->       data blocks (and holes) of the file. The listing starts at logical
->       block fpos. Fpos is shifted to the first unreported data block.
-
-fcntl(FIBMAP)
-
->   data/alloc
->     - you write there a number L and fs allocates L blocks to a file
->       (preferable from alloc_goal) starting from file-block fpos. Fpos
->       is shifted after the last block allocated in this call.
-
-You seek to the position you want (in blocks or bytes?), then write
-a number into the file (in blocks or bytes)? That's messy compared
-to a function call with an offset and length in it....
-
->   data/reloc
->     - you write there <ident> and relocation of data happens as follows:
->       All blocks that are allocated both in original file and <ident>
->       are relocated to <ident>. Write returns number of relocated
->       blocks.
-
-You can only relocate to a new inode (which in XFS will change
-the inode number)? What happens if there are blocks in duplicate
-offsets in both inodes? What happens if all the blocks aren't
-relocated - how do you handle this?
-
-Let me get this straight - the interface you propose for
-moving data about is:
-
-	read and process extents into an internal structure
-	find range where you want to relocate
-	find free space you want to relocate into
-	write desired block to alloc_goal
-	seek to allocation offset in data/alloc
-	write length into data/alloc
-	allocate new inode
-	write new inode number into data/reloc to relocate blocks
-
-What I proposed:
-
-	fcntl(src, FIBMAP);
-	/* find range to relocate */
-	open(tmp, O_CREATE);
-	funlink(tmp);
-	fs_get_free_list(src, policy, list);
-	/* select free extent to use */
-	fs_allocate_space(tmp, list[X], off, len);
-	fs_move_data(src, tmp, off, len);
-	close(tmp);
-	close(src);
-
-So the process is pretty close to the same except the interface I
-proposed does not change the location of the inode holding the data.
-The major difference is that one implementation requires 3 new
-generically useful syscalls, and the other requires every filesystem
-to implement a metadata filesystem and require root priviledges
-to use.
-
->   metadata/
->     - this directory is fs-specific, contains fs block pointers and
->       similar. Here I describe what I'd like to have for ext3.
-
-Nothing really useful for XFS here unless we start talking
-about btree defragmentation and attribute fork optimisation,
-etc. We really don't need a sysfs interface for this, just
-an additional fs_move_metadata() type of call....
-
-hmmm - how do you support objects in the filesystem not attached
-to inodes (e.g. the freespace and inode btrees in XFS)? What sort
-interface would they use?
-
->   This is all that is needed for my purposes. Any comments welcome.
-
-Then your purpose is explicitly data defragmentation? If that is
-the case, I still fail to see any need for a new metadata fs for
-every filesystem to support this.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
+---
+Index: linux-2.6.19-rc3/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.19-rc3.orig/fs/ext4/extents.c
++++ linux-2.6.19-rc3/fs/ext4/extents.c
+@@ -48,7 +48,7 @@
+  * ext_pblock:
+  * combine low and high parts of physical block number into ext4_fsblk_t
+  */
+-static inline ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
++static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
+ {
+ 	ext4_fsblk_t block;
+ 
+@@ -61,7 +61,7 @@ static inline ext4_fsblk_t ext_pblock(st
+  * idx_pblock:
+  * combine low and high parts of a leaf physical block number into ext4_fsblk_t
+  */
+-static inline ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
++static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
+ {
+ 	ext4_fsblk_t block;
+ 
+@@ -75,7 +75,7 @@ static inline ext4_fsblk_t idx_pblock(st
+  * stores a large physical block number into an extent struct,
+  * breaking it into parts
+  */
+-static inline void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
++static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
+ {
+ 	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+ 	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+@@ -86,7 +86,7 @@ static inline void ext4_ext_store_pblock
+  * stores a large physical block number into an index struct,
+  * breaking it into parts
+  */
+-static inline void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
++static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
+ {
+ 	ix->ei_leaf = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+@@ -215,7 +215,7 @@ ext4_ext_new_block(handle_t *handle, str
+ 	return newblock;
+ }
+ 
+-static inline int ext4_ext_space_block(struct inode *inode)
++static int ext4_ext_space_block(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -228,7 +228,7 @@ static inline int ext4_ext_space_block(s
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_block_idx(struct inode *inode)
++static int ext4_ext_space_block_idx(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -241,7 +241,7 @@ static inline int ext4_ext_space_block_i
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_root(struct inode *inode)
++static int ext4_ext_space_root(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -255,7 +255,7 @@ static inline int ext4_ext_space_root(st
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_root_idx(struct inode *inode)
++static int ext4_ext_space_root_idx(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -1093,7 +1093,7 @@ int ext4_ext_correct_indexes(handle_t *h
+ 	return err;
+ }
+ 
+-static int inline
++static int
+ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 				struct ext4_extent *ex2)
+ {
+@@ -1383,7 +1383,7 @@ int ext4_ext_walk_space(struct inode *in
+ 	return err;
+ }
+ 
+-static inline void
++static void
+ ext4_ext_put_in_cache(struct inode *inode, __u32 block,
+ 			__u32 len, __u32 start, int type)
+ {
+@@ -1401,7 +1401,7 @@ ext4_ext_put_in_cache(struct inode *inod
+  * calculate boundaries of the gap that the requested block fits into
+  * and cache this gap
+  */
+-static inline void
++static void
+ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				unsigned long block)
+ {
+@@ -1442,7 +1442,7 @@ ext4_ext_put_gap_in_cache(struct inode *
+ 	ext4_ext_put_in_cache(inode, lblock, len, 0, EXT4_EXT_CACHE_GAP);
+ }
+ 
+-static inline int
++static int
+ ext4_ext_in_cache(struct inode *inode, unsigned long block,
+ 			struct ext4_extent *ex)
+ {
+@@ -1509,7 +1509,7 @@ int ext4_ext_rm_idx(handle_t *handle, st
+  * the caller should calculate credits under truncate_mutex and
+  * pass the actual path.
+  */
+-int inline ext4_ext_calc_credits_for_insert(struct inode *inode,
++int ext4_ext_calc_credits_for_insert(struct inode *inode,
+ 						struct ext4_ext_path *path)
+ {
+ 	int depth, needed;
+@@ -1718,7 +1718,7 @@ out:
+  * ext4_ext_more_to_rm:
+  * returns 1 if current index has to be freed (even partial)
+  */
+-static int inline
++static int
+ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ {
+ 	BUG_ON(path->p_idx == NULL);
