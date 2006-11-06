@@ -1,336 +1,348 @@
-From: akpm@osdl.org
-Subject: + ext4-uninline-large-functions.patch added to -mm tree
-Date: Fri, 03 Nov 2006 12:00:37 -0800
-Message-ID: <200611032000.kA3K0bne031677@shell0.pdx.osdl.net>
-Cc: akpm@osdl.org, acme@mandriva.com, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:4770 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S932081AbWKCUAn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Nov 2006 15:00:43 -0500
-To: mm-commits@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] Defragmentation interface
+Date: Mon, 6 Nov 2006 13:54:27 +1100
+Message-ID: <20061106025427.GG11034@melbourne.sgi.com>
+References: <20061102143929.GA8607@atrey.karlin.mff.cuni.cz> <20061102225953.GF8394166@melbourne.sgi.com> <20061103143030.GB17306@atrey.karlin.mff.cuni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20061103143030.GB17306@atrey.karlin.mff.cuni.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Fri, Nov 03, 2006 at 03:30:30PM +0100, Jan Kara wrote:
+> > >   So in this email I try to propose some interface which should hopefully
+> > > address most of the concerns. The type of the interface is sysfs like
+> > > (idea taken from ext2meta) - that has a few advantages:
+> > >  - no 32/64-bit compatibility issues
+> > >  - easily extensible
+> > >  - generally nice ;)
+> > 
+> > - complex
+> > - over-engineered
+> > - little common code between filesystems
+>   The first two may be but actually I don't think you'll have too much
+> common code among fs anyway whatever interface you choose.
+> 
+> > BTW, does use of sysfs mean ASCII encoding of all the data
+> > passing between kernel and userspace?
+>   Not necessarify but mostly yes. At least I intend to have all the
+> files I have proposed in ASCII.
 
-The patch titled
-     ext4: uninline large functions
-has been added to the -mm tree.  Its filename is
-     ext4-uninline-large-functions.patch
+Ok - that's how you're looking to avoid 32/64bit compatibility issues?
+It will make the interface quite verbose, though, and entail significant
+encoding and decoding costs....
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+> > >   Each filesystem willing to support this interface implements special
+> > > filesystem (e.g. ext3meta, XFSmeta, ...) and admin/defrag-tool mounts it
+> > > to some directory.
+> > 
+> > - not useful for wider audiences like applications that would like
+> >   to direct allocation
+>   Why not? A simple tool could stat file, get ino, put some number in
+> alloc_goal...
 
-------------------------------------------------------
-Subject: ext4: uninline large functions
-From: Andrew Morton <akpm@osdl.org>
+- Root permissions.
+- multiple files need to be opened, read, written, closed
+- high overhead of searching for free blocks in the area you want
+- difficult to control alloc_goal with multi-threaded programs
+- potential for each filesystem to have a different meta structures....
+  
+> > > There are parts of this interface which should be
+> > > common for all filesystems (so that tools don't have to care about
+> > > particular filesystem and still get some useful results), other parts
+> > > are fs-specific. Here is basic structure I propose:
+> > > 
+> > > meta/features
+> > >   - bitmap of features supported by the interface (ext2/3-like) so that
+> > >     the tool can verify whether it understands the interface and don't
+> > >     mess with it otherwise
+> > 
+> > - grow very large, very quickly if it has to support all the
+> >   different quirks of different filesystems.
+>   Yes, that may be a problem...
+> 
+> > > meta/allocation/free_blocks
+> > >   - RO file - if you read from fpos F, you'll get a list of extents
+> > >     describing areas with free blocks (as many as fits into supplied
+> > >     buffer) starting from block F. Fpos of your file descriptor is
+> > >     shifted to the first unreported free block.
+> > 
+> > - linear search properties == Bad. (think fs sizes of hundreds of
+> >   terabytes - XFS is already deployed with filesystems of this size)
+>   OK, so what do you propose? You want syscall find_free_blocks() and
+> my idea of it was that it will do basically the same think as my
+> interface.
 
-Saves nearly 4kbytes on x86.
+Using the above interface I guess you'd have to seek and read
+until you found records with block numbers near to what you'd
+require. It is effectively:
 
-Cc: Arnaldo Carvalho de Melo <acme@mandriva.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
+find_free_blocks(fd, policy, &list, nblocks)
 
- fs/ext4/Makefile          |    3 -
- fs/ext4/ext4_jbd2.c       |   59 +++++++++++++++++++++++++++
- include/linux/ext4_jbd2.h |   76 ++++++++----------------------------
- 3 files changed, 78 insertions(+), 60 deletions(-)
+struct policy {
+	__u64	version;
+	__u64	blkno;
+	__u64	len;
+	__u64	group;
+	__u64	policy;
+	__u64	fallback_policy;
+}
 
-diff -puN fs/ext4/Makefile~ext4-uninline-large-functions fs/ext4/Makefile
---- a/fs/ext4/Makefile~ext4-uninline-large-functions
-+++ a/fs/ext4/Makefile
-@@ -5,7 +5,8 @@
- obj-$(CONFIG_EXT4DEV_FS) += ext4dev.o
- 
- ext4dev-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
--	   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o
-+		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
-+		   ext4_jbd2.o
- 
- ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o xattr_trusted.o
- ext4dev-$(CONFIG_EXT4DEV_FS_POSIX_ACL)	+= acl.o
-diff -puN /dev/null fs/ext4/ext4_jbd2.c
---- /dev/null
-+++ a/fs/ext4/ext4_jbd2.c
-@@ -0,0 +1,59 @@
-+/*
-+ * Interface between ext4 and JBD
-+ */
-+
-+#include <linux/ext4_jbd2.h>
-+
-+int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
-+				struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_get_undo_access(handle, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-+
-+int __ext4_journal_get_write_access(const char *where, handle_t *handle,
-+				struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_get_write_access(handle, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-+
-+int __ext4_journal_forget(const char *where, handle_t *handle,
-+				struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_forget(handle, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-+
-+int __ext4_journal_revoke(const char *where, handle_t *handle,
-+				ext4_fsblk_t blocknr, struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_revoke(handle, blocknr, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-+
-+int __ext4_journal_get_create_access(const char *where,
-+				handle_t *handle, struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_get_create_access(handle, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-+
-+int __ext4_journal_dirty_metadata(const char *where,
-+				handle_t *handle, struct buffer_head *bh)
-+{
-+	int err = jbd2_journal_dirty_metadata(handle, bh);
-+	if (err)
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+	return err;
-+}
-diff -puN include/linux/ext4_jbd2.h~ext4-uninline-large-functions include/linux/ext4_jbd2.h
---- a/include/linux/ext4_jbd2.h~ext4-uninline-large-functions
-+++ a/include/linux/ext4_jbd2.h
-@@ -114,74 +114,32 @@ int ext4_mark_inode_dirty(handle_t *hand
-  * been done yet.
-  */
- 
--void ext4_journal_abort_handle(const char *caller, const char *err_fn,
--		struct buffer_head *bh, handle_t *handle, int err);
--
--static inline int
--__ext4_journal_get_undo_access(const char *where, handle_t *handle,
--				struct buffer_head *bh)
-+static inline void ext4_journal_release_buffer(handle_t *handle,
-+						struct buffer_head *bh)
- {
--	int err = jbd2_journal_get_undo_access(handle, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
-+	jbd2_journal_release_buffer(handle, bh);
- }
- 
--static inline int
--__ext4_journal_get_write_access(const char *where, handle_t *handle,
--				struct buffer_head *bh)
--{
--	int err = jbd2_journal_get_write_access(handle, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
--}
-+void ext4_journal_abort_handle(const char *caller, const char *err_fn,
-+		struct buffer_head *bh, handle_t *handle, int err);
- 
--static inline void
--ext4_journal_release_buffer(handle_t *handle, struct buffer_head *bh)
--{
--	jbd2_journal_release_buffer(handle, bh);
--}
-+int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
-+				struct buffer_head *bh);
- 
--static inline int
--__ext4_journal_forget(const char *where, handle_t *handle, struct buffer_head *bh)
--{
--	int err = jbd2_journal_forget(handle, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
--}
-+int __ext4_journal_get_write_access(const char *where, handle_t *handle,
-+				struct buffer_head *bh);
- 
--static inline int
--__ext4_journal_revoke(const char *where, handle_t *handle,
--		      ext4_fsblk_t blocknr, struct buffer_head *bh)
--{
--	int err = jbd2_journal_revoke(handle, blocknr, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
--}
-+int __ext4_journal_forget(const char *where, handle_t *handle,
-+				struct buffer_head *bh);
- 
--static inline int
--__ext4_journal_get_create_access(const char *where,
--				 handle_t *handle, struct buffer_head *bh)
--{
--	int err = jbd2_journal_get_create_access(handle, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
--}
-+int __ext4_journal_revoke(const char *where, handle_t *handle,
-+				ext4_fsblk_t blocknr, struct buffer_head *bh);
- 
--static inline int
--__ext4_journal_dirty_metadata(const char *where,
--			      handle_t *handle, struct buffer_head *bh)
--{
--	int err = jbd2_journal_dirty_metadata(handle, bh);
--	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
--	return err;
--}
-+int __ext4_journal_get_create_access(const char *where,
-+				handle_t *handle, struct buffer_head *bh);
- 
-+int __ext4_journal_dirty_metadata(const char *where,
-+				handle_t *handle, struct buffer_head *bh);
- 
- #define ext4_journal_get_undo_access(handle, bh) \
- 	__ext4_journal_get_undo_access(__FUNCTION__, (handle), (bh))
-_
+#define ALLOC_POLICY_EXACT_LEN		(1<<0)ULL
+#define ALLOC_POLICY_EXACT_BLOCK	(1<<1)ULL
+#define ALLOC_POLICY_EXACT_GROUP	(1<<2)ULL
+#define ALLOC_POLICY_MIN_LEN		(1<<3)ULL
+#define ALLOC_POLICY_NEAR_BLOCK		(1<<4)ULL
+#define ALLOC_POLICY_NEAR_GROUP		(1<<5)ULL
+#define ALLOC_POLICY_NEXT_BLOCK		(1<<6)ULL
+#define ALLOC_POLICY_NEXT_GROUP		(1<<7)ULL
 
-Patches currently in -mm which might be from akpm@osdl.org are
+The sysfs interface you propose is effectively:
 
-origin.patch
-md-check-bio-address-after-mapping-through-partitions-tidy.patch
-printk-timed-ratelimit.patch
-schedule-removal-of-futex_fd.patch
-acpi_noirq-section-fix.patch
-spi-section-fix.patch
-revert-pci-i386-x86_84-disable-pci-resource-decode-on-device-disable.patch
-revert-pci-quirk-for-ibm-dock-ii-cardbus-controllers.patch
-revert-generic_file_buffered_write-handle-zero-length-iovec-segments.patch
-revert-generic_file_buffered_write-deadlock-on-vectored-write.patch
-generic_file_buffered_write-cleanup.patch
-mm-fix-pagecache-write-deadlocks.patch
-fs-prepare_write-fixes-fuse-fix.patch
-fs-prepare_write-fixes-fat-fix.patch
-git-acpi.patch
-acpi-asus-s3-resume-fix.patch
-sony_apci-resume.patch
-hdspm-printk-warning-fix.patch
-git-cpufreq-prep.patch
-git-cpufreq.patch
-nozomi-warning-fixes.patch
-nozomi-irq-flags-fixes.patch
-update-uio_interrupt.patch
-git-dvb.patch
-git-ia64.patch
-git-input.patch
-git-input-fixup.patch
-git-libata-all.patch
-via-pata-controller-xfer-fixes-fix.patch
-git-mtd.patch
-git-netdev-all.patch
-libphy-dont-do-that.patch
-git-net-configh-got-removed.patch
-update-smc91x-driver-with-arm-versatile-board-info.patch
-netxen-build-fix.patch
-netxen-more-build-fixes.patch
-drivers-net-ns83820c-add-paramter-to-disable-auto.patch
-net-uninline-xfrm_selector_match.patch
-ioat-warning-fix.patch
-revert-scsi-ips-soft-lockup-during-reset-initialization.patch
-scsi-ips-soft-lockup-during-reset-initialization-2.patch
-git-watchdog.patch
-revert-x86_64-mm-cpa-clflush.patch
-prep-for-paravirt-be-careful-about-touching-bios-warning-fix.patch
-prep-for-paravirt-desch-clearer-parameter-names-fix.patch
-xfs-rename-uio_read.patch
-touchkit-ps-2-touchscreen-driver.patch
-get-rid-of-zone_table.patch
-new-scheme-to-preempt-swap-token-tidy.patch
-balance_pdgat-cleanup.patch
-vmalloc-optimization-cleanup-bugfixes-tweak.patch
-radix-tree-rcu-lockless-readside.patch
-acx1xx-wireless-driver.patch
-swsusp-add-resume_offset-command-line-parameter-rev-2.patch
-add-include-linux-freezerh-and-move-definitions-from-ueagle-fix.patch
-deprecate-smbfs-in-favour-of-cifs.patch
-edac-new-opteron-athlon64-memory-controller-driver.patch
-kbuild-dont-put-temp-files-in-the-source-tree.patch
-lockdep-annotate-nfs-nfsd-in-kernel-sockets-tidy.patch
-drivers-add-lcd-support-3-Kconfig-fix.patch
-setup_irq-better-mismatch-debugging.patch
-probe_kernel_address-needs-to-do-set_fs.patch
-slab-use-probe_kernel_address.patch
-lockdep-spin_lock_irqsave_nested-fix.patch
-lockdep-spin_lock_irqsave_nested-fix-2.patch
-aio-use-prepare_to_wait.patch
-exar-quad-port-serial-fix.patch
-vfs_getattr-remove-dead-code.patch
-ext3-uninline-large-functions.patch
-ext4-uninline-large-functions.patch
-pktcdvd-bio-write-congestion-using-blk_congestion_wait-fix.patch
-bug-test-1.patch
-fsstack-introduce-fsstack_copy_attrinode_-tidy.patch
-log2-implement-a-general-integer-log2-facility-in-the-kernel-fix.patch
-log2-implement-a-general-integer-log2-facility-in-the-kernel-vs-git-cryptodev.patch
-log2-implement-a-general-integer-log2-facility-in-the-kernel-ppc-fix.patch
-add-process_session-helper-routine-deprecate-old-field-tidy.patch
-add-process_session-helper-routine-deprecate-old-field-fix-warnings.patch
-add-process_session-helper-routine-deprecate-old-field-fix-warnings-2.patch
-fs-cache-provide-a-filesystem-specific-syncable-page-bit-ext4.patch
-fs-cache-make-kafs-use-fs-cache-fix.patch
-fs-cache-make-kafs-use-fs-cache-vs-streamline-generic_file_-interfaces-and-filemap.patch
-nfs-use-local-caching-12-fix.patch
-fs-cache-cachefiles-a-cache-that-backs-onto-a-mounted-filesystem-log2-fix.patch
-mxser-session-warning-fix.patch
-tty-switch-to-ktermios-and-new-framework-warning-fix.patch
-tty-switch-to-ktermios-bluetooth-fix.patch
-drivers-isdn-handcrafted-min-max-macro-removal-fix.patch
-swap_prefetch-vs-zoned-counters.patch
-add-include-linux-freezerh-and-move-definitions-from-prefetch.patch
-readahead-sysctl-parameters.patch
-make-copy_from_user_inatomic-not-zero-the-tail-on-i386-vs-reiser4.patch
-resier4-add-include-linux-freezerh-and-move-definitions-from.patch
-make-kmem_cache_destroy-return-void-reiser4.patch
-reiser4-hardirq-include-fix.patch
-reiser4-run-truncate_inode_pages-in-reiser4_delete_inode.patch
-reiser4-get_sb_dev-fix.patch
-reiser4-vs-zoned-allocator.patch
-hpt3xx-rework-rate-filtering-tidy.patch
-various-fbdev-files-mark-structs-fix.patch
-statistics-infrastructure-fix-buffer-overflow-in-histogram-with-linear-tidy.patch
-gtod-persistent-clock-support-i386.patch
-hrtimers-state-tracking.patch
-clockevents-drivers-for-i386.patch
-gtod-mark-tsc-unusable-for-highres-timers.patch
-round_jiffies-infrastructure-fix.patch
-kevent-core-files-fix.patch
-kevent-core-files-s390-hack.patch
-kevent-socket-notifications-fix-2.patch
-kevent-socket-notifications-fix-4.patch
-kevent-timer-notifications-fix.patch
-kevent_user_wait-retval-fix.patch
-nr_blockdev_pages-in_interrupt-warning.patch
-device-suspend-debug.patch
-mutex-subsystem-synchro-test-module-fix.patch
-slab-leaks3-default-y.patch
-x86-kmap_atomic-debugging.patch
-restore-rogue-readahead-printk.patch
-put_bh-debug.patch
-acpi_format_exception-debug.patch
-jmicron-warning-fix.patch
-squash-ipc-warnings.patch
-squash-udf-warnings.patch
+	memset(&policy, 0, sizeof(policy));
+	policy.policy = ALLOC_POLICY_NEXT_BLOCK;
+	do {
+		find_free_blocks(fd, &policy, &list, nblocks);
+		/* process free block list */
+		.....
+		/* get next blocks */
+		policy.blkno = list[nblocks - 1].blkno
+	} while (policy.blkno != EOF);
+
+However, this can be optimised for a given search where
+the location is known beforehand to:
+
+	memset(&policy, 0, sizeof(policy));
+	policy.policy = ALLOC_POLICY_NEAR_BLOCK;
+	policy.blkno = X;
+	find_free_blocks(fd, &policy, &list, nblocks);
+
+If you then chose to allocate from this list and it fails, you
+simply redo the above.
+
+With the sysfs interface, if you want to find a single contiguous
+run of blocks, you'd probably just have to read the entire file and
+search it for the pattern of blocks you want. With XFS, we already
+have this information indexed in btrees, so we don't want to
+have to read the entire btree just to find something we could
+with a single btree lookup. i.e:
+
+	memset(&policy, 0, sizeof(policy));
+	policy.policy = ALLOC_POLICY_EXACT_LEN;
+	policy.len = X;
+	find_free_blocks(fd, &policy, &list, nblocks);
+
+Or indeed, something close to the block we want, of size
+big enough:
+
+	memset(&policy, 0, sizeof(policy));
+	policy.policy = ALLOC_POLICY_MIN_LEN | ALLOC_POLICY_NEAR_BLOCK;
+	policy.blkno = X;
+	policy.len = Y;
+	find_free_blocks(fd, &policy, &list, nblocks);
+
+And so on. The advantage of this is the filesytem is free
+to search for the blocks in any manner it chooses, rather than
+having a fixed, linear seek/read interfaces to searches.
+
+> > - cannot use smart requests like given me free blocks near X,
+> >   in AG Y or Z, etc.
+>   It supports "give me free block after block X". I agree that more
+> complicated requests may be sometimes useful but I believe doing some
+> syscall interface for them would be even worse.
+
+Right. More complicated requests are something that we need to
+support in XFS in the short-medium term. We _need_ an interface to
+XFS that allows complex, compound allocation policies to be
+accessible from userspace - and this is not just for defrag
+programs.
+
+I think a set of well defined allocation primitives suits a syscall
+interface far better than a per-filesystem sysfs interface.
+
+> > - some filesystems have more than one data area - e.g. XFS has the
+> >   realtime volume.
+>   Interesting, I didn't know that. But anything that wants to mess with
+> volumes has to know that it uses XFS anyway so this handling should be
+> probably fs-specific...
+
+It's a flag on the inode (i.e. an extended inode attribute) that
+indicates where the data lies for that inode. Once again, this can
+be handled implicitly by the syscall interface because the
+filesystem is aware of this flag and should return blocks associated
+with the inode's data device...
+
+> > - every time you fail an allocation, you need to reread this file.
+>   Yes, that's the most serious disadvantage I see. Do you see any way
+> out of it in any interface?
+
+I haven't really thought about solutions for this interface - the
+syscall interface doesn't have this problem because of the way you
+can specify where you want free blocks from....
+
+> > > meta/super/blocksize
+> > >   - filesystem block size
+> > 
+> > fcntl(FIGETBSZ).
+>   I know but can be also in the interface...
+> 
+> > Also:
+> > 
+> > - some filesystems can use different block sizes for different
+> >   structures (e.g XFs directory blocks canbe larger than the fsb)
+>   The block size was meant as an allocation unit size. So basically it
+> really was just another interface to FIGETBSZ.
+
+That's still a problem - XFS doesn't always use the filesystem block
+size as it's allocation unit.....
+
+> > - extent size hints, etc.
+>   Umm, I don't understand what you mean by this.
+
+.... because we have per-inode extent size allocation hints. That
+is, the allocator will always try to allocate extsize bytes (and
+extsize aligned) extents for any file with this hint. If it can't
+get a chunk large enough for this, then ENOSPC....
+
+> > - stripe unit and stripe width need to be exposed so defrag too
+> >   can make correct placement decisions.
+>   fs-specific thing...
+
+As Andreas said, this isn't fs-specific. XFS takes sunit and swidth
+as mkfs parameters so it can align both metadata and data optimally
+for RAID devices. Other fileystems have different methods of
+specifying this (ext2/3/4 use -E stride-size for this), but it would
+need to be exposed in some way....
+
+> > > meta/nodes/<ident>
+> > >   - this should be a directory containing things specific for a fs-object
+> > >     with identification <ident>. In case of ext3 these would be inode
+> > >     numbers, I guess this should be plausible also for XFS and others
+> > >     but I'm open to suggestions...
+> > >   - directory contains the following:
+> > >   alloc_goal
+> > >     - block number with current allocation goal
+> > 
+> > The kernel has to store this across syscalls until you write into
+> > data/alloc? That sounds dangerous...
+>   This is persistent until kernel decides to remove inode from memory.
+> So while you have the file open, you are guaranteed that kernel keeps
+> the information.
+
+But the inode hangs around long after the file is closed. How
+do you guarantee that this gets cleared when it needs to be?
+
+I just don't like the principle of this interface when we are
+talking about moving data around online - it's inherently unsafe
+when you consider mutli-threaded or -process access to an inode.
+
+> > >   data/reloc
+> > >     - you write there <ident> and relocation of data happens as follows:
+> > >       All blocks that are allocated both in original file and <ident>
+> > >       are relocated to <ident>. Write returns number of relocated
+> > >       blocks.
+> > 
+> > You can only relocate to a new inode (which in XFS will change
+> > the inode number)? What happens if there are blocks in duplicate
+> > offsets in both inodes? What happens if all the blocks aren't
+> > relocated - how do you handle this?
+>   Inode does not change. Only block pointers are changed. Let <orig> be
+> original inode and <blocks> the temporary inode. If block at offset O is
+> allocated in both <orig> and <blocks>, then we copy data for the block
+> from <orig> to <blocks> and swap block pointers to the block of <orig>
+> and <blocks>.
+
+OK, understood - I was a bit confused about the "original file and
+<ident> are relocated to <ident>" bit. Thanks for the clarification.
+
+> > The major difference is that one implementation requires 3 new
+> > generically useful syscalls, and the other requires every filesystem
+> > to implement a metadata filesystem and require root priviledges
+> > to use.
+>   Yes. IMO the complexity of implementation is almost the same in the
+> syscall case and in my sysfs case. What syscall would do is just do some
+> basic checks and redirect everything into fs-specific call anyway...
+
+Sure, but you don't need to implement a new filesystem in every
+filesystem to support it....
+
+> In sysfs you just hook the same fs-specific routines to the files I
+> describe. Regarding the priviledges, I don't believe non-root (or user
+> without proper capability) should be allowed to do these operations.
+
+Why not? As long as the user has permissions to write to the
+filesystem and has quota left, they can create files however
+they want.
+
+> I
+> can imagine all kinds of DoS attacks using these interfaces (e.g.
+> forcing fs into worst-cases of file placement etc...)
+
+They could only do that to files they have write access to. IOWs,
+if they screw up their own files, let them. If they have root,
+then it doesn't matter what interface we provide, it can be used
+to do this.
+
+And if you're really paranoid, with a generic syscall interface
+we can introduce a "(no)useralloc" mount option that specifcally
+prevents this interface form being used on a given filesystem...
+
+> > hmmm - how do you support objects in the filesystem not attached
+> > to inodes (e.g. the freespace and inode btrees in XFS)? What sort
+> > interface would they use?
+>   You could have fs-specific hooks manipulating with your B-tree..
+
+Yes, I realise that - my question is how do you think that they
+should be enumerated in the metafs heirachy? What standard would apply?
+
+> > >   This is all that is needed for my purposes. Any comments welcome.
+> > 
+> > Then your purpose is explicitly data defragmentation? If that is
+> > the case, I still fail to see any need for a new metadata fs for
+> > every filesystem to support this.
+>   What I want is to implement defrag for ext3. For that I need some new
+> interfaces so I'm trying to design them in such a way that further
+> extension for other needs is possible.
+
+Understood. However, I'm looking past the immediate problem and
+trying to find a common set of fileystem independent features that
+will serve us well for the next few years. Allocation policies 
+and data relocation are just some of the issues that _all_
+filesystems are going to have to face in the near future.
+
+It is far easier to tell the application dev to "use this allocation
+interface because you know exactly what you want" than to try to
+develop filesystem heuristics to detect their pathological workload
+and try to do something smart in the filesystem to stop the problem
+from occurring.
+
+Hence I'd like to have a common, well defined interface thought out
+in advance rather than having to get applicaitons to explicitly
+support one filesystem or another.
+
+[ Simple example: posix_fallocate() syscall implementation, rather
+than having to get applications to detect libxfs at build time and
+use xfsctl() instead of posix_fallocate() to get a fast, efficient
+preallocation method). ]
+
+> That's all. Now if the interface
+> has some common parts for several filesystems, then making userspace
+> tool work for all of them should be easier. So I don't require anybody
+> to implement it. Just if it's implemented, userspace tool can work for
+> it too...
+
+Hmmm - that sounds like you have already decided that this is the
+interface that you are going to implement for ext3. ....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
