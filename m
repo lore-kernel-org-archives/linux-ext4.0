@@ -1,74 +1,75 @@
-From: akpm@osdl.org
-Subject: + ext4_ext_split-remove-dead-code.patch added to -mm tree
-Date: Tue, 07 Nov 2006 12:50:07 -0800
-Message-ID: <200611072050.kA7Ko7JY016000@shell0.pdx.osdl.net>
-Cc: bunk@stusta.de, linux-ext4@vger.kernel.org
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: Fw: Re: ICP, 3ware,  Areca?
+Date: Tue, 07 Nov 2006 14:59:52 -0600
+Message-ID: <1162933193.8123.36.camel@kleikamp.austin.ibm.com>
+References: <20061107114724.9c2cc644.akpm@osdl.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:65215 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1753333AbWKGUxU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Nov 2006 15:53:20 -0500
-To: mm-commits@vger.kernel.org
+Received: from e35.co.us.ibm.com ([32.97.110.153]:56741 "EHLO
+	e35.co.us.ibm.com") by vger.kernel.org with ESMTP id S1752787AbWKGVAA
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Nov 2006 16:00:00 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e35.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id kA7Kxxtf022557
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Nov 2006 15:59:59 -0500
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kA7Kxthp347612
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Nov 2006 13:59:58 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kA7Kxtex011959
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Nov 2006 13:59:55 -0700
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20061107114724.9c2cc644.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, 2006-11-07 at 11:47 -0800, Andrew Morton wrote:
+> Why is ext3 slow??
 
-The patch titled
-     ext4_ext_split(): remove dead code
-has been added to the -mm tree.  Its filename is
-     ext4_ext_split-remove-dead-code.patch
+Allocation?  I don't see anything indicating that Bill is overwriting an
+existing file, so there is block allocation and journaling overhead.  If
+that's the case, it would be interesting to see how fast ext3 is when
+overwriting a file.  Extents and delayed allocation should improve on
+this a lot.  
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+> Begin forwarded message:
+> 
+> Date: Tue, 7 Nov 2006 09:47:17 -0500
+> From: "Bill Rugolsky Jr." <brugolsky@telemetry-investments.com>
+> To: Arne Schmitz <arne.schmitz@gmx.net>
+> Cc: linux-ide-arrays@lists.math.uh.edu
+> Subject: Re: ICP, 3ware,  Areca?
+> 
+> 
+> On Tue, Nov 07, 2006 at 03:25:04PM +0100, Arne Schmitz wrote:
+> > Has anyone information about how current ICP and Areca hardware performs under 
+> > Linux? We are currently running kernel 2.6.17 and have two offers, one with 
+> > an Areca ARC-1220 8-port, and one with an ICP 9087MA 8-port. Does either of 
+> > them make trouble running a (64 bit) Linux?
+> > 
+> > At the moment we only have two 3ware controllers running on 32 bit Linux.
+> 
+> On Fri, 18 Aug 2006, I wrote to the list:
+> 
+>    I've been doing sequential raw disk I/O testing with both Jens Axboe's
+>    "fio" using libaio and iodepths up to 32, as well as a basic
+>    "dd if=/dev/zero oflag=direct".
+> 
+>    Reads look fine; a zone read test shows 360 MiB/s at the start of the disk,
+>    190 MiB/s at the end.  I see similarly high numbers doing direct reads via
+>    ext3.
 
-------------------------------------------------------
-Subject: ext4_ext_split(): remove dead code
-From: Adrian Bunk <bunk@stusta.de>
+This would indicate that indirect block lookups themselves aren't a
+problem.
 
-The Coverity checker noted that this was dead code, since in all places
-above in this function, "err" is immediately checked.
-
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext4/extents.c |    3 ---
- 1 files changed, 3 deletions(-)
-
-diff -puN fs/ext4/extents.c~ext4_ext_split-remove-dead-code fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4_ext_split-remove-dead-code
-+++ a/fs/ext4/extents.c
-@@ -800,9 +800,6 @@ static int ext4_ext_split(handle_t *hand
- 	}
- 
- 	/* insert new index */
--	if (err)
--		goto cleanup;
--
- 	err = ext4_ext_insert_index(handle, inode, path + at,
- 				    le32_to_cpu(border), newblock);
- 
-_
-
-Patches currently in -mm which might be from bunk@stusta.de are
-
-origin.patch
-drivers-telephony-ixj-fix-an-array-overrun.patch
-git-alsa.patch
-git-mtd.patch
-git-pcmcia.patch
-drivers-scsi-small-cleanups.patch
-drivers-scsi-qla2xxx-make-some-functions-static.patch
-drivers-scsi-aic7xxx-aic79xx_corec-make-ahd_match_scb-static.patch
-drivers-scsi-advansysc-cleanups.patch
-megaraid-fix-warnings-when-config_proc_fs=n.patch
-drivers-scsi-dpt_i2oc-remove-dead-code.patch
-acx1xx-wireless-driver.patch
-drivers-edac-make-code-static.patch
-ext4_ext_split-remove-dead-code.patch
-fs-reiser4-possible-cleanups.patch
-reiser4-possible-cleanups-2.patch
-slab-cache-shrinker-statistics.patch
-debug-shared-irqs-kconfig-fix.patch
-i386-enable-4k-stacks-by-default.patch
-mutex-subsystem-synchro-test-module.patch
+>    Summary:
+> 
+>    Raw partition: 228 MiB/s
+>    XFS:           228 MiB/s
+>    Ext3:      139-151 MiB/s
+-- 
+David Kleikamp
+IBM Linux Technology Center
