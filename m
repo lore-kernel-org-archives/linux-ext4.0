@@ -1,534 +1,443 @@
 From: sho@tnes.nec.co.jp
-Subject: [RFC][PATCH 2/3] Move the file data to the new blocks
-Date: Thu, 9 Nov 2006 20:10:54 +0900
-Message-ID: <20061109201055sho@rifu.tnes.nec.co.jp>
+Subject: [RFC][PATCH 3/3] Online defrag command
+Date: Thu, 9 Nov 2006 20:11:23 +0900
+Message-ID: <20061109201123sho@rifu.tnes.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:20159 "EHLO
-	tyo201.gate.nec.co.jp") by vger.kernel.org with ESMTP
-	id S932792AbWKILKt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Nov 2006 06:10:49 -0500
-Received: from mailgate3.nec.co.jp (mailgate53.nec.co.jp [10.7.69.162])
-	by tyo201.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id kA9BAmWk003808
-	for <linux-ext4@vger.kernel.org>; Thu, 9 Nov 2006 20:10:48 +0900 (JST)
-Received: (from root@localhost) by mailgate3.nec.co.jp (8.11.7/3.7W-MAILGATE-NEC)
-	id kA9BAln00765 for linux-ext4@vger.kernel.org; Thu, 9 Nov 2006 20:10:47 +0900 (JST)
-Received: from secsv3.tnes.nec.co.jp (tnesvc2.tnes.nec.co.jp [10.1.101.15]) by mailsv3.nec.co.jp (8.11.7/3.7W-MAILSV4-NEC) with ESMTP
-	id kA9BAl803452 for <linux-ext4@vger.kernel.org>; Thu, 9 Nov 2006 20:10:47 +0900 (JST)
-Received: from tnesvc2.tnes.nec.co.jp ([10.1.101.15])
-	by secsv3.tnes.nec.co.jp (ExpressMail 5.10) with SMTP
-	id 20061109.201541.01504456 for <linux-ext4@vger.kernel.org>
-	; Thu, 9 Nov 2006 20:15:41 +0900
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Move the blocks on the temporary inode to the original inode
-by a page.
-1. Read the file data from the old blocks to the page
-2. Move the block on the temporary inode to the original inode
-3. Write the file data on the page into the new blocks
+The defrag command.
+o Defrag for a file.
+  # e4defrag file-name
+o Defrag for all files on whole ext3.
+  # e4defrag device-name
 
 Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
 ---
-diff -upNr -X linux-2.6.16.8-tmp1/Documentation/dontdiff linux-2.6.16.8-tmp1/fs/ext3/extents.c linux-2.6.16.8-tmp2/fs/ext3/extents.c
---- linux-2.6.16.8-tmp1/fs/ext3/extents.c	2006-11-08 22:12:19.000000000 +0900
-+++ linux-2.6.16.8-tmp2/fs/ext3/extents.c	2006-11-08 22:25:07.000000000 +0900
-@@ -2424,6 +2424,421 @@ ext3_ext_next_extent(struct inode *inode
- }
- 
- /**
-+ * ext3_ext_merge_extents - merge new extent to the extent block
-+ *
-+ * @handle	journal handle
-+ * @inode	target file's inode
-+ * @org_path	path indicates first extent to be defraged
-+ * @o_start	first original extent to be defraged
-+ * @o_end	last original extent to be defraged
-+ * @start_ext	first new extent to be merged
-+ * @new_ext	middle of new extent to be merged
-+ * @end_ext	last new extent to be merged
-+ * @replaced	the number of blocks which will be replaced with new_ext
-+ *
-+ * This function returns 0 if succeed, otherwise returns -1.
-+ */
-+static int
-+ext3_ext_merge_extents(handle_t *handle, struct inode *inode,
-+		struct ext3_ext_path *org_path,
-+		struct ext3_extent *o_start, struct ext3_extent *o_end,
-+		struct ext3_extent *start_ext, struct ext3_extent *new_ext,
-+		struct ext3_extent *end_ext, unsigned long replaced)
-+{
-+	int	 i = 0;
-+	unsigned need_slots;
-+	unsigned slots_range, len;
-+	int	 range_to_move;
-+	struct ext3_extent_header * eh;
-+	struct ext3_extent *free_start, *free_end;
-+	int	 depth;
-+
-+	/* The extents need to be inserted
-+	 * start_extent + new_extent + end_extent
-+	 */
-+	need_slots = (le16_to_cpu(start_ext->ee_len) ? 1 : 0) +
-+		     (le16_to_cpu(end_ext->ee_len) ? 1 : 0) +
-+		     (le16_to_cpu(new_ext->ee_len) ? 1 : 0);
-+
-+	/* The number of slots between start and end */
-+	slots_range = o_end - o_start + 1;
-+
-+	/* Range to move the end of extent */
-+	range_to_move = need_slots - slots_range;
-+	depth = org_path->p_depth;
-+	org_path += depth;
-+	eh = org_path->p_hdr;
-+	/* expansion */
-+	if (range_to_move > 0) {
-+		if (range_to_move > le16_to_cpu(eh->eh_max)
-+					- le16_to_cpu(eh->eh_entries)) {
-+			printk("Cannot merge extents due to no space\n");
-+			return -1;
-+		}
-+	}
-+	if (depth) {
-+		/* Register to journal */
-+		if (ext3_journal_get_write_access(handle, org_path->p_bh)) {
-+			return -1;
-+		}
-+	}
-+
-+	/* Free old blocks
-+	 * dest        |---------------|
-+	 * org  |---------------|
-+	 */
-+	free_start = o_start;
-+	free_end = o_end;
-+	if (le16_to_cpu(start_ext->ee_len)) {
-+		if (le16_to_cpu(o_start->ee_len)
-+			> le16_to_cpu(start_ext->ee_len)) {
-+			ext3_free_blocks(handle, inode,
-+				le32_to_cpu(o_start->ee_start)
-+					 + le16_to_cpu(start_ext->ee_len),
-+				le16_to_cpu(o_start->ee_len)
-+					- le16_to_cpu(start_ext->ee_len), 0);
-+		}
-+		free_start++;
-+	}
-+
-+	/* dest |----------------|
-+	 * org          |---------------|
-+	 */
-+	if (le16_to_cpu(end_ext->ee_len)) {
-+		ext3_free_blocks(handle, inode, le32_to_cpu(o_end->ee_start),
-+			le16_to_cpu(o_end->ee_len)
-+				 - le16_to_cpu(end_ext->ee_len), 0);
-+		free_end--;
-+	}
-+
-+	/* dest |-------------------|
-+	 * org   |-----------------|
-+	 */
-+	for (; free_start <= free_end; free_start++) {
-+		ext3_free_blocks(handle, inode,
-+			le32_to_cpu(free_start->ee_start),
-+			le32_to_cpu(free_start->ee_len), 0);
-+	}
-+
-+	/* Move the existing extents */
-+	if (range_to_move && o_end < EXT_LAST_EXTENT(eh)) {
-+		len = EXT_LAST_EXTENT(eh) - (o_end + 1) + 1;
-+		len = len * sizeof(struct ext3_extent);
-+		memmove(o_end + 1 + range_to_move, o_end + 1, len);
-+	}
-+
-+	/* Insert start entry */
-+	if (le16_to_cpu(start_ext->ee_len)) {
-+		o_start[i++].ee_len = start_ext->ee_len;
-+	}
-+
-+	/* Insert new entry */
-+	if (le16_to_cpu(new_ext->ee_len)) {
-+		o_start[i].ee_block = new_ext->ee_block;
-+		o_start[i].ee_len = cpu_to_le16(replaced);
-+		o_start[i++].ee_start = new_ext->ee_start;
-+	}
-+
-+	/* Insert end entry */
-+	if (end_ext->ee_len) {
-+		o_start[i] = *end_ext;
-+	}
-+
-+	/* Increment the total entries counter on the extent block */
-+	eh->eh_entries
-+		= cpu_to_le16(le16_to_cpu(eh->eh_entries) + range_to_move);
-+	if (depth) {
-+		if (ext3_journal_dirty_metadata(handle, org_path->p_bh)) {
-+			return -1;
-+		}
-+	} else {
-+		if (ext3_mark_inode_dirty(handle, inode) < 0) {
-+			return -1;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
-+/**
-+ * ext3_ext_defrag_leaf_block -  Defragmentation for one leaf extent block.
-+ * @handle	journal handle
-+ * @org_tree	extent tree for the target inode
-+ * @org_path	path indicates first extent to be defraged
-+ * @dext	destination extent
-+ * @from	start offset on the target file
-+ *
-+ * This function returns 0 if succeed, otherwise returns error value.
-+ */
-+static int
-+ext3_ext_defrag_leaf_block(handle_t *handle, struct ext3_extents_tree *org_tree,
-+		  struct ext3_ext_path *org_path, struct ext3_extent *dext,
-+		  unsigned long *from)
-+{
-+	unsigned long depth, replaced = 0;
-+	struct ext3_extent *oext, *o_start = NULL, *o_end = NULL, *prev_ext;
-+	struct ext3_extent new_ext, start_ext, end_ext;
-+	unsigned long new_end;
-+	unsigned long lblock;
-+	unsigned long long new_phys_end;
-+	int	ret;
-+
-+	depth = EXT_DEPTH(org_tree);
-+	start_ext.ee_len = end_ext.ee_len = 0;
-+	o_start = o_end = oext = org_path[depth].p_ext;
-+	new_ext.ee_start = dext->ee_start;
-+	new_ext.ee_len = dext->ee_len;
-+	new_ext.ee_block = cpu_to_le32(*from);
-+	new_ext.ee_start_hi = start_ext.ee_start_hi = end_ext.ee_start_hi = 0;
-+	lblock = le32_to_cpu(oext->ee_block);
-+	new_end = le32_to_cpu(new_ext.ee_block)
-+			+ le16_to_cpu(new_ext.ee_len) - 1;
-+	new_phys_end = le32_to_cpu(new_ext.ee_start)
-+			+ le16_to_cpu(new_ext.ee_len) - 1;
-+
-+	/* First original extent
-+	 * dest         |---------------|
-+	 * org  |---------------|
-+	*/
-+	if (le32_to_cpu(new_ext.ee_block) >
-+		le32_to_cpu(oext->ee_block) &&
-+	    le32_to_cpu(new_ext.ee_block) <
-+		le32_to_cpu(oext->ee_block)
-+		+ le16_to_cpu(oext->ee_len)) {
-+		start_ext.ee_len = cpu_to_le32(le32_to_cpu(new_ext.ee_block)
-+					- le32_to_cpu(oext->ee_block));
-+		replaced += le16_to_cpu(oext->ee_len)
-+				- le16_to_cpu(start_ext.ee_len);
-+	} else if (oext > EXT_FIRST_EXTENT(org_path[depth].p_hdr)) {
-+		/* We can merge previous extent. */
-+		prev_ext = oext -1;
-+		if ((le32_to_cpu(prev_ext->ee_start)
-+			+ le32_to_cpu(prev_ext->ee_len))
-+			== le32_to_cpu(new_ext.ee_start)) {
-+			o_start = prev_ext;
-+			start_ext.ee_len = cpu_to_le32(
-+					le16_to_cpu(prev_ext->ee_len)
-+					+ le16_to_cpu(new_ext.ee_len));
-+			new_ext.ee_len = 0;
-+		}
-+	}
-+
-+	for (;;) {
-+
-+		/* The extent for destination must be found. */
-+		EXT_ASSERT(oext && lblock == le32_to_cpu(oext->ee_block));
-+		lblock += le16_to_cpu(oext->ee_len);
-+
-+		/* Middle of original extent
-+		 * dest |-------------------|
-+		 * org   |-----------------|
-+		 */
-+		if (le32_to_cpu(new_ext.ee_block) <=
-+			le32_to_cpu(oext->ee_block) &&
-+		    new_end >= le32_to_cpu(oext->ee_block)
-+			 + le16_to_cpu(oext->ee_len) -1) {
-+			replaced += le16_to_cpu(oext->ee_len);
-+		}
-+
-+		/* Last original extent
-+		 * dest |----------------|
-+		 * org          |---------------|
-+		 */
-+		if (new_end >= le32_to_cpu(oext->ee_block) &&
-+		    new_end < le32_to_cpu(oext->ee_block)
-+				+ le16_to_cpu(oext->ee_len) - 1) {
-+			end_ext.ee_len
-+			    = cpu_to_le16(le32_to_cpu(oext->ee_block)
-+				+ le16_to_cpu(oext->ee_len) -1 - new_end);
-+			end_ext.ee_start
-+			    = cpu_to_le32(le32_to_cpu(o_end->ee_start)
-+				+ cpu_to_le16(oext->ee_len)
-+				- cpu_to_le16(end_ext.ee_len));
-+			end_ext.ee_block
-+			    = cpu_to_le32(le32_to_cpu(o_end->ee_block)
-+				+ le16_to_cpu(oext->ee_len)
-+				- le16_to_cpu(end_ext.ee_len));
-+			replaced += le16_to_cpu(oext->ee_len)
-+				- le16_to_cpu(end_ext.ee_len);
-+		}
-+
-+		/* Detected the block end, reached the number of replaced
-+		 * blocks to dext->ee_len.  Then, merge the extent.
-+		 */
-+		if (oext == EXT_LAST_EXTENT(org_path[depth].p_hdr) ||
-+		    new_end <= le32_to_cpu(oext->ee_block)
-+				+ le16_to_cpu(oext->ee_len) - 1) {
-+			if (ext3_ext_merge_extents(handle, org_tree->inode,
-+				org_path, o_start, o_end,
-+				&start_ext, &new_ext, &end_ext, replaced) < 0) {
-+				return -EIO;
-+			}
-+
-+			/* All expected blocks are replaced */
-+			if (new_ext.ee_len <= 0) {
-+				return 0;
-+			}
-+
-+			/* re-calculate new_ext */
-+			new_ext.ee_len = cpu_to_le32(le16_to_cpu(new_ext.ee_len)
-+					- replaced);
-+			new_ext.ee_block =
-+				cpu_to_le32(le32_to_cpu(new_ext.ee_block)
-+					+ replaced);
-+			new_ext.ee_start =
-+				cpu_to_le32(le32_to_cpu(new_ext.ee_start)
-+					+ replaced);
-+			replaced = 0;
-+			start_ext.ee_len = end_ext.ee_len = 0;
-+			o_start = NULL;
-+
-+			/* All expected blocks are replaced */
-+			if (new_ext.ee_len <= 0) {
-+				return 0;
-+			}
-+		}
-+
-+		/* Get next extent for original. */
-+		if ((ret
-+		  = ext3_ext_next_extent(org_tree->inode, org_path, &oext))
-+								!= 0) {
-+			if (ret == 1)
-+				ret = -EIO;
-+			return ret;
-+		}
-+		o_end = oext;
-+		if (!o_start)
-+			o_start = oext;
-+	}
-+}
-+
-+/**
-+ * ext3_ext_replace_branches - replace original extents with new extents.
-+ * @org_tree	Original extents tree
-+ * @dest_tree	New extents tree
-+ * @from_page	Page offset
-+ * @count_page	Page count to be replaced
-+ *
-+ * This function returns 0 if succeed, otherwise returns error value.
-+ * Replace extents for blocks from "from" to "from+count-1".
-+ */
-+static int
-+ext3_ext_replace_branches(struct ext3_extents_tree *org_tree,
-+			  struct ext3_extents_tree *dest_tree,
-+			  pgoff_t from_page,  pgoff_t dest_from_page,
-+			  pgoff_t count_page)
-+{
-+	struct ext3_ext_path *org_path = NULL;
-+	struct ext3_ext_path *dest_path = NULL;
-+	struct ext3_extent   *oext, *dext;
-+	struct ext3_extent   tmp_ext;
-+	int	err = 0;
-+	int	 depth;
-+	unsigned long from, count, dest_off, diff, replaced_count = 0;
-+	handle_t *handle = NULL;
-+	unsigned jnum;
-+	struct inode *inode;
-+
-+
-+	from = from_page << (PAGE_CACHE_SHIFT - dest_tree->inode->i_blkbits);
-+	count = count_page << (PAGE_CACHE_SHIFT - dest_tree->inode->i_blkbits);
-+	dest_off = dest_from_page << (PAGE_CACHE_SHIFT -
-+		 dest_tree->inode->i_blkbits);
-+	inode = org_tree->inode;
-+
-+	/* (blocks_per_page * count) * (extent_blocks + index_blocks)
-+	 * + super_block + block_bitmap + group_descriptor
-+	 * jnum = ext3_ext_writepage_trans_blocks(inode, count) + 3;
-+	 */
-+	/* TODO:
-+	 * Need to consider the way of calculating journal blocks
-+	 * because j_max_transaction_buffer may exceed 2048
-+	 * if we have a deep depth.
-+	 */
-+	jnum = 2048;
-+	handle = ext3_journal_start(inode, jnum);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		goto out;
-+	}
-+
-+	/* Get the original extent for the block "from" */
-+	org_path = ext3_ext_find_extent(org_tree, from, NULL);
-+	if (IS_ERR(org_path)) {
-+		err = PTR_ERR(org_path);
-+		org_path = NULL;
-+		goto out;
-+	}
-+
-+	/* Get the destination extent for the head */
-+	dest_path = ext3_ext_find_extent(dest_tree, dest_off, NULL);
-+	if (IS_ERR(dest_path)) {
-+		err = PTR_ERR(dest_path);
-+		dest_path = NULL;
-+		goto out;
-+	}
-+	depth = EXT_DEPTH(dest_tree);
-+	dext = dest_path[depth].p_ext;
-+	/* When dext is too large, pick up the target range. */
-+	diff = dest_off - le32_to_cpu(dext->ee_block);
-+	tmp_ext.ee_start = cpu_to_le32(le32_to_cpu(dext->ee_start) + diff);
-+	tmp_ext.ee_block = cpu_to_le32(le32_to_cpu(dext->ee_block) + diff);
-+	tmp_ext.ee_len = cpu_to_le16(le16_to_cpu(dext->ee_len) - diff);
-+	tmp_ext.ee_start_hi = 0;
-+	if (count < tmp_ext.ee_len) {
-+		tmp_ext.ee_len = cpu_to_le16(count);
-+	}
-+	dext = &tmp_ext;
-+
-+	/* loop for the destination extents */
-+	while (1) {
-+		/* The extent for destination must be found. */
-+		EXT_ASSERT(dext && dest_off == le32_to_cpu(dext->ee_block));
-+
-+		/* loop for the original extent blocks */
-+		if ((err = ext3_ext_defrag_leaf_block(handle, org_tree,
-+			org_path, dext, &from)) < 0) {
-+			goto out;
-+		}
-+
-+		replaced_count += le16_to_cpu(dext->ee_len);
-+		dest_off += le16_to_cpu(dext->ee_len);
-+		from += le16_to_cpu(dext->ee_len);
-+
-+		/* Already moved the expected blocks */
-+		if (replaced_count >= count)
-+			break;
-+
-+		/* get the next extent on both original and destination. */
-+		err = ext3_ext_next_extent(dest_tree->inode, dest_path, &dext);
-+		if (err != 0) {
-+			if (err > 0) {
-+				err = 0;
-+			}
-+			goto out;
-+		}
-+		if ((err =
-+		  ext3_ext_next_extent(inode, org_path, &oext)) < 0) {
-+			goto out;
-+		}
-+	}
-+out:
-+	if (handle) {
-+		ext3_journal_stop(handle);
-+	}
-+	if (org_path) {
-+		ext3_ext_drop_refs(org_path);
-+		kfree(org_path);
-+	}
-+	if (dest_path) {
-+		ext3_ext_drop_refs(dest_path);
-+		kfree(dest_path);
-+	}
-+
-+	return err;
-+}
-+
-+/**
-  * ext3_ext_remove_index_blocks - remove leaf blocks and index blocks
-  * @handle 	handle
-  * @dest_tree	extent tree of temporary inode
-@@ -2581,6 +2996,73 @@ err:
- }
- 
- /**
-+ * ext3_ext_defrag_partial - defrag original file partially
-+ * @filp:		pointer to file
-+ * @org_tree:		extent tree of the original inode
-+ * @dest_tree:		extent tree of the temporary inode
-+ * @org_offset:		page index on original file
-+ * @dest_offset:	page index on temporary file
-+ * @nr_to_read:		the number of pages to read
-+ *
-+ * This function returns 0 if succeeded, otherwise returns error value
-+ */
-+static int
-+ext3_ext_defrag_partial(struct file *filp,
-+			struct ext3_extents_tree *org_tree,
-+			struct ext3_extents_tree *dest_tree,
-+			pgoff_t org_offset,
-+			pgoff_t dest_offset,
-+			pgoff_t nr_to_read)
-+{
-+	struct inode *inode = filp->f_dentry->d_inode;
-+	struct address_space *mapping = inode->i_mapping;
-+	struct page *page;
-+	pgoff_t page_end = org_offset + nr_to_read - 1;
-+	pgoff_t offset_in_page = PAGE_SIZE;
-+	int ret = 0;
-+
-+	for (; org_offset <= page_end; ++org_offset, ++dest_offset) {
-+		page = read_cache_page(inode->i_mapping,
-+				       org_offset,
-+				       (filler_t *)inode->i_mapping->a_ops->readpage,
-+				       NULL);
-+		if (IS_ERR(page)) {
-+			ret = PTR_ERR(page);
-+			break;
-+		}
-+
-+		wait_on_page_locked(page);
-+		lock_page(page);
-+
-+		/* release old bh and drop refs */
-+		try_to_release_page(page, 0);
-+
-+		ret = ext3_ext_replace_branches(org_tree, dest_tree,
-+						org_offset, dest_offset, 1);
-+		if (ret < 0)
-+			goto ERR;
-+
-+		if (org_offset == ((inode->i_size - 1) >> PAGE_SHIFT))
-+			offset_in_page = (inode->i_size & (PAGE_CACHE_SIZE - 1));
-+
-+		ret = mapping->a_ops->prepare_write(filp, page,
-+						    0, offset_in_page);
-+		if (ret)
-+			goto ERR;
-+
-+		ret = mapping->a_ops->commit_write(filp, page,
-+						   0, offset_in_page);
-+ERR:
-+		unlock_page(page);
-+		page_cache_release(page);
-+
-+		if (ret < 0)
-+			break;
-+	}
-+	return (ret < 0 ? ret : 0);
-+}
-+
-+/**
-  * ext3_ext_new_extent_tree -  allocate contiguous blocks
-  * @tmp_inode:		inode of the temporary file
-  * @org_tree:		extent tree of the original inode
+/*
+ * e4defrag, ext4 filesystem defragmenter
+ *
+ */
+
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE
+#endif
+
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+
+#define _XOPEN_SOURCE	500
+#include <ftw.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/statfs.h>
+#include <sys/vfs.h>
+#include <sys/ioctl.h>
+#include <mntent.h>
+#include <linux/ext3_fs.h>
+
+
+#define		EXT3_IOC_DEFRAG _IOW('f', 10, struct ext3_ext_defrag_data)
+#define		DEVNAME			0
+#define		DIRNAME			1
+#define		FILENAME		2
+
+#define		RETURN_OK		0
+#define		RETURN_NG		-1
+#define		FTW_CONT		0
+#define		FTW_STOP		-1
+#define		FTW_OPEN_FD		2000
+#define		FILE_CHK_OK		0
+#define		FILE_CHK_NG		-1
+#define		FS_EXT3			"ext4dev"
+#define		ROOT_UID		0
+/* defrag block size, in bytes */
+#define		DEFRAG_SIZE		67108864
+
+#define 	min(x,y) (((x) > (y)) ? (y) : (x))
+
+#define		PRINT_ERR_MSG(msg)	fprintf(stderr, "%s\n", (msg));
+#define		PRINT_FILE_NAME(file)	\
+			fprintf(stderr, "\t\t    \"%s\"\n", (file));
+
+#define		MSG_USAGE	\
+		"Usage : e4defrag [-v] filename...| dirname...| devname....\n"
+#define		NGMSG_MTAB	\
+		"\te4defrag  : Can not access /etc/mtab."
+#define		NGMSG_UNMOUNT		"\te4defrag  : FS is not mounted."
+#define		NGMSG_EXT3	\
+		"\te4defrag  : FS is not ext4 File System."
+#define		NGMSG_FS_INFO		"\te4defrag  : get FSInfo fail."
+#define		NGMSG_FILE_INFO		"\te4defrag  : get FileInfo fail."
+#define		NGMSG_FILE_OPEN		"\te4defrag  : open fail."
+#define		NGMSG_FILE_SYNC		"\te4defrag  : sync(fsync) fail."
+#define		NGMSG_FILE_DEFRAG	"\te4defrag  : defrag fail."
+#define		NGMSG_FILE_UNREG	\
+		"\te4defrag  : File is not regular file."
+#define		NGMSG_FILE_LARGE	\
+	"\te4defrag  : Defrag size is larger than FileSystem's free space."
+#define		NGMSG_FILE_PRIORITY	\
+"\te4defrag  : File is not current user's file or current user is not root."
+#define		NGMSG_FILE_LOCK		"\te4defrag  : File is locked."
+#define		NGMSG_FILE_BLANK	"\te4defrag  : File size is 0."
+#define		NGMSG_GET_LCKINFO	"\te4defrag  : get LockInfo fail."
+#define		NGMSG_TYPE		\
+		"e4defrag  : Can not process %s."
+
+struct ext3_ext_defrag_data {
+	loff_t start_offset; /* start offset to defrag in bytes */
+	loff_t defrag_size;  /* size of defrag in bytes */
+};
+
+int		detail_flag = 0;
+int		amount_cnt = 0;
+int		succeed_cnt = 0;
+
+/*
+ * Check if there's enough disk space
+ */
+int
+check_free_size(int fd, off64_t fsize)
+{
+	struct statfs		fsbuf;
+	off64_t			file_asize = 0;
+
+	if (-1 == fstatfs(fd, &fsbuf)) {
+		if (detail_flag) {
+			perror(NGMSG_FS_INFO);
+		}
+		return RETURN_NG;
+	}
+
+	/* compute free space for root and normal user separately */
+	if (ROOT_UID == getuid())
+		file_asize = (off64_t)fsbuf.f_bsize * fsbuf.f_bfree;
+	else
+		file_asize = (off64_t)fsbuf.f_bsize * fsbuf.f_bavail;
+
+	if (file_asize >= fsize)
+		return RETURN_OK;
+
+	return RETURN_NG;
+}
+
+/*
+ * file tree walk callback function
+ * check file attributes before ioctl call to avoid illegal operations
+ */
+int
+ftw_fn(
+	const char*		file,
+	const struct stat64	*sb,
+	int			flag,
+	struct FTW*		ftwbuf
+)
+{
+	int				fd;
+	int				defraged_size;
+	struct ext3_ext_defrag_data	df_data;
+	if (FTW_F == flag) {
+		amount_cnt++;
+		if (-1 == (fd = open64(file, O_RDONLY))) {
+			if (detail_flag) {
+				perror(NGMSG_FILE_OPEN);
+				PRINT_FILE_NAME(file);
+			}
+			return FTW_CONT;
+		}
+
+		if (FILE_CHK_NG == file_check(fd, sb, file)) {
+			close(fd);
+			return FTW_CONT;
+		}
+
+		if (-1 == fsync(fd)) {
+			if (detail_flag) {
+				perror(NGMSG_FILE_SYNC);
+				PRINT_FILE_NAME(file);
+			}
+			close(fd);
+			return FTW_CONT;
+		}
+
+		/* ioctl call does the actual defragment job. */
+		df_data.start_offset = 0;
+		while (1) {
+			df_data.defrag_size =
+				min((sb->st_size - df_data.start_offset),
+					DEFRAG_SIZE);
+			/* EXT3_IOC_DEFRAG */
+			defraged_size = ioctl(fd, EXT3_IOC_DEFRAG, &df_data);
+			if (defraged_size == -1) {
+				if (detail_flag) {
+					perror(NGMSG_FILE_DEFRAG);
+					PRINT_FILE_NAME(file);
+				}
+				close(fd);
+				return FTW_CONT;
+			}
+			df_data.start_offset += defraged_size;
+
+			/* end of file */
+			if (df_data.start_offset >= sb->st_size) {
+				break;
+			}
+		}
+		close(fd);
+		succeed_cnt++;
+	} else {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_UNREG);
+			PRINT_FILE_NAME(file);
+		}
+	}
+
+	return FTW_CONT;
+}
+
+/*
+ * check file's attributes
+ */
+int
+file_check(int fd, const struct stat64 * buf, const char * file_name)
+{
+	struct flock	lock;
+
+	lock.l_type = F_WRLCK;	/* write-lock check is more reliable. */
+	lock.l_start = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_len = 0;
+
+	/* regular file */
+	if (0 == S_ISREG(buf->st_mode)) {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_UNREG);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	}
+
+	/* available space */
+	if (RETURN_NG == check_free_size(fd, DEFRAG_SIZE)) {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_LARGE);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	}
+
+	/* priority */
+	if (ROOT_UID != getuid() &&
+		buf->st_uid != getuid()) {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_PRIORITY);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	}
+
+	/* lock status */
+	if (-1 == fcntl(fd, F_GETLK, &lock)) {
+		if (detail_flag) {
+			perror(NGMSG_GET_LCKINFO);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	} else if (F_UNLCK != lock.l_type) {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_LOCK);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	}
+
+	/* empty file */
+	if (buf->st_size == 0) {
+		if (detail_flag) {
+			PRINT_ERR_MSG(NGMSG_FILE_BLANK);
+			PRINT_FILE_NAME(file_name);
+		}
+		return FILE_CHK_NG;
+	}
+
+	return FILE_CHK_OK;
+}
+
+/*
+ * whether on an ext4 filesystem
+ */
+int
+is_ext4(const char * filename)
+{
+	struct statfs	buffs;
+
+	if (-1 == statfs(filename, &buffs)) {
+		perror(NGMSG_FS_INFO);
+		PRINT_FILE_NAME(filename);
+		return RETURN_NG;
+	} else if (EXT3_SUPER_MAGIC == buffs.f_type) {
+		return RETURN_OK;
+	} else {
+		PRINT_ERR_MSG(NGMSG_EXT3);
+		return RETURN_NG;
+	}
+}
+
+/*
+ * Get device's mount point
+ */
+int
+get_mount_point(const char * devname, char * mount_point, int buf_len)
+{
+	char * mtab = MOUNTED;	/* refer to /etc/mtab */
+	struct mntent * mnt = NULL;
+	FILE * fp = NULL;
+
+	if (NULL == (fp = setmntent(mtab, "r"))) {
+		perror(NGMSG_MTAB);
+		return RETURN_NG;
+	}
+
+	while ((mnt = getmntent(fp)) != NULL) {
+		if (strcmp(devname, mnt->mnt_fsname) == 0) {
+			endmntent(fp);
+			if (strcmp(mnt->mnt_type, FS_EXT3) == 0) {
+				strncpy(mount_point, mnt->mnt_dir, buf_len);
+				return RETURN_OK;
+			}
+			PRINT_ERR_MSG(NGMSG_EXT3);
+			return RETURN_NG;
+		}
+	}
+	endmntent(fp);
+	PRINT_ERR_MSG(NGMSG_UNMOUNT);
+	return RETURN_NG;
+}
+
+int
+main(
+	int		argc,
+	char*	argv[]
+)
+{
+	int		i, flags;
+	int		arg_type;
+	int		success_flag;
+	int		orig_detail;
+	char		dir_name[PATH_MAX];
+	struct stat64	buf;
+
+	i = 1;
+	arg_type = -1;
+	success_flag = 0;
+	orig_detail = -1;
+	flags = 0;
+	flags |= FTW_PHYS;	/* do not follow symlink */
+	flags |= FTW_MOUNT;	/* stay within the same filesystem */
+
+	/* parse arguments */
+	if (argc == 1 || (argc == 2 && argv[1][0] == '-') ||
+		(argc > 2 && argv[1][0] == '-' && strcmp(argv[1], "-v") != 0)) {
+		printf(MSG_USAGE);
+		return 1;
+	}
+
+	if (0 == strcmp(argv[1], "-v")) {
+		detail_flag = 1;
+		i = 2;
+	}
+
+	/* main process */
+	for (; i < argc; i++) {
+		amount_cnt = 0;
+		succeed_cnt = 0;
+		memset(dir_name, 0, PATH_MAX);
+
+		if (-1 == stat64(argv[i], &buf)) {
+			perror(NGMSG_FILE_INFO);
+			PRINT_FILE_NAME(argv[i]);
+			continue;
+		}
+
+		/* block device */
+		if (S_ISBLK(buf.st_mode)) {
+			arg_type = DEVNAME;
+			if (RETURN_NG ==
+				get_mount_point(argv[i], dir_name, PATH_MAX)) {
+				continue;
+			}
+			printf("Start defragment for device(%s)\n", argv[i]);
+		} else if (S_ISDIR(buf.st_mode)) {
+			/* directory */
+			arg_type = DIRNAME;
+			if (-1 == access(argv[i], R_OK)) {
+				perror(argv[i]);
+				continue;
+			}
+			strcpy(dir_name, argv[i]);
+		} else if (S_ISREG(buf.st_mode)) {
+			/* regular file */
+			arg_type = FILENAME;
+		} else {
+			/* irregular file */
+			PRINT_ERR_MSG(NGMSG_FILE_UNREG);
+			PRINT_FILE_NAME(argv[i]);
+			continue;
+		}
+
+		/* device's ext4 check is in get_mount_point() */
+		if (arg_type == FILENAME || arg_type == DIRNAME) {
+			if (RETURN_NG == is_ext4(argv[i])) {
+				continue;
+			}
+		}
+
+		switch (arg_type) {
+			case DIRNAME:
+				printf("Start defragment for directory(%s)\n",
+					argv[i]);
+			case DEVNAME:
+				/* file tree walk */
+				nftw64(dir_name, ftw_fn, FTW_OPEN_FD, flags);
+				printf("\tTotal:\t\t%12d\n", amount_cnt);
+				printf("\tSuccess:\t%12d\n", succeed_cnt);
+				printf("\tFailure:\t%12d\n",
+					amount_cnt - succeed_cnt);
+				break;
+			case FILENAME:
+				orig_detail = detail_flag;
+				detail_flag = 1;
+				printf("Start defragment for %s\n", argv[i]);
+				/* single file process */
+				ftw_fn(argv[i], &buf, FTW_F, NULL);
+				if (succeed_cnt != 0) {
+					printf(
+					"\tSUCCESS\t:file defrag success.\n"
+					);
+				}
+				detail_flag = orig_detail;
+				break;
+		}
+
+		if (succeed_cnt != 0)
+			success_flag = 1;
+	}
+
+	if (success_flag)
+		return 0;
+
+	return 1;
+}
+
