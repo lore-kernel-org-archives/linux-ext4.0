@@ -1,21 +1,29 @@
 From: "Ratna Manoj" <manoj.br@gmail.com>
-Subject: sct@redhat.com
-Date: Sat, 11 Nov 2006 16:35:54 +0530
-Message-ID: <7fbb0ada0611110305r83d763ch78323a617b12840b@mail.gmail.com>
+Subject: Understanding ext3
+Date: Sat, 11 Nov 2006 16:45:52 +0530
+Message-ID: <7fbb0ada0611110315q68deec5bq58c42c892082ba81@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
+Cc: sct@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.190]:10133 "EHLO
+Received: from nf-out-0910.google.com ([64.233.182.191]:440 "EHLO
 	nf-out-0910.google.com") by vger.kernel.org with ESMTP
-	id S965979AbWKKLGB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Nov 2006 06:06:01 -0500
-Received: by nf-out-0910.google.com with SMTP id o25so1610505nfa
-        for <linux-ext4@vger.kernel.org>; Sat, 11 Nov 2006 03:06:00 -0800 (PST)
+	id S1161934AbWKKLPy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Nov 2006 06:15:54 -0500
+Received: by nf-out-0910.google.com with SMTP id o25so1612208nfa
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Nov 2006 03:15:52 -0800 (PST)
 To: linux-ext4@vger.kernel.org
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
+
+---------- Forwarded message ----------
+From: Ratna Manoj <manoj.br@gmail.com>
+Date: Nov 11, 2006 4:35 PM
+Subject: sct@redhat.com
+To: linux-ext4@vger.kernel.org
+
 
 Hi,
 
