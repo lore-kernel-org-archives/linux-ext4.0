@@ -1,47 +1,61 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext2 readdir/lookup/check_page behavior
-Date: Tue, 14 Nov 2006 13:44:25 -0700
-Message-ID: <20061114204425.GT6012@schatzie.adilger.int>
-References: <4559DFDF.30504@redhat.com> <20061114192102.GR6012@schatzie.adilger.int> <455A1B1C.4070705@redhat.com>
+Subject: Re: rfc: [patch] change attribute for ext3
+Date: Tue, 14 Nov 2006 15:17:25 -0700
+Message-ID: <20061114221725.GA14024@schatzie.adilger.int>
+References: <20060913164202.GA14838@openx1.frec.bull.fr>
+	<1158171071.6072.10.camel@lade.trondhjem.org>
+	<20060913183001.GA1702@moule.localdomain>
+	<20060914092318.GA18911@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:59296 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S966347AbWKNUo1
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Nov 2006 15:44:27 -0500
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
 Content-Disposition: inline
-In-Reply-To: <455A1B1C.4070705@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20060914092318.GA18911@schatzie.adilger.int>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Nov 14, 2006  13:38 -0600, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > It would make sense to fix ext2 in the same way.
-> > I'd suggest bailing out "early" == min(i_size >> blocksize, i_blocks).
-> > The i_blocks count is an upper limit, because it includes the overhead of
-> > indirect blocks.  Directories cannot be sparse.
+On Sep 13, 2006  20:30 +0200, Alexandre Ratchov wrote:
+> On Wed, Sep 13, 2006 at 02:11:11PM -0400, Trond Myklebust wrote:
+> > I would really have preferred a full-blown 64-bit counter as per
+> > RFC3530, but I suppose we could always combine this change attribute
+> > with the high word from ctime in order to make up the NFSv4 change
+> > attribute. That should keep us safe until someone develops a ramdisk
+> > with < 1 nsecond access time.
 > 
-> so we could either a) keep processing pages based on i_size, until we
-> have passed i_blocks, or b) if i_size & i_blocks don't match,
-> immediately bail out because we know we have found a corrupted inode
-> (vs. a "normal" unreadable block...)
+> do you mean something like "(ctime.tv_sec << 32) | change_attribute"? this
+> would allow 2^32 inode changes per second.
 
-Do we already ext3_error() in this case?  That allows the admin to determine
-the behaviour already.  If it is errors=continue or errors=remount-ro then
-we should continue I think.  We might consider the inode fatally corrupted
+I've been giving this further thought, and it may be that a full 64-bit
+counter per inode is the only bulletproof solution.
 
-	if (i_blocks << 9 < i_size ||
-	    i_blocks > i_size >> (blockbits - 8) + /* blocks */
-	    i_size >> (blockbits * 2 - 8 - 2) + /* indirect */
-	    i_size >> (blockbits * 3 - 8 - 2) + /* dindirect */
-	    i_size >> (blockbits * 4 - 8 - 2))  /* tindirect */
+One reason that ctime+nsec as the version number isn't so great is that if
+there is some reason to set the clock backward (i.e. it was incorrectly
+set into the future at some point) the inode ctime may jump backward.
+This could cause either misordering of events, or collisions between
+version numbers.  The problem could be mitigated by having the ctime+nsec
+value only increment the nsec component by 1 for each new version (like
+a counter) until real time catches up with the bad ctime, but it might
+leave files with a bad ctime for a long time.
 
-I think... Trying to account for indirect blocks.  It is already given a
-100% margin (-8 instead of -9) to cover rounding, EA blocks, some small
-bugs in block counting, extents format, etc.  FYI, the "-2" is 4 bytes/addr.
+Other than not being able to set ctime backward (which isn't really
+something that should happen under normal behaviour), this is a reasonable
+solution.
+
+The main drawback of a 64-bit counter is the space in the inode that it
+consumes...  I don't think we can find 64 bits of free space in the core
+inode, so this would relegate the solution to new filesystems that are
+formatted with large inodes.
 
 Cheers, Andreas
 --
