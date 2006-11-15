@@ -1,38 +1,41 @@
-From: Andrew Morton <akpm@osdl.org>
-Subject: Re: pagefault in generic_file_buffered_write() causing deadlock
-Date: Wed, 15 Nov 2006 09:00:05 -0800
-Message-ID: <20061115090005.c9ec6db5.akpm@osdl.org>
-References: <1163606265.7662.8.camel@dyn9047017100.beaverton.ibm.com>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: #linuxfs irc channel
+Date: Wed, 15 Nov 2006 11:28:35 -0600
+Message-ID: <1163611715.11293.9.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-mm <linux-mm@kvack.org>, ext4 <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1030713AbWKOREe@vger.kernel.org>
-To: Badari Pulavarty <pbadari@us.ibm.com>
-In-Reply-To: <1163606265.7662.8.camel@dyn9047017100.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:32973 "EHLO e5.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1030743AbWKOR2k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Nov 2006 12:28:40 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e5.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kAFHSaTR008334
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Nov 2006 12:28:36 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kAFHSa0v303918
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Nov 2006 12:28:36 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kAFHSadM025296
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Nov 2006 12:28:36 -0500
+Received: from kleikamp.austin.ibm.com (kleikamp.austin.ibm.com [9.41.46.215])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id kAFHSZje025282
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Nov 2006 12:28:35 -0500
+To: ext4 development <linux-ext4@vger.kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 15 Nov 2006 07:57:45 -0800
-Badari Pulavarty <pbadari@us.ibm.com> wrote:
+There is a very useful irc channel for file system development at OFTC.
+This is the same server that hosts #kernelnewbies.  There was some
+discussion in today's ext4 conference call about having an ext4-specific
+channel, but it was agreed that the #linuxfs channel is probably the
+best place for any discussion.
 
-> We are looking at a customer situation (on 2.6.16-based distro) - where
-> system becomes almost useless while running some java & stress tests.
-> 
-> Root cause seems to be taking a pagefault in generic_file_buffered_write
-> () after calling prepare_write. I am wondering 
-> 
-> 1) Why & How this can happen - since we made sure to fault the user
-> buffer before prepare write.
+Server: irc.oftc.net
+Channel: #linuxfs
 
-When using writev() we only fault in the first segment of the iovec.  If
-the second or succesive segment isn't mapped into pagetables we're
-vulnerable to the deadlock.
-
-> 2) If this is already fixed in current mainline (I can't see how).
-
-It was fixed in 2.6.17.
-
-You'll need 6527c2bdf1f833cc18e8f42bd97973d583e4aa83 and
-81b0c8713385ce1b1b9058e916edcf9561ad76d6
+Shaggy
+-- 
+David Kleikamp
+IBM Linux Technology Center
