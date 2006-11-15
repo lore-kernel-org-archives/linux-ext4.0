@@ -1,7 +1,7 @@
 From: Badari Pulavarty <pbadari@us.ibm.com>
 Subject: Re: pagefault in generic_file_buffered_write() causing deadlock
-Date: Wed, 15 Nov 2006 10:16:48 -0800
-Message-ID: <455B5990.7080808@us.ibm.com>
+Date: Wed, 15 Nov 2006 10:20:43 -0800
+Message-ID: <455B5A7B.6010807@us.ibm.com>
 References: <1163606265.7662.8.camel@dyn9047017100.beaverton.ibm.com> <20061115090005.c9ec6db5.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
@@ -9,10 +9,10 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-mm <linux-mm@kvack.org>, ext4 <linux-ext4@vger.kernel.org>,
 	lkml <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:3724 "EHLO e4.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S1030793AbWKOSR1 (ORCPT
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:37609 "EHLO e6.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1030799AbWKOSUr (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Nov 2006 13:17:27 -0500
+	Wed, 15 Nov 2006 13:20:47 -0500
 To: Andrew Morton <akpm@osdl.org>
 In-Reply-To: <20061115090005.c9ec6db5.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -36,19 +36,27 @@ Andrew Morton wrote:
 > When using writev() we only fault in the first segment of the iovec.  If
 > the second or succesive segment isn't mapped into pagetables we're
 > vulnerable to the deadlock.
+>
 >   
+Hmm.. Not it :(
+Its coming from write() not writev().
 
-Yes. I remember this change. Thank you.
->   
->> 2) If this is already fixed in current mainline (I can't see how).
->>     
->
-> It was fixed in 2.6.17.
->
-> You'll need 6527c2bdf1f833cc18e8f42bd97973d583e4aa83 and
-> 81b0c8713385ce1b1b9058e916edcf9561ad76d6
->   
-I will try to get this change into customer :(
+[C00000002ABBF290] [C00000000039D58C] .do_page_fault+0x2e4/0x75c
+[C00000002ABBF460] [C000000000004860] .handle_page_fault+0x20/0x54
+--- Exception: 301 at .__copy_tofrom_user+0x11c/0x580
+    LR = .generic_file_buffered_write+0x39c/0x7c8
+[C00000002ABBF750] [C000000000095A94]
+.generic_file_buffered_write+0x2c0/0x7c8 (
+unreliable)
+[C00000002ABBF8F0] [C0000000000962EC]
+.__generic_file_aio_write_nolock+0x350/0x3
+e0
+[C00000002ABBFA20] [C000000000096908] .generic_file_aio_write+0x78/0x104
+[C00000002ABBFAE0] [C0000000001649F0] .ext3_file_write+0x2c/0xd4
+[C00000002ABBFB70] [C0000000000C5168] .do_sync_write+0xd4/0x130
+[C00000002ABBFCF0] [C0000000000C5ED4] .vfs_write+0x128/0x20c
+[C00000002ABBFD90] [C0000000000C664C] .sys_write+0x4c/0x8c
+[C00000002ABBFE30] [C00000000000871C] syscall_exit+0x0/0x40
 
 Thanks,
 Badari
