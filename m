@@ -1,49 +1,83 @@
-From: Andrew Morton <akpm@osdl.org>
+From: Russell King <rmk+lkml@arm.linux.org.uk>
 Subject: Re: Boot failure with ext2 and initrds
-Date: Thu, 16 Nov 2006 01:48:09 -0800
-Message-ID: <20061116014809.914a5425.akpm@osdl.org>
-References: <20061114014125.dd315fff.akpm@osdl.org>
-	<20061114184919.GA16020@skynet.ie>
-	<Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
-	<20061114113120.d4c22b02.akpm@osdl.org>
-	<Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
-	<Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
-	<20061115214534.72e6f2e8.akpm@osdl.org>
-	<455C0B6F.7000201@us.ibm.com>
-	<20061115232228.afaf42f2.akpm@osdl.org>
-	<1163666960.4310.40.camel@localhost.localdomain>
-	<20061116011351.1401a00f.akpm@osdl.org>
-	<m3hcwzhgvm.fsf@bzzz.home.net>
+Date: Thu, 16 Nov 2006 12:34:48 +0000
+Message-ID: <20061116123448.GA28311@flint.arm.linux.org.uk>
+References: <20061114014125.dd315fff.akpm@osdl.org> <20061114184919.GA16020@skynet.ie> <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com> <20061114113120.d4c22b02.akpm@osdl.org> <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com> <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com> <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com> <20061115232228.afaf42f2.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, Hugh Dickins <hugh@veritas.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, Hugh Dickins <hugh@veritas.com>,
 	Mel Gorman <mel@skynet.ie>,
 	"Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.4]:60579 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1422848AbWKPJvc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Nov 2006 04:51:32 -0500
-To: Alex Tomas <alex@clusterfs.com>
-In-Reply-To: <m3hcwzhgvm.fsf@bzzz.home.net>
+Received: from caramon.arm.linux.org.uk ([217.147.92.249]:30733 "EHLO
+	caramon.arm.linux.org.uk") by vger.kernel.org with ESMTP
+	id S1423847AbWKPMfL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Nov 2006 07:35:11 -0500
+To: Andrew Morton <akpm@osdl.org>
+Content-Disposition: inline
+In-Reply-To: <20061115232228.afaf42f2.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 16 Nov 2006 12:37:17 +0300
-Alex Tomas <alex@clusterfs.com> wrote:
+On Wed, Nov 15, 2006 at 11:22:28PM -0800, Andrew Morton wrote:
+> On Wed, 15 Nov 2006 22:55:43 -0800
+> Mingming Cao <cmm@us.ibm.com> wrote:
+> 
+> > Hmm, maxblocks, in bitmap_search_next_usable_block(),  is the end block 
+> > number of the range  to search, not the lengh of the range. maxblocks 
+> > get passed to ext2_find_next_zero_bit(), where it expecting to take the 
+> > _size_ of the range to search instead...
+> > 
+> > Something like this: (this is not a patch)
+> >   @@ -524,7 +524,7 @@ bitmap_search_next_usable_block(ext2_grp
+> >    	ext2_grpblk_t next;
+> > 
+> >    -  	next = ext2_find_next_zero_bit(bh->b_data, maxblocks, start);
+> >    +  	next = ext2_find_next_zero_bit(bh->b_data, maxblocks-start + 1, start);
+> > 	if (next >= maxblocks)
+> >    		return -1;
+> >    	return next;
+> >    }
+> 
+> yes, the `size' arg to find_next_zero_bit() represents the number of bits
+> to scan at `offset'.
 
-> >>>>> Andrew Morton (AM) writes:
-> 
->  AM> What lock protects the fields in struct ext[234]_reserve_window from being
->  AM> concurrently modified by two CPUs?  None, it seems.  Ditto
->  AM> ext[234]_reserve_window_node.  i_mutex will cover it for write(), but not
->  AM> for pageout over a file hole.  If we end up with a zero- or negative-sized
->  AM> window then odd things might happen.
-> 
-> truncate_mutex?
-> 
+Are you sure?  That's not the way it's implemented in many architectures.
+find_next_*_bit() has always taken "address, maximum offset, starting offset"
+and always has returned "next offset".
 
-yes.  hmm.
+Just look at arch/i386/lib/bitops.c:
+
+int find_next_zero_bit(const unsigned long *addr, int size, int offset)
+{
+        unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
+        int set = 0, bit = offset & 31, res;
+...
+        /*
+         * No zero yet, search remaining full bytes for a zero
+         */
+        res = find_first_zero_bit (p, size - 32 * (p - (unsigned long *) addr));
+        return (offset + set + res);
+}
+
+So for the case that "offset" is aligned to a "long" boundary, that gives us:
+
+	res = find_first_zero_bit(addr + (offset>>5),
+			size - 32 * (addr + (offset>>5) - addr));
+
+or:
+
+	res = find_first_zero_bit(addr + (offset>>5), size - (offset & ~31));
+
+So, size _excludes_ offset.
+
+Now, considering the return value, "res" above will be relative to
+"addr + (offset>>5)".  However, we add "offset" on to that, so it's
+relative to addr + (offset bits).
+
+-- 
+Russell King
+ Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
+ maintainer of:  2.6 Serial core
