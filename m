@@ -1,43 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: htree entry integrity checking
-Date: Thu, 16 Nov 2006 16:33:46 -0600
-Message-ID: <455CE74A.9010206@redhat.com>
-References: <455C96DC.4060907@jeffreymahoney.com> <20061116222747.GT6012@schatzie.adilger.int>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: Re: [patch 15/23] ext3 -nobh option causes oops
+Date: Thu, 16 Nov 2006 23:51:54 +0100
+Message-ID: <20061116225154.GK31879@stusta.de>
+References: <20060804053258.391158155@quad.kroah.org> <20060804054003.GP769@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: Jeff Mahoney <jeffm@jeffreymahoney.com>,
-	linux-fsdevel@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
-In-Reply-To: <20061116222747.GT6012@schatzie.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]:35335 "HELO
+	mailout.stusta.mhn.de") by vger.kernel.org with SMTP
+	id S1754890AbWKPWvz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Nov 2006 17:51:55 -0500
+To: Badari Pulavarty <pbadari@us.ibm.com>, linux-ext4@vger.kernel.org
+Content-Disposition: inline
+In-Reply-To: <20060804054003.GP769@kroah.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Nov 16, 2006  11:50 -0500, Jeff Mahoney wrote:
->>  Currently, if a corrupted directory entry with rec_len=0 is encountered,
->>  we still trust that the data is valid. This can cause an infinite loop
->>  in htree_dirblock_to_tree() since the iteration loop will never make any
->>  progress.
+It seems this patch that went into 2.6.17.8 should also be included in 
+the 2.6.16.x branch, or do I miss anything?
+
+TIA
+Adrian
+
+
+On Thu, Aug 03, 2006 at 10:40:03PM -0700, Greg KH wrote:
+> -stable review patch.  If anyone has any objections, please let us know.
 > 
-> Actually, I think Eric Sandeen was working on similar fixes already, and
-> instead of doing a per-item check each time we look at the entry it does
-> a full-block check the first time it is read (as ext2 does).
+> ------------------
+> From: Badari Pulavarty <pbadari@us.ibm.com>
 > 
->>  This fixes the problem described at:
->>  http://projects.info-pull.com/mokb/MOKB-10-11-2006.html
+> For files other than IFREG, nobh option doesn't make sense.  Modifications
+> to them are journalled and needs buffer heads to do that.  Without this
+> patch, we get kernel oops in page_buffers().
 > 
-> Would also be good to CC linux-ext4, where the ext3 maintainers live.
-> Hmm, maybe we need to update MAINTAINERS with the new list address?
-
-This should already be fixed, in some fashion, in -mm:
-
-http://www.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.19-rc5/2.6.19-rc5-mm2/broken-out/handle-ext3-directory-corruption-better.patch
-
-I have been looking at doing a check only when the block is first read,
-but other things have come up & taken some time, and that is a bit on
-the back burner now...
-
--Eric
+> Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+> Signed-off-by: Andrew Morton <akpm@osdl.org>
+> Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+> 
+> ---
+>  fs/ext3/inode.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> --- linux-2.6.17.7.orig/fs/ext3/inode.c
+> +++ linux-2.6.17.7/fs/ext3/inode.c
+> @@ -1159,7 +1159,7 @@ retry:
+>  		ret = PTR_ERR(handle);
+>  		goto out;
+>  	}
+> -	if (test_opt(inode->i_sb, NOBH))
+> +	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+>  		ret = nobh_prepare_write(page, from, to, ext3_get_block);
+>  	else
+>  		ret = block_prepare_write(page, from, to, ext3_get_block);
+> @@ -1245,7 +1245,7 @@ static int ext3_writeback_commit_write(s
+>  	if (new_i_size > EXT3_I(inode)->i_disksize)
+>  		EXT3_I(inode)->i_disksize = new_i_size;
+>  
+> -	if (test_opt(inode->i_sb, NOBH))
+> +	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+>  		ret = nobh_commit_write(file, page, from, to);
+>  	else
+>  		ret = generic_commit_write(file, page, from, to);
+> @@ -1495,7 +1495,7 @@ static int ext3_writeback_writepage(stru
+>  		goto out_fail;
+>  	}
+>  
+> -	if (test_opt(inode->i_sb, NOBH))
+> +	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+>  		ret = nobh_writepage(page, ext3_get_block, wbc);
+>  	else
+>  		ret = block_write_full_page(page, ext3_get_block, wbc);
+> 
