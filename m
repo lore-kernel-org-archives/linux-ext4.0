@@ -1,55 +1,45 @@
-From: Jeff Mahoney <jeffm@suse.com>
-Subject: Re: [PATCH] ext3: htree entry integrity checking
-Date: Thu, 16 Nov 2006 19:28:32 -0500
-Message-ID: <455D0230.7040709@suse.com>
-References: <455C96DC.4060907@jeffreymahoney.com> <20061116222747.GT6012@schatzie.adilger.int>
+From: "Takashi Sato" <sho@tnes.nec.co.jp>
+Subject: Re: [RFC][PATCH 0/3] Extent base online defrag
+Date: Fri, 17 Nov 2006 21:39:50 +0900
+Message-ID: <0e7101c70a45$7c28d360$4168010a@bsd.tnes.nec.co.jp>
+References: <20061109200950sho@rifu.tnes.nec.co.jp> <45532328.70302@garzik.org> <1163081503.10671.9.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+	format=flowed;
+	charset="iso-2022-jp";
+	reply-type=original
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58826 "EHLO mx2.suse.de")
-	by vger.kernel.org with ESMTP id S1424806AbWKQA1F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Nov 2006 19:27:05 -0500
-To: Jeff Mahoney <jeffm@jeffreymahoney.com>,
-	linux-fsdevel@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Eric Sandeen <esandeen@redhat.com>
-In-Reply-To: <20061116222747.GT6012@schatzie.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "Dave Kleikamp" <shaggy@linux.vnet.ibm.com>,
+	"Jeff Garzik" <jeff@garzik.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Hi,
 
-Andreas Dilger wrote:
-> On Nov 16, 2006  11:50 -0500, Jeff Mahoney wrote:
->>  Currently, if a corrupted directory entry with rec_len=0 is encountered,
->>  we still trust that the data is valid. This can cause an infinite loop
->>  in htree_dirblock_to_tree() since the iteration loop will never make any
->>  progress.
+>> > - Specify the target area in a file using the following structure:
+>> >   struct ext3_ext_defrag_data {
+>> >   loff_t start_offset; /* start offset to defrag in bytes */
+>> >   loff_t defrag_size;  /* size of defrag in bytes */
+>> >   }
+>> >   It uses loff_t so that the size of the structure is identical on
+>> >   both 32 bits and 64 bits architecture.
+>> >   Block allocation, including searching for the free contiguous
+>> >   blocks, is implemented in kernel.
+>> 
+>> NAK the ioctl approach.
 > 
-> Actually, I think Eric Sandeen was working on similar fixes already, and
-> instead of doing a per-item check each time we look at the entry it does
-> a full-block check the first time it is read (as ext2 does).
+> I agree it shouldn't go into mainline this way, but while the details of
+> the proper interface are debated, this implementation at least allows
+> the core function to be tested & reviewed.
 > 
->>  This fixes the problem described at:
->>  http://projects.info-pull.com/mokb/MOKB-10-11-2006.html
-> 
-> Would also be good to CC linux-ext4, where the ext3 maintainers live.
+>> People who like ioctls are just holdovers from non-Linux OS's.
 
-Ok, thanks. If that's already in -mm, I'll use that one.
+Thank you for your comments.
+My patches are at the experimental phase and the ioctl approach is
+the provisional solution.
+But I intend to continue this work with ioctl approach, if there are no
+actual problems.
 
-- -Jeff
-
-- --
-Jeff Mahoney
-SUSE Labs
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2 (GNU/Linux)
-Comment: Using GnuPG with SUSE - http://enigmail.mozdev.org
-
-iD8DBQFFXQIwLPWxlyuTD7IRApH7AJ9+/SFmd9bf8E741wvxw/6vdrUrdwCeJNEG
-eHZMo5RWUrLW5iDEqehjRlI=
-=lGRM
------END PGP SIGNATURE-----
+Cheers, Takashi
