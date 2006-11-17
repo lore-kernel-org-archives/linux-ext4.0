@@ -1,45 +1,42 @@
-From: "Takashi Sato" <sho@tnes.nec.co.jp>
-Subject: Re: [RFC][PATCH 0/3] Extent base online defrag
-Date: Fri, 17 Nov 2006 21:39:50 +0900
-Message-ID: <0e7101c70a45$7c28d360$4168010a@bsd.tnes.nec.co.jp>
-References: <20061109200950sho@rifu.tnes.nec.co.jp> <45532328.70302@garzik.org> <1163081503.10671.9.camel@kleikamp.austin.ibm.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: Re: [patch 15/23] ext3 -nobh option causes oops
+Date: Fri, 17 Nov 2006 17:47:39 +0100
+Message-ID: <20061117164739.GB31879@stusta.de>
+References: <20060804053258.391158155@quad.kroah.org> <20060804054003.GP769@kroah.com> <20061116225154.GK31879@stusta.de> <1163718474.7662.26.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-2022-jp";
-	reply-type=original
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: "Dave Kleikamp" <shaggy@linux.vnet.ibm.com>,
-	"Jeff Garzik" <jeff@garzik.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]:64785 "HELO
+	mailout.stusta.mhn.de") by vger.kernel.org with SMTP
+	id S1755685AbWKQQrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Nov 2006 11:47:40 -0500
+To: Badari Pulavarty <pbadari@us.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <1163718474.7662.26.camel@dyn9047017100.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-
->> > - Specify the target area in a file using the following structure:
->> >   struct ext3_ext_defrag_data {
->> >   loff_t start_offset; /* start offset to defrag in bytes */
->> >   loff_t defrag_size;  /* size of defrag in bytes */
->> >   }
->> >   It uses loff_t so that the size of the structure is identical on
->> >   both 32 bits and 64 bits architecture.
->> >   Block allocation, including searching for the free contiguous
->> >   blocks, is implemented in kernel.
->> 
->> NAK the ioctl approach.
+On Thu, Nov 16, 2006 at 03:07:54PM -0800, Badari Pulavarty wrote:
 > 
-> I agree it shouldn't go into mainline this way, but while the details of
-> the proper interface are debated, this implementation at least allows
-> the core function to be tested & reviewed.
+> On Thu, 2006-11-16 at 23:51 +0100, Adrian Bunk wrote:
+> > It seems this patch that went into 2.6.17.8 should also be included in 
+> > the 2.6.16.x branch, or do I miss anything?
+> > 
 > 
->> People who like ioctls are just holdovers from non-Linux OS's.
+> Yes. This is needed for 2.6.16.x branch also.
 
-Thank you for your comments.
-My patches are at the experimental phase and the ioctl approach is
-the provisional solution.
-But I intend to continue this work with ioctl approach, if there are no
-actual problems.
+Thanks, I've applied it.
 
-Cheers, Takashi
+> Thanks,
+> Badari
+
+cu
+Adrian
+
+-- 
+
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
