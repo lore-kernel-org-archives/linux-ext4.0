@@ -1,123 +1,82 @@
-From: Suparna Bhattacharya <suparna@in.ibm.com>
-Subject: Re: Ext4 devel interlock meeting minutes (Nov. 17, 2006)
-Date: Tue, 21 Nov 2006 16:37:17 +0530
-Message-ID: <20061121110717.GA9863@in.ibm.com>
-References: <455E30BC.9070705@us.ibm.com>
-Reply-To: suparna@in.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, shaggy@us.ibm.com
+From: akpm@osdl.org
+Subject: + ext4-fix-reservation-extension.patch added to -mm tree
+Date: Tue, 21 Nov 2006 09:13:48 -0800
+Message-ID: <200611211713.kALHDm6b031991@shell0.pdx.osdl.net>
+Cc: cmm@us.ibm.com, hugh@veritas.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:20691 "EHLO e2.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S934281AbWKULD4 (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:4829 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1031230AbWKURRD (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Nov 2006 06:03:56 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kALB3sfg027855
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 06:03:55 -0500
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kALB3snR307000
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 04:03:54 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kALB3rSC027088
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 04:03:53 -0700
-To: Avantika Mathur LTC <mathur@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <455E30BC.9070705@us.ibm.com>
+	Tue, 21 Nov 2006 12:17:03 -0500
+To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-For this week's call, could we have a discussion on the API for
-persistent preallocation ? Options suggested in the past have
-included posix_fallocate, fadvise, fcntl/ioctl, ftruncate. 
+The patch titled
+     ext4: fix reservation extension
+has been added to the -mm tree.  Its filename is
+     ext4-fix-reservation-extension.patch
 
-Regards
-Suparna
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-On Fri, Nov 17, 2006 at 01:59:24PM -0800, Avantika Mathur LTC wrote:
-> Sorry they are a little late!  Here are minutes from the interlock call
-> on Wednesday.
-> 
-> Thanks,
-> Avantika
-> ----
-> 
-> Ext4 Developer Interlock Call: 11/15/06 Minutes
-> 
-> Attendees: Dave Kleikamp, Ted Ts'o, Jean-Pierre Dion, Valirie Climent,
-> Jean-Noel Cordenner, Mingming Cao, Suparna Bhattacharya, Eric Sandeen,
-> Avantika Mathur
-> 
-> - WIKI: Decided that we need to maintain one Wiki for Ext4. Ted will
-> request a new wiki on kernel.org.
-> 
-> - Shaggy had sent out an Ext4 roadmap after the last call, but need to
-> continue to plan when each feature will be stable and when the disk
-> format can be freezed. This should be kept up to date on the Wiki.
-> 
-> - Ted is reviewing extents patches to e2fsprogs. There have been many
-> changes to mercurial in the past week.
-> 
-> - Defrag Schemes: Detailed discussion of the different defrag schemes
-> being discussed on the mailing list, and what requirements are needed
-> for Ext4.  A summary of this discussion is below:
-> 
-> 
-> DEFRAG DISCUSSION
-> =================
-> 
-> (Ted and Eric, this is what I remembered from the discussion, please
-> fill in any gaps or correct any mistakes in the summary.)
-> 
-> Trying to establish a clear direction for defrag, there has been a lot
-> of discussion on the mailing list.
-> The issues discussed were:
-> 
-> -- How the interface to the defrag should be implemented. Current ideas
-> are using ioctls, system calls, or implementing as a filesystem.  Using
-> ioctls was the method generally favored by Ted and Eric in the discussion.
-> 
-> -- Whether the implementation should be extent based or block based. Ted
-> feels that this should be extent based, using indirect blocks if necessary
-> 
-> -- Should the block allocation policy be driven by user space or kernel
-> space?
-> 
-> Prefer a user space driven policy, so that files that are accessed
-> concurrently during system boot, can be put close together to speed up
-> the boot process.  In this design the user space interface can specify
-> an inode and logical block sequence to be put in a certain block
-> location; if the space is available, the kernel will copy data and inode
-> pointers.
-> The user space interface will access bitmaps to locate free space.  It
-> should also have the interface to specify a certain region to be
-> reserved, and that region would be freed on the disk, so user space can
-> move other files to that space.
-> 
-> -- Implementation
-> 
-> Ted believes the defrag should be implemented by specifying a region
-> space for a file on disk, storing file data in page cache and copying
-> the data from the page cache to the new physical blocks.  Then changing
-> the mappings from the logical blocks to these new physical blocks.
-> 
-> Eric's approach is to identify the region on disk, generate a secondary
-> inode for the file and allocate this space to the secondary inode.  Then
-> copy the data from the original file to the new blocks, and replace the
-> inode.  All file writes will need to be restricted during this process.
-> Ted's concerns with this approach is possible inconsistencies in the
-> journal if the system crashes during this process, and also the
-> inability to defrag files while they are being written to.
-> 
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+------------------------------------------------------
+Subject: ext4: fix reservation extension
+From: Mingming Cao <cmm@us.ibm.com>
 
--- 
-Suparna Bhattacharya (suparna@in.ibm.com)
-Linux Technology Center
-IBM Software Lab, India
+Hugh Dickins wrote:
+> Not found anything relevant, but I keep noticing these lines
+> in ext2_try_to_allocate_with_rsv(), ext3 and ext4 similar:
+>
+> 		} else if (grp_goal > 0 &&
+> 				(my_rsv->rsv_end - grp_goal + 1) < *count)
+> 			try_to_extend_reservation(my_rsv, sb,
+> 					*count-my_rsv->rsv_end + grp_goal - 1);
+>
+> They're wrong, a no-op in most groups, aren't they?  rsv_end is an
+> absolute block number, whereas grp_goal is group-relative, so the
+> calculation ought to bring in group_first_block?  Or I'm confused.
+>
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Hugh Dickins <hugh@veritas.com>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/ext4/balloc.c |   12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff -puN fs/ext2/balloc.c~ext4-fix-reservation-extension fs/ext2/balloc.c
+diff -puN fs/ext3/balloc.c~ext4-fix-reservation-extension fs/ext3/balloc.c
+diff -puN fs/ext4/balloc.c~ext4-fix-reservation-extension fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-fix-reservation-extension
++++ a/fs/ext4/balloc.c
+@@ -1324,10 +1324,14 @@ ext4_try_to_allocate_with_rsv(struct sup
+ 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
+ 							grp_goal, group, sb))
+ 				grp_goal = -1;
+-		} else if (grp_goal > 0 &&
+-			  (my_rsv->rsv_end-grp_goal+1) < *count)
+-			try_to_extend_reservation(my_rsv, sb,
+-					*count-my_rsv->rsv_end + grp_goal - 1);
++		} else if (grp_goal > 0) {
++			int curr = my_rsv->rsv_end -
++					(grp_goal + group_first_block) + 1;
++
++			if (curr < *count)
++				try_to_extend_reservation(my_rsv, sb,
++							*count - curr);
++			}
+ 
+ 		if ((my_rsv->rsv_start > group_last_block) ||
+ 				(my_rsv->rsv_end < group_first_block)) {
+_
+
+Patches currently in -mm which might be from cmm@us.ibm.com are
+
+ext3-fix-reservation-extension.patch
+ext4-fix-reservation-extension.patch
+ext2-reservations.patch
+ext2-fix-reservation-extension.patch
