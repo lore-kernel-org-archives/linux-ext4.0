@@ -1,145 +1,134 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Boot failure with ext2 and initrds
-Date: Tue, 21 Nov 2006 16:43:12 -0800
-Message-ID: <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
-References: <20061114014125.dd315fff.akpm@osdl.org>
-	 <20061114184919.GA16020@skynet.ie>
-	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
-	 <20061114113120.d4c22b02.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
-	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
-	 <20061115232228.afaf42f2.akpm@osdl.org>
-	 <1163666960.4310.40.camel@localhost.localdomain>
-	 <20061116011351.1401a00f.akpm@osdl.org>
-	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
-	 <20061116132724.1882b122.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
-	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+Subject: Re: Ext4 devel interlock meeting minutes (Nov. 17, 2006)
+Date: Tue, 21 Nov 2006 16:57:53 -0800
+Message-ID: <1164157074.3804.59.camel@dyn9047017103.beaverton.ibm.com>
+References: <455E30BC.9070705@us.ibm.com> <20061121110717.GA9863@in.ibm.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
-	"Martin J. Bligh" <mbligh@mbligh.org>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Avantika Mathur LTC <mathur@us.ibm.com>,
+	linux-ext4@vger.kernel.org, shaggy@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:47810 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1031385AbWKVAnP
+Received: from e35.co.us.ibm.com ([32.97.110.153]:28061 "EHLO
+	e35.co.us.ibm.com") by vger.kernel.org with ESMTP id S966976AbWKVA54
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Nov 2006 19:43:15 -0500
-To: Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+	Tue, 21 Nov 2006 19:57:56 -0500
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e35.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id kAM0vudt030457
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 19:57:56 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kAM0vuo3480510
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 17:57:56 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kAM0vtGQ015309
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 17:57:56 -0700
+To: suparna@in.ibm.com
+In-Reply-To: <20061121110717.GA9863@in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2006-11-20 at 16:19 +0000, Hugh Dickins wrote:
-> After four days of running, the EM64T has at last reproduced the same
-> hang as it did in an hour before: stuck in
-> ext2_try_to_allocate_with_rsv,
-> repeatedly ext2_rsv_window_add, ext2_try_to_allocate,
-> rsv_window_remove
-> (perhaps not in that order).
+On Tue, 2006-11-21 at 16:37 +0530, Suparna Bhattacharya wrote:
+> For this week's call, could we have a discussion on the API for
+> persistent preallocation ? Options suggested in the past have
+> included posix_fallocate, fadvise, fcntl/ioctl, ftruncate.
+> 
+> Regards
+> Suparna
 > 
 
-Don't have much clue, still...:(
-
-The logic of the while loop in ext2_try_to_allocate_with_rsv() looks
-like:
-
-while (1) {
-	/*make a new reservation window*/
-	ret = allocate_new_reservation();
-	if (ret < 0)
-		break /*fail*/
-	/*allocate a block from the reservation window */
-	ret = ext2_try_to_allocate_with_rsv()
-	if (ret > 0) {
-		...
-		break;	/*success*/
-	}
-}
-If it stucks in the loop, that means next two things have to be true: 
-
-1) ext2_try_to_allocate() keeps failing to allocate a bit from the
-window just reserved, every time.  
-
-2) we could endlessly create a new reservation window in this block
-group.
-
-
-For (1), when create a new reservation window, we do make sure there are
-at least one free bit in the window, so that
-ext2_try_to_allocate_with_rsv() could claim that bit. I haven't found
-any thing wrong in that part yet;
-
-For (2)the search for the next reservation window should start from the
-end block of the old window, and should stop and fail if it reachs the
-last block of the block group. 
-
-Will continue looking at the code, but so far everything looks just fine
-to me.:( 
-
-
-On Tue, 2006-11-21 at 05:39 +0000, Hugh Dickins wrote:
-> On Mon, 20 Nov 2006, Mingming Cao wrote:
-> >
-> > So there is only one writer at the moment the hang was happening?
-> 
-> I expect there were multiple writers when the task which hangs
-> first entered its ext2_prepare_write (it's a make -j20 build on
-> that ext2 filesystem); but by the time I come to look at the hang,
-> there's only that one writer active - everything else would be waiting
-> on that part of the build to complete
->  (well, your question makes me
-> realize that I didn't look down the whole "ps" listing to see what
-> was waiting; but the hanging task is the only one I see running on
-> on any cpu, each time I break in).
-> 
-A bit confused, did the whole system hang or just the "ld" writer hang
-in ext2 block allocation? And what other writers were waiting for? Were
-they trying to write to the same file?
-
-> >
-> > hmm, is the filesystem relatively all being used or reserved, i.e, the
-> > free bits are all being reserved?  There is one extreme case that may
-> > cause starvation. If filesystem free blocks are all being reserved, when
-> > a  new writer need a free block, it has to go through the entire
-> > filesystems, try to reserve a space, which will repeatly calling
-> > rsv_window_add and rsv_window_remove, since. Finally give up and fall
-> > back to allocation without reservation. But this is all theory, not sure
-> > fits your case here.
-> 
-> I can understand that there may be a worst case like that: but I hope
-> it wouldn't take 20 hours to find a free block on a default 340MB ext2
-> filesystem!  And unless something else has gone wrong, this build would
-> not be filling the filesystem to that extent: it's probably around 80%
-> full at this stage, and shouldn't get fuller than 98% in the end.
-> 
-> Any suggestions for what I might check, next time it happens?
-> 
-
-It might be helpful to check the return value of ext2_try_to_allocate(),
-to see if it fails. It would be nice if you could check if there any
-free bit inside the reservation window.
-
-And could you check the start and end block for every rsv_window_add and
-rsv_window_remove, to see if it was keep creating and removing the same
-window in the same block group?
-
-And it might be useful to dump the whole filesystem block reservation
-tree as well.
-
-Not sure if it worth the effort to test it on ext3.  The ext2 block
-reservation code in 2.6.19-rc5-mm2 looks pretty much the same as ext3/4,
-except the missing truncate_mutex. I understand this might take a few
-days to reproduce, so this might not needed now.
-
+Sure thing. I have add this topic on this week's agenda, but it might be
+a short meeting with less attendees tomorrow, as it's close to the
+holiday.
 
 Mingming
-> Hugh
+> On Fri, Nov 17, 2006 at 01:59:24PM -0800, Avantika Mathur LTC wrote:
+> > Sorry they are a little late!  Here are minutes from the interlock call
+> > on Wednesday.
+> >
+> > Thanks,
+> > Avantika
+> > ----
+> >
+> > Ext4 Developer Interlock Call: 11/15/06 Minutes
+> >
+> > Attendees: Dave Kleikamp, Ted Ts'o, Jean-Pierre Dion, Valirie Climent,
+> > Jean-Noel Cordenner, Mingming Cao, Suparna Bhattacharya, Eric Sandeen,
+> > Avantika Mathur
+> >
+> > - WIKI: Decided that we need to maintain one Wiki for Ext4. Ted will
+> > request a new wiki on kernel.org.
+> >
+> > - Shaggy had sent out an Ext4 roadmap after the last call, but need to
+> > continue to plan when each feature will be stable and when the disk
+> > format can be freezed. This should be kept up to date on the Wiki.
+> >
+> > - Ted is reviewing extents patches to e2fsprogs. There have been many
+> > changes to mercurial in the past week.
+> >
+> > - Defrag Schemes: Detailed discussion of the different defrag schemes
+> > being discussed on the mailing list, and what requirements are needed
+> > for Ext4.  A summary of this discussion is below:
+> >
+> >
+> > DEFRAG DISCUSSION
+> > =================
+> >
+> > (Ted and Eric, this is what I remembered from the discussion, please
+> > fill in any gaps or correct any mistakes in the summary.)
+> >
+> > Trying to establish a clear direction for defrag, there has been a lot
+> > of discussion on the mailing list.
+> > The issues discussed were:
+> >
+> > -- How the interface to the defrag should be implemented. Current ideas
+> > are using ioctls, system calls, or implementing as a filesystem.  Using
+> > ioctls was the method generally favored by Ted and Eric in the discussion.
+> >
+> > -- Whether the implementation should be extent based or block based. Ted
+> > feels that this should be extent based, using indirect blocks if necessary
+> >
+> > -- Should the block allocation policy be driven by user space or kernel
+> > space?
+> >
+> > Prefer a user space driven policy, so that files that are accessed
+> > concurrently during system boot, can be put close together to speed up
+> > the boot process.  In this design the user space interface can specify
+> > an inode and logical block sequence to be put in a certain block
+> > location; if the space is available, the kernel will copy data and inode
+> > pointers.
+> > The user space interface will access bitmaps to locate free space.  It
+> > should also have the interface to specify a certain region to be
+> > reserved, and that region would be freed on the disk, so user space can
+> > move other files to that space.
+> >
+> > -- Implementation
+> >
+> > Ted believes the defrag should be implemented by specifying a region
+> > space for a file on disk, storing file data in page cache and copying
+> > the data from the page cache to the new physical blocks.  Then changing
+> > the mappings from the logical blocks to these new physical blocks.
+> >
+> > Eric's approach is to identify the region on disk, generate a secondary
+> > inode for the file and allocate this space to the secondary inode.  Then
+> > copy the data from the original file to the new blocks, and replace the
+> > inode.  All file writes will need to be restricted during this process.
+> > Ted's concerns with this approach is possible inconsistencies in the
+> > journal if the system crashes during this process, and also the
+> > inability to defrag files while they are being written to.
+> >
+> >
+> >
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Suparna Bhattacharya (suparna@in.ibm.com)
+> Linux Technology Center
+> IBM Software Lab, India
+> 
 > -
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
