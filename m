@@ -1,80 +1,146 @@
-From: akpm@osdl.org
-Subject: + ext3-fix-reservation-extension.patch added to -mm tree
-Date: Tue, 21 Nov 2006 09:13:37 -0800
-Message-ID: <200611211713.kALHDbK9031987@shell0.pdx.osdl.net>
-Cc: cmm@us.ibm.com, hugh@veritas.com, linux-ext4@vger.kernel.org
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: Boot failure with ext2 and initrds
+Date: Tue, 21 Nov 2006 16:43:12 -0800
+Message-ID: <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+References: <20061114014125.dd315fff.akpm@osdl.org>
+	 <20061114184919.GA16020@skynet.ie>
+	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
+	 <20061114113120.d4c22b02.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
+	 <20061115232228.afaf42f2.akpm@osdl.org>
+	 <1163666960.4310.40.camel@localhost.localdomain>
+	 <20061116011351.1401a00f.akpm@osdl.org>
+	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
+	 <20061116132724.1882b122.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
+	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
+	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+Reply-To: cmm@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:39646 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S966922AbWKURXM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Nov 2006 12:23:12 -0500
-To: mm-commits@vger.kernel.org
+Received: from e33.co.us.ibm.com ([32.97.110.151]:47810 "EHLO
+	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1031385AbWKVAnP
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Nov 2006 19:43:15 -0500
+To: Hugh Dickins <hugh@veritas.com>
+In-Reply-To: <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Mon, 2006-11-20 at 16:19 +0000, Hugh Dickins wrote:
+> After four days of running, the EM64T has at last reproduced the same
+> hang as it did in an hour before: stuck in
+> ext2_try_to_allocate_with_rsv,
+> repeatedly ext2_rsv_window_add, ext2_try_to_allocate,
+> rsv_window_remove
+> (perhaps not in that order).
+> 
 
-The patch titled
-     ext3: fix reservation extension
-has been added to the -mm tree.  Its filename is
-     ext3-fix-reservation-extension.patch
+Don't have much clue, still...:(
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+The logic of the while loop in ext2_try_to_allocate_with_rsv() looks
+like:
 
-------------------------------------------------------
-Subject: ext3: fix reservation extension
-From: Mingming Cao <cmm@us.ibm.com>
+while (1) {
+	/*make a new reservation window*/
+	ret = allocate_new_reservation();
+	if (ret < 0)
+		break /*fail*/
+	/*allocate a block from the reservation window */
+	ret = ext2_try_to_allocate_with_rsv()
+	if (ret > 0) {
+		...
+		break;	/*success*/
+	}
+}
+If it stucks in the loop, that means next two things have to be true: 
 
-Hugh Dickins wrote:
-> Not found anything relevant, but I keep noticing these lines
-> in ext2_try_to_allocate_with_rsv(), ext3 and ext4 similar:
->
-> 		} else if (grp_goal > 0 &&
-> 				(my_rsv->rsv_end - grp_goal + 1) < *count)
-> 			try_to_extend_reservation(my_rsv, sb,
-> 					*count-my_rsv->rsv_end + grp_goal - 1);
->
-> They're wrong, a no-op in most groups, aren't they?  rsv_end is an
-> absolute block number, whereas grp_goal is group-relative, so the
-> calculation ought to bring in group_first_block?  Or I'm confused.
->
+1) ext2_try_to_allocate() keeps failing to allocate a bit from the
+window just reserved, every time.  
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Cc: Hugh Dickins <hugh@veritas.com>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
+2) we could endlessly create a new reservation window in this block
+group.
 
- fs/ext3/balloc.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-fix-reservation-extension fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-fix-reservation-extension
-+++ a/fs/ext3/balloc.c
-@@ -1307,10 +1307,14 @@ ext3_try_to_allocate_with_rsv(struct sup
- 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
- 							grp_goal, group, sb))
- 				grp_goal = -1;
--		} else if (grp_goal > 0 &&
--			  (my_rsv->rsv_end-grp_goal+1) < *count)
--			try_to_extend_reservation(my_rsv, sb,
--					*count-my_rsv->rsv_end + grp_goal - 1);
-+		} else if (grp_goal > 0) {
-+			int curr = my_rsv->rsv_end -
-+					(grp_goal + group_first_block) + 1;
-+
-+			if (curr < *count)
-+				try_to_extend_reservation(my_rsv, sb,
-+							*count - curr);
-+			}
- 
- 		if ((my_rsv->rsv_start > group_last_block) ||
- 				(my_rsv->rsv_end < group_first_block)) {
-_
+For (1), when create a new reservation window, we do make sure there are
+at least one free bit in the window, so that
+ext2_try_to_allocate_with_rsv() could claim that bit. I haven't found
+any thing wrong in that part yet;
 
-Patches currently in -mm which might be from cmm@us.ibm.com are
+For (2)the search for the next reservation window should start from the
+end block of the old window, and should stop and fail if it reachs the
+last block of the block group. 
 
-ext3-fix-reservation-extension.patch
-ext4-fix-reservation-extension.patch
-ext2-reservations.patch
-ext2-fix-reservation-extension.patch
+Will continue looking at the code, but so far everything looks just fine
+to me.:( 
+
+
+On Tue, 2006-11-21 at 05:39 +0000, Hugh Dickins wrote:
+> On Mon, 20 Nov 2006, Mingming Cao wrote:
+> >
+> > So there is only one writer at the moment the hang was happening?
+> 
+> I expect there were multiple writers when the task which hangs
+> first entered its ext2_prepare_write (it's a make -j20 build on
+> that ext2 filesystem); but by the time I come to look at the hang,
+> there's only that one writer active - everything else would be waiting
+> on that part of the build to complete
+>  (well, your question makes me
+> realize that I didn't look down the whole "ps" listing to see what
+> was waiting; but the hanging task is the only one I see running on
+> on any cpu, each time I break in).
+> 
+A bit confused, did the whole system hang or just the "ld" writer hang
+in ext2 block allocation? And what other writers were waiting for? Were
+they trying to write to the same file?
+
+> >
+> > hmm, is the filesystem relatively all being used or reserved, i.e, the
+> > free bits are all being reserved?  There is one extreme case that may
+> > cause starvation. If filesystem free blocks are all being reserved, when
+> > a  new writer need a free block, it has to go through the entire
+> > filesystems, try to reserve a space, which will repeatly calling
+> > rsv_window_add and rsv_window_remove, since. Finally give up and fall
+> > back to allocation without reservation. But this is all theory, not sure
+> > fits your case here.
+> 
+> I can understand that there may be a worst case like that: but I hope
+> it wouldn't take 20 hours to find a free block on a default 340MB ext2
+> filesystem!  And unless something else has gone wrong, this build would
+> not be filling the filesystem to that extent: it's probably around 80%
+> full at this stage, and shouldn't get fuller than 98% in the end.
+> 
+> Any suggestions for what I might check, next time it happens?
+> 
+
+It might be helpful to check the return value of ext2_try_to_allocate(),
+to see if it fails. It would be nice if you could check if there any
+free bit inside the reservation window.
+
+And could you check the start and end block for every rsv_window_add and
+rsv_window_remove, to see if it was keep creating and removing the same
+window in the same block group?
+
+And it might be useful to dump the whole filesystem block reservation
+tree as well.
+
+Not sure if it worth the effort to test it on ext3.  The ext2 block
+reservation code in 2.6.19-rc5-mm2 looks pretty much the same as ext3/4,
+except the missing truncate_mutex. I understand this might take a few
+days to reproduce, so this might not needed now.
+
+
+Mingming
+> Hugh
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
