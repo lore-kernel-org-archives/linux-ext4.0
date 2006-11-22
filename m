@@ -1,35 +1,122 @@
-From: "Federico Levi" <feduchi@gmail.com>
-Subject: University Research - Ext4
-Date: Tue, 21 Nov 2006 22:58:58 -0300
-Message-ID: <9e2856050611211758o7c356667j325c900e41de0701@mail.gmail.com>
+From: Ric Wheeler <ric@emc.com>
+Subject: Re: 2007 Linux Storage & Filesystem Workshop
+Date: Wed, 22 Nov 2006 08:26:16 -0500
+Message-ID: <45644FF8.20409@emc.com>
+References: <E1GkQQv-0001ZV-8X@candygram.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.232]:12345 "EHLO
-	wx-out-0506.google.com") by vger.kernel.org with ESMTP
-	id S967004AbWKVB7A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Nov 2006 20:59:00 -0500
-Received: by wx-out-0506.google.com with SMTP id h27so72599wxd
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Nov 2006 17:58:59 -0800 (PST)
-To: linux-ext4@vger.kernel.org
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-scsi-owner@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	Linux-ide <linux-ide@vger.kernel.org>, linux-ext4@vger.kernel.org
+In-Reply-To: <E1GkQQv-0001ZV-8X@candygram.thunk.org>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We are two students from the University of Cordoba, Argentina,
-studying Computer Science. We are taking a second year course named
-Operating Systems, in which we study, well, basically, Andrew
-Tanenbaum's "Modern Operating Systems" (2nd Edition).
-For our last lab project we were asked to write a paper on a subject
-of our choice. After looking though a few possibilities, we chose to
-do it about linux Ext4. We've been asked to not only compare it
-(performance-wise) with Ext3, but to explain -and try to justify the
-results of the benchmark comparisons- the following: caracteristics of
-each file system, internal arquitecture, and disk structure. Doing
-research, we've found little information related to these subjects,
-but we did find this mail list, and thought someone here might help
-us. We contacted Andrew Morton, and he also suggested
-vger.kernel.org. Any information or source for related info would be
-greately apreciated!
-Thank you very much for your time!
+
+
+Theodore Ts'o wrote:
+
+>The submission date for the Linux Storage and Filesystem Workshop is
+>coming up quickly, and I'd encourage folks who are interested to submit
+>a 2-3 paragraph position statement.  
+>
+>						- Ted
+>  
+>
+
+Just another reminder - please do send in a submission if you want to 
+attend. If you cannot send in a submission by the 24th, you can contact 
+me or someone else on the program committee and we can help.
+
+Thanks!
+
+ric
+
+
+>http://www.usenix.org/events/lsf07/cfp/
+>
+>2007 Linux Storage & Filesystem Workshop Call for Position Statements
+>
+>2007 Linux Storage & Filesystem Workshop
+>February 12--13, 2007
+>San Jose, CA
+>
+>Co-located with the 5th USENIX Conference on File and Storage
+>Technologies (FAST '07), which will take place February
+>13--16, 2007
+>
+>Important Dates
+>Submissions due: November 24, 2006
+>Notification of acceptance: December 15, 2006
+>
+>Workshop Organizers
+>
+>Program Chair
+>Ric Wheeler, EMC
+>
+>Program Committee
+>Jens Axboe, Oracle
+>James Bottomley, SteelEye
+>Valerie Henson, Intel
+>Andrew Morton, Google
+>Trond Myklebust, Network Appliance
+>Brian Pawlowski, Network Appliance
+>Theodore Ts'o, IBM
+>
+>Overview
+>
+>The Linux Storage and Filesystem Workshop is a small, tightly focused,
+>by-invitation workshop. It is intended to bring together developers and
+>researchers interested in implementing improvements in the Linux
+>filesystem and storage subsystems that can find their way into the
+>mainline kernel and into Linux distributions in the 2--3-year
+>timeframe. The workshop will be two days, the second day overlapping
+>with FAST '07 tutorials. The workshop will be separated into storage and
+>filesystem tracks, with a combined plenary session.
+>
+>Topics and Submissions
+>
+>Researchers and developers who are interested in attending should submit
+>a 2--3-paragraph position statement that describes the topic or topics
+>they would like to discuss during the workshop, and whether such a topic
+>would suit the filesystem track, the storage track, or the plenary
+>session. Examples of topics of interest include:
+>
+>    * New trends in storage technologies likely to impact Linux in the 
+>	next 3--5 years
+>    * More realistic methods of measuring filesystem and storage performance
+>    * Proposed improvements to Linux filesystems, including, in particular:
+>          o Handling of storage errors
+>          o Filesystem repair techniques
+>          o Scaling to very large (terabyte) filesystems
+>    * Progress reports on implementation of features discussed at the 
+>	Portland Filesystem Summit
+>    * Changes to the interface between the operating system and storage devices
+>    * Proposed improvements to existing Linux storage subsystems, 
+>		particularly with an emphasis on:
+>          o Refactoring common code out of storage subsystems and into 
+>		the block layer
+>          o Better robustness and error recovery
+>          o Barrier implementations in the face of TCQ
+>          o Making use of storage capabilities (such as block guard or 
+>		non-power-of-2 block sizes) for novel filesystem and 
+>		application features
+>    * Progress reports on implementation of features discussed at the 
+>	Vancouver Storage Summit
+>    * Userspace tools for managing storage systems (including better 
+>	presentation to the user via sysfs)
+>    * Storage futures, including:
+>          o New transports
+>          o Changes to existing standards for new storage features
+>          o SAS/SATA convergence
+>          o Do we yet have a use for Object-Based Storage Devices (OSD)?
+>-
+>To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+>the body of a message to majordomo@vger.kernel.org
+>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>Please read the FAQ at  http://www.tux.org/lkml/
+>
+>  
+>
