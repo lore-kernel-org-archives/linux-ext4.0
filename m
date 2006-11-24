@@ -1,64 +1,71 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4 devel interlock meeting minutes (Nov. 22 2006)
-Date: Wed, 22 Nov 2006 21:33:16 -0600
-Message-ID: <4565167C.4060802@redhat.com>
-References: <1164232428.29430.27.camel@dyn9047017105.beaverton.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: rfc: [patch] change attribute for ext3
+Date: Thu, 23 Nov 2006 17:23:11 -0700
+Message-ID: <20061124002311.GA32033@schatzie.adilger.int>
+References: <20060913164202.GA14838@openx1.frec.bull.fr>
+	<1158171071.6072.10.camel@lade.trondhjem.org>
+	<20060913183001.GA1702@moule.localdomain>
+	<20060914092318.GA18911@schatzie.adilger.int>
+	<20061114221725.GA14024@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:56017 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1754887AbWKWDdW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Nov 2006 22:33:22 -0500
-To: Avantika Mathur <mathur@us.ibm.com>
-In-Reply-To: <1164232428.29430.27.camel@dyn9047017105.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: Alexandre Ratchov <alexandre.ratchov@bull.net>
+Content-Disposition: inline
+In-Reply-To: <20061114221725.GA14024@schatzie.adilger.int>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-Avantika Mathur wrote:
-> Ext4 Developer Interlock Call: 11/22/06 minutes
->=20
-> Attendees: Mingming Cao, Eric Sandeen, Suparna Bhattacharya, Takashi =
-Sato, Jean-Pierre Dion, Val=C3=A9rie Cl=C3=A9ment, Avantika Mathur
->=20
-> - Online Defrag:
->  -- Last week we determined that ioctl was the preferred=20
-> interface for the online defrag.
->  -- Eric will send out an ovreview of the steps completed by XFS for =
-file defragmentation.
->  -- Last week Eric said that in XFS defrag implementation, you can't =
-defrag a file that is open/being written to.  This was an incorrect ass=
-umption. There will be more explanation in his mail.
->=20
-> - Preallocation:
->  -- We need to decide which interface to use in the implementation
->    * ioctl: simple solution preferred method for defrag and user in r=
-eservation
+On Nov 14, 2006  15:17 -0700, Andreas Dilger wrote:
+> On Sep 13, 2006  20:30 +0200, Alexandre Ratchov wrote:
+> > On Wed, Sep 13, 2006 at 02:11:11PM -0400, Trond Myklebust wrote:
+> > > I would really have preferred a full-blown 64-bit counter as per
+> > > RFC3530, but I suppose we could always combine this change attribute
+> > > with the high word from ctime in order to make up the NFSv4 change
+> > > attribute. That should keep us safe until someone develops a ramdisk
+> > > with < 1 nsecond access time.
+> > 
+> > do you mean something like "(ctime.tv_sec << 32) | change_attribute"? this
+> > would allow 2^32 inode changes per second.
+> 
+> I've been giving this further thought, and it may be that a full 64-bit
+> counter per inode is the only bulletproof solution.
+> 
+> One reason that ctime+nsec as the version number isn't so great is that if
+> there is some reason to set the clock backward (i.e. it was incorrectly
+> set into the future at some point) the inode ctime may jump backward.
+> This could cause either misordering of events, or collisions between
+> version numbers.  The problem could be mitigated by having the ctime+nsec
+> value only increment the nsec component by 1 for each new version (like
+> a counter) until real time catches up with the bad ctime, but it might
+> leave files with a bad ctime for a long time.
+> 
+> The main drawback of a 64-bit counter is the space in the inode that it
+> consumes...  I don't think we can find 64 bits of free space in the core
+> inode, so this would relegate the solution to new filesystems that are
+> formatted with large inodes.
 
-And would also be useful for testing, at least.  If reiserfs or jfs or=20
-xfs has existing interfaces for preallocation that are at all useful,=20
-perhaps we could even piggyback on them for now, in the same way that=20
-other filesystems picked up ext[23]'s chattr interfaces?
+Alexandre, Trond,
+what do you think about using a 32-bit in-inode version (sufficient for
+causal uses of NFSv4), and put the 32-bit MSB of the version into the
+large part of the inode (say after cr_time)?
 
->    * posix_fallocate: writes zero to the first byte of every block; p=
-robably preferred solution
+That allows use of the version for existing ext3 filesystems, and with
+large inodes (Lustre, ext4) it also meets the specs of RFC 3530 and any
+intended NFSv4 future use?
 
-=46or the record, this is only how glibc does it today, it certainly=20
-doesn't have to be done this way, ideally a kernel syscall which allows=
-=20
-filesystems to be smart would be best.  Coordinating glibc & kernel=20
-changes will be tricky & time consuming though... but it's a noble goal=
-=2E=20
-  I'd like to see it happen; I'll chat with Ulrich when I get a chance,=
-=20
-see what he thinks.
-
->    * ftruncate: consistency across platforms may be an issue
-
-I agree w/ Andreas on this, I don't see how ftruncate can be used w/o=20
-making holey files impossible.
-
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
