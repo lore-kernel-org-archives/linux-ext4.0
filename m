@@ -1,71 +1,58 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: rfc: [patch] change attribute for ext3
-Date: Thu, 23 Nov 2006 17:23:11 -0700
-Message-ID: <20061124002311.GA32033@schatzie.adilger.int>
-References: <20060913164202.GA14838@openx1.frec.bull.fr>
-	<1158171071.6072.10.camel@lade.trondhjem.org>
-	<20060913183001.GA1702@moule.localdomain>
-	<20060914092318.GA18911@schatzie.adilger.int>
-	<20061114221725.GA14024@schatzie.adilger.int>
+From: Valerie Clement <Valerie.Clement@bull.net>
+Subject: [RFC][PATCH 0/4] BIG_BG: support of large block groups
+Date: 24 Nov 2006 17:47:40 +0100
+Message-ID: <1164386860.17961.67.camel@ckrm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Alexandre Ratchov <alexandre.ratchov@bull.net>
-Content-Disposition: inline
-In-Reply-To: <20061114221725.GA14024@schatzie.adilger.int>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:51886 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP id S934971AbWKXQ5W
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Nov 2006 11:57:22 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 8440119D932
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Nov 2006 17:57:17 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 21068-09 for <linux-ext4@vger.kernel.org>;
+ Fri, 24 Nov 2006 17:57:12 +0100 (CET)
+Received: from ckrm.frec.bull.fr (unknown [172.16.109.44])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 9895819D931
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Nov 2006 17:57:12 +0100 (CET)
+To: linux-ext4@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Nov 14, 2006  15:17 -0700, Andreas Dilger wrote:
-> On Sep 13, 2006  20:30 +0200, Alexandre Ratchov wrote:
-> > On Wed, Sep 13, 2006 at 02:11:11PM -0400, Trond Myklebust wrote:
-> > > I would really have preferred a full-blown 64-bit counter as per
-> > > RFC3530, but I suppose we could always combine this change attribute
-> > > with the high word from ctime in order to make up the NFSv4 change
-> > > attribute. That should keep us safe until someone develops a ramdisk
-> > > with < 1 nsecond access time.
-> > 
-> > do you mean something like "(ctime.tv_sec << 32) | change_attribute"? this
-> > would allow 2^32 inode changes per second.
-> 
-> I've been giving this further thought, and it may be that a full 64-bit
-> counter per inode is the only bulletproof solution.
-> 
-> One reason that ctime+nsec as the version number isn't so great is that if
-> there is some reason to set the clock backward (i.e. it was incorrectly
-> set into the future at some point) the inode ctime may jump backward.
-> This could cause either misordering of events, or collisions between
-> version numbers.  The problem could be mitigated by having the ctime+nsec
-> value only increment the nsec component by 1 for each new version (like
-> a counter) until real time catches up with the bad ctime, but it might
-> leave files with a bad ctime for a long time.
-> 
-> The main drawback of a 64-bit counter is the space in the inode that it
-> consumes...  I don't think we can find 64 bits of free space in the core
-> inode, so this would relegate the solution to new filesystems that are
-> formatted with large inodes.
 
-Alexandre, Trond,
-what do you think about using a 32-bit in-inode version (sufficient for
-causal uses of NFSv4), and put the 32-bit MSB of the version into the
-large part of the inode (say after cr_time)?
+Currently, the maximum number of blocks in a block group is the number
+of bits in a block, since the block bitmap must be stored inside a
+single block.
+So on a 4 KB blocksize filesystem, the maximum number of blocks in a
+group is 32768.
+This constraint can limit the maximum size of the filesystem.
 
-That allows use of the version for existing ext3 filesystems, and with
-large inodes (Lustre, ext4) it also meets the specs of RFC 3530 and any
-intended NFSv4 future use?
+Increasing the block group size allows also to reduce the number of
+groups in the filesystem.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+This patchset allows using several consecutive blocks to store the
+bitmaps, thus having larger block groups and so increasing the
+filesystem size.
+
+It applies against a linux-2.6.19-rc6 kernel and follows up the work on
+the 64-bit support done by Laurent Vivier and Alexandre Ratchov.
+
+These patches have been tested on a x86_64 machine with a 20TB device
+and with updated e2fsprogs available here:
+  http://www.bullopensource.org/ext4/20061124
+
+If we already see that the execution time of fsck and mkfs commands is
+reduced when increasing the size of groups on a large filesystem, I'll
+will do performance testing in the next days to see the other impacts of
+this modification.
+
+Any comments are welcome.
+
+Thanks,
+
+  Valerie.
