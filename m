@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 6/6] ext2 balloc: use io_error label
-Date: Tue, 28 Nov 2006 15:31:11 -0800
-Message-ID: <1164756672.6538.8.camel@dyn9047017103.beaverton.ibm.com>
+Subject: Re: Boot failure with ext2 and initrds
+Date: Tue, 28 Nov 2006 15:38:25 -0800
+Message-ID: <1164757106.6538.17.camel@dyn9047017103.beaverton.ibm.com>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,56 +19,40 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281743370.29701@blonde.wat.veritas.com>
+	 <1164747894.3769.77.camel@dyn9047017103.beaverton.ibm.com>
+	 <20061128143321.2abf40b5.akpm@osdl.org>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
+Cc: Hugh Dickins <hugh@veritas.com>, Mel Gorman <mel@skynet.ie>,
 	"Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:26016 "EHLO
-	e35.co.us.ibm.com") by vger.kernel.org with ESMTP id S1757962AbWK1XbO
+Received: from e36.co.us.ibm.com ([32.97.110.154]:38611 "EHLO
+	e36.co.us.ibm.com") by vger.kernel.org with ESMTP id S1758007AbWK1Xib
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 18:31:14 -0500
-To: Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281743370.29701@blonde.wat.veritas.com>
+	Tue, 28 Nov 2006 18:38:31 -0500
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20061128143321.2abf40b5.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2006-11-28 at 17:44 +0000, Hugh Dickins wrote:
-> ext2_new_blocks has a nice io_error label for setting -EIO,
-> so goto that in the one place that doesn't already use it.
+On Tue, 2006-11-28 at 14:33 -0800, Andrew Morton wrote: 
+> On Tue, 28 Nov 2006 13:04:53 -0800
+> Mingming Cao <cmm@us.ibm.com> wrote:
 > 
-> Signed-off-by: Hugh Dickins <hugh@veritas.com>
-> ---
+> > Thanks, I have acked most of them, and will port them to ext3/4 soon.
 > 
+> You've acked #2 and #3.  #4, #5 and #6 remain un-commented-upon and #1 is
+> unclear?
 
-Acked, 
+sorry, just acked #4, #5 and #6. I mean to do that before I said so but
+they did not go out of my outbox till now ( I was out for a few hours).
+
+#1 looks correct to me now, just thought there are other issues. I will
+comment on that one in that thread.
+
 
 Mingming
->  fs/ext2/balloc.c |    7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
-> 
-> --- 2.6.19-rc6-mm2/fs/ext2/balloc.c	2006-11-24 08:18:02.000000000 +0000
-> +++ linux/fs/ext2/balloc.c	2006-11-27 19:28:41.000000000 +0000
-> @@ -1258,10 +1258,9 @@ retry_alloc:
->  		if (group_no >= ngroups)
->  			group_no = 0;
->  		gdp = ext2_get_group_desc(sb, group_no, &gdp_bh);
-> -		if (!gdp) {
-> -			*errp = -EIO;
-> -			goto out;
-> -		}
-> +		if (!gdp)
-> +			goto io_error;
-> +
->  		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
->  		/*
->  		 * skip this group if the number of
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
