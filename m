@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 2/6] ext2 balloc: reset windowsz when full
-Date: Tue, 28 Nov 2006 11:36:14 -0800
-Message-ID: <1164742574.3769.35.camel@dyn9047017103.beaverton.ibm.com>
+Subject: Re: [PATCH 3/6] ext2 balloc: fix off-by-one against rsv_end
+Date: Tue, 28 Nov 2006 11:42:16 -0800
+Message-ID: <1164742936.3769.42.camel@dyn9047017103.beaverton.ibm.com>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,7 +19,7 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281740110.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281740560.29701@blonde.wat.veritas.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -29,25 +29,44 @@ Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:47303 "EHLO
-	e36.co.us.ibm.com") by vger.kernel.org with ESMTP id S936064AbWK1TgS
+Received: from e33.co.us.ibm.com ([32.97.110.151]:61149 "EHLO
+	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S936070AbWK1TmU
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 14:36:18 -0500
+	Tue, 28 Nov 2006 14:42:20 -0500
 To: Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281740110.29701@blonde.wat.veritas.com>
+In-Reply-To: <Pine.LNX.4.64.0611281740560.29701@blonde.wat.veritas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2006-11-28 at 17:40 +0000, Hugh Dickins wrote:
-> ext2_new_blocks should reset the reservation window size to 0 when squeezing
-> the last blocks out of an almost full filesystem, so the retry doesn't skip
-> any groups with less than half that free, reporting ENOSPC too soon.
+On Tue, 2006-11-28 at 17:41 +0000, Hugh Dickins wrote:
+> rsv_end is the last block within the reservation,
+> so alloc_new_reservation should accept start_block == rsv_end as success.
+> 
+> Signed-off-by: Hugh Dickins <hugh@veritas.com>
+> ---
 > 
 
-I realize this is a bug when I was looking at the code as well. I was
-thinking we should not check for whether the window size is less than
-the free blocks counter at all, when the allocation is fall back to non
-reservation allocation. But your fix works as well.
+Thanks, Acked.
+
+This is not a problem for now, as the default window size is 8 blocks,
+and we never shrink the window size.  But it could be a issue in the
+future, if the reservation window could be dynamically shrink, when it
+keep failing to create a new(large) reservation window, or we keep throw
+away a just-allocated-window as the application is doing very seeky
+random write.
 
 
-Mingming
+>  fs/ext2/balloc.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> --- 2.6.19-rc6-mm2/fs/ext2/balloc.c	2006-11-24 08:18:02.000000000 +0000
+> +++ linux/fs/ext2/balloc.c	2006-11-27 19:28:41.000000000 +0000
+> @@ -950,7 +950,7 @@ retry:
+>  	 * check if the first free block is within the
+>  	 * free space we just reserved
+>  	 */
+> -	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
+> +	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+>  		return 0;		/* success */
+>  	/*
+>  	 * if the first free bit we found is out of the reservable space
