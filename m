@@ -1,115 +1,96 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: xfs preallocation writeup, for comparison
-Date: Tue, 28 Nov 2006 15:04:18 -0600
-Message-ID: <456CA452.2040302@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: Boot failure with ext2 and initrds
+Date: Tue, 28 Nov 2006 13:04:53 -0800
+Message-ID: <1164747894.3769.77.camel@dyn9047017103.beaverton.ibm.com>
+References: <20061114014125.dd315fff.akpm@osdl.org>
+	 <20061114184919.GA16020@skynet.ie>
+	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
+	 <20061114113120.d4c22b02.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
+	 <20061115232228.afaf42f2.akpm@osdl.org>
+	 <1163666960.4310.40.camel@localhost.localdomain>
+	 <20061116011351.1401a00f.akpm@osdl.org>
+	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
+	 <20061116132724.1882b122.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
+	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
+	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43971 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1755532AbWK1VEZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 16:04:25 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id kASL4OYb028483
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:24 -0500
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4JDv023225
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:19 -0500
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4IEh020154
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:19 -0500
-To: ext4 development <linux-ext4@vger.kernel.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:49795 "EHLO
+	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1755627AbWK1VE7
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 16:04:59 -0500
+To: Hugh Dickins <hugh@veritas.com>
+In-Reply-To: <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-As promised, here is a writeup of xfs preallocation routines.
+On Tue, 2006-11-28 at 17:38 +0000, Hugh Dickins wrote:
 
-I don't hold these up as the perfect or best way to do this task, but it
-is worth looking at what has been done before, to get ideas, find better
-ways, and avoid pitfalls for ext4.
+> >
+> > And could you check the start and end block for every rsv_window_add and
+> > rsv_window_remove, to see if it was keep creating and removing the same
+> > window in the same block group?
+> 
+> The same every time it settled on a usable reservation, but a lot of
+> wasted adds and removes as it works across a fully allocated area of
+> the bitmap.  Not very efficient, all those rb_tree insertions and
+> removals until it gets to a free area; but I can't judge from this
+> example how common that would be, may not be worth bothering about.
+> 
 
-XFS preallocation interfaces.
-=============================
+Yeah, it's not so efficient to add a window before knowing it has a free
+block, as rb tree insertion is quit expensive. Actually it used to be
+this way: only insert a window to the rb tree when there is a free bit
+inside of it. However we need to hold the per-fs reservation lock while
+scanning the bitmap:( This badly hurt the performance in some case and
+the real time folks complained about it. 
 
-The xfs preallocation interfaces are described in the xfsctl(3) manpage.
-It's not the best doc, so I'll summarize:
+So we changed the code to the current way. I think it was not that
+inefficient in the case it works across a fully allocated/reserved area,
+since bitmap_search_next_usable_block() will skip the fully allocated
+area fairly quickly, as it searchs from the beginning of the window till
+the last block of the block group (not just the end of the window)
 
-XFS has these ioctl calls for space managment of files:
 
-       XFS_IOC_ALLOCSP
-       XFS_IOC_FREESP
-       XFS_IOC_RESVSP
-       XFS_IOC_UNRESVSP
+> >
+> > And it might be useful to dump the whole filesystem block reservation
+> > tree as well.
+> 
+> Not necessary, I've put just the relevant numbers in the patch comment,
+> it helped me a lot to see the actual numbers and work it out from there.
+> 
+> >
+> > Not sure if it worth the effort to test it on ext3.  The ext2 block
+> > reservation code in 2.6.19-rc5-mm2 looks pretty much the same as ext3/4,
+> > except the missing truncate_mutex. I understand this might take a few
+> > days to reproduce, so this might not needed now.
+> 
+> Turns out vanilla-ext2 and ext3 and ext4 are safe:
+> ext3 and ext4 slightly wrong in the same way, but safe.
+> 
 
-All of these interfaces take an flock-style argument, and you use it to
-specify the range of bytes in the file which should be preallocated,
-essentially with an offset and a length.
+Good to know.
 
-The real work for all of this is done in xfs_change_file_space() in
-xfs_vnodeops.c
+> I'll continue this thread with the bugfix patch 1/6; and five more
+> (roughly descending order of importance, the latter just cosmetic)
+> little fs/ext2/balloc.c patches to things I noticed on the way.
+> Nothing very worrying.  Easier to send patches than ask questions:
+> please check, perhaps my "off-by-one" accusations are wrong, for
+> example.  If you're satisfied they're right, please apply the
+> same to ext3 and ext4.
+> 
 
-The main difference between resvsp and allocsp is that resvsp marks the
-blocks as "unwritten" meaning that they are allocated but not yet
-written to, and if they are read, they will return zeros.  allocsp
-actually writes zeros into the allocated blocks.  We can use the xfs_io
-tool to demonstrate.
-
-resvsp example:
-==============
-
-[root@magnesium test]# touch resvsp
-[root@magnesium test]# xfs_io resvsp
-xfs_io> resvsp 0 10g
-xfs_io> bmap -vp
-resvsp:
- EXT: FILE-OFFSET           BLOCK-RANGE        AG AG-OFFSET
-TOTAL FLAGS
-   0: [0..16657327]:        16657456..33314783  1 (64..16657391)
-16657328 10000
-   1: [16657328..20971519]: 96..4314287         0 (96..4314287)
-4314192 10000
-
-so we got 2 extents for this 10g file - those are actual filesystem
-blocks allocated.  The file is 0 length, but is using 10g of blocks:
-
-[root@magnesium test]# ls -lh resvsp
--rw-r--r--  1 root root 0 Nov 28 14:11 resvsp
-[root@magnesium test]# du -hc resvsp
-10G     resvsp
-10G     total
-
-The extents are simply flagged as unwritten (0x10000 above), so very
-little IO occurs and the space reservation is fast..
-
-allocsp example:
-===============
-(note there's a bit of a buglet in xfs_io, hence the swapped arguments)
-
-[root@magnesium test]# touch allocsp
-[root@magnesium test]# xfs_io allocsp
-xfs_io> allocsp 10g 0
-<wait for IO...>
-xfs_io> bmap -vp
-allocsp:
- EXT: FILE-OFFSET           BLOCK-RANGE        AG AG-OFFSET
-TOTAL
-   0: [0..16657327]:        33314848..49972175  2 (64..16657391)
-16657328
-   1: [16657328..20971519]: 4314288..8628479    0 (4314288..8628479)
-4314192
-
-We also got 2 extents here, but they are not flagged as unwritten -
-those filesystem blocks were all actually filled with zeros.
-
-[root@magnesium test]# ls -lh allocsp
--rw-r--r--  1 root root 10G Nov 28 14:19 allocsp
-[root@magnesium test]# du -hc allocsp
-10G     allocsp
-10G     total
-
-It would be very nice to see posix_fallocate hooked up to the underlying
-filesystem, so that it can make smart decisions about how to efficiently
-reserve space...
-
--Eric
+Thanks, I have acked most of them, and will port them to ext3/4 soon.
