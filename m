@@ -1,238 +1,76 @@
-From: akpm@osdl.org
-Subject: + ext4-if-expression-format.patch added to -mm tree
-Date: Mon, 27 Nov 2006 17:29:39 -0800
-Message-ID: <200611280129.kAS1TdTn022519@shell0.pdx.osdl.net>
-Cc: mathur@us.ibm.com, linux-ext4@vger.kernel.org
+From: Hugh Dickins <hugh@veritas.com>
+Subject: [PATCH 1/6] ext2 balloc: fix _with_rsv freeze
+Date: Tue, 28 Nov 2006 17:40:05 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
+References: <20061114014125.dd315fff.akpm@osdl.org>  <20061114184919.GA16020@skynet.ie>
+  <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
+ <20061114113120.d4c22b02.akpm@osdl.org>  <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+  <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+ <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
+ <20061115232228.afaf42f2.akpm@osdl.org>  <1163666960.4310.40.camel@localhost.localdomain>
+  <20061116011351.1401a00f.akpm@osdl.org>  <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
+  <20061116132724.1882b122.akpm@osdl.org>  <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
+  <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
+ <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+ <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+ <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:59031 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S933465AbWK1B3s (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Nov 2006 20:29:48 -0500
-To: mm-commits@vger.kernel.org
+Received: from extu-mxob-1.symantec.com ([216.10.194.28]:57753 "EHLO
+	extu-mxob-1.symantec.com") by vger.kernel.org with ESMTP
+	id S935965AbWK1Rjp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 12:39:45 -0500
+Received: from balaton.wat.veritas.com([10.10.97.7]) (3633 bytes) by megami.veritas.com
+	via sendmail with P:esmtp/R:smart_host/T:smtp
+	(sender: <hugh@veritas.com>)
+	id <m1Gp6vo-0000I8C@megami.veritas.com>
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 09:39:44 -0800 (PST)
+	(Smail-3.2.0.101 1997-Dec-17 #15 built 2001-Aug-30)
+To: Mingming Cao <cmm@us.ibm.com>
+In-Reply-To: <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+After several days of testing ext2 with reservations, it got caught inside
+ext2_try_to_allocate_with_rsv: alloc_new_reservation repeatedly succeeding
+on the window [12cff,12d0e], ext2_try_to_allocate repeatedly failing to
+find the free block guaranteed to be included (unless there's contention).
 
-The patch titled
-     ext4: if expression format
-has been added to the -mm tree.  Its filename is
-     ext4-if-expression-format.patch
+Fix the range to find_next_usable_block's memscan: the scan from "here"
+(0xcfe) up to (but excluding) "maxblocks" (0xd0e) needs to scan 3 bytes
+not 2 (the relevant bytes of bitmap in this case being f7 df ff - none
+00, but the premature cutoff implying that the last was found 00).
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+Is this a problem for mainline ext2?  No, because the "size" in its memscan
+is always EXT2_BLOCKS_PER_GROUP(sb), which mkfs.ext2 requires to be a
+multiple of 8.  Is this a problem for ext3 or ext4?  No, because they have
+an additional extN_test_allocatable test which rescues them from the error.
 
-------------------------------------------------------
-Subject: ext4: if expression format
-From: Avantika Mathur <mathur@us.ibm.com>
-
-changes instances of
-	if ((lhs = expression)) {
-
-to the preferred coding style
-
-	lhs=expression;
-	if (lhs) {
-
-Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
+Signed-off-by: Hugh Dickins <hugh@veritas.com>
 ---
+But the bigger question is, why does the my_rsv case come here to
+find_next_usable_block at all?  Doesn't its 64-bit boundary limit, and its
+memscan, blithely ignore what the reservation prepared?  It's messy too,
+the complement of the memscan being that "i < 7" loop over in
+ext2_try_to_allocate.  I think this ought to be cleaned up,
+in ext2+reservations and ext3 and ext4.
 
- fs/ext4/extents.c |   63 +++++++++++++++++++++++++++++---------------
- 1 files changed, 42 insertions(+), 21 deletions(-)
+ fs/ext2/balloc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/extents.c~ext4-if-expression-format fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4-if-expression-format
-+++ a/fs/ext4/extents.c
-@@ -186,7 +186,8 @@ static ext4_fsblk_t ext4_ext_find_goal(s
- 		depth = path->p_depth;
+--- 2.6.19-rc6-mm2/fs/ext2/balloc.c	2006-11-24 08:18:02.000000000 +0000
++++ linux/fs/ext2/balloc.c	2006-11-27 19:28:41.000000000 +0000
+@@ -570,7 +570,7 @@ find_next_usable_block(int start, struct
+ 		here = 0;
  
- 		/* try to predict block placement */
--		if ((ex = path[depth].p_ext))
-+		ex = path[depth].p_ext;
-+		if (ex)
- 			return ext_pblock(ex)+(block-le32_to_cpu(ex->ee_block));
+ 	p = ((char *)bh->b_data) + (here >> 3);
+-	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
++	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
+ 	next = (r - ((char *)bh->b_data)) << 3;
  
- 		/* it looks like index is empty;
-@@ -543,7 +544,8 @@ static int ext4_ext_insert_index(handle_
- 	struct ext4_extent_idx *ix;
- 	int len, err;
- 
--	if ((err = ext4_ext_get_access(handle, inode, curp)))
-+	err = ext4_ext_get_access(handle, inode, curp);
-+	if (err)
- 		return err;
- 
- 	BUG_ON(logical == le32_to_cpu(curp->p_idx->ei_block));
-@@ -665,7 +667,8 @@ static int ext4_ext_split(handle_t *hand
- 	}
- 	lock_buffer(bh);
- 
--	if ((err = ext4_journal_get_create_access(handle, bh)))
-+	err = ext4_journal_get_create_access(handle, bh);
-+	if (err)
- 		goto cleanup;
- 
- 	neh = ext_block_hdr(bh);
-@@ -702,18 +705,21 @@ static int ext4_ext_split(handle_t *hand
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
--	if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+	err = ext4_journal_dirty_metadata(handle, bh);
-+	if (err)
- 		goto cleanup;
- 	brelse(bh);
- 	bh = NULL;
- 
- 	/* correct old leaf */
- 	if (m) {
--		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		err = ext4_ext_get_access(handle, inode, path + depth);
-+		if (err)
- 			goto cleanup;
- 		path[depth].p_hdr->eh_entries =
- 		     cpu_to_le16(le16_to_cpu(path[depth].p_hdr->eh_entries)-m);
--		if ((err = ext4_ext_dirty(handle, inode, path + depth)))
-+		err = ext4_ext_dirty(handle, inode, path + depth);
-+		if (err)
- 			goto cleanup;
- 
- 	}
-@@ -736,7 +742,8 @@ static int ext4_ext_split(handle_t *hand
- 		}
- 		lock_buffer(bh);
- 
--		if ((err = ext4_journal_get_create_access(handle, bh)))
-+		err = ext4_journal_get_create_access(handle, bh);
-+		if (err)
- 			goto cleanup;
- 
- 		neh = ext_block_hdr(bh);
-@@ -780,7 +787,8 @@ static int ext4_ext_split(handle_t *hand
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
- 
--		if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+		err = ext4_journal_dirty_metadata(handle, bh);
-+		if (err)
- 			goto cleanup;
- 		brelse(bh);
- 		bh = NULL;
-@@ -854,7 +862,8 @@ static int ext4_ext_grow_indepth(handle_
- 	}
- 	lock_buffer(bh);
- 
--	if ((err = ext4_journal_get_create_access(handle, bh))) {
-+	err = ext4_journal_get_create_access(handle, bh);
-+	if (err) {
- 		unlock_buffer(bh);
- 		goto out;
- 	}
-@@ -874,11 +883,13 @@ static int ext4_ext_grow_indepth(handle_
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
--	if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+	err = ext4_journal_dirty_metadata(handle, bh);
-+	if (err)
- 		goto out;
- 
- 	/* create index in new top-level index: num,max,pointer */
--	if ((err = ext4_ext_get_access(handle, inode, curp)))
-+	err = ext4_ext_get_access(handle, inode, curp);
-+	if (err)
- 		goto out;
- 
- 	curp->p_hdr->eh_magic = EXT4_EXT_MAGIC;
-@@ -1070,20 +1081,24 @@ int ext4_ext_correct_indexes(handle_t *h
- 	 */
- 	k = depth - 1;
- 	border = path[depth].p_ext->ee_block;
--	if ((err = ext4_ext_get_access(handle, inode, path + k)))
-+	err = ext4_ext_get_access(handle, inode, path + k);
-+	if (err)
- 		return err;
- 	path[k].p_idx->ei_block = border;
--	if ((err = ext4_ext_dirty(handle, inode, path + k)))
-+	err = ext4_ext_dirty(handle, inode, path + k);
-+	if (err)
- 		return err;
- 
- 	while (k--) {
- 		/* change all left-side indexes */
- 		if (path[k+1].p_idx != EXT_FIRST_INDEX(path[k+1].p_hdr))
- 			break;
--		if ((err = ext4_ext_get_access(handle, inode, path + k)))
-+		err = ext4_ext_get_access(handle, inode, path + k);
-+		if (err)
- 			break;
- 		path[k].p_idx->ei_block = border;
--		if ((err = ext4_ext_dirty(handle, inode, path + k)))
-+		err = ext4_ext_dirty(handle, inode, path + k);
-+		if (err)
- 			break;
- 	}
- 
-@@ -1142,7 +1157,8 @@ int ext4_ext_insert_extent(handle_t *han
- 				le16_to_cpu(newext->ee_len),
- 				le32_to_cpu(ex->ee_block),
- 				le16_to_cpu(ex->ee_len), ext_pblock(ex));
--		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		err = ext4_ext_get_access(handle, inode, path + depth);
-+		if (err)
- 			return err;
- 		ex->ee_len = cpu_to_le16(le16_to_cpu(ex->ee_len)
- 					 + le16_to_cpu(newext->ee_len));
-@@ -1192,7 +1208,8 @@ repeat:
- has_space:
- 	nearex = path[depth].p_ext;
- 
--	if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+	err = ext4_ext_get_access(handle, inode, path + depth);
-+	if (err)
- 		goto cleanup;
- 
- 	if (!nearex) {
-@@ -1486,10 +1503,12 @@ int ext4_ext_rm_idx(handle_t *handle, st
- 	path--;
- 	leaf = idx_pblock(path->p_idx);
- 	BUG_ON(path->p_hdr->eh_entries == 0);
--	if ((err = ext4_ext_get_access(handle, inode, path)))
-+	err = ext4_ext_get_access(handle, inode, path);
-+	if (err)
- 		return err;
- 	path->p_hdr->eh_entries = cpu_to_le16(le16_to_cpu(path->p_hdr->eh_entries)-1);
--	if ((err = ext4_ext_dirty(handle, inode, path)))
-+	err = ext4_ext_dirty(handle, inode, path);
-+	if (err)
- 		return err;
- 	ext_debug("index is empty, remove it, free block %llu\n", leaf);
- 	bh = sb_find_get_block(inode->i_sb, leaf);
-@@ -1929,7 +1948,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 	mutex_lock(&EXT4_I(inode)->truncate_mutex);
- 
- 	/* check in cache */
--	if ((goal = ext4_ext_in_cache(inode, iblock, &newex))) {
-+	goal = ext4_ext_in_cache(inode, iblock, &newex);
-+	if (goal) {
- 		if (goal == EXT4_EXT_CACHE_GAP) {
- 			if (!create) {
- 				/* block isn't allocated yet and
-@@ -1968,7 +1988,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 	 */
- 	BUG_ON(path[depth].p_ext == NULL && depth != 0);
- 
--	if ((ex = path[depth].p_ext)) {
-+	ex = path[depth].p_ext;
-+	if (ex) {
- 	        unsigned long ee_block = le32_to_cpu(ex->ee_block);
- 		ext4_fsblk_t ee_start = ext_pblock(ex);
- 		unsigned short ee_len  = le16_to_cpu(ex->ee_len);
-_
-
-Patches currently in -mm which might be from mathur@us.ibm.com are
-
-ext4-if-expression-format.patch
-ext4-kmalloc-to-kzalloc.patch
-ext4-eliminate-inline-functions.patch
+ 	if (next < maxblocks && next >= here)
