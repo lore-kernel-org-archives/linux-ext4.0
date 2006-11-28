@@ -1,96 +1,995 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Boot failure with ext2 and initrds
-Date: Tue, 28 Nov 2006 13:04:53 -0800
-Message-ID: <1164747894.3769.77.camel@dyn9047017103.beaverton.ibm.com>
-References: <20061114014125.dd315fff.akpm@osdl.org>
-	 <20061114184919.GA16020@skynet.ie>
-	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
-	 <20061114113120.d4c22b02.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
-	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
-	 <20061115232228.afaf42f2.akpm@osdl.org>
-	 <1163666960.4310.40.camel@localhost.localdomain>
-	 <20061116011351.1401a00f.akpm@osdl.org>
-	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
-	 <20061116132724.1882b122.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
-	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
-	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-Reply-To: cmm@us.ibm.com
+From: Harry Papaxenopoulos <harry@cs.sunysb.edu>
+Subject: [RFC][PATCH 1/1] Comprehensive Secure Deletion for ext4
+Date: Tue, 28 Nov 2006 17:22:07 -0500 (EST)
+Message-ID: <Pine.GSO.4.53.0611281709170.8970@compserv1>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
-	"Martin J. Bligh" <mbligh@mbligh.org>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: kolya@cs.sunysb.edu, ezk@cs.sunysb.edu, jsipek@cs.sunysb.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:49795 "EHLO
-	e33.co.us.ibm.com") by vger.kernel.org with ESMTP id S1755627AbWK1VE7
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 16:04:59 -0500
-To: Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
+Received: from sbcs.sunysb.edu ([130.245.1.15]:42948 "EHLO sbcs.cs.sunysb.edu")
+	by vger.kernel.org with ESMTP id S1757655AbWK1WWU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 17:22:20 -0500
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2006-11-28 at 17:38 +0000, Hugh Dickins wrote:
+Hello All,
 
-> >
-> > And could you check the start and end block for every rsv_window_add and
-> > rsv_window_remove, to see if it was keep creating and removing the same
-> > window in the same block group?
-> 
-> The same every time it settled on a usable reservation, but a lot of
-> wasted adds and removes as it works across a fully allocated area of
-> the bitmap.  Not very efficient, all those rb_tree insertions and
-> removals until it gets to a free area; but I can't judge from this
-> example how common that would be, may not be worth bothering about.
-> 
+As promised a few weeks ago, we have composed a complete patch to add
+secure deletion functionality in ext4. With this patch, we can ensure
+that data, meta-data and the filename of any file marked with the
+special attribute "s", are overwritten right after it is deleted.
 
-Yeah, it's not so efficient to add a window before knowing it has a free
-block, as rb tree insertion is quit expensive. Actually it used to be
-this way: only insert a window to the rb tree when there is a free bit
-inside of it. However we need to hold the per-fs reservation lock while
-scanning the bitmap:( This badly hurt the performance in some case and
-the real time folks complained about it. 
+The patch performs N overwrites with configurable patterns. It can
+handle separate overwrite configurations for each of the data, meta-data
+and directory entry. In order to handle partial file truncations, our
+patch will intercept truncate requests in addition to unlink requests
+(something that user-mode programs such as shred cannot handle).
+Moreover, to make the data overwrites and file truncation an atomic
+operation, we add the file to an orphan list right before we begin to
+overwrite and remove it from the orphan list after truncation has
+finished. The patch works in all journaling modes.
 
-So we changed the code to the current way. I think it was not that
-inefficient in the case it works across a fully allocated/reserved area,
-since bitmap_search_next_usable_block() will skip the fully allocated
-area fairly quickly, as it searchs from the beginning of the window till
-the last block of the block group (not just the end of the window)
+As far as the journal is concerned, we leave it untouched. There are a
+few reasons behind this approach. First, performance will be noticeably
+hindered. This is because the journal will have to postpone all further
+transactions until the necessary blocks are overwritten - which will
+take time. Secondly, by the time we want to overwrite the necessary
+blocks, the journal will have already done this for us by committing all
+further transactions, especially in full journaling mode. That said, if
+the community will appear to also want secure-deletion of journal
+records, then we can add that (probably as a separate feature one can
+turn on independently).
 
+Secure deletion arguments during mount time are of the form:
 
-> >
-> > And it might be useful to dump the whole filesystem block reservation
-> > tree as well.
-> 
-> Not necessary, I've put just the relevant numbers in the patch comment,
-> it helped me a lot to see the actual numbers and work it out from there.
-> 
-> >
-> > Not sure if it worth the effort to test it on ext3.  The ext2 block
-> > reservation code in 2.6.19-rc5-mm2 looks pretty much the same as ext3/4,
-> > except the missing truncate_mutex. I understand this might take a few
-> > days to reproduce, so this might not needed now.
-> 
-> Turns out vanilla-ext2 and ext3 and ext4 are safe:
-> ext3 and ext4 slightly wrong in the same way, but safe.
-> 
+mount -t ext4dev -o secdel="args" [dev] [mnt]
 
-Good to know.
+where args is a 6-way list delimited by colons as such:
 
-> I'll continue this thread with the bugfix patch 1/6; and five more
-> (roughly descending order of importance, the latter just cosmetic)
-> little fs/ext2/balloc.c patches to things I noticed on the way.
-> Nothing very worrying.  Easier to send patches than ask questions:
-> please check, perhaps my "off-by-one" accusations are wrong, for
-> example.  If you're satisfied they're right, please apply the
-> same to ext3 and ext4.
-> 
+secdel="N1:S1:N2:S2:N3:S3"
 
-Thanks, I have acked most of them, and will port them to ext3/4 soon.
+N1,N2,N3 denote the number of overwrites for data,meta-data and the
+filename respectively.
+
+S1,S2,S3 denote the character sequence used to overwrite data,meta-data
+and the filename respectively. Random character sequences are denoted by
+'R'.
+
+Any item that is left empty is not securely deleted.
+
+In addition, if one wants to secure-delete all portions of a file, an
+abbreviated format can be used as such:
+
+secdel="N:S"
+
+N denotes the number of overwrites chosen
+S denotes the character sequence to use for overwriting
+
+For example, the mount option:
+
+secdel="2:Rc0:::1:\0"
+
+Means that data will be overwritten once using a random character,
+then once using the ASCII character 'c', and finally once more using the
+ASCII character 0. Finally this whole sequence will be written 2 times.
+Meta-data will not be touched and the filename will be overwritten 1
+time with the value zero.
+
+Any comments, help or feedback will be greatly appreciated.
+
+Thank you,
+Harry Papaxenopoulos, Nikolai Joukov, and Erez Zadok
+--------------------------------------
+File systems and Storage Laboratory
+Stony Brook University
+--------------------------------------
+
+Signed-off-by: Harry Papaxenopoulos <harry@cs.sunysb.edu>
+Signed-off-by: Nikolai Joukov <kolya@cs.sunysb.edu>
+Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
+Signed-off-by: Jeff Sipek <jsipek@cs.sunysb.edu>
+
+diff -Naur 2.6.19-rc6/fs/ext4/inode.c 2.6.19-rc6sd/fs/ext4/inode.c
+--- 2.6.19-rc6/fs/ext4/inode.c	2006-11-28 16:08:08.000000000 -0500
++++ 2.6.19-rc6sd/fs/ext4/inode.c	2006-11-28 16:09:10.000000000 -0500
+@@ -37,8 +37,10 @@
+ #include <linux/mpage.h>
+ #include <linux/uio.h>
+ #include <linux/bio.h>
++#include <linux/random.h>
+ #include "xattr.h"
+ #include "acl.h"
++#include "secrm.h"
+
+ /*
+  * Test whether an inode is a fast symlink.
+@@ -201,8 +203,19 @@
+ 	if (IS_SYNC(inode))
+ 		handle->h_sync = 1;
+ 	inode->i_size = 0;
++#ifndef CONFIG_EXT4DEV_FS_SECRM
+ 	if (inode->i_blocks)
+ 		ext4_truncate(inode);
++#else
++	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL)
++		ext4_journal_stop(handle);
++	if (inode->i_blocks)
++		ext4_truncate(inode);
++	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
++		ext4_secrm_metadata(inode);
++		handle = start_transaction(inode);
++	}
++#endif
+ 	/*
+ 	 * Kill off the orphan record which ext4_truncate created.
+ 	 * AKPM: I think this can be inside the above `if'.
+@@ -1082,6 +1095,272 @@
+ 	return NULL;
+ }
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++static int ext4_ovwt_blocks(handle_t *handle, struct inode *inode, char param,
++						sector_t first, sector_t last)
++{
++	int retval = 0;
++	sector_t sector;
++	sector_t batch = DIO_CREDITS;
++	struct buffer_head *bh = NULL;
++	struct buffer_head tmp;
++	struct super_block *sb;
++	J_ASSERT(handle != NULL);
++
++	tmp.b_state = 0;
++	tmp.b_blocknr = 0;
++	sb = inode->i_sb;
++
++	J_ASSERT( last >= first );
++
++	if (IS_ERR(handle)) {
++		retval = PTR_ERR(handle);
++		goto out;
++	}
++
++	for (sector = first; sector <= last; sector++) {
++		if (handle->h_buffer_credits <= EXT4_RESERVE_TRANS_BLOCKS) {
++			retval = ext4_journal_extend(handle, DIO_CREDITS);
++			if (retval)
++				retval = ext4_journal_restart(handle,
++							DIO_CREDITS);
++			if (retval)
++				goto out;
++		}
++
++		ext4_get_block(inode, sector, &tmp, 0);
++		bh = sb_getblk(sb, tmp.b_blocknr);
++		if (!bh)
++			continue;
++
++		if (ext4_should_journal_data(inode)) {
++			retval = ext4_journal_get_write_access(handle, bh);
++			if (retval)
++				goto out;
++		}
++
++		lock_buffer(bh);
++		if (param == RANDOM)
++			get_random_bytes(bh->b_data, bh->b_size);
++		else
++			memset(bh->b_data, param, bh->b_size);
++		unlock_buffer(bh);
++
++		if (ext4_should_journal_data(inode)) {
++			set_buffer_uptodate(bh);
++			retval = ext4_journal_dirty_metadata(handle, bh);
++			if (retval)
++				goto out;
++		} else {
++			if (ext4_should_order_data(inode)) {
++				retval = ext4_journal_dirty_data(handle, bh);
++				if (retval)
++					goto out;
++			}
++			mark_buffer_dirty(bh);
++		}
++		brelse(bh);
++	}
++	bh = NULL;
++out:
++	if (retval)
++		ext4_journal_abort_handle(NULL, NULL, bh, handle, retval);
++	if (bh)
++		brelse(bh);
++	return retval;
++}
++
++static int ext4_ovwt_metadata(handle_t *handle, struct inode *inode, char param)
++{
++	int retval = 0;
++	int param_int = 0;
++
++	if (param == RANDOM)
++		get_random_bytes((char *)&param_int, sizeof(int));
++	else
++		param_int = param | param<<8 | param<<16 | param<<24;
++
++	inode->i_uid = param_int;
++	inode->i_gid = param_int;
++	inode->i_atime.tv_sec = param_int;
++	inode->i_atime.tv_nsec = param_int;
++	inode->i_mtime.tv_sec = param_int;
++	inode->i_mtime.tv_nsec = param_int;
++	inode->i_ctime.tv_sec = param_int;
++	inode->i_ctime.tv_nsec = param_int;
++
++	return retval;
++}
++
++int ext4_secure_truncate(struct inode *inode, sector_t first, sector_t last)
++{
++
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	int err = 0;
++	int num_ovwt = 0;
++	int char_pos = 0;
++	handle_t *handle;
++
++	/*
++	 * Copy all secure deletion options so I don't have to de-reference
++	 * every time.
++	 */
++	int data_num = sbi->s_data_num_ovwt;
++	int data_size = sbi->s_data_char_size;
++	char *data_c = sbi->s_data_char;
++
++	/*
++	 * I'm adding the inode to the orphan in a dirty way (making it a
++	 * transaction of it's own), since I don't want to add it inside the
++	 * loop. I should put it within the first transaction since
++	 * I'll probably have a performance hit if I keep it here.
++	 */
++	handle = ext4_journal_start(inode, DIO_CREDITS);
++
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		goto out;
++	}
++
++	/*
++	 * Ok start secure truncation. Add the inode to the orhpan list
++	 * for any possible crashes during the operation.
++	 */
++	if (ext4_orphan_add(handle, inode))
++		goto out;
++
++	ext4_journal_stop(handle);
++
++	handle = NULL;
++
++next_ovwt:
++	char_pos = 0;
++	while (char_pos < data_size) {
++
++		handle = ext4_journal_start(inode, DIO_CREDITS);
++
++		if (IS_ERR(handle)) {
++			err = PTR_ERR(handle);
++			goto del_orphan_out;
++		}
++		if (char_pos < data_size && num_ovwt < data_num) {
++			err = ext4_ovwt_blocks(handle, inode,
++					*(data_c + char_pos), first, last);
++			if (err)
++				goto stop_out;
++		}
++
++		ext4_journal_stop(handle);
++
++		jbd2_journal_lock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		err = jbd2_journal_flush(EXT4_SB(inode->i_sb)->s_journal);
++		jbd2_journal_unlock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		if (err)
++			goto del_orphan_out;
++		err = sync_blockdev(inode->i_sb->s_bdev);
++		if (err)
++			goto del_orphan_out;
++
++		char_pos++;
++
++
++	}
++	num_ovwt++;
++
++	if (num_ovwt < data_num)
++		goto next_ovwt;
++
++	return err;
++stop_out:
++	ext4_journal_stop(handle);
++del_orphan_out:
++	ext4_orphan_del(handle, inode);
++out:
++	return err;
++}
++
++int ext4_secrm_metadata(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	int err = 0;
++	int num_ovwt = 0;
++	int char_pos = 0;
++	handle_t *handle;
++
++	/*
++	 * Copy all secure deletion options so I don't have to dereference
++	 * every time.
++	 */
++	int meta_num = sbi->s_meta_num_ovwt;
++	int meta_size = sbi->s_meta_char_size;
++	char *meta_c = sbi->s_meta_char;
++
++	/* I'm adding the inode to the orphan in a dirty way (making it a
++	 * transaction of it's own), since I don't want to add it inside the
++	 * loop. Normally I should put it within the first transaction since
++	 * I'll probably have a performance hit if I keep it here.
++	 */
++	handle = ext4_journal_start(inode, DIO_CREDITS);
++
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		goto out;
++	}
++
++	if (ext4_orphan_add(handle, inode))
++		goto out;
++
++	ext4_journal_stop(handle);
++
++	handle = NULL;
++
++
++next_ovwt:
++	char_pos = 0;
++	while (char_pos < meta_size) {
++
++		handle = ext4_journal_start(inode, DIO_CREDITS);
++
++		if (IS_ERR(handle)) {
++			err = PTR_ERR(handle);
++			goto del_orphan_out;
++		}
++
++		if (char_pos < meta_size && num_ovwt < meta_num) {
++			err = ext4_ovwt_metadata(handle, inode,
++						 *(meta_c + char_pos));
++			if (err)
++				goto stop_out;
++			mark_inode_dirty(inode);
++		}
++
++		ext4_journal_stop(handle);
++
++		jbd2_journal_lock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		err = jbd2_journal_flush(EXT4_SB(inode->i_sb)->s_journal);
++		jbd2_journal_unlock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		if (err)
++			goto del_orphan_out;
++		err = sync_blockdev(inode->i_sb->s_bdev);
++		if (err)
++			goto del_orphan_out;
++		char_pos++;
++	}
++	num_ovwt++;
++
++	if (num_ovwt < meta_num)
++		goto next_ovwt;
++
++	return err;
++stop_out:
++	ext4_journal_stop(handle);
++del_orphan_out:
++	ext4_orphan_del(handle,inode);
++out:
++	return err;
++}
++#endif
++
+ static int walk_page_buffers(	handle_t *handle,
+ 				struct buffer_head *head,
+ 				unsigned from,
+@@ -2239,6 +2518,11 @@
+ 	long last_block;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	struct page *page;
++	__u32 i_flags;
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	sector_t first;
++	sector_t last;
++#endif
+
+ 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+ 	    S_ISLNK(inode->i_mode)))
+@@ -2262,6 +2546,20 @@
+ 			return;
+ 	}
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	last_block = (inode->i_size + blocksize-1)
++					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
++
++	first = last_block;
++	last = (ei->i_disksize + blocksize-1)
++					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
++
++	if (EXT4_I(inode)->i_flags & EXT4_SECRM_FL) {
++		if (ext4_secure_truncate(inode, first, last))
++			return;
++	}
++#endif
++
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
+ 		return ext4_ext_truncate(inode, page);
+
+@@ -2276,8 +2574,10 @@
+ 		return;		/* AKPM: return what? */
+ 	}
+
++#ifndef CONFIG_EXT4DEV_FS_SECRM
+ 	last_block = (inode->i_size + blocksize-1)
+ 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
++#endif
+
+ 	if (page)
+ 		ext4_block_truncate_page(handle, page, mapping, inode->i_size);
+@@ -2286,7 +2586,22 @@
+ 	if (n == 0)
+ 		goto out_stop;	/* error */
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	i_flags = EXT4_I(inode)->i_flags;
++#else
++	/*
++	 * Get rid of the SECRM_FL just in case a user set it.
++	 */
++	i_flags = EXT4_I(inode)->i_flags & ~EXT4_SECRM_FL;
++#endif
++
+ 	/*
++	 * If secure removal is compiled in the file-system, we have
++	 * already added the inode to the orphan list because we need to
++	 * make the overwrites and the truncation an atomic operation.
++	 * Otherwise under any system crash our inode will not be correctly
++	 * deleted.
++	 *
+ 	 * OK.  This truncate is going to happen.  We add the inode to the
+ 	 * orphan list, so that if this truncate spans multiple transactions,
+ 	 * and we crash, we will resume the truncate when the filesystem
+@@ -2295,8 +2610,10 @@
+ 	 * Implication: the file must always be in a sane, consistent
+ 	 * truncatable state while each transaction commits.
+ 	 */
+-	if (ext4_orphan_add(handle, inode))
+-		goto out_stop;
++	if (!i_flags & EXT4_SECRM_FL) {
++		if (ext4_orphan_add(handle, inode))
++			goto out_stop;
++	}
+
+ 	/*
+ 	 * The orphan list entry will now protect us from any crash which
+diff -Naur 2.6.19-rc6/fs/ext4/namei.c 2.6.19-rc6sd/fs/ext4/namei.c
+--- 2.6.19-rc6/fs/ext4/namei.c	2006-11-28 16:08:08.000000000 -0500
++++ 2.6.19-rc6sd/fs/ext4/namei.c	2006-11-28 16:09:10.000000000 -0500
+@@ -37,10 +37,12 @@
+ #include <linux/buffer_head.h>
+ #include <linux/bio.h>
+ #include <linux/smp_lock.h>
++#include <linux/random.h>
+
+ #include "namei.h"
+ #include "xattr.h"
+ #include "acl.h"
++#include "secrm.h"
+
+ /*
+  * define how far ahead to read directories while searching them.
+@@ -2061,23 +2063,110 @@
+ 	return retval;
+ }
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++static int ext4_ovwt_dentry(handle_t *handle, struct buffer_head *bh,
++				struct ext4_dir_entry_2 *de, char param)
++{
++	int retval = 0;
++
++	if ((retval = ext4_journal_get_write_access(handle, bh)) )
++		goto out;
++
++	if (test_set_buffer_locked(bh))
++		goto out;
++
++	if (param == RANDOM)
++		get_random_bytes(de->name, de->name_len);
++	else
++		memset(de->name, param, de->name_len);
++
++	unlock_buffer(bh);
++
++	retval = ext4_journal_dirty_data(handle, bh);
++out:
++	return retval;
++}
++
++static int ext4_secrm_dentry(struct inode *inode, struct buffer_head *bh,
++			struct ext4_dir_entry_2 *de)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	int err = 0;
++	int num_ovwt = 0;
++	int char_pos = 0;
++	handle_t *handle;
++
++	/*
++	 * Copy secure removal options for the filename so I don't have to
++	 * dereference every time.
++	 */
++	int file_num = sbi->s_file_num_ovwt;
++	int file_size = sbi->s_file_char_size;
++	char *file_c = sbi->s_file_char;
++
++next_ovwt:
++	char_pos = 0;
++	while (char_pos < file_size ) {
++
++		handle = ext4_journal_start(inode, 1);
++
++		if (IS_ERR(handle)) {
++			err = PTR_ERR(handle);
++			goto out;
++		}
++
++		err = ext4_ovwt_dentry(handle, bh, de, *(file_c + char_pos));
++		if (err)
++			goto stop_out;
++
++		ext4_journal_stop(handle);
++
++		/*
++		 * TODO: I don't think we need to explicitly flush the
++		 * journal. Since each transaction is atomic, the jbd
++		 * will take care of checkpointing the journal. Should
++		 * check this out. If we can we should get rid of this,
++		 * since it might be a performance hit for no reason.
++		 */
++		jbd2_journal_lock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		err = jbd2_journal_flush(EXT4_SB(inode->i_sb)->s_journal);
++		jbd2_journal_unlock_updates(EXT4_SB(inode->i_sb)->s_journal);
++		if (err)
++			goto out;
++		char_pos++;
++	}
++	num_ovwt++;
++
++	if (num_ovwt < file_num)
++		goto next_ovwt;
++
++	return err;
++stop_out:
++	ext4_journal_stop(handle);
++out:
++	return err;
++}
++#endif
++
+ static int ext4_unlink(struct inode * dir, struct dentry *dentry)
+ {
+ 	int retval;
+ 	struct inode * inode;
+ 	struct buffer_head * bh;
+ 	struct ext4_dir_entry_2 * de;
+-	handle_t *handle;
++	handle_t *handle = NULL;
+
+ 	/* Initialize quotas before so that eventual writes go
+ 	 * in separate transaction */
+ 	DQUOT_INIT(dentry->d_inode);
++#ifndef CONFIG_EXT4DEV_FS_SECRM
+ 	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+
+ 	if (IS_DIRSYNC(dir))
+ 		handle->h_sync = 1;
++#endif
+
+ 	retval = -ENOENT;
+ 	bh = ext4_find_entry (dentry, &de);
+@@ -2096,6 +2185,20 @@
+ 			      inode->i_ino, inode->i_nlink);
+ 		inode->i_nlink = 1;
+ 	}
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	if (EXT4_I(dentry->d_inode)->i_flags & EXT4_SECRM_FL) {
++		retval = ext4_secrm_dentry(inode, bh, de);
++		if (retval)
++			goto end_nostop;
++	}
++	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
++	if (IS_DIRSYNC(dir))
++		handle->h_sync = 1;
++#endif
++
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_unlink;
+@@ -2111,6 +2214,9 @@
+
+ end_unlink:
+ 	ext4_journal_stop(handle);
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++end_nostop:
++#endif
+ 	brelse (bh);
+ 	return retval;
+ }
+diff -Naur 2.6.19-rc6/fs/ext4/secrm.h 2.6.19-rc6sd/fs/ext4/secrm.h
+--- 2.6.19-rc6/fs/ext4/secrm.h	1969-12-31 19:00:00.000000000 -0500
++++ 2.6.19-rc6sd/fs/ext4/secrm.h	2006-11-28 16:09:10.000000000 -0500
+@@ -0,0 +1,16 @@
++/*  linux/fs/ext3/secrm.h
++ *
++ * Copyright (C) 2006 Stony Brook University
++ *
++ */
++
++/*Special character for random bit generation */
++#define RANDOM 'R'
++
++/* inode.c */
++extern int ext4_secrm_metadata(struct inode *inode);
++extern int ext4_secure_truncate(struct inode *inode, sector_t first,
++				sector_t last);
++/* super.c */
++extern int ext4_store_secrm_options(struct ext4_sb_info *sbi, char *args);
++extern void ext4_secrm_put_super(struct ext4_sb_info *sbi);
+diff -Naur 2.6.19-rc6/fs/ext4/super.c 2.6.19-rc6sd/fs/ext4/super.c
+--- 2.6.19-rc6/fs/ext4/super.c	2006-11-28 16:08:08.000000000 -0500
++++ 2.6.19-rc6sd/fs/ext4/super.c	2006-11-28 16:09:10.000000000 -0500
+@@ -41,6 +41,7 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "namei.h"
++#include "secrm.h"
+
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
+@@ -462,6 +463,10 @@
+ 		kfree(sbi->s_qf_names[i]);
+ #endif
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	ext4_secrm_put_super(sbi);
++#endif
++
+ 	/* Debugging code just in case the in-memory inode orphan list
+ 	 * isn't empty.  The on-disk one can be non-empty if we've
+ 	 * detected an error and taken the fs readonly, but the
+@@ -728,7 +733,7 @@
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+ 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+-	Opt_grpquota, Opt_extents,
++	Opt_grpquota, Opt_extents, Opt_secrm,
+ };
+
+ static match_table_t tokens = {
+@@ -779,6 +784,7 @@
+ 	{Opt_usrquota, "usrquota"},
+ 	{Opt_barrier, "barrier=%u"},
+ 	{Opt_extents, "extents"},
++	{Opt_secrm, "secdel=%s"},
+ 	{Opt_err, NULL},
+ 	{Opt_resize, "resize"},
+ };
+@@ -817,6 +823,9 @@
+ 	int qtype;
+ 	char *qname;
+ #endif
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	char *sd_params;
++#endif
+
+ 	if (!options)
+ 		return 1;
+@@ -1108,6 +1117,31 @@
+ 		case Opt_nobh:
+ 			set_opt(sbi->s_mount_opt, NOBH);
+ 			break;
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++		case Opt_secrm:
++			sd_params = match_strdup(&args[0]);
++			if (!sd_params) {
++				printk(KERN_ERR
++					"EXT4-fs: not enough memory to "
++					"store secure removal options.\n");
++					return 0;
++			}
++			if (ext4_store_secrm_options(sbi, sd_params)) {
++				printk(KERN_ERR
++					"EXT4-fs: invalid option(s) for "
++					"secure removal.\n");
++				kfree(sd_params);
++				return 0;
++			}
++			kfree(sd_params);
++			break;
++#else
++			case Opt_secrm:
++			printk(KERN_ERR
++				"EXT3-fs: secure removal option not "
++				"supported.\n");
++			break;
++#endif
+ 		case Opt_bh:
+ 			clear_opt(sbi->s_mount_opt, NOBH);
+ 			break;
+@@ -1533,6 +1567,13 @@
+ 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	/* Set default options for secure deletion. */
++	sbi->s_data_num_ovwt = 0;
++	sbi->s_meta_num_ovwt = 0;
++	sbi->s_file_num_ovwt = 0;
++#endif
++
+ 	set_opt(sbi->s_mount_opt, RESERVATION);
+
+ 	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
+@@ -2782,6 +2823,191 @@
+
+ #endif
+
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++enum {
++	opt_num, opt_chars, opt_err,
++};
++
++enum {
++	/*
++	 * Ordering is important!
++	 */
++	data_num, data_str, meta_num, meta_str, file_num, file_str,
++};
++
++static match_table_t sd_tokens = {
++	{opt_num, "%u"},
++	{opt_chars, "%s"},
++	{opt_err, NULL},
++};
++
++/*
++ * Called by parse_options to set internal options for secure deletion.
++ * Returns 0 on sucess, 1 otherwise.
++ */
++int ext4_store_secrm_options(struct ext4_sb_info *sbi, char *options)
++{
++	int err = 0;
++	int args_parsed = 0;
++	int token;
++	char * p;
++	substring_t args[MAX_OPT_ARGS];
++
++	u32 num_ovwt = 0;
++	u32 data_ovwt = 0;
++	u32 meta_ovwt = 0;
++	u32 file_ovwt = 0;
++	char *ovwt_chars = NULL;
++	char *data_chars = NULL;
++	char *meta_chars = NULL;
++	char *file_chars = NULL;
++
++	if (!options)
++		return 1;
++	while ((p = strsep (&options, ":")) != NULL) {
++
++		token = match_token(p, sd_tokens, args);
++		if (!*p) {
++			args_parsed++;
++			continue;
++		}
++
++		switch (token) {
++		case opt_num:
++			switch(args_parsed) {
++			case data_num:
++				err = match_int(&args[0], &data_ovwt);
++				if (err)
++					goto err_out;
++			break;
++			case meta_num:
++				err = match_int(&args[0], &meta_ovwt);
++				if (err)
++					goto err_out;
++			break;
++			case file_num:
++				err = match_int(&args[0], &file_ovwt);
++				if (err)
++					goto err_out;
++			break;
++			default:
++				err = -EINVAL;
++				goto err_out;
++			}
++		break;
++		case opt_chars:
++			switch(args_parsed) {
++			case data_str:
++				data_chars = match_strdup(&args[0]);
++				if (!data_chars) {
++					err = -ENOMEM;
++					goto err_out;
++				}
++			break;
++			case meta_str:
++				meta_chars = match_strdup(&args[0]);
++				if (!meta_chars) {
++					err = -ENOMEM;
++					goto err_out;
++				}
++			break;
++			case file_str:
++				file_chars = match_strdup(&args[0]);
++				if (!file_chars) {
++					err = -ENOMEM;
++					goto err_out;
++				}
++			break;
++			default:
++				err = -EINVAL;
++				goto err_out;
++			}
++		break;
++		default:
++			err = -EINVAL;
++			goto err_out;
++		}
++		args_parsed++;
++	}
++
++	if (args_parsed == 6) {
++		if ((!data_ovwt && data_chars) || (data_ovwt && !data_chars)) {
++			err = -EINVAL;
++			goto err_out;
++		}
++		if ((!meta_ovwt && meta_chars) || (meta_ovwt && !meta_chars)) {
++			err = -EINVAL;
++			goto err_out;
++		}
++		if ((!file_ovwt && file_chars) || (file_ovwt && !file_chars)) {
++			err = -EINVAL;
++			goto err_out;
++		}
++	} else if (args_parsed == 2) {
++		if (data_ovwt < 1 || !data_chars) {
++			err = -EINVAL;
++			goto err_out;
++		}
++		num_ovwt = data_ovwt;
++		ovwt_chars = data_chars;
++	} else {
++		err = -EINVAL;
++		goto err_out;
++	}
++
++	/* Now populate the sbi */
++	sbi->s_data_num_ovwt = data_ovwt ? data_ovwt : num_ovwt;
++	sbi->s_meta_num_ovwt = meta_ovwt ? meta_ovwt : num_ovwt;
++	sbi->s_file_num_ovwt = file_ovwt ? file_ovwt : num_ovwt;
++
++	if (data_chars) {
++		sbi->s_data_char = data_chars;
++		sbi->s_data_char_size = strlen(data_chars);
++	} else if (ovwt_chars) {
++		sbi->s_data_char = ovwt_chars;
++		sbi->s_data_char_size = strlen(ovwt_chars);
++	}
++
++	if (meta_chars) {
++		sbi->s_meta_char = meta_chars;
++		sbi->s_meta_char_size = strlen(meta_chars);
++	} else if (ovwt_chars) {
++		sbi->s_meta_char = ovwt_chars;
++		sbi->s_meta_char_size = strlen(ovwt_chars);
++	}
++
++	if (file_chars) {
++		sbi->s_file_char = file_chars;
++		sbi->s_file_char_size = strlen(file_chars);
++	} else if (ovwt_chars) {
++		sbi->s_file_char = ovwt_chars;
++		sbi->s_file_char_size = strlen(ovwt_chars);
++	}
++
++	return err;
++
++err_out:
++	kfree(data_chars);
++	kfree(meta_chars);
++	kfree(file_chars);
++	return err;
++}
++
++void ext4_secrm_put_super(struct ext4_sb_info *sbi)
++{
++	/*
++	 * These pointers may point to the same buffer so we need to check
++	 * that we don't double free!
++	 */
++	kfree(sbi->s_data_char);
++	if (sbi->s_data_char != sbi->s_meta_char)
++		kfree(sbi->s_meta_char);
++	if (sbi->s_data_char != sbi->s_file_char &&
++	    sbi->s_meta_char != sbi->s_file_char)
++		kfree(sbi->s_file_char);
++}
++#endif
++
+ static int ext4_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *data, struct vfsmount *mnt)
+ {
+diff -Naur 2.6.19-rc6/fs/Kconfig 2.6.19-rc6sd/fs/Kconfig
+--- 2.6.19-rc6/fs/Kconfig	2006-11-28 16:20:24.000000000 -0500
++++ 2.6.19-rc6sd/fs/Kconfig	2006-11-28 16:49:11.000000000 -0500
+@@ -207,6 +207,18 @@
+ 	  If you are not using a security module that requires using
+ 	  extended attributes for file security labels, say N.
+
++config EXT4DEV_FS_SECRM
++	bool "Ext4dev Secure Deletion"
++	default n
++	depends on EXT4DEV_FS
++	help
++	  Secure deletion overwrites a file's data, metadata and
++	  directory entry before deleting. This option is useful for
++	  making sure that sensitive documents will unretrievable once
++	  deleted.
++
++	  If unsure, say N.
++
+ config JBD
+ 	tristate
+ 	help
+diff -Naur 2.6.19-rc6/include/linux/ext4_fs_sb.h 2.6.19-rc6sd/include/linux/ext4_fs_sb.h
+--- 2.6.19-rc6/include/linux/ext4_fs_sb.h	2006-11-28 16:08:48.000000000 -0500
++++ 2.6.19-rc6sd/include/linux/ext4_fs_sb.h	2006-11-28 16:09:29.000000000 -0500
+@@ -89,6 +89,23 @@
+ 	unsigned long s_ext_blocks;
+ 	unsigned long s_ext_extents;
+ #endif
++
++#ifdef CONFIG_EXT4DEV_FS_SECRM
++	/* Number of overwrites for each field */
++	u32 s_data_num_ovwt;
++	u32 s_meta_num_ovwt;
++	u32 s_file_num_ovwt;
++
++	/* Characters to be written to each field */
++	char *s_data_char;
++	char *s_meta_char;
++	char *s_file_char;
++
++	/* Size of above character array for each field */
++	u32 s_data_char_size;
++	u32 s_meta_char_size;
++	u32 s_file_char_size;
++#endif
+ };
+
+ #endif	/* _LINUX_EXT4_FS_SB */
