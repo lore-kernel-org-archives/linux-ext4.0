@@ -1,11 +1,11 @@
 From: akpm@osdl.org
-Subject: + ext4-kmalloc-to-kzalloc.patch added to -mm tree
-Date: Mon, 27 Nov 2006 17:29:41 -0800
-Message-ID: <200611280129.kAS1TfFL022523@shell0.pdx.osdl.net>
+Subject: + ext4-eliminate-inline-functions.patch added to -mm tree
+Date: Mon, 27 Nov 2006 17:29:43 -0800
+Message-ID: <200611280129.kAS1ThCM022526@shell0.pdx.osdl.net>
 Cc: mathur@us.ibm.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:60823 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S933603AbWK1B3w (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:60311 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S933568AbWK1B3w (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 27 Nov 2006 20:29:52 -0500
 To: mm-commits@vger.kernel.org
@@ -14,71 +14,157 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: kmalloc to kzalloc
+     ext4: Eliminate inline functions
 has been added to the -mm tree.  Its filename is
-     ext4-kmalloc-to-kzalloc.patch
+     ext4-eliminate-inline-functions.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4: kmalloc to kzalloc
+Subject: ext4: Eliminate inline functions
 From: Avantika Mathur <mathur@us.ibm.com>
 
-Performs kmalloc to kzalloc conversion
+Removes all inline keywords, since the compiler will make static functions
+inline when it is appropriate.
 
 Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/extents.c |    9 +++------
- 1 files changed, 3 insertions(+), 6 deletions(-)
+ fs/ext4/extents.c |   28 ++++++++++++++--------------
+ 1 files changed, 14 insertions(+), 14 deletions(-)
 
-diff -puN fs/ext4/extents.c~ext4-kmalloc-to-kzalloc fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4-kmalloc-to-kzalloc
+diff -puN fs/ext4/extents.c~ext4-eliminate-inline-functions fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4-eliminate-inline-functions
 +++ a/fs/ext4/extents.c
-@@ -477,13 +477,12 @@ ext4_ext_find_extent(struct inode *inode
+@@ -48,7 +48,7 @@
+  * ext_pblock:
+  * combine low and high parts of physical block number into ext4_fsblk_t
+  */
+-static inline ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
++static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
+ {
+ 	ext4_fsblk_t block;
  
- 	/* account possible depth increase */
- 	if (!path) {
--		path = kmalloc(sizeof(struct ext4_ext_path) * (depth + 2),
-+		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2),
- 				GFP_NOFS);
- 		if (!path)
- 			return ERR_PTR(-ENOMEM);
- 		alloc = 1;
- 	}
--	memset(path, 0, sizeof(struct ext4_ext_path) * (depth + 1));
- 	path[0].p_hdr = eh;
+@@ -61,7 +61,7 @@ static inline ext4_fsblk_t ext_pblock(st
+  * idx_pblock:
+  * combine low and high parts of a leaf physical block number into ext4_fsblk_t
+  */
+-static inline ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
++static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
+ {
+ 	ext4_fsblk_t block;
  
- 	/* walk through the tree */
-@@ -643,10 +642,9 @@ static int ext4_ext_split(handle_t *hand
- 	 * We need this to handle errors and free blocks
- 	 * upon them.
- 	 */
--	ablocks = kmalloc(sizeof(ext4_fsblk_t) * depth, GFP_NOFS);
-+	ablocks = kzalloc(sizeof(ext4_fsblk_t) * depth, GFP_NOFS);
- 	if (!ablocks)
- 		return -ENOMEM;
--	memset(ablocks, 0, sizeof(ext4_fsblk_t) * depth);
+@@ -75,7 +75,7 @@ static inline ext4_fsblk_t idx_pblock(st
+  * stores a large physical block number into an extent struct,
+  * breaking it into parts
+  */
+-static inline void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
++static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
+ {
+ 	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+ 	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+@@ -86,7 +86,7 @@ static inline void ext4_ext_store_pblock
+  * stores a large physical block number into an index struct,
+  * breaking it into parts
+  */
+-static inline void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
++static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
+ {
+ 	ix->ei_leaf = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+@@ -216,7 +216,7 @@ ext4_ext_new_block(handle_t *handle, str
+ 	return newblock;
+ }
  
- 	/* allocate all needed blocks */
- 	ext_debug("allocate %d blocks for indexes/leaf\n", depth - at);
-@@ -1772,12 +1770,11 @@ int ext4_ext_remove_space(struct inode *
- 	 * We start scanning from right side, freeing all the blocks
- 	 * after i_size and walking into the tree depth-wise.
- 	 */
--	path = kmalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_KERNEL);
-+	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_KERNEL);
- 	if (path == NULL) {
- 		ext4_journal_stop(handle);
- 		return -ENOMEM;
- 	}
--	memset(path, 0, sizeof(struct ext4_ext_path) * (depth + 1));
- 	path[0].p_hdr = ext_inode_hdr(inode);
- 	if (ext4_ext_check_header(__FUNCTION__, inode, path[0].p_hdr)) {
- 		err = -EIO;
+-static inline int ext4_ext_space_block(struct inode *inode)
++static int ext4_ext_space_block(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -229,7 +229,7 @@ static inline int ext4_ext_space_block(s
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_block_idx(struct inode *inode)
++static int ext4_ext_space_block_idx(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -242,7 +242,7 @@ static inline int ext4_ext_space_block_i
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_root(struct inode *inode)
++static int ext4_ext_space_root(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -256,7 +256,7 @@ static inline int ext4_ext_space_root(st
+ 	return size;
+ }
+ 
+-static inline int ext4_ext_space_root_idx(struct inode *inode)
++static int ext4_ext_space_root_idx(struct inode *inode)
+ {
+ 	int size;
+ 
+@@ -1103,7 +1103,7 @@ int ext4_ext_correct_indexes(handle_t *h
+ 	return err;
+ }
+ 
+-static int inline
++static int
+ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 				struct ext4_extent *ex2)
+ {
+@@ -1395,7 +1395,7 @@ int ext4_ext_walk_space(struct inode *in
+ 	return err;
+ }
+ 
+-static inline void
++static void
+ ext4_ext_put_in_cache(struct inode *inode, __u32 block,
+ 			__u32 len, __u32 start, int type)
+ {
+@@ -1413,7 +1413,7 @@ ext4_ext_put_in_cache(struct inode *inod
+  * calculate boundaries of the gap that the requested block fits into
+  * and cache this gap
+  */
+-static inline void
++static void
+ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ 				unsigned long block)
+ {
+@@ -1454,7 +1454,7 @@ ext4_ext_put_gap_in_cache(struct inode *
+ 	ext4_ext_put_in_cache(inode, lblock, len, 0, EXT4_EXT_CACHE_GAP);
+ }
+ 
+-static inline int
++static int
+ ext4_ext_in_cache(struct inode *inode, unsigned long block,
+ 			struct ext4_extent *ex)
+ {
+@@ -1523,7 +1523,7 @@ int ext4_ext_rm_idx(handle_t *handle, st
+  * the caller should calculate credits under truncate_mutex and
+  * pass the actual path.
+  */
+-int inline ext4_ext_calc_credits_for_insert(struct inode *inode,
++int ext4_ext_calc_credits_for_insert(struct inode *inode,
+ 						struct ext4_ext_path *path)
+ {
+ 	int depth, needed;
+@@ -1732,7 +1732,7 @@ out:
+  * ext4_ext_more_to_rm:
+  * returns 1 if current index has to be freed (even partial)
+  */
+-static int inline
++static int
+ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ {
+ 	BUG_ON(path->p_idx == NULL);
 _
 
 Patches currently in -mm which might be from mathur@us.ibm.com are
