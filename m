@@ -1,125 +1,112 @@
-From: Hugh Dickins <hugh@veritas.com>
-Subject: Re: Boot failure with ext2 and initrds
-Date: Tue, 28 Nov 2006 17:38:54 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-References: <20061114014125.dd315fff.akpm@osdl.org>  <20061114184919.GA16020@skynet.ie>
-  <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
- <20061114113120.d4c22b02.akpm@osdl.org>  <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
-  <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
- <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
- <20061115232228.afaf42f2.akpm@osdl.org>  <1163666960.4310.40.camel@localhost.localdomain>
-  <20061116011351.1401a00f.akpm@osdl.org>  <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
-  <20061116132724.1882b122.akpm@osdl.org>  <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
-  <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
- <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
- <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: xfs defragmentation writeup, for comparison
+Date: Tue, 28 Nov 2006 15:04:20 -0600
+Message-ID: <456CA454.8040401@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
-	"Martin J. Bligh" <mbligh@mbligh.org>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from excu-mxob-2.symantec.com ([198.6.49.23]:22245 "EHLO
-	excu-mxob-2.symantec.com") by vger.kernel.org with ESMTP
-	id S1756961AbWK1U15 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 15:27:57 -0500
-Received: from balaton.wat.veritas.com([10.10.97.7]) (5280 bytes) by megami.veritas.com
-	via sendmail with P:esmtp/R:smart_host/T:smtp
-	(sender: <hugh@veritas.com>)
-	id <m1Gp6un-0000gZC@megami.veritas.com>
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 09:38:41 -0800 (PST)
-	(Smail-3.2.0.101 1997-Dec-17 #15 built 2001-Aug-30)
-To: Mingming Cao <cmm@us.ibm.com>
-In-Reply-To: <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+Received: from mx1.redhat.com ([66.187.233.31]:37827 "EHLO mx1.redhat.com")
+	by vger.kernel.org with ESMTP id S1755523AbWK1VEW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 16:04:22 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id kASL4Lub028501
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:21 -0500
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4LDv023230
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:21 -0500
+Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4Kcn020159
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:20 -0500
+To: ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 21 Nov 2006, Mingming Cao wrote:
-> On Mon, 2006-11-20 at 16:19 +0000, Hugh Dickins wrote:
-> > After four days of running, the EM64T has at last reproduced the same
-> > hang as it did in an hour before: stuck in
-> > ext2_try_to_allocate_with_rsv,
-> > repeatedly ext2_rsv_window_add, ext2_try_to_allocate,
-> > rsv_window_remove
-> > (perhaps not in that order).
-> > 
+As promised, here is a writeup of xfs defragmentation routines.
 
-At last it did happen again, on both x86_64 and ppc64.
+I don't hold these up as the perfect or best way to do this task, but it
+is worth looking at what has been done before, to get ideas, find better
+ways, and avoid pitfalls for ext4.
 
-> 
-> Don't have much clue, still...:(
+XFS defragmentation interface.
+=============================
 
-Don't worry, KDB helped me work it out, patch follows in a moment.
+xfs uses the xfs_fsr tool, found in the xfsdump (!) package, to
+defragment files on the filesystem.
 
-> 
-> The logic of the while loop in ext2_try_to_allocate_with_rsv() looks
-> like:
+It has a few features for defragmenting a whole filesystem,
+starting/stopping, etc, but I'll just sketch out how it defragments a
+single file.
 
-Thanks for your clarifications and tips.
+The xfs preallocation routines are central to this; fsr uses
+preallocation to create the less-fragmented space for the file in
+question.
 
-> > 
-> A bit confused, did the whole system hang or just the "ld" writer hang
-> in ext2 block allocation? And what other writers were waiting for? Were
-> they trying to write to the same file?
+The 10,000 foot overview is:
 
-The system was pingable, but couldn't do much else.  Only the one
-"ld" was active on the ext2 filesystem by this time, other tasks of
-the make just waiting on it, nothing else was trying to write there.
+1. create a new temporary file - open & unlink
+2. preallocate space for the new file to match the file to be defragmented
+3. see if we got fewer extents than the original
+4. do an O_DIRECT data copy into the new extents
+5. call the kernel to swap the extents between the two, with sanity checks
+6. close unlinked temporary file which now contains the fragmented extents.
 
-4 cpus, well, 2*HT: why couldn't I ssh or login?  I don't know,
-something else to investigate, but that can be quite separate: very
-unlikely to be related to the particular ext2 bug which showed it
-(that filesystem was just for the test, it's not my root).
-Probably stupidly obvious once I've worked it out.
+userspace work is done in xfsdump/fsr/xfs_fsr.c
+kernelspace work is done in fs/xfs/xfs_dfrag.c
 
-> 
-> It might be helpful to check the return value of ext2_try_to_allocate(),
-> to see if it fails. It would be nice if you could check if there any
-> free bit inside the reservation window.
+In more detail...
 
-After screwing up last time, I was ultra-paranoid this time, and did
-not dare to set any breakpoints: proceeded by repeatedly breaking in
-from the keyboard, and the time I happened to catch it on return from
-memscan() was revealing.
+in userspace, fsrfile_common() / packfile():
 
-> 
-> And could you check the start and end block for every rsv_window_add and
-> rsv_window_remove, to see if it was keep creating and removing the same
-> window in the same block group?
+check for mandatory locks, skip this file if present
+make sure there is room to copy the file
+get inode attributes (ext2-style, append-only, immutable, etc)
+ skip if immutable, append-only, or no-defrag set
+get the current extent layout of the file (XFS_IOC_GETBMAP)
+ stop if already best nr. of extents
+open the temp file and immediately unlink it
+set extended attributes on the temp file
+set other extended inode flags on the temp file
+set up buffers for direct IO
+loop through original block map, preallocating extents for tmp file
+ (this preserves holes as well)
+double check that we have fewer extents
+now loop through the block map, copying into temp file via O_DIRECT
+truncate temp file to proper size (O_DIRECT alignment may have made it
+larger)
+switch to file owner's UID/GID to preserve quota information
+set up swapext ioctl to swap extents
+call kernel to swap extents between original & temp files:
 
-The same every time it settled on a usable reservation, but a lot of
-wasted adds and removes as it works across a fully allocated area of
-the bitmap.  Not very efficient, all those rb_tree insertions and
-removals until it gets to a free area; but I can't judge from this
-example how common that would be, may not be worth bothering about.
+typedef struct xfs_swapext
+{
+        __int64_t       sx_version;     /* swapext version */
+        __int64_t       sx_fdtarget;    /* fd of target file */
+        __int64_t       sx_fdtmp;       /* fd of tmp file */
+        xfs_off_t       sx_offset;      /* offset into file */
+        xfs_off_t       sx_length;      /* leng from offset */
+        char            sx_pad[16];     /* pad space, unused */
+        xfs_bstat_t     sx_stat;        /* stat of target b4 copy */
+} xfs_swapext_t;
 
-> 
-> And it might be useful to dump the whole filesystem block reservation
-> tree as well.
+now in kernelspace, xfs_swapext() / xfs_swap_extents():
 
-Not necessary, I've put just the relevant numbers in the patch comment,
-it helped me a lot to see the actual numbers and work it out from there.
+verify both files on same filesystem
+verify that inode numbers differ
+abort if filesystem is shut down
+lock the inodes (ilock, ilock...)
+check permissions on the files
+verify that they both have the same format/type (S_IFMT, realtime, etc)
+if temp file is cached, flush it
+verify size of both files match
+verify both files have extended attributes (or not)
+compare change & modify times with what was passed in
+ abort if they differ, file was changed before locking
+abort if the original file is memory-mapped
+set up transaction
+swap the data forks of the inodes, fix up on-disk inode values
+commit the transaction
+unlock the inodes
 
-> 
-> Not sure if it worth the effort to test it on ext3.  The ext2 block
-> reservation code in 2.6.19-rc5-mm2 looks pretty much the same as ext3/4,
-> except the missing truncate_mutex. I understand this might take a few
-> days to reproduce, so this might not needed now.
-
-Turns out vanilla-ext2 and ext3 and ext4 are safe:
-ext3 and ext4 slightly wrong in the same way, but safe.
-
-I'll continue this thread with the bugfix patch 1/6; and five more
-(roughly descending order of importance, the latter just cosmetic)
-little fs/ext2/balloc.c patches to things I noticed on the way.
-Nothing very worrying.  Easier to send patches than ask questions:
-please check, perhaps my "off-by-one" accusations are wrong, for
-example.  If you're satisfied they're right, please apply the
-same to ext3 and ext4.
- 
-Although 1/6 does (I believe: too early for my tests to tell)
-fix the bug in a minimal way, I rather think that area needs
-cleanup - further comments below my Signed-off-by in 1/6.
-
-Hugh
+-Eric
