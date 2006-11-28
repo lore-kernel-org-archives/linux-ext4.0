@@ -1,112 +1,115 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: xfs defragmentation writeup, for comparison
-Date: Tue, 28 Nov 2006 15:04:20 -0600
-Message-ID: <456CA454.8040401@redhat.com>
+Subject: xfs preallocation writeup, for comparison
+Date: Tue, 28 Nov 2006 15:04:18 -0600
+Message-ID: <456CA452.2040302@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37827 "EHLO mx1.redhat.com")
-	by vger.kernel.org with ESMTP id S1755523AbWK1VEW (ORCPT
+Received: from mx1.redhat.com ([66.187.233.31]:43971 "EHLO mx1.redhat.com")
+	by vger.kernel.org with ESMTP id S1755532AbWK1VEZ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 16:04:22 -0500
+	Tue, 28 Nov 2006 16:04:25 -0500
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id kASL4Lub028501
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:21 -0500
+	by mx1.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id kASL4OYb028483
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:24 -0500
 Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4LDv023230
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:21 -0500
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4JDv023225
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:19 -0500
 Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4Kcn020159
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:20 -0500
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id kASL4IEh020154
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2006 16:04:19 -0500
 To: ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-As promised, here is a writeup of xfs defragmentation routines.
+As promised, here is a writeup of xfs preallocation routines.
 
 I don't hold these up as the perfect or best way to do this task, but it
 is worth looking at what has been done before, to get ideas, find better
 ways, and avoid pitfalls for ext4.
 
-XFS defragmentation interface.
+XFS preallocation interfaces.
 =============================
 
-xfs uses the xfs_fsr tool, found in the xfsdump (!) package, to
-defragment files on the filesystem.
+The xfs preallocation interfaces are described in the xfsctl(3) manpage.
+It's not the best doc, so I'll summarize:
 
-It has a few features for defragmenting a whole filesystem,
-starting/stopping, etc, but I'll just sketch out how it defragments a
-single file.
+XFS has these ioctl calls for space managment of files:
 
-The xfs preallocation routines are central to this; fsr uses
-preallocation to create the less-fragmented space for the file in
-question.
+       XFS_IOC_ALLOCSP
+       XFS_IOC_FREESP
+       XFS_IOC_RESVSP
+       XFS_IOC_UNRESVSP
 
-The 10,000 foot overview is:
+All of these interfaces take an flock-style argument, and you use it to
+specify the range of bytes in the file which should be preallocated,
+essentially with an offset and a length.
 
-1. create a new temporary file - open & unlink
-2. preallocate space for the new file to match the file to be defragmented
-3. see if we got fewer extents than the original
-4. do an O_DIRECT data copy into the new extents
-5. call the kernel to swap the extents between the two, with sanity checks
-6. close unlinked temporary file which now contains the fragmented extents.
+The real work for all of this is done in xfs_change_file_space() in
+xfs_vnodeops.c
 
-userspace work is done in xfsdump/fsr/xfs_fsr.c
-kernelspace work is done in fs/xfs/xfs_dfrag.c
+The main difference between resvsp and allocsp is that resvsp marks the
+blocks as "unwritten" meaning that they are allocated but not yet
+written to, and if they are read, they will return zeros.  allocsp
+actually writes zeros into the allocated blocks.  We can use the xfs_io
+tool to demonstrate.
 
-In more detail...
+resvsp example:
+==============
 
-in userspace, fsrfile_common() / packfile():
+[root@magnesium test]# touch resvsp
+[root@magnesium test]# xfs_io resvsp
+xfs_io> resvsp 0 10g
+xfs_io> bmap -vp
+resvsp:
+ EXT: FILE-OFFSET           BLOCK-RANGE        AG AG-OFFSET
+TOTAL FLAGS
+   0: [0..16657327]:        16657456..33314783  1 (64..16657391)
+16657328 10000
+   1: [16657328..20971519]: 96..4314287         0 (96..4314287)
+4314192 10000
 
-check for mandatory locks, skip this file if present
-make sure there is room to copy the file
-get inode attributes (ext2-style, append-only, immutable, etc)
- skip if immutable, append-only, or no-defrag set
-get the current extent layout of the file (XFS_IOC_GETBMAP)
- stop if already best nr. of extents
-open the temp file and immediately unlink it
-set extended attributes on the temp file
-set other extended inode flags on the temp file
-set up buffers for direct IO
-loop through original block map, preallocating extents for tmp file
- (this preserves holes as well)
-double check that we have fewer extents
-now loop through the block map, copying into temp file via O_DIRECT
-truncate temp file to proper size (O_DIRECT alignment may have made it
-larger)
-switch to file owner's UID/GID to preserve quota information
-set up swapext ioctl to swap extents
-call kernel to swap extents between original & temp files:
+so we got 2 extents for this 10g file - those are actual filesystem
+blocks allocated.  The file is 0 length, but is using 10g of blocks:
 
-typedef struct xfs_swapext
-{
-        __int64_t       sx_version;     /* swapext version */
-        __int64_t       sx_fdtarget;    /* fd of target file */
-        __int64_t       sx_fdtmp;       /* fd of tmp file */
-        xfs_off_t       sx_offset;      /* offset into file */
-        xfs_off_t       sx_length;      /* leng from offset */
-        char            sx_pad[16];     /* pad space, unused */
-        xfs_bstat_t     sx_stat;        /* stat of target b4 copy */
-} xfs_swapext_t;
+[root@magnesium test]# ls -lh resvsp
+-rw-r--r--  1 root root 0 Nov 28 14:11 resvsp
+[root@magnesium test]# du -hc resvsp
+10G     resvsp
+10G     total
 
-now in kernelspace, xfs_swapext() / xfs_swap_extents():
+The extents are simply flagged as unwritten (0x10000 above), so very
+little IO occurs and the space reservation is fast..
 
-verify both files on same filesystem
-verify that inode numbers differ
-abort if filesystem is shut down
-lock the inodes (ilock, ilock...)
-check permissions on the files
-verify that they both have the same format/type (S_IFMT, realtime, etc)
-if temp file is cached, flush it
-verify size of both files match
-verify both files have extended attributes (or not)
-compare change & modify times with what was passed in
- abort if they differ, file was changed before locking
-abort if the original file is memory-mapped
-set up transaction
-swap the data forks of the inodes, fix up on-disk inode values
-commit the transaction
-unlock the inodes
+allocsp example:
+===============
+(note there's a bit of a buglet in xfs_io, hence the swapped arguments)
+
+[root@magnesium test]# touch allocsp
+[root@magnesium test]# xfs_io allocsp
+xfs_io> allocsp 10g 0
+<wait for IO...>
+xfs_io> bmap -vp
+allocsp:
+ EXT: FILE-OFFSET           BLOCK-RANGE        AG AG-OFFSET
+TOTAL
+   0: [0..16657327]:        33314848..49972175  2 (64..16657391)
+16657328
+   1: [16657328..20971519]: 4314288..8628479    0 (4314288..8628479)
+4314192
+
+We also got 2 extents here, but they are not flagged as unwritten -
+those filesystem blocks were all actually filled with zeros.
+
+[root@magnesium test]# ls -lh allocsp
+-rw-r--r--  1 root root 10G Nov 28 14:19 allocsp
+[root@magnesium test]# du -hc allocsp
+10G     allocsp
+10G     total
+
+It would be very nice to see posix_fallocate hooked up to the underlying
+filesystem, so that it can make smart decisions about how to efficiently
+reserve space...
 
 -Eric
