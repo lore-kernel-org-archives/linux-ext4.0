@@ -1,92 +1,74 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 10/12] ext4 balloc: say rb_entry not list_entry
-Date: Tue, 28 Nov 2006 20:15:24 -0800
-Message-ID: <1164773724.4341.44.camel@localhost.localdomain>
-References: <20061114014125.dd315fff.akpm@osdl.org>
-	 <20061114184919.GA16020@skynet.ie>
-	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
-	 <20061114113120.d4c22b02.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
-	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
-	 <20061115232228.afaf42f2.akpm@osdl.org>
-	 <1163666960.4310.40.camel@localhost.localdomain>
-	 <20061116011351.1401a00f.akpm@osdl.org>
-	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
-	 <20061116132724.1882b122.akpm@osdl.org>
-	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
-	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
-	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
-	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: rfc: [patch] change attribute for ext3
+Date: Tue, 28 Nov 2006 14:06:22 -0800
+Message-ID: <20061128220622.GB5673@schatzie.adilger.int>
+References: <20060913164202.GA14838@openx1.frec.bull.fr>
+	<1158171071.6072.10.camel@lade.trondhjem.org>
+	<20060913183001.GA1702@moule.localdomain>
+	<20060914092318.GA18911@schatzie.adilger.int>
+	<20061114221725.GA14024@schatzie.adilger.int>
+	<20061124002311.GA32033@schatzie.adilger.int>
+	<20061128190016.GH6375@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mel@skynet.ie>, "Martin J. Bligh" <mbligh@mbligh.org>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:2271 "EHLO e3.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S1758783AbWK2EPb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 23:15:31 -0500
-To: Hugh Dickins <hugh@veritas.com>, Andrew Morton <akpm@osdl.org>
-In-Reply-To: <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Disposition: inline
+In-Reply-To: <20061128190016.GH6375@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Nov 28, 2006  14:00 -0500, J. Bruce Fields wrote:
+> On Thu, Nov 23, 2006 at 05:23:11PM -0700, Andreas Dilger wrote:
+> > On Nov 14, 2006  15:17 -0700, Andreas Dilger wrote:
+> > > I've been giving this further thought, and it may be that a full 64-bit
+> > > counter per inode is the only bulletproof solution.
+> > > 
+> > > One reason that ctime+nsec as the version number isn't so great is that if
+> > > there is some reason to set the clock backward (i.e. it was incorrectly
+> > > set into the future at some point) the inode ctime may jump backward.
+> > > This could cause either misordering of events, or collisions between
+> > > version numbers.  The problem could be mitigated by having the ctime+nsec
+> > > value only increment the nsec component by 1 for each new version (like
+> > > a counter) until real time catches up with the bad ctime, but it might
+> > > leave files with a bad ctime for a long time.
+> > > 
+> > > The main drawback of a 64-bit counter is the space in the inode that it
+> > > consumes...  I don't think we can find 64 bits of free space in the core
+> > > inode, so this would relegate the solution to new filesystems that are
+> > > formatted with large inodes.
+> > 
+> > Alexandre, Trond,
+> > what do you think about using a 32-bit in-inode version (sufficient for
+> > causal uses of NFSv4),
+> > and put the 32-bit MSB of the version into the
+> > large part of the inode (say after cr_time)?
+> 
+> So does that mean that the MSB of the change attribute would only be
+> available on some filesystems, or that it would be available on all of
+> them but be slower on those with smaller inodes?  And how does the user
+> (e.g. the nfsd code) distinguish the two cases?
 
-------------------------------------------------------
-Subject: ext2 balloc: say rb_entry not list_entry
-From: Hugh Dickins <hugh@veritas.com>
+One other option is to use the other reserved field (l_i_reserved2) to
+store the MSB of the version.
 
-The reservations tree is an rb_tree not a list, so it's less confusing to use
-rb_entry() than list_entry() - though they're both just container_of().
+> > That allows use of the version for existing ext3 filesystems, and with
+> > large inodes (Lustre, ext4) it also meets the specs of RFC 3530 and any
+> > intended NFSv4 future use?
 
-----------------------------------------------------------
-
-Sync up this fix in ext4
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
-
-
----
-
- linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff -puN fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry fs/ext4/balloc.c
---- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry	2006-11-28 19:37:08.000000000 -0800
-+++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:08.000000000 -0800
-@@ -165,7 +165,7 @@ restart:
- 
- 	printk("Block Allocation Reservation Windows Map (%s):\n", fn);
- 	while (n) {
--		rsv = list_entry(n, struct ext4_reserve_window_node, rsv_node);
-+		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
- 		if (verbose)
- 			printk("reservation window 0x%p "
- 			       "start:  %llu, end:  %llu\n",
-@@ -966,7 +966,7 @@ static int find_next_reservable_window(
- 
- 		prev = rsv;
- 		next = rb_next(&rsv->rsv_node);
--		rsv = list_entry(next,struct ext4_reserve_window_node,rsv_node);
-+		rsv = rb_entry(next,struct ext4_reserve_window_node,rsv_node);
- 
- 		/*
- 		 * Reached the last reservation, we can just append to the
-@@ -1210,7 +1210,7 @@ static void try_to_extend_reservation(st
- 	if (!next)
- 		my_rsv->rsv_end += size;
- 	else {
--		next_rsv = list_entry(next, struct ext4_reserve_window_node, rsv_node);
-+		next_rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
- 
- 		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
- 			my_rsv->rsv_end += size;
-
-_
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
