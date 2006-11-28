@@ -1,65 +1,138 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: rfc: [patch] change attribute for ext3
-Date: Tue, 28 Nov 2006 14:00:16 -0500
-Message-ID: <20061128190016.GH6375@fieldses.org>
-References: <20060913164202.GA14838@openx1.frec.bull.fr>
-	<1158171071.6072.10.camel@lade.trondhjem.org>
-	<20060913183001.GA1702@moule.localdomain>
-	<20060914092318.GA18911@schatzie.adilger.int>
-	<20061114221725.GA14024@schatzie.adilger.int>
-	<20061124002311.GA32033@schatzie.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH 1/6] ext2 balloc: fix _with_rsv freeze
+Date: Tue, 28 Nov 2006 11:26:07 -0800
+Message-ID: <1164741967.3769.27.camel@dyn9047017103.beaverton.ibm.com>
+References: <20061114014125.dd315fff.akpm@osdl.org>
+	 <20061114184919.GA16020@skynet.ie>
+	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
+	 <20061114113120.d4c22b02.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+	 <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com>
+	 <20061115232228.afaf42f2.akpm@osdl.org>
+	 <1163666960.4310.40.camel@localhost.localdomain>
+	 <20061116011351.1401a00f.akpm@osdl.org>
+	 <1163708116.3737.12.camel@dyn9047017103.beaverton.ibm.com>
+	 <20061116132724.1882b122.akpm@osdl.org>
+	 <Pine.LNX.4.64.0611201544510.16530@blonde.wat.veritas.com>
+	 <1164073652.20900.34.camel@dyn9047017103.beaverton.ibm.com>
+	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
+	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
+	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: Andreas Dilger <adilger@clusterfs.com>
-Content-Disposition: inline
-In-Reply-To: <20061124002311.GA32033@schatzie.adilger.int>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:20190 "EHLO
+	e31.co.us.ibm.com") by vger.kernel.org with ESMTP id S936053AbWK1T0Q
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 14:26:16 -0500
+To: Hugh Dickins <hugh@veritas.com>
+In-Reply-To: <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 23, 2006 at 05:23:11PM -0700, Andreas Dilger wrote:
-> On Nov 14, 2006  15:17 -0700, Andreas Dilger wrote:
-> > I've been giving this further thought, and it may be that a full 64-bit
-> > counter per inode is the only bulletproof solution.
-> > 
-> > One reason that ctime+nsec as the version number isn't so great is that if
-> > there is some reason to set the clock backward (i.e. it was incorrectly
-> > set into the future at some point) the inode ctime may jump backward.
-> > This could cause either misordering of events, or collisions between
-> > version numbers.  The problem could be mitigated by having the ctime+nsec
-> > value only increment the nsec component by 1 for each new version (like
-> > a counter) until real time catches up with the bad ctime, but it might
-> > leave files with a bad ctime for a long time.
-> > 
-> > The main drawback of a 64-bit counter is the space in the inode that it
-> > consumes...  I don't think we can find 64 bits of free space in the core
-> > inode, so this would relegate the solution to new filesystems that are
-> > formatted with large inodes.
+On Tue, 2006-11-28 at 17:40 +0000, Hugh Dickins wrote:
+> After several days of testing ext2 with reservations, it got caught inside
+> ext2_try_to_allocate_with_rsv: alloc_new_reservation repeatedly succeeding
+> on the window [12cff,12d0e], ext2_try_to_allocate repeatedly failing to
+> find the free block guaranteed to be included (unless there's contention).
 > 
-> Alexandre, Trond,
-> what do you think about using a 32-bit in-inode version (sufficient for
-> causal uses of NFSv4),
-> and put the 32-bit MSB of the version into the
-> large part of the inode (say after cr_time)?
 
-So does that mean that the MSB of the change attribute would only be
-available on some filesystems, or that it would be available on all of
-them but be slower on those with smaller inodes?  And how does the user
-(e.g. the nfsd code) distinguish the two cases?
+Hmm, I suspect there is other issue: alloc_new_reservation should not
+repeatedly allocating the same window, if ext2_try_to_allocate
+repeatedly fails to find a free block in that window.
+find_next_reservable_window() takes my_rsv (the old window that he
+thinks there is no free block) as a guide to find a window "after" the
+end block of my_rsv, so how could this happen?
 
-> That allows use of the version for existing ext3 filesystems, and with
-> large inodes (Lustre, ext4) it also meets the specs of RFC 3530 and any
-> intended NFSv4 future use?
 
---b.
+> Fix the range to find_next_usable_block's memscan: the scan from "here"
+> (0xcfe) up to (but excluding) "maxblocks" (0xd0e) needs to scan 3 bytes
+> not 2 (the relevant bytes of bitmap in this case being f7 df ff - none
+> 00, but the premature cutoff implying that the last was found 00).
+> 
+
+alloc_new_reservation() reserved a window with free block, when come to
+the time to claim it, it scans the window again. So it seems that the
+range of the the scan is too small:
+
+        p = ((char *)bh->b_data) + (here >> 3);
+        r = memscan(p, 0, (maxblocks - here + 7) >> 3);
+        next = (r - ((char *)bh->b_data)) << 3;
+
+		--------------------->   next is -1
+        if (next < maxblocks && next >= here)
+                return next;
+
+		----------------------> falls to false branch
+
+        here = bitmap_search_next_usable_block(here, bh, maxblocks);
+        return here;
+
+So we failed to find a free byte in the range.  That's seems fine to me.
+It's only a nice thing to have -- try to allocate a block in a place
+where it's neighbors are all free also. If it fails, it will search the
+window bit by bit. So I don't understand why it is not being recovered
+by bitmap_search_next_usable_block(), which test the bitmap bit by bit? 
+
+> Is this a problem for mainline ext2?  No, because the "size" in its memscan
+> is always EXT2_BLOCKS_PER_GROUP(sb), which mkfs.ext2 requires to be a
+> multiple of 8.  Is this a problem for ext3 or ext4?  No, because they have
+> an additional extN_test_allocatable test which rescues them from the error.
+> 
+Hmm, if the error is it prematurely think there is no free block in the
+range (bitmap on disk), then even in ext3/4, it will not bother checking
+the jbd copy of the bitmap. I am not sure this is the cause that ext3/4
+may not has the problem.
+
+> But the bigger question is, why does the my_rsv case come here to
+> find_next_usable_block at all? 
+
+Because grp_goal is -1?
+
+>  Doesn't its 64-bit boundary limit, and its
+> memscan, blithely ignore what the reservation prepared?
+
+I agree with you that the double check is urgly. But it's necessary:( If
+there to prevent contention: other file make steal that free block we
+reserved for this file, in the case filesystem is full of reservation...
+
+>   It's messy too,
+> the complement of the memscan being that "i < 7" loop over in
+> ext2_try_to_allocate.  I think this ought to be cleaned up,
+> in ext2+reservations and ext3 and ext4.
+> 
+The "i<7" loop there is for non reservation case. Since
+find_next_usable_block() could find a free byte, it's trying to avoid
+filesystem holes by shifting the start of the free block for at most 7
+times.
+
+
+Thanks!
+
+Mingming
+>  fs/ext2/balloc.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> --- 2.6.19-rc6-mm2/fs/ext2/balloc.c	2006-11-24 08:18:02.000000000 +0000
+> +++ linux/fs/ext2/balloc.c	2006-11-27 19:28:41.000000000 +0000
+> @@ -570,7 +570,7 @@ find_next_usable_block(int start, struct
+>  		here = 0;
+> 
+>  	p = ((char *)bh->b_data) + (here >> 3);
+> -	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
+> +	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
+>  	next = (r - ((char *)bh->b_data)) << 3;
+> 
+>  	if (next < maxblocks && next >= here)
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
