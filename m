@@ -1,32 +1,32 @@
 From: akpm@osdl.org
-Subject: + ext4-balloc-fix-off-by-one-against-grp_goal.patch added to -mm tree
-Date: Wed, 29 Nov 2006 14:17:02 -0800
-Message-ID: <200611292217.kATMH2qx013191@shell0.pdx.osdl.net>
+Subject: + ext4-balloc-fix-off-by-one-against-rsv_end.patch added to -mm tree
+Date: Wed, 29 Nov 2006 14:17:04 -0800
+Message-ID: <200611292217.kATMH4Gc013198@shell0.pdx.osdl.net>
 Cc: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:49091 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1758859AbWK2WRL (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:62915 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1758861AbWK2WRY (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 17:17:11 -0500
+	Wed, 29 Nov 2006 17:17:24 -0500
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: fix off-by-one against grp_goal
+     ext4 balloc: fix off-by-one against rsv_end
 has been added to the -mm tree.  Its filename is
-     ext4-balloc-fix-off-by-one-against-grp_goal.patch
+     ext4-balloc-fix-off-by-one-against-rsv_end.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4 balloc: fix off-by-one against grp_goal
+Subject: ext4 balloc: fix off-by-one against rsv_end
 From: Hugh Dickins <hugh@veritas.com>
 
-grp_goal 0 is a genuine goal (unlike -1), so ext4_try_to_allocate_with_rsv
-should treat it as such.
+rsv_end is the last block within the reservation, so alloc_new_reservation
+should accept start_block == rsv_end as success.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -34,30 +34,21 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end
 +++ a/fs/ext4/balloc.c
-@@ -1288,7 +1288,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 	}
- 	/*
- 	 * grp_goal is a group relative block number (if there is a goal)
--	 * 0 < grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
-+	 * 0 <= grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
- 	 * first block is a filesystem wide block number
- 	 * first block is the block number of the first block in this group
+@@ -1165,7 +1165,7 @@ retry:
+ 	 * check if the first free block is within the
+ 	 * free space we just reserved
  	 */
-@@ -1324,7 +1324,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
- 							grp_goal, group, sb))
- 				grp_goal = -1;
--		} else if (grp_goal > 0) {
-+		} else if (grp_goal >= 0) {
- 			int curr = my_rsv->rsv_end -
- 					(grp_goal + group_first_block) + 1;
- 
+-	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
++	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+ 		return 0;		/* success */
+ 	/*
+ 	 * if the first free bit we found is out of the reservable space
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
