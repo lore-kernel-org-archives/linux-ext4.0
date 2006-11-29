@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 8/12] ext4 balloc: fix off-by-one against grp_goal
-Date: Tue, 28 Nov 2006 20:15:06 -0800
-Message-ID: <1164773706.4341.42.camel@localhost.localdomain>
+Subject: [PATCH 12/12] ext3 balloc: fix _with_rsv freeze
+Date: Tue, 28 Nov 2006 20:15:41 -0800
+Message-ID: <1164773741.4341.46.camel@localhost.localdomain>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,58 +19,62 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281740110.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>, Mel Gorman <mel@skynet.ie>,
-	"Martin J. Bligh" <mbligh@mbligh.org>,
+Cc: Mel Gorman <mel@skynet.ie>, "Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758763AbWK2EQp@vger.kernel.org>
-To: Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281740110.29701@blonde.wat.veritas.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758792AbWK2EPw@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>, Hugh Dickins <hugh@veritas.com>
+In-Reply-To: <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-Subject: ext2 balloc: fix off-by-one against grp_goal
+------------------------------------------------------
+Subject: ext2 balloc: fix _with_rsv freeze
 From: Hugh Dickins <hugh@veritas.com>
 
-grp_goal 0 is a genuine goal (unlike -1), so ext2_try_to_allocate_with_rsv
-should treat it as such.
-------------------------------------------------------
-Sync up with ext2 reservation fix  in ext4
+After several days of testing ext2 with reservations, it got caught inside
+ext2_try_to_allocate_with_rsv: alloc_new_reservation repeatedly succeeding on
+the window [12cff,12d0e], ext2_try_to_allocate repeatedly failing to find the
+free block guaranteed to be included (unless there's contention).
+
+Fix the range to find_next_usable_block's memscan: the scan from "here"
+(0xcfe) up to (but excluding) "maxblocks" (0xd0e) needs to scan 3 bytes not 2
+(the relevant bytes of bitmap in this case being f7 df ff - none 00, but the
+premature cutoff implying that the last was found 00).
+
+Is this a problem for mainline ext2?  No, because the "size" in its memscan is
+always EXT2_BLOCKS_PER_GROUP(sb), which mkfs.ext2 requires to be a multiple of
+8.  Is this a problem for ext3 or ext4?  No, because they have an additional
+extN_test_allocatable test which rescues them from the error.
+
+--------------------------------------------------
+
+Sync up a reservation fix from ext2 in ext4
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
 
 
 ---
 
- linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal fs/ext4/balloc.c
---- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal	2006-11-28 19:37:05.000000000 -0800
-+++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:05.000000000 -0800
-@@ -1288,7 +1288,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 	}
- 	/*
- 	 * grp_goal is a group relative block number (if there is a goal)
--	 * 0 < grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
-+	 * 0 <= grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
- 	 * first block is a filesystem wide block number
- 	 * first block is the block number of the first block in this group
- 	 */
-@@ -1324,7 +1324,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
- 							grp_goal, group, sb))
- 				grp_goal = -1;
--		} else if (grp_goal > 0) {
-+		} else if (grp_goal >= 0) {
- 			int curr = my_rsv->rsv_end -
- 					(grp_goal + group_first_block) + 1;
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze fs/ext4/balloc.c
+--- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze	2006-11-28 19:37:12.000000000 -0800
++++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:12.000000000 -0800
+@@ -747,7 +747,7 @@ find_next_usable_block(ext4_grpblk_t sta
+ 		here = 0;
  
+ 	p = ((char *)bh->b_data) + (here >> 3);
+-	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
++	r = memscan(p, 0, ((maxblocks + 7) >> 3 - (here >> 3));
+ 	next = (r - ((char *)bh->b_data)) << 3;
+ 
+ 	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
 
 _
