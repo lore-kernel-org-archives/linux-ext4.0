@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 11/12] ext4 balloc: use io_error label
-Date: Tue, 28 Nov 2006 20:15:32 -0800
-Message-ID: <1164773733.4341.45.camel@localhost.localdomain>
+Subject: [PATCH 9/12] ext4 balloc: fix off-by-one against rsv_end
+Date: Tue, 28 Nov 2006 20:15:15 -0800
+Message-ID: <1164773715.4341.43.camel@localhost.localdomain>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,7 +19,7 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281743370.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281741490.29701@blonde.wat.veritas.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -27,46 +27,44 @@ Content-Transfer-Encoding: 7bit
 Cc: Mel Gorman <mel@skynet.ie>, "Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758776AbWK2EPy@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:41950 "EHLO e3.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1758785AbWK2EPV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 23:15:21 -0500
 To: Andrew Morton <akpm@osdl.org>, Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281743370.29701@blonde.wat.veritas.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <Pine.LNX.4.64.0611281741490.29701@blonde.wat.veritas.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 ------------------------------------------------------
-Subject: ext2 balloc: use io_error label
+Subject: ext2 balloc: fix off-by-one against rsv_end
 From: Hugh Dickins <hugh@veritas.com>
 
-ext2_new_blocks has a nice io_error label for setting -EIO, so goto that in
-the one place that doesn't already use it.
-
+rsv_end is the last block within the reservation, so alloc_new_reservation
+should accept start_block == rsv_end as success.
 ------------------------------------------------------
-Fix it in ext4_new_blocks.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Sync up  a ext2 reservation fix in ext4
+Signed-Off-By: Mingming Cao <cmm@us.ibm.com>
 
 
 ---
 
- linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-use-io_error-label fs/ext4/balloc.c
---- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-use-io_error-label	2006-11-28 19:42:45.000000000 -0800
-+++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:43:21.000000000 -0800
-@@ -1529,10 +1529,8 @@ retry_alloc:
- 		if (group_no >= ngroups)
- 			group_no = 0;
- 		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
--		if (!gdp) {
--			*errp = -EIO;
--			goto out;
--		}
-+		if (!gdp)
-+			goto io_error;
- 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
- 		/*
- 		 * skip this group if the number of
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end fs/ext4/balloc.c
+--- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end	2006-11-28 19:37:15.000000000 -0800
++++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:15.000000000 -0800
+@@ -1165,7 +1165,7 @@ retry:
+ 	 * check if the first free block is within the
+ 	 * free space we just reserved
+ 	 */
+-	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
++	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+ 		return 0;		/* success */
+ 	/*
+ 	 * if the first free bit we found is out of the reservable space
 
 _
