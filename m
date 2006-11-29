@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 3/12] ext3 balloc: fix off-by-one against rsv_end
-Date: Tue, 28 Nov 2006 20:14:18 -0800
-Message-ID: <1164773658.4341.37.camel@localhost.localdomain>
+Subject: [PATCH 4/12] ext3 balloc: say rb_entry not list_entry
+Date: Tue, 28 Nov 2006 20:14:28 -0800
+Message-ID: <1164773668.4341.38.camel@localhost.localdomain>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,7 +19,7 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281741490.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -27,45 +27,62 @@ Content-Transfer-Encoding: 7bit
 Cc: Mel Gorman <mel@skynet.ie>, "Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:13532 "EHLO e3.ny.us.ibm.com")
-	by vger.kernel.org with ESMTP id S1758767AbWK2EO0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Nov 2006 23:14:26 -0500
-To: Andrew Morton <akpm@osdl.org>, Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281741490.29701@blonde.wat.veritas.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758767AbWK2EOe@vger.kernel.org>
+To: Hugh Dickins <hugh@veritas.com>, Andrew Morton <akpm@osdl.org>
+In-Reply-To: <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 ------------------------------------------------------
-Subject: ext2 balloc: fix off-by-one against rsv_end
+Subject: ext2 balloc: say rb_entry not list_entry
 From: Hugh Dickins <hugh@veritas.com>
 
-rsv_end is the last block within the reservation, so alloc_new_reservation
-should accept start_block == rsv_end as success.
-------------------------------------------------------
-Sync up  a ext2 reservation fix in ext3
+The reservations tree is an rb_tree not a list, so it's less confusing to use
+rb_entry() than list_entry() - though they're both just container_of().
 
-Signed-Off-By: Mingming Cao <cmm@us.ibm.com>
+----------------------------------------------------------
+
+Sync up this fix in ext3
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
 
 
 ---
 
- linux-2.6.19-rc5-cmm/fs/ext3/balloc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ linux-2.6.19-rc5-cmm/fs/ext3/balloc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-balloc-fix-off-by-one-against-rsv_end fs/ext3/balloc.c
---- linux-2.6.19-rc5/fs/ext3/balloc.c~ext3-balloc-fix-off-by-one-against-rsv_end	2006-11-28 19:36:58.000000000 -0800
-+++ linux-2.6.19-rc5-cmm/fs/ext3/balloc.c	2006-11-28 19:36:58.000000000 -0800
-@@ -1148,7 +1148,7 @@ retry:
- 	 * check if the first free block is within the
- 	 * free space we just reserved
- 	 */
--	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
-+	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
- 		return 0;		/* success */
- 	/*
- 	 * if the first free bit we found is out of the reservable space
+diff -puN fs/ext3/balloc.c~ext3-balloc-say-rb_entry-not-list_entry fs/ext3/balloc.c
+--- linux-2.6.19-rc5/fs/ext3/balloc.c~ext3-balloc-say-rb_entry-not-list_entry	2006-11-28 19:36:52.000000000 -0800
++++ linux-2.6.19-rc5-cmm/fs/ext3/balloc.c	2006-11-28 19:36:52.000000000 -0800
+@@ -144,7 +144,7 @@ restart:
+ 
+ 	printk("Block Allocation Reservation Windows Map (%s):\n", fn);
+ 	while (n) {
+-		rsv = list_entry(n, struct ext3_reserve_window_node, rsv_node);
++		rsv = rb_entry(n, struct ext3_reserve_window_node, rsv_node);
+ 		if (verbose)
+ 			printk("reservation window 0x%p "
+ 			       "start:  %lu, end:  %lu\n",
+@@ -949,7 +949,7 @@ static int find_next_reservable_window(
+ 
+ 		prev = rsv;
+ 		next = rb_next(&rsv->rsv_node);
+-		rsv = list_entry(next,struct ext3_reserve_window_node,rsv_node);
++		rsv = rb_entry(next,struct ext3_reserve_window_node,rsv_node);
+ 
+ 		/*
+ 		 * Reached the last reservation, we can just append to the
+@@ -1193,7 +1193,7 @@ static void try_to_extend_reservation(st
+ 	if (!next)
+ 		my_rsv->rsv_end += size;
+ 	else {
+-		next_rsv = list_entry(next, struct ext3_reserve_window_node, rsv_node);
++		next_rsv = rb_entry(next, struct ext3_reserve_window_node, rsv_node);
+ 
+ 		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
+ 			my_rsv->rsv_end += size;
 
 _
