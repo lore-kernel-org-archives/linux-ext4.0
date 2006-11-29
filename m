@@ -1,87 +1,83 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 0/4] BIG_BG: support of large block groups
-Date: Wed, 29 Nov 2006 12:23:19 -0500
-Message-ID: <20061129172318.GD5771@thunk.org>
-References: <1164386860.17961.67.camel@ckrm>
+From: Russell King <rmk+lkml@arm.linux.org.uk>
+Subject: Re: Boot failure with ext2 and initrds
+Date: Wed, 29 Nov 2006 18:16:02 +0000
+Message-ID: <20061129181602.GD23101@flint.arm.linux.org.uk>
+References: <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com> <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com> <20061115232228.afaf42f2.akpm@osdl.org> <20061116123448.GA28311@flint.arm.linux.org.uk> <20061125145915.GB13089@flint.arm.linux.org.uk> <20061129074000.GA21352@flint.arm.linux.org.uk> <20061129003036.dd27f01e.akpm@osdl.org> <20061129092023.GA23101@flint.arm.linux.org.uk> <20061129013922.053482f9.akpm@osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: Mingming Cao <cmm@us.ibm.com>, Hugh Dickins <hugh@veritas.com>,
+	Mel Gorman <mel@skynet.ie>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:26507 "EHLO thunker.thunk.org")
-	by vger.kernel.org with ESMTP id S934975AbWK2RXV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 12:23:21 -0500
-To: Valerie Clement <Valerie.Clement@bull.net>
+Received: from caramon.arm.linux.org.uk ([217.147.92.249]:32782 "EHLO
+	caramon.arm.linux.org.uk") by vger.kernel.org with ESMTP
+	id S935979AbWK2SQY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Nov 2006 13:16:24 -0500
+To: Andrew Morton <akpm@osdl.org>
 Content-Disposition: inline
-In-Reply-To: <1164386860.17961.67.camel@ckrm>
+In-Reply-To: <20061129013922.053482f9.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 24, 2006 at 05:47:40PM +0100, Valerie Clement wrote:
-> Currently, the maximum number of blocks in a block group is the
-> number of bits in a block, since the block bitmap must be stored
-> inside a single block.  So on a 4 KB blocksize filesystem, the
-> maximum number of blocks in a group is 32768.  This constraint can
-> limit the maximum size of the filesystem.
+On Wed, Nov 29, 2006 at 01:39:22AM -0800, Andrew Morton wrote:
+> On Wed, 29 Nov 2006 09:20:24 +0000
+> Russell King <rmk+lkml@arm.linux.org.uk> wrote:
+> 
+> > What I'm looking for is confirmation of the semantics of
+> > find_next_zero_bit()
+> 
+> What are the existing semantics?  I see no documentation in any of the
+> architectures I've looked at.  That's my point.
+> 
+> >From a quick read of fs/ext2/balloc.c
+> 
+> 	ext2_find_next_zero_bit(base, size, offset)
+> 
+> appears to expect that base is the start of the memory buffer, size is the
+> number of bits at *base and offset is the bit at which to start the search,
+> relative to base.  If a zero bit is found it will return the offset of that
+> bit relative to base.  It will return some number greater than `size' if no
+> zero-bit was found.  
 
-So what's the current limitation on the maximum size of the filesystem
-without big block groups?  Well, the block group number is an unsigned
-32 bit number, so we can have 2**32 block group.  Using a 4k (2**12)
-block group, have a limit of 32768 blocks per block group, or 2**15
-blocks.  So the limit is 2**(32+15) or 2**47 blocks, or 2**59 bytes
-(512 petabytes).
+Thank you for taking the time to agree with my analysis of x86 and
+confirm that what ARM implements is also what is expected - that's
+all that I was after.  The reason I was after it was because you'd
+said in the message I originally replied to:
 
-So one justification of doing this work is we can raise the limit from
-2**59 bytes to 2**63 bytes (after which point we have to worry about
-loff_t on 32-bit systems and off_t on 64-bit systems being a signed
-64-bit number).  So it buys us a factor of 16 increase from 512
-petabytes to 8 exabytes of maximum filesystem size (assuming that we
-also have the full 64-bit support patches, of course).
+| yes, the `size' arg to find_next_zero_bit() represents the number of
+| bits to scan at `offset'.
 
-(For reference, the Internet Archive Wayback machine contains
-approximately 2 petabytes of information, and the Star Trek: TNG's
-character Data was purported to have a storage capacity of 88
-petabytes.)
+which is entirely different from my understanding of what is required of
+this function.  Hence the confusion caused and the need to clear up
+that confusion.
 
-The other thing to note about the 2**32 block group number limitation
-is this is not a filesystem format limitation, but a implementation
-limitation, and is based on dgrp_t being a 32-bit unsigned integer.
-If we ever needed to go beyond 512 petabytes, we could do so by making
-dgrp_t 64-bits.
+> Whether that's how all the implementors interpreted it is anyone's guess. 
+> Presumably the architectures all do roughly the same thing.
 
-> If we already see that the execution time of fsck and mkfs commands is
-> reduced when increasing the size of groups on a large filesystem, I'll
-> will do performance testing in the next days to see the other impacts of
-> this modification.
+ARM does exactly the same as x86, since x86 was the only architecture
+which existed in Linux when it was originally implemented.
 
-The execution time speedup of mkfs would mainly be in the time that it
-takes to write out the bitmaps in a less seeky fashion --- although
-the metablockgroup format change does this as well.  There is also be
-a secondary improvement based on the fact that the overhead of writing
-out the block group descriptor shrinks, but given that this overhead
-is an extra 4k block for every 8 gigabytes of filesystem space, I'm
-not sure how important the overhead really is.  We will also get the
-execution mkfs speedup (and in fact a much more significant one) when
-we implement the lazy initialization of the bitmap blocks and inode
-table blocks.
+> > <extremely frustrated>
+> 
+> Well likewise.  It appears that nobody (and about 20 people have
+> implemented these things) could be bothered getting off ass and
+> documenting the pathetic thing.
 
-The metablockgroup changes also would enable the storing the bitmap
-blocks contiguously which would speed up reading and writing the
-bitmap blocks.  The main advantage remaining of the big blockgroups is
-then the need to keep track of additional numbers of block utilization
-statistics on a per-block group basis, and in allowing the "pool" of
-blocks in the ext4's block group be bigger, which could help (or hurt)
-our allocation policies.  And, the metablockgroup changes are
-significantly simpler (already implemented in e2fsprogs, and involve a
-very minor change to the mount code's sanity checking about valid
-locations for bitmap blocks).
+Back in those days it very much was "read the source, luke" and when
+porting the kernel that meant the x86 code.  Consider the lack of
+documentation a case of just following the agreed convention at the
+time.
 
-Am I missing anything?   
+We've since now moved on to a more mature attitude towards documentation,
+and decided upon a format that it should take.  So yes, it would be nice
+if someone would document the entire set of kernel functions which
+architectures are expected to provide.  That'll probably be a full time
+job for someone though, and probably needs someone to be paid to do it.
+Or are the janitor folks up for it?
 
-Based on this analysis, it's clear that the big block groups patch has
-some benefits, but I'm wondering if they are sufficiently large to be
-worth it, especially since we also have to consider the changes
-necessary to the e2fsprogs (which haven't been written yet as far as I
-know).  Comments?
-
-						- Ted
+-- 
+Russell King
+ Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
+ maintainer of:
