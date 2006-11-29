@@ -1,176 +1,209 @@
-From: Girish Shilamkar <girish@clusterfs.com>
-Subject: Re: [RFC][PATCH 0/3] Extent base online defrag
-Date: Wed, 29 Nov 2006 15:57:46 +0530
-Message-ID: <1164796066.3251.8.camel@alpha.linsyssoft.com>
-References: <20061109200950sho@rifu.tnes.nec.co.jp>
+From: sho@tnes.nec.co.jp
+Subject: Re:[RFC][PATCH 0/3] Extent base online defrag
+Date: Wed, 29 Nov 2006 23:39:31 +0900
+Message-ID: <20061129233931sho@rifu.tnes.nec.co.jp>
+References: <012a01c713a5$54910430$4168010a@bsd.tnes.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:43191 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S966874AbWK2KWb
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 05:22:31 -0500
-To: sho@tnes.nec.co.jp
-In-Reply-To: <20061109200950sho@rifu.tnes.nec.co.jp>
+Received: from TYO202.gate.nec.co.jp ([210.143.35.52]:8603 "EHLO
+	tyo202.gate.nec.co.jp") by vger.kernel.org with ESMTP
+	id S967366AbWK2Ojt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Nov 2006 09:39:49 -0500
+Received: from mailgate3.nec.co.jp (mailgate54.nec.co.jp [10.7.69.193])
+	by tyo202.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id kATEdlYw017474
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Nov 2006 23:39:47 +0900 (JST)
+Received: (from root@localhost) by mailgate3.nec.co.jp (8.11.7/3.7W-MAILGATE-NEC)
+	id kATEdll13869 for linux-ext4@vger.kernel.org; Wed, 29 Nov 2006 23:39:47 +0900 (JST)
+Received: from secsv3.tnes.nec.co.jp (tnesvc2.tnes.nec.co.jp [10.1.101.15]) by mailsv.nec.co.jp (8.11.7/3.7W-MAILSV-NEC) with ESMTP
+	id kATEdkg01923 for <linux-ext4@vger.kernel.org>; Wed, 29 Nov 2006 23:39:46 +0900 (JST)
+Received: from tnesvc2.tnes.nec.co.jp ([10.1.101.15])
+	by secsv3.tnes.nec.co.jp (ExpressMail 5.10) with SMTP
+	id 20061129.234508.92101876 for <linux-ext4@vger.kernel.org>
+	; Wed, 29 Nov 2006 23:45:09 +0900
+To: girish@clusterfs.com
+In-reply-to: <012a01c713a5$54910430$4168010a@bsd.tnes.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+
 Hi,
-I tried to use defrag utility. But these are the results that, I got:
 
-[root@metis e4defrag]# ./defrag /dev/hda8
-Start defragment for device(/dev/hda8)
-        Total:                   393
-        Success:                   0 
-        Failure:                 393
-[root@metis e4defrag]# ./defrag /mnt/test1/root
-Start defragment for directory(/mnt/test1/root)
-        Total:                   392
-        Success:                   0
-        Failure:                 392
-I tried same thing with different directories and files, but the result
-was the same.
-By doing strace on defrag utility I found that ioctl always returned
-ENOSPC. So I decreased the no. files, but still that didn't help, I came
-down till filesystem was only 9% full.
+Thank you for your trial and report of the result!
 
-[root@metis test2]# df -k
-Filesystem           1K-blocks      Used Available Use% Mounted on
-/dev/hda3             15116868   9762924   4586040  69% /
-tmpfs                   224880         0    224880   0% /dev/shm
-/dev/hda1              2016016     17940   1895664   1% /boot
-/dev/hda2             20161204   1364752  17772312   8% /mnt/store
-/dev/hda9             15116868   9762924   4586040  69% /mnt/test1
-/dev/hda10              972532     78136    844196   9% /mnt/test2
-[root@metis ~]# ./e4defrag/defrag /dev/hda10
-Start defragment for device(/dev/hda10)
-        Total:                  4426
-        Success:                   0
-        Failure:                4426
-[root@metis ~]# ./e4defrag/defrag  /mnt/test2/
-dir/          linux-2.6.12/ 
-[root@metis ~]# ./e4defrag/defrag  /mnt/test2/linux-2.6.12/
-arch/          crypto/        Documentation/ drivers/       MAINTAINERS
-Makefile       
-[root@metis ~]# ./e4defrag/defrag  /mnt/test2/linux-2.6.12/Makefile 
-Start defragment for /mnt/test2/linux-2.6.12/Makefile
-        e4defrag  : defrag fail.: No space left on device
-                    "/mnt/test2/linux-2.6.12/Makefile"
-
-
-I was using linux kernel 2.6.16.8. I applied Alex's mballoc patches and
-then your defrag patches.. 
-Another thing, I changed one line in the defrag utility code.
--#define FS_EXT3                 "ext4dev"
-+#define FS_EXT3                 "ext3"
-
-I did mount the filesystem with mballoc and extents options.
-
-Any ideas ?
-
-Thanks & Regards,
-Girish.
-
-
-
-On Thu, 2006-11-09 at 20:09 +0900, sho@tnes.nec.co.jp wrote: 
 > Hi,
+> I tried to use defrag utility. But these are the results that, I got:
 > 
-> >I am considering the online defrag function for ext4 and thinking
-> >that your following patch set for multi-block allocation is useful
-> >to search contiguous free blocks for the defragmentation.
-> >
-> >"[RFC] extents,mballoc,delalloc for 2.6.16.8"
-> >http://marc.theaimsgroup.com/?l=linux-ext4&m=114669168616780&w=2
-> >
-> >I will send the patch of simple defrag implementation for ext4 later.
-> 
-> I have written the patches of ioctl for extent base online defragment
-> and the command which call it.
-> These patches are at the experimental stage so they need many
-> improvements.  But they work well so far as basic defragmenter,
-> which means they are worth enough to examine my trial.
-> 
-> - Specify the target area in a file using the following structure:
->   struct ext3_ext_defrag_data {
-> 	  loff_t start_offset; /* start offset to defrag in bytes */
-> 	  loff_t defrag_size;  /* size of defrag in bytes */
->   }
->   It uses loff_t so that the size of the structure is identical on
->   both 32 bits and 64 bits architecture.
->   Block allocation, including searching for the free contiguous
->   blocks, is implemented in kernel.
->   
-> - The procedures for the defragment in kernel are as follows:
->   Blocks are allocated for the temporary inode by 16384 pages
->   and the block on the temporary inode is moved to the original inode
->   by a page.  I think I need to tune the above pages unit
->   for the performance.  It's in my TODO list.
->   1. Allocate blocks for the temporary inode.
->   2. Move the blocks on the temporary inode to the original inode
->      by a page.
->      2.1 Read the file data from the old blocks to the page
->      2.2 Move the block on the temporary inode to the original inode
->      2.3 Write the file data on the page into the new blocks
-> 
-> - Currently, this patch works only for ext3 because it needs
->   Alex Tomas's ext3 multi-block allocation patch which is for 2.6.16.8.
->   "[RFC] extents,mballoc,delalloc for 2.6.16.8"
->   http://marc.theaimsgroup.com/?l=linux-ext4&m=114669168616780&w=2
->   But, my target is the defragment for ext4.  So I hope to start
->   the work for ext4 soon.
-> 
-> - On block allocation for the temporary inode(ext3_ext_new_extent_tree()),
->   the number of the modified blocks for metadata(extent block) is
->   calculated in ext3_ext_writepage_trans_blocks().  As the resulting
->   value can exceed the max blocks for the transaction(2048), passing
->   2048 directly to ext3_journal_start() for the provisional solution.
->   It's in my TODO list.
-> 
-> - They don't support the following:
->   - Not support the indirect block file(only for the extent file).
->   - Not optimize the depth of extent tree and the number of
->     extent blocks after defragmentation.
->   - Not support quota.
->   - Not support a hole file.
->   These are also in my TODO list.
-> 
-> Summary Of Patches:
-> *These patches apply on top of above Alex's patches.
-> 
-> [PATCH 1/3] Allocate new contiguous blocks with Alex's mballoc
-> - Search contiguous free blocks and allocate them for the temporary
->   inode with Alex's multi-block allocation.
-> 
-> [PATCH 2/3] Move the file data to the new blocks
-> - Move the blocks on the temporary inode to the original inode
->   by a page.
-> 
-> [PATCH 3/3] Online defrag command
-> - The defrag command.  Usage is as follows:
->   o Defrag for a file.
->     # e4defrag file-name
->   o Defrag for all files on ext3.
->     # e4defrag device-name
-> 
-> I created 50 fragmented files of 1GB and ran e4defrag for each of them.
-> As a result, I got the following improvement.
-> "Fragments" is the total number of fragments on 50 files.
-> "I/O performance" is the elapsed time for reading 50 files
-> with "cat" command(cat file* > /dev/null). 
-> 
->                    Before defrag    After defrag 
-> ---------------------------------------------------------------------
-> Fragments                  12175             800
-> I/O performance(Second)    618.3           460.6(25% improvement!!)
-> 
-> Any comments are welcome.
-> Cheers, Takashi
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+> [root@metis e4defrag]# ./defrag /dev/hda8
+> Start defragment for device(/dev/hda8)
+>        Total:                   393
+>        Success:                   0 
+>        Failure:                 393
+> [root@metis e4defrag]# ./defrag /mnt/test1/root
+> Start defragment for directory(/mnt/test1/root)
+>        Total:                   392
+>        Success:                   0
+>        Failure:                 392
+> I tried same thing with different directories and files, but the result
+> was the same.
+> By doing strace on defrag utility I found that ioctl always returned
+> ENOSPC. So I decreased the no. files, but still that didn't help, I came
+> down till filesystem was only 9% full.
+
+I think that your files didn't have many fragments, so ioctl returned
+ENOSPC.  e4defrag iterates ioctl per 64MB.  If the specified 64MB
+range has only one fragment(extent), the kernel returns ENOSPC
+at the current implement.
+So I'll change this behaviour to realize whether there was actual
+error.  I intend to update my patches in early December.
+
+If you need to check the number of fragments(extents),
+you can use the following simple program using Alex's debug code.
+Example:
+# ./scan_ext -e data0
+Extents of data0:
+start = 10240 len = 1024 block = 0
+start = 212992 len = 1536 block = 1024
+start = 197632 len = 1024 block = 2560
+start = 450560 len = 1536 block = 3584
+start = 662019 len = 1535 block = 5120
+start = 721424 len = 1 block = 6655
+start = 722944 len = 1024 block = 6656
+start = 726016 len = 512 block = 7680
+
+start: The physical block number.
+len: The length of the extent.
+block: The logical block number.
+
+The program is following.
+-----
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
+#define GET_EXTENTS	0
+#define GET_STATUS	1
+#define	GET_DEPTH	2
+
+#define EXT3_IOC_GET_EXTENTS		_IOR('f', 7, long)
+#define EXT3_IOC_GET_TREE_DEPTH		_IOR('f', 8, long)
+#define EXT3_IOC_GET_TREE_STATS		_IOR('f', 9, long)
+
+#define	BUF_LEN	1024
+
+/*
+ * this structure is used to gather extents from the tree via ioctl
+ */
+struct ext3_extent_buf {
+	unsigned long start;
+	int buflen;
+	void *buffer;
+	void *cur;
+	int err;
+};
+
+/*
+ * storage for cached extent
+ */
+struct ext3_ext_cache {
+	unsigned int   ec_start;
+	unsigned int   ec_block;
+	unsigned int   ec_len;
+	unsigned int   ec_type;
+}; 
+
+/*
+ * this structure is used to collect stats info about the tree
+ */
+struct ext3_extent_tree_stats {
+	int depth;
+	int extents_num;
+	int leaf_num;
+};
+
+struct ext3_ext_cache ec[BUF_LEN];
+
+int
+main(int argc, char **argv) {
+
+	int cmd = EXT3_IOC_GET_EXTENTS;
+	char	*file;
+	int	fd;
+	struct	ext3_extent_buf ebuf;
+	void	*arg;
+	struct ext3_extent_tree_stats	estat;
+	int	ret;
+	int	i;
+
+	if (argc < 3) {
+		fprintf(stderr, "Usage: scan_ext -e|-s|-d file\n");
+		exit(1);
+	}	
+
+	if (!strcmp(argv[1], "-e")) {
+		file = argv[2];
+	} else if (!strcmp(argv[1], "-d")) {
+		file = argv[2];
+		cmd = EXT3_IOC_GET_TREE_DEPTH;	
+	} else if (!strcmp(argv[1], "-s")) {
+		file = argv[2];
+		cmd = EXT3_IOC_GET_TREE_STATS;
+	} else {
+		file = argv[1];
+	}
+
+	if ((fd = open(file, O_RDONLY)) < 0) {
+		perror("open");
+		exit(1);
+	}
+		
+	switch (cmd) {
+	case EXT3_IOC_GET_EXTENTS:
+		printf("Extents of %s:\n", argv[2]);
+		ebuf.start = 0;
+		ebuf.buflen = BUF_LEN * sizeof(struct ext3_ext_cache);
+		ebuf.buffer = ebuf.cur = ec;
+		ebuf.err = 0;
+		arg = &ebuf;	
+		break;
+	case EXT3_IOC_GET_TREE_DEPTH:
+		arg = NULL;	
+		break;
+	case EXT3_IOC_GET_TREE_STATS:
+		arg = &estat;
+		break;
+	}
+
+	if ((ret = ioctl(fd, cmd, arg)) < 0) {
+		perror("ioctl");
+		exit(1);
+	}
+
+	switch (cmd) {
+	case EXT3_IOC_GET_EXTENTS:
+		for(i = 0; i < ret; i++) {
+			printf("start = %u len = %u block = %u\n",
+				ec[i].ec_start, ec[i].ec_len,
+				ec[i].ec_block); 
+		}	
+		break;
+	case EXT3_IOC_GET_TREE_DEPTH:
+		printf("depth = %d\n", ret);
+		break;
+	case EXT3_IOC_GET_TREE_STATS:
+		printf("depth       = %d\n", estat.depth);
+		printf("extents     = %d\n", estat.extents_num);
+		printf("leaf blocks = %d\n", estat.leaf_num);
+		break;
+	}
+
+	exit(0);
+}
+
+Cheers, Takashi
