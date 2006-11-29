@@ -1,51 +1,60 @@
-From: Russell King <rmk+lkml@arm.linux.org.uk>
+From: Andrew Morton <akpm@osdl.org>
 Subject: Re: Boot failure with ext2 and initrds
-Date: Wed, 29 Nov 2006 09:20:24 +0000
-Message-ID: <20061129092023.GA23101@flint.arm.linux.org.uk>
-References: <20061114113120.d4c22b02.akpm@osdl.org> <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com> <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com> <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com> <20061115232228.afaf42f2.akpm@osdl.org> <20061116123448.GA28311@flint.arm.linux.org.uk> <20061125145915.GB13089@flint.arm.linux.org.uk> <20061129074000.GA21352@flint.arm.linux.org.uk> <20061129003036.dd27f01e.akpm@osdl.org>
+Date: Wed, 29 Nov 2006 01:39:22 -0800
+Message-ID: <20061129013922.053482f9.akpm@osdl.org>
+References: <20061114113120.d4c22b02.akpm@osdl.org>
+	<Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+	<Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+	<20061115214534.72e6f2e8.akpm@osdl.org>
+	<455C0B6F.7000201@us.ibm.com>
+	<20061115232228.afaf42f2.akpm@osdl.org>
+	<20061116123448.GA28311@flint.arm.linux.org.uk>
+	<20061125145915.GB13089@flint.arm.linux.org.uk>
+	<20061129074000.GA21352@flint.arm.linux.org.uk>
+	<20061129003036.dd27f01e.akpm@osdl.org>
+	<20061129092023.GA23101@flint.arm.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: Mingming Cao <cmm@us.ibm.com>, Hugh Dickins <hugh@veritas.com>,
 	Mel Gorman <mel@skynet.ie>,
 	"Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from caramon.arm.linux.org.uk ([217.147.92.249]:50450 "EHLO
-	caramon.arm.linux.org.uk") by vger.kernel.org with ESMTP
-	id S966547AbWK2JUm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 04:20:42 -0500
-To: Andrew Morton <akpm@osdl.org>
-Content-Disposition: inline
-In-Reply-To: <20061129003036.dd27f01e.akpm@osdl.org>
+Received: from smtp.osdl.org ([65.172.181.25]:38610 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1758809AbWK2JkO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Nov 2006 04:40:14 -0500
+To: Russell King <rmk+lkml@arm.linux.org.uk>
+In-Reply-To: <20061129092023.GA23101@flint.arm.linux.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 29, 2006 at 12:30:36AM -0800, Andrew Morton wrote:
-> On Wed, 29 Nov 2006 07:40:00 +0000
-> Russell King <rmk+lkml@arm.linux.org.uk> wrote:
-> 
-> > Yet another attempt to get a response from Andrew.  It is rather
-> > important that you DO respond to this.
-> 
-> You can read the code as easily as I can?
+On Wed, 29 Nov 2006 09:20:24 +0000
+Russell King <rmk+lkml@arm.linux.org.uk> wrote:
 
-Sigh.  Please don't cut the relevant part of my _first_ email message
-where it can be clearly seen that I _have_ read the code and interpreted
-it _differently_ from you.
+> What I'm looking for is confirmation of the semantics of
+> find_next_zero_bit()
 
-> I'm not really sure what you're asking - I thought Mingming cleared
-> things up.
+What are the existing semantics?  I see no documentation in any of the
+architectures I've looked at.  That's my point.
 
-Which message did this happen?
+>From a quick read of fs/ext2/balloc.c
 
-What I'm looking for is confirmation of the semantics of
-find_next_zero_bit(), which is a fairly simple question to ask, and
-certainly does not justify this rather obtuse and difficult thread.
+	ext2_find_next_zero_bit(base, size, offset)
 
-<extremely frustrated>
+appears to expect that base is the start of the memory buffer, size is the
+number of bits at *base and offset is the bit at which to start the search,
+relative to base.  If a zero bit is found it will return the offset of that
+bit relative to base.  It will return some number greater than `size' if no
+zero-bit was found.  
 
--- 
-Russell King
- Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
- maintainer of:
+Whether that's how all the implementors interpreted it is anyone's guess. 
+Presumably the architectures all do roughly the same thing.
+
+> <extremely frustrated>
+
+Well likewise.  It appears that nobody (and about 20 people have
+implemented these things) could be bothered getting off ass and documenting
+the pathetic thing.
