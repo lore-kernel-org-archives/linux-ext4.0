@@ -1,32 +1,32 @@
 From: akpm@osdl.org
-Subject: + ext3-balloc-use-io_error-label.patch added to -mm tree
-Date: Wed, 29 Nov 2006 14:12:42 -0800
-Message-ID: <200611292212.kATMCh0t012991@shell0.pdx.osdl.net>
+Subject: + ext3-balloc-fix-off-by-one-against-rsv_end.patch added to -mm tree
+Date: Wed, 29 Nov 2006 14:12:38 -0800
+Message-ID: <200611292212.kATMCcKb012980@shell0.pdx.osdl.net>
 Cc: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:28098 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1758847AbWK2WMy (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:28610 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1758852AbWK2WM7 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 17:12:54 -0500
+	Wed, 29 Nov 2006 17:12:59 -0500
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3 balloc: use io_error label
+     ext3 balloc: fix off-by-one against rsv_end
 has been added to the -mm tree.  Its filename is
-     ext3-balloc-use-io_error-label.patch
+     ext3-balloc-fix-off-by-one-against-rsv_end.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext3 balloc: use io_error label
+Subject: ext3 balloc: fix off-by-one against rsv_end
 From: Hugh Dickins <hugh@veritas.com>
 
-ext3_new_blocks has a nice io_error label for setting -EIO, so goto that in
-the one place that doesn't already use it.
+rsv_end is the last block within the reservation, so alloc_new_reservation
+should accept start_block == rsv_end as success.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -34,25 +34,21 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext3/balloc.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+ fs/ext3/balloc.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext3/balloc.c~ext3-balloc-use-io_error-label fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-balloc-use-io_error-label
+diff -puN fs/ext3/balloc.c~ext3-balloc-fix-off-by-one-against-rsv_end fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext3-balloc-fix-off-by-one-against-rsv_end
 +++ a/fs/ext3/balloc.c
-@@ -1515,10 +1515,8 @@ retry_alloc:
- 		if (group_no >= ngroups)
- 			group_no = 0;
- 		gdp = ext3_get_group_desc(sb, group_no, &gdp_bh);
--		if (!gdp) {
--			*errp = -EIO;
--			goto out;
--		}
-+		if (!gdp)
-+			goto io_error;
- 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
- 		/*
- 		 * skip this group if the number of
+@@ -1148,7 +1148,7 @@ retry:
+ 	 * check if the first free block is within the
+ 	 * free space we just reserved
+ 	 */
+-	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
++	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+ 		return 0;		/* success */
+ 	/*
+ 	 * if the first free bit we found is out of the reservable space
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
