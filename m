@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 12/12] ext3 balloc: fix _with_rsv freeze
-Date: Tue, 28 Nov 2006 20:15:41 -0800
-Message-ID: <1164773741.4341.46.camel@localhost.localdomain>
+Subject: [PATCH 10/12] ext4 balloc: say rb_entry not list_entry
+Date: Tue, 28 Nov 2006 20:15:24 -0800
+Message-ID: <1164773724.4341.44.camel@localhost.localdomain>
 References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <20061114184919.GA16020@skynet.ie>
 	 <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
@@ -19,7 +19,7 @@ References: <20061114014125.dd315fff.akpm@osdl.org>
 	 <Pine.LNX.4.64.0611210508270.22957@blonde.wat.veritas.com>
 	 <1164156193.3804.48.camel@dyn9047017103.beaverton.ibm.com>
 	 <Pine.LNX.4.64.0611281659190.29701@blonde.wat.veritas.com>
-	 <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
+	 <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -27,54 +27,66 @@ Content-Transfer-Encoding: 7bit
 Cc: Mel Gorman <mel@skynet.ie>, "Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758792AbWK2EPw@vger.kernel.org>
-To: Andrew Morton <akpm@osdl.org>, Hugh Dickins <hugh@veritas.com>
-In-Reply-To: <Pine.LNX.4.64.0611281739140.29701@blonde.wat.veritas.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:2271 "EHLO e3.ny.us.ibm.com")
+	by vger.kernel.org with ESMTP id S1758783AbWK2EPb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Nov 2006 23:15:31 -0500
+To: Hugh Dickins <hugh@veritas.com>, Andrew Morton <akpm@osdl.org>
+In-Reply-To: <Pine.LNX.4.64.0611281742470.29701@blonde.wat.veritas.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 ------------------------------------------------------
-Subject: ext2 balloc: fix _with_rsv freeze
+Subject: ext2 balloc: say rb_entry not list_entry
 From: Hugh Dickins <hugh@veritas.com>
 
-After several days of testing ext2 with reservations, it got caught inside
-ext2_try_to_allocate_with_rsv: alloc_new_reservation repeatedly succeeding on
-the window [12cff,12d0e], ext2_try_to_allocate repeatedly failing to find the
-free block guaranteed to be included (unless there's contention).
+The reservations tree is an rb_tree not a list, so it's less confusing to use
+rb_entry() than list_entry() - though they're both just container_of().
 
-Fix the range to find_next_usable_block's memscan: the scan from "here"
-(0xcfe) up to (but excluding) "maxblocks" (0xd0e) needs to scan 3 bytes not 2
-(the relevant bytes of bitmap in this case being f7 df ff - none 00, but the
-premature cutoff implying that the last was found 00).
+----------------------------------------------------------
 
-Is this a problem for mainline ext2?  No, because the "size" in its memscan is
-always EXT2_BLOCKS_PER_GROUP(sb), which mkfs.ext2 requires to be a multiple of
-8.  Is this a problem for ext3 or ext4?  No, because they have an additional
-extN_test_allocatable test which rescues them from the error.
+Sync up this fix in ext4
 
---------------------------------------------------
-
-Sync up a reservation fix from ext2 in ext4
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
 
 
 ---
 
- linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze fs/ext4/balloc.c
---- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze	2006-11-28 19:37:12.000000000 -0800
-+++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:12.000000000 -0800
-@@ -747,7 +747,7 @@ find_next_usable_block(ext4_grpblk_t sta
- 		here = 0;
+diff -puN fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry fs/ext4/balloc.c
+--- linux-2.6.19-rc5/fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry	2006-11-28 19:37:08.000000000 -0800
++++ linux-2.6.19-rc5-cmm/fs/ext4/balloc.c	2006-11-28 19:37:08.000000000 -0800
+@@ -165,7 +165,7 @@ restart:
  
- 	p = ((char *)bh->b_data) + (here >> 3);
--	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
-+	r = memscan(p, 0, ((maxblocks + 7) >> 3 - (here >> 3));
- 	next = (r - ((char *)bh->b_data)) << 3;
+ 	printk("Block Allocation Reservation Windows Map (%s):\n", fn);
+ 	while (n) {
+-		rsv = list_entry(n, struct ext4_reserve_window_node, rsv_node);
++		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
+ 		if (verbose)
+ 			printk("reservation window 0x%p "
+ 			       "start:  %llu, end:  %llu\n",
+@@ -966,7 +966,7 @@ static int find_next_reservable_window(
  
- 	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
+ 		prev = rsv;
+ 		next = rb_next(&rsv->rsv_node);
+-		rsv = list_entry(next,struct ext4_reserve_window_node,rsv_node);
++		rsv = rb_entry(next,struct ext4_reserve_window_node,rsv_node);
+ 
+ 		/*
+ 		 * Reached the last reservation, we can just append to the
+@@ -1210,7 +1210,7 @@ static void try_to_extend_reservation(st
+ 	if (!next)
+ 		my_rsv->rsv_end += size;
+ 	else {
+-		next_rsv = list_entry(next, struct ext4_reserve_window_node, rsv_node);
++		next_rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
+ 
+ 		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
+ 			my_rsv->rsv_end += size;
 
 _
