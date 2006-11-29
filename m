@@ -1,58 +1,67 @@
 From: akpm@osdl.org
-Subject: + ext4-balloc-use-io_error-label.patch added to -mm tree
-Date: Wed, 29 Nov 2006 14:17:08 -0800
-Message-ID: <200611292217.kATMH8I6013210@shell0.pdx.osdl.net>
+Subject: + ext4-balloc-fix-_with_rsv-freeze.patch added to -mm tree
+Date: Wed, 29 Nov 2006 14:17:10 -0800
+Message-ID: <200611292217.kATMHAcU013215@shell0.pdx.osdl.net>
 Cc: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:62661 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1758872AbWK2WXu (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:31175 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1758303AbWK2W1j (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 17:23:50 -0500
+	Wed, 29 Nov 2006 17:27:39 -0500
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: use io_error label
+     ext4 balloc: fix _with_rsv freeze
 has been added to the -mm tree.  Its filename is
-     ext4-balloc-use-io_error-label.patch
+     ext4-balloc-fix-_with_rsv-freeze.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4 balloc: use io_error label
+Subject: ext4 balloc: fix _with_rsv freeze
 From: Hugh Dickins <hugh@veritas.com>
 
-ext4_new_blocks has a nice io_error label for setting -EIO, so goto that in
-the one place that doesn't already use it.
+After several days of testing ext4 with reservations, it got caught inside
+ext4_try_to_allocate_with_rsv: alloc_new_reservation repeatedly succeeding on
+the window [12cff,12d0e], ext4_try_to_allocate repeatedly failing to find the
+free block guaranteed to be included (unless there's contention).
 
+Fix the range to find_next_usable_block's memscan: the scan from "here"
+(0xcfe) up to (but excluding) "maxblocks" (0xd0e) needs to scan 3 bytes not 2
+(the relevant bytes of bitmap in this case being f7 df ff - none 00, but the
+premature cutoff implying that the last was found 00).
+
+Is this a problem for mainline ext4?  No, because the "size" in its memscan is
+always EXT2_BLOCKS_PER_GROUP(sb), which mkfs.ext4 requires to be a multiple of
+8.  Is this a problem for ext3 or ext4?  No, because they have an additional
+extN_test_allocatable test which rescues them from the error.
+
+Sync up a reservation fix from ext4 in ext4
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c |    2 +-
+ 1 files changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-use-io_error-label fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-use-io_error-label
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze
 +++ a/fs/ext4/balloc.c
-@@ -1529,10 +1529,8 @@ retry_alloc:
- 		if (group_no >= ngroups)
- 			group_no = 0;
- 		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
--		if (!gdp) {
--			*errp = -EIO;
--			goto out;
--		}
-+		if (!gdp)
-+			goto io_error;
- 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
- 		/*
- 		 * skip this group if the number of
+@@ -747,7 +747,7 @@ find_next_usable_block(ext4_grpblk_t sta
+ 		here = 0;
+ 
+ 	p = ((char *)bh->b_data) + (here >> 3);
+-	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
++	r = memscan(p, 0, ((maxblocks + 7) >> 3 - (here >> 3));
+ 	next = (r - ((char *)bh->b_data)) << 3;
+ 
+ 	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
