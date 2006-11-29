@@ -1,102 +1,41 @@
-From: Russell King <rmk+lkml@arm.linux.org.uk>
+From: Andrew Morton <akpm@osdl.org>
 Subject: Re: Boot failure with ext2 and initrds
-Date: Wed, 29 Nov 2006 07:40:00 +0000
-Message-ID: <20061129074000.GA21352@flint.arm.linux.org.uk>
-References: <20061114184919.GA16020@skynet.ie> <Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com> <20061114113120.d4c22b02.akpm@osdl.org> <Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com> <Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com> <20061115214534.72e6f2e8.akpm@osdl.org> <455C0B6F.7000201@us.ibm.com> <20061115232228.afaf42f2.akpm@osdl.org> <20061116123448.GA28311@flint.arm.linux.org.uk> <20061125145915.GB13089@flint.arm.linux.org.uk>
+Date: Wed, 29 Nov 2006 00:30:36 -0800
+Message-ID: <20061129003036.dd27f01e.akpm@osdl.org>
+References: <20061114184919.GA16020@skynet.ie>
+	<Pine.LNX.4.64.0611141858210.11956@blonde.wat.veritas.com>
+	<20061114113120.d4c22b02.akpm@osdl.org>
+	<Pine.LNX.4.64.0611142111380.19259@blonde.wat.veritas.com>
+	<Pine.LNX.4.64.0611151404260.11929@blonde.wat.veritas.com>
+	<20061115214534.72e6f2e8.akpm@osdl.org>
+	<455C0B6F.7000201@us.ibm.com>
+	<20061115232228.afaf42f2.akpm@osdl.org>
+	<20061116123448.GA28311@flint.arm.linux.org.uk>
+	<20061125145915.GB13089@flint.arm.linux.org.uk>
+	<20061129074000.GA21352@flint.arm.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from caramon.arm.linux.org.uk ([217.147.92.249]:28691 "EHLO
-	caramon.arm.linux.org.uk") by vger.kernel.org with ESMTP
-	id S966206AbWK2IYp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 03:24:45 -0500
-To: Andrew Morton <akpm@osdl.org>, Mingming Cao <cmm@us.ibm.com>,
-	Hugh Dickins <hugh@veritas.com>, Mel Gorman <mel@skynet.ie>,
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Mingming Cao <cmm@us.ibm.com>, Hugh Dickins <hugh@veritas.com>,
+	Mel Gorman <mel@skynet.ie>,
 	"Martin J. Bligh" <mbligh@mbligh.org>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20061125145915.GB13089@flint.arm.linux.org.uk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.25]:39098 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S966365AbWK2IbG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Nov 2006 03:31:06 -0500
+To: Russell King <rmk+lkml@arm.linux.org.uk>
+In-Reply-To: <20061129074000.GA21352@flint.arm.linux.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Yet another attempt to get a response from Andrew.  It is rather
-important that you DO respond to this.
+On Wed, 29 Nov 2006 07:40:00 +0000
+Russell King <rmk+lkml@arm.linux.org.uk> wrote:
 
-On Sat, Nov 25, 2006 at 02:59:16PM +0000, Russell King wrote:
-> On Thu, Nov 16, 2006 at 12:34:48PM +0000, Russell King wrote:
-> > On Wed, Nov 15, 2006 at 11:22:28PM -0800, Andrew Morton wrote:
-> > > On Wed, 15 Nov 2006 22:55:43 -0800
-> > > Mingming Cao <cmm@us.ibm.com> wrote:
-> > > 
-> > > > Hmm, maxblocks, in bitmap_search_next_usable_block(),  is the end block 
-> > > > number of the range  to search, not the lengh of the range. maxblocks 
-> > > > get passed to ext2_find_next_zero_bit(), where it expecting to take the 
-> > > > _size_ of the range to search instead...
-> > > > 
-> > > > Something like this: (this is not a patch)
-> > > >   @@ -524,7 +524,7 @@ bitmap_search_next_usable_block(ext2_grp
-> > > >    	ext2_grpblk_t next;
-> > > > 
-> > > >    -  	next = ext2_find_next_zero_bit(bh->b_data, maxblocks, start);
-> > > >    +  	next = ext2_find_next_zero_bit(bh->b_data, maxblocks-start + 1, start);
-> > > > 	if (next >= maxblocks)
-> > > >    		return -1;
-> > > >    	return next;
-> > > >    }
-> > > 
-> > > yes, the `size' arg to find_next_zero_bit() represents the number of bits
-> > > to scan at `offset'.
-> > 
-> > Are you sure?  That's not the way it's implemented in many architectures.
-> > find_next_*_bit() has always taken "address, maximum offset, starting offset"
-> > and always has returned "next offset".
-> > 
-> > Just look at arch/i386/lib/bitops.c:
-> > 
-> > int find_next_zero_bit(const unsigned long *addr, int size, int offset)
-> > {
-> >         unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
-> >         int set = 0, bit = offset & 31, res;
-> > ...
-> >         /*
-> >          * No zero yet, search remaining full bytes for a zero
-> >          */
-> >         res = find_first_zero_bit (p, size - 32 * (p - (unsigned long *) addr));
-> >         return (offset + set + res);
-> > }
-> > 
-> > So for the case that "offset" is aligned to a "long" boundary, that gives us:
-> > 
-> > 	res = find_first_zero_bit(addr + (offset>>5),
-> > 			size - 32 * (addr + (offset>>5) - addr));
-> > 
-> > or:
-> > 
-> > 	res = find_first_zero_bit(addr + (offset>>5), size - (offset & ~31));
-> > 
-> > So, size _excludes_ offset.
-> > 
-> > Now, considering the return value, "res" above will be relative to
-> > "addr + (offset>>5)".  However, we add "offset" on to that, so it's
-> > relative to addr + (offset bits).
-> 
-> Andrew,
-> 
-> Please respond to the above.  If what you say is correct then all
-> architectures need their bitops fixing to fit ext2's requirements.
-> 
-> -- 
-> Russell King
->  Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
->  maintainer of:
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+> Yet another attempt to get a response from Andrew.  It is rather
+> important that you DO respond to this.
 
--- 
-Russell King
- Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
- maintainer of:
+You can read the code as easily as I can?  I'm not really sure what
+you're asking - I thought Mingming cleared things up.
