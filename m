@@ -1,33 +1,32 @@
 From: akpm@osdl.org
-Subject: + ext4-balloc-reset-windowsz-when-full.patch added to -mm tree
-Date: Wed, 29 Nov 2006 14:17:00 -0800
-Message-ID: <200611292217.kATMH0cq013188@shell0.pdx.osdl.net>
+Subject: + ext4-balloc-use-io_error-label.patch added to -mm tree
+Date: Wed, 29 Nov 2006 14:17:08 -0800
+Message-ID: <200611292217.kATMH8I6013210@shell0.pdx.osdl.net>
 Cc: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:64452 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1758871AbWK2WVF (ORCPT
+Received: from smtp.osdl.org ([65.172.181.25]:62661 "EHLO smtp.osdl.org")
+	by vger.kernel.org with ESMTP id S1758872AbWK2WXu (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Nov 2006 17:21:05 -0500
+	Wed, 29 Nov 2006 17:23:50 -0500
 To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: reset windowsz when full
+     ext4 balloc: use io_error label
 has been added to the -mm tree.  Its filename is
-     ext4-balloc-reset-windowsz-when-full.patch
+     ext4-balloc-use-io_error-label.patch
 
 See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4 balloc: reset windowsz when full
+Subject: ext4 balloc: use io_error label
 From: Hugh Dickins <hugh@veritas.com>
 
-ext4_new_blocks should reset the reservation window size to 0 when squeezing
-the last blocks out of an almost full filesystem, so the retry doesn't skip
-any groups with less than half that free, reporting ENOSPC too soon.
+ext4_new_blocks has a nice io_error label for setting -EIO, so goto that in
+the one place that doesn't already use it.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -35,20 +34,25 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    1 +
- 1 files changed, 1 insertion(+)
+ fs/ext4/balloc.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-reset-windowsz-when-full fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-reset-windowsz-when-full
+diff -puN fs/ext4/balloc.c~ext4-balloc-use-io_error-label fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-use-io_error-label
 +++ a/fs/ext4/balloc.c
-@@ -1566,6 +1566,7 @@ retry_alloc:
- 	 */
- 	if (my_rsv) {
- 		my_rsv = NULL;
-+		windowsz = 0;
- 		group_no = goal_group;
- 		goto retry_alloc;
- 	}
+@@ -1529,10 +1529,8 @@ retry_alloc:
+ 		if (group_no >= ngroups)
+ 			group_no = 0;
+ 		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
+-		if (!gdp) {
+-			*errp = -EIO;
+-			goto out;
+-		}
++		if (!gdp)
++			goto io_error;
+ 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+ 		/*
+ 		 * skip this group if the number of
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
