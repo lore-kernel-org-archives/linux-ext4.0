@@ -1,96 +1,65 @@
-From: Girish Shilamkar <girish@clusterfs.com>
-Subject: Re: Re:[RFC][PATCH 0/3] Extent base online defrag
-Date: Thu, 30 Nov 2006 12:46:09 +0530
-Message-ID: <1164870969.3255.11.camel@alpha.linsyssoft.com>
-References: <012a01c713a5$54910430$4168010a@bsd.tnes.nec.co.jp>
-	 <20061129233931sho@rifu.tnes.nec.co.jp>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [RFC][PATCH 0/4] BIG_BG: support of large block groups
+Date: Thu, 30 Nov 2006 16:17:41 +0100
+Message-ID: <456EF615.1090205@bull.net>
+References: <1164386860.17961.67.camel@ckrm> <20061129172318.GD5771@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: rupesh@clusterfs.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:36787 "EHLO
-	mail.clusterfs.com") by vger.kernel.org with ESMTP id S1758460AbWK3HKv
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Nov 2006 02:10:51 -0500
-To: sho@tnes.nec.co.jp
-In-Reply-To: <20061129233931sho@rifu.tnes.nec.co.jp>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:908 "EHLO
+	ecfrec.frec.bull.fr") by vger.kernel.org with ESMTP
+	id S1030376AbWK3PTl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Nov 2006 10:19:41 -0500
+To: Theodore Tso <tytso@mit.edu>
+In-Reply-To: <20061129172318.GD5771@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+Theodore Tso wrote:
+> So what's the current limitation on the maximum size of the filesyste=
+m
+> without big block groups?  Well, the block group number is an unsigne=
+d
+> 32 bit number, so we can have 2**32 block group.  Using a 4k (2**12)
+> block group, have a limit of 32768 blocks per block group, or 2**15
+> blocks.  So the limit is 2**(32+15) or 2**47 blocks, or 2**59 bytes
+> (512 petabytes).
+Hi Ted,
+thanks for your comments.
 
+In fact, there is another limitation related to the block group size:
+all the group descriptors are stored in the first group of the filesyst=
+em.
+Currently, with a 4-KB block size, the maximum size of a group is
+2**15 blocks =3D 2**27 bytes.
+With a group descriptor size of 32 bytes, we can store a maximum of
+2**32 / 32 =3D 2**22 group descriptors in the first group.
+So the maximum number of groups is limited to 2**22 which limits the=20
+size of the filesystem to
+2**22(groups) * 2**15(blocks) * 2**12(blocksize) =3D 2**49 bytes =3D 51=
+2TB
 
-On Wed, 2006-11-29 at 23:39 +0900, sho@tnes.nec.co.jp wrote:
-> Hi,
-> 
-> Thank you for your trial and report of the result!
-> 
-> > Hi,
-> > I tried to use defrag utility. But these are the results that, I got:
-> > 
-> > [root@metis e4defrag]# ./defrag /dev/hda8
-> > Start defragment for device(/dev/hda8)
-> >        Total:                   393
-> >        Success:                   0 
-> >        Failure:                 393
-> > [root@metis e4defrag]# ./defrag /mnt/test1/root
-> > Start defragment for directory(/mnt/test1/root)
-> >        Total:                   392
-> >        Success:                   0
-> >        Failure:                 39
-> > I tried same thing with different directories and files, but the result
-> > was the same.
-> > By doing strace on defrag utility I found that ioctl always retunarned
-> > ENOSPC. So I decreased the no. files, but still that didn't help, I came
-> > down till filesystem was only 9% full.
-> 
-> I think that your files didn't have many fragments, so ioctl returned
-> ENOSPC.  e4defrag iterates ioctl per 64MB.  If the specified 64MB
-> range has only one fragment(extent), the kernel returns ENOSPC
-> at the current implement.
-> So I'll change this behaviour to realize whether there was actual
-> error.  I intend to update my patches in early December.
-> 
-Thanks for responding and for the scan_ext3 program.
-I did further testing, i checked if the file is fragmented or not :
+With big block groups, we can grow beyond this limit of 512TB.
 
-[root@metis e4defrag]# ./scan_ext3 /mnt/test2/root/file3
-Extents of /mnt/test2/root/file3:
-start = 117919 len = 11316 block = 0
-start = 136356 len = 2 block = 11316
-start = 165920 len = 24 block = 11318
-start = 165913 len = 7 block = 11342
-start = 221200 len = 48 block = 11349
-start = 221282 len = 1 block = 11397
-start = 221295 len = 12 block = 11398
-start = 221328 len = 1 block = 11410
-start = 221381 len = 3 block = 11411
-start = 221496 len = 1 block = 11414
-start = 221517 len = 57 block = 11415
-start = 221585 len = 53 block = 11472
-start = 221673 len = 6 block = 11525 
-start = 221681 len = 4 block = 11531
-start = 221707 len = 1 block = 11535
-start = 221711 len = 5 block = 11536
-start = 221725 len = 25 block = 11541
+>=20
+> Based on this analysis, it's clear that the big block groups patch ha=
+s
+> some benefits, but I'm wondering if they are sufficiently large to be
+> worth it, especially since we also have to consider the changes
+> necessary to the e2fsprogs (which haven't been written yet as far as =
+I
+> know).
 
->From the test the file seems to be pretty fragmented, still the defrag
-utility gives ENOSPC error.
+I already made changes in the e2fsprogs to support larger block groups,
+but there is still some work to do.
+The first thing is when creating a large filesystem (over 512TB or=20
+perhaps before) which is the optimal value for the block group size ?
+How to set its default value used by mkfs ?
+It is why I do tests now to see the behavior of a system when increasin=
+g=20
+  the size of the block groups.
 
-[root@metis e4defrag]# strace -e
-trace=ioctl ./defrag /mnt/test2/root/file3
-Start defragment for /mnt/test2/root/file3
-ioctl(3, 0x4010660a, 0xbf8747c0)        = -1 ENOSPC (No space left on
-device) 
-        e4defrag  : defrag fail.: No space left on device
-                    "/mnt/test2/root/file3"
-[root@metis ~]# ll -h /mnt/test2/root/file3
--rw-r--r--  1 root root 159M Sep  2 10:34 /mnt/test2/root/file3
-
-Most probably Rupesh(cc'ed him) will be looking into it further, really
-appreciate if you can add something to it.
-
-Thanks & Regards,
-Girish.
+   Val=E9rie
