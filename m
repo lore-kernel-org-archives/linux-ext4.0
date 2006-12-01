@@ -1,93 +1,92 @@
-From: akpm@osdl.org
-Subject: + ext3-4-dont-do-orphan-processing-on-readonly-devices.patch added to -mm tree
-Date: Thu, 30 Nov 2006 23:05:00 -0800
-Message-ID: <200612010705.kB1750dY004195@shell0.pdx.osdl.net>
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:41133 "EHLO smtp.osdl.org")
-	by vger.kernel.org with ESMTP id S1759244AbWLAHFI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Dec 2006 02:05:08 -0500
-To: mm-commits@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+From: sho@tnes.nec.co.jp
+Subject: Re:[RFC][PATCH 0/3] Extent base online defrag
+Date: Fri, 1 Dec 2006 19:29:59 +0900
+Message-ID: <20061201192959sho@rifu.tnes.nec.co.jp>
+References: <014901c71509$94f435f0$4168010a@bsd.tnes.nec.co.jp>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: rupesh@clusterfs.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: girish@clusterfs.com
+In-reply-to: <014901c71509$94f435f0$4168010a@bsd.tnes.nec.co.jp>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi,
 
-The patch titled
-     ext3/4: don't do orphan processing on readonly devices
-has been added to the -mm tree.  Its filename is
-     ext3-4-dont-do-orphan-processing-on-readonly-devices.patch
+Thank you for your further testing.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+>From the test the file seems to be pretty fragmented, still the defrag
+>utility gives ENOSPC error.
 
-------------------------------------------------------
-Subject: ext3/4: don't do orphan processing on readonly devices
-From: Eric Sandeen <sandeen@redhat.com>
+I found the problem of the workaround code related to journal in my
+patches.  2048 blocks was always passed to ext3_journal_start so that
+the journal blocks in transaction didn't exceed j_max_transaction_buffers.
+However, j_max_transaction_buffers could be adjusted to the number of
+filesystem blocks.  Maybe your filesystem's j_max_transaction_buffers
+would be less than 2048, so the error would occur.
 
-If you do something like:
+When the above problem occurs, the following message will be output
+in syslog.  Could you check your syslog?
 
-# touch foo
-# tail -f foo &
-# rm foo
-# <take snapshot>
-# <mount snapshot>
+"JBD: e4defrag wants too many credits (2048 > XXXX)"
 
-you'll panic, because ext3/4 tries to do orphan list processing on the
-readonly snapshot device, and:
+I am working for fixing the workaround code, but the work isn't
+finished yet.  I will update my patches next week.
+If you need to run my defrag soon, you can use the following
+patch to avoid the above problem as the provisional solution.
 
-kernel: journal commit I/O error
-kernel: Assertion failure in journal_flush_Rsmp_e2f189ce() at journal.c:1356: "!journal->j_checkpoint_transactions"
-kernel: Kernel panic: Fatal exception
-
-for a truly readonly underlying device, it's reasonable and necessary
-to just skip orphan list processing.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
+After Alex's patches and my previous patches are applied,
+you can apply the following patch.
 ---
-
- fs/ext3/super.c |    6 ++++++
- fs/ext4/super.c |    6 ++++++
- 2 files changed, 12 insertions(+)
-
-diff -puN fs/ext3/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices
-+++ a/fs/ext3/super.c
-@@ -1264,6 +1264,12 @@ static void ext3_orphan_cleanup (struct 
- 		return;
- 	}
+diff -uprN -X linux-2.6.16.8-tnes-org/Documentation/dontdiff linux-2.6.16.8-tnes-org/fs/ext3/extents.c linux-2.6.16.8-work/fs/ext3/extents.c
+--- linux-2.6.16.8-tnes-org/fs/ext3/extents.c	2006-12-01 10:37:28.000000000 +0900
++++ linux-2.6.16.8-work/fs/ext3/extents.c	2006-12-01 17:23:38.000000000 +0900
+@@ -2738,6 +2738,7 @@ ext3_ext_replace_branches(struct ext3_ex
+ 	handle_t *handle = NULL;
+ 	unsigned jnum;
+ 	struct inode *inode;
++	journal_t	*journal;
  
-+	if (bdev_read_only(sb->s_bdev)) {
-+		printk(KERN_ERR "EXT3-fs: write access "
-+			"unavailable, skipping orphan cleanup.\n");
-+		return;
-+	}
-+
- 	if (EXT3_SB(sb)->s_mount_state & EXT3_ERROR_FS) {
- 		if (es->s_last_orphan)
- 			jbd_debug(1, "Errors on filesystem, "
-diff -puN fs/ext4/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices fs/ext4/super.c
---- a/fs/ext4/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices
-+++ a/fs/ext4/super.c
-@@ -1321,6 +1321,12 @@ static void ext4_orphan_cleanup (struct 
- 		return;
- 	}
  
-+	if (bdev_read_only(sb->s_bdev)) {
-+		printk(KERN_ERR "EXT4-fs: write access "
-+			"unavailable, skipping orphan cleanup.\n");
-+		return;
-+	}
-+
- 	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
- 		if (es->s_last_orphan)
- 			jbd_debug(1, "Errors on filesystem, "
-_
+ 	from = from_page << (PAGE_CACHE_SHIFT - dest_tree->inode->i_blkbits);
+@@ -2752,10 +2753,11 @@ ext3_ext_replace_branches(struct ext3_ex
+ 	 */
+ 	/* TODO:
+ 	 * Need to consider the way of calculating journal blocks
+-	 * because j_max_transaction_buffer may exceed 2048
++	 * because the journal blocks may exceed j_max_transaction_buffer
+ 	 * if we have a deep depth.
+ 	 */
+-	jnum = 2048;
++	journal = EXT3_JOURNAL(inode);
++	jnum = journal->j_max_transaction_buffers;
+ 	handle = ext3_journal_start(inode, jnum);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
+@@ -3093,6 +3095,7 @@ ext3_ext_new_extent_tree(struct inode *t
+ 	unsigned jnum;
+ 	int ret = 0, err = 0, depth;
+ 	int last_extent = 0;
++	journal_t	*journal;
+ 
+ 	/* (blocks_per_page * count) * (extent_blocks + index_blocks)
+ 	 * + super_block + block_bitmap + group_descriptor
+@@ -3100,10 +3103,11 @@ ext3_ext_new_extent_tree(struct inode *t
+ 	 */
+ 	/* TODO:
+ 	 * Need to consider the way of calculating journal blocks
+-	 * because j_max_transaction_buffer may exceed 2048
++	 * because the journal blocks may exceed j_max_transaction_buffer
+ 	 * if we have a deep depth.
+ 	 */
+-	jnum = 2048;
++	journal = EXT3_JOURNAL(tmp_inode);
++	jnum = journal->j_max_transaction_buffers; 
+ 	eh = EXT_ROOT_HDR(dest_tree);
+ 	eh->eh_depth = 0;
+ 	handle = ext3_journal_start(tmp_inode, jnum);
 
-Patches currently in -mm which might be from sandeen@redhat.com are
-
-reject-corrupt-swapfiles-earlier.patch
-handle-ext3-directory-corruption-better.patch
-handle-ext4-directory-corruption-better.patch
-ext3-4-dont-do-orphan-processing-on-readonly-devices.patch
+Cheers, Takashi
