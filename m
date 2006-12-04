@@ -1,43 +1,69 @@
-From: Erik Mouw <erik@harddisk-recovery.nl>
-Subject: Re: [PATCH] Update ext[23] mailing list address
-Date: Mon, 4 Dec 2006 21:17:43 +0100
-Message-ID: <20061204201739.GE7028@harddisk-recovery.nl>
-References: <20061204180243.GD7028@harddisk-recovery.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sct@redhat.com, akpm@osdl.org, adilger@clusterfs.com
+From: akpm@osdl.org
+Subject: + ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert.patch added to -mm tree
+Date: Mon, 04 Dec 2006 12:51:42 -0800
+Message-ID: <200612042051.kB4Kpggi003065@shell0.pdx.osdl.net>
+Cc: johann.lombardi@bull.net, alex@clusterfs.com,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dtp.xs4all.nl ([80.126.206.180]:25057 "HELO abra2.bitwizard.nl"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S937364AbWLDURp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Dec 2006 15:17:45 -0500
-To: linux-ext4@vger.kernel.org
-Content-Disposition: inline
-In-Reply-To: <20061204180243.GD7028@harddisk-recovery.com>
+Received: from smtp.osdl.org ([65.172.181.25]:45767 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S967180AbWLDUvv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Dec 2006 15:51:51 -0500
+To: mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-(This patch applies on top of my previous patch to this list.)
 
-Now ext[23] have correct mailing list information, add information
-about the ext4 filesystem to the MAINTAINERS file.
+The patch titled
+     ext4: fix credit calculation in ext4_ext_calc_credits_for_insert
+has been added to the -mm tree.  Its filename is
+     ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert.patch
 
-Signed-off-by: Erik Mouw <erik@harddisk-recovery.com>
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e21ba04..7ec9a0c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1100,6 +1100,12 @@ M:	sct@redhat.com, akpm@osdl.org, adilge
- L:	linux-ext4@vger.kernel.org
- S:	Maintained
+------------------------------------------------------
+Subject: ext4: fix credit calculation in ext4_ext_calc_credits_for_insert
+From: Johann Lombardi <johann.lombardi@bull.net>
+
+Fix a nit in ext4_ext_calc_credits_for_insert().  Besides, credits for the
+new root are already added in the index split accounting.
+
+Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
+Signed-off-by: Alex Tomas <alex@clusterfs.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/ext4/extents.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
+
+diff -puN fs/ext4/extents.c~ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert
++++ a/fs/ext4/extents.c
+@@ -1534,16 +1534,17 @@ int inline ext4_ext_calc_credits_for_ins
  
-+EXT4 FILE SYSTEM
-+P:	Stephen Tweedie, Andrew Morton
-+M:	sct@redhat.com, akpm@osdl.org, adilger@clusterfs.com
-+L:	linux-ext4@vger.kernel.org
-+S:	Maintained
-+
- F71805F HARDWARE MONITORING DRIVER
- P:	Jean Delvare
- M:	khali@linux-fr.org
+ 	/*
+ 	 * tree can be full, so it would need to grow in depth:
+-	 * allocation + old root + new root
++	 * we need one credit to modify old root, credits for
++	 * new root will be added in split accounting
+ 	 */
+-	needed += 2 + 1 + 1;
++	needed += 1;
+ 
+ 	/*
+ 	 * Index split can happen, we would need:
+ 	 *    allocate intermediate indexes (bitmap + group)
+ 	 *  + change two blocks at each level, but root (already included)
+ 	 */
+-	needed = (depth * 2) + (depth * 2);
++	needed += (depth * 2) + (depth * 2);
+ 
+ 	/* any allocation modifies superblock */
+ 	needed += 1;
+_
+
+Patches currently in -mm which might be from johann.lombardi@bull.net are
+
+ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert.patch
