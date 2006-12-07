@@ -1,149 +1,63 @@
 From: akpm@osdl.org
-Subject: [patch 210/354] retries in ext4_prepare_write() violate ordering requirements
-Date: Wed, 06 Dec 2006 20:37:36 -0800
-Message-ID: <200612070437.kB74bbmI029712@shell0.pdx.osdl.net>
-Cc: akpm@osdl.org, saw@sw.ru, dev@openvz.org, kenneth.w.chen@intel.com,
-	linux-ext4@vger.kernel.org, mingo@elte.hu
+Subject: [patch 229/354] ext4: fix reservation extension
+Date: Wed, 06 Dec 2006 20:38:19 -0800
+Message-ID: <200612070438.kB74cJlU029798@shell0.pdx.osdl.net>
+Cc: akpm@osdl.org, cmm@us.ibm.com, hugh@veritas.com,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:47040 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:47135 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S968749AbWLGEiT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Dec 2006 23:38:19 -0500
+	id S968752AbWLGEiv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Dec 2006 23:38:51 -0500
 To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andrey Savochkin <saw@sw.ru>
+From: Mingming Cao <cmm@us.ibm.com>
 
-In journal=ordered or journal=data mode retry in ext4_prepare_write()
-breaks the requirements of journaling of data with respect to metadata. 
-The fix is to call commit_write to commit allocated zero blocks before
-retry.
+Hugh Dickins wrote:
+> Not found anything relevant, but I keep noticing these lines
+> in ext2_try_to_allocate_with_rsv(), ext3 and ext4 similar:
+>
+> 		} else if (grp_goal > 0 &&
+> 				(my_rsv->rsv_end - grp_goal + 1) < *count)
+> 			try_to_extend_reservation(my_rsv, sb,
+> 					*count-my_rsv->rsv_end + grp_goal - 1);
+>
+> They're wrong, a no-op in most groups, aren't they?  rsv_end is an
+> absolute block number, whereas grp_goal is group-relative, so the
+> calculation ought to bring in group_first_block?  Or I'm confused.
+>
 
-Signed-off-by: Kirill Korotaev <dev@openvz.org>
-Cc: Ingo Molnar <mingo@elte.hu>
-Cc: Ken Chen <kenneth.w.chen@intel.com>
-Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Hugh Dickins <hugh@veritas.com>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/inode.c |   85 ++++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 75 insertions(+), 10 deletions(-)
+ fs/ext4/balloc.c |   12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext4/inode.c~retries-in-ext4_prepare_write-violate-ordering-requirements fs/ext4/inode.c
---- a/fs/ext4/inode.c~retries-in-ext4_prepare_write-violate-ordering-requirements
-+++ a/fs/ext4/inode.c
-@@ -1147,37 +1147,102 @@ static int do_journal_get_write_access(h
- 	return ext4_journal_get_write_access(handle, bh);
- }
- 
-+/*
-+ * The idea of this helper function is following:
-+ * if prepare_write has allocated some blocks, but not all of them, the
-+ * transaction must include the content of the newly allocated blocks.
-+ * This content is expected to be set to zeroes by block_prepare_write().
-+ * 2006/10/14  SAW
-+ */
-+static int ext4_prepare_failure(struct file *file, struct page *page,
-+				unsigned from, unsigned to)
-+{
-+	struct address_space *mapping;
-+	struct buffer_head *bh, *head, *next;
-+	unsigned block_start, block_end;
-+	unsigned blocksize;
-+	int ret;
-+	handle_t *handle = ext4_journal_current_handle();
+diff -puN fs/ext4/balloc.c~ext4-fix-reservation-extension fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-fix-reservation-extension
++++ a/fs/ext4/balloc.c
+@@ -1324,10 +1324,14 @@ ext4_try_to_allocate_with_rsv(struct sup
+ 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
+ 							grp_goal, group, sb))
+ 				grp_goal = -1;
+-		} else if (grp_goal > 0 &&
+-			  (my_rsv->rsv_end-grp_goal+1) < *count)
+-			try_to_extend_reservation(my_rsv, sb,
+-					*count-my_rsv->rsv_end + grp_goal - 1);
++		} else if (grp_goal > 0) {
++			int curr = my_rsv->rsv_end -
++					(grp_goal + group_first_block) + 1;
 +
-+	mapping = page->mapping;
-+	if (ext4_should_writeback_data(mapping->host)) {
-+		/* optimization: no constraints about data */
-+skip:
-+		return ext4_journal_stop(handle);
-+	}
-+
-+	head = page_buffers(page);
-+	blocksize = head->b_size;
-+	for (	bh = head, block_start = 0;
-+		bh != head || !block_start;
-+	    	block_start = block_end, bh = next)
-+	{
-+		next = bh->b_this_page;
-+		block_end = block_start + blocksize;
-+		if (block_end <= from)
-+			continue;
-+		if (block_start >= to) {
-+			block_start = to;
-+			break;
++			if (curr < *count)
++				try_to_extend_reservation(my_rsv, sb,
++							*count - curr);
 +		}
-+		if (!buffer_mapped(bh))
-+		/* prepare_write failed on this bh */
-+			break;
-+		if (ext4_should_journal_data(mapping->host)) {
-+			ret = do_journal_get_write_access(handle, bh);
-+			if (ret) {
-+				ext4_journal_stop(handle);
-+				return ret;
-+			}
-+		}
-+	/*
-+	 * block_start here becomes the first block where the current iteration
-+	 * of prepare_write failed.
-+	 */
-+	}
-+	if (block_start <= from)
-+		goto skip;
-+
-+	/* commit allocated and zeroed buffers */
-+	return mapping->a_ops->commit_write(file, page, from, block_start);
-+}
-+
- static int ext4_prepare_write(struct file *file, struct page *page,
- 			      unsigned from, unsigned to)
- {
- 	struct inode *inode = page->mapping->host;
--	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
-+	int ret, ret2;
-+	int needed_blocks = ext4_writepage_trans_blocks(inode);
- 	handle_t *handle;
- 	int retries = 0;
  
- retry:
- 	handle = ext4_journal_start(inode, needed_blocks);
--	if (IS_ERR(handle)) {
--		ret = PTR_ERR(handle);
--		goto out;
--	}
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
- 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
- 		ret = nobh_prepare_write(page, from, to, ext4_get_block);
- 	else
- 		ret = block_prepare_write(page, from, to, ext4_get_block);
- 	if (ret)
--		goto prepare_write_failed;
-+		goto failure;
- 
- 	if (ext4_should_journal_data(inode)) {
- 		ret = walk_page_buffers(handle, page_buffers(page),
- 				from, to, NULL, do_journal_get_write_access);
-+		if (ret)
-+			/* fatal error, just put the handle and return */
-+			journal_stop(handle);
- 	}
--prepare_write_failed:
--	if (ret)
--		ext4_journal_stop(handle);
-+	return ret;
-+
-+failure:
-+	ret2 = ext4_prepare_failure(file, page, from, to);
-+	if (ret2 < 0)
-+		return ret2;
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
--out:
-+	/* retry number exceeded, or other error like -EDQUOT */
- 	return ret;
- }
- 
+ 		if ((my_rsv->rsv_start > group_last_block) ||
+ 				(my_rsv->rsv_end < group_first_block)) {
 _
