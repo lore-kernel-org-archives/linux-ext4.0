@@ -1,55 +1,59 @@
 From: akpm@osdl.org
-Subject: - ext4-balloc-fix-_with_rsv-freeze.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:14:51 -0800
-Message-ID: <200612072314.kB7NEpS0030661@shell0.pdx.osdl.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:53509 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163916AbWLGXPH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Dec 2006 18:15:07 -0500
+Subject: - ext4-balloc-fix-off-by-one-against-grp_goal.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:12:05 -0800
+Message-ID: <200612072312.kB7NCCn6030575@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
 To: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: fix _with_rsv freeze
+     ext4 balloc: fix off-by-one against grp_goal
 has been removed from the -mm tree.  Its filename was
-     ext4-balloc-fix-_with_rsv-freeze.patch
+     ext4-balloc-fix-off-by-one-against-grp_goal.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4 balloc: fix _with_rsv freeze
+Subject: ext4 balloc: fix off-by-one against grp_goal
 From: Hugh Dickins <hugh@veritas.com>
 
-Port fix to the off-by-one in find_next_usable_block's memscan from ext2 to
-ext4; but it didn't cause a serious problem for ext4 because the additional
-ext4_test_allocatable check rescued it from the error.
+grp_goal 0 is a genuine goal (unlike -1), so ext4_try_to_allocate_with_rsv
+should treat it as such.
 
-[akpm@osdl.org: build fix]
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/balloc.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal
 +++ a/fs/ext4/balloc.c
-@@ -747,7 +747,7 @@ find_next_usable_block(ext4_grpblk_t sta
- 		here = 0;
+@@ -1288,7 +1288,7 @@ ext4_try_to_allocate_with_rsv(struct sup
+ 	}
+ 	/*
+ 	 * grp_goal is a group relative block number (if there is a goal)
+-	 * 0 < grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
++	 * 0 <= grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
+ 	 * first block is a filesystem wide block number
+ 	 * first block is the block number of the first block in this group
+ 	 */
+@@ -1324,7 +1324,7 @@ ext4_try_to_allocate_with_rsv(struct sup
+ 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
+ 							grp_goal, group, sb))
+ 				grp_goal = -1;
+-		} else if (grp_goal > 0) {
++		} else if (grp_goal >= 0) {
+ 			int curr = my_rsv->rsv_end -
+ 					(grp_goal + group_first_block) + 1;
  
- 	p = ((char *)bh->b_data) + (here >> 3);
--	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
-+	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
- 	next = (r - ((char *)bh->b_data)) << 3;
- 
- 	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
@@ -68,3 +72,4 @@ generic-bug-for-i386.patch
 generic-bug-for-x86-64.patch
 bug-test-1.patch
 tty-switch-to-ktermios-powerpc-fix.patch
+
