@@ -1,221 +1,60 @@
 From: akpm@osdl.org
-Subject: [patch 350/354] ext4: if expression format
-Date: Wed, 06 Dec 2006 20:41:33 -0800
-Message-ID: <200612070441.kB74fXll030383@shell0.pdx.osdl.net>
-Cc: akpm@osdl.org, mathur@us.ibm.com, linux-ext4@vger.kernel.org
+Subject: [patch 347/354] ext3 balloc: say rb_entry not list_entry
+Date: Wed, 06 Dec 2006 20:41:27 -0800
+Message-ID: <200612070441.kB74fRxI030364@shell0.pdx.osdl.net>
+Cc: akpm@osdl.org, hugh@veritas.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:47563 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:47562 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S968769AbWLGElk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Dec 2006 23:41:40 -0500
+	id S968768AbWLGElj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Dec 2006 23:41:39 -0500
 To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Avantika Mathur <mathur@us.ibm.com>
+From: Hugh Dickins <hugh@veritas.com>
 
-changes instances of
-	if ((lhs = expression)) {
+The reservations tree is an rb_tree not a list, so it's less confusing to use
+rb_entry() than list_entry() - though they're both just container_of().
 
-to the preferred coding style
-
-	lhs=expression;
-	if (lhs) {
-
-Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Hugh Dickins <hugh@veritas.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/extents.c |   63 +++++++++++++++++++++++++++++---------------
- 1 file changed, 42 insertions(+), 21 deletions(-)
+ fs/ext3/balloc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/extents.c~ext4-if-expression-format fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4-if-expression-format
-+++ a/fs/ext4/extents.c
-@@ -186,7 +186,8 @@ static ext4_fsblk_t ext4_ext_find_goal(s
- 		depth = path->p_depth;
+diff -puN fs/ext3/balloc.c~ext3-balloc-say-rb_entry-not-list_entry fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext3-balloc-say-rb_entry-not-list_entry
++++ a/fs/ext3/balloc.c
+@@ -144,7 +144,7 @@ restart:
  
- 		/* try to predict block placement */
--		if ((ex = path[depth].p_ext))
-+		ex = path[depth].p_ext;
-+		if (ex)
- 			return ext_pblock(ex)+(block-le32_to_cpu(ex->ee_block));
+ 	printk("Block Allocation Reservation Windows Map (%s):\n", fn);
+ 	while (n) {
+-		rsv = list_entry(n, struct ext3_reserve_window_node, rsv_node);
++		rsv = rb_entry(n, struct ext3_reserve_window_node, rsv_node);
+ 		if (verbose)
+ 			printk("reservation window 0x%p "
+ 			       "start:  %lu, end:  %lu\n",
+@@ -949,7 +949,7 @@ static int find_next_reservable_window(
  
- 		/* it looks like index is empty;
-@@ -543,7 +544,8 @@ static int ext4_ext_insert_index(handle_
- 	struct ext4_extent_idx *ix;
- 	int len, err;
+ 		prev = rsv;
+ 		next = rb_next(&rsv->rsv_node);
+-		rsv = list_entry(next,struct ext3_reserve_window_node,rsv_node);
++		rsv = rb_entry(next,struct ext3_reserve_window_node,rsv_node);
  
--	if ((err = ext4_ext_get_access(handle, inode, curp)))
-+	err = ext4_ext_get_access(handle, inode, curp);
-+	if (err)
- 		return err;
+ 		/*
+ 		 * Reached the last reservation, we can just append to the
+@@ -1193,7 +1193,7 @@ static void try_to_extend_reservation(st
+ 	if (!next)
+ 		my_rsv->rsv_end += size;
+ 	else {
+-		next_rsv = list_entry(next, struct ext3_reserve_window_node, rsv_node);
++		next_rsv = rb_entry(next, struct ext3_reserve_window_node, rsv_node);
  
- 	BUG_ON(logical == le32_to_cpu(curp->p_idx->ei_block));
-@@ -665,7 +667,8 @@ static int ext4_ext_split(handle_t *hand
- 	}
- 	lock_buffer(bh);
- 
--	if ((err = ext4_journal_get_create_access(handle, bh)))
-+	err = ext4_journal_get_create_access(handle, bh);
-+	if (err)
- 		goto cleanup;
- 
- 	neh = ext_block_hdr(bh);
-@@ -702,18 +705,21 @@ static int ext4_ext_split(handle_t *hand
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
--	if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+	err = ext4_journal_dirty_metadata(handle, bh);
-+	if (err)
- 		goto cleanup;
- 	brelse(bh);
- 	bh = NULL;
- 
- 	/* correct old leaf */
- 	if (m) {
--		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		err = ext4_ext_get_access(handle, inode, path + depth);
-+		if (err)
- 			goto cleanup;
- 		path[depth].p_hdr->eh_entries =
- 		     cpu_to_le16(le16_to_cpu(path[depth].p_hdr->eh_entries)-m);
--		if ((err = ext4_ext_dirty(handle, inode, path + depth)))
-+		err = ext4_ext_dirty(handle, inode, path + depth);
-+		if (err)
- 			goto cleanup;
- 
- 	}
-@@ -736,7 +742,8 @@ static int ext4_ext_split(handle_t *hand
- 		}
- 		lock_buffer(bh);
- 
--		if ((err = ext4_journal_get_create_access(handle, bh)))
-+		err = ext4_journal_get_create_access(handle, bh);
-+		if (err)
- 			goto cleanup;
- 
- 		neh = ext_block_hdr(bh);
-@@ -780,7 +787,8 @@ static int ext4_ext_split(handle_t *hand
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
- 
--		if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+		err = ext4_journal_dirty_metadata(handle, bh);
-+		if (err)
- 			goto cleanup;
- 		brelse(bh);
- 		bh = NULL;
-@@ -854,7 +862,8 @@ static int ext4_ext_grow_indepth(handle_
- 	}
- 	lock_buffer(bh);
- 
--	if ((err = ext4_journal_get_create_access(handle, bh))) {
-+	err = ext4_journal_get_create_access(handle, bh);
-+	if (err) {
- 		unlock_buffer(bh);
- 		goto out;
- 	}
-@@ -874,11 +883,13 @@ static int ext4_ext_grow_indepth(handle_
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
--	if ((err = ext4_journal_dirty_metadata(handle, bh)))
-+	err = ext4_journal_dirty_metadata(handle, bh);
-+	if (err)
- 		goto out;
- 
- 	/* create index in new top-level index: num,max,pointer */
--	if ((err = ext4_ext_get_access(handle, inode, curp)))
-+	err = ext4_ext_get_access(handle, inode, curp);
-+	if (err)
- 		goto out;
- 
- 	curp->p_hdr->eh_magic = EXT4_EXT_MAGIC;
-@@ -1070,20 +1081,24 @@ int ext4_ext_correct_indexes(handle_t *h
- 	 */
- 	k = depth - 1;
- 	border = path[depth].p_ext->ee_block;
--	if ((err = ext4_ext_get_access(handle, inode, path + k)))
-+	err = ext4_ext_get_access(handle, inode, path + k);
-+	if (err)
- 		return err;
- 	path[k].p_idx->ei_block = border;
--	if ((err = ext4_ext_dirty(handle, inode, path + k)))
-+	err = ext4_ext_dirty(handle, inode, path + k);
-+	if (err)
- 		return err;
- 
- 	while (k--) {
- 		/* change all left-side indexes */
- 		if (path[k+1].p_idx != EXT_FIRST_INDEX(path[k+1].p_hdr))
- 			break;
--		if ((err = ext4_ext_get_access(handle, inode, path + k)))
-+		err = ext4_ext_get_access(handle, inode, path + k);
-+		if (err)
- 			break;
- 		path[k].p_idx->ei_block = border;
--		if ((err = ext4_ext_dirty(handle, inode, path + k)))
-+		err = ext4_ext_dirty(handle, inode, path + k);
-+		if (err)
- 			break;
- 	}
- 
-@@ -1142,7 +1157,8 @@ int ext4_ext_insert_extent(handle_t *han
- 				le16_to_cpu(newext->ee_len),
- 				le32_to_cpu(ex->ee_block),
- 				le16_to_cpu(ex->ee_len), ext_pblock(ex));
--		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		err = ext4_ext_get_access(handle, inode, path + depth);
-+		if (err)
- 			return err;
- 		ex->ee_len = cpu_to_le16(le16_to_cpu(ex->ee_len)
- 					 + le16_to_cpu(newext->ee_len));
-@@ -1192,7 +1208,8 @@ repeat:
- has_space:
- 	nearex = path[depth].p_ext;
- 
--	if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+	err = ext4_ext_get_access(handle, inode, path + depth);
-+	if (err)
- 		goto cleanup;
- 
- 	if (!nearex) {
-@@ -1486,10 +1503,12 @@ int ext4_ext_rm_idx(handle_t *handle, st
- 	path--;
- 	leaf = idx_pblock(path->p_idx);
- 	BUG_ON(path->p_hdr->eh_entries == 0);
--	if ((err = ext4_ext_get_access(handle, inode, path)))
-+	err = ext4_ext_get_access(handle, inode, path);
-+	if (err)
- 		return err;
- 	path->p_hdr->eh_entries = cpu_to_le16(le16_to_cpu(path->p_hdr->eh_entries)-1);
--	if ((err = ext4_ext_dirty(handle, inode, path)))
-+	err = ext4_ext_dirty(handle, inode, path);
-+	if (err)
- 		return err;
- 	ext_debug("index is empty, remove it, free block %llu\n", leaf);
- 	bh = sb_find_get_block(inode->i_sb, leaf);
-@@ -1930,7 +1949,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 	mutex_lock(&EXT4_I(inode)->truncate_mutex);
- 
- 	/* check in cache */
--	if ((goal = ext4_ext_in_cache(inode, iblock, &newex))) {
-+	goal = ext4_ext_in_cache(inode, iblock, &newex);
-+	if (goal) {
- 		if (goal == EXT4_EXT_CACHE_GAP) {
- 			if (!create) {
- 				/* block isn't allocated yet and
-@@ -1969,7 +1989,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 	 */
- 	BUG_ON(path[depth].p_ext == NULL && depth != 0);
- 
--	if ((ex = path[depth].p_ext)) {
-+	ex = path[depth].p_ext;
-+	if (ex) {
- 	        unsigned long ee_block = le32_to_cpu(ex->ee_block);
- 		ext4_fsblk_t ee_start = ext_pblock(ex);
- 		unsigned short ee_len  = le16_to_cpu(ex->ee_len);
+ 		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
+ 			my_rsv->rsv_end += size;
 _
