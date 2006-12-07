@@ -1,7 +1,7 @@
 From: akpm@osdl.org
-Subject: - ext3-uninline-large-functions.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:04:07 -0800
-Message-ID: <200612072304.kB7N47sW030017@shell0.pdx.osdl.net>
+Subject: - ext4-uninline-large-functions.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:04:11 -0800
+Message-ID: <200612072304.kB7N4BOA030020@shell0.pdx.osdl.net>
 Reply-To: linux-kernel@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 To: akpm@osdl.org, acme@mandriva.com, linux-ext4@vger.kernel.org,
@@ -11,14 +11,14 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: uninline large functions
+     ext4: uninline large functions
 has been removed from the -mm tree.  Its filename was
-     ext3-uninline-large-functions.patch
+     ext4-uninline-large-functions.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext3: uninline large functions
+Subject: ext4: uninline large functions
 From: Andrew Morton <akpm@osdl.org>
 
 Saves nearly 4kbytes on x86.
@@ -28,181 +28,182 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext3/Makefile         |    2 
- fs/ext3/ext3_jbd.c       |   59 ++++++++++++++++++++++++++++
- include/linux/ext3_jbd.h |   76 ++++++++-----------------------------
- 3 files changed, 77 insertions(+), 60 deletions(-)
+ fs/ext4/Makefile          |    3 -
+ fs/ext4/ext4_jbd2.c       |   59 +++++++++++++++++++++++++++
+ include/linux/ext4_jbd2.h |   76 ++++++++----------------------------
+ 3 files changed, 78 insertions(+), 60 deletions(-)
 
-diff -puN fs/ext3/Makefile~ext3-uninline-large-functions fs/ext3/Makefile
---- a/fs/ext3/Makefile~ext3-uninline-large-functions
-+++ a/fs/ext3/Makefile
-@@ -5,7 +5,7 @@
- obj-$(CONFIG_EXT3_FS) += ext3.o
+diff -puN fs/ext4/Makefile~ext4-uninline-large-functions fs/ext4/Makefile
+--- a/fs/ext4/Makefile~ext4-uninline-large-functions
++++ a/fs/ext4/Makefile
+@@ -5,7 +5,8 @@
+ obj-$(CONFIG_EXT4DEV_FS) += ext4dev.o
  
- ext3-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
--	   ioctl.o namei.o super.o symlink.o hash.o resize.o
-+	   ioctl.o namei.o super.o symlink.o hash.o resize.o ext3_jbd.o
+ ext4dev-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
+-	   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o
++		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
++		   ext4_jbd2.o
  
- ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
- ext3-$(CONFIG_EXT3_FS_POSIX_ACL) += acl.o
-diff -puN /dev/null fs/ext3/ext3_jbd.c
+ ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o xattr_trusted.o
+ ext4dev-$(CONFIG_EXT4DEV_FS_POSIX_ACL)	+= acl.o
+diff -puN /dev/null fs/ext4/ext4_jbd2.c
 --- /dev/null
-+++ a/fs/ext3/ext3_jbd.c
++++ a/fs/ext4/ext4_jbd2.c
 @@ -0,0 +1,59 @@
 +/*
-+ * Interface between ext3 and JBD
++ * Interface between ext4 and JBD
 + */
 +
-+#include <linux/ext3_jbd.h>
++#include <linux/ext4_jbd2.h>
 +
-+int __ext3_journal_get_undo_access(const char *where, handle_t *handle,
++int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
 +				struct buffer_head *bh)
 +{
-+	int err = journal_get_undo_access(handle, bh);
++	int err = jbd2_journal_get_undo_access(handle, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
 +
-+int __ext3_journal_get_write_access(const char *where, handle_t *handle,
++int __ext4_journal_get_write_access(const char *where, handle_t *handle,
 +				struct buffer_head *bh)
 +{
-+	int err = journal_get_write_access(handle, bh);
++	int err = jbd2_journal_get_write_access(handle, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
 +
-+int __ext3_journal_forget(const char *where, handle_t *handle,
++int __ext4_journal_forget(const char *where, handle_t *handle,
 +				struct buffer_head *bh)
 +{
-+	int err = journal_forget(handle, bh);
++	int err = jbd2_journal_forget(handle, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
 +
-+int __ext3_journal_revoke(const char *where, handle_t *handle,
-+				unsigned long blocknr, struct buffer_head *bh)
++int __ext4_journal_revoke(const char *where, handle_t *handle,
++				ext4_fsblk_t blocknr, struct buffer_head *bh)
 +{
-+	int err = journal_revoke(handle, blocknr, bh);
++	int err = jbd2_journal_revoke(handle, blocknr, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
 +
-+int __ext3_journal_get_create_access(const char *where,
++int __ext4_journal_get_create_access(const char *where,
 +				handle_t *handle, struct buffer_head *bh)
 +{
-+	int err = journal_get_create_access(handle, bh);
++	int err = jbd2_journal_get_create_access(handle, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
 +
-+int __ext3_journal_dirty_metadata(const char *where,
++int __ext4_journal_dirty_metadata(const char *where,
 +				handle_t *handle, struct buffer_head *bh)
 +{
-+	int err = journal_dirty_metadata(handle, bh);
++	int err = jbd2_journal_dirty_metadata(handle, bh);
 +	if (err)
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
++		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 +	return err;
 +}
-diff -puN include/linux/ext3_jbd.h~ext3-uninline-large-functions include/linux/ext3_jbd.h
---- a/include/linux/ext3_jbd.h~ext3-uninline-large-functions
-+++ a/include/linux/ext3_jbd.h
-@@ -109,74 +109,32 @@ int ext3_mark_inode_dirty(handle_t *hand
+diff -puN include/linux/ext4_jbd2.h~ext4-uninline-large-functions include/linux/ext4_jbd2.h
+--- a/include/linux/ext4_jbd2.h~ext4-uninline-large-functions
++++ a/include/linux/ext4_jbd2.h
+@@ -114,74 +114,32 @@ int ext4_mark_inode_dirty(handle_t *hand
   * been done yet.
   */
  
--void ext3_journal_abort_handle(const char *caller, const char *err_fn,
+-void ext4_journal_abort_handle(const char *caller, const char *err_fn,
 -		struct buffer_head *bh, handle_t *handle, int err);
 -
 -static inline int
--__ext3_journal_get_undo_access(const char *where, handle_t *handle,
+-__ext4_journal_get_undo_access(const char *where, handle_t *handle,
 -				struct buffer_head *bh)
-+static inline void ext3_journal_release_buffer(handle_t *handle,
++static inline void ext4_journal_release_buffer(handle_t *handle,
 +						struct buffer_head *bh)
  {
--	int err = journal_get_undo_access(handle, bh);
+-	int err = jbd2_journal_get_undo_access(handle, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
-+	journal_release_buffer(handle, bh);
++	jbd2_journal_release_buffer(handle, bh);
  }
  
 -static inline int
--__ext3_journal_get_write_access(const char *where, handle_t *handle,
+-__ext4_journal_get_write_access(const char *where, handle_t *handle,
 -				struct buffer_head *bh)
 -{
--	int err = journal_get_write_access(handle, bh);
+-	int err = jbd2_journal_get_write_access(handle, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
 -}
-+void ext3_journal_abort_handle(const char *caller, const char *err_fn,
++void ext4_journal_abort_handle(const char *caller, const char *err_fn,
 +		struct buffer_head *bh, handle_t *handle, int err);
  
 -static inline void
--ext3_journal_release_buffer(handle_t *handle, struct buffer_head *bh)
+-ext4_journal_release_buffer(handle_t *handle, struct buffer_head *bh)
 -{
--	journal_release_buffer(handle, bh);
+-	jbd2_journal_release_buffer(handle, bh);
 -}
-+int __ext3_journal_get_undo_access(const char *where, handle_t *handle,
++int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
 +				struct buffer_head *bh);
  
 -static inline int
--__ext3_journal_forget(const char *where, handle_t *handle, struct buffer_head *bh)
+-__ext4_journal_forget(const char *where, handle_t *handle, struct buffer_head *bh)
 -{
--	int err = journal_forget(handle, bh);
+-	int err = jbd2_journal_forget(handle, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
 -}
-+int __ext3_journal_get_write_access(const char *where, handle_t *handle,
++int __ext4_journal_get_write_access(const char *where, handle_t *handle,
 +				struct buffer_head *bh);
  
 -static inline int
--__ext3_journal_revoke(const char *where, handle_t *handle,
--		      unsigned long blocknr, struct buffer_head *bh)
+-__ext4_journal_revoke(const char *where, handle_t *handle,
+-		      ext4_fsblk_t blocknr, struct buffer_head *bh)
 -{
--	int err = journal_revoke(handle, blocknr, bh);
+-	int err = jbd2_journal_revoke(handle, blocknr, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
 -}
-+int __ext3_journal_forget(const char *where, handle_t *handle,
++int __ext4_journal_forget(const char *where, handle_t *handle,
 +				struct buffer_head *bh);
  
 -static inline int
--__ext3_journal_get_create_access(const char *where,
+-__ext4_journal_get_create_access(const char *where,
 -				 handle_t *handle, struct buffer_head *bh)
 -{
--	int err = journal_get_create_access(handle, bh);
+-	int err = jbd2_journal_get_create_access(handle, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
 -}
-+int __ext3_journal_revoke(const char *where, handle_t *handle,
-+				unsigned long blocknr, struct buffer_head *bh);
++int __ext4_journal_revoke(const char *where, handle_t *handle,
++				ext4_fsblk_t blocknr, struct buffer_head *bh);
  
 -static inline int
--__ext3_journal_dirty_metadata(const char *where,
+-__ext4_journal_dirty_metadata(const char *where,
 -			      handle_t *handle, struct buffer_head *bh)
 -{
--	int err = journal_dirty_metadata(handle, bh);
+-	int err = jbd2_journal_dirty_metadata(handle, bh);
 -	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
+-		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
 -	return err;
 -}
-+int __ext3_journal_get_create_access(const char *where,
++int __ext4_journal_get_create_access(const char *where,
 +				handle_t *handle, struct buffer_head *bh);
  
-+int __ext3_journal_dirty_metadata(const char *where,
++int __ext4_journal_dirty_metadata(const char *where,
 +				handle_t *handle, struct buffer_head *bh);
  
- #define ext3_journal_get_undo_access(handle, bh) \
- 	__ext3_journal_get_undo_access(__FUNCTION__, (handle), (bh))
+ #define ext4_journal_get_undo_access(handle, bh) \
+ 	__ext4_journal_get_undo_access(__FUNCTION__, (handle), (bh))
 _
 
 Patches currently in -mm which might be from akpm@osdl.org are
