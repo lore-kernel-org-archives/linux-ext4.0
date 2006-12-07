@@ -1,12 +1,12 @@
 From: akpm@osdl.org
-Subject: - ext4-balloc-use-io_error-label.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:14:49 -0800
-Message-ID: <200612072314.kB7NEn02030657@shell0.pdx.osdl.net>
+Subject: - ext4-balloc-say-rb_entry-not-list_entry.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:14:46 -0800
+Message-ID: <200612072314.kB7NEkIs030653@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:53546 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:53627 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163879AbWLGXPn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Dec 2006 18:15:43 -0500
+	id S1163796AbWLGXQZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Dec 2006 18:16:25 -0500
 To: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
@@ -14,18 +14,18 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: use io_error label
+     ext4 balloc: say rb_entry not list_entry
 has been removed from the -mm tree.  Its filename was
-     ext4-balloc-use-io_error-label.patch
+     ext4-balloc-say-rb_entry-not-list_entry.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4 balloc: use io_error label
+Subject: ext4 balloc: say rb_entry not list_entry
 From: Hugh Dickins <hugh@veritas.com>
 
-ext4_new_blocks has a nice io_error label for setting -EIO, so goto that in
-the one place that doesn't already use it.
+The reservations tree is an rb_tree not a list, so it's less confusing to use
+rb_entry() than list_entry() - though they're both just container_of().
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -33,25 +33,39 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-use-io_error-label fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-use-io_error-label
+diff -puN fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-say-rb_entry-not-list_entry
 +++ a/fs/ext4/balloc.c
-@@ -1529,10 +1529,8 @@ retry_alloc:
- 		if (group_no >= ngroups)
- 			group_no = 0;
- 		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
--		if (!gdp) {
--			*errp = -EIO;
--			goto out;
--		}
-+		if (!gdp)
-+			goto io_error;
- 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+@@ -165,7 +165,7 @@ restart:
+ 
+ 	printk("Block Allocation Reservation Windows Map (%s):\n", fn);
+ 	while (n) {
+-		rsv = list_entry(n, struct ext4_reserve_window_node, rsv_node);
++		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
+ 		if (verbose)
+ 			printk("reservation window 0x%p "
+ 			       "start:  %llu, end:  %llu\n",
+@@ -966,7 +966,7 @@ static int find_next_reservable_window(
+ 
+ 		prev = rsv;
+ 		next = rb_next(&rsv->rsv_node);
+-		rsv = list_entry(next,struct ext4_reserve_window_node,rsv_node);
++		rsv = rb_entry(next,struct ext4_reserve_window_node,rsv_node);
+ 
  		/*
- 		 * skip this group if the number of
+ 		 * Reached the last reservation, we can just append to the
+@@ -1210,7 +1210,7 @@ static void try_to_extend_reservation(st
+ 	if (!next)
+ 		my_rsv->rsv_end += size;
+ 	else {
+-		next_rsv = list_entry(next, struct ext4_reserve_window_node, rsv_node);
++		next_rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
+ 
+ 		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
+ 			my_rsv->rsv_end += size;
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
