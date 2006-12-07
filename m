@@ -1,12 +1,12 @@
 From: akpm@osdl.org
-Subject: - ext4-balloc-fix-off-by-one-against-rsv_end.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:14:43 -0800
-Message-ID: <200612072314.kB7NEhY9030650@shell0.pdx.osdl.net>
+Subject: - ext4-balloc-fix-_with_rsv-freeze.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:14:51 -0800
+Message-ID: <200612072314.kB7NEpS0030661@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:53493 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:53509 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163734AbWLGXOx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Dec 2006 18:14:53 -0500
+	id S1163916AbWLGXPH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Dec 2006 18:15:07 -0500
 To: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
@@ -14,19 +14,21 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: fix off-by-one against rsv_end
+     ext4 balloc: fix _with_rsv freeze
 has been removed from the -mm tree.  Its filename was
-     ext4-balloc-fix-off-by-one-against-rsv_end.patch
+     ext4-balloc-fix-_with_rsv-freeze.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4 balloc: fix off-by-one against rsv_end
+Subject: ext4 balloc: fix _with_rsv freeze
 From: Hugh Dickins <hugh@veritas.com>
 
-rsv_end is the last block within the reservation, so alloc_new_reservation
-should accept start_block == rsv_end as success.
+Port fix to the off-by-one in find_next_usable_block's memscan from ext2 to
+ext4; but it didn't cause a serious problem for ext4 because the additional
+ext4_test_allocatable check rescued it from the error.
 
+[akpm@osdl.org: build fix]
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
 Cc: <linux-ext4@vger.kernel.org>
@@ -36,18 +38,18 @@ Signed-off-by: Andrew Morton <akpm@osdl.org>
  fs/ext4/balloc.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-fix-_with_rsv-freeze
 +++ a/fs/ext4/balloc.c
-@@ -1165,7 +1165,7 @@ retry:
- 	 * check if the first free block is within the
- 	 * free space we just reserved
- 	 */
--	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
-+	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
- 		return 0;		/* success */
- 	/*
- 	 * if the first free bit we found is out of the reservable space
+@@ -747,7 +747,7 @@ find_next_usable_block(ext4_grpblk_t sta
+ 		here = 0;
+ 
+ 	p = ((char *)bh->b_data) + (here >> 3);
+-	r = memscan(p, 0, (maxblocks - here + 7) >> 3);
++	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
+ 	next = (r - ((char *)bh->b_data)) << 3;
+ 
+ 	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
