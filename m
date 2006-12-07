@@ -1,84 +1,94 @@
 From: akpm@osdl.org
-Subject: - ext3-fix-reservation-extension.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:05:36 -0800
-Message-ID: <200612072305.kB7N5aa6030168@shell0.pdx.osdl.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:52581 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163914AbWLGXF6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Dec 2006 18:05:58 -0500
-To: cmm@us.ibm.com, hugh@veritas.com, linux-ext4@vger.kernel.org,
+Subject: - ext4_ext_split-remove-dead-code.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:04:30 -0800
+Message-ID: <200612072304.kB7N4Ui0030059@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+To: bunk@stusta.de, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: fix reservation extension
+     ext4_ext_split(): remove dead code
 has been removed from the -mm tree.  Its filename was
-     ext3-fix-reservation-extension.patch
+     ext4_ext_split-remove-dead-code.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext3: fix reservation extension
-From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4_ext_split(): remove dead code
+From: Adrian Bunk <bunk@stusta.de>
 
-Hugh Dickins wrote:
-> Not found anything relevant, but I keep noticing these lines
-> in ext2_try_to_allocate_with_rsv(), ext3 and ext4 similar:
->
-> 		} else if (grp_goal > 0 &&
-> 				(my_rsv->rsv_end - grp_goal + 1) < *count)
-> 			try_to_extend_reservation(my_rsv, sb,
-> 					*count-my_rsv->rsv_end + grp_goal - 1);
->
-> They're wrong, a no-op in most groups, aren't they?  rsv_end is an
-> absolute block number, whereas grp_goal is group-relative, so the
-> calculation ought to bring in group_first_block?  Or I'm confused.
->
+The Coverity checker noted that this was dead code, since in all places
+above in this function, "err" is immediately checked.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Cc: Hugh Dickins <hugh@veritas.com>
+Signed-off-by: Adrian Bunk <bunk@stusta.de>
+Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext3/balloc.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c |    3 ---
+ 1 file changed, 3 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-fix-reservation-extension fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-fix-reservation-extension
-+++ a/fs/ext3/balloc.c
-@@ -1307,10 +1307,14 @@ ext3_try_to_allocate_with_rsv(struct sup
- 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
- 							grp_goal, group, sb))
- 				grp_goal = -1;
--		} else if (grp_goal > 0 &&
--			  (my_rsv->rsv_end-grp_goal+1) < *count)
--			try_to_extend_reservation(my_rsv, sb,
--					*count-my_rsv->rsv_end + grp_goal - 1);
-+		} else if (grp_goal > 0) {
-+			int curr = my_rsv->rsv_end -
-+					(grp_goal + group_first_block) + 1;
-+
-+			if (curr < *count)
-+				try_to_extend_reservation(my_rsv, sb,
-+							*count - curr);
-+		}
+diff -puN fs/ext4/extents.c~ext4_ext_split-remove-dead-code fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4_ext_split-remove-dead-code
++++ a/fs/ext4/extents.c
+@@ -800,9 +800,6 @@ static int ext4_ext_split(handle_t *hand
+ 	}
  
- 		if ((my_rsv->rsv_start > group_last_block) ||
- 				(my_rsv->rsv_end < group_first_block)) {
+ 	/* insert new index */
+-	if (err)
+-		goto cleanup;
+-
+ 	err = ext4_ext_insert_index(handle, inode, path + at,
+ 				    le32_to_cpu(border), newblock);
+ 
 _
 
-Patches currently in -mm which might be from cmm@us.ibm.com are
+Patches currently in -mm which might be from bunk@stusta.de are
 
 origin.patch
-ext2-reservations.patch
-ext2-fix-reservation-extension.patch
-ext2-balloc-fix-_with_rsv-freeze.patch
-ext2-balloc-reset-windowsz-when-full.patch
-ext2-balloc-fix-off-by-one-against-rsv_end.patch
-ext2-balloc-fix-off-by-one-against-grp_goal.patch
-ext2-balloc-say-rb_entry-not-list_entry.patch
-ext2-balloc-use-io_error-label.patch
+make-drivers-acpi-eccec_ecdt-static.patch
+drivers-acpi-oslc-fix-a-null-check.patch
+git-alsa.patch
+git-dvb.patch
+fs-dlm-lowcomms-tcpc-remove-2-functions.patch
+git-mtd.patch
+remove-mtd-jffs2-userh.patch
+net-uninline-skb_put-fix.patch
+dont-export-device-ids-to-userspace.patch
+drivers-scsi-small-cleanups.patch
+drivers-scsi-aic7xxx-aic79xx_corec-make-ahd_match_scb-static.patch
+drivers-scsi-advansysc-cleanups.patch
+megaraid-fix-warnings-when-config_proc_fs=n.patch
+drivers-scsi-dpt_i2oc-remove-dead-code.patch
+drivers-scsi-aic7xxx-make-functions-static.patch
+make-qla2x00_reg_remote_port-static.patch
+drivers-scsi-wd33c93c-cleanups.patch
+usb_rtl8150-must-select-mii.patch
+drivers-edac-make-code-static.patch
+remove-drivers-pci-searchcpci_find_device_reverse.patch
+make-ext2_get_blocks-static.patch
+generic-bug-implementation-include-linux-bugh-must-always-include-linux-moduleh.patch
+fsstack-introduce-fsstack_copy_attrinode_-fs-stackc-should-include-linux-fs_stackh.patch
+i4l-remove-the-broken-hisax_amd7930-option.patch
+readahead-events-accounting-make-readahead_debug_level-static.patch
+reiser4-export-remove_from_page_cache-fix.patch
+fs-reiser4-possible-cleanups.patch
+reiser4-possible-cleanups-2.patch
+fs-reiser4-possible-cleanups-2.patch
+fs-reiser4-more-possible-cleanups.patch
+make-drivers-md-dm-snapcksnapd-static.patch
+gtod-persistent-clock-support-core-remove-kernel-timercwall_jiffies.patch
+gtod-persistent-clock-support-i386-i386-unexport-read_persistent_clock.patch
+dynticks-extend-next_timer_interrupt-to-use-a-reference-jiffie-make-kernel-timerc__next_timer_interrupt-static.patch
+updated-i386-convert-to-clock-event-devices-arch-i386-kernel-apicc-make-a-function-static.patch
+updated-i386-convert-to-clock-event-devices-remove-arch-i386-kernel-time_hpetchpet_reenable.patch
+slim-main-patch-security-slim-slm_mainc-make-2-functions-static.patch
+slab-cache-shrinker-statistics.patch
+debug-shared-irqs-kconfig-fix.patch
+i386-enable-4k-stacks-by-default.patch
+mutex-subsystem-synchro-test-module.patch
+
