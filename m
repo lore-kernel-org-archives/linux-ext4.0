@@ -1,12 +1,12 @@
 From: akpm@osdl.org
-Subject: - ext4-balloc-reset-windowsz-when-full.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:09:05 -0800
-Message-ID: <200612072309.kB7N95fi030456@shell0.pdx.osdl.net>
+Subject: - ext4-balloc-fix-off-by-one-against-rsv_end.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:14:43 -0800
+Message-ID: <200612072314.kB7NEhY9030650@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:52957 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:53493 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163740AbWLGXJT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Dec 2006 18:09:19 -0500
+	id S1163734AbWLGXOx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Dec 2006 18:14:53 -0500
 To: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
@@ -14,19 +14,18 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: reset windowsz when full
+     ext4 balloc: fix off-by-one against rsv_end
 has been removed from the -mm tree.  Its filename was
-     ext4-balloc-reset-windowsz-when-full.patch
+     ext4-balloc-fix-off-by-one-against-rsv_end.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4 balloc: reset windowsz when full
+Subject: ext4 balloc: fix off-by-one against rsv_end
 From: Hugh Dickins <hugh@veritas.com>
 
-ext4_new_blocks should reset the reservation window size to 0 when squeezing
-the last blocks out of an almost full filesystem, so the retry doesn't skip
-any groups with less than half that free, reporting ENOSPC too soon.
+rsv_end is the last block within the reservation, so alloc_new_reservation
+should accept start_block == rsv_end as success.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -34,20 +33,21 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/ext4/balloc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-reset-windowsz-when-full fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-reset-windowsz-when-full
+diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-rsv_end
 +++ a/fs/ext4/balloc.c
-@@ -1566,6 +1566,7 @@ retry_alloc:
+@@ -1165,7 +1165,7 @@ retry:
+ 	 * check if the first free block is within the
+ 	 * free space we just reserved
  	 */
- 	if (my_rsv) {
- 		my_rsv = NULL;
-+		windowsz = 0;
- 		group_no = goal_group;
- 		goto retry_alloc;
- 	}
+-	if (start_block >= my_rsv->rsv_start && start_block < my_rsv->rsv_end)
++	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+ 		return 0;		/* success */
+ 	/*
+ 	 * if the first free bit we found is out of the reservable space
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
