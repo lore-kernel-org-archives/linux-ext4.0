@@ -1,28 +1,31 @@
 From: akpm@osdl.org
-Subject: - ext4-balloc-fix-off-by-one-against-grp_goal.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:12:05 -0800
-Message-ID: <200612072312.kB7NCCn6030575@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
+Subject: - ext4-balloc-use-io_error-label.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:14:49 -0800
+Message-ID: <200612072314.kB7NEn02030657@shell0.pdx.osdl.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.25]:53546 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1163879AbWLGXPn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Dec 2006 18:15:43 -0500
 To: hugh@veritas.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Sender: mm-commits-owner@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4 balloc: fix off-by-one against grp_goal
+     ext4 balloc: use io_error label
 has been removed from the -mm tree.  Its filename was
-     ext4-balloc-fix-off-by-one-against-grp_goal.patch
+     ext4-balloc-use-io_error-label.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4 balloc: fix off-by-one against grp_goal
+Subject: ext4 balloc: use io_error label
 From: Hugh Dickins <hugh@veritas.com>
 
-grp_goal 0 is a genuine goal (unlike -1), so ext4_try_to_allocate_with_rsv
-should treat it as such.
+ext4_new_blocks has a nice io_error label for setting -EIO, so goto that in
+the one place that doesn't already use it.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Hugh Dickins <hugh@veritas.com>
@@ -30,30 +33,25 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-balloc-fix-off-by-one-against-grp_goal
+diff -puN fs/ext4/balloc.c~ext4-balloc-use-io_error-label fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-balloc-use-io_error-label
 +++ a/fs/ext4/balloc.c
-@@ -1288,7 +1288,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 	}
- 	/*
- 	 * grp_goal is a group relative block number (if there is a goal)
--	 * 0 < grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
-+	 * 0 <= grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
- 	 * first block is a filesystem wide block number
- 	 * first block is the block number of the first block in this group
- 	 */
-@@ -1324,7 +1324,7 @@ ext4_try_to_allocate_with_rsv(struct sup
- 			if (!goal_in_my_reservation(&my_rsv->rsv_window,
- 							grp_goal, group, sb))
- 				grp_goal = -1;
--		} else if (grp_goal > 0) {
-+		} else if (grp_goal >= 0) {
- 			int curr = my_rsv->rsv_end -
- 					(grp_goal + group_first_block) + 1;
- 
+@@ -1529,10 +1529,8 @@ retry_alloc:
+ 		if (group_no >= ngroups)
+ 			group_no = 0;
+ 		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
+-		if (!gdp) {
+-			*errp = -EIO;
+-			goto out;
+-		}
++		if (!gdp)
++			goto io_error;
+ 		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+ 		/*
+ 		 * skip this group if the number of
 _
 
 Patches currently in -mm which might be from hugh@veritas.com are
@@ -72,4 +70,3 @@ generic-bug-for-i386.patch
 generic-bug-for-x86-64.patch
 bug-test-1.patch
 tty-switch-to-ktermios-powerpc-fix.patch
-
