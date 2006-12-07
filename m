@@ -1,67 +1,76 @@
 From: akpm@osdl.org
-Subject: - ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:17:14 -0800
-Message-ID: <200612072317.kB7NHE5C030908@shell0.pdx.osdl.net>
+Subject: - update-ext-mailing-list-address.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:17:17 -0800
+Message-ID: <200612072317.kB7NHH9P030911@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:53800 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.25]:53802 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163829AbWLGXRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1163841AbWLGXRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 7 Dec 2006 18:17:22 -0500
-To: johann.lombardi@bull.net, alex@clusterfs.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+To: erik@harddisk-recovery.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: fix credit calculation in ext4_ext_calc_credits_for_insert
+     Update ext[23] mailing list address
 has been removed from the -mm tree.  Its filename was
-     ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert.patch
+     update-ext-mailing-list-address.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4: fix credit calculation in ext4_ext_calc_credits_for_insert
-From: Johann Lombardi <johann.lombardi@bull.net>
+Subject: Update ext[23] mailing list address
+From: Erik Mouw <erik@harddisk-recovery.com>
 
-Fix a nit in ext4_ext_calc_credits_for_insert().  Besides, credits for the
-new root are already added in the index split accounting.
+The ext[23] mailing list moved from sf.net to vger.kernel.org so update
+the MAINTAINERS file.
 
-Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
-Signed-off-by: Alex Tomas <alex@clusterfs.com>
+Signed-off-by: Erik Mouw <erik@harddisk-recovery.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/extents.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ MAINTAINERS |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/extents.c~ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4-fix-credit-calculation-in-ext4_ext_calc_credits_for_insert
-+++ a/fs/ext4/extents.c
-@@ -1531,16 +1531,17 @@ int inline ext4_ext_calc_credits_for_ins
+diff -puN MAINTAINERS~update-ext-mailing-list-address MAINTAINERS
+--- a/MAINTAINERS~update-ext-mailing-list-address
++++ a/MAINTAINERS
+@@ -1091,13 +1091,19 @@ M:	miku@iki.fi
+ S:	Maintained
  
- 	/*
- 	 * tree can be full, so it would need to grow in depth:
--	 * allocation + old root + new root
-+	 * we need one credit to modify old root, credits for
-+	 * new root will be added in split accounting
- 	 */
--	needed += 2 + 1 + 1;
-+	needed += 1;
+ EXT2 FILE SYSTEM
+-L:	ext2-devel@lists.sourceforge.net
++L:	linux-ext4@vger.kernel.org
+ S:	Maintained
  
- 	/*
- 	 * Index split can happen, we would need:
- 	 *    allocate intermediate indexes (bitmap + group)
- 	 *  + change two blocks at each level, but root (already included)
- 	 */
--	needed = (depth * 2) + (depth * 2);
-+	needed += (depth * 2) + (depth * 2);
+ EXT3 FILE SYSTEM
+ P:	Stephen Tweedie, Andrew Morton
+ M:	sct@redhat.com, akpm@osdl.org, adilger@clusterfs.com
+-L:	ext2-devel@lists.sourceforge.net
++L:	linux-ext4@vger.kernel.org
++S:	Maintained
++
++EXT4 FILE SYSTEM
++P:	Stephen Tweedie, Andrew Morton
++M:	sct@redhat.com, akpm@osdl.org, adilger@clusterfs.com
++L:	linux-ext4@vger.kernel.org
+ S:	Maintained
  
- 	/* any allocation modifies superblock */
- 	needed += 1;
+ F71805F HARDWARE MONITORING DRIVER
+@@ -1673,7 +1679,7 @@ S:	Supported
+ JOURNALLING LAYER FOR BLOCK DEVICES (JBD)
+ P:	Stephen Tweedie, Andrew Morton
+ M:	sct@redhat.com, akpm@osdl.org
+-L:	ext2-devel@lists.sourceforge.net
++L:	linux-ext4@vger.kernel.org
+ S:	Maintained
+ 
+ K8TEMP HARDWARE MONITORING DRIVER
 _
 
-Patches currently in -mm which might be from johann.lombardi@bull.net are
+Patches currently in -mm which might be from erik@harddisk-recovery.com are
 
 origin.patch
