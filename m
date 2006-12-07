@@ -1,56 +1,163 @@
-From: Nicholas Miell <nmiell@comcast.net>
-Subject: Re: [RFC][PATCH] Secure Deletion and Trash-Bin Support for Ext4
-Date: Wed, 06 Dec 2006 19:14:58 -0800
-Message-ID: <1165461298.2817.10.camel@entropy>
-References: <Pine.GSO.4.53.0612041256180.15321@compserv1>
-	 <20061204235042.GS33919298@melbourne.sgi.com>
-	 <Pine.GSO.4.53.0612051049200.27677@compserv1>
-	 <20061206091100.GA33919298@melbourne.sgi.com>
-	 <20061207005619.GA12320@filer.fsl.cs.sunysb.edu>
-	 <20061207014426.GL44411608@melbourne.sgi.com>
-	 <20061207023530.GA17244@filer.fsl.cs.sunysb.edu>
-	 <20061207024944.GM44411608@melbourne.sgi.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Josef Sipek <jsipek@fsl.cs.sunysb.edu>,
-	Nikolai Joukov <kolya@cs.sunysb.edu>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061207024944.GM44411608@melbourne.sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: akpm@osdl.org
+Subject: + retries-in-ext4_prepare_write-violate-ordering-requirements.patch added to -mm tree
+Date: Wed, 06 Dec 2006 19:30:59 -0800
+Message-ID: <200612070330.kB73Uxw5027413@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: saw@sw.ru, dev@openvz.org, kenneth.w.chen@intel.com,
+	linux-ext4@vger.kernel.org, mingo@elte.hu
+Return-path: <mm-commits-owner@vger.kernel.org>
+To: mm-commits@vger.kernel.org
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2006-12-07 at 13:49 +1100, David Chinner wrote:
-> On Wed, Dec 06, 2006 at 09:35:30PM -0500, Josef Sipek wrote:
-> > On Thu, Dec 07, 2006 at 12:44:27PM +1100, David Chinner wrote:
-> > > Maybe we should be using EAs for this sort of thing instead of flags
-> > > on the inode? If we keep adding inode flags for generic features
-> > > then we are going to force more than just XFS into inode format
-> > > changes eventually....
-> > 
-> > Aren't EAs slow? Maybe not on XFS but on other filesystems...
-> 
-> Only when they don't fit in the inode itself and extra
-> disk seeks are needed to retrieve them.
-> 
-> Cheers,
-> 
-> Dave.
 
-Also keep in mind that the EA doesn't actually have to have a physical
-representation on disk (or, rather, it does, but it doesn't need to be
-the same representation used by EAs in the user namespace).
+The patch titled
+     retries in ext3_prepare_write() violate ordering requirements
+has been added to the -mm tree.  Its filename is
+     retries-in-ext4_prepare_write-violate-ordering-requirements.patch
 
-This means that if one of those slow EA filesystems still has room for
-flags in the inode, it can synthesize the EA on demand.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-This is even preferable to ioctls for the interface to new filesystem
-metadata -- if a backup or archive program knows how to store EAs, it
-will be able to save and restore any new exotic metadata without any
-extra effort.
+------------------------------------------------------
+Subject: retries in ext3_prepare_write() violate ordering requirements
+From: Andrey Savochkin <saw@sw.ru>
 
--- 
-Nicholas Miell <nmiell@comcast.net>
+In journal=ordered or journal=data mode retry in ext3_prepare_write()
+breaks the requirements of journaling of data with respect to metadata. 
+The fix is to call commit_write to commit allocated zero blocks before
+retry.
+
+Signed-off-by: Kirill Korotaev <dev@openvz.org>
+Cc: Ingo Molnar <mingo@elte.hu>
+Cc: Ken Chen <kenneth.w.chen@intel.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/ext4/inode.c |   85 ++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 75 insertions(+), 10 deletions(-)
+
+diff -puN fs/ext4/inode.c~retries-in-ext4_prepare_write-violate-ordering-requirements fs/ext4/inode.c
+--- a/fs/ext4/inode.c~retries-in-ext4_prepare_write-violate-ordering-requirements
++++ a/fs/ext4/inode.c
+@@ -1147,37 +1147,102 @@ static int do_journal_get_write_access(h
+ 	return ext4_journal_get_write_access(handle, bh);
+ }
+ 
++/*
++ * The idea of this helper function is following:
++ * if prepare_write has allocated some blocks, but not all of them, the
++ * transaction must include the content of the newly allocated blocks.
++ * This content is expected to be set to zeroes by block_prepare_write().
++ * 2006/10/14  SAW
++ */
++static int ext4_prepare_failure(struct file *file, struct page *page,
++				unsigned from, unsigned to)
++{
++	struct address_space *mapping;
++	struct buffer_head *bh, *head, *next;
++	unsigned block_start, block_end;
++	unsigned blocksize;
++	int ret;
++	handle_t *handle = ext4_journal_current_handle();
++
++	mapping = page->mapping;
++	if (ext4_should_writeback_data(mapping->host)) {
++		/* optimization: no constraints about data */
++skip:
++		return ext4_journal_stop(handle);
++	}
++
++	head = page_buffers(page);
++	blocksize = head->b_size;
++	for (	bh = head, block_start = 0;
++		bh != head || !block_start;
++	    	block_start = block_end, bh = next)
++	{
++		next = bh->b_this_page;
++		block_end = block_start + blocksize;
++		if (block_end <= from)
++			continue;
++		if (block_start >= to) {
++			block_start = to;
++			break;
++		}
++		if (!buffer_mapped(bh))
++		/* prepare_write failed on this bh */
++			break;
++		if (ext4_should_journal_data(mapping->host)) {
++			ret = do_journal_get_write_access(handle, bh);
++			if (ret) {
++				ext4_journal_stop(handle);
++				return ret;
++			}
++		}
++	/*
++	 * block_start here becomes the first block where the current iteration
++	 * of prepare_write failed.
++	 */
++	}
++	if (block_start <= from)
++		goto skip;
++
++	/* commit allocated and zeroed buffers */
++	return mapping->a_ops->commit_write(file, page, from, block_start);
++}
++
+ static int ext4_prepare_write(struct file *file, struct page *page,
+ 			      unsigned from, unsigned to)
+ {
+ 	struct inode *inode = page->mapping->host;
+-	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
++	int ret, ret2;
++	int needed_blocks = ext4_writepage_trans_blocks(inode);
+ 	handle_t *handle;
+ 	int retries = 0;
+ 
+ retry:
+ 	handle = ext4_journal_start(inode, needed_blocks);
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out;
+-	}
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+ 		ret = nobh_prepare_write(page, from, to, ext4_get_block);
+ 	else
+ 		ret = block_prepare_write(page, from, to, ext4_get_block);
+ 	if (ret)
+-		goto prepare_write_failed;
++		goto failure;
+ 
+ 	if (ext4_should_journal_data(inode)) {
+ 		ret = walk_page_buffers(handle, page_buffers(page),
+ 				from, to, NULL, do_journal_get_write_access);
++		if (ret)
++			/* fatal error, just put the handle and return */
++			journal_stop(handle);
+ 	}
+-prepare_write_failed:
+-	if (ret)
+-		ext4_journal_stop(handle);
++	return ret;
++
++failure:
++	ret2 = ext4_prepare_failure(file, page, from, to);
++	if (ret2 < 0)
++		return ret2;
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+-out:
++	/* retry number exceeded, or other error like -EDQUOT */
+ 	return ret;
+ }
+ 
+_
+
+Patches currently in -mm which might be from saw@sw.ru are
+
+retries-in-ext3_prepare_write-violate-ordering-requirements.patch
+retries-in-ext4_prepare_write-violate-ordering-requirements.patch
 
