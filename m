@@ -1,54 +1,85 @@
-From: Nathan Scott <nscott@aconex.com>
-Subject: Re: [RFC][PATCH] Secure Deletion and Trash-Bin Support for Ext4
-Date: Thu, 07 Dec 2006 09:16:31 +1100
-Message-ID: <1165443391.1281.135.camel@edge>
-References: <Pine.GSO.4.53.0612041256180.15321@compserv1>
-	 <20061204235042.GS33919298@melbourne.sgi.com>
-	 <Pine.GSO.4.53.0612051049200.27677@compserv1>
-	 <20061206091100.GA33919298@melbourne.sgi.com>
-Reply-To: nscott@aconex.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Nikolai Joukov <kolya@cs.sunysb.edu>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com
+From: akpm@osdl.org
+Subject: [patch 152/354] Remove superfluous lock_super() in extN xattr code
+Date: Wed, 06 Dec 2006 20:36:16 -0800
+Message-ID: <200612070436.kB74aGlp029434@shell0.pdx.osdl.net>
+Cc: akpm@osdl.org, agruen@suse.de, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.app.aconex.com ([203.89.192.138]:36763 "EHLO
-	mail.aconex.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S968688AbWLGDz7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Dec 2006 22:55:59 -0500
-To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061206091100.GA33919298@melbourne.sgi.com>
+Received: from smtp.osdl.org ([65.172.181.25]:46737 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S968742AbWLGEgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Dec 2006 23:36:23 -0500
+To: torvalds@osdl.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-12-06 at 20:11 +1100, David Chinner wrote:
-> ...
-> If all we need to add to XFS is support for those flags, then XFS
-> support would be trivial to add.
-> 
-> Oh, damn. I take that back. We're almost out of flag space in the on
-> disk inode - these two flags would use the last 2 flag bits so this
-> may require an on disk inode format change in XFS. This will be
-> a little more complex than I first thought, ...
+From: Andreas Gruenbacher <agruen@suse.de>
 
-It should be OK - you can do it without an inode version revision
-if you take a second 16 bits for "di_flags2" from here...
+lock_super() is unnecessary for setting super-block feature flags.  Use the
+provided *_SET_COMPAT_FEATURE() macros as well.
 
-xfs_dinode_core {
-	...
-        __uint8_t       di_pad[8];      /* unused, zeroed space */
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
 
-Its guaranteed zeroed initially (i.e. all flags unset) and the XFS
-get/set flags APIs are 32 bits, so you should be OK there.
+ fs/ext2/xattr.c |    5 +----
+ fs/ext3/xattr.c |    5 +----
+ fs/ext4/xattr.c |    5 +----
+ 3 files changed, 3 insertions(+), 12 deletions(-)
 
-Also, it may also be possible to reclaim di_onlink at some point (maybe
-now, since 16 bits would be good here) if mkfs.xfs is changed to always
-create v2 inodes (dynamic conversion ATM IIRC)... not 100% sure though,
-needs more code analysis.
-
-cheers.
-
--- 
-Nathan
+diff -puN fs/ext2/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext2/xattr.c
+--- a/fs/ext2/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
++++ a/fs/ext2/xattr.c
+@@ -342,12 +342,9 @@ static void ext2_xattr_update_super_bloc
+ 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR))
+ 		return;
+ 
+-	lock_super(sb);
+-	EXT2_SB(sb)->s_es->s_feature_compat |=
+-		cpu_to_le32(EXT2_FEATURE_COMPAT_EXT_ATTR);
++	EXT2_SET_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR);
+ 	sb->s_dirt = 1;
+ 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
+-	unlock_super(sb);
+ }
+ 
+ /*
+diff -puN fs/ext3/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext3/xattr.c
+--- a/fs/ext3/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
++++ a/fs/ext3/xattr.c
+@@ -459,14 +459,11 @@ static void ext3_xattr_update_super_bloc
+ 	if (EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_EXT_ATTR))
+ 		return;
+ 
+-	lock_super(sb);
+ 	if (ext3_journal_get_write_access(handle, EXT3_SB(sb)->s_sbh) == 0) {
+-		EXT3_SB(sb)->s_es->s_feature_compat |=
+-			cpu_to_le32(EXT3_FEATURE_COMPAT_EXT_ATTR);
++		EXT3_SET_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_EXT_ATTR);
+ 		sb->s_dirt = 1;
+ 		ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
+ 	}
+-	unlock_super(sb);
+ }
+ 
+ /*
+diff -puN fs/ext4/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code fs/ext4/xattr.c
+--- a/fs/ext4/xattr.c~remove-superfluous-lock_super-in-ext2-and-ext3-xattr-code
++++ a/fs/ext4/xattr.c
+@@ -459,14 +459,11 @@ static void ext4_xattr_update_super_bloc
+ 	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR))
+ 		return;
+ 
+-	lock_super(sb);
+ 	if (ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh) == 0) {
+-		EXT4_SB(sb)->s_es->s_feature_compat |=
+-			cpu_to_le32(EXT4_FEATURE_COMPAT_EXT_ATTR);
++		EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_EXT_ATTR);
+ 		sb->s_dirt = 1;
+ 		ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+ 	}
+-	unlock_super(sb);
+ }
+ 
+ /*
+_
