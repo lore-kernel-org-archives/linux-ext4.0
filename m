@@ -1,24 +1,27 @@
 From: akpm@osdl.org
-Subject: - ext4-fix-reservation-extension.patch removed from -mm tree
-Date: Thu, 07 Dec 2006 15:05:44 -0800
-Message-ID: <200612072305.kB7N5isF030173@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
+Subject: - ext3-fix-reservation-extension.patch removed from -mm tree
+Date: Thu, 07 Dec 2006 15:05:36 -0800
+Message-ID: <200612072305.kB7N5aa6030168@shell0.pdx.osdl.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.25]:52581 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1163914AbWLGXF6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Dec 2006 18:05:58 -0500
 To: cmm@us.ibm.com, hugh@veritas.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Sender: mm-commits-owner@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: fix reservation extension
+     ext3: fix reservation extension
 has been removed from the -mm tree.  Its filename was
-     ext4-fix-reservation-extension.patch
+     ext3-fix-reservation-extension.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4: fix reservation extension
+Subject: ext3: fix reservation extension
 From: Mingming Cao <cmm@us.ibm.com>
 
 Hugh Dickins wrote:
@@ -41,13 +44,13 @@ Cc: Hugh Dickins <hugh@veritas.com>
 Signed-off-by: Andrew Morton <akpm@osdl.org>
 ---
 
- fs/ext4/balloc.c |   12 ++++++++----
+ fs/ext3/balloc.c |   12 ++++++++----
  1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-fix-reservation-extension fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-fix-reservation-extension
-+++ a/fs/ext4/balloc.c
-@@ -1324,10 +1324,14 @@ ext4_try_to_allocate_with_rsv(struct sup
+diff -puN fs/ext3/balloc.c~ext3-fix-reservation-extension fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext3-fix-reservation-extension
++++ a/fs/ext3/balloc.c
+@@ -1307,10 +1307,14 @@ ext3_try_to_allocate_with_rsv(struct sup
  			if (!goal_in_my_reservation(&my_rsv->rsv_window,
  							grp_goal, group, sb))
  				grp_goal = -1;
@@ -79,4 +82,3 @@ ext2-balloc-fix-off-by-one-against-rsv_end.patch
 ext2-balloc-fix-off-by-one-against-grp_goal.patch
 ext2-balloc-say-rb_entry-not-list_entry.patch
 ext2-balloc-use-io_error-label.patch
-
