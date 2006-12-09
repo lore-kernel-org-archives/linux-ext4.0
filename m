@@ -1,91 +1,72 @@
-From: akpm@osdl.org
-Subject: - ext3-4-dont-do-orphan-processing-on-readonly-devices.patch removed from -mm tree
-Date: Fri, 08 Dec 2006 00:33:08 -0800
-Message-ID: <200612080833.kB88X83F013527@shell0.pdx.osdl.net>
+From: Nikolai Joukov <kolya@cs.sunysb.edu>
+Subject: Re: [RFC][PATCH] Secure Deletion and Trash-Bin Support for Ext4
+Date: Fri, 8 Dec 2006 20:44:57 -0500 (EST)
+Message-ID: <Pine.GSO.4.53.0612061828130.18122@compserv1>
+References: <Pine.GSO.4.53.0612041256180.15321@compserv1>
+ <20061204235042.GS33919298@melbourne.sgi.com> <Pine.GSO.4.53.0612051049200.27677@compserv1>
+ <20061206091100.GA33919298@melbourne.sgi.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:35847 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1425164AbWLHId1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Dec 2006 03:33:27 -0500
-To: sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+Received: from sbcs.cs.sunysb.edu ([130.245.1.15]:44012 "EHLO
+	sbcs.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1947723AbWLIBpD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Dec 2006 20:45:03 -0500
+To: David Chinner <dgc@sgi.com>
+In-Reply-To: <20061206091100.GA33919298@melbourne.sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+> They are defined but unused in 2.6.19, right? I can't see anywhere
+> in the 2.6.19 ext2/3/4/reiser trees that actually those flags,
+> including setting and retrieving them from disk. JFS i can see
+> sets, clears and retreives them, but not the fielsystems you
+> mention. Though I might just be blind..... ;)
 
-The patch titled
-     ext3/4: don't do orphan processing on readonly devices
-has been removed from the -mm tree.  Its filename was
-     ext3-4-dont-do-orphan-processing-on-readonly-devices.patch
+Well, at least Ext2/3/4 and JFS do store these attributes and retrieve
+them from the disk.  However, not a single one of these file systems
+supports the related functionality (secure deletion or a trash-bin).
+Clearly, this is confusing for the users.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+> If all we need to add to XFS is support for those flags, then XFS
+> support would be trivial to add.
+>
+> Oh, damn. I take that back. We're almost out of flag space in the on
+> disk inode - these two flags would use the last 2 flag bits so this
+> may require an on disk inode format change in XFS. This will be
+> a little more complex than I first thought, but not impossible
+> as we already support two on-disk inode format versions.
 
-------------------------------------------------------
-Subject: ext3/4: don't do orphan processing on readonly devices
-From: Eric Sandeen <sandeen@redhat.com>
+If you do not see any obvious use for these two bits in the near future
+and ready to sacrifice them (or at least one of them) for secure deletion
+and trash-bin attributes we would be more than happy to add the actual
+functionality to XFS as well.
 
-If you do something like:
+> I'd certainly like to see new functionality like this added at the
+> VFS rather than in any particular filesystem. Don't know about
+> anyone else, though....
+>
+> > I guess, the right thing to do would be to move the common trash-bin
+> > (tb.c and tb.h) code into the /fs and /include/linux directories.
+>
+> And call them trashbin.[ch] ;)
 
-# touch foo
-# tail -f foo &
-# rm foo
-# <take snapshot>
-# <mount snapshot>
+In fact, we have already done this :-)
 
-you'll panic, because ext3/4 tries to do orphan list processing on the
-readonly snapshot device, and:
+> > Also, VFS would require just a couple of trivial changes to support
+> > something like '-o trashbin' mount-time option for all file systems.
+> > In addition, individual file systems may support per-file attributes for
+> > this (e.g., ext2/3/4).
+>
+> Sounds like a good idea to me.
 
-kernel: journal commit I/O error
-kernel: Assertion failure in journal_flush_Rsmp_e2f189ce() at journal.c:1356: "!journal->j_checkpoint_transactions"
-kernel: Kernel panic: Fatal exception
+Thank you!  So we will submit the corresponding patches soon.  We will
+start from the trashbin.c and patches for the individual file systems.  A
+little later we will submit a VFS patch to add support for the
+'-o trashbin' mount option.
 
-for a truly readonly underlying device, it's reasonable and necessary
-to just skip orphan list processing.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
----
-
- fs/ext3/super.c |    6 ++++++
- fs/ext4/super.c |    6 ++++++
- 2 files changed, 12 insertions(+)
-
-diff -puN fs/ext3/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices
-+++ a/fs/ext3/super.c
-@@ -1270,6 +1270,12 @@ static void ext3_orphan_cleanup (struct 
- 		return;
- 	}
- 
-+	if (bdev_read_only(sb->s_bdev)) {
-+		printk(KERN_ERR "EXT3-fs: write access "
-+			"unavailable, skipping orphan cleanup.\n");
-+		return;
-+	}
-+
- 	if (EXT3_SB(sb)->s_mount_state & EXT3_ERROR_FS) {
- 		if (es->s_last_orphan)
- 			jbd_debug(1, "Errors on filesystem, "
-diff -puN fs/ext4/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices fs/ext4/super.c
---- a/fs/ext4/super.c~ext3-4-dont-do-orphan-processing-on-readonly-devices
-+++ a/fs/ext4/super.c
-@@ -1327,6 +1327,12 @@ static void ext4_orphan_cleanup (struct 
- 		return;
- 	}
- 
-+	if (bdev_read_only(sb->s_bdev)) {
-+		printk(KERN_ERR "EXT4-fs: write access "
-+			"unavailable, skipping orphan cleanup.\n");
-+		return;
-+	}
-+
- 	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
- 		if (es->s_last_orphan)
- 			jbd_debug(1, "Errors on filesystem, "
-_
-
-Patches currently in -mm which might be from sandeen@redhat.com are
-
-origin.patch
-ext3-4-dont-do-orphan-processing-on-readonly-devices.patch
+Nikolai Joukov
+----------------------------------
+Filesystems and Storage Laboratory
+Stony Brook University
