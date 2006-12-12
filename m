@@ -1,84 +1,109 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [RFC][Patch 1/1] Persistent preallocation in ext4
-Date: Tue, 12 Dec 2006 11:53:02 +0530
-Message-ID: <20061212062302.GA8280@amitarora.in.ibm.com>
-References: <20061205134338.GA1894@amitarora.in.ibm.com> <20061206055822.GA6182@amitarora.in.ibm.com> <1165886895.3939.18.camel@dyn9047017103.beaverton.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] process orphan list if device transitions to readonly
+Date: Tue, 12 Dec 2006 09:22:12 -0600
+Message-ID: <457EC924.3000401@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, suzuki@in.ibm.com
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:38534 "EHLO e5.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:35682 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751195AbWLLGXE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Dec 2006 01:23:04 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kBC6N3hn012539
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2006 01:23:03 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kBC6N3Ow134672
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2006 01:23:03 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kBC6N3xS023585
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Dec 2006 01:23:03 -0500
-To: Mingming Cao <cmm@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <1165886895.3939.18.camel@dyn9047017103.beaverton.ibm.com>
+	id S1751417AbWLLPWP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Dec 2006 10:22:15 -0500
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Mingming,
+I have a patch in -mm now to skip orphan inode processing on a read-only
+device (where IO may fail if issued), but Stephen points out that if
+the device ever transitions back to readwrite, and the filesystem is
+remounted as rewrite, we should process the orphan inode list at that point.
 
-On Mon, Dec 11, 2006 at 05:28:15PM -0800, Mingming Cao wrote:
-> On Wed, 2006-12-06 at 11:28 +0530, Amit K. Arora wrote:
-> 
-> > @@ -1142,13 +1155,22 @@
-> >  	/* try to insert block into found extent and return */
-> >  	if (ex && ext4_can_extents_be_merged(inode, ex, newext)) {
-> >  		ext_debug("append %d block to %d:%d (from %llu)\n",
-> > -				le16_to_cpu(newext->ee_len),
-> > +				ext4_ext_get_actual_len(newext),
-> >  				le32_to_cpu(ex->ee_block),
-> > -				le16_to_cpu(ex->ee_len), ext_pblock(ex));
-> > +				ext4_ext_get_actual_len(ex), ext_pblock(ex));
-> >  		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-> >  			return err;
-> > -		ex->ee_len = cpu_to_le16(le16_to_cpu(ex->ee_len)
-> > -					 + le16_to_cpu(newext->ee_len));
-> > +
-> > +		/* ext4_can_extents_be_merged should have checked that either
-> > +		 * both extents are uninitialized, or both aren't. Thus we
-> > +		 * need to check any of them here.
-> > +		 */
-> > +		if (ext4_ext_is_uninitialized(ex))
-> > +			uninitialized = 1;
-> > +		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
-> > +					 + ext4_ext_get_actual_len(newext));
+Today, I'm not sure how we can easily get into this situation - for example,
+lvm apparently cannot transform a RO snapshot into RW.  But it is at least
+possible to do this.  For example I tested by:
 
-Above line will "remove" the uninitialized bit from "ex", if it was set.
-We call ext4_ext_get_actual_len() to get the "actual" lengths of the two
-extents, which removes this MSB in ee_len (MSB in ee_len is used to mark
-an extent uninitialized). Now, we do this because if lengths of two
-uninitialized extents will be added as it is (i.e. without masking out
-the MSB in the length), it will result in removing the MSB in ee_len.
-For example, 0x8002 + 0x8003 => 0x10005 => 0x5 (since ee_len is 16 bit).
+create orphan list
+crash
+mark block device RO via BLKROSET
+mount fs RO
+mark block device RW via BLKROSET
+remount fs RW
 
-That is why just before this line, we save the "state" of this extent,
-whether it was uninitialized or not. And, we restore this "state" below.
+so it's within the realm of possibility, certainly.
 
-> > +		if(uninitialized)
-> > +			ext4_mark_uninitialized_ext(ex);
-> >  		eh = path[depth].p_hdr;
-> >  		nearex = ex;
-> >  		goto merge;
-> 
-> Hmm, I missed the point to re-mark an uninitialized extent here. If ex
-> is an uninitialized extent, the mark(the first bit the ee_len) shall
-> still there after the update, isn't?  We already make sure that two
-> large uninitialized extent can't get merged if the resulting length will
-> take the first bit, which used as the mark of uninitialized extent.
+here's what I came up with; I'm not very pleased with it though, but I need
+some way to let ext3_orphan_del know that the sb is already locked and it's
+safe to do this orphan processing w/o re-taking it, so I added a state flag...
+It's worked in my testing.  Comments or commit would be appreciated.
 
-Please get back if you do not agree with the explanation above and if I
-am missing something here. Thanks!
+Thanks,
 
-Regards,
-Amit Arora
+-Eric
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: linux-2.6.19/fs/ext3/namei.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext3/namei.c
++++ linux-2.6.19/fs/ext3/namei.c
+@@ -1942,15 +1942,15 @@ int ext3_orphan_del(handle_t *handle, st
+ 	struct ext3_iloc iloc;
+ 	int err = 0;
+ 
+-	lock_super(inode->i_sb);
+-	if (list_empty(&ei->i_orphan)) {
+-		unlock_super(inode->i_sb);
+-		return 0;
+-	}
++	sbi = EXT3_SB(inode->i_sb);
++	if (!(sbi->s_mount_state & EXT3_REMOUNTING_FS))
++		lock_super(inode->i_sb);
++
++	if (list_empty(&ei->i_orphan))
++		goto out;
+ 
+ 	ino_next = NEXT_ORPHAN(inode);
+ 	prev = ei->i_orphan.prev;
+-	sbi = EXT3_SB(inode->i_sb);
+ 
+ 	jbd_debug(4, "remove inode %lu from orphan list\n", inode->i_ino);
+ 
+@@ -1996,7 +1996,8 @@ int ext3_orphan_del(handle_t *handle, st
+ out_err:
+ 	ext3_std_error(inode->i_sb, err);
+ out:
+-	unlock_super(inode->i_sb);
++	if (!(sbi->s_mount_state & EXT3_REMOUNTING_FS))
++		unlock_super(inode->i_sb);
+ 	return err;
+ 
+ out_brelse:
+Index: linux-2.6.19/fs/ext3/super.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext3/super.c
++++ linux-2.6.19/fs/ext3/super.c
+@@ -2358,6 +2358,10 @@ static int ext3_remount (struct super_bl
+ 				goto restore_opts;
+ 			if (!ext3_setup_super (sb, es, 0))
+ 				sb->s_flags &= ~MS_RDONLY;
++			EXT3_SB(sb)->s_mount_state |= (EXT3_ORPHAN_FS|EXT3_REMOUNTING_FS);
++			ext3_orphan_cleanup(sb, es);
++			EXT3_SB(sb)->s_mount_state &= ~(EXT3_ORPHAN_FS|EXT3_REMOUNTING_FS);
++
+ 		}
+ 	}
+ #ifdef CONFIG_QUOTA
+Index: linux-2.6.19/include/linux/ext3_fs.h
+===================================================================
+--- linux-2.6.19.orig/include/linux/ext3_fs.h
++++ linux-2.6.19/include/linux/ext3_fs.h
+@@ -356,6 +356,7 @@ struct ext3_inode {
+ #define	EXT3_VALID_FS			0x0001	/* Unmounted cleanly */
+ #define	EXT3_ERROR_FS			0x0002	/* Errors detected */
+ #define	EXT3_ORPHAN_FS			0x0004	/* Orphans being recovered */
++#define	EXT3_REMOUNTING_FS		0x0008	/* Filesystem remounting, sb locked */
+ 
+ /*
+  * Mount flags
