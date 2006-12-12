@@ -1,72 +1,65 @@
-From: Nikolai Joukov <kolya@cs.sunysb.edu>
-Subject: Re: [RFC][PATCH] Secure Deletion and Trash-Bin Support for Ext4
-Date: Fri, 8 Dec 2006 20:44:57 -0500 (EST)
-Message-ID: <Pine.GSO.4.53.0612061828130.18122@compserv1>
-References: <Pine.GSO.4.53.0612041256180.15321@compserv1>
- <20061204235042.GS33919298@melbourne.sgi.com> <Pine.GSO.4.53.0612051049200.27677@compserv1>
- <20061206091100.GA33919298@melbourne.sgi.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC][Patch 1/1] Persistent preallocation in ext4
+Date: Mon, 11 Dec 2006 17:28:15 -0800
+Message-ID: <1165886895.3939.18.camel@dyn9047017103.beaverton.ibm.com>
+References: <20061205134338.GA1894@amitarora.in.ibm.com>
+	 <20061206055822.GA6182@amitarora.in.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, suzuki@in.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sbcs.cs.sunysb.edu ([130.245.1.15]:44012 "EHLO
-	sbcs.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1947723AbWLIBpD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Dec 2006 20:45:03 -0500
-To: David Chinner <dgc@sgi.com>
-In-Reply-To: <20061206091100.GA33919298@melbourne.sgi.com>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:33890 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750827AbWLLB2V (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Dec 2006 20:28:21 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e31.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id kBC1SIH0023011
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Dec 2006 20:28:18 -0500
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kBC1SI0A527742
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Dec 2006 18:28:18 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kBC1SIwT020316
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Dec 2006 18:28:18 -0700
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+In-Reply-To: <20061206055822.GA6182@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> They are defined but unused in 2.6.19, right? I can't see anywhere
-> in the 2.6.19 ext2/3/4/reiser trees that actually those flags,
-> including setting and retrieving them from disk. JFS i can see
-> sets, clears and retreives them, but not the fielsystems you
-> mention. Though I might just be blind..... ;)
+On Wed, 2006-12-06 at 11:28 +0530, Amit K. Arora wrote:
 
-Well, at least Ext2/3/4 and JFS do store these attributes and retrieve
-them from the disk.  However, not a single one of these file systems
-supports the related functionality (secure deletion or a trash-bin).
-Clearly, this is confusing for the users.
+> @@ -1142,13 +1155,22 @@
+>  	/* try to insert block into found extent and return */
+>  	if (ex && ext4_can_extents_be_merged(inode, ex, newext)) {
+>  		ext_debug("append %d block to %d:%d (from %llu)\n",
+> -				le16_to_cpu(newext->ee_len),
+> +				ext4_ext_get_actual_len(newext),
+>  				le32_to_cpu(ex->ee_block),
+> -				le16_to_cpu(ex->ee_len), ext_pblock(ex));
+> +				ext4_ext_get_actual_len(ex), ext_pblock(ex));
+>  		if ((err = ext4_ext_get_access(handle, inode, path + depth)))
+>  			return err;
+> -		ex->ee_len = cpu_to_le16(le16_to_cpu(ex->ee_len)
+> -					 + le16_to_cpu(newext->ee_len));
+> +
+> +		/* ext4_can_extents_be_merged should have checked that either
+> +		 * both extents are uninitialized, or both aren't. Thus we
+> +		 * need to check any of them here.
+> +		 */
+> +		if (ext4_ext_is_uninitialized(ex))
+> +			uninitialized = 1;
+> +		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+> +					 + ext4_ext_get_actual_len(newext));
+> +		if(uninitialized)
+> +			ext4_mark_uninitialized_ext(ex);
+>  		eh = path[depth].p_hdr;
+>  		nearex = ex;
+>  		goto merge;
 
-> If all we need to add to XFS is support for those flags, then XFS
-> support would be trivial to add.
->
-> Oh, damn. I take that back. We're almost out of flag space in the on
-> disk inode - these two flags would use the last 2 flag bits so this
-> may require an on disk inode format change in XFS. This will be
-> a little more complex than I first thought, but not impossible
-> as we already support two on-disk inode format versions.
-
-If you do not see any obvious use for these two bits in the near future
-and ready to sacrifice them (or at least one of them) for secure deletion
-and trash-bin attributes we would be more than happy to add the actual
-functionality to XFS as well.
-
-> I'd certainly like to see new functionality like this added at the
-> VFS rather than in any particular filesystem. Don't know about
-> anyone else, though....
->
-> > I guess, the right thing to do would be to move the common trash-bin
-> > (tb.c and tb.h) code into the /fs and /include/linux directories.
->
-> And call them trashbin.[ch] ;)
-
-In fact, we have already done this :-)
-
-> > Also, VFS would require just a couple of trivial changes to support
-> > something like '-o trashbin' mount-time option for all file systems.
-> > In addition, individual file systems may support per-file attributes for
-> > this (e.g., ext2/3/4).
->
-> Sounds like a good idea to me.
-
-Thank you!  So we will submit the corresponding patches soon.  We will
-start from the trashbin.c and patches for the individual file systems.  A
-little later we will submit a VFS patch to add support for the
-'-o trashbin' mount option.
-
-Nikolai Joukov
-----------------------------------
-Filesystems and Storage Laboratory
-Stony Brook University
+Hmm, I missed the point to re-mark an uninitialized extent here. If ex
+is an uninitialized extent, the mark(the first bit the ee_len) shall
+still there after the update, isn't?  We already make sure that two
+large uninitialized extent can't get merged if the resulting length will
+take the first bit, which used as the mark of uninitialized extent.
