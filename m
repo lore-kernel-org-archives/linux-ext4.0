@@ -1,64 +1,42 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [RFC][Patch 1/1] Persistent preallocation in ext4
-Date: Wed, 13 Dec 2006 07:36:29 -0600
-Message-ID: <1166016989.5059.13.camel@kleikamp.austin.ibm.com>
-References: <20061205134338.GA1894@amitarora.in.ibm.com>
-	 <20061206055822.GA6182@amitarora.in.ibm.com>
-	 <1165886895.3939.18.camel@dyn9047017103.beaverton.ibm.com>
-	 <20061212062302.GA8280@amitarora.in.ibm.com>
-	 <1165969238.3771.34.camel@dyn9047017103.beaverton.ibm.com>
-	 <20061213100158.GA6517@amitarora.in.ibm.com>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [RFC] ext4-locality-groups patch
+Date: Wed, 13 Dec 2006 17:21:41 +0300
+Message-ID: <m3wt4vzxje.fsf@bzzz.home.net>
+References: <m3vekwtqnp.fsf@bzzz.home.net> <45800965.2080005@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	suparna@in.ibm.com, suzuki@in.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:34259 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964966AbWLMNgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Dec 2006 08:36:37 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id kBDDaaua025648
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 08:36:36 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kBDDaWM7147472
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 08:36:32 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kBDDaVv2001072
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 08:36:32 -0500
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-In-Reply-To: <20061213100158.GA6517@amitarora.in.ibm.com>
+Received: from [80.71.248.82] ([80.71.248.82]:40889 "EHLO gw.home.net"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S964774AbWLMO3G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Dec 2006 09:29:06 -0500
+To: Valerie Clement <valerie.clement@bull.net>
+In-Reply-To: <45800965.2080005@bull.net> (Valerie Clement's message of "Wed\,
+	13 Dec 2006 15\:08\:37 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-12-13 at 15:31 +0530, Amit K. Arora wrote:
-> On Tue, Dec 12, 2006 at 04:20:38PM -0800, Mingming Cao wrote:
-> > On Tue, 2006-12-12 at 11:53 +0530, Amit K. Arora wrote:
+>>>>> Valerie Clement (VC) writes:
 
-> > Supporting preallocation for extent based files seems fairly
-> > straightforward.  I agree we should look at this first.  After get this
-> > done, it probably worth re-consider whether to support preallocation for
-> > non-extent based files on ext4. I could imagine user upgrade from ext3
-> > to ext4, and expecting to use preallocation on those existing files....
+ VC> Hi Alex,
+ VC> I did the following test:
+ VC> # mkfs /dev/sdc1
+ VC> # mount -t ext4dev -o extents,mballoc,delalloc /dev/sdc1 /test
+ VC> # dumpe2fs -h /dev/sdc1
+ VC> # cp linux.tar /test
+ VC> # tar xf /test/linux.tar
+ VC> # dumpe2fs -h /dev/sdc1
 
-I disagree here.  Why add the complexity for what is going to be a rare
-case?  In cases where a user is going to benefit from preallocation,
-she'll probably also benefit from extents, and would be better off
-making a copy of the file, thus converting it to extents.
+ VC> The "Free blocks" and "Free inodes" counters in the dumpe2fs output
+ VC> did not change after running the cp and tar commands.
 
-> I gave a thought on this initially. But, I was not sure how we should
-> implement preallocation in a non-extent based file. Using extents we can
-> mark a set of blocks as unitialized, but how will we do this for
-> non-extent based files ? If we do not have a way to mark blocks
-> uninitialized, when someone will try to read from a preallocated block,
-> it will return junk/stale data instead of zeroes.
+sync should help, I think.
 
-If anything, the block-based preallocation could initialize all of the
-data to zero.  It would be slow, but it would still provide the correct
-function and result in contiguous allocation.
+ VC> I think it misses a call to ext4_commit_super() at the end of the
+ VC> ext4_lg_sync_inodes function.
+ VC> Am I right ?
 
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+what for? allocation was delayed, no blocks were allocated.
+
+thanks, Alex
