@@ -1,39 +1,54 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [RFC][Patch 1/1] Persistent preallocation in ext4
-Date: Wed, 13 Dec 2006 07:54:31 -0800
-Message-ID: <45802237.2060304@us.ibm.com>
-References: <20061205134338.GA1894@amitarora.in.ibm.com>	<20061206055822.GA6182@amitarora.in.ibm.com>	<1165886895.3939.18.camel@dyn9047017103.beaverton.ibm.com>	<20061212062302.GA8280@amitarora.in.ibm.com>	<1165969238.3771.34.camel@dyn9047017103.beaverton.ibm.com>	<20061213100158.GA6517@amitarora.in.ibm.com> <1166016989.5059.13.camel@kleikamp.austin.ibm.com>
+From: Cordenner jean noel <jean-noel.cordenner@bull.net>
+Subject: Re: [RFC] [patch 2/3] change attribute for ext4: ext4 specific code
+Date: Wed, 13 Dec 2006 18:31:50 +0100
+Message-ID: <45803906.5070307@bull.net>
+References: <456DD75A.2010700@bull.net> <20061206214934.GA4551@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, suzuki@in.ibm.com
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:60625 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965006AbWLMPyl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Dec 2006 10:54:41 -0500
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e36.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id kBDFseaS022988
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 10:54:40 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id kBDFsYr7154238
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 08:54:40 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id kBDFsXPB030381
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Dec 2006 08:54:34 -0700
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-In-Reply-To: <1166016989.5059.13.camel@kleikamp.austin.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:55327 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965070AbWLMR7x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Dec 2006 12:59:53 -0500
+To: Andreas Dilger <adilger@clusterfs.com>
+In-Reply-To: <20061206214934.GA4551@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dave Kleikamp wrote:
-> 
-> If anything, the block-based preallocation could initialize all of the
-> data to zero.  It would be slow, but it would still provide the correct
-> function and result in contiguous allocation.
-> 
-Agree. That seems goood enough.
+Sorry for the late answer.
+I agree that using i_version field sounds better, I'm working on it.
 
+regards,
+Jean noel
 
-Mingming
+Andreas Dilger wrote:
+> On Nov 29, 2006  19:54 +0100, Jean-Noel Cordenner wrote:
+>> This part of the patch concerns the ext4 code.
+> 
+> I was looking more closely at this code, and wondering two things:
+> - why not just use the existing inode->i_version field instead of
+>   adding a new i_change_attribute?  The i_version is not used by
+>   the VFS at all, and only for detecting directory modifications in
+>   ext3 (where it has the same semantic as the new i_change_attribute
+>   anyways).  This avoids bloating the VFS inode more than it already is.
+> - why not just do an increment of i_version in ext3_do_update_inode()?
+>   That is ext3_dirty_inode->ext3_mark_inode_dirty->ext3_mark_iloc_dirty()
+>   and also handles all of the VFS locations that call notify_change().
+>   This MUST be called anywhere that we make a persistent change to the
+>   inode in order to flush it to disk.  That would reduce the patch to
+>   a few lines at most.  I don't think there are any places we need to
+>   supplement this (even mmap IO or writes to a hole will update mtime).
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
