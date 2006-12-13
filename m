@@ -1,42 +1,51 @@
-From: Alex Tomas <alex@clusterfs.com>
+From: Valerie Clement <valerie.clement@bull.net>
 Subject: Re: [RFC] ext4-locality-groups patch
-Date: Wed, 13 Dec 2006 17:21:41 +0300
-Message-ID: <m3wt4vzxje.fsf@bzzz.home.net>
-References: <m3vekwtqnp.fsf@bzzz.home.net> <45800965.2080005@bull.net>
+Date: Wed, 13 Dec 2006 15:37:12 +0100
+Message-ID: <45801018.1090001@bull.net>
+References: <m3vekwtqnp.fsf@bzzz.home.net> <45800965.2080005@bull.net> <m3wt4vzxje.fsf@bzzz.home.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [80.71.248.82] ([80.71.248.82]:40889 "EHLO gw.home.net"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S964774AbWLMO3G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Dec 2006 09:29:06 -0500
-To: Valerie Clement <valerie.clement@bull.net>
-In-Reply-To: <45800965.2080005@bull.net> (Valerie Clement's message of "Wed\,
-	13 Dec 2006 15\:08\:37 +0100")
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:42411 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964831AbWLMOjT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Dec 2006 09:39:19 -0500
+To: Alex Tomas <alex@clusterfs.com>
+In-Reply-To: <m3wt4vzxje.fsf@bzzz.home.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> Valerie Clement (VC) writes:
+Alex Tomas wrote:
+>>>>>> Valerie Clement (VC) writes:
+>=20
+>  VC> Hi Alex,
+>  VC> I did the following test:
+>  VC> # mkfs /dev/sdc1
+>  VC> # mount -t ext4dev -o extents,mballoc,delalloc /dev/sdc1 /test
+>  VC> # dumpe2fs -h /dev/sdc1
+>  VC> # cp linux.tar /test
+>  VC> # tar xf /test/linux.tar
+>  VC> # dumpe2fs -h /dev/sdc1
+>=20
+>  VC> The "Free blocks" and "Free inodes" counters in the dumpe2fs out=
+put
+>  VC> did not change after running the cp and tar commands.
+>=20
+> sync should help, I think.
 
- VC> Hi Alex,
- VC> I did the following test:
- VC> # mkfs /dev/sdc1
- VC> # mount -t ext4dev -o extents,mballoc,delalloc /dev/sdc1 /test
- VC> # dumpe2fs -h /dev/sdc1
- VC> # cp linux.tar /test
- VC> # tar xf /test/linux.tar
- VC> # dumpe2fs -h /dev/sdc1
+No, I've just tried, it does not change anything.
+   Val=E9rie
 
- VC> The "Free blocks" and "Free inodes" counters in the dumpe2fs output
- VC> did not change after running the cp and tar commands.
-
-sync should help, I think.
-
- VC> I think it misses a call to ext4_commit_super() at the end of the
- VC> ext4_lg_sync_inodes function.
- VC> Am I right ?
-
-what for? allocation was delayed, no blocks were allocated.
-
-thanks, Alex
+>=20
+>  VC> I think it misses a call to ext4_commit_super() at the end of th=
+e
+>  VC> ext4_lg_sync_inodes function.
+>  VC> Am I right ?
+>=20
+> what for? allocation was delayed, no blocks were allocated.
+>=20
+> thanks, Alex
+>=20
