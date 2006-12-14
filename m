@@ -1,78 +1,61 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: rfc: [patch] change attribute for ext3
-Date: Thu, 14 Dec 2006 11:48:09 -0500
-Message-ID: <1166114889.20014.30.camel@lade.trondhjem.org>
-References: <20060913164202.GA14838@openx1.frec.bull.fr>
-	<1158171071.6072.10.camel@lade.trondhjem.org>
-	<20061214012428.GA11548@schatzie.adilger.int>
-	<20061214015212.GA30071@fieldses.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC] [patch 2/3] change attribute for ext4: ext4 specific code
+Date: Thu, 14 Dec 2006 15:57:10 -0700
+Message-ID: <20061214225710.GM5937@schatzie.adilger.int>
+References: <456DD75A.2010700@bull.net> <20061206214934.GA4551@schatzie.adilger.int> <45803906.5070307@bull.net> <20061214160307.GE9079@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Alexandre Ratchov <alexandre.ratchov@bull.net>, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org, Andreas Dilger <adilger@clusterfs.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20061214015212.GA30071@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Cordenner jean noel <jean-noel.cordenner@bull.net>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:36168 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750728AbWLNW5O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Dec 2006 17:57:14 -0500
+To: Theodore Tso <tytso@mit.edu>
+Content-Disposition: inline
+In-Reply-To: <20061214160307.GE9079@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2006-12-13 at 20:52 -0500, J. Bruce Fields wrote:
-> > What kind of requirements does NFSv4 place on the version?  Monotonic is
-> > probably a good bet.
-> 
-> The only requirement is that it be unique (assuming a file is never
-> modified 2^64 times).  Clients can't compare them except for equality.
+On Dec 14, 2006  11:03 -0500, Theodore Tso wrote:
+> There was discussion on yesterday's call about whether or not 32-bit
+> was enough for NFSv4, or whether it also requried 64-bits of change
+> notification in the RFC's.  So one of the questions is whether this is
+> something that would justify requiring 64-bits --- and if so, maybe we
+> need to require that big inodes be used and store the entire 64-bit
+> value beyond 128 bytes.  This would mean that NFSv4 cache management
+> couldn't be fully implemented without big inodes, or we'd have to make
+> do by using the inode ctime as a partial substitute.
 
-The other requirement is that they be updated in more or less any
-situation where you would normally see a 'ctime' update. In other words
-any time when the file metadata or data changes, and any time when the
-ACL changes.
+Per Trond and Bruce Field's reply to my email it seems that NFSv4 only
+needs the version to compare for inequality.  If the change numbers are
+sequential for a given inode it can OPTIONALLY extract additional
+information about the server (i.e. it still has an up-to-date cache
+because it was the only one that did an update on a given file).
 
-(NB: I'm not sure what we should do w.r.t. xattr changes since those are
-not really covered by RFC3530.)
+So, I think for basic NFSv4 setups that 2^32 is sufficient (per Bull's
+original patch) but 2^64 is desirable to avoid collisions and allow the
+"sequential updates" logic to work properly for long-lived files.
 
-Atomicity is not a hard requirement, however the server is required to
-know whether or not the update was atomic. If the update is atomic, a
-careful client may perform certain optimisations based upon it knowing
-that no other changes to the inode have raced with this one. For
-instance, if it knows that a file creation atomically updated the change
-attribute of the directory, then it can determine that it does not need
-to check for other changes to that directory.
+So, I think a 32-bit field in the small inode, and an additional 32-bit
+field in the large inode would be perfect.  It allows this functionality
+to work with existing ext3 filesystems, if not quite optimally.
 
-> > Does it need to be global for the filesystem
-> 
-> Nope.
-> 
-> > or is a per-inode version sufficient?
-> 
-> Yes.
+In addition, for Lustre, could we get a 64-bit field in the superblock
+which contains the fs-wide version number.
 
-Yes. If your filesystem wants to support Solaris or Reiser4-like
-subfiles, then it is expected that each subfile should have its own
-change attribute (whereas changes to the subfile 'directory' will be
-reflected by the parent inode's change attribute.
+I'm proposing that, per the original Bull patch, l_i_reserved1 be changed
+to be i_version for linux, and we add i_version_hi after cr_time_extra in
+the large inode.  The disk i_version would be stored in the vfs_inode
+i_version (which is already used for this same purpose).  It would be good
+for NFSv4 if the i_version field could be expanded to 64 bits to avoid
+the need for it to have fs-specific operations, but failing that we can
+put the high word into ext4_inode_info and NFS can access it via
+export_operations I think.
 
-Change attribute values may be reused if the inode number is reused (as
-long as the filesystem has something like a generation counter that
-allows it to distinguish between different instances of the same inode
-number).
-
-> > What functionality of NFSv4 needs the version?
-> 
-> Clients use it to revalidate their caches.
-
-Yup. It is used to detect changes made on the NFS server itself
-(possibly by other NFS clients, possibly by local processes on the
-server), so that the client can flush out any stale cached data.
-
-Cheers
-  Trond
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
