@@ -1,86 +1,44 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: EXT3 filesystem corruptions on AoE, RAID and LVM?
-Date: Fri, 15 Dec 2006 23:35:13 +0100
-Message-ID: <45832321.4010305@tuxes.nl>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC][Patch 2/2] Persistent preallocation in ext4
+Date: Fri, 15 Dec 2006 16:02:25 -0700
+Message-ID: <20061215230225.GT5937@schatzie.adilger.int>
+References: <20061205134338.GA1894@amitarora.in.ibm.com> <20061215123920.GB24572@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
+	suzuki@in.ibm.com, alex@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from a-eskwadraat.nl ([131.211.39.72]:38780 "EHLO a-eskwadraat.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030353AbWLOXAX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Dec 2006 18:00:23 -0500
-Received: from niels.localdomain ([10.14.0.4] ident=sjeik)
-	by a-eskwadraat.nl with esmtps (TLS-1.0:DHE_RSA_AES_256_CBC_SHA:32)
-	(Exim 4.50)
-	id 1GvLe5-0003Qb-Us
-	for linux-ext4@vger.kernel.org; Fri, 15 Dec 2006 23:35:14 +0100
-To: Linux extfs development <linux-ext4@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:33743 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030294AbWLOXC1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2006 18:02:27 -0500
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <20061215123920.GB24572@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On Dec 15, 2006  18:09 +0530, Amit K. Arora wrote:
+> This patch makes writing to the unitialized extent possible. A write operation on an unitialized extent *may* (depending on the relative block location in the extent and number of blocks being written) result in spliting the extent. There are three possibilities:
+> 1. The extent does not split : This will happen when the entire extent is being written to. In this case the extent will be marked "initialized" and merged (if possible) with the neighbouring extents in the tree.
 
-I'm maintaining two clusters, with machines running a mix between Debian
-Stable with Etch-kernels to have AoE (ATA over Ethernet support).
-Machines in these clusters "export" their harddisks using AoE, and one
-machine in the cluster imports those using the kernel "aoe"-module. On
-top of those imported devices, multiple RAID5-arrays are created, and
-LVM is running on top of RAID, ext3 on the LVM LV.
+This should also be true if the write is at the beginning or the end of the
+uninitialized extent and the disk allocation matches the previous or next
+extent.  The newly-written part is merged with the adjacent extent, and the
+uninitialized extent is shrunk appropriately.
 
-After a few days, I get EXT3-errors. like this:
->> EXT3-fs: mounted filesystem with ordered data mode.
->> EXT3-fs error (device loop0): ext3_free_blocks_sb: bit already
-cleared for block 412186
->> Aborting journal on device loop0.
->> EXT3-fs error (device loop0) in ext3_free_blocks_sb: Journal has aborted
->> EXT3-fs error (device loop0) in ext3_reserve_inode_write: Journal has
-aborted
->> EXT3-fs error (device loop0) in ext3_truncate: Journal has aborted
->> EXT3-fs error (device loop0) in ext3_reserve_inode_write: Journal has
-aborted
->> EXT3-fs error (device loop0) in ext3_orphan_del: Journal has aborted
->> EXT3-fs error (device loop0) in ext3_reserve_inode_write: Journal has
-aborted
->> EXT3-fs error (device loop0) in ext3_delete_inode: Journal has aborted
->> __journal_remove_journal_head: freeing b_committed_data
->> __journal_remove_journal_head: freeing b_committed_data
+Doing this as a special case of #2 may result in extra tree rebalancing as
+the extra extent is added and removed repeatedly (consider the case of a
+large hole being overwritten in smaller chunks that is just at the limit
+of the number of extents in the parent block).
 
-(...)
+> 2. The extent splits in two portions : This will happen when someone is writing to any one end of the extent (i.e. not in the middle, and not to the entire extent). This will result in breaking the extent in two portions, an initialized extent (the set of blocks being written to) and an uninitialized extent (rest of the blocks in the parent extent).
+> 3. The extent is split in three parts: This occurs when someone writes in the middle of the extent. It will result into three extents, two uninitialized (at the both ends) and one initialized (in middle).
+> 
+> Since the extent merge logic was getting redundant, it has been put into a new function ext4_ext_try_to_merge(). This gets called from ext4_ext_insert_extent() and ext4_ext_get_blocks(), when required.
 
->> __journal_remove_journal_head: freeing b_committed_data
->> ext3_abort called.
->> EXT3-fs error (device loop0): ext3_journal_start_sb: Detected aborted
-journal
->> Remounting filesystem read-only
->> __journal_remove_journal_head: freeing b_committed_data
-
-
-FSCK'ing the filesystem fixes those errors, but after a few days (or
-weeks, depending on the fs load) the corruptions appear again. I might
-be worth telling you that there are no other suspicious messages in my logs.
-
-I saw some other discussions on the mailinglist, but I don't think their
-related to my problems. I don't know if I need to file a bug on this,
-neither do I know which details you need to help me solve this problem.
-So for now I just want to here your thoughts. FYI:
-
-Kernel information for cluster 1:
->> root@infinity:~# uname -a
->> Linux infinity 2.6.17-2-686 #1 SMP Wed Sep 13 16:34:10 UTC 2006 i686
-GNU/Linux
-
-
-And cluster 2:
->> dust:~# uname -a
->> Linux dust 2.6.18-3-686 #1 SMP Thu Nov 23 20:49:23 UTC 2006 i686
-GNU/Linux
-
-Note that these are not vanilla kernels, but Debian kernels. However,
-AFAIK there are no Debian-specific patches to AoE, ext3, LVM or RAID.
-
-Thanks for your replies!
-
-Best regards,
-
-  -- Bas van Schaik
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
