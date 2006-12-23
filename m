@@ -1,65 +1,72 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC] delayed allocation for ext4
-Date: Sat, 23 Dec 2006 14:31:23 +1100
-Message-ID: <20061223033123.GL44411608@melbourne.sgi.com>
-References: <m37iwjwumf.fsf@bzzz.home.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: akpm@osdl.org
+Subject: - jbd-wait-for-already-submitted-t_sync_datalist-buffer.patch removed from -mm tree
+Date: Fri, 22 Dec 2006 23:55:06 -0800
+Message-ID: <200612230755.kBN7t6d4010271@shell0.pdx.osdl.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from omx2-ext.sgi.com ([192.48.171.19]:51779 "EHLO omx2.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752302AbWLWDbe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Dec 2006 22:31:34 -0500
-To: Alex Tomas <alex@clusterfs.com>
-Content-Disposition: inline
-In-Reply-To: <m37iwjwumf.fsf@bzzz.home.net>
+Received: from smtp.osdl.org ([65.172.181.25]:49855 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752884AbWLWHz0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Dec 2006 02:55:26 -0500
+To: hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
+	linux-ext4@vger.kernel.org, sct@redhat.com,
+	mm-commits@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 22, 2006 at 11:20:08PM +0300, Alex Tomas wrote:
-> 
-> Good day,
-> 
-> probably the previous set of patches (including mballoc/lg)
-> is too large. so, I reworked delayed allocation a bit so
-> that it can be used on top of regular balloc, though it
-> still can be used with extents-enabled files only.
-> 
-> this time series contains just 3 patches:
-> 
->  - booked-page-flag.patch
->    adds PG_booked bit to page->flags. it's used in delayed
->    allocation to mark space is already reserved for page
->    (including possible metadata)
 
-So that mean's we'll have 2 separate mechanisms for marking
-pages as delalloc. XFS uses the BH_delay flag to indicate
-that a buffer (block) attached to the page is using delalloc.
+The patch titled
+     jbd: wait for already submitted t_sync_datalist buffer to complete
+has been removed from the -mm tree.  Its filename was
+     jbd-wait-for-already-submitted-t_sync_datalist-buffer.patch
 
-FWIW, how does this mechanism deal with block size < page size?
-Don't you have to track delalloc on a block basis rather than
-a page basis?
+This patch was dropped because it was merged into mainline or a subsystem tree
 
->  - ext4-block-reservation.patch
->    this is scalable free space management. every time we
->    delay allocation of some page, a space (including metadata)
->    should be reserved
-> 
->  - ext4-delayed-allocation.patch
->    delayed allocation itself, enabled by "delalloc" mount option.
->    extents support is also required. currently it works only
->    with blocksize=pagesize.
+------------------------------------------------------
+Subject: jbd: wait for already submitted t_sync_datalist buffer to complete
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
-Ah, that's why you can get away with a page flag - you've ignored
-the partial page delay state problem. Any plans to use the
-existing method in the future so we will be able to use ext4 delalloc
-on machines with a page size larger than 4k?
+In the current jbd code, if a buffer on BJ_SyncData list is dirty and not
+locked, the buffer is refiled to BJ_Locked list, submitted to the IO and
+waited for IO completion.
 
-Cheers,
+But the fsstress test showed the case that when a buffer was already
+submitted to the IO just before the buffer_dirty(bh) check, the buffer was
+not waited for IO completion.
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Following patch solves this problem.  If it is assumed that a buffer is
+submitted to the IO before the buffer_dirty(bh) check and still being
+written to disk, this buffer is refiled to BJ_Locked list.
+
+Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: "Stephen C. Tweedie" <sct@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@osdl.org>
+---
+
+ fs/jbd/commit.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff -puN fs/jbd/commit.c~jbd-wait-for-already-submitted-t_sync_datalist-buffer fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-wait-for-already-submitted-t_sync_datalist-buffer
++++ a/fs/jbd/commit.c
+@@ -248,8 +248,12 @@ write_out_data:
+ 				bufs = 0;
+ 				goto write_out_data;
+ 			}
+-		}
+-		else {
++		} else if (!locked && buffer_locked(bh)) {
++			__journal_file_buffer(jh, commit_transaction,
++						BJ_Locked);
++			jbd_unlock_bh_state(bh);
++			put_bh(bh);
++		} else {
+ 			BUFFER_TRACE(bh, "writeout complete: unfile");
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+_
+
+Patches currently in -mm which might be from hifumi.hisashi@oss.ntt.co.jp are
+
+origin.patch
