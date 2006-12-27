@@ -1,85 +1,88 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: [RFC] ext4-block-reservation.patch
-Date: Sun, 24 Dec 2006 01:47:00 +0300
-Message-ID: <m3r6uqtel7.fsf@bzzz.home.net>
-References: <m37iwjwumf.fsf@bzzz.home.net> <m3y7ozvftf.fsf@bzzz.home.net>
-	<20061223144059.f515a3a3.akpm@osdl.org>
+From: sho@tnes.nec.co.jp
+Subject: Re: [RFC] delayed allocation, mballoc, etc
+Date: Wed, 27 Dec 2006 20:09:47 +0900
+Message-ID: <20061227200947sho@rifu.tnes.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org,
-	<linux-kernel@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fe02.tochka.ru ([62.5.255.22]:57687 "EHLO umail.ru"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753916AbWLWXNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Dec 2006 18:13:18 -0500
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061223144059.f515a3a3.akpm@osdl.org> (Andrew Morton's message
-	of "Sat\, 23 Dec 2006 14\:40\:59 -0800")
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:64775 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932310AbWL0LNz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Dec 2006 06:13:55 -0500
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id kBRBDrFw008076
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Dec 2006 20:13:53 +0900 (JST)
+Received: from mailgate3.nec.co.jp (mailgate53.nec.co.jp [10.7.69.162])
+	by tyo202.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id kBRB9oao018650
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Dec 2006 20:09:50 +0900 (JST)
+Received: (from root@localhost) by mailgate3.nec.co.jp (8.11.7/3.7W-MAILGATE-NEC)
+	id kBRB9oT00436 for linux-ext4@vger.kernel.org; Wed, 27 Dec 2006 20:09:50 +0900 (JST)
+Received: from secsv3.tnes.nec.co.jp (tnesvc2.tnes.nec.co.jp [10.1.101.15]) by mailsv5.nec.co.jp (8.11.7/3.7W-MAILSV4-NEC) with ESMTP
+	id kBRB9oi19558 for <linux-ext4@vger.kernel.org>; Wed, 27 Dec 2006 20:09:50 +0900 (JST)
+Received: from tnesvc2.tnes.nec.co.jp ([10.1.101.15])
+	by secsv3.tnes.nec.co.jp (ExpressMail 5.10) with SMTP
+	id 20061227.201000.84301844 for <linux-ext4@vger.kernel.org>
+	; Wed, 27 Dec 2006 20:10:00 +0900
+To: alex@clusterfs.com
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi Alex
 
-Hi,
+I found a bug on linux-2.6.19-rc6 with Alex's patches.
 
->>>>> Andrew Morton (AM) writes:
+With no files on the device, doing the following system call:
+1. open with O_CREAT
+	fd = open("test_file", O_RDWR|O_CREAT, 0777)
+2. ftruncate (length is not aligned with blocksize)
+	ftruncate(fd, 200)
+3. write out the same block
+	write(fd, write_buf, 100)
 
- AM> Should be ____cacheline_aligned_in_smp.
+As a result, panic occurred at the following code:
+  ext4_wb_commit_write()
+          BUG_ON(EXT4_I(inode)->i_locality_group == NULL);
 
- AM> That's assuming it needs to be cacheline aligned at all.  It can consume a
- AM> lot of space.
+I tracked down the scenario of causing this panic, which is as below:
+1. i_locality_group is set to NULL when a file is created at first
 
-the idea is to make block reservation cheap because it's called
-for every page. 
+2. Given a length which is not aligned with blocksize to ftruncate,
+   PG_dirty flag is set in _set_page_dirty_nobuffers() after zeroing
+   out halfway part of the block on ftruncate
+   	ext4_wb_block_truncate_page()
+        	kaddr = kmap_atomic(page, KM_USER0);
+        	memset(kaddr + offset, 0, length);
+        	flush_dcache_page(page);
+        	kunmap_atomic(kaddr, KM_USER0);
+        	SetPageUptodate(page);s
+        	_set_page_dirty_nobuffers(page);
 
- AM> <looks>
+3. With PG_dirty flag set, i_locality_group is not set in
+   ext4_lg_page_enter_inode()
+     ext4_wb_commit_write()
+		if (__set_page_dirty_nobuffers(page))
+			ext4_lg_page_enter_inode(inode, page,
+				PageMappedToDisk(page));
 
- AM> oh, this should be allocated with alloc_percpu(), in which case the
- AM> open-coded alignment can perhaps go away.
+4. i_locality_group set to NULL causes BUG_ON
 
-got it.
+I tried the attached patch where ext4_lg_page_enter_inode()
+is necessarily called.  It seems to me that the problem does not occur
+with this patch, how about your comment?
 
- >> +
- >> +int ext4_reserve_local(struct super_block *sb, int blocks)
- >> +{
- >> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
- >> +	struct ext4_reservation_slot *rs;
- >> +	int rc = -ENOSPC;
- >> +
- >> +	preempt_disable();
- >> +	rs = sbi->s_reservation_slots + smp_processor_id();
+diff -upNr -X linux-2.6.19-rc6/Documentation/dontdiff linux-2.6.19-rc6/fs/ext4/writeback.c linux-2.6.19-rc6-tmp/fs/ext4/writeback.c
+--- linux-2.6.19-rc6/fs/ext4/writeback.c        2006-12-22 19:16:17.000000000 +0900
++++ linux-2.6.19-rc6-tmp/fs/ext4/writeback.c   2006-12-22 19:15:45.000000000 +0900
+@@ -968,10 +968,8 @@ int ext4_wb_commit_write(struct file *fi
+ 
+-       if (__set_page_dirty_nobuffers(page)) {
+-                __set_page_dirty_nobuffers(page);
+-               ext4_lg_page_enter_inode(inode, page, PageMappedToDisk(page));
+-       }
++       __set_page_dirty_nobuffers(page);
++       ext4_lg_page_enter_inode(inode, page, PageMappedToDisk(page));
 
- AM> use get_cpu() here.
 
-ok.
-
- >> +void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
- >> +{
- >> +	int i, used_slots = 0;
- >> +	__u64 chunk;
- >> +
- >> +	/* let's know what slots have been used */
- >> +	for (i = 0; i < NR_CPUS; i++)
- >> +		if (rs[i].rs_reserved || i == smp_processor_id())
- >> +			used_slots++;
- >> +
- >> +	/* chunk is a number of block every used
- >> +	 * slot will get. make sure it isn't 0 */
- >> +	chunk = free + used_slots - 1;
- >> +	do_div(chunk, used_slots);
- >> +
- >> +	for (i = 0; i < NR_CPUS; i++) {
-
- AM> all these NR_CPUS loops need to go away.  Use either
- AM> for_each_possible_cpu() or, preferably, for_each_online_cpu() and a hotplug
- AM> notifier.
-
-hmm, i see.
-
- AM> Why is this code using per-cpu data at all, btw?  These optimisations tend
- AM> to be marginal in filesystems.  What is the perfomance impact of making
- AM> this data be single-superblock-wide-instance?
-
-well, even on 2way box a single-lock reservation was in top10.
-
-thanks, Alex
+Cheers, Takashi
