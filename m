@@ -1,10 +1,16 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Linus Torvalds <torvalds@osdl.org>
 Subject: Re: Ok, explained.. (was Re: [PATCH] mm: fix page_mkclean_one)
-Date: Fri, 29 Dec 2006 18:32:07 -0500
-Message-ID: <20061229233207.GA21461@thunk.org>
-References: <Pine.LNX.4.64.0612281125100.4473@woody.osdl.org> <20061228114517.3315aee7.akpm@osdl.org> <Pine.LNX.4.64.0612281156150.4473@woody.osdl.org> <20061228.143815.41633302.davem@davemloft.net> <3d6d8711f7b892a11801d43c5996ebdf@kernel.crashing.org> <Pine.LNX.4.64.0612282155400.4473@woody.osdl.org> <Pine.LNX.4.64.0612290017050.4473@woody.osdl.org> <Pine.LNX.4.64.0612290202350.4473@woody.osdl.org> <20061229141632.51c8c080.akpm@osdl.org> <Pine.LNX.4.64.0612291431200.4473@woody.osdl.org>
+Date: Fri, 29 Dec 2006 15:59:27 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0612291542260.4473@woody.osdl.org>
+References: <Pine.LNX.4.64.0612281125100.4473@woody.osdl.org>
+ <20061228114517.3315aee7.akpm@osdl.org> <Pine.LNX.4.64.0612281156150.4473@woody.osdl.org>
+ <20061228.143815.41633302.davem@davemloft.net> <3d6d8711f7b892a11801d43c5996ebdf@kernel.crashing.org>
+ <Pine.LNX.4.64.0612282155400.4473@woody.osdl.org>
+ <Pine.LNX.4.64.0612290017050.4473@woody.osdl.org>
+ <Pine.LNX.4.64.0612290202350.4473@woody.osdl.org> <20061229141632.51c8c080.akpm@osdl.org>
+ <Pine.LNX.4.64.0612291431200.4473@woody.osdl.org> <20061229233207.GA21461@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Andrew Morton <akpm@osdl.org>,
 	Segher Boessenkool <segher@kernel.crashing.org>,
 	David Miller <davem@davemloft.net>, nickpiggin@yahoo.com.au,
@@ -14,40 +20,70 @@ Cc: Andrew Morton <akpm@osdl.org>,
 	a.p.zijlstra@chello.nl, tbm@cyrius.com, arjan@infradead.org,
 	andrei.popa@i-neo.ro, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58460 "EHLO thunker.thunk.org"
+Received: from smtp.osdl.org ([65.172.181.25]:35006 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755083AbWL2Xcc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Dec 2006 18:32:32 -0500
-To: Linus Torvalds <torvalds@osdl.org>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0612291431200.4473@woody.osdl.org>
+	id S1755100AbWL2X7v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Dec 2006 18:59:51 -0500
+To: Theodore Tso <tytso@mit.edu>
+In-Reply-To: <20061229233207.GA21461@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 29, 2006 at 02:42:51PM -0800, Linus Torvalds wrote:
-> I think ext3 is terminally crap by now. It still uses buffer heads in 
-> places where it really really shouldn't, and as a result, things like 
-> directory accesses are simply slower than they should be. Sadly, I don't 
-> think ext4 is going to fix any of this, either.
 
-Not just ext3; ocfs2 is using the jbd layer as well.  I think we're
-going to have to put this (a rework of jbd2 to use the page cache) on
-the ext4 todo list, and work with the ocfs2 folks to try to come up
-with something that suits their needs as well.  Fortunately we have
-this filesystem/storage summit thing coming up in the next few months,
-and we can try to get some discussion going on the linux-ext4 mailing
-list in the meantime.  Unfortunately, I don't think this is going to
-be trivial.
 
-If we do get this fixed for ext4, one interesting question is whether
-people would accept a patch to backport the fixes to ext3, given the
-the grief this is causing the page I/O and VM routines.  OTOH, reiser3
-probably has the same problems, and I suspect the changes to ext3 to
-cause it to avoid buffer heads, especially in order to support for
-filesystem blocksizes < pagesize, are going to be sufficiently risky
-in terms of introducing regressions to ext3 that they would probably
-be rejected on those grounds.  So unfortunately, we probably are going
-to have to support flushes via buffer heads for the foreseeable
-future.
+On Fri, 29 Dec 2006, Theodore Tso wrote:
+>
+> If we do get this fixed for ext4, one interesting question is whether
+> people would accept a patch to backport the fixes to ext3, given the
+> the grief this is causing the page I/O and VM routines.
 
-						- Ted
+I don't think backporting is the smartest option (unless it's done _way_ 
+later), but the real problem with it isn't actually the VM behaviour, but 
+simply the fact that cached performance absoluely _sucks_ with the buffer 
+cache.
+
+With the physically indexed buffer cache thing, you end up always having 
+to do these complicated translations into block numbers for every single 
+access, and at some point when I benchmarked it, it was a huge overhead 
+for doing simple things like readdir.
+
+It's also a major pain for read-ahead, exactly partly due to the high cost 
+of translation - because you can't cheaply check whether the next block is 
+there, the cost of even asking the question "should I try to read ahead?" 
+is much much higher. As a result, read-ahead is seriously limited, because 
+it's so expensive for the cached case (which is still hopefully the 
+_common_ case).
+
+So because read-ahead is limited, the non-cached case then _really_ sucks.
+
+It was somewhat fixed in a really god-awful fashion by having 
+ext3_readdir() actually do _readahead_ though the page cache, even though 
+it does everything else through the buffer cache. And that just happens to 
+work because we hopefully have physically contiguous blocks, but when that 
+isn't true, the readahead doesn't do squat.
+
+It's really quite fundamentally broken. But none of that causes any 
+problems for the VM, since directories cannot be mmap'ed anyway. But it's 
+really pitiful, and it really doesn't work very well. Of course, other 
+filesystems _also_ suck at this, and other operating systems haev even 
+MORE problems, so people don't always seem to realize how horribly 
+horribly broken this all is.
+
+I really wish somebody would write a filesystem that did large cold-cache 
+directories well. Open some horrible file manager on /usr/bin with cold 
+caches, and weep. The biggest problem is the inode indirection, but at 
+some point when I looked at why it sucked, it was doing basically 
+synchronous single-buffer reads on the directory too, because readahead 
+didn't work properly.
+
+I was hoping that something like SpadFS would actually take off, because 
+it seemed to do a lot of good design choices (having inodes in-line in the 
+directory for when there are no hardlinks is probably a requirement for a 
+good filesystem these days. The separate inode table had its uses, but 
+indirection in a filesystem really does suck, and stat information is too 
+important to be indirect unless it absolutely has to).
+
+But I suspect it needs more than somebody who just wants to get his thesis 
+written ;)
+
+		Linus
