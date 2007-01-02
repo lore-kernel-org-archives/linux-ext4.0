@@ -1,114 +1,188 @@
-From: Linus Torvalds <torvalds@osdl.org>
-Subject: Re: Ok, explained.. (was Re: [PATCH] mm: fix page_mkclean_one)
-Date: Fri, 29 Dec 2006 16:50:39 -0800 (PST)
-Message-ID: <Pine.LNX.4.64.0612291633500.4473@woody.osdl.org>
-References: <Pine.LNX.4.64.0612281125100.4473@woody.osdl.org>
- <20061228114517.3315aee7.akpm@osdl.org> <Pine.LNX.4.64.0612281156150.4473@woody.osdl.org>
- <20061228.143815.41633302.davem@davemloft.net> <3d6d8711f7b892a11801d43c5996ebdf@kernel.crashing.org>
- <Pine.LNX.4.64.0612282155400.4473@woody.osdl.org>
- <Pine.LNX.4.64.0612290017050.4473@woody.osdl.org>
- <Pine.LNX.4.64.0612290202350.4473@woody.osdl.org> <20061229141632.51c8c080.akpm@osdl.org>
- <Pine.LNX.4.64.0612291431200.4473@woody.osdl.org> <20061229233207.GA21461@thunk.org>
- <20061229160520.e498789f.akpm@osdl.org>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: [PATCH 1/1] Extent overlap bugfix in ext4
+Date: Tue, 2 Jan 2007 14:39:09 +0530
+Message-ID: <20070102090909.GA20503@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>,
-	Segher Boessenkool <segher@kernel.crashing.org>,
-	David Miller <davem@davemloft.net>, nickpiggin@yahoo.com.au,
-	kenneth.w.chen@intel.com, guichaz@yahoo.fr, hugh@veritas.com,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ranma@tdiedrich.de, gordonfarquharson@gmail.com,
-	a.p.zijlstra@chello.nl, tbm@cyrius.com, arjan@infradead.org,
-	andrei.popa@i-neo.ro, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: suparna@in.ibm.com, cmm@us.ibm.com, alex@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.25]:36953 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965229AbWL3Avk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Dec 2006 19:51:40 -0500
-To: Andrew Morton <akpm@osdl.org>
-In-Reply-To: <20061229160520.e498789f.akpm@osdl.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:55139 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932689AbXABJJT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jan 2007 04:09:19 -0500
+Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
+	by e33.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0299Gxk005218
+	for <linux-ext4@vger.kernel.org>; Tue, 2 Jan 2007 04:09:16 -0500
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l0299GwA317296
+	for <linux-ext4@vger.kernel.org>; Tue, 2 Jan 2007 02:09:16 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0299Fb7027354
+	for <linux-ext4@vger.kernel.org>; Tue, 2 Jan 2007 02:09:16 -0700
+To: linux-ext4@vger.kernel.org
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+The ext4_ext_get_blocks() and ext4_ext_insert_extent() routines do not
+check for extent overlap, when a new extent needs to be inserted in an
+inode. An overlap is possible when the new extent being inserted has
+ee_block that is not part of any of the existing extents, but the
+tail/center portion of this new extent _is_. This is possible only when
+we are writing/preallocating blocks across a hole.
 
+This problem was first sighted while stress testing (using modified
+fsx-linux stress test) persistent preallocation patches that I posted
+earlier.  Though I am not able to reproduce this bug (extent overlap)
+without the persistent preallocation patches (because a write through a
+hole results in get_blocks() of a single block at a time), but I think
+that it is an independant problem and should be solved with a separate
+patch. Hence this patch.
 
-On Fri, 29 Dec 2006, Andrew Morton wrote:
-> 
-> Adam Richter spent considerable time a few years ago trying to make the
-> mpage code go direct-to-BIO in all cases and we eventually gave up.  The
-> conceptual layering of page<->blocks<->bio is pretty clean, and it is hard
-> and ugly to fully optimise away the "block" bit in the middle.
+Comments please. Thanks!
 
-Using the buffer cache as a translation layer to the physical address is 
-fine. That's what _any_ block device will do.
+Signed-off-by: Amit Arora (aarora@in.ibm.com)
+---
+ fs/ext4/extents.c               |   71 +++++++++++++++++++++++++++++++++++++---
+ include/linux/ext4_fs_extents.h |    1 
+ 2 files changed, 68 insertions(+), 4 deletions(-)
 
-I'm not at all sayign that "buffer heads must go away". They work fine.
-
-What I'm saying is that
-
- - if you index by buffer heads, you're screwed.
- - if you do IO by starting at buffer heads, you're screwed.
-
-Both indexing and writeback decisions should be done at the page cache 
-layer. Then, when you actually need to do IO, you look at the buffers. But 
-you start from the "page". YOU SHOULD NEVER LOOK UP a buffer on its own 
-merits, and YOU SHOULD NEVER DO IO on a buffer head on its own cognizance.
-
-So by all means keep the buffer heads as a way to keep the 
-"virtual->physical" translation. It's what they were designed for. But 
-they were _originally_ also designed for "lookup" and "driving the start 
-of IO", and that is wrong, and has been wrong for a long time now, because
-
- - lookup based on physical address is fundamentally slow and inefficient. 
-   You have to look up the virtual->physical translation somewhere else, 
-   so it's by design an unnecessary indirection _and_ that "somewere 
-   else" is also by definition filesystem-specific, so you can't do any 
-   of these things at the VFS layer.
-
-   Ergo: anything that needs to look up the physical address in order to 
-   find the buffer head is BROKEN in this day and age. We look up the 
-   _virtual_ page cache page, and then we can trivially find the buffer 
-   heads within that page thanks to page->buffers.
-
-   Example: ext2 vs ext3 readdir. One of them sucks, the other doesn't. 
-
- - starting IO based on the physical entity is insane. It's insane exactly 
-   _because_ the VM doesn't actually think in physical addresses, or in 
-   buffer-sized blocks. The VM only really knows about whole pages, and 
-   all the VM decisions fundamentally have to be page-based. We don't ever 
-   "free a buffer". We free a whole page, and as such, doing writeback 
-   based on buffers is pointless, because it doesn't actually say anything 
-   about the "page state" which is what the VM tracks.
-
-But neither of these means that "buffer_head" itself has to go away. They 
-both really boil down to the same thing: you should never KEY things by 
-the buffer head. All actions should be based on virtual indexes as far as 
-at all humanly possible.
-
-Once you do lookup and locking and writeback _starting_ from the page, 
-it's then easy to look up the actual buffer head within the page, and use 
-that as a way to do the actual _IO_ on the physical address. So the buffer 
-heads still exist in ext2, for example, but they don't drive the show 
-quite as much.
-
-(They still do in some areas: the allocation bitmaps, the xattr code etc. 
-But as long as none of those have big VM footprints, and as long as no 
-_common_ operations really care deeply, and as long as those data 
-structures never need to be touched by the VM or VFS layer, nobody will 
-ever really care).
-
-The directory case comes up just because "readdir()" actually is very 
-common, and sometimes very slow. And it can have a big VM working set 
-footprint ("find"), so trying to be page-based actually really helps, 
-because it all drives things like writeback on the _right_ issues, and we 
-can do things like LRU's and writeback decisions on the level that really 
-matters.
-
-I actually suspect that the inode tables could benefit from being in the 
-page cache too (although I think that the inode buffer address is actually 
-"physical", so there's no indirection for inode tables, which means that 
-the virtual vs physical addressing doesn't matter). For directories, there 
-definitely is a big cost to continually doing the virtual->physical 
-translation all the time.
-
-		Linus
+Index: linux-2.6.19.prealloc/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.19.prealloc.orig/fs/ext4/extents.c	2007-01-02 14:21:57.000000000 +0530
++++ linux-2.6.19.prealloc/fs/ext4/extents.c	2007-01-02 14:22:00.000000000 +0530
+@@ -1119,6 +1119,44 @@
+ }
+ 
+ /*
++ * ext4_ext_check_overlap:
++ * check if a portion of the "newext" extent overlaps with an
++ * existing extent.
++ */
++struct ext4_extent * ext4_ext_check_overlap(struct inode *inode,
++					struct ext4_extent *newext)
++{
++	struct ext4_ext_path *path;
++	struct ext4_extent *ex;
++	unsigned int depth, b1, b2, len1;
++
++	b1 = le32_to_cpu(newext->ee_block);
++	len1 = le16_to_cpu(newext->ee_len);
++	path = ext4_ext_find_extent(inode, b1, NULL);
++	if (IS_ERR(path))
++		return NULL;
++
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	if (!ex)
++		return NULL;
++
++	b2 = ext4_ext_next_allocated_block(path);
++	if (b2 == EXT_MAX_BLOCK)
++		return NULL;
++	path = ext4_ext_find_extent(inode, b2, path);
++	if (IS_ERR(path))
++		return NULL;
++	BUG_ON(path[depth].p_hdr == NULL);
++	ex = path[depth].p_ext;
++
++	if (b1 + len1 > b2)
++		return ex;
++
++	return NULL;
++}
++
++/*
+  * ext4_ext_insert_extent:
+  * tries to merge requsted extent into the existing extent or
+  * inserts requested extent as new one into the tree,
+@@ -1129,7 +1167,7 @@
+ 				struct ext4_extent *newext)
+ {
+ 	struct ext4_extent_header * eh;
+-	struct ext4_extent *ex, *fex;
++	struct ext4_extent *ex, *fex, *rex;
+ 	struct ext4_extent *nearex; /* nearest extent */
+ 	struct ext4_ext_path *npath = NULL;
+ 	int depth, len, err, next;
+@@ -1139,6 +1177,18 @@
+ 	ex = path[depth].p_ext;
+ 	BUG_ON(path[depth].p_hdr == NULL);
+ 
++	/* check for overlap */
++	rex = ext4_ext_check_overlap(inode, newext);
++	if (rex) {
++		printk(KERN_ERR "ERROR: ex=%u/%u overlaps newext=%u/%u\n",
++				le32_to_cpu(rex->ee_block),
++				le16_to_cpu(rex->ee_len),
++				le32_to_cpu(newext->ee_block),
++				le16_to_cpu(newext->ee_len));
++		ext4_ext_show_leaf(inode, path);
++		BUG();
++	}
++
+ 	/* try to insert block into found extent and return */
+ 	if (ex && ext4_can_extents_be_merged(inode, ex, newext)) {
+ 		ext_debug("append %d block to %d:%d (from %llu)\n",
+@@ -1921,7 +1971,7 @@
+ 			int create, int extend_disksize)
+ {
+ 	struct ext4_ext_path *path = NULL;
+-	struct ext4_extent newex, *ex;
++	struct ext4_extent newex, *ex, *ex2;
+ 	ext4_fsblk_t goal, newblock;
+ 	int err = 0, depth;
+ 	unsigned long allocated = 0;
+@@ -1984,6 +2034,10 @@
+ 		 */
+ 		if (ee_len > EXT_MAX_LEN)
+ 			goto out2;
++
++		if (iblock < ee_block && iblock + max_blocks >= ee_block)
++			allocated = ee_block - iblock;
++
+ 		/* if found extent covers block, simply return it */
+ 	        if (iblock >= ee_block && iblock < ee_block + ee_len) {
+ 			newblock = iblock - ee_block + ee_start;
+@@ -2016,7 +2070,17 @@
+ 
+ 	/* allocate new block */
+ 	goal = ext4_ext_find_goal(inode, path, iblock);
+-	allocated = max_blocks;
++
++	/* Check if we can really insert (iblock)::(iblock+max_blocks) extent */
++	newex.ee_block = cpu_to_le32(iblock);
++	if (!allocated) {
++		newex.ee_len = cpu_to_le16(max_blocks);
++		ex2 = ext4_ext_check_overlap(inode, &newex);
++		if (ex2)
++			allocated = le32_to_cpu(ex2->ee_block) - iblock;
++		else
++			allocated = max_blocks;
++	}
+ 	newblock = ext4_new_blocks(handle, inode, goal, &allocated, &err);
+ 	if (!newblock)
+ 		goto out2;
+@@ -2024,7 +2088,6 @@
+ 			goal, newblock, allocated);
+ 
+ 	/* try to insert new extent into found leaf and return */
+-	newex.ee_block = cpu_to_le32(iblock);
+ 	ext4_ext_store_pblock(&newex, newblock);
+ 	newex.ee_len = cpu_to_le16(allocated);
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
+Index: linux-2.6.19.prealloc/include/linux/ext4_fs_extents.h
+===================================================================
+--- linux-2.6.19.prealloc.orig/include/linux/ext4_fs_extents.h	2007-01-02 14:21:57.000000000 +0530
++++ linux-2.6.19.prealloc/include/linux/ext4_fs_extents.h	2007-01-02 14:22:00.000000000 +0530
+@@ -190,6 +190,7 @@
+ 
+ extern int ext4_extent_tree_init(handle_t *, struct inode *);
+ extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
++extern struct ext4_extent * ext4_ext_check_overlap(struct inode *, struct ext4_extent *);
+ extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
+ extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
+ extern struct ext4_ext_path * ext4_ext_find_extent(struct inode *, int, struct ext4_ext_path *);
+--
+Regards,
+Amit Arora
