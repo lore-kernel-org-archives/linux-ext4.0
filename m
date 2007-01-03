@@ -1,83 +1,73 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+From: Alex Tomas <alex@clusterfs.com>
 Subject: Re: [PATCH 1/1] Extent overlap bugfix in ext4
-Date: Wed, 3 Jan 2007 11:36:01 +0530
-Message-ID: <20070103060601.GB5343@amitarora.in.ibm.com>
-References: <20070102090909.GA20503@amitarora.in.ibm.com> <1167788128.4197.17.camel@dyn9047017103.beaverton.ibm.com>
+Date: Wed, 03 Jan 2007 12:44:14 +0300
+Message-ID: <m3irfobg29.fsf@bzzz.home.net>
+References: <20070102090909.GA20503@amitarora.in.ibm.com>
+	<m364bpn5ku.fsf@bzzz.home.net>
+	<20070102094727.GA5932@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com
+Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org,
+	suparna@in.ibm.com, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:60229 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754303AbXACGGH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jan 2007 01:06:07 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l036666O030346
-	for <linux-ext4@vger.kernel.org>; Wed, 3 Jan 2007 01:06:06 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l03665Zt285130
-	for <linux-ext4@vger.kernel.org>; Wed, 3 Jan 2007 01:06:06 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l03665hd012482
-	for <linux-ext4@vger.kernel.org>; Wed, 3 Jan 2007 01:06:05 -0500
-To: Mingming Cao <cmm@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <1167788128.4197.17.camel@dyn9047017103.beaverton.ibm.com>
+Received: from fe02.tochka.ru ([62.5.255.22]:64660 "EHLO umail.ru"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1749667AbXACJos (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Jan 2007 04:44:48 -0500
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+In-Reply-To: <20070102094727.GA5932@amitarora.in.ibm.com> (Amit K. Arora's
+	message of "Tue\, 2 Jan 2007 15\:17\:27 +0530")
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 02, 2007 at 05:35:28PM -0800, Mingming Cao wrote:
-> > +struct ext4_extent * ext4_ext_check_overlap(struct inode *inode,
-> > +					struct ext4_extent *newext)
-> > +{
-> > +	struct ext4_ext_path *path;
-> > +	struct ext4_extent *ex;
-> > +	unsigned int depth, b1, b2, len1;
-> > +
-> > +	b1 = le32_to_cpu(newext->ee_block);
-> > +	len1 = le16_to_cpu(newext->ee_len);
-> > +	path = ext4_ext_find_extent(inode, b1, NULL);
-> > +	if (IS_ERR(path))
-> > +		return NULL;
-> > +
-> > +	depth = ext_depth(inode);
-> > +	ex = path[depth].p_ext;
-> > +	if (!ex)
-> > +		return NULL;
-> > +
-> 
-> I am confused, when we come here, isn't we confirmed that we need block
-> allocation, thus there is no extent start from b1?
+>>>>> Amit K Arora (AKA) writes:
 
-Yes, we are sure here that there is no extent which covers b1 block.
-Since I couldn't find a direct way to get the next extent (extent on the
-right from the "would be" position of the new extent in the tree), we
-make a call to ext4_ext_find_extent() to get the extent on the left, and
-then use this to call ext4_ext_next_allocated_block() to get the logical
-block number (LBN) of the "next" extent in the tree. This LBN is
-compared with the LBN of the new extent plus its length, to detect an
-overlap.
+ AKA> On Tue, Jan 02, 2007 at 12:25:21PM +0300, Alex Tomas (AT) wrote:
+ >> >>>>> Amit K Arora (AKA) writes:
+ >> 
+ AKA> The ext4_ext_get_blocks() and ext4_ext_insert_extent() routines do not
+ AKA> check for extent overlap, when a new extent needs to be inserted in an
+ AKA> inode. An overlap is possible when the new extent being inserted has
+ AKA> ee_block that is not part of any of the existing extents, but the
+ AKA> tail/center portion of this new extent _is_. This is possible only when
+ AKA> we are writing/preallocating blocks across a hole.
+ >> 
+ AT> not sure I understand ... you shouldn't insert an extent that overlap
+ AT> any existing extent. when you write block(s), you first check is
+ AT> it already allocated and insert new extent only if it's not.
 
-> 
-> > +	b2 = ext4_ext_next_allocated_block(path);
-> > +	if (b2 == EXT_MAX_BLOCK)
-> > +
-> > 		return NULL;
-> > +	path = ext4_ext_find_extent(inode, b2, path);
-> > +	if (IS_ERR(path))
-> > +		return NULL;
-> > +	BUG_ON(path[depth].p_hdr == NULL);
-> > +	ex = path[depth].p_ext;
-> > +
-> 
-> How useful to have the next extent pointer?It seems only used to print
-> out warning messages. I am a little concerned about the expensive
-> ext4_ext_find_extent(). After all ext4_ext_next_allocated_block()
-> already returns the start block of next extent, isn't it?
+ AKA> You are right. That is what this patch does.
+ AKA> The current ext4 code is inserting an overlapped extent in a particular
+ AKA> scenario (explained above). The suggested patch fixes this by having a
+ AKA> check in get_blocks() for _not_ inserting an extent that may overlap
+ AKA> with an existing one.
 
-Ok, agreed. Will get rid of this extra code.
+I think that stuff that converts uninitialized blocks
+to initialized ones should be a separate codepath and
+shouldn't be done in the insert path. and an insert
+(basic tree manipulation) should BUG_ON() one tries
+to add extent with a block which is already covered
+by the tree.
 
+IMHO, get_blocks() should look like:
 
---
-Regards,
-Amit Arora
+  path = find_path()
+  if (found extent covers request block(s)) {
+    if (extent is uninitialized) {
+      convert();
+    }
+  }
+
+where
+   function convert()
+  {
+    /* adopt existing extent so that it
+     * doesn't cover requested blocks */
+
+    /* insert head or tail of existing
+     * extent, if necessary */
+
+    /* insert new extent of initialized blocks */
+  }
+
+thanks, Alex
