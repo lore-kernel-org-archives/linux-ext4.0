@@ -1,7 +1,7 @@
 From: Alex Tomas <alex@clusterfs.com>
 Subject: Re: [PATCH 1/1 version2] Extent overlap bugfix in ext4
-Date: Thu, 04 Jan 2007 13:25:35 +0300
-Message-ID: <m3d55vf5r4.fsf@bzzz.home.net>
+Date: Thu, 04 Jan 2007 13:39:24 +0300
+Message-ID: <m3zm8zdqjn.fsf@bzzz.home.net>
 References: <20070102090909.GA20503@amitarora.in.ibm.com>
 	<1167788128.4197.17.camel@dyn9047017103.beaverton.ibm.com>
 	<20070103060601.GB5343@amitarora.in.ibm.com>
@@ -11,10 +11,10 @@ Content-Type: text/plain; charset=us-ascii
 Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
 	suparna@in.ibm.com, alex@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fe02.tochka.ru ([62.5.255.22]:59780 "EHLO umail.ru"
+Received: from fe02.tochka.ru ([62.5.255.22]:57912 "EHLO umail.ru"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S932347AbXADKZs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Jan 2007 05:25:48 -0500
+	id S932343AbXADKjh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Jan 2007 05:39:37 -0500
 To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 In-Reply-To: <20070104085407.GC5345@amitarora.in.ibm.com> (Amit K. Arora's
 	message of "Thu\, 4 Jan 2007 14\:24\:07 +0530")
@@ -49,8 +49,17 @@ List-Id: linux-ext4.vger.kernel.org
  AKA> +		ret = 1;
  AKA> +out:
  AKA> +	return ret;
+ AKA> +}
 
-ext4_ext_find_extent() allocates 'path', I'd expect
-kfree() in the function.
+I'm also not sure we need ext4_ext_find_extent() here.
+there are two possibilities:
+
+1) extent in found path covers block(s) before requested ones
+   then ext4_ext_next_allocated_block(path) can be used
+
+2) extent in found path covers block(s) after request ones
+   then ee_block from that extent can be used.
 
 thanks, Alex
+
+PS. if I remember the code right .. ;)
