@@ -1,112 +1,75 @@
-From: Chris Wright <chrisw@sous-sol.org>
-Subject: [patch 30/50] handle ext3 directory corruption better (CVE-2006-6053)
-Date: Fri, 05 Jan 2007 18:28:23 -0800
-Message-ID: <20070106023429.759044000@sous-sol.org>
-References: <20070106022753.334962000@sous-sol.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>, torvalds@osdl.org,
-	akpm@osdl.org, alan@lxorguk.ukuu.org.uk,
-	Daniel Drake <dsd@gentoo.org>, sandeen@redhat.com,
-	<linux-ext4@vger.kernel.org>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: [PATCH] ext2: conditional removal of NFSD code
+Date: Sat, 6 Jan 2007 22:58:31 +0300
+Message-ID: <20070106195830.GA6711@martell.zuzino.mipt.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:36674 "EHLO
-	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751123AbXAFCay (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jan 2007 21:30:54 -0500
-To: linux-kernel@vger.kernel.org, stable@kernel.org
-Content-Disposition: inline; filename=handle-ext3-directory-corruption-better.patch
+Received: from nf-out-0910.google.com ([64.233.182.190]:6237 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932125AbXAFT6g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Jan 2007 14:58:36 -0500
+Received: by nf-out-0910.google.com with SMTP id o25so8872825nfa
+        for <linux-ext4@vger.kernel.org>; Sat, 06 Jan 2007 11:58:34 -0800 (PST)
+To: akpm@osdl.org
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
--stable review patch.  If anyone has any objections, please let us know.
-------------------
+Nor me nor my box is going to act as NFS server, so ifdef all
+exporting code.
 
-From: Eric Sandeen <sandeen@redhat.com>
-
-I've been using Steve Grubb's purely evil "fsfuzzer" tool, at
-http://people.redhat.com/sgrubb/files/fsfuzzer-0.4.tar.gz
-
-Basically it makes a filesystem, splats some random bits over it, then
-tries to mount it and do some simple filesystem actions.
-
-At best, the filesystem catches the corruption gracefully.  At worst,
-things spin out of control.
-
-As you might guess, we found a couple places in ext3 where things spin out
-of control :)
-
-First, we had a corrupted directory that was never checked for
-consistency...  it was corrupt, and pointed to another bad "entry" of
-length 0.  The for() loop looped forever, since the length of
-ext3_next_entry(de) was 0, and we kept looking at the same pointer over and
-over and over and over...  I modeled this check and subsequent action on
-what is done for other directory types in ext3_readdir...
-
-(adding this check adds some computational expense; I am testing a followup
-patch to reduce the number of times we check and re-check these directory
-entries, in all cases.  Thanks for the idea, Andreas).
-
-Next we had a root directory inode which had a corrupted size, claimed to
-be > 200M on a 4M filesystem.  There was only really 1 block in the
-directory, but because the size was so large, readdir kept coming back for
-more, spewing thousands of printk's along the way.
-
-Per Andreas' suggestion, if we're in this read error condition and we're
-trying to read an offset which is greater than i_blocks worth of bytes,
-stop trying, and break out of the loop.
-
-With these two changes fsfuzz test survives quite well on ext3.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@osdl.org>
-Signed-off-by: Linus Torvalds <torvalds@osdl.org>
-Signed-off-by: Chris Wright <chrisw@sous-sol.org>
+Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
 ---
-Date: Thu, 7 Dec 2006 04:36:26 +0000 (-0800)
-Subject: [patch 30/50] [PATCH] handle ext3 directory corruption better
-X-Git-Tag: v2.6.20-rc1
-X-Git-Url: http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=40b851348fe9bf49c26025b34261d25142269b60
 
- fs/ext3/dir.c   |    3 +++
- fs/ext3/namei.c |    9 +++++++++
- 2 files changed, 12 insertions(+)
+ fs/ext2/namei.c |    2 ++
+ fs/ext2/super.c |    4 ++++
+ 2 files changed, 6 insertions(+)
 
---- linux-2.6.19.1.orig/fs/ext3/dir.c
-+++ linux-2.6.19.1/fs/ext3/dir.c
-@@ -154,6 +154,9 @@ static int ext3_readdir(struct file * fi
- 			ext3_error (sb, "ext3_readdir",
- 				"directory #%lu contains a hole at offset %lu",
- 				inode->i_ino, (unsigned long)filp->f_pos);
-+			/* corrupt size?  Maybe no more blocks to read */
-+			if (filp->f_pos > inode->i_blocks << 9)
-+				break;
- 			filp->f_pos += sb->s_blocksize - offset;
- 			continue;
- 		}
---- linux-2.6.19.1.orig/fs/ext3/namei.c
-+++ linux-2.6.19.1/fs/ext3/namei.c
-@@ -552,6 +552,15 @@ static int htree_dirblock_to_tree(struct
- 					   dir->i_sb->s_blocksize -
- 					   EXT3_DIR_REC_LEN(0));
- 	for (; de < top; de = ext3_next_entry(de)) {
-+		if (!ext3_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
-+					(block<<EXT3_BLOCK_SIZE_BITS(dir->i_sb))
-+						+((char *)de - bh->b_data))) {
-+			/* On error, skip the f_pos to the next block. */
-+			dir_file->f_pos = (dir_file->f_pos |
-+					(dir->i_sb->s_blocksize - 1)) + 1;
-+			brelse (bh);
-+			return count;
-+		}
- 		ext3fs_dirhash(de->name, de->name_len, hinfo);
- 		if ((hinfo->hash < start_hash) ||
- 		    ((hinfo->hash == start_hash) &&
-
---
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -70,6 +70,7 @@ static struct dentry *ext2_lookup(struct
+ 	return d_splice_alias(inode, dentry);
+ }
+ 
++#if defined(CONFIG_EXPORTFS) || defined(CONFIG_EXPORTFS_MODULE)
+ struct dentry *ext2_get_parent(struct dentry *child)
+ {
+ 	unsigned long ino;
+@@ -94,6 +95,7 @@ struct dentry *ext2_get_parent(struct de
+ 	}
+ 	return parent;
+ } 
++#endif
+ 
+ /*
+  * By the time this is called, we already have created
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -250,6 +250,7 @@ #ifdef CONFIG_QUOTA
+ #endif
+ };
+ 
++#if defined(CONFIG_EXPORTFS) || defined(CONFIG_EXPORTFS_MODULE)
+ static struct dentry *ext2_get_dentry(struct super_block *sb, void *vobjp)
+ {
+ 	__u32 *objp = vobjp;
+@@ -297,6 +298,7 @@ static struct export_operations ext2_exp
+ 	.get_parent = ext2_get_parent,
+ 	.get_dentry = ext2_get_dentry,
+ };
++#endif
+ 
+ static unsigned long get_sb_block(void **data)
+ {
+@@ -916,7 +918,9 @@ static int ext2_fill_super(struct super_
+ 	 * set up enough so that it can read an inode
+ 	 */
+ 	sb->s_op = &ext2_sops;
++#if defined(CONFIG_EXPORTFS) || defined(CONFIG_EXPORTFS_MODULE)
+ 	sb->s_export_op = &ext2_export_ops;
++#endif
+ 	sb->s_xattr = ext2_xattr_handlers;
+ 	root = iget(sb, EXT2_ROOT_INO);
+ 	sb->s_root = d_alloc_root(root);
