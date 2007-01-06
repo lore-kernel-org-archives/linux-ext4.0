@@ -1,40 +1,31 @@
-From: chrisw@sous-sol.org
-Subject: patch handle-ext3-directory-corruption-better.patch queued to 2.6.19-stable tree
-Date: Fri, 05 Jan 2007 17:03:09 -0800
-Message-ID: <200701060103.l0613A3j031443@sous-sol.org>
-References: <4596F49F.4080406@gentoo.org>
-Cc: stable@kernel.org
+From: Chris Wright <chrisw@sous-sol.org>
+Subject: [patch 30/50] handle ext3 directory corruption better (CVE-2006-6053)
+Date: Fri, 05 Jan 2007 18:28:23 -0800
+Message-ID: <20070106023429.759044000@sous-sol.org>
+References: <20070106022753.334962000@sous-sol.org>
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>, torvalds@osdl.org,
+	akpm@osdl.org, alan@lxorguk.ukuu.org.uk,
+	Daniel Drake <dsd@gentoo.org>, sandeen@redhat.com,
+	<linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:53456 "EHLO
+Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:36674 "EHLO
 	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751059AbXAFB0Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jan 2007 20:26:25 -0500
-To: dsd@gentoo.org, akpm@osdl.org, chrisw@sous-sol.org,
-	linux-ext4@vger.kernel.org, sandeen@redhat.com, torvalds@osdl.org
-In-Reply-To: <4596F49F.4080406@gentoo.org>
+	id S1751123AbXAFCay (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Jan 2007 21:30:54 -0500
+To: linux-kernel@vger.kernel.org, stable@kernel.org
+Content-Disposition: inline; filename=handle-ext3-directory-corruption-better.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-This is a note to let you know that we have just queued up the patch titled
-
-     Subject: handle ext3 directory corruption better (CVE-2006-6053) Subject: [PATCH] handle ext3 directory corruption better
-
-to the 2.6.19-stable tree.  Its filename is
-
-     handle-ext3-directory-corruption-better.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From stable-bounces@linux.kernel.org  Sat Dec 30 15:27:45 2006
-Message-ID: <4596F49F.4080406@gentoo.org>
-Date: Sat, 30 Dec 2006 18:22:07 -0500
-From: Daniel Drake <dsd@gentoo.org>
-To: stable@kernel.org
-Cc: sandeen@redhat.com
-Subject: handle ext3 directory corruption better (CVE-2006-6053)
+-stable review patch.  If anyone has any objections, please let us know.
+------------------
 
 From: Eric Sandeen <sandeen@redhat.com>
 
@@ -79,7 +70,7 @@ Signed-off-by: Linus Torvalds <torvalds@osdl.org>
 Signed-off-by: Chris Wright <chrisw@sous-sol.org>
 ---
 Date: Thu, 7 Dec 2006 04:36:26 +0000 (-0800)
-Subject: [PATCH] handle ext3 directory corruption better
+Subject: [patch 30/50] [PATCH] handle ext3 directory corruption better
 X-Git-Tag: v2.6.20-rc1
 X-Git-Url: http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=40b851348fe9bf49c26025b34261d25142269b60
 
@@ -118,16 +109,4 @@ X-Git-Url: http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;
  		if ((hinfo->hash < start_hash) ||
  		    ((hinfo->hash == start_hash) &&
 
-
-Patches currently in stable-queue which might be from dsd@gentoo.org are
-
-queue-2.6.19/zd1211rw-call-ieee80211_rx-in-tasklet.patch
-queue-2.6.19/kbuild-don-t-put-temp-files-in-source.patch
-queue-2.6.19/ext2-skip-pages-past-number-of-blocks-in-ext2_find_entry.patch
-queue-2.6.19/softmac-fixed-handling-of-deassociation-from-ap.patch
-queue-2.6.19/corrupted-cramfs-filesystems-cause-kernel-oops.patch
-queue-2.6.19/libata-handle-0xff-status-properly.patch
-queue-2.6.19/handle-ext3-directory-corruption-better.patch
-queue-2.6.19/ieee1394-ohci1394-add-ppc_pmac-platform-code-to-driver-probe.patch
-queue-2.6.19/revert-zd1211rw-removed-unneeded-packed-attributes.patch
-queue-2.6.19/ieee80211softmac-fix-mutex_lock-at-exit-of-ieee80211_softmac_get_genie.patch
+--
