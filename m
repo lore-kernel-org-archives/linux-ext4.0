@@ -1,58 +1,60 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [RFC][Patch 1/2] Persistent preallocation in ext4
-Date: Tue, 9 Jan 2007 14:35:30 +0530
-Message-ID: <20070109090530.GA19130@amitarora.in.ibm.com>
-References: <20061205134338.GA1894@amitarora.in.ibm.com> <20061206055822.GA6182@amitarora.in.ibm.com> <20061215123528.GA24572@amitarora.in.ibm.com> <1167262245.3792.20.camel@dyn9047017103.beaverton.ibm.com> <20070102110409.GB5932@amitarora.in.ibm.com>
+From: Shriramana Sharma <jamadagni@gmail.com>
+Subject: Ext4 improvements
+Date: Sun, 07 Jan 2007 16:13:21 +0530
+Message-ID: <45A0CEC9.5060306@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, suzuki@in.ibm.com,
-	alex@clusterfs.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:43363 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751201AbXAIJFo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jan 2007 04:05:44 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0995ZFv027008
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l0995ZKN261480
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0995ZxY007949
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
-To: Mingming Cao <cmm@us.ibm.com>
-Content-Disposition: inline
-In-Reply-To: <20070102110409.GB5932@amitarora.in.ibm.com>
+Received: from out5.smtp.messagingengine.com ([66.111.4.29]:57441 "EHLO
+	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751177AbXAILII (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2007 06:08:08 -0500
+Received: from out1.internal (unknown [10.202.2.149])
+	by out1.messagingengine.com (Postfix) with ESMTP id E5E367056C
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2007 05:31:15 -0500 (EST)
+Received: from [127.0.0.1] (unknown [61.17.70.153])
+	by mail.messagingengine.com (Postfix) with ESMTP id 263C92CA91
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2007 05:31:14 -0500 (EST)
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 02, 2007 at 04:34:09PM +0530, Amit K. Arora wrote:
-> On Wed, Dec 27, 2006 at 03:30:44PM -0800, Mingming Cao wrote:
-> > Since the API takes the number of bytes to preallocate, at return time,
-> > shall we convert the blocks to bytes to the user?
-> >
-> > Here it returns the number of allocated blocks to the user.   Do we need
-> > to worry about the case when dealing with a range with partial hole and
-> > partial blocks already allocated? In that case nblocks(the new
-> > preallocated blocks) will less than the maxblocks (the number of blocks
-> > asked by application).  I am wondering what does other filesystem like
-> > xfs do? Maybe we should do the same thing.
-> 
-> I think xfs just returns 0 on success, and errno on an error. Do we
-> want to keep the same behavior here ? Or, should we return the number of
-> bytes preallocated ?
+Please be patient with my ignorance if what I am asking is meaningless
+in any way. I am not too technically knowledgeable about filesystem
+internals but I am willing to learn. (I thought of posting to linux-ext4
+but did not want to intrude within the technical threads with my layman
+thread.)
 
-We still need to decide on what the ioctl should return. Should it
-return zero on success and errno on error, like how posix_fallocate and
-xfs behave ?  If yes, then should we undo partial preallocation (if any)
-in case of an error (say ENOSPC) ?
+ From Wikipedia > ReiserFS article > Design section:
 
-If no, then should we return the number of bytes preallocated ? In this
-case we have to think about the situation Mingming mentioned above (i.e.
-when the preallocation request partially spans through a hole and
-partially through few already allocated blocks).
+[quote]ext2 and other Berkeley FFS-like filesystems simply use a fixed
+formula for computing inode locations, hence limiting the number of
+files they may contain. Most such filesystems also store directories as
+simple lists of entries, which makes directory lookups and updates
+linear time operations and degrades performance on very large
+directories. The single B+ tree design in ReiserFS avoids both of these
+problems due to better scalability properties.[/quote]
 
---
-Regards,
-Amit Arora
+So will ext4 avoid both of these problems just like ReiserFS? Does it
+use a B+ tree? Or this "dancing B* tree" that Reiser4 is supposed to have?
+
+Also: I found that a newly created ext3 partition uses 128 MB whereas a
+new reiser3 partition uses only 32 MB. I assume that the 128 MB is the
+space taken for the pre-allocated inodes or such. And I now come to know
+that others have this problem much more serious on bigger filesystems -
+[see comment 2 at
+http://linux.wordpress.com/2006/09/27/suse-102-ditching-reiserfs-as-it-default-fs/]. 
+
+
+If ext4 uses a B+ (or B*?) tree like ReiserFS then this space can be
+reduced, right?
+
+Thanks.
+
+Shriramana Sharma.
+
+P.S: Are there any recommended tutorials for learning filesystem basics?
+
+P.P.S: I just put this post here because I want to convert from reiserfs
+of uncertain future to ext4, which is time-tested.
