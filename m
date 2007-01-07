@@ -1,22 +1,12 @@
-From: Andrew Morton <akpm@osdl.org>
+From: Rene Herman <rene.herman@gmail.com>
 Subject: Re: How git affects kernel.org performance
-Date: Sun, 7 Jan 2007 01:15:42 -0800
-Message-ID: <20070107011542.3496bc76.akpm@osdl.org>
-References: <20061216094421.416a271e.randy.dunlap@oracle.com>
-	<20061216095702.3e6f1d1f.akpm@osdl.org>
-	<458434B0.4090506@oracle.com>
-	<1166297434.26330.34.camel@localhost.localdomain>
-	<1166304080.13548.8.camel@nigel.suspend2.net>
-	<459152B1.9040106@zytor.com>
-	<1168140954.2153.1.camel@nigel.suspend2.net>
-	<45A08269.4050504@zytor.com>
-	<45A083F2.5000000@zytor.com>
-	<Pine.LNX.4.64.0701062130260.3661@woody.osdl.org>
-	<20070107085526.GR24090@1wt.eu>
+Date: Sun, 07 Jan 2007 10:38:20 +0100
+Message-ID: <45A0BF8C.4040508@gmail.com>
+References: <20061216094421.416a271e.randy.dunlap@oracle.com>	<20061216095702.3e6f1d1f.akpm@osdl.org>	<458434B0.4090506@oracle.com>	<1166297434.26330.34.camel@localhost.localdomain>	<1166304080.13548.8.camel@nigel.suspend2.net>	<459152B1.9040106@zytor.com>	<1168140954.2153.1.camel@nigel.suspend2.net>	<45A08269.4050504@zytor.com>	<45A083F2.5000000@zytor.com>	<Pine.LNX.4.64.0701062130260.3661@woody.osdl.org>	<20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@osdl.org>,
+Cc: Willy Tarreau <w@1wt.eu>, Linus Torvalds <torvalds@osdl.org>,
 	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
 	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
 	Randy Dunlap <randy.dunlap@oracle.com>,
@@ -24,68 +14,25 @@ Cc: Linus Torvalds <torvalds@osdl.org>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	webmaster@kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:43926 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932436AbXAGJQe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Jan 2007 04:16:34 -0500
-To: Willy Tarreau <w@1wt.eu>
-In-Reply-To: <20070107085526.GR24090@1wt.eu>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932460AbXAGJkA@vger.kernel.org>
+To: Andrew Morton <akpm@osdl.org>
+In-Reply-To: <20070107011542.3496bc76.akpm@osdl.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 7 Jan 2007 09:55:26 +0100
-Willy Tarreau <w@1wt.eu> wrote:
+On 01/07/2007 10:15 AM, Andrew Morton wrote:
 
-> On Sat, Jan 06, 2007 at 09:39:42PM -0800, Linus Torvalds wrote:
-> > 
-> > 
-> > On Sat, 6 Jan 2007, H. Peter Anvin wrote:
-> > > 
-> > > During extremely high load, it appears that what slows kernel.org down more
-> > > than anything else is the time that each individual getdents() call takes.
-> > > When I've looked this I've observed times from 200 ms to almost 2 seconds!
-> > > Since an unpacked *OR* unpruned git tree adds 256 directories to a cleanly
-> > > packed tree, you can do the math yourself.
-> > 
-> > "getdents()" is totally serialized by the inode semaphore. It's one of the 
-> > most expensive system calls in Linux, partly because of that, and partly 
-> > because it has to call all the way down into the filesystem in a way that 
-> > almost no other common system call has to (99% of all filesystem calls can 
-> > be handled basically at the VFS layer with generic caches - but not 
-> > getdents()).
-> > 
-> > So if there are concurrent readdirs on the same directory, they get 
-> > serialized. If there is any file creation/deletion activity in the 
-> > directory, it serializes getdents(). 
-> > 
-> > To make matters worse, I don't think it has any read-ahead at all when you 
-> > use hashed directory entries. So if you have cold-cache case, you'll read 
-> > every single block totally individually, and serialized. One block at a 
-> > time (I think the non-hashed case is likely also suspect, but that's a 
-> > separate issue)
-> > 
-> > In other words, I'm not at all surprised it hits on filldir time. 
-> > Especially on ext3.
+> Yeah, slowly-growing directories will get splattered all over the
+> disk.
 > 
-> At work, we had the same problem on a file server with ext3. We use rsync
-> to make backups to a local IDE disk, and we noticed that getdents() took
-> about the same time as Peter reports (0.2 to 2 seconds), especially in
-> maildir directories. We tried many things to fix it with no result,
-> including enabling dirindexes. Finally, we made a full backup, and switched
-> over to XFS and the problem totally disappeared. So it seems that the
-> filesystem matters a lot here when there are lots of entries in a
-> directory, and that ext3 is not suitable for usages with thousands
-> of entries in directories with millions of files on disk. I'm not
-> certain it would be that easy to try other filesystems on kernel.org
-> though :-/
+> Possible short-term fixes would be to just allocate up to (say) eight
+>  blocks when we grow a directory by one block.  Or teach the 
+> directory-growth code to use ext3 reservations.
 > 
+> Longer-term people are talking about things like on-disk
+> rerservations. But I expect directories are being forgotten about in
+> all of that.
 
-Yeah, slowly-growing directories will get splattered all over the disk.
+I wish people would just talk about de2fsrag... ;-\
 
-Possible short-term fixes would be to just allocate up to (say) eight
-blocks when we grow a directory by one block.  Or teach the
-directory-growth code to use ext3 reservations.
-
-Longer-term people are talking about things like on-disk rerservations. 
-But I expect directories are being forgotten about in all of that.
+Rene
