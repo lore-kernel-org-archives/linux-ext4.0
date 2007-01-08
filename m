@@ -1,14 +1,11 @@
-From: Jeff Garzik <jeff@garzik.org>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: How git affects kernel.org performance
-Date: Mon, 08 Jan 2007 08:43:01 -0500
-Message-ID: <45A24A65.1070706@garzik.org>
-References: <1166297434.26330.34.camel@localhost.localdomain> <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com> <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
+Date: Mon, 8 Jan 2007 08:56:22 -0500
+Message-ID: <20070108135622.GD32756@thunk.org>
+References: <459152B1.9040106@zytor.com> <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <20070108134147.GB5291@linuxtv.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Return-path: <git-owner@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>,
-	Suparna Bhattacharya <suparna@in.ibm.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Suparna Bhattacharya <suparna@in.ibm.com>,
 	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
 	Linus Torvalds <torvalds@osdl.org>,
 	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
@@ -18,25 +15,31 @@ To: Theodore Tso <tytso@mit.edu>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	webmaster@kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20070108125819.GA32756@thunk.org>
-Sender: git-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:58635 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751540AbXAHN5r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jan 2007 08:57:47 -0500
+To: Johannes Stezenbach <js@linuxtv.org>
+Content-Disposition: inline
+In-Reply-To: <20070108134147.GB5291@linuxtv.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> The fastest and probably most important thing to add is some readahead
-> smarts to directories --- both to the htree and non-htree cases.  If
-> you're using some kind of b-tree structure, such as XFS does for
-> directories, preallocation doesn't help you much.  Delayed allocation
-> can save you if your delayed allocator knows how to structure disk
-> blocks so that a btree-traversal is efficient, but I'm guessing the
-> biggest reason why we are losing is because we don't have sufficient
-> readahead.  This also has the advantage that it will help without
-> needing to doing a backup/restore to improve layout.
+On Mon, Jan 08, 2007 at 02:41:47PM +0100, Johannes Stezenbach wrote:
+> 
+> Would e2fsck -D help? What kind of optimization
+> does it perform?
 
+It will help a little; e2fsck -D compresses the logical view of the
+directory, but it doesn't optimize the physical layout on disk at all,
+and of course, it won't help with the lack of readahead logic.  It's
+possible to improve how e2fsck -D works, at the moment, it's not
+trying to make the directory be contiguous on disk.  What it should
+probably do is to pull a list of all of the blocks used by the
+directory, sort them, and then try to see if it can improve on the
+list by allocating some new blocks that would make the directory more
+contiguous on disk.  I suspect any improvements that would be seen by
+doing this would be second order effects at most, though.
 
-Something I just thought of:  ATA and SCSI hard disks do their own 
-read-ahead.  Seeking all over the place to pick up bits of directory 
-will hurt even more with the disk reading and throwing away data (albeit 
-in its internal elevator and cache).
-
-	Jeff
+						- Ted
