@@ -1,136 +1,103 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/1 version3] Extent overlap bugfix in ext4
-Date: Tue, 9 Jan 2007 11:21:20 +0530
-Message-ID: <20070109055120.GA5938@amitarora.in.ibm.com>
-References: <20070102090909.GA20503@amitarora.in.ibm.com> <1167788128.4197.17.camel@dyn9047017103.beaverton.ibm.com> <20070103060601.GB5343@amitarora.in.ibm.com> <20070104085407.GC5345@amitarora.in.ibm.com> <m3zm8zdqjn.fsf@bzzz.home.net> <20070104112707.GB15920@amitarora.in.ibm.com> <m3r6ubdnuj.fsf@bzzz.home.net> <20070104172329.GA23612@amitarora.in.ibm.com> <459D4C58.5010502@us.ibm.com> <20070105121335.GA6211@amitarora.in.ibm.com>
+From: Fengguang Wu <fengguang.wu@gmail.com>
+Subject: Re: How git affects kernel.org performance
+Date: Tue, 9 Jan 2007 15:59:46 +0800
+Message-ID: <368329554.17014@ustc.edu.cn>
+References: <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com> <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org,
-	suparna@in.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:49800 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751096AbXAIFv1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2007 00:51:27 -0500
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e32.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l095oJC0022953
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 00:50:19 -0500
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by westrelay02.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l095pPch454682
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Jan 2007 22:51:25 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l095pO27002053
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Jan 2007 22:51:25 -0700
-To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751145AbXAIH73@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>,
+	Suparna Bhattacharya <suparna@in.ibm.com>,
+	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
+	Linus Torvalds <torvalds@osdl.org>,
+	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
+	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>,
+	Pavel Machek <pavel@ucw.cz>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	webmaster@kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Message-ID: <20070109075945.GA8799@mail.ustc.edu.cn>
 Content-Disposition: inline
-In-Reply-To: <20070105121335.GA6211@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070108125819.GA32756@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is the revised version of the patch. This takes care of following
-review comments from Mingming and Alex:
- a> Not to use ext4_ext_find_extent() in check_overlap(), since it is an
-expensive operation.
- b> Use "unsigned long" for (logical) block numbers everywhere.
- c> Return true/false by check_overlap(), rather than extent pointer or
-the block number.
- d> Update the extent length of nexext in check_overlap(), if there is
-an overlap detected.
+On Mon, Jan 08, 2007 at 07:58:19AM -0500, Theodore Tso wrote:
+> On Mon, Jan 08, 2007 at 08:35:55AM +0530, Suparna Bhattacharya wrote:
+> > > Yeah, slowly-growing directories will get splattered all over the disk.
+> > > 
+> > > Possible short-term fixes would be to just allocate up to (say) eight
+> > > blocks when we grow a directory by one block.  Or teach the
+> > > directory-growth code to use ext3 reservations.
+> > > 
+> > > Longer-term people are talking about things like on-disk rerservations.
+> > > But I expect directories are being forgotten about in all of that.
+> > 
+> > By on-disk reservations, do you mean persistent file preallocation ? (that
+> > is explicit preallocation of blocks to a given file) If so, you are
+> > right, we haven't really given any thought to the possibility of directories
+> > needing that feature.
+> 
+> The fastest and probably most important thing to add is some readahead
+> smarts to directories --- both to the htree and non-htree cases.  If
 
+Here's is a quick hack to practice the directory readahead idea.
+Comments are welcome, it's a freshman's work :)
 
-Signed-off-by: Amit Arora <aarora@in.ibm.com>
+Regards,
+Wu
 ---
- fs/ext4/extents.c               |   50 ++++++++++++++++++++++++++++++++++++++--
- include/linux/ext4_fs_extents.h |    1 
- 2 files changed, 49 insertions(+), 2 deletions(-)
+ fs/ext3/dir.c   |   22 ++++++++++++++++++++++
+ fs/ext3/inode.c |    2 +-
+ 2 files changed, 23 insertions(+), 1 deletion(-)
 
-Index: linux-2.6.19.prealloc/fs/ext4/extents.c
-===================================================================
---- linux-2.6.19.prealloc.orig/fs/ext4/extents.c
-+++ linux-2.6.19.prealloc/fs/ext4/extents.c
-@@ -1119,6 +1119,45 @@ ext4_can_extents_be_merged(struct inode 
+--- linux.orig/fs/ext3/dir.c
++++ linux/fs/ext3/dir.c
+@@ -94,6 +94,25 @@ int ext3_check_dir_entry (const char * f
+ 	return error_msg == NULL ? 1 : 0;
  }
  
- /*
-+ * ext4_ext_check_overlap:
-+ * check if a portion of the "newext" extent overlaps with an
-+ * existing extent.
-+ *
-+ * If there is an overlap discovered, it updates the length of the newext
-+ * such that there will be no overlap, and then returns 1.
-+ * If there is no overlap found, it returns 0.
-+ */
-+unsigned int ext4_ext_check_overlap(struct inode *inode,
-+					struct ext4_extent *newext,
-+					struct ext4_ext_path *path)
++int ext3_get_block(struct inode *inode, sector_t iblock,
++			struct buffer_head *bh_result, int create);
++
++static void ext3_dir_readahead(struct file * filp)
 +{
-+	unsigned long b1, b2;
-+	unsigned int depth, len1;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct address_space *mapping = inode->i_sb->s_bdev->bd_inode->i_mapping;
++	unsigned long sector;
++	unsigned long blk;
++	pgoff_t offset;
 +
-+	b1 = le32_to_cpu(newext->ee_block);
-+	len1 = le16_to_cpu(newext->ee_len);
-+	depth = ext_depth(inode);
-+	if (!path[depth].p_ext)
-+		goto out;
-+	b2 = le32_to_cpu(path[depth].p_ext->ee_block);
-+
-+	/* get the next allocated block if the extent in the path
-+	 * is before the requested block(s) */
-+	if (b2 < b1) {
-+		b2 = ext4_ext_next_allocated_block(path);
-+		if (b2 == EXT_MAX_BLOCK)
-+			goto out;
++	for (blk = 0; blk < inode->i_blocks; blk++) {
++		sector = blk << (inode->i_blkbits - 9);
++		sector = generic_block_bmap(inode->i_mapping, sector, ext3_get_block);
++		offset = sector >> (PAGE_CACHE_SHIFT - 9);
++		do_page_cache_readahead(mapping, filp, offset, 1);
 +	}
-+
-+	if (b1 + len1 > b2) {
-+		newext->ee_len = cpu_to_le16(b2 - b1);
-+		return 1;
-+	}
-+out:
-+	return 0;
 +}
 +
-+/*
-  * ext4_ext_insert_extent:
-  * tries to merge requsted extent into the existing extent or
-  * inserts requested extent as new one into the tree,
-@@ -2016,7 +2055,15 @@ int ext4_ext_get_blocks(handle_t *handle
+ static int ext3_readdir(struct file * filp,
+ 			 void * dirent, filldir_t filldir)
+ {
+@@ -108,6 +127,9 @@ static int ext3_readdir(struct file * fi
  
- 	/* allocate new block */
- 	goal = ext4_ext_find_goal(inode, path, iblock);
--	allocated = max_blocks;
+ 	sb = inode->i_sb;
+ 
++	if (!filp->f_pos)
++		ext3_dir_readahead(filp);
 +
-+	/* Check if we can really insert (iblock)::(iblock+max_blocks) extent */
-+	newex.ee_block = cpu_to_le32(iblock);
-+	newex.ee_len = cpu_to_le16(max_blocks);
-+	err = ext4_ext_check_overlap(inode, &newex, path);
-+	if (err)
-+		allocated = le16_to_cpu(newex.ee_len);
-+	else
-+		allocated = max_blocks;
- 	newblock = ext4_new_blocks(handle, inode, goal, &allocated, &err);
- 	if (!newblock)
- 		goto out2;
-@@ -2024,7 +2071,6 @@ int ext4_ext_get_blocks(handle_t *handle
- 			goal, newblock, allocated);
+ #ifdef CONFIG_EXT3_INDEX
+ 	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
+ 				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
+--- linux.orig/fs/ext3/inode.c
++++ linux/fs/ext3/inode.c
+@@ -945,7 +945,7 @@ out:
  
- 	/* try to insert new extent into found leaf and return */
--	newex.ee_block = cpu_to_le32(iblock);
- 	ext4_ext_store_pblock(&newex, newblock);
- 	newex.ee_len = cpu_to_le16(allocated);
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
-Index: linux-2.6.19.prealloc/include/linux/ext4_fs_extents.h
-===================================================================
---- linux-2.6.19.prealloc.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.19.prealloc/include/linux/ext4_fs_extents.h
-@@ -190,6 +190,7 @@ ext4_ext_invalidate_cache(struct inode *
+ #define DIO_CREDITS (EXT3_RESERVE_TRANS_BLOCKS + 32)
  
- extern int ext4_extent_tree_init(handle_t *, struct inode *);
- extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
-+extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
- extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
- extern struct ext4_ext_path * ext4_ext_find_extent(struct inode *, int, struct ext4_ext_path *);
---
-Regards,
-Amit Arora 
+-static int ext3_get_block(struct inode *inode, sector_t iblock,
++int ext3_get_block(struct inode *inode, sector_t iblock,
+ 			struct buffer_head *bh_result, int create)
+ {
+ 	handle_t *handle = journal_current_handle();
