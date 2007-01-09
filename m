@@ -1,60 +1,54 @@
-From: Shriramana Sharma <jamadagni@gmail.com>
-Subject: Ext4 improvements
-Date: Sun, 07 Jan 2007 16:13:21 +0530
-Message-ID: <45A0CEC9.5060306@gmail.com>
+From: Linus Torvalds <torvalds@osdl.org>
+Subject: Re: How git affects kernel.org performance
+Date: Tue, 9 Jan 2007 08:23:32 -0800 (PST)
+Message-ID: <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
+References: <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com>
+ <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com>
+ <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org>
+ <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org>
+ <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
+ <368329554.17014@ustc.edu.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Theodore Tso <tytso@mit.edu>,
+	Suparna Bhattacharya <suparna@in.ibm.com>,
+	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
+	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
+	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>,
+	Pavel Machek <pavel@ucw.cz>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	webmaster@kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out5.smtp.messagingengine.com ([66.111.4.29]:57441 "EHLO
-	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751177AbXAILII (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2007 06:08:08 -0500
-Received: from out1.internal (unknown [10.202.2.149])
-	by out1.messagingengine.com (Postfix) with ESMTP id E5E367056C
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2007 05:31:15 -0500 (EST)
-Received: from [127.0.0.1] (unknown [61.17.70.153])
-	by mail.messagingengine.com (Postfix) with ESMTP id 263C92CA91
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2007 05:31:14 -0500 (EST)
-To: linux-ext4@vger.kernel.org
+Received: from smtp.osdl.org ([65.172.181.24]:51343 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932204AbXAIQ2Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jan 2007 11:28:16 -0500
+To: Fengguang Wu <fengguang.wu@gmail.com>
+In-Reply-To: <368329554.17014@ustc.edu.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Please be patient with my ignorance if what I am asking is meaningless
-in any way. I am not too technically knowledgeable about filesystem
-internals but I am willing to learn. (I thought of posting to linux-ext4
-but did not want to intrude within the technical threads with my layman
-thread.)
-
- From Wikipedia > ReiserFS article > Design section:
-
-[quote]ext2 and other Berkeley FFS-like filesystems simply use a fixed
-formula for computing inode locations, hence limiting the number of
-files they may contain. Most such filesystems also store directories as
-simple lists of entries, which makes directory lookups and updates
-linear time operations and degrades performance on very large
-directories. The single B+ tree design in ReiserFS avoids both of these
-problems due to better scalability properties.[/quote]
-
-So will ext4 avoid both of these problems just like ReiserFS? Does it
-use a B+ tree? Or this "dancing B* tree" that Reiser4 is supposed to have?
-
-Also: I found that a newly created ext3 partition uses 128 MB whereas a
-new reiser3 partition uses only 32 MB. I assume that the 128 MB is the
-space taken for the pre-allocated inodes or such. And I now come to know
-that others have this problem much more serious on bigger filesystems -
-[see comment 2 at
-http://linux.wordpress.com/2006/09/27/suse-102-ditching-reiserfs-as-it-default-fs/]. 
 
 
-If ext4 uses a B+ (or B*?) tree like ReiserFS then this space can be
-reduced, right?
+On Tue, 9 Jan 2007, Fengguang Wu wrote:
+> > 
+> > The fastest and probably most important thing to add is some readahead
+> > smarts to directories --- both to the htree and non-htree cases.  If
+> 
+> Here's is a quick hack to practice the directory readahead idea.
+> Comments are welcome, it's a freshman's work :)
 
-Thanks.
+Well, I'd probably have done it differently, but more important is whether 
+this actually makes a difference performance-wise. Have you benchmarked it 
+at all?
 
-Shriramana Sharma.
+Doing an
 
-P.S: Are there any recommended tutorials for learning filesystem basics?
+	echo 3 > /proc/sys/vm/drop_caches
 
-P.P.S: I just put this post here because I want to convert from reiserfs
-of uncertain future to ext4, which is time-tested.
+is your friend for testing things like this, to force cold-cache 
+behaviour..
+
+		Linus
