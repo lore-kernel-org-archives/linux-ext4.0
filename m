@@ -1,103 +1,58 @@
-From: Fengguang Wu <fengguang.wu@gmail.com>
-Subject: Re: How git affects kernel.org performance
-Date: Tue, 9 Jan 2007 15:59:46 +0800
-Message-ID: <20070109075945.GA8799__43201.4260594316$1168330087$gmane$org@mail.ustc.edu.cn>
-References: <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com> <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [RFC][Patch 1/2] Persistent preallocation in ext4
+Date: Tue, 9 Jan 2007 14:35:30 +0530
+Message-ID: <20070109090530.GA19130@amitarora.in.ibm.com>
+References: <20061205134338.GA1894@amitarora.in.ibm.com> <20061206055822.GA6182@amitarora.in.ibm.com> <20061215123528.GA24572@amitarora.in.ibm.com> <1167262245.3792.20.camel@dyn9047017103.beaverton.ibm.com> <20070102110409.GB5932@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <git-owner@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>,
-	Suparna Bhattacharya <suparna@in.ibm.com>,
-	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
-	Linus Torvalds <torvalds@osdl.org>,
-	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
-	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
-	Randy Dunlap <randy.dunlap@oracle.com>,
-	Pavel Machek <pavel@ucw.cz>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	webmaster@kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Message-ID: <20070109075945.GA8799@mail.ustc.edu.cn>
+Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, suzuki@in.ibm.com,
+	alex@clusterfs.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:43363 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751201AbXAIJFo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jan 2007 04:05:44 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0995ZFv027008
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l0995ZKN261480
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0995ZxY007949
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 04:05:35 -0500
+To: Mingming Cao <cmm@us.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <20070108125819.GA32756@thunk.org>
-Sender: git-owner@vger.kernel.org
+In-Reply-To: <20070102110409.GB5932@amitarora.in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 08, 2007 at 07:58:19AM -0500, Theodore Tso wrote:
-> On Mon, Jan 08, 2007 at 08:35:55AM +0530, Suparna Bhattacharya wrote:
-> > > Yeah, slowly-growing directories will get splattered all over the disk.
-> > > 
-> > > Possible short-term fixes would be to just allocate up to (say) eight
-> > > blocks when we grow a directory by one block.  Or teach the
-> > > directory-growth code to use ext3 reservations.
-> > > 
-> > > Longer-term people are talking about things like on-disk rerservations.
-> > > But I expect directories are being forgotten about in all of that.
-> > 
-> > By on-disk reservations, do you mean persistent file preallocation ? (that
-> > is explicit preallocation of blocks to a given file) If so, you are
-> > right, we haven't really given any thought to the possibility of directories
-> > needing that feature.
+On Tue, Jan 02, 2007 at 04:34:09PM +0530, Amit K. Arora wrote:
+> On Wed, Dec 27, 2006 at 03:30:44PM -0800, Mingming Cao wrote:
+> > Since the API takes the number of bytes to preallocate, at return time,
+> > shall we convert the blocks to bytes to the user?
+> >
+> > Here it returns the number of allocated blocks to the user.   Do we need
+> > to worry about the case when dealing with a range with partial hole and
+> > partial blocks already allocated? In that case nblocks(the new
+> > preallocated blocks) will less than the maxblocks (the number of blocks
+> > asked by application).  I am wondering what does other filesystem like
+> > xfs do? Maybe we should do the same thing.
 > 
-> The fastest and probably most important thing to add is some readahead
-> smarts to directories --- both to the htree and non-htree cases.  If
+> I think xfs just returns 0 on success, and errno on an error. Do we
+> want to keep the same behavior here ? Or, should we return the number of
+> bytes preallocated ?
 
-Here's is a quick hack to practice the directory readahead idea.
-Comments are welcome, it's a freshman's work :)
+We still need to decide on what the ioctl should return. Should it
+return zero on success and errno on error, like how posix_fallocate and
+xfs behave ?  If yes, then should we undo partial preallocation (if any)
+in case of an error (say ENOSPC) ?
 
+If no, then should we return the number of bytes preallocated ? In this
+case we have to think about the situation Mingming mentioned above (i.e.
+when the preallocation request partially spans through a hole and
+partially through few already allocated blocks).
+
+--
 Regards,
-Wu
----
- fs/ext3/dir.c   |   22 ++++++++++++++++++++++
- fs/ext3/inode.c |    2 +-
- 2 files changed, 23 insertions(+), 1 deletion(-)
-
---- linux.orig/fs/ext3/dir.c
-+++ linux/fs/ext3/dir.c
-@@ -94,6 +94,25 @@ int ext3_check_dir_entry (const char * f
- 	return error_msg == NULL ? 1 : 0;
- }
- 
-+int ext3_get_block(struct inode *inode, sector_t iblock,
-+			struct buffer_head *bh_result, int create);
-+
-+static void ext3_dir_readahead(struct file * filp)
-+{
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct address_space *mapping = inode->i_sb->s_bdev->bd_inode->i_mapping;
-+	unsigned long sector;
-+	unsigned long blk;
-+	pgoff_t offset;
-+
-+	for (blk = 0; blk < inode->i_blocks; blk++) {
-+		sector = blk << (inode->i_blkbits - 9);
-+		sector = generic_block_bmap(inode->i_mapping, sector, ext3_get_block);
-+		offset = sector >> (PAGE_CACHE_SHIFT - 9);
-+		do_page_cache_readahead(mapping, filp, offset, 1);
-+	}
-+}
-+
- static int ext3_readdir(struct file * filp,
- 			 void * dirent, filldir_t filldir)
- {
-@@ -108,6 +127,9 @@ static int ext3_readdir(struct file * fi
- 
- 	sb = inode->i_sb;
- 
-+	if (!filp->f_pos)
-+		ext3_dir_readahead(filp);
-+
- #ifdef CONFIG_EXT3_INDEX
- 	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
- 				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
---- linux.orig/fs/ext3/inode.c
-+++ linux/fs/ext3/inode.c
-@@ -945,7 +945,7 @@ out:
- 
- #define DIO_CREDITS (EXT3_RESERVE_TRANS_BLOCKS + 32)
- 
--static int ext3_get_block(struct inode *inode, sector_t iblock,
-+int ext3_get_block(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
- {
- 	handle_t *handle = journal_current_handle();
+Amit Arora
