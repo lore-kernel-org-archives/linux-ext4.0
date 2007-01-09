@@ -1,15 +1,11 @@
 From: Fengguang Wu <fengguang.wu@gmail.com>
 Subject: Re: How git affects kernel.org performance
 Date: Tue, 9 Jan 2007 15:59:46 +0800
-Message-ID: <20070109075945.GA8799__45841.3940541961$1168330087$gmane$org@mail.ustc.edu.cn>
+Message-ID: <20070109075945.GA8799__43201.4260594316$1168330087$gmane$org@mail.ustc.edu.cn>
 References: <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com> <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:50658 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751149AbXAIIHs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jan 2007 03:07:48 -0500
+Return-path: <git-owner@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>,
 	Suparna Bhattacharya <suparna@in.ibm.com>,
 	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
@@ -24,7 +20,7 @@ To: Theodore Tso <tytso@mit.edu>,
 Message-ID: <20070109075945.GA8799@mail.ustc.edu.cn>
 Content-Disposition: inline
 In-Reply-To: <20070108125819.GA32756@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: git-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Mon, Jan 08, 2007 at 07:58:19AM -0500, Theodore Tso wrote:
