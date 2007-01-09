@@ -1,54 +1,45 @@
-From: Linus Torvalds <torvalds@osdl.org>
-Subject: Re: How git affects kernel.org performance
-Date: Tue, 9 Jan 2007 08:23:32 -0800 (PST)
-Message-ID: <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
-References: <1166304080.13548.8.camel@nigel.suspend2.net> <459152B1.9040106@zytor.com>
- <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com>
- <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org>
- <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org>
- <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
- <368329554.17014@ustc.edu.cn>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: ext3 data=journal hangs
+Date: Tue, 9 Jan 2007 15:11:23 -0800
+Message-ID: <20070109151123.df6a3c40.randy.dunlap@oracle.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>,
-	Suparna Bhattacharya <suparna@in.ibm.com>,
-	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
-	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
-	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
-	Randy Dunlap <randy.dunlap@oracle.com>,
-	Pavel Machek <pavel@ucw.cz>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	webmaster@kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:51343 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932204AbXAIQ2Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jan 2007 11:28:16 -0500
-To: Fengguang Wu <fengguang.wu@gmail.com>
-In-Reply-To: <368329554.17014@ustc.edu.cn>
+Received: from agminet01.oracle.com ([141.146.126.228]:16029 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932508AbXAIXL4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2007 18:11:56 -0500
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id l09NBsmm028902
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 17:11:55 -0600
+Received: from rcsmt251.oracle.com (rcsmt251.oracle.com [148.87.90.196])
+	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id l09MwtM9007044
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 16:11:54 -0700
+To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi,
 
+(2.6.20-rc4, x86_64 1-proc on SMP kernel, 1 GB RAM)
 
-On Tue, 9 Jan 2007, Fengguang Wu wrote:
-> > 
-> > The fastest and probably most important thing to add is some readahead
-> > smarts to directories --- both to the htree and non-htree cases.  If
-> 
-> Here's is a quick hack to practice the directory readahead idea.
-> Comments are welcome, it's a freshman's work :)
+I'm running fsx-linux (akpm ext3-tools version) on an ext3 fs
+with data=journal and fs blocksize=2048.  I've been trying to
+get some kind of kernel messages from it but I can't get any
+debug IO done successfully.
 
-Well, I'd probably have done it differently, but more important is whether 
-this actually makes a difference performance-wise. Have you benchmarked it 
-at all?
+It has hung on me 3 times in a row today.  I'm using this command:
+fsx-linux -l 100M -N 50000 -S 0 fsxtestfile
 
-Doing an
+This is run in a new partition on a IDE drive (/dev/hda7,
+using legacy IDE drivers).
 
-	echo 3 > /proc/sys/vm/drop_caches
+Any suggestions for debug output?  I can see SysRq output on-screen
+(sometimes) but it doesn't make it to my serial console.
 
-is your friend for testing things like this, to force cold-cache 
-behaviour..
+Any patches to test?  :)
 
-		Linus
+Thanks,
+---
+~Randy
