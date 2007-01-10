@@ -1,274 +1,154 @@
-From: Fengguang Wu <fengguang.wu@gmail.com>
-Subject: Re: How git affects kernel.org performance
-Date: Wed, 10 Jan 2007 22:07:30 +0800
-Message-ID: <20070110140730.GA986__11582.1861465976$1168438162$gmane$org@mail.ustc.edu.cn>
-References: <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <368329554.17014@ustc.edu.cn> <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org> <20070110015739.GA26978@mail.ustc.edu.cn> <1168399249.2585.6.camel@nigel.suspend2.net>
+From: "AVANTIKA R. MATHUR" <mathur@linux.vnet.ibm.com>
+Subject: Ext4 devel interlock meeting minutes (Jan. 10 2007)
+Date: Wed, 10 Jan 2007 14:08:11 -0800
+Message-ID: <45A563CB.2090507@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@osdl.org>, Theodore Tso <tytso@mit.edu>,
-	Suparna Bhattacharya <suparna@in.ibm.com>,
-	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
-	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
-	"J.H." <warthog9@kernel.org>,
-	Randy Dunlap <randy.dunlap@oracle.com>,
-	Pavel Machek <pavel@ucw.cz>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	webmaster@kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S964866AbXAJOIg@vger.kernel.org>
-To: Nigel Cunningham <nigel@nigel.suspend2.net>
-Message-ID: <20070110140730.GA986@mail.ustc.edu.cn>
-Content-Disposition: inline
-In-Reply-To: <1168399249.2585.6.camel@nigel.suspend2.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:52271 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965132AbXAJWIO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jan 2007 17:08:14 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0AM70P1015733
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jan 2007 17:07:00 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l0AM8991548524
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jan 2007 15:08:09 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0AM89Q5010903
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jan 2007 15:08:09 -0700
+Received: from [9.47.16.74] (mathur.beaverton.ibm.com [9.47.16.74])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l0AM88e1010883
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jan 2007 15:08:09 -0700
+To: linux-ext4@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 10, 2007 at 02:20:49PM +1100, Nigel Cunningham wrote:
-> Hi.
-> 
-> On Wed, 2007-01-10 at 09:57 +0800, Fengguang Wu wrote:
-> > On Tue, Jan 09, 2007 at 08:23:32AM -0800, Linus Torvalds wrote:
-> > >
-> > >
-> > > On Tue, 9 Jan 2007, Fengguang Wu wrote:
-> > > > >
-> > > > > The fastest and probably most important thing to add is some readahead
-> > > > > smarts to directories --- both to the htree and non-htree cases.  If
-> > > >
-> > > > Here's is a quick hack to practice the directory readahead idea.
-> > > > Comments are welcome, it's a freshman's work :)
-> > >
-> > > Well, I'd probably have done it differently, but more important is whether
-> > > this actually makes a difference performance-wise. Have you benchmarked it
-> > > at all?
-> > 
-> > Yes, a trivial test shows a marginal improvement, on a minimal debian system:
-> > 
-> > # find / | wc -l
-> > 13641
-> > 
-> > # time find / > /dev/null
-> > 
-> > real    0m10.000s
-> > user    0m0.210s
-> > sys     0m4.370s
-> > 
-> > # time find / > /dev/null
-> > 
-> > real    0m9.890s
-> > user    0m0.160s
-> > sys     0m3.270s
-> > 
-> > > Doing an
-> > >
-> > > 	echo 3 > /proc/sys/vm/drop_caches
-> > >
-> > > is your friend for testing things like this, to force cold-cache
-> > > behaviour..
-> > 
-> > Thanks, I'll work out numbers on large/concurrent dir accesses soon.
-> 
-> I gave it a try, and I'm afraid the results weren't pretty.
-> 
-> I did:
-> 
-> time find /usr/src | wc -l
-> 
-> on current git with (3 times) and without (5 times) the patch, and got
-> 
-> with:
-> real   54.306, 54.327, 53.742s
-> usr    0.324, 0.284, 0.234s
-> sys    2.432, 2.484, 2.592s
-> 
-> without:
-> real   24.413, 24.616, 24.080s
-> usr    0.208, 0.316, 0.312s
-> sys:   2.496, 2.440, 2.540s
-> 
-> Subsequent runs without dropping caches did give a significant
-> improvement in both cases (1.821/.188/1.632 is one result I wrote with
-> the patch applied).
 
-Thanks, Nigel.
-But I'm very sorry that the calculation in the patch was wrong.
+Ext4 Developer Interlock Call: 1-10-07 Meeting Minutes
+Attendees: Mingming Cao, Dave Kleikamp, Takashi Sato, Suparna=20
+Bhattacharya, Jean-Pierre Dion, Jean-Noel Cordenner, Val=E9rie Cl=E9men=
+t,=20
+Ted Ts'o, Avantika Mathur
 
-Would you give this new patch a run?
+Minutes can be accessed at:=20
+http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Cal=
+l
 
-It produced pretty numbers here:
+- Conferences:
+-- The Linux filesystem and storage workshop is coming up in February
+-- OLS: deadline to submit abstracts is Feb 5th. Ted is thinking about =
+a=20
+paper on e2fsprogs.  Encouraging writing in-depth technical papers on=20
+ext4 work.
 
-#!/bin/zsh
+- Ted will set up a git tree on kernel.org with all of the ext4 patches=
+;=20
+so it is easy to access and test all of the patch sets.
+- Mingming will send an email requesting everyone to resend latest=20
+versions of ext4 patches to the mailing list, with a short description=20
+and status including 'to dos' and outstanding issues.
 
-ROOT=/mnt/mnt
-TIMEFMT="%E clock  %S kernel  %U user  %w+%c cs  %J"
+Ext4 Roadmap - an update on ext4 features in progress:
+These updates will also be added to the wiki page:=20
+http://ext4.wiki.kernel.org/index.php/New_ext4_features
 
-echo 3 > /proc/sys/vm/drop_caches
+- Multiple Block Allocation
+-- status: Patches are available and there are no format or e2fsprogs=20
+changes. given that there are no dependencies, this feature should be=20
+pushed to mainline soon.
+-- outstanding issues: none
 
-# 49: enable dir readahead
-# 50: disable
-echo ${1:-50} > /proc/sys/vm/readahead_ratio
+- Delayed Allocation
+-- status: Patches are available, and have been commented on -- need=20
+more work.
+-- outstanding issues:  lack of plan for 1k,2k block size and default=20
+data=3Dorder mode, and Andrew asked for more comments.
 
-# time find $ROOT/a > /dev/null
+- Preallocation
+-- status: Kernel implementation and e2fsprogs changes are complete, an=
+d=20
+have been thoroughly reviewed by Mingming and Alex Tomas.
+-- outstanding issues:  Need consensus on what interface should be used=
+=20
+(ioctl, fcntl..). What should the return value be on success, zero or=20
+number of block allocated. Suparna will post a comment for a case where=
+=20
+the extent is allocated far off on the disk. Once the interface is=20
+decided, this feature will be ready to add to the git tree.
+-- Andrew Morton has mentioned adding preallocation to directories. Ted=
+=20
+and Mingming discussed adding readahead and reservation to directories=20
+rather than better than preallocatin.
 
-time find /etch > /dev/null
+- Online Defragmentation:
+-- status:  Takashi sent updated patches last month. He will repost mos=
+t=20
+recent version to the list.
+-- outstanding issues: unknown
 
-# time find $ROOT/a > /dev/null&
-# time grep -r asdf $ROOT/b > /dev/null&
-# time cp /etch/KNOPPIX_V5.0.1CD-2006-06-01-EN.iso /dev/null&
+- Break 32000 directory limit:
+-- status:  Andreas Dilger posted this patch. It is a simple patch with=
+=20
+minor e2fsrogs changes.  Ask Andreas to repost patches on ext4.
+-- outstanding issues: unknown
 
-exit 0
+- Nanosecond Timestamps
+-- status: Patches have been posted by Andreas Dilger, shouldn't need=20
+much rework once issues are resolved.
+-- outstanding issues:  Should be available in 128 bit inodes, or only=20
+in larger inodes.  What effect updating the nanosecond timestamp has on=
+=20
+performance, excessive atime updates. Should atime be kept at ~1 second=
+=20
+granularity.
 
-# collected results on a SATA disk:
-# ./test-parallel-dir-reada.sh 49
-4.18s clock  0.08s kernel  0.04s user  418+0 cs  find $ROOT/a > /dev/null
-4.09s clock  0.10s kernel  0.02s user  410+1 cs  find $ROOT/a > /dev/null
+- Change Attribute
+-- status: use i_version rather than change_attribute field for this=20
+feature.  Jean-Noel will resend out latest patch with summary and statu=
+s
+-- outstanding issues: unknown
 
-# ./test-parallel-dir-reada.sh 50
-12.18s clock  0.15s kernel  0.07s user  1520+4 cs  find $ROOT/a > /dev/null
-11.99s clock  0.13s kernel  0.04s user  1558+6 cs  find $ROOT/a > /dev/null
+- Uninitialized Groups
+-- status: Feature will reduce fsck time on a large filesystem. =20
+Currently this features is very premature and in prototype mode.  Basic=
+=20
+functionality for testing on 64 bit is in place, but not yet useful in=20
+production.  There are no dependencies on this feature, for safety the=20
+feature depnds on checksumming block groups. Ask Andreas to resend patc=
+hes.
+-- outstanding issues:  prototype mode
 
+- Journal Checksumming
+-- status: feature will speed up journaling.  The feature was proposed,=
+=20
+but there is no status on patches.
+-- outstanding issues: n/a
 
-# ./test-parallel-dir-reada.sh 49
-4.01s clock  0.06s kernel  0.01s user  1567+2 cs  find /etch > /dev/null
-4.08s clock  0.07s kernel  0.00s user  1568+0 cs  find /etch > /dev/null
+- Undelete Feature for Ext4
+-- status: Idea was proposed on the mailing list, still need more=20
+thought on the feature.
+-- outstanding issues: Should the kernel be involved with undelete
 
-# ./test-parallel-dir-reada.sh 50
-4.10s clock  0.09s kernel  0.01s user  1578+1 cs  find /etch > /dev/null
-4.19s clock  0.08s kernel  0.03s user  1578+0 cs  find /etch > /dev/null
+- Large file support
+-- status: Increase 2Tb limit on filesize. Takashi has begun working on=
+=20
+this.
+-- outstanding issues: unknown
 
+- E2fsprogs work
+-- Ted is working on a user issue handling > 375 million directories on=
+ =20
+a 32 bit machine
+-- Correct interfaces for extents
+-- adding 64 bit API without causing ABI breakages. Might need a major=20
+version change with the ABI breakage.
 
-# ./test-parallel-dir-reada.sh 49
-7.73s clock  0.11s kernel  0.06s user  438+2 cs  find $ROOT/a > /dev/null
-18.92s clock  0.43s kernel  0.02s user  1246+13 cs  cp /etch/KNOPPIX_V5.0.1CD-2006-06-01-EN.iso /dev/null
-32.91s clock  4.20s kernel  1.55s user  103564+51 cs  grep -r asdf $ROOT/b > /dev/null
-
-8.47s clock  0.10s kernel  0.02s user  442+4 cs  find $ROOT/a > /dev/null
-19.24s clock  0.53s kernel  0.03s user  1250+23 cs  cp /etch/KNOPPIX_V5.0.1CD-2006-06-01-EN.iso /dev/null
-29.93s clock  4.18s kernel  1.61s user  100425+47 cs  grep -r asdf $ROOT/b > /dev/null
-
-# ./test-parallel-dir-reada.sh 50
-17.87s clock  0.57s kernel  0.02s user  1244+21 cs  cp /etch/KNOPPIX_V5.0.1CD-2006-06-01-EN.iso /dev/null
-21.30s clock  0.08s kernel  0.05s user  1517+5 cs  find $ROOT/a > /dev/null
-49.68s clock  3.94s kernel  1.67s user  101520+57 cs  grep -r asdf $ROOT/b > /dev/null
-
-15.66s clock  0.51s kernel  0.00s user  1248+25 cs  cp /etch/KNOPPIX_V5.0.1CD-2006-06-01-EN.iso /dev/null
-22.15s clock  0.15s kernel  0.04s user  1520+5 cs  find $ROOT/a > /dev/null
-46.14s clock  4.08s kernel  1.68s user  101517+63 cs  grep -r asdf $ROOT/b > /dev/null
-
-Thanks,
-Wu
----
-
-Subject: ext3 readdir readahead
-
-Do readahead for ext3_readdir().
-
-Reasons to be aggressive:
-- readdir() users are likely to traverse the whole directory,
-  so readahead miss is not a concern.
-- most dirs are small, so slow start is not good
-- the htree indexing introduces some randomness,
-  which can be helped by the aggressiveness.
-
-So we do 128K sized readaheads, at twice the speed of reads.
-
-The following actual readahead pages are collected for a dir with
-110000 entries:
-	32 31 30 31 28 29 29 28 27 25 29 22 25 30 24 15 19
-That means a readahead hit ratio of
-	454/541 = 84%
-
-The performance is marginally better for a minimal debian system:
-	command:	find /
-	baseline:	4.10s	4.19s
-	patched:	4.01s	4.08s
-
-And considerably better for 100 directories, each with 1000 8K files:
-	command:	find /throwaways
-	baseline:	12.18s	11.99s
-	patched:	 4.18s	 4.09s
-
-And also noticable better for parallel operations:
-					baseline	patched
-	find /throwaways &		21.30s 22.15s    7.73s  8.47s 
-	grep -r asdf /throwaways2 &     49.68s 46.14s   32.91s 29.93s 
-	cp /KNOPPIX_CD.iso /dev/null &  17.87s 15.66s   18.92s 19.24s 
-
-Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
----
- fs/ext3/dir.c           |   33 +++++++++++++++++++++++++++++++++
- fs/ext3/inode.c         |    2 +-
- include/linux/ext3_fs.h |    2 ++
- 3 files changed, 36 insertions(+), 1 deletion(-)
-
---- linux.orig/fs/ext3/dir.c
-+++ linux/fs/ext3/dir.c
-@@ -94,6 +94,28 @@ int ext3_check_dir_entry (const char * f
- 	return error_msg == NULL ? 1 : 0;
- }
- 
-+#define DIR_READAHEAD_BYTES  (128*1024)
-+#define DIR_READAHEAD_PGMASK ((DIR_READAHEAD_BYTES >> PAGE_CACHE_SHIFT) - 1)
-+
-+static void ext3_dir_readahead(struct file * filp)
-+{
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct address_space *mapping = inode->i_sb->s_bdev->bd_inode->i_mapping;
-+	int bbits = inode->i_blkbits;
-+	unsigned long blk, end;
-+
-+	blk = filp->f_ra.prev_page << (PAGE_CACHE_SHIFT - bbits);
-+	end = min(inode->i_blocks >> (bbits - 9),
-+		  blk + (DIR_READAHEAD_BYTES >> bbits));
-+
-+	for (; blk < end; blk++) {
-+		pgoff_t phy;
-+		phy = generic_block_bmap(inode->i_mapping, blk, ext3_get_block)
-+				>> (PAGE_CACHE_SHIFT - bbits);
-+		do_page_cache_readahead(mapping, filp, phy, 1);
-+	}
-+}
-+
- static int ext3_readdir(struct file * filp,
- 			 void * dirent, filldir_t filldir)
- {
-@@ -108,6 +130,17 @@ static int ext3_readdir(struct file * fi
- 
- 	sb = inode->i_sb;
- 
-+	/*
-+	 * Reading-ahead at 2x the page fault rate, in hope of reducing
-+	 * readahead misses caused by the partially random htree order.
-+	 */
-+	filp->f_ra.prev_page += 2;
-+	filp->f_ra.prev_page &= ~1;
-+
-+	if (!(filp->f_ra.prev_page & DIR_READAHEAD_PGMASK) &&
-+		filp->f_ra.prev_page < (inode->i_blocks >> (PAGE_CACHE_SHIFT-9)))
-+		ext3_dir_readahead(filp);
-+
- #ifdef CONFIG_EXT3_INDEX
- 	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
- 				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
---- linux.orig/fs/ext3/inode.c
-+++ linux/fs/ext3/inode.c
-@@ -945,7 +945,7 @@ out:
- 
- #define DIO_CREDITS (EXT3_RESERVE_TRANS_BLOCKS + 32)
- 
--static int ext3_get_block(struct inode *inode, sector_t iblock,
-+int ext3_get_block(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
- {
- 	handle_t *handle = journal_current_handle();
---- linux.orig/include/linux/ext3_fs.h
-+++ linux/include/linux/ext3_fs.h
-@@ -814,6 +814,8 @@ struct buffer_head * ext3_bread (handle_
- int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
- 	int create, int extend_disksize);
-+extern int ext3_get_block(struct inode *inode, sector_t iblock,
-+			struct buffer_head *bh_result, int create);
- 
- extern void ext3_read_inode (struct inode *);
- extern int  ext3_write_inode (struct inode *, int);
+- Supporting Trillions of Files in Ext4
+-- Mingming and Avantika are looking into this
+-- Issues and Constraints: difficult to support more than 32 bits of=20
+inodes, filsystem format and compatibility issues, stat interface is=20
+only 32 bits, memory utilization of inode cache will affect performance
