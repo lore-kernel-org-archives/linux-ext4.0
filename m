@@ -1,45 +1,72 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: ext3 data=journal hangs
-Date: Tue, 9 Jan 2007 15:11:23 -0800
-Message-ID: <20070109151123.df6a3c40.randy.dunlap@oracle.com>
+From: Fengguang Wu <fengguang.wu@gmail.com>
+Subject: Re: How git affects kernel.org performance
+Date: Wed, 10 Jan 2007 09:57:39 +0800
+Message-ID: <368394226.19365@ustc.edu.cn>
+References: <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <368329554.17014@ustc.edu.cn> <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>,
+	Suparna Bhattacharya <suparna@in.ibm.com>,
+	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
+	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
+	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>,
+	Pavel Machek <pavel@ucw.cz>,
+	kernel list <linux-kernel@vger.kernel.org>,
+	webmaster@kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:16029 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932508AbXAIXL4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2007 18:11:56 -0500
-Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id l09NBsmm028902
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 17:11:55 -0600
-Received: from rcsmt251.oracle.com (rcsmt251.oracle.com [148.87.90.196])
-	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id l09MwtM9007044
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jan 2007 16:11:54 -0700
-To: linux-ext4@vger.kernel.org
+Received: from smtp.ustc.edu.cn ([202.38.64.16]:58522 "HELO ustc.edu.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S932652AbXAJB5N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jan 2007 20:57:13 -0500
+To: Linus Torvalds <torvalds@osdl.org>
+Message-ID: <20070110015739.GA26978@mail.ustc.edu.cn>
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Tue, Jan 09, 2007 at 08:23:32AM -0800, Linus Torvalds wrote:
+>
+>
+> On Tue, 9 Jan 2007, Fengguang Wu wrote:
+> > >
+> > > The fastest and probably most important thing to add is some readahead
+> > > smarts to directories --- both to the htree and non-htree cases.  If
+> >
+> > Here's is a quick hack to practice the directory readahead idea.
+> > Comments are welcome, it's a freshman's work :)
+>
+> Well, I'd probably have done it differently, but more important is whether
+> this actually makes a difference performance-wise. Have you benchmarked it
+> at all?
 
-(2.6.20-rc4, x86_64 1-proc on SMP kernel, 1 GB RAM)
+Yes, a trivial test shows a marginal improvement, on a minimal debian system:
 
-I'm running fsx-linux (akpm ext3-tools version) on an ext3 fs
-with data=journal and fs blocksize=2048.  I've been trying to
-get some kind of kernel messages from it but I can't get any
-debug IO done successfully.
+# find / | wc -l
+13641
 
-It has hung on me 3 times in a row today.  I'm using this command:
-fsx-linux -l 100M -N 50000 -S 0 fsxtestfile
+# time find / > /dev/null
 
-This is run in a new partition on a IDE drive (/dev/hda7,
-using legacy IDE drivers).
+real    0m10.000s
+user    0m0.210s
+sys     0m4.370s
 
-Any suggestions for debug output?  I can see SysRq output on-screen
-(sometimes) but it doesn't make it to my serial console.
+# time find / > /dev/null
 
-Any patches to test?  :)
+real    0m9.890s
+user    0m0.160s
+sys     0m3.270s
 
-Thanks,
----
-~Randy
+> Doing an
+>
+> 	echo 3 > /proc/sys/vm/drop_caches
+>
+> is your friend for testing things like this, to force cold-cache
+> behaviour..
+
+Thanks, I'll work out numbers on large/concurrent dir accesses soon.
+
+Regards,
+Wu
