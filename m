@@ -1,68 +1,101 @@
-From: Fengguang Wu <fengguang.wu@gmail.com>
+From: Nigel Cunningham <nigel@nigel.suspend2.net>
 Subject: Re: How git affects kernel.org performance
-Date: Wed, 10 Jan 2007 09:57:39 +0800
-Message-ID: <20070110015739.GA26978__11276.4408383102$1168394293$gmane$org@mail.ustc.edu.cn>
-References: <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <368329554.17014@ustc.edu.cn> <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
+Date: Wed, 10 Jan 2007 14:20:49 +1100
+Message-ID: <1168399249.2585.6.camel@nigel.suspend2.net>
+References: <1168140954.2153.1.camel@nigel.suspend2.net>
+	 <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com>
+	 <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org>
+	 <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org>
+	 <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org>
+	 <368329554.17014@ustc.edu.cn>
+	 <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
+	 <20070110015739.GA26978@mail.ustc.edu.cn>
+Reply-To: nigel@nigel.suspend2.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@osdl.org>, Theodore Tso <tytso@mit.edu>,
 	Suparna Bhattacharya <suparna@in.ibm.com>,
 	Andrew Morton <akpm@osdl.org>, Willy Tarreau <w@1wt.eu>,
 	"H. Peter Anvin" <hpa@zytor.com>, git@vger.kernel.org,
-	nigel@nigel.suspend2.net, "J.H." <warthog9@kernel.org>,
+	"J.H." <warthog9@kernel.org>,
 	Randy Dunlap <randy.dunlap@oracle.com>,
 	Pavel Machek <pavel@ucw.cz>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	webmaster@kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932653AbXAJB5d@vger.kernel.org>
-To: Linus Torvalds <torvalds@osdl.org>
-Message-ID: <20070110015739.GA26978@mail.ustc.edu.cn>
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <git-owner@vger.kernel.org>
+To: Fengguang Wu <fengguang.wu@gmail.com>
+In-Reply-To: <20070110015739.GA26978@mail.ustc.edu.cn>
+Sender: git-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 09, 2007 at 08:23:32AM -0800, Linus Torvalds wrote:
->
->
-> On Tue, 9 Jan 2007, Fengguang Wu wrote:
-> > >
-> > > The fastest and probably most important thing to add is some readahead
-> > > smarts to directories --- both to the htree and non-htree cases.  If
+Hi.
+
+On Wed, 2007-01-10 at 09:57 +0800, Fengguang Wu wrote:
+> On Tue, Jan 09, 2007 at 08:23:32AM -0800, Linus Torvalds wrote:
 > >
-> > Here's is a quick hack to practice the directory readahead idea.
-> > Comments are welcome, it's a freshman's work :)
->
-> Well, I'd probably have done it differently, but more important is whether
-> this actually makes a difference performance-wise. Have you benchmarked it
-> at all?
+> >
+> > On Tue, 9 Jan 2007, Fengguang Wu wrote:
+> > > >
+> > > > The fastest and probably most important thing to add is some readahead
+> > > > smarts to directories --- both to the htree and non-htree cases.  If
+> > >
+> > > Here's is a quick hack to practice the directory readahead idea.
+> > > Comments are welcome, it's a freshman's work :)
+> >
+> > Well, I'd probably have done it differently, but more important is whether
+> > this actually makes a difference performance-wise. Have you benchmarked it
+> > at all?
+> 
+> Yes, a trivial test shows a marginal improvement, on a minimal debian system:
+> 
+> # find / | wc -l
+> 13641
+> 
+> # time find / > /dev/null
+> 
+> real    0m10.000s
+> user    0m0.210s
+> sys     0m4.370s
+> 
+> # time find / > /dev/null
+> 
+> real    0m9.890s
+> user    0m0.160s
+> sys     0m3.270s
+> 
+> > Doing an
+> >
+> > 	echo 3 > /proc/sys/vm/drop_caches
+> >
+> > is your friend for testing things like this, to force cold-cache
+> > behaviour..
+> 
+> Thanks, I'll work out numbers on large/concurrent dir accesses soon.
 
-Yes, a trivial test shows a marginal improvement, on a minimal debian system:
+I gave it a try, and I'm afraid the results weren't pretty.
 
-# find / | wc -l
-13641
+I did:
 
-# time find / > /dev/null
+time find /usr/src | wc -l
 
-real    0m10.000s
-user    0m0.210s
-sys     0m4.370s
+on current git with (3 times) and without (5 times) the patch, and got
 
-# time find / > /dev/null
+with:
+real   54.306, 54.327, 53.742s
+usr    0.324, 0.284, 0.234s
+sys    2.432, 2.484, 2.592s
 
-real    0m9.890s
-user    0m0.160s
-sys     0m3.270s
+without:
+real   24.413, 24.616, 24.080s
+usr    0.208, 0.316, 0.312s
+sys:   2.496, 2.440, 2.540s
 
-> Doing an
->
-> 	echo 3 > /proc/sys/vm/drop_caches
->
-> is your friend for testing things like this, to force cold-cache
-> behaviour..
-
-Thanks, I'll work out numbers on large/concurrent dir accesses soon.
+Subsequent runs without dropping caches did give a significant
+improvement in both cases (1.821/.188/1.632 is one result I wrote with
+the patch applied).
 
 Regards,
-Wu
+
+Nigel
