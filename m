@@ -1,7 +1,7 @@
 From: Fengguang Wu <fengguang.wu@gmail.com>
 Subject: Re: How git affects kernel.org performance
 Date: Wed, 10 Jan 2007 09:57:39 +0800
-Message-ID: <20070110015739.GA26978__35540.4359674596$1168394253$gmane$org@mail.ustc.edu.cn>
+Message-ID: <20070110015739.GA26978__11276.4408383102$1168394293$gmane$org@mail.ustc.edu.cn>
 References: <1168140954.2153.1.camel@nigel.suspend2.net> <45A08269.4050504@zytor.com> <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <368329554.17014@ustc.edu.cn> <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,12 +15,12 @@ Cc: Theodore Tso <tytso@mit.edu>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	webmaster@kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <git-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932653AbXAJB5d@vger.kernel.org>
 To: Linus Torvalds <torvalds@osdl.org>
 Message-ID: <20070110015739.GA26978@mail.ustc.edu.cn>
 Content-Disposition: inline
 In-Reply-To: <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org>
-Sender: git-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Tue, Jan 09, 2007 at 08:23:32AM -0800, Linus Torvalds wrote:
