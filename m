@@ -1,7 +1,7 @@
 From: Fengguang Wu <fengguang.wu@gmail.com>
 Subject: Re: How git affects kernel.org performance
 Date: Wed, 10 Jan 2007 22:07:30 +0800
-Message-ID: <368438013.19600@ustc.edu.cn>
+Message-ID: <20070110140730.GA986__4640.65993805907$1168438064$gmane$org@mail.ustc.edu.cn>
 References: <45A083F2.5000000@zytor.com> <Pine.LNX.4.64.0701062130260.3661@woody.osdl.org> <20070107085526.GR24090@1wt.eu> <20070107011542.3496bc76.akpm@osdl.org> <20070108030555.GA7289@in.ibm.com> <20070108125819.GA32756@thunk.org> <368329554.17014@ustc.edu.cn> <Pine.LNX.4.64.0701090821550.3661@woody.osdl.org> <20070110015739.GA26978@mail.ustc.edu.cn> <1168399249.2585.6.camel@nigel.suspend2.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,16 +15,12 @@ Cc: Linus Torvalds <torvalds@osdl.org>, Theodore Tso <tytso@mit.edu>,
 	kernel list <linux-kernel@vger.kernel.org>,
 	webmaster@kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:53868 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S964867AbXAJOHZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jan 2007 09:07:25 -0500
+Return-path: <git-owner@vger.kernel.org>
 To: Nigel Cunningham <nigel@nigel.suspend2.net>
 Message-ID: <20070110140730.GA986@mail.ustc.edu.cn>
 Content-Disposition: inline
 In-Reply-To: <1168399249.2585.6.camel@nigel.suspend2.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: git-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Wed, Jan 10, 2007 at 02:20:49PM +1100, Nigel Cunningham wrote:
