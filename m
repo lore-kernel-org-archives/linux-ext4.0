@@ -1,68 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] [UPDATED] ext3: refuse ro to rw remount of fs with orphan
- inodes
-Date: Thu, 11 Jan 2007 14:28:14 -0600
-Message-ID: <45A69DDE.2020208@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Call for Ext4 patches
+Date: Thu, 11 Jan 2007 16:17:56 -0800
+Message-ID: <1168561076.25812.20.camel@dyn9047017103.beaverton.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46405 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371AbXAKU2Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Jan 2007 15:28:24 -0500
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:45402 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751519AbXALAR7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jan 2007 19:17:59 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e31.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0C0HxFY011101
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jan 2007 19:17:59 -0500
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.6/8.13.6/NCO v8.1.1) with ESMTP id l0C0HwBE533338
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jan 2007 17:17:58 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0C0HwM0027353
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jan 2007 17:17:58 -0700
+Received: from dyn9047017103.beaverton.ibm.com (dyn9047017103.beaverton.ibm.com [9.47.17.103])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l0C0HvbG027274
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jan 2007 17:17:58 -0700
+To: ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a followup to the patch which skipped orphan inode processing 
-on a filesystem residing on a readonly bdev (think snapshot taken
-with open, unlinked files).  That avoided an oops.
+Hello,
 
-Stephen had concerns about what happens if the bdev later goes readwrite,
-and the filesystem is subsequently mounted remount,rw - if the orphan
-list isn't processed then, things will be in bad shape.
+Since ext4 was created at the end of last year, there are many wonderful
+ideas and patches proposed to add to ext4, waiting for thorough review,
+comment and testing. Some of them were briefly documented at Ext4 wiki
+page(http://ext4.wiki.kernel.org/index.php/New_ext4_features).
 
-The patch I sent earlier to process the orphan inode list on remount
-was met with silence and/or slight suspicion (from akpm) so how
-about this: just to plug the hole on what I think is a pretty rare
-condition, simply disallow the ro->rw transition if we have unprocessed
-orphan inodes.
+To spin the wheels faster, at the ext4 interlock call yesterday, it was
+agreed to create a home for ext4 candidate patches.  Ted suggested to
+host a ext4 git tree somewhere at kernel.org, and probably also put all
+patches together in quilt format. This will benefit the developer, the
+reviewer and the end users to look at where things are, sort out the
+directions, priorities, so we can then work on stabilizing the
+code and getting it production-ready.
 
-Then we get this:
+Instead of looking back to find out what patches have been posted last
+year, it seems easier if the patches could be re-post to the mailing
+list. It would be great to have a description of what the patches for,
+current status, next steps, any dependencies and outstanding issues (if
+there is any).
 
-[root@magnesium ~]# mount -o remount,rw /mnt/test
-mount: /mnt/test not mounted already, or bad option
-[root@magnesium ~]# dmesg | tail -n 1
-EXT3-fs: hda7: couldn't remount RDWR because of unprocessed orphan inode list.  Please umount/remount instead.
+P.S. The feature list documented in the ext4 wiki page by no means to be
+complete, very well may have missed some.  Any prototype patches, new
+ideas, suggestions and requirements are very welcome and appreciated.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Happy New year!
 
-Index: linux-2.6.19/fs/ext3/super.c
-===================================================================
---- linux-2.6.19.orig/fs/ext3/super.c
-+++ linux-2.6.19/fs/ext3/super.c
-@@ -2350,6 +2350,22 @@ static int ext3_remount (struct super_bl
- 				err = -EROFS;
- 				goto restore_opts;
- 			}
-+
-+			/*
-+			 * If we have an unprocessed orphan list hanging
-+			 * around from a previously readonly bdev mount,
-+			 * require a full umount/remount for now.
-+			 */
-+			if (es->s_last_orphan) {
-+				printk(KERN_WARNING "EXT3-fs: %s: couldn't "
-+				       "remount RDWR because of unprocessed "
-+				       "orphan inode list.  Please "
-+				       "umount/remount instead.\n",
-+				       sb->s_id);
-+				err = -EINVAL;
-+				goto restore_opts;
-+			}
-+
- 			/*
- 			 * Mounting a RDONLY partition read-write, so reread
- 			 * and store the current valid flag.  (It may have
+Cheers,
+
+Mingming
