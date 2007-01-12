@@ -1,39 +1,76 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: [PATCH] [RFC] remove ext3 inode from orphan list when link and unlink race
-Date: Sat, 13 Jan 2007 01:07:55 +0300
-Message-ID: <m3d55jzyo4.fsf@bzzz.home.net>
-References: <45A7F384.3050303@redhat.com> <m34pqw0xii.fsf@bzzz.home.net>
-	<45A7FA3C.8030209@redhat.com> <m3lkk8ym2f.fsf@bzzz.home.net>
-	<45A80213.5060401@redhat.com> <m3hcuvzz88.fsf@bzzz.home.net>
-	<45A80544.2030803@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] [RFC] remove ext3 inode from orphan list when link and
+ unlink race
+Date: Fri, 12 Jan 2007 16:35:08 -0600
+Message-ID: <45A80D1C.40005@redhat.com>
+References: <45A7F384.3050303@redhat.com> <m34pqw0xii.fsf@bzzz.home.net>	<45A7FA3C.8030209@redhat.com> <m3lkk8ym2f.fsf@bzzz.home.net> <45A80213.5060401@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: Alex Tomas <alex@clusterfs.com>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fe02.tochka.ru ([62.5.255.22]:43453 "EHLO umail.ru"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1161120AbXALWH7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Jan 2007 17:07:59 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:52522 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161136AbXALWfU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Jan 2007 17:35:20 -0500
 To: Eric Sandeen <sandeen@redhat.com>
-In-Reply-To: <45A80544.2030803@redhat.com> (Eric Sandeen's message of "Fri\, 12
-	Jan 2007 16\:01\:40 -0600")
+In-Reply-To: <45A80213.5060401@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> Eric Sandeen (ES) writes:
+Eric Sandeen wrote:
 
- ES> Al says "no" and I'm not arguing.  :)
+> Alex Tomas wrote:
+>   
+>> yes, but it shouldn't allow to re-link such inode back, IMHO.
+>> a filesystem may start some non-revertable activity in its
+>> unlink method.
+>>
+>> thanks, Alex
+>>     
+>
+> I tend to agree, chatting w/ Al I think he does too.  :)  I'll test
+> a patch that kicks out ext3_link() with -ENOENT at the top, and resubmit
+> that if things go well.
+>   
+Well this seems to fix things up for ext3 (and ext4 by extension):
 
- ES> Apparently this may be OK with some filesystems, and Al says he doesn't
- ES> want to know about i_nlink in the vfs in any case.
+---
 
-well, generic_drop_inode() uses i_nlink ...
+Return -ENOENT from ext[34]_link if we've raced with unlink and
+i_nlink is 0.  Doing otherwise has the potential to corrupt the
+orphan inode list, because we'd wind up with an inode with a
+non-zero link count on the list, and it will never get properly
+cleaned up.
 
- ES> But I suppose there may be other filesystems which DO care, and should
- ES> be checking if they're not.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-this is why I thought VFS could take care.
-
-thanks, Alex
+Index: linux-2.6.19/fs/ext3/namei.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext3/namei.c
++++ linux-2.6.19/fs/ext3/namei.c
+@@ -2191,6 +2191,8 @@ static int ext3_link (struct dentry * ol
+ 
+ 	if (inode->i_nlink >= EXT3_LINK_MAX)
+ 		return -EMLINK;
++	if (inode->i_nlink == 0)
++		return -ENOENT;
+ 
+ retry:
+ 	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+Index: linux-2.6.19/fs/ext4/namei.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext4/namei.c
++++ linux-2.6.19/fs/ext4/namei.c
+@@ -2189,6 +2189,8 @@ static int ext4_link (struct dentry * ol
+ 
+ 	if (inode->i_nlink >= EXT4_LINK_MAX)
+ 		return -EMLINK;
++	if (inode->i_nlink == 0)
++		return -ENOENT;
+ 
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
