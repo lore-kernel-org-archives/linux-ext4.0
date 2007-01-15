@@ -1,54 +1,70 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] [RFC] remove ext3 inode from orphan list when link and
- unlink race
-Date: Sun, 14 Jan 2007 09:42:05 -0600
-Message-ID: <45AA4F4D.5030605@redhat.com>
-References: <45A7F384.3050303@redhat.com> <878xg5q0q7.fsf@sw.ru>
+Subject: [PATCH] return ENOENT from ext3_link when racing with unlink
+Date: Mon, 15 Jan 2007 12:18:26 -0600
+Message-ID: <45ABC572.2070206@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Cc: dmonakhov@sw.ru, alex@clusterfs.com,
+	Al Viro <viro@ftp.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:50448 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:46041 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751321AbXANPmo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Jan 2007 10:42:44 -0500
-To: Dmitriy Monakhov <dmonakhov@sw.ru>
-In-Reply-To: <878xg5q0q7.fsf@sw.ru>
+	id S1751194AbXAOSTW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Jan 2007 13:19:22 -0500
+To: linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dmitriy Monakhov wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
-> 
->> I've been looking at a case where many threads are opening, unlinking, and
->> hardlinking files on ext3 .
-> How many concurent threads do you use and how long does it takes to trigger 
-> this race? I've tried to reproduce this with two threads, but not succeed.
-> <thread 1>  
->         fd = create("src")
->         close(fd)
->         unlink("src")
-> <thread 2>
->         link("src", "dst")
->         unlink("dst")
-> 
-> Original testcase will be the best answer :).
+An update from the earlier thread, 
+[PATCH] [RFC] remove ext3 inode from orphan list when link and unlink race
 
-Sure :)  Though I didn't write it... see this collection of bash scripts:
+I think this is better than the original idea of trying to handle the race;
+I've seen that the orphan inode list can get corrupted, but there may well
+be other implications of the race which haven't yet been exposed.  I think
+it's safer to simply return -ENOENT in this race window, and avoid other
+potential problems.  Anything wrong with this?
 
-http://people.redhat.com/esandeen/testcases/orphan-repro.tar.bz2
-
-I didn't write it, but it exposed the bug for me.  The VAR file contains 
-variables to specify mountpoint and a device, which the script starts by 
-mkfs'ing, so be warned.
-
-It spawns -many- threads, and on my 4 CPU opteron I can hit it in a 
-reasonable amount of time.  It would probably be nice to have a more 
-targeted testcase but it did the trick for me.
+Thanks for the comments suggesting this approach in the prior thread.
 
 Thanks,
+
 -Eric
 
-> Thanks.
+---
+
+Return -ENOENT from ext[34]_link if we've raced with unlink and
+i_nlink is 0.  Doing otherwise has the potential to corrupt the
+orphan inode list, because we'd wind up with an inode with a
+non-zero link count on the list, and it will never get properly
+cleaned up & removed from the orphan list before it is freed.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: linux-2.6.19/fs/ext3/namei.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext3/namei.c
++++ linux-2.6.19/fs/ext3/namei.c
+@@ -2191,6 +2191,8 @@ static int ext3_link (struct dentry * ol
+ 
+ 	if (inode->i_nlink >= EXT3_LINK_MAX)
+ 		return -EMLINK;
++	if (inode->i_nlink == 0)
++		return -ENOENT;
+ 
+ retry:
+ 	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+Index: linux-2.6.19/fs/ext4/namei.c
+===================================================================
+--- linux-2.6.19.orig/fs/ext4/namei.c
++++ linux-2.6.19/fs/ext4/namei.c
+@@ -2189,6 +2189,8 @@ static int ext4_link (struct dentry * ol
+ 
+ 	if (inode->i_nlink >= EXT4_LINK_MAX)
+ 		return -EMLINK;
++	if (inode->i_nlink == 0)
++		return -ENOENT;
+ 
+ retry:
+ 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
