@@ -1,44 +1,30 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] return ENOENT from ext3_link when racing with unlink
-Date: Mon, 15 Jan 2007 12:18:26 -0600
-Message-ID: <45ABC572.2070206@redhat.com>
+Subject: [PATCH] remove ext[34]_inc_count and _dec_count
+Date: Mon, 15 Jan 2007 12:38:50 -0600
+Message-ID: <45ABCA3A.5080105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: dmonakhov@sw.ru, alex@clusterfs.com,
-	Al Viro <viro@ftp.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46041 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:51447 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751194AbXAOSTW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Jan 2007 13:19:22 -0500
+	id S1751307AbXAOSi6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Jan 2007 13:38:58 -0500
 To: linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-An update from the earlier thread, 
-[PATCH] [RFC] remove ext3 inode from orphan list when link and unlink race
+I don't see that there's any reason for this extra layer.  
 
-I think this is better than the original idea of trying to handle the race;
-I've seen that the orphan inode list can get corrupted, but there may well
-be other implications of the race which haven't yet been exposed.  I think
-it's safer to simply return -ENOENT in this race window, and avoid other
-potential problems.  Anything wrong with this?
+- Naming is confusing, ext3_inc_count manipulates i_nlink not i_count
+- handle argument passed in is not used
+- ext3 and ext4 already call inc_nlink and dec_nlink directly in other places
 
-Thanks for the comments suggesting this approach in the prior thread.
 
-Thanks,
-
--Eric
-
----
-
-Return -ENOENT from ext[34]_link if we've raced with unlink and
-i_nlink is 0.  Doing otherwise has the potential to corrupt the
-orphan inode list, because we'd wind up with an inode with a
-non-zero link count on the list, and it will never get properly
-cleaned up & removed from the orphan list before it is freed.
+ ext3/namei.c |   21 +++------------------
+ ext4/namei.c |   21 +++------------------
+ 2 files changed, 6 insertions(+), 36 deletions(-)
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
@@ -46,25 +32,105 @@ Index: linux-2.6.19/fs/ext3/namei.c
 ===================================================================
 --- linux-2.6.19.orig/fs/ext3/namei.c
 +++ linux-2.6.19/fs/ext3/namei.c
-@@ -2191,6 +2191,8 @@ static int ext3_link (struct dentry * ol
+@@ -1618,21 +1618,6 @@ static int ext3_delete_entry (handle_t *
+ 	return -ENOENT;
+ }
  
- 	if (inode->i_nlink >= EXT3_LINK_MAX)
- 		return -EMLINK;
-+	if (inode->i_nlink == 0)
-+		return -ENOENT;
+-/*
+- * ext3_mark_inode_dirty is somewhat expensive, so unlike ext2 we
+- * do not perform it in these functions.  We perform it at the call site,
+- * if it is needed.
+- */
+-static inline void ext3_inc_count(handle_t *handle, struct inode *inode)
+-{
+-	inc_nlink(inode);
+-}
+-
+-static inline void ext3_dec_count(handle_t *handle, struct inode *inode)
+-{
+-	drop_nlink(inode);
+-}
+-
+ static int ext3_add_nondir(handle_t *handle,
+ 		struct dentry *dentry, struct inode *inode)
+ {
+@@ -1642,7 +1627,7 @@ static int ext3_add_nondir(handle_t *han
+ 		d_instantiate(dentry, inode);
+ 		return 0;
+ 	}
+-	ext3_dec_count(handle, inode);
++	drop_nlink(inode);
+ 	iput(inode);
+ 	return err;
+ }
+@@ -2163,7 +2148,7 @@ retry:
+ 		err = __page_symlink(inode, symname, l,
+ 				mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS);
+ 		if (err) {
+-			ext3_dec_count(handle, inode);
++			drop_nlink(inode);
+ 			ext3_mark_inode_dirty(handle, inode);
+ 			iput (inode);
+ 			goto out_stop;
+@@ -2204,7 +2189,7 @@ retry:
+ 		handle->h_sync = 1;
  
- retry:
- 	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 	inode->i_ctime = CURRENT_TIME_SEC;
+-	ext3_inc_count(handle, inode);
++	inc_nlink(inode);
+ 	atomic_inc(&inode->i_count);
+ 
+ 	err = ext3_add_nondir(handle, dentry, inode);
 Index: linux-2.6.19/fs/ext4/namei.c
 ===================================================================
 --- linux-2.6.19.orig/fs/ext4/namei.c
 +++ linux-2.6.19/fs/ext4/namei.c
-@@ -2189,6 +2189,8 @@ static int ext4_link (struct dentry * ol
+@@ -1616,21 +1616,6 @@ static int ext4_delete_entry (handle_t *
+ 	return -ENOENT;
+ }
  
- 	if (inode->i_nlink >= EXT4_LINK_MAX)
- 		return -EMLINK;
-+	if (inode->i_nlink == 0)
-+		return -ENOENT;
+-/*
+- * ext4_mark_inode_dirty is somewhat expensive, so unlike ext2 we
+- * do not perform it in these functions.  We perform it at the call site,
+- * if it is needed.
+- */
+-static inline void ext4_inc_count(handle_t *handle, struct inode *inode)
+-{
+-	inc_nlink(inode);
+-}
+-
+-static inline void ext4_dec_count(handle_t *handle, struct inode *inode)
+-{
+-	drop_nlink(inode);
+-}
+-
+ static int ext4_add_nondir(handle_t *handle,
+ 		struct dentry *dentry, struct inode *inode)
+ {
+@@ -1640,7 +1625,7 @@ static int ext4_add_nondir(handle_t *han
+ 		d_instantiate(dentry, inode);
+ 		return 0;
+ 	}
+-	ext4_dec_count(handle, inode);
++	drop_nlink(inode);
+ 	iput(inode);
+ 	return err;
+ }
+@@ -2161,7 +2146,7 @@ retry:
+ 		err = __page_symlink(inode, symname, l,
+ 				mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS);
+ 		if (err) {
+-			ext4_dec_count(handle, inode);
++			drop_nlink(inode);
+ 			ext4_mark_inode_dirty(handle, inode);
+ 			iput (inode);
+ 			goto out_stop;
+@@ -2202,7 +2187,7 @@ retry:
+ 		handle->h_sync = 1;
  
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 	inode->i_ctime = CURRENT_TIME_SEC;
+-	ext4_inc_count(handle, inode);
++	inc_nlink(inode);
+ 	atomic_inc(&inode->i_count);
+ 
+ 	err = ext4_add_nondir(handle, dentry, inode);
