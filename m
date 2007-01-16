@@ -1,54 +1,84 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [RFC][PATCH 0/3] ext4 online defrag (ver 0.2)
-Date: Tue, 16 Jan 2007 12:41:52 -0800
-Message-ID: <20070116204152.GI27360@ca-server1.us.oracle.com>
-References: <20070116210346sho@rifu.tnes.nec.co.jp> <20070116192134.GB5236@schatzie.adilger.int>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] return ENOENT from ext3_link when racing with unlink
+Date: Tue, 16 Jan 2007 17:01:04 -0500
+Message-ID: <45AD4B20.70507@redhat.com>
+References: <45ABC572.2070206@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>, dmonakhov@sw.ru,
+	alex@clusterfs.com, Al Viro <viro@ftp.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet02.oracle.com ([148.87.113.119]:21800 "EHLO
-	rgminet02.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751487AbXAPUsR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jan 2007 15:48:17 -0500
-To: sho@tnes.nec.co.jp, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Content-Disposition: inline
-In-Reply-To: <20070116192134.GB5236@schatzie.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:59143 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751677AbXAPWCm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Jan 2007 17:02:42 -0500
+To: Eric Sandeen <sandeen@redhat.com>
+In-Reply-To: <45ABC572.2070206@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 16, 2007 at 12:21:34PM -0700, Andreas Dilger wrote:
-> On Jan 16, 2007  21:03 +0900, sho@tnes.nec.co.jp wrote:
-> > 2. The new entry "goal" is added on ext4_ext_defrag_data structure
-> >    which is passed to existing ioctl(EXT4_IOC_DEFRAG)
-> >    as the argument.  The kernel starts searching the free blocks
-> >    from "goal".  The command passes the physical block number
-> >    gotten in the above step(1) to the ioctl.
-> > 
-> > struct ext4_ext_defrag_data {
-> >         loff_t start_offset; /* start offset to defrag in byte */
-> >         loff_t defrag_size;  /* size of defrag in bytes */
-> > 	ext4_fsblk_t goal;   /* block offset for allocation */
-> > };
-> 
-> Two things of note:
-> - presumably the start_offset and defrag_size should be multiples of the
->   filesystem blocksize?  If they are not, is it an error or are they
->   adjusted to cover whole blocks?
+Eric Sandeen wrote:
+> An update from the earlier thread, [PATCH] [RFC] remove ext3 inode 
+> from orphan list when link and unlink race
+>
+> I think this is better than the original idea of trying to handle the 
+> race;
+> I've seen that the orphan inode list can get corrupted, but there may 
+> well
+> be other implications of the race which haven't yet been exposed.  I 
+> think
+> it's safer to simply return -ENOENT in this race window, and avoid other
+> potential problems.  Anything wrong with this?
+>
+> Thanks for the comments suggesting this approach in the prior thread.
+>
+> Thanks,
+>
+> -Eric
+>
+> ---
+>
+> Return -ENOENT from ext[34]_link if we've raced with unlink and
+> i_nlink is 0.  Doing otherwise has the potential to corrupt the
+> orphan inode list, because we'd wind up with an inode with a
+> non-zero link count on the list, and it will never get properly
+> cleaned up & removed from the orphan list before it is freed.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>
+> Index: linux-2.6.19/fs/ext3/namei.c
+> ===================================================================
+> --- linux-2.6.19.orig/fs/ext3/namei.c
+> +++ linux-2.6.19/fs/ext3/namei.c
+> @@ -2191,6 +2191,8 @@ static int ext3_link (struct dentry * ol
+>
+>     if (inode->i_nlink >= EXT3_LINK_MAX)
+>         return -EMLINK;
+> +    if (inode->i_nlink == 0)
+> +        return -ENOENT;
+>
+> retry:
+>     handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
+> Index: linux-2.6.19/fs/ext4/namei.c
+> ===================================================================
+> --- linux-2.6.19.orig/fs/ext4/namei.c
+> +++ linux-2.6.19/fs/ext4/namei.c
+> @@ -2189,6 +2189,8 @@ static int ext4_link (struct dentry * ol
+>
+>     if (inode->i_nlink >= EXT4_LINK_MAX)
+>         return -EMLINK;
+> +    if (inode->i_nlink == 0)
+> +        return -ENOENT;
+>
+> retry:
+>     handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+>
 
-	In fact, why aren't the units in blocks?  THe filesystem isn't
-really going to deal with anything smaller, is it?
+Just out of curosity, what keeps i_nlink from going to 0 immediately
+after the new test is executed?
 
-Joel
+    Thanx...
 
--- 
-
-Life's Little Instruction Book #335
-
-	"Every so often, push your luck."
-
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+       ps
