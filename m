@@ -1,178 +1,172 @@
-From: Hugh Dickins <hugh@veritas.com>
-Subject: Re: umask ignored in mkdir(2)?
-Date: Mon, 15 Jan 2007 22:01:52 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0701152145250.7733@blonde.wat.veritas.com>
-References: <Pine.LNX.4.61.0701142034300.18638@ginsburg.homenet>
- <Pine.LNX.4.61.0701142039301.18638@ginsburg.homenet>
- <Pine.LNX.4.61.0701142058110.18997@ginsburg.homenet>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: [Resubmit][PATCH 1/1] Extent overlap bugfix in ext4
+Date: Tue, 16 Jan 2007 15:43:16 +0530
+Message-ID: <20070116101316.GA1763@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@osdl.org>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751400AbXAOWBj@vger.kernel.org>
-Received: from blonde.wat.veritas.com([10.10.97.7]) (7555 bytes) by megami.veritas.com
-	via sendmail with P:esmtp/R:smart_host/T:smtp
-	(sender: <hugh@veritas.com>)
-	id <m1H6ZtY-0000UTC@megami.veritas.com>
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Jan 2007 14:01:36 -0800 (PST)
-	(Smail-3.2.0.101 1997-Dec-17 #15 built 2001-Aug-30)
-To: Tigran Aivazian <tigran@aivazian.fsnet.co.uk>
-In-Reply-To: <Pine.LNX.4.61.0701142058110.18997@ginsburg.homenet>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: suparna@in.ibm.com, cmm@us.ibm.com, alex@clusterfs.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:51736 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750698AbXAPKNc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Jan 2007 05:13:32 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0GADPd2005294
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jan 2007 05:13:25 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0GADPK1287222
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jan 2007 05:13:25 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0GADP7J026014
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jan 2007 05:13:25 -0500
+To: linux-ext4@vger.kernel.org
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-[I've rearranged this to avoid a horrid mix of top and bottom posting]
+Note: This patch is being resubmitted as part of the recall of all the
+patches for ext4. It uses 2.6.20-rc5 version as the base.
 
-On Sun, 14 Jan 2007, Tigran Aivazian wrote:
-> On Sun, 14 Jan 2007, Tigran Aivazian wrote:
-> > On Sun, 14 Jan 2007, Tigran Aivazian wrote:
-> > > I think I may have found a bug --- on one of my machines the umask value
-> > > is ignored by ext3 (but honoured on tmpfs) for mkdir system call:
-> > > 
-> > > $ cd /tmp
-> > > $ df -T .
-> > > Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> > > /dev/hdf1     ext3   189238556 155721568  23749068  87% /
-> > > $ rmdir ok ; mkdir ok ; ls -ld ok
-> > > rmdir: ok: No such file or directory
-> > > drwxrwxrwx 2 tigran tigran 4096 Jan 14 20:36 ok/
-> > > $ umask
-> > > 0022
-> > > $ cd /dev/shm
-> > > $ df -T .
-> > > Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> > > tmpfs        tmpfs      517988         0    517988   0% /dev/shm
-> > > $ rmdir ok ; mkdir ok ; ls -ld ok
-> > > rmdir: ok: No such file or directory
-> > > drwxr-xr-x 2 tigran tigran 40 Jan 14 20:36 ok/
-> > > $ uname -a
-> > > Linux ws 2.6.19.1 #6 SMP Sun Jan 14 20:03:30 GMT 2007 i686 i686 i386
-> > > GNU/Linux
-> > > $ grep -i acl /usr/src/linux/.config
-> > > # CONFIG_FS_POSIX_ACL is not set
-> > > # CONFIG_TMPFS_POSIX_ACL is not set
-> > > # CONFIG_NFS_V3_ACL is not set
-> > > # CONFIG_NFSD_V3_ACL is not set
-> > > 
-> > > As you see, ACL is not configured in, and neither are extended attributes:
-> > > 
-> > > $ grep -i xattr /usr/src/linux/.config
-> > > # CONFIG_EXT2_FS_XATTR is not set
-> > > # CONFIG_EXT3_FS_XATTR is not set
-> > > 
-> > > So, this is something fs-specific. What do you think?
-> >
-> > I forgot to mention that on another machine running the same kernel version
-> > with the same (as close as a UP machine can be to SMP) kernel configuration
-> > the umask is honoured properly on ext3 filesystem.
-> 
-> I figured it out! I thought you might be interested --- the reason is the
-> mismatch between the default mount options stored in the superblock on disk
-> and the filesystem features compiled into the kernel.
-> 
-> Namely, dumpe2fs on the offending filesystems showed the following default
-> mount options:
-> 
-> user_xattr acl
-> 
-> but on good filesystems it showed "(none)". So, I used "tune2fs -o ^acl"
-> (and ^user_xattr) to clear these in the superblock and mounted the filesystem
-> --- and now mkdir system call works as expected, i.e. honours the umask.
-> 
-> Maybe the ext3 filesystem should automatically detect this (the mismatch) and
-> printk a warning so the user is told that his filesystem is mounted in
-> extremely insecure way, i.e. making directories as root will result in lots of
-> 0777 places (e.g. try "make modules_install" --- this will create lots of
-> security holes in /lib/modules).
-> 
-> I cc'd linux-kernel as someone may wish to fix this.
+Problem Description:
+-------------------
+The ext4_ext_get_blocks() and ext4_ext_insert_extent() routines do not
+have a complete check for extent overlap, when a new extent needs to be
+inserted in an inode. With the current implementation, an overlap is
+possible when the new extent being inserted has ee_block that is not
+part of any of the existing extents, but the tail/center portion of this
+new extent _is_. This is possible only when we are writing/preallocating
+blocks across a hole.
+Though this problem was discovered while stress testing persistent
+preallocation patches (using modified fsx-linux); this essentially is an
+independent problem and should be fixed by a separate patch. Hence this
+fix.
 
-Good find!  Though I suppose not much of a worry for distros,
-whose kernels will always(?) have ACLs configured in.
+The Fix:
+-------
+The suggested patch fixes this by having a check in get_blocks() for
+finding if the new extent overlaps with an existing one. If it does, the
+length of the new extent is modified such that the overlap does not
+happen at all.
 
-I get sooo confused when there's multiple ways of switching something
-on and off (at the ifdef level and at the mount opts level and at the
-tuning level), looks like others do too.  Here's my third version of
-a patch, already wondering if a fourth would be better (at the point
-where they set s_flags) ... no, I think this one is more robust...
+Other option discussed:
+----------------------
+The other option discussed was to not to use ext4_ext_get_blocks() for
+persistent preallocation, and use ext4_ext_walk_space() with some helper
+function instead. This was considered because walk_space() already does
+a complete check for overlap and hence we can avoid duplication of this
+part of the logic in get_blocks(). But, again, there will be a
+duplication of code in the new helper function that may be required for
+this (like, calling ext4_new_blocks() and ext4_ext_insert_extent()).
+
+Updates from the original (first) version:
+-----------------------------------------
+This patch takes care of following review comments from Mingming, Alex
+and Suparna:
+(a) Not to use ext4_ext_find_extent() in check_overlap(), since it is an
+expensive operation.
+(b) Use "unsigned long" for (logical) block numbers everywhere.
+(c) Return true/false by check_overlap(), rather than extent pointer or
+the block number.
+(d) Update the length of the new extent in check_overlap(), if there is
+an overlap detected.
+(e) No need to have a check in insert_extent() (i.e. no BUG_ON required)
 
 
-[PATCH] fix umask when noACL kernel meets extN tuned for ACLs
+Here is the patch:
 
-Fix insecure default behaviour reported by Tigran Aivazian: if an ext2
-or ext3 or ext4 filesystem is tuned to mount with "acl", but mounted by
-a kernel built without ACL support, then umask was ignored when creating
-inodes - though root or user has umask 022, touch creates files as 0666,
-and mkdir creates directories as 0777.
-
-This appears to have worked right until 2.6.11, when a fix to the default
-mode on symlinks (always 0777) assumed VFS applies umask: which it does,
-unless the mount is marked for ACLs; but ext[234] set MS_POSIXACL in
-s_flags according to s_mount_opt set according to def_mount_opts.
-
-We could revert to the 2.6.10 ext[234]_init_acl (adding an S_ISLNK test);
-but other filesystems only set MS_POSIXACL when ACLs are configured.  We
-could fix this at another level; but it seems most robust to avoid setting
-the s_mount_opt flag in the first place (at the expense of more ifdefs).
-
-Likewise don't set the XATTR_USER flag when built without XATTR support.
-
-Signed-off-by: Hugh Dickins <hugh@veritas.com>
+Signed-off-by: Amit Arora <aarora@in.ibm.com>
 ---
+ fs/ext4/extents.c               |   50 ++++++++++++++++++++++++++++++++++++++--
+ include/linux/ext4_fs_extents.h |    1 
+ 2 files changed, 49 insertions(+), 2 deletions(-)
 
- fs/ext2/super.c |    4 ++++
- fs/ext3/super.c |    4 ++++
- fs/ext4/super.c |    4 ++++
- 3 files changed, 12 insertions(+)
-
---- 2.6.20-rc5/fs/ext2/super.c	2007-01-13 08:46:07.000000000 +0000
-+++ linux/fs/ext2/super.c	2007-01-15 20:48:38.000000000 +0000
-@@ -708,10 +708,14 @@ static int ext2_fill_super(struct super_
- 		set_opt(sbi->s_mount_opt, GRPID);
- 	if (def_mount_opts & EXT2_DEFM_UID16)
- 		set_opt(sbi->s_mount_opt, NO_UID32);
-+#ifdef CONFIG_EXT2_FS_XATTR
- 	if (def_mount_opts & EXT2_DEFM_XATTR_USER)
- 		set_opt(sbi->s_mount_opt, XATTR_USER);
-+#endif
-+#ifdef CONFIG_EXT2_FS_POSIX_ACL
- 	if (def_mount_opts & EXT2_DEFM_ACL)
- 		set_opt(sbi->s_mount_opt, POSIX_ACL);
-+#endif
- 	
- 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
- 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
---- 2.6.20-rc5/fs/ext3/super.c	2007-01-13 08:46:07.000000000 +0000
-+++ linux/fs/ext3/super.c	2007-01-15 20:48:38.000000000 +0000
-@@ -1459,10 +1459,14 @@ static int ext3_fill_super (struct super
- 		set_opt(sbi->s_mount_opt, GRPID);
- 	if (def_mount_opts & EXT3_DEFM_UID16)
- 		set_opt(sbi->s_mount_opt, NO_UID32);
-+#ifdef CONFIG_EXT3_FS_XATTR
- 	if (def_mount_opts & EXT3_DEFM_XATTR_USER)
- 		set_opt(sbi->s_mount_opt, XATTR_USER);
-+#endif
-+#ifdef CONFIG_EXT3_FS_POSIX_ACL
- 	if (def_mount_opts & EXT3_DEFM_ACL)
- 		set_opt(sbi->s_mount_opt, POSIX_ACL);
-+#endif
- 	if ((def_mount_opts & EXT3_DEFM_JMODE) == EXT3_DEFM_JMODE_DATA)
- 		sbi->s_mount_opt |= EXT3_MOUNT_JOURNAL_DATA;
- 	else if ((def_mount_opts & EXT3_DEFM_JMODE) == EXT3_DEFM_JMODE_ORDERED)
---- 2.6.20-rc5/fs/ext4/super.c	2007-01-13 08:46:07.000000000 +0000
-+++ linux/fs/ext4/super.c	2007-01-15 20:48:38.000000000 +0000
-@@ -1518,10 +1518,14 @@ static int ext4_fill_super (struct super
- 		set_opt(sbi->s_mount_opt, GRPID);
- 	if (def_mount_opts & EXT4_DEFM_UID16)
- 		set_opt(sbi->s_mount_opt, NO_UID32);
-+#ifdef CONFIG_EXT4DEV_FS_XATTR
- 	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
- 		set_opt(sbi->s_mount_opt, XATTR_USER);
-+#endif
-+#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
- 	if (def_mount_opts & EXT4_DEFM_ACL)
- 		set_opt(sbi->s_mount_opt, POSIX_ACL);
-+#endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		sbi->s_mount_opt |= EXT4_MOUNT_JOURNAL_DATA;
- 	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
+Index: linux-2.6.20-rc5/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.20-rc5.orig/fs/ext4/extents.c
++++ linux-2.6.20-rc5/fs/ext4/extents.c
+@@ -1129,6 +1129,45 @@ ext4_can_extents_be_merged(struct inode 
+ }
+ 
+ /*
++ * ext4_ext_check_overlap:
++ * check if a portion of the "newext" extent overlaps with an
++ * existing extent.
++ *
++ * If there is an overlap discovered, it updates the length of the newext
++ * such that there will be no overlap, and then returns 1.
++ * If there is no overlap found, it returns 0.
++ */
++unsigned int ext4_ext_check_overlap(struct inode *inode,
++					struct ext4_extent *newext,
++					struct ext4_ext_path *path)
++{
++	unsigned long b1, b2;
++	unsigned int depth, len1;
++
++	b1 = le32_to_cpu(newext->ee_block);
++	len1 = le16_to_cpu(newext->ee_len);
++	depth = ext_depth(inode);
++	if (!path[depth].p_ext)
++		goto out;
++	b2 = le32_to_cpu(path[depth].p_ext->ee_block);
++
++	/* get the next allocated block if the extent in the path
++	 * is before the requested block(s) */
++	if (b2 < b1) {
++		b2 = ext4_ext_next_allocated_block(path);
++		if (b2 == EXT_MAX_BLOCK)
++			goto out;
++	}
++
++	if (b1 + len1 > b2) {
++		newext->ee_len = cpu_to_le16(b2 - b1);
++		return 1;
++	}
++out:
++	return 0;
++}
++
++/*
+  * ext4_ext_insert_extent:
+  * tries to merge requsted extent into the existing extent or
+  * inserts requested extent as new one into the tree,
+@@ -2032,7 +2071,15 @@ int ext4_ext_get_blocks(handle_t *handle
+ 
+ 	/* allocate new block */
+ 	goal = ext4_ext_find_goal(inode, path, iblock);
+-	allocated = max_blocks;
++
++	/* Check if we can really insert (iblock)::(iblock+max_blocks) extent */
++	newex.ee_block = cpu_to_le32(iblock);
++	newex.ee_len = cpu_to_le16(max_blocks);
++	err = ext4_ext_check_overlap(inode, &newex, path);
++	if (err)
++		allocated = le16_to_cpu(newex.ee_len);
++	else
++		allocated = max_blocks;
+ 	newblock = ext4_new_blocks(handle, inode, goal, &allocated, &err);
+ 	if (!newblock)
+ 		goto out2;
+@@ -2040,7 +2087,6 @@ int ext4_ext_get_blocks(handle_t *handle
+ 			goal, newblock, allocated);
+ 
+ 	/* try to insert new extent into found leaf and return */
+-	newex.ee_block = cpu_to_le32(iblock);
+ 	ext4_ext_store_pblock(&newex, newblock);
+ 	newex.ee_len = cpu_to_le16(allocated);
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
+Index: linux-2.6.20-rc5/include/linux/ext4_fs_extents.h
+===================================================================
+--- linux-2.6.20-rc5.orig/include/linux/ext4_fs_extents.h
++++ linux-2.6.20-rc5/include/linux/ext4_fs_extents.h
+@@ -190,6 +190,7 @@ ext4_ext_invalidate_cache(struct inode *
+ 
+ extern int ext4_extent_tree_init(handle_t *, struct inode *);
+ extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
++extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
+ extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
+ extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
+ extern struct ext4_ext_path * ext4_ext_find_extent(struct inode *, int, struct ext4_ext_path *);
+--
+Regards,
+Amit Arora
