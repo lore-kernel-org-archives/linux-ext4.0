@@ -1,345 +1,59 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [Patch 2/2] support for writing to uninitialized extent
-Date: Wed, 17 Jan 2007 15:48:28 +0530
-Message-ID: <20070117101828.GC17390@amitarora.in.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>
+From: "Takashi Sato" <sho@tnes.nec.co.jp>
+Subject: Re: [RFC][PATCH 0/3] ext4 online defrag (ver 0.2)
+Date: Wed, 17 Jan 2007 20:23:27 +0900
+Message-ID: <02bb01c73a29$eb846120$4168010a@bsd.tnes.nec.co.jp>
+References: <20070116210346sho@rifu.tnes.nec.co.jp> <20070116192134.GB5236@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: suparna@in.ibm.com, cmm@us.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:40796 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932186AbXAQKSd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jan 2007 05:18:33 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0HAJ71Q020566
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 05:19:07 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0HAIVRO148182
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 05:18:31 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0HAIVhx009783
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 05:18:31 -0500
-To: linux-ext4@vger.kernel.org
-Content-Disposition: inline
-In-Reply-To: <20070117094658.GA17390@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain;
+	format=flowed;
+	charset="ISO-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "Joel Becker" <Joel.Becker@oracle.com>,
+	"Andreas Dilger" <adilger@clusterfs.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds the support for writing to an uninitialized extent (the
-extent which was created as a result of persistent preallocation).
+Hi,
 
-Signed-off-by: Amit Arora <aarora@in.ibm.com>
----
- fs/ext4/extents.c               |  228 +++++++++++++++++++++++++++++++++++-----
- include/linux/ext4_fs_extents.h |    1 
- 2 files changed, 202 insertions(+), 27 deletions(-)
+> On Jan 16, 2007  21:03 +0900, sho@tnes.nec.co.jp wrote:
+>> 1. Add new ioctl(EXT4_IOC_DEFRAG) which returns the first physical
+>>    block number of the specified file.  With this ioctl, a command
+>>    gets the specified directory's.
+>
+> Maybe I don't understand, but how is this different from the long-time
+> FIBMAP ioctl?
 
-Index: linux-2.6.20-rc5/fs/ext4/extents.c
-===================================================================
---- linux-2.6.20-rc5.orig/fs/ext4/extents.c
-+++ linux-2.6.20-rc5/fs/ext4/extents.c
-@@ -1141,6 +1141,51 @@ ext4_can_extents_be_merged(struct inode 
- }
- 
- /*
-+ * ext4_ext_try_to_merge:
-+ * tries to merge the "ex" extent to the next extent in the tree.
-+ * It always tries to merge towards right. If you want to merge towards
-+ * left, pass "ex - 1" as argument instead of "ex".
-+ * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-+ * 1 if they got merged.
-+ */
-+int ext4_ext_try_to_merge(struct inode *inode,
-+				struct ext4_ext_path *path,
-+				struct ext4_extent *ex)
-+{
-+	struct ext4_extent_header *eh;
-+	unsigned int depth, len;
-+	int merge_done=0, uninitialized = 0;
-+
-+	depth = ext_depth(inode);
-+	BUG_ON(path[depth].p_hdr == NULL);
-+	eh = path[depth].p_hdr;
-+
-+	while (ex < EXT_LAST_EXTENT(eh)) {
-+		if (!ext4_can_extents_be_merged(inode, ex, ex + 1))
-+			break;
-+		/* merge with next extent! */
-+		if (ext4_ext_is_uninitialized(ex))
-+			uninitialized = 1;
-+		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
-+					+ ext4_ext_get_actual_len(ex + 1));
-+		if (uninitialized)
-+			ext4_ext_mark_uninitialized(ex);
-+
-+		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
-+			len = (EXT_LAST_EXTENT(eh) - ex - 1)
-+					* sizeof(struct ext4_extent);
-+			memmove(ex + 1, ex + 2, len);
-+		}
-+		eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)-1);
-+		merge_done = 1;
-+		BUG_ON(eh->eh_entries == 0);
-+	}
-+
-+	return merge_done;
-+}
-+
-+
-+/*
-  * ext4_ext_check_overlap:
-  * check if a portion of the "newext" extent overlaps with an
-  * existing extent.
-@@ -1316,25 +1361,7 @@ has_space:
- 
- merge:
- 	/* try to merge extents to the right */
--	while (nearex < EXT_LAST_EXTENT(eh)) {
--		if (!ext4_can_extents_be_merged(inode, nearex, nearex + 1))
--			break;
--		/* merge with next extent! */
--		if (ext4_ext_is_uninitialized(nearex))
--			uninitialized = 1;
--		nearex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(nearex)
--					+ ext4_ext_get_actual_len(nearex + 1));
--		if (uninitialized)
--			ext4_ext_mark_uninitialized(nearex);
--
--		if (nearex + 1 < EXT_LAST_EXTENT(eh)) {
--			len = (EXT_LAST_EXTENT(eh) - nearex - 1)
--					* sizeof(struct ext4_extent);
--			memmove(nearex + 1, nearex + 2, len);
--		}
--		eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)-1);
--		BUG_ON(eh->eh_entries == 0);
--	}
-+	ext4_ext_try_to_merge(inode, path, nearex);
- 
- 	/* try to merge extents to the left */
- 
-@@ -1999,15 +2026,149 @@ void ext4_ext_release(struct super_block
- #endif
- }
- 
-+/*
-+ * ext4_ext_convert_to_initialized:
-+ * this function is called by ext4_ext_get_blocks() if someone tries to write
-+ * to an uninitialized extent. It may result in splitting the uninitialized
-+ * extent into multiple extents (upto three). Atleast one initialized extent
-+ * and atmost two uninitialized extents can result.
-+ * There are three possibilities:
-+ *   a> No split required: Entire extent should be initialized.
-+ *   b> Split into two extents: Only one end of the extent is being written to.
-+ *   c> Split into three extents: Somone is writing in middle of the extent.
-+ */
-+int ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
-+					struct ext4_ext_path *path,
-+					ext4_fsblk_t iblock,
-+					unsigned long max_blocks)
-+{
-+	struct ext4_extent *ex, *ex1 = NULL, *ex2 = NULL, *ex3 = NULL, newex;
-+	struct ext4_extent_header *eh;
-+	unsigned int allocated, ee_block, ee_len, depth;
-+	ext4_fsblk_t newblock;
-+	int err = 0, ret = 0;
-+
-+	depth = ext_depth(inode);
-+	eh = path[depth].p_hdr;
-+	ex = path[depth].p_ext;
-+	ee_block = le32_to_cpu(ex->ee_block);
-+	ee_len = ext4_ext_get_actual_len(ex);
-+	allocated = ee_len - (iblock - ee_block);
-+	newblock = iblock - ee_block + ext_pblock(ex);
-+	ex2 = ex;
-+
-+	/* ex1: ee_block to iblock - 1 : uninitialized */
-+	if (iblock > ee_block) {
-+		ex1 = ex;
-+		ex1->ee_len = cpu_to_le16(iblock - ee_block);
-+		ext4_ext_mark_uninitialized(ex1);
-+		ex2 = &newex;
-+	}
-+	/* for sanity, update the length of the ex2 extent before
-+	 * we insert ex3, if ex1 is NULL. This is to avoid temporary
-+	 * overlap of blocks.
-+	 */
-+	if (!ex1 && allocated > max_blocks)
-+		ex2->ee_len = cpu_to_le16(max_blocks);
-+	/* ex3: to ee_block + ee_len : uninitialised */
-+	if (allocated > max_blocks) {
-+		unsigned int newdepth;
-+		ex3 = &newex;
-+		ex3->ee_block = cpu_to_le32(iblock + max_blocks);
-+		ext4_ext_store_pblock(ex3, newblock + max_blocks);
-+		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
-+		ext4_ext_mark_uninitialized(ex3);
-+		err = ext4_ext_insert_extent(handle, inode, path, ex3);
-+		if (err)
-+			goto out;
-+		/* The depth, and hence eh & ex might change
-+		 * as part of the insert above.
-+		 */
-+		newdepth = ext_depth(inode);
-+		if (newdepth != depth)
-+		{
-+			depth=newdepth;
-+			path = ext4_ext_find_extent(inode, iblock, NULL);
-+			if (IS_ERR(path)) {
-+				err = PTR_ERR(path);
-+				path = NULL;
-+				goto out;
-+			}
-+			eh = path[depth].p_hdr;
-+			ex = path[depth].p_ext;
-+			if (ex2 != &newex)
-+				ex2 = ex;
-+		}
-+		allocated = max_blocks;
-+	}
-+	/* If there was a change of depth as part of the
-+	 * insertion of ex3 above, we need to update the length
-+	 * of the ex1 extent again here
-+	 */
-+	if (ex1 && ex1 != ex) {
-+		ex1 = ex;
-+		ex1->ee_len = cpu_to_le16(iblock - ee_block);
-+		ext4_ext_mark_uninitialized(ex1);
-+		ex2 = &newex;
-+	}
-+	/* ex2: iblock to iblock + maxblocks-1 : initialised */
-+	ex2->ee_block = cpu_to_le32(iblock);
-+	ex2->ee_start = newblock;
-+	ext4_ext_store_pblock(ex2, newblock);
-+	ex2->ee_len = cpu_to_le16(allocated);
-+	if (ex2 != ex)
-+		goto insert;
-+	if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		goto out;
-+	/* New (initialized) extent starts from the first block
-+	 * in the current extent. i.e., ex2 == ex
-+	 * We have to see if it can be merged with the extent
-+	 * on the left.
-+	 */
-+	if (ex2 > EXT_FIRST_EXTENT(eh)) {
-+		/* To merge left, pass "ex2 - 1" to try_to_merge(),
-+		 * since it merges towards right _only_.
-+		 */
-+		ret = ext4_ext_try_to_merge(inode, path, ex2 - 1);
-+		if (ret) {
-+			err = ext4_ext_correct_indexes(handle, inode, path);
-+			if (err)
-+				goto out;
-+			depth = ext_depth(inode);
-+			ex2--;
-+		}
-+	}
-+	/* Try to Merge towards right. This might be required
-+	 * only when the whole extent is being written to.
-+	 * i.e. ex2==ex and ex3==NULL.
-+	 */
-+	if (!ex3) {
-+		ret = ext4_ext_try_to_merge(inode, path, ex2);
-+		if (ret) {
-+			err = ext4_ext_correct_indexes(handle, inode, path);
-+			if (err)
-+				goto out;
-+		}
-+	}
-+	/* Mark modified extent as dirty */
-+	err = ext4_ext_dirty(handle, inode, path + depth);
-+	goto out;
-+insert:
-+	err = ext4_ext_insert_extent(handle, inode, path, &newex);
-+out:
-+	return err ? err : allocated;
-+}
-+
- int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t iblock,
- 			unsigned long max_blocks, struct buffer_head *bh_result,
- 			int create, int extend_disksize)
- {
- 	struct ext4_ext_path *path = NULL;
-+	struct ext4_extent_header *eh;
- 	struct ext4_extent newex, *ex;
- 	ext4_fsblk_t goal, newblock;
--	int err = 0, depth;
-+	int err = 0, depth, ret;
- 	unsigned long allocated = 0;
- 
- 	__clear_bit(BH_New, &bh_result->b_state);
-@@ -2055,6 +2216,7 @@ int ext4_ext_get_blocks(handle_t *handle
- 	 * this is why assert can't be put in ext4_ext_find_extent()
- 	 */
- 	BUG_ON(path[depth].p_ext == NULL && depth != 0);
-+	eh = path[depth].p_hdr;
- 
- 	ex = path[depth].p_ext;
- 	if (ex) {
-@@ -2063,13 +2225,9 @@ int ext4_ext_get_blocks(handle_t *handle
- 		unsigned short ee_len;
- 
- 		/*
--		 * Allow future support for preallocated extents to be added
--		 * as an RO_COMPAT feature:
- 		 * Uninitialized extents are treated as holes, except that
--		 * we avoid (fail) allocating new blocks during a write.
-+		 * we split out initialized portions during a write.
- 		 */
--		if (le16_to_cpu(ex->ee_len) > EXT_MAX_LEN)
--			goto out2;
- 		ee_len = ext4_ext_get_actual_len(ex);
- 		/* if found extent covers block, simply return it */
- 	        if (iblock >= ee_block && iblock < ee_block + ee_len) {
-@@ -2078,12 +2236,27 @@ int ext4_ext_get_blocks(handle_t *handle
- 			allocated = ee_len - (iblock - ee_block);
- 			ext_debug("%d fit into %lu:%d -> %llu\n", (int) iblock,
- 					ee_block, ee_len, newblock);
-+
- 			/* Do not put uninitialized extent in the cache */
--			if (!ext4_ext_is_uninitialized(ex))
-+			if (!ext4_ext_is_uninitialized(ex)) {
- 				ext4_ext_put_in_cache(inode, ee_block,
- 							ee_len, ee_start,
- 							EXT4_EXT_CACHE_EXTENT);
--			goto out;
-+				goto out;
-+			}
-+			if (create == EXT4_CREATE_UNINITIALIZED_EXT)
-+				goto out;
-+			if (!create)
-+				goto out2;
-+
-+			ret = ext4_ext_convert_to_initialized(handle, inode,
-+								path, iblock,
-+								max_blocks);
-+			if (ret <= 0)
-+				goto out2;
-+			else
-+				allocated = ret;
-+			goto outnew;
- 		}
- 	}
- 
-@@ -2135,6 +2308,7 @@ int ext4_ext_get_blocks(handle_t *handle
- 
- 	/* previous routine could use block we allocated */
- 	newblock = ext_pblock(&newex);
-+outnew:
- 	__set_bit(BH_New, &bh_result->b_state);
- 
- 	/* Cache only when it is _not_ an uninitialized extent */
-Index: linux-2.6.20-rc5/include/linux/ext4_fs_extents.h
-===================================================================
---- linux-2.6.20-rc5.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.20-rc5/include/linux/ext4_fs_extents.h
-@@ -203,6 +203,7 @@ ext4_ext_invalidate_cache(struct inode *
- 
- extern int ext4_extent_tree_init(handle_t *, struct inode *);
- extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
-+extern int ext4_ext_try_to_merge(struct inode *, struct ext4_ext_path *, struct ext4_extent *);
- extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
- extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
+I can use FIBMAP instead of my new ioctl.
+You are right.  I should have used FIBMAP ioctl...
+
+>> struct ext4_ext_defrag_data {
+>>         loff_t start_offset; /* start offset to defrag in byte */
+>>         loff_t defrag_size;  /* size of defrag in bytes */
+>> ext4_fsblk_t goal;   /* block offset for allocation */
+>> };
+>
+> Two things of note:
+> - presumably the start_offset and defrag_size should be multiples of the
+>  filesystem blocksize?  If they are not, is it an error or are they
+>  adjusted to cover whole blocks?
+
+Given the value which isn't multiples of the blocksize,
+they are adjusted to cover whole blocks in the kernel.
+
+But I think that it isn't clean that the unit of goal is different from
+start_offset and defrag_size.  I will change their unit into a blocksize
+in the next update.
+
+> - in previous defrag discussions (i.e. XFS defrag), it was desirable to
+>  allow specifying different types of goals (e.g. hard, soft, kernel picks).
+>  We may as well have a structure that allows these to be specified, instead
+>  of having to change the interface afterward.
+
+Let me see...  Is it the following discussion?
+http://marc.theaimsgroup.com/?l=linux-ext4&m=116161490908645&w=2
+http://marc.theaimsgroup.com/?l=linux-ext4&m=116184475306761&w=2
+
+Cheers, Takashi
