@@ -1,52 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Resubmit][Patch 0/2] Persistent preallocation in ext4
-Date: Wed, 17 Jan 2007 16:33:52 -0600
-Message-ID: <45AEA450.1050100@redhat.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <45AEA13B.6070606@us.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] [RFC] remove ext3 inode from orphan list when link and unlink race
+Date: Wed, 17 Jan 2007 15:43:04 -0700
+Message-ID: <20070117224304.GM5236@schatzie.adilger.int>
+References: <45A7F384.3050303@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38554 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750860AbXAQWk0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jan 2007 17:40:26 -0500
-To: Mingming Cao <cmm@us.ibm.com>
-In-Reply-To: <45AEA13B.6070606@us.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:46773 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750946AbXAQWnL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jan 2007 17:43:11 -0500
+To: Eric Sandeen <sandeen@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <45A7F384.3050303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mingming Cao wrote:
-> Amit K. Arora wrote:
-> 
->> Outstanding Issues:
->> ------------------
->> (1) The final interface is yet to be decided. We have the option of
->> chosing from one of these:
->> 	a> modifying posix_fallocate() in glibc
->> 	b> using fcntl
->> 	c> using ftruncate, or
->> 	d> using the ioctl interface.
->>
->>   If we go with ioctl interface, we need to chose the return
->> value from the ioctl. We should either return "0" for success and
->> errno for failure, or we should be returning number of bytes
->> preallocated.
->>
-> 
-> Now I am more prefer just return 0 for success. Returning the number of 
-> bytes preallocated back to userspace might be helpful in the case when 
-> the specified window contains blocks already being allocated, but this 
-> should not be a common case.
+On Jan 12, 2007  14:45 -0600, Eric Sandeen wrote:
+> p.s. ext3_inc_count and ext3_dec_count seem misnamed, have an unused
+> arg, and are very infrequently called.  I'll probably submit a patch
+> to just put the single line of code into the caller, too.
 
-I tend to agree; I'm not exactly sure what the "bytes/blocks allocated"
-return would be useful for?  What would the caller do with this information?
+I use those functions in the > 32000 subdirs patch to handle the case
+where a directory overflows the i_nlinks counter and needs to be set
+to have i_nlinks = 1.
 
-Also, is ftruncate really even an option for this interface?  Wouldn't
-that mean the end of sparse files?
+Patch was posted previously, but rejected because there is a potential
+for directory loss if the filesystem is mounted on an older kernel
+(i_nlinks == 1, subdir is removed, directory is truncated).  I need to
+add an ROCOMPAT feature in order to handle this, but haven't gotten
+around to doing it.
 
-Thanks,
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
