@@ -1,59 +1,65 @@
-From: "Takashi Sato" <sho@tnes.nec.co.jp>
-Subject: Re: [RFC][PATCH 0/3] ext4 online defrag (ver 0.2)
-Date: Wed, 17 Jan 2007 20:23:27 +0900
-Message-ID: <02bb01c73a29$eb846120$4168010a@bsd.tnes.nec.co.jp>
-References: <20070116210346sho@rifu.tnes.nec.co.jp> <20070116192134.GB5236@schatzie.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [Resubmit][Patch 0/2] Persistent preallocation in ext4
+Date: Wed, 17 Jan 2007 14:20:43 -0800
+Message-ID: <45AEA13B.6070606@us.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="ISO-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-To: "Joel Becker" <Joel.Becker@oracle.com>,
-	"Andreas Dilger" <adilger@clusterfs.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
+	suzuki@in.ibm.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:50574 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751853AbXAQWUs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jan 2007 17:20:48 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0HMJMte025367
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 17:19:22 -0500
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0HMKjVn525062
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 15:20:45 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0HMKjtQ025841
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 15:20:45 -0700
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+In-Reply-To: <20070117094658.GA17390@amitarora.in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+Amit K. Arora wrote:
 
-> On Jan 16, 2007  21:03 +0900, sho@tnes.nec.co.jp wrote:
->> 1. Add new ioctl(EXT4_IOC_DEFRAG) which returns the first physical
->>    block number of the specified file.  With this ioctl, a command
->>    gets the specified directory's.
->
-> Maybe I don't understand, but how is this different from the long-time
-> FIBMAP ioctl?
+> Outstanding Issues:
+> ------------------
+> (1) The final interface is yet to be decided. We have the option of
+> chosing from one of these:
+> 	a> modifying posix_fallocate() in glibc
+> 	b> using fcntl
+> 	c> using ftruncate, or
+> 	d> using the ioctl interface.
+> 
+>   If we go with ioctl interface, we need to chose the return
+> value from the ioctl. We should either return "0" for success and
+> errno for failure, or we should be returning number of bytes
+> preallocated.
+> 
 
-I can use FIBMAP instead of my new ioctl.
-You are right.  I should have used FIBMAP ioctl...
+Now I am more prefer just return 0 for success. Returning the number of 
+bytes preallocated back to userspace might be helpful in the case when 
+the specified window contains blocks already being allocated, but this 
+should not be a common case.
 
->> struct ext4_ext_defrag_data {
->>         loff_t start_offset; /* start offset to defrag in byte */
->>         loff_t defrag_size;  /* size of defrag in bytes */
->> ext4_fsblk_t goal;   /* block offset for allocation */
->> };
->
-> Two things of note:
-> - presumably the start_offset and defrag_size should be multiples of the
->  filesystem blocksize?  If they are not, is it an error or are they
->  adjusted to cover whole blocks?
+> (2) Also, we need to decide on what should happen in case of a
+> partial success scenario. i.e. after few blocks get preallocated, we hit
+> some error - say ENOSPC. Should the call just return the number of bytes
+> preallocated, or should it "undo" the partial preallocation and then
+> exit with error code ?
+> 
+I think we should try to avoid this partial preallocation at the first 
+place. Probably checking the number of free blocks before calling 
+ext4_ext_get_blocks() and returns -ENOSPC if there isn't enough free 
+blocks to allocate. Otherwise, if it still hits ENOSPC error, I think it 
+doesn't hurt to leave the partial preallocated blocks there.
 
-Given the value which isn't multiples of the blocksize,
-they are adjusted to cover whole blocks in the kernel.
-
-But I think that it isn't clean that the unit of goal is different from
-start_offset and defrag_size.  I will change their unit into a blocksize
-in the next update.
-
-> - in previous defrag discussions (i.e. XFS defrag), it was desirable to
->  allow specifying different types of goals (e.g. hard, soft, kernel picks).
->  We may as well have a structure that allows these to be specified, instead
->  of having to change the interface afterward.
-
-Let me see...  Is it the following discussion?
-http://marc.theaimsgroup.com/?l=linux-ext4&m=116161490908645&w=2
-http://marc.theaimsgroup.com/?l=linux-ext4&m=116184475306761&w=2
-
-Cheers, Takashi
+Cheers,
+Mingming
