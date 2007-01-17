@@ -1,65 +1,61 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [Resubmit][Patch 0/2] Persistent preallocation in ext4
-Date: Wed, 17 Jan 2007 14:20:43 -0800
-Message-ID: <45AEA13B.6070606@us.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] more sanity check in extents
+Date: Wed, 17 Jan 2007 15:23:31 -0700
+Message-ID: <20070117222331.GL5236@schatzie.adilger.int>
+References: <m364bd85cm.fsf@bzzz.home.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:50574 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751853AbXAQWUs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jan 2007 17:20:48 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e32.co.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0HMJMte025367
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 17:19:22 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0HMKjVn525062
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 15:20:45 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0HMKjtQ025841
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 15:20:45 -0700
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-In-Reply-To: <20070117094658.GA17390@amitarora.in.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:54658 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751853AbXAQWXe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jan 2007 17:23:34 -0500
+To: Alex Tomas <alex@clusterfs.com>
+Content-Disposition: inline
+In-Reply-To: <m364bd85cm.fsf@bzzz.home.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Amit K. Arora wrote:
+On Jan 12, 2007  03:18 +0300, Alex Tomas wrote:
+> +/*
+> + * the routine checks that every block start with key value specified
+> + * in the pointed at the upper layer
+> + */
+> +static int __ext4_ext_check_interlevel(const char *function, struct inode *inode,
+> +					struct ext4_ext_path *path, int depth)
+> +{
+> +	unsigned long key, first;
+> +
+> +	if (ext_depth(inode) == 0)
+> +		return 0;
+> +
+> +	/* nothing to check at the top */
+> +	if (depth == ext_depth(inode))
+> +		return 0;
+> +
+> +	/* after split, a leaf can get zero entries
+> +	 * thus there is nothing to check */
+> +	if (le16_to_cpu(path->p_hdr->eh_entries) == 0)
+> +		return 0;
+> +
+> +	if (depth == 0)
+> +		first = le32_to_cpu(EXT_FIRST_EXTENT(path->p_hdr)->ee_block);
+> +	else
+> +		first = le32_to_cpu(EXT_FIRST_INDEX(path->p_hdr)->ei_block);
+> +	path--;
+> +	key = le32_to_cpu(path->p_idx->ei_block);
+> +	
+> +	if (likely(first == key))
+> +		return 0;
 
-> Outstanding Issues:
-> ------------------
-> (1) The final interface is yet to be decided. We have the option of
-> chosing from one of these:
-> 	a> modifying posix_fallocate() in glibc
-> 	b> using fcntl
-> 	c> using ftruncate, or
-> 	d> using the ioctl interface.
-> 
->   If we go with ioctl interface, we need to chose the return
-> value from the ioctl. We should either return "0" for success and
-> errno for failure, or we should be returning number of bytes
-> preallocated.
-> 
+What happens if, say, a leaf is split and then the first part of the split
+is removed?  This could only happen with punch() on a running filesystem,
+but in e2fsck a corrupt extent will be removed from the leaf without
+updating the parent index's range.
 
-Now I am more prefer just return 0 for success. Returning the number of 
-bytes preallocated back to userspace might be helpful in the case when 
-the specified window contains blocks already being allocated, but this 
-should not be a common case.
-
-> (2) Also, we need to decide on what should happen in case of a
-> partial success scenario. i.e. after few blocks get preallocated, we hit
-> some error - say ENOSPC. Should the call just return the number of bytes
-> preallocated, or should it "undo" the partial preallocation and then
-> exit with error code ?
-> 
-I think we should try to avoid this partial preallocation at the first 
-place. Probably checking the number of free blocks before calling 
-ext4_ext_get_blocks() and returns -ENOSPC if there isn't enough free 
-blocks to allocate. Otherwise, if it still hits ENOSPC error, I think it 
-doesn't hurt to leave the partial preallocated blocks there.
-
-Cheers,
-Mingming
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
