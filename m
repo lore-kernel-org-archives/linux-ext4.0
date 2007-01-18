@@ -1,67 +1,47 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [Resubmit][Patch 0/2] Persistent preallocation in ext4
-Date: Thu, 18 Jan 2007 11:38:56 +0530
-Message-ID: <20070118060856.GA5620@amitarora.in.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <45AEA13B.6070606@us.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] [RFC] remove ext3 inode from orphan list when link and unlink race
+Date: Thu, 18 Jan 2007 03:43:38 -0700
+Message-ID: <20070118104338.GZ5236@schatzie.adilger.int>
+References: <45A7F384.3050303@redhat.com> <20070117224304.GM5236@schatzie.adilger.int> <45AEA789.20407@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
+Cc: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:57615 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751950AbXARGJD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Jan 2007 01:09:03 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0I692QL012302
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0I692M1230198
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0I691bM009435
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
-To: Mingming Cao <cmm@us.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:44040 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751999AbXARLRO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jan 2007 06:17:14 -0500
+To: Eric Sandeen <sandeen@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <45AEA13B.6070606@us.ibm.com>
+In-Reply-To: <45AEA789.20407@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 17, 2007 at 02:20:43PM -0800, Mingming Cao wrote:
-> Amit K. Arora wrote:
-> >  If we go with ioctl interface, we need to chose the return
-> >value from the ioctl. We should either return "0" for success and
-> >errno for failure, or we should be returning number of bytes
-> >preallocated.
+On Jan 17, 2007  16:47 -0600, Eric Sandeen wrote:
+> Andreas Dilger wrote:
+> > On Jan 12, 2007  14:45 -0600, Eric Sandeen wrote:
+> >> p.s. ext3_inc_count and ext3_dec_count seem misnamed, have an unused
+> >> arg, and are very infrequently called.  I'll probably submit a patch
+> >> to just put the single line of code into the caller, too.
+> > 
+> > I use those functions in the > 32000 subdirs patch to handle the case
+> > where a directory overflows the i_nlinks counter and needs to be set
+> > to have i_nlinks = 1.
+> > 
+> > Patch was posted previously, but rejected because there is a potential
+> > for directory loss if the filesystem is mounted on an older kernel
+> > (i_nlinks == 1, subdir is removed, directory is truncated).  I need to
+> > add an ROCOMPAT feature in order to handle this, but haven't gotten
+> > around to doing it.
 > 
-> Now I am more prefer just return 0 for success. Returning the number of
-> bytes preallocated back to userspace might be helpful in the case when
-> the specified window contains blocks already being allocated, but this
-> should not be a common case.
+> Ah, ok.  Sorry I'd missed that.  Can we at least rename them to
+> something that makes sense? :)
 
-Agreed. Even xfs preallocation ioctl and posix_fallocate return 0 on
-success.
+I have no objection to renaming them, but had previously left them as-is
+because it meant a smaller patch.
 
-> >(2) Also, we need to decide on what should happen in case of a
-> >partial success scenario. i.e. after few blocks get preallocated, we hit
-> >some error - say ENOSPC. Should the call just return the number of bytes
-> >preallocated, or should it "undo" the partial preallocation and then
-> >exit with error code ?
-> >
-> I think we should try to avoid this partial preallocation at the first
-> place. Probably checking the number of free blocks before calling
-> ext4_ext_get_blocks() and returns -ENOSPC if there isn't enough free
-> blocks to allocate. Otherwise, if it still hits ENOSPC error, I think it
-> doesn't hurt to leave the partial preallocated blocks there.
-
-True. But, there might be a small issue with this. Before calling
-ext4_ext_get_blocks(), we really don't know how many of the requested
-blocks are already allocated. Consider a scenario where out of 100
-blocks requested for preallocation, say, only 10 need to be physically
-allocated (90 being already allocated to the file). Now, we will be
-checking for 100 free blocks in the filesystem, whereas ideally we
-should be checking for only 10.
-
+Cheers, Andreas
 --
-Regards,
-Amit Arora
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
