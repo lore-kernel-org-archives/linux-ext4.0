@@ -1,83 +1,67 @@
-From: "AVANTIKA R. MATHUR" <mathur@linux.vnet.ibm.com>
-Subject: Ext4 devel interlock meeting minutes (Jan. 17 2007)
-Date: Wed, 17 Jan 2007 17:29:47 -0800
-Message-ID: <45AECD8B.1020806@linux.vnet.ibm.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [Resubmit][Patch 0/2] Persistent preallocation in ext4
+Date: Thu, 18 Jan 2007 11:38:56 +0530
+Message-ID: <20070118060856.GA5620@amitarora.in.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <45AEA13B.6070606@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
+	suzuki@in.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:34534 "EHLO e6.ny.us.ibm.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:57615 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751874AbXARB3q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jan 2007 20:29:46 -0500
+	id S1751950AbXARGJD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Jan 2007 01:09:03 -0500
 Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e6.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0I1UKIH003947
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 20:30:20 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0I1Tiwg207370
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 20:29:44 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0I1TijT008486
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 20:29:44 -0500
-Received: from [9.67.63.126] (wecm-9-67-63-126.wecm.ibm.com [9.67.63.126])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l0I1ThJY008468
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2007 20:29:43 -0500
-To: linux-ext4@vger.kernel.org
+	by e1.ny.us.ibm.com (8.13.8/8.12.11) with ESMTP id l0I692QL012302
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0I692M1230198
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0I691bM009435
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2007 01:09:02 -0500
+To: Mingming Cao <cmm@us.ibm.com>
+Content-Disposition: inline
+In-Reply-To: <45AEA13B.6070606@us.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 Developer Interlock Call
-Meeting Minutes January 17, 2007
+On Wed, Jan 17, 2007 at 02:20:43PM -0800, Mingming Cao wrote:
+> Amit K. Arora wrote:
+> >  If we go with ioctl interface, we need to chose the return
+> >value from the ioctl. We should either return "0" for success and
+> >errno for failure, or we should be returning number of bytes
+> >preallocated.
+> 
+> Now I am more prefer just return 0 for success. Returning the number of
+> bytes preallocated back to userspace might be helpful in the case when
+> the specified window contains blocks already being allocated, but this
+> should not be a common case.
 
-Attendees: Mingming Cao, Dave Kleikamp, Jean Pierre Dion, Jean Noel 
-Cordenner, Valerie Clement, Suparna Bhattacharya, Eric Sandeen, Avantika 
-Mathur
+Agreed. Even xfs preallocation ioctl and posix_fallocate return 0 on
+success.
 
-- In the last call Ted proposed having a git tree for ext4 on 
-kernel.org, and Mingming then sent an email to the list requesting 
-everyone to resend latest versions of ext4 patches to put in these 
-tree.  Mingming suggested that all bug fixes to ext4 should also be 
-copied to the git tree
+> >(2) Also, we need to decide on what should happen in case of a
+> >partial success scenario. i.e. after few blocks get preallocated, we hit
+> >some error - say ENOSPC. Should the call just return the number of bytes
+> >preallocated, or should it "undo" the partial preallocation and then
+> >exit with error code ?
+> >
+> I think we should try to avoid this partial preallocation at the first
+> place. Probably checking the number of free blocks before calling
+> ext4_ext_get_blocks() and returns -ENOSPC if there isn't enough free
+> blocks to allocate. Otherwise, if it still hits ENOSPC error, I think it
+> doesn't hurt to leave the partial preallocated blocks there.
 
-- Eric asked if people would be interested if ext4 built better as 
-module.  First by perhaps moving some ext4 headers from include/linux to 
-the ext4 directory; making it easier to build as a module
+True. But, there might be a small issue with this. Before calling
+ext4_ext_get_blocks(), we really don't know how many of the requested
+blocks are already allocated. Consider a scenario where out of 100
+blocks requested for preallocation, say, only 10 need to be physically
+allocated (90 being already allocated to the file). Now, we will be
+checking for 100 free blocks in the filesystem, whereas ideally we
+should be checking for only 10.
 
-- Takashi posted updated patches to the mailing list. Mingming update 
-the ext4 wiki with status. Andreas and Takashi have been discussing what 
-the interface for online defragmentation should be.  The next step is to 
-wait for a new patch set from Takashi, as there are some to do items.
-
-- Preallocation: Amit Arora posted new patch set, Mingming reviewed the 
-patches and they look good.
-   -- The main outstanding issue is determining what the interface 
-should be: ioctl, fcntl, ftruncate, posix_fallocate.    -- Eric does not 
-want to use ftruncate as it does not support creating sparse files.
-   -- Mingming asked if the return value should be how many blocks were 
-allocated, because when allocating accross holes, it may not allocate 
-number of blocks requested.  Eric did not see allocation accross holes 
-to be a common case, and was not sure if the number of blocks allocated 
-will be useful.  Eric will check how XFS handles this situation, it 
-could be helpful to try to keep semantics similar accross filesystems.
-
-- Support for trillions of files in ext4: Mingming asked how XFS handles 
-a 64 bit inode number and binary incompatability issues.
-   -- XFS by default limits the inode number to 32 bit range; but can be 
-configured for 64 bit inode numbers.  Eric suggested that as a 
-filesystem that is moving forward, ext4 could default to 64 bit inodes, 
-but be set to 32 bit inode if necesary.
-   -- Eric also mentioned looking at the scaling of mkfs block/inode 
-ratio based on filesystem size
-   -- fsck time on very large number of files is also an issue
-
-- Mingming discussed the limitation on filesystem size by the fact that 
-all block group descriptors are stored in the first block; this limits 
-max filesystem size to 256 TB.  We could enlarge the block group size to 
-store more block group descriptors or not store all descriptors in the 
-same block group. If meta block groups are turned on by default, this 
-limit could be resolved, but all peices for this feature may not be in 
-place.
-
-- Encourage developers to update the ext4 wiki (ext4.wiki.kernel.org), 
-new patches page with details and status on features, It might be 
-helpful if there is a separate page on the WIKI for each feature.
+--
+Regards,
+Amit Arora
