@@ -1,154 +1,107 @@
 From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: [RFC] [patch 1/3] i_version update for ext4: VFS layer
-Date: Tue, 23 Jan 2007 18:24:13 +0100
-Message-ID: <45B644BD.7020506@bull.net>
+Subject: [RFC] [patch 3/3] i_version update for ext4: user interface
+Date: Tue, 23 Jan 2007 18:24:19 +0100
+Message-ID: <45B644C3.6000607@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: nfsv4@linux-nfs.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49058 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49067 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965120AbXAWRYx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jan 2007 12:24:53 -0500
+	with ESMTP id S965092AbXAWRZA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jan 2007 12:25:00 -0500
 To: linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This part of the patch concerns the update of the i_version in the VFS 
-layer.
+This patch adds a  ``st_i_version'' field in the stat
+structure, and modifies the stat(2) syscall accordingly. Currently the
+change is only visible on i386 and x86_64 archs.
+
+
 
 Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
 
-Index: linux-2.6.20-rc5/fs/attr.c
+Index: linux-2.6.20-rc5/fs/stat.c
 ===================================================================
---- linux-2.6.20-rc5.orig/fs/attr.c     2006-11-29 22:57:37.000000000 +0100
-+++ linux-2.6.20-rc5/fs/attr.c  2007-01-22 17:03:41.000000000 +0100
-@@ -113,6 +113,7 @@
-         now = current_fs_time(inode->i_sb);
-
-         attr->ia_ctime = now;
-+       inode->i_version++;
-         if (!(ia_valid & ATTR_ATIME_SET))
-                 attr->ia_atime = now;
-         if (!(ia_valid & ATTR_MTIME_SET))
-Index: linux-2.6.20-rc5/fs/bad_inode.c
+--- linux-2.6.20-rc5.orig/fs/stat.c     2007-01-19 16:59:15.000000000 +0100
++++ linux-2.6.20-rc5/fs/stat.c  2007-01-23 16:21:17.000000000 +0100
+@@ -31,6 +31,7 @@
+         stat->atime = inode->i_atime;
+         stat->mtime = inode->i_mtime;
+         stat->ctime = inode->i_ctime;
++       stat->i_version = inode->i_version;
+         stat->size = i_size_read(inode);
+         stat->blocks = inode->i_blocks;
+         stat->blksize = (1 << inode->i_blkbits);
+@@ -226,6 +227,7 @@
+         tmp.st_atime = stat->atime.tv_sec;
+         tmp.st_mtime = stat->mtime.tv_sec;
+         tmp.st_ctime = stat->ctime.tv_sec;
++       tmp.st_i_version = stat->i_version;
+  #ifdef STAT_HAVE_NSEC
+         tmp.st_atime_nsec = stat->atime.tv_nsec;
+         tmp.st_mtime_nsec = stat->mtime.tv_nsec;
+@@ -359,6 +361,7 @@
+         tmp.st_mtime_nsec = stat->mtime.tv_nsec;
+         tmp.st_ctime = stat->ctime.tv_sec;
+         tmp.st_ctime_nsec = stat->ctime.tv_nsec;
++       tmp.st_i_version = stat->i_version;
+         tmp.st_size = stat->size;
+         tmp.st_blocks = stat->blocks;
+         tmp.st_blksize = stat->blksize;
+Index: linux-2.6.20-rc5/include/linux/stat.h
 ===================================================================
---- linux-2.6.20-rc5.orig/fs/bad_inode.c        2007-01-19 
-16:59:14.000000000 +0100
-+++ linux-2.6.20-rc5/fs/bad_inode.c     2007-01-22 17:04:58.000000000 +0100
-@@ -343,6 +343,7 @@
-         inode->i_mode = S_IFREG;
-         inode->i_atime = inode->i_mtime = inode->i_ctime =
-                 current_fs_time(inode->i_sb);
-+       inode->i_version++;
-         inode->i_op = &bad_inode_ops;
-         inode->i_fop = &bad_file_ops;
-  }
-Index: linux-2.6.20-rc5/fs/binfmt_misc.c
+--- linux-2.6.20-rc5.orig/include/linux/stat.h  2006-11-29 
+22:57:37.000000000 +0100
++++ linux-2.6.20-rc5/include/linux/stat.h       2007-01-23 
+16:22:18.000000000 +0100
+@@ -68,6 +68,7 @@
+         struct timespec  atime;
+         struct timespec mtime;
+         struct timespec ctime;
++       unsigned long   i_version;
+         unsigned long   blksize;
+         unsigned long long      blocks;
+  };
+Index: linux-2.6.20-rc5/include/asm-i386/stat.h
 ===================================================================
---- linux-2.6.20-rc5.orig/fs/binfmt_misc.c      2007-01-19 
-16:59:14.000000000 +0100
-+++ linux-2.6.20-rc5/fs/binfmt_misc.c   2007-01-22 17:05:54.000000000 +0100
-@@ -508,6 +508,7 @@
-                 inode->i_blocks = 0;
-                 inode->i_atime = inode->i_mtime = inode->i_ctime =
-                         current_fs_time(inode->i_sb);
-+               inode->i_version = 1;
-         }
-         return inode;
-  }
-Index: linux-2.6.20-rc5/fs/inode.c
+--- linux-2.6.20-rc5.orig/include/asm-i386/stat.h       2006-11-29 
+22:57:37.000000000 +0100
++++ linux-2.6.20-rc5/include/asm-i386/stat.h    2007-01-23 
+17:48:36.000000000 +0100
+@@ -32,7 +32,7 @@
+         unsigned long  st_mtime_nsec;
+         unsigned long  st_ctime;
+         unsigned long  st_ctime_nsec;
+-       unsigned long  __unused4;
++       unsigned long  st_i_version;
+         unsigned long  __unused5;
+  };
+
+@@ -41,7 +41,7 @@
+   */
+  struct stat64 {
+         unsigned long long      st_dev;
+-       unsigned char   __pad0[4];
++       unsigned int    st_i_version;
+
+  #define STAT64_HAS_BROKEN_ST_INO       1
+         unsigned long   __st_ino;
+Index: linux-2.6.20-rc5/include/asm-x86_64/stat.h
 ===================================================================
---- linux-2.6.20-rc5.orig/fs/inode.c    2007-01-19 16:59:15.000000000 +0100
-+++ linux-2.6.20-rc5/fs/inode.c 2007-01-22 17:18:28.000000000 +0100
-@@ -1225,18 +1225,11 @@
-                 return;
+--- linux-2.6.20-rc5.orig/include/asm-x86_64/stat.h     2006-11-29 
+22:57:37.000000000 +0100
++++ linux-2.6.20-rc5/include/asm-x86_64/stat.h  2007-01-23 
+17:57:03.000000000 +0100
+@@ -23,7 +23,8 @@
+         unsigned long   st_mtime_nsec;
+         unsigned long   st_ctime;
+         unsigned long   st_ctime_nsec;
+-       long            __unused[3];
++       unsigned long   st_i_version;
++       long            __unused[2];
+  };
 
-         now = current_fs_time(inode->i_sb);
--       if (!timespec_equal(&inode->i_mtime, &now)) {
--               inode->i_mtime = now;
--               sync_it = 1;
--       }
--
--       if (!timespec_equal(&inode->i_ctime, &now)) {
--               inode->i_ctime = now;
--               sync_it = 1;
--       }
-+       inode->i_mtime = now;
-+       inode->i_ctime = now;
-+       inode->i_version++;
-
--       if (sync_it)
--               mark_inode_dirty_sync(inode);
-+       mark_inode_dirty_sync(inode);
-  }
-
-  EXPORT_SYMBOL(file_update_time);
-Index: linux-2.6.20-rc5/fs/libfs.c
-===================================================================
---- linux-2.6.20-rc5.orig/fs/libfs.c    2007-01-19 16:59:15.000000000 +0100
-+++ linux-2.6.20-rc5/fs/libfs.c 2007-01-22 17:23:13.000000000 +0100
-@@ -220,6 +220,7 @@
-         root->i_mode = S_IFDIR | S_IRUSR | S_IWUSR;
-         root->i_uid = root->i_gid = 0;
-         root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
-+       root->i_version = 1;
-         dentry = d_alloc(NULL, &d_name);
-         if (!dentry) {
-                 iput(root);
-@@ -243,6 +244,8 @@
-         struct inode *inode = old_dentry->d_inode;
-
-         inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-+       inode->i_version++;
-+       dir->i_version++;
-         inc_nlink(inode);
-         atomic_inc(&inode->i_count);
-         dget(dentry);
-@@ -275,6 +278,8 @@
-         struct inode *inode = dentry->d_inode;
-
-         inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-+       inode->i_version++;
-+       dir->i_version++;
-         drop_nlink(inode);
-         dput(dentry);
-         return 0;
-@@ -312,6 +317,8 @@
-         old_dir->i_ctime = old_dir->i_mtime = new_dir->i_ctime =
-                 new_dir->i_mtime = inode->i_ctime = CURRENT_TIME;
-
-+       old_dir->i_version++;
-+       new_dir->i_version++;
-         return 0;
-  }
-
-@@ -377,6 +384,7 @@
-         inode->i_uid = inode->i_gid = 0;
-         inode->i_blocks = 0;
-         inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+       inode->i_version = 1;
-         inode->i_op = &simple_dir_inode_operations;
-         inode->i_fop = &simple_dir_operations;
-         inode->i_nlink = 2;
-@@ -398,6 +406,7 @@
-                 inode->i_uid = inode->i_gid = 0;
-                 inode->i_blocks = 0;
-                 inode->i_atime = inode->i_mtime = inode->i_ctime = 
-CURRENT_TIME;
-+               inode->i_version = 1;
-                 inode->i_fop = files->ops;
-                 inode->i_ino = i;
-                 d_add(dentry, inode);
-Index: linux-2.6.20-rc5/fs/pipe.c
-===================================================================
---- linux-2.6.20-rc5.orig/fs/pipe.c     2007-01-19 16:59:15.000000000 +0100
-+++ linux-2.6.20-rc5/fs/pipe.c  2007-01-22 17:24:46.000000000 +0100
-@@ -871,6 +871,7 @@
-         inode->i_uid = current->fsuid;
-         inode->i_gid = current->fsgid;
-         inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+       inode->i_version = 1;
-
-         return inode;
+  /* For 32bit emulation */
