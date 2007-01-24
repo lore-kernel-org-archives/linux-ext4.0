@@ -1,62 +1,81 @@
-From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: Re: [RFC] [patch 0/3] i_version update for ext4
-Date: Wed, 24 Jan 2007 15:12:49 +0100
-Message-ID: <45B76961.7030509@bull.net>
-References: <45B644AA.1070409@bull.net>
-	<20070123184611.GF5236@schatzie.adilger.int>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: 2.6.20-rc5: known unfixed regressions (v3) (part 1)
+Date: Wed, 24 Jan 2007 16:46:34 +0100
+Message-ID: <20070124154634.GJ17836@stusta.de>
+References: <Pine.LNX.4.64.0701121424520.11200@woody.osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
-To: Andreas Dilger <adilger@clusterfs.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070123184611.GF5236@schatzie.adilger.int>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Justin Piszcz <jpiszcz@lucidpixels.com>, mingo@redhat.com,
+	neilb@cse.unsw.edu.au, linux-raid@vger.kernel.org,
+	Duncan <1i5t5.duncan@cox.net>,
+	Randy Dunlap <rdunlap@xenotime.net>, sct@redhat.com,
+	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
+	Berthold Cogel <cogel@rrz.uni-koeln.de>,
+	=?utf-8?B?RnJhbsOnb2lz?= Valenduc <francois.valenduc@skynet.be>,
+	Alexey Starikovskiy <alexey.y.starikovskiy@linux.intel.com>,
+	greg@kroah.com, linux-usb-devel@lists.sourceforge.net,
+	Prakash Punnoor <prakash@punnoor.de>,
+	Oliver Neukum <oliver@neukum.org>,
+	Alan Stern <stern@rowland.harvard.edu>
+To: Linus Torvalds <torvalds@osdl.org>, Andrew Morton <akpm@osdl.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]:2024 "HELO
+	mailout.stusta.mhn.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751322AbXAXPq2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2007 10:46:28 -0500
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.0701121424520.11200@woody.osdl.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger a =E9crit :
-> On Jan 23, 2007  18:23 +0100, Cordenner jean noel wrote:
->> I've updated what was previously the change attribute patch for ext4 =
+This email lists some known regressions in 2.6.20-rc5 compared to 2.6.1=
+9
+that are not yet fixed in Linus' tree.
 
->> initially posted by Alexandre Ratchov. The previous patch was =
+If you find your name in the Cc header, you are either submitter of one
+of the bugs, maintainer of an affectected subsystem or driver, a patch
+of you caused a breakage or I'm considering you in any other way possib=
+ly
+involved with one or more of these issues.
 
->> introducing a change_attribute field, now it uses the i_version field of =
+Due to the huge amount of recipients, please trim the Cc when answering=
+=2E
 
->> the inode.
->>
->> The i_version field is a counter that is set on every inode creation and =
 
->> that is incremented every time the inode data is modified (similarly to =
+Subject    : raid1: copying a big file triggers OOM killer
+References : http://lkml.org/lkml/2007/1/20/69
+Submitter  : Justin Piszcz <jpiszcz@lucidpixels.com>
+Status     : unknown
 
->> the "ctime" time-stamp).
->> The aim is to fulfill NFSv4 requirements for rfc3530.
->> For the moent, the counter is only a 32bit value but it is planned to be =
 
->> 64bit as required.
->>
->> The patch is divided into 3 parts, the vfs layer, the ext4 specific code =
+Subject    : RAID-6 chunk_aligned_read problem
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7835
+Submitter  : Duncan <1i5t5.duncan@cox.net>
+Status     : unknown
 
->> and an user part to check i_version changes via stat.
-> =
 
-> Have you had a chance to look at the performance impact of this change
-> (possible with oprofile)?  Always marking the inodes dirty for ext3
-> may have some noticable overhead.
+Subject    : ext3 with data=3Djournal hangs when running fsx-linux sinc=
+e -rc2
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7844
+Submitter  : Randy Dunlap <rdunlap@xenotime.net>
+Status     : unknown
+
+
+Subject    : reboot instead of powerdown  (CONFIG_USB_SUSPEND)
+References : http://lkml.org/lkml/2006/12/25/40
+             http://bugzilla.kernel.org/show_bug.cgi?id=3D7828
+Submitter  : Berthold Cogel <cogel@rrz.uni-koeln.de>
+             Fran=C3=A7ois Valenduc <francois.valenduc@skynet.be>
+Handled-By : Alexey Starikovskiy <alexey.y.starikovskiy@linux.intel.com=
 >
+Status     : problem is being debugged
 
-I did some tests using fileop with the previous version of the patch =
 
-which was very similar. I was surprised that there was no noticable =
-
-overhead:
-  http://www.bullopensource.org/ext4/change_attribute/index.html
-
-I will use oprofile to check it again.
+Subject    : usb somehow broken  (CONFIG_USB_SUSPEND)
+References : http://lkml.org/lkml/2007/1/11/146
+Submitter  : Prakash Punnoor <prakash@punnoor.de>
+Handled-By : Oliver Neukum <oliver@neukum.org>
+             Alan Stern <stern@rowland.harvard.edu>
+Status     : problem is being debugged
