@@ -1,34 +1,62 @@
 From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: Re: [RFC] [patch 2/3] i_version update for ext4: ext4 specific code
-Date: Wed, 24 Jan 2007 15:07:52 +0100
-Message-ID: <45B76838.4000903@bull.net>
-References: <45B644C0.50503@bull.net> <20070123184814.GG5236@schatzie.adilger.int>
+Subject: Re: [RFC] [patch 0/3] i_version update for ext4
+Date: Wed, 24 Jan 2007 15:12:49 +0100
+Message-ID: <45B76961.7030509@bull.net>
+References: <45B644AA.1070409@bull.net>
+	<20070123184611.GF5236@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
 To: Andreas Dilger <adilger@clusterfs.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57517 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751441AbXAXOIf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2007 09:08:35 -0500
-In-Reply-To: <20070123184814.GG5236@schatzie.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20070123184611.GF5236@schatzie.adilger.int>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
 Andreas Dilger a =E9crit :
-> On Jan 23, 2007  18:24 +0100, Cordenner jean noel wrote:
->> @@ -336,7 +336,7 @@
->>  #define i_size_high    i_dir_acl
->>
->>  #if defined(__KERNEL__) || defined(__linux__)
->> -#define i_reserved1    osd1.linux1.l_i_reserved1
->> +#define ext4_i_version  osd1.linux1.l_i_version
->=20
-> This naming is inconsistent with other inode fields, what about
-> i_disk_version, like i_disk_size also used in the code?
->=20
+> On Jan 23, 2007  18:23 +0100, Cordenner jean noel wrote:
+>> I've updated what was previously the change attribute patch for ext4 =
 
-I agree that sounds better
+>> initially posted by Alexandre Ratchov. The previous patch was =
+
+>> introducing a change_attribute field, now it uses the i_version field of =
+
+>> the inode.
+>>
+>> The i_version field is a counter that is set on every inode creation and =
+
+>> that is incremented every time the inode data is modified (similarly to =
+
+>> the "ctime" time-stamp).
+>> The aim is to fulfill NFSv4 requirements for rfc3530.
+>> For the moent, the counter is only a 32bit value but it is planned to be =
+
+>> 64bit as required.
+>>
+>> The patch is divided into 3 parts, the vfs layer, the ext4 specific code =
+
+>> and an user part to check i_version changes via stat.
+> =
+
+> Have you had a chance to look at the performance impact of this change
+> (possible with oprofile)?  Always marking the inodes dirty for ext3
+> may have some noticable overhead.
+>
+
+I did some tests using fileop with the previous version of the patch =
+
+which was very similar. I was surprised that there was no noticable =
+
+overhead:
+  http://www.bullopensource.org/ext4/change_attribute/index.html
+
+I will use oprofile to check it again.
