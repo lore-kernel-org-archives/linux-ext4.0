@@ -1,46 +1,46 @@
-From: coly <colyli@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: support freeze operation like xfs_freeze
-Date: Fri, 26 Jan 2007 01:59:37 +0800
-Message-ID: <1169747977.24634.2.camel@colyT43.site>
+Date: Thu, 25 Jan 2007 13:40:58 -0600
+Message-ID: <45B907CA.70309@redhat.com>
 References: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Vitez Gabor <vitezg@niif.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.236]:40601 "EHLO
-	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965379AbXAYSBP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Jan 2007 13:01:15 -0500
-Received: by wx-out-0506.google.com with SMTP id h31so587763wxd
-        for <linux-ext4@vger.kernel.org>; Thu, 25 Jan 2007 10:01:14 -0800 (PST)
+Received: from mx1.redhat.com ([66.187.233.31]:40815 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030525AbXAYTlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Jan 2007 14:41:51 -0500
 In-Reply-To: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi, team:
-
-This is a very cool feature. Is there any planing or schedule on it ?
-
-Coly
-
-=E5=9C=A8 2007-01-25=E5=9B=9B=E7=9A=84 18:28 +0100=EF=BC=8CVitez Gabor=E5=
-=86=99=E9=81=93=EF=BC=9A
+Vitez Gabor wrote:
 > Hi,
->=20
-> It would be really great if ext4 supported an xfs_freeze like operati=
-on.=20
-> On xfs it spared me a lot of headaches when I was playing with unstab=
-le=20
+> 
+> It would be really great if ext4 supported an xfs_freeze like operation. 
+> On xfs it spared me a lot of headaches when I was playing with unstable 
 > kernel features.
->=20
+> 
 >   thanks
 >     Gabor
->=20
-> [note: I'm not subscribed. Please Cc: me if answering]
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+Right now ext3 and ext4 -can- be frozen, but only via devicemapper,
+because the call to freeze_bdev is only exposed via
+
+<dm ioctl>
+  dev_suspend
+    do_suspend
+      dm_suspend
+        lock_fs
+          freeze_bdev <-- generic, exported kernel function
+
+on an lvm volume.  So, I think ext[34] are perfectly capable of being
+frozen, there's just no generic userspace utility to point at a generic
+block device to do that freezing.  xfs's collection of ioctls to do this
+directly got grandfathered in, I guess.  :)
+
+-Eric
