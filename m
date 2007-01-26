@@ -1,46 +1,24 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: support freeze operation like xfs_freeze
-Date: Thu, 25 Jan 2007 13:40:58 -0600
-Message-ID: <45B907CA.70309@redhat.com>
-References: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu>
+From: coly <colyli@gmail.com>
+Subject: where is the ext4 git tree ?
+Date: Fri, 26 Jan 2007 18:05:17 +0800
+Message-ID: <1169805918.32648.14.camel@colyT43.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Vitez Gabor <vitezg@niif.hu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40815 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030525AbXAYTlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Jan 2007 14:41:51 -0500
-In-Reply-To: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu>
+Received: from wx-out-0506.google.com ([66.249.82.237]:29170 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161022AbXAZKGz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jan 2007 05:06:55 -0500
+Received: by wx-out-0506.google.com with SMTP id h31so796490wxd
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Jan 2007 02:06:55 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Vitez Gabor wrote:
-> Hi,
-> 
-> It would be really great if ext4 supported an xfs_freeze like operation. 
-> On xfs it spared me a lot of headaches when I was playing with unstable 
-> kernel features.
-> 
->   thanks
->     Gabor
->
+Hi friends:
 
-Right now ext3 and ext4 -can- be frozen, but only via devicemapper,
-because the call to freeze_bdev is only exposed via
+I can not find the ext4 git tree (on kernel.org) which Te mentioned on
+the talk. Can anybody give me a point ?  I am new to ext4.
 
-<dm ioctl>
-  dev_suspend
-    do_suspend
-      dm_suspend
-        lock_fs
-          freeze_bdev <-- generic, exported kernel function
-
-on an lvm volume.  So, I think ext[34] are perfectly capable of being
-frozen, there's just no generic userspace utility to point at a generic
-block device to do that freezing.  xfs's collection of ioctls to do this
-directly got grandfathered in, I guess.  :)
-
--Eric
+Coly
