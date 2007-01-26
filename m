@@ -1,57 +1,98 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: where is the ext4 git tree ?
-Date: Fri, 26 Jan 2007 11:51:19 -0500
-Message-ID: <20070126165119.GC14759@thunk.org>
-References: <1169805918.32648.14.camel@colyT43.site> <45BA24CB.5060501@us.ibm.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: 2.6.20-rc6: known unfixed regressions (part 1)
+Date: Fri, 26 Jan 2007 19:10:36 +0100
+Message-ID: <20070126181036.GM17836@stusta.de>
+References: <Pine.LNX.4.64.0701241847360.25027@woody.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: coly <colyli@gmail.com>, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andrew Vasquez <andrew.vasquez@qlogic.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Justin Piszcz <jpiszcz@lucidpixels.com>, mingo@redhat.com,
+	neilb@cse.unsw.edu.au, linux-raid@vger.kernel.org,
+	Randy Dunlap <rdunlap@xenotime.net>, sct@redhat.com,
+	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
+	Berthold Cogel <cogel@rrz.uni-koeln.de>,
+	=?utf-8?B?RnJhbsOnb2lz?= Valenduc <francois.valenduc@skynet.be>,
+	Alan Stern <stern@rowland.harvard.edu>, greg@kroah.com,
+	linux-usb-devel@lists.sourceforge.net,
+	Prakash Punnoor <prakash@punnoor.de>,
+	Oliver Neukum <oliver@neukum.org>,
+	Lennart Sorensen <lsorense@csclub.uwaterloo.ca>,
+	takada <takada@mbf.nifty.com>,
+	Jordan Crouse <jordan.crouse@amd.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	Andrew Morton <akpm@osdl.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34158 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030869AbXAZQvb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Jan 2007 11:51:31 -0500
+Received: from mailout.stusta.mhn.de ([141.84.69.5]:37049 "EHLO
+	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1161107AbXAZSK3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jan 2007 13:10:29 -0500
 Content-Disposition: inline
-In-Reply-To: <45BA24CB.5060501@us.ibm.com>
+In-Reply-To: <Pine.LNX.4.64.0701241847360.25027@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 26, 2007 at 07:56:59AM -0800, Mingming Cao wrote:
-> >
-> >I can not find the ext4 git tree (on kernel.org) which Te mentioned =
-on
-> >the talk. Can anybody give me a point ?  I am new to ext4.
-> >
->=20
-> That was the plan discussed a few weeks ago. Ted is travelling (I=20
-> think=EF=BC=89so he may not get a chance to work on it or annonce it =
-yet. Stay=20
-> tuned...
+This email lists some known regressions in 2.6.20-rc6 compared to 2.6.1=
+9
+that are not yet fixed in Linus' tree.
 
-The first patch series can be found here:
+If you find your name in the Cc header, you are either submitter of one
+of the bugs, maintainer of an affectected subsystem or driver, a patch
+of you caused a breakage or I'm considering you in any other way possib=
+ly
+involved with one or more of these issues.
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.20-=
-rc5-ext4-1
+Due to the huge amount of recipients, please trim the Cc when answering=
+=2E
 
-I've included Alex's latest patches which he sent back in December,
-but I haven't gone back before that looking for patches from before.
-If you think there is a patch which should be included that hasn't
-been, please repost it to linux-ext4. =20
 
-(The reason why I haven't included Takashi-san's patches is that they
-were based on an earlier version of Alex's patches, and so they didn't
-apply cleanly.  It wouldn't be hard to fix it up, but it would have
-met changing the ioctl assignments, and so I decided to let him do
-that in order to avoid potential future confusion.)
+Subject    : NULL pointer dereference at as_move_to_dispatch()
+References : http://lkml.org/lkml/2007/1/22/141
+Submitter  : Andrew Vasquez <andrew.vasquez@qlogic.com>
+Status     : unknown
 
-I haven't had time to rebase to 2.6.20-rc6, or to set up the git tree.
-When I do, it people should note that it will be frequently rewound
-and rebased, and so it will be useful mainly for people who like to
-use it to update their git trees.  Some folks may find it more
-convenient to work with the series file and the patches (especially
-since I'll probably be keeping notes about the status of patches in
-there). =20
 
-						- Ted
+Subject    : raid1: copying a big file triggers OOM killer
+References : http://lkml.org/lkml/2007/1/20/69
+Submitter  : Justin Piszcz <jpiszcz@lucidpixels.com>
+Handled-By : Jens Axboe <jens.axboe@oracle.com>
+Status     : problem is being debugged
+
+
+Subject    : ext3 with data=3Djournal hangs when running fsx-linux sinc=
+e -rc2
+References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7844
+Submitter  : Randy Dunlap <rdunlap@xenotime.net>
+Handled-By : Linus Torvalds <torvalds@linux-foundation.org>
+             Randy Dunlap <rdunlap@xenotime.net>
+             Andrew Morton <akpm@osdl.org>
+Status     : problem is being debugged
+
+
+Subject    : reboot instead of powerdown  (CONFIG_USB_SUSPEND)
+References : http://lkml.org/lkml/2006/12/25/40
+             http://bugzilla.kernel.org/show_bug.cgi?id=3D7828
+Submitter  : Berthold Cogel <cogel@rrz.uni-koeln.de>
+             Fran=C3=A7ois Valenduc <francois.valenduc@skynet.be>
+Handled-By : Alan Stern <stern@rowland.harvard.edu>
+Status     : problem is being debugged
+
+
+Subject    : usb somehow broken  (CONFIG_USB_SUSPEND)
+References : http://lkml.org/lkml/2007/1/11/146
+Submitter  : Prakash Punnoor <prakash@punnoor.de>
+Handled-By : Oliver Neukum <oliver@neukum.org>
+             Alan Stern <stern@rowland.harvard.edu>
+Status     : problem is being debugged
+
+
+Subject    : fix geode_configure()
+References : http://lkml.org/lkml/2007/1/9/216
+Submitter  : Lennart Sorensen <lsorense@csclub.uwaterloo.ca>
+Caused-By  : takada <takada@mbf.nifty.com>
+             commit e4f0ae0ea63caceff37a13f281a72652b7ea71ba
+Handled-By : takada <takada@mbf.nifty.com>
+             Lennart Sorensen <lsorense@csclub.uwaterloo.ca>
+Status     : patches are being discussed
