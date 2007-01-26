@@ -1,54 +1,40 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: where is the ext4 git tree ?
-Date: Fri, 26 Jan 2007 13:47:24 -0700
-Message-ID: <20070126204724.GA14191@mail.clusterfs.com>
-References: <1169805918.32648.14.camel@colyT43.site> <45BA24CB.5060501@us.ibm.com> <20070126165119.GC14759@thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: support freeze operation like xfs_freeze
+Date: Fri, 26 Jan 2007 16:22:08 -0500
+Message-ID: <20070126212208.GA9897@thunk.org>
+References: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu> <45B907CA.70309@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, coly <colyli@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Vitez Gabor <vitezg@niif.hu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:50353 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751539AbXAZUrY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jan 2007 15:47:24 -0500
+Received: from thunk.org ([69.25.196.29]:55660 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751623AbXAZVWY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Jan 2007 16:22:24 -0500
 Content-Disposition: inline
-In-Reply-To: <20070126165119.GC14759@thunk.org>
+In-Reply-To: <45B907CA.70309@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 26, 2007 at 11:51:19AM -0500, Theodore Tso wrote:
-> The first patch series can be found here:
-> 
-> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.20-rc5-ext4-1
-> 
-> I've included Alex's latest patches which he sent back in December,
-> but I haven't gone back before that looking for patches from before.
-> If you think there is a patch which should be included that hasn't
-> been, please repost it to linux-ext4.  
+On Thu, Jan 25, 2007 at 01:40:58PM -0600, Eric Sandeen wrote:
+> on an lvm volume.  So, I think ext[34] are perfectly capable of being
+> frozen, there's just no generic userspace utility to point at a generic
+> block device to do that freezing.  xfs's collection of ioctls to do this
+> directly got grandfathered in, I guess.  :)
 
+xfs's collection of ioctls do the right thing if the program which
+freezes the filesystems exits without unfreezing the filesystem
+(closing the file descriptor used by the freeze ioctl should unfreeze
+the filesystem, I hope)?  And I assume that if a setuid program which
+freezes filesystems forgets to catch SIGTSTP, and a hostile user types
+^Z at the wrong time, that's considered a buggy setuid program?  :-)
 
-I'd appreciate a lot review and discussion of mballoc's design.
+One of the reasons why direct exposire to the freeze routines was
+always considered a little dangerous, and my guess is that's why we
+don't have a first class VFS interface.  Then again, XFS managed to
+get an exemption from some of the standard kernel merging rules,
+including allowing the IRIX compatibility layer, and I'm guessing the
+xfs collection of ioctls snuck in that way too.  :-)
 
-the most serious change over the last version is preallocation. because
-of specific workloads our customers like we have to support multiple
-preallocations per inode.
-
-a bit about structures ... every preallocated chunk is described with a
-special structure. preallocated space is assigned to logical offset of
-a file. the structure is on two lists:
-  1) preallocations in a group
-  2) preallocations in an inode
-
-before searching blocks, mballoc loads on-disk bitmap and generates:
-  1) in-core bitmap, which is copy of on-disk bitmap + all preallocated
-     blocks in the group
-  2) buddy, which is generated from in-core bitmap
-
-once the both structures are initialized, mballoc finds suitable space
-and creates preallocation descriptor, if preallocation is requested.
-subsquent allocations find the descriptor via per-inode list using logical
-offset as a key and mark block(s) used in on-disk bitmap.
-
-thanks, Alex
+					- Ted
