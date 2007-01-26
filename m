@@ -1,98 +1,54 @@
-From: Adrian Bunk <bunk@stusta.de>
-Subject: 2.6.20-rc6: known unfixed regressions (part 1)
-Date: Fri, 26 Jan 2007 19:10:36 +0100
-Message-ID: <20070126181036.GM17836@stusta.de>
-References: <Pine.LNX.4.64.0701241847360.25027@woody.linux-foundation.org>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: where is the ext4 git tree ?
+Date: Fri, 26 Jan 2007 13:47:24 -0700
+Message-ID: <20070126204724.GA14191@mail.clusterfs.com>
+References: <1169805918.32648.14.camel@colyT43.site> <45BA24CB.5060501@us.ibm.com> <20070126165119.GC14759@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Vasquez <andrew.vasquez@qlogic.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Justin Piszcz <jpiszcz@lucidpixels.com>, mingo@redhat.com,
-	neilb@cse.unsw.edu.au, linux-raid@vger.kernel.org,
-	Randy Dunlap <rdunlap@xenotime.net>, sct@redhat.com,
-	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
-	Berthold Cogel <cogel@rrz.uni-koeln.de>,
-	=?utf-8?B?RnJhbsOnb2lz?= Valenduc <francois.valenduc@skynet.be>,
-	Alan Stern <stern@rowland.harvard.edu>, greg@kroah.com,
-	linux-usb-devel@lists.sourceforge.net,
-	Prakash Punnoor <prakash@punnoor.de>,
-	Oliver Neukum <oliver@neukum.org>,
-	Lennart Sorensen <lsorense@csclub.uwaterloo.ca>,
-	takada <takada@mbf.nifty.com>,
-	Jordan Crouse <jordan.crouse@amd.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@osdl.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, coly <colyli@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout.stusta.mhn.de ([141.84.69.5]:37049 "EHLO
-	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1161107AbXAZSK3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jan 2007 13:10:29 -0500
+Received: from mail.clusterfs.com ([206.168.112.78]:50353 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751539AbXAZUrY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jan 2007 15:47:24 -0500
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0701241847360.25027@woody.linux-foundation.org>
+In-Reply-To: <20070126165119.GC14759@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This email lists some known regressions in 2.6.20-rc6 compared to 2.6.1=
-9
-that are not yet fixed in Linus' tree.
-
-If you find your name in the Cc header, you are either submitter of one
-of the bugs, maintainer of an affectected subsystem or driver, a patch
-of you caused a breakage or I'm considering you in any other way possib=
-ly
-involved with one or more of these issues.
-
-Due to the huge amount of recipients, please trim the Cc when answering=
-=2E
+On Fri, Jan 26, 2007 at 11:51:19AM -0500, Theodore Tso wrote:
+> The first patch series can be found here:
+> 
+> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.20-rc5-ext4-1
+> 
+> I've included Alex's latest patches which he sent back in December,
+> but I haven't gone back before that looking for patches from before.
+> If you think there is a patch which should be included that hasn't
+> been, please repost it to linux-ext4.  
 
 
-Subject    : NULL pointer dereference at as_move_to_dispatch()
-References : http://lkml.org/lkml/2007/1/22/141
-Submitter  : Andrew Vasquez <andrew.vasquez@qlogic.com>
-Status     : unknown
+I'd appreciate a lot review and discussion of mballoc's design.
 
+the most serious change over the last version is preallocation. because
+of specific workloads our customers like we have to support multiple
+preallocations per inode.
 
-Subject    : raid1: copying a big file triggers OOM killer
-References : http://lkml.org/lkml/2007/1/20/69
-Submitter  : Justin Piszcz <jpiszcz@lucidpixels.com>
-Handled-By : Jens Axboe <jens.axboe@oracle.com>
-Status     : problem is being debugged
+a bit about structures ... every preallocated chunk is described with a
+special structure. preallocated space is assigned to logical offset of
+a file. the structure is on two lists:
+  1) preallocations in a group
+  2) preallocations in an inode
 
+before searching blocks, mballoc loads on-disk bitmap and generates:
+  1) in-core bitmap, which is copy of on-disk bitmap + all preallocated
+     blocks in the group
+  2) buddy, which is generated from in-core bitmap
 
-Subject    : ext3 with data=3Djournal hangs when running fsx-linux sinc=
-e -rc2
-References : http://bugzilla.kernel.org/show_bug.cgi?id=3D7844
-Submitter  : Randy Dunlap <rdunlap@xenotime.net>
-Handled-By : Linus Torvalds <torvalds@linux-foundation.org>
-             Randy Dunlap <rdunlap@xenotime.net>
-             Andrew Morton <akpm@osdl.org>
-Status     : problem is being debugged
+once the both structures are initialized, mballoc finds suitable space
+and creates preallocation descriptor, if preallocation is requested.
+subsquent allocations find the descriptor via per-inode list using logical
+offset as a key and mark block(s) used in on-disk bitmap.
 
-
-Subject    : reboot instead of powerdown  (CONFIG_USB_SUSPEND)
-References : http://lkml.org/lkml/2006/12/25/40
-             http://bugzilla.kernel.org/show_bug.cgi?id=3D7828
-Submitter  : Berthold Cogel <cogel@rrz.uni-koeln.de>
-             Fran=C3=A7ois Valenduc <francois.valenduc@skynet.be>
-Handled-By : Alan Stern <stern@rowland.harvard.edu>
-Status     : problem is being debugged
-
-
-Subject    : usb somehow broken  (CONFIG_USB_SUSPEND)
-References : http://lkml.org/lkml/2007/1/11/146
-Submitter  : Prakash Punnoor <prakash@punnoor.de>
-Handled-By : Oliver Neukum <oliver@neukum.org>
-             Alan Stern <stern@rowland.harvard.edu>
-Status     : problem is being debugged
-
-
-Subject    : fix geode_configure()
-References : http://lkml.org/lkml/2007/1/9/216
-Submitter  : Lennart Sorensen <lsorense@csclub.uwaterloo.ca>
-Caused-By  : takada <takada@mbf.nifty.com>
-             commit e4f0ae0ea63caceff37a13f281a72652b7ea71ba
-Handled-By : takada <takada@mbf.nifty.com>
-             Lennart Sorensen <lsorense@csclub.uwaterloo.ca>
-Status     : patches are being discussed
+thanks, Alex
