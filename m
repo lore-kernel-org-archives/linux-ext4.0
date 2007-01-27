@@ -1,66 +1,71 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: support freeze operation like xfs_freeze
-Date: Fri, 26 Jan 2007 20:10:13 -0500
-Message-ID: <20070127011013.GB9897@thunk.org>
-References: <20070125172818.GA25037@swszl.szkp.uni-miskolc.hu> <45B907CA.70309@redhat.com> <20070126212208.GA9897@thunk.org> <45BA7F5A.5000703@redhat.com>
+From: coly <colyli@gmail.com>
+Subject: Re: where is the ext4 git tree ?
+Date: Sat, 27 Jan 2007 21:26:27 +0800
+Message-ID: <1169904387.10553.4.camel@colyT43.site>
+References: <1169805918.32648.14.camel@colyT43.site>
+	 <45BA24CB.5060501@us.ibm.com>  <20070126165119.GC14759@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Vitez Gabor <vitezg@niif.hu>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40070 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752165AbXA0BKa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Jan 2007 20:10:30 -0500
-Content-Disposition: inline
-In-Reply-To: <45BA7F5A.5000703@redhat.com>
+Received: from nf-out-0910.google.com ([64.233.182.186]:23922 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752243AbXA0N2S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Jan 2007 08:28:18 -0500
+Received: by nf-out-0910.google.com with SMTP id o25so1460456nfa
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Jan 2007 05:28:17 -0800 (PST)
+In-Reply-To: <20070126165119.GC14759@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 26, 2007 at 04:23:22PM -0600, Eric Sandeen wrote:
-> xfs_freeze is actually -designed- to exit without unfreezing the 
-> filesystem, FWIW, for better or worse.  And I suppose there is all sorts 
-> of mayhem that could stem from setuid programs of all stripes...
+Theodore:
 
-I had a vague memory of that, but I probably supressed the horror.  :-)
+It seems the patch file is based on stable kernel tree, not -mm tree.
+Isn't it ?
 
-> But anyway, on a less OT-topic, it has always seemed a little weird to 
-> me that you can -only- freeze a filesystem on an lvm block device. 
-> Surely there are occasionally legitimate reasons to freeze a filesystem 
-> on an arbitrary block device, if the filesystem can support it?
+Thanks.
 
-The issue isn't that you can only freeze a filesystem on an LVM block
-device; in fact, you can't.  You can only take a snapshot on an LVM
-block device.  I wish you could take snapshots on arbitrary block
-devices --- the EVMS1 kernel patches allowed that --- but
-unfortunately they were implemented in a way that the kernel community
-decided was too ugly to let live, or at least merge into mainline.
+Coly
 
-> I don't see how direct exposure to freezing routines via LVM ioctls is 
-> any less dangerous than direct exposure to freezing routines on 
-> /dev/hda1... 
-
-So the issue is that you *don't* have direct expusire to the freezing
-routines via LVM ioctl's.  All you can do is request a snapshot, and
-the LVM ioctl's freeze the filesystems, take the snapshot and then
-unfreeze the filesystem.  
-
-You're right that the BLKROSET ioctls are probably just as dangerous
-as well, and of course root can do all sorts of things like running
-mkfs, or dd'ing into /dev/kmem, etc.  I think though the issue was
-that someone requested a user mode program that was accessible via a
-shell script, probably because XFS had that functionality, and the
-concern was that few people trusted system administrators to be able
-to handle such power responsibly.  Freezing the filesystem for hour or
-minutes seems like a very bad idea, and that's exactly the sort of
-thing that I can imagine a clueless level one system administrator
-doing.  ("I know!  I'll freeze the filesystem while I backup all 30 TB
-of it, and then I'll unfreeze it.")
-
-The question really is what are the legimate uses of such a facility
-where you wouldn't be better off taking a snapshot and then doing the
-backup dump on the snapshot?  The real issue is that we can't take
-snapshots on plain block devices, but that might be the better problem
-to solve....
-
-						- Ted
+=E5=9C=A8 2007-01-26=E4=BA=94=E7=9A=84 11:51 -0500=EF=BC=8CTheodore Tso=
+=E5=86=99=E9=81=93=EF=BC=9A
+> On Fri, Jan 26, 2007 at 07:56:59AM -0800, Mingming Cao wrote:
+> > >
+> > >I can not find the ext4 git tree (on kernel.org) which Te mentione=
+d on
+> > >the talk. Can anybody give me a point ?  I am new to ext4.
+> > >
+> >=20
+> > That was the plan discussed a few weeks ago. Ted is travelling (I=20
+> > think=EF=BC=89so he may not get a chance to work on it or annonce i=
+t yet. Stay=20
+> > tuned...
+>=20
+> The first patch series can be found here:
+>=20
+> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.2=
+0-rc5-ext4-1
+>=20
+> I've included Alex's latest patches which he sent back in December,
+> but I haven't gone back before that looking for patches from before.
+> If you think there is a patch which should be included that hasn't
+> been, please repost it to linux-ext4. =20
+>=20
+> (The reason why I haven't included Takashi-san's patches is that they
+> were based on an earlier version of Alex's patches, and so they didn'=
+t
+> apply cleanly.  It wouldn't be hard to fix it up, but it would have
+> met changing the ioctl assignments, and so I decided to let him do
+> that in order to avoid potential future confusion.)
+>=20
+> I haven't had time to rebase to 2.6.20-rc6, or to set up the git tree=
+=2E
+> When I do, it people should note that it will be frequently rewound
+> and rebased, and so it will be useful mainly for people who like to
+> use it to update their git trees.  Some folks may find it more
+> convenient to work with the series file and the patches (especially
+> since I'll probably be keeping notes about the status of patches in
+> there). =20
+>=20
+> 						- Ted
