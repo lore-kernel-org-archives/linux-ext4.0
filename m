@@ -1,42 +1,72 @@
-From: coly <colyli@gmail.com>
-Subject: Re: where is the ext4 git tree ?
-Date: Sun, 28 Jan 2007 13:09:19 +0800
-Message-ID: <1169960959.18259.0.camel@colyT43.site>
-References: <1169805918.32648.14.camel@colyT43.site>
-	 <45BA24CB.5060501@us.ibm.com> <20070126165119.GC14759@thunk.org>
-	 <1169904387.10553.4.camel@colyT43.site>  <20070127215327.GA6414@thunk.org>
+From: Dmitriy Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] :EXT[3,4] jbd layer function called instead of fs specific one
+Date: Sun, 28 Jan 2007 16:18:24 +0300
+Message-ID: <873b5vmgrj.fsf@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: ext4 development <linux-ext4@vger.kernel.org>, <devel@openvz.org>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.188]:22963 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932261AbXA1FLK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Jan 2007 00:11:10 -0500
-Received: by nf-out-0910.google.com with SMTP id o25so1644012nfa
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Jan 2007 21:11:09 -0800 (PST)
-In-Reply-To: <20070127215327.GA6414@thunk.org>
+Received: from mailhub.sw.ru ([195.214.233.200]:6440 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932173AbXA1NSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 28 Jan 2007 08:18:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ted:
+--=-=-=
 
-Thank you !  It is clear to me :-)
+jbd function called instead of fs specific one.
 
-Coly
+Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
+------
 
-=E5=9C=A8 2007-01-27=E5=85=AD=E7=9A=84 16:53 -0500=EF=BC=8CTheodore Tso=
-=E5=86=99=E9=81=93=EF=BC=9A
-> On Sat, Jan 27, 2007 at 09:26:27PM +0800, coly wrote:
-> >=20
-> > It seems the patch file is based on stable kernel tree, not -mm tre=
-e.
-> > Isn't it ?
->=20
-> Yes, it's based on 2.6.20-rc5.  I'm not sure it really makes sense to
-> use the term "stable kernel tree" as it relates to 2.6, but no, it's
-> not based off of the -mm tree. =20
->=20
-> 					- Ted
+--=-=-=
+Content-Disposition: inline; filename=diff-ms-fs-ext_3_4-cleanup
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index beaf25f..8a824f4 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -947,7 +947,7 @@ out:
+ static int ext3_get_block(struct inode *inode, sector_t iblock,
+ 			struct buffer_head *bh_result, int create)
+ {
+-	handle_t *handle = journal_current_handle();
++	handle_t *handle = ext3_journal_current_handle();
+ 	int ret = 0;
+ 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+ 
+@@ -1717,7 +1717,7 @@ static ssize_t ext3_direct_IO(int rw, st
+ 	/*
+ 	 * Reacquire the handle: ext3_get_block() can restart the transaction
+ 	 */
+-	handle = journal_current_handle();
++	handle = ext3_journal_current_handle();
+ 
+ out_stop:
+ 	if (handle) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a127cc0..fbff4b9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -946,7 +946,7 @@ out:
+ static int ext4_get_block(struct inode *inode, sector_t iblock,
+ 			struct buffer_head *bh_result, int create)
+ {
+-	handle_t *handle = journal_current_handle();
++	handle_t *handle = ext4_journal_current_handle();
+ 	int ret = 0;
+ 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+ 
+@@ -1716,7 +1716,7 @@ static ssize_t ext4_direct_IO(int rw, st
+ 	/*
+ 	 * Reacquire the handle: ext4_get_block() can restart the transaction
+ 	 */
+-	handle = journal_current_handle();
++	handle = ext4_journal_current_handle();
+ 
+ out_stop:
+ 	if (handle) {
+
+--=-=-=--
