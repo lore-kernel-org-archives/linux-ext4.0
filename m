@@ -1,77 +1,82 @@
 From: Harry Papaxenopoulos <harry@cs.sunysb.edu>
-Subject: [Resubmit][PATCH 2/5] Secure Deletion and Trash-Bin Support for Ext4
-Date: Wed, 31 Jan 2007 09:53:16 -0500 (EST)
-Message-ID: <Pine.GSO.4.53.0701310951350.28263@compserv1>
+Subject: [Resubmit][PATCH 3/5] Secure Deletion and Trash-Bin Support for Ext4
+Date: Wed, 31 Jan 2007 09:54:11 -0500 (EST)
+Message-ID: <Pine.GSO.4.53.0701310953210.28263@compserv1>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: ezk@cs.sunysb.edu, kolya@cs.sunysb.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sbcs.sunysb.edu ([130.245.1.15]:59752 "EHLO sbcs.cs.sunysb.edu"
+Received: from sbcs.sunysb.edu ([130.245.1.15]:59775 "EHLO sbcs.cs.sunysb.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933309AbXAaOxS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jan 2007 09:53:18 -0500
+	id S933314AbXAaOyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jan 2007 09:54:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Trash-Bin Functionality for the ext2 filesystem:
+Trash-Bin Functionality for the ext3 filesystem:
 
 Signed-off-by: Harry Papaxenopoulos <harry@cs.sunysb.edu>
 Signed-off-by: Nikolai Joukov <kolya@cs.sunysb.edu>
 Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
 
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext2/super.c
+Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext2/super.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext2/super.c
-@@ -29,6 +29,7 @@
- #include <linux/vfs.h>
+--- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
++++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
+@@ -35,6 +35,7 @@
+ #include <linux/namei.h>
+ #include <linux/quotaops.h>
  #include <linux/seq_file.h>
- #include <linux/mount.h>
 +#include <linux/trashbin.h>
+
  #include <asm/uaccess.h>
- #include "ext2.h"
- #include "xattr.h"
-@@ -934,6 +935,10 @@ static int ext2_fill_super(struct super_
- 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_HAS_JOURNAL))
- 		ext2_warning(sb, __FUNCTION__,
- 			"mounting ext3 filesystem as ext2");
-+#ifdef CONFIG_EXT2_FS_TRASHBIN
+
+@@ -1773,6 +1774,11 @@ static int ext3_fill_super (struct super
+ 		goto failed_mount4;
+ 	}
+
++#ifdef CONFIG_EXT3_FS_TRASHBIN
 +	if ((sb->s_flags & MNT_TRASHBIN) && vfs_create_trash_bin(sb))
-+		goto failed_mount3;
++		goto failed_mount4;
 +#endif
- 	ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY);
- 	return 0;
-
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext2/namei.c
++
+ 	ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+ 	/*
+ 	 * akpm: core read_super() calls in here with the superblock locked.
+Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext2/namei.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext2/namei.c
-@@ -31,6 +31,8 @@
-  */
-
- #include <linux/pagemap.h>
+--- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
++++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
+@@ -37,6 +37,8 @@
+ #include <linux/buffer_head.h>
+ #include <linux/bio.h>
+ #include <linux/smp_lock.h>
 +#include <linux/mount.h>
 +#include <linux/trashbin.h>
- #include "ext2.h"
+
+ #include "namei.h"
  #include "xattr.h"
- #include "acl.h"
-@@ -256,19 +258,54 @@ static int ext2_unlink(struct inode * di
- 	struct ext2_dir_entry_2 * de;
- 	struct page * page;
- 	int err = -ENOENT;
+@@ -2079,6 +2081,10 @@ static int ext3_unlink(struct inode * di
+ 	struct buffer_head * bh;
+ 	struct ext3_dir_entry_2 * de;
+ 	handle_t *handle;
 +	int trashed = 0;
-+#ifdef CONFIG_EXT2_FS_TRASHBIN
++#ifdef CONFIG_EXT3_FS_TRASHBIN
 +	struct dentry *user_dentry = NULL;
 +#endif
 
- 	de = ext2_find_entry (dir, dentry, &page);
- 	if (!de)
- 		goto out;
-+#ifdef CONFIG_EXT2_FS_TRASHBIN
+ 	/* Initialize quotas before so that eventual writes go
+ 	 * in separate transaction */
+@@ -2107,13 +2113,41 @@ static int ext3_unlink(struct inode * di
+ 			      inode->i_ino, inode->i_nlink);
+ 		inode->i_nlink = 1;
+ 	}
+-	retval = ext3_delete_entry(handle, dir, de, bh);
++#ifdef CONFIG_EXT3_FS_TRASHBIN
 +	if ((dentry->d_inode->i_sb->s_flags & MNT_TRASHBIN) &&
-+		(EXT2_I(dentry->d_inode)->i_flags &
-+		 (EXT2_UNRM_FL | EXT2_SECRM_FL))) {
++			(EXT3_I(dentry->d_inode)->i_flags &
++			(EXT3_UNRM_FL | EXT3_SECRM_FL))) {
 +
 +		/*
 +		 * We put this code here to optimize the common case. Since
@@ -82,54 +87,59 @@ Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext2/namei.c
 +		 */
 +		user_dentry = vfs_get_user_dentry(dir, 1);
 +		if (IS_ERR(user_dentry)) {
-+			err = PTR_ERR(user_dentry);
++			retval = PTR_ERR(user_dentry);
 +			user_dentry = NULL;
-+			goto out;
++			goto end_unlink;
 +		}
-
--	err = ext2_delete_entry (de, page);
++
 +		if (inode->i_nlink == 1 && user_dentry->d_inode &&
 +			   	user_dentry->d_inode->i_ino != dir->i_ino) {
-+			err = vfs_trash_entry(dir, dentry);
++			retval = vfs_trash_entry(dir, dentry);
 +			trashed = 1;
 +		}
 +	}
 +#endif
 +	if (!trashed)
-+		err = ext2_delete_entry (de, page);
- 	if (err)
- 		goto out;
-
- 	inode->i_ctime = dir->i_ctime;
--	inode_dec_link_count(inode);
++		retval = ext3_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_unlink;
+ 	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
+ 	ext3_update_dx_flag(dir);
+ 	ext3_mark_inode_dirty(handle, dir);
+-	drop_nlink(inode);
 +	if (!trashed)
-+		inode_dec_link_count(inode);
- 	err = 0;
- out:
-+#ifdef CONFIG_EXT2_FS_TRASHBIN
++		drop_nlink(inode);
+ 	if (!inode->i_nlink)
+ 		ext3_orphan_add(handle, inode);
+ 	inode->i_ctime = dir->i_ctime;
+@@ -2122,6 +2156,10 @@ static int ext3_unlink(struct inode * di
+
+ end_unlink:
+ 	ext3_journal_stop(handle);
++#ifdef CONFIG_EXT4DEV_FS_TRASHBIN
 +	if (user_dentry)
 +		dput(user_dentry);
 +#endif
- 	return err;
+ 	brelse (bh);
+ 	return retval;
  }
-
 Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
 ===================================================================
 --- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
 +++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-@@ -76,6 +76,15 @@ config FS_XIP
- 	depends on EXT2_FS_XIP
- 	default y
+@@ -153,6 +153,15 @@ config EXT3_FS_SECURITY
+ 	  If you are not using a security module that requires using
+ 	  extended attributes for file security labels, say N.
 
-+config EXT2_FS_TRASHBIN
-+	bool "Ext2 trashbin functionality"
++config EXT3_FS_TRASHBIN
++	bool "Ext3 trashbin functionality"
 +	depends on TRASHBIN
-+	depends on EXT2_FS
++	depends on EXT3_FS
 +	help
-+	  Trashbin functionality for the ext2 filesystem
++	  Trashbin functionality for the ext3 filesystem
 +
 +	  If unsure, say N.
 +
- config EXT3_FS
- 	tristate "Ext3 journalling file system support"
- 	select JBD
+ config EXT4DEV_FS
+ 	tristate "Ext4dev/ext4 extended fs support development (EXPERIMENTAL)"
+ 	depends on EXPERIMENTAL
