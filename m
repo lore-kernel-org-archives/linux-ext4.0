@@ -1,29 +1,29 @@
 From: Harry Papaxenopoulos <harry@cs.sunysb.edu>
-Subject: [Resubmit][PATCH 3/5] Secure Deletion and Trash-Bin Support for Ext4
-Date: Wed, 31 Jan 2007 09:54:11 -0500 (EST)
-Message-ID: <Pine.GSO.4.53.0701310953210.28263@compserv1>
+Subject: [Resubmit][PATCH 4/5] Secure Deletion and Trash-Bin Support for Ext4
+Date: Wed, 31 Jan 2007 09:55:08 -0500 (EST)
+Message-ID: <Pine.GSO.4.53.0701310954240.28263@compserv1>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: ezk@cs.sunysb.edu, kolya@cs.sunysb.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sbcs.sunysb.edu ([130.245.1.15]:59775 "EHLO sbcs.cs.sunysb.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933314AbXAaOyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jan 2007 09:54:15 -0500
+Received: from sbcs.cs.sunysb.edu ([130.245.1.15]:59790 "EHLO
+	sbcs.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933318AbXAaOzL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jan 2007 09:55:11 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Trash-Bin Functionality for the ext3 filesystem:
+Trash-Bin Functionality for the ext4 filesystem:
 
 Signed-off-by: Harry Papaxenopoulos <harry@cs.sunysb.edu>
 Signed-off-by: Nikolai Joukov <kolya@cs.sunysb.edu>
 Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
 
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
+Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext4/super.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
+--- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext4/super.c
++++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext4/super.c
 @@ -35,6 +35,7 @@
  #include <linux/namei.h>
  #include <linux/quotaops.h>
@@ -32,22 +32,22 @@ Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/super.c
 
  #include <asm/uaccess.h>
 
-@@ -1773,6 +1774,11 @@ static int ext3_fill_super (struct super
+@@ -1846,6 +1847,11 @@ static int ext4_fill_super (struct super
  		goto failed_mount4;
  	}
 
-+#ifdef CONFIG_EXT3_FS_TRASHBIN
++#ifdef CONFIG_EXT4DEV_FS_TRASHBIN
 +	if ((sb->s_flags & MNT_TRASHBIN) && vfs_create_trash_bin(sb))
 +		goto failed_mount4;
 +#endif
 +
- 	ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+ 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
  	/*
  	 * akpm: core read_super() calls in here with the superblock locked.
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
+Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext4/namei.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
+--- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/ext4/namei.c
++++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext4/namei.c
 @@ -37,6 +37,8 @@
  #include <linux/buffer_head.h>
  #include <linux/bio.h>
@@ -57,26 +57,26 @@ Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
 
  #include "namei.h"
  #include "xattr.h"
-@@ -2079,6 +2081,10 @@ static int ext3_unlink(struct inode * di
+@@ -2077,6 +2079,10 @@ static int ext4_unlink(struct inode * di
  	struct buffer_head * bh;
- 	struct ext3_dir_entry_2 * de;
+ 	struct ext4_dir_entry_2 * de;
  	handle_t *handle;
 +	int trashed = 0;
-+#ifdef CONFIG_EXT3_FS_TRASHBIN
++#ifdef CONFIG_EXT4DEV_FS_TRASHBIN
 +	struct dentry *user_dentry = NULL;
 +#endif
 
  	/* Initialize quotas before so that eventual writes go
  	 * in separate transaction */
-@@ -2107,13 +2113,41 @@ static int ext3_unlink(struct inode * di
+@@ -2105,13 +2111,41 @@ static int ext4_unlink(struct inode * di
  			      inode->i_ino, inode->i_nlink);
  		inode->i_nlink = 1;
  	}
--	retval = ext3_delete_entry(handle, dir, de, bh);
-+#ifdef CONFIG_EXT3_FS_TRASHBIN
+-	retval = ext4_delete_entry(handle, dir, de, bh);
++#ifdef CONFIG_EXT4DEV_FS_TRASHBIN
 +	if ((dentry->d_inode->i_sb->s_flags & MNT_TRASHBIN) &&
-+			(EXT3_I(dentry->d_inode)->i_flags &
-+			(EXT3_UNRM_FL | EXT3_SECRM_FL))) {
++				(EXT4_I(dentry->d_inode)->i_flags &
++				(EXT4_UNRM_FL | EXT4_SECRM_FL))) {
 +
 +		/*
 +		 * We put this code here to optimize the common case. Since
@@ -100,46 +100,46 @@ Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/ext3/namei.c
 +	}
 +#endif
 +	if (!trashed)
-+		retval = ext3_delete_entry(handle, dir, de, bh);
++		retval = ext4_delete_entry(handle, dir, de, bh);
  	if (retval)
  		goto end_unlink;
  	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
- 	ext3_update_dx_flag(dir);
- 	ext3_mark_inode_dirty(handle, dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
 -	drop_nlink(inode);
 +	if (!trashed)
 +		drop_nlink(inode);
  	if (!inode->i_nlink)
- 		ext3_orphan_add(handle, inode);
+ 		ext4_orphan_add(handle, inode);
  	inode->i_ctime = dir->i_ctime;
-@@ -2122,6 +2156,10 @@ static int ext3_unlink(struct inode * di
-
+@@ -2121,6 +2155,10 @@ static int ext4_unlink(struct inode * di
  end_unlink:
- 	ext3_journal_stop(handle);
+ 	ext4_journal_stop(handle);
+ 	brelse (bh);
 +#ifdef CONFIG_EXT4DEV_FS_TRASHBIN
 +	if (user_dentry)
 +		dput(user_dentry);
 +#endif
- 	brelse (bh);
  	return retval;
  }
+
 Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
 ===================================================================
 --- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
 +++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-@@ -153,6 +153,15 @@ config EXT3_FS_SECURITY
+@@ -227,6 +227,15 @@ config EXT4DEV_FS_SECURITY
  	  If you are not using a security module that requires using
  	  extended attributes for file security labels, say N.
 
-+config EXT3_FS_TRASHBIN
-+	bool "Ext3 trashbin functionality"
++config EXT4DEV_FS_TRASHBIN
++	bool "Ext4 trashbin functionality"
 +	depends on TRASHBIN
-+	depends on EXT3_FS
++	depends on EXT4DEV_FS
 +	help
-+	  Trashbin functionality for the ext3 filesystem
++	  Trashbin functionality for the ext4 filesystem
 +
 +	  If unsure, say N.
 +
- config EXT4DEV_FS
- 	tristate "Ext4dev/ext4 extended fs support development (EXPERIMENTAL)"
- 	depends on EXPERIMENTAL
+ config JBD
+ 	tristate
+ 	help
