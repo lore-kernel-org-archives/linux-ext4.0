@@ -1,157 +1,388 @@
-From: Harry Papaxenopoulos <harry@cs.sunysb.edu>
-Subject: [Resubmit][PATCH 5/5] Secure Deletion and Trash-Bin Support for Ext4
-Date: Wed, 31 Jan 2007 09:55:46 -0500 (EST)
-Message-ID: <Pine.GSO.4.53.0701310955130.28263@compserv1>
+From: Jim Garlick <garlick@llnl.gov>
+Subject: [patch 2/2] e2fsprogs: user selectable dup block handling in fsck
+Date: Wed, 31 Jan 2007 08:24:46 -0800 (PST)
+Message-ID: <Pine.LNX.4.61.0701310822320.25489@webb>
+References: <Pine.LNX.4.61.0701310737550.25489@webb>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: ezk@cs.sunysb.edu, kolya@cs.sunysb.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sbcs.cs.sunysb.edu ([130.245.1.15]:59817 "EHLO
-	sbcs.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933317AbXAaOzs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jan 2007 09:55:48 -0500
+Received: from nspiron-2.llnl.gov ([128.115.41.82]:43225 "EHLO
+	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030239AbXAaQ2M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jan 2007 11:28:12 -0500
+In-Reply-To: <Pine.LNX.4.61.0701310737550.25489@webb>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Trash-Bin Functionality for the jfs filesystem:
+Second patch that implements new options for shared block handling
+in e2fsck pass 1D.
 
-Signed-off-by: Harry Papaxenopoulos <harry@cs.sunysb.edu>
-Signed-off-by: Nikolai Joukov <kolya@cs.sunysb.edu>
-Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
 
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
+Index: e2fsprogs+chaos/e2fsck/e2fsck.h
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
-@@ -29,6 +29,7 @@
- #include <linux/buffer_head.h>
- #include <asm/uaccess.h>
- #include <linux/seq_file.h>
-+#include <linux/trashbin.h>
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.h
++++ e2fsprogs+chaos/e2fsck/e2fsck.h
+@@ -181,6 +181,17 @@ struct resource_track {
+  #define E2F_PASS_5	5
+  #define E2F_PASS_1B	6
 
- #include "jfs_incore.h"
- #include "jfs_filsys.h"
-@@ -503,6 +504,11 @@ static int jfs_fill_super(struct super_b
- 	if (sbi->mntflag & JFS_OS2)
- 		sb->s_root->d_op = &jfs_ci_dentry_operations;
-
-+#ifdef CONFIG_JFS_FS_TRASHBIN
-+	if ((sb->s_flags & MNT_TRASHBIN) && vfs_create_trash_bin(sb))
-+		goto out_no_root;
-+#endif
++typedef	enum { 
++	E2F_SHARED_PRESERVE = 0, 
++	E2F_SHARED_DELETE,
++	E2F_SHARED_LPF
++} shared_opt_t;
 +
- 	/* logical blocks are represented by 40 bits in pxd_t, etc. */
- 	sb->s_maxbytes = ((u64) sb->s_blocksize) << 40;
- #if BITS_PER_LONG == 32
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
++typedef enum {
++	E2F_CLONE_DUP = 0,
++	E2F_CLONE_ZERO
++} clone_opt_t;
++
+  /*
+   * Define the extended attribute refcount structure
+   */
+@@ -332,6 +343,8 @@ struct e2fsck_struct {
+  	time_t now;
+
+  	int ext_attr_ver;
++	shared_opt_t shared;
++	clone_opt_t clone;
+
+  	profile_t	profile;
+
+Index: e2fsprogs+chaos/e2fsck/unix.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
-@@ -20,6 +20,8 @@
- #include <linux/fs.h>
- #include <linux/ctype.h>
- #include <linux/quotaops.h>
-+#include <linux/trashbin.h>
-+#include <linux/mount.h>
- #include "jfs_incore.h"
- #include "jfs_superblock.h"
- #include "jfs_inode.h"
-@@ -474,6 +476,11 @@ static int jfs_unlink(struct inode *dip,
- 	struct tblock *tblk;
- 	s64 new_size = 0;
- 	int commit_flag;
-+	int trashed = 0;
-+#ifdef CONFIG_JFS_FS_TRASHBIN
-+	unsigned int flags = 0;
-+	struct dentry *user_dentry = NULL;
-+#endif
+--- e2fsprogs+chaos.orig/e2fsck/unix.c
++++ e2fsprogs+chaos/e2fsck/unix.c
+@@ -510,6 +510,49 @@ static void signal_cancel(int sig EXT2FS
+  }
+  #endif
 
- 	jfs_info("jfs_unlink: dip:0x%p name:%s", dip, dentry->d_name.name);
-
-@@ -483,6 +490,35 @@ static int jfs_unlink(struct inode *dip,
- 	if ((rc = get_UCSname(&dname, dentry)))
- 		goto out;
-
-+#ifdef CONFIG_JFS_FS_TRASHBIN
-+	flags = JFS_IP(ip)->mode2 & JFS_FL_USER_VISIBLE;
-+	if ((dentry->d_inode->i_sb->s_flags & MNT_TRASHBIN) && (
-+				flags & (JFS_UNRM_FL | JFS_SECRM_FL))) {
++static void initialize_profile_options(e2fsck_t ctx)
++{
++	char *tmp;
 +
-+		/*
-+		 * We put this code here to optimize the common case. Since
-+		 * lookups are expensive, we try to reserve from making any,
-+		 * unless one of the trash-bin flags are set. The cleanest
-+		 * way though is to probably move this code outside the
-+		 * above if statement.
-+		 */
-+		user_dentry = vfs_get_user_dentry(dip, 1);
-+		if (IS_ERR(user_dentry)) {
-+			rc = PTR_ERR(user_dentry);
-+			user_dentry = NULL;
-+			goto out;
++	/* [options] shared=preserve|lost+found|delete */
++	tmp = NULL;
++	ctx->shared = E2F_SHARED_PRESERVE; 
++	profile_get_string(ctx->profile, "options", "shared", 0,
++		           "preserve", &tmp);
++	if (tmp) {
++		if (strcmp(tmp, "preserve") == 0)
++			ctx->shared = E2F_SHARED_PRESERVE; 
++		else if (strcmp(tmp, "delete") == 0)
++			ctx->shared = E2F_SHARED_DELETE; 
++		else if (strcmp(tmp, "lost+found") == 0)
++			ctx->shared = E2F_SHARED_LPF; 
++		else {
++			com_err(ctx->program_name, 0, 
++				_("configuration error: 'shared=%s'"), tmp);
++			fatal_error(ctx, 0);
 +		}
-+
-+		if (ip->i_nlink == 1 && user_dentry->d_inode &&
-+			   	user_dentry->d_inode->i_ino != dip->i_ino) {
-+			rc = vfs_trash_entry(dip, dentry);
-+			trashed = 1;
-+			if (rc)
-+				goto out;
-+		}
++		free(tmp);
 +	}
-+#endif
 +
- 	IWRITE_LOCK(ip);
++	/* [options] clone=dup|zero */
++	tmp = NULL;
++	ctx->clone = E2F_CLONE_DUP;
++	profile_get_string(ctx->profile, "options", "clone", 0,
++			   "dup", &tmp);
++	if (tmp) {
++		if (strcmp(tmp, "dup") == 0)
++			ctx->clone = E2F_CLONE_DUP;
++		else if (strcmp(tmp, "zero") == 0)
++			ctx->clone = E2F_CLONE_ZERO;
++		else {
++			com_err(ctx->program_name, 0, 
++				_("configuration error: 'clone=%s'"), tmp);
++			fatal_error(ctx, 0);
++		}
++		free(tmp);
++	}
++}
++
+  static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+  {
+  	char	*buf, *token, *next, *p, *arg;
+@@ -543,6 +586,36 @@ static void parse_extended_opts(e2fsck_t
+  				continue;
+  			}
+  			ctx->ext_attr_ver = ea_ver;
++		/* -E shared=preserve|lost+found|delete */
++		} else if (strcmp(token, "shared") == 0) {
++			if (!arg) {
++				extended_usage++;
++				continue;
++			}
++			if (strcmp(arg, "preserve") == 0) {
++				ctx->shared = E2F_SHARED_PRESERVE;
++			} else if (strcmp(arg, "lost+found") == 0) {
++				ctx->shared = E2F_SHARED_LPF;
++			} else if (strcmp(arg, "delete") == 0) {
++				ctx->shared = E2F_SHARED_DELETE;
++			} else {
++				extended_usage++;
++				continue;
++			}
++		/* -E clone=dup|zero */
++		} else if (strcmp(token, "clone") == 0) {
++			if (!arg) {
++				extended_usage++;
++				continue;
++			}
++			if (strcmp(arg, "dup") == 0) {
++				ctx->clone = E2F_CLONE_DUP;
++			} else if (strcmp(arg, "zero") == 0) {
++				ctx->clone = E2F_CLONE_ZERO;
++			} else {
++				extended_usage++;
++				continue;
++			}
+  		} else {
+  			fprintf(stderr, _("Unknown extended option: %s\n"),
+  				token);
+@@ -556,6 +629,8 @@ static void parse_extended_opts(e2fsck_t
+  		       "and may take an argument which\n"
+  		       "is set off by an equals ('=') sign.  "
+  			"Valid extended options are:\n"
++		       "\tshared=<preserve|lost+found|delete>\n"
++		       "\tclone=<dup|zero>\n"
+  		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
+  		exit(1);
+  	}
+@@ -615,6 +690,7 @@ static errcode_t PRS(int argc, char *arg
+  		config_fn[0] = cp;
+  	profile_set_syntax_err_cb(syntax_err_report);
+  	profile_init(config_fn, &ctx->profile);
++	initialize_profile_options(ctx);
 
- 	tid = txBegin(dip->i_sb, 0);
-@@ -497,7 +533,7 @@ static int jfs_unlink(struct inode *dip,
- 	 * delete the entry of target file from parent directory
- 	 */
- 	ino = ip->i_ino;
--	if ((rc = dtDelete(tid, dip, &dname, &ino, JFS_REMOVE))) {
-+	if (!trashed && (rc = dtDelete(tid, dip, &dname, &ino, JFS_REMOVE))) {
- 		jfs_err("jfs_unlink: dtDelete returned %d", rc);
- 		if (rc == -EIO)
- 			txAbort(tid, 1);	/* Marks FS Dirty */
-@@ -514,7 +550,8 @@ static int jfs_unlink(struct inode *dip,
- 	mark_inode_dirty(dip);
-
- 	/* update target's inode */
--	inode_dec_link_count(ip);
-+	if (!trashed)
-+		inode_dec_link_count(ip);
-
- 	/*
- 	 *      commit zero link count object
-@@ -590,6 +627,10 @@ static int jfs_unlink(struct inode *dip,
- 	free_UCSname(&dname);
-       out:
- 	jfs_info("jfs_unlink: rc:%d", rc);
-+#ifdef CONFIG_JFS_FS_TRASHBIN
-+	if (user_dentry)
-+		dput(user_dentry);
-+#endif
- 	return rc;
- }
-
-Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
+  	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
+  		switch (c) {
+Index: e2fsprogs+chaos/e2fsck/pass1b.c
 ===================================================================
---- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-+++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-@@ -443,6 +443,15 @@ config JFS_STATISTICS
- 	  Enabling this option will cause statistics from the JFS file system
- 	  to be made available to the user in the /proc/fs/jfs/ directory.
+--- e2fsprogs+chaos.orig/e2fsck/pass1b.c
++++ e2fsprogs+chaos/e2fsck/pass1b.c
+@@ -448,6 +448,9 @@ static void pass1d(e2fsck_t ctx, char *b
+  			q = (struct dup_block *) dnode_get(m);
+  			if (q->num_bad > 1)
+  				file_ok = 0;
++			if (q->num_bad == 1 && (ctx->clone == E2F_CLONE_ZERO ||
++			    ctx->shared != E2F_SHARED_PRESERVE))
++				file_ok = 0;
+  			if (check_if_fs_block(ctx, s->block)) {
+  				file_ok = 0;
+  				meta_data = 1;
+@@ -503,13 +506,26 @@ static void pass1d(e2fsck_t ctx, char *b
+  			fix_problem(ctx, PR_1D_DUP_BLOCKS_DEALT, &pctx);
+  			continue;
+  		}
+-		if (fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
++		if (ctx->shared != E2F_SHARED_DELETE &&
++		    fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
+  			pctx.errcode = clone_file(ctx, ino, p, block_buf);
+-			if (pctx.errcode)
++			if (pctx.errcode) {
+  				fix_problem(ctx, PR_1D_CLONE_ERROR, &pctx);
+-			else
+-				continue;
++				goto delete;
++			}
++			if (ctx->shared == E2F_SHARED_LPF &&
++			    fix_problem(ctx, PR_1D_DISCONNECT_QUESTION, &pctx)) {
++				pctx.errcode = ext2fs_unlink(fs, p->dir, 
++							     NULL, ino, 0);
++				if (pctx.errcode) {
++					fix_problem(ctx, PR_1D_DISCONNECT_ERROR,
++						    &pctx);
++					goto delete;
++				}
++			}
++			continue;
+  		}
++delete:
+  		if (fix_problem(ctx, PR_1D_DELETE_QUESTION, &pctx))
+  			delete_file(ctx, ino, p, block_buf);
+  		else
+@@ -526,7 +542,8 @@ static void decrement_badcount(e2fsck_t
+  {
+  	p->num_bad--;
+  	if (p->num_bad <= 0 ||
+-	    (p->num_bad == 1 && !check_if_fs_block(ctx, block)))
++	    (p->num_bad == 1 && !check_if_fs_block(ctx, block) && 
++	    ctx->clone == E2F_CLONE_DUP && ctx->shared == E2F_SHARED_PRESERVE))
+  		ext2fs_unmark_block_bitmap(ctx->block_dup_map, block);
+  }
 
-+config JFS_FS_TRASHBIN
-+	bool "JFS trashbin functionality"
-+	depends on TRASHBIN
-+	depends on JFS_FS
-+	help
-+	  Trashbin functionality for the JFS filesystem
+@@ -564,7 +581,7 @@ static int delete_file_block(ext2_filsys
+
+  	return 0;
+  }
+- 
 +
-+	  If unsure, say N.
+  static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+  			struct dup_inode *dp, char* block_buf)
+  {
+@@ -672,11 +689,15 @@ static int clone_file_block(ext2_filsys
+  			printf("Cloning block %u to %u\n", *block_nr,
+  			       new_block);
+  #endif
+-			retval = io_channel_read_blk(fs->io, *block_nr, 1,
+-						     cs->buf);
+-			if (retval) {
+-				cs->errcode = retval;
+-				return BLOCK_ABORT;
++			if ((ctx->clone == E2F_CLONE_ZERO)) {
++				memset(cs->buf, 0, fs->blocksize);
++			} else {
++				retval = io_channel_read_blk(fs->io, *block_nr,
++							1, cs->buf);
++				if (retval) {
++					cs->errcode = retval;
++					return BLOCK_ABORT;
++				}
+  			}
+  			retval = io_channel_write_blk(fs->io, new_block, 1,
+  						      cs->buf);
+Index: e2fsprogs+chaos/e2fsck/problem.h
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/problem.h
++++ e2fsprogs+chaos/e2fsck/problem.h
+@@ -536,7 +536,13 @@ struct problem_context {
+
+  /* Couldn't clone file (error) */
+  #define PR_1D_CLONE_ERROR	0x013008
+- 
 +
- config FS_POSIX_ACL
- # Posix ACL utility routines (for now, only ext2/ext3/jfs/reiserfs)
- #
++/* Unlink file for lost+found reconnect in pass 3? */
++#define PR_1D_DISCONNECT_QUESTION 0x013009
++
++/* Couldn't unlink file (error) */
++#define PR_1D_DISCONNECT_ERROR	0x01300A
++
+  /*
+   * Pass 2 errors
+   */
+Index: e2fsprogs+chaos/e2fsck/problem.c
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/problem.c
++++ e2fsprogs+chaos/e2fsck/problem.c
+@@ -40,7 +40,8 @@
+  #define PROMPT_UNLINK	17
+  #define PROMPT_CLEAR_HTREE 18
+  #define PROMPT_RECREATE 19
+-#define PROMPT_NULL	20
++#define PROMPT_DISCONNECT 20
++#define PROMPT_NULL	21
+
+  /*
+   * These are the prompts which are used to ask the user if they want
+@@ -67,7 +68,8 @@ static const char *prompt[] = {
+  	N_("Unlink"),		/* 17 */
+  	N_("Clear HTree index"),/* 18 */
+  	N_("Recreate"),		/* 19 */
+-	"",			/* 20 */
++	N_("Unlink file for lost+found reconnect in pass 3"), /* 20 */
++	"",			/* 21 */
+  };
+
+  /*
+@@ -95,7 +97,8 @@ static const char *preen_msg[] = {
+  	N_("UNLINKED"),		/* 17 */
+  	N_("HTREE INDEX CLEARED"),/* 18 */
+  	N_("WILL RECREATE"),	/* 19 */
+-	"",			/* 20 */
++	N_("WILL DISCONNECT"),	/* 20 */
++	"",			/* 21 */
+  };
+
+  static struct e2fsck_problem problem_table[] = {
+@@ -912,6 +915,14 @@ static struct e2fsck_problem problem_tab
+  	{ PR_1D_CLONE_ERROR,
+  	  N_("Couldn't clone file: %m\n"), PROMPT_NONE, 0 },
+
++	/* Unlink file for lost+found reconnect in pass 3? */
++	{ PR_1D_DISCONNECT_QUESTION,
++	  "", PROMPT_DISCONNECT, 0 },
++
++	/* Couldn't unlink file (error) */
++	{ PR_1D_DISCONNECT_ERROR,
++	  N_("Couldn't unlink file: %m\n"), PROMPT_NONE, 0 },
++
+  	/* Pass 2 errors */
+
+  	/* Pass 2: Checking directory structure */
+Index: e2fsprogs+chaos/e2fsck/e2fsck.8.in
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.8.in
++++ e2fsprogs+chaos/e2fsck/e2fsck.8.in
+@@ -165,6 +165,19 @@ following options are supported:
+  Assume the format of the extended attribute blocks in the filesystem is
+  the specified version number.  The version number may be 1 or 2.  The
+  default extended attribute version format is 2.
++.TP
++.BI clone= dup|zero
++Resolve files with shared blocks in pass 1D by giving each file a private
++copy of the blocks (dup);
++or replacing the shared blocks with private, zero-filled blocks (zero). 
++The default is dup.
++.TP
++.BI shared= preserve|lost+found|delete
++Files with shared blocks discovered in pass 1D are cloned and then left 
++in place (preserve); 
++cloned and then disconnected from their parent directory,
++then reconnected to /lost+found in pass 3 (lost+found); 
++or simply deleted (delete).  The default is preserve.
+  .RE
+  .TP
+  .B \-f
+Index: e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.conf.5.in
++++ e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
+@@ -68,6 +68,7 @@ document.
+  This stanza contains general configuration parameters for
+  .BR e2fsck 's
+  behavior.
++.TP
+  .I [problems]
+  This stanza allows the administrator to reconfigure how e2fsck handles
+  various filesystem inconsistencies.
+@@ -87,6 +88,20 @@ This boolean relation controls whether o
+  filesystem checks (either based on time or number of mounts) should
+  be doubled if the system is running on battery.  It defaults to
+  true.
++.TP
++.I clone
++This string relation controls the default handling of shared blocks in pass 1D.
++It can be set to dup or zero.  See the
++.I "-E clone" 
++option description in e2fsck(8).
++.TP
++.I shared
++This string relation controls the default disposition of files discovered to 
++have shared blocks in pass 1D.  It can be set to preserve, lost+found, 
++or delete.  See the
++.I "-E shared" 
++option description in e2fsck(8).
++
+  .SH THE [problems] STANZA
+  Each tag in the
+  .I [problems] 
+Index: e2fsprogs+chaos/e2fsck/ChangeLog
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/ChangeLog
++++ e2fsprogs+chaos/e2fsck/ChangeLog
+@@ -1,5 +1,12 @@
+  2007-01-30  Jim Garlick  <garlick@llnl.gov>
+
++	* unix.c, pass1b.c, e2fsck.h : Add command line and config file
++		options to alter shared block handling method in pass 1D.
++
++	* problem.c, problem.h (PR_1D_DISCONNECT_*): Add new problem code.
++
++2007-01-30  Jim Garlick  <garlick@llnl.gov>
++
+  	* unix.c: Parse config file before command line so command line
+  		has precedence.  Complain if more than one -E option is
+  		specified
