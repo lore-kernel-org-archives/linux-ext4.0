@@ -1,213 +1,53 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [Resubmit][PATCH 5/5] Secure Deletion and Trash-Bin Support
-	for Ext4
-Date: Wed, 31 Jan 2007 11:11:10 -0600
-Message-ID: <1170263470.12392.23.camel@kleikamp.austin.ibm.com>
-References: <Pine.GSO.4.53.0701310955130.28263@compserv1>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [patch 1/2] e2fsprogs: user selectable dup block handling in fsck
+Date: Wed, 31 Jan 2007 23:06:24 -0700
+Message-ID: <20070201060624.GT5404@schatzie.adilger.int>
+References: <Pine.LNX.4.61.0701310737550.25489@webb>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, ezk@cs.sunysb.edu, kolya@cs.sunysb.edu
-To: Harry Papaxenopoulos <harry@cs.sunysb.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jim Garlick <garlick@llnl.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:39074 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030299AbXAaRLN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jan 2007 12:11:13 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l0VHBCWs029606
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jan 2007 12:11:12 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l0VHBCPa366572
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jan 2007 10:11:12 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l0VHBBNW024365
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jan 2007 10:11:11 -0700
-In-Reply-To: <Pine.GSO.4.53.0701310955130.28263@compserv1>
+Received: from mail.clusterfs.com ([206.168.112.78]:47823 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161216AbXBAGG0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Feb 2007 01:06:26 -0500
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.61.0701310737550.25489@webb>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Right now I've only really looked at the jfs patch, since that's what
-I'm the most familiar with.  I'll try to take a look at the rest of them
-later.
+On Jan 31, 2007  08:22 -0800, Jim Garlick wrote:
+> It also adds a check to make sure only one -E option is passed
+> on the command line as -E option parsing is not cumulative.
+>
+> @@ -633,6 +639,8 @@ static errcode_t PRS(int argc, char *arg
+>  		case 'E':
+> +			if (extended_opts)
+> +				fatal_error(ctx, _("-E must only be 
+> specified once"));
+>  			extended_opts = optarg;
 
-I don't have a strong opinion for or against the function and your
-design.  The only potential problem I see in the approach is that
-the .trash directory may conflict with some other use of the same name.
-Since this is primarily vfs function, you'll probably get a wider
-audience on linux-fsdevel.
+In such cases I've usually just changed the code to do the parsing
+as the option is passed.  Otherwise, it isn't possible to "override"
+previously-specified options. This sometimes is needed if you have an
+alias or script that is passing a bunch of options, and in some rare
+cases you don't want the default, e.g.
 
-Have you considered putting ALL of the function in the vfs layer?  It
-looks like this could be done without touching any code in the
-individual file systems.
+alias mye2fsck="e2fsck -f -p -E clone=dup"
 
-On Wed, 2007-01-31 at 09:55 -0500, Harry Papaxenopoulos wrote:
-> Trash-Bin Functionality for the jfs filesystem:
-> 
-> Signed-off-by: Harry Papaxenopoulos <harry@cs.sunysb.edu>
-> Signed-off-by: Nikolai Joukov <kolya@cs.sunysb.edu>
-> Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
-> 
-> Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
-> ===================================================================
-> --- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
-> +++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/super.c
+# mye2fsck -y -E clone=zero /dev/really-broken
 
-In the future, please restructure the patches so that the linux
-directory is the first component of the path.  It is standard that
-kernel patches can be applied from the top directory with patch -p1.
+Ted, is there a reason that the call to parse_extended_opts() can't
+just be moved in place of saving the options in extended_opts?  I
+can't see anything in -E (yet) that depends on other options that
+might not be set yet.
 
-> @@ -29,6 +29,7 @@
->  #include <linux/buffer_head.h>
->  #include <asm/uaccess.h>
->  #include <linux/seq_file.h>
-> +#include <linux/trashbin.h>
-> 
->  #include "jfs_incore.h"
->  #include "jfs_filsys.h"
-> @@ -503,6 +504,11 @@ static int jfs_fill_super(struct super_b
->  	if (sbi->mntflag & JFS_OS2)
->  		sb->s_root->d_op = &jfs_ci_dentry_operations;
-> 
-> +#ifdef CONFIG_JFS_FS_TRASHBIN
-> +	if ((sb->s_flags & MNT_TRASHBIN) && vfs_create_trash_bin(sb))
-> +		goto out_no_root;
+Also, it looks like that function leaks the duplicated string in "buf",
+since that variable goes out of scope without freeing the allocation.
 
-This error path leaks sb->s_root.  I think you need to dput(sb->s_root)
-here.
-
-> +#endif
-> +
->  	/* logical blocks are represented by 40 bits in pxd_t, etc. */
->  	sb->s_maxbytes = ((u64) sb->s_blocksize) << 40;
->  #if BITS_PER_LONG == 32
-> Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
-> ===================================================================
-> --- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
-> +++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/jfs/namei.c
-> @@ -20,6 +20,8 @@
->  #include <linux/fs.h>
->  #include <linux/ctype.h>
->  #include <linux/quotaops.h>
-> +#include <linux/trashbin.h>
-> +#include <linux/mount.h>
->  #include "jfs_incore.h"
->  #include "jfs_superblock.h"
->  #include "jfs_inode.h"
-> @@ -474,6 +476,11 @@ static int jfs_unlink(struct inode *dip,
->  	struct tblock *tblk;
->  	s64 new_size = 0;
->  	int commit_flag;
-> +	int trashed = 0;
-> +#ifdef CONFIG_JFS_FS_TRASHBIN
-> +	unsigned int flags = 0;
-> +	struct dentry *user_dentry = NULL;
-> +#endif
-> 
->  	jfs_info("jfs_unlink: dip:0x%p name:%s", dip, dentry->d_name.name);
-> 
-> @@ -483,6 +490,35 @@ static int jfs_unlink(struct inode *dip,
->  	if ((rc = get_UCSname(&dname, dentry)))
->  		goto out;
-> 
-> +#ifdef CONFIG_JFS_FS_TRASHBIN
-> +	flags = JFS_IP(ip)->mode2 & JFS_FL_USER_VISIBLE;
-> +	if ((dentry->d_inode->i_sb->s_flags & MNT_TRASHBIN) && (
-> +				flags & (JFS_UNRM_FL | JFS_SECRM_FL))) {
-> +
-> +		/*
-> +		 * We put this code here to optimize the common case. Since
-> +		 * lookups are expensive, we try to reserve from making any,
-> +		 * unless one of the trash-bin flags are set. The cleanest
-> +		 * way though is to probably move this code outside the
-> +		 * above if statement.
-> +		 */
-> +		user_dentry = vfs_get_user_dentry(dip, 1);
-> +		if (IS_ERR(user_dentry)) {
-> +			rc = PTR_ERR(user_dentry);
-> +			user_dentry = NULL;
-> +			goto out;
-> +		}
-> +
-> +		if (ip->i_nlink == 1 && user_dentry->d_inode &&
-> +			   	user_dentry->d_inode->i_ino != dip->i_ino) {
-> +			rc = vfs_trash_entry(dip, dentry);
-
-can we dput(user_dentry) here rather than after out: ?
-
-> +			trashed = 1;
-> +			if (rc)
-> +				goto out;
-
-why not unconditionally goto out here?  if vfs_trash_entry() was
-successful, the file was successfully moved to the trashbin directory.
-There is nothing left to be done, right?  Then there's no need for the
-trashed flag.
-
-In fact, the ifdef'ed code should precede the call to get_UCSname(),
-since we don't need to allocate dname if we move the file to the
-trashbin, and we leak the allocation if we jump to out:.
-
-> +		}
-> +	}
-> +#endif
-> +
->  	IWRITE_LOCK(ip);
-> 
->  	tid = txBegin(dip->i_sb, 0);
-> @@ -497,7 +533,7 @@ static int jfs_unlink(struct inode *dip,
->  	 * delete the entry of target file from parent directory
->  	 */
->  	ino = ip->i_ino;
-> -	if ((rc = dtDelete(tid, dip, &dname, &ino, JFS_REMOVE))) {
-> +	if (!trashed && (rc = dtDelete(tid, dip, &dname, &ino, JFS_REMOVE))) {
->  		jfs_err("jfs_unlink: dtDelete returned %d", rc);
->  		if (rc == -EIO)
->  			txAbort(tid, 1);	/* Marks FS Dirty */
-> @@ -514,7 +550,8 @@ static int jfs_unlink(struct inode *dip,
->  	mark_inode_dirty(dip);
-> 
->  	/* update target's inode */
-> -	inode_dec_link_count(ip);
-> +	if (!trashed)
-> +		inode_dec_link_count(ip);
-> 
->  	/*
->  	 *      commit zero link count object
-> @@ -590,6 +627,10 @@ static int jfs_unlink(struct inode *dip,
->  	free_UCSname(&dname);
->        out:
->  	jfs_info("jfs_unlink: rc:%d", rc);
-> +#ifdef CONFIG_JFS_FS_TRASHBIN
-> +	if (user_dentry)
-> +		dput(user_dentry);
-> +#endif
->  	return rc;
->  }
-> 
-> Index: sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-> ===================================================================
-> --- sdfs.orig/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-> +++ sdfs/src/linux-2.6.20-rc6-trashbin/fs/Kconfig
-> @@ -443,6 +443,15 @@ config JFS_STATISTICS
->  	  Enabling this option will cause statistics from the JFS file system
->  	  to be made available to the user in the /proc/fs/jfs/ directory.
-> 
-> +config JFS_FS_TRASHBIN
-> +	bool "JFS trashbin functionality"
-> +	depends on TRASHBIN
-> +	depends on JFS_FS
-> +	help
-> +	  Trashbin functionality for the JFS filesystem
-> +
-> +	  If unsure, say N.
-> +
->  config FS_POSIX_ACL
->  # Posix ACL utility routines (for now, only ext2/ext3/jfs/reiserfs)
->  #
-
-What about the rename() path?  A file can be unlinked by mv'ing a file
-over another.
--- 
-David Kleikamp
-IBM Linux Technology Center
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
