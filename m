@@ -1,61 +1,53 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [Resubmit][PATCH 5/5] Secure Deletion and Trash-Bin Support
-	for Ext4
-Date: Thu, 01 Feb 2007 07:19:58 -0600
-Message-ID: <1170335998.12263.4.camel@kleikamp.austin.ibm.com>
-References: <Pine.GSO.4.53.0701310955130.28263@compserv1>
-	 <1170263470.12392.23.camel@kleikamp.austin.ibm.com>
-	 <Pine.GSO.4.53.0701311951100.4753@compserv1>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Fw: [BUG -mm] ext3_orphan_add() accessing corrupted list on a
+ corrupted ext3fs
+Date: Thu, 01 Feb 2007 10:58:08 -0600
+Message-ID: <45C21C20.7080807@redhat.com>
+References: <20070201010836.31a63ef2.akpm@osdl.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, ezk@cs.sunysb.edu, kolya@cs.sunysb.edu
-To: Harry Papaxenopoulos <harry@cs.sunysb.edu>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Fengguang Wu <fengguang.wu@gmail.com>
+To: Andrew Morton <akpm@osdl.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:41582 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422864AbXBANUC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Feb 2007 08:20:02 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l11DK1vL021287
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 08:20:01 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l11DK1ij492626
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 06:20:01 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l11DK0cs029061
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 06:20:01 -0700
-In-Reply-To: <Pine.GSO.4.53.0701311951100.4753@compserv1>
+Received: from mx1.redhat.com ([66.187.233.31]:54348 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422728AbXBAQ5t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Feb 2007 11:57:49 -0500
+In-Reply-To: <20070201010836.31a63ef2.akpm@osdl.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-02-01 at 06:05 -0500, Harry Papaxenopoulos wrote:
+Andrew Morton wrote:
 > 
-> On Wed, 31 Jan 2007, Dave Kleikamp wrote:
-
-> > why not unconditionally goto out here?  if vfs_trash_entry() was
-> > successful, the file was successfully moved to the trashbin directory.
-> > There is nothing left to be done, right?  Then there's no need for the
-> > trashed flag.
-> >
-> > In fact, the ifdef'ed code should precede the call to get_UCSname(),
-> > since we don't need to allocate dname if we move the file to the
-> > trashbin, and we leak the allocation if we jump to out:.
-> >
+> Begin forwarded message:
 > 
-> Well the main reason I don't jump to out is to update the inode's
-> change time, otherwise I would have unconditionally jumped.
-
-the rename already updates the change time.
+> Date: Thu, 1 Feb 2007 16:44:39 +0800
+> From: Fengguang Wu <fengguang.wu@gmail.com>
+> To: LKML <linux-kernel@vger.kernel.org>
+> Subject: [BUG -mm] ext3_orphan_add() accessing corrupted list on a corrupted ext3fs
 > 
-> You're right, I used the incorrect label to jump. Should have been "out1"
-> instead of "out" so the allocation is freed. Sorry about that.
+> 
+> I accidentally ran two qemu instances on the same ext3 fs, after that bad
+> things happened. After exiting the two qemus and running a new one, I got the
+> following oops:
 
-I'd rather do the allocation after the new code anyway.  It's not needed
-at all if we're moving the file to the trashbin.
+Is this equivalent to mounting the same SAN block device on 2 different
+machines?  And if so how much can the filesystem really be expected to
+cope with this?
 
-Thanks,
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+(remembering to read the rest of his inbox...)
+
+Andreas Dilger wrote:
+
+> I don't have a comment on the actual bug here, but this is another case
+> where it would be nice to have multi-mount protection built into ext3...
+> When I last proposed this it was refused on the grounds that an external
+> HA manager should be doing this job but I don't think that is realistic.
+
+I'm with Andreas on this one, in the era of SANs, iscsi, virtual
+machines, and suspended images, it would be nice to prevent multiple
+mounts at the fs (or vfs?) level....
+
+-Eric
