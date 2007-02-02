@@ -1,59 +1,42 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: ext3_forget() and ext3_free_blocks()
-Date: Thu, 01 Feb 2007 12:56:13 -0800
-Message-ID: <1170363373.4271.44.camel@localhost.localdomain>
-References: <20070201010836.31a63ef2.akpm@osdl.org>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: Fw: [BUG -mm] ext3_orphan_add() accessing corrupted list on a corrupted ext3fs
+Date: Thu, 1 Feb 2007 18:19:38 -0700
+Message-ID: <20070202011938.GC5717@schatzie.adilger.int>
+References: <20070201010836.31a63ef2.akpm@osdl.org> <20070201102534.GF5404@schatzie.adilger.int> <m3odod4wju.fsf@bzzz.home.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Andreas Gruenbacher <agruen@suse.de>
-To: Andrew Morton <akpm@osdl.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@osdl.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Fengguang Wu <fengguang.wu@gmail.com>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:41112 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423006AbXBAU4W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Feb 2007 15:56:22 -0500
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l11KuENs019283
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 15:56:14 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by westrelay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l11KuEwv510456
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 13:56:14 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l11KuE4d005743
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Feb 2007 13:56:14 -0700
-In-Reply-To: <20070201010836.31a63ef2.akpm@osdl.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:46236 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1423058AbXBBB0o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Feb 2007 20:26:44 -0500
+Content-Disposition: inline
+In-Reply-To: <m3odod4wju.fsf@bzzz.home.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I am chasing a ext3 bug which double free the same xattr block from two
-different inode. While I am looking at the code ext3_xattr_release_block
-() I found ext3_free_block() is called before ext3_forget():
+On Feb 01, 2007  20:28 +0300, Alex Tomas wrote:
+> >>>>> Andreas Dilger (AD) writes:
+>  AD> I don't have a comment on the actual bug here, but this is another case
+>  AD> where it would be nice to have multi-mount protection built into ext3...
+>  AD> When I last proposed this it was refused on the grounds that an external
+>  AD> HA manager should be doing this job but I don't think that is realistic.
+> 
+> can we use JBD-like approach? export some inode and MMP/whatever
+> would 'ping' 1st block of the inode.
 
-ext3_xattr_release_block(handle_t *handle, struct inode *inode,
-                         struct buffer_head *bh)
-{
-        struct mb_cache_entry *ce = NULL;
+I'd be happy enough to implement the engine for this in a generic kernel
+layer instead of being ext3-specific.  That said, ext3 also has the
+ability to mark the filesystem incompatible to older kernels that do not
+support the MMP protocol, so this avoids the requirement that both
+kernels are up-to-date in order to not corrupt shared images.
 
-        ce = mb_cache_entry_get(ext3_xattr_cache, bh->b_bdev, bh->b_blocknr);
-        if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
-                ea_bdebug(bh, "refcount now=0; freeing");
-                if (ce)
-                        mb_cache_entry_free(ce);
-                ext3_free_blocks(handle, inode, bh->b_blocknr, 1);
-                get_bh(bh);
-                ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
-        } else {
-
-Is this a potential problem? Looks like other places calling
-ext3_free_block() it all has ext3_forget() called before that.
-
-Though this seems not related to the double-free bug I see, as I
-reversed the order and rerun the test, the bug still reproduced. But
-just curious..
-
-
-Thanks,
-Mingming
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
