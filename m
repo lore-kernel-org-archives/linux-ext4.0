@@ -1,368 +1,580 @@
-From: Jim Garlick <garlick@llnl.gov>
-Subject: [repost][patch 2/2] e2fsprogs: user selectable dup block handling
- in fsck (fwd)
-Date: Sun, 4 Feb 2007 17:31:20 -0800 (PST)
-Message-ID: <Pine.LNX.4.61.0702041728410.31030@webb>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
+Date: Mon, 5 Feb 2007 14:12:04 +0100
+Message-ID: <20070205131204.GA15596@atrey.karlin.mff.cuni.cz>
+References: <20070116210520sho@rifu.tnes.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-1.llnl.gov ([128.115.41.81]:38407 "EHLO
-	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752655AbXBEBbV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Feb 2007 20:31:21 -0500
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: sho@tnes.nec.co.jp
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070116210520sho@rifu.tnes.nec.co.jp>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Second patch that implements new options for shared block handling
-in e2fsck pass 1D.
+  Hi,
 
+  I'm replying rather late but I've been busy with my PhD thesis lately.
+So sorry for that.
 
-Index: e2fsprogs+chaos/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/e2fsck.h
-+++ e2fsprogs+chaos/e2fsck/e2fsck.h
-@@ -181,6 +181,17 @@ struct resource_track {
-  #define E2F_PASS_5	5
-  #define E2F_PASS_1B	6
+> Move the blocks on the temporary inode to the original inode
+> by a page.
+> 1. Read the file data from the old blocks to the page
+> 2. Move the block on the temporary inode to the original inode
+> 3. Write the file data on the page into the new blocks
+  I have one thing - it's probably not good to use page cache for
+defragmentation. As you will read/write tons of data and that will push
+out all other data from the cache. I think it may be better to allocate
+some separate pages and use them as buffers.
+  Also I'm intending to work on a similar functionality for ext3
+(without extents/mballoc). It would be probably good to find some common
+parts so that they don't have to be duplicated.
 
-+typedef	enum { 
-+	E2F_SHARED_PRESERVE = 0, 
-+	E2F_SHARED_DELETE,
-+	E2F_SHARED_LPF
-+} shared_opt_t;
-+
-+typedef enum {
-+	E2F_CLONE_DUP = 0,
-+	E2F_CLONE_ZERO
-+} clone_opt_t;
-+
-  /*
-   * Define the extended attribute refcount structure
-   */
-@@ -332,6 +343,8 @@ struct e2fsck_struct {
-  	time_t now;
+								Honza
 
-  	int ext_attr_ver;
-+	shared_opt_t shared;
-+	clone_opt_t clone;
-
-  	profile_t	profile;
-
-Index: e2fsprogs+chaos/e2fsck/unix.c
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/unix.c
-+++ e2fsprogs+chaos/e2fsck/unix.c
-@@ -510,6 +510,49 @@ static void signal_cancel(int sig EXT2FS
-  }
-  #endif
-
-+static void initialize_profile_options(e2fsck_t ctx)
-+{
-+	char *tmp;
-+
-+	/* [options] shared=preserve|lost+found|delete */
-+	tmp = NULL;
-+	ctx->shared = E2F_SHARED_PRESERVE; 
-+	profile_get_string(ctx->profile, "options", "shared", 0,
-+		           "preserve", &tmp);
-+	if (tmp) {
-+		if (strcmp(tmp, "preserve") == 0)
-+			ctx->shared = E2F_SHARED_PRESERVE; 
-+		else if (strcmp(tmp, "delete") == 0)
-+			ctx->shared = E2F_SHARED_DELETE; 
-+		else if (strcmp(tmp, "lost+found") == 0)
-+			ctx->shared = E2F_SHARED_LPF; 
-+		else {
-+			com_err(ctx->program_name, 0, 
-+				_("configuration error: 'shared=%s'"), tmp);
-+			fatal_error(ctx, 0);
-+		}
-+		free(tmp);
-+	}
-+
-+	/* [options] clone=dup|zero */
-+	tmp = NULL;
-+	ctx->clone = E2F_CLONE_DUP;
-+	profile_get_string(ctx->profile, "options", "clone", 0,
-+			   "dup", &tmp);
-+	if (tmp) {
-+		if (strcmp(tmp, "dup") == 0)
-+			ctx->clone = E2F_CLONE_DUP;
-+		else if (strcmp(tmp, "zero") == 0)
-+			ctx->clone = E2F_CLONE_ZERO;
-+		else {
-+			com_err(ctx->program_name, 0, 
-+				_("configuration error: 'clone=%s'"), tmp);
-+			fatal_error(ctx, 0);
-+		}
-+		free(tmp);
-+	}
-+}
-+
-  static void parse_extended_opts(e2fsck_t ctx, const char *opts)
-  {
-  	char	*buf, *token, *next, *p, *arg;
-@@ -543,6 +586,36 @@ static void parse_extended_opts(e2fsck_t
-  				continue;
-  			}
-  			ctx->ext_attr_ver = ea_ver;
-+		/* -E shared=preserve|lost+found|delete */
-+		} else if (strcmp(token, "shared") == 0) {
-+			if (!arg) {
-+				extended_usage++;
-+				continue;
-+			}
-+			if (strcmp(arg, "preserve") == 0) {
-+				ctx->shared = E2F_SHARED_PRESERVE;
-+			} else if (strcmp(arg, "lost+found") == 0) {
-+				ctx->shared = E2F_SHARED_LPF;
-+			} else if (strcmp(arg, "delete") == 0) {
-+				ctx->shared = E2F_SHARED_DELETE;
-+			} else {
-+				extended_usage++;
-+				continue;
-+			}
-+		/* -E clone=dup|zero */
-+		} else if (strcmp(token, "clone") == 0) {
-+			if (!arg) {
-+				extended_usage++;
-+				continue;
-+			}
-+			if (strcmp(arg, "dup") == 0) {
-+				ctx->clone = E2F_CLONE_DUP;
-+			} else if (strcmp(arg, "zero") == 0) {
-+				ctx->clone = E2F_CLONE_ZERO;
-+			} else {
-+				extended_usage++;
-+				continue;
-+			}
-  		} else {
-  			fprintf(stderr, _("Unknown extended option: %s\n"),
-  				token);
-@@ -556,6 +629,8 @@ static void parse_extended_opts(e2fsck_t
-  		       "and may take an argument which\n"
-  		       "is set off by an equals ('=') sign.  "
-  			"Valid extended options are:\n"
-+		       "\tshared=<preserve|lost+found|delete>\n"
-+		       "\tclone=<dup|zero>\n"
-  		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
-  		exit(1);
-  	}
-@@ -614,6 +689,7 @@ static errcode_t PRS(int argc, char *arg
-  		config_fn[0] = cp;
-  	profile_set_syntax_err_cb(syntax_err_report);
-  	profile_init(config_fn, &ctx->profile);
-+	initialize_profile_options(ctx);
-
-  	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
-  		switch (c) {
-Index: e2fsprogs+chaos/e2fsck/pass1b.c
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/pass1b.c
-+++ e2fsprogs+chaos/e2fsck/pass1b.c
-@@ -448,6 +448,9 @@ static void pass1d(e2fsck_t ctx, char *b
-  			q = (struct dup_block *) dnode_get(m);
-  			if (q->num_bad > 1)
-  				file_ok = 0;
-+			if (q->num_bad == 1 && (ctx->clone == E2F_CLONE_ZERO ||
-+			    ctx->shared != E2F_SHARED_PRESERVE))
-+				file_ok = 0;
-  			if (check_if_fs_block(ctx, s->block)) {
-  				file_ok = 0;
-  				meta_data = 1;
-@@ -503,13 +506,26 @@ static void pass1d(e2fsck_t ctx, char *b
-  			fix_problem(ctx, PR_1D_DUP_BLOCKS_DEALT, &pctx);
-  			continue;
-  		}
--		if (fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
-+		if (ctx->shared != E2F_SHARED_DELETE &&
-+		    fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
-  			pctx.errcode = clone_file(ctx, ino, p, block_buf);
--			if (pctx.errcode)
-+			if (pctx.errcode) {
-  				fix_problem(ctx, PR_1D_CLONE_ERROR, &pctx);
--			else
--				continue;
-+				goto delete;
-+			}
-+			if (ctx->shared == E2F_SHARED_LPF &&
-+			    fix_problem(ctx, PR_1D_DISCONNECT_QUESTION, &pctx)) {
-+				pctx.errcode = ext2fs_unlink(fs, p->dir, 
-+							     NULL, ino, 0);
-+				if (pctx.errcode) {
-+					fix_problem(ctx, PR_1D_DISCONNECT_ERROR,
-+						    &pctx);
-+					goto delete;
-+				}
-+			}
-+			continue;
-  		}
-+delete:
-  		if (fix_problem(ctx, PR_1D_DELETE_QUESTION, &pctx))
-  			delete_file(ctx, ino, p, block_buf);
-  		else
-@@ -526,7 +542,8 @@ static void decrement_badcount(e2fsck_t
-  {
-  	p->num_bad--;
-  	if (p->num_bad <= 0 ||
--	    (p->num_bad == 1 && !check_if_fs_block(ctx, block)))
-+	    (p->num_bad == 1 && !check_if_fs_block(ctx, block) && 
-+	    ctx->clone == E2F_CLONE_DUP))
-  		ext2fs_unmark_block_bitmap(ctx->block_dup_map, block);
-  }
-
-@@ -564,7 +581,7 @@ static int delete_file_block(ext2_filsys
-
-  	return 0;
-  }
-- 
-+
-  static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
-  			struct dup_inode *dp, char* block_buf)
-  {
-@@ -672,11 +689,15 @@ static int clone_file_block(ext2_filsys
-  			printf("Cloning block %u to %u\n", *block_nr,
-  			       new_block);
-  #endif
--			retval = io_channel_read_blk(fs->io, *block_nr, 1,
--						     cs->buf);
--			if (retval) {
--				cs->errcode = retval;
--				return BLOCK_ABORT;
-+			if (ctx->clone == E2F_CLONE_ZERO) {
-+				memset(cs->buf, 0, fs->blocksize);
-+			} else {
-+				retval = io_channel_read_blk(fs->io, *block_nr,
-+							1, cs->buf);
-+				if (retval) {
-+					cs->errcode = retval;
-+					return BLOCK_ABORT;
-+				}
-  			}
-  			retval = io_channel_write_blk(fs->io, new_block, 1,
-  						      cs->buf);
-@@ -685,6 +706,11 @@ static int clone_file_block(ext2_filsys
-  				return BLOCK_ABORT;
-  			}
-  			decrement_badcount(ctx, *block_nr, p);
-+			if (ctx->clone == E2F_CLONE_ZERO && p->num_bad == 0) {
-+				ext2fs_unmark_block_bitmap(ctx->block_found_map,
-+							   *block_nr);
-+				ext2fs_block_alloc_stats(fs, *block_nr, -1);
-+			}
-  			*block_nr = new_block;
-  			ext2fs_mark_block_bitmap(ctx->block_found_map,
-  						 new_block);
-Index: e2fsprogs+chaos/e2fsck/problem.h
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/problem.h
-+++ e2fsprogs+chaos/e2fsck/problem.h
-@@ -536,7 +536,13 @@ struct problem_context {
-
-  /* Couldn't clone file (error) */
-  #define PR_1D_CLONE_ERROR	0x013008
-- 
-+
-+/* File with shared blocks found */
-+#define PR_1D_DISCONNECT_QUESTION 0x013009
-+
-+/* Couldn't unlink file (error) */
-+#define PR_1D_DISCONNECT_ERROR	0x01300A
-+
-  /*
-   * Pass 2 errors
-   */
-Index: e2fsprogs+chaos/e2fsck/problem.c
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/problem.c
-+++ e2fsprogs+chaos/e2fsck/problem.c
-@@ -912,6 +912,14 @@ static struct e2fsck_problem problem_tab
-  	{ PR_1D_CLONE_ERROR,
-  	  N_("Couldn't clone file: %m\n"), PROMPT_NONE, 0 },
-
-+	/* File with shared blocks found */
-+	{ PR_1D_DISCONNECT_QUESTION,
-+	  N_("File with shared blocks found\n"), PROMPT_CONNECT, 0 },
-+
-+	/* Couldn't unlink file (error) */
-+	{ PR_1D_DISCONNECT_ERROR,
-+	  N_("Couldn't unlink file: %m\n"), PROMPT_NONE, 0 },
-+
-  	/* Pass 2 errors */
-
-  	/* Pass 2: Checking directory structure */
-Index: e2fsprogs+chaos/e2fsck/e2fsck.8.in
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/e2fsck.8.in
-+++ e2fsprogs+chaos/e2fsck/e2fsck.8.in
-@@ -165,6 +165,19 @@ following options are supported:
-  Assume the format of the extended attribute blocks in the filesystem is
-  the specified version number.  The version number may be 1 or 2.  The
-  default extended attribute version format is 2.
-+.TP
-+.BI clone= dup|zero
-+Resolve files with shared blocks in pass 1D by giving each file a private
-+copy of the blocks (dup);
-+or replacing the shared blocks with private, zero-filled blocks (zero). 
-+The default is dup.
-+.TP
-+.BI shared= preserve|lost+found|delete
-+Files with shared blocks discovered in pass 1D are cloned and then left 
-+in place (preserve); 
-+cloned and then disconnected from their parent directory,
-+then reconnected to /lost+found in pass 3 (lost+found); 
-+or simply deleted (delete).  The default is preserve.
-  .RE
-  .TP
-  .B \-f
-Index: e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/e2fsck.conf.5.in
-+++ e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
-@@ -68,6 +68,7 @@ document.
-  This stanza contains general configuration parameters for
-  .BR e2fsck 's
-  behavior.
-+.TP
-  .I [problems]
-  This stanza allows the administrator to reconfigure how e2fsck handles
-  various filesystem inconsistencies.
-@@ -87,6 +88,20 @@ This boolean relation controls whether o
-  filesystem checks (either based on time or number of mounts) should
-  be doubled if the system is running on battery.  It defaults to
-  true.
-+.TP
-+.I clone
-+This string relation controls the default handling of shared blocks in pass 1D.
-+It can be set to dup or zero.  See the
-+.I "-E clone" 
-+option description in e2fsck(8).
-+.TP
-+.I shared
-+This string relation controls the default disposition of files discovered to 
-+have shared blocks in pass 1D.  It can be set to preserve, lost+found, 
-+or delete.  See the
-+.I "-E shared" 
-+option description in e2fsck(8).
-+
-  .SH THE [problems] STANZA
-  Each tag in the
-  .I [problems] 
-Index: e2fsprogs+chaos/e2fsck/ChangeLog
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/ChangeLog
-+++ e2fsprogs+chaos/e2fsck/ChangeLog
-@@ -1,5 +1,12 @@
-  2007-01-30  Jim Garlick  <garlick@llnl.gov>
-
-+	* unix.c, pass1b.c, e2fsck.h : Add command line and config file
-+		options to alter shared block handling method in pass 1D.
-+
-+	* problem.c, problem.h (PR_1D_DISCONNECT_*): Add new problem code.
-+
-+2007-01-30  Jim Garlick  <garlick@llnl.gov>
-+
-  	* unix.c: Parse config file before command line so command line
-  		has precedence.  Make -E option parsing cumulative.
+> Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
+> ---
+> diff -Nrup -X linux-2.6.19-rc6-org/Documentation/dontdiff linux-2.6.19-rc6-1/fs/ext4/extents.c linux-2.6.19-rc6-FULL/fs/ext4/extents.c
+> --- linux-2.6.19-rc6-1/fs/ext4/extents.c	2007-01-16 09:46:13.000000000 +0900
+> +++ linux-2.6.19-rc6-FULL/fs/ext4/extents.c	2007-01-16 09:43:45.000000000 +0900
+> @@ -2539,6 +2539,470 @@ ext4_ext_next_extent(struct inode *inode
+>  }
+>  
+>  /**
+> + * ext4_ext_merge_extents - merge new extent to the extent block
+> + *
+> + * @handle      journal handle
+> + * @inode       target file's inode
+> + * @org_path    path indicates first extent to be defraged
+> + * @o_start     first original extent to be defraged
+> + * @o_end       last original extent to be defraged
+> + * @start_ext   first new extent to be merged
+> + * @new_ext     middle of new extent to be merged
+> + * @end_ext     last new extent to be merged
+> + * @replaced    the number of blocks which will be replaced with new_ext
+> + *
+> + * This function returns 0 if succeed, otherwise returns -1.
+> + */
+> +static int
+> +ext4_ext_merge_extents(handle_t *handle, struct inode *inode,
+> +		struct ext4_ext_path *org_path,
+> +		struct ext4_extent *o_start, struct ext4_extent *o_end,
+> +		struct ext4_extent *start_ext, struct ext4_extent *new_ext,
+> +		struct ext4_extent *end_ext, unsigned long replaced)
+> +{
+> +	int	i = 0;
+> +	unsigned need_slots;
+> +	unsigned slots_range, len;
+> +	int	 range_to_move;
+> +	struct	ext4_extent_header * eh;
+> +	struct	ext4_extent *free_start, *free_end;
+> +	int	depth;
+> +
+> +	/* The extents need to be inserted
+> +	 * start_extent + new_extent + end_extent
+> +	 */
+> +	need_slots = (le16_to_cpu(start_ext->ee_len) ? 1 : 0) +
+> +			(le16_to_cpu(end_ext->ee_len) ? 1 : 0) +
+> +			(le16_to_cpu(new_ext->ee_len) ? 1 : 0);
+> +
+> +	/* The number of slots between start and end */
+> +	slots_range = o_end - o_start + 1;
+> +
+> +	/* Range to move the end of extent */
+> +	range_to_move = need_slots - slots_range;
+> +	depth = org_path->p_depth;
+> +	org_path += depth;
+> +	eh = org_path->p_hdr;
+> +	/* expansion */
+> +	if (range_to_move > 0) {
+> +		if (range_to_move > le16_to_cpu(eh->eh_max)
+> +				- le16_to_cpu(eh->eh_entries)) {
+> +			printk("Cannot merge extents due to no space\n");
+> +			return -1;
+> +		}
+> +	}
+> +	if (depth) {
+> +		/* Register to journal */
+> +		if (ext4_journal_get_write_access(handle, org_path->p_bh)) {
+> +			return -1;
+> +		}
+> +	}
+> +
+> +	/* Free old blocks
+> +	 * dest        |---------------|
+> +	 * org  |---------------|
+> +	 */
+> +	free_start = o_start;
+> +	free_end = o_end;
+> +	if (le16_to_cpu(start_ext->ee_len)) {
+> +		if (le16_to_cpu(o_start->ee_len)
+> +			> le16_to_cpu(start_ext->ee_len)) {
+> +			ext4_free_blocks(handle, inode,
+> +				ext_pblock(o_start)
+> +					+ le16_to_cpu(start_ext->ee_len),
+> +				le16_to_cpu(o_start->ee_len)
+> +					- le16_to_cpu(start_ext->ee_len), 0);
+> +		}
+> +		free_start++;
+> +	}
+> +
+> +	/* dest |----------------|
+> +	 * org          |---------------|
+> +	 */
+> +	if (le16_to_cpu(end_ext->ee_len)) {
+> +		ext4_free_blocks(handle, inode, ext_pblock(o_end),
+> +			le16_to_cpu(o_end->ee_len)
+> +				- le16_to_cpu(end_ext->ee_len), 0);
+> +		free_end--;
+> +	}
+> +
+> +	/* dest |-------------------|
+> +	 * org   |-----------------|
+> +	 */
+> +	for (; free_start <= free_end; free_start++) {
+> +		ext4_free_blocks(handle, inode,
+> +			ext_pblock(free_start),
+> +			le32_to_cpu(free_start->ee_len), 0);
+> +	}
+> +
+> +	/* Move the existing extents */
+> +	if (range_to_move && o_end < EXT_LAST_EXTENT(eh)) {
+> +		len = EXT_LAST_EXTENT(eh) - (o_end + 1) + 1;
+> +		len = len * sizeof(struct ext4_extent);
+> +		memmove(o_end + 1 + range_to_move, o_end + 1, len);
+> +	}
+> +
+> +	/* Insert start entry */
+> +	if (le16_to_cpu(start_ext->ee_len)) {
+> +		o_start[i++].ee_len = start_ext->ee_len;
+> +	}
+> +
+> +	/* Insert new entry */
+> +	if (le16_to_cpu(new_ext->ee_len)) {
+> +		o_start[i].ee_block = new_ext->ee_block;
+> +		o_start[i].ee_len = cpu_to_le16(replaced);
+> +		ext4_ext_store_pblock(&o_start[i++], ext_pblock(new_ext));
+> +	}
+> +
+> +	/* Insert end entry */
+> +	if (end_ext->ee_len) {
+> +		o_start[i] = *end_ext;
+> +	}
+> +
+> +	/* Increment the total entries counter on the extent block */
+> +	eh->eh_entries
+> +		= cpu_to_le16(le16_to_cpu(eh->eh_entries) + range_to_move);
+> +	if (depth) {
+> +		if (ext4_journal_dirty_metadata(handle, org_path->p_bh)) {
+> +			return -1;
+> +		}
+> +	} else {
+> +		if (ext4_mark_inode_dirty(handle, inode) < 0) {
+> +			return -1;
+> +		}
+> +	}
+> +
+> +	return 0;
+> +}
+> +
+> +/**
+> + * ext4_ext_defrag_leaf_block -  Defragmentation for one leaf extent block.
+> + * @handle      journal handle
+> + * @org_inode   target inode
+> + * @org_path    path indicates first extent to be defraged
+> + * @dext        destination extent
+> + * @from        start offset on the target file
+> + *
+> + * This function returns 0 if succeed, otherwise returns error value.
+> + */
+> +static int
+> +ext4_ext_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
+> +		struct ext4_ext_path *org_path, struct ext4_extent *dext,
+> +		unsigned long *from, unsigned long *delete_start)
+> +{
+> +	unsigned long depth, replaced = 0;
+> +	struct ext4_extent *oext, *o_start = NULL, *o_end = NULL, *prev_ext;
+> +	struct ext4_extent new_ext, start_ext, end_ext;
+> +	unsigned long new_end;
+> +	unsigned long lblock;
+> +	unsigned long len;
+> +	unsigned long long new_phys_end;
+> +	int	ret;
+> +
+> +	depth = ext_depth(org_inode);
+> +	start_ext.ee_len = end_ext.ee_len = 0;
+> +	o_start = o_end = oext = org_path[depth].p_ext;
+> +	ext4_ext_store_pblock(&new_ext, ext_pblock(dext));	
+> +	len = new_ext.ee_len = dext->ee_len;
+> +	new_ext.ee_block = cpu_to_le32(*from);
+> +	lblock = le32_to_cpu(oext->ee_block);
+> +	new_end = le32_to_cpu(new_ext.ee_block)
+> +		+ le16_to_cpu(new_ext.ee_len) - 1;
+> +	new_phys_end = ext_pblock(&new_ext)
+> +		+ le16_to_cpu(new_ext.ee_len) - 1;
+> +
+> +	/* First original extent
+> +	 * dest         |---------------|
+> +	 * org  |---------------|
+> +	 */
+> +	if (le32_to_cpu(new_ext.ee_block) >
+> +		le32_to_cpu(oext->ee_block) &&
+> +		le32_to_cpu(new_ext.ee_block) <
+> +		le32_to_cpu(oext->ee_block)
+> +		+ le16_to_cpu(oext->ee_len)) {
+> +		start_ext.ee_len = cpu_to_le32(le32_to_cpu(new_ext.ee_block)
+> +					- le32_to_cpu(oext->ee_block));
+> +		replaced += le16_to_cpu(oext->ee_len)
+> +					- le16_to_cpu(start_ext.ee_len);
+> +	} else if (oext > EXT_FIRST_EXTENT(org_path[depth].p_hdr)) {
+> +		/* We can merge previous extent. */
+> +		prev_ext = oext -1;
+> +		if ((ext_pblock(prev_ext)
+> +			+ le32_to_cpu(prev_ext->ee_len))
+> +			== ext_pblock(&new_ext)) {
+> +			o_start = prev_ext;
+> +			start_ext.ee_len = cpu_to_le32(
+> +					le16_to_cpu(prev_ext->ee_len)
+> +					+ le16_to_cpu(new_ext.ee_len));
+> +			new_ext.ee_len = 0;
+> +		}
+> +	}
+> +
+> +	for (;;) {
+> +
+> +		/* The extent for destination must be found. */
+> +		BUG_ON(!oext || lblock != le32_to_cpu(oext->ee_block));
+> +		lblock += le16_to_cpu(oext->ee_len);
+> +
+> +		/* Middle of original extent
+> +		 * dest |-------------------|
+> +		 * org   |-----------------|
+> +		 */
+> +		if (le32_to_cpu(new_ext.ee_block) <=
+> +			le32_to_cpu(oext->ee_block) &&
+> +			new_end >= le32_to_cpu(oext->ee_block)
+> +			+ le16_to_cpu(oext->ee_len) -1) {
+> +			replaced += le16_to_cpu(oext->ee_len);
+> +		}
+> +
+> +		/* Last original extent
+> +		 * dest |----------------|
+> +		 * org          |---------------|
+> +		 */
+> +		if (new_end >= le32_to_cpu(oext->ee_block) &&
+> +			new_end < le32_to_cpu(oext->ee_block)
+> +				+ le16_to_cpu(oext->ee_len) - 1) {
+> +			end_ext.ee_len
+> +				= cpu_to_le16(le32_to_cpu(oext->ee_block)
+> +				+ le16_to_cpu(oext->ee_len) -1 - new_end);
+> +			ext4_ext_store_pblock(&end_ext, (ext_pblock(o_end)
+> +				+ cpu_to_le16(oext->ee_len)
+> +				- cpu_to_le16(end_ext.ee_len)));
+> +			end_ext.ee_block
+> +				= cpu_to_le32(le32_to_cpu(o_end->ee_block)
+> +				+ le16_to_cpu(oext->ee_len)
+> +				- le16_to_cpu(end_ext.ee_len));
+> +			replaced += le16_to_cpu(oext->ee_len)
+> +				- le16_to_cpu(end_ext.ee_len);
+> +		}
+> +
+> +		/* Detected the block end, reached the number of replaced
+> +		 * blocks to dext->ee_len.  Then, merge the extent.
+> +		 */
+> +		if (oext == EXT_LAST_EXTENT(org_path[depth].p_hdr) ||
+> +			new_end <= le32_to_cpu(oext->ee_block)
+> +				+ le16_to_cpu(oext->ee_len) - 1) {
+> +			if (ext4_ext_merge_extents(handle, org_inode,
+> +				org_path, o_start, o_end,
+> +				&start_ext, &new_ext, &end_ext, replaced) < 0) {
+> +				return -EIO;
+> +			}
+> +
+> +			*delete_start = le32_to_cpu(new_ext.ee_block)
+> +							+ replaced;
+> +
+> +			/* All expected blocks are replaced */
+> +			if (new_ext.ee_len <= 0) {
+> +				if (DQUOT_ALLOC_BLOCK
+> +					(org_inode, len)) {
+> +					return -EDQUOT;
+> +				}
+> +				return 0;
+> +			}
+> +
+> +			/* re-calculate new_ext */
+> +			new_ext.ee_len = cpu_to_le32(le16_to_cpu(new_ext.ee_len)
+> +				- replaced);
+> +			new_ext.ee_block =
+> +				cpu_to_le32(le32_to_cpu(new_ext.ee_block)
+> +				+ replaced);
+> +			ext4_ext_store_pblock(&new_ext, ext_pblock(&new_ext)
+> +					 + replaced);
+> +			replaced = 0;
+> +			start_ext.ee_len = end_ext.ee_len = 0;
+> +			o_start = NULL;
+> +
+> +			/* All expected blocks are replaced */
+> +			if (new_ext.ee_len <= 0) {
+> +				if (DQUOT_ALLOC_BLOCK
+> +					(org_inode, len)) {
+> +					return -EDQUOT;
+> +				}
+> +				return 0;
+> +			}
+> +		}
+> +
+> +		/* Get next extent for original. */
+> +		if ((ret
+> +		 = ext4_ext_next_extent(org_inode, org_path, &oext))
+> +								!= 0) {
+> +			if (ret == 1)
+> +				ret = -EIO;
+> +			return ret;
+> +		}
+> +		o_end = oext;
+> +		if (!o_start)
+> +			o_start = oext;
+> +	}
+> +}
+> +
+> +/**
+> + * ext4_ext_replace_branches - replace original extents with new extents.
+> + * @org_inode    Original inode
+> + * @dest_inode   temporary inode
+> + * @from_page    Page offset
+> + * @count_page   Page count to be replaced
+> + * @delete_start block offset for deletion
+> + *
+> + * This function returns 0 if succeed, otherwise returns error value.
+> + * Replace extents for blocks from "from" to "from+count-1".
+> + */
+> +static int
+> +ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
+> +			pgoff_t from_page,  pgoff_t dest_from_page,
+> +			pgoff_t count_page, unsigned long *delete_start) 
+> +{
+> +	struct ext4_ext_path *org_path = NULL;
+> +	struct ext4_ext_path *dest_path = NULL;
+> +	struct ext4_extent   *oext, *dext;
+> +	struct ext4_extent   tmp_ext;
+> +	int	err = 0;
+> +	int	depth;
+> +	unsigned long from, count, dest_off, diff, replaced_count = 0;
+> +	handle_t *handle = NULL;
+> +	unsigned jnum;
+> +
+> +	from = from_page << (PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
+> +	count = count_page << (PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
+> +	dest_off = dest_from_page << (PAGE_CACHE_SHIFT - 
+> +			dest_inode->i_blkbits);
+> +	jnum = ext4_ext_writepage_trans_blocks(org_inode, count) + 3;
+> +	handle = ext4_journal_start(org_inode, jnum);
+> +	if (IS_ERR(handle)) {
+> +		err = PTR_ERR(handle);
+> +		goto out;
+> +	}
+> +
+> +	/* Get the original extent for the block "from" */
+> +	org_path = ext4_ext_find_extent(org_inode, from, NULL);
+> +	if (IS_ERR(org_path)) {
+> +		err = PTR_ERR(org_path);
+> +		org_path = NULL;
+> +		goto out;
+> +	}
+> +
+> +	/* Get the destination extent for the head */
+> +	dest_path = ext4_ext_find_extent(dest_inode, dest_off, NULL);
+> +	if (IS_ERR(dest_path)) {
+> +		err = PTR_ERR(dest_path);
+> +		dest_path = NULL;
+> +		goto out;
+> +	}
+> +	depth = ext_depth(dest_inode);
+> +	dext = dest_path[depth].p_ext;
+> +	/* When dext is too large, pick up the target range. */
+> +	diff = dest_off - le32_to_cpu(dext->ee_block);
+> +	ext4_ext_store_pblock(&tmp_ext, ext_pblock(dext) + diff);
+> +	tmp_ext.ee_block = cpu_to_le32(le32_to_cpu(dext->ee_block) + diff);
+> +	tmp_ext.ee_len = cpu_to_le16(le16_to_cpu(dext->ee_len) - diff);
+> +	if (count < tmp_ext.ee_len) {
+> +		tmp_ext.ee_len = cpu_to_le16(count);
+> +	}
+> +	dext = &tmp_ext;
+> +
+> +	/* loop for the destination extents */
+> +	while (1) {
+> +		/* The extent for destination must be found. */
+> +		BUG_ON(!dext || dest_off != le32_to_cpu(dext->ee_block));
+> +
+> +		/* loop for the original extent blocks */
+> +		if ((err = ext4_ext_defrag_leaf_block(handle, org_inode,
+> +			org_path, dext, &from, delete_start)) < 0) {
+> +			goto out;
+> +		}
+> +
+> +		replaced_count += le16_to_cpu(dext->ee_len);
+> +		dest_off += le16_to_cpu(dext->ee_len);
+> +		from += le16_to_cpu(dext->ee_len);
+> +
+> +		/* Already moved the expected blocks */
+> +		if (replaced_count >= count)
+> +			break;
+> +
+> +		/* get the next extent on both original and destination. */
+> +		err = ext4_ext_next_extent(dest_inode, dest_path, &dext);
+> +		if (err != 0) {
+> +			if (err > 0) {
+> +				err = 0;
+> +			}
+> +			goto out;
+> +		}
+> +		if ((err =
+> +			ext4_ext_next_extent(org_inode, org_path, &oext)) < 0) {
+> +			goto out;
+> +		}
+> +	}
+> +out:
+> +	if (handle) {
+> +		ext4_journal_stop(handle);
+> +	}
+> +	if (org_path) {
+> +		ext4_ext_drop_refs(org_path);
+> +		kfree(org_path);
+> +	}
+> +	if (dest_path) {
+> +		ext4_ext_drop_refs(dest_path);
+> +		kfree(dest_path);
+> +	}
+> +
+> +	return err;
+> +}
+> +
+> +/**
+> + * ext4_ext_remove_index_blocks - remove leaf blocks and index blocks
+> + * @handle      handle
+> + * @dest_inode  temporary inode
+> + * @eh          extent header
+> + * @depth       depth of extent tree
+> + *
+> + * This function returns 0 if succeed, otherwise returns error value
+> + */
+> +static int ext4_ext_remove_index_blocks(handle_t *handle,
+> +			struct inode *dest_inode,
+> +			struct ext4_extent_header *eh, int depth)
+> +{
+> +	struct ext4_extent_idx *idx;
+> +	struct buffer_head *bh;
+> +	int metadata = 1;
+> +	int credits = 0;
+> +	int i, ret = 0;
+> +
+> +	if (depth == 0) {
+> +		eh->eh_entries = 0;
+> +		return 0;
+> +	}
+> +
+> +	idx = EXT_FIRST_INDEX(eh);
+> +
+> +	for (i = 1; i <= eh->eh_entries; i++) {
+> +		if (depth > 1) {
+> +			bh = sb_bread(dest_inode->i_sb, idx->ei_leaf);
+> +			if (!bh) {
+> +				ret = -EIO;
+> +			} else {
+> +				ret = ext4_ext_remove_index_blocks(handle,
+> +					dest_inode, ext_block_hdr(bh),
+> +					depth - 1);
+> +				brelse(bh);
+> +			}
+> +		}
+> +#ifdef CONFIG_QUOTA
+> +		credits = 2 * EXT4_QUOTA_TRANS_BLOCKS(dest_inode->i_sb);
+> +#endif
+> +		handle = ext4_ext_journal_restart(handle,
+> +				credits + EXT4_TRANS_META_BLOCKS);
+> +		if (IS_ERR(handle))
+> +			return PTR_ERR(handle);
+> +
+> +		ext4_free_blocks(handle, dest_inode,
+> +				idx->ei_leaf, 1, metadata);
+> +		eh->eh_entries--;
+> +		idx++;
+> +	}
+> +	return ret;
+> +}
+> +
+> +/**
+>   * ext4_ext_alloc_blocks - allocate contiguous blocks to temporary inode
+>   * @dest_inode   temporary inode for multiple block allocation
+>   * @iblock       file related offset
+> @@ -2673,6 +3137,61 @@ out2:
+>  }
+>  
+>  /**
+> + * ext4_ext_defrag_partial - defrag original file partially
+> + * @filp:		pointer to file
+> + * @org_offset:		page index on original file
+> + * @dest_offset:	page index on temporary file
+> + *
+> + * This function returns 0 if succeeded, otherwise returns error value
+> + */
+> +static int
+> +ext4_ext_defrag_partial(struct inode *tmp_inode,
+> +			struct file *filp,
+> +			pgoff_t org_offset,
+> +			pgoff_t dest_offset, unsigned long *delete_start)
+> +{
+> +	struct inode *inode = filp->f_dentry->d_inode;
+> +	struct address_space *mapping = inode->i_mapping;
+> +	struct page *page;
+> +	pgoff_t offset_in_page = PAGE_SIZE;
+> +	int ret = 0;
+> +
+> +	page = read_cache_page(inode->i_mapping,
+> +		       org_offset, (filler_t *)inode->i_mapping->a_ops->readpage,
+> +		       NULL);
+> +
+> +	if (IS_ERR(page)) {
+> +		ret = PTR_ERR(page);
+> +		return ret;
+> +	}
+> +
+> +	wait_on_page_locked(page);
+> +	lock_page(page);
+> +	/* release old bh and drop refs */
+> +	try_to_release_page(page, 0);
+> +	ret = ext4_ext_replace_branches(inode, tmp_inode, org_offset, 
+> +			dest_offset, 1, delete_start);
+> +	if (ret < 0)
+> +		goto ERR;
+> +
+> +	if (org_offset == ((inode->i_size - 1) >> PAGE_SHIFT))
+> +		offset_in_page = (inode->i_size & (PAGE_CACHE_SIZE - 1));
+> +
+> +	ret = mapping->a_ops->prepare_write(filp, page,
+> +					    0, offset_in_page);
+> +	if (ret)
+> +		goto ERR;
+> +
+> +	ret = mapping->a_ops->commit_write(filp, page,
+> +					   0, offset_in_page);
+> +ERR:
+> +	unlock_page(page);
+> +	page_cache_release(page);
+> +
+> +	return (ret < 0 ? ret : 0);
+> +}
+> +
+> +/**
+>   * ext4_ext_new_extent_tree -  allocate contiguous blocks
+>   * @inode:		inode of the original file
+>   * @tmp_inode:		inode of the temporary file
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
