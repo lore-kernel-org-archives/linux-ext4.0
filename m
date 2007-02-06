@@ -1,44 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Resubmit][PATCH 5/5] Secure Deletion and Trash-Bin Support for Ext4
-Date: Mon, 5 Feb 2007 22:48:53 -0500
-Message-ID: <20070206034853.GD11018@thunk.org>
-References: <Pine.GSO.4.53.0701310955130.28263@compserv1> <1170263470.12392.23.camel@kleikamp.austin.ibm.com> <Pine.GSO.4.53.0702011200340.9072@compserv1> <1170358339.12263.39.camel@kleikamp.austin.ibm.com> <1170362491.4271.31.camel@localhost.localdomain> <20070202014004.GB24328@mail.clusterfs.com> <1170382948.18617.30.camel@kleikamp.austin.ibm.com>
+From: Johann Lombardi <johann.lombardi@bull.net>
+Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
+Date: Tue, 6 Feb 2007 16:12:42 +0100
+Message-ID: <20070206151242.GB3140@lombardij>
+References: <1170427790.6464.6.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Dave Kleikamp <shaggy@linux.external-vnet.ibm.com>,
-	Nikolai Joukov <kolya@cs.sunysb.edu>,
-	Harry Papaxenopoulos <harry@cs.sunysb.edu>,
-	linux-ext4@vger.kernel.org, ezk@cs.sunysb.edu
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>, tytso <tytso@mit.edu>,
+	sct <sct@redhat.com>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:46382 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965310AbXBFFyz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Feb 2007 00:54:55 -0500
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47098 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751528AbXBFPMK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Feb 2007 10:12:10 -0500
+In-Reply-To: <1170427790.6464.6.camel@garfield>
 Content-Disposition: inline
-In-Reply-To: <1170382948.18617.30.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 01, 2007 at 08:22:28PM -0600, Dave Kleikamp wrote:
-> Al Viro will love that one.  :-)
-> 
-> Another idea might be to store those attribute flags in the generic
-> inode.
+On Fri, Feb 02, 2007 at 08:19:50PM +0530, Kalpak Shah wrote:
+> Index: linux-2.6.19/fs/ext3/super.c
+> ===================================================================
+> --- linux-2.6.19.orig/fs/ext3/super.c
+> +++ linux-2.6.19/fs/ext3/super.c
+> @@ -1770,6 +1772,32 @@ static int ext3_fill_super (struct super
+>         }
+>  
+>         ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+> +
+> +       /* determine the minimum size of new large inodes, if present */
+> +       if (sbi->s_inode_size > EXT3_GOOD_OLD_INODE_SIZE) {
+> +           EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) -  EXT3_GOOD_OLD_INODE_SIZE;
 
-Yeah, that's really the right answer.  Having a common way of storing
-attributes in struct kstat (and notified via struct iattr and
-notify_change) is the right way for us to store some of these
-filesystem-common flags, and would make a huge amount of sense.
+Maybe EXT3_SB(sb)-> could be replaced by sbi-> here and in the lines below.
 
-I don't really view ths secure deletion and trash-bin support as
-really being an ext4 feature, but really a generic feature which can
-enhance multiple filesystems *including* ext4.  So it would be really
-good idea to give these patches an airing on linux-fsdevel and
-linux-kernel.
+> +               if (EXT3_HAS_RO_COMPAT_FEATURE(sb,
+> +                   EXT3_FEATURE_RO_COMPAT_EXTRA_ISIZE)) {
+> +                       if (EXT3_SB(sb)->s_want_extra_isize <
+> +                           le32_to_cpu(es->s_want_extra_isize))
+                                ^^
+> +                               EXT3_SB(sb)->s_want_extra_isize =
+> +                                       le32_to_cpu(es->s_want_extra_isize);
+                                            ^^
+> +                       if (EXT3_SB(sb)->s_want_extra_isize <
+> +                           le32_to_cpu(es->s_min_extra_isize))
+                                ^^
+> +                               EXT3_SB(sb)->s_want_extra_isize =
+> +                                       le32_to_cpu(es->s_min_extra_isize);
+                                            ^^
+Since es->s_{min,want}_extra_isize are both __u16 (BTW, shouldn't it be __le16?),
+I think you should use le16_to_cpu() instead of le32_to_cpu().
 
-Regards,
+> +               }
+> +       }
+> +       /* Check if enough inode space is available */
+> +       if (EXT3_GOOD_OLD_INODE_SIZE + EXT3_SB(sb)->s_want_extra_isize >
+> +                                                       sbi->s_inode_size) {
+> +               EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) - EXT3_GOOD_OLD_INODE_SIZE;
+> +               printk(KERN_INFO "EXT3-fs: required extra inode space not"
+> +                       "available.\n");
+> +       }
 
-						- Ted
+If the inode size is EXT3_GOOD_OLD_INODE_SIZE, sbi->s_want_extra_isize won't be
+initialized. However, it should not be an issue because the ext3_sb_info
+is set to zero in ext3_fill_super().
+
+Johann
