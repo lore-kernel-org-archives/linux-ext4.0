@@ -1,69 +1,53 @@
-From: Johann Lombardi <johann.lombardi@bull.net>
-Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
-Date: Tue, 6 Feb 2007 16:12:42 +0100
-Message-ID: <20070206151242.GB3140@lombardij>
-References: <1170427790.6464.6.camel@garfield>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 0/1][RFC] mm: prepare_write positive return value
+Date: Tue, 6 Feb 2007 15:39:15 -0800
+Message-ID: <20070206153915.a6e6f8d7.akpm@linux-foundation.org>
+References: <87ejp37kid.fsf@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>, tytso <tytso@mit.edu>,
-	sct <sct@redhat.com>
-To: Kalpak Shah <kalpak@clusterfs.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47098 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751528AbXBFPMK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Feb 2007 10:12:10 -0500
-In-Reply-To: <1170427790.6464.6.camel@garfield>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	Nick Piggin <npiggin@suse.de>,
+	Linux Filesystems <linux-fsdevel@vger.kernel.org>
+To: Dmitriy Monakhov <dmonakhov@sw.ru>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <87ejp37kid.fsf@sw.ru>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 02, 2007 at 08:19:50PM +0530, Kalpak Shah wrote:
-> Index: linux-2.6.19/fs/ext3/super.c
-> ===================================================================
-> --- linux-2.6.19.orig/fs/ext3/super.c
-> +++ linux-2.6.19/fs/ext3/super.c
-> @@ -1770,6 +1772,32 @@ static int ext3_fill_super (struct super
->         }
+On Tue, 06 Feb 2007 11:33:46 +0300
+Dmitriy Monakhov <dmonakhov@sw.ru> wrote:
+
+> Almost all read/write operation handles data with chunks(segments or pages)
+> and result has integral behaviour for folowing scenario: 
+> for_each_chunk() {
+>      res = op(....);
+>      if(IS_ERROR(res))
+>            return progress ? progress : res;
+>      progress += res;
+> }
+> prepare_write may has integral behaviour in case of blksize < pgsize,
+> for example we successfully allocated/read some blocks, but not all of them,
+> and than some error happend. Currently we eliminate this progress by doing
+> vmtrunate() after prepare_has failed.
+> It is good to have ability to signal about this progress. Interprete positive
+> prepare_write() ret code as bytes num that fs ready to handle at this moment.
+> I've ask SAW, he think it is sane. This size always less than PAGE_CACHE_SIZE
+> so it less than AOP_TRUNCATED_PAGE too.
 >  
->         ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
-> +
-> +       /* determine the minimum size of new large inodes, if present */
-> +       if (sbi->s_inode_size > EXT3_GOOD_OLD_INODE_SIZE) {
-> +           EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) -  EXT3_GOOD_OLD_INODE_SIZE;
+> BTH: This approach was used in OpenVZ 2.6.9 kernel in order to make FS with 
+> delayed allocation more correct, and its works well.
+> I think not everybody will happy about this,  but let's discuss all advantages
+> and disadvantages of this change.
 
-Maybe EXT3_SB(sb)-> could be replaced by sbi-> here and in the lines below.
+That seems to be a logical change.  We'd need to review all the callers and
+callees to make sure that they handle this change correctly.
 
-> +               if (EXT3_HAS_RO_COMPAT_FEATURE(sb,
-> +                   EXT3_FEATURE_RO_COMPAT_EXTRA_ISIZE)) {
-> +                       if (EXT3_SB(sb)->s_want_extra_isize <
-> +                           le32_to_cpu(es->s_want_extra_isize))
-                                ^^
-> +                               EXT3_SB(sb)->s_want_extra_isize =
-> +                                       le32_to_cpu(es->s_want_extra_isize);
-                                            ^^
-> +                       if (EXT3_SB(sb)->s_want_extra_isize <
-> +                           le32_to_cpu(es->s_min_extra_isize))
-                                ^^
-> +                               EXT3_SB(sb)->s_want_extra_isize =
-> +                                       le32_to_cpu(es->s_min_extra_isize);
-                                            ^^
-Since es->s_{min,want}_extra_isize are both __u16 (BTW, shouldn't it be __le16?),
-I think you should use le16_to_cpu() instead of le32_to_cpu().
+Your changes deviate quite a lot from standard kernel coding style.  Please fix
+that.
 
-> +               }
-> +       }
-> +       /* Check if enough inode space is available */
-> +       if (EXT3_GOOD_OLD_INODE_SIZE + EXT3_SB(sb)->s_want_extra_isize >
-> +                                                       sbi->s_inode_size) {
-> +               EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) - EXT3_GOOD_OLD_INODE_SIZE;
-> +               printk(KERN_INFO "EXT3-fs: required extra inode space not"
-> +                       "available.\n");
-> +       }
+Please cc linux-ext4@vger.kernel.org on the next version of these patches.  I'm
+seriously running out of bandwidth over here and ext4 has other maintainers.
 
-If the inode size is EXT3_GOOD_OLD_INODE_SIZE, sbi->s_want_extra_isize won't be
-initialized. However, it should not be an issue because the ext3_sb_info
-is set to zero in ext3_fill_super().
-
-Johann
+Thanks.
