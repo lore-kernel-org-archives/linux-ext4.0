@@ -1,46 +1,41 @@
-From: Nathan Scott <nscott@aconex.com>
-Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
-Date: Tue, 06 Feb 2007 09:06:30 +1100
-Message-ID: <1170713190.18017.457.camel@edge>
-References: <20070116210520sho@rifu.tnes.nec.co.jp>
-	 <20070205131204.GA15596@atrey.karlin.mff.cuni.cz>
-Reply-To: nscott@aconex.com
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC] [PATCH 1/1] nanosecond timestamps
+Date: Mon, 5 Feb 2007 23:09:16 -0500
+Message-ID: <20070206040916.GF11018@thunk.org>
+References: <1170427180.6086.17.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: sho@tnes.nec.co.jp, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070205131204.GA15596@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>, sct@redhat.com
+To: Kalpak Shah <kalpak@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:46358 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965312AbXBFFxi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Feb 2007 00:53:38 -0500
+Content-Disposition: inline
+In-Reply-To: <1170427180.6086.17.camel@garfield>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Jan,
-
-On Mon, 2007-02-05 at 14:12 +0100, Jan Kara wrote:
->   Hi,
+On Fri, Feb 02, 2007 at 08:09:40PM +0530, Kalpak Shah wrote:
+> Hi,
 > 
->   I'm replying rather late but I've been busy with my PhD thesis lately.
-> So sorry for that.
-> 
-> > Move the blocks on the temporary inode to the original inode
-> > by a page.
-> > 1. Read the file data from the old blocks to the page
-> > 2. Move the block on the temporary inode to the original inode
-> > 3. Write the file data on the page into the new blocks
->   I have one thing - it's probably not good to use page cache for
-> defragmentation. As you will read/write tons of data and that will push
-> out all other data from the cache. I think it may be better to allocate
-> some separate pages and use them as buffers.
+> This patch is a spinoff of the old nanosecond patches. It includes some
+> cleanups and addition of a creation timestamp. The
+> EXT3_FEATURE_RO_COMPAT_EXTRA_ISIZE flag has also been added along with
+> s_{min, want}_extra_isize fields in struct ext3_super_block. 
 
-The XFS defrag tool uses direct IO to avoid this issue.  You may
-do an even better job with splice(2) in this situation, since its
-simply read-then-write-straight-back-out without looking at the
-file data.
+Thanks for sending it.  I haven't had a chance to go over it in detail
+yet, but one quick comment; the patch looks like it got line-wrapped
+by your mail agent (looks like you're using Evolution 2.0).  Could you
+send it as a text/plain attachment, or otherwise fix your mailer to
+not wrap your patches?  
 
-cheers.
+It might be nice if the patch had a way of adjusting the granularity
+by masking off bits of the nanoseconds field, so we can benchmark how
+much overhead constantly updating the ctime field is going to cost us.  
 
--- 
-Nathan
+Regards,
 
+						- Ted
