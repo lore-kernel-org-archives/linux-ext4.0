@@ -1,48 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
-Date: Tue, 06 Feb 2007 21:45:37 -0600
-Message-ID: <45C94B61.4070105@redhat.com>
-References: <20070116210520sho@rifu.tnes.nec.co.jp> <20070206173344.a3e8e37a.akpm@linux-foundation.org>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Testing ext4 persistent preallocation patches for 64 bit features
+Date: Wed, 7 Feb 2007 13:18:01 +0530
+Message-ID: <20070207074801.GA5419@amitarora.in.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: sho@tnes.nec.co.jp, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47232 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965628AbXBGDps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Feb 2007 22:45:48 -0500
-In-Reply-To: <20070206173344.a3e8e37a.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: suparna@in.ibm.com, cmm@us.ibm.com, alex@clusterfs.com,
+	suzuki@in.ibm.com
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070117094658.GA17390@amitarora.in.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
-> On Tue, 16 Jan 2007 21:05:20 +0900
-> sho@tnes.nec.co.jp wrote:
+I plan to test the persistent preallocation patches on a huge sparse
+device, to know if >32 bit physical block numbers (upto 48bit) behave as
+expected. I have following questions for this and will appreciate
+suggestions here:
 
-...
+a) What should be the sparse device size which I should use for testing?
+Should a size of > 8TB (say, 100 TB) be enough ?
+The physical device (backing store device) size I can have is upto 70GB.
 
->> +ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
->> +			pgoff_t from_page,  pgoff_t dest_from_page,
->> +			pgoff_t count_page, unsigned long *delete_start) 
->> +{
->> +	struct ext4_ext_path *org_path = NULL;
->> +	struct ext4_ext_path *dest_path = NULL;
->> +	struct ext4_extent   *oext, *dext;
->> +	struct ext4_extent   tmp_ext;
->> +	int	err = 0;
->> +	int	depth;
->> +	unsigned long from, count, dest_off, diff, replaced_count = 0;
-> 
-> These should be sector_t, shouldn't they?
+b) How do I test allocation of >32 bit physical block numbers ? I can
+not fill > 8TB, since the physical storage available with me is just
+70GB.
 
-At some point should we start using blkcnt_t properly? 
-(block-in[-large]-file, not block-in[-large]-device?)  I think that's 
-what it was introduced for, although it's not in wide use at this point.
+c) Do I need to put some hack in the filesystem code for above (to
+allocate >32 bit physical block numbers) ?
 
-I guess the type really isn't used anywhere else; just in the inode's 
-i_blocks.  Hmm.
+Any further ideas on how to test this will help. Thanks!
 
--Eric
+--
+Regards,
+Amit Arora
