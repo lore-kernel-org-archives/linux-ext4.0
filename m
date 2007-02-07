@@ -1,73 +1,49 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
-Date: Wed, 7 Feb 2007 13:39:46 -0700
-Message-ID: <20070207203946.GB6565@schatzie.adilger.int>
-References: <1170427790.6464.6.camel@garfield> <20070206151242.GB3140@lombardij>
+Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
+Date: Wed, 7 Feb 2007 13:46:57 -0700
+Message-ID: <20070207204657.GC6565@schatzie.adilger.int>
+References: <20070116210520sho@rifu.tnes.nec.co.jp> <20070205131204.GA15596@atrey.karlin.mff.cuni.cz> <20070206173520.7719a7de.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kalpak Shah <kalpak@clusterfs.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
-	sct <sct@redhat.com>
-To: Johann Lombardi <johann.lombardi@bull.net>
+Cc: Jan Kara <jack@suse.cz>, sho@tnes.nec.co.jp,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:47979 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:55357 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161373AbXBGUjt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Feb 2007 15:39:49 -0500
+	with ESMTP id S1161422AbXBGUrA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Feb 2007 15:47:00 -0500
 Content-Disposition: inline
-In-Reply-To: <20070206151242.GB3140@lombardij>
+In-Reply-To: <20070206173520.7719a7de.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Feb 06, 2007  16:12 +0100, Johann Lombardi wrote:
-> > +       if (sbi->s_inode_size > EXT3_GOOD_OLD_INODE_SIZE) {
-> > +           EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) - EXT3_GOOD_OLD_INODE_SIZE;
->
-> Maybe EXT3_SB(sb)-> could be replaced by sbi-> here and in the lines below.
-
-Yes, this should definitely be done.  It also increases clarity between
-sbi->s_want_extra_isize and es->s_want_extra_isize.
-
-> > +                       if (EXT3_SB(sb)->s_want_extra_isize <
-> > +                           le32_to_cpu(es->s_min_extra_isize))
->                                 ^^
-> > +                               EXT3_SB(sb)->s_want_extra_isize =
-> > +                                       le32_to_cpu(es->s_min_extra_isize);
->                                             ^^
-> Since es->s_{min,want}_extra_isize are both __u16 (BTW, shouldn't it be
-> __le16?), I think you should use le16_to_cpu() instead of le32_to_cpu().
-
-You are right - this works fine on little endian systems, but fails on
-big endian systems where you will get the other half of the word.
-
-This has been a bug in several places already, and I wonder if the
-le*_to_cpu() and cpu_to_le*() macros shouldn't do some type checking
-instead of just casting the variable to the specified type?
-
-The only problem is if casting constants it would be a bit of a pain
-to have to cast them explicitly, though we could have something like:
-
-#define le16_to_cpu(var) (__builtin_constant(var) || !typecheck(__u16, var) ? \
-			  __constant_cpu_to_le16(var) : __le16_to_cpu(var))
-			   
-The only question is whether "typecheck" adds extra variables on the stack
-or if the compiler will always optimize them away.
-
-> > +       /* Check if enough inode space is available */
-> > +       if (EXT3_GOOD_OLD_INODE_SIZE + EXT3_SB(sb)->s_want_extra_isize >
-> > +                                                       sbi->s_inode_size) {
-> > +               EXT3_SB(sb)->s_want_extra_isize = sizeof(struct ext3_inode) - EXT3_GOOD_OLD_INODE_SIZE;
-> > +               printk(KERN_INFO "EXT3-fs: required extra inode space not"
-> > +                       "available.\n");
-> > +       }
+On Feb 06, 2007  17:35 -0800, Andrew Morton wrote:
+> On Mon, 5 Feb 2007 14:12:04 +0100
+> Jan Kara <jack@suse.cz> wrote:
+> > > Move the blocks on the temporary inode to the original inode
+> > > by a page.
+> > > 1. Read the file data from the old blocks to the page
+> > > 2. Move the block on the temporary inode to the original inode
+> > > 3. Write the file data on the page into the new blocks
+> >   I have one thing - it's probably not good to use page cache for
+> > defragmentation.
 > 
-> If the inode size is EXT3_GOOD_OLD_INODE_SIZE, sbi->s_want_extra_isize won't
-> be initialized. However, it should not be an issue because the ext3_sb_info
-> is set to zero in ext3_fill_super().
+> Then it is no longer online defragmentation.  The issues with maintaining
+> correctness and coherency with ongoing VFS activity would be truly ghastly.
+> 
+> If we're worried about pagecache pollution then it would be better to control
+> that from userspace via fadvise().
 
-So I'm not sure I understand if you have an objection or if this is just a
-comment.  sbi->s_want_extra_isize will be zero and it is not possible for
-sbi->s_inode_size < EXT3_GOOD_OLD_INODE_SIZE so this case won't be hit.
+It should be possible to have the online defrag tool lock the inode against
+any changes, flush all pages out of the cache for that inode, and then do
+the reallocated outside of the page cache.  For inodes not already in cache
+this is a no-op.  For the (hopefully rare) case were the inode already has
+cached pages and also needs to be reallocated it would be a performance hit.
+
+Alternately, we could skip files currently being modified (or mmaped), or
+even recently modified (e.g. within the last 30 minutes) in the default case,
+on the assumption that they might be deleted soon anyways.
 
 Cheers, Andreas
 --
