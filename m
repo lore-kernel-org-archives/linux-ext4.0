@@ -1,67 +1,59 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
-Date: Wed, 7 Feb 2007 12:56:59 -0800
-Message-ID: <20070207125659.bc27404d.akpm@linux-foundation.org>
-References: <20070116210520sho@rifu.tnes.nec.co.jp>
-	<20070205131204.GA15596@atrey.karlin.mff.cuni.cz>
-	<20070206173520.7719a7de.akpm@linux-foundation.org>
-	<20070207204657.GC6565@schatzie.adilger.int>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
+Date: Wed, 07 Feb 2007 15:05:39 -0600
+Message-ID: <1170882340.13329.4.camel@kleikamp.austin.ibm.com>
+References: <1170427790.6464.6.camel@garfield>
+	 <20070206151242.GB3140@lombardij>
+	 <20070207203946.GB6565@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, sho@tnes.nec.co.jp,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Cc: Johann Lombardi <johann.lombardi@bull.net>,
+	Kalpak Shah <kalpak@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
+	sct <sct@redhat.com>
 To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:36429 "EHLO smtp.osdl.org"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:49921 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161153AbXBGU5i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Feb 2007 15:57:38 -0500
-In-Reply-To: <20070207204657.GC6565@schatzie.adilger.int>
+	id S1422737AbXBGVGN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Feb 2007 16:06:13 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l17L6BXJ016264
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Feb 2007 16:06:11 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.2) with ESMTP id l17L5gKp196972
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Feb 2007 16:05:42 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l17L5fNi012718
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Feb 2007 16:05:42 -0500
+In-Reply-To: <20070207203946.GB6565@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 7 Feb 2007 13:46:57 -0700
-Andreas Dilger <adilger@clusterfs.com> wrote:
-
-> On Feb 06, 2007  17:35 -0800, Andrew Morton wrote:
-> > On Mon, 5 Feb 2007 14:12:04 +0100
-> > Jan Kara <jack@suse.cz> wrote:
-> > > > Move the blocks on the temporary inode to the original inode
-> > > > by a page.
-> > > > 1. Read the file data from the old blocks to the page
-> > > > 2. Move the block on the temporary inode to the original inode
-> > > > 3. Write the file data on the page into the new blocks
-> > >   I have one thing - it's probably not good to use page cache for
-> > > defragmentation.
-> > 
-> > Then it is no longer online defragmentation.  The issues with maintaining
-> > correctness and coherency with ongoing VFS activity would be truly ghastly.
-> > 
-> > If we're worried about pagecache pollution then it would be better to control
-> > that from userspace via fadvise().
+On Wed, 2007-02-07 at 13:39 -0700, Andreas Dilger wrote:
+> On Feb 06, 2007  16:12 +0100, Johann Lombardi wrote:
+> > > +                       if (EXT3_SB(sb)->s_want_extra_isize <
+> > > +                           le32_to_cpu(es->s_min_extra_isize))
+> >                                 ^^
+> > > +                               EXT3_SB(sb)->s_want_extra_isize =
+> > > +                                       le32_to_cpu(es->s_min_extra_isize);
+> >                                             ^^
+> > Since es->s_{min,want}_extra_isize are both __u16 (BTW, shouldn't it be
+> > __le16?), I think you should use le16_to_cpu() instead of le32_to_cpu().
 > 
-> It should be possible to have the online defrag tool lock the inode against
-> any changes,
-
-Sounds easy when you say it fast.  But how do we "lock" against, say, a
-read pagefault?  Only by writing back then removing the pagecache page then
-reinstantiating it as a locked, not-uptodate page and then removing it from
-pagecache afterwards prior to unlocking it.  Or something.
-
-I don't think we want to go there.
-
-> flush all pages out of the cache for that inode, and then do
-> the reallocated outside of the page cache.  For inodes not already in cache
-> this is a no-op.  For the (hopefully rare) case were the inode already has
-> cached pages and also needs to be reallocated it would be a performance hit.
+> You are right - this works fine on little endian systems, but fails on
+> big endian systems where you will get the other half of the word.
 > 
-> Alternately, we could skip files currently being modified (or mmaped), or
-> even recently modified (e.g. within the last 30 minutes) in the default case,
-> on the assumption that they might be deleted soon anyways.
+> This has been a bug in several places already, and I wonder if the
+> le*_to_cpu() and cpu_to_le*() macros shouldn't do some type checking
+> instead of just casting the variable to the specified type?
 
-argh.
+I think that sparse will catch this.  To get the endian checks you need
+to do something like this:
 
-It's simple to just use pagecache.  The "we don't want to swamp the machine
-with pagecache" argument is bogus.  If it becomes a problem (and it might
-not) then it is very simple to control the pagecache from userspace.
+make C=2 CF="-D__CHECK_ENDIAN__"'
+
+-- 
+David Kleikamp
+IBM Linux Technology Center
