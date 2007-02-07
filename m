@@ -1,99 +1,65 @@
-From: akpm@linux-foundation.org
-Subject: + ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch added to -mm tree
-Date: Tue, 06 Feb 2007 16:19:18 -0800
-Message-ID: <200702070019.l170JI9W001545@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: Markus.Rechberger@amd.com, adilger@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
+Date: Tue, 6 Feb 2007 17:33:44 -0800
+Message-ID: <20070206173344.a3e8e37a.akpm@linux-foundation.org>
+References: <20070116210520sho@rifu.tnes.nec.co.jp>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: sho@tnes.nec.co.jp
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070116210520sho@rifu.tnes.nec.co.jp>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, 16 Jan 2007 21:05:20 +0900
+sho@tnes.nec.co.jp wrote:
 
-The patch titled
-     ext2/3/4: fix file date underflow on ext2 3 filesystems on 64 bit systems
-has been added to the -mm tree.  Its filename is
-     ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch
+> Move the blocks on the temporary inode to the original inode
+> by a page.
+> 1. Read the file data from the old blocks to the page
+> 2. Move the block on the temporary inode to the original inode
+> 3. Write the file data on the page into the new blocks
+> 
+> ...
+>
+> +
+> +/**
+> + * ext4_ext_replace_branches - replace original extents with new extents.
+> + * @org_inode    Original inode
+> + * @dest_inode   temporary inode
+> + * @from_page    Page offset
+> + * @count_page   Page count to be replaced
+> + * @delete_start block offset for deletion
+> + *
+> + * This function returns 0 if succeed, otherwise returns error value.
+> + * Replace extents for blocks from "from" to "from+count-1".
+> + */
+> +static int
+> +ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
+> +			pgoff_t from_page,  pgoff_t dest_from_page,
+> +			pgoff_t count_page, unsigned long *delete_start) 
+> +{
+> +	struct ext4_ext_path *org_path = NULL;
+> +	struct ext4_ext_path *dest_path = NULL;
+> +	struct ext4_extent   *oext, *dext;
+> +	struct ext4_extent   tmp_ext;
+> +	int	err = 0;
+> +	int	depth;
+> +	unsigned long from, count, dest_off, diff, replaced_count = 0;
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+These should be sector_t, shouldn't they?
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+> +	handle_t *handle = NULL;
+> +	unsigned jnum;
+> +
+> +	from = from_page << (PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
 
-------------------------------------------------------
-Subject: ext2/3/4: fix file date underflow on ext2 3 filesystems on 64 bit systems
-From: Markus Rechberger <Markus.Rechberger@amd.com>
+In which case one needs to be very careful to avoid overflows in
+expressions such as this one.
 
-Taken from http://bugzilla.kernel.org/show_bug.cgi?id=5079
+> +	wait_on_page_locked(page);
+> +	lock_page(page);
 
-signed long ranges from -2.147.483.648 to 2.147.483.647 on x86 32bit
-
-10000011110110100100111110111101 .. -2,082,844,739
-10000011110110100100111110111101 ..  2,212,122,557 <- this currently gets 
-stored on the disk but when converting it to a 64bit signed long value it loses 
-its sign and becomes positive.
-
-Cc: Andreas Dilger <adilger@dilger.ca>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/inode.c |    6 +++---
- fs/ext3/inode.c |    6 +++---
- fs/ext4/inode.c |    6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
-
-diff -puN fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext2/inode.c
---- a/fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext2/inode.c
-@@ -1077,9 +1077,9 @@ void ext2_read_inode (struct inode * ino
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
- 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
- 	/* We now have enough fields to check if the inode was active or not.
-diff -puN fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext3/inode.c
-@@ -2670,9 +2670,9 @@ void ext3_read_inode(struct inode * inod
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
- 
- 	ei->i_state = 0;
-diff -puN fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext4/inode.c
-@@ -2673,9 +2673,9 @@ void ext4_read_inode(struct inode * inod
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
- 
- 	ei->i_state = 0;
-_
-
-Patches currently in -mm which might be from Markus.Rechberger@amd.com are
-
-ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch
+The wait_on_page_locked() is unneeded here.
