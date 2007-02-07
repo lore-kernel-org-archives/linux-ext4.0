@@ -1,53 +1,99 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 0/1][RFC] mm: prepare_write positive return value
-Date: Tue, 6 Feb 2007 15:39:15 -0800
-Message-ID: <20070206153915.a6e6f8d7.akpm@linux-foundation.org>
-References: <87ejp37kid.fsf@sw.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	Nick Piggin <npiggin@suse.de>,
-	Linux Filesystems <linux-fsdevel@vger.kernel.org>
-To: Dmitriy Monakhov <dmonakhov@sw.ru>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <87ejp37kid.fsf@sw.ru>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch added to -mm tree
+Date: Tue, 06 Feb 2007 16:19:18 -0800
+Message-ID: <200702070019.l170JI9W001545@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: Markus.Rechberger@amd.com, adilger@dilger.ca,
+	linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 06 Feb 2007 11:33:46 +0300
-Dmitriy Monakhov <dmonakhov@sw.ru> wrote:
 
-> Almost all read/write operation handles data with chunks(segments or pages)
-> and result has integral behaviour for folowing scenario: 
-> for_each_chunk() {
->      res = op(....);
->      if(IS_ERROR(res))
->            return progress ? progress : res;
->      progress += res;
-> }
-> prepare_write may has integral behaviour in case of blksize < pgsize,
-> for example we successfully allocated/read some blocks, but not all of them,
-> and than some error happend. Currently we eliminate this progress by doing
-> vmtrunate() after prepare_has failed.
-> It is good to have ability to signal about this progress. Interprete positive
-> prepare_write() ret code as bytes num that fs ready to handle at this moment.
-> I've ask SAW, he think it is sane. This size always less than PAGE_CACHE_SIZE
-> so it less than AOP_TRUNCATED_PAGE too.
->  
-> BTH: This approach was used in OpenVZ 2.6.9 kernel in order to make FS with 
-> delayed allocation more correct, and its works well.
-> I think not everybody will happy about this,  but let's discuss all advantages
-> and disadvantages of this change.
+The patch titled
+     ext2/3/4: fix file date underflow on ext2 3 filesystems on 64 bit systems
+has been added to the -mm tree.  Its filename is
+     ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch
 
-That seems to be a logical change.  We'd need to review all the callers and
-callees to make sure that they handle this change correctly.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Your changes deviate quite a lot from standard kernel coding style.  Please fix
-that.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Please cc linux-ext4@vger.kernel.org on the next version of these patches.  I'm
-seriously running out of bandwidth over here and ext4 has other maintainers.
+------------------------------------------------------
+Subject: ext2/3/4: fix file date underflow on ext2 3 filesystems on 64 bit systems
+From: Markus Rechberger <Markus.Rechberger@amd.com>
 
-Thanks.
+Taken from http://bugzilla.kernel.org/show_bug.cgi?id=5079
+
+signed long ranges from -2.147.483.648 to 2.147.483.647 on x86 32bit
+
+10000011110110100100111110111101 .. -2,082,844,739
+10000011110110100100111110111101 ..  2,212,122,557 <- this currently gets 
+stored on the disk but when converting it to a 64bit signed long value it loses 
+its sign and becomes positive.
+
+Cc: Andreas Dilger <adilger@dilger.ca>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/inode.c |    6 +++---
+ fs/ext3/inode.c |    6 +++---
+ fs/ext4/inode.c |    6 +++---
+ 3 files changed, 9 insertions(+), 9 deletions(-)
+
+diff -puN fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext2/inode.c
+--- a/fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
++++ a/fs/ext2/inode.c
+@@ -1077,9 +1077,9 @@ void ext2_read_inode (struct inode * ino
+ 	}
+ 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
+ 	inode->i_size = le32_to_cpu(raw_inode->i_size);
+-	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
+-	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
+-	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
++	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
++	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
++	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
+ 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
+ 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
+ 	/* We now have enough fields to check if the inode was active or not.
+diff -puN fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
++++ a/fs/ext3/inode.c
+@@ -2670,9 +2670,9 @@ void ext3_read_inode(struct inode * inod
+ 	}
+ 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
+ 	inode->i_size = le32_to_cpu(raw_inode->i_size);
+-	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
+-	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
+-	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
++	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
++	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
++	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
+ 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
+ 
+ 	ei->i_state = 0;
+diff -puN fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext4/inode.c
+--- a/fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
++++ a/fs/ext4/inode.c
+@@ -2673,9 +2673,9 @@ void ext4_read_inode(struct inode * inod
+ 	}
+ 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
+ 	inode->i_size = le32_to_cpu(raw_inode->i_size);
+-	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
+-	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
+-	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
++	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
++	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
++	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
+ 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
+ 
+ 	ei->i_state = 0;
+_
+
+Patches currently in -mm which might be from Markus.Rechberger@amd.com are
+
+ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems.patch
