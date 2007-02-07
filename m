@@ -1,51 +1,67 @@
-From: Johann Lombardi <johann.lombardi@bull.net>
-Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
-Date: Wed, 7 Feb 2007 21:50:28 +0100
-Message-ID: <20070207205028.GA13836@lombardij>
-References: <1170427790.6464.6.camel@garfield>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
+Date: Wed, 7 Feb 2007 12:56:59 -0800
+Message-ID: <20070207125659.bc27404d.akpm@linux-foundation.org>
+References: <20070116210520sho@rifu.tnes.nec.co.jp>
+	<20070205131204.GA15596@atrey.karlin.mff.cuni.cz>
+	<20070206173520.7719a7de.akpm@linux-foundation.org>
+	<20070207204657.GC6565@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>, tytso <tytso@mit.edu>,
-	sct <sct@redhat.com>
-To: Kalpak Shah <kalpak@clusterfs.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, sho@tnes.nec.co.jp,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:60616 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422730AbXBGUtx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Feb 2007 15:49:53 -0500
-In-Reply-To: <1170427790.6464.6.camel@garfield>
-Content-Disposition: inline
+Received: from smtp.osdl.org ([65.172.181.24]:36429 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161153AbXBGU5i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Feb 2007 15:57:38 -0500
+In-Reply-To: <20070207204657.GC6565@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 02, 2007 at 08:19:50PM +0530, Kalpak Shah wrote:
-> +#define EXT3_INODE_SET_XTIME(xtime, extra_xtime, inode, raw_inode) \
-> +do { \
-> +       (raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec); \
-> + \
-> +       if (offsetof(typeof(*raw_inode), extra_xtime) - \
-> +           offsetof(typeof(*raw_inode), i_extra_isize) + \
-> +           sizeof((raw_inode)->extra_xtime) <= \
-> +               le16_to_cpu((raw_inode)->i_extra_isize)) \
-                               ^^^^^^^^^^^^^^^^^^^^^^^^^
-> +               (raw_inode)->extra_xtime = \
+On Wed, 7 Feb 2007 13:46:57 -0700
+Andreas Dilger <adilger@clusterfs.com> wrote:
 
-With 128-byte inodes, raw_inode->i_extra_isize is beyond the inode limit
-and the above will corrupt the filesystem.
-IMO, i_extra_isize from ext3_inode_info should be used instead of
-raw_inode->i_extra_isize.
+> On Feb 06, 2007  17:35 -0800, Andrew Morton wrote:
+> > On Mon, 5 Feb 2007 14:12:04 +0100
+> > Jan Kara <jack@suse.cz> wrote:
+> > > > Move the blocks on the temporary inode to the original inode
+> > > > by a page.
+> > > > 1. Read the file data from the old blocks to the page
+> > > > 2. Move the block on the temporary inode to the original inode
+> > > > 3. Write the file data on the page into the new blocks
+> > >   I have one thing - it's probably not good to use page cache for
+> > > defragmentation.
+> > 
+> > Then it is no longer online defragmentation.  The issues with maintaining
+> > correctness and coherency with ongoing VFS activity would be truly ghastly.
+> > 
+> > If we're worried about pagecache pollution then it would be better to control
+> > that from userspace via fadvise().
+> 
+> It should be possible to have the online defrag tool lock the inode against
+> any changes,
 
-> +#define EXT3_INODE_GET_XTIME(xtime, extra_xtime, inode, raw_inode) \
-> +do { \
-> +       (inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime); \
-> + \
-> +       if (offsetof(typeof(*raw_inode), extra_xtime) - \
-> +           offsetof(typeof(*raw_inode), i_extra_isize) + \
-> +           sizeof((raw_inode)->extra_xtime) <= \
-> +           le16_to_cpu((raw_inode)->i_extra_isize)) { \
-                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-ditto
+Sounds easy when you say it fast.  But how do we "lock" against, say, a
+read pagefault?  Only by writing back then removing the pagecache page then
+reinstantiating it as a locked, not-uptodate page and then removing it from
+pagecache afterwards prior to unlocking it.  Or something.
 
-Cheers,
-Johann
+I don't think we want to go there.
+
+> flush all pages out of the cache for that inode, and then do
+> the reallocated outside of the page cache.  For inodes not already in cache
+> this is a no-op.  For the (hopefully rare) case were the inode already has
+> cached pages and also needs to be reallocated it would be a performance hit.
+> 
+> Alternately, we could skip files currently being modified (or mmaped), or
+> even recently modified (e.g. within the last 30 minutes) in the default case,
+> on the assumption that they might be deleted soon anyways.
+
+argh.
+
+It's simple to just use pagecache.  The "we don't want to swamp the machine
+with pagecache" argument is bogus.  If it becomes a problem (and it might
+not) then it is very simple to control the pagecache from userspace.
