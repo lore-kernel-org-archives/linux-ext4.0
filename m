@@ -1,80 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
-Date: Thu, 8 Feb 2007 11:21:02 +0100
-Message-ID: <20070208102102.GC10973@duck.suse.cz>
-References: <20070116210520sho@rifu.tnes.nec.co.jp> <20070205131204.GA15596@atrey.karlin.mff.cuni.cz> <20070206173520.7719a7de.akpm@linux-foundation.org> <20070207204657.GC6565@schatzie.adilger.int> <20070207125659.bc27404d.akpm@linux-foundation.org> <20070208092945.GA10973@duck.suse.cz> <20070208014529.d990b502.akpm@linux-foundation.org>
+From: Johann Lombardi <johann.lombardi@bull.net>
+Subject: Re: [RFC] [PATCH 1/1] Nanosecond timestamps
+Date: Thu, 8 Feb 2007 11:30:25 +0100
+Message-ID: <20070208103025.GB13836@lombardij>
+References: <1170427790.6464.6.camel@garfield> <20070206151242.GB3140@lombardij> <20070207203946.GB6565@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>, sho@tnes.nec.co.jp,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Kalpak Shah <kalpak@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
+	sct <sct@redhat.com>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:44386 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1423175AbXBHKSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Feb 2007 05:18:08 -0500
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:56526 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965714AbXBHK3u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Feb 2007 05:29:50 -0500
+In-Reply-To: <20070207203946.GB6565@schatzie.adilger.int>
 Content-Disposition: inline
-In-Reply-To: <20070208014529.d990b502.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 08-02-07 01:45:29, Andrew Morton wrote:
- <snip>
-> >   I though Andreas meant "any write changes" - i.e. you check that noone
-> > has open file descriptor for writing and block any new open for writing.
-> > That can be done quite easily.
-> >   Anyway, I agree with you that userspace solution to a possible page
-> > cache pollution is preferable after thinking about it for a while.
-> > As I've been thinking about it, we could actually do the copying
-> > from user space. We could do something like:
-> >   block any writes to file (as I described above)
-> >   craft new inode with blocks allocated as we want (using preallocation,
-> >     we should mostly have the kernel infrastructure we need)
-> >   copy data using splice syscall
-> >   call the kernel to switch data
-> > 
-> 
-> I don't think we need to block any writes to any file or anything.
-> 
-> To move a page within a file:
-> 
-> 	fd = open(file);
-> 	p = mmap(fd);
-> 	the_page_was_in_core = mincore(p, offset);
-> 	munmap(p);
-> 	ioctl(fd, ..., new_block);
-> 
-> 			<kernel>
-> 			read_cache_page(inode, offset);
-> 			lock_page(page);
-> 			if (try_to_free_buffers(page)) {
-> 				<relocate the page>
-> 				set_page_dirty(page);
-> 			}
-> 			unlock_page(page);
-> 
-> 	if (the_page_was_in_core) {
-> 		sync_file_range(fd, offset SYNC_FILE_RANGE_WAIT_BEFORE|
-> 						SYNC_FILE_RANGE_WRITE|
-> 						SYNC_FILE_RANGE_WAIT_AFTER);
-> 		fadvise(fd, offset, FADV_DONTNEED);
-> 	}
-> 
-> completely coherent with pagecache, quite safe in the presence of mmap,
-> mlock, O_DIRECT, everything else.  Also fully journallable in-kernel.
-  Yes, this is the simple way. But I see two disadvantages:
-1) You'd like to relocate metadata (indirect blocks) too. For that you need
-   a different mechanism. In my approach, you can mostly assume you've got
-   sanely laid out metadata and so the existence of such mechanism is not
-   so important.
-2) You'd like to allocate new blocks in big chunks. So your kernel function
-   should rather take a range. Also when you fail in the middle of
-   relocating a file (for example the block you'd like to use is already
-   taken by someone else), I find it nice if you can return at least to the
-   original state. But that's probably not important.
+On Wed, Feb 07, 2007 at 01:39:46PM -0700, Andreas Dilger wrote:
+> This has been a bug in several places already, and I wonder if the
+> le*_to_cpu() and cpu_to_le*() macros shouldn't do some type checking
+> instead of just casting the variable to the specified type?
 
-								Honza
+That would be great.
 
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+> The only problem is if casting constants it would be a bit of a pain
+> to have to cast them explicitly, though we could have something like:
+> 
+> #define le16_to_cpu(var) (__builtin_constant(var) || !typecheck(__u16, var) ? \
+> 			  __constant_cpu_to_le16(var) : __le16_to_cpu(var))
+
+Very good idea!
+
+> The only question is whether "typecheck" adds extra variables on the stack
+> or if the compiler will always optimize them away.
+
+I tend to think it will always be optimized by the compiler.
+ 
+> > If the inode size is EXT3_GOOD_OLD_INODE_SIZE, sbi->s_want_extra_isize won't
+> > be initialized. However, it should not be an issue because the ext3_sb_info
+> > is set to zero in ext3_fill_super().
+> 
+> So I'm not sure I understand if you have an objection or if this is just a
+> comment.
+
+Just a useless comment :)
+
+> sbi->s_want_extra_isize will be zero and it is not possible for
+> sbi->s_inode_size < EXT3_GOOD_OLD_INODE_SIZE so this case won't be hit.
+
+I agree.
+
+Cheers,
+Johann
