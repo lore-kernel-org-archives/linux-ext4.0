@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-22.diff>
-Date: Fri, 9 Feb 2007 18:11:19 -0800
-Message-ID: <200702100211.l1A2BJH8007158@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-17.diff>
+Date: Fri, 9 Feb 2007 18:11:14 -0800
+Message-ID: <200702100211.l1A2BEuC007083@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from nspiron-2.llnl.gov ([128.115.41.82]:14899 "EHLO
 	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752842AbXBJCOX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:23 -0500
+	with ESMTP id S1752839AbXBJCOY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:24 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,24 +26,18 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 22: Resource Leak
+Coverity ID: 17: Resource Leak
 
-Need to free w_inode on early exit if w_inode != &temp_inode.
+Need to free memory allocated to buf.
 
-Index: e2fsprogs+chaos/lib/ext2fs/inode.c
+Index: e2fsprogs+chaos/lib/e2p/mntopts.c
 ===================================================================
---- e2fsprogs+chaos.orig/lib/ext2fs/inode.c
-+++ e2fsprogs+chaos/lib/ext2fs/inode.c
-@@ -669,8 +669,10 @@ errcode_t ext2fs_write_inode_full(ext2_f
- 	offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
- 		EXT2_INODE_SIZE(fs->super);
- 	block = offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
--	if (!fs->group_desc[(unsigned) group].bg_inode_table)
--		return EXT2_ET_MISSING_INODE_TABLE;
-+	if (!fs->group_desc[(unsigned) group].bg_inode_table) {
-+		retval = EXT2_ET_MISSING_INODE_TABLE;
-+		goto errout;
-+	}
- 	block_nr = fs->group_desc[(unsigned) group].bg_inode_table + block;
- 
- 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
+--- e2fsprogs+chaos.orig/lib/e2p/mntopts.c
++++ e2fsprogs+chaos/lib/e2p/mntopts.c
+@@ -132,5 +132,6 @@ int e2p_edit_mntopts(const char *str, __
+ 			*mntopts |= mask;
+ 		cp = next ? next+1 : 0;
+ 	}
++	free(buf);
+ 	return 0;
+ }
