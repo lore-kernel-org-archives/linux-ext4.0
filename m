@@ -1,46 +1,53 @@
-From: "Takashi Sato" <sho@tnes.nec.co.jp>
-Subject: Re: [RFC][PATCH 3/3] Online defrag command
-Date: Fri, 9 Feb 2007 17:08:50 +0900
-Message-ID: <071601c74c21$8b75bf90$4168010a@bsd.tnes.nec.co.jp>
-References: <20070208180235sho@rifu.tnes.nec.co.jp> <20070208135620.GF4487@kernel.dk>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=original
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-To: "Jens Axboe" <jens.axboe@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
+Subject: e2fsprogs coverity patch <cid-12.diff>
+Date: Fri, 9 Feb 2007 18:11:10 -0800
+Message-ID: <200702100211.l1A2BArc007019@igsi.llnl.gov>
+Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
+	behlendorf1@llnl.gov, wartens2@llnl.gov
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from nspiron-1.llnl.gov ([128.115.41.81]:7210 "EHLO
+	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752834AbXBJCOR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:17 -0500
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+Lawrence Livermore National Labs recently ran the source code
+analysis tool Coverity over the e2fsprogs-1.39 source to see 
+if it would identify any significant bugs.  The analysis
+turned up 38 mostly minor issues which are enumerated here
+with patches.  We went through and resolved these issues
+but would love to see these mostly minor changes reviewed
+and commited upstream.
 
-> On Thu, Feb 08 2007, Takashi Sato wrote:
->> The defrag command.  Usage is as follows:
->> o Put the multiple files closer together.
->>   # e4defrag -r directory-name
->> o Defrag for a single file.
->>   # e4defrag file-name
->> o Defrag for all files on ext4.
->>   # e4defrag device-name
->
-> Would it be possible to provide support for putting multiple files close
-> together? Ala
->
-> # e4defrag file1 file2 file3 ... fileN
+Thanks,
+Brian Behlendorf <behlendorf1@llnl.gov>, and
+Herb Wartens <wartens2@llnl.gov>
 
-e4defrag cannot do it in my current implementation.
-I will consider its implementation on my later version.
+-----------------------------------------------------------------------------
+Coverity ID: 12: Overrun Static
 
-Alternatively, you can do it if you link those files with a directory.
-# ln file1 file2 file3 ... fileN directory-name
-# e4defrag -r directory-name
+Add an extra byte to EXT2_NAME_LEN in the static allocation for the
+required trailing NULL.  This allows filenames up to the maximum
+length of EXT2_NAME_LEN withover an overrun.
 
-> I'm thinking boot speedup, gather the list of read files and put them
-> close on disk.
-
-I think so.  It's my final goal.
-
-Cheers, Takashi
+Index: e2fsprogs+chaos/debugfs/dump.c
+===================================================================
+--- e2fsprogs+chaos.orig/debugfs/dump.c
++++ e2fsprogs+chaos/debugfs/dump.c
+@@ -292,12 +292,12 @@ static int rdump_dirent(struct ext2_dir_
+ 			int blocksize EXT2FS_ATTR((unused)),
+ 			char *buf EXT2FS_ATTR((unused)), void *private)
+ {
+-	char name[EXT2_NAME_LEN];
++	char name[EXT2_NAME_LEN + 1];
+ 	int thislen;
+ 	const char *dumproot = private;
+ 	struct ext2_inode inode;
+ 
+-	thislen = ((dirent->name_len & 0xFF) < EXT2_NAME_LEN
++	thislen = ((dirent->name_len & 0xFF) <= EXT2_NAME_LEN
+ 		   ? (dirent->name_len & 0xFF) : EXT2_NAME_LEN);
+ 	strncpy(name, dirent->name, thislen);
+ 	name[thislen] = 0;
