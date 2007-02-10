@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-42.diff>
-Date: Fri, 9 Feb 2007 18:11:38 -0800
-Message-ID: <200702100211.l1A2BcZh007467@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-32.diff>
+Date: Fri, 9 Feb 2007 18:11:28 -0800
+Message-ID: <200702100211.l1A2BSid007312@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-2.llnl.gov ([128.115.41.82]:24558 "EHLO
-	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752856AbXBJCOn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:43 -0500
+Received: from nspiron-1.llnl.gov ([128.115.41.81]:40380 "EHLO
+	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850AbXBJCOh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:37 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,34 +26,37 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 42: Resource Leak
+Coverity ID: 32: Resource Leak
 
-The temporary scratch inode must be freed in the early return cases.
+The memory allocated by inst is not reclaimed.  There also was a
+call to exit that coverity did not catch the resource leak.  This
+might not really be a big issue since the memory will be freed when
+fsck exits, but it should be done anyway imho.
 
-Index: e2fsprogs+chaos/e2fsck/pass4.c
+Index: e2fsprogs+chaos/misc/fsck.c
 ===================================================================
---- e2fsprogs+chaos.orig/e2fsck/pass4.c
-+++ e2fsprogs+chaos/e2fsck/pass4.c
-@@ -113,12 +113,12 @@ void e2fsck_pass4(e2fsck_t ctx)
- 	
- 	for (i=1; i <= fs->super->s_inodes_count; i++) {
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
--			return;
-+			goto errout;
- 		if ((i % fs->super->s_inodes_per_group) == 0) {
- 			group++;
- 			if (ctx->progress)
- 				if ((ctx->progress)(ctx, 4, group, maxgroup))
--					return;
-+					goto errout;
- 		}
- 		if (i == EXT2_BAD_INO ||
- 		    (i > EXT2_ROOT_INO && i < EXT2_FIRST_INODE(fs->super)))
-@@ -166,6 +166,7 @@ void e2fsck_pass4(e2fsck_t ctx)
- 	ctx->inode_bb_map = 0;
- 	ext2fs_free_inode_bitmap(ctx->inode_imagic_map);
- 	ctx->inode_imagic_map = 0;
-+errout:
- 	if (buf)
- 		ext2fs_free_mem(&buf);
- #ifdef RESOURCE_TRACK
+--- e2fsprogs+chaos.orig/misc/fsck.c
++++ e2fsprogs+chaos/misc/fsck.c
+@@ -470,6 +470,7 @@ static int execute(const char *type, con
+ 	s = find_fsck(prog);
+ 	if (s == NULL) {
+ 		fprintf(stderr, _("fsck: %s: not found\n"), prog);
++		free(inst);
+ 		return ENOENT;
+ 	}
+ 
+@@ -486,12 +487,14 @@ static int execute(const char *type, con
+ 		pid = -1;
+ 	else if ((pid = fork()) < 0) {
+ 		perror("fork");
++		free(inst);
+ 		return errno;
+ 	} else if (pid == 0) {
+ 		if (!interactive)
+ 			close(0);
+ 		(void) execv(s, argv);
+ 		perror(argv[0]);
++		free(inst);
+ 		exit(EXIT_ERROR);
+ 	}
+ 
