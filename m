@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-9.diff>
-Date: Fri, 9 Feb 2007 18:11:44 -0800
-Message-ID: <200702100211.l1A2BiQE007552@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-5.diff>
+Date: Fri, 9 Feb 2007 18:11:41 -0800
+Message-ID: <200702100211.l1A2Bfjd007495@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from nspiron-2.llnl.gov ([128.115.41.82]:20101 "EHLO
 	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752862AbXBJCOv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:51 -0500
+	with ESMTP id S1752873AbXBJCOz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:55 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,59 +26,31 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 9: Null Returns
+Coverity ID: 5: Forward NULL
 
-dict_lookup() can potentially return a NULL dnode_t.  It is not
-checked in two places in the clone_file() function.  Looks to be
-safe to check if n is not NULL.  If n is NULL then point out the
-error.
+array is initially set to NULL, so it is possible that readdir() will return
+NULL and leave array set to NULL. Thus we do need to check if array is NULL or
+check if num != 0.
 
-Index: e2fsprogs+chaos/e2fsck/pass1b.c
+There is definitely space allocated to array in the normal case. It calls
+realloc which since array is NULL the first time through will behave like
+malloc. The other times we will resize the array to be 11 larger.
+
+It should be safe to run qsort on array since num should be set to 0 so nothing
+will be sorted.  It should also be safe to set *ret_array = array. The array
+passed in should just be NULL at this point.
+
+Index: e2fsprogs+chaos/e2fsck/profile.c
 ===================================================================
---- e2fsprogs+chaos.orig/e2fsck/pass1b.c
-+++ e2fsprogs+chaos/e2fsck/pass1b.c
-@@ -752,19 +752,33 @@ static int clone_file(e2fsck_t ctx, ext2
- 		 * them to point to the new EA block.
- 		 */
- 		n = dict_lookup(&blk_dict, INT_TO_VOIDPTR(blk));
--		db = (struct dup_block *) dnode_get(n);
--		for (ino_el = db->inode_list; ino_el; ino_el = ino_el->next) {
--			if (ino_el->inode == ino)
--				continue;
--			n = dict_lookup(&ino_dict, INT_TO_VOIDPTR(ino_el->inode));
--			di = (struct dup_inode *) dnode_get(n);
--			if (di->inode.i_file_acl == blk) {
--				di->inode.i_file_acl = dp->inode.i_file_acl;
--				e2fsck_write_inode(ctx, ino_el->inode,
--					   &di->inode, "clone file EA");
--				decrement_badcount(ctx, blk, db);
-+		if (n) {
-+			db = (struct dup_block *) dnode_get(n);
-+			for (ino_el = db->inode_list; ino_el; ino_el = ino_el->next) {
-+				if (ino_el->inode == ino)
-+					continue;
-+				n = dict_lookup(&ino_dict, INT_TO_VOIDPTR(ino_el->inode));
-+				if (n) {
-+					di = (struct dup_inode *) dnode_get(n);
-+					if (di->inode.i_file_acl == blk) {
-+						di->inode.i_file_acl = dp->inode.i_file_acl;
-+						e2fsck_write_inode(ctx, ino_el->inode,
-+							&di->inode, "clone file EA");
-+						decrement_badcount(ctx, blk, db);
-+					}
-+				}
-+				else {
-+					com_err("clone_file", 0,
-+						_("internal error; can't find dup_blk for %u\n"),
-+						ino_el->inode);
-+				}
- 			}
- 		}
-+		else {
-+			com_err("clone_file", 0,
-+				_("internal error; can't find dup_blk for %u\n"),
-+				blk);
-+		}
+--- e2fsprogs+chaos.orig/e2fsck/profile.c
++++ e2fsprogs+chaos/e2fsck/profile.c
+@@ -280,7 +280,8 @@ static errcode_t get_dirlist(const char 
+ 		array[num++] = fn;
  	}
- 	retval = 0;
- errout:
+ 	qsort(array, num, sizeof(char *), compstr);
+-	array[num++] = 0;
++	if(array)
++		array[num++] = 0;
+ 	*ret_array = array;
+ 	closedir(dir);
+ 	return 0;
