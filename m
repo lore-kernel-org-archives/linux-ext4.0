@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-24.diff>
-Date: Fri, 9 Feb 2007 18:11:21 -0800
-Message-ID: <200702100211.l1A2BLYK007181@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-26.diff>
+Date: Fri, 9 Feb 2007 18:11:23 -0800
+Message-ID: <200702100211.l1A2BNXO007237@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-1.llnl.gov ([128.115.41.81]:40380 "EHLO
-	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752848AbXBJCOb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:31 -0500
+Received: from nspiron-2.llnl.gov ([128.115.41.82]:46449 "EHLO
+	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752841AbXBJCOc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:32 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,45 +26,21 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 24: Resource Leak
+Coverity ID: 26+27: Resource Leak
 
-Handle leaked cbuf due to early returns with a generic failure path.
+zero_buf and buf must be freed on return from this function.  The other
+potential resource leaks in this function are handled by calling exit().
 
-Index: e2fsprogs+chaos/debugfs/htree.c
+Index: e2fsprogs+chaos/misc/e2image.c
 ===================================================================
---- e2fsprogs+chaos.orig/debugfs/htree.c
-+++ e2fsprogs+chaos/debugfs/htree.c
-@@ -149,27 +149,29 @@ static void htree_dump_int_block(ext2_fi
- 	cbuf = malloc(fs->blocksize);
- 	if (!cbuf) {
- 		fprintf(pager, "Couldn't allocate child block.\n");
--		return;
-+		goto errout;
+--- e2fsprogs+chaos.orig/misc/e2image.c
++++ e2fsprogs+chaos/misc/e2image.c
+@@ -442,6 +442,8 @@ static void output_meta_data_blocks(ext2
+ 		}
  	}
- 	
- 	errcode = ext2fs_bmap(fs, ino, inode, buf, 0, blk, &pblk);
- 	if (errcode) {
- 		com_err("htree_dump_int_block", errcode,
- 			"while mapping logical block %u\n", blk);
--		return;
-+		goto errout;
- 	}
- 
- 	errcode = io_channel_read_blk(current_fs->io, pblk, 1, buf);
- 	if (errcode) {
- 		com_err("htree_dump_int_block", errcode,
- 			"while 	reading block %u\n", blk);
--		return;
-+		goto errout;
- 	}
- 
- 	htree_dump_int_node(fs, ino, inode, rootnode,
- 			    (struct ext2_dx_entry *) (buf+8),
- 			    cbuf, level);
--	free(cbuf);
-+errout:
-+	if (cbuf)
-+		free(cbuf);
+ 	write_block(fd, zero_buf, sparse, 1, -1);
++	free(zero_buf);
++	free(buf);
  }
  
- 
+ static void write_raw_image_file(ext2_filsys fs, int fd, int scramble_flag)
