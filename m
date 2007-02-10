@@ -1,14 +1,14 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-11.diff>
-Date: Fri, 9 Feb 2007 18:11:09 -0800
-Message-ID: <200702100211.l1A2B9wF007009@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-15.diff>
+Date: Fri, 9 Feb 2007 18:11:13 -0800
+Message-ID: <200702100211.l1A2BDlI007074@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from nspiron-1.llnl.gov ([128.115.41.81]:7210 "EHLO
 	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752835AbXBJCOU (ORCPT
+	with ESMTP id S1752837AbXBJCOU (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -26,30 +26,57 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 11: Overrun Static
+Coverity ID: 15: Resource Leak
 
-Add an extra byte to EXT2_NAME_LEN in the static allocation for the
-required trailing null.  This allows filenames up to the maximum
-length of EXT2_NAME_LEN withover an overrun.
+The temporary working buffer must be freed in all cases.  The
+easiest way to handle this was a fallout label which cleans
+things up properly in the case of success or failure.
 
-Index: e2fsprogs+chaos/debugfs/ls.c
+Index: e2fsprogs+chaos/lib/e2p/feature.c
 ===================================================================
---- e2fsprogs+chaos.orig/debugfs/ls.c
-+++ e2fsprogs+chaos/debugfs/ls.c
-@@ -52,14 +52,14 @@ static int list_dir_proc(ext2_ino_t dir 
- 	ext2_ino_t		ino;
- 	struct tm		*tm_p;
- 	time_t			modtime;
--	char			name[EXT2_NAME_LEN];
-+	char			name[EXT2_NAME_LEN + 1];
- 	char			tmp[EXT2_NAME_LEN + 16];
- 	char			datestr[80];
- 	char			lbr, rbr;
- 	int			thislen;
- 	struct list_dir_struct *ls = (struct list_dir_struct *) private;
+--- e2fsprogs+chaos.orig/lib/e2p/feature.c
++++ e2fsprogs+chaos/lib/e2p/feature.c
+@@ -155,6 +155,7 @@ int e2p_edit_feature(const char *str, __
+ 	int	neg;
+ 	unsigned int	mask;
+ 	int		compat_type;
++	int		rc = 0;
  
--	thislen = ((dirent->name_len & 0xFF) < EXT2_NAME_LEN) ?
-+	thislen = ((dirent->name_len & 0xFF) <= EXT2_NAME_LEN) ?
- 		(dirent->name_len & 0xFF) : EXT2_NAME_LEN;
- 	strncpy(name, dirent->name, thislen);
- 	name[thislen] = '\0';
+ 	buf = malloc(strlen(str)+1);
+ 	if (!buf)
+@@ -164,7 +165,7 @@ int e2p_edit_feature(const char *str, __
+ 		neg = 0;
+ 		cp = skip_over_blanks(cp);
+ 		next = skip_over_word(cp);
+-		
++
+ 		if (*next == 0)
+ 			next = 0;
+ 		else
+@@ -186,15 +187,21 @@ int e2p_edit_feature(const char *str, __
+ 			cp++;
+ 			break;
+ 		}
+-		if (e2p_string2feature(cp, &compat_type, &mask))
+-			return 1;
+-		if (ok_array && !(ok_array[compat_type] & mask))
+-			return 1;
++		if (e2p_string2feature(cp, &compat_type, &mask)) {
++			rc = 1;
++			goto out;
++		}
++		if (ok_array && !(ok_array[compat_type] & mask)) {
++			rc = 1;
++			goto out;
++		}
+ 		if (neg)
+ 			compat_array[compat_type] &= ~mask;
+ 		else
+ 			compat_array[compat_type] |= mask;
+ 	}
+-	return 0;
++out:
++	free(buf);
++	return rc;
+ }
+ 
