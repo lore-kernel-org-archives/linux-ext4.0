@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-13.diff>
-Date: Fri, 9 Feb 2007 18:11:11 -0800
-Message-ID: <200702100211.l1A2BBla007031@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-14.diff>
+Date: Fri, 9 Feb 2007 18:11:12 -0800
+Message-ID: <200702100211.l1A2BCGB007040@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-1.llnl.gov ([128.115.41.81]:7210 "EHLO
+Received: from nspiron-1.llnl.gov ([128.115.41.81]:33134 "EHLO
 	nspiron-1.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752833AbXBJCOQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:16 -0500
+	with ESMTP id S1752838AbXBJCOU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,31 +26,31 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 13: Overrun Static
+Coverity ID: 14: Resource Leak
 
-Add an extra byte to EXT2_NAME_LEN in the static allocation for the
-required trailing NULL.  This allows filenames up to the maximum 
-length of EXT2_NAME_LEN withover an overrun.
+The profile must be freed early if subsequent memory allocations
+fail for 'expanded_filename'.  
 
-Index: e2fsprogs+chaos/debugfs/htree.c
+Index: e2fsprogs+chaos/e2fsck/profile.c
 ===================================================================
---- e2fsprogs+chaos.orig/debugfs/htree.c
-+++ e2fsprogs+chaos/debugfs/htree.c
-@@ -35,7 +35,7 @@ static void htree_dump_leaf_node(ext2_fi
- 	struct ext2_dir_entry *dirent;
- 	int		thislen, col = 0;
- 	unsigned int	offset = 0;
--	char		name[EXT2_NAME_LEN];
-+	char		name[EXT2_NAME_LEN + 1];
- 	char		tmp[EXT2_NAME_LEN + 16];
- 	blk_t		pblk;
- 	ext2_dirhash_t 	hash;
-@@ -63,7 +63,7 @@ static void htree_dump_leaf_node(ext2_fi
- 			fprintf(pager, "Corrupted directory block (%u)!\n", blk);
- 			break;
- 		}
--		thislen = ((dirent->name_len & 0xFF) < EXT2_NAME_LEN) ?
-+		thislen = ((dirent->name_len & 0xFF) <= EXT2_NAME_LEN) ?
- 			(dirent->name_len & 0xFF) : EXT2_NAME_LEN;
- 		strncpy(name, dirent->name, thislen);
- 		name[thislen] = '\0';
+--- e2fsprogs+chaos.orig/e2fsck/profile.c
++++ e2fsprogs+chaos/e2fsck/profile.c
+@@ -414,13 +414,16 @@ errcode_t profile_open_file(const char *
+ 			len += strlen(home_env);
+ 	}
+ 	expanded_filename = malloc(len);
+-	if (expanded_filename == 0)
++	if (!expanded_filename) {
++	    profile_free_file(prf);
+ 	    return errno;
++	}
+ 	if (home_env) {
+ 	    strcpy(expanded_filename, home_env);
+ 	    strcat(expanded_filename, filespec+1);
+-	} else
++	} else {
+ 	    memcpy(expanded_filename, filespec, len);
++	}
+ 
+ 	prf->filespec = expanded_filename;
+ 
