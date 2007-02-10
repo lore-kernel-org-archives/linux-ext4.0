@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-33.diff>
-Date: Fri, 9 Feb 2007 18:11:29 -0800
-Message-ID: <200702100211.l1A2BTRb007321@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-35.diff>
+Date: Fri, 9 Feb 2007 18:11:30 -0800
+Message-ID: <200702100211.l1A2BUGH007330@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-2.llnl.gov ([128.115.41.82]:24558 "EHLO
+Received: from nspiron-2.llnl.gov ([128.115.41.82]:46449 "EHLO
 	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752857AbXBJCOj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:39 -0500
+	with ESMTP id S1752852AbXBJCOg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:36 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,33 +26,42 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 33: Resource Leak
+Coverity ID: 35: Resource Leak
 
-The memory allocated by buf is not reclaimed.  This patch
-addresses the issue.
+The memory allocated by string_copy is clearly never reclaimed. The fix adds
+free() to the end of the function to reclaim the memory, I didn't see an API
+function to free memory allocated by string_copy().
 
-Index: e2fsprogs+chaos/misc/util.c
+Fixed some whitespace issues as well
+
+Index: e2fsprogs+chaos/e2fsck/unix.c
 ===================================================================
---- e2fsprogs+chaos.orig/misc/util.c
-+++ e2fsprogs+chaos/misc/util.c
-@@ -176,7 +176,7 @@ void check_mount(const char *device, int
- 
- void parse_journal_opts(const char *opts)
- {
--	char	*buf, *token, *next, *p, *arg;
-+	char	*buf = NULL, *token, *next, *p, *arg;
- 	int	len;
- 	int	journal_usage = 0;
- 
-@@ -234,8 +234,11 @@ void parse_journal_opts(const char *opts
- 			"\tdevice=<journal device>\n\n"
- 			"The journal size must be between "
- 			"1024 and 102400 filesystem blocks.\n\n"), stderr);
-+		free(buf);
+--- e2fsprogs+chaos.orig/e2fsck/unix.c
++++ e2fsprogs+chaos/e2fsck/unix.c
+@@ -524,7 +524,7 @@ static void parse_extended_opts(e2fsck_t
+ 		if (p) {
+ 			*p = 0;
+ 			next = p+1;
+-		} 
++		}
+ 		arg = strchr(token, '=');
+ 		if (arg) {
+ 			*arg = 0;
+@@ -550,6 +550,8 @@ static void parse_extended_opts(e2fsck_t
+ 			extended_usage++;
+ 		}
+ 	}
++	free(buf);
++
+ 	if (extended_usage) {
+ 		fputs(("\nExtended options are separated by commas, "
+ 		       "and may take an argument which\n"
+@@ -558,7 +560,7 @@ static void parse_extended_opts(e2fsck_t
+ 		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
  		exit(1);
  	}
-+
-+	free(buf);
- }	
+-}	
++}
  
- /*
+ static void syntax_err_report(const char *filename, long err, int line_num)
+ {
