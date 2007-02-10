@@ -1,15 +1,15 @@
 From: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
-Subject: e2fsprogs coverity patch <cid-36.diff>
-Date: Fri, 9 Feb 2007 18:11:31 -0800
-Message-ID: <200702100211.l1A2BV5D007345@igsi.llnl.gov>
+Subject: e2fsprogs coverity patch <cid-30.diff>
+Date: Fri, 9 Feb 2007 18:11:27 -0800
+Message-ID: <200702100211.l1A2BRpR007277@igsi.llnl.gov>
 Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
 	behlendorf1@llnl.gov, wartens2@llnl.gov
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-2.llnl.gov ([128.115.41.82]:2899 "EHLO
+Received: from nspiron-2.llnl.gov ([128.115.41.82]:43687 "EHLO
 	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752850AbXBJCOf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:35 -0500
+	with ESMTP id S1752849AbXBJCOb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Feb 2007 21:14:31 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -26,59 +26,83 @@ Brian Behlendorf <behlendorf1@llnl.gov>, and
 Herb Wartens <wartens2@llnl.gov>
 
 -----------------------------------------------------------------------------
-Coverity ID: 36: Resource Leak
+Coverity ID: 30: Resource Leak
 
-Memory could be leaked when jumping to the clear_extattr label once
-region_create() had been called. The applied fix for the issue is to
-initialize region to NULL, and then in the clear_extattr case free to region
-with region_free() when region != NULL.
+Need to close file if we return early if out_file != stdout.
+Also looks like there is a bug here:
+if (!out_file < 0)
+This will always be false. Changed to:
+if (!out_file)
+since if the file is not opened properly out_file will be NULL
+and errno will be set.
 
-Additionally some whitespace cleanup was done.
-
-Index: e2fsprogs+chaos/e2fsck/pass1.c
+Index: e2fsprogs+chaos/debugfs/logdump.c
 ===================================================================
---- e2fsprogs+chaos.orig/e2fsck/pass1.c
-+++ e2fsprogs+chaos/e2fsck/pass1.c
-@@ -1160,8 +1160,8 @@ static int check_ext_attr(e2fsck_t ctx, 
- 	struct ext2_ext_attr_header *header;
- 	struct ext2_ext_attr_entry *entry;
- 	int		count;
--	region_t	region;
--	
-+	region_t	region = NULL;
-+
- 	blk = inode->i_file_acl;
- 	if (blk == 0)
- 		return 0;
-@@ -1227,7 +1227,7 @@ static int check_ext_attr(e2fsck_t ctx, 
- 		ea_refcount_increment(ctx->refcount_extra, blk, 0);
- 		return 1;
- 	}
--	
-+
- 	/*
- 	 * OK, we haven't seen this EA block yet.  So we need to
- 	 * validate it
-@@ -1261,7 +1261,7 @@ static int check_ext_attr(e2fsck_t ctx, 
- 		if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
- 			goto clear_extattr;
- 	}
--	
-+
- 	entry = (struct ext2_ext_attr_entry *)(header+1);
- 	end = block_buf + fs->blocksize;
- 	while ((char *)entry < end && *(__u32 *)entry) {
-@@ -1300,10 +1300,12 @@ static int check_ext_attr(e2fsck_t ctx, 
- 		ea_refcount_store(ctx->refcount, blk, count);
- 	mark_block_used(ctx, blk);
- 	ext2fs_fast_mark_block_bitmap(ctx->block_ea_map, blk);
--	
-+
- 	return 1;
- 
- clear_extattr:
-+	if (region)
-+		region_free(region);
- 	inode->i_file_acl = 0;
- 	e2fsck_write_inode(ctx, ino, inode, "check_ext_attr");
- 	return 0;
+--- e2fsprogs+chaos.orig/debugfs/logdump.c
++++ e2fsprogs+chaos/debugfs/logdump.c
+@@ -170,7 +170,7 @@ void do_logdump(int argc, char **argv)
+ 	} else {
+ 		out_fn = argv[optind];
+ 		out_file = fopen(out_fn, "w");
+-		if (!out_file < 0) {
++		if (!out_file) {
+ 			com_err(argv[0], errno, "while opening %s for logdump",
+ 				out_fn);
+ 			return;
+@@ -193,6 +193,8 @@ void do_logdump(int argc, char **argv)
+ 		if (journal_fd < 0) {
+ 			com_err(argv[0], errno, "while opening %s for logdump",
+ 				journal_fn);
++			if (out_file != stdout)
++				fclose(out_file);
+ 			return;
+ 		}
+ 		
+@@ -203,6 +205,8 @@ void do_logdump(int argc, char **argv)
+ 			if (es->s_jnl_backup_type != EXT3_JNL_BACKUP_BLOCKS) {
+ 				com_err(argv[0], 0,
+ 					"no journal backup in super block\n");
++				if (out_file != stdout)
++					fclose(out_file);
+ 				return;
+ 			}
+ 			memset(&journal_inode, 0, sizeof(struct ext2_inode));
+@@ -213,14 +217,19 @@ void do_logdump(int argc, char **argv)
+ 			journal_inode.i_mode = LINUX_S_IFREG | 0600;
+ 		} else {
+ 			if (debugfs_read_inode(journal_inum, &journal_inode, 
+-					       argv[0]))
++					       argv[0])) {
++				if (out_file != stdout)
++					fclose(out_file);
+ 				return;
++			}
+ 		}
+ 		
+ 		retval = ext2fs_file_open2(current_fs, journal_inum,
+ 					   &journal_inode, 0, &journal_file);
+ 		if (retval) {
+ 			com_err(argv[0], retval, "while opening ext2 file");
++			if (out_file != stdout)
++				fclose(out_file);
+ 			return;
+ 		}
+ 		journal_source.where = JOURNAL_IS_INTERNAL;
+@@ -234,6 +243,8 @@ void do_logdump(int argc, char **argv)
+ 				journal_fn = blkid_devno_to_devname(es->s_journal_dev);
+ 		if (!journal_fn) {
+ 			com_err(argv[0], 0, "filesystem has no journal");
++			if (out_file != stdout)
++				fclose(out_file);
+ 			return;
+ 		}
+ 		journal_fd = open(journal_fn, O_RDONLY, 0);
+@@ -241,6 +252,8 @@ void do_logdump(int argc, char **argv)
+ 			com_err(argv[0], errno, "while opening %s for logdump",
+ 				journal_fn);
+ 			free(journal_fn);
++			if (out_file != stdout)
++				fclose(out_file);
+ 			return;
+ 		}
+ 		fprintf(out_file, "Using external journal found at %s\n",
