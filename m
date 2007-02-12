@@ -1,76 +1,52 @@
-From: akpm@linux-foundation.org
-Subject: - return-enoent-from-ext3_link-when-racing-with-unlink.patch removed from -mm tree
-Date: Sun, 11 Feb 2007 14:54:25 -0800
-Message-ID: <200702112254.l1BMsPPk016222@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
-To: sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Andreas Gruenbacher <agruen@suse.de>
+Subject: Re: [patch 206/241] fix umask when noACL kernel meets extN tuned for ACLs
+Date: Sun, 11 Feb 2007 22:01:50 -0800
+Message-ID: <200702112201.50952.agruen@suse.de>
+References: <200702100946.l1A9kDah009321@shell0.pdx.osdl.net>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: torvalds@linux-foundation.org, hugh@veritas.com,
+	linux-ext4@vger.kernel.org, tigran@aivazian.fsnet.co.uk
+To: akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns2.suse.de ([195.135.220.15]:45829 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933010AbXBLGCB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Feb 2007 01:02:01 -0500
+In-Reply-To: <200702100946.l1A9kDah009321@shell0.pdx.osdl.net>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Saturday 10 February 2007 01:46, akpm@linux-foundation.org wrote:
+> From: Hugh Dickins <hugh@veritas.com>
+>
+> Fix insecure default behaviour reported by Tigran Aivazian: if an ext2 or
+> ext3 or ext4 filesystem is tuned to mount with "acl", but mounted by a
+> kernel built without ACL support, then umask was ignored when creating
+> inodes - though root or user has umask 022, touch creates files as 0666,
+> and mkdir creates directories as 0777.
+>
+> This appears to have worked right until 2.6.11, when a fix to the default
+> mode on symlinks (always 0777) assumed VFS applies umask: which it does,
+> unless the mount is marked for ACLs; but ext[234] set MS_POSIXACL in
+> s_flags according to s_mount_opt set according to def_mount_opts.
+>
+> We could revert to the 2.6.10 ext[234]_init_acl (adding an S_ISLNK test);
+> but other filesystems only set MS_POSIXACL when ACLs are configured.  We
+> could fix this at another level; but it seems most robust to avoid setting
+> the s_mount_opt flag in the first place (at the expense of more ifdefs).
+>
+> Likewise don't set the XATTR_USER flag when built without XATTR support.
+>
+> Signed-off-by: Hugh Dickins <hugh@veritas.com>
+> Cc: Tigran Aivazian <tigran@aivazian.fsnet.co.uk>
+> Cc: <linux-ext4@vger.kernel.org>
+> Cc: Andreas Gruenbacher <agruen@suse.de>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 
-The patch titled
-     return ENOENT from ext3_link when racing with unlink
-has been removed from the -mm tree.  Its filename was
-     return-enoent-from-ext3_link-when-racing-with-unlink.patch
+Ack -- and thanks for this fix!
 
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-------------------------------------------------------
-Subject: return ENOENT from ext3_link when racing with unlink
-From: Eric Sandeen <sandeen@redhat.com>
-
-Return -ENOENT from ext[34]_link if we've raced with unlink and i_nlink is
-0.  Doing otherwise has the potential to corrupt the orphan inode list,
-because we'd wind up with an inode with a non-zero link count on the list,
-and it will never get properly cleaned up & removed from the orphan list
-before it is freed.
-
-[akpm@osdl.org: build fix]
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/namei.c |    6 ++++++
- fs/ext4/namei.c |    6 ++++++
- 2 files changed, 12 insertions(+)
-
-diff -puN fs/ext3/namei.c~return-enoent-from-ext3_link-when-racing-with-unlink fs/ext3/namei.c
---- a/fs/ext3/namei.c~return-enoent-from-ext3_link-when-racing-with-unlink
-+++ a/fs/ext3/namei.c
-@@ -2191,6 +2191,12 @@ static int ext3_link (struct dentry * ol
- 
- 	if (inode->i_nlink >= EXT3_LINK_MAX)
- 		return -EMLINK;
-+	/*
-+	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
-+	 * otherwise has the potential to corrupt the orphan inode list.
-+	 */
-+	if (inode->i_nlink == 0)
-+		return -ENOENT;
- 
- retry:
- 	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
-diff -puN fs/ext4/namei.c~return-enoent-from-ext3_link-when-racing-with-unlink fs/ext4/namei.c
---- a/fs/ext4/namei.c~return-enoent-from-ext3_link-when-racing-with-unlink
-+++ a/fs/ext4/namei.c
-@@ -2189,6 +2189,12 @@ static int ext4_link (struct dentry * ol
- 
- 	if (inode->i_nlink >= EXT4_LINK_MAX)
- 		return -EMLINK;
-+	/*
-+	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
-+	 * otherwise has the potential to corrupt the orphan inode list.
-+	 */
-+	if (inode->i_nlink == 0)
-+		return -ENOENT;
- 
- retry:
- 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-_
-
-Patches currently in -mm which might be from sandeen@redhat.com are
-
-origin.patch
+Andreas
