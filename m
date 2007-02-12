@@ -1,52 +1,49 @@
-From: Brian Behlendorf <behlendorf1@llnl.gov>
-Subject: Re: e2fsprogs coverity patch <cid-1.diff>
-Date: Mon, 12 Feb 2007 10:23:18 -0800
-Message-ID: <200702121023.18422.behlendorf1@llnl.gov>
-References: <200702100208.l1A28GC2005813@igsi.llnl.gov> <20070210135501.GA25607@thunk.org>
-Reply-To: behlendorf1@llnl.gov
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: e2fsprogs coverity patch <cid-4.diff>
+Date: Mon, 12 Feb 2007 12:25:30 -0700
+Message-ID: <20070212192530.GM6565@schatzie.adilger.int>
+References: <200702100211.l1A2BZvu007411@igsi.llnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	wartens2@llnl.gov
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, wartens2@llnl.gov
+To: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nspiron-2.llnl.gov ([128.115.41.82]:41868 "EHLO
-	nspiron-2.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965032AbXBLSXw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2007 13:23:52 -0500
-In-Reply-To: <20070210135501.GA25607@thunk.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:38148 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965330AbXBLTZd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2007 14:25:33 -0500
 Content-Disposition: inline
+In-Reply-To: <200702100211.l1A2BZvu007411@igsi.llnl.gov>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Feb 09, 2007  18:11 -0800, Brian D. Behlendorf wrote:
+> This check is unnecessary since fs_type is guaranteed to be set earlier in the
+> function.
 
-Hi Ted,
+I'm not positive this is the right fix.  If we are creating a journal device,
+we shouldn't be using the normal defaults based on the size of the journal
+device because this will often be much smaller than the actual filesystem.
 
-  Sorry about failing to read the SUBMITTING-PATCHES file, I hadn't noticed
-it.  Yes I'm willing to certify to the Developer's Certification of Origin 
-1.1 statement, please add the following line to the patches:
+I'd argue that we set fs_type="journal" earlier when fs_type is being first
+set, if INCOMPAT_JOURNAL_DEV is set.
 
-Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+> Index: e2fsprogs+chaos/misc/mke2fs.c
+> ===================================================================
+> --- e2fsprogs+chaos.orig/misc/mke2fs.c
+> +++ e2fsprogs+chaos/misc/mke2fs.c
+> @@ -1310,8 +1310,6 @@ static void PRS(int argc, char *argv[])
+>  
+>  	if (fs_param.s_feature_incompat & 
+>  	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
+> -		if (!fs_type)
+> -			fs_type = "journal";
+>  		reserved_ratio = 0;
+>  		fs_param.s_feature_incompat = EXT3_FEATURE_INCOMPAT_JOURNAL_DEV;
+>  		fs_param.s_feature_compat = 0;
 
-  I'll make sure to add the Signed-off-by line in the future.
-
-Thanks,
-Brian
-
-> Hi Brian, please see the SUBMITTING-PATCHES file in the e2fsprogs
-> repository.
->
-> May I assume that you are willing to certify to the Developer's
-> Certification of Origin 1.1 statement so I can add a:
->
-> Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
->
-> to each of these patches before I check them into the e2fsprogs source
-> control repository?
->
-> In the future, please add the Signed-off-by: line when submitting
-> patches assuming that you are willing to certify to the DCO 1.1.
->
-> Thanks, regards,
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
