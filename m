@@ -1,52 +1,38 @@
-From: Andreas Gruenbacher <agruen@suse.de>
-Subject: Re: [patch 206/241] fix umask when noACL kernel meets extN tuned for ACLs
-Date: Sun, 11 Feb 2007 22:01:50 -0800
-Message-ID: <200702112201.50952.agruen@suse.de>
-References: <200702100946.l1A9kDah009321@shell0.pdx.osdl.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC][PATCH 2/3] Move the file data to the new blocks
+Date: Sun, 11 Feb 2007 22:11:18 -0500
+Message-ID: <20070212031118.GB10424@thunk.org>
+References: <20070116210520sho@rifu.tnes.nec.co.jp> <20070205131204.GA15596@atrey.karlin.mff.cuni.cz> <20070206173520.7719a7de.akpm@linux-foundation.org> <20070207204657.GC6565@schatzie.adilger.int> <20070207125659.bc27404d.akpm@linux-foundation.org> <20070208092945.GA10973@duck.suse.cz> <20070208014529.d990b502.akpm@linux-foundation.org> <20070208102102.GC10973@duck.suse.cz> <20070208023213.902eed32.akpm@linux-foundation.org> <20070208104739.GA3674@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: torvalds@linux-foundation.org, hugh@veritas.com,
-	linux-ext4@vger.kernel.org, tigran@aivazian.fsnet.co.uk
-To: akpm@linux-foundation.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@clusterfs.com>, sho@tnes.nec.co.jp,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:45829 "EHLO mx2.suse.de"
+Received: from thunk.org ([69.25.196.29]:35554 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933010AbXBLGCB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Feb 2007 01:02:01 -0500
-In-Reply-To: <200702100946.l1A9kDah009321@shell0.pdx.osdl.net>
+	id S933037AbXBLGjZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Feb 2007 01:39:25 -0500
 Content-Disposition: inline
+In-Reply-To: <20070208104739.GA3674@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Saturday 10 February 2007 01:46, akpm@linux-foundation.org wrote:
-> From: Hugh Dickins <hugh@veritas.com>
->
-> Fix insecure default behaviour reported by Tigran Aivazian: if an ext2 or
-> ext3 or ext4 filesystem is tuned to mount with "acl", but mounted by a
-> kernel built without ACL support, then umask was ignored when creating
-> inodes - though root or user has umask 022, touch creates files as 0666,
-> and mkdir creates directories as 0777.
->
-> This appears to have worked right until 2.6.11, when a fix to the default
-> mode on symlinks (always 0777) assumed VFS applies umask: which it does,
-> unless the mount is marked for ACLs; but ext[234] set MS_POSIXACL in
-> s_flags according to s_mount_opt set according to def_mount_opts.
->
-> We could revert to the 2.6.10 ext[234]_init_acl (adding an S_ISLNK test);
-> but other filesystems only set MS_POSIXACL when ACLs are configured.  We
-> could fix this at another level; but it seems most robust to avoid setting
-> the s_mount_opt flag in the first place (at the expense of more ifdefs).
->
-> Likewise don't set the XATTR_USER flag when built without XATTR support.
->
-> Signed-off-by: Hugh Dickins <hugh@veritas.com>
-> Cc: Tigran Aivazian <tigran@aivazian.fsnet.co.uk>
-> Cc: <linux-ext4@vger.kernel.org>
-> Cc: Andreas Gruenbacher <agruen@suse.de>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+On Thu, Feb 08, 2007 at 11:47:39AM +0100, Jan Kara wrote:
+> > 
+> > Well.  Do we really?  Are we looking for a 100% solution here, or a 90% one?
+>   Umm, I think that for ext3 having data on one end of the disk and
+> indirect blocks on the other end of the disk does not quite help (not
+> mentioning that it can create bad free space fragmentation over the time).
+> I have not measured it but I'd guess that it would erase the effect of
+> moving data closer together. At least for sequential reads..
 
-Ack -- and thanks for this fix!
+I don't think anyone is saying we can ignore the metadata; but the
+fact is, the cleanest solution for 90% of the problem is to use the
+page cache, and as far as the other 10%, Linus has been pushing us to
+move at least the directories into the page cache, and it's not insane
+to consider moving the rest of the metadata into page cache.  At least
+it's something we should consider carefully.
 
-Andreas
+						- Ted
