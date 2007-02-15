@@ -1,32 +1,42 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC] [PATCH 1/1] nanosecond timestamps
-Date: Thu, 15 Feb 2007 12:51:30 -0500
-Message-ID: <20070215175130.GF5285@thunk.org>
-References: <1170427180.6086.17.camel@garfield> <20070206040916.GF11018@thunk.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: booked-page-flag.patch
+Date: Thu, 15 Feb 2007 12:21:04 -0800
+Message-ID: <20070215122104.9c1f249b.akpm@linux-foundation.org>
+References: <20070215004504.023a90f0.akpm@linux-foundation.org>
+	<45D495EA.3060200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>, sct@redhat.com
-To: Kalpak Shah <kalpak@clusterfs.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Alex Tomas <alex@clusterfs.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:35394 "EHLO thunker.thunk.org"
+Received: from smtp.osdl.org ([65.172.181.24]:32972 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030377AbXBORvi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Feb 2007 12:51:38 -0500
-Content-Disposition: inline
-In-Reply-To: <20070206040916.GF11018@thunk.org>
+	id S1161163AbXBOUVp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Feb 2007 15:21:45 -0500
+In-Reply-To: <45D495EA.3060200@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 05, 2007 at 11:09:16PM -0500, Theodore Tso wrote:
-> yet, but one quick comment; the patch looks like it got line-wrapped
-> by your mail agent (looks like you're using Evolution 2.0).  Could you
-> send it as a text/plain attachment, or otherwise fix your mailer to
-> not wrap your patches?  
+On Thu, 15 Feb 2007 09:18:34 -0800 Eric Sandeen <sandeen@redhat.com> wrote:
 
-Ping.  Could you please resend the nanosecond patches in a
-non-whitespace damaged format?
+> Andrew Morton wrote:
+> > Sorry, we're seriously, seriously, seriously short on flags in the page
+> > struct and this patch is going to need one heck of a good case for it to be
+> > acceptable.
+> 
+> This was for the delayed allocation patchset, right; and by managing 
+> this at the page level that means we can't do this for block size < page 
+> size, I think...
 
-Thanks, regards,
+If the page is partially mapped to disk then we can still reserve an entire
+page's worth of blocks, as long as we unreserve an entire page's worth
+once the page gets fully mapped to disk.
 
-					- Ted
+> There are already buffer head flags for delalloc (block to be allocated 
+>   on flush) and unwritten (actual block allocated to a file but not yet 
+> written) in the vfs - shouldn't we be looking at using those?
+
+We could, but we have this no-buffer-head mode which really should be the
+preferred method, for 4k pagesize systems, at least.
