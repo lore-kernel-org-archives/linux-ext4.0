@@ -1,43 +1,43 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: Alex Tomas <alex@clusterfs.com>
 Subject: Re: booked-page-flag.patch
-Date: Thu, 15 Feb 2007 12:56:54 -0800
-Message-ID: <20070215125654.b0f18ab3.akpm@linux-foundation.org>
+Date: Fri, 16 Feb 2007 00:07:55 +0300
+Message-ID: <m3fy973z9w.fsf@bzzz.home.net>
 References: <20070215004504.023a90f0.akpm@linux-foundation.org>
-	<45D495EA.3060200@redhat.com>
-	<m3k5yj49bw.fsf@bzzz.home.net>
+	<45D495EA.3060200@redhat.com> <m3k5yj49bw.fsf@bzzz.home.net>
+	<20070215125654.b0f18ab3.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <alex@clusterfs.com>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Alex Tomas <alex@clusterfs.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:33796 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161250AbXBOU5h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Feb 2007 15:57:37 -0500
-In-Reply-To: <m3k5yj49bw.fsf@bzzz.home.net>
+Received: from [80.71.245.246] ([80.71.245.246]:59517 "EHLO nsold.rialcom.ru"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1161297AbXBOVHz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Feb 2007 16:07:55 -0500
+In-Reply-To: <20070215125654.b0f18ab3.akpm@linux-foundation.org> (Andrew
+	Morton's message of "Thu\, 15 Feb 2007 12\:56\:54 -0800")
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 15 Feb 2007 20:30:43 +0300 Alex Tomas <alex@clusterfs.com> wrote:
+>>>>> Andrew Morton (AM) writes:
 
-> >>>>> Eric Sandeen (ES) writes:
-> 
->  ES> Andrew Morton wrote:
->  >> Sorry, we're seriously, seriously, seriously short on flags in the page
->  >> struct and this patch is going to need one heck of a good case for it to be
->  >> acceptable.
-> 
->  ES> This was for the delayed allocation patchset, right; and by managing
->  ES> this at the page level that means we can't do this for block size <
->  ES> page size, I think...
-> 
-> I still think that having PG_booked and special code to handle
-> case when blocksize==pagesize is worthwhile -- we save 56 bytes
-> on 32bit and 104 bytes on 64bit for every written page.
-> 
+ AM> If the page doesn't have buffer-heads, set PG_private and clear page->private
 
-If the page doesn't have buffer-heads, set PG_private and clear page->private
+ AM> If the page does have buffer_heads, use BH_Delay.
 
-If the page does have buffer_heads, use BH_Delay.
+I did exactly this way in the first version, but later
+got feeling that the community'd discard "ugly hack".
+
+one more question: how much of it you want in VFS?
+
+->get_block(with BH_Delay) can be used to signal
+filesystem that no actual allocation is required.
+so, aware filesystem can just reserve space. then
+->writepages() should walk through the pages like
+it does currently, collect contiugous sequences
+and again call ->get_block(w/o BH_Delay) with b_size
+covering all contiguous pages ...
+
+thanks, Alex
