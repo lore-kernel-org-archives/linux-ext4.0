@@ -1,40 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: booked-page-flag.patch
-Date: Thu, 15 Feb 2007 09:18:34 -0800
-Message-ID: <45D495EA.3060200@redhat.com>
-References: <20070215004504.023a90f0.akpm@linux-foundation.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: i_version_2_ext4_specific_code
+Date: Thu, 15 Feb 2007 12:30:15 -0500
+Message-ID: <20070215173015.GD5285@thunk.org>
+References: <20070215002218.56944d89.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Alex Tomas <alex@clusterfs.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jean Noel Cordenner <jean-noel.cordenner@bull.net>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39385 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:46426 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030317AbXBORTM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Feb 2007 12:19:12 -0500
-In-Reply-To: <20070215004504.023a90f0.akpm@linux-foundation.org>
+	id S1030321AbXBORaX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Feb 2007 12:30:23 -0500
+Content-Disposition: inline
+In-Reply-To: <20070215002218.56944d89.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
-> Sorry, we're seriously, seriously, seriously short on flags in the page
-> struct and this patch is going to need one heck of a good case for it to be
-> acceptable.
+On Thu, Feb 15, 2007 at 12:22:18AM -0800, Andrew Morton wrote:
+> 
+> This:
+> 
+> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.20-ext4-1/broken-out/i_version_2_ext4_specific_code
+> 
+> has 100% broken whitespace: it uses spaces where there should be hard tabs.
+> 
+> Please let's not merge anything which does that.
 
-This was for the delayed allocation patchset, right; and by managing 
-this at the page level that means we can't do this for block size < page 
-size, I think...
+Looking at this patch more closely, it looks like the whitespace was
+damaged by a broken mailer.  My apologies, I should have rejected the
+patch.
 
-There are already buffer head flags for delalloc (block to be allocated 
-  on flush) and unwritten (actual block allocated to a file but not yet 
-written) in the vfs - shouldn't we be looking at using those?
+Jean Noel, if you could resend the patch and make sure that your
+mailer isn't screwing up whitespace?  If necessary just attach it as a
+text file instead of including it inline.
 
-Unless there is a clear path from this patchset to one that supports 
-blocks < page, I'm hesitant about it... but I know I'm being a bit of an 
-armchair quarterback here, and I'll try to set aside some time to give 
-this a better look.
+							- Ted
 
-Thanks,
--Eric
+
+					
