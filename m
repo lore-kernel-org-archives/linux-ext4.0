@@ -1,35 +1,56 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: booked-page-flag.patch
-Date: Fri, 16 Feb 2007 05:17:38 -0700
-Message-ID: <20070216121738.GR10715@schatzie.adilger.int>
-References: <20070215004504.023a90f0.akpm@linux-foundation.org> <45D495EA.3060200@redhat.com>
+From: Cordenner jean noel <jean-noel.cordenner@bull.net>
+Subject: Re: i_version_1_vfs_layer
+Date: Fri, 16 Feb 2007 17:00:15 +0100
+Message-ID: <45D5D50F.5090100@bull.net>
+References: <20070215002656.a163dee9.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Alex Tomas <alex@clusterfs.com>,
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:60363 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751388AbXBPMRj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Feb 2007 07:17:39 -0500
-Content-Disposition: inline
-In-Reply-To: <45D495EA.3060200@redhat.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:48198 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1945956AbXBPQBw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Feb 2007 11:01:52 -0500
+In-Reply-To: <20070215002656.a163dee9.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Feb 15, 2007  09:18 -0800, Eric Sandeen wrote:
-> This was for the delayed allocation patchset, right; and by managing 
-> this at the page level that means we can't do this for block size < page 
-> size, I think...
+Andrew Morton a =E9crit :
+> This:
+>=20
+> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.2=
+0-ext4-1/broken-out/i_version_1_vfs_layer
+>=20
+> significantly deoptimises file_update_time() for major filesystems (e=
+g, ext3).
+>=20
+> The changelog offers no reason for this alteration.  In fact the chan=
+gelog
+> basically says nothing at all and needs a lot of work.
+>=20
+> What is this patch doing and why does it need to make that change?
+>=20
 
-We could always disable delayed allocation in the PAGE_SIZE != blocksize
-case.  It would be no worse than what we have now, and for IO performance
-you need larger blocksize anyways.
+Actually, this set of patches are still in progress. I recently profile=
+=20
+them. It shows that the CPU usage is really huge, so it has to be impro=
+ved.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+The i_version field is a counter that is set on every inode creation an=
+d
+that is incremented every time the inode data is modified (similarly to
+the "ctime" time-stamp).
+The aim is to fulfill NFSv4 requirements for rfc3530.
+=46or the moment, the counter is only a 32bit value but it is planned t=
+o=20
+be 64bit as required.
+
+The patch is divided into 3 parts, the vfs layer, the ext4 specific cod=
+e
+and an user part to check i_version changes via stat.
+
+(cf http://permalink.gmane.org/gmane.comp.file-systems.ext4/923)
