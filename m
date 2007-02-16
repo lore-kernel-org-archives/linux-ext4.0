@@ -1,54 +1,37 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: [PATCH] free blocks in case of error
-Date: Sat, 17 Feb 2007 00:55:16 +0300
-Message-ID: <m3zm7dvk7e.fsf@bzzz.home.net>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: Re: data=journal busted
+Date: Fri, 16 Feb 2007 14:50:22 -0800
+Message-ID: <20070216145022.12e86c7d.randy.dunlap@oracle.com>
+References: <20070215204445.411d2760.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [80.71.245.246] ([80.71.245.246]:58506 "EHLO nsold.rialcom.ru"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1946242AbXBPW14 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Feb 2007 17:27:56 -0500
-Received: from nsold.rialcom.ru (localhost.rialcom.ru [127.0.0.1])
-	by nsold.rialcom.ru (Postfix) with ESMTP id C4106BC8B6
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Feb 2007 00:58:08 +0300 (MSK)
-Received: from gw.home.net (unknown [80.71.248.82])
-	by nsold.rialcom.ru (Postfix) with ESMTP id 66BB5BC881
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Feb 2007 00:58:08 +0300 (MSK)
-Received: from bzzz.home.net (gw.home.net [127.0.0.1])
-	by gw.home.net (8.13.7/8.13.4) with ESMTP id l1GMu1cN022564
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Feb 2007 01:56:01 +0300
+Received: from agminet01.oracle.com ([141.146.126.228]:11797 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751626AbXBPWyW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Feb 2007 17:54:22 -0500
+In-Reply-To: <20070215204445.411d2760.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Thu, 15 Feb 2007 20:44:45 -0800 Andrew Morton wrote:
 
-Good day,
+> 
+> I have a report from a google person who just did some basic
+> power-it-off-during-a-write testing on 2.6.20's ext3.  ordered-data is OK,
+> but data=journal came back with crap in the file data.
+> 
+> Is anyone doing any formal recovery stress-testing?
+> 
+> I suspect we should resurrect and formalise my old
+> make-the-disk-stop-accepting-writes-when-a-timer-goes-off thing.  It was
+> very useful for stress-testing recovery.
 
-when ext4_ext_insert_extent() fails to insert new blocks
-we should free just allocated blocks. please, consider
-for review.
+Where is your make-troubles patch, please sir?
 
-thanks, Alex
-
-
-Signed-off-by: Alex Tomas <alex@clusterfs.com>
-
-Index: linux-2.6.20/fs/ext4/extents.c
-===================================================================
---- linux-2.6.20.orig/fs/ext4/extents.c	2007-02-11 23:16:58.000000000 +0300
-+++ linux-2.6.20/fs/ext4/extents.c	2007-02-17 00:34:32.000000000 +0300
-@@ -2044,8 +2044,12 @@
- 	ext4_ext_store_pblock(&newex, newblock);
- 	newex.ee_len = cpu_to_le16(allocated);
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
--	if (err)
-+	if (err) {
-+		/* free data blocks we just allocated */
-+		ext4_free_blocks(handle, inode, ext_pblock(&newex),
-+					le16_to_cpu(newex.ee_len));
- 		goto out2;
-+	}
- 
- 	if (extend_disksize && inode->i_size > EXT4_I(inode)->i_disksize)
- 		EXT4_I(inode)->i_disksize = inode->i_size;
+---
+~Randy
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
