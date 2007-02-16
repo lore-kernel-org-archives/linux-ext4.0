@@ -1,33 +1,48 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: data=journal busted
-Date: Thu, 15 Feb 2007 20:44:45 -0800
-Message-ID: <20070215204445.411d2760.akpm@linux-foundation.org>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: booked-page-flag.patch
+Date: Fri, 16 Feb 2007 10:30:39 +0300
+Message-ID: <m3sld636g0.fsf@bzzz.home.net>
+References: <20070215004504.023a90f0.akpm@linux-foundation.org>
+	<45D495EA.3060200@redhat.com> <m3k5yj49bw.fsf@bzzz.home.net>
+	<20070215125654.b0f18ab3.akpm@linux-foundation.org>
+	<m3fy973z9w.fsf@bzzz.home.net>
+	<20070215152352.6ddcfa92.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <alex@clusterfs.com>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:49622 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161705AbXBPEor (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Feb 2007 23:44:47 -0500
-Received: from shell0.pdx.osdl.net (fw.osdl.org [65.172.181.6])
-	by smtp.osdl.org (8.12.8/8.12.8) with ESMTP id l1G4ikhB008502
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Feb 2007 20:44:46 -0800
-Received: from box (shell0.pdx.osdl.net [10.9.0.31])
-	by shell0.pdx.osdl.net (8.13.1/8.11.6) with SMTP id l1G4ij95019601
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Feb 2007 20:44:46 -0800
+Received: from [80.71.245.246] ([80.71.245.246]:52090 "EHLO nsold.rialcom.ru"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932589AbXBPHak (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Feb 2007 02:30:40 -0500
+In-Reply-To: <20070215152352.6ddcfa92.akpm@linux-foundation.org> (Andrew
+	Morton's message of "Thu\, 15 Feb 2007 15\:23\:52 -0800")
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+>>>>> Andrew Morton (AM) writes:
 
-I have a report from a google person who just did some basic
-power-it-off-during-a-write testing on 2.6.20's ext3.  ordered-data is OK,
-but data=journal came back with crap in the file data.
+ -> get_block(with BH_Delay) can be used to signal
+ >> filesystem that no actual allocation is required.
+ >> so, aware filesystem can just reserve space. then
+ -> writepages() should walk through the pages like
+ >> it does currently, collect contiugous sequences
+ >> and again call ->get_block(w/o BH_Delay) with b_size
+ >> covering all contiguous pages ...
+ >> 
 
-Is anyone doing any formal recovery stress-testing?
+ AM> That sounds like it'd work, yes.
 
-I suspect we should resurrect and formalise my old
-make-the-disk-stop-accepting-writes-when-a-timer-goes-off thing.  It was
-very useful for stress-testing recovery.
+ AM> Except for an address_space which is using delayed allocation, its
+ -> prepare_write wouldn't call get_block at all, so perhaps that isn't
+ AM> needed.
+
+hmm. I thought it has to call get_block() at least to know whether
+the block is already allocated. and I was going to reserve space
+in prepare_write for which some fs-specific method is needed becase
+only fs knows how much metadata it'd need.
+
+thanks, Alex
