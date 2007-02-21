@@ -1,37 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC: 2.6.16 patch] ext3: fix ext3 block bitmap leakage
-Date: Tue, 20 Feb 2007 11:08:37 -0600
-Message-ID: <45DB2B15.70603@redhat.com>
-References: <45DA2CB2.4080507@redhat.com> <20070220151950.GV13958@stusta.de>
+From: Kalpak Shah <kalpak-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+Subject: [PATCH] Correction to check_filetype()
+Date: Wed, 21 Feb 2007 14:45:59 +0530
+Message-ID: <1172049359.4727.15.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Chuck Ebbert <cebbert@redhat.com>,
-	Kirill Korotaev <dev@openvz.org>, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@clusterfs.com,
-	linux-ext4@vger.kernel.org
-To: Adrian Bunk <bunk@stusta.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37402 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030301AbXBTRNT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Feb 2007 12:13:19 -0500
-In-Reply-To: <20070220151950.GV13958@stusta.de>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Lustre-discuss <Lustre-discuss-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>,
+	Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+To: tytso <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <lustre-discuss-bounces-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+List-Unsubscribe: <https://mail.clusterfs.com/mailman/listinfo/lustre-discuss>,
+	<mailto:lustre-discuss-request-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://mail.clusterfs.com/pipermail/lustre-discuss>
+List-Post: <mailto:lustre-discuss-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+List-Help: <mailto:lustre-discuss-request-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org?subject=help>
+List-Subscribe: <https://mail.clusterfs.com/mailman/listinfo/lustre-discuss>,
+	<mailto:lustre-discuss-request-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org?subject=subscribe>
+Sender: lustre-discuss-bounces-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org
+Errors-To: lustre-discuss-bounces-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Adrian Bunk wrote:
-> On Mon, Feb 19, 2007 at 06:03:14PM -0500, Chuck Ebbert wrote:
-> 
->> This was dropped from 2.6.16-stable somehow:
->>
->> http://lkml.org/lkml/2006/6/30/54
-> 
-> Thanks for forwarding it.
-> 
-> This patch didn't went in this form into Linus' tree, I'd therefore like 
-> to get an ACK from the ext3 maintainers (Cc'ed) before applying it.
+Hi,
 
-Yep, ACK from me for 2.6.16-stable.
+If the mode of a directory gets corrupted, check_filetype() makes wrong decisions for all its sub-directories. For example, using debugfs we can corrupt the mode of a directory to 0140755 (i.e. a socket). e2fsck will set the filetype of all its subdirectories as 6 (filetype for socket). All the subdirectories would be moved to lost+found, and in second run of e2fsck their filetype would be set back to 2.
 
--Eric
+By the time we come to check_filetype(), we have already verified the "." and ".." entries, so we special case these dirents in check_filetype().
+
+Please consider for review.
+
+Signed-off-by: Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+Signed-off-by: Kalpak Shah <kalpak-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+
+
+Index: e2fsprogs-1.39/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/pass2.c
++++ e2fsprogs-1.39/e2fsck/pass2.c
+@@ -495,7 +495,9 @@ static _INLINE_ int check_filetype(e2fsc
+                return 1;
+        }
+
+-       if (ext2fs_test_inode_bitmap(ctx->inode_dir_map, dirent->inode)) {
++       if (ext2fs_test_inode_bitmap(ctx->inode_dir_map, dirent->inode) ||
++           ((dirent->name_len && 0xFF) <= 2 && dirent->name[0] == '.' &&
++            (dirent->name[1] == '.' || dirent->name[1] == '\0'))) {
+                should_be = EXT2_FT_DIR;
+        } else if (ext2fs_test_inode_bitmap(ctx->inode_reg_map,
+                                            dirent->inode)) {
