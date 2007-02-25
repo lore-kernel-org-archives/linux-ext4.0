@@ -1,57 +1,30 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [RFC] [PATCH 1/1] nanosecond timestamps
-Date: Sun, 25 Feb 2007 02:36:51 -0800
-Message-ID: <20070225023651.8c89f8fc.akpm@linux-foundation.org>
-References: <1170427180.6086.17.camel@garfield>
+Subject: Re: [PATCH 0/1][RFC]  prepare_write positive return value V(2)
+Date: Sun, 25 Feb 2007 02:39:54 -0800
+Message-ID: <20070225023954.f400cb4a.akpm@linux-foundation.org>
+References: <87y7n3909x.fsf@sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com, tytso@mit.edu,
-	sct@redhat.com
-To: Kalpak Shah <kalpak@clusterfs.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:59337 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.24]:59448 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933699AbXBYKhq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Feb 2007 05:37:46 -0500
-In-Reply-To: <1170427180.6086.17.camel@garfield>
+	id S964776AbXBYKj7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Feb 2007 05:39:59 -0500
+Received: from shell0.pdx.osdl.net (fw.osdl.org [65.172.181.6])
+	by smtp.osdl.org (8.12.8/8.12.8) with ESMTP id l1PAdvhB011503
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Feb 2007 02:39:58 -0800
+Received: from sony (shell0.pdx.osdl.net [10.9.0.31])
+	by shell0.pdx.osdl.net (8.13.1/8.11.6) with SMTP id l1PAdtpI027522
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Feb 2007 02:39:56 -0800
+In-Reply-To: <87y7n3909x.fsf@sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Fri, 02 Feb 2007 20:09:40 +0530 Kalpak Shah <kalpak@clusterfs.com> wrote:
-> +#define EXT3_INODE_GET_XTIME(xtime, extra_xtime, inode, raw_inode)
-> \
-> +do {
-> \
-> +	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);
-> \
-> +									      \
-> +	if (offsetof(typeof(*raw_inode), extra_xtime) -
-> \
-> +	    offsetof(typeof(*raw_inode), i_extra_isize) +
-> \
-> +   	    sizeof((raw_inode)->extra_xtime) <=
-> \
-> +	    le16_to_cpu((raw_inode)->i_extra_isize)) {
-> \
-> +		if (sizeof((inode)->xtime.tv_sec) > 4)                        \
-> +			(inode)->xtime.tv_sec |=                              \
-> +			(__u64)(le32_to_cpu((raw_inode)->extra_xtime) &       \
-> +				EXT3_EPOCH_MASK) << 32;                       \
-> +			(inode)->xtime.tv_nsec =                              \
-> +				(le32_to_cpu((raw_inode)->extra_xtime) &      \
-> +				EXT3_NSEC_MASK) >> 2;                         \
-> +	}
-> \
-> +} while (0)
+Could someone please review/test/comment upon this work?
 
-ow, my eyes.  Can we find a way to do this in C rather than in cpp?
+I don't think ext[34] is an area where I need to do everything myself ;)
 
-> +static inline struct timespec ext3_current_time(struct inode *inode)
-> +{
-> +	return (inode->i_sb->s_time_gran < 1000000000) ?
-
-NSEC_PER_SEC
-
-> +		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
-> +}
+Thanks.
