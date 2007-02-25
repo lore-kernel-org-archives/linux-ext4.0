@@ -1,34 +1,57 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Resubmit][PATCH 5/5] Secure Deletion and Trash-Bin Support for
- Ext4
-Date: Sun, 25 Feb 2007 02:33:56 -0800
-Message-ID: <20070225023356.ecd53f65.akpm@linux-foundation.org>
-References: <Pine.GSO.4.53.0701310955130.28263@compserv1>
-	<1170263470.12392.23.camel@kleikamp.austin.ibm.com>
+Subject: Re: [RFC] [PATCH 1/1] nanosecond timestamps
+Date: Sun, 25 Feb 2007 02:36:51 -0800
+Message-ID: <20070225023651.8c89f8fc.akpm@linux-foundation.org>
+References: <1170427180.6086.17.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: harry@cs.sunysb.edu, linux-ext4@vger.kernel.org, ezk@cs.sunysb.edu,
-	kolya@cs.sunysb.edu
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com, tytso@mit.edu,
+	sct@redhat.com
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:59276 "EHLO smtp.osdl.org"
+Received: from smtp.osdl.org ([65.172.181.24]:59337 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933692AbXBYKeQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Feb 2007 05:34:16 -0500
-In-Reply-To: <1170263470.12392.23.camel@kleikamp.austin.ibm.com>
+	id S933699AbXBYKhq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Feb 2007 05:37:46 -0500
+In-Reply-To: <1170427180.6086.17.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Wed, 31 Jan 2007 11:11:10 -0600 Dave Kleikamp <shaggy@linux.vnet.ibm.com> wrote:
-> Have you considered putting ALL of the function in the vfs layer?
+> On Fri, 02 Feb 2007 20:09:40 +0530 Kalpak Shah <kalpak@clusterfs.com> wrote:
+> +#define EXT3_INODE_GET_XTIME(xtime, extra_xtime, inode, raw_inode)
+> \
+> +do {
+> \
+> +	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);
+> \
+> +									      \
+> +	if (offsetof(typeof(*raw_inode), extra_xtime) -
+> \
+> +	    offsetof(typeof(*raw_inode), i_extra_isize) +
+> \
+> +   	    sizeof((raw_inode)->extra_xtime) <=
+> \
+> +	    le16_to_cpu((raw_inode)->i_extra_isize)) {
+> \
+> +		if (sizeof((inode)->xtime.tv_sec) > 4)                        \
+> +			(inode)->xtime.tv_sec |=                              \
+> +			(__u64)(le32_to_cpu((raw_inode)->extra_xtime) &       \
+> +				EXT3_EPOCH_MASK) << 32;                       \
+> +			(inode)->xtime.tv_nsec =                              \
+> +				(le32_to_cpu((raw_inode)->extra_xtime) &      \
+> +				EXT3_NSEC_MASK) >> 2;                         \
+> +	}
+> \
+> +} while (0)
 
-Yes, I think that's where it should be implemented.
+ow, my eyes.  Can we find a way to do this in C rather than in cpp?
 
-I suspect we'll run into problems with the .trash/<uid> thing.  What directory
-do we put .trash in?  The top-level of the mountpoint?   The user might not
-be able to access that if he's in a chroot.  And UIDs are now per-nsproxy
-things - UIDs are already per-uid-namespace things. So we can have two or more
-different users using UID 42.
+> +static inline struct timespec ext3_current_time(struct inode *inode)
+> +{
+> +	return (inode->i_sb->s_time_gran < 1000000000) ?
 
-It all need to be thrashed out with the containerisation and VFS guys.
+NSEC_PER_SEC
+
+> +		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
+> +}
