@@ -1,49 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Anton Blanchard <anton@samba.org>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Thu, 01 Mar 2007 16:39:49 -0600
-Message-ID: <45E75635.3070103@redhat.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>	 <20070225022326.137b4875.akpm@linux-foundation.org>	 <20070301183445.GA7911@amitarora.in.ibm.com>	 <20070301142537.b5950cd7.akpm@linux-foundation.org> <1172788855.26078.294.camel@edge>
+Date: Thu, 1 Mar 2007 16:41:37 -0600
+Message-ID: <20070301224137.GA11276@kryten>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070301142537.b5950cd7.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
 	alex@clusterfs.com, suzuki@in.ibm.com,
 	Ulrich Drepper <drepper@redhat.com>
-To: nscott@aconex.com
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49836 "EHLO mx1.redhat.com"
+Received: from ozlabs.org ([203.10.76.45]:35104 "EHLO ozlabs.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161051AbXCAWkl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Mar 2007 17:40:41 -0500
-In-Reply-To: <1172788855.26078.294.camel@edge>
+	id S1161060AbXCAWln (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2007 17:41:43 -0500
+Content-Disposition: inline
+In-Reply-To: <20070301142537.b5950cd7.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Nathan Scott wrote:
-> On Thu, 2007-03-01 at 14:25 -0800, Andrew Morton wrote:
->> On Fri, 2 Mar 2007 00:04:45 +0530
->> "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
->>
->>> This is to give a heads up on few patches that we will be soon coming up
->>> with. These patches implement a new system call sys_fallocate() and a
->>> new inode operation "fallocate", for persistent preallocation. The new
->>> system call, as Andrew suggested, will look like:
->>>
->>>   asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
->> ...
->>
->> I'd agree with Eric on the "command" flag extension.
-> 
-> Seems like a separate syscall would be better, "command" sounds
-> a bit ioctl like, especially if that command is passed into the
-> filesystems..
-> 
-> cheers.
-> 
 
-I'm fine with that too, I'd just like the functionality :)
+> That new argument might need to come after "fd" - ARM has funny
+> requirements on syscall arg padding and layout.
 
--Eric
+FYI the 32bit ppc ABI does too, from arch/powerpc/kernel/sys_ppc32.c:
+
+/*
+ * long long munging:
+ * The 32 bit ABI passes long longs in an odd even register pair.
+ */
+
+and the first argument in a function call is in r3.
+
+Anton
