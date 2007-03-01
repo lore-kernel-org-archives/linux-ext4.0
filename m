@@ -1,240 +1,148 @@
-From: akpm@linux-foundation.org
-Subject: [patch 38/46] ext[34]: EA block reference count racing fix
-Date: Wed, 28 Feb 2007 20:13:35 -0800
-Message-ID: <200703010413.l214DZtL004171@shell0.pdx.osdl.net>
-Cc: akpm@linux-foundation.org, cmm@us.ibm.com, agruen@suse.de,
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: [RFC] Heads up on sys_fallocate()
+Date: Fri, 2 Mar 2007 00:04:45 +0530
+Message-ID: <20070301183445.GA7911@amitarora.in.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
+	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
+To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:54723 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752044AbXCAEO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Feb 2007 23:14:29 -0500
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070225022326.137b4875.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Mingming Cao <cmm@us.ibm.com>
+This is to give a heads up on few patches that we will be soon coming up
+with. These patches implement a new system call sys_fallocate() and a
+new inode operation "fallocate", for persistent preallocation. The new
+system call, as Andrew suggested, will look like:
 
-There are race issues around ext[34] xattr block release code.
+  asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
 
-ext[34]_xattr_release_block() checks the reference count of xattr block
-(h_refcount) and frees that xattr block if it is the last one reference it.
- Unlike ext2, the check of this counter is unprotected by any lock. 
-ext[34]_xattr_release_block() will free the mb_cache entry before freeing
-that xattr block.  There is a small window between the check for the re
-h_refcount ==1 and the call to mb_cache_entry_free().  During this small
-window another inode might find this xattr block from the mbcache and reuse
-it, racing a refcount updates.  The xattr block will later be freed by the
-first inode without notice other inode is still use it.  Later if that
-block is reallocated as a datablock for other file, then more serious
-problem might happen.
+As we are developing and testing the required patches, we decided to
+post a preliminary patch and get inputs from the community to give it
+a right direction and shape. First, a little description on the feature.
+ 
+Persistent preallocation is a file system feature using which an
+application (say, relational database servers) can explicitly
+preallocate blocks to a particular file. This feature can be used to
+reserve space for a file to get mainly the following benefits:
+1> contiguity - less defragmentation and thus faster access speed, and
+2> guarantee for a minimum space availibility (depending on how many
+blocks were preallocated) for the file, even if the filesystem becomes
+full.
 
-We need put a lock around places checking the refount as well to avoid
-racing issue.  Another place need this kind of protection is in
-ext3_xattr_block_set(), where it will modify the xattr block content in-
-the-fly if the refcount is 1 (means it's the only inode reference it).
+XFS already has an implementation for this, using an ioctl interface. And,
+ext4 is now coming up with this feature. In coming time we may see a few
+more file systems implementing this. Thus, it makes sense to have a more
+standard interface for this, like this new system call.
 
-This will also fix another issue: the xattr block may not get freed at all
-if no lock is to protect the refcount check at the release time.  It is
-possible that the last two inodes could release the shared xattr block at
-the same time.  But both of them think they are not the last one so only
-decreased the h_refcount without freeing xattr block at all.
+Here is the initial and incomplete version of the patch, which can be
+used for the discussion, till we come up with a set of more complete
+patches.
 
-We need to call lock_buffer() after ext3_journal_get_write_access() to
-avoid deadlock (because the later will call lock_buffer()/unlock_buffer
-() as well).
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: Andreas Gruenbacher <agruen@suse.de>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
+ arch/i386/kernel/syscall_table.S |    1 +
+ fs/ext4/file.c                   |    1 +
+ fs/open.c                        |   18 ++++++++++++++++++
+ include/asm-i386/unistd.h        |    3 ++-
+ include/linux/fs.h               |    1 +
+ include/linux/syscalls.h         |    1 +
+ 6 files changed, 24 insertions(+), 1 deletion(-)
 
- fs/ext3/xattr.c |   42 ++++++++++++++++++++++++++----------------
- fs/ext4/xattr.c |   41 +++++++++++++++++++++++++----------------
- 2 files changed, 51 insertions(+), 32 deletions(-)
-
-diff -puN fs/ext3/xattr.c~ext-ea-block-reference-count-racing-fix fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~ext-ea-block-reference-count-racing-fix
-+++ a/fs/ext3/xattr.c
-@@ -475,8 +475,15 @@ ext3_xattr_release_block(handle_t *handl
- 			 struct buffer_head *bh)
- {
- 	struct mb_cache_entry *ce = NULL;
-+	int error = 0;
+Index: linux-2.6.20.1/arch/i386/kernel/syscall_table.S
+===================================================================
+--- linux-2.6.20.1.orig/arch/i386/kernel/syscall_table.S
++++ linux-2.6.20.1/arch/i386/kernel/syscall_table.S
+@@ -319,3 +319,4 @@ ENTRY(sys_call_table)
+ 	.long sys_move_pages
+ 	.long sys_getcpu
+ 	.long sys_epoll_pwait
++	.long sys_fallocate		/* 320 */
+Index: linux-2.6.20.1/fs/ext4/file.c
+===================================================================
+--- linux-2.6.20.1.orig/fs/ext4/file.c
++++ linux-2.6.20.1/fs/ext4/file.c
+@@ -135,5 +135,6 @@ struct inode_operations ext4_file_inode_
+ 	.removexattr	= generic_removexattr,
+ #endif
+ 	.permission	= ext4_permission,
++	.fallocate	= ext4_fallocate,
+ };
  
- 	ce = mb_cache_entry_get(ext3_xattr_cache, bh->b_bdev, bh->b_blocknr);
-+	error = ext3_journal_get_write_access(handle, bh);
-+	if (error)
-+		 goto out;
-+
-+	lock_buffer(bh);
-+
- 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
- 		ea_bdebug(bh, "refcount now=0; freeing");
- 		if (ce)
-@@ -485,21 +492,20 @@ ext3_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		if (ext3_journal_get_write_access(handle, bh) == 0) {
--			lock_buffer(bh);
--			BHDR(bh)->h_refcount = cpu_to_le32(
-+		BHDR(bh)->h_refcount = cpu_to_le32(
- 				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
--			ext3_journal_dirty_metadata(handle, bh);
--			if (IS_SYNC(inode))
--				handle->h_sync = 1;
--			DQUOT_FREE_BLOCK(inode, 1);
--			unlock_buffer(bh);
--			ea_bdebug(bh, "refcount now=%d; releasing",
--				  le32_to_cpu(BHDR(bh)->h_refcount));
--		}
-+		error = ext3_journal_dirty_metadata(handle, bh);
-+		handle->h_sync = 1;
-+		DQUOT_FREE_BLOCK(inode, 1);
-+		ea_bdebug(bh, "refcount now=%d; releasing",
-+			  le32_to_cpu(BHDR(bh)->h_refcount));
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 	}
-+	unlock_buffer(bh);
-+out:
-+	ext3_std_error(inode->i_sb, error);
-+	return;
+Index: linux-2.6.20.1/fs/open.c
+===================================================================
+--- linux-2.6.20.1.orig/fs/open.c
++++ linux-2.6.20.1/fs/open.c
+@@ -350,6 +350,24 @@ asmlinkage long sys_ftruncate64(unsigned
  }
+ #endif
  
- struct ext3_xattr_info {
-@@ -675,7 +681,7 @@ ext3_xattr_block_set(handle_t *handle, s
- 	struct buffer_head *new_bh = NULL;
- 	struct ext3_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
--	int error;
-+	int error = 0;
- 
- #define header(x) ((struct ext3_xattr_header *)(x))
- 
-@@ -684,16 +690,17 @@ ext3_xattr_block_set(handle_t *handle, s
- 	if (s->base) {
- 		ce = mb_cache_entry_get(ext3_xattr_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
-+		error = ext3_journal_get_write_access(handle, bs->bh);
-+		if (error)
-+			goto cleanup;
-+		lock_buffer(bs->bh);
-+
- 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
- 			if (ce) {
- 				mb_cache_entry_free(ce);
- 				ce = NULL;
- 			}
- 			ea_bdebug(bs->bh, "modifying in-place");
--			error = ext3_journal_get_write_access(handle, bs->bh);
--			if (error)
--				goto cleanup;
--			lock_buffer(bs->bh);
- 			error = ext3_xattr_set_entry(i, s);
- 			if (!error) {
- 				if (!IS_LAST_ENTRY(s->first))
-@@ -713,6 +720,9 @@ ext3_xattr_block_set(handle_t *handle, s
- 		} else {
- 			int offset = (char *)s->here - bs->bh->b_data;
- 
-+			unlock_buffer(bs->bh);
-+			journal_release_buffer(handle, bs->bh);
-+
- 			if (ce) {
- 				mb_cache_entry_release(ce);
- 				ce = NULL;
-diff -puN fs/ext4/xattr.c~ext-ea-block-reference-count-racing-fix fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~ext-ea-block-reference-count-racing-fix
-+++ a/fs/ext4/xattr.c
-@@ -475,8 +475,14 @@ ext4_xattr_release_block(handle_t *handl
- 			 struct buffer_head *bh)
- {
- 	struct mb_cache_entry *ce = NULL;
-+	int error = 0;
- 
- 	ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
-+	error = ext4_journal_get_write_access(handle, bh);
-+	if (error)
++asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len)
++{
++	struct file *file;
++	struct inode *inode;
++	long ret = -EINVAL;
++	file = fget(fd);
++	if (!file)
 +		goto out;
-+
-+	lock_buffer(bh);
- 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
- 		ea_bdebug(bh, "refcount now=0; freeing");
- 		if (ce)
-@@ -485,21 +491,21 @@ ext4_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		if (ext4_journal_get_write_access(handle, bh) == 0) {
--			lock_buffer(bh);
--			BHDR(bh)->h_refcount = cpu_to_le32(
-+		BHDR(bh)->h_refcount = cpu_to_le32(
- 				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
--			ext4_journal_dirty_metadata(handle, bh);
--			if (IS_SYNC(inode))
--				handle->h_sync = 1;
--			DQUOT_FREE_BLOCK(inode, 1);
--			unlock_buffer(bh);
--			ea_bdebug(bh, "refcount now=%d; releasing",
--				  le32_to_cpu(BHDR(bh)->h_refcount));
--		}
-+		error = ext4_journal_dirty_metadata(handle, bh);
-+		if (IS_SYNC(inode))
-+			handle->h_sync = 1;
-+		DQUOT_FREE_BLOCK(inode, 1);
-+		ea_bdebug(bh, "refcount now=%d; releasing",
-+			  le32_to_cpu(BHDR(bh)->h_refcount));
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 	}
-+	unlock_buffer(bh);
++	inode = file->f_path.dentry->d_inode;
++	if (inode->i_op && inode->i_op->fallocate)
++		ret = inode->i_op->fallocate(inode, offset, len);
++	else
++		ret = -ENOTTY;
++	fput(file);
 +out:
-+	ext4_std_error(inode->i_sb, error);
-+	return;
- }
- 
- struct ext4_xattr_info {
-@@ -675,7 +681,7 @@ ext4_xattr_block_set(handle_t *handle, s
- 	struct buffer_head *new_bh = NULL;
- 	struct ext4_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
--	int error;
-+	int error = 0;
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
-@@ -684,16 +690,17 @@ ext4_xattr_block_set(handle_t *handle, s
- 	if (s->base) {
- 		ce = mb_cache_entry_get(ext4_xattr_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
-+		error = ext4_journal_get_write_access(handle, bs->bh);
-+		if (error)
-+			goto cleanup;
-+		lock_buffer(bs->bh);
++        return ret;
++}
 +
- 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
- 			if (ce) {
- 				mb_cache_entry_free(ce);
- 				ce = NULL;
- 			}
- 			ea_bdebug(bs->bh, "modifying in-place");
--			error = ext4_journal_get_write_access(handle, bs->bh);
--			if (error)
--				goto cleanup;
--			lock_buffer(bs->bh);
- 			error = ext4_xattr_set_entry(i, s);
- 			if (!error) {
- 				if (!IS_LAST_ENTRY(s->first))
-@@ -713,6 +720,8 @@ ext4_xattr_block_set(handle_t *handle, s
- 		} else {
- 			int offset = (char *)s->here - bs->bh->b_data;
+ /*
+  * access() needs to use the real uid/gid, not the effective uid/gid.
+  * We do this by temporarily clearing all FS-related capabilities and
+Index: linux-2.6.20.1/include/asm-i386/unistd.h
+===================================================================
+--- linux-2.6.20.1.orig/include/asm-i386/unistd.h
++++ linux-2.6.20.1/include/asm-i386/unistd.h
+@@ -325,10 +325,11 @@
+ #define __NR_move_pages		317
+ #define __NR_getcpu		318
+ #define __NR_epoll_pwait	319
++#define __NR_fallocate		320
  
-+			unlock_buffer(bs->bh);
-+			jbd2_journal_release_buffer(handle, bs->bh);
- 			if (ce) {
- 				mb_cache_entry_release(ce);
- 				ce = NULL;
-_
+ #ifdef __KERNEL__
+ 
+-#define NR_syscalls 320
++#define NR_syscalls 321
+ 
+ #define __ARCH_WANT_IPC_PARSE_VERSION
+ #define __ARCH_WANT_OLD_READDIR
+Index: linux-2.6.20.1/include/linux/fs.h
+===================================================================
+--- linux-2.6.20.1.orig/include/linux/fs.h
++++ linux-2.6.20.1/include/linux/fs.h
+@@ -1124,6 +1124,7 @@ struct inode_operations {
+ 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+ 	int (*removexattr) (struct dentry *, const char *);
+ 	void (*truncate_range)(struct inode *, loff_t, loff_t);
++	long (*fallocate)(struct inode *, loff_t, loff_t);
+ };
+ 
+ struct seq_file;
+Index: linux-2.6.20.1/include/linux/syscalls.h
+===================================================================
+--- linux-2.6.20.1.orig/include/linux/syscalls.h
++++ linux-2.6.20.1/include/linux/syscalls.h
+@@ -602,6 +602,7 @@ asmlinkage long sys_get_robust_list(int 
+ asmlinkage long sys_set_robust_list(struct robust_list_head __user *head,
+ 				    size_t len);
+ asmlinkage long sys_getcpu(unsigned __user *cpu, unsigned __user *node, struct getcpu_cache __user *cache);
++asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
+ 
+ int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
+
+--
+Regards,
+Amit Arora 
