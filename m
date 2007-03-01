@@ -1,31 +1,67 @@
-From: Jeremy Fitzhardinge <jeremy@goop.org>
+From: Andrew Morton <akpm@linux-foundation.org>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Thu, 01 Mar 2007 14:15:58 -0800
-Message-ID: <45E7509E.7090000@goop.org>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>	<20070225022326.137b4875.akpm@linux-foundation.org>	<20070301183445.GA7911@amitarora.in.ibm.com>	<45E74238.3040606@goop.org>	<20070301225855.24ecaba0@lxorguk.ukuu.org.uk>	<45E74E30.8080909@goop.org> <20070301231118.427544a4@lxorguk.ukuu.org.uk>
+Date: Thu, 1 Mar 2007 14:25:37 -0800
+Message-ID: <20070301142537.b5950cd7.akpm@linux-foundation.org>
+References: <20070117094658.GA17390@amitarora.in.ibm.com>
+	<20070225022326.137b4875.akpm@linux-foundation.org>
+	<20070301183445.GA7911@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
-	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
-To: Alan <alan@lxorguk.ukuu.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
+	alex@clusterfs.com, suzuki@in.ibm.com,
+	Ulrich Drepper <drepper@redhat.com>
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070301231118.427544a4@lxorguk.ukuu.org.uk>
+In-Reply-To: <20070301183445.GA7911@amitarora.in.ibm.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Alan wrote:
-> ENOSYS indicates quite different things and ENOTTY is also used for
-> syscalls. I still think ENOTTY is correct.
->   
-Yes, ENOSYS tends to me "operation flat out not support" rather than
-"not on this object".  I think we can do better than ENOTTY though -
-ENOTSUP for example (modulo the confusion over EOPNOTSUPP).
+On Fri, 2 Mar 2007 00:04:45 +0530
+"Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
 
-(You can tell the patch has very little real substance if we're arguing
-over errnos at this point :)
+> This is to give a heads up on few patches that we will be soon coming up
+> with. These patches implement a new system call sys_fallocate() and a
+> new inode operation "fallocate", for persistent preallocation. The new
+> system call, as Andrew suggested, will look like:
+> 
+>   asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
 
-    J
+It is intended that glibc use this same syscall for both posix_fallocate()
+and posix_fallocate64().
+
+I'd agree with Eric on the "command" flag extension.
+
+That new argument might need to come after "fd" - ARM has funny requirements on
+syscall arg padding and layout.
+
+> +asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len)
+> +{
+> +	struct file *file;
+> +	struct inode *inode;
+> +	long ret = -EINVAL;
+> +	file = fget(fd);
+> +	if (!file)
+> +		goto out;
+> +	inode = file->f_path.dentry->d_inode;
+> +	if (inode->i_op && inode->i_op->fallocate)
+> +		ret = inode->i_op->fallocate(inode, offset, len);
+> +	else
+> +		ret = -ENOTTY;
+> +	fput(file);
+> +out:
+> +        return ret;
+> +}
+
+Please always put a blank line between the variable definitions and the
+first statement.
+
+Please always use hard tabs, not bunch-of-spaces.  This seems to happening
+rather a lot in the ext4 patches.  It's a trivial thing, but also trivial
+to fix.  A grep across the diffs is needed.
+
+ENOTTY is a bit unconventional - we often use EINVAL for this sort of
+thing.  But EINVAL has other meanings for posix_fallocate() and isn't
+really appropriate here anyway.  So I'm not sure what would be better...
+
