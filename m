@@ -1,258 +1,43 @@
-From: akpm@linux-foundation.org
-Subject: - ext-ea-block-reference-count-racing-fix.patch removed from -mm tree
-Date: Thu, 01 Mar 2007 21:07:08 -0800
-Message-ID: <200703020507.l22578ka000856@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
-To: cmm@us.ibm.com, agruen@suse.de, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: Re: [RFC] Heads up on sys_fallocate()
+Date: Thu, 01 Mar 2007 22:03:55 -0800
+Message-ID: <45E7BE4B.5070602@us.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
+	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:60701 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422936AbXCBGED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Mar 2007 01:04:03 -0500
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-The patch titled
-     ext[34]: EA block reference count racing fix
-has been removed from the -mm tree.  Its filename was
-     ext-ea-block-reference-count-racing-fix.patch
+Amit K. Arora wrote:
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+>This is to give a heads up on few patches that we will be soon coming up
+>with. These patches implement a new system call sys_fallocate() and a
+>new inode operation "fallocate", for persistent preallocation. The new
+>system call, as Andrew suggested, will look like:
+>
+>  asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
+>
+I am wondering about return values from this syscall ? Is it supposed to 
+return the
+number of bytes allocated ? What about partial allocations ? What about 
+if the
+blocks already exists ? What would be return values in those cases ?
 
-------------------------------------------------------
-Subject: ext[34]: EA block reference count racing fix
-From: Mingming Cao <cmm@us.ibm.com>
+Just curious .. What does posix_fallocate() return ?
 
-There are race issues around ext[34] xattr block release code.
+Thanks,
+Badari
 
-ext[34]_xattr_release_block() checks the reference count of xattr block
-(h_refcount) and frees that xattr block if it is the last one reference it.
- Unlike ext2, the check of this counter is unprotected by any lock. 
-ext[34]_xattr_release_block() will free the mb_cache entry before freeing
-that xattr block.  There is a small window between the check for the re
-h_refcount ==1 and the call to mb_cache_entry_free().  During this small
-window another inode might find this xattr block from the mbcache and reuse
-it, racing a refcount updates.  The xattr block will later be freed by the
-first inode without notice other inode is still use it.  Later if that
-block is reallocated as a datablock for other file, then more serious
-problem might happen.
-
-We need put a lock around places checking the refount as well to avoid
-racing issue.  Another place need this kind of protection is in
-ext3_xattr_block_set(), where it will modify the xattr block content in-
-the-fly if the refcount is 1 (means it's the only inode reference it).
-
-This will also fix another issue: the xattr block may not get freed at all
-if no lock is to protect the refcount check at the release time.  It is
-possible that the last two inodes could release the shared xattr block at
-the same time.  But both of them think they are not the last one so only
-decreased the h_refcount without freeing xattr block at all.
-
-We need to call lock_buffer() after ext3_journal_get_write_access() to
-avoid deadlock (because the later will call lock_buffer()/unlock_buffer
-() as well).
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: Andreas Gruenbacher <agruen@suse.de>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/xattr.c |   42 ++++++++++++++++++++++++++----------------
- fs/ext4/xattr.c |   41 +++++++++++++++++++++++++----------------
- 2 files changed, 51 insertions(+), 32 deletions(-)
-
-diff -puN fs/ext3/xattr.c~ext-ea-block-reference-count-racing-fix fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~ext-ea-block-reference-count-racing-fix
-+++ a/fs/ext3/xattr.c
-@@ -475,8 +475,15 @@ ext3_xattr_release_block(handle_t *handl
- 			 struct buffer_head *bh)
- {
- 	struct mb_cache_entry *ce = NULL;
-+	int error = 0;
- 
- 	ce = mb_cache_entry_get(ext3_xattr_cache, bh->b_bdev, bh->b_blocknr);
-+	error = ext3_journal_get_write_access(handle, bh);
-+	if (error)
-+		 goto out;
-+
-+	lock_buffer(bh);
-+
- 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
- 		ea_bdebug(bh, "refcount now=0; freeing");
- 		if (ce)
-@@ -485,21 +492,20 @@ ext3_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		if (ext3_journal_get_write_access(handle, bh) == 0) {
--			lock_buffer(bh);
--			BHDR(bh)->h_refcount = cpu_to_le32(
-+		BHDR(bh)->h_refcount = cpu_to_le32(
- 				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
--			ext3_journal_dirty_metadata(handle, bh);
--			if (IS_SYNC(inode))
--				handle->h_sync = 1;
--			DQUOT_FREE_BLOCK(inode, 1);
--			unlock_buffer(bh);
--			ea_bdebug(bh, "refcount now=%d; releasing",
--				  le32_to_cpu(BHDR(bh)->h_refcount));
--		}
-+		error = ext3_journal_dirty_metadata(handle, bh);
-+		handle->h_sync = 1;
-+		DQUOT_FREE_BLOCK(inode, 1);
-+		ea_bdebug(bh, "refcount now=%d; releasing",
-+			  le32_to_cpu(BHDR(bh)->h_refcount));
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 	}
-+	unlock_buffer(bh);
-+out:
-+	ext3_std_error(inode->i_sb, error);
-+	return;
- }
- 
- struct ext3_xattr_info {
-@@ -675,7 +681,7 @@ ext3_xattr_block_set(handle_t *handle, s
- 	struct buffer_head *new_bh = NULL;
- 	struct ext3_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
--	int error;
-+	int error = 0;
- 
- #define header(x) ((struct ext3_xattr_header *)(x))
- 
-@@ -684,16 +690,17 @@ ext3_xattr_block_set(handle_t *handle, s
- 	if (s->base) {
- 		ce = mb_cache_entry_get(ext3_xattr_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
-+		error = ext3_journal_get_write_access(handle, bs->bh);
-+		if (error)
-+			goto cleanup;
-+		lock_buffer(bs->bh);
-+
- 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
- 			if (ce) {
- 				mb_cache_entry_free(ce);
- 				ce = NULL;
- 			}
- 			ea_bdebug(bs->bh, "modifying in-place");
--			error = ext3_journal_get_write_access(handle, bs->bh);
--			if (error)
--				goto cleanup;
--			lock_buffer(bs->bh);
- 			error = ext3_xattr_set_entry(i, s);
- 			if (!error) {
- 				if (!IS_LAST_ENTRY(s->first))
-@@ -713,6 +720,9 @@ ext3_xattr_block_set(handle_t *handle, s
- 		} else {
- 			int offset = (char *)s->here - bs->bh->b_data;
- 
-+			unlock_buffer(bs->bh);
-+			journal_release_buffer(handle, bs->bh);
-+
- 			if (ce) {
- 				mb_cache_entry_release(ce);
- 				ce = NULL;
-diff -puN fs/ext4/xattr.c~ext-ea-block-reference-count-racing-fix fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~ext-ea-block-reference-count-racing-fix
-+++ a/fs/ext4/xattr.c
-@@ -475,8 +475,14 @@ ext4_xattr_release_block(handle_t *handl
- 			 struct buffer_head *bh)
- {
- 	struct mb_cache_entry *ce = NULL;
-+	int error = 0;
- 
- 	ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
-+	error = ext4_journal_get_write_access(handle, bh);
-+	if (error)
-+		goto out;
-+
-+	lock_buffer(bh);
- 	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
- 		ea_bdebug(bh, "refcount now=0; freeing");
- 		if (ce)
-@@ -485,21 +491,21 @@ ext4_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		if (ext4_journal_get_write_access(handle, bh) == 0) {
--			lock_buffer(bh);
--			BHDR(bh)->h_refcount = cpu_to_le32(
-+		BHDR(bh)->h_refcount = cpu_to_le32(
- 				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
--			ext4_journal_dirty_metadata(handle, bh);
--			if (IS_SYNC(inode))
--				handle->h_sync = 1;
--			DQUOT_FREE_BLOCK(inode, 1);
--			unlock_buffer(bh);
--			ea_bdebug(bh, "refcount now=%d; releasing",
--				  le32_to_cpu(BHDR(bh)->h_refcount));
--		}
-+		error = ext4_journal_dirty_metadata(handle, bh);
-+		if (IS_SYNC(inode))
-+			handle->h_sync = 1;
-+		DQUOT_FREE_BLOCK(inode, 1);
-+		ea_bdebug(bh, "refcount now=%d; releasing",
-+			  le32_to_cpu(BHDR(bh)->h_refcount));
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 	}
-+	unlock_buffer(bh);
-+out:
-+	ext4_std_error(inode->i_sb, error);
-+	return;
- }
- 
- struct ext4_xattr_info {
-@@ -675,7 +681,7 @@ ext4_xattr_block_set(handle_t *handle, s
- 	struct buffer_head *new_bh = NULL;
- 	struct ext4_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
--	int error;
-+	int error = 0;
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
-@@ -684,16 +690,17 @@ ext4_xattr_block_set(handle_t *handle, s
- 	if (s->base) {
- 		ce = mb_cache_entry_get(ext4_xattr_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
-+		error = ext4_journal_get_write_access(handle, bs->bh);
-+		if (error)
-+			goto cleanup;
-+		lock_buffer(bs->bh);
-+
- 		if (header(s->base)->h_refcount == cpu_to_le32(1)) {
- 			if (ce) {
- 				mb_cache_entry_free(ce);
- 				ce = NULL;
- 			}
- 			ea_bdebug(bs->bh, "modifying in-place");
--			error = ext4_journal_get_write_access(handle, bs->bh);
--			if (error)
--				goto cleanup;
--			lock_buffer(bs->bh);
- 			error = ext4_xattr_set_entry(i, s);
- 			if (!error) {
- 				if (!IS_LAST_ENTRY(s->first))
-@@ -713,6 +720,8 @@ ext4_xattr_block_set(handle_t *handle, s
- 		} else {
- 			int offset = (char *)s->here - bs->bh->b_data;
- 
-+			unlock_buffer(bs->bh);
-+			jbd2_journal_release_buffer(handle, bs->bh);
- 			if (ce) {
- 				mb_cache_entry_release(ce);
- 				ce = NULL;
-_
-
-Patches currently in -mm which might be from cmm@us.ibm.com are
-
-origin.patch
-ext2-reservations.patch
-ext2-fix-reservation-extension.patch
-ext2-balloc-fix-_with_rsv-freeze.patch
-ext2-balloc-reset-windowsz-when-full.patch
-ext2-balloc-fix-off-by-one-against-rsv_end.patch
-ext2-balloc-fix-off-by-one-against-grp_goal.patch
-ext2-balloc-say-rb_entry-not-list_entry.patch
-ext2-balloc-use-io_error-label.patch
+>
