@@ -1,59 +1,131 @@
-From: Ulrich Drepper <drepper@redhat.com>
-Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Thu, 01 Mar 2007 23:09:00 -0800
-Message-ID: <45E7CD8C.6040908@redhat.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>	<20070225022326.137b4875.akpm@linux-foundation.org>	<20070301183445.GA7911@amitarora.in.ibm.com>	<20070301142537.b5950cd7.akpm@linux-foundation.org>	<1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301145949.3efac328.akpm@linux-foundation.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH][RFC] ext3: Handle ext[34]_journal_stop() failure
+Date: Fri, 2 Mar 2007 17:06:16 +0800
+Message-ID: <20070302090616.GO6573@schatzie.adilger.int>
+References: <871wka2pt4.fsf@sw.ru>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigC2E015409181A2640213885F"
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
-	alex@clusterfs.com, suzuki@in.ibm.com
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitriy Monakhov <dmonakhov@sw.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:41370 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422909AbXCBHMI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Mar 2007 02:12:08 -0500
-In-Reply-To: <20070301145949.3efac328.akpm@linux-foundation.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:46269 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933104AbXCBJGZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2007 04:06:25 -0500
+Content-Disposition: inline
+In-Reply-To: <871wka2pt4.fsf@sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigC2E015409181A2640213885F
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+On Feb 28, 2007  19:46 +0300, Dmitriy Monakhov wrote:
+> Where are many places where xxxx_journal_stop() return code wasn't
+> checked. Off cause xxxx_journal_stop() failed very rarely (and usually
+> with fatal consequences), but this does'n meen it should not be checked.
 
-Andrew Morton wrote:
-> Perhaps Ulrich can comment.
+I fully agree with this.  Otherwise an application will believe that the
+operation has succeeded when in fact the filesystem has failed.  It would
+notice this on the next filesystem operation, but that might be too late
+for e.g. an MTA that just confirmed acceptance of an email.
 
-I was out of town, hence the delay.
+There are also several places in the code where we don't check error
+returns from ext3_journal_get_write_access().  I have a patch that I
+was starting to work on but never managed to finish/test.  I'd be
+happy if you had time to finish it off.
 
-I think that if there is no support for the syscall the correct answer
-is to return ENOSYS.  In this case the current userlevel code would be
-used and ENOSYS is also used to trigger the use of the compat code in
-glibc in case the syscall does not exist at all.
+================= ext3-check-jbd-errors-2.6.20.patch =================
+--- ./fs/ext3/namei.c.orig	2007-02-08 08:10:20.000000000 +0800
++++ ./fs/ext3/namei.c	2007-02-17 07:56:16.000000000 +0800
+@@ -59,9 +59,14 @@ static struct buffer_head *ext3_append(h
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ 
+ 	if ((bh = ext3_bread(handle, inode, *block, 1, err))) {
+-		inode->i_size += inode->i_sb->s_blocksize;
+-		EXT3_I(inode)->i_disksize = inode->i_size;
+-		ext3_journal_get_write_access(handle,bh);
++		*err = ext3_journal_get_write_access(handle,bh);
++		if (err) {
++			brelse(bh);
++			bh = NULL;
++		} else {
++			inode->i_size += inode->i_sb->s_blocksize;
++			EXT3_I(inode)->i_disksize = inode->i_size;
++		}
+ 	}
+ 	return bh;
+ }
+@@ -1597,8 +1602,12 @@ static int ext3_delete_entry (handle_t *
+ 		if (!ext3_check_dir_entry("ext3_delete_entry", dir, de, bh, i))
+ 			return -EIO;
+ 		if (de == de_del)  {
++			int err;
++
+ 			BUFFER_TRACE(bh, "get_write_access");
+-			ext3_journal_get_write_access(handle, bh);
++			err = ext3_journal_get_write_access(handle, bh);
++			if (err)
++				return err;
+ 			if (pde)
+ 				pde->rec_len =
+ 					cpu_to_le16(le16_to_cpu(pde->rec_len) +
+@@ -1758,7 +1767,13 @@ retry:
+ 		goto out_stop;
+ 	}
+ 	BUFFER_TRACE(dir_block, "get_write_access");
+-	ext3_journal_get_write_access(handle, dir_block);
++	err = ext3_journal_get_write_access(handle, dir_block);
++	if (err) {
++		drop_nlink(inode); /* is this nlink == 0? */
++		ext3_mark_inode_dirty(handle, inode);
++		iput (inode);
++		goto out_stop;
++	}
+ 	de = (struct ext3_dir_entry_2 *) dir_block->b_data;
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	de->name_len = 1;
+@@ -2262,6 +2277,11 @@ static int ext3_rename (struct inode * o
+ 		if (!new_inode) {
+ 			brelse (new_bh);
+ 			new_bh = NULL;
++		} else {
++			BUFFER_TRACE(new_bh, "get write access");
++			retval = ext3_journal_get_write_access(handle, new_bh);
++			if (retval)
++				goto end_rename;
+ 		}
+ 	}
+ 	if (S_ISDIR(old_inode->i_mode)) {
+@@ -2280,14 +2300,16 @@ static int ext3_rename (struct inode * o
+ 		if (!new_inode && new_dir!=old_dir &&
+ 				new_dir->i_nlink >= EXT3_LINK_MAX)
+ 			goto end_rename;
++		BUFFER_TRACE(dir_bh, "get_write_access");
++		retval = ext3_journal_get_write_access(handle, dir_bh);
++		if (retval)
++			goto end_rename;
+ 	}
+ 	if (!new_bh) {
+ 		retval = ext3_add_entry (handle, new_dentry, old_inode);
+ 		if (retval)
+ 			goto end_rename;
+ 	} else {
+-		BUFFER_TRACE(new_bh, "get write access");
+-		ext3_journal_get_write_access(handle, new_bh);
+ 		new_de->inode = cpu_to_le32(old_inode->i_ino);
+ 		if (EXT3_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
+ 					      EXT3_FEATURE_INCOMPAT_FILETYPE))
+@@ -2341,8 +2363,6 @@ static int ext3_rename (struct inode * o
+ 	old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
+ 	ext3_update_dx_flag(old_dir);
+ 	if (dir_bh) {
+-		BUFFER_TRACE(dir_bh, "get_write_access");
+-		ext3_journal_get_write_access(handle, dir_bh);
+ 		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext3_journal_dirty_metadata");
+ 		ext3_journal_dirty_metadata(handle, dir_bh);
+==============================================================================
 
---=20
-=E2=9E=A7 Ulrich Drepper =E2=9E=A7 Red Hat, Inc. =E2=9E=A7 444 Castro St =
-=E2=9E=A7 Mountain View, CA =E2=9D=96
-
-
---------------enigC2E015409181A2640213885F
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org
-
-iD8DBQFF582M2ijCOnn/RHQRAoQOAJ9Rp7RD6N5GQXiyypFz29BnOcGpxwCeIKO+
-UCDUfmTcACHjHep2Jv+Zr60=
-=agIK
------END PGP SIGNATURE-----
-
---------------enigC2E015409181A2640213885F--
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
