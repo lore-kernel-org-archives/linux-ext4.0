@@ -1,77 +1,50 @@
-From: Mingming Cao <cmm@us.ibm.com>
+From: Arnd Bergmann <arnd@arndb.de>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Fri, 02 Mar 2007 10:28:10 -0800
-Message-ID: <45E86CBA.3070905@us.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070301142537.b5950cd7.akpm@linux-foundation.org> <1172788855.26078.294.camel@edge> <20070301145256.3e999932.akpm@linux-foundation.org>
+Date: Sat, 3 Mar 2007 23:45:32 +0100
+Message-ID: <200703032345.33137.arnd@arndb.de>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301233819.GB31072@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: nscott@aconex.com, "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com, Ulrich Drepper <drepper@redhat.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070301145256.3e999932.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
+	alex@clusterfs.com, suzuki@in.ibm.com,
+	Ulrich Drepper <drepper@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from moutng.kundenserver.de ([212.227.126.179]:50121 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030519AbXCCWpl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Mar 2007 17:45:41 -0500
+In-Reply-To: <20070301233819.GB31072@infradead.org>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
+On Friday 02 March 2007 00:38:19 Christoph Hellwig wrote:
+> > Forgive me if I haven't put enough thought into it, but would it be
+> > useful to create a generic_fallocate() that writes zeroed pages for=
+ any
+> > non-existent pages in the range? =A0I don't know how glibc currentl=
+y
+> > implements posix_fallocate(), but maybe the kernel could do it more
+> > efficiently, even in generic code. =A0Maybe we don't care, since th=
+e major
+> > file systems can probably do something better in their own code.
+>
+> I'd be more happy to have the write out zeroes loop in glibc. =A0And
+> glibc needs to have it anyway, for older kernels.
 
-> On Fri, 02 Mar 2007 09:40:54 +1100
-> Nathan Scott <nscott@aconex.com> wrote:
-> 
-> 
->>On Thu, 2007-03-01 at 14:25 -0800, Andrew Morton wrote:
->>
->>>On Fri, 2 Mar 2007 00:04:45 +0530
->>>"Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
->>>
->>>
->>>>This is to give a heads up on few patches that we will be soon coming up
->>>>with. These patches implement a new system call sys_fallocate() and a
->>>>new inode operation "fallocate", for persistent preallocation. The new
->>>>system call, as Andrew suggested, will look like:
->>>>
->>>>  asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
->>>
->>>...
->>>
->>>I'd agree with Eric on the "command" flag extension.
->>
->>Seems like a separate syscall would be better, "command" sounds
->>a bit ioctl like, especially if that command is passed into the
->>filesystems..
->>
-> 
-> 
-> madvise, fadvise, lseek, etc seem to work OK.
-> 
-> I get repeatedly traumatised by patch rejects whenever a new syscall gets
-> added, so I'm biased.
-> 
-> The advantage of a command flag is that we can add new modes in the future
-> without causing lots of churn, waiting for arch maintainers to catch up,
-> potentially adding new compat code, etc.
-> 
-> Rename it to "mode"? ;)
-> 
-I am wondering if it is useful to add another mode to advise block 
-allocation policy? Something like indicating which physical block/block 
-group to allocate from (goal), and whether ask for strict contigous 
-blocks. This will help preallocation or reservation to choose the right 
-blocks for the file.
+A generic_fallocate makes sense to me iff we can do it in the kernel
+more significantly more efficiently than in glibc, e.g. by using only
+a single page in page cache instead of one for each page to be prealloc=
+ated.
 
-Right now neither ext4 preallocation implementation or reservation are 
-guranteed to allocate/reserve contigugous extents. If the application 
-told it so, it could do more searching to satisfy the requirement.
+If  glibc is smart enough to do an optimal implementation, I fully agre=
+e
+with you.
 
-Or fadvise is the right interface?
-
-Mingming
-> I'm inclined to merge this patch nice and early, so the syscall number is
-> stabilised.  Otherwise the people who are working on out-of-tree code (ie:
-> ext4) will have to keep playing catchup.
-> 
-
-
+	Arnd <><
