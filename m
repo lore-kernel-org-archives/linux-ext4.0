@@ -1,13 +1,13 @@
-From: Arnd Bergmann <arnd@arndb.de>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Mon, 5 Mar 2007 01:44:54 +0100
-Message-ID: <200703050144.55813.arnd@arndb.de>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070305001621.GB18691@lazybastard.org> <CDA7A0DF-D744-416F-83B1-76C148B46A5F@cam.ac.uk>
+Date: Mon, 5 Mar 2007 00:16:21 +0000
+Message-ID: <20070305001621.GB18691@lazybastard.org>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301233819.GB31072@infradead.org> <200703032345.33137.arnd@arndb.de> <0DA8B217-DDD4-4E05-B000-DEBE3BE55B94@cam.ac.uk> <45EB4A55.3060908@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?iso-8859-1?q?J=F6rn_Engel?= <joern@lazybastard.org>,
-	Ulrich Drepper <drepper@redhat.com>,
+Cc: Anton Altaparmakov <aia21@cam.ac.uk>,
+	Arnd Bergmann <arnd@arndb.de>,
 	Christoph Hellwig <hch@infradead.org>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -15,45 +15,47 @@ Cc: =?iso-8859-1?q?J=F6rn_Engel?= <joern@lazybastard.org>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
 	alex@clusterfs.com, suzuki@in.ibm.com
-To: Anton Altaparmakov <aia21@cam.ac.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.187]:59099 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750918AbXCEAqT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Mar 2007 19:46:19 -0500
-In-Reply-To: <CDA7A0DF-D744-416F-83B1-76C148B46A5F@cam.ac.uk>
+To: Ulrich Drepper <drepper@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <45EB4A55.3060908@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Monday 05 March 2007, Anton Altaparmakov wrote:
-> An alternative would be to allocate blocks and then when the data is =
-=A0
-> written perform the compression and free any blocks you do not need =A0
-> any more because the data has shrunk sufficiently. =A0Depending on th=
-e =A0
-> implementation details this could potentially create horrible =A0
-> fragmentation as you would allocate a large consecutive region and =A0
-> then go and drop random blocks from that region thus making the file =
-=A0
-> fragmented.
+On Sun, 4 March 2007 14:38:13 -0800, Ulrich Drepper wrote:
+>=20
+> When you do it like this, who can the kernel/filesystem *guarantee* t=
+hat
+> when the data is written there actually is room on the harddrive?
+>=20
+> What you described seems like using truncate/ftruncate to increase th=
+e
+> file's size.  That is not at all what posix_fallocate is for.
+> posix_fallocate must make sure that the requested blocks on the disk =
+are
+> reserved (allocated) for the file's use and that at no point in the
+> future will, say, a msync() fail because a mmap(MAP_SHARED) page has
+> been written to.
 
-Unfortunately, this is not as easy on logfs, because there is no point
-in allocating a block when there is no data to write into it. Fragmenta=
-tion
-on flash media is free, but you can never modify a block in place witho=
-ut
-erasing it first. This means it will always be written to a new locatio=
-n
-on the next write access.
+That actually causes an interesting problem for compressing filesystems=
+=2E
+The space consumed by blocks depends on their contents and how well it
+compresses.  At the moment, the only option I see to support
+posix_fallocate for LogFS is to set an inode flag disabling compression=
+,
+then allocate the blocks.
 
-One option that might work (similar to what you describe in your other =
-mail)
-is to have a per-inode count of reserved blocks, without allocating spe=
-cific
-blocks for them. The journal then needs to maintain the number of total
-reserved blocks for all files and keep that in sync with blocks that we=
-re
-reserved for specific inodes.
+But if the file already contains large amounts of compressed data, I
+have a problem.  Disabling compression for a range within a file is not
+supported, so I can only return an error.  But which one?
 
-	Arnd <><
+J=C3=B6rn
+
+--=20
+A surrounded army must be given a way out.
+-- Sun Tzu
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
