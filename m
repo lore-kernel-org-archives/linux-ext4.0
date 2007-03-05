@@ -1,89 +1,91 @@
-From: Sev Binello <sev@bnl.gov>
-Subject: Re: e2fsck and human intervention
-Date: Mon, 05 Mar 2007 12:42:51 -0500
-Message-ID: <45EC569B.3010608@bnl.gov>
-References: <1173112017.6300.14.camel@systems03.mmm.com> <20070305164847.GB9444@thunk.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC] Heads up on sys_fallocate()
+Date: Mon, 05 Mar 2007 12:02:59 -0800
+Message-ID: <45EC7773.7020603@us.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070301142537.b5950cd7.akpm@linux-foundation.org> <1172788855.26078.294.camel@edge> <20070301145256.3e999932.akpm@linux-foundation.org> <45E86CBA.3070905@us.ibm.com> <20070305122742.GA11486@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Daniel Drake <ddrake@brontes3d.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Andrew Morton <akpm@linux-foundation.org>, nscott@aconex.com,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
+	suzuki@in.ibm.com, Ulrich Drepper <drepper@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtpout.bnl.gov ([130.199.3.136]:18461 "EHLO smtpout.bnl.gov"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:39488 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752418AbXCERuE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2007 12:50:04 -0500
-Received: from smtpgateway3.bnl.vip ([172.16.1.67] helo=smtpgateway.bnl.gov)
-	by smtpout.bnl.gov with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(SMTP out virtual0)
-	serial 1HOHJz-0007V1-Ja
-	for linux-ext4@vger.kernel.org; Mon, 05 Mar 2007 12:50:03 -0500
-In-Reply-To: <20070305164847.GB9444@thunk.org>
+	id S1751529AbXCEUDG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Mar 2007 15:03:06 -0500
+In-Reply-To: <20070305122742.GA11486@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Mon, Mar 05, 2007 at 11:26:57AM -0500, Daniel Drake wrote:
->   
->> Hi,
+Jan Kara wrote:
+>>>On Fri, 02 Mar 2007 09:40:54 +1100
+>>>Nathan Scott <nscott@aconex.com> wrote:
+>>>
+>>>
+>>>
+>>>>On Thu, 2007-03-01 at 14:25 -0800, Andrew Morton wrote:
+>>>>
+>>>>
+>>>>>On Fri, 2 Mar 2007 00:04:45 +0530
+>>>>>"Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+>>>>>
+>>>>>
+>>>>>
+>>>>>>This is to give a heads up on few patches that we will be soon coming up
+>>>>>>with. These patches implement a new system call sys_fallocate() and a
+>>>>>>new inode operation "fallocate", for persistent preallocation. The new
+>>>>>>system call, as Andrew suggested, will look like:
+>>>>>>
+>>>>>>asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len);
+>>>>>
+>>>>>...
+>>>>>
+>>>>>I'd agree with Eric on the "command" flag extension.
+>>>>
+>>>>Seems like a separate syscall would be better, "command" sounds
+>>>>a bit ioctl like, especially if that command is passed into the
+>>>>filesystems..
+>>>>
+>>>
+>>>
+>>>madvise, fadvise, lseek, etc seem to work OK.
+>>>
+>>>I get repeatedly traumatised by patch rejects whenever a new syscall gets
+>>>added, so I'm biased.
+>>>
+>>>The advantage of a command flag is that we can add new modes in the future
+>>>without causing lots of churn, waiting for arch maintainers to catch up,
+>>>potentially adding new compat code, etc.
+>>>
+>>>Rename it to "mode"? ;)
+>>>
 >>
->> I'm working with ext3 partitions in a product environment, where
->> numerous embedded Linux systems will be shipped to various locations.
->>
->> In testing we occasionally find that system boot is halted by e2fsck
->> with an "UNEXPECTED INCONSISTENCY" error message. This is while running
->> in preen mode.
->>
->> This usually happens during e2fsck's regular "check every X mounts"
->> thing, as opposed to immediately after booting up after power loss, so
->> to begin with it's not immediately obvious why there is a problem.
->>
->> It's of course understandable and inevitable that power loss will
->> occasionally cause some file loss or corruption, and that's fine. My
->> main concern is that fsck is halting the boot process, and in a product
->> scenario this would require an engineer to perform a service call. If
->> e2fsck could unconditionally perform a best-effort attempt at solving
->> the problems, it would be ideal.
->>     
->
-> Actually, power loss by itself should *not* cause any corruption when
-> you are using ext3; that's the whole point of the journal.  If there
-> is, you probably have some other problem that you might do well to try
-> to debug before youi ship your product, since that may lead to
-> significant data loss in the long-term.
->
->   
-*So when and why is an fsck necessary ?*
->> Are there any better approaches than something like the following?
->>
->> 1. Run "e2fsck -p /"
->>
->> 2. If bit 3 is set in exit code (i.e. preen functionality detected
->> unexpected inconsistency) then run "e2fsck -y /"
->>
->> Is there significant risk of further data loss through using -y than
->> might be experienced otherwise?
->>     
->
-> You could do this, but if you are using ext3, this is really papering
-> over the problem.  With ext3, there really should not be any
-> corruptions caused by power loss.  
->
-> What sort of errors are being reported by e2fsck?
->
-> 							- Ted
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+>>I am wondering if it is useful to add another mode to advise block 
+>>allocation policy? Something like indicating which physical block/block 
+>>group to allocate from (goal), and whether ask for strict contigous 
+>>blocks. This will help preallocation or reservation to choose the right 
+>>blocks for the file.
+> 
+>   Yes, I also think this would be useful so you can "guide"
+> preallocation for things like defragmentation (e.g. preallocate space
+> for the file being defragmented and move the file to it).
+> 
+> 									Honza
+Yep, I think it makes sense to use preallocation for defragmentation.
+After all both preallocation and defragmentation shall call underlying 
+filesystem multiple block allocator to try to allocate a chunk of 
+contiguous blocks on disk. ext4 online defrag implementation by Takashi 
+already support to choose a "goal" allocation block to guide the ext4 
+block allocator to place the defraged file is a specific location.
 
+Passing a little bit more hint to sys_fallocate() (i.e, goal block, 
+and/or whether the goal block is important over the size of prealloc 
+extent), might make it more useful for the orginial goal (get contigous 
+and guranteed blocks) and for defragmentation.
 
-
--- 
-
-Sev Binello
-Brookhaven National Laboratory
-Upton, New York
-631-344-5647
-sev@bnl.gov
+Regards,
+Mingming
