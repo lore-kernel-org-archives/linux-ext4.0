@@ -1,60 +1,54 @@
-From: Ulrich Drepper <drepper@redhat.com>
-Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Mon, 05 Mar 2007 08:07:24 -0800
-Message-ID: <45EC403C.3020704@redhat.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301233819.GB31072@infradead.org> <200703032345.33137.arnd@arndb.de> <0DA8B217-DDD4-4E05-B000-DEBE3BE55B94@cam.ac.uk> <45EB4A55.3060908@redhat.com> <8A8B28AA-3481-4CFF-AEAA-0CB4CCDFF9F9@cam.ac.uk> <20070305143703.GF26781@thunk.org> <45EC3415.6000307@redhat.com> <20070305160153.GI26781@thunk.org>
+From: Daniel Drake <ddrake@brontes3d.com>
+Subject: e2fsck and human intervention
+Date: Mon, 05 Mar 2007 11:26:57 -0500
+Message-ID: <1173112017.6300.14.camel@systems03.mmm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig047926DEBCFEF4EC2586E7CB"
-To: Theodore Tso <tytso@mit.edu>, Ulrich Drepper <drepper@redhat.com>,
-	Arnd Bergmann <arnd@arndb.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
-	alex@clusterfs.com, suzuki@in.ibm.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070305160153.GI26781@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp126.iad.emailsrvr.com ([207.97.245.126]:50751 "EHLO
+	smtp126.iad.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752788AbXCEQgU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2007 11:36:20 -0500
+Received: from [169.14.245.222] (host34.155.212.242.conversent.net [155.212.242.34])
+	(Authenticated sender: ddrake@brontes3d.com)
+	by relay2.r2.iad.emailsrvr.com (SMTP Server) with ESMTP id DFB0A44F1F9
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Mar 2007 11:26:57 -0500 (EST)
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig047926DEBCFEF4EC2586E7CB
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Hi,
 
-Theodore Tso wrote:
-> [...] although the libc
-> implementation still wouldn't be able to go away for long time due to
-> the need to be backwards compatible with older kernels that didn't
-> have this support.
+I'm working with ext3 partitions in a product environment, where
+numerous embedded Linux systems will be shipped to various locations.
 
-It's better than that.  If somebody compiles glibc to not run on older
-kernels at all (tested at runtime) then the code is dropped.  E.g., the
-current Fedora glibc does not support 2.6.8 or earlier.
+In testing we occasionally find that system boot is halted by e2fsck
+with an "UNEXPECTED INCONSISTENCY" error message. This is while running
+in preen mode.
 
-So, don't let the compat code be a factor in the decision making.
+This usually happens during e2fsck's regular "check every X mounts"
+thing, as opposed to immediately after booting up after power loss, so
+to begin with it's not immediately obvious why there is a problem.
 
---=20
-=E2=9E=A7 Ulrich Drepper =E2=9E=A7 Red Hat, Inc. =E2=9E=A7 444 Castro St =
-=E2=9E=A7 Mountain View, CA =E2=9D=96
+It's of course understandable and inevitable that power loss will
+occasionally cause some file loss or corruption, and that's fine. My
+main concern is that fsck is halting the boot process, and in a product
+scenario this would require an engineer to perform a service call. If
+e2fsck could unconditionally perform a best-effort attempt at solving
+the problems, it would be ideal.
 
+Are there any better approaches than something like the following?
 
---------------enig047926DEBCFEF4EC2586E7CB
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+1. Run "e2fsck -p /"
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org
+2. If bit 3 is set in exit code (i.e. preen functionality detected
+unexpected inconsistency) then run "e2fsck -y /"
 
-iD8DBQFF7EA92ijCOnn/RHQRAgsbAKCZcV0zDM8GF5OGOMLP5/XJl0eT5gCfbDah
-ro/6A/SqdLS1qSlMLWQ1Z44=
-=9J0B
------END PGP SIGNATURE-----
+Is there significant risk of further data loss through using -y than
+might be experienced otherwise?
 
---------------enig047926DEBCFEF4EC2586E7CB--
+Thanks!
+-- 
+Daniel Drake
+Brontes Technologies, A 3M Company
