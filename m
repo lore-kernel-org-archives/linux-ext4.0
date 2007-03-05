@@ -1,12 +1,13 @@
-From: Anton Altaparmakov <aia21@cam.ac.uk>
+From: Ulrich Drepper <drepper@redhat.com>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Mon, 5 Mar 2007 15:07:26 +0000
-Message-ID: <13E89496-3752-42ED-AE23-F1EF6DE23029@cam.ac.uk>
+Date: Mon, 05 Mar 2007 07:15:33 -0800
+Message-ID: <45EC3415.6000307@redhat.com>
 References: <20070117094658.GA17390@amitarora.in.ibm.com> <1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301233819.GB31072@infradead.org> <200703032345.33137.arnd@arndb.de> <0DA8B217-DDD4-4E05-B000-DEBE3BE55B94@cam.ac.uk> <45EB4A55.3060908@redhat.com> <8A8B28AA-3481-4CFF-AEAA-0CB4CCDFF9F9@cam.ac.uk> <20070305143703.GF26781@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v752.3)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ulrich Drepper <drepper@redhat.com>, Arnd Bergmann <arnd@arndb.de>,
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig7CB176E9316BAC63D943D816"
+To: Theodore Tso <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
 	Christoph Hellwig <hch@infradead.org>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -14,51 +15,48 @@ Cc: Ulrich Drepper <drepper@redhat.com>, Arnd Bergmann <arnd@arndb.de>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
 	alex@clusterfs.com, suzuki@in.ibm.com
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ppsw-0.csi.cam.ac.uk ([131.111.8.130]:49819 "EHLO
-	ppsw-0.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933505AbXCEPIz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2007 10:08:55 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20070305143703.GF26781@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 5 Mar 2007, at 14:37, Theodore Tso wrote:
-> On Sun, Mar 04, 2007 at 11:22:06PM +0000, Anton Altaparmakov wrote:
->> And I specifically did NOT update the initialized size in the inode
->> thus it will remain at its old value thus all new allocated blocks
->> will be considered as present but not initialized thus a read will
->> always return zero whilst a write will do the right thing and pad
->> with zeroes as necessary (if the write is smaller than the block
->> size, etc).
->
-> 	You're describing a method of doing in-advance preallocation
-> where the filesystem format explicitly has support for this kind of
-> feature in a way that doesn't require pre-zeroing the data blocks in
-> question.
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig7CB176E9316BAC63D943D816
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Indeed.
-
-> 	The question which this subthread was concerned about was
-> whether the kernel should get involved in initializing datablocks in
-> the case where the filesystem format does not have this support, or
-> whether this functionality should continue to be done in userspace.
+Theodore Tso wrote:
 > Given that glibc already has to support this for older kernels, I
 > would argue that there's no point putting in generic support for
 > filesystem that can't support a more advanced way of doing things.
 
-Yes, I understood that after I had sent my post...  And yes, I would  
-agree.  If glibc already does this there does not appear to be any  
-value in just moving existing functionality into the kernel.  Simply  
-let "dumb" file systems return ENOSYS and let glibc do it...  And any  
-FS which can do it better can implement the function and then glibc  
-should not go anywhere near it.
+Well, I'm sure the kernel can do better than the code we have in libc
+now.  The kernel has access to the bitmasks which say which blocks have
+already been allocated.  The libc code does not and we have to be very
+simple-minded and simply touch every block.  And this means reading it
+and then writing it back.  The kernel would know when the reading part
+is not necessary.  Add to then the block granularity (we use f_bsize as
+returned from fstatfs but that's not the best value in some cases) and
+you have compelling data to have generic code in the kernel.  Then libc
+implementation can then go away completely which is a good thing.
 
-Best regards,
+--=20
+=E2=9E=A7 Ulrich Drepper =E2=9E=A7 Red Hat, Inc. =E2=9E=A7 444 Castro St =
+=E2=9E=A7 Mountain View, CA =E2=9D=96
 
-	Anton
--- 
-Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
-Unix Support, Computing Service, University of Cambridge, CB2 3QH, UK
-Linux NTFS maintainer, http://www.linux-ntfs.org/
+
+--------------enig7CB176E9316BAC63D943D816
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org
+
+iD8DBQFF7DQV2ijCOnn/RHQRAi9fAJ0b/PaSZBZvix28DBCddUOMTDE7mgCfYD7H
+3WSVUkvsl9W+wg7aG5s4CNE=
+=776z
+-----END PGP SIGNATURE-----
+
+--------------enig7CB176E9316BAC63D943D816--
