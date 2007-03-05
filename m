@@ -1,11 +1,12 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
 Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Mon, 5 Mar 2007 15:35:35 +0000
-Message-ID: <20070305153535.GA23524@infradead.org>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <1172789056.11165.42.camel@kleikamp.austin.ibm.com> <20070301233819.GB31072@infradead.org> <200703032345.33137.arnd@arndb.de> <0DA8B217-DDD4-4E05-B000-DEBE3BE55B94@cam.ac.uk> <45EB4A55.3060908@redhat.com> <8A8B28AA-3481-4CFF-AEAA-0CB4CCDFF9F9@cam.ac.uk> <20070305143703.GF26781@thunk.org> <45EC3415.6000307@redhat.com>
+Date: Mon, 5 Mar 2007 16:33:27 +0100
+Message-ID: <20070305153326.GA1469@lazybastard.org>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <45EB4A55.3060908@redhat.com> <20070305001621.GB18691@lazybastard.org> <200703050136.37181.arnd@arndb.de> <20070305114109.GA454@lazybastard.org> <45EC3253.2030206@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Arnd Bergmann <arnd@arndb.de>,
 	Christoph Hellwig <hch@infradead.org>,
 	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -14,27 +15,45 @@ Cc: Theodore Tso <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
 	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
 	alex@clusterfs.com, suzuki@in.ibm.com
 To: Ulrich Drepper <drepper@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:52938 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933103AbXCEPgL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2007 10:36:11 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <45EC3415.6000307@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <45EC3253.2030206@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 05, 2007 at 07:15:33AM -0800, Ulrich Drepper wrote:
-> Theodore Tso wrote:
-> > Given that glibc already has to support this for older kernels, I
-> > would argue that there's no point putting in generic support for
-> > filesystem that can't support a more advanced way of doing things.
-> 
-> Well, I'm sure the kernel can do better than the code we have in libc
-> now.  The kernel has access to the bitmasks which say which blocks have
-> already been allocated.
+On Mon, 5 March 2007 07:08:03 -0800, Ulrich Drepper wrote:
+> J=C3=B6rn Engel wrote:
+> > Does the allocation have to be persistent beyond lifetime of the fi=
+le
+> > descriptor?
+>=20
+> Of course.  You call posix_fallocate once for the lifetime of the fil=
+e
+> when it is created to ensure that all future uses will work.
 
-The layer of the kernel where a totally generic fallback would be
-implemented does not have access to this information.  We could do
-a mostly generic helper for block filesystems that allows to implement
-fallocate this way without a lot of their own code.
+That part is not quite clear from the manpage but I trust most people
+would assume the same.
+
+> It seems your filesystem will not be able to support this unless
+> compression is turned off.
+
+Correct.  Compression needs to be turned off for a file, if
+posix_fallocate(3) is to succeed.  What I could do is disable
+compression (meaning that no data written in the future will be
+compressed) and rewrite all blocks within the given range.
+
+Still, it is quite obvious that noone designing this interface has lost
+much thought to compressing filesystems.  Whatever I can come up with
+will either be incompatible or some sort of hack.  :(
+
+J=C3=B6rn
+
+--=20
+Courage is not the absence of fear, but rather the judgement that
+something else is more important than fear.
+-- Ambrose Redmoon
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
