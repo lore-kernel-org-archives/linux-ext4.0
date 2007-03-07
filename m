@@ -1,49 +1,72 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
-Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Wed, 7 Mar 2007 12:30:16 +0100
-Message-ID: <20070307113016.GC15583@lazybastard.org>
-References: <1172788855.26078.294.camel@edge> <20070301145256.3e999932.akpm@linux-foundation.org> <45E86CBA.3070905@us.ibm.com> <20070305122742.GA11486@atrey.karlin.mff.cuni.cz> <45EC7773.7020603@us.ibm.com> <20070306072850.GA23081@infradead.org> <45ED7C59.4050508@redhat.com> <20070306145009.GB3661@duck.suse.cz> <45EDB19A.6030103@redhat.com> <20070307085135.GB29373@duck.suse.cz>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: qla2xxx BUG: workqueue leaked lock or atomic
+Date: Wed, 7 Mar 2007 11:45:25 -0800
+Message-ID: <20070307114525.08265c33.akpm@linux-foundation.org>
+References: <20070226133153.GC4095@skl-net.de>
+	<20070226182617.GC9968@andrew-vasquezs-computer.local>
+	<20070227101100.GA22572@skl-net.de>
+	<20070227185134.GJ20397@andrew-vasquezs-computer.local>
+	<20070228151829.GI22572@skl-net.de>
+	<20070228153722.GJ22572@skl-net.de>
+	<20070306203952.471218df.akpm@linux-foundation.org>
+	<20070307170955.GA4252@skl-net.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ulrich Drepper <drepper@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>, nscott@aconex.com,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Vasquez <andrew.vasquez@qlogic.com>,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	James Bottomley <James.Bottomley@SteelEye.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Alasdair G Kergon <agk@redhat.com>,
+	Adrian Bunk <bunk@stusta.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andre Noll <maan@systemlinux.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lazybastard.de ([212.112.238.170]:55714 "EHLO
-	longford.lazybastard.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751067AbXCGLkq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Mar 2007 06:40:46 -0500
-Content-Disposition: inline
-In-Reply-To: <20070307085135.GB29373@duck.suse.cz>
+Received: from smtp.osdl.org ([65.172.181.24]:52959 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S2992522AbXCGTtO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Mar 2007 14:49:14 -0500
+In-Reply-To: <20070307170955.GA4252@skl-net.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 7 March 2007 09:51:35 +0100, Jan Kara wrote:
->
->   I'll probably first write some userspace fs-reorganizer to find out=
- how
-> much these changes in layout are able to give you in performance (i.e=
-=2E
-> whether it's worth the effort of more complicated kernel online
-> defragmenter).
+On Wed, 7 Mar 2007 18:09:55 +0100 Andre Noll <maan@systemlinux.org> wrote:
 
-Have tried profiling the read accesses and prereading them
-asynchronously on startup?  That appears to have improved E17 a lot.
-See http://lca2007.linux.org.au/talk/101 (and watch the video).
+> On 20:39, Andrew Morton wrote:
+> > On Wed, 28 Feb 2007 16:37:22 +0100 Andre Noll <maan@systemlinux.org> wrote:
+> > 
+> > > On 16:18, Andre Noll wrote:
+> > > 
+> > > > With 2.6.21-rc2 I am unable to reproduce this BUG message. However,
+> > > > writing to both raid systems at the same time via lvm still locks up
+> > > > the system within minutes.
+> > > 
+> > > Screenshot of the resulting kernel panic:
+> > > 
+> > > 	http://systemlinux.org/~maan/shots/kernel-panic-21-rc2-huangho2.png
+> > > 
+> > 
+> > It died in CFQ.  Please try a different IO scheduler.  Use something
+> > like
+> > 
+> > 	echo deadline > /sys/block/sda/queue/scheduler
+> > 
+> > This could still be the old qla2xxx bug, or it could be a new qla2xxx bug,
+> > or it could be a block bug, or it could be an LVM bug.
+> 
+> OK. I'm running with deadline right now. But I guess this kernel
+> panic was caused by an LVM bug because lockdep reported problems with
+> LVM. Nobody responded to my bug report on the LVM mailing list (see
+> http://www.redhat.com/archives/linux-lvm/2007-February/msg00102.html).
+> 
+> Non-working snapshots and no help from the mailing list convinced me
+> to ditch the lvm setup [1] in favour of linear software raid. This
+> means I can't do lvm-related tests any more.
 
-J=C3=B6rn
+Sigh.
 
---=20
-The competent programmer is fully aware of the strictly limited size of
-his own skull; therefore he approaches the programming task in full
-humility, and among other things he avoids clever tricks like the plagu=
-e.
--- Edsger W. Dijkstra
+> BTW: Are ext3 filesystem sizes greater than 8T now officially
+> supported?
+
+I think so, but I don't know how much 16TB testing developers and
+distros are doing - perhaps the linux-ext4 denizens can tell us?
