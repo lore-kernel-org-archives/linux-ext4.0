@@ -1,69 +1,76 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Ext4 devel interlock meeting minutes (March 7, 2007)
-Date: Thu, 8 Mar 2007 16:03:26 -0700
-Message-ID: <20070308230326.GI5823@schatzie.adilger.int>
-References: <45F05099.5020506@linux.vnet.ibm.com>
+From: Andre Noll <maan@systemlinux.org>
+Subject: Re: qla2xxx BUG: workqueue leaked lock or atomic
+Date: Fri, 9 Mar 2007 10:36:10 +0100
+Message-ID: <20070309093610.GE4252@skl-net.de>
+References: <20070226133153.GC4095@skl-net.de> <20070226182617.GC9968@andrew-vasquezs-computer.local> <20070227101100.GA22572@skl-net.de> <20070227185134.GJ20397@andrew-vasquezs-computer.local> <20070228151829.GI22572@skl-net.de> <20070228153722.GJ22572@skl-net.de> <20070306203952.471218df.akpm@linux-foundation.org> <20070307170955.GA4252@skl-net.de> <20070307114525.08265c33.akpm@linux-foundation.org> <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:42599 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030856AbXCHXD2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2007 18:03:28 -0500
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="UnaWdueM1EBWVRzC"
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andrew Vasquez <andrew.vasquez@qlogic.com>,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	James Bottomley <James.Bottomley@SteelEye.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Alasdair G Kergon <agk@redhat.com>,
+	Adrian Bunk <bunk@stusta.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-scsi-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <45F05099.5020506@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mar 08, 2007  10:06 -0800, Avantika Mathur wrote:
-> - At the filesystem and storage workshop, it was decided that metadata 
-> block groups will be turned on by default in Ext4 to support larger 
-> filesystem size. With current format where group descriptors are saved in 
-> the first block group, filesystem size is limited to 256 TB.
 
-The one problem with the METABG feature is that if the last metagroup
-only has a single group in it then we do not get a backup of that group
-descriptor.
+--UnaWdueM1EBWVRzC
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Also, I believe there are still parts of the kernel and e2fsprogs code
-that don't handle METABG properly (e.g. ext3_check_group_descriptors(),
-ext3_statfs(), online resize, etc), though I haven't checked recently.
+On 12:05, Mingming Cao wrote:
+> > > BTW: Are ext3 filesystem sizes greater than 8T now officially
+> > > supported?
+> >=20
+> > I think so, but I don't know how much 16TB testing developers and
+> > distros are doing - perhaps the linux-ext4 denizens can tell us?
+> > -
+>=20
+> IBM has done some testing (dbench, fsstress, fsx, tiobench, iozone etc)
+> on 10TB ext3, I think RedHat and BULL have done similar test on >8TB
+> ext3 too.
 
-Note that it isn't required to have METABG enabled all the time for ext4,
-as it can be enabled for block groups beyond a certain limit (e.g. if
-a filesystem is formatted or grows beyond 256TB).
+Thanks. I'm asking because some days ago I tried to create a 10T ext3
+filesytem on a linear software raid over two hardware raids, and it
+failed horribly. mke2fs from e2fsprogs-1.39 refused to create such a
+large filesystem but did it with -F, and I could mount it afterwards.
+But writing data immediately produced zillions of errors and only
+power-cycling the box helped.
 
-> - Lustre had an additional request; that the i-version amount is updated by 
-> a global counter.  Ted is concerned about bottlenecks on metadata intensive 
-> benchmarks, because of the globally accessed incremental counter. 
+We're now using a 7.9T filesystem on the same hardware. That seems
+to work fine on 2.6.21-rc2, so I think this is an ext3 problem. I
+cannot completely rule out other reasons though as the underlying
+qla2xxx driver also had some problems on earlier kernels.
 
-It turns out that Lustre will be managing the inode version itself, so there
-is no strong requirement that ext4 do this, so long as we can write the
-64-bit version number into the inode.
+We'd much rather have a 10T filesystem if possible. So if you have
+time to look into the issue I would be willing to recreate the 10T
+filesystem and send details.
 
-One benefit of having a global version number is that this allows "make"
-type comparisons between inodes always be ordered regardless of the
-timestamp resolution.  This is one of the primary reasons why we have
-nanosecond timestamps in the first place.
+Regards
+Andre
+--=20
+The only person who always got his work done by Friday was Robinson Crusoe
 
-> - Aneesh Veetil has been working on a migration tool from block based to 
-> extents allocation. He is looking at two options.
-> 
->    - Offline Migration: Modify e2fsprogs code to actually be able to create 
->    extents. This involves a lot of duplication of ext4 code (btree).  
->    e2fsprogs has code for interpreting extents, but code for creating them 
->    would have to be duplicated.
-> 
->    - Online Migration: Use existing filesystem code to convert to extents - 
->    similar to online defragmentation.
+--UnaWdueM1EBWVRzC
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
-I would prefer to implement this using the same code as the online defrag.
-To be useful, the online defrag has to work with block-mapped files anyways.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.1 (GNU/Linux)
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+iD8DBQFF8SqKWto1QDEAkw8RAqWDAJ9OXQZs1bDAgFoBmq9VYRtZMFpWMgCfRFQn
+Jv2+/8tA8+1bTwJdgeVfZWg=
+=Majh
+-----END PGP SIGNATURE-----
+
+--UnaWdueM1EBWVRzC--
