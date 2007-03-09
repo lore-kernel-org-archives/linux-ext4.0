@@ -1,76 +1,83 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: qla2xxx BUG: workqueue leaked lock or atomic
-Date: Fri, 9 Mar 2007 10:36:10 +0100
-Message-ID: <20070309093610.GE4252@skl-net.de>
-References: <20070226133153.GC4095@skl-net.de> <20070226182617.GC9968@andrew-vasquezs-computer.local> <20070227101100.GA22572@skl-net.de> <20070227185134.GJ20397@andrew-vasquezs-computer.local> <20070228151829.GI22572@skl-net.de> <20070228153722.GJ22572@skl-net.de> <20070306203952.471218df.akpm@linux-foundation.org> <20070307170955.GA4252@skl-net.de> <20070307114525.08265c33.akpm@linux-foundation.org> <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Fw: EXT3-fs warning (device sdd2): dx_probe: Unrecognised inode
+ hash code 232
+Date: Fri, 9 Mar 2007 07:40:14 -0800
+Message-ID: <20070309074014.10ba0e88.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="UnaWdueM1EBWVRzC"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Andrew Vasquez <andrew.vasquez@qlogic.com>,
-	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
-	James Bottomley <James.Bottomley@SteelEye.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Alasdair G Kergon <agk@redhat.com>,
-	Adrian Bunk <bunk@stusta.de>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
-Sender: linux-scsi-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jan De Luyck <ml_linuxkernel_20060528@kcore.org>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.24]:37400 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S2993122AbXCIPkW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Mar 2007 10:40:22 -0500
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---UnaWdueM1EBWVRzC
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-On 12:05, Mingming Cao wrote:
-> > > BTW: Are ext3 filesystem sizes greater than 8T now officially
-> > > supported?
-> >=20
-> > I think so, but I don't know how much 16TB testing developers and
-> > distros are doing - perhaps the linux-ext4 denizens can tell us?
-> > -
->=20
-> IBM has done some testing (dbench, fsstress, fsx, tiobench, iozone etc)
-> on 10TB ext3, I think RedHat and BULL have done similar test on >8TB
-> ext3 too.
+Begin forwarded message:
 
-Thanks. I'm asking because some days ago I tried to create a 10T ext3
-filesytem on a linear software raid over two hardware raids, and it
-failed horribly. mke2fs from e2fsprogs-1.39 refused to create such a
-large filesystem but did it with -F, and I could mount it afterwards.
-But writing data immediately produced zillions of errors and only
-power-cycling the box helped.
+Date: Thu, 8 Mar 2007 18:35:54 +0100
+From: Jan De Luyck <ml_linuxkernel_20060528@kcore.org>
+To: linux-kernel@vger.kernel.org
+Subject: EXT3-fs warning (device sdd2): dx_probe: Unrecognised inode hash code 232
 
-We're now using a 7.9T filesystem on the same hardware. That seems
-to work fine on 2.6.21-rc2, so I think this is an ext3 problem. I
-cannot completely rule out other reasons though as the underlying
-qla2xxx driver also had some problems on earlier kernels.
 
-We'd much rather have a 10T filesystem if possible. So if you have
-time to look into the issue I would be willing to recreate the 10T
-filesystem and send details.
+Hello,
 
-Regards
-Andre
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
+Running 2.6.19.1 on AMD64.
 
---UnaWdueM1EBWVRzC
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+While copying some files on an ext3 partition, I got this in the logs:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
+EXT3-fs warning (device sdd2): dx_probe: Unrecognised inode hash code 232
+Assertion failure in dx_probe() at fs/ext3/namei.c:384: "dx_get_limit(entries) 
+== dx_root_limit(dir, root->info.info_length)"
+----------- [cut here ] --------- [please bite here ] ---------
+Kernel BUG at fs/ext3/namei.c:384
+invalid opcode: 0000 [1] PREEMPT SMP
+CPU 0
+Modules linked in: xt_multiport iptable_filter ip_tables x_tables binfmt_misc 
+fuse parport_pc lp parport thermal fan button nls_iso8859_15 ntfs kqemu(P) 
+tcp_diag inet_diag w83627ehf i2c_isa cpufreq_ondemand powernow_k8 freq_table 
+processor snd_hda_intel snd_hda_codec snd_pcm evdev snd_timer psmouse snd 
+pcspkr floppy ehci_hcd soundcore snd_page_alloc usbcore k8temp hwmon ohci1394 
+ieee1394 forcedeth i2c_nforce2 i2c_core sg sr_mod cdrom
+Pid: 4018, comm: find Tainted: P      2.6.19.5 #1
+RIP: 0010:[<ffffffff802efe2b>]  [<ffffffff802efe2b>] dx_probe+0x18b/0x320
+RSP: 0018:ffff81006b789d28  EFLAGS: 00010292
+RAX: 0000000000000081 RBX: ffff810066f07018 RCX: 00000000c0000100
+RDX: ffff81006b788000 RSI: ffff81006b5c62c0 RDI: 00000000ffffffff
+RBP: 0000000000000000 R08: ffff81006b788000 R09: 0000000000000001
+R10: 0000000000000000 R11: ffffffff80212a20 R12: ffff810066e6f8e8
+R13: 0000000000000000 R14: 0000000000000000 R15: ffff810066f06730
+FS:  00002ae8c9f5c6d0(0000) GS:ffffffff80586000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00002af535db8086 CR3: 000000006b7b2000 CR4: 00000000000006e0
+Process find (pid: 4018, threadinfo ffff81006b788000, task ffff81006b5c62c0)
+Stack:  ffff81006b789dd4 ffff81006b789d88 ffff81007f79d750 ffff810066e6acc0
+ 0000000000000000 ffff810066f06730 ffff810066f06730 0000000000000000
+ ffff81007efca580 ffffffff802f13ab ffff810066e6ace8 000000007ff98780
+Call Trace:
+ [<ffffffff802f13ab>] ext3_htree_fill_tree+0xab/0x1e0
+ [<ffffffff802e8d69>] ext3_readdir+0x1a9/0x530
+ [<ffffffff802359b3>] vfs_readdir+0x73/0xc0
+ [<ffffffff802bea1f>] sys_getdents64+0x7f/0xd0
+ [<ffffffff802607fe>] system_call+0x7e/0x83
+ [<00002ae8c9dad41a>]
 
-iD8DBQFF8SqKWto1QDEAkw8RAqWDAJ9OXQZs1bDAgFoBmq9VYRtZMFpWMgCfRFQn
-Jv2+/8tA8+1bTwJdgeVfZWg=
-=Majh
------END PGP SIGNATURE-----
 
---UnaWdueM1EBWVRzC--
+Code: 0f 0b 68 f0 0c 48 80 c2 80 01 48 8b 54 24 08 48 89 54 24 10
+RIP  [<ffffffff802efe2b>] dx_probe+0x18b/0x320
+ RSP <ffff81006b789d28>
+
+Yeah, I know it's tainted - just wanted to hear if anyone saw this one before. 
+System seems to be fine otherwise, I'll run a fsck on the filesystem lateron.
+
+Jan
+
+-- 
+Common sense is instinct, and enough of it is genius.
+		-- Josh Billings
