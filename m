@@ -1,68 +1,50 @@
-From: Dmitriy Monakhov <dmonakhov@sw.ru>
-Subject: Re: [PATCH] ext3: dirindex error pointer issues (b)
-Date: Mon, 12 Mar 2007 10:20:26 +0300
-Message-ID: <87ird7q66d.fsf@sw.ru>
-References: <87lkidf5y0.fsf@sw.ru>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: qla2xxx BUG: workqueue leaked lock or atomic
+Date: Mon, 12 Mar 2007 16:22:28 +0100
+Message-ID: <45F57034.2020402@bull.net>
+References: <20070226133153.GC4095@skl-net.de>	 <20070226182617.GC9968@andrew-vasquezs-computer.local>	 <20070227101100.GA22572@skl-net.de>	 <20070227185134.GJ20397@andrew-vasquezs-computer.local>	 <20070228151829.GI22572@skl-net.de> <20070228153722.GJ22572@skl-net.de>	 <20070306203952.471218df.akpm@linux-foundation.org>	 <20070307170955.GA4252@skl-net.de>	 <20070307114525.08265c33.akpm@linux-foundation.org> <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	devel@openvz.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andre Noll <maan@systemlinux.org>,
+	Theodore Tso <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:22537 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932495AbXCLHUE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2007 03:20:04 -0400
-In-Reply-To: <87lkidf5y0.fsf@sw.ru> (Dmitriy Monakhov's message of "Sun, 04 Mar 2007 17:18:15 +0300")
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57222 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030370AbXCLPWu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2007 11:22:50 -0400
+In-Reply-To: <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dmitriy Monakhov <dmonakhov@sw.ru> writes:
+Mingming Cao wrote:
+> On Wed, 2007-03-07 at 11:45 -0800, Andrew Morton wrote:
+>> On Wed, 7 Mar 2007 18:09:55 +0100 Andre Noll <maan@systemlinux.org> =
+wrote:
+>>
+>>> On 20:39, Andrew Morton wrote:
+>>>> On Wed, 28 Feb 2007 16:37:22 +0100 Andre Noll <maan@systemlinux.or=
+g> wrote:
+>>>>
+>>> BTW: Are ext3 filesystem sizes greater than 8T now officially
+>>> supported?
+>> I think so, but I don't know how much 16TB testing developers and
+>> distros are doing - perhaps the linux-ext4 denizens can tell us?
+>> -
+>=20
+> IBM has done some testing (dbench, fsstress, fsx, tiobench, iozone et=
+c)
+> on 10TB ext3, I think RedHat and BULL have done similar test on >8TB
+> ext3 too.
+>=20
+> Mingming
 
->  - ext3_dx_find_entry() exit with out setting proper error pointer
->  - do_split() exit with out setting proper error pointer
->    it is realy painful because many callers contain folowing code:
->            de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
->            if (!(de))
->                         return retval;
->            <<< WOW retval wasn't changed by do_split(), so caller failed
->            <<< but return SUCCESS :)
->  - Rearrange do_split() error path. Current error path is realy ugly, all
->    this up and down jump stuff doesn't make code easy to understand.
-Ohh my first patch change error message semantics in do_split(). Initially when 
-ext3_append() failed we just exit without printing error. In fact ext3_append()
-may fail, it is legal and it's happens qite often (ENOSPC for example). This 
-cause annoying fake error message. So restore this semantic as it was before
-patch.
-Andrew please apply incremental patch what fix it:
+Is there not a problem of backward-compatibility with old kernels?
+Doesn't we need to handle a new INCOMPAT flag in e2fsprogs and kernel
+before allowing ext3 filesystems greater than 8T?
 
-Signed-off-by: Monakhov Dmitriy <dmonakhov@openvz.org>
-
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 1a52586..7edb617 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1197,8 +1197,8 @@ journal_error:
- 	brelse(*bh);
- 	brelse(bh2);
- 	*bh = NULL;
--errout:
- 	ext3_std_error(dir->i_sb, err);
-+errout:
- 	*error = err;
- 	return NULL;
- }
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f0a6c26..02a75db 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1195,8 +1195,8 @@ journal_error:
- 	brelse(*bh);
- 	brelse(bh2);
- 	*bh = NULL;
--errout:
- 	ext4_std_error(dir->i_sb, err);
-+errout:
- 	*error = err;
- 	return NULL;
- }
+    Val=E9rie
