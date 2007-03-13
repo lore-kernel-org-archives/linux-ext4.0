@@ -1,39 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] use for_each_possible_cpu for reservation slots
-Date: Mon, 12 Mar 2007 12:16:21 -0500
-Message-ID: <45F58AE5.8090409@redhat.com>
-References: <45E49A20.5080604@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Fw: Re: 2.6.21-rc3-mm1
+Date: Mon, 12 Mar 2007 22:04:26 -0800
+Message-ID: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: "Radoslaw Szkodzinski" <astralstorm@gmail.com>,
+	Kalpak Shah <kalpak@clusterfs.com>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34048 "EHLO mx1.redhat.com"
+Received: from smtp.osdl.org ([65.172.181.24]:60753 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965416AbXCLRVj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2007 13:21:39 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l2CHLcM1031045
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2007 13:21:38 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l2CHLcnr025674
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2007 13:21:38 -0400
-In-Reply-To: <45E49A20.5080604@redhat.com>
+	id S1753117AbXCMFFC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Mar 2007 01:05:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> NR_CPUS is a config-time option that may be much more than your actual
-> count of runtime possible CPUs... 
-> 
-> compile-tested.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Ted, I don't see this in the git tree yet.
 
-Yea?  Nay?  Comments?
+Begin forwarded message:
 
-Thanks,
--Eric
+Date: Mon, 12 Mar 2007 19:14:17 +0100
+From: "Radoslaw Szkodzinski" <astralstorm@gmail.com>
+To: "Andrew Morton" <akpm@linux-foundation.org>, "Theodore T'so" <tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org
+Subject: Re: 2.6.21-rc3-mm1
+
+
+On 3/8/07, Andrew Morton <akpm@linux-foundation.org> wrote:
+>
+> - Re-added the ext4 development tree to the -mm lineup.  It has stuff in
+>   it.
+>
+
+And broken stuff too :-)
+The nanoseconds patch is broken on x86_64 - makes mtimes from the future:
+e.g. year 2431. I suspect an endianness issue.
+x86 works fine according to my sources.
+
+The files themselves have correct mtimes, as booting previous kernel
+or one w/o the nanoseconds patch works fine.
