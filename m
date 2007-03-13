@@ -1,51 +1,35 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: qla2xxx BUG: workqueue leaked lock or atomic
-Date: Tue, 13 Mar 2007 09:23:28 +0100
-Message-ID: <45F65F80.7050202@bull.net>
-References: <20070226182617.GC9968@andrew-vasquezs-computer.local> <20070227101100.GA22572@skl-net.de> <20070227185134.GJ20397@andrew-vasquezs-computer.local> <20070228151829.GI22572@skl-net.de> <20070228153722.GJ22572@skl-net.de> <20070306203952.471218df.akpm@linux-foundation.org> <20070307170955.GA4252@skl-net.de> <20070307114525.08265c33.akpm@linux-foundation.org> <1173297911.3769.3.camel@dyn9047017103.beaverton.ibm.com> <45F57034.2020402@bull.net> <20070313070134.GK5266@schatzie.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Fw: Re: 2.6.21-rc3-mm1
+Date: Tue, 13 Mar 2007 10:05:45 -0500
+Message-ID: <45F6BDC9.8080205@redhat.com>
+References: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andre Noll <maan@systemlinux.org>, Theodore Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Radoslaw Szkodzinski <astralstorm@gmail.com>,
+	Kalpak Shah <kalpak@clusterfs.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:40514 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965424AbXCMIXu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Mar 2007 04:23:50 -0400
-In-Reply-To: <20070313070134.GK5266@schatzie.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:49041 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030581AbXCMPGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Mar 2007 11:06:46 -0400
+In-Reply-To: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Mar 12, 2007  16:22 +0100, Valerie Clement wrote:
->> Mingming Cao wrote:
->>> IBM has done some testing (dbench, fsstress, fsx, tiobench, iozone =
-etc)
->>> on 10TB ext3, I think RedHat and BULL have done similar test on >8T=
-B
->>> ext3 too.
->> Is there not a problem of backward-compatibility with old kernels?
->> Doesn't we need to handle a new INCOMPAT flag in e2fsprogs and kerne=
-l
->> before allowing ext3 filesystems greater than 8T?
->=20
-> No, it really depends on the kernel.  There were some bugs that cause=
-d
-> problems with > 8TB because of signed 32-bit int problems, so it isn'=
-t
-> really recommended to use > 8TB unless you know this is fixed in your
-> kernel (and any older kernel you might have to downgrade to).
->=20
+Andrew Morton wrote:
 
-OK. Thanks.
-As Andre mentions it, it seems that the option "-F" for mkfs is=20
-necessary to create an ext3 FS > 8T.
-(I've got the same behavior but I didn't apply the latest patches=20
-against my current version of e2fsprogs, so I can't check if that has=20
-changed since).
-Is it the right way?
+> And broken stuff too :-)
+> The nanoseconds patch is broken on x86_64 - makes mtimes from the future:
+> e.g. year 2431. I suspect an endianness issue.
+> x86 works fine according to my sources.
+>
+> The files themselves have correct mtimes, as booting previous kernel
+> or one w/o the nanoseconds patch works fine.
+There were later patches posted to the list after this version, I think, which
+are not yet in Ted's tree... I'll find some time today to test the "take3" version
+on x86_64, unless someone beats me to it.
 
-     Val=E9rie
+-Eric
