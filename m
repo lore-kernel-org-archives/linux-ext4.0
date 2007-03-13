@@ -1,139 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Fw: Re: 2.6.21-rc3-mm1
-Date: Tue, 13 Mar 2007 15:07:01 -0500
-Message-ID: <45F70465.4020406@redhat.com>
-References: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>	 <45F6BDC9.8080205@redhat.com> <1173799745.9662.4.camel@kleikamp.austin.ibm.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] Heads up on sys_fallocate()
+Date: Wed, 14 Mar 2007 10:46:25 +1100
+Message-ID: <20070313234625.GB6095633@melbourne.sgi.com>
+References: <20070301183445.GA7911@amitarora.in.ibm.com> <20070301142537.b5950cd7.akpm@linux-foundation.org> <1172788855.26078.294.camel@edge> <20070301145256.3e999932.akpm@linux-foundation.org> <45E86CBA.3070905@us.ibm.com> <20070305122742.GA11486@atrey.karlin.mff.cuni.cz> <45EC7773.7020603@us.ibm.com> <20070306072850.GA23081@infradead.org> <45ED7C59.4050508@redhat.com> <45ED9B00.3020502@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Radoslaw Szkodzinski <astralstorm@gmail.com>,
-	Kalpak Shah <kalpak@clusterfs.com>
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:41623 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933168AbXCMUPO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Mar 2007 16:15:14 -0400
-In-Reply-To: <1173799745.9662.4.camel@kleikamp.austin.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ulrich Drepper <drepper@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Mingming Cao <cmm@us.ibm.com>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>, nscott@aconex.com,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
+	suzuki@in.ibm.com
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <45ED9B00.3020502@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dave Kleikamp wrote:
+On Tue, Mar 06, 2007 at 10:46:56AM -0600, Eric Sandeen wrote:
+> Ulrich Drepper wrote:
+> > Christoph Hellwig wrote:
+> >> fallocate with the whence argument and flags is already quite complicated,
+> >> I'd rather have another call for placement decisions, that would
+> >> be called on an fd to do placement decissions for any further allocations
+> >> (prealloc, write, etc)
+> > 
+> > Yes, posix_fallocate shouldn't be made more complicated.  But I don't
+> > understand why requesting linear layout of the blocks should be an
+> > option.  It's always an advantage if the blocks requested this way are
+> > linear on disk.  So, the kernel should always do its best to make this
+> > happen, without needing an additional option.
+> > 
+> 
+> Agreed on both points.  The hints would be for things like start block,
+> or speculative EOF preallocation, not contiguity, which I think should
+> always be the goal.
 
-> I didn't quite beat you to it, but I did make a diff to bring
-> 2.6.21-rc3-mm1 in tune with the "take3" patch.  It makes the code easier
-> to understand, but I'm not sure if it contains anything to fix the bug.
-> Code inspection hasn't gotten me any closer to figuring out what's
-> wrong.
->
-> Shaggy
->   
-And here's one on top of that, after discussing w/ Dave, Kalpak, and Badari 
-on #linuxfs.
+ISTR having had this discussion before ;)
 
-The problem in the -mm tree is that it was looking at i_extra_isize
-before it got set; that was fixed in Kalpak's patch, which Dave sent
-the interdiff for.  Then, we were looking at the raw_inode's extra_isize,
-not the in-core one.  This fixes that, and along the way, gets rid
-of the cleverness of passing different types into the 2nd arg of the
-same GET/SET macros... 
+About guided preallocation for defrag:
 
-============
+http://marc.info/?t=116247859500001&r=1&w=2
 
-Differentiate xtime macros which use the vfs inode vs. ext4_inode_info
-Use in-core ext4 inode rather than raw_inode to get extra_isize
-in EXT4_FITS_IN_INODE
+e.g.: The sorts of policies we need for effective use of
+preallocation:
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+http://marc.info/?l=linux-fsdevel&m=116184475308164&w=2
+http://marc.info/?l=linux-fsdevel&m=116278169519095&w=2
 
-Index: linux-2.6-ext4/fs/ext4/inode.c
-===================================================================
---- linux-2.6-ext4.orig/fs/ext4/inode.c
-+++ linux-2.6-ext4/fs/ext4/inode.c
-@@ -2784,7 +2784,7 @@ void ext4_read_inode(struct inode * inod
- 	EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
- 	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
- 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
--	EXT4_INODE_GET_XTIME(i_crtime, ei, raw_inode);
-+	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
- 
- 	if (S_ISREG(inode->i_mode)) {
- 		inode->i_op = &ext4_file_inode_operations;
-@@ -2870,7 +2870,7 @@ static int ext4_do_update_inode(handle_t
- 	EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
- 	EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
- 	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
--	EXT4_INODE_SET_XTIME(i_crtime, ei, raw_inode);
-+	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
- 
- 	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
-Index: linux-2.6-ext4/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6-ext4.orig/include/linux/ext4_fs.h
-+++ linux-2.6-ext4/include/linux/ext4_fs.h
-@@ -358,11 +358,11 @@ struct ext4_inode {
- #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
- #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
- 
--#define EXT4_FITS_IN_INODE(ext4_inode, field)		\
-+#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
- 	((offsetof(typeof(*ext4_inode), field) +	\
- 	  sizeof((ext4_inode)->field))			\
- 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
--	    le16_to_cpu((ext4_inode)->i_extra_isize)))	\
-+	    (einode)->i_extra_isize))			\
- 
- static inline __le32 ext4_encode_extra_time(struct timespec *time)
- {
-@@ -378,24 +378,40 @@ static inline void ext4_decode_extra_tim
-        time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
- }
- 
--#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)	   		       \
-+#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
- do {									       \
--	if (EXT4_FITS_IN_INODE(raw_inode, xtime))			       \
--        	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);       \
--	if (EXT4_FITS_IN_INODE(raw_inode, xtime ## _extra))		       \
-+       	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
- 		(raw_inode)->xtime ## _extra =				       \
- 				ext4_encode_extra_time(&(inode)->xtime);       \
- } while (0)
- 
--#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)		  	       \
-+#define EXT4_EINODE_SET_XTIME(xtime, einode, raw_inode)	   		       \
- do {									       \
--	if (EXT4_FITS_IN_INODE(raw_inode, xtime))                              \
--		(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);       \
--	if (EXT4_FITS_IN_INODE(raw_inode, xtime ## _extra))		       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
-+        	(raw_inode)->xtime = cpu_to_le32((einode)->xtime.tv_sec);      \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
-+		(raw_inode)->xtime ## _extra =				       \
-+				ext4_encode_extra_time(&(einode)->xtime);      \
-+} while (0)
-+
-+#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
-+do {									       \
-+	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
- 		ext4_decode_extra_time(&(inode)->xtime,			       \
- 				       raw_inode->xtime ## _extra);	       \
- } while (0)
- 
-+#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
-+do {									       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
-+		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
-+		ext4_decode_extra_time(&(einode)->xtime,		       \
-+				       raw_inode->xtime ## _extra);	       \
-+} while (0)
-+
- #if defined(__KERNEL__) || defined(__linux__)
- #define i_reserved1	osd1.linux1.l_i_reserved1
- #define i_frag		osd2.linux2.l_i_frag
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
