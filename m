@@ -1,67 +1,655 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Fw: Re: 2.6.21-rc3-mm1
-Date: Tue, 13 Mar 2007 21:57:17 -0800
-Message-ID: <1173851838.4361.29.camel@localhost.localdomain>
-References: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>
-	 <45F6BDC9.8080205@redhat.com>
-	 <1173799745.9662.4.camel@kleikamp.austin.ibm.com>
-	 <20070313170748.3e0bb466.akpm@linux-foundation.org>
-	 <1173839458.8125.5.camel@kleikamp.austin.ibm.com>
-Reply-To: cmm@us.ibm.com
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [PATCH] e2fsprogs: Check journal inode sanity and recreate journal
+Date: Thu, 15 Mar 2007 02:43:47 +0530
+Message-ID: <1173906827.3076.5.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org, astralstorm@gmail.com,
-	kalpak@clusterfs.com
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Content-Type: multipart/mixed; boundary="=-5zeeEgFWUcCOiGOCdG43"
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: TheodoreTso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:58285 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964953AbXCNF5V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Mar 2007 01:57:21 -0400
-Received: from westrelay02.boulder.ibm.com (westrelay02.boulder.ibm.com [9.17.195.11])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l2E5vKC9013521
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Mar 2007 01:57:20 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by westrelay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l2E5vKKt056516
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Mar 2007 23:57:20 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l2E5vJKg014252
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Mar 2007 23:57:20 -0600
-In-Reply-To: <1173839458.8125.5.camel@kleikamp.austin.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:32991 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1422668AbXCNVNP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Mar 2007 17:13:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-03-13 at 21:30 -0500, Dave Kleikamp wrote:
-> On Tue, 2007-03-13 at 17:07 -0800, Andrew Morton wrote:
-> > > On Tue, 13 Mar 2007 10:29:05 -0500 Dave Kleikamp <shaggy@linux.vnet.ibm.com> wrote:
-> > > On Tue, 2007-03-13 at 10:05 -0500, Eric Sandeen wrote:
-> > .
-> > > > There were later patches posted to the list after this version, I think, which
-> > > > are not yet in Ted's tree... I'll find some time today to test the "take3" version
-> > > > on x86_64, unless someone beats me to it.
-> > > 
-> > > I didn't quite beat you to it, but I did make a diff to bring
-> > > 2.6.21-rc3-mm1 in tune with the "take3" patch.  It makes the code easier
-> > > to understand, but I'm not sure if it contains anything to fix the bug.
-> > > Code inspection hasn't gotten me any closer to figuring out what's
-> > > wrong.
-> > > 
-> > > Shaggy
-> > 
-> > It's possible that I screwed up merging Ted's tree into mainline - it spat
-> > some rejects, and needs updating to 2.6.21-rc3.
-> 
-> I think your merge of Ted's tree is okay, although his tree could use
-> some cleanup.  The patch Eric sent on top of mine should clear up this
-> problem.  I'll try to get Ted's tree up to date, or find someone with
-> some more spare time to take over maintenance.
 
-I would help maintain the tree, it does needs a fair amount of work and
-time.  Ted has already started looking at using ABAT to automate the
-process of testing the ext4 git tree on all arch. This seems worth
-invest some time on this.  Currently it seems he has been extremely busy
-with other duties so I am trying to help on this first.
+--=-5zeeEgFWUcCOiGOCdG43
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Mingming
+Hi,
+
+Currently e2fsck does not check the sanity of all the journal blocks.
+E2fsck does check EXT2_N_BLOCKS to check is they are sane but if any
+indirect blocks belonging to the journal become sparse due to
+corruption, e2fsck would not be able to correct this. If such a
+filesystem is mounted, it suddenly goes read-only if the sparse blocks
+are accessed. So this patch adds sanity checking for all the journal
+blocks.
+
+Also, it adds support to recreate the journal if the journal had been
+deleted. This means that an ext3 filesystem does not end up as an ext2
+filesystem. The journal size is taken from the backup journal inode in
+the superblock, if it exists or the default journal size will be used to
+recreate the journal.
+
+Also another small change is that, if the backup journal inode from the
+superblock has been used, it should be written to disk.
+
+This patch caused some existing regression tests to fail since the
+journal was being recreated. I have attached a patch to correct the
+expected output for f_badjourblks and f_miss_journal tests. Also I have
+attached a regression test for this patch, f_badjour_indblks, which has
+a corrupt indirect block in the journal inode.
+
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+
+Index: e2fsprogs-1.39/e2fsck/journal.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/journal.c
++++ e2fsprogs-1.39/e2fsck/journal.c
+@@ -206,6 +206,7 @@ static errcode_t e2fsck_get_journal(e2fs
+ 	int			ext_journal = 0;
+ 	int			tried_backup_jnl = 0;
+ 	int			i;
++	unsigned int            lblock;
+ 		
+ 	clear_problem_context(&pctx);
+ 	
+@@ -283,6 +284,13 @@ static errcode_t e2fsck_get_journal(e2fs
+ 				goto try_backup_journal;
+ 			}
+ 		}
++		if (tried_backup_jnl && !(ctx->options & E2F_OPT_READONLY)) {
++			retval = ext2fs_write_inode(ctx->fs, sb->s_journal_inum,
++						    &j_inode->i_ext2);
++			if (retval)
++				goto errout;
++		}
++
+ 		journal->j_maxlen = j_inode->i_ext2.i_size / journal->j_blocksize;
+ 
+ #ifdef USE_INODE_IO
+@@ -299,6 +307,20 @@ static errcode_t e2fsck_get_journal(e2fs
+ 		if ((retval = journal_bmap(journal, 0, &start)) != 0)
+ 			goto errout;
+ #endif
++		for (lblock = 0; lblock < j_inode->i_ext2.i_size /
++	    				journal->j_blocksize; lblock++) {
++			unsigned long pblock;
++
++			if ((retval = journal_bmap(journal, lblock,
++			     &pblock)) != 0) {
++				goto errout;
++			}
++			if (pblock == 0 || pblock < sb->s_first_data_block ||
++			    pblock >= sb->s_blocks_count) {
++				retval = EXT2_ET_BAD_BLOCK_NUM;
++				goto errout;
++			}
++		}
+ 	} else {
+ 		ext_journal = 1;
+ 		if (!ctx->journal_name) {
+@@ -418,7 +440,7 @@ static errcode_t e2fsck_journal_fix_bad_
+ 				       "filesystem is now ext2 only ***\n\n");
+ 			sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+ 			sb->s_journal_inum = 0;
+-			ctx->flags |= E2F_FLAG_JOURNAL_INODE; /* FIXME: todo */
++			ctx->flags |= E2F_FLAG_JOURNAL_INODE;
+ 			e2fsck_clear_recover(ctx, 1);
+ 			return 0;
+ 		}
+Index: e2fsprogs-1.39/e2fsck/unix.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/unix.c
++++ e2fsprogs-1.39/e2fsck/unix.c
+@@ -847,6 +847,7 @@ int main (int argc, char *argv[])
+ 	e2fsck_t	ctx;
+ 	struct problem_context pctx;
+ 	int flags, run_result;
++	int journal_blocks, journal_size;
+ 	
+ 	clear_problem_context(&pctx);
+ #ifdef MTRACE
+@@ -1141,8 +1142,43 @@ restart:
+ 			 " but we'll try to go on...\n"));
+ 	}
+ 
++	/*
++	 * Save the journal size in megabytes.
++	 * Try and use the journal size from the backup else let e2fsck
++	 * find the default journal size.
++	 */
++	if (sb->s_jnl_backup_type == EXT3_JNL_BACKUP_BLOCKS)
++		journal_size = sb->s_jnl_blocks[16] >> 20;
++	else
++		journal_size = -1;
++
+ 	run_result = e2fsck_run(ctx);
+ 	e2fsck_clear_progbar(ctx);
++
++	if (ctx->flags & E2F_FLAG_JOURNAL_INODE) {
++                if (fix_problem(ctx, PR_6_RECREATE_JOURNAL, &pctx)) {
++			journal_blocks = ext2fs_figure_journal_size(journal_size, fs);
++
++			if (journal_blocks <= 0) {
++				fs->super->s_feature_compat &=
++					~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
++				goto no_journal;
++			}
++			printf(_("Creating journal (%d blocks): "), journal_blocks);
++			fflush(stdout);
++			retval = ext2fs_add_journal_inode(fs, journal_blocks, 0);
++			if (retval) {
++				com_err("Error ", retval,
++					 _("\n\twhile trying to create journal"));
++				goto no_journal;
++			}
++			printf(_(" Done.\n"));
++			printf(_("\n*** journal has been re-created - "
++				       "filesystem is now ext3 again ***\n"));
++		}
++	}
++no_journal:
++
+ 	if (run_result == E2F_FLAG_RESTART) {
+ 		printf(_("Restarting e2fsck from the beginning...\n"));
+ 		retval = e2fsck_reset_context(ctx);
+Index: e2fsprogs-1.39/lib/ext2fs/ext2fs.h
+===================================================================
+--- e2fsprogs-1.39.orig/lib/ext2fs/ext2fs.h
++++ e2fsprogs-1.39/lib/ext2fs/ext2fs.h
+@@ -869,6 +869,8 @@ extern errcode_t ext2fs_add_journal_devi
+ 					   ext2_filsys journal_dev);
+ extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
+ 					  int flags);
++extern int ext2fs_figure_journal_size(int size, ext2_filsys fs);
++
+ 
+ /* openfs.c */
+ extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
+Index: e2fsprogs-1.39/lib/ext2fs/mkjournal.c
+===================================================================
+--- e2fsprogs-1.39.orig/lib/ext2fs/mkjournal.c
++++ e2fsprogs-1.39/lib/ext2fs/mkjournal.c
+@@ -308,6 +308,57 @@ errcode_t ext2fs_add_journal_device(ext2
+ }
+ 
+ /*
++ * Determine the number of journal blocks to use, either via
++ * user-specified # of megabytes, or via some intelligently selected
++ * defaults.
++ *
++ * Find a reasonable journal file size (in blocks) given the number of blocks
++ * in the filesystem.  For very small filesystems, it is not reasonable to
++ * have a journal that fills more than half of the filesystem.
++ */
++int ext2fs_figure_journal_size(int size, ext2_filsys fs)
++{
++	blk_t j_blocks;
++
++	if (fs->super->s_blocks_count < 2048) {
++		fputs(("\nFilesystem too small for a journal\n"), stderr);
++		return 0;
++	}
++
++	if (size > 0) {
++		j_blocks = size * 1024 / (fs->blocksize / 1024);
++		if (j_blocks < 1024 || j_blocks > 102400) {
++			fprintf(stderr, ("\nThe requested journal "
++				"size is %d blocks; it must be\n"
++				"between 1024 and 102400 blocks.  "
++				"Aborting.\n"),
++				j_blocks);
++			return -ERANGE;
++		}
++		if (j_blocks > fs->super->s_free_blocks_count ||
++		    j_blocks > fs->super->s_blocks_count / 2) {
++			fputs(("\nJournal size too big for filesystem.\n"),
++			      stderr);
++			return -EFBIG;
++		}
++		return j_blocks;
++	}
++
++	if (fs->super->s_blocks_count < 32768)
++		j_blocks = 1024;
++	else if (fs->super->s_blocks_count < 256*1024)
++		j_blocks = 4096;
++	else if (fs->super->s_blocks_count < 512*1024)
++		j_blocks = 8192;
++	else if (fs->super->s_blocks_count < 1024*1024)
++		j_blocks = 16384;
++	else
++		j_blocks = 32768;
++
++	return j_blocks;
++}
++
++/*
+  * This function adds a journal inode to a filesystem, using either
+  * POSIX routines if the filesystem is mounted, or using direct I/O
+  * functions if it is not.
+Index: e2fsprogs-1.39/misc/mke2fs.c
+===================================================================
+--- e2fsprogs-1.39.orig/misc/mke2fs.c
++++ e2fsprogs-1.39/misc/mke2fs.c
+@@ -1649,8 +1649,10 @@ int main (int argc, char *argv[])
+ 	} else if ((journal_size) ||
+ 		   (fs_param.s_feature_compat & 
+ 		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
+-		journal_blocks = figure_journal_size(journal_size, fs);
++		journal_blocks = ext2fs_figure_journal_size(journal_size, fs);
+ 
++		if (journal_blocks < 0)
++			exit(1);
+ 		if (!journal_blocks) {
+ 			fs->super->s_feature_compat &=
+ 				~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+Index: e2fsprogs-1.39/misc/tune2fs.c
+===================================================================
+--- e2fsprogs-1.39.orig/misc/tune2fs.c
++++ e2fsprogs-1.39/misc/tune2fs.c
+@@ -417,8 +417,10 @@ static void add_journal(ext2_filsys fs)
+ 	} else if (journal_size) {
+ 		fputs(_("Creating journal inode: "), stdout);
+ 		fflush(stdout);
+-		journal_blocks = figure_journal_size(journal_size, fs);
++		journal_blocks = ext2fs_figure_journal_size(journal_size, fs);
+ 
++		if (journal_blocks < 0)
++			exit(1);
+ 		retval = ext2fs_add_journal_inode(fs, journal_blocks,
+ 						  journal_flags);
+ 		if (retval) {
+Index: e2fsprogs-1.39/misc/util.c
+===================================================================
+--- e2fsprogs-1.39.orig/misc/util.c
++++ e2fsprogs-1.39/misc/util.c
+@@ -238,57 +238,6 @@ void parse_journal_opts(const char *opts
+ 	}
+ }	
+ 
+-/*
+- * Determine the number of journal blocks to use, either via
+- * user-specified # of megabytes, or via some intelligently selected
+- * defaults.
+- * 
+- * Find a reasonable journal file size (in blocks) given the number of blocks
+- * in the filesystem.  For very small filesystems, it is not reasonable to
+- * have a journal that fills more than half of the filesystem.
+- */
+-int figure_journal_size(int size, ext2_filsys fs)
+-{
+-	blk_t j_blocks;
+-
+-	if (fs->super->s_blocks_count < 2048) {
+-		fputs(_("\nFilesystem too small for a journal\n"), stderr);
+-		return 0;
+-	}
+-	
+-	if (size > 0) {
+-		j_blocks = size * 1024 / (fs->blocksize	/ 1024);
+-		if (j_blocks < 1024 || j_blocks > 102400) {
+-			fprintf(stderr, _("\nThe requested journal "
+-				"size is %d blocks; it must be\n"
+-				"between 1024 and 102400 blocks.  "
+-				"Aborting.\n"),
+-				j_blocks);
+-			exit(1);
+-		}
+-		if (j_blocks > fs->super->s_free_blocks_count) {
+-			fputs(_("\nJournal size too big for filesystem.\n"),
+-			      stderr);
+-			exit(1);
+-		}
+-		return j_blocks;
+-	}
+-
+-	if (fs->super->s_blocks_count < 32768)
+-		j_blocks = 1024;
+-	else if (fs->super->s_blocks_count < 256*1024)
+-		j_blocks = 4096;
+-	else if (fs->super->s_blocks_count < 512*1024)
+-		j_blocks = 8192;
+-	else if (fs->super->s_blocks_count < 1024*1024)
+-		j_blocks = 16384;
+-	else
+-		j_blocks = 32768;
+-
+-
+-	return j_blocks;
+-}
+-
+ void print_check_message(ext2_filsys fs)
+ {
+ 	printf(_("This filesystem will be automatically "
+Index: e2fsprogs-1.39/misc/util.h
+===================================================================
+--- e2fsprogs-1.39.orig/misc/util.h
++++ e2fsprogs-1.39/misc/util.h
+@@ -22,5 +22,4 @@ extern void proceed_question(void);
+ extern void check_plausibility(const char *device);
+ extern void parse_journal_opts(const char *opts);
+ extern void check_mount(const char *device, int force, const char *type);
+-extern int figure_journal_size(int size, ext2_filsys fs);
+ extern void print_check_message(ext2_filsys fs);
+Index: e2fsprogs-1.39/e2fsck/problem.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/problem.c
++++ e2fsprogs-1.39/e2fsck/problem.c
+@@ -1479,6 +1479,11 @@ static struct e2fsck_problem problem_tab
+ 	  " +(%i--%j)",
+ 	  PROMPT_NONE, PR_LATCH_IBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
+ 
++        /* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
++        { PR_6_RECREATE_JOURNAL,
++          N_("Recreate journal to make the filesystem ext3 again?\n"),
++          PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
++
+ 	{ 0 }
+ };
+ 
+Index: e2fsprogs-1.39/e2fsck/problem.h
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/problem.h
++++ e2fsprogs-1.39/e2fsck/problem.h
+@@ -892,6 +892,13 @@ struct problem_context {
+ #define PR_5_INODE_RANGE_USED		0x050017
+ 
+ /*
++ * Post-Pass 5 errors
++ */
++
++/* Recreate the journal if E2F_FLAG_JOURNAL_INODE flag is set */
++#define PR_6_RECREATE_JOURNAL		0x060000
++
++/*
+  * Function declarations
+  */
+ int fix_problem(e2fsck_t ctx, problem_t code, struct problem_context *pctx);
+
+
+Thanks,
+Kalpak.
+
+--=-5zeeEgFWUcCOiGOCdG43
+Content-Disposition: attachment; filename=e2fsprogs-tests-f_badjour_indblks.patch
+Content-Type: text/x-patch; name=e2fsprogs-tests-f_badjour_indblks.patch; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+SW5kZXg6IGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2ZfYmFkam91cl9pbmRibGtzL2V4cGVjdC4xDQo9
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09DQotLS0gL2Rldi9udWxsDQorKysgZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9iYWRq
+b3VyX2luZGJsa3MvZXhwZWN0LjENCkBAIC0wLDAgKzEsMzEgQEANCitTdXBlcmJsb2NrIGhhcyBh
+biBpbnZhbGlkIGV4dDMgam91cm5hbCAoaW5vZGUgOCkuDQorQ2xlYXI/IHllcw0KKw0KKyoqKiBl
+eHQzIGpvdXJuYWwgaGFzIGJlZW4gZGVsZXRlZCAtIGZpbGVzeXN0ZW0gaXMgbm93IGV4dDIgb25s
+eSAqKioNCisNCitQYXNzIDE6IENoZWNraW5nIGlub2RlcywgYmxvY2tzLCBhbmQgc2l6ZXMNCitK
+b3VybmFsIGlub2RlIGlzIG5vdCBpbiB1c2UsIGJ1dCBjb250YWlucyBkYXRhLiAgQ2xlYXI/IHll
+cw0KKw0KK1Bhc3MgMjogQ2hlY2tpbmcgZGlyZWN0b3J5IHN0cnVjdHVyZQ0KK1Bhc3MgMzogQ2hl
+Y2tpbmcgZGlyZWN0b3J5IGNvbm5lY3Rpdml0eQ0KK1Bhc3MgNDogQ2hlY2tpbmcgcmVmZXJlbmNl
+IGNvdW50cw0KK1Bhc3MgNTogQ2hlY2tpbmcgZ3JvdXAgc3VtbWFyeSBpbmZvcm1hdGlvbg0KK0Js
+b2NrIGJpdG1hcCBkaWZmZXJlbmNlczogIC0oODItLTExMTEpDQorRml4PyB5ZXMNCisNCitGcmVl
+IGJsb2NrcyBjb3VudCB3cm9uZyBmb3IgZ3JvdXAgIzAgKDcwODAsIGNvdW50ZWQ9ODExMCkuDQor
+Rml4PyB5ZXMNCisNCitGcmVlIGJsb2NrcyBjb3VudCB3cm9uZyAoNzA4MCwgY291bnRlZD04MTEw
+KS4NCitGaXg/IHllcw0KKw0KK1JlY3JlYXRlIGpvdXJuYWwgdG8gbWFrZSB0aGUgZmlsZXN5c3Rl
+bSBleHQzIGFnYWluPw0KK0ZpeD8geWVzDQorDQorQ3JlYXRpbmcgam91cm5hbCAoMTAyNCBibG9j
+a3MpOiAgRG9uZS4NCisNCisqKiogam91cm5hbCBoYXMgYmVlbiByZS1jcmVhdGVkIC0gZmlsZXN5
+c3RlbSBpcyBub3cgZXh0MyBhZ2FpbiAqKioNCisNCit0ZXN0X2ZpbGVzeXM6ICoqKioqIEZJTEUg
+U1lTVEVNIFdBUyBNT0RJRklFRCAqKioqKg0KK3Rlc3RfZmlsZXN5czogMTEvMjU2IGZpbGVzICg5
+LjElIG5vbi1jb250aWd1b3VzKSwgMTExMi84MTkyIGJsb2Nrcw0KK0V4aXQgc3RhdHVzIGlzIDEN
+CkluZGV4OiBlMmZzcHJvZ3MtMS4zOS90ZXN0cy9mX2JhZGpvdXJfaW5kYmxrcy9leHBlY3QuMg0K
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PQ0KLS0tIC9kZXYvbnVsbA0KKysrIGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2ZfYmFk
+am91cl9pbmRibGtzL2V4cGVjdC4yDQpAQCAtMCwwICsxLDcgQEANCitQYXNzIDE6IENoZWNraW5n
+IGlub2RlcywgYmxvY2tzLCBhbmQgc2l6ZXMNCitQYXNzIDI6IENoZWNraW5nIGRpcmVjdG9yeSBz
+dHJ1Y3R1cmUNCitQYXNzIDM6IENoZWNraW5nIGRpcmVjdG9yeSBjb25uZWN0aXZpdHkNCitQYXNz
+IDQ6IENoZWNraW5nIHJlZmVyZW5jZSBjb3VudHMNCitQYXNzIDU6IENoZWNraW5nIGdyb3VwIHN1
+bW1hcnkgaW5mb3JtYXRpb24NCit0ZXN0X2ZpbGVzeXM6IDExLzI1NiBmaWxlcyAoOS4xJSBub24t
+Y29udGlndW91cyksIDExMTIvODE5MiBibG9ja3MNCitFeGl0IHN0YXR1cyBpcyAwDQpJbmRleDog
+ZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9iYWRqb3VyX2luZGJsa3MvbmFtZQ0KPT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0K
+LS0tIC9kZXYvbnVsbA0KKysrIGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2ZfYmFkam91cl9pbmRibGtz
+L25hbWUNCkBAIC0wLDAgKzEgQEANCitjb3JydXB0aW9uIGluIGpvdXJuYWwgaW5vZGUncyBpbmRp
+cmVjdCBibG9ja3MNCkluZGV4OiBlMmZzcHJvZ3MtMS4zOS90ZXN0cy9mX2JhZGpvdXJibGtzL2V4
+cGVjdC4xDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09DQotLS0gZTJmc3Byb2dzLTEuMzkub3JpZy90ZXN0cy9mX2JhZGpv
+dXJibGtzL2V4cGVjdC4xDQorKysgZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9iYWRqb3VyYmxrcy9l
+eHBlY3QuMQ0KQEAgLTE5LDcgKzE5LDEzIEBAIEZpeD8geWVzDQogRnJlZSBibG9ja3MgY291bnQg
+d3JvbmcgKDcxMTIsIGNvdW50ZWQ9ODE0MikuDQogRml4PyB5ZXMNCiANCitSZWNyZWF0ZSBqb3Vy
+bmFsIHRvIG1ha2UgdGhlIGZpbGVzeXN0ZW0gZXh0MyBhZ2Fpbj8NCitGaXg/IHllcw0KKw0KK0Ny
+ZWF0aW5nIGpvdXJuYWwgKDEwMjQgYmxvY2tzKTogIERvbmUuDQorDQorKioqIGpvdXJuYWwgaGFz
+IGJlZW4gcmUtY3JlYXRlZCAtIGZpbGVzeXN0ZW0gaXMgbm93IGV4dDMgYWdhaW4gKioqDQogDQog
+dGVzdF9maWxlc3lzOiAqKioqKiBGSUxFIFNZU1RFTSBXQVMgTU9ESUZJRUQgKioqKioNCi10ZXN0
+X2ZpbGVzeXM6IDExLzI1NiBmaWxlcyAoMC4wJSBub24tY29udGlndW91cyksIDUwLzgxOTIgYmxv
+Y2tzDQordGVzdF9maWxlc3lzOiAxMS8yNTYgZmlsZXMgKDAuMCUgbm9uLWNvbnRpZ3VvdXMpLCAx
+MDgwLzgxOTIgYmxvY2tzDQogRXhpdCBzdGF0dXMgaXMgMQ0KSW5kZXg6IGUyZnNwcm9ncy0xLjM5
+L3Rlc3RzL2ZfYmFkam91cmJsa3MvZXhwZWN0LjINCj09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCi0tLSBlMmZzcHJvZ3Mt
+MS4zOS5vcmlnL3Rlc3RzL2ZfYmFkam91cmJsa3MvZXhwZWN0LjINCisrKyBlMmZzcHJvZ3MtMS4z
+OS90ZXN0cy9mX2JhZGpvdXJibGtzL2V4cGVjdC4yDQpAQCAtMyw1ICszLDUgQEAgUGFzcyAyOiBD
+aGVja2luZyBkaXJlY3Rvcnkgc3RydWN0dXJlDQogUGFzcyAzOiBDaGVja2luZyBkaXJlY3Rvcnkg
+Y29ubmVjdGl2aXR5DQogUGFzcyA0OiBDaGVja2luZyByZWZlcmVuY2UgY291bnRzDQogUGFzcyA1
+OiBDaGVja2luZyBncm91cCBzdW1tYXJ5IGluZm9ybWF0aW9uDQotdGVzdF9maWxlc3lzOiAxMS8y
+NTYgZmlsZXMgKDAuMCUgbm9uLWNvbnRpZ3VvdXMpLCA1MC84MTkyIGJsb2Nrcw0KK3Rlc3RfZmls
+ZXN5czogMTEvMjU2IGZpbGVzICgwLjAlIG5vbi1jb250aWd1b3VzKSwgMTA4MC84MTkyIGJsb2Nr
+cw0KIEV4aXQgc3RhdHVzIGlzIDANCkluZGV4OiBlMmZzcHJvZ3MtMS4zOS90ZXN0cy9mX21pc3Nf
+am91cm5hbC9leHBlY3QuMQ0KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0tIGUyZnNwcm9ncy0xLjM5Lm9yaWcvdGVz
+dHMvZl9taXNzX2pvdXJuYWwvZXhwZWN0LjENCisrKyBlMmZzcHJvZ3MtMS4zOS90ZXN0cy9mX21p
+c3Nfam91cm5hbC9leHBlY3QuMQ0KQEAgLTE3LDcgKzE3LDEzIEBAIEZpeD8geWVzDQogRnJlZSBi
+bG9ja3MgY291bnQgd3JvbmcgKDk2OCwgY291bnRlZD0xOTk4KS4NCiBGaXg/IHllcw0KIA0KK1Jl
+Y3JlYXRlIGpvdXJuYWwgdG8gbWFrZSB0aGUgZmlsZXN5c3RlbSBleHQzIGFnYWluPw0KK0ZpeD8g
+eWVzDQorDQorQ3JlYXRpbmcgam91cm5hbCAoMTAyNCBibG9ja3MpOiAgRG9uZS4NCisNCisqKiog
+am91cm5hbCBoYXMgYmVlbiByZS1jcmVhdGVkIC0gZmlsZXN5c3RlbSBpcyBub3cgZXh0MyBhZ2Fp
+biAqKioNCiANCiB0ZXN0X2ZpbGVzeXM6ICoqKioqIEZJTEUgU1lTVEVNIFdBUyBNT0RJRklFRCAq
+KioqKg0KLXRlc3RfZmlsZXN5czogMTEvMjU2IGZpbGVzICgwLjAlIG5vbi1jb250aWd1b3VzKSwg
+NTAvMjA0OCBibG9ja3MNCit0ZXN0X2ZpbGVzeXM6IDExLzI1NiBmaWxlcyAoMC4wJSBub24tY29u
+dGlndW91cyksIDEwODAvMjA0OCBibG9ja3MNCiBFeGl0IHN0YXR1cyBpcyAxDQpJbmRleDogZTJm
+c3Byb2dzLTEuMzkvdGVzdHMvZl9taXNzX2pvdXJuYWwvZXhwZWN0LjINCj09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCi0t
+LSBlMmZzcHJvZ3MtMS4zOS5vcmlnL3Rlc3RzL2ZfbWlzc19qb3VybmFsL2V4cGVjdC4yDQorKysg
+ZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9taXNzX2pvdXJuYWwvZXhwZWN0LjINCkBAIC0zLDUgKzMs
+NSBAQCBQYXNzIDI6IENoZWNraW5nIGRpcmVjdG9yeSBzdHJ1Y3R1cmUNCiBQYXNzIDM6IENoZWNr
+aW5nIGRpcmVjdG9yeSBjb25uZWN0aXZpdHkNCiBQYXNzIDQ6IENoZWNraW5nIHJlZmVyZW5jZSBj
+b3VudHMNCiBQYXNzIDU6IENoZWNraW5nIGdyb3VwIHN1bW1hcnkgaW5mb3JtYXRpb24NCi10ZXN0
+X2ZpbGVzeXM6IDExLzI1NiBmaWxlcyAoMC4wJSBub24tY29udGlndW91cyksIDUwLzIwNDggYmxv
+Y2tzDQordGVzdF9maWxlc3lzOiAxMS8yNTYgZmlsZXMgKDAuMCUgbm9uLWNvbnRpZ3VvdXMpLCAx
+MDgwLzIwNDggYmxvY2tzDQogRXhpdCBzdGF0dXMgaXMgMA0KKioqIC9kZXYvbnVsbAkyMDA3LTAz
+LTE1IDAwOjI2OjUwLjU2NTk5NTI4NiArMDUzMA0KLS0tIGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2Zf
+YmFkam91cl9pbmRibGtzL2ltYWdlLmd6CTIwMDctMDMtMTUgMDE6MjM6MTEuMDAwMDAwMDAwICsw
+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
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwb+3BIQEAAACAoP+vrY4AAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAACAC6Q55OgAAIAADQpcIE5vIG5ld2xpbmUgYXQgZW5kIG9mIGZpbGUNCg==
+
+
+--=-5zeeEgFWUcCOiGOCdG43--
