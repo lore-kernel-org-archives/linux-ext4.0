@@ -1,60 +1,47 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC] Heads up on sys_fallocate()
-Date: Wed, 14 Mar 2007 10:46:25 +1100
-Message-ID: <20070313234625.GB6095633@melbourne.sgi.com>
-References: <20070301183445.GA7911@amitarora.in.ibm.com> <20070301142537.b5950cd7.akpm@linux-foundation.org> <1172788855.26078.294.camel@edge> <20070301145256.3e999932.akpm@linux-foundation.org> <45E86CBA.3070905@us.ibm.com> <20070305122742.GA11486@atrey.karlin.mff.cuni.cz> <45EC7773.7020603@us.ibm.com> <20070306072850.GA23081@infradead.org> <45ED7C59.4050508@redhat.com> <45ED9B00.3020502@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: Fw: Re: 2.6.21-rc3-mm1
+Date: Tue, 13 Mar 2007 17:07:48 -0800
+Message-ID: <20070313170748.3e0bb466.akpm@linux-foundation.org>
+References: <20070312220426.2b1d7aaa.akpm@linux-foundation.org>
+	<45F6BDC9.8080205@redhat.com>
+	<1173799745.9662.4.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ulrich Drepper <drepper@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Mingming Cao <cmm@us.ibm.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>, nscott@aconex.com,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, alex@clusterfs.com,
-	suzuki@in.ibm.com
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <45ED9B00.3020502@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org,
+	astralstorm@gmail.com, kalpak@clusterfs.com
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.24]:46419 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752663AbXCNAIk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Mar 2007 20:08:40 -0400
+In-Reply-To: <1173799745.9662.4.camel@kleikamp.austin.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 06, 2007 at 10:46:56AM -0600, Eric Sandeen wrote:
-> Ulrich Drepper wrote:
-> > Christoph Hellwig wrote:
-> >> fallocate with the whence argument and flags is already quite complicated,
-> >> I'd rather have another call for placement decisions, that would
-> >> be called on an fd to do placement decissions for any further allocations
-> >> (prealloc, write, etc)
+> On Tue, 13 Mar 2007 10:29:05 -0500 Dave Kleikamp <shaggy@linux.vnet.ibm.com> wrote:
+> On Tue, 2007-03-13 at 10:05 -0500, Eric Sandeen wrote:
+> > Andrew Morton wrote:
 > > 
-> > Yes, posix_fallocate shouldn't be made more complicated.  But I don't
-> > understand why requesting linear layout of the blocks should be an
-> > option.  It's always an advantage if the blocks requested this way are
-> > linear on disk.  So, the kernel should always do its best to make this
-> > happen, without needing an additional option.
-> > 
+> > > And broken stuff too :-)
+> > > The nanoseconds patch is broken on x86_64 - makes mtimes from the future:
+> > > e.g. year 2431. I suspect an endianness issue.
+> > > x86 works fine according to my sources.
+> > >
+> > > The files themselves have correct mtimes, as booting previous kernel
+> > > or one w/o the nanoseconds patch works fine.
+> > There were later patches posted to the list after this version, I think, which
+> > are not yet in Ted's tree... I'll find some time today to test the "take3" version
+> > on x86_64, unless someone beats me to it.
 > 
-> Agreed on both points.  The hints would be for things like start block,
-> or speculative EOF preallocation, not contiguity, which I think should
-> always be the goal.
+> I didn't quite beat you to it, but I did make a diff to bring
+> 2.6.21-rc3-mm1 in tune with the "take3" patch.  It makes the code easier
+> to understand, but I'm not sure if it contains anything to fix the bug.
+> Code inspection hasn't gotten me any closer to figuring out what's
+> wrong.
+> 
+> Shaggy
 
-ISTR having had this discussion before ;)
-
-About guided preallocation for defrag:
-
-http://marc.info/?t=116247859500001&r=1&w=2
-
-e.g.: The sorts of policies we need for effective use of
-preallocation:
-
-http://marc.info/?l=linux-fsdevel&m=116184475308164&w=2
-http://marc.info/?l=linux-fsdevel&m=116278169519095&w=2
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+It's possible that I screwed up merging Ted's tree into mainline - it spat
+some rejects, and needs updating to 2.6.21-rc3.
