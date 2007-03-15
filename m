@@ -1,9 +1,9 @@
-From: Nick Piggin <npiggin@suse.de>
+From: Mark Fasheh <mark.fasheh@oracle.com>
 Subject: Re: Announce: new-aops-1 for 2.6.21-rc3
-Date: Thu, 15 Mar 2007 20:57:57 +0100
-Message-ID: <20070315195757.GB19625@wotan.suse.de>
+Date: Thu, 15 Mar 2007 14:08:48 -0700
+Message-ID: <20070315210848.GG21942@ca-server1.us.oracle.com>
 References: <20070315161704.GH8321@wotan.suse.de>
-	<20070315195351.GE21942@ca-server1.us.oracle.com>
+Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,10 +12,10 @@ Cc: jfs-discussion@lists.sourceforge.net, xfs@oss.sgi.com,
 	nfs@lists.sourceforge.net,
 	Linux Filesystems <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
-To: Mark Fasheh <mark.fasheh@oracle.com>
+To: Nick Piggin <npiggin@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Content-Disposition: inline
-In-Reply-To: <20070315195351.GE21942@ca-server1.us.oracle.com>
+In-Reply-To: <20070315161704.GH8321@wotan.suse.de>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum=nfs>
@@ -27,21 +27,46 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 15, 2007 at 12:53:51PM -0700, Mark Fasheh wrote:
-> On Thu, Mar 15, 2007 at 05:17:04PM +0100, Nick Piggin wrote:
-> > OK, I've gone through and fixed several bugs until the thing actually
-> > survives fsx-linux for both ext2 and ext3 ordered and writeback (both
-> > when using the new aops, and the legacy prepare_write path). Actually
-> > ext3 sometimes breaks, but it does in unpatched kernels anyway.
-> > 
-> > At 15 patches (including the initial buffered write deadlock fixes),
-> > it is too much to keep posting -- not much has fundamentally changed,
-> > so I'll just post occasionally if we make big changes. The quilt
-> > format is probably easier for someone wishing to work on it anyway.
-> 
-> Hmm, we still left out some exports...
+On Thu, Mar 15, 2007 at 05:17:04PM +0100, Nick Piggin wrote:
+> OK, I've gone through and fixed several bugs until the thing actually
+> survives fsx-linux for both ext2 and ext3 ordered and writeback (both
+> when using the new aops, and the legacy prepare_write path). Actually
+> ext3 sometimes breaks, but it does in unpatched kernels anyway.
 
-Thanks, applied.
+Attached is a bugfix for a crash folks who use an initrd will hit early on.
+	--Mark
+
+--
+Mark Fasheh
+Senior Software Developer, Oracle
+mark.fasheh@oracle.com
+
+
+From: Mark Fasheh <mark.fasheh@oracle.com>
+
+[PATCH] Populate pagep in simple_write_begin()
+
+This wasn't getting passed back to callers.
+
+Signed-off-by: Mark Fasheh <mark.fasheh@oracle.com>
+
+cbf20bf51ddd6434db935ba29f845a85f3b1ec65
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 51f9748..602496a 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -357,6 +357,8 @@ int simple_write_begin(struct file *file
+ 	if (!page)
+ 		return -ENOMEM;
+ 
++	*pagep = page;
++
+ 	return simple_prepare_write(file, page, from, from+len);
+ }
+ 
+-- 
+1.3.3
+
 
 -------------------------------------------------------------------------
 Take Surveys. Earn Cash. Influence the Future of IT
