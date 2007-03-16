@@ -1,50 +1,55 @@
-From: Heiko Carstens <heiko.carstens@de.ibm.com>
-Subject: Re: [RFC][PATCH] sys_fallocate() system call
-Date: Fri, 16 Mar 2007 17:17:04 +0100
-Message-ID: <20070316161704.GE8525@osiris.boeblingen.de.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com>
+From: Randy Dunlap <rdunlap@xenotime.net>
+Subject: Re: Ext4 devel interlock meeting minutes (March 14, 2007)
+Date: Fri, 16 Mar 2007 09:31:35 -0700
+Message-ID: <20070316093135.174b4b69.rdunlap@xenotime.net>
+References: <45F87C03.506@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
-	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Avantika Mathur <mathur@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mtagate5.de.ibm.com ([195.212.29.154]:64070 "EHLO
-	mtagate5.de.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965464AbXCPQSm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Mar 2007 12:18:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20070316143101.GA10152@amitarora.in.ibm.com>
+Received: from xenotime.net ([66.160.160.81]:53279 "HELO xenotime.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S933161AbXCPQbQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Mar 2007 12:31:16 -0400
+Received: from midway.site ([71.245.96.31]) by xenotime.net for <linux-ext4@vger.kernel.org>; Fri, 16 Mar 2007 09:31:15 -0700
+In-Reply-To: <45F87C03.506@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> on s390, and thus the delay. While I try to get it right on s390(x), we
-> thought of posting this patch, so that we can save some time. Parallely
-> we will work on getting the patch work on s390, and probably it will
-> come as a separate patch.
+On Wed, 14 Mar 2007 15:49:39 -0700 Avantika Mathur wrote:
+
+> Ext4 Developer Interlock Call: 03/14/2007 Meeting Minutes
 > 
-> +asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
-> +{
+> Attendees: Mingming Cao, Eric Sandeen, Ted Ts'o, Dave Kleikamp, Suparna Bhattacharya, Takashi Sato, Avantika Mathur
+> 
+> Minutes can be accessed at: http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Call 
+> 
+> 
+> Ext4 git Tree:
+> 
+> - Shaggy and Eric fixed the recent problems with the nanosecond timestamps in the git tree
+> 
+> - There is a general problem that the git tree is not updated frequently
+> 
+> 	- Ted feels there is not enough testing done to feel comfortable updating to a new release
+> 
+>         -- Many of the patches added to the tree are not tested properly.  
+> 	-- It would be helpful if people could pick up the tree and test it, and make sure all upstream merging criteria is met by ext4 developers.
+> 
+>     - Currently looking at methods of automating testing of each new git tree release on different architectures and benchmarks.
+> 
+>     - Slow code review is also slowing down ext4.
+> 
+> - Ted suggested maintaining a git tree that tracks the patch queue, so there can be multiple people working on the patch queue. 
+> 	- When patches are stable, update the central git tree that can then be pushed upstream.
+> 
+> - Ted will start a second git tree, and initially put Shaggy and Mingming as additional users who can access the tree. 
 
-There is something here that will not work on s390 (31bit): the arguments
-would end up in:
-fd -> r2
-mode -> r3
-offset -> r4 + r5
-len -> r6 + second halve on stack
+Hi,
+What's the purpose of this second git tree, please?
 
-But the s390 ABI says that a long long will be put into two consecutive
-registers if the first register is smaller than 6, or it will be put
-completely on the stack. So both 32 bit parts of len will end up on the
-stack. That would make it a syscall with seven arguments which we currently
-don't support on s390. There is no way to access the second half of len
-from kernel space and that is why it is not working for you.
-So you either rearrange the parameters or convert the loff_t's to pointers.
-
-e.g.
-
-asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len, int mode)
-
-would work even on s390 ;)
+---
+~Randy
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
