@@ -1,39 +1,61 @@
-From: Heiko Carstens <heiko.carstens@de.ibm.com>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
 Subject: Re: [RFC][PATCH] sys_fallocate() system call
-Date: Sat, 17 Mar 2007 15:30:43 +0100
-Message-ID: <20070317143043.GA8577@osiris.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <17915.48105.70494.958220@cargo.ozlabs.ibm.com> <20070317110706.GB29931@parisc-linux.org>
+Date: Sun, 18 Mar 2007 01:38:38 +1100
+Message-ID: <20070318013838.d00d420e.sfr@canb.auug.org.au>
+References: <20070117094658.GA17390@amitarora.in.ibm.com>
+	<20070225022326.137b4875.akpm@linux-foundation.org>
+	<20070301183445.GA7911@amitarora.in.ibm.com>
+	<20070316143101.GA10152@amitarora.in.ibm.com>
+	<20070316161704.GE8525@osiris.boeblingen.de.ibm.com>
+	<17915.48105.70494.958220@cargo.ozlabs.ibm.com>
+	<20070317110706.GB29931@parisc-linux.org>
+	<20070317143043.GA8577@osiris.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Paul Mackerras <paulus@samba.org>,
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA1";
+ boundary="Signature=_Sun__18_Mar_2007_01_38_38_+1100_GAQF/_Zvfh5SpWYk"
+Cc: Matthew Wilcox <matthew@wil.cx>, Paul Mackerras <paulus@samba.org>,
 	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
 	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
 	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mtagate3.uk.ibm.com ([195.212.29.136]:3674 "EHLO
-	mtagate3.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965585AbXCQOck (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Mar 2007 10:32:40 -0400
-Content-Disposition: inline
-In-Reply-To: <20070317110706.GB29931@parisc-linux.org>
-Sender: linux-ext4-owner@vger.kernel.org
+To: Heiko Carstens <heiko.carstens@de.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965646AbXCQOim@vger.kernel.org>
+In-Reply-To: <20070317143043.GA8577@osiris.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Mar 17, 2007 at 05:07:06AM -0600, Matthew Wilcox wrote:
-> On Sat, Mar 17, 2007 at 08:59:05PM +1100, Paul Mackerras wrote:
-> > ... but wouldn't work on 32-bit powerpc. :(  We would end up with a
-> > pad argument between fd and offset, giving 7 arguments in all
-> > (counting the loff_t's as 2), but we only support 6.
-> 
-> Ditto mips and parisc.
+--Signature=_Sun__18_Mar_2007_01_38_38_+1100_GAQF/_Zvfh5SpWYk
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: 7bit
 
-Can't be. Or: mips supports 7 arguments and parisc doesn't pad.
-Otherwise they couldn't have wired up
+On Sat, 17 Mar 2007 15:30:43 +0100 Heiko Carstens <heiko.carstens@de.ibm.com> wrote:
+>
+> sys_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
+>
+> But from what I read, it's currently not possible for 32-bit powerpc to
+> wire up the already present sync_file_range system call.
 
-sys_sync_file_range(int fd, loff_t offset, loff_t nbytes, unsigned int flags)
+32bit native is fine (as the ABI in user mode is the same as that in the
+kernel).  For 32bit on a 64bit kernel you need the arch specific comapt
+routine that I used in the patch I posteda little while ago,
 
-But from what I read, it's currently not possible for 32-bit powerpc to
-wire up the already present sync_file_range system call.
+--
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+http://www.canb.auug.org.au/~sfr/
+
+--Signature=_Sun__18_Mar_2007_01_38_38_+1100_GAQF/_Zvfh5SpWYk
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFF+/10FdBgD/zoJvwRAhZ2AJ41njj68tFPjdgD3BIaJ9BJUMMl6ACdHnHT
+1gtx0s+ho29+CsAiNUBHOns=
+=y+RJ
+-----END PGP SIGNATURE-----
+
+--Signature=_Sun__18_Mar_2007_01_38_38_+1100_GAQF/_Zvfh5SpWYk--
