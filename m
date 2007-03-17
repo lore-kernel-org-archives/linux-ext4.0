@@ -1,61 +1,42 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
+From: Paul Mackerras <paulus@samba.org>
 Subject: Re: [RFC][PATCH] sys_fallocate() system call
-Date: Sat, 17 Mar 2007 16:33:50 +1100
-Message-ID: <20070317163350.6b676c26.sfr@canb.auug.org.au>
+Date: Sat, 17 Mar 2007 20:59:05 +1100
+Message-ID: <17915.48105.70494.958220@cargo.ozlabs.ibm.com>
 References: <20070117094658.GA17390@amitarora.in.ibm.com>
 	<20070225022326.137b4875.akpm@linux-foundation.org>
 	<20070301183445.GA7911@amitarora.in.ibm.com>
 	<20070316143101.GA10152@amitarora.in.ibm.com>
+	<20070316161704.GE8525@osiris.boeblingen.de.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Sat__17_Mar_2007_16_33_50_+1100_RDGr9JcpHSSG4wvw"
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
 	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
 	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933351AbXCQFdw@vger.kernel.org>
-In-Reply-To: <20070316143101.GA10152@amitarora.in.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Heiko Carstens <heiko.carstens@de.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ozlabs.org ([203.10.76.45]:35833 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933691AbXCQKFy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Mar 2007 06:05:54 -0400
+In-Reply-To: <20070316161704.GE8525@osiris.boeblingen.de.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---Signature=_Sat__17_Mar_2007_16_33_50_+1100_RDGr9JcpHSSG4wvw
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: 7bit
+Heiko Carstens writes:
 
-On Fri, 16 Mar 2007 20:01:01 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
->
+> So you either rearrange the parameters or convert the loff_t's to pointers.
+> 
+> e.g.
+> 
+> asmlinkage long sys_fallocate(int fd, loff_t offset, loff_t len, int mode)
+> 
+> would work even on s390 ;)
 
-> +asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len);
->
-> --- linux-2.6.20.1.orig/include/asm-powerpc/systbl.h
-> +++ linux-2.6.20.1/include/asm-powerpc/systbl.h
-> @@ -305,3 +305,4 @@ SYSCALL_SPU(faccessat)
->  COMPAT_SYS_SPU(get_robust_list)
->  COMPAT_SYS_SPU(set_robust_list)
->  COMPAT_SYS(move_pages)
-> +SYSCALL(fallocate)
+... but wouldn't work on 32-bit powerpc. :(  We would end up with a
+pad argument between fd and offset, giving 7 arguments in all
+(counting the loff_t's as 2), but we only support 6.
 
-It is going to need to be a COMPAT_SYS call in powerpc because 32 bit
-powerpc will pass the two loff_t's in pairs of registers while
-64bit passes them in one register each.
-
---
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
-
---Signature=_Sat__17_Mar_2007_16_33_50_+1100_RDGr9JcpHSSG4wvw
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFF+33HFdBgD/zoJvwRAsUAAJ4lt3jRPS6CE09R0kbH9uY2YBf1CwCcC71K
-ciATEa4iyLt7aSVc9IaUZ6w=
-=4vjD
------END PGP SIGNATURE-----
-
---Signature=_Sat__17_Mar_2007_16_33_50_+1100_RDGr9JcpHSSG4wvw--
+Paul.
