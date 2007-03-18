@@ -1,52 +1,42 @@
-From: Russell King <rmk+lkml@arm.linux.org.uk>
-Subject: Re: [RFC][PATCH] sys_fallocate() system call
-Date: Sat, 17 Mar 2007 14:53:48 +0000
-Message-ID: <20070317145348.GA32278@flint.arm.linux.org.uk>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [PATCH] Add i_version_hi for 64-bit version
+Date: Sun, 18 Mar 2007 15:43:39 +0530
+Message-ID: <1174212819.3282.10.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Andrew Morton <akpm@linux-foundation.org>, suparna@in.ibm.com,
-	cmm@us.ibm.com, alex@clusterfs.com, suzuki@in.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	TheodoreTso <tytso@mit.edu>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Eric Sandeen <sandeen@redhat.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from caramon.arm.linux.org.uk ([217.147.92.249]:2327 "EHLO
-	caramon.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750719AbXCQOyH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Mar 2007 10:54:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20070316143101.GA10152@amitarora.in.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:38011 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753316AbXCRKMv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Mar 2007 06:12:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 16, 2007 at 08:01:01PM +0530, Amit K. Arora wrote:
-> Attached below is the patch which implements this system call. It has
-> been currently implemented and tested on i386, ppc64 and x86_64
-> architectures. I am facing some problems while trying to implement this
-> on s390, and thus the delay. While I try to get it right on s390(x), we
-> thought of posting this patch, so that we can save some time. Parallely
-> we will work on getting the patch work on s390, and probably it will
-> come as a separate patch.
+Hi,
 
-I suggest reading the very end of arch/arm/kernel/sys_arm.c; I'd rather
-avoid adding more and more hacks like that to the kernel if at all
-possible.
+This patch adds a 32-bit i_version_hi field to ext4_inode, which can be used for 64-bit inode versions. This field will store the higher 32 bits of the version, while Jean Noel's patch has added support to store the lower 32-bits in osd1.linux1.l_i_version.
 
-One solution (already mentioned elsewhere) is that we start avoiding
-passing 64-bit arguments and instead pass two 32-bit instead.  This
-nicely avoids the alignment restrictions for 64-bit args in ABIs.
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 
-(The issue for ARM is that with anything other than the "fd, mode,
-offset, len" layout we will have to deal with different ABI argument
-layouts, or implement our own wrapper function as done for
-sys_arm_sync_file_range.)
+Index: linux-2.6.20/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.20.orig/include/linux/ext4_fs.h
++++ linux-2.6.20/include/linux/ext4_fs.h
+@@ -336,6 +336,7 @@ struct ext4_inode {
+        __le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
+        __le32  i_crtime;       /* File Creation time */
+        __le32  i_crtime_extra; /* extra File Creation time (nsec << 2 | epoch) */
++       __u32   i_version_hi;   /* high 32 bits for 64-bit version */
+ };
 
-I think the problem comes down to "what is the argument layout which
-causes the least amount of problems for the complete set of architectures."
-For ARM, that's the "fd, mode, offset, len" layout.
+ #define i_size_high    i_dir_acl
 
--- 
-Russell King
- Linux kernel    2.6 ARM Linux   - http://www.arm.linux.org.uk/
- maintainer of:
+Thanks,
+Kalpak <kalpak@clusterfs.com>
