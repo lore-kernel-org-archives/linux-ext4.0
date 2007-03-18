@@ -1,42 +1,30 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: [PATCH] Add i_version_hi for 64-bit version
-Date: Sun, 18 Mar 2007 15:43:39 +0530
-Message-ID: <1174212819.3282.10.camel@garfield>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: e2fsprogs coverity patch <cid-1.diff>
+Date: Sun, 18 Mar 2007 09:40:14 -0400
+Message-ID: <20070318134014.GA10086@thunk.org>
+References: <200702100208.l1A28GC2005813@igsi.llnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	TheodoreTso <tytso@mit.edu>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Eric Sandeen <sandeen@redhat.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
+	wartens2@llnl.gov
+To: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:38011 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753316AbXCRKMv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Mar 2007 06:12:51 -0400
+Received: from thunk.org ([69.25.196.29]:60904 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751067AbXCRNkh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Mar 2007 09:40:37 -0400
+Content-Disposition: inline
+In-Reply-To: <200702100208.l1A28GC2005813@igsi.llnl.gov>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Fri, Feb 09, 2007 at 06:08:16PM -0800, Brian D. Behlendorf wrote:
+> Coverity ID: 2: Checked Return
 
-This patch adds a 32-bit i_version_hi field to ext4_inode, which can be used for 64-bit inode versions. This field will store the higher 32 bits of the version, while Jean Noel's patch has added support to store the lower 32-bits in osd1.linux1.l_i_version.
+Would I be right in assuming this should be Coverity ID 1, and not 2?
+(cid-2.diff is also labelled as Coverity ID 1).
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+What is Coverity ID's, anyway?  I assume they are something you
+locally assigned?
 
-Index: linux-2.6.20/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.20.orig/include/linux/ext4_fs.h
-+++ linux-2.6.20/include/linux/ext4_fs.h
-@@ -336,6 +336,7 @@ struct ext4_inode {
-        __le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
-        __le32  i_crtime;       /* File Creation time */
-        __le32  i_crtime_extra; /* extra File Creation time (nsec << 2 | epoch) */
-+       __u32   i_version_hi;   /* high 32 bits for 64-bit version */
- };
-
- #define i_size_high    i_dir_acl
-
-Thanks,
-Kalpak <kalpak@clusterfs.com>
+						- Ted
