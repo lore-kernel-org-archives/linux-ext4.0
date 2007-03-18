@@ -1,33 +1,38 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsprogs coverity patch <cid-03.diff>
-Date: Sun, 18 Mar 2007 10:09:24 -0400
-Message-ID: <20070318140924.GC14519@thunk.org>
-References: <200702100211.l1A2BQRE007265@igsi.llnl.gov>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: e2fsprogs coverity patch <cid-1.diff>
+Date: Sun, 18 Mar 2007 11:32:05 -0600
+Message-ID: <20070318173205.GJ6373@schatzie.adilger.int>
+References: <200702100208.l1A28GC2005813@igsi.llnl.gov> <20070318134014.GA10086@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	wartens2@llnl.gov
-To: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
+Cc: "Brian D. Behlendorf" <behlendorf1@llnl.gov>,
+	linux-ext4@vger.kernel.org, wartens2@llnl.gov
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60222 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752741AbXCROJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Mar 2007 10:09:48 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:44323 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752682AbXCRRcJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Mar 2007 13:32:09 -0400
 Content-Disposition: inline
-In-Reply-To: <200702100211.l1A2BQRE007265@igsi.llnl.gov>
+In-Reply-To: <20070318134014.GA10086@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 09, 2007 at 06:11:26PM -0800, Brian D. Behlendorf wrote:
-> blkid_dev_has_tag() will immediately return -1 (an error if value is NULL. Thus
-> at the test later on value cannot be NULL. There are two possible ways to go
-> about fixing this. The first would be to remove the first NULL check for value.
-> The second one would be to remove the second check (and the deadcode). I could
-> be persuaded either way, but to preserve existing functionality I will opt to
-> remove the second check.
+On Mar 18, 2007  09:40 -0400, Theodore Tso wrote:
+> On Fri, Feb 09, 2007 at 06:08:16PM -0800, Brian D. Behlendorf wrote:
+> > Coverity ID: 2: Checked Return
+> 
+> Would I be right in assuming this should be Coverity ID 1, and not 2?
+> (cid-2.diff is also labelled as Coverity ID 1).
+> 
+> What is Coverity ID's, anyway?  I assume they are something you
+> locally assigned?
 
-Better to do this the other way, I think.  It exposes more
-functionality, and there shouldn't be any code that depends on
-blkid_dev_has_tag returning an error is value is NULL.
+Yes, this is just the error number within a given software project
+at a particular site.
 
-					- Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
