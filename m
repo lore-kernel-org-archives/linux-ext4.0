@@ -1,350 +1,183 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [Patch 2/2] write support for uninitialized extents
-Date: Wed, 21 Mar 2007 18:05:31 +0530
-Message-ID: <20070321123531.GD27273@amitarora.in.ibm.com>
-References: <1174319308.11636.8.camel@kleikamp.austin.ibm.com> <1174324522.11657.14.camel@localhost.localdomain> <20070321121951.GB27273@amitarora.in.ibm.com>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [PATCH 0/2] ext4: allow more than 32000 subdirectories
+Date: Wed, 21 Mar 2007 19:42:30 +0530
+Message-ID: <1174486350.11843.11.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>, tytso <tytso@mit.edu>,
+	sct <sct@redhat.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:41357 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752725AbXCUMgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Mar 2007 08:36:43 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l2LCag8e010350
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 08:36:42 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l2LCZYpg259466
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 08:35:34 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l2LCZXjS014793
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 08:35:33 -0400
-Content-Disposition: inline
-In-Reply-To: <20070321121951.GB27273@amitarora.in.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:56326 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752870AbXCUOK4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Mar 2007 10:10:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Here is the patch which supports writing to uninitialized extents. There
-are no major changes to this patch. But is being resubitted to make sure
-that it applies cleanly on top of the new "preallocation" patch, which has
-been modified to implement fallocate inode operation so that
-preallocation can be done using sys_fallocate() system call.
+Hi,
 
-Signed-off-by: Amit K Arora <aarora@in.ibm.com>
+This patch adds support to ext4 for allowing more than 65000 subdirectories. Currently the maximum number of subdirectories is capped at 32000.
 
----
- fs/ext4/extents.c               |  228 +++++++++++++++++++++++++++++++++++-----
- include/linux/ext4_fs_extents.h |    1 
- 2 files changed, 202 insertions(+), 27 deletions(-)
+If we exceed 65000 subdirectories in an htree directory it sets the inode link count to 1 and no longer counts subdirectories.  The directory link count is not actually used when determining if a directory is empty, as that only counts subdirectories and not regular files that might be in there. 
 
-Index: linux-2.6.20.1/fs/ext4/extents.c
+A EXT4_FEATURE_RO_COMPAT_DIR_NLINK flag has been added and it is set if the subdir count for any directory crosses 65000.
+
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: linux-2.6.20/fs/ext4/namei.c
 ===================================================================
---- linux-2.6.20.1.orig/fs/ext4/extents.c
-+++ linux-2.6.20.1/fs/ext4/extents.c
-@@ -1141,6 +1141,51 @@ ext4_can_extents_be_merged(struct inode 
- }
- 
- /*
-+ * ext4_ext_try_to_merge:
-+ * tries to merge the "ex" extent to the next extent in the tree.
-+ * It always tries to merge towards right. If you want to merge towards
-+ * left, pass "ex - 1" as argument instead of "ex".
-+ * Returns 0 if the extents (ex and ex+1) were _not_ merged and returns
-+ * 1 if they got merged.
-+ */
-+int ext4_ext_try_to_merge(struct inode *inode,
-+				struct ext4_ext_path *path,
-+				struct ext4_extent *ex)
-+{
-+	struct ext4_extent_header *eh;
-+	unsigned int depth, len;
-+	int merge_done=0, uninitialized = 0;
-+
-+	depth = ext_depth(inode);
-+	BUG_ON(path[depth].p_hdr == NULL);
-+	eh = path[depth].p_hdr;
-+
-+	while (ex < EXT_LAST_EXTENT(eh)) {
-+		if (!ext4_can_extents_be_merged(inode, ex, ex + 1))
-+			break;
-+		/* merge with next extent! */
-+		if (ext4_ext_is_uninitialized(ex))
-+			uninitialized = 1;
-+		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
-+					+ ext4_ext_get_actual_len(ex + 1));
-+		if (uninitialized)
-+			ext4_ext_mark_uninitialized(ex);
-+
-+		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
-+			len = (EXT_LAST_EXTENT(eh) - ex - 1)
-+					* sizeof(struct ext4_extent);
-+			memmove(ex + 1, ex + 2, len);
-+		}
-+		eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)-1);
-+		merge_done = 1;
-+		BUG_ON(eh->eh_entries == 0);
-+	}
-+
-+	return merge_done;
-+}
-+
-+
-+/*
-  * ext4_ext_check_overlap:
-  * check if a portion of the "newext" extent overlaps with an
-  * existing extent.
-@@ -1316,25 +1361,7 @@ has_space:
- 
- merge:
- 	/* try to merge extents to the right */
--	while (nearex < EXT_LAST_EXTENT(eh)) {
--		if (!ext4_can_extents_be_merged(inode, nearex, nearex + 1))
--			break;
--		/* merge with next extent! */
--		if (ext4_ext_is_uninitialized(nearex))
--			uninitialized = 1;
--		nearex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(nearex)
--					+ ext4_ext_get_actual_len(nearex + 1));
--		if (uninitialized)
--			ext4_ext_mark_uninitialized(nearex);
--
--		if (nearex + 1 < EXT_LAST_EXTENT(eh)) {
--			len = (EXT_LAST_EXTENT(eh) - nearex - 1)
--					* sizeof(struct ext4_extent);
--			memmove(nearex + 1, nearex + 2, len);
--		}
--		eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)-1);
--		BUG_ON(eh->eh_entries == 0);
--	}
-+	ext4_ext_try_to_merge(inode, path, nearex);
- 
- 	/* try to merge extents to the left */
- 
-@@ -1999,15 +2026,149 @@ void ext4_ext_release(struct super_block
- #endif
- }
- 
-+/*
-+ * ext4_ext_convert_to_initialized:
-+ * this function is called by ext4_ext_get_blocks() if someone tries to write
-+ * to an uninitialized extent. It may result in splitting the uninitialized
-+ * extent into multiple extents (upto three). Atleast one initialized extent
-+ * and atmost two uninitialized extents can result.
-+ * There are three possibilities:
-+ *   a> No split required: Entire extent should be initialized.
-+ *   b> Split into two extents: Only one end of the extent is being written to.
-+ *   c> Split into three extents: Somone is writing in middle of the extent.
-+ */
-+int ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
-+					struct ext4_ext_path *path,
-+					ext4_fsblk_t iblock,
-+					unsigned long max_blocks)
-+{
-+	struct ext4_extent *ex, *ex1 = NULL, *ex2 = NULL, *ex3 = NULL, newex;
-+	struct ext4_extent_header *eh;
-+	unsigned int allocated, ee_block, ee_len, depth;
-+	ext4_fsblk_t newblock;
-+	int err = 0, ret = 0;
-+
-+	depth = ext_depth(inode);
-+	eh = path[depth].p_hdr;
-+	ex = path[depth].p_ext;
-+	ee_block = le32_to_cpu(ex->ee_block);
-+	ee_len = ext4_ext_get_actual_len(ex);
-+	allocated = ee_len - (iblock - ee_block);
-+	newblock = iblock - ee_block + ext_pblock(ex);
-+	ex2 = ex;
-+
-+	/* ex1: ee_block to iblock - 1 : uninitialized */
-+	if (iblock > ee_block) {
-+		ex1 = ex;
-+		ex1->ee_len = cpu_to_le16(iblock - ee_block);
-+		ext4_ext_mark_uninitialized(ex1);
-+		ex2 = &newex;
-+	}
-+	/* for sanity, update the length of the ex2 extent before
-+	 * we insert ex3, if ex1 is NULL. This is to avoid temporary
-+	 * overlap of blocks.
-+	 */
-+	if (!ex1 && allocated > max_blocks)
-+		ex2->ee_len = cpu_to_le16(max_blocks);
-+	/* ex3: to ee_block + ee_len : uninitialised */
-+	if (allocated > max_blocks) {
-+		unsigned int newdepth;
-+		ex3 = &newex;
-+		ex3->ee_block = cpu_to_le32(iblock + max_blocks);
-+		ext4_ext_store_pblock(ex3, newblock + max_blocks);
-+		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
-+		ext4_ext_mark_uninitialized(ex3);
-+		err = ext4_ext_insert_extent(handle, inode, path, ex3);
-+		if (err)
-+			goto out;
-+		/* The depth, and hence eh & ex might change
-+		 * as part of the insert above.
-+		 */
-+		newdepth = ext_depth(inode);
-+		if (newdepth != depth)
-+		{
-+			depth=newdepth;
-+			path = ext4_ext_find_extent(inode, iblock, NULL);
-+			if (IS_ERR(path)) {
-+				err = PTR_ERR(path);
-+				path = NULL;
-+				goto out;
-+			}
-+			eh = path[depth].p_hdr;
-+			ex = path[depth].p_ext;
-+			if (ex2 != &newex)
-+				ex2 = ex;
-+		}
-+		allocated = max_blocks;
-+	}
-+	/* If there was a change of depth as part of the
-+	 * insertion of ex3 above, we need to update the length
-+	 * of the ex1 extent again here
-+	 */
-+	if (ex1 && ex1 != ex) {
-+		ex1 = ex;
-+		ex1->ee_len = cpu_to_le16(iblock - ee_block);
-+		ext4_ext_mark_uninitialized(ex1);
-+		ex2 = &newex;
-+	}
-+	/* ex2: iblock to iblock + maxblocks-1 : initialised */
-+	ex2->ee_block = cpu_to_le32(iblock);
-+	ex2->ee_start = cpu_to_le32(newblock);
-+	ext4_ext_store_pblock(ex2, newblock);
-+	ex2->ee_len = cpu_to_le16(allocated);
-+	if (ex2 != ex)
-+		goto insert;
-+	if ((err = ext4_ext_get_access(handle, inode, path + depth)))
-+		goto out;
-+	/* New (initialized) extent starts from the first block
-+	 * in the current extent. i.e., ex2 == ex
-+	 * We have to see if it can be merged with the extent
-+	 * on the left.
-+	 */
-+	if (ex2 > EXT_FIRST_EXTENT(eh)) {
-+		/* To merge left, pass "ex2 - 1" to try_to_merge(),
-+		 * since it merges towards right _only_.
-+		 */
-+		ret = ext4_ext_try_to_merge(inode, path, ex2 - 1);
-+		if (ret) {
-+			err = ext4_ext_correct_indexes(handle, inode, path);
-+			if (err)
-+				goto out;
-+			depth = ext_depth(inode);
-+			ex2--;
-+		}
-+	}
-+	/* Try to Merge towards right. This might be required
-+	 * only when the whole extent is being written to.
-+	 * i.e. ex2==ex and ex3==NULL.
-+	 */
-+	if (!ex3) {
-+		ret = ext4_ext_try_to_merge(inode, path, ex2);
-+		if (ret) {
-+			err = ext4_ext_correct_indexes(handle, inode, path);
-+			if (err)
-+				goto out;
-+		}
-+	}
-+	/* Mark modified extent as dirty */
-+	err = ext4_ext_dirty(handle, inode, path + depth);
-+	goto out;
-+insert:
-+	err = ext4_ext_insert_extent(handle, inode, path, &newex);
-+out:
-+	return err ? err : allocated;
-+}
-+
- int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t iblock,
- 			unsigned long max_blocks, struct buffer_head *bh_result,
- 			int create, int extend_disksize)
+--- linux-2.6.20.orig/fs/ext4/namei.c
++++ linux-2.6.20/fs/ext4/namei.c
+@@ -1624,11 +1624,21 @@ static int ext4_delete_entry (handle_t *
+ static inline void ext4_inc_count(handle_t *handle, struct inode *inode)
  {
- 	struct ext4_ext_path *path = NULL;
-+	struct ext4_extent_header *eh;
- 	struct ext4_extent newex, *ex;
- 	ext4_fsblk_t goal, newblock;
--	int err = 0, depth;
-+	int err = 0, depth, ret;
- 	unsigned long allocated = 0;
+ 	inc_nlink(inode);
++	if (is_dx(inode) && inode->i_nlink > 1) {
++		/* limit is 16-bit i_links_count */
++        	if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
++                	inode->i_nlink = 1;
++			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb,
++					      EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
++		}
++	}
+ }
  
- 	__clear_bit(BH_New, &bh_result->b_state);
-@@ -2055,6 +2216,7 @@ int ext4_ext_get_blocks(handle_t *handle
- 	 * this is why assert can't be put in ext4_ext_find_extent()
- 	 */
- 	BUG_ON(path[depth].p_ext == NULL && depth != 0);
-+	eh = path[depth].p_hdr;
+ static inline void ext4_dec_count(handle_t *handle, struct inode *inode)
+ {
+ 	drop_nlink(inode);
++	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
++		inc_nlink(inode);
+ }
  
- 	ex = path[depth].p_ext;
- 	if (ex) {
-@@ -2063,13 +2225,9 @@ int ext4_ext_get_blocks(handle_t *handle
- 		unsigned short ee_len;
+ static int ext4_add_nondir(handle_t *handle,
+@@ -1727,7 +1737,7 @@ static int ext4_mkdir(struct inode * dir
+ 	struct ext4_dir_entry_2 * de;
+ 	int err, retries = 0;
  
- 		/*
--		 * Allow future support for preallocated extents to be added
--		 * as an RO_COMPAT feature:
- 		 * Uninitialized extents are treated as holes, except that
--		 * we avoid (fail) allocating new blocks during a write.
-+		 * we split out initialized portions during a write.
- 		 */
--		if (le16_to_cpu(ex->ee_len) > EXT_MAX_LEN)
--			goto out2;
- 		ee_len = ext4_ext_get_actual_len(ex);
- 		/* if found extent covers block, simply return it */
- 	        if (iblock >= ee_block && iblock < ee_block + ee_len) {
-@@ -2078,12 +2236,27 @@ int ext4_ext_get_blocks(handle_t *handle
- 			allocated = ee_len - (iblock - ee_block);
- 			ext_debug("%d fit into %lu:%d -> %llu\n", (int) iblock,
- 					ee_block, ee_len, newblock);
-+
- 			/* Do not put uninitialized extent in the cache */
--			if (!ext4_ext_is_uninitialized(ex))
-+			if (!ext4_ext_is_uninitialized(ex)) {
- 				ext4_ext_put_in_cache(inode, ee_block,
- 							ee_len, ee_start,
- 							EXT4_EXT_CACHE_EXTENT);
--			goto out;
-+				goto out;
-+			}
-+			if (create == EXT4_CREATE_UNINITIALIZED_EXT)
-+				goto out;
-+			if (!create)
-+				goto out2;
-+
-+			ret = ext4_ext_convert_to_initialized(handle, inode,
-+								path, iblock,
-+								max_blocks);
-+			if (ret <= 0)
-+				goto out2;
-+			else
-+				allocated = ret;
-+			goto outnew;
- 		}
+-	if (dir->i_nlink >= EXT4_LINK_MAX)
++	if (EXT4_DIR_LINK_MAX(dir))
+ 		return -EMLINK;
+ 
+ retry:
+@@ -1750,7 +1760,7 @@ retry:
+ 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
+ 	dir_block = ext4_bread (handle, inode, 0, 1, &err);
+ 	if (!dir_block) {
+-		drop_nlink(inode); /* is this nlink == 0? */
++		ext4_dec_count(handle, inode); /* is this nlink == 0? */
+ 		ext4_mark_inode_dirty(handle, inode);
+ 		iput (inode);
+ 		goto out_stop;
+@@ -1782,7 +1792,7 @@ retry:
+ 		iput (inode);
+ 		goto out_stop;
+ 	}
+-	inc_nlink(dir);
++	ext4_inc_count(handle, dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 	d_instantiate(dentry, inode);
+@@ -2047,10 +2057,10 @@ static int ext4_rmdir (struct inode * di
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_rmdir;
+-	if (inode->i_nlink != 2)
+-		ext4_warning (inode->i_sb, "ext4_rmdir",
+-			      "empty directory has nlink!=2 (%d)",
+-			      inode->i_nlink);
++	if (!EXT4_DIR_LINK_EMPTY(inode))
++		ext4_warning(inode->i_sb, "ext3_rmdir",
++			     "empty directory has too many links (%d)",
++			     inode->i_nlink);
+ 	inode->i_version++;
+ 	clear_nlink(inode);
+ 	/* There's no need to set i_disksize: the fact that i_nlink is
+@@ -2060,7 +2070,7 @@ static int ext4_rmdir (struct inode * di
+ 	ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
+ 	ext4_mark_inode_dirty(handle, inode);
+-	drop_nlink(dir);
++	ext4_dec_count(handle, dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 
+@@ -2111,7 +2121,7 @@ static int ext4_unlink(struct inode * di
+ 	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+-	drop_nlink(inode);
++	ext4_dec_count(handle, inode);
+ 	if (!inode->i_nlink)
+ 		ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = dir->i_ctime;
+@@ -2187,7 +2197,7 @@ static int ext4_link (struct dentry * ol
+ 	struct inode *inode = old_dentry->d_inode;
+ 	int err, retries = 0;
+ 
+-	if (inode->i_nlink >= EXT4_LINK_MAX)
++	if (EXT4_DIR_LINK_MAX(inode))
+ 		return -EMLINK;
+ 
+ retry:
+@@ -2333,7 +2343,7 @@ static int ext4_rename (struct inode * o
  	}
  
-@@ -2135,6 +2308,7 @@ int ext4_ext_get_blocks(handle_t *handle
- 
- 	/* previous routine could use block we allocated */
- 	newblock = ext_pblock(&newex);
-+outnew:
- 	__set_bit(BH_New, &bh_result->b_state);
- 
- 	/* Cache only when it is _not_ an uninitialized extent */
-Index: linux-2.6.20.1/include/linux/ext4_fs_extents.h
+ 	if (new_inode) {
+-		drop_nlink(new_inode);
++		ext4_dec_count(handle, new_inode);
+ 		new_inode->i_ctime = CURRENT_TIME_SEC;
+ 	}
+ 	old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
+@@ -2344,11 +2354,13 @@ static int ext4_rename (struct inode * o
+ 		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_journal_dirty_metadata");
+ 		ext4_journal_dirty_metadata(handle, dir_bh);
+-		drop_nlink(old_dir);
++		ext4_dec_count(handle, old_dir);
+ 		if (new_inode) {
+-			drop_nlink(new_inode);
++			/* checked empty_dir above, can't have another parent,
++			 * ext3_dec_count() won't work for many-linked dirs */
++			new_inode->i_nlink = 0;
+ 		} else {
+-			inc_nlink(new_dir);
++			ext4_inc_count(handle, new_dir);
+ 			ext4_update_dx_flag(new_dir);
+ 			ext4_mark_inode_dirty(handle, new_dir);
+ 		}
+Index: linux-2.6.20/include/linux/ext4_fs.h
 ===================================================================
---- linux-2.6.20.1.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.20.1/include/linux/ext4_fs_extents.h
-@@ -203,6 +203,7 @@ ext4_ext_invalidate_cache(struct inode *
+--- linux-2.6.20.orig/include/linux/ext4_fs.h
++++ linux-2.6.20/include/linux/ext4_fs.h
+@@ -71,7 +71,7 @@
+ /*
+  * Maximal count of links to a file
+  */
+-#define EXT4_LINK_MAX		32000
++#define EXT4_LINK_MAX		65000
  
- extern int ext4_extent_tree_init(handle_t *, struct inode *);
- extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
-+extern int ext4_ext_try_to_merge(struct inode *, struct ext4_ext_path *, struct ext4_extent *);
- extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
- extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
+ /*
+  * Macro-instructions used to manage several block sizes
+@@ -596,6 +596,7 @@ static inline int ext4_valid_inum(struct
+ #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+ #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
++#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ 
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+@@ -613,6 +614,7 @@ static inline int ext4_valid_inum(struct
+ 					 EXT4_FEATURE_INCOMPAT_64BIT)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
++					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
+ 
+ /*
+
+
+Thanks,
+Kalpak Shah.
