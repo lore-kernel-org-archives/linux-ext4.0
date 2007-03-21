@@ -1,42 +1,36 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: using sparse to catch endian errors
-Date: Wed, 21 Mar 2007 11:16:26 -0500
-Message-ID: <1174493786.13386.4.camel@kleikamp.austin.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: e2fsprogs coverity patch <cid-11.diff>
+Date: Wed, 21 Mar 2007 14:54:45 -0400
+Message-ID: <20070321185445.GA17405@thunk.org>
+References: <200702100211.l1A2B9wF007009@igsi.llnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com,
+	wartens2@llnl.gov
+To: "Brian D. Behlendorf" <behlendorf1@llnl.gov>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:57633 "EHLO e1.ny.us.ibm.com"
+Received: from THUNK.ORG ([69.25.196.29]:37405 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932891AbXCUQQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Mar 2007 12:16:28 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l2LGGR0S010706
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 12:16:27 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l2LGGR1Y225974
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 12:16:27 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l2LGGQ4a020432
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 12:16:26 -0400
-Received: from [9.53.41.164] (dyn95341164.austin.ibm.com [9.53.41.164])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l2LGGQWC020387
-	for <linux-ext4@vger.kernel.org>; Wed, 21 Mar 2007 12:16:26 -0400
+	id S933584AbXCUSyx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Mar 2007 14:54:53 -0400
+Content-Disposition: inline
+In-Reply-To: <200702100211.l1A2B9wF007009@igsi.llnl.gov>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On the conference call, I promised to share the syntax for running
-sparse to check for endian problems.
+On Fri, Feb 09, 2007 at 06:11:09PM -0800, Brian D. Behlendorf wrote:
+> Add an extra byte to EXT2_NAME_LEN in the static allocation for the
+> required trailing null.  This allows filenames up to the maximum
+> length of EXT2_NAME_LEN withover an overrun.
+> 
+> Coverity ID: 11: Overrun Static
+> 
+> -	thislen = ((dirent->name_len & 0xFF) < EXT2_NAME_LEN) ?
+> +	thislen = ((dirent->name_len & 0xFF) <= EXT2_NAME_LEN) ?
+>  		(dirent->name_len & 0xFF) : EXT2_NAME_LEN;
 
-I use the alias:
+This change is largely meaningless/unnecessary, since if
+*dirent->name_len & 0xFF) is equal to EXT2_NAME_LEN it doesn't matter
+which path is chosen; was there a reason for the change.
 
-alias make_sparse='make C=2 CF="-D__CHECK_ENDIAN__"'
-
-Then run "make_sparse fs/jbd2/ fs/ext4/"
-
-Thanks,
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+					- Ted
