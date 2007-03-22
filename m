@@ -1,43 +1,56 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsprogs coverity patch <cid-11.diff>
-Date: Wed, 21 Mar 2007 20:52:42 -0400
-Message-ID: <20070322005242.GA23643@thunk.org>
-References: <200702100211.l1A2B9wF007009@igsi.llnl.gov> <20070321185445.GA17405@thunk.org> <1174504455.13386.30.camel@kleikamp.austin.ibm.com>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: [PATCH -mm] ext4: use NULL for pointers
+Date: Wed, 21 Mar 2007 19:25:43 -0700
+Message-ID: <20070321192543.e17e23cd.randy.dunlap@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Brian D. Behlendorf" <behlendorf1@llnl.gov>,
-	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	wartens2@llnl.gov
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42776 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965104AbXCVAwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Mar 2007 20:52:51 -0400
-Content-Disposition: inline
-In-Reply-To: <1174504455.13386.30.camel@kleikamp.austin.ibm.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:38806 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753227AbXCVCbA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Mar 2007 22:31:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 21, 2007 at 02:14:15PM -0500, Dave Kleikamp wrote:
-> > > Coverity ID: 11: Overrun Static
-> > > 
-> > > -	thislen = ((dirent->name_len & 0xFF) < EXT2_NAME_LEN) ?
-> > > +	thislen = ((dirent->name_len & 0xFF) <= EXT2_NAME_LEN) ?
-> > >  		(dirent->name_len & 0xFF) : EXT2_NAME_LEN;
-> > 
-> > This change is largely meaningless/unnecessary, since if
-> > *dirent->name_len & 0xFF) is equal to EXT2_NAME_LEN it doesn't matter
-> > which path is chosen; was there a reason for the change.
-> 
-> #define EXT2_NAME_LEN 255
-> 
-> How about this?
-> 
-> 	thislen = dirent->name_len & 0xFF;
+From: Randy Dunlap <randy.dunlap@oracle.com>
 
-It's unlikely that EXT2_NAME_LEN will ever change, so yes, that's
-probably a good idea.  I've alrady committed the patch, though so
-we'll do it later.
+Use NULL instead of 0 for pointers:
+fs/ext4/writeback.c:874:24: warning: Using plain integer as NULL pointer
+fs/ext4/writeback.c:1105:23: warning: Using plain integer as NULL pointer
 
-						- Ted
+Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+---
+ fs/ext4/writeback.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- linux-2.6.21-rc4-mm1.orig/fs/ext4/writeback.c
++++ linux-2.6.21-rc4-mm1/fs/ext4/writeback.c
+@@ -41,6 +41,7 @@
+ #include <linux/jbd.h>
+ #include <linux/ext4_fs_extents.h>
+ #include <linux/smp_lock.h>
++#include <linux/stddef.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+ #include <linux/quotaops.h>
+@@ -871,7 +872,7 @@ int ext4_wb_prepare_write(struct file *f
+ 				wb_debug("read block %u\n",
+ 						(unsigned) bhw->b_blocknr);
+ 				set_bh_page(bhw, page, 0);
+-				bhw->b_this_page = 0;
++				bhw->b_this_page = NULL;
+ 				bhw->b_size = 1 << inode->i_blkbits;
+ 				atomic_set(&bhw->b_count, 1);
+ 				ll_rw_block(READ, 1, &bhw);
+@@ -1102,7 +1103,7 @@ int ext4_wb_block_truncate_page(handle_t
+ 			wb_debug("read block %u for part.trunc on %lu\n",
+ 					(unsigned) bhw->b_blocknr, page->index);
+ 			set_bh_page(bhw, page, 0);
+-			bhw->b_this_page = 0;
++			bhw->b_this_page = NULL;
+ 			bhw->b_size = 1 << inode->i_blkbits;
+ 			atomic_set(&bhw->b_count, 1);
+ 			ll_rw_block(READ, 1, &bhw);
