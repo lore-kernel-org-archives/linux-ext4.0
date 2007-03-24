@@ -1,45 +1,62 @@
-From: Guillaume Chazarain <guichaz@yahoo.fr>
-Subject: Re: 2.6.20 ext3 rename() returns success but doesn't unlink the source
-Date: Fri, 23 Mar 2007 23:24:51 +0100
-Message-ID: <460453B3.2020304@yahoo.fr>
-References: <1174670127.10004.14.camel@hurina>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: group descriptor contents and LAZY_BG
+Date: Sat, 24 Mar 2007 15:40:57 -0600
+Message-ID: <20070324214056.GL5967@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Timo Sirainen <tss@iki.fi>
+Content-Type: text/plain; charset=us-ascii
+Cc: Girish Shilamkar <girish@linsyssoft.com>,
+	Kalpak Shah <kalpak@clusterfs.com>
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sophia.inria.fr ([138.96.64.20]:41032 "EHLO sophia.inria.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753441AbXCWXwr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Mar 2007 19:52:47 -0400
-In-Reply-To: <1174670127.10004.14.camel@hurina>
+Received: from mail.clusterfs.com ([206.168.112.78]:54474 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbXCXVk7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Mar 2007 17:40:59 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Timo Sirainen a =E9crit :
+Ted,
+the LAZY_BG feature was originally written to test large filesystems and
+avoid the need to format (or even allocate, if sparse) large parts of the
+inode table and bitmaps.  To make the feature COMPAT the bg_free_blocks_count
+and bg_free_inodes_count are initialized to zero, and the kernel will skip
+these groups entirely without checking the bitmap.
 
-> 	rename("/mnt/Maildir/.Trash/new/1174635781.P25986Q0M341350.hurina",
-> 	       "/mnt/Maildir/.Trash/cur/1174635781.P25986Q0M341350.hurina:2,=
-");
+For the GDT_CSUM feature, we are using the LAZY_BG feature to not initialize
+the bitmaps and inode table.  However, setting the bg_free_*_count to zero
+is troublesome because it means we always need to check the GDT_CSUM feature
+flag to know whether a group actually has free blocks/inodes, and e2fsck
+is also getting confused about the number of free blocks/inodes in the groups
+and filesystem (we have to have a double accounting for "real" free blocks
+and "uninitialized" free blocks.
 
-$ ls -li /mnt/Maildir/.Trash/new/1174635781.P25986Q0M341350.hurina /mnt=
-/Maildir/.Trash/cur/1174635781.P25986Q0M341350.hurina:2,
-122481 -rw------- 2 1000 1000 3091 Mar 23 08:43 /mnt/Maildir/.Trash/cur=
-/1174635781.P25986Q0M341350.hurina:2,
-122481 -rw------- 2 1000 1000 3091 Mar 23 08:43 /mnt/Maildir/.Trash/new=
-/1174635781.P25986Q0M341350.hurina
+What do you think for the GDT_CSUM feature that we initialize the group
+descriptors as if the group had actually been formatted?  I think our
+use of the LAZY_BG feature is actually misguided - while they share some
+components (e.g. UNINIT flags, mke2fs code, some e2fsck code), since the
+GDT_CSUM feature is RO_COMPAT there isn't much reason to even enable
+LAZY_BG at format time...
 
-All your files in the list are hard linked.
-http://git.kernel.org/?p=3Dlinux/kernel/git/torvalds/linux-2.6.git;a=3D=
-blob;f=3Dfs/namei.c;h=3Dee60cc4d3453209723d6f70982e7083d7cb39477;hb=3DH=
-EAD#l2447
-seems to handle your case as you see it:
-if (old_dentry->d_inode =3D=3D new_dentry->d_inode)
-	return 0;
+We have to replace all uses of bg_free_*_count with the below macros:
 
-Regards.
++/* Macro-instructions used to calculate Free inodes and blocks count. */
++#define EXT3_BG_INODES_FREE(sb,gr,gdp) ((EXT3_HAS_RO_COMPAT_FEATURE(sb,       \
++					  EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&  \
++					  (gdp)->bg_flags & 		       \
++				          cpu_to_le16(EXT3_BG_INODE_UNINIT)) ? \
++				       EXT3_INODES_PER_GROUP(sb) :	       \
++				       le16_to_cpu((gdp)->bg_itable_unused) +  \
++				       le16_to_cpu((gdp)->bg_free_inodes_count))
++#define EXT3_BG_BLOCKS_FREE(sb,gr,gdp) ((EXT3_HAS_RO_COMPAT_FEATURE(sb,       \
++					  EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&  \
++					  (gdp)->bg_flags & 		       \
++				          cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) ? \
++				       ext3_free_blocks_after_init(sb,gr,gdp) :\
++				       le16_to_cpu((gdp)->bg_free_blocks_count))
 
---=20
-Guillaume
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
