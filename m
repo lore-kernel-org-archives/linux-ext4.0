@@ -1,73 +1,53 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Interface for the new fallocate() system call
-Date: Thu, 29 Mar 2007 17:21:26 +0530
-Message-ID: <20070329115126.GB7374@amitarora.in.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com>
+From: Chris Wedgwood <cw@f00f.org>
+Subject: Re: Interface for the new fallocate() system call
+Date: Thu, 29 Mar 2007 09:35:20 -0700
+Message-ID: <20070329163520.GA16632@tuatara.stupidest.org>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+Cc: torvalds@osdl.org, akpm@linux-foundation.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
 	cmm@us.ibm.com
-To: torvalds@osdl.org, akpm@linux-foundation.org
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:38915 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753367AbXC2LvY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Mar 2007 07:51:24 -0400
+Received: from smtp112.sbc.mail.mud.yahoo.com ([68.142.198.211]:21658 "HELO
+	smtp112.sbc.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1030344AbXC2QfY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Mar 2007 12:35:24 -0400
 Content-Disposition: inline
-In-Reply-To: <20070321120425.GA27273@amitarora.in.ibm.com>
+In-Reply-To: <20070329115126.GB7374@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Thu, Mar 29, 2007 at 05:21:26PM +0530, Amit K. Arora wrote:
 
-We need to come up with the best possible layout of arguments for the
-fallocate() system call. Various architectures have different
-requirements for how the arguments should look like. Since the mail
-chain has become huge, here is the summary of various inputs received
-so far.
+>    int fallocate(int fd, loff_t offset, loff_t len, int mode)
 
-Platform: s390
---------------
-s390 prefers following layout:
+Right now there are only two possible values for mode --- it's not
+clear what additional values there will be in the future.
 
-   int fallocate(int fd, loff_t offset, loff_t len, int mode)
+How about two syscalls?  If we decide later on we need something more
+complicated we can revisit this and *THEN* add another system call
+which may end up being a superset of the other two.
 
-For details on why and how "int, int, loff_t, loff_t" is a problem on
-s390, please see Heiko's mail on 16th March. Here is the link:
-http://www.mail-archive.com/linux-kernel@vger.kernel.org/msg133595.html
+I know that sounds somewhat icky but:
 
-Platform: ppc, arm
-------------------
-ppc (32 bit) has a problem with "int, loff_t, loff_t, int" layout,
-since this will result in a pad between fd and offset, making seven
-arguments total - which is not supported by ppc32. It supports only
-6 arguments. Thus the desired layout by ppc32 is:
+  * it's fairly simple
 
-   int fallocate(int fd, int mode, loff_t offset, loff_t len)
+  * we get nice argument handling on all arches by dropping u32 mode
+    (don't we?)
 
-Even ARM prefers above kind of layout. For details please see the
-definition of sys_arm_sync_file_range().
+  * syscalls don't really cost a lot to keep about, they do cost in
+    terms on maintenance though, but in this case i don't see it being
+    all that much of a problem
 
-Option of loff_t => high u32 + low u32
---------------------------------------
-Matthew and Russell have suggested another option of breaking each
-"loff_t" into two "u32"s. This will result in 6 arguments in total.
+  * IMO badly/over designed syscalls are going to be a bigger problem
+    long term
 
-Following think that this is a good alternative:
-Matthew Wilcox, Russell King, Heiko Carstens
-
-Following do not like this idea:
-Chris Wedgwood
-
-
-What are your thoughts on this ? What layout should we finalize on ?
-Perhaps, since sync_file_range() system call has similar arguments, we
-can take hint from the challenges faced on implementing it on various
-architectures, and decide.
-
-Please suggest. Thanks!
-
---
-Regards,
-Amit Arora
+Given that *NO* single fs in mainline right now can *reliably* use
+this functionality for a while maybe whatever solution people come up
+with next should sit in -mm for a while?  At least that gives people
+exposure to it and a chance to make some changes as once it's merged
+to mainline it's pretty hard to change.
