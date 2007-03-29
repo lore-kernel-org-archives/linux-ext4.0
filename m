@@ -1,106 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Ext3 behavior on power failure
-Date: Thu, 29 Mar 2007 10:00:59 +0200
-Message-ID: <20070329080059.GA7698@duck.suse.cz>
-References: <A74E8B4A356D8143B79BBEB839421F3004023496@CORPUSMX20B.corp.emc.com>
-	<4603B03E.7080302@emc.com>
-	<20070328124015.GG14935@atrey.karlin.mff.cuni.cz>
-	<460AF3A6.403@emc.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Interface for the new fallocate() system call
+Date: Thu, 29 Mar 2007 17:21:26 +0530
+Message-ID: <20070329115126.GB7374@amitarora.in.ibm.com>
+References: <20070117094658.GA17390@amitarora.in.ibm.com> <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: csar@stanford.edu, linux-ext4@vger.kernel.org,
-	ext3-users@redhat.com
-To: Ric Wheeler <ric@emc.com>
-Return-path: <ext3-users-bounces@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: torvalds@osdl.org, akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:38915 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753367AbXC2LvY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Mar 2007 07:51:24 -0400
 Content-Disposition: inline
-In-Reply-To: <460AF3A6.403@emc.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/ext3-users>
-List-Post: <mailto:ext3-users@redhat.com>
-List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=subscribe>
-Sender: ext3-users-bounces@redhat.com
-Errors-To: ext3-users-bounces@redhat.com
+In-Reply-To: <20070321120425.GA27273@amitarora.in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 28-03-07 19:00:54, Ric Wheeler wrote:
-> Jan Kara wrote:
-> >>armangau_philippe@emc.com wrote:
-> >>>Hi all,
-> >>>
-> >>>We are building a new system which is going to use ext3 FS. We would 
-> >>>like to know more about the behavior of ext3 in the case of failure.  
-> >>>But before I procede, I would like to share more information about our 
-> >>>future system. 
-> >>>*	Our application always does an fsync on files
-> >>>*	When symbolic links (more specifically fast symlink) are created, 
-> >>>the host directory is also fsync'ed. *	Our application is also 
-> >>>going to front an EMC disk array configured using RAID5 or RAID6.
-> >>>*	We will be using multipathing  so that we can assume that no disk 
-> >>>errors will be reported. 
-> >>>In this context , we would like to know the following for recovery after 
-> >>>a power outage:
-> >>>
-> >>>1.	When will an fsck have to be run (not counting  the scheduled fsck 
-> >>>every N-mounts)?
-> >>>2.	In the case of a crash, are the fsync-ed file contents and symbolic 
-> >>>links safe no matter what?
-> >>>
-> >>>Thanks,
-> >>This is an interesting twist on some of the discussion that we have had 
-> >>at the recent workshop and in other forums on hardening  file system in 
-> >>order to prevent the need to fsck.
-> >>
-> >>The twist is that we have a disk that will not lose power without being 
-> >>able to write to platter all of the data that has been sent - this is 
-> >>the case for most mid-range or higher disk arrays.
-> >>
-> >>If the application can precisely use fsync() on files, directories and 
-> >>symlinks, it wants to know that all objects are safe on disk that have 
-> >>completed a successful fsync. It also wants to know that the file system 
-> >>will not need any recovery beyond replaying transactions after a power 
-> >>outage/reboot - simply mount, let the transactions get replayed and you 
-> >>should be good to go without the fsck.
-> >>
-> >>The hard part of the question is to understand when and how often we 
-> >>will fail to deliver this easy case. Also, does any of the hardening in 
-> >>ext4 help here.
-> >  I'm probably misunderstanding something because the answer seems to be
-> >too obvious to me :) But anyway I'll write it so that you can correct
-> >me:
-> >  Due to journalling guarantees you should get consistent FS whenever
-> >you replay the log (unless there are some software bugs or hardware
-> >problems which is why fsck is run once per several mounts anyway).
-> >  If you fsync() your data, you are guaranteed that also your data are
-> >safely on disk when fsync returns. So what is the question here?
-> >
-> >								Honza
-> 
-> I think that the real question here is in practice, how often does this 
-> really hold to be true? When it fails, how long does it take to recover the 
-> file system?
-  I see, thanks for explanation :).
+Hello,
 
-> There are a lot of odd errors that can happen when you monitor a large 
-> enough number of file systems. In my experience, I would guess that disk 
-> errors are clearly the leading cause of issues, followed by software bugs 
-> (file system, firmware, etc) and then a group of errors caused by various 
-> occasional things (bad DRAM in the server/HBA/disk, bad cables/etc). Note 
-> that using a high end array does not eliminate errors, it just reduces the 
-> rate (hopefully by a large amount).
-> 
-> What is really hard to predict is the rate of the failures that require 
-> fsck with our current file system (say for a specific hardware setup) and 
-> how changes like the checksumming in ext4 can help us ride through these 
-> errors without needing a full fsck.
-  OK. All the features I've seen so far were more aiming to detecting that
-such an unexpected problem happened rather than trying to fix it or make
-fixing it faster. So currently it seems to me that any such unexpected
-failure requires fsck...
+We need to come up with the best possible layout of arguments for the
+fallocate() system call. Various architectures have different
+requirements for how the arguments should look like. Since the mail
+chain has become huge, here is the summary of various inputs received
+so far.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Platform: s390
+--------------
+s390 prefers following layout:
+
+   int fallocate(int fd, loff_t offset, loff_t len, int mode)
+
+For details on why and how "int, int, loff_t, loff_t" is a problem on
+s390, please see Heiko's mail on 16th March. Here is the link:
+http://www.mail-archive.com/linux-kernel@vger.kernel.org/msg133595.html
+
+Platform: ppc, arm
+------------------
+ppc (32 bit) has a problem with "int, loff_t, loff_t, int" layout,
+since this will result in a pad between fd and offset, making seven
+arguments total - which is not supported by ppc32. It supports only
+6 arguments. Thus the desired layout by ppc32 is:
+
+   int fallocate(int fd, int mode, loff_t offset, loff_t len)
+
+Even ARM prefers above kind of layout. For details please see the
+definition of sys_arm_sync_file_range().
+
+Option of loff_t => high u32 + low u32
+--------------------------------------
+Matthew and Russell have suggested another option of breaking each
+"loff_t" into two "u32"s. This will result in 6 arguments in total.
+
+Following think that this is a good alternative:
+Matthew Wilcox, Russell King, Heiko Carstens
+
+Following do not like this idea:
+Chris Wedgwood
+
+
+What are your thoughts on this ? What layout should we finalize on ?
+Perhaps, since sync_file_range() system call has similar arguments, we
+can take hint from the challenges faced on implementing it on various
+architectures, and decide.
+
+Please suggest. Thanks!
+
+--
+Regards,
+Amit Arora
