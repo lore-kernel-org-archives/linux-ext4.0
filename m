@@ -1,42 +1,41 @@
-From: Paul Mackerras <paulus@samba.org>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
 Subject: Re: Interface for the new fallocate() system call
-Date: Fri, 30 Mar 2007 19:15:29 +1000
-Message-ID: <17932.54577.163137.202721__19885.0952474915$1175292955$gmane$org@cargo.ozlabs.ibm.com>
-References: <20070117094658.GA17390@amitarora.in.ibm.com>
-	<20070225022326.137b4875.akpm@linux-foundation.org>
-	<20070301183445.GA7911@amitarora.in.ibm.com>
-	<20070316143101.GA10152@amitarora.in.ibm.com>
-	<20070316161704.GE8525@osiris.boeblingen.de.ibm.com>
-	<20070317111036.GC29931@parisc-linux.org>
-	<20070321120425.GA27273@amitarora.in.ibm.com>
-	<20070329115126.GB7374@amitarora.in.ibm.com>
-	<20070329101010.7a2b8783.akpm@linux-foundation.org>
-	<20070330071417.GI355@devserv.devel.redhat.com>
+Date: Fri, 30 Mar 2007 12:44:49 +0200
+Message-ID: <20070330104449.GA9371__38020.4174471602$1175295811$gmane$org@lazybastard.org>
+References: <20070225022326.137b4875.akpm@linux-foundation.org> <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071929.GC8365@osiris.boeblingen.de.ibm.com> <17932.54606.323431.491736@cargo.ozlabs.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Heiko Carstens <heiko.carstens@de.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
 	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Jakub Jelinek <jakub@redhat.com>
+To: Paul Mackerras <paulus@samba.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:57164 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751654AbXC3Kci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Mar 2007 06:32:38 -0400
-In-Reply-To: <20070330071417.GI355@devserv.devel.redhat.com>
+Received: from lazybastard.de ([212.112.238.170]:59268 "EHLO
+	longford.lazybastard.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750863AbXC3MlS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Mar 2007 08:41:18 -0400
+Content-Disposition: inline
+In-Reply-To: <17932.54606.323431.491736@cargo.ozlabs.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jakub Jelinek writes:
+On Fri, 30 March 2007 19:15:58 +1000, Paul Mackerras wrote:
+> Heiko Carstens writes:
+>=20
+> > If possible I'd prefer the six-32-bit-args approach.
+>=20
+> It does mean extra unnecessary work for 64-bit platforms, though...
 
-> Wouldn't
-> int fallocate(loff_t offset, loff_t len, int fd, int mode)
-> work on both s390 and ppc/arm?  glibc will certainly wrap it and
-> reorder the arguments as needed, so there is no need to keep fd first.
+Wouldn't that work be confined to fallocate()?  If I understand Heiko
+correctly, the alternative would slow s390 down for every syscall,
+including more performance-critical ones.
 
-That looks fine to me.
+J=C3=B6rn
 
-Paul.
+--=20
+tglx1 thinks that joern should get a (TM) for "Thinking Is Hard"
+-- Thomas Gleixner
