@@ -1,60 +1,32 @@
 From: akpm@linux-foundation.org
-Subject: - revert-retries-in-ext3_prepare_write-violate-ordering-requirements.patch removed from -mm tree
-Date: Mon, 02 Apr 2007 16:03:47 -0700
-Message-ID: <200704022303.l32N3lrk011932@shell0.pdx.osdl.net>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: - revert-retries-in-ext4_prepare_write-violate-ordering-requirements.patch removed from -mm tree
+Date: Mon, 02 Apr 2007 16:03:50 -0700
+Message-ID: <200704022303.l32N3oLx011937@shell0.pdx.osdl.net>
 To: akpm@linux-foundation.org, dev@openvz.org, dmonakhov@openvz.org,
 	kenneth.w.chen@intel.com, linux-ext4@vger.kernel.org,
 	mingo@elte.hu, saw@sw.ru, stable@kernel.org,
 	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.osdl.org ([65.172.181.24]:52085 "EHLO smtp.osdl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966082AbXDBXFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Apr 2007 19:05:49 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     revert "retries in ext3_prepare_write() violate ordering requirements"
+     revert "retries in ext4_prepare_write() violate ordering requirements"
 has been removed from the -mm tree.  Its filename was
-     revert-retries-in-ext3_prepare_write-violate-ordering-requirements.patch
+     revert-retries-in-ext4_prepare_write-violate-ordering-requirements.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: revert "retries in ext3_prepare_write() violate ordering requirements"
+Subject: revert "retries in ext4_prepare_write() violate ordering requirements"
 From: Andrew Morton <akpm@linux-foundation.org>
 
-Revert e92a4d595b464c4aae64be39ca61a9ffe9c8b278.
-
-Dmitry points out
-
-"When we block_prepare_write() failed while ext3_prepare_write() we jump to
- "failure" label and call ext3_prepare_failure() witch search last mapped bh
- and invoke commit_write untill it.  This is wrong!!  because some bh from
- begining to the last mapped bh may be not uptodate.  As a result we commit to
- disk not uptodate page content witch contains garbage from previous usage."
-
-and
-
-"Unexpected file size increasing."
-
-   Call trace the same as it was in first issue but result is different. 
-   For example we have file with i_size is zero.  we want write two blocks ,
-   but fs has only one free block.
-
-   ->ext3_prepare_write(...from == 0, to == 2048)
-     retry:
-     ->block_prepare_write() == -ENOSPC# we failed but allocated one block here.
-     ->ext3_prepare_failure()
-       ->commit_write( from == 0, to == 1024) # after this i_size becomes 1024 :)
-     if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-        goto retry;
-
-   Finally when all retries will be spended ext3_prepare_failure return
-   -ENOSPC, but i_size was increased and later block trimm procedures can't
-   help here.
-
-We don't appear to have the horsepower to fix these issues, so let's put
-things back the way they were for now.
+Revert b46be05004abb419e303e66e143eed9f8a6e9f3f.  Same reasoning as for ext3.
 
 Cc: Kirill Korotaev <dev@openvz.org>
 Cc: Ingo Molnar <mingo@elte.hu>
@@ -66,14 +38,14 @@ Cc: <stable@kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |   85 +++++-----------------------------------------
+ fs/ext4/inode.c |   85 +++++-----------------------------------------
  1 file changed, 10 insertions(+), 75 deletions(-)
 
-diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-requirements fs/ext3/inode.c
---- a/fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-requirements
-+++ a/fs/ext3/inode.c
-@@ -1148,102 +1148,37 @@ static int do_journal_get_write_access(h
- 	return ext3_journal_get_write_access(handle, bh);
+diff -puN fs/ext4/inode.c~revert-retries-in-ext4_prepare_write-violate-ordering-requirements fs/ext4/inode.c
+--- a/fs/ext4/inode.c~revert-retries-in-ext4_prepare_write-violate-ordering-requirements
++++ a/fs/ext4/inode.c
+@@ -1147,102 +1147,37 @@ static int do_journal_get_write_access(h
+ 	return ext4_journal_get_write_access(handle, bh);
  }
  
 -/*
@@ -83,7 +55,7 @@ diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-
 - * This content is expected to be set to zeroes by block_prepare_write().
 - * 2006/10/14  SAW
 - */
--static int ext3_prepare_failure(struct file *file, struct page *page,
+-static int ext4_prepare_failure(struct file *file, struct page *page,
 -				unsigned from, unsigned to)
 -{
 -	struct address_space *mapping;
@@ -91,13 +63,13 @@ diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-
 -	unsigned block_start, block_end;
 -	unsigned blocksize;
 -	int ret;
--	handle_t *handle = ext3_journal_current_handle();
+-	handle_t *handle = ext4_journal_current_handle();
 -
 -	mapping = page->mapping;
--	if (ext3_should_writeback_data(mapping->host)) {
+-	if (ext4_should_writeback_data(mapping->host)) {
 -		/* optimization: no constraints about data */
 -skip:
--		return ext3_journal_stop(handle);
+-		return ext4_journal_stop(handle);
 -	}
 -
 -	head = page_buffers(page);
@@ -117,10 +89,10 @@ diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-
 -		if (!buffer_mapped(bh))
 -		/* prepare_write failed on this bh */
 -			break;
--		if (ext3_should_journal_data(mapping->host)) {
+-		if (ext4_should_journal_data(mapping->host)) {
 -			ret = do_journal_get_write_access(handle, bh);
 -			if (ret) {
--				ext3_journal_stop(handle);
+-				ext4_journal_stop(handle);
 -				return ret;
 -			}
 -		}
@@ -136,49 +108,49 @@ diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-
 -	return mapping->a_ops->commit_write(file, page, from, block_start);
 -}
 -
- static int ext3_prepare_write(struct file *file, struct page *page,
+ static int ext4_prepare_write(struct file *file, struct page *page,
  			      unsigned from, unsigned to)
  {
  	struct inode *inode = page->mapping->host;
 -	int ret, ret2;
--	int needed_blocks = ext3_writepage_trans_blocks(inode);
-+	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
+-	int needed_blocks = ext4_writepage_trans_blocks(inode);
++	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
  	handle_t *handle;
  	int retries = 0;
  
  retry:
- 	handle = ext3_journal_start(inode, needed_blocks);
+ 	handle = ext4_journal_start(inode, needed_blocks);
 -	if (IS_ERR(handle))
 -		return PTR_ERR(handle);
 +	if (IS_ERR(handle)) {
 +		ret = PTR_ERR(handle);
 +		goto out;
 +	}
- 	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
- 		ret = nobh_prepare_write(page, from, to, ext3_get_block);
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+ 		ret = nobh_prepare_write(page, from, to, ext4_get_block);
  	else
- 		ret = block_prepare_write(page, from, to, ext3_get_block);
+ 		ret = block_prepare_write(page, from, to, ext4_get_block);
  	if (ret)
 -		goto failure;
 +		goto prepare_write_failed;
  
- 	if (ext3_should_journal_data(inode)) {
+ 	if (ext4_should_journal_data(inode)) {
  		ret = walk_page_buffers(handle, page_buffers(page),
  				from, to, NULL, do_journal_get_write_access);
 -		if (ret)
 -			/* fatal error, just put the handle and return */
--			journal_stop(handle);
+-			ext4_journal_stop(handle);
  	}
 -	return ret;
 -
 -failure:
--	ret2 = ext3_prepare_failure(file, page, from, to);
+-	ret2 = ext4_prepare_failure(file, page, from, to);
 -	if (ret2 < 0)
 -		return ret2;
 +prepare_write_failed:
 +	if (ret)
-+		ext3_journal_stop(handle);
- 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
++		ext4_journal_stop(handle);
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
  		goto retry;
 -	/* retry number exceeded, or other error like -EDQUOT */
 +out:
