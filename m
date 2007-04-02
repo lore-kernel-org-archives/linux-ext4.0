@@ -1,181 +1,126 @@
-From: akpm@linux-foundation.org
-Subject: [patch 06/12] revert "retries in ext3_prepare_write() violate ordering requirements"
-Date: Sun, 01 Apr 2007 23:49:43 -0700
-Message-ID: <200704020649.l326nhD1026534@shell0.pdx.osdl.net>
-Cc: akpm@linux-foundation.org, dev@openvz.org, dmonakhov@openvz.org,
-	kenneth.w.chen@intel.com, linux-ext4@vger.kernel.org,
-	mingo@elte.hu, saw@sw.ru, stable@kernel.org
-To: torvalds@linux-foundation.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 64bit inode number and dynamic inode table for ext4
+Date: Mon, 2 Apr 2007 14:45:43 +0200
+Message-ID: <20070402124543.GH3728@duck.suse.cz>
+References: <4601EF95.6020006@linux.vnet.ibm.com> <1174585546.16068.50.camel@localhost.localdomain> <20070328131508.GH14935@atrey.karlin.mff.cuni.cz> <1175191689.3783.28.camel@dyn9047017103.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:41211 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933962AbXDBGvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Apr 2007 02:51:42 -0400
+Received: from styx.suse.cz ([82.119.242.94]:53793 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S934013AbXDBMic (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Apr 2007 08:38:32 -0400
+Content-Disposition: inline
+In-Reply-To: <1175191689.3783.28.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andrew Morton <akpm@linux-foundation.org>
+On Thu 29-03-07 10:08:08, Mingming Cao wrote:
+> > > To efficiently allocate and deallocate inode structures, we could link
+> > > all free/used inode structures within the block group and store the
+> > > first free/used inode number in the block group descriptor. 
+> >   So you aren't expecting to shrink space allocated to inode, are you?
+> > 
+> In theory we could shrink space allocated to inodes, but I am not sure
+> if this worth the effort.
+  Yes, I agree...
 
-Revert e92a4d595b464c4aae64be39ca61a9ffe9c8b278.
+> > > There are some safety concern with dynamic inode table allocation in the
+> > > case of block group corruption.  This could be addressed by checksuming
+> > > the block group descriptor.
+> >   But will it help you in finding those lost inodes once the descriptor
+> > is corrupted? I guess it would make more sence to checksum each inode
+> > separately. Then in case of corruption you could at least search through
+> > all blocks (I know this is desperate ;) and find inodes by verifying
+> > whether the inode checksum is correct. If it is, you have found an inode
+> > block with a high probability (especially if a checksum for most of the
+> > inodes in the block is correct). Another option would be to compute some
+> > more robust checksum for the whole inode block...
+> > 
+> 
+> If the block group descriptor is corrupted (with checksuming), we could
+> locate majority of inodes in the group by scanning the directory
+> entries, the inode number directly point to the inode table blocks.
+  Yes, you're right that works in case inode numbers are easily translated
+into physical location on disk.
 
-Dmitry points out
+> Yeah, adding checksum for the whole inode block(s) is what I am
+> thinking.  Andreas suggested adding magic number to the inode table
+> block(s) (a cluster of blocks for inode). So in the case the block group
+> descriptor is corrupted , we could scan the block group and easily
+> locate the inode block(s).
+> 
+> If a cluster of inode blocks is 8 blocks, we could user one 256 bytes to
+> store the magic number and checksum. We could also
+  Storing the checksum for 8 inode blocks has two disadvantages:
+1) You have to update the checksum for each inode write (i.e. writing one
+inode block suddently means writing two disk blocks).
+2) If it is really a checksum over all 8 blocks and not just 8 checksums
+over single blocks, you have to have all 8 blocks in memory to be able to
+compute the checksum.
 
-"When we block_prepare_write() failed while ext3_prepare_write() we jump to
- "failure" label and call ext3_prepare_failure() witch search last mapped bh
- and invoke commit_write untill it.  This is wrong!!  because some bh from
- begining to the last mapped bh may be not uptodate.  As a result we commit to
- disk not uptodate page content witch contains garbage from previous usage."
+> store the bitmap of this 127 inodes to indicating whether they are free
+> or not. This is an alternative way(vs. the free/used inode linked
+> list) to locate inode within the tables to do allocation/deallocation.
+> Shrinking the freed inode blocks also becomes easier, I assume.
+> This allows us to do inode allocation in parellal. Then we could store
+> the address of the previous or next chunk of inode tables in this
+> cluster header for additional safety protection. The first and last
+> cluster address(first block number of the chuck) are stored in the block
+> group descriptor.
+  Yes, this looks like a good alternative.
 
-and
+<snip>
+> > > > 	- Andreas is concerned about inode relocation, it would take a
+> > > > 	lot of effort; because references to the inode would have to be
+> > > > 	updated.  
+> > > 
+> > > I am not clear about this concern. Andreas, are you worried about online
+> > > defrag? I thought online defrag only transfer the extent maps from the
+> > > temp inode to the original inode, we do not transfer inode number and
+> > > structure.
+> >   Eventually, it would be nice to relocate inodes too (especially if we
+> > have the possibility to store the inode anywhere on disk). Currently,
+> > online inode relocation is quite hard as that means changing
+> > inode numbers and thus updating directory entries...
+> > 
+> >   But I'm not sure that the easier inode relocation is worth the additional
+> > burden of translating inode numbers to disk location (which has to be
+> > performed on every inode read).
+> > 
+> Andreas explained that to me in a separate email. Is inode relocation a
+> rare case or pretty common? I thought we need to do inode relocation
+> lookup only if the inode number mismatch what is stored on disk.
+  Inode relocation is useful for defragmentation and such beasts. So you
+don't care much about the performance of a relocation as such. But after
+you relocate the inode to some other place, you'd like it to behave as if
+it was there since the beginning...
 
-"Unexpected file size increasing."
+> >  On the other hand the extent tree (or
+> > simple radix tree - I'm not sure what would be better in case of inodes)
+> > would not have to be too deep so maybe it won't be that bad.
+> > 
+> Probably. I assume you mean having a per block group inode table file ,
+> and use extent tree indirectly to lookup block number, given a inode
+> number.  We have to serialized the multiple lookups within least per
+> block group though.
+  Yes, I meant such inode file. Why would we have to serialize lookups?
+They can be perfectly parallel. The only thing you have to serialize are
+modifications and those should be append-only anyway...
 
-   Call trace the same as it was in first issue but result is different. 
-   For example we have file with i_size is zero.  we want write two blocks ,
-   but fs has only one free block.
+> The concern I think is mostly reliability. In this scheme, we need to
+> back up of the inode table file, in case the original inode table file
+> corrupted we will not lost the inodes for the entire block group.
+  If you have checksums / magic numbers, you will be able to find blocks
+belonging to the inode table file. If you also implement the idea with the
+chunks of inode blocks (actually, it looks like a small inode table) with a
+header, you can even store all the information you need for reconstruction
+in the header...
 
-   ->ext3_prepare_write(...from == 0, to == 2048)
-     retry:
-     ->block_prepare_write() == -ENOSPC# we failed but allocated one block here.
-     ->ext3_prepare_failure()
-       ->commit_write( from == 0, to == 1024) # after this i_size becomes 1024 :)
-     if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-        goto retry;
-
-   Finally when all retries will be spended ext3_prepare_failure return
-   -ENOSPC, but i_size was increased and later block trimm procedures can't
-   help here.
-
-We don't appear to have the horsepower to fix these issues, so let's put
-things back the way they were for now.
-
-Cc: Kirill Korotaev <dev@openvz.org>
-Cc: Ingo Molnar <mingo@elte.hu>
-Cc: Ken Chen <kenneth.w.chen@intel.com>
-Cc: Andrey Savochkin <saw@sw.ru>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Dmitriy Monakhov <dmonakhov@openvz.org>
-Cc: <stable@kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/inode.c |   85 +++++-----------------------------------------
- 1 file changed, 10 insertions(+), 75 deletions(-)
-
-diff -puN fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-requirements fs/ext3/inode.c
---- a/fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-requirements
-+++ a/fs/ext3/inode.c
-@@ -1148,102 +1148,37 @@ static int do_journal_get_write_access(h
- 	return ext3_journal_get_write_access(handle, bh);
- }
- 
--/*
-- * The idea of this helper function is following:
-- * if prepare_write has allocated some blocks, but not all of them, the
-- * transaction must include the content of the newly allocated blocks.
-- * This content is expected to be set to zeroes by block_prepare_write().
-- * 2006/10/14  SAW
-- */
--static int ext3_prepare_failure(struct file *file, struct page *page,
--				unsigned from, unsigned to)
--{
--	struct address_space *mapping;
--	struct buffer_head *bh, *head, *next;
--	unsigned block_start, block_end;
--	unsigned blocksize;
--	int ret;
--	handle_t *handle = ext3_journal_current_handle();
--
--	mapping = page->mapping;
--	if (ext3_should_writeback_data(mapping->host)) {
--		/* optimization: no constraints about data */
--skip:
--		return ext3_journal_stop(handle);
--	}
--
--	head = page_buffers(page);
--	blocksize = head->b_size;
--	for (	bh = head, block_start = 0;
--		bh != head || !block_start;
--	    	block_start = block_end, bh = next)
--	{
--		next = bh->b_this_page;
--		block_end = block_start + blocksize;
--		if (block_end <= from)
--			continue;
--		if (block_start >= to) {
--			block_start = to;
--			break;
--		}
--		if (!buffer_mapped(bh))
--		/* prepare_write failed on this bh */
--			break;
--		if (ext3_should_journal_data(mapping->host)) {
--			ret = do_journal_get_write_access(handle, bh);
--			if (ret) {
--				ext3_journal_stop(handle);
--				return ret;
--			}
--		}
--	/*
--	 * block_start here becomes the first block where the current iteration
--	 * of prepare_write failed.
--	 */
--	}
--	if (block_start <= from)
--		goto skip;
--
--	/* commit allocated and zeroed buffers */
--	return mapping->a_ops->commit_write(file, page, from, block_start);
--}
--
- static int ext3_prepare_write(struct file *file, struct page *page,
- 			      unsigned from, unsigned to)
- {
- 	struct inode *inode = page->mapping->host;
--	int ret, ret2;
--	int needed_blocks = ext3_writepage_trans_blocks(inode);
-+	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
- 	handle_t *handle;
- 	int retries = 0;
- 
- retry:
- 	handle = ext3_journal_start(inode, needed_blocks);
--	if (IS_ERR(handle))
--		return PTR_ERR(handle);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out;
-+	}
- 	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
- 		ret = nobh_prepare_write(page, from, to, ext3_get_block);
- 	else
- 		ret = block_prepare_write(page, from, to, ext3_get_block);
- 	if (ret)
--		goto failure;
-+		goto prepare_write_failed;
- 
- 	if (ext3_should_journal_data(inode)) {
- 		ret = walk_page_buffers(handle, page_buffers(page),
- 				from, to, NULL, do_journal_get_write_access);
--		if (ret)
--			/* fatal error, just put the handle and return */
--			journal_stop(handle);
- 	}
--	return ret;
--
--failure:
--	ret2 = ext3_prepare_failure(file, page, from, to);
--	if (ret2 < 0)
--		return ret2;
-+prepare_write_failed:
-+	if (ret)
-+		ext3_journal_stop(handle);
- 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
--	/* retry number exceeded, or other error like -EDQUOT */
-+out:
- 	return ret;
- }
- 
-_
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
