@@ -1,791 +1,747 @@
-From: Johann Lombardi <johann.lombardi@bull.net>
-Subject: [PATCH] jbd2 stats through procfs
-Date: Mon, 2 Apr 2007 19:47:41 +0200
-Message-ID: <20070402174741.GA13225@lombardij>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: [PATCH] uninitialized groups kernel patch
+Date: Mon, 2 Apr 2007 15:37:28 -0600
+Message-ID: <20070402213728.GP5967@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+To: Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:44271 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965441AbXDBRro (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Apr 2007 13:47:44 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id C6FCC19D916
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Apr 2007 19:47:37 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 18658-02 for <linux-ext4@vger.kernel.org>;
- Mon,  2 Apr 2007 19:47:34 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id BABC119D908
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Apr 2007 19:47:33 +0200 (CEST)
-Received: from johann by lombardij with local (Exim 3.36 #1 (Debian))
-	id 1HYQd3-0003SK-00
-	for <linux-ext4@vger.kernel.org>; Mon, 02 Apr 2007 19:47:41 +0200
+Received: from mail.clusterfs.com ([206.168.112.78]:47734 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965948AbXDBVhb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Apr 2007 17:37:31 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+This patch (against 2.6.16.27-0.9 = latest SLES10 kernel) adds
+support for the uninit_groups feature to the kernel.  This speeds up
+e2fsck on most filesystems by a factor of 2-10x in our tests.  It might
+speed up the kernel by a tiny fraction because we don't have to read
+uninitialized bitmaps from disk, but not a huge amount.  We already skip
+reading inode table blocks from disk if they are unused, since 2.6.12 or
+so (and that was a major speedup for file creation).
 
-The patch below updates the jbd stats patch to 2.6.20/jbd2.
-The initial patch was posted by Alex Tomas in December 2005
-(http://marc.info/?l=linux-ext4&m=113538565128617&w=2).
-It provides statistics via procfs such as transaction lifetime and size.
+A separate patch will be sent for the e2fsprogs part of the work.
 
-Johann
+We keep a high water mark of used inodes for each group to improve e2fsck
+time.  Block and inode bitmaps can be uninitialized on disk via a flag in
+the group descriptor to avoid reading or scanning them at e2fsck time.
+
+A checksum of each group descriptor is used to ensure that corruption in
+the group descriptor's bit flags does not cause incorrect operation.  If the
+checksum is incorrect, then either we refuse to mount (e2fsck will fix this
+at the beginning of pass1), or we mark the group as unusable (0 free inodes
+and 0 free blocks) so the kernel won't try to allocate from there (it may
+be that the UNINIT flags were "cleared" by corruption and we would further
+corrupt the filesystem by using invalid bitmaps).
+
+To enable on a new filesystem:
+- mke2fs -O uninit_groups /dev/XXX
+
+To enable on a new filesystem and not zero out the inode table (faster, and
+good for loopback filesystems, not so great for real world usage until TODO
+is complete):
+- mke2fs -O lazy_bg,uninit_groups /dev/XXX
+
+To enable on existing filesystem (set bg_itable_unused and/or UNINIT flags
+				  on groups, set csum):
+- tune2fs -O uninit_groups /dev/XXX
+- e2fsck -fy /dev/XXX  (expect a lot of "checksum incorrect" messages)
 
 
-Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
---
+To disable this feature (clear UNINIT flags, csum):
+- tune2fs -O ^uninit_groups /dev/XXX
+- e2fsck -fy /dev/XXX  (expect a lot of "checksum incorrect" messages)
 
-Index: linux-2.6.20.4/include/linux/jbd2.h
+
+TODO:
+- have the kernel launch a thread at mount time to zero out uninitialized
+  inode tables (i.e. no BG_INODE_ZEROED flag set) so that e2fsck doesn't
+  get confused on a newly-formatted filesystem
+- handle larger group descriptor in ext3_group_desc_csum() (this isn't in
+  the SLES10 kernel that I'm doing build/test on)
+- use ext3_init_*_bitmap() functions in resize.c
+- have UNINIT flags affect inode & block placement policy to avoid gratuitous
+  initialization of all group bitmaps
+
+Review & comments welcome.
+
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Girish Shilamkar <girish@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+====================== ext3-uninit-2.6.16-sles10.patch =================
+
+Index: linux-2.6.16.27-0.9-full/include/linux/ext3_fs.h
 ===================================================================
---- linux-2.6.20.4.orig/include/linux/jbd2.h	2007-04-02 13:34:44.000000000 +0200
-+++ linux-2.6.20.4/include/linux/jbd2.h	2007-04-02 18:33:17.000000000 +0200
-@@ -408,6 +408,16 @@ struct handle_s
+--- linux-2.6.16.27-0.9-full.orig/include/linux/ext3_fs.h	2007-03-28 18:20:16.000000000 +0400
++++ linux-2.6.16.27-0.9-full/include/linux/ext3_fs.h	2007-03-28 18:30:06.000000000 +0400
+@@ -153,16 +153,22 @@ struct ext3_allocation_request {
+  */
+ struct ext3_group_desc
+ {
+-	__le32	bg_block_bitmap;		/* Blocks bitmap block */
+-	__le32	bg_inode_bitmap;		/* Inodes bitmap block */
++	__le32	bg_block_bitmap;	/* Blocks bitmap block */
++	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
+ 	__le32	bg_inode_table;		/* Inodes table block */
+ 	__le16	bg_free_blocks_count;	/* Free blocks count */
+ 	__le16	bg_free_inodes_count;	/* Free inodes count */
+ 	__le16	bg_used_dirs_count;	/* Directories count */
+-	__u16	bg_pad;
+-	__le32	bg_reserved[3];
++	__le16  bg_flags;		/* EXT3_BG_flags (UNINIT, etc) */
++	__le32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
++	__le16	bg_itable_unused;	/* Unused inodes count */
++	__le16	bg_checksum;		/* crc16(sb_uuid+group+desc) */
  };
  
- 
-+/*
-+ * Some stats for checkpoint phase
-+ */
-+struct transaction_chp_stats_s {
-+	unsigned long		cs_chp_time;
-+	unsigned long		cs_forced_to_close;
-+	unsigned long		cs_written;
-+	unsigned long		cs_dropped;
-+};
-+
- /* The transaction_t type is the guts of the journaling mechanism.  It
-  * tracks a compound transaction through its various states:
-  *
-@@ -543,6 +553,21 @@ struct transaction_s
- 	spinlock_t		t_handle_lock;
- 
- 	/*
-+	 * Longest time some handle had to wait for running transaction
-+	 */
-+	unsigned long		t_max_wait;
-+
-+	/*
-+	 * When transaction started
-+	 */
-+	unsigned long		t_start;
-+
-+	/*
-+	 * Checkpointing stats [j_checkpoint_sem]
-+	 */
-+	struct transaction_chp_stats_s t_chp_stats;
-+
-+	/*
- 	 * Number of outstanding updates running on this transaction
- 	 * [t_handle_lock]
- 	 */
-@@ -573,6 +598,57 @@ struct transaction_s
- 
- };
- 
-+struct transaction_run_stats_s {
-+	unsigned long		rs_wait;
-+	unsigned long		rs_running;
-+	unsigned long		rs_locked;
-+	unsigned long		rs_flushing;
-+	unsigned long		rs_logging;
-+
-+	unsigned long		rs_handle_count;
-+	unsigned long		rs_blocks;
-+	unsigned long		rs_blocks_logged;
-+};
-+
-+struct transaction_stats_s
-+{
-+	int 			ts_type;
-+	unsigned long		ts_tid;
-+	union {
-+		struct transaction_run_stats_s run;
-+		struct transaction_chp_stats_s chp;
-+	} u;
-+};
-+
-+#define JBD2_STATS_RUN		1
-+#define JBD2_STATS_CHECKPOINT	2
-+
-+#define ts_wait			u.run.rs_wait
-+#define ts_running		u.run.rs_running
-+#define ts_locked		u.run.rs_locked
-+#define ts_flushing		u.run.rs_flushing
-+#define ts_logging		u.run.rs_logging
-+#define ts_handle_count		u.run.rs_handle_count
-+#define ts_blocks		u.run.rs_blocks
-+#define ts_blocks_logged	u.run.rs_blocks_logged
-+
-+#define ts_chp_time		u.chp.cs_chp_time
-+#define ts_forced_to_close	u.chp.cs_forced_to_close
-+#define ts_written		u.chp.cs_written
-+#define ts_dropped		u.chp.cs_dropped
-+
-+#define CURRENT_MSECS		(jiffies_to_msecs(jiffies))
-+
-+static inline unsigned int
-+jbd2_time_diff(unsigned int start, unsigned int end)
-+{
-+	if (unlikely(start > end))
-+		end = end + (~0UL - start);
-+	else
-+		end -= start;
-+	return end;
-+}
-+
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-@@ -634,6 +710,12 @@ struct transaction_s
-  * @j_wbufsize: maximum number of buffer_heads allowed in j_wbuf, the
-  *	number that will fit in j_blocksize
-  * @j_last_sync_writer: most recent pid which did a synchronous write
-+ * @j_history: Buffer storing the transactions statistics history
-+ * @j_history_max: Maximum number of transactions in the statistics history
-+ * @j_history_cur: Current number of transactions in the statistics history
-+ * @j_history_lock: Protect the transactions statistics history
-+ * @j_proc_entry: procfs entry for the jbd statistics directory
-+ * @j_stats: Overall statistics
-  * @j_private: An opaque pointer to fs-private information.
-  */
- 
-@@ -826,6 +908,16 @@ struct journal_s
- 	pid_t			j_last_sync_writer;
- 
- 	/*
-+	 * Journal statistics
-+	 */
-+	struct transaction_stats_s *j_history;
-+	int			j_history_max;
-+	int			j_history_cur;
-+	spinlock_t		j_history_lock;
-+	struct proc_dir_entry	*j_proc_entry;
-+	struct transaction_stats_s j_stats;
-+
-+	/*
- 	 * An opaque pointer to fs-private information.  ext3 puts its
- 	 * superblock pointer here
- 	 */
-Index: linux-2.6.20.4/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.20.4.orig/fs/jbd2/transaction.c	2007-04-02 13:34:44.000000000 +0200
-+++ linux-2.6.20.4/fs/jbd2/transaction.c	2007-04-02 13:35:49.000000000 +0200
-@@ -60,6 +60,8 @@ jbd2_get_transaction(journal_t *journal,
- 
- 	J_ASSERT(journal->j_running_transaction == NULL);
- 	journal->j_running_transaction = transaction;
-+	transaction->t_max_wait = 0;
-+	transaction->t_start = CURRENT_MSECS;
- 
- 	return transaction;
- }
-@@ -86,6 +88,7 @@ static int start_this_handle(journal_t *
- 	int nblocks = handle->h_buffer_credits;
- 	transaction_t *new_transaction = NULL;
- 	int ret = 0;
-+	unsigned long ts = CURRENT_MSECS;
- 
- 	if (nblocks > journal->j_max_transaction_buffers) {
- 		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
-@@ -219,6 +222,12 @@ repeat_locked:
- 	/* OK, account for the buffers that this operation expects to
- 	 * use and add the handle to the running transaction. */
- 
-+	if (time_after(transaction->t_start, ts)) {
-+		ts = jbd2_time_diff(ts, transaction->t_start);
-+		if (ts > transaction->t_max_wait)
-+			transaction->t_max_wait= ts;
-+	}
-+
- 	handle->h_transaction = transaction;
- 	transaction->t_outstanding_credits += nblocks;
- 	transaction->t_updates++;
-Index: linux-2.6.20.4/fs/jbd2/checkpoint.c
-===================================================================
---- linux-2.6.20.4.orig/fs/jbd2/checkpoint.c	2007-04-02 13:34:44.000000000 +0200
-+++ linux-2.6.20.4/fs/jbd2/checkpoint.c	2007-04-02 13:35:49.000000000 +0200
-@@ -232,7 +232,8 @@ __flush_batch(journal_t *journal, struct
-  * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
-  */
- static int __process_buffer(journal_t *journal, struct journal_head *jh,
--			struct buffer_head **bhs, int *batch_count)
-+			struct buffer_head **bhs, int *batch_count,
-+			transaction_t *transaction)
- {
- 	struct buffer_head *bh = jh2bh(jh);
- 	int ret = 0;
-@@ -250,6 +251,7 @@ static int __process_buffer(journal_t *j
- 		transaction_t *t = jh->b_transaction;
- 		tid_t tid = t->t_tid;
- 
-+		transaction->t_chp_stats.cs_forced_to_close++;
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
- 		jbd2_log_start_commit(journal, tid);
-@@ -279,6 +281,7 @@ static int __process_buffer(journal_t *j
- 		bhs[*batch_count] = bh;
- 		__buffer_relink_io(jh);
- 		jbd_unlock_bh_state(bh);
-+		transaction->t_chp_stats.cs_written++;
- 		(*batch_count)++;
- 		if (*batch_count == NR_BATCH) {
- 			spin_unlock(&journal->j_list_lock);
-@@ -322,6 +325,8 @@ int jbd2_log_do_checkpoint(journal_t *jo
- 	if (!journal->j_checkpoint_transactions)
- 		goto out;
- 	transaction = journal->j_checkpoint_transactions;
-+	if (transaction->t_chp_stats.cs_chp_time == 0)
-+		transaction->t_chp_stats.cs_chp_time = CURRENT_MSECS;
- 	this_tid = transaction->t_tid;
- restart:
- 	/*
-@@ -346,7 +351,8 @@ restart:
- 				retry = 1;
- 				break;
- 			}
--			retry = __process_buffer(journal, jh, bhs,&batch_count);
-+			retry = __process_buffer(journal, jh, bhs, &batch_count,
-+						 transaction);
- 			if (!retry && lock_need_resched(&journal->j_list_lock)){
- 				spin_unlock(&journal->j_list_lock);
- 				retry = 1;
-@@ -668,6 +674,8 @@ void __jbd2_journal_insert_checkpoint(st
- 
- void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transaction)
- {
-+	struct transaction_stats_s stats;
-+
- 	assert_spin_locked(&journal->j_list_lock);
- 	if (transaction->t_cpnext) {
- 		transaction->t_cpnext->t_cpprev = transaction->t_cpprev;
-@@ -693,5 +701,25 @@ void __jbd2_journal_drop_transaction(jou
- 	J_ASSERT(journal->j_running_transaction != transaction);
- 
- 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
-+
-+	/*
-+	 * File the transaction for history
-+	 */
-+	if (transaction->t_chp_stats.cs_written != 0 ||
-+			transaction->t_chp_stats.cs_chp_time != 0) {
-+		stats.ts_type = JBD2_STATS_CHECKPOINT;
-+		stats.ts_tid = transaction->t_tid;
-+		stats.u.chp = transaction->t_chp_stats;
-+		if (stats.ts_chp_time)
-+			stats.ts_chp_time =
-+				jbd2_time_diff(stats.ts_chp_time, CURRENT_MSECS);
-+		spin_lock(&journal->j_history_lock);
-+		memcpy(journal->j_history + journal->j_history_cur, &stats,
-+				sizeof(stats));
-+		if (++journal->j_history_cur == journal->j_history_max)
-+			journal->j_history_cur = 0;
-+		spin_unlock(&journal->j_history_lock);
-+	}
-+
- 	kfree(transaction);
- }
-Index: linux-2.6.20.4/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.20.4.orig/fs/jbd2/commit.c	2007-04-02 13:34:44.000000000 +0200
-+++ linux-2.6.20.4/fs/jbd2/commit.c	2007-04-02 13:35:49.000000000 +0200
-@@ -21,6 +21,7 @@
- #include <linux/mm.h>
- #include <linux/pagemap.h>
- #include <linux/smp_lock.h>
-+#include <linux/jiffies.h>
- 
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -291,6 +292,7 @@ static inline void write_tag_block(int t
-  */
- void jbd2_journal_commit_transaction(journal_t *journal)
- {
-+	struct transaction_stats_s stats;
- 	transaction_t *commit_transaction;
- 	struct journal_head *jh, *new_jh, *descriptor;
- 	struct buffer_head **wbuf = journal->j_wbuf;
-@@ -338,6 +340,11 @@ void jbd2_journal_commit_transaction(jou
- 	spin_lock(&journal->j_state_lock);
- 	commit_transaction->t_state = T_LOCKED;
- 
-+	stats.ts_wait = commit_transaction->t_max_wait;
-+	stats.ts_locked = CURRENT_MSECS;
-+	stats.ts_running = jbd2_time_diff(commit_transaction->t_start,
-+						stats.ts_locked);
-+
- 	spin_lock(&commit_transaction->t_handle_lock);
- 	while (commit_transaction->t_updates) {
- 		DEFINE_WAIT(wait);
-@@ -408,6 +415,9 @@ void jbd2_journal_commit_transaction(jou
- 	 */
- 	jbd2_journal_switch_revoke_table(journal);
- 
-+	stats.ts_flushing = CURRENT_MSECS;
-+	stats.ts_locked = jbd2_time_diff(stats.ts_locked, stats.ts_flushing);
-+
- 	commit_transaction->t_state = T_FLUSH;
- 	journal->j_committing_transaction = commit_transaction;
- 	journal->j_running_transaction = NULL;
-@@ -499,6 +509,11 @@ void jbd2_journal_commit_transaction(jou
- 	 */
- 	commit_transaction->t_state = T_COMMIT;
- 
-+	stats.ts_logging = CURRENT_MSECS;
-+	stats.ts_flushing = jbd2_time_diff(stats.ts_flushing, stats.ts_logging);
-+	stats.ts_blocks = commit_transaction->t_outstanding_credits;
-+	stats.ts_blocks_logged = 0;
-+
- 	descriptor = NULL;
- 	bufs = 0;
- 	while (commit_transaction->t_buffers) {
-@@ -647,6 +662,7 @@ start_journal_io:
- 				submit_bh(WRITE, bh);
- 			}
- 			cond_resched();
-+			stats.ts_blocks_logged += bufs;
- 
- 			/* Force a new descriptor to be generated next
-                            time round the loop. */
-@@ -817,6 +833,7 @@ restart_loop:
- 		cp_transaction = jh->b_cp_transaction;
- 		if (cp_transaction) {
- 			JBUFFER_TRACE(jh, "remove from old cp transaction");
-+			cp_transaction->t_chp_stats.cs_dropped++;
- 			__jbd2_journal_remove_checkpoint(jh);
- 		}
- 
-@@ -891,6 +908,36 @@ restart_loop:
- 
- 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
- 
-+	commit_transaction->t_start = CURRENT_MSECS;
-+	stats.ts_logging = jbd2_time_diff(stats.ts_logging,
-+						commit_transaction->t_start);
-+
-+	/*
-+	 * File the transaction for history
-+	 */
-+	stats.ts_type = JBD2_STATS_RUN;
-+	stats.ts_tid = commit_transaction->t_tid;
-+	stats.ts_handle_count = commit_transaction->t_handle_count;
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(journal->j_history + journal->j_history_cur, &stats,
-+			sizeof(stats));
-+	if (++journal->j_history_cur == journal->j_history_max)
-+		journal->j_history_cur = 0;
-+
-+	/*
-+	 * Calculate overall stats
-+	 */
-+	journal->j_stats.ts_tid++;
-+	journal->j_stats.ts_wait += stats.ts_wait;
-+	journal->j_stats.ts_running += stats.ts_running;
-+	journal->j_stats.ts_locked += stats.ts_locked;
-+	journal->j_stats.ts_flushing += stats.ts_flushing;
-+	journal->j_stats.ts_logging += stats.ts_logging;
-+	journal->j_stats.ts_handle_count += stats.ts_handle_count;
-+	journal->j_stats.ts_blocks += stats.ts_blocks;
-+	journal->j_stats.ts_blocks_logged += stats.ts_blocks_logged;
-+	spin_unlock(&journal->j_history_lock);
-+
- 	commit_transaction->t_state = T_FINISHED;
- 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
- 	journal->j_commit_sequence = commit_transaction->t_tid;
-Index: linux-2.6.20.4/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.20.4.orig/fs/jbd2/journal.c	2007-04-02 13:34:44.000000000 +0200
-+++ linux-2.6.20.4/fs/jbd2/journal.c	2007-04-02 13:35:49.000000000 +0200
-@@ -36,6 +36,7 @@
- #include <linux/kthread.h>
- #include <linux/poison.h>
- #include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
- 
- #include <asm/uaccess.h>
- #include <asm/page.h>
-@@ -635,6 +636,300 @@ struct journal_head *jbd2_journal_get_de
- 	return jbd2_journal_add_journal_head(bh);
- }
- 
-+struct jbd2_stats_proc_session {
-+	journal_t *journal;
-+	struct transaction_stats_s *stats;
-+	int start;
-+	int max;
-+};
-+
-+static void *jbd2_history_skip_empty(struct jbd2_stats_proc_session *s,
-+					struct transaction_stats_s *ts,
-+					int first)
-+{
-+	if (ts == s->stats + s->max)
-+		ts = s->stats;
-+	if (!first && ts == s->stats + s->start)
-+		return NULL;
-+	while (ts->ts_type == 0) {
-+		ts++;
-+		if (ts == s->stats + s->max)
-+			ts = s->stats;
-+		if (ts == s->stats + s->start)
-+			return NULL;
-+	}
-+	return ts;
-+
-+}
-+
-+static void *jbd2_seq_history_start(struct seq_file *seq, loff_t *pos)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	struct transaction_stats_s *ts;
-+	int l = *pos;
-+
-+	if (l == 0)
-+		return SEQ_START_TOKEN;
-+	ts = jbd2_history_skip_empty(s, s->stats + s->start, 1);
-+	if (!ts)
-+		return NULL;
-+	while (--l && (ts = jbd2_history_skip_empty(s, ++ts, 0)) != NULL);
-+	return ts;
-+}
-+
-+static void *jbd2_seq_history_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	struct transaction_stats_s *ts = v;
-+
-+	++*pos;
-+	if (v == SEQ_START_TOKEN)
-+		return jbd2_history_skip_empty(s, s->stats + s->start, 1);
-+	else
-+		return jbd2_history_skip_empty(s, ++ts, 0);
-+}
-+
-+static int jbd2_seq_history_show(struct seq_file *seq, void *v)
-+{
-+	struct transaction_stats_s *ts = v;
-+	if (v == SEQ_START_TOKEN) {
-+		seq_printf(seq, "%-4s %-5s %-5s %-5s %-5s %-5s %-5s %-6s %-5s "
-+				"%-5s %-5s %-5s %-5s %-5s\n", "R/C", "tid",
-+				"wait", "run", "lock", "flush", "log", "hndls",
-+				"block", "inlog", "ctime", "write", "drop",
-+				"close");
-+		return 0;
-+	}
-+	if (ts->ts_type == JBD2_STATS_RUN)
-+		seq_printf(seq, "%-4s %-5lu %-5lu %-5lu %-5lu %-5lu %-5lu "
-+				"%-6lu %-5lu %-5lu\n", "R", ts->ts_tid,
-+				ts->ts_wait, ts->ts_running, ts->ts_locked,
-+				ts->ts_flushing, ts->ts_logging,
-+				ts->ts_handle_count, ts->ts_blocks,
-+				ts->ts_blocks_logged);
-+	else if (ts->ts_type == JBD2_STATS_CHECKPOINT)
-+		seq_printf(seq, "%-4s %-5lu %48s %-5lu %-5lu %-5lu %-5lu\n",
-+				"C", ts->ts_tid, " ", ts->ts_chp_time,
-+				ts->ts_written, ts->ts_dropped,
-+				ts->ts_forced_to_close);
-+	else
-+		J_ASSERT(0);
-+	return 0;
-+}
-+
-+static void jbd2_seq_history_stop(struct seq_file *seq, void *v)
-+{
-+}
-+
-+static struct seq_operations jbd2_seq_history_ops = {
-+	.start  = jbd2_seq_history_start,
-+	.next   = jbd2_seq_history_next,
-+	.stop   = jbd2_seq_history_stop,
-+	.show   = jbd2_seq_history_show,
-+};
-+
-+static int jbd2_seq_history_open(struct inode *inode, struct file *file)
-+{
-+	journal_t *journal = PDE(inode)->data;
-+	struct jbd2_stats_proc_session *s;
-+	int rc, size;
-+
-+	s = kmalloc(sizeof(*s), GFP_KERNEL);
-+	if (s == NULL)
-+		return -EIO;
-+	size = sizeof(struct transaction_stats_s) * journal->j_history_max;
-+	s->stats = kmalloc(size, GFP_KERNEL);
-+	if (s == NULL) {
-+		kfree(s);
-+		return -EIO;
-+	}
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(s->stats, journal->j_history, size);
-+	s->max = journal->j_history_max;
-+	s->start = journal->j_history_cur % s->max;
-+	spin_unlock(&journal->j_history_lock);
-+
-+	rc = seq_open(file, &jbd2_seq_history_ops);
-+	if (rc == 0) {
-+		struct seq_file *m = (struct seq_file *)file->private_data;
-+		m->private = s;
-+	} else {
-+		kfree(s->stats);
-+		kfree(s);
-+	}
-+	return rc;
-+
-+}
-+
-+static int jbd2_seq_history_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *seq = (struct seq_file *)file->private_data;
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	kfree(s->stats);
-+	kfree(s);
-+	return seq_release(inode, file);
-+}
-+
-+static struct file_operations jbd2_seq_history_fops = {
-+	.owner		= THIS_MODULE,
-+	.open           = jbd2_seq_history_open,
-+	.read           = seq_read,
-+	.llseek         = seq_lseek,
-+	.release        = jbd2_seq_history_release,
-+};
-+
-+static void *jbd2_seq_info_start(struct seq_file *seq, loff_t *pos)
-+{
-+	return *pos ? NULL : SEQ_START_TOKEN;
-+}
-+
-+static void *jbd2_seq_info_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	return NULL;
-+}
-+
-+static int jbd2_seq_info_show(struct seq_file *seq, void *v)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	if (v != SEQ_START_TOKEN)
-+		return 0;
-+	seq_printf(seq, "%lu transaction, each upto %u blocks\n",
-+			s->stats->ts_tid,
-+			s->journal->j_max_transaction_buffers);
-+	if (s->stats->ts_tid == 0)
-+		return 0;
-+	seq_printf(seq, "average: \n  %lums waiting for transaction\n",
-+			s->stats->ts_wait / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums running transaction\n",
-+			s->stats->ts_running / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums transaction was being locked\n",
-+			s->stats->ts_locked / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums flushing data (in ordered mode)\n",
-+			s->stats->ts_flushing / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums logging transaction\n",
-+			s->stats->ts_logging / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu handles per transaction\n",
-+			s->stats->ts_handle_count / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu blocks per transaction\n",
-+			s->stats->ts_blocks / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu logged blocks per transaction\n",
-+			s->stats->ts_blocks_logged / s->stats->ts_tid);
-+	return 0;
-+}
-+
-+static void jbd2_seq_info_stop(struct seq_file *seq, void *v)
-+{
-+}
-+
-+static struct seq_operations jbd2_seq_info_ops = {
-+	.start  = jbd2_seq_info_start,
-+	.next   = jbd2_seq_info_next,
-+	.stop   = jbd2_seq_info_stop,
-+	.show   = jbd2_seq_info_show,
-+};
-+
-+static int jbd2_seq_info_open(struct inode *inode, struct file *file)
-+{
-+	journal_t *journal = PDE(inode)->data;
-+	struct jbd2_stats_proc_session *s;
-+	int rc, size;
-+
-+	s = kmalloc(sizeof(*s), GFP_KERNEL);
-+	if (s == NULL)
-+		return -EIO;
-+	size = sizeof(struct transaction_stats_s);
-+	s->stats = kmalloc(size, GFP_KERNEL);
-+	if (s == NULL) {
-+		kfree(s);
-+		return -EIO;
-+	}
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(s->stats, &journal->j_stats, size);
-+	s->journal = journal;
-+	spin_unlock(&journal->j_history_lock);
-+
-+	rc = seq_open(file, &jbd2_seq_info_ops);
-+	if (rc == 0) {
-+		struct seq_file *m = (struct seq_file *)file->private_data;
-+		m->private = s;
-+	} else {
-+		kfree(s->stats);
-+		kfree(s);
-+	}
-+	return rc;
-+
-+}
-+
-+static int jbd2_seq_info_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *seq = (struct seq_file *)file->private_data;
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	kfree(s->stats);
-+	kfree(s);
-+	return seq_release(inode, file);
-+}
-+
-+static struct file_operations jbd2_seq_info_fops = {
-+	.owner		= THIS_MODULE,
-+	.open           = jbd2_seq_info_open,
-+	.read           = seq_read,
-+	.llseek         = seq_lseek,
-+	.release        = jbd2_seq_info_release,
-+};
-+
-+static struct proc_dir_entry *proc_jbd2_stats = NULL;
-+
-+static void jbd2_stats_proc_init(journal_t *journal)
-+{
-+	char name[64];
-+
-+	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
-+	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
-+	if (journal->j_proc_entry) {
-+		struct proc_dir_entry *p;
-+		p = create_proc_entry("history", S_IRUGO,
-+				journal->j_proc_entry);
-+		if (p) {
-+			p->proc_fops = &jbd2_seq_history_fops;
-+			p->data = journal;
-+			p = create_proc_entry("info", S_IRUGO,
-+						journal->j_proc_entry);
-+			if (p) {
-+				p->proc_fops = &jbd2_seq_info_fops;
-+				p->data = journal;
-+			}
-+		}
-+	}
-+}
-+
-+static void jbd2_stats_proc_exit(journal_t *journal)
-+{
-+	char name[64];
-+
-+	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
-+	remove_proc_entry("info", journal->j_proc_entry);
-+	remove_proc_entry("history", journal->j_proc_entry);
-+	remove_proc_entry(name, proc_jbd2_stats);
-+}
-+
-+static void journal_init_stats(journal_t *journal)
-+{
-+	int size;
-+
-+	if (proc_jbd2_stats == NULL)
-+		return;
-+
-+	journal->j_history_max = 100;
-+	size = sizeof(struct transaction_stats_s) * journal->j_history_max;
-+	journal->j_history = kmalloc(size, GFP_KERNEL);
-+	if (journal->j_history == NULL) {
-+		journal->j_history_max = 0;
-+		return;
-+	}
-+	memset(journal->j_history, 0, size);
-+	spin_lock_init(&journal->j_history_lock);
-+}
++#define EXT3_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
++#define EXT3_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
++#define EXT3_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
 +
  /*
-  * Management for journal control blocks: functions to create and
-  * destroy journal_t structures, and to initialise and read existing
-@@ -677,6 +972,9 @@ static journal_t * journal_init_common (
- 		kfree(journal);
- 		goto fail;
- 	}
+  * Macro-instructions used to manage group descriptors
+  */
+@@ -590,6 +596,7 @@ static inline struct ext3_inode_info *EX
+ #define EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT3_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+ #define EXT3_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
++#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ 
+ #define EXT3_FEATURE_INCOMPAT_COMPRESSION	0x0001
+@@ -606,6 +613,7 @@ static inline struct ext3_inode_info *EX
+ 					 EXT3_FEATURE_INCOMPAT_EXTENTS)
+ #define EXT3_FEATURE_RO_COMPAT_SUPP	(EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT3_FEATURE_RO_COMPAT_LARGE_FILE| \
++					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+ 					 EXT3_FEATURE_RO_COMPAT_BTREE_DIR)
+ 
+Index: linux-2.6.16.27-0.9-full/fs/ext3/resize.c
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/resize.c	2007-03-13 02:56:52.000000000 +0300
++++ linux-2.6.16.27-0.9-full/fs/ext3/resize.c	2007-03-28 18:30:06.000000000 +0400
+@@ -19,6 +19,7 @@
+ #include <linux/errno.h>
+ #include <linux/slab.h>
+ 
++#include "group.h"
+ 
+ #define outside(b, first, last)	((b) < (first) || (b) >= (last))
+ #define inside(b, first, last)	((b) >= (first) && (b) < (last))
+@@ -818,6 +819,7 @@ int ext3_group_add(struct super_block *s
+ 	gdp->bg_inode_table = cpu_to_le32(input->inode_table);
+ 	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
+ 	gdp->bg_free_inodes_count = cpu_to_le16(EXT3_INODES_PER_GROUP(sb));
++	gdp->bg_checksum = ext3_group_desc_csum(sbi, input->group, gdp);
+ 
+ 	/*
+ 	 * Make the new blocks and inodes valid next.  We do this before
+Index: linux-2.6.16.27-0.9-full/fs/ext3/super.c
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/super.c	2007-03-28 18:25:51.000000000 +0400
++++ linux-2.6.16.27-0.9-full/fs/ext3/super.c	2007-03-28 18:30:06.000000000 +0400
+@@ -42,6 +42,7 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "namei.h"
++#include "group.h"
+ 
+ static int ext3_load_journal(struct super_block *, struct ext3_super_block *,
+ 			     unsigned long journal_devnum);
+@@ -1221,6 +1222,90 @@ static int ext3_setup_super(struct super
+ 	return res;
+ }
+ 
++#if !defined(CONFIG_CRC16) && !defined(CONFIG_CRC16_MODULE)
++/** CRC table for the CRC-16. The poly is 0x8005 (x^16 + x^15 + x^2 + 1) */
++__u16 const crc16_table[256] = {
++	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
++	0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
++	0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
++	0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
++	0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
++	0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
++	0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
++	0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
++	0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
++	0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
++	0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
++	0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
++	0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
++	0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
++	0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
++	0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
++	0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
++	0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
++	0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
++	0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
++	0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
++	0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
++	0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
++	0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
++	0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
++	0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
++	0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
++	0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
++	0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
++	0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
++	0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
++	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
++};
 +
-+	journal_init_stats(journal);
-+
- 	return journal;
- fail:
- 	return NULL;
-@@ -727,6 +1025,7 @@ journal_t * jbd2_journal_init_dev(struct
- 		journal = NULL;
- 		goto out;
- 	}
-+ 	jbd2_stats_proc_init(journal);
- 	journal->j_dev = bdev;
- 	journal->j_fs_dev = fs_dev;
- 	journal->j_blk_offset = start;
-@@ -769,6 +1068,7 @@ journal_t * jbd2_journal_init_inode (str
- 
- 	journal->j_maxlen = inode->i_size >> inode->i_sb->s_blocksize_bits;
- 	journal->j_blocksize = inode->i_sb->s_blocksize;
-+	jbd2_stats_proc_init(journal);
- 
- 	/* journal descriptor can store up to n blocks -bzzz */
- 	n = journal->j_blocksize / sizeof(journal_block_tag_t);
-@@ -1157,6 +1457,8 @@ void jbd2_journal_destroy(journal_t *jou
- 		brelse(journal->j_sb_buffer);
- 	}
- 
-+	if (journal->j_proc_entry)
-+		jbd2_stats_proc_exit(journal);
- 	if (journal->j_inode)
- 		iput(journal->j_inode);
- 	if (journal->j_revoke)
-@@ -2007,6 +2309,28 @@ static void __exit jbd2_remove_jbd_proc_
- 
- #endif
- 
-+#if defined(CONFIG_PROC_FS)
-+
-+#define JBD2_STATS_PROC_NAME "fs/jbd2"
-+
-+static void __init jbd2_create_jbd_stats_proc_entry(void)
++static inline __u16 crc16_byte(__u16 crc, const __u8 data)
 +{
-+	proc_jbd2_stats = proc_mkdir(JBD2_STATS_PROC_NAME, NULL);
++	return (crc >> 8) ^ crc16_table[(crc ^ data) & 0xff];
 +}
 +
-+static void __exit jbd2_remove_jbd_stats_proc_entry(void)
++__u16 crc16(__u16 crc, __u8 const *buffer, size_t len)
 +{
-+	if (proc_jbd2_stats)
-+		remove_proc_entry(JBD2_STATS_PROC_NAME, NULL);
++	while (len--)
++		crc = crc16_byte(crc, *buffer++);
++	return crc;
 +}
-+
-+#else
-+
-+#define jbd2_create_jbd_stats_proc_entry() do {} while (0)
-+#define jbd2_remove_jbd_stats_proc_entry() do {} while (0)
-+
 +#endif
 +
- struct kmem_cache *jbd2_handle_cache;
++__le16 ext3_group_desc_csum(struct ext3_sb_info *sbi, __u32 block_group,
++			    struct ext3_group_desc *gdp)
++{
++	__u16 crc = 0;
++
++	if (sbi->s_es->s_feature_ro_compat &
++	    cpu_to_le32(EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		int offset = offsetof(struct ext3_group_desc, bg_checksum);
++		__le32 le_group = cpu_to_le32(block_group);
++
++		crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
++		crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
++		crc = crc16(crc, (__u8 *)gdp, offset);
++		offset += sizeof(gdp->bg_checksum); /* skip checksum */
++		BUG_ON(offset != sizeof(*gdp)); /* XXX handle s_desc_size */
++		/* for checksum of struct ext4_group_desc do the rest...
++		if (offset < sbi->s_es->s_desc_size) {
++			crc = crc16(crc, (__u8 *)gdp + offset,
++				    sbi->s_es->s_desc_size - offset);
++		 */
++	}
++
++	return cpu_to_le16(crc);
++}
++
++int ext3_group_desc_csum_verify(struct ext3_sb_info *sbi, __u32 block_group,
++				struct ext3_group_desc *gdp)
++{
++	if (gdp->bg_checksum != ext3_group_desc_csum(sbi, block_group, gdp))
++		return 0;
++
++	return 1;
++}
++
+ /* Called at mount-time, super-block is locked */
+ static int ext3_check_descriptors (struct super_block * sb)
+ {
+@@ -1270,6 +1355,13 @@ static int ext3_check_descriptors (struc
+ 					le32_to_cpu(gdp->bg_inode_table));
+ 			return 0;
+ 		}
++		if (!ext3_group_desc_csum_verify(sbi, i, gdp)) {
++			ext3_error(sb, __FUNCTION__,
++				   "Checksum for group %d failed (%u!=%u)\n", i,
++				   le16_to_cpu(ext3_group_desc_csum(sbi,i,gdp)),
++				   le16_to_cpu(gdp->bg_checksum));
++			return 0;
++		}
+ 		block += EXT3_BLOCKS_PER_GROUP(sb);
+ 		gdp++;
+ 	}
+Index: linux-2.6.16.27-0.9-full/fs/ext3/group.h
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/group.h	2007-02-13 18:39:59.640066087 +0300
++++ linux-2.6.16.27-0.9-full/fs/ext3/group.h	2007-03-28 18:30:06.000000000 +0400
+@@ -0,0 +1,29 @@
++/*
++ *  linux/fs/ext3/group.h
++ *
++ * Copyright (C) 2007 Cluster File Systems, Inc
++ *
++ * Author: Andreas Dilger <adilger@clusterfs.com>
++ */
++
++#ifndef _LINUX_EXT3_GROUP_H
++#define _LINUX_EXT3_GROUP_H
++#if defined(CONFIG_CRC16) || defined(CONFIG_CRC16_MODULE)
++#include <linux/crc16.h>
++#endif
++
++extern __le16 ext3_group_desc_csum(struct ext3_sb_info *sbi, __u32 group,
++				   struct ext3_group_desc *gdp);
++extern int ext3_group_desc_csum_verify(struct ext3_sb_info *sbi, __u32 group,
++				       struct ext3_group_desc *gdp);
++struct buffer_head *read_block_bitmap(struct super_block *sb,
++				      unsigned int block_group);
++extern unsigned ext3_init_block_bitmap(struct super_block *sb,
++				       struct buffer_head *bh, int group,
++				       struct ext3_group_desc *desc);
++#define ext3_free_blocks_after_init(sb, group, desc)			\
++		ext3_init_block_bitmap(sb, NULL, group, desc)
++extern unsigned ext3_init_inode_bitmap(struct super_block *sb,
++				       struct buffer_head *bh, int group,
++				       struct ext3_group_desc *desc);
++#endif /* _LINUX_EXT3_GROUP_H */
+Index: linux-2.6.16.27-0.9-full/fs/ext3/ialloc.c
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/ialloc.c	2007-03-28 18:20:17.000000000 +0400
++++ linux-2.6.16.27-0.9-full/fs/ext3/ialloc.c	2007-03-28 18:30:06.000000000 +0400
+@@ -28,6 +28,7 @@
  
- static int __init journal_init_handle_cache(void)
-@@ -2064,6 +2388,7 @@ static int __init journal_init(void)
- 	if (ret != 0)
- 		jbd2_journal_destroy_caches();
- 	create_jbd_proc_entry();
-+	jbd2_create_jbd_stats_proc_entry();
- 	return ret;
+ #include "xattr.h"
+ #include "acl.h"
++#include "group.h"
+ 
+ /*
+  * ialloc.c contains the inodes allocation and deallocation routines
+@@ -43,6 +44,52 @@
+  * the free blocks count in the block.
+  */
+ 
++/*
++ * To avoid calling the atomic setbit hundreds or thousands of times, we only
++ * need to use it within a single byte (to ensure we get endianness right).
++ * We can use memset for the rest of the bitmap as there are no other users.
++ */
++static void mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
++{
++	int i;
++
++	if (start_bit >= end_bit)
++		return;
++
++	ext3_debug("mark end bits +%d through +%d used\n", start_bit, end_bit);
++	for (i = start_bit; i < ((start_bit + 7) & ~7UL); i++)
++		ext3_set_bit(i, bitmap);
++	if (i < end_bit)
++		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
++}
++
++/* Initializes an uninitialized inode bitmap */
++unsigned ext3_init_inode_bitmap(struct super_block *sb,
++				struct buffer_head *bh, int block_group,
++				struct ext3_group_desc *gdp)
++{
++	struct ext3_sb_info *sbi = EXT3_SB(sb);
++
++	J_ASSERT_BH(bh, buffer_locked(bh));
++
++	/* If checksum is bad mark all blocks and inodes use to prevent
++	 * allocation, essentially implementing a per-group read-only flag. */
++	if (!ext3_group_desc_csum_verify(sbi, block_group, gdp)) {
++		ext3_error(sb, __FUNCTION__, "Checksum bad for group %u\n",
++			   block_group);
++		gdp->bg_free_blocks_count = 0;
++		gdp->bg_free_inodes_count = 0;
++		gdp->bg_itable_unused = 0;
++		memset(bh->b_data, 0xff, sb->s_blocksize);
++		return 0;
++	}
++
++	memset(bh->b_data, 0, (EXT3_INODES_PER_GROUP(sb) + 7) / 8);
++	mark_bitmap_end(EXT3_INODES_PER_GROUP(sb), EXT3_BLOCKS_PER_GROUP(sb),
++			bh->b_data);
++
++	return EXT3_INODES_PER_GROUP(sb);
++}
+ 
+ /*
+  * Read the inode allocation bitmap for a given block_group, reading
+@@ -59,8 +106,19 @@ read_inode_bitmap(struct super_block * s
+ 	desc = ext3_get_group_desc(sb, block_group, NULL);
+ 	if (!desc)
+ 		goto error_out;
+-
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_inode_bitmap));
++	if (desc->bg_flags & cpu_to_le16(EXT3_BG_INODE_UNINIT)) {
++		bh = sb_getblk(sb, le32_to_cpu(desc->bg_inode_bitmap));
++		if (!buffer_uptodate(bh)) {
++			lock_buffer(bh);
++			if (!buffer_uptodate(bh)) {
++				ext3_init_inode_bitmap(sb, bh,block_group,desc);
++				set_buffer_uptodate(bh);
++			}
++			unlock_buffer(bh);
++		}
++	} else {
++		bh = sb_bread(sb, le32_to_cpu(desc->bg_inode_bitmap));
++	}
+ 	if (!bh)
+ 		ext3_error(sb, "read_inode_bitmap",
+ 			    "Cannot read inode bitmap - "
+@@ -169,6 +227,8 @@ void ext3_free_inode (handle_t *handle, 
+ 			if (is_directory)
+ 				gdp->bg_used_dirs_count = cpu_to_le16(
+ 				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
++			gdp->bg_checksum = ext3_group_desc_csum(sbi,block_group,
++								gdp);
+ 			spin_unlock(sb_bgl_lock(sbi, block_group));
+ 			percpu_counter_inc(&sbi->s_freeinodes_counter);
+ 			if (is_directory)
+@@ -453,7 +513,7 @@ struct inode *ext3_new_inode(handle_t *h
+ 	struct ext3_sb_info *sbi;
+ 	int err = 0;
+ 	struct inode *ret;
+-	int i;
++	int i, free = 0;
+ 
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+@@ -570,11 +630,13 @@ repeat_in_this_group:
+ 	goto out;
+ 
+ got:
+-	ino += group * EXT3_INODES_PER_GROUP(sb) + 1;
+-	if (ino < EXT3_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
+-		ext3_error (sb, "ext3_new_inode",
+-			    "reserved inode or inode > inodes count - "
+-			    "block_group = %d, inode=%lu", group, ino);
++	ino++;
++	if ((group == 0 && ino < EXT3_FIRST_INO(sb)) ||
++	    ino > EXT3_INODES_PER_GROUP(sb)) {
++		ext3_error(sb, __FUNCTION__,
++			   "reserved inode or inode > inodes count - "
++			   "block_group = %d, inode=%lu", group,
++			   ino + group * EXT3_INODES_PER_GROUP(sb));
+ 		err = -EIO;
+ 		goto fail;
+ 	}
+@@ -582,13 +644,65 @@ got:
+ 	BUFFER_TRACE(bh2, "get_write_access");
+ 	err = ext3_journal_get_write_access(handle, bh2);
+ 	if (err) goto fail;
++
++	/* We may have to initialize the block bitmap if it isn't already */
++	if (EXT3_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
++	    gdp->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) {
++		struct buffer_head *block_bh = read_block_bitmap(sb, group);
++
++		BUFFER_TRACE(block_bh, "get block bitmap access");
++		err = ext3_journal_get_write_access(handle, block_bh);
++		if (err) {
++			brelse(block_bh);
++			goto fail;
++		}
++
++		free = 0;
++		spin_lock(sb_bgl_lock(sbi, group));
++		/* recheck and clear flag under lock if we still need to */
++		if (gdp->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT3_BG_BLOCK_UNINIT);
++			free = ext3_free_blocks_after_init(sb, group, gdp);
++			gdp->bg_free_blocks_count = cpu_to_le16(free);
++		}
++		spin_unlock(sb_bgl_lock(sbi, group));
++
++		/* Don't need to dirty bitmap block if we didn't change it */
++		if (free) {
++			BUFFER_TRACE(block_bh, "dirty block bitmap");
++			err = ext3_journal_dirty_metadata(handle, block_bh);
++		}
++
++		brelse(block_bh);
++		if (err)
++			goto fail;
++	}
++
+ 	spin_lock(sb_bgl_lock(sbi, group));
++	/* If we didn't allocate from within the initialized part of the inode
++	 * table then we need to initialize up to this inode. */
++	if (EXT3_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		if (gdp->bg_flags & cpu_to_le16(EXT3_BG_INODE_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT3_BG_INODE_UNINIT);
++			free = EXT3_INODES_PER_GROUP(sb);
++		} else {
++			free = EXT3_INODES_PER_GROUP(sb) -
++				le16_to_cpu(gdp->bg_itable_unused);
++		}
++
++		if (ino > free) {
++			gdp->bg_itable_unused =
++				cpu_to_le16(EXT3_INODES_PER_GROUP(sb) - ino);
++		}
++	}
++
+ 	gdp->bg_free_inodes_count =
+ 		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
+ 	if (S_ISDIR(mode)) {
+ 		gdp->bg_used_dirs_count =
+ 			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
+ 	}
++	gdp->bg_checksum = ext3_group_desc_csum(sbi, group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group));
+ 	BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
+ 	err = ext3_journal_dirty_metadata(handle, bh2);
+@@ -610,7 +724,7 @@ got:
+ 		inode->i_gid = current->fsgid;
+ 	inode->i_mode = mode;
+ 
+-	inode->i_ino = ino;
++	inode->i_ino = ino + group * EXT3_INODES_PER_GROUP(sb);
+ 	/* This is the optimal IO size (for stat), not the fs block size */
+ 	inode->i_blksize = PAGE_SIZE;
+ 	inode->i_blocks = 0;
+Index: linux-2.6.16.27-0.9-full/fs/ext3/mballoc.c
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/mballoc.c	2007-03-28 16:03:19.000000000 +0400
++++ linux-2.6.16.27-0.9-full/fs/ext3/mballoc.c	2007-03-28 18:30:36.000000000 +0400
+@@ -36,6 +36,8 @@
+ #include <linux/seq_file.h>
+ #include <linux/version.h>
+ 
++#include "group.h"
++
+ /*
+  * MUSTDO:
+  *   - test ext3_ext_search_left() and ext3_ext_search_right()
+@@ -323,6 +325,7 @@ struct ext3_group_info {
+ 	unsigned long	bb_state;
+ 	unsigned long 	bb_tid;
+ 	struct ext3_free_metadata *bb_md_cur;
++	struct ext3_group_desc *bb_gdp;
+ 	unsigned short	bb_first_free;
+ 	unsigned short	bb_free;
+ 	unsigned short	bb_fragments;
+@@ -928,10 +931,7 @@ static int ext3_mb_init_cache(struct pag
+ 		if (first_group + i >= EXT3_SB(sb)->s_groups_count)
+ 			break;
+ 
+-		err = -EIO;
+-		desc = ext3_get_group_desc(sb, first_group + i, NULL);
+-		if (desc == NULL)
+-			goto out;
++		desc = EXT3_GROUP_INFO(sb, first_group + i)->bb_gdp;
+ 
+ 		err = -ENOMEM;
+ 		bh[i] = sb_getblk(sb, le32_to_cpu(desc->bg_block_bitmap));
+@@ -946,7 +946,12 @@ static int ext3_mb_init_cache(struct pag
+ 			unlock_buffer(bh[i]);
+ 			continue;
+ 		}
+-
++		if (desc->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) {
++			ext3_init_block_bitmap(sb, bh[i], first_group + i,desc);
++			set_buffer_uptodate(bh[i]);
++			unlock_buffer(bh[i]);
++			continue;
++		}
+ 		get_bh(bh[i]);
+ 		bh[i]->b_end_io = end_buffer_read_sync;
+ 		submit_bh(READ, bh[i]);
+@@ -1703,6 +1708,10 @@ static int ext3_mb_good_group(struct ext
+ 	switch (cr) {
+ 		case 0:
+ 			BUG_ON(ac->ac_2order == 0);
++			/* If this group is uninitialized, skip it initially */
++			if (grp->bb_gdp->bg_flags &
++			    cpu_to_le16(EXT3_BG_BLOCK_UNINIT))
++				return 0;
+ 			bits = ac->ac_sb->s_blocksize_bits + 1;
+ 			for (i = ac->ac_2order; i <= bits; i++)
+ 				if (grp->bb_counters[i] > 0)
+@@ -1796,7 +1805,9 @@ repeat:
+ 			}
+ 
+ 			ac->ac_groups_scanned++;
+-			if (cr == 0)
++			if (cr == 0 || (e3b.bd_info->bb_gdp->bg_flags &
++					cpu_to_le16(EXT3_BG_BLOCK_UNINIT) &&
++					ac->ac_2order != 0))
+ 				ext3_mb_simple_scan_group(ac, &e3b);
+ 			else if (cr == 1 && ac->ac_g_ex.fe_len == sbi->s_stripe)
+ 				ext3_mb_scan_aligned(ac, &e3b);
+@@ -2267,12 +2278,13 @@ int ext3_mb_init_backend(struct super_bl
+ 			i--;
+ 			goto err_freebuddy;
+ 		}
++		memset(meta_group_info[j], 0, len);
+ 		desc = ext3_get_group_desc(sb, i, NULL);
++		meta_group_info[j]->bb_gdp = desc;
+ 		if (desc == NULL) {
+ 			printk(KERN_ERR"EXT3-fs: can't read descriptor %u\n",i);
+ 			goto err_freebuddy;
+ 		}
+-		memset(meta_group_info[j], 0, len);
+ 		set_bit(EXT3_GROUP_INFO_NEED_INIT_BIT,
+ 			&meta_group_info[j]->bb_state);
+ 
+@@ -2936,9 +2948,17 @@ int ext3_mb_mark_diskspace_used(struct e
+ 	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
+ 
+ 	spin_lock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
++	if (gdp->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) {
++		gdp->bg_flags &= cpu_to_le16(~EXT3_BG_BLOCK_UNINIT);
++		gdp->bg_free_blocks_count =
++			cpu_to_le16(ext3_free_blocks_after_init(sb,
++							    ac->ac_b_ex.fe_group,
++							    gdp));
++	}
+ 	gdp->bg_free_blocks_count =
+ 		cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)
+ 				- ac->ac_b_ex.fe_len);
++	gdp->bg_checksum = ext3_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+ 	percpu_counter_mod(&sbi->s_freeblocks_counter, - ac->ac_b_ex.fe_len);
+ 
+@@ -4303,6 +4323,7 @@ do_more:
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+ 	gdp->bg_free_blocks_count =
+ 		cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count) + count);
++	gdp->bg_checksum = ext3_group_desc_csum(sbi, block_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_mod(&sbi->s_freeblocks_counter, count);
+ 
+Index: linux-2.6.16.27-0.9-full/fs/ext3/balloc.c
+===================================================================
+--- linux-2.6.16.27-0.9-full.orig/fs/ext3/balloc.c	2007-03-28 16:03:20.000000000 +0400
++++ linux-2.6.16.27-0.9-full/fs/ext3/balloc.c	2007-03-28 18:30:06.000000000 +0400
+@@ -21,6 +21,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/buffer_head.h>
+ 
++#include "group.h"
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+  */
+@@ -74,6 +75,75 @@ struct ext3_group_desc * ext3_get_group_
+ 	return desc + offset;
  }
  
-@@ -2075,6 +2400,7 @@ static void __exit journal_exit(void)
- 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
- #endif
- 	jbd2_remove_jbd_proc_entry();
-+	jbd2_remove_jbd_stats_proc_entry();
- 	jbd2_journal_destroy_caches();
- }
++/* Initializes an uninitialized block bitmap if given, and returns the
++ * number of blocks free in the group. */
++unsigned ext3_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
++				int block_group, struct ext3_group_desc *gdp)
++{
++	unsigned long start;
++	int bit, bit_max;
++	unsigned free_blocks;
++	struct ext3_sb_info *sbi = EXT3_SB(sb);
++
++	if (bh) {
++		J_ASSERT_BH(bh, buffer_locked(bh));
++
++		/* If checksum is bad mark all blocks use to prevent allocation,
++		 * essentially implementing a per-group read-only flag. */
++		if (!ext3_group_desc_csum_verify(sbi, block_group, gdp)) {
++			ext3_error(sb, __FUNCTION__,
++				   "Checksum bad for group %u\n", block_group);
++			gdp->bg_free_blocks_count = 0;
++			gdp->bg_free_inodes_count = 0;
++			gdp->bg_itable_unused = 0;
++			memset(bh->b_data, 0xff, sb->s_blocksize);
++			return 0;
++		}
++		memset(bh->b_data, 0, sb->s_blocksize);
++	}
++
++	/* Check for superblock and gdt backups in this group */
++	bit_max = ext3_bg_has_super(sb, block_group);
++
++	if (!EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_META_BG) ||
++	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
++			  sbi->s_desc_per_block) {
++		if (bit_max) {
++			bit_max += ext3_bg_num_gdb(sb, block_group);
++			bit_max +=le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
++		}
++	} else { /* For META_BG_BLOCK_GROUPS */
++		int group_rel = (block_group -
++				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
++				EXT3_DESC_PER_BLOCK(sb);
++		if (group_rel == 0 || group_rel == 1 ||
++		    (group_rel == EXT3_DESC_PER_BLOCK(sb) - 1))
++			bit_max += 1;
++	}
++
++	/* Last and first groups are always initialized */
++	free_blocks = EXT3_BLOCKS_PER_GROUP(sb) - bit_max;
++
++	if (bh) {
++		for (bit = 0; bit < bit_max; bit++)
++			ext3_set_bit(bit, bh->b_data);
++
++		start = block_group * EXT3_BLOCKS_PER_GROUP(sb) +
++			le32_to_cpu(sbi->s_es->s_first_data_block);
++
++		/* Set bits for block and inode bitmaps, and inode table */
++		ext3_set_bit(le32_to_cpu(gdp->bg_block_bitmap) - start,
++			     bh->b_data);
++		ext3_set_bit(le32_to_cpu(gdp->bg_inode_bitmap) - start,
++			     bh->b_data);
++		for (bit = le32_to_cpu(gdp->bg_inode_table) - start,
++		     bit_max = bit + sbi->s_itb_per_group; bit < bit_max; bit++)
++			ext3_set_bit(bit, bh->b_data);
++	}
++
++	return free_blocks - sbi->s_itb_per_group - 2;
++}
++
+ /*
+  * Read the bitmap for a given block_group, reading into the specified 
+  * slot in the superblock's bitmap cache.
+@@ -89,7 +159,19 @@ read_block_bitmap(struct super_block *sb
+ 	desc = ext3_get_group_desc (sb, block_group, NULL);
+ 	if (!desc)
+ 		goto error_out;
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
++	if (desc->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT)) {
++		bh = sb_getblk(sb, le32_to_cpu(desc->bg_block_bitmap));
++		if (!buffer_uptodate(bh)) {
++			lock_buffer(bh);
++			if (!buffer_uptodate(bh)) {
++				ext3_init_block_bitmap(sb, bh,block_group,desc);
++				set_buffer_uptodate(bh);
++			}
++			unlock_buffer(bh);
++		}
++	} else {
++		bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
++	}
+ 	if (!bh)
+ 		ext3_error (sb, "read_block_bitmap",
+ 			    "Cannot read block bitmap - "
+@@ -468,6 +550,7 @@ do_more:
+ 	desc->bg_free_blocks_count =
+ 		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
+ 			group_freed);
++	desc->bg_checksum = ext3_group_desc_csum(sbi, block_group, desc);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_mod(&sbi->s_freeblocks_counter, count);
  
+@@ -1378,8 +1461,11 @@ allocated:
+ 			ret_block, goal_hits, goal_attempts);
+ 
+ 	spin_lock(sb_bgl_lock(sbi, group_no));
++	if (gdp->bg_flags & cpu_to_le16(EXT3_BG_BLOCK_UNINIT))
++		gdp->bg_flags &= cpu_to_le16(~EXT3_BG_BLOCK_UNINIT);
+ 	gdp->bg_free_blocks_count =
+ 			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count) - 1);
++	gdp->bg_checksum = ext3_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+ 	percpu_counter_mod(&sbi->s_freeblocks_counter, -1);
+ 
+%diffstat
+ fs/ext3/balloc.c        |   88 +++++++++++++++++++++++++++++
+ fs/ext3/group.h         |   38 ++++++++++++
+ fs/ext3/ialloc.c        |  144 +++++++++++++++++++++++++++++++++++++++++++-----
+ fs/ext3/mballoc.c       |   35 +++++++++--
+ fs/ext3/resize.c        |    2 
+ fs/ext3/super.c         |   92 ++++++++++++++++++++++++++++++
+ include/linux/ext3_fs.h |   16 ++++-
+ 7 files changed, 388 insertions(+), 27 deletions(-)
+====================== ext3-uninit-2.6.16-sles10.patch =================
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
