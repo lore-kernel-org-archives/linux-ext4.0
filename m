@@ -1,804 +1,716 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 1/2] Add extent related functions
-Date: Tue,  3 Apr 2007 15:37:24 +0530
-Message-ID: <11755948531653-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <11755948452525-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 2/2] e2fsprogs: Add ext4migrate
+Date: Tue,  3 Apr 2007 15:37:25 +0530
+Message-ID: <1175594870272-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <11755948452525-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <11755948531653-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:45685 "EHLO
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:45776 "EHLO
 	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965620AbXDCKIN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Apr 2007 06:08:13 -0400
+	with ESMTP id S966157AbXDCKIr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Apr 2007 06:08:47 -0400
 Received: from sd0208e0.au.ibm.com (d23rh904.au.ibm.com [202.81.18.202])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l33AQ5E1174002
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:26:05 +1000
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l33AQdOF328186
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:26:39 +1000
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l33ABMaC041348
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:11:34 +1000
+	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l33ABxTt162554
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:12:04 +1000
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l33A7nRW026563
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:07:50 +1000
-In-Reply-To: <11755948452525-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Message-Id: <df654d0faa4a4be12a023ed99c5853956ce05664.1175594287.git.aneesh.kumar@linux.vnet.ibm.com>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l33A8DPr027192
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Apr 2007 20:08:14 +1000
+In-Reply-To: <11755948531653-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Message-Id: <1fddbefe9a421383b472c740fd89378c2c4b4020.1175594287.git.aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <df654d0faa4a4be12a023ed99c5853956ce05664.1175594287.git.aneesh.kumar@linux.vnet.ibm.com>
+References: <df654d0faa4a4be12a023ed99c5853956ce05664.1175594287.git.aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-The code is  derived out of the latest ext4 kernel source. I
-have tried to keep the code as close as possible to the kernel
-sources. This makes sure that any fixes for the tree building
-code in kernel should be easily applied to ext4migrate.  The
-ext3_ext naming convention instead of ext4_ext found in kernel is to
-make sure we are in sync with rest of e2fsprogs source
+Add ext4migrate utility that helps in migrating a ext3 block mapped
+inode to ext4 extent mapped inode.
+
+ext4migrate command takes the below syntax
+ext4migrate [--display | --migrate ] <image_name> <filename>
+
+The --display option helps in displaying the block map details for an ext3 inode
+and extent map details for an ext4 inode. The --migrate option convert a block mapped
+ext3 inode to extent mapped ext4 inode.
+
+This needs to be run on an unmounted file system (offline migration).
+
+The inode modification is done only at the last stage. This is to make sure that if we
+fail at any intermediate stage, we exit without touching the disk.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- ext4migrate/extents.c |  737 +++++++++++++++++++++++++++++++++++++++++++++++++
- ext4migrate/extents.h |   10 +
- 2 files changed, 747 insertions(+), 0 deletions(-)
- create mode 100644 ext4migrate/extents.c
- create mode 100644 ext4migrate/extents.h
+ Makefile.in             |    3 +-
+ configure.in            |   21 ++-
+ ext4migrate/Makefile.in |   66 +++++++
+ ext4migrate/migrate.c   |  491 +++++++++++++++++++++++++++++++++++++++++++++++
+ ext4migrate/migrate.h   |   27 +++
+ 5 files changed, 606 insertions(+), 2 deletions(-)
+ create mode 100644 ext4migrate/Makefile.in
+ create mode 100644 ext4migrate/migrate.c
+ create mode 100644 ext4migrate/migrate.h
 
-diff --git a/ext4migrate/extents.c b/ext4migrate/extents.c
+diff --git a/Makefile.in b/Makefile.in
+index 0d31caa..9d8d291 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -9,9 +9,10 @@ INSTALL = @INSTALL@
+ 
+ @RESIZER_CMT@RESIZE_DIR= resize
+ @DEBUGFS_CMT@DEBUGFS_DIR= debugfs
++@EXT4MIGRATE_CMT@EXT4MIGRATE_DIR= ext4migrate
+ 
+ LIB_SUBDIRS=lib/et lib/ss lib/e2p lib/ext2fs lib/uuid lib/blkid intl
+-PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po
++PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po $(EXT4MIGRATE_DIR)
+ SUBDIRS=util $(LIB_SUBDIRS) $(PROG_SUBDIRS) tests
+ 
+ SUBS= lib/ext2fs/ext2_types.h lib/blkid/blkid_types.h lib/uuid/uuid_types.h
+diff --git a/configure.in b/configure.in
+index 44b718d..5ae5e0b 100644
+--- a/configure.in
++++ b/configure.in
+@@ -436,6 +436,24 @@ echo "Building e2fsck statically by default"
+ )
+ AC_SUBST(E2FSCK_TYPE)
+ dnl
++dnl handle --enable-ext4migrate
++dnl
++AC_ARG_ENABLE([ext4migrate],
++[  --disable-ext4migrate	  disable support of ext4migrate program],
++if test "$enableval" = "no"
++then
++	echo "Disabling ext4migrate support"
++	EXT4MIGRATE_CMT="#"
++else
++	EXT4MIGRATE_CMT=
++	echo "Enabling ext4migrate support"
++fi
++,
++echo "Enabling ext4migrate support by default"
++EXT4MIGRATE_CMT=
++)
++AC_SUBST(EXT4MIGRATE_CMT)
++dnl
+ dnl See whether to install the `fsck' wrapper program (that calls e2fsck)
+ dnl
+ AC_ARG_ENABLE([fsck],
+@@ -862,7 +880,8 @@ for i in MCONFIG Makefile e2fsprogs.spec \
+ 	lib/e2p/e2p.pc lib/blkid/blkid.pc lib/ext2fs/ext2fs.pc \
+ 	misc/Makefile ext2ed/Makefile e2fsck/Makefile \
+ 	debugfs/Makefile tests/Makefile tests/progs/Makefile \
+-	resize/Makefile doc/Makefile intl/Makefile po/Makefile.in ; do
++	resize/Makefile doc/Makefile intl/Makefile po/Makefile.in \
++	ext4migrate/Makefile ; do
+ 	if test -d `dirname ${srcdir}/$i` ; then
+ 		outlist="$outlist $i"
+ 	fi
+diff --git a/ext4migrate/Makefile.in b/ext4migrate/Makefile.in
 new file mode 100644
-index 0000000..727755f
+index 0000000..2596508
 --- /dev/null
-+++ b/ext4migrate/extents.c
-@@ -0,0 +1,737 @@
++++ b/ext4migrate/Makefile.in
+@@ -0,0 +1,66 @@
++#
++# Standard e2fsprogs prologue....
++#
++
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++VPATH = @srcdir@
++top_builddir = ..
++my_dir = util
++INSTALL = @INSTALL@
++@MCONFIG@
++
++SRCS = $(srcdir)/migrate.c
++
++LIBS= $(LIBEXT2FS)  $(LIBCOM_ERR) 
++DEPLIBS= $(LIBEXT2FS)  $(LIBCOM_ERR) 
++
++.c.o:
++	@echo "	CC $<"
++	@$(CC) -c $(ALL_CFLAGS) $< -o $@
++	@#cc -g -I../lib/  -Wunreachable-code -Wunused -Wunused-function 
++	@#-Wunused-label  -Wunused-parameter -Wunused-value  -Wunused-variable  -c migrate.c
++
++PROGS= ext4migrate
++
++all:: $(PROGS)
++
++ext4migrate: migrate.o  extents.o $(DEPLIBS)
++	@echo "	LD $@"
++	@$(CC) $(ALL_LDFLAGS) -o ext4migrate migrate.o extents.o $(LIBS)
++
++installdirs:
++	@echo "	MKINSTALLDIRS $(root_sbindir)"
++	@$(MKINSTALLDIRS) $(DESTDIR)$(root_sbindir) 
++
++install: $(PROGS) installdirs
++	@for i in $(PROGS); do \
++		echo "	INSTALL $(root_sbindir)/$$i"; \
++		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++
++install-strip: install
++	@for i in $(PROGS); do \
++		echo "	STRIP $(root_sbindir)/$$i"; \
++		$(STRIP) $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++
++uninstall:
++	for i in $(PROGS); do \
++		$(RM) -f $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++clean:
++	$(RM) -f $(PROGS) \#* *.s *.o *.a *~ core
++
++mostlyclean: clean
++
++distclean: clean
++	$(RM) -f .depend Makefile $(srcdir)/TAGS $(srcdir)/Makefile.in.old
++
++# +++ Dependency line eater +++
++#
++# Makefile dependencies follow.  This must be the last section in
++# the Makefile.in file
++#
++migrate.o: $(srcdir)/migrate.c
++extents.o: $(srcdir)/extents.c
+diff --git a/ext4migrate/migrate.c b/ext4migrate/migrate.c
+new file mode 100644
+index 0000000..0d851cc
+--- /dev/null
++++ b/ext4migrate/migrate.c
+@@ -0,0 +1,491 @@
 +#include <stdio.h>
 +#include <stdlib.h>
 +
 +#include "migrate.h"
 +#include "extents.h"
 +
-+struct ext4_ext_path {
-+	ext4_fsblk_t			p_block;
-+	__u16				p_depth;
-+	struct ext3_extent		*p_ext;
-+	struct ext3_extent_idx		*p_idx;
-+	struct ext3_extent_header	*p_hdr;
-+};
++static struct list_head blk_cache_head;
++static struct list_head blk_stat_head;
++static blk_t i_block[EXT2_N_BLOCKS];
++static int migrate = 0;
++ext2_filsys current_fs = NULL;
 +
-+/*
-+ * ext_pblock:
-+ * combine low and high parts of physical block number into ext4_fsblk_t
-+ */
-+ext4_fsblk_t ext_pblock(struct ext3_extent *ex)
++static void blk_init(void)
 +{
-+	ext4_fsblk_t block;
-+
-+	block = ex->ee_start;
-+	block |= ((ext4_fsblk_t) ex->ee_start_hi << 31) << 1;
-+	return block;
++	INIT_LIST_HEAD(&blk_cache_head);
++	INIT_LIST_HEAD(&blk_stat_head);
 +}
 +
-+/*
-+ * idx_pblock:
-+ * combine low and high parts of a leaf physical block number into ext4_fsblk_t
-+ */
-+ext4_fsblk_t idx_pblock(struct ext3_extent_idx *ix)
++static void inode_i_block_init()
 +{
-+	ext4_fsblk_t block;
-+
-+	block = ix->ei_leaf;
-+	block |= ((ext4_fsblk_t) ix->ei_leaf_hi << 31) << 1;
-+	return block;
++	struct ext3_extent_header *eh = (struct ext3_extent_header *)i_block;
++	eh->eh_magic = EXT4_EXT_MAGIC;
++	eh->eh_entries = 0;
++	eh->eh_depth = 0;
++	eh->eh_max = ext3_ext_space_root();
 +}
 +
-+/*
-+ * ext3_ext_store_pblock:
-+ * stores a large physical block number into an extent struct,
-+ * breaking it into parts
-+ */
-+void ext3_ext_store_pblock(struct ext3_extent *ex, ext4_fsblk_t pb)
++static void usage(char *prg_name)
 +{
-+	ex->ee_start = (unsigned long) (pb & 0xffffffff);
-+	ex->ee_start_hi = (unsigned long) ((pb >> 31) >> 1) & 0xffff;
++	fprintf(stderr, "%s [--display | --migrate ] <image_name> <filename>\n", prg_name);
++	exit(1);
 +}
 +
-+/*
-+ * ext3_idx_store_pblock:
-+ * stores a large physical block number into an index struct,
-+ * breaking it into parts
-+ */
-+static void ext3_idx_store_pblock(struct ext3_extent_idx *ix, ext4_fsblk_t pb)
++static int build_extent(blk_t start_blk, blk_t end_blk, e2_blkcnt_t start_pblk, e2_blkcnt_t end_pblk)
 +{
-+	ix->ei_leaf = (unsigned long) (pb & 0xffffffff);
-+	ix->ei_leaf_hi = (unsigned long) ((pb >> 31) >> 1) & 0xffff;
++
++	int retval = 0;
++	struct ext3_extent newext;
++	struct ext4_ext_path *path;
++	/* start with a local allocated array without touching the inode */
++	struct ext3_extent_header *eh = (struct ext3_extent_header *)i_block;
++	(void)end_pblk;
++
++	newext.ee_block = start_blk;
++	newext.ee_len = end_blk - start_blk +1;
++	ext3_ext_store_pblock(&newext, start_pblk);
++
++	path = ext3_ext_find_extent(eh, start_blk, NULL);
++
++	if (!path)
++		return EXT2_ET_BLOCK_ALLOC_FAIL;
++
++	retval = ext3_ext_insert_extent(eh, path, &newext);
++
++	free(path);
++	return retval;
 +}
 +
-+
-+static int __ext3_ext_space_block(ext2_filsys filesys)
++static void finish_range(struct list_blocks_struct *lb)
 +{
-+	int size;
++	int retval;
 +
-+	size = (filesys->blocksize - sizeof(struct ext3_extent_header))
-+			/ sizeof(struct ext3_extent);
-+	return size;
-+}
-+static int ext3_ext_space_block()
-+{
-+	return  __ext3_ext_space_block(current_fs);
-+}
-+
-+static int __ext3_ext_space_block_idx(ext2_filsys filesys)
-+{
-+	int size;
-+
-+	size = (filesys->blocksize - sizeof(struct ext3_extent_header))
-+			/ sizeof(struct ext3_extent_idx);
-+	return size;
-+}
-+static int ext3_ext_space_block_idx()
-+{
-+	return __ext3_ext_space_block_idx(current_fs);
-+
-+}
-+
-+int ext3_ext_space_root(void)
-+{
-+	int size;
-+
-+	size = EXT2_N_BLOCKS*sizeof(blk_t);
-+	size -= sizeof(struct ext3_extent_header);
-+	size /= sizeof(struct ext3_extent);
-+	return size;
-+}
-+
-+static int ext3_ext_space_root_idx(void)
-+{
-+	int size;
-+
-+	size = EXT2_N_BLOCKS*sizeof(blk_t);
-+	size -= sizeof(struct ext3_extent_header);
-+	size /= sizeof(struct ext3_extent_idx);
-+	return size;
-+}
-+static void ext3_ext_binsearch_idx(struct ext4_ext_path *path, blk_t logical_blk)
-+{
-+	struct ext3_extent_header *eh = path->p_hdr;
-+	struct ext3_extent_idx *r, *l, *m;
-+
-+	l = EXT_FIRST_INDEX(eh) + 1;
-+	r = EXT_FIRST_INDEX(eh) + eh->eh_entries - 1;
-+	while (l <= r) {
-+		m = l + (r - l) / 2;
-+		if (logical_blk < m->ei_block)
-+			r = m - 1;
-+		else
-+			l = m + 1;
-+	}
-+	path->p_idx = l - 1;
-+}
-+
-+static void ext3_ext_binsearch(struct ext4_ext_path *path, blk_t logical_blk)
-+{
-+	struct ext3_extent_header *eh = path->p_hdr;
-+	struct ext3_extent *r, *l, *m;
-+
-+	if (eh->eh_entries == 0) {
-+		/*
-+		 * this leaf is empty:
-+		 * we get such a leaf in split/add case
-+		 */
++	if (lb->first_block == 0)
 +		return;
-+	}
 +
-+	l = EXT_FIRST_EXTENT(eh) + 1;
-+	r = EXT_FIRST_EXTENT(eh) + eh->eh_entries - 1;
++	printf("(%lld-%lld):%u-%u\n", lb->first_bcnt, lb->last_bcnt,
++					lb->first_block, lb->last_block);
 +
-+	while (l <= r) {
-+		m = l + (r - l) / 2;
-+		if (logical_blk < m->ee_block)
-+			r = m - 1;
-+		else
-+			l = m + 1;
-+	}
-+
-+	path->p_ext = l - 1;
-+}
-+
-+/*
-+ * ext3_ext_insert_index:
-+ * insert new index [@logical;@ptr] into the block at @curp;
-+ * check where to insert: before @curp or after @curp
-+ */
-+static int ext3_ext_insert_index(struct ext4_ext_path *curp,
-+				int logical, ext4_fsblk_t ptr)
-+{
-+	struct ext3_extent_idx *ix;
-+	int len, err = 0;
-+
-+	len = EXT_MAX_INDEX(curp->p_hdr) - curp->p_idx;
-+	if (logical > curp->p_idx->ei_block) {
-+		/* insert after */
-+		if (curp->p_idx != EXT_LAST_INDEX(curp->p_hdr)) {
-+			len = (len - 1) * sizeof(struct ext3_extent_idx);
-+			len = len < 0 ? 0 : len;
-+			memmove(curp->p_idx + 2, curp->p_idx + 1, len);
++	if (migrate) {
++		retval = build_extent(lb->first_bcnt, lb->last_bcnt,
++						lb->first_block, lb->last_block);
++		if (retval) {
++			com_err("build_extent", retval, ": Failed to build extent");
++			exit(1);
 +		}
-+		ix = curp->p_idx + 1;
-+	} else {
-+		/* insert before */
-+		len = len * sizeof(struct ext3_extent_idx);
-+		len = len < 0 ? 0 : len;
-+		memmove(curp->p_idx + 1, curp->p_idx, len);
-+		ix = curp->p_idx;
 +	}
 +
-+	ix->ei_block = logical;
-+	ext3_idx_store_pblock(ix, ptr);
-+	curp->p_hdr->eh_entries = curp->p_hdr->eh_entries+1;
-+
-+	return err;
++	lb->first_block = 0;
 +}
 +/*
-+ * ext3_ext_split:
-+ * inserts new subtree into the path, using free index entry
-+ * at depth @at:
-+ * - allocates all needed blocks (new leaf and all intermediate index blocks)
-+ * - makes decision where to split
-+ * - moves remaining extents and index entries (right to the split point)
-+ *   into the newly allocated blocks
-+ * - initializes subtree
++ * We don't want to update the filesystem block bitmap
++ * directly. For indirect blocks and others which we need
++ * to mark as unused, we want to track them but not update
++ * the file systembitmap early. This is needed to make sure
++ * the subsequent request for free blocks are not satisfied
++ * by these indirect blocks. This makes sure that if
++ * we fail later writing the inode, we have consistent
++ * block bitmap.
 + */
-+static int ext3_ext_split(struct ext3_extent_header *eh, struct ext4_ext_path *path,
-+				struct ext3_extent *newext, int at)
++
++static int mark_block_bitmap(ext4_fsblk_t pblock)
 +{
-+	int depth = eh->eh_depth;
-+	struct ext3_extent_header *neh;
-+	struct ext3_extent_idx *fidx;
-+	struct ext3_extent *ex;
-+	struct blk_cache *blkc;
-+	int i = at, k, m, a;
-+	ext4_fsblk_t newblock, oldblock;
-+	int border;
-+	ext4_fsblk_t *ablocks = NULL; /* array of allocated blocks */
-+	int err = 0;
++	struct blk_stat *stat;
 +
-+	/* make decision: where to split? */
-+	/* FIXME: now decision is simplest: at current extent */
-+
-+	/* if current leaf will be split, then we should use
-+	 * border from split point */
-+	if (path[depth].p_ext != EXT_MAX_EXTENT(path[depth].p_hdr)) {
-+		border = path[depth].p_ext[1].ee_block;
-+	} else {
-+		border = newext->ee_block;
++	stat = malloc(sizeof(struct blk_stat));
++	if (!stat) {
++		return EXT2_ET_BLOCK_ALLOC_FAIL;
 +	}
 +
-+	/*
-+	 * If error occurs, then we break processing
-+	 * and mark filesystem read-only. index won't
-+	 * be inserted and tree will be in consistent
-+	 * state. Next mount will repair buffers too.
-+	 */
++	stat->pblock = pblock;
++	stat->dirty = 1;
++	list_add(&(stat->head),  &blk_stat_head);
 +
-+	/*
-+	 * Get array to track all allocated blocks.
-+	 * We need this to handle errors and free blocks
-+	 * upon them.
-+	 */
-+	ablocks = malloc(sizeof(ext4_fsblk_t) * depth);
-+	if (!ablocks)
-+		return -1;
-+
-+	memset(ablocks, 0, sizeof(ext4_fsblk_t) * depth);
-+
-+	/* allocate all needed blocks */
-+	for (a = 0; a < depth - at; a++) {
-+		blkc = get_block(0);
-+		if (!blkc) {
-+			err =  EXT2_ET_BLOCK_ALLOC_FAIL;
-+			goto cleanup;
-+		}
-+		newblock = blkc->pblock;
-+		if (newblock == 0)
-+			goto cleanup;
-+		ablocks[a] = newblock;
-+	}
-+
-+	/* initialize new leaf */
-+	newblock = ablocks[--a];
-+
-+	neh = (struct ext3_extent_header *)(unsigned long)newblock;
-+	neh->eh_entries = 0;
-+	neh->eh_max = ext3_ext_space_block();
-+	neh->eh_magic = EXT4_EXT_MAGIC;
-+	neh->eh_depth = 0;
-+	ex = EXT_FIRST_EXTENT(neh);
-+
-+	/* move remainder of path[depth] to the new leaf */
-+	/* start copy from next extent */
-+	/* TODO: we could do it by single memmove */
-+	m = 0;
-+	path[depth].p_ext++;
-+	while (path[depth].p_ext <=
-+			EXT_MAX_EXTENT(path[depth].p_hdr)) {
-+		/*memmove(ex++, path[depth].p_ext++,
-+				sizeof(struct ext4_extent));
-+		neh->eh_entries++;*/
-+		path[depth].p_ext++;
-+		m++;
-+	}
-+
-+	/*
-+	 * move the part of the old extent to the new allocated one
-+	 */
-+	if (m) {
-+		memmove(ex, path[depth].p_ext-m, sizeof(struct ext3_extent)*m);
-+		neh->eh_entries = neh->eh_entries+m;
-+	}
-+
-+	/* correct old leaf */
-+	if (m) {
-+		path[depth].p_hdr->eh_entries = path[depth].p_hdr->eh_entries-m;
-+
-+	}
-+
-+	/* create intermediate indexes */
-+	k = depth - at - 1;
-+
-+	/*create intermediate indices */
-+	/* insert new index into current index block */
-+	/* current depth stored in i var */
-+	i = depth - 1;
-+	while (k--) {
-+		oldblock = newblock;
-+		newblock = ablocks[--a];
-+
-+		neh =  (struct ext3_extent_header *)(unsigned long)newblock;
-+		neh->eh_entries = 1;
-+		neh->eh_magic = EXT4_EXT_MAGIC;
-+		neh->eh_max = ext3_ext_space_block_idx();
-+		neh->eh_depth = depth - i;
-+		fidx = EXT_FIRST_INDEX(neh);
-+		fidx->ei_block = border;
-+		ext3_idx_store_pblock(fidx, oldblock);
-+
-+		/* copy indexes */
-+		m = 0;
-+		path[i].p_idx++;
-+
-+		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
-+			/*memmove(++fidx, path[i].p_idx++,
-+					sizeof(struct ext4_extent_idx));
-+			neh->eh_entries++;
-+			BUG_ON(neh->eh_entries > neh->eh_max);*/
-+			path[i].p_idx++;
-+			m++;
-+		}
-+		if (m) {
-+			memmove(++fidx, path[i].p_idx - m,
-+				sizeof(struct ext3_extent_idx) * m);
-+			neh->eh_entries = neh->eh_entries + m;
-+		}
++	return 0;
 +
 +
-+		/* correct old index */
-+		if (m) {
-+			path[i].p_hdr->eh_entries = path[i].p_hdr->eh_entries-m;
-+		}
-+
-+		i--;
-+	}
-+
-+	/* insert new index */
-+	err = ext3_ext_insert_index(path + at, border, newblock);
-+
-+cleanup:
-+
-+	free(ablocks);
-+
-+	return err;
 +}
-+
-+/*
-+ * ext3_ext_grow_indepth:
-+ * implements tree growing procedure:
-+ * - allocates new block
-+ * - moves top-level data (index block or leaf) into the new block
-+ * - initializes new top-level, creating index that points to the
-+ *   just created block
-+ */
-+static int ext3_ext_grow_indepth(struct ext3_extent_header *eh, struct ext4_ext_path *path)
++static int unmark_block_bitmap(ext4_fsblk_t pblock)
 +{
-+	struct ext4_ext_path *curp = path;
-+	struct ext3_extent_header *neh;
-+	struct blk_cache *blkc;
-+	ext4_fsblk_t newblock;
-+	void *addr;
++	struct blk_stat *stat;
 +
-+	blkc = get_block(0);
-+	if (!blkc) {
-+		return  EXT2_ET_BLOCK_ALLOC_FAIL;
-+
-+	}
-+	addr = blkc->block_mem_addr;
-+	newblock = blkc->pblock;
-+
-+	/* move top-level index/leaf into new block */
-+	memmove(addr, curp->p_hdr, EXT2_N_BLOCKS*sizeof(blk_t));
-+
-+	/* set size of new block */
-+	neh =  (struct ext3_extent_header *)addr;
-+	/* old root could have indexes or leaves
-+	 * so calculate e_max right way */
-+	if (eh->eh_depth) {
-+		neh->eh_max = ext3_ext_space_block_idx();
-+	} else {
-+		neh->eh_max = ext3_ext_space_block();
++	stat = malloc(sizeof(struct blk_stat));
++	if (!stat) {
++		return EXT2_ET_BLOCK_ALLOC_FAIL;
 +	}
 +
-+	neh->eh_magic = EXT4_EXT_MAGIC;
-+
-+	/* create index in new top-level index: num,max,pointer */
-+
-+	curp->p_hdr->eh_magic = EXT4_EXT_MAGIC;
-+	curp->p_hdr->eh_max = ext3_ext_space_root_idx();
-+	curp->p_hdr->eh_entries = 1;
-+	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
-+	/* FIXME: it works, but actually path[0] can be index */
-+	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
-+	ext3_idx_store_pblock(curp->p_idx, newblock);
-+
-+	neh = eh;
-+	//fidx = EXT_FIRST_INDEX(neh);
-+
-+	neh->eh_depth = path->p_depth + 1;
++	stat->pblock = pblock;
++	stat->dirty = 0;
++	list_add(&(stat->head),  &blk_stat_head);
 +
 +	return 0;
 +}
-+struct ext4_ext_path * ext3_ext_find_extent(struct ext3_extent_header *eh,
-+					blk_t logical_blk, struct ext4_ext_path *path)
++
++static int write_block_bitmap()
 +{
++	struct blk_stat *stat;
++	struct list_head *entry;
 +
-+	struct blk_cache *blkc;
-+	short int depth, i, ppos = 0;
-+	int alloc = 0;
++	list_for_each(entry, &blk_stat_head) {
 +
-+	i = depth =  eh->eh_depth;
-+
-+	if (!path) {
-+		/*
-+		 * We may be called to rebuild the path while growing the 
-+		 * depth of the tree
-+		 */
-+		path = malloc(sizeof(struct ext4_ext_path)* (depth+2));
-+		if (!path)
-+			return NULL;
-+
-+		alloc = 1;
-+		memset(path, 0, sizeof(struct ext4_ext_path)* (depth+2));
++		stat = list_entry(entry, struct blk_stat, head);
++		if (stat->dirty) {
++			ext2fs_mark_block_bitmap(current_fs->block_map, stat->pblock);
++		} else {
++			ext2fs_unmark_block_bitmap(current_fs->block_map, stat->pblock);
++		}
 +	}
 +
++	ext2fs_mark_bb_dirty(current_fs);
 +
-+	path[0].p_hdr = eh;
-+
-+	while (i) {
-+
-+		ext3_ext_binsearch_idx(path, logical_blk);
-+
-+		path[ppos].p_block = idx_pblock(path[ppos].p_idx);
-+		path[ppos].p_depth = i;
-+		path[ppos].p_ext = NULL;
-+
-+		blkc = get_block(path[ppos].p_block);
-+
-+		if (!blkc) {
-+			if (alloc)
-+				free(path);
-+			return NULL;
-+		}
-+
-+		eh = blkc->block_mem_addr;
-+		if (!eh) {
-+			if (alloc)
-+				free(path);
-+			return NULL;
-+		}
-+		if (eh->eh_max == 0) {
-+			if (alloc)
-+				free(path);
-+			return NULL;
-+		}
-+		ppos++;
-+		path[ppos].p_hdr = eh;
-+		i--;
-+	}
-+	path[ppos].p_depth = i;
-+	path[ppos].p_hdr = eh;
-+	path[ppos].p_ext = NULL;
-+	path[ppos].p_idx = NULL;
-+
-+	ext3_ext_binsearch(path + ppos, logical_blk);
-+
-+	return path;
++	return ext2fs_write_block_bitmap(current_fs);
 +}
 +
-+static int ext3_ext_create_new_leaf(struct ext3_extent_header *eh,
-+					struct ext4_ext_path *path, struct ext3_extent *newext)
++
++static int list_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
++			    blk_t *blocknr, e2_blkcnt_t blockcnt,
++			    blk_t ref_block EXT2FS_ATTR((unused)),
++			    int ref_offset EXT2FS_ATTR((unused)),
++			    void *private)
 +{
++	struct list_blocks_struct *lb = (struct list_blocks_struct *) private;
 +
-+	struct ext4_ext_path *curp;
-+	int depth, i, err = 0;
-+
-+repeat:
-+	i = depth = eh->eh_depth;
-+
-+	/* walk up to the tree and look for free index entry */
-+	curp = path + depth;
-+	while (i > 0 && !EXT_HAS_FREE_INDEX(curp)) {
-+		i--;
-+		curp--;
++	if (blockcnt >= 0) {
++		/*
++		 * See if we can add on to the existing range (if it exists)
++		 */
++		if (lb->first_block &&
++		    (lb->last_block+1 == *blocknr) &&
++		    (lb->last_bcnt+1 == blockcnt)) {
++			lb->last_block = *blocknr;
++			lb->last_bcnt = blockcnt;
++			return 0;
++		}
++		/*
++		 * Start a new range.
++		 */
++		finish_range(lb);
++		lb->first_block = lb->last_block = *blocknr;
++		lb->first_bcnt = lb->last_bcnt = blockcnt;
++	} else {
++		/*
++		 * special blocks such as indirect, double indrect and triple
++		 * indirect blocks. Mark them as free if we are migrating
++		 * BLOCK_COUNT_IND BLOCK_COUNT_DIND BLOCK_COUNT_TIND
++		 */
++		if (migrate) {
++			if (unmark_block_bitmap(*blocknr))
++				return BLOCK_ABORT;
++		}
 +	}
 +
-+	if (EXT_HAS_FREE_INDEX(curp)) {
++	return 0;
++}
 +
-+		/* if we found index with free entry, then use that
-+		 * entry: create all needed subtree and add new leaf */
-+		err = ext3_ext_split(eh, path, newext, i);
-+		if (err)
-+			goto err_out;
++static void iterate_blocks(ext2_filsys current_fs, ext2_ino_t inode_num)
++{
++	struct list_blocks_struct lb;
++	lb.first_block = 0;
 +
-+		/* recalculate the path since grow inode would have changed it */
-+		path = ext3_ext_find_extent(eh, newext->ee_block, path);
-+		if (!path) {
-+			err = EXT2_ET_BLOCK_ALLOC_FAIL;
-+			goto err_out;
++	ext2fs_block_iterate2(current_fs, inode_num, 0, NULL, list_blocks_proc, (void *)&lb);
++
++	finish_range(&lb);
++}
++
++/*FIXME!! goal value passed as zero */
++
++/* FIXME!! 48 bit block
++ * Can we ask for block addressed by 48 bit ?
++ * We have actually mounted a ext3 file system via ext4dev If want want
++ * we will have to change the group descriptor also */
++/* Function is also called from extents.c */
++static struct blk_cache * __get_block(ext2_filsys current_fs, ext4_fsblk_t pblock)
++{
++	struct list_head *entry;
++	struct blk_cache *blk;
++	void *addr;
++	int retval;
++	/* need to initialize to fix corruption due to (long) typecasting */
++	ext4_fsblk_t block = 0; 
++
++
++	if (pblock == 0) {
++		/* allocate in disk and give back */
++		/* FIXME!! 48 bit block */
++		retval = ext2fs_new_block(current_fs, 0, NULL, (blk_t *)&block);
++		if (retval) {
++			/*
++			 * In case we fail we don't write/sync previous update
++			 * we don't want partial conversion
++			 */
++			return NULL;
++		}
++		if (mark_block_bitmap(block))
++			return NULL;
++
++		addr = malloc(current_fs->blocksize);
++		if (!addr)
++			return NULL;
++		memset(addr, 0, current_fs->blocksize);
++
++		blk = malloc(sizeof(struct blk_cache));
++		if (!blk) {
++			free(addr);
++			return NULL;
 +		}
 +
-+	} else {
++		blk->pblock = (ext4_fsblk_t)block;
++		blk->block_mem_addr = addr;
++		list_add(&(blk->head),  &blk_cache_head);
 +
-+		/* tree is full, time to grow in depth */
-+		err = ext3_ext_grow_indepth(eh, path);
-+		if (err)
-+			goto err_out;
++		return blk;
++	}
 +
-+		/* recalculate the path since grow inode would have changed it */
-+		path = ext3_ext_find_extent(eh, newext->ee_block, path);
-+		if (!path) {
-+			err = EXT2_ET_BLOCK_ALLOC_FAIL;
-+			goto err_out;
++
++	list_for_each(entry, &blk_cache_head) {
++
++		blk = list_entry(entry, struct blk_cache, head);
++
++		if (blk->pblock == pblock ) {
++			return blk;
++
 +		}
++	}
 +
++	/*
++	 * No block present. Allocate a disk block and a memory equivalent
++	 * add the same to the list and return the address
++	 */
 +
++	/* FIXME!! 48 bit block */
++	retval = ext2fs_new_block(current_fs, 0, NULL, (blk_t *)&block);
++	if (retval) {
 +		/*
-+		 * only first (depth 0 -> 1) produces free space;
-+		 * in all other cases we have to split the grown tree
++		 * In case we fail we don't write/sync previous update
++		 * we don't want partial conversion
 +		 */
-+		depth = eh->eh_depth;
-+		if (path[depth].p_hdr->eh_entries == path[depth].p_hdr->eh_max) {
-+			/* now we need to split */
-+			goto repeat;
-+		}
++		return NULL;
++	}
++	if (mark_block_bitmap(block))
++		return NULL;
 +
++	addr = malloc(current_fs->blocksize);
++	if (!addr)
++		return NULL;
++	memset(addr, 0, current_fs->blocksize);
++
++	blk = malloc(sizeof(struct blk_cache));
++	if (!blk) {
++		free(addr);
++		return NULL;
++	}
++
++	blk->pblock = (ext4_fsblk_t)block;
++	blk->block_mem_addr = addr;
++	list_add(&(blk->head),  &blk_cache_head);
++
++	return blk;
++
++}
++
++struct blk_cache * get_block(ext4_fsblk_t pblock)
++{
++
++	return __get_block(current_fs, pblock);
++}
++
++static int write_extent_block(ext2_filsys current_fs, ext4_fsblk_t pblock, void *buf)
++{
++	struct ext3_extent_header *eh = (struct ext3_extent_header *)buf;
++	struct ext3_extent_idx *ix;
++	ext4_fsblk_t tpblock;
++	struct blk_cache *blkc;
++	int i, retval;
++
++	if (eh->eh_depth == 0) {
++		retval = ext2fs_write_ext_block(current_fs, pblock, buf);
++		if (retval)
++			goto err_out;
++	} else {
++		ix = EXT_FIRST_INDEX(eh);
++		for (i = 0; i < eh->eh_entries; i++, ix++) {
++
++			tpblock = idx_pblock(ix);
++			blkc = get_block(tpblock);
++			if (!blkc) {
++				retval = EXT2_ET_BLOCK_ALLOC_FAIL;
++				goto err_out;
++			}
++			retval = write_extent_block(current_fs, blkc->pblock, blkc->block_mem_addr);
++			if (retval) {
++				goto err_out;
++			}
++		}
 +	}
 +
 +err_out:
 +
-+	return err;
-+}
++	return retval;
 +
-+static int ext3_can_extents_be_merged(struct ext3_extent *ex1, struct ext3_extent *ex2)
-+{
-+	if (ex1->ee_block + ex1->ee_len != ex2->ee_block)
-+		return 0;
-+
-+
-+	if (ext_pblock(ex1) + ex1->ee_len == ext_pblock(ex2))
-+		return 1;
-+	return 0;
 +}
 +
 +
-+/*
-+ * ext3_ext_next_leaf_block:
-+ * returns first allocated block from next leaf or EXT_MAX_BLOCK
-+ */
-+static unsigned ext3_ext_next_leaf_block(struct ext4_ext_path *path)
++static int write_extent_details(ext2_filsys current_fs, ext2_ino_t inode_num,
++		struct ext2_inode *inode, blk_t *i_block)
 +{
-+	int depth;
 +
-+	depth = path->p_depth;
++	struct ext3_extent_header *eh = (struct ext3_extent_header *)i_block;
++	struct ext3_extent_idx *ix;
++	ext4_fsblk_t pblock;
++	struct blk_cache *blkc;
++	int i, retval;
 +
-+	/* zero-tree has no leaf blocks at all */
-+	if (depth == 0)
-+		return EXT_MAX_BLOCK;
 +
-+	/* go to index block */
-+	depth--;
++	/* Write the blocks to the disk */
++	if (eh->eh_depth != 0) {
++		/* need to write blocks corresponding to  extent_idx */
++		ix = EXT_FIRST_INDEX(eh);
++		for (i = 0; i < eh->eh_entries; i++, ix++) {
 +
-+	while (depth >= 0) {
-+		if (path[depth].p_idx != EXT_LAST_INDEX(path[depth].p_hdr)) {
-+			return path[depth].p_idx[1].ei_block;
++			pblock = idx_pblock(ix);
++			blkc = get_block(pblock);
++			if (!blkc) {
++				retval = EXT2_ET_BLOCK_ALLOC_FAIL;
++				goto err_out;
++			}
++			retval = write_extent_block(current_fs, blkc->pblock, blkc->block_mem_addr);
++			if (retval) {
++				goto err_out;
++			}
 +		}
-+		depth--;
 +	}
 +
-+	return EXT_MAX_BLOCK;
-+}
-+
-+/*
-+ * ext3_ext_correct_indexes:
-+ * if leaf gets modified and modified extent is first in the leaf,
-+ * then we have to correct all indexes above.
-+ * TODO: do we need to correct tree in all cases?
-+ */
-+static void ext3_ext_correct_indexes(struct ext3_extent_header *eh, struct ext4_ext_path *path)
-+{
-+	int depth = eh->eh_depth;
-+	struct ext3_extent *ex;
-+	int border;
-+	int k;
-+
-+
-+	eh = path[depth].p_hdr;
-+	ex = path[depth].p_ext;
-+
-+	if (depth == 0) {
-+		/* there is no tree at all */
-+		return;
-+	}
-+
-+	if (ex != EXT_FIRST_EXTENT(eh)) {
-+		/* we correct tree if first leaf got modified only */
-+		return;
++	inode->i_flags |= EXT4_EXTENTS_FL;
++	memcpy(inode->i_block, i_block, sizeof(inode->i_block));
++	/* write inode */
++	retval = ext2fs_write_inode(current_fs, inode_num, inode);
++	if (retval) {
++		goto err_out;
 +	}
 +
 +	/*
-+	 * TODO: we need correction if border is smaller than current one
++	 * write  the updated block bit map at the end
++	 * so that we don't need to reset the bitmap later
++	 * if something fails
 +	 */
-+	k = depth - 1;
-+	border = path[depth].p_ext->ee_block;
-+	path[k].p_idx->ei_block = border;
 +
-+	while (k--) {
-+		/* change all left-side indexes */
-+		if (path[k+1].p_idx != EXT_FIRST_INDEX(path[k+1].p_hdr))
-+			break;
-+		path[k].p_idx->ei_block = border;
++	retval = write_block_bitmap();
++	if (retval) {
++		goto err_out;
 +	}
 +
-+	return;
++	if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) {
++		current_fs->super->s_feature_incompat |= EXT3_FEATURE_INCOMPAT_EXTENTS;
++
++		/* FIXME!! should we write super block */
++		ext2fs_mark_super_dirty(current_fs);
++	}
++
++err_out:
++	return retval;
++
 +}
 +
-+int ext3_ext_insert_extent(struct ext3_extent_header *eh,
-+				struct ext4_ext_path *path, struct ext3_extent *newext)
++main(int argc, char *argv[])
 +{
++	char *dev_name, *file_name;
++	int flags, superblock = 0;
++	unsigned int block_size = 0;
++	ext2_ino_t inode_num;
++	struct ext2_inode inode;
++	int retval;
 +
-+	struct ext3_extent *ex, *fex;
-+	struct ext3_extent *nearex; /* nearest extent */
-+	struct ext4_ext_path *npath = NULL;
-+	int depth, len, err = 0, next;
-+	struct ext3_extent_header *save_eh = eh;
-+
-+	depth = eh->eh_depth;
-+	ex = path[depth].p_ext;
-+
-+	/* try to insert block into found extent and return */
-+	if (ex && ext3_can_extents_be_merged(ex, newext)) {
-+		ex->ee_len = ex->ee_len + newext->ee_len;
-+		eh = path[depth].p_hdr;
-+		nearex = ex;
-+		goto merge;
++	if (argc < 3 || argc > 4) {
++		usage(argv[0]);
 +	}
 +
-+repeat:
-+	/* recalculate depth here */
-+	depth=save_eh->eh_depth;
++	blk_init();
++	inode_i_block_init();
 +
-+	eh = path[depth].p_hdr;
-+	if (eh->eh_entries < eh->eh_max)
-+		goto has_space;
-+
-+	/* probably next leaf has space for us? */
-+	fex = EXT_LAST_EXTENT(eh);
-+	next = ext3_ext_next_leaf_block(path);
-+
-+	if (newext->ee_block > fex->ee_block && next != EXT_MAX_BLOCK) {
-+
-+		npath = ext3_ext_find_extent(save_eh, next, NULL);
-+		if (!npath) {
-+			return EXT2_ET_BLOCK_ALLOC_FAIL;
-+		}
-+
-+		eh = npath[depth].p_hdr;
-+		if (eh->eh_entries < eh->eh_max) {
-+			path = npath;
-+			goto repeat;
-+		}
-+	}
-+
-+	/*
-+	 * There is no free space in the found leaf.
-+	 * We're gonna add a new leaf in the tree.
-+	 */
-+	err = ext3_ext_create_new_leaf(save_eh, path, newext);
-+	if (err)
-+		goto cleanup;
-+
-+	/* recalculate depth here */
-+	depth=save_eh->eh_depth;
-+	eh = path[depth].p_hdr;
-+
-+has_space:
-+
-+	nearex = path[depth].p_ext;
-+
-+	if (!nearex) {
-+		/* there is no extent in this leaf, create first one */
-+		path[depth].p_ext = EXT_FIRST_EXTENT(eh);
-+
-+	} else if (newext->ee_block > nearex->ee_block) {
-+
-+		if (nearex != EXT_LAST_EXTENT(eh)) {
-+			len = EXT_MAX_EXTENT(eh) - nearex;
-+			len = (len - 1) * sizeof(struct ext3_extent);
-+			len = len < 0 ? 0 : len;
-+			memmove(nearex + 2, nearex + 1, len);
-+		}
-+		path[depth].p_ext = nearex + 1;
++	if (argc == 3 ) {
++		dev_name = argv[1];
++		file_name = argv[2];
 +	} else {
-+		len = (EXT_MAX_EXTENT(eh) - nearex) * sizeof(struct ext3_extent);
-+		len = len < 0 ? 0 : len;
-+		memmove(nearex + 1, nearex, len);
-+		path[depth].p_ext = nearex;
-+	}
-+
-+	eh->eh_entries = eh->eh_entries+1;
-+	nearex = path[depth].p_ext;
-+	nearex->ee_block = newext->ee_block;
-+	nearex->ee_start = newext->ee_start;
-+	nearex->ee_start_hi = newext->ee_start_hi;
-+	nearex->ee_len = newext->ee_len;
-+
-+merge:
-+	/* try to merge extents to the right */
-+	while (nearex < EXT_LAST_EXTENT(eh)) {
-+		if (!ext3_can_extents_be_merged(nearex, nearex + 1))
-+			break;
-+		/* merge with next extent! */
-+		nearex->ee_len = nearex->ee_len + nearex[1].ee_len;
-+
-+		if (nearex + 1 < EXT_LAST_EXTENT(eh)) {
-+			len = (EXT_LAST_EXTENT(eh) - nearex - 1)
-+					* sizeof(struct ext3_extent);
-+			memmove(nearex + 1, nearex + 2, len);
++		if (strcmp(argv[1], "--migrate") == 0) {
++			migrate = 1;
++		} else if (strcmp(argv[1], "--display") == 0) {
++			migrate = 0;
++		} else {
++			usage(argv[0]);
 +		}
-+		eh->eh_entries = eh->eh_entries-1;
++		dev_name = argv[2];
++		file_name = argv[3];
 +	}
 +
-+	/* try to merge extents to the left */
-+
-+	/* time to correct all indexes above */
-+	ext3_ext_correct_indexes(save_eh, path);
-+
-+cleanup:
-+	if (npath) {
-+		free(npath);
++	if (migrate) {
++		flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_RW | EXT2_FLAG_SUPER_ONLY | EXT2_FLAG_MASTER_SB_ONLY;
++	} else {
++		flags = EXT2_FLAG_SOFTSUPP_FEATURES;
 +	}
 +
-+	return err;
++	retval = ext2fs_open(dev_name, flags, superblock,
++				block_size, unix_io_manager, &current_fs);
++	if (retval) {
++		com_err(dev_name, retval,": Unable to open the file system");
++		return;
++	}
++
++	retval = ext2fs_read_inode_bitmap(current_fs);
++	if (retval) {
++		com_err(dev_name, retval,": Unable to read inode bitmap");
++		goto err_out;
++	}
++	retval =  ext2fs_read_block_bitmap(current_fs);
++	if (retval) {
++		com_err(dev_name, retval,": Unable to read block bitmap");
++		goto err_out;
++	}
++
++	retval = ext2fs_namei(current_fs, EXT2_ROOT_INO,
++				EXT2_ROOT_INO, file_name, &inode_num);
++	if (retval) {
++		com_err(file_name, retval,": Unable to get file inode number");
++		goto err_out;
++	}
++
++	printf("Inode number %d\n", inode_num);
++
++	retval = ext2fs_read_inode(current_fs, inode_num, &inode);
++	if (retval) {
++		com_err(file_name, retval,": Unable to get file inode number");
++		goto err_out;
++	}
++
++	if (inode.i_flags & EXT4_EXTENTS_FL) {
++		printf("Extent enabled\n");
++		migrate = 0 ;
++	}
++
++	iterate_blocks(current_fs, inode_num);
++
++	if (migrate) {
++
++		/*
++		 * Only if we have successfully walked the block mapping write the extent details
++		 */
++		retval = write_extent_details(current_fs, inode_num, &inode, i_block);
++		if (retval) {
++			com_err("write_extent_details", 0, "Failed to write extent details");
++			goto err_out;
++		}
++
++		/* dump the migrated extent details */
++		migrate = 0;
++		printf("Extent details after migrate\n");
++		iterate_blocks(current_fs, inode_num);
++	}
++
++err_out:
++	ext2fs_close(current_fs);
++
 +}
-+
-diff --git a/ext4migrate/extents.h b/ext4migrate/extents.h
+diff --git a/ext4migrate/migrate.h b/ext4migrate/migrate.h
 new file mode 100644
-index 0000000..38114dd
+index 0000000..4b00f99
 --- /dev/null
-+++ b/ext4migrate/extents.h
-@@ -0,0 +1,10 @@
++++ b/ext4migrate/migrate.h
+@@ -0,0 +1,27 @@
 +
-+struct ext4_ext_path * ext3_ext_find_extent(struct ext3_extent_header *,
-+						blk_t , struct ext4_ext_path *);
-+struct blk_cache * get_block(ext4_fsblk_t);
-+int ext3_ext_space_root(void);
-+ext4_fsblk_t ext_pblock(struct ext3_extent *);
-+ext4_fsblk_t idx_pblock(struct ext3_extent_idx *);
-+void ext3_ext_store_pblock(struct ext3_extent *, ext4_fsblk_t );
-+int ext3_ext_insert_extent(struct ext3_extent_header *,
-+				struct ext4_ext_path *, struct ext3_extent *);
++#include "ext2fs/ext2_fs.h"
++#include "ext2fs/ext2fs.h"
++#include "ext2fs/kernel-list.h"
++
++typedef unsigned long long ext4_fsblk_t;
++
++extern ext2_filsys current_fs;
++
++#define EXT4_EXT_MAGIC		0xf30a
++
++struct list_blocks_struct {
++	blk_t		first_block, last_block;
++	e2_blkcnt_t	first_bcnt, last_bcnt;
++};
++
++struct  blk_stat {
++	struct list_head  head;
++	ext4_fsblk_t pblock;
++	int dirty;
++};
++
++struct blk_cache {
++	struct list_head  head;
++	ext4_fsblk_t pblock;
++	void * block_mem_addr;
++};
 -- 
 1.5.1.rc3.30.ga8f4-dirty
