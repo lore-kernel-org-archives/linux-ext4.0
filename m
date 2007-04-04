@@ -1,77 +1,108 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC][take 2] e2fsprogs: Add ext4migrate
-Date: Tue, 3 Apr 2007 14:32:52 -0600
-Message-ID: <20070403203252.GZ5967@schatzie.adilger.int>
-References: <11755948452525-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Adrian Bunk <bunk@stusta.de>
+Subject: [RFC: 2.6.16 patch] jbd: journal_dirty_data re-check for unmapped buffers
+Date: Wed, 4 Apr 2007 05:41:42 +0200
+Message-ID: <20070404034142.GA27660@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Eric Sandeen <esandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:50305 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1945915AbXDCUcy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Apr 2007 16:32:54 -0400
+Received: from mailout.stusta.mhn.de ([141.84.69.5]:42186 "EHLO
+	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1030380AbXDDDlo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Apr 2007 23:41:44 -0400
 Content-Disposition: inline
-In-Reply-To: <11755948452525-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Apr 03, 2007  15:37 +0530, Aneesh Kumar K.V wrote:
-> The extent insert code is derived out of the latest ext4 kernel
-> source. I have tried to keep the code as close as possible to the
-> kernel sources. This makes sure that any fixes for the tree building
-> code in kernel should be easily applied to ext4migrate.  The ext3_ext
-> naming convention instead of ext4_ext found in kernel is to make sure
-> we are in sync with rest of e2fsprogs source.
+This patch also seems to make sense for 2.6.16, or do I miss anything?
 
-Of course, the other way to do this would be to temporarily mount the
-filesystem as ext4, copy non-extent files via "cp" (can use lsattr to
-check for extent flag) and then rename new file over old one.  Care
-must be taken to not mount filesystem on "visible" mountpoint, so that
-users cannot be changing the filesystem while copy is being done.
-
-This can be done to convert an ext4 filesystem back to ext3 also, if
-the ext4 filesystem is mounted with "noextents" (to disable creation
-of new files with extent mapping).
-
-The only minor issue is that the inode numbers of the files will change.
-
-> The inode modification is done only at the last stage. This is to make
-> sure that if we fail at any intermediate stage, we exit without touching
-> the disk.
-> 
-> The inode update is done as below
-> a) Walk the extent index blocks and write them to the disk. If failed exit
-> b) Write the inode. if failed exit.
-> c) Write the updated block bitmap. if failed exit ( This could be a problem
->    because we have already updated the inode i_block filed to point to new
->    blocks.). But such inconsistancy between inode i_block and block bitmap
->    can be fixed by fsck IIUC.
-
-Why not mark all the relevant blocks in use (for both exent- and block-mapped
-copies) until the copy is done, then write everything out, and only mark the
-block-mapped file blocks free after the inode is written to disk?  This avoids
-the danger that the new extent-mapped file's blocks are marked free and get
-double-allocated (corrupting the file data, possibly the whole filesystem).
-
-I don't think there is a guarantee that an impatient user will run a lengthy
-e2fsck after interrupting the migrate.  Also, you should mark the filesystem
-unclean at first change unless everything completes successfully.  That way
-e2fsck will at least run automatically on the next boot.
+TIA
+Adrian
 
 
-Other general notes:
-- wrap lines at 80 columns
-- would be good to have a "-R" mode that walked the whole filesystem,
-  since startup time is very long for large filesystems
-- also allow specifying multiple files on the command-line
-- changing the operation to be multi-file allows avoiding sync of bitmaps
-  two times (once after extents are allocated and inode written, once after
-  indirect blocks are freed).  There only needs to be one sync per file.
+commit f58a74dca88d48b0669609b4957f3dd757bdc898
+Author: Eric Sandeen <sandeen@sandeen.net>
+Date:   Sat Oct 28 10:38:27 2006 -0700
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+    [PATCH] jbd: journal_dirty_data re-check for unmapped buffers
+    
+    When running several fsx's and other filesystem stress tests, we found
+    cases where an unmapped buffer was still being sent to submit_bh by the
+    ext3 dirty data journaling code.
+    
+    I saw this happen in two ways, both related to another thread doing a
+    truncate which would unmap the buffer in question.
+    
+    Either we would get into journal_dirty_data with a bh which was already
+    unmapped (although journal_dirty_data_fn had checked for this earlier, the
+    state was not locked at that point), or it would get unmapped in the middle
+    of journal_dirty_data when we dropped locks to call sync_dirty_buffer.
+    
+    By re-checking for mapped state after we've acquired the bh state lock, we
+    should avoid these races.  If we find a buffer which is no longer mapped,
+    we essentially ignore it, because journal_unmap_buffer has already decided
+    that this buffer can go away.
+    
+    I've also added tracepoints in these two cases, and made a couple other
+    tracepoint changes that I found useful in debugging this.
+    
+    Signed-off-by: Eric Sandeen <esandeen@redhat.com>
+    Cc: <linux-ext4@vger.kernel.org>
+    Signed-off-by: Andrew Morton <akpm@osdl.org>
+    Signed-off-by: Linus Torvalds <torvalds@osdl.org>
+
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index d5c6304..4f82bcd 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -967,6 +967,13 @@ int journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+ 	 */
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
++
++	/* Now that we have bh_state locked, are we really still mapped? */
++	if (!buffer_mapped(bh)) {
++		JBUFFER_TRACE(jh, "unmapped buffer, bailing out");
++		goto no_journal;
++	}
++
+ 	if (jh->b_transaction) {
+ 		JBUFFER_TRACE(jh, "has transaction");
+ 		if (jh->b_transaction != handle->h_transaction) {
+@@ -1028,6 +1035,11 @@ int journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+ 				sync_dirty_buffer(bh);
+ 				jbd_lock_bh_state(bh);
+ 				spin_lock(&journal->j_list_lock);
++				/* Since we dropped the lock... */
++				if (!buffer_mapped(bh)) {
++					JBUFFER_TRACE(jh, "buffer got unmapped");
++					goto no_journal;
++				}
+ 				/* The buffer may become locked again at any
+ 				   time if it is redirtied */
+ 			}
+@@ -1824,6 +1836,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 			}
+ 		}
+ 	} else if (transaction == journal->j_committing_transaction) {
++		JBUFFER_TRACE(jh, "on committing transaction");
+ 		if (jh->b_jlist == BJ_Locked) {
+ 			/*
+ 			 * The buffer is on the committing transaction's locked
+@@ -1838,7 +1851,6 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		 * can remove it's next_transaction pointer from the
+ 		 * running transaction if that is set, but nothing
+ 		 * else. */
+-		JBUFFER_TRACE(jh, "on committing transaction");
+ 		set_buffer_freed(bh);
+ 		if (jh->b_next_transaction) {
+ 			J_ASSERT(jh->b_next_transaction ==
+@@ -1858,6 +1870,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		 * i_size already for this truncate so recovery will not
+ 		 * expose the disk blocks we are discarding here.) */
+ 		J_ASSERT_JH(jh, transaction == journal->j_running_transaction);
++		JBUFFER_TRACE(jh, "on running transaction");
+ 		may_free = __dispose_buffer(jh, transaction);
+ 	}
+ 
