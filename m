@@ -1,45 +1,47 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
-Subject: Re: Interface for the new fallocate() system call
-Date: Mon, 9 Apr 2007 18:34:37 +0200
-Message-ID: <20070409163436.GA24012@lazybastard.org>
-References: <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071929.GC8365@osiris.boeblingen.de.ibm.com> <17932.54606.323431.491736@cargo.ozlabs.ibm.com> <20070330104449.GA9371@lazybastard.org> <17946.14646.808334.441833@cargo.ozlabs.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: confused on different inode size
+Date: Mon, 9 Apr 2007 11:26:30 -0400
+Message-ID: <20070409152630.GA30658@thunk.org>
+References: <1176014343.20429.6.camel@colyT43.site> <20070408175218.GB29180@thunk.org> <1176085993.4101.6.camel@colyT43.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Heiko Carstens <heiko.carstens@de.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Paul Mackerras <paulus@samba.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: coly <colyli@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:38992 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753490AbXDIP0a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Apr 2007 11:26:30 -0400
 Content-Disposition: inline
-In-Reply-To: <17946.14646.808334.441833@cargo.ozlabs.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1176085993.4101.6.camel@colyT43.site>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 9 April 2007 23:01:42 +1000, Paul Mackerras wrote:
-> J=C3=B6rn Engel writes:
->=20
-> > Wouldn't that work be confined to fallocate()?  If I understand Hei=
-ko
-> > correctly, the alternative would slow s390 down for every syscall,
-> > including more performance-critical ones.
->=20
-> The alternative that Jakub suggested wouldn't slow s390 down.
+On Mon, Apr 09, 2007 at 10:33:13AM +0800, coly wrote:
+> Theodore:
+> 
+> Thanks for your replying. 
+> 
+> Can I understand this way:
+> * Though sizeof(struct ext4_inode) is 152, the real inode size on disk
+> still depends on mount options.
 
-True.  And it appears to be one of the least offensive options we have.
+Not mount options, but how the filesystem is formatted.  So substitute
+"mount" with "mke2fs", and that would be correct.
 
-J=C3=B6rn
+> * If use old inode size, the on disk inode will be 128 bytes.
+> * If use new inode size(e.g. extent option in mount), the on disk inode
+> will be 256, or more bytes.
 
---=20
-My second remark is that our intellectual powers are rather geared to
-master static relations and that our powers to visualize processes
-evolving in time are relatively poorly developed.
--- Edsger W. Dijkstra
--
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+s/mount/mke2fs/
+
+And the on-disk inode size is 256, 512, or some greater power of two,
+up to the filesystem blocksize.
+
+> * If on disk inode size is 128 bytes, only first 128 bytes of struct
+> ext4_inode take effects.
+
+Well, there's no space to store the fields beyond the first 128, so
+any features that require the extra inode fields can't be used.
+
+						- Ted
