@@ -1,53 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Samuel Thibault <samuel.thibault@ens-lyon.org>
 Subject: Re: Add a norecovery option to ext3/4?
-Date: Sun, 08 Apr 2007 22:24:50 -0500
-Message-ID: <4619B202.3050601@redhat.com>
-References: <20070409000556.GA13980@implementation>
+Date: Mon, 9 Apr 2007 05:31:34 +0200
+Message-ID: <20070409033134.GB13980@implementation>
+References: <20070409000556.GA13980@implementation> <4619B202.3050601@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36469 "EHLO mx1.redhat.com"
+Received: from iona.labri.fr ([147.210.8.143]:42711 "EHLO iona.labri.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752573AbXDIDYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 Apr 2007 23:24:54 -0400
-In-Reply-To: <20070409000556.GA13980@implementation>
+	id S1752320AbXDIDbi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Apr 2007 23:31:38 -0400
+Content-Disposition: inline
+In-Reply-To: <4619B202.3050601@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Samuel Thibault wrote:
-> Hi,
-> 
-> Distribution installers usually try to probe OSes for building a suited
-> grub menu.  Unfortunately, mounting an ext3 partition, even in read-only
-> mode, does perform some operations on the filesystem (log recovery).
-> This is not a good idea since it may silently garbage data.  
+Eric Sandeen, le Sun 08 Apr 2007 22:24:50 -0500, a =E9crit :
+> Samuel Thibault wrote:
+> >Distribution installers usually try to probe OSes for building a sui=
+ted
+> >grub menu.  Unfortunately, mounting an ext3 partition, even in read-=
+only
+> >mode, does perform some operations on the filesystem (log recovery).
+> >This is not a good idea since it may silently garbage data. =20
+>=20
+> Can you elaborate?  Under what circumstances is log replay going to h=
+arm=20
+> data?  Do you mean that the installer mounts partitions, looking for=20
+> what OS is installed?  How is that harmful?
+>=20
+> Ohhh... this is http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=3D41=
+7407=20
+> isn't it?
 
-Can you elaborate?  Under what circumstances is log replay going to harm 
-data?  Do you mean that the installer mounts partitions, looking for 
-what OS is installed?  How is that harmful?
+Yes.
 
-Ohhh... this is http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=417407 
-isn't it?
+> Hm, so the root cause there seems that the installer found 2 legs of =
+a=20
+> mirror and mounted them independently, recovering them independently.=
+=2E.=20
+> But why did that cause problems?
 
-Hm, so the root cause there seems that the installer found 2 legs of a 
-mirror and mounted them independently, recovering them independently... 
-But why did that cause problems?
+Because that thrashed his data (or at least it didn't help to keep data
+safe).
 
-> XFS has a
-> norecovery option that allows to disable that, I'd say ext3/4 should
-> have it too.
+> Other options you may have in the installer, though, is to check for
+> md superblocks before mounting bare partitions, or maybe use the
+> BLKROSET ioctl to set the block device to read-only prior to mount,
+> for added insurance...
 
-The xfs mount option is useful on a purely read-only device, or if the 
-log is corrupted to the point where it can't be replayed... It was put 
-in place 9+ years ago.  :)  I'd have to ask the sgi guys to dig & see 
-what the original use for...
+That's one the things proposed in the bugreport yes.
 
-It'd be easy enough to add to ext3/4, I suppose.  Other options you may 
-have in the installer, though, is to check for md superblocks before 
-mounting bare partitions, or maybe use the BLKROSET ioctl to set the 
-block device to read-only prior to mount, for added insurance...
-
--Eric
+Samuel
