@@ -1,40 +1,45 @@
-From: Phillip Susi <psusi@cfl.rr.com>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Mon, 09 Apr 2007 11:43:15 -0400
-Message-ID: <461A5F13.7040705@cfl.rr.com>
-References: <20070409000556.GA13980@implementation>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
+Subject: Re: Interface for the new fallocate() system call
+Date: Mon, 9 Apr 2007 18:34:37 +0200
+Message-ID: <20070409163436.GA24012@lazybastard.org>
+References: <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071929.GC8365@osiris.boeblingen.de.ibm.com> <17932.54606.323431.491736@cargo.ozlabs.ibm.com> <20070330104449.GA9371@lazybastard.org> <17946.14646.808334.441833@cargo.ozlabs.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from iriserv.iradimed.com ([72.242.190.170]:49663 "EHLO iradimed.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S965589AbXDIPzk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Apr 2007 11:55:40 -0400
-In-Reply-To: <20070409000556.GA13980@implementation>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Heiko Carstens <heiko.carstens@de.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: Paul Mackerras <paulus@samba.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <17946.14646.808334.441833@cargo.ozlabs.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Samuel Thibault wrote:
-> Hi,
-> 
-> Distribution installers usually try to probe OSes for building a suited
-> grub menu.  Unfortunately, mounting an ext3 partition, even in read-only
-> mode, does perform some operations on the filesystem (log recovery).
-> This is not a good idea since it may silently garbage data.  XFS has a
-> norecovery option that allows to disable that, I'd say ext3/4 should
-> have it too.
+On Mon, 9 April 2007 23:01:42 +1000, Paul Mackerras wrote:
+> J=C3=B6rn Engel writes:
+>=20
+> > Wouldn't that work be confined to fallocate()?  If I understand Hei=
+ko
+> > correctly, the alternative would slow s390 down for every syscall,
+> > including more performance-critical ones.
+>=20
+> The alternative that Jakub suggested wouldn't slow s390 down.
 
-When the filesystem is told to mount the disk read only, that means it 
-should not write to it.  The fact that ext3 goes ahead and does anyway 
-is a bug and should be fixed.  There is no need for a norecovery option, 
-because read only is a sufficient directive to tell the filesystem not 
-to write to the disk.
+True.  And it appears to be one of the least offensive options we have.
 
-As someone else pointed out, this behavior causes havoc if you hibernate 
-a system and then boot up another system which mounts the disk of the 
-hibernated system.  Under all conditions it should be safe to mount a 
-disk read only, but here it is not because the journal playback trashes 
-the disk out from under the hibernated system.
+J=C3=B6rn
+
+--=20
+My second remark is that our intellectual powers are rather geared to
+master static relations and that our powers to visualize processes
+evolving in time are relatively poorly developed.
+-- Edsger W. Dijkstra
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
