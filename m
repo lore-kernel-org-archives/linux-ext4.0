@@ -1,71 +1,53 @@
-From: coly <colyli@gmail.com>
-Subject: Re: confused on different inode size
-Date: Mon, 09 Apr 2007 10:33:13 +0800
-Message-ID: <1176085993.4101.6.camel@colyT43.site>
-References: <1176014343.20429.6.camel@colyT43.site>
-	 <20070408175218.GB29180@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Add a norecovery option to ext3/4?
+Date: Sun, 08 Apr 2007 22:24:50 -0500
+Message-ID: <4619B202.3050601@redhat.com>
+References: <20070409000556.GA13980@implementation>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Samuel Thibault <samuel.thibault@ens-lyon.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from py-out-1112.google.com ([64.233.166.181]:58119 "EHLO
-	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752342AbXDIC3e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Apr 2007 22:29:34 -0400
-Received: by py-out-1112.google.com with SMTP id a29so924479pyi
-        for <linux-ext4@vger.kernel.org>; Sun, 08 Apr 2007 19:29:33 -0700 (PDT)
-In-Reply-To: <20070408175218.GB29180@thunk.org>
+Received: from mx1.redhat.com ([66.187.233.31]:36469 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752573AbXDIDYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Apr 2007 23:24:54 -0400
+In-Reply-To: <20070409000556.GA13980@implementation>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore:
+Samuel Thibault wrote:
+> Hi,
+> 
+> Distribution installers usually try to probe OSes for building a suited
+> grub menu.  Unfortunately, mounting an ext3 partition, even in read-only
+> mode, does perform some operations on the filesystem (log recovery).
+> This is not a good idea since it may silently garbage data.  
 
-Thanks for your replying.=20
+Can you elaborate?  Under what circumstances is log replay going to harm 
+data?  Do you mean that the installer mounts partitions, looking for 
+what OS is installed?  How is that harmful?
 
-Can I understand this way:
-* Though sizeof(struct ext4_inode) is 152, the real inode size on disk
-still depends on mount options.
-* If use old inode size, the on disk inode will be 128 bytes.
-* If use new inode size(e.g. extent option in mount), the on disk inode
-will be 256, or more bytes.
-* If on disk inode size is 128 bytes, only first 128 bytes of struct
-ext4_inode take effects.
+Ohhh... this is http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=417407 
+isn't it?
 
-Best regards.
+Hm, so the root cause there seems that the installer found 2 legs of a 
+mirror and mounted them independently, recovering them independently... 
+But why did that cause problems?
 
-Coly
+> XFS has a
+> norecovery option that allows to disable that, I'd say ext3/4 should
+> have it too.
 
-=E5=9C=A8 2007-04-08=E6=97=A5=E7=9A=84 13:52 -0400=EF=BC=8CTheodore Tso=
-=E5=86=99=E9=81=93=EF=BC=9A
-> On Sun, Apr 08, 2007 at 02:39:03PM +0800, coly wrote:
-> > Hi, list:
-> >=20
-> > I find size of struct ext4_inode is 152 bytes, but from the dumpe2f=
-s, it
-> > tells me the inode size is 128 bytes.
-> >=20
-> > I am confused that, the ext4_inode is the on-disk inode format, so =
-how
-> > can dumpe2fs tells the inode size is 128 bytes.
-> >=20
-> > Further more, when I use sb_bread() to read inode from inode table =
-(with
-> > 152 bytes inode size), I can not read proper data from the bh->b_da=
-ta.
-> > Once I use 128 bytes inode size, I can read what I want from the
-> > bh->b_data.
->=20
-> The inode size for ext4 filesystems can be multiple sizes; the
-> traditional ext2/ext3 inode size is 128 bytes.  If so, then you won't
-> have any of the features that require inode fields starting at
-> i_extra_isize.  If you use an inode size of 256 bytes, then you will
-> be able to use nanosecond granularity timestamps, and the extra space
-> (256-152 bytes) can be used for fast access to extended attributes.
-> If there is an expectation that the filesystem will need a larger
-> amount of space for extended attributes, the filesystem can be
-> formatted with 512, 1024, or even larger sizes (so long as it is a
-> power of two >=3D 128 bytes).
->=20
-> 					- Ted
+The xfs mount option is useful on a purely read-only device, or if the 
+log is corrupted to the point where it can't be replayed... It was put 
+in place 9+ years ago.  :)  I'd have to ask the sgi guys to dig & see 
+what the original use for...
+
+It'd be easy enough to add to ext3/4, I suppose.  Other options you may 
+have in the installer, though, is to check for md superblocks before 
+mounting bare partitions, or maybe use the BLKROSET ioctl to set the 
+block device to read-only prior to mount, for added insurance...
+
+-Eric
