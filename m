@@ -1,64 +1,81 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@lazybastard.org>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Tue, 10 Apr 2007 09:22:53 +0200
-Message-ID: <20070410072253.GA28665@lazybastard.org>
-References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com> <461A760B.1040103@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Phillip Susi <psusi@cfl.rr.com>,
-	Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][take 3] e2fsprogs: Add ext4migrate
+Date: Tue, 10 Apr 2007 14:00:51 +0530
+Message-ID: <1176193853165-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: aneesh.kumar@linux.vnet.ibm.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lazybastard.de ([212.112.238.170]:48121 "EHLO
-	longford.lazybastard.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751911AbXDJH0t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 03:26:49 -0400
-Content-Disposition: inline
-In-Reply-To: <461A760B.1040103@redhat.com>
+Received: from ausmtp05.au.ibm.com ([202.81.18.154]:65144 "EHLO
+	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751922AbXDJIbt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 04:31:49 -0400
+Received: from sd0208e0.au.ibm.com (d23rh904.au.ibm.com [202.81.18.202])
+	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l3A8XHhn3735620
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2007 18:33:33 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.250.242])
+	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l3A8YacH066202
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2007 18:34:43 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l3A8V25u028069
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2007 18:31:02 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 9 April 2007 12:21:15 -0500, Eric Sandeen wrote:
-> Phillip Susi wrote:
-> >=20
-> > When the filesystem is told to mount the disk read only, that means=
- it=20
-> > should not write to it. =20
->=20
-> It means the filesystem should not be writeable when it is mounted.
-> This is not the same as saying that the filesystem itself should do n=
-o
-> IO in the course of making that read-only mount available.
+This is work in progress
 
-The filesystem has two interfaces.  One to the device underneith, one t=
-o
-userspace.  Read-only should certainly mean that no writes cross the
-userspace interface.  Traditionally it has implicitly also meant that
-no writes are crossing the device interface.  Whether that was/is an
-explicit requirement - who knows.
 
-Journaling filesystems have introduced this thing called "journal
-replay".  And I have to admit, it makes thing _a lot_ easier to always
-replay the journal, even when being mounted read-only.
+Changes from from my previous patches are as follows:
+a) Mark the file system unclean if we fail migrating
+b) support for migrating more than one file
+c) Support for migrating all the ext3 inode in the file system
+d) Fix the free block counts. ( Make sure fsck pass without errors after migration )
+e) Mark the blocks used for extent idx as used so that we don't double allocate them
+f) Don't mark the blocks used for indirect block map as free untill we fully migrate
+   the inode.This make sure we don't use these blocks for extent idx and overwrite them.
+g) Fix the migration when we end up with more than one extent idx block.
 
-But "it is easier" is a pretty lame excuse.
 
-> Under all conditions it should be safe to mount a read-only block
-> device, but that is not the same as mounting a filesystem read-only.
+Changes from from my previous patches are as follows:
+a) support for files with holes
+b) use the block iterator present in libext2fs
+c) don't mark  the indirect blocks as unused early. If we mark the
+   the blocks unused, they can be resued for extent index. If we later
+   fail to migrate, the indirect blocks content would be overwritten.
 
-In particular, it is a lame excuse when this claim is true.  If the
-block-device is read-only, then journal replay will not work as expecte=
-d
-and all the "not so easy" work has to be done anyway.
+The below patches add ext4migrate utility that helps in migrating
+a ext3 block mapped inode to ext4 extent mapped inode. I have split
+the patches into two. The purpose of splitting the patches into two
+is to make the review easeir. The contents of [PATCH 1/2] is derived out of kernel source.
 
-Did I miss anything?  Is it actually easier to mount a read-only device
-with unclean journal than mounting a read-write device and not replay
-the journal?
+ext4migrate command takes the below syntax
+ext4migrate --display | --migrate  <image_name> [<filename>]
 
-J=C3=B6rn
+The --display option helps in displaying the block map details for an ext3 inode
+and extent map details for an ext4 inode. The --migrate option convert a block mapped
+ext3 inode to extent mapped ext4 inode.
 
---=20
-Joern's library part 8:
-http://citeseer.ist.psu.edu/plank97tutorial.html
+This needs to be run on an unmounted file system (offline migration).
+
+The extent insert code is derived out of the latest ext4 kernel source. I have tried
+to keep the code as close as possible to the kernel sources. This makes sure that any
+fixes for the tree building code in kernel should be easily applied to ext4migrate.
+The ext3_ext naming convention instead of ext4_ext found in kernel is to
+make  sure we are in sync with rest of e2fsprogs source.
+
+The inode modification is done only at the last stage. This is to make sure that if we
+fail at any intermediate stage, we exit without touching the disk.
+
+The inode update is done as below
+a) Walk the extent index blocks and write them to the disk. If failed exit
+b) Writ the update block bitmap. if failed exit.
+b) Write the inode. if failed Undo the write of block bitmap and exit.
+
+I will be looking at the writing a new COW unix io manager that will take a backup
+of blocks modified. This will help us to easily recover the file system in case
+we fail and overwrite some of the blocks. (more info  e2fsprogs-upstream/TODO)
+
+The patch applies on top of e2fsprogs found at
+
+http://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/e2fsprogs-1.39-tyt1/e2fsprogs-1.39-tyt1.tar.bz2
+
+-aneesh
