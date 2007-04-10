@@ -1,81 +1,620 @@
-From: Phillip Susi <psusi@cfl.rr.com>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Tue, 10 Apr 2007 18:04:55 -0400
-Message-ID: <461C0A07.6080604@cfl.rr.com>
-References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com> <461A760B.1040103@redhat.com> <461BDD48.2000904@cfl.rr.com> <461BE2FB.5090101@redhat.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: e2fsck performance with uninit_groups patch
+Date: Tue, 10 Apr 2007 15:50:40 -0600
+Message-ID: <20070410215040.GH5967@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	joern@lazybastard.org, tytso@mit.edu
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753957AbXDJWE1@vger.kernel.org>
-In-Reply-To: <461BE2FB.5090101@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: multipart/mixed; boundary="gvF4niNJ+uBMJnEh"
+Cc: "Andrew C. Uselton" <uselton2@llnl.gov>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:35393 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752784AbXDJVuo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 17:50:44 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> except in the case of a journaling filesystem, where the journal in
-> theory obviates the need for a fsck.  (yes, I know... fsck still has a
-> place...)  But, fsck is largely meaningless until the journal has been
-> recovered anyway (fs can only be consistent if it includes uncommited
-> transactions in the journal), so isn't this new territory?
 
-In a way, yes, this is new territory, but not entirely.  It is merely an 
-extension of the existing system, and in the existing system the ro flag 
-clearly meant do not write to the disk.  You don't extend an existing 
-system by breaking old expectations.
+--gvF4niNJ+uBMJnEh
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> I'm admittedly playing devil's advocate here :)  but what, in the
-> historical non-journalled filesystem case, would be writing to the
-> device anyway, if all IO from the vfs were stopped?  Without the
-> journal, isn't vfs-ro the same as bdev-ro, largely?
+I'm forwarding some interesting performance results for running with the
+uninit_groups feature that I posted patches here recently.  The executive
+summary is that fsck time with the patches is directly related to the
+number of inodes in use, instead of being related to the number of inodes
+in the whole filesystem.
 
-Yes, they were the same, and that is my point: users got used to using 
-ro to indicate they did not want the block device written to, and were 
-doing this long before there was a read only flag on the block device 
-itself.  Excepting journal playback from this breaks user expectation 
-and leads to data loss.
+In the test results this shaves about 1500s (almost 1/2) of the time off
+e2fsck on an empty filesystem, and the majority of filesystems I looked
+at show only 1-5% of the inodes in use.
 
-> As a counter example, if you had a filesystem which saves it's last
-> mount time in the superblock; should a ro mount not update that time?
-> (perhaps not, depending on how that timestamp was intended to be used.)
+Andrew Uselton <acu@llnl.gov> wrote:
+> The test proceeded by filling up the available inodes on a 2TB LUN
+> (there were 244M inodes available), and testing the time to fsck the
+> file system every additional 2% full.  We only used the new "sped up"
+> fsck code, but emulated the older code by turning on and then turning
+> off the feature at each 2% point.  Each check included 3 fsck runs: 
+> - the  first to establish the "high water mark" data structures that are
+>   the significant feature used by the sped up code.   This takes about as
+>   long as the old fsck
+> - the second measures fsck time when the feature is enabled and the high
+>   water marks are in place
+> - the third removes the high water mark data structures as the feature
+>   is turned off.  This is also similar to running the old fsck.
 
-This is another good example arguing against writing to the disk.  Ext2 
-would write to the super block to mark the volume as dirty and update 
-the mount count used to decide when it was time for a fsck.  It did not 
-do this if mounted read only because it understood that the meaning of 
-the ro flag was not to write to the disk.  Likewise, it did not update 
-file's atime.  If ro just meant "don't let me write to files" then the 
-atime would be updated even when mounted read only.
+> data for the test is included in the first attachment: fsck.data
+> graph showing the old and new fsck performance numbers is: fsck-speedup.png.  
+> Two additional graphs show the breakdown of the fsck times into passes
+> 1 through 5:
+> fsck-est-hw.png - time to fsck completion to establish the high water marks
+> fsck-use-hw.png - time to fsck completion using the high water marks
 
-> You might not damage the underlying filesystem, but you could sure go
-> off in the weeds trying to read it, if you stumbled upon some
-> half-updated metadata... so while it may be safe for the filesystem, I'm
-> not convinced that it's safe for the host reading the filesystem.
 
-And this is exactly what you get without journals.  You mount a damaged 
-filesystem read only, you take what you can get.  You might get bad 
-data, or fail to open or read certain files or parts of files, but you 
-knew for sure that you wouldn't cause any more damage to the data on 
-disk, and you could run a fsck or defrag or partimage or anything else 
-to read and/or modify the disk.
+# 1 - % of inodes in use
+# 2 - fsck time to establish high water mark
+# 3 - fsck time using high water mark
+# 4 - fsck time to remove high water mark
+# %	fsck-est-hw	fsck-use-hw	fsck-rem-hw
+0	1340.02		22.54		1334.34
+20	1867.73		600.77		1650.39
+40	2193.05		1188.49		1979.05
+60	2518.19		1782.43		2316.08
+80	2849.34		2382.62		2653.07
+98	3149.81		2929.43		2960.54
 
-> but it's already changed, and has been in linux since ext3 came on the
-> scene.  mount -o ro -does- replay the journal.  Surely readonly does not
-> imply that we want a corrupted filesystem if it was not cleanly shut
-> down.  I suppose there is a place for the argument that a readonly mount
-> of a journaled filesystem -should- present a recovered filesystem to the
-> user, without actually recovering the log to disk.  I guess to me, it
-> hardly seems worth the effort, as the precedent is long set for doing
-> recovery on a read-only mount.
 
-Just because a bug has been around for a long time does not mean it is 
-not a bug.  In the pre-journal world, if you mounted a dirty filesystem 
-read only you expected the possibility of errors reading it.  Why should 
-that expectation not hold true with journals?  It might be nice to do 
-the journal playback in ram or otherwise without writing to the disk, 
-but as far as the user setting the ro flag cares, they just want you not 
-to update the disk and if there are inconsistencies that cause errors, 
-then you need to fsck or mount rw.
+# fsck to establish high water mark
+# %	Pass 1:		Pass 2: Pass 3: Pass 4:	Pass 5:
+0	1113.08		0.39 	0.05 	6.66 	218.50
+40	1640.15		107.02 	222.9 	10.11 	12.88 
+80	2191.88		221.74 	223.0 	13.60 	13.16 
+98	2438.98		275.41 	220.7 	15.07 	13.46 
+
+
+# fsck using high water mark
+# %	Pass 1:		Pass 2: Pass 3: Pass 4:	Pass 5:
+0	2.52		0.35 	0.05 	6.64 	12.49 
+40	974.02		109.89 	0.05 	10.09 	93.35 
+80	1968.09		225.21 	0.07 	13.55 	174.57 
+98	2420.09		278.45 	0.07 	15.12 	214.55 
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
+
+--gvF4niNJ+uBMJnEh
+Content-Type: image/png
+Content-Disposition: attachment; filename="fsck-speedup.png"
+Content-Transfer-Encoding: base64
+
+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
+AAAAGvB/03EqKUVti+gAAAAASUVORK5CYII=
+
+--gvF4niNJ+uBMJnEh
+Content-Type: image/png
+Content-Disposition: attachment; filename="fsck-est-hw.png"
+Content-Transfer-Encoding: base64
+
+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
+
+--gvF4niNJ+uBMJnEh
+Content-Type: image/png
+Content-Disposition: attachment; filename="fsck-use-hw.png"
+Content-Transfer-Encoding: base64
+
+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
+HgAAAABJRU5ErkJggg==
+
+--gvF4niNJ+uBMJnEh
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="fsck.data"
+
+# 1 - % of inodes in use
+# 2 - fsck time to establish high water mark
+# 3 - fsck time using high water mark
+# 4 - fsck time to remove high water mark
+0	1340.02		22.54		1334.34
+2	1564.63		75.40		1352.97
+4	1605.50		134.54		1389.14
+6	1635.19		191.45		1421.97
+8	1666.22		250.99		1454.99
+10	1702.45		310.30		1489.81
+12	1740.33		369.37		1524.40
+14	1769.38		427.19		1553.15
+16	1804.21		485.49		1589.47
+18	1844.97		543.70		1622.96
+20	1867.73		600.77		1650.39
+22	1905.31		660.65		1692.25
+24	1928.74		718.18		1720.39
+26	1965.09		777.44		1760.59
+28	1999.63		836.94		1785.79
+30	2035.08		898.49		1823.86
+32	2054.25		952.49		1850.80
+34	2084.54		1012.27		1887.26
+36	2118.80		1067.50		1912.61
+38	2160.79		1126.93		1948.41
+40	2193.05		1188.49		1979.05
+42	2225.53		1248.27		2009.13
+44	2238.46		1303.58		2047.61
+46	2279.91		1367.38		2080.16
+48	2304.90		1422.15		2119.02
+50	2342.13		1482.79		2147.60
+52	2375.46		1536.69		2178.88
+54	2408.56		1600.62		2213.19
+56	2441.04		1662.53		2253.49
+58	2477.74		1722.16		2277.52
+60	2518.19		1782.43		2316.08
+62	2545.11		1844.73		2346.31
+64	2575.57		1898.85		2384.46
+66	2612.30		1965.90		2425.27
+68	2648.29		2022.88		2447.60
+70	2678.67		2080.64		2489.39
+72	2709.53		2139.91		2523.60
+74	2749.26		2201.72		2548.39
+76	2785.56		2263.75		2580.97
+78	2813.18		2325.23		2625.80
+80	2849.34		2382.62		2653.07
+82	2889.50		2444.80		2685.45
+84	2914.32		2499.34		2719.92
+86	2955.82		2567.72		2755.27
+88	2984.96		2625.93		2789.61
+90	3023.20		2688.49		2822.94
+92	3055.27		2749.15		2853.65
+94	3086.82		2810.98		2887.88
+96	3121.06		2871.88		2930.79
+98	3149.81		2929.43		2960.54
+
+
+# fsck to establish high water mark
+# %	Pass 1:	Pass 2: Pass 3: Pass 4:	Pass 5:
+0	1113.08		0.39 	0.05 	6.66 	218.50
+2	1129.89		2.16 	220.1 	6.81 	12.59 
+4	1155.90		7.15 	220.2 	6.98 	12.57 
+6	1182.66		12.38 	221.2 	7.15 	12.83 
+8	1208.24		17.99 	219.2 	7.32 	12.66 
+10	1236.01		23.54 	220.7 	7.56 	13.14 
+12	1265.02		28.93 	221.3 	7.75 	12.83 
+14	1286.67		34.73 	221.2 	7.87 	12.68 
+16	1317.95		40.01 	222.4 	8.04 	12.68 
+18	1351.03		45.44 	223.7 	8.19 	12.69 
+20	1371.79		50.94 	222.3 	8.37 	12.69 
+22	1399.11		57.33 	223.7 	8.62 	13.01 
+24	1421.68		62.61 	222.7 	8.71 	12.97 
+26	1451.80		67.95 	222.1 	8.91 	12.74 
+28	1478.05		73.85 	221.9 	9.06 	12.85 
+30	1509.05		78.89 	222.6 	9.24 	12.78 
+32	1532.01		83.97 	224.7 	9.41 	12.81 
+34	1560.90		90.22 	224.8 	9.56 	12.81 
+36	1586.58		95.27 	224.8 	9.73 	12.95 
+38	1618.10		101.09 	223.6 	9.93 	12.86 
+40	1640.15		107.02 	222.9 	10.11 	12.88 
+42	1668.12		114.10 	222.9 	10.33 	12.88 
+44	1688.32		117.34 	221.6 	10.46 	12.89 
+46	1724.83		123.61 	222.4 	10.66 	13.00 
+48	1745.72		130.26 	220.4 	10.83 	13.01 
+50	1775.36		135.77 	221.9 	10.98 	12.95 
+52	1802.80		142.03 	220.9 	11.20 	13.02 
+53	1829.11		147.26 	222.7 	11.29 	12.98 
+56	1858.50		152.73 	221.0 	11.49 	13.11 
+58	1886.64		159.31 	222.5 	11.70 	12.96 
+60	1919.86		164.60 	223.1 	11.86 	13.03 
+62	1942.43		170.49 	221.9 	12.00 	13.08 
+64	1968.13		176.02 	222.1 	12.23 	13.03 
+66	1997.73		181.41 	222.4 	12.33 	13.13 
+68	2028.06		187.24 	222.5 	12.50 	12.97 
+70	2052.50		193.82 	221.4 	12.67 	13.06 
+72	2075.04		198.57 	224.0 	12.84 	13.11 
+74	2109.86		205.54 	221.6 	13.02 	13.25 
+76	2138.06		210.54 	224.6 	13.21 	13.27 
+78	2163.76		217.22 	221.2 	13.41 	13.29 
+80	2191.88		221.74 	223.0 	13.60 	13.16 
+82	2222.88		229.01 	224.4 	13.68 	13.20 
+84	2245.59		233.36 	222.8 	13.91 	13.31 
+86	2277.86		240.68 	224.3 	14.04 	13.19 
+88	2303.18		245.31 	223.7 	14.30 	13.30 
+90	2335.86		252.50 	222.3 	14.41 	13.14 
+92	2362.27		257.00 	222.1 	14.57 	13.54 
+94	2386.47		264.30 	222.2 	14.75 	13.29 
+96	2418.66		267.87 	221.1 	14.91 	13.44 
+98	2438.98		275.41 	220.7 	15.07 	13.46 
+
+
+# fsck using high water makr
+# %	Pass 1:	Pass 2: Pass 3: Pass 4:	Pass 5:
+0	2.52		0.35 	0.05 	6.64 	12.49 
+2	49.78		5.37 	0.05 	6.80 	12.43 
+4	99.12		10.39 	0.05 	7.01 	16.94 
+6	144.82		16.16 	0.05 	7.19 	22.17 
+8	194.47		21.56 	0.05 	7.37 	26.49 
+10	241.64		27.66 	0.05 	7.54 	32.34 
+12	291.15		33.36 	0.05 	7.68 	36.07 
+14	339.76		38.30 	0.05 	7.90 	40.11 
+16	388.36		44.00 	0.05 	8.08 	43.93 
+18	437.06		49.29 	0.05 	8.24 	47.97 
+20	484.58		54.76 	0.05 	8.38 	51.93 
+22	534.41		60.64 	0.05 	8.54 	55.93 
+24	582.67		65.97 	0.05 	8.71 	59.71 
+26	630.94		71.69 	0.05 	8.88 	64.79 
+28	680.80		77.34 	0.05 	9.06 	68.60 
+30	731.98		82.66 	0.05 	9.26 	73.47 
+32	776.67		88.33 	0.05 	9.40 	76.97 
+34	827.06		93.81 	0.05 	9.60 	80.66 
+36	872.87		99.07 	0.05 	9.74 	84.67 
+38	922.99		104.38 	0.05 	9.96 	88.45 
+40	974.02		109.89 	0.05 	10.09 	93.35 
+42	1022.03		117.52 	0.05 	10.31 	97.26 
+44	1069.66		121.58 	0.05 	10.48 	100.72 
+46	1122.50		127.46 	0.05 	10.63 	105.62 
+48	1166.95		133.10 	0.06 	10.80 	110.13 
+50	1217.71		139.32 	0.06 	11.05 	113.54 
+52	1263.48		144.46 	0.06 	11.16 	116.37 
+53	1317.88		149.75 	0.06 	11.36 	120.42 
+56	1368.03		155.61 	0.05 	11.54 	126.15 
+58	1416.54		162.68 	0.07 	11.64 	129.98 
+60	1468.95		167.65 	0.07 	11.84 	132.81 
+62	1519.83		173.76 	0.07 	12.03 	137.93 
+64	1564.56		178.92 	0.07 	12.14 	142.02 
+66	1614.32		191.41 	0.06 	12.32 	146.67 
+68	1668.89		190.58 	0.07 	12.56 	149.67 
+70	1716.30		196.65 	0.07 	12.70 	153.79 
+72	1766.07		201.71 	0.07 	12.91 	158.01 
+74	1815.49		208.96 	0.07 	13.07 	163.01 
+76	1869.32		213.87 	0.08 	13.26 	166.11 
+78	1919.07		220.42 	0.07 	13.41 	171.04 
+80	1968.09		225.21 	0.07 	13.55 	174.57 
+82	2020.36		231.78 	0.07 	13.76 	177.70 
+84	2064.37		236.66 	0.07 	13.89 	183.21 
+86	2120.77		243.67 	0.07 	14.08 	187.99 
+88	2170.01		248.51 	0.12 	14.31 	191.82 
+90	2222.84		255.74 	0.07 	14.39 	194.30 
+92	2273.68		260.30 	0.07 	14.56 	199.34 
+94	2321.91		267.24 	0.05 	14.77 	205.85 
+96	2373.52		272.18 	0.07 	14.96 	210.01 
+98	2420.09		278.45 	0.07 	15.12 	214.55 
+
+
+# fsck to remove high water mark
+# % 	Pass 1:	Pass 2: Pass 3: Pass 4:	Pass 5:
+0	1107.10		0.41 	0.05 	6.63 	218.85
+2	1121.91		5.72 	0.05 	6.80 	217.19
+4	1152.31		10.90 	0.05 	6.97 	217.60
+6	1180.02		16.50 	0.05 	7.19 	216.90
+8	1205.55		21.91 	0.05 	7.31 	218.86
+10	1235.61		27.82 	0.05 	7.51 	217.50
+12	1264.22		33.04 	0.05 	7.67 	218.13
+14	1287.42		38.92 	0.05 	7.84 	217.60
+16	1318.03		44.28 	0.05 	8.03 	217.71
+18	1345.53		49.81 	0.05 	8.22 	218.01
+20	1369.85		54.87 	0.05 	8.38 	215.94
+22	1402.52		61.27 	0.05 	8.54 	218.55
+24	1426.10		66.66 	0.05 	8.72 	217.55
+26	1457.92		71.59 	0.05 	8.93 	220.80
+28	1479.08		77.57 	0.05 	9.12 	218.66
+30	1512.12		82.38 	0.05 	9.29 	218.71
+32	1533.05		88.74 	0.05 	9.46 	218.18
+34	1563.84		93.94 	0.05 	9.61 	218.51
+36	1584.42		98.74 	0.05 	9.78 	218.30
+38	1614.21		105.07 	0.05 	9.93 	217.82
+40	1638.23		110.65 	0.05 	10.14 	218.54
+42	1661.99		117.56 	0.05 	10.27 	217.94
+44	1695.51		121.37 	0.05 	10.43 	218.94
+46	1722.90		127.47 	0.05 	10.61 	217.82
+48	1753.05		134.25 	0.05 	10.77 	219.59
+50	1779.08		138.92 	0.06 	10.95 	217.26
+52	1803.72		144.82 	0.06 	11.15 	217.80
+53	1830.81		150.65 	0.05 	11.33 	219.04
+56	1865.12		155.97 	0.05 	11.52 	219.52
+58	1883.95		162.51 	0.06 	11.67 	218.01
+60	1916.41		168.11 	0.06 	11.83 	218.35
+62	1941.16		174.43 	0.06 	11.99 	217.34
+64	1974.35		179.26 	0.06 	12.16 	217.31
+66	2000.49		191.69 	0.15 	12.33 	219.30
+68	2024.76		190.83 	0.07 	12.50 	218.12
+70	2059.85		196.69 	0.07 	12.75 	218.72
+72	2086.89		203.17 	0.07 	12.90 	219.26
+74	2107.86		208.76 	0.07 	13.01 	217.31
+76	2134.38		213.56 	0.07 	13.25 	218.41
+78	2169.00		220.93 	0.07 	13.38 	221.11
+80	2194.43		225.23 	0.07 	13.52 	218.50
+82	2219.02		232.80 	0.07 	13.75 	218.49
+84	2248.54		236.82 	0.07 	13.88 	219.30
+86	2275.39		244.54 	0.07 	14.10 	219.86
+88	2304.87		248.85 	0.07 	14.24 	220.27
+90	2331.94		256.03 	0.07 	14.40 	219.18
+92	2359.41		260.18 	0.07 	14.63 	218.05
+94	2384.91		268.08 	0.07 	14.78 	218.66
+96	2421.86		272.71 	0.07 	14.96 	219.86
+98	2444.89		279.14 	0.08 	15.08 	220.04 
+
+--gvF4niNJ+uBMJnEh--
