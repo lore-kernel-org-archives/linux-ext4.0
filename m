@@ -1,15 +1,12 @@
 From: akpm@linux-foundation.org
 Subject: + ext4-use-simple_prepare_write-to-zero-page-data.patch added to -mm tree
-Date: Mon, 09 Apr 2007 23:19:51 -0700
-Message-ID: <200704100619.l3A6JpES000590@shell0.pdx.osdl.net>
+Date: Mon, 09 Apr 2007 23:18:08 -0700
+Message-ID: <200704100618.l3A6I8cc000545@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
 Cc: nate.diller@gmail.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:45700 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030401AbXDJGTx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Apr 2007 02:19:53 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
@@ -37,47 +34,36 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/writeback.c |   17 +----------------
- 1 file changed, 1 insertion(+), 16 deletions(-)
+ fs/reiser4/plugin/item/extent_file_ops.c |   13 +++----------
+ 1 file changed, 3 insertions(+), 10 deletions(-)
 
-diff -puN fs/ext4/writeback.c~ext4-use-simple_prepare_write-to-zero-page-data fs/ext4/writeback.c
---- a/fs/ext4/writeback.c~ext4-use-simple_prepare_write-to-zero-page-data
-+++ a/fs/ext4/writeback.c
-@@ -819,21 +819,6 @@ int ext4_wb_writepages(struct address_sp
- 	return 0;
- }
+diff -puN fs/reiser4/plugin/item/extent_file_ops.c~ext4-use-simple_prepare_write-to-zero-page-data fs/reiser4/plugin/item/extent_file_ops.c
+--- a/fs/reiser4/plugin/item/extent_file_ops.c~ext4-use-simple_prepare_write-to-zero-page-data
++++ a/fs/reiser4/plugin/item/extent_file_ops.c
+@@ -1040,16 +1040,9 @@ ssize_t reiser4_write_extent(struct file
+ 		BUG_ON(get_current_context()->trans->atom != NULL);
  
--static void ext4_wb_clear_page(struct page *page, int from, int to)
--{
--	void *kaddr;
+ 		lock_page(page);
+-		if (!PageUptodate(page) && to_page != PAGE_CACHE_SIZE) {
+-			void *kaddr;
 -
--	if (to < PAGE_CACHE_SIZE || from > 0) {
--		kaddr = kmap_atomic(page, KM_USER0);
--		if (PAGE_CACHE_SIZE > to)
--			memset(kaddr + to, 0, PAGE_CACHE_SIZE - to);
--		if (0 < from)
--			memset(kaddr, 0, from);
--		flush_dcache_page(page);
--		kunmap_atomic(kaddr, KM_USER0);
--	}
--}
--
- int ext4_wb_prepare_write(struct file *file, struct page *page,
- 			      unsigned from, unsigned to)
- {
-@@ -863,7 +848,7 @@ int ext4_wb_prepare_write(struct file *f
- 			/* this block isn't allocated yet, reserve space */
- 			wb_debug("reserve space for new block\n");
- 			page->private = 1;
--			ext4_wb_clear_page(page, from, to);
-+			simple_prepare_write(file, page, from, to);
- 			ClearPageMappedToDisk(page);
- 		} else { 
- 			/* block is already mapped, so no need to reserve */
+-			kaddr = kmap_atomic(page, KM_USER0);
+-			memset(kaddr, 0, page_off);
+-			memset(kaddr + page_off + to_page, 0,
+-			       PAGE_CACHE_SIZE - (page_off + to_page));
+-			flush_dcache_page(page);
+-			kunmap_atomic(kaddr, KM_USER0);
+-		}
++		if (!PageUptodate(page) && to_page != PAGE_CACHE_SIZE)
++			simple_prepare_write(file, page, page_off,
++					     page_off + to_page);
+ 
+ 		written = filemap_copy_from_user(page, page_off, buf, to_page);
+ 		flush_dcache_page(page);
 _
 
 Patches currently in -mm which might be from nate.diller@gmail.com are
 
 cifs-use-simple_prepare_write-to-zero-page-data.patch
-ext4-use-simple_prepare_write-to-zero-page-data.patch
 reiser4-use-simple_prepare_write-to-zero-page-data.patch
+ext4-use-simple_prepare_write-to-zero-page-data.patch
