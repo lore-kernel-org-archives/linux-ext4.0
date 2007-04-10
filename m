@@ -1,63 +1,83 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Mon, 09 Apr 2007 12:21:15 -0500
-Message-ID: <461A760B.1040103@redhat.com>
-References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Phillip Susi <psusi@cfl.rr.com>
+From: akpm@linux-foundation.org
+Subject: + ext4-use-simple_prepare_write-to-zero-page-data.patch added to -mm tree
+Date: Mon, 09 Apr 2007 23:19:51 -0700
+Message-ID: <200704100619.l3A6JpES000590@shell0.pdx.osdl.net>
+Cc: nate.diller@gmail.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36962 "EHLO mx1.redhat.com"
+Received: from smtp.osdl.org ([65.172.181.24]:45700 "EHLO smtp.osdl.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752568AbXDIRXw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Apr 2007 13:23:52 -0400
-In-Reply-To: <461A5F13.7040705@cfl.rr.com>
+	id S1030401AbXDJGTx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Apr 2007 02:19:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Phillip Susi wrote:
-> Samuel Thibault wrote:
->> Hi,
->>
->> Distribution installers usually try to probe OSes for building a suited
->> grub menu.  Unfortunately, mounting an ext3 partition, even in read-only
->> mode, does perform some operations on the filesystem (log recovery).
->> This is not a good idea since it may silently garbage data.  XFS has a
->> norecovery option that allows to disable that, I'd say ext3/4 should
->> have it too.
-> 
-> When the filesystem is told to mount the disk read only, that means it 
-> should not write to it.  
 
-It means the filesystem should not be writeable when it is mounted.
-This is not the same as saying that the filesystem itself should do no
-IO in the course of making that read-only mount available.
+The patch titled
+     ext4: use simple_prepare_write to zero page data
+has been added to the -mm tree.  Its filename is
+     ext4-use-simple_prepare_write-to-zero-page-data.patch
 
-> The fact that ext3 goes ahead and does anyway 
-> is a bug and should be fixed.  There is no need for a norecovery option, 
-> because read only is a sufficient directive to tell the filesystem not 
-> to write to the disk.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-I respectfully disagree, see above.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-> As someone else pointed out, this behavior causes havoc if you hibernate 
-> a system and then boot up another system which mounts the disk of the 
-> hibernated system.  
+------------------------------------------------------
+Subject: ext4: use simple_prepare_write to zero page data
+From: Nate Diller <nate.diller@gmail.com>
 
-In that case you are mounting the same filesystem uner 2 different
-operating systems simultaneously, which is, and always has been, a
-recipe for disaster.  Flagging the fs as "mounted already" would
-probably be a better solution, though it's harder than it sounds at
-first glance.
+It's common for file systems to need to zero data on either side of a
+write, if a page is not Uptodate during prepare_write.  It just so happens
+that simple_prepare_write() in libfs.c does exactly that, so we can avoid
+duplication and just call that function to zero page data.
 
-> Under all conditions it should be safe to mount a 
-> disk read only, but here it is not because the journal playback trashes 
-> the disk out from under the hibernated system.
+Signed-off-by: Nate Diller <nate.diller@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Under all conditions it should be safe to mount a read-only block
-device, but that is not the same as mounting a filesystem read-only.
+ fs/ext4/writeback.c |   17 +----------------
+ 1 file changed, 1 insertion(+), 16 deletions(-)
 
--Eric
+diff -puN fs/ext4/writeback.c~ext4-use-simple_prepare_write-to-zero-page-data fs/ext4/writeback.c
+--- a/fs/ext4/writeback.c~ext4-use-simple_prepare_write-to-zero-page-data
++++ a/fs/ext4/writeback.c
+@@ -819,21 +819,6 @@ int ext4_wb_writepages(struct address_sp
+ 	return 0;
+ }
+ 
+-static void ext4_wb_clear_page(struct page *page, int from, int to)
+-{
+-	void *kaddr;
+-
+-	if (to < PAGE_CACHE_SIZE || from > 0) {
+-		kaddr = kmap_atomic(page, KM_USER0);
+-		if (PAGE_CACHE_SIZE > to)
+-			memset(kaddr + to, 0, PAGE_CACHE_SIZE - to);
+-		if (0 < from)
+-			memset(kaddr, 0, from);
+-		flush_dcache_page(page);
+-		kunmap_atomic(kaddr, KM_USER0);
+-	}
+-}
+-
+ int ext4_wb_prepare_write(struct file *file, struct page *page,
+ 			      unsigned from, unsigned to)
+ {
+@@ -863,7 +848,7 @@ int ext4_wb_prepare_write(struct file *f
+ 			/* this block isn't allocated yet, reserve space */
+ 			wb_debug("reserve space for new block\n");
+ 			page->private = 1;
+-			ext4_wb_clear_page(page, from, to);
++			simple_prepare_write(file, page, from, to);
+ 			ClearPageMappedToDisk(page);
+ 		} else { 
+ 			/* block is already mapped, so no need to reserve */
+_
+
+Patches currently in -mm which might be from nate.diller@gmail.com are
+
+cifs-use-simple_prepare_write-to-zero-page-data.patch
+ext4-use-simple_prepare_write-to-zero-page-data.patch
+reiser4-use-simple_prepare_write-to-zero-page-data.patch
