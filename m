@@ -1,68 +1,59 @@
-From: Ming Zhang <blackmagic02881@gmail.com>
-Subject: Re: (un)lock_kernel() ?
-Date: Tue, 10 Apr 2007 12:03:15 -0400
-Message-ID: <1176220995.3696.24.camel@fs0004.ibrix.com>
-References: <alpine.DEB.0.83.0704040853450.28216@sigma.j-a-k-j.com>
-	 <1175701002.6489.4.camel@shaggy>
-	 <alpine.DEB.0.83.0704041244560.4770@sigma.j-a-k-j.com>
-Reply-To: blackmagic02881@gmail.com
+From: Phillip Susi <psusi@cfl.rr.com>
+Subject: Re: Add a norecovery option to ext3/4?
+Date: Tue, 10 Apr 2007 14:54:00 -0400
+Message-ID: <461BDD48.2000904@cfl.rr.com>
+References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com> <461A760B.1040103@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: "John Anthony Kazos Jr." <jakj@j-a-k-j.com>
+Cc: Samuel Thibault <samuel.thibault@ens-lyon.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	joern@lazybastard.org, tytso@mit.edu
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.233]:56820 "EHLO
-	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030682AbXDJQDU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 12:03:20 -0400
-Received: by wx-out-0506.google.com with SMTP id h31so1932360wxd
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2007 09:03:20 -0700 (PDT)
-In-Reply-To: <alpine.DEB.0.83.0704041244560.4770@sigma.j-a-k-j.com>
+Received: from iriserv.iradimed.com ([72.242.190.170]:11542 "EHLO iradimed.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1031457AbXDJSxt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Apr 2007 14:53:49 -0400
+In-Reply-To: <461A760B.1040103@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-04-04 at 12:52 -0400, John Anthony Kazos Jr. wrote:
-> > According to Documentation/filesystems/Locking, ->get_sb() is called
-> > with the BKL held, but looking through the code, I'm not able to find
-> > where it is being taken.
-> 
-> I noticed that too. Unless I'm just dumb and can't see it, I'm not able to 
-> find any BKL references during filesystem mounting until you get into 
-> FS-specific code. I looked through everything from sys_mount through to 
-> vfs_kern_mount. Documentation/filesystems/porting talks about several 
-> situations where the VFS code was modified to not take the BKL, and BLK 
-> calls were added by FS non-maintainers for safety until each FS could be 
-> audited independently, but that wouldn't be the case, would it?
+Eric Sandeen wrote:
+> It means the filesystem should not be writeable when it is mounted.
+> This is not the same as saying that the filesystem itself should do no
+> IO in the course of making that read-only mount available.
 
+I disagree.
 
-sys_mount->do_mount->do_new_mount->do_kern_mount path
+> I respectfully disagree, see above.
 
-part of sys_mount()
+Based on what?  I argue that historically the primary use of the read 
+only mount flag was to prevent the underlying filesystem from being 
+modified and possibly damaged further before it can be fsck'ed.  It 
+became common practice to mount the root filesystem read only and run a 
+fsck on it, then either reboot or remount read-write depending on if 
+fsck had to make changes.
 
-1570                 goto out3;
-1571 
-1572         lock_kernel();
-1573         retval = do_mount((char *)dev_page, dir_page, (char *)type_page,
-1574                           flags, (void *)data_page);
-1575         unlock_kernel();
-1576         free_page(data_page);
-1577 
-1578 out3:
-1579         free_page(dev_page)
+In this context, the meaning of the read only mount flag was clear: do 
+not write to the disk.  If you wish to redefine it as "do not allow me 
+write access to any files" then you fly in the face of convention, and 
+the onus is on you to provide a compelling argument to make such a change.
 
-;
-> 
-> The ext2 code takes the BKL in three places: ext2_update_inode, 
-> write_super, and ext2_compat_ioctl. Starting with ext3, it's in 
-> ext3_compat_ioctl and ext3_fill_super, and the same with ext4.
-> 
-> I suppose the BKL does have to be held, somehow, somewhere, during 
-> mounting, or anybody using ext3 on a multiprocessor box would lock their 
-> system from unmatched locking calls. Unless the first unlock_kernel() 
-> would make the count -1 and the lock would bring it back to zero?
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> In that case you are mounting the same filesystem uner 2 different
+> operating systems simultaneously, which is, and always has been, a
+> recipe for disaster.  Flagging the fs as "mounted already" would
+> probably be a better solution, though it's harder than it sounds at
+> first glance.
+
+No, it has not been.  Prior to poorly behaved journal playback, it was 
+perfectly safe to mount a filesystem read only even if it was mounted 
+read-write by another system ( possibly fsck or defrag ).  You might not 
+read the correct data from it, but you would not damage the underlying 
+data simply by mounting it read-only.
+
+> Under all conditions it should be safe to mount a read-only block
+> device, but that is not the same as mounting a filesystem read-only.
+
+Historically it was the same thing.  I see no reason to change that 
+behavior, do you?
