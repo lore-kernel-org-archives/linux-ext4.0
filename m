@@ -1,44 +1,68 @@
-From: Matt Mackall <mpm@selenic.com>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Tue, 10 Apr 2007 11:44:51 -0500
-Message-ID: <20070410164451.GC10459@waste.org>
-References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com> <461A760B.1040103@redhat.com> <20070410072253.GA28665@lazybastard.org> <20070410112718.GF13650@thunk.org> <20070410120825.GA29487@lazybastard.org>
+From: Ming Zhang <blackmagic02881@gmail.com>
+Subject: Re: (un)lock_kernel() ?
+Date: Tue, 10 Apr 2007 12:03:15 -0400
+Message-ID: <1176220995.3696.24.camel@fs0004.ibrix.com>
+References: <alpine.DEB.0.83.0704040853450.28216@sigma.j-a-k-j.com>
+	 <1175701002.6489.4.camel@shaggy>
+	 <alpine.DEB.0.83.0704041244560.4770@sigma.j-a-k-j.com>
+Reply-To: blackmagic02881@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Phillip Susi <psusi@cfl.rr.com>,
-	Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@lazybastard.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1031158AbXDJQ60@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070410120825.GA29487@lazybastard.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: "John Anthony Kazos Jr." <jakj@j-a-k-j.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wx-out-0506.google.com ([66.249.82.233]:56820 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030682AbXDJQDU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 12:03:20 -0400
+Received: by wx-out-0506.google.com with SMTP id h31so1932360wxd
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2007 09:03:20 -0700 (PDT)
+In-Reply-To: <alpine.DEB.0.83.0704041244560.4770@sigma.j-a-k-j.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 10, 2007 at 02:08:26PM +0200, J=F6rn Engel wrote:
-> On Tue, 10 April 2007 07:27:18 -0400, Theodore Tso wrote:
-> >=20
-> > I suppose what you could do is to read in the journal, and use it t=
-o
-> > create an remapping table so that when you want to read block #5126=
-,
-> > and block number 5126 is in the journal, to read the journal versio=
-n
-> > of the block instead of the one on disk.  That would allow for safe
-> > access to a filesystem being mounted read-only without the journal
-> > being present.
->=20
-> Another option would be to access the medium through a mapping inode,
-> replay the journal into the mapping inode and _not_ flush the dirty
-> pages.  But as long as a remapping table is sufficient for ext3 journ=
-al
-> format, such a table should be simpler and faster.
+On Wed, 2007-04-04 at 12:52 -0400, John Anthony Kazos Jr. wrote:
+> > According to Documentation/filesystems/Locking, ->get_sb() is called
+> > with the BKL held, but looking through the code, I'm not able to find
+> > where it is being taken.
+> 
+> I noticed that too. Unless I'm just dumb and can't see it, I'm not able to 
+> find any BKL references during filesystem mounting until you get into 
+> FS-specific code. I looked through everything from sys_mount through to 
+> vfs_kern_mount. Documentation/filesystems/porting talks about several 
+> situations where the VFS code was modified to not take the BKL, and BLK 
+> calls were added by FS non-maintainers for safety until each FS could be 
+> audited independently, but that wouldn't be the case, would it?
 
-Or you could make a snapshot with device-mapper and then mount it.
-Requires some free disk space somewhere (or a hack with loop on
-tmpfs), but should be doable today.
 
---=20
-Mathematics is the supreme nostalgia of our time.
+sys_mount->do_mount->do_new_mount->do_kern_mount path
+
+part of sys_mount()
+
+1570                 goto out3;
+1571 
+1572         lock_kernel();
+1573         retval = do_mount((char *)dev_page, dir_page, (char *)type_page,
+1574                           flags, (void *)data_page);
+1575         unlock_kernel();
+1576         free_page(data_page);
+1577 
+1578 out3:
+1579         free_page(dev_page)
+
+;
+> 
+> The ext2 code takes the BKL in three places: ext2_update_inode, 
+> write_super, and ext2_compat_ioctl. Starting with ext3, it's in 
+> ext3_compat_ioctl and ext3_fill_super, and the same with ext4.
+> 
+> I suppose the BKL does have to be held, somehow, somewhere, during 
+> mounting, or anybody using ext3 on a multiprocessor box would lock their 
+> system from unmatched locking calls. Unless the first unlock_kernel() 
+> would make the count -1 and the lock would bring it back to zero?
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
