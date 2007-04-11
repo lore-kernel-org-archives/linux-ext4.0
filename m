@@ -1,209 +1,42 @@
-From: <gregkh@suse.de>
-Subject: patch revert-retries-in-ext3_prepare_write-violate-ordering-requirements.patch queued to -stable tree
-Date: Wed, 11 Apr 2007 14:32:03 -0700
-Message-ID: <20070411213234.BEF37CE5493@imap.suse.de>
-References: <200704020649.l326nhD1026534@shell0.pdx.osdl.net>
-Cc: <stable@kernel.org>
-To: akpm@linux-foundation.org, dev@openvz.org, dmonakhov@openvz.org,
-	gregkh@suse.de, kenneth.w.chen@intel.com,
-	linux-ext4@vger.kernel.org, mingo@elte.hu, saw@sw.ru
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: debugfs fill_bgs command?
+Date: Wed, 11 Apr 2007 16:52:37 -0600
+Message-ID: <20070411225237.GH5967@schatzie.adilger.int>
+References: <461D4256.6020509@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:47647 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965309AbXDKVcs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Apr 2007 17:32:48 -0400
-In-Reply-To: <200704020649.l326nhD1026534@shell0.pdx.osdl.net>
+Received: from mail.clusterfs.com ([206.168.112.78]:34570 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161304AbXDKWwj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Apr 2007 18:52:39 -0400
+Content-Disposition: inline
+In-Reply-To: <461D4256.6020509@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Apr 11, 2007  15:17 -0500, Eric Sandeen wrote:
+> I was wondering if others think it would be useful to have a "fill_bgs"
+> command in debugfs; this would (minimally) mark the lower X bgs as full
+> for both inodes & blocks (possibly either/or), to allow testing the
+> higher block groups.  I'm using a hacked up version of this to do a
+> little ext3 testing above 8T.  Given that this would really only be a
+> testing option in nature, would it be accepted into e2fsprogs?  I'd
+> probably need some sort of "unfill" command as well, to put the bg
+> counters back where they should be; probably by actually reading the
+> bitmaps.  This way fsck would still find a consistent filesystem...
+> 
+> I had originally written a set_bg_field function too, to go with inode &
+> sb variants, though for marking the first few thousand bg's it was going
+> to get a bit tedious... :)
 
-This is a note to let you know that we have just queued up the patch titled
+Try "mke2fs -O lazy_bg XXX" and be happy.  Can be used on any kernel as
+it is a COMPAT feature and marks all but first and last groups as full.
 
-     Subject: revert "retries in ext3_prepare_write() violate ordering requirements"
-
-to the 2.6.20-stable tree.  Its filename is
-
-     revert-retries-in-ext3_prepare_write-violate-ordering-requirements.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From stable-bounces@linux.kernel.org Sun Apr  1 23:51:13 2007
-From: Andrew Morton <akpm@linux-foundation.org>
-Date: Sun, 01 Apr 2007 23:49:43 -0700
-Subject: revert "retries in ext3_prepare_write() violate ordering requirements"
-To: torvalds@linux-foundation.org
-Cc: dev@openvz.org, stable@kernel.org, kenneth.w.chen@intel.com, saw@sw.ru, dmonakhov@openvz.org, akpm@linux-foundation.org, linux-ext4@vger.kernel.org, mingo@elte.hu
-Message-ID: <200704020649.l326nhD1026534@shell0.pdx.osdl.net>
-
-
-From: Andrew Morton <akpm@linux-foundation.org>
-
-Revert e92a4d595b464c4aae64be39ca61a9ffe9c8b278.
-
-Dmitry points out
-
-"When we block_prepare_write() failed while ext3_prepare_write() we jump to
- "failure" label and call ext3_prepare_failure() witch search last mapped bh
- and invoke commit_write untill it.  This is wrong!!  because some bh from
- begining to the last mapped bh may be not uptodate.  As a result we commit to
- disk not uptodate page content witch contains garbage from previous usage."
-
-and
-
-"Unexpected file size increasing."
-
-   Call trace the same as it was in first issue but result is different. 
-   For example we have file with i_size is zero.  we want write two blocks ,
-   but fs has only one free block.
-
-   ->ext3_prepare_write(...from == 0, to == 2048)
-     retry:
-     ->block_prepare_write() == -ENOSPC# we failed but allocated one block here.
-     ->ext3_prepare_failure()
-       ->commit_write( from == 0, to == 1024) # after this i_size becomes 1024 :)
-     if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-        goto retry;
-
-   Finally when all retries will be spended ext3_prepare_failure return
-   -ENOSPC, but i_size was increased and later block trimm procedures can't
-   help here.
-
-We don't appear to have the horsepower to fix these issues, so let's put
-things back the way they were for now.
-
-Cc: Kirill Korotaev <dev@openvz.org>
-Cc: Ingo Molnar <mingo@elte.hu>
-Cc: Ken Chen <kenneth.w.chen@intel.com>
-Cc: Andrey Savochkin <saw@sw.ru>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Dmitriy Monakhov <dmonakhov@openvz.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
-
---- a/fs/ext3/inode.c~revert-retries-in-ext3_prepare_write-violate-ordering-requirements
-+++ a/fs/ext3/inode.c
-@@ -1148,102 +1148,37 @@ static int do_journal_get_write_access(h
- 	return ext3_journal_get_write_access(handle, bh);
- }
- 
--/*
-- * The idea of this helper function is following:
-- * if prepare_write has allocated some blocks, but not all of them, the
-- * transaction must include the content of the newly allocated blocks.
-- * This content is expected to be set to zeroes by block_prepare_write().
-- * 2006/10/14  SAW
-- */
--static int ext3_prepare_failure(struct file *file, struct page *page,
--				unsigned from, unsigned to)
--{
--	struct address_space *mapping;
--	struct buffer_head *bh, *head, *next;
--	unsigned block_start, block_end;
--	unsigned blocksize;
--	int ret;
--	handle_t *handle = ext3_journal_current_handle();
--
--	mapping = page->mapping;
--	if (ext3_should_writeback_data(mapping->host)) {
--		/* optimization: no constraints about data */
--skip:
--		return ext3_journal_stop(handle);
--	}
--
--	head = page_buffers(page);
--	blocksize = head->b_size;
--	for (	bh = head, block_start = 0;
--		bh != head || !block_start;
--	    	block_start = block_end, bh = next)
--	{
--		next = bh->b_this_page;
--		block_end = block_start + blocksize;
--		if (block_end <= from)
--			continue;
--		if (block_start >= to) {
--			block_start = to;
--			break;
--		}
--		if (!buffer_mapped(bh))
--		/* prepare_write failed on this bh */
--			break;
--		if (ext3_should_journal_data(mapping->host)) {
--			ret = do_journal_get_write_access(handle, bh);
--			if (ret) {
--				ext3_journal_stop(handle);
--				return ret;
--			}
--		}
--	/*
--	 * block_start here becomes the first block where the current iteration
--	 * of prepare_write failed.
--	 */
--	}
--	if (block_start <= from)
--		goto skip;
--
--	/* commit allocated and zeroed buffers */
--	return mapping->a_ops->commit_write(file, page, from, block_start);
--}
--
- static int ext3_prepare_write(struct file *file, struct page *page,
- 			      unsigned from, unsigned to)
- {
- 	struct inode *inode = page->mapping->host;
--	int ret, ret2;
--	int needed_blocks = ext3_writepage_trans_blocks(inode);
-+	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
- 	handle_t *handle;
- 	int retries = 0;
- 
- retry:
- 	handle = ext3_journal_start(inode, needed_blocks);
--	if (IS_ERR(handle))
--		return PTR_ERR(handle);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out;
-+	}
- 	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
- 		ret = nobh_prepare_write(page, from, to, ext3_get_block);
- 	else
- 		ret = block_prepare_write(page, from, to, ext3_get_block);
- 	if (ret)
--		goto failure;
-+		goto prepare_write_failed;
- 
- 	if (ext3_should_journal_data(inode)) {
- 		ret = walk_page_buffers(handle, page_buffers(page),
- 				from, to, NULL, do_journal_get_write_access);
--		if (ret)
--			/* fatal error, just put the handle and return */
--			journal_stop(handle);
- 	}
--	return ret;
--
--failure:
--	ret2 = ext3_prepare_failure(file, page, from, to);
--	if (ret2 < 0)
--		return ret2;
-+prepare_write_failed:
-+	if (ret)
-+		ext3_journal_stop(handle);
- 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
--	/* retry number exceeded, or other error like -EDQUOT */
-+out:
- 	return ret;
- }
- 
-_
-
-_______________________________________________
-stable mailing list
-stable@linux.kernel.org
-http://linux.kernel.org/mailman/listinfo/stable
-
-
-Patches currently in stable-queue which might be from akpm@linux-foundation.org are
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
