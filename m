@@ -1,298 +1,589 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs - pass1c terminates early if hard links
-Date: Tue, 10 Apr 2007 23:40:20 -0400
-Message-ID: <20070411034019.GA25231@thunk.org>
-References: <Pine.LNX.4.61.0704101344050.29750@webb>
+From: Jim Garlick <garlick@llnl.gov>
+Subject: Re: [repost][patch 1/2] e2fsprogs: user selectable dup block handling
+ in fsck
+Date: Tue, 10 Apr 2007 17:29:28 -0700 (PDT)
+Message-ID: <Pine.LNX.4.61.0704101715200.6523@webb>
+References: <Pine.LNX.4.61.0702041728410.31030@webb> <Pine.LNX.4.61.0702041720460.31030@webb>
+ <20070406223721.GA8606@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: linux-ext4@vger.kernel.org
-To: Jim Garlick <garlick@llnl.gov>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:59152 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030384AbXDKDk3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Apr 2007 23:40:29 -0400
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.61.0704101344050.29750@webb>
+Received: from nspiron-3.llnl.gov ([128.115.41.83]:47365 "EHLO
+	nspiron-3.llnl.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932255AbXDKA33 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Apr 2007 20:29:29 -0400
+In-Reply-To: <20070406223721.GA8606@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 10, 2007 at 01:51:12PM -0700, Jim Garlick wrote:
-> I think this is a small buglet in e2fsck:  if a file has multiple hard 
-> links, e2fsck pass1c search_dirent_proc() doesn't maintain its count 
-> properly and may return DIRENT_ABORT before it has found containing 
-> directories for all inodes sharing blocks.
+On Fri, 6 Apr 2007, Theodore Tso wrote:
 
-Yep, indeed!  Thanks for submitting the patch.  I've checked it into
-the e2fsprogs source code repository.
+> lost+found does not work as you have implemented them in your patches
+> in the case of a file which is hard linked.  That's because in pass1c
+> we only find the first directory where which contains a hard link to
+> the file name, for the purpose of displaying a pathname that will
+> hopefully have meaning to the system administrator.  Currently, as
+> implemented, if you specify a disposition of "lost+found", an inode
+> which has multiple hard links will have one of its hard links removed,
+> and since the rest of the links to the file are presend, it will not
+> be moved into the lost+found directory.
 
-Enclosed please note what I've checked into Mercurial (also visible at
-http://thunk.org/hg/e2fsprogs/?rev/8bb7637c6508).  I'd really
-appreciate it if folks who submit bug fixes or other
-changes/enhancements to e2fsck could include test cases which
-reproduce the bug and then demonstrate that the patches fix the
-problem, such as what I've done below.  Also note that providing a
-script which generates the test filesystem is now preferred to
-including an image.gz file; it avoids the need for binary patches, and
-it makes it clearer how the test filesystem is constructed.  (We
-couldn't do that before since debugfs didn't have enough facilities to
-some of the test cases; patches to replace image.gz files with a
-generator scripts are definitely welcome.)
+Thanks for catching this!
 
-So for people who are looking to create test cases, please use the
-script file in tests/f_dup4 in the Mercurial repository as a template
-for new test cases when possible.
+I like your idea of an xml log from e2fsck - meanwhile here's a 
+reworked patch that deals with hard links in lost+found mode, in case
+its of use to anyone.  Context assumes the following patches are
+pre-applied:
 
-Thanks, regards,
+   [PATCH] e2fsprogs - pass1c terminates early if hard links
+   http://marc.info/?l=linux-ext4&m=117623796726589&w=2
 
-						- Ted
+   [PATCH] e2fsprogs - e2fsck pass1c does extra work if root dir has
+   http://marc.info/?l=linux-ext4&m=117624460101811&w=2
 
+   [repost][patch 1/2] e2fsprogs: user selectable dup block handling
+   http://marc.info/?l=linux-ext4&m=117063892623654&w=2
 
-# HG changeset patch
-# User tytso@mit.edu
-# Date 1176260109 14400
-# Node ID 8bb7637c6508a37cbf1556a083dcf4f7985e2926
-# Parent  365efb1a2299b5f9f064f15186540d2807fab308
-e2fsck: pass1c terminates early if hard links
+Regards,
 
-I think this is a small buglet in e2fsck:  if a file has multiple hard
-links, e2fsck pass1c search_dirent_proc() doesn't maintain its count
-properly and may return DIRENT_ABORT before it has found containing
-directories for all inodes sharing blocks.
+Jim
+____________________________
+
+E2fsck fixes files that are found to be sharing blocks by cloning
+the shared blocks and giving each file a private copy in pass 1D.
+
+Allowing all files claiming the shared blocks to have copies can
+inadvertantly bypass access restrictions.  Deleting all the files, 
+zeroing the cloned blocks, or placing the files in the /lost+found 
+directory after cloning may be preferable in some secure environments.
+
+The following patches implement config file and command line options in
+e2fsck that allow pass 1D behavior to be tuned according to site policy.
+It adds two extended options and config file counterparts.  On the 
+command line:
+
+  -E clone=dup|zero
+
+     Select the block cloning method.  "dup" is old behavior which remains
+     the default.  "zero" is a new method that substitutes zero-filled
+     blocks for the shared blocks in all the files that claim them.
+
+  -E shared=preserve|lost+found|delete
+
+     Select the disposition of files containing shared blocks.  "preserve"
+     is the old behavior which remains the default.  "lost+found" causes
+     files to be unlinked after cloning so they will be reconnected to
+     /lost+found in pass 3.   "delete" skips cloning entirely and simply
+     deletes the files.
+
+In the config file:
+   [options]
+       clone=dup|zero
+       shared=preserve|lost+found|delete
 
 Signed-off-by: Jim Garlick <garlick@llnl.gov>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-diff -r 365efb1a2299 -r 8bb7637c6508 e2fsck/ChangeLog
---- a/e2fsck/ChangeLog	Tue Apr 10 21:10:55 2007 -0400
-+++ b/e2fsck/ChangeLog	Tue Apr 10 22:55:09 2007 -0400
-@@ -1,3 +1,11 @@ 2007-04-06  Theodore Tso  <tytso@mit.edu
-+2007-04-10  Jim Garlick <garlick@llnl.gov>
+Index: e2fsprogs+chaos/e2fsck/e2fsck.h
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.h
++++ e2fsprogs+chaos/e2fsck/e2fsck.h
+@@ -181,6 +181,17 @@ struct resource_track {
+  #define E2F_PASS_5	5
+  #define E2F_PASS_1B	6
+
++typedef	enum { 
++	E2F_SHARED_PRESERVE = 0, 
++	E2F_SHARED_DELETE,
++	E2F_SHARED_LPF
++} shared_opt_t;
 +
-+	* pass1b.c (search_dirent_proc): if a file has multiple hard
-+		links, e2fsck pass1c search_dirent_proc() doesn't maintain
-+		its count properly and may return DIRENT_ABORT before it
-+		has found containing directories for all inodes sharing
-+		blocks.
++typedef enum {
++	E2F_CLONE_DUP = 0,
++	E2F_CLONE_ZERO
++} clone_opt_t;
 +
- 2007-04-06  Theodore Tso  <tytso@mit.edu>
- 
- 	* e2fsck.conf.5.in: Update man page to document the scratch_files
-diff -r 365efb1a2299 -r 8bb7637c6508 e2fsck/pass1b.c
---- a/e2fsck/pass1b.c	Tue Apr 10 21:10:55 2007 -0400
-+++ b/e2fsck/pass1b.c	Tue Apr 10 22:55:09 2007 -0400
-@@ -372,8 +372,10 @@ static int search_dirent_proc(ext2_ino_t
- 	if (!n)
- 		return 0;
- 	p = (struct dup_inode *) dnode_get(n);
--	p->dir = dir;
--	sd->count--;
-+	if (!p->dir) {
-+		p->dir = dir;
-+		sd->count--;
+  /*
+   * Define the extended attribute refcount structure
+   */
+@@ -332,6 +343,8 @@ struct e2fsck_struct {
+  	time_t now;
+
+  	int ext_attr_ver;
++	shared_opt_t shared;
++	clone_opt_t clone;
+
+  	profile_t	profile;
+
+Index: e2fsprogs+chaos/e2fsck/unix.c
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/unix.c
++++ e2fsprogs+chaos/e2fsck/unix.c
+@@ -510,6 +510,49 @@ static void signal_cancel(int sig EXT2FS
+  }
+  #endif
+
++static void initialize_profile_options(e2fsck_t ctx)
++{
++	char *tmp;
++
++	/* [options] shared=preserve|lost+found|delete */
++	tmp = NULL;
++	ctx->shared = E2F_SHARED_PRESERVE; 
++	profile_get_string(ctx->profile, "options", "shared", 0,
++		           "preserve", &tmp);
++	if (tmp) {
++		if (strcmp(tmp, "preserve") == 0)
++			ctx->shared = E2F_SHARED_PRESERVE; 
++		else if (strcmp(tmp, "delete") == 0)
++			ctx->shared = E2F_SHARED_DELETE; 
++		else if (strcmp(tmp, "lost+found") == 0)
++			ctx->shared = E2F_SHARED_LPF; 
++		else {
++			com_err(ctx->program_name, 0, 
++				_("configuration error: 'shared=%s'"), tmp);
++			fatal_error(ctx, 0);
++		}
++		free(tmp);
 +	}
- 
- 	return(sd->count ? 0 : DIRENT_ABORT);
- }
-diff -r 365efb1a2299 -r 8bb7637c6508 tests/ChangeLog
---- a/tests/ChangeLog	Tue Apr 10 21:10:55 2007 -0400
-+++ b/tests/ChangeLog	Tue Apr 10 22:55:09 2007 -0400
-@@ -1,3 +1,11 @@ 2007-04-07  Theodore Tso  <tytso@mit.edu
-+2007-04-10  Theodore Tso  <tytso@mit.edu>
 +
-+	* f_dup4: New test cases which tests a bugfix in e2fsck where if an
-+		inode which has blocks claimed by other inodes has
-+		multiple hard links, e2fsck could fail to collect the
-+		directory information for all of the inodes with multiply
-+		claimed blocks.
++	/* [options] clone=dup|zero */
++	tmp = NULL;
++	ctx->clone = E2F_CLONE_DUP;
++	profile_get_string(ctx->profile, "options", "clone", 0,
++			   "dup", &tmp);
++	if (tmp) {
++		if (strcmp(tmp, "dup") == 0)
++			ctx->clone = E2F_CLONE_DUP;
++		else if (strcmp(tmp, "zero") == 0)
++			ctx->clone = E2F_CLONE_ZERO;
++		else {
++			com_err(ctx->program_name, 0, 
++				_("configuration error: 'clone=%s'"), tmp);
++			fatal_error(ctx, 0);
++		}
++		free(tmp);
++	}
++}
 +
- 2007-04-07  Theodore Tso  <tytso@mit.edu>
- 
- 	* test_script.in: Skip completely empty directories
-diff -r 365efb1a2299 -r 8bb7637c6508 tests/f_dup4/expect.1
---- /dev/null	Thu Jan 01 00:00:00 1970 +0000
-+++ b/tests/f_dup4/expect.1	Tue Apr 10 22:55:09 2007 -0400
-@@ -0,0 +1,112 @@
-+Pass 1: Checking inodes, blocks, and sizes
+  static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+  {
+  	char	*buf, *token, *next, *p, *arg;
+@@ -543,6 +586,36 @@ static void parse_extended_opts(e2fsck_t
+  				continue;
+  			}
+  			ctx->ext_attr_ver = ea_ver;
++		/* -E shared=preserve|lost+found|delete */
++		} else if (strcmp(token, "shared") == 0) {
++			if (!arg) {
++				extended_usage++;
++				continue;
++			}
++			if (strcmp(arg, "preserve") == 0) {
++				ctx->shared = E2F_SHARED_PRESERVE;
++			} else if (strcmp(arg, "lost+found") == 0) {
++				ctx->shared = E2F_SHARED_LPF;
++			} else if (strcmp(arg, "delete") == 0) {
++				ctx->shared = E2F_SHARED_DELETE;
++			} else {
++				extended_usage++;
++				continue;
++			}
++		/* -E clone=dup|zero */
++		} else if (strcmp(token, "clone") == 0) {
++			if (!arg) {
++				extended_usage++;
++				continue;
++			}
++			if (strcmp(arg, "dup") == 0) {
++				ctx->clone = E2F_CLONE_DUP;
++			} else if (strcmp(arg, "zero") == 0) {
++				ctx->clone = E2F_CLONE_ZERO;
++			} else {
++				extended_usage++;
++				continue;
++			}
+  		} else {
+  			fprintf(stderr, _("Unknown extended option: %s\n"),
+  				token);
+@@ -556,6 +629,8 @@ static void parse_extended_opts(e2fsck_t
+  		       "and may take an argument which\n"
+  		       "is set off by an equals ('=') sign.  "
+  			"Valid extended options are:\n"
++		       "\tshared=<preserve|lost+found|delete>\n"
++		       "\tclone=<dup|zero>\n"
+  		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
+  		exit(1);
+  	}
+@@ -614,6 +689,7 @@ static errcode_t PRS(int argc, char *arg
+  		config_fn[0] = cp;
+  	profile_set_syntax_err_cb(syntax_err_report);
+  	profile_init(config_fn, &ctx->profile);
++	initialize_profile_options(ctx);
+
+  	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
+  		switch (c) {
+Index: e2fsprogs+chaos/e2fsck/pass1b.c
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/pass1b.c
++++ e2fsprogs+chaos/e2fsck/pass1b.c
+@@ -63,6 +63,11 @@ struct inode_el {
+  	struct inode_el *next;
+  };
+
++struct dir_el {
++	ext2_ino_t	dir;
++	struct dir_el	*next;
++};
 +
-+Running additional passes to resolve blocks claimed by more than one inode...
-+Pass 1B: Rescanning for multiply-claimed blocks
-+Multiply-claimed block(s) in inode 16: 30
-+Multiply-claimed block(s) in inode 17: 30
-+Multiply-claimed block(s) in inode 18: 30
-+Multiply-claimed block(s) in inode 19: 30
-+Multiply-claimed block(s) in inode 20: 34
-+Multiply-claimed block(s) in inode 21: 34
-+Multiply-claimed block(s) in inode 22: 34
-+Multiply-claimed block(s) in inode 23: 34
-+Pass 1C: Scanning directories for inodes with multiply-claimed blocks
-+Pass 1D: Reconciling multiply-claimed blocks
-+(There are 8 inodes containing multiply-claimed blocks.)
+  struct dup_block {
+  	int		num_bad;
+  	struct inode_el *inode_list;
+@@ -76,10 +81,10 @@ struct dup_block {
+   * of multiply-claimed blocks.
+   */
+  struct dup_inode {
+-	ext2_ino_t		dir;
+  	int			num_dupblocks;
+  	struct ext2_inode	inode;
+  	struct block_el		*block_list;
++	struct dir_el		*dir_list;
+  };
+
+  static int process_pass1b_block(ext2_filsys fs, blk_t	*blocknr,
+@@ -123,6 +128,7 @@ static void add_dupe(e2fsck_t ctx, ext2_
+  	struct dup_inode	*di;
+  	struct block_el		*blk_el;
+  	struct inode_el 	*ino_el;
++	struct dir_el 		*dir_el;
+
+  	n = dict_lookup(&blk_dict, INT_TO_VOIDPTR(blk));
+  	if (n)
+@@ -147,11 +153,17 @@ static void add_dupe(e2fsck_t ctx, ext2_
+  	else {
+  		di = (struct dup_inode *) e2fsck_allocate_memory(ctx,
+  			 sizeof(struct dup_inode), "duplicate inode header");
++		di->dir_list = NULL;
+  		if (ino == EXT2_ROOT_INO) {
+-			di->dir = EXT2_ROOT_INO;
++			dir_el = (struct dir_el *) e2fsck_allocate_memory(ctx, 
++					sizeof(struct dir_el), 
++					"duplicate inode element"); 
++			dir_el->dir = EXT2_ROOT_INO;
++			dir_el->next = di->dir_list;
++			di->dir_list = dir_el;
+  			dup_inode_founddir++;
+  		} else
+-			di->dir = 0;
++			di->dir_list = NULL;
+
+  		di->num_dupblocks = 0;
+  		di->block_list = 0;
+@@ -174,12 +186,17 @@ static void inode_dnode_free(dnode_t *no
+  {
+  	struct dup_inode	*di;
+  	struct block_el		*p, *next;
++	struct dir_el		*dp, *dnext;
+
+  	di = (struct dup_inode *) dnode_get(node);
+  	for (p = di->block_list; p; p = next) {
+  		next = p->next;
+  		free(p);
+  	}
++	for (dp = di->dir_list; dp; dp = dnext) {
++		dnext = dp->next;
++		free(dp);
++	}
+  	free(node);
+  }
+
+@@ -351,6 +368,8 @@ struct search_dir_struct {
+  	int		count;
+  	ext2_ino_t	first_inode;
+  	ext2_ino_t	max_inode;
++	e2fsck_t	ctx;
++	int		allflag;
+  };
+
+  static int search_dirent_proc(ext2_ino_t dir, int entry,
+@@ -362,6 +381,7 @@ static int search_dirent_proc(ext2_ino_t
+  {
+  	struct search_dir_struct *sd;
+  	struct dup_inode	*p;
++	struct dir_el		*dd_el;
+  	dnode_t			*n;
+
+  	sd = (struct search_dir_struct *) priv_data;
+@@ -378,12 +398,16 @@ static int search_dirent_proc(ext2_ino_t
+  	if (!n)
+  		return 0;
+  	p = (struct dup_inode *) dnode_get(n);
+-	if (!p->dir) {
+-		p->dir = dir;
++	if (sd->allflag || !p->dir_list) {
++		dd_el = (struct dir_el *) e2fsck_allocate_memory(sd->ctx,
++			sizeof(struct dir_el), "duplicate directory element");
++		dd_el->dir = dir;
++		dd_el->next = p->dir_list;
++		p->dir_list = dd_el;
+  		sd->count--;
+  	}
+
+-	return(sd->count ? 0 : DIRENT_ABORT);
++	return((sd->allflag || sd->count) ? 0 : DIRENT_ABORT);
+  }
+
+
+@@ -400,15 +424,30 @@ static void pass1c(e2fsck_t ctx, char *b
+
+  	/*
+  	 * Search through all directories to translate inodes to names
+-	 * (by searching for the containing directory for that inode.)
++	 * (by searching for the containing directories for that inode.)
+  	 */
+  	sd.count = dup_inode_count - dup_inode_founddir;
+  	sd.first_inode = EXT2_FIRST_INODE(fs->super);
+  	sd.max_inode = fs->super->s_inodes_count;
++	sd.ctx = ctx;
++	sd.allflag = (ctx->shared == E2F_SHARED_LPF);
+  	ext2fs_dblist_dir_iterate(fs->dblist, 0, block_buf,
+  				  search_dirent_proc, &sd);
+  }
+
++static errcode_t unlink_all(e2fsck_t ctx, struct dup_inode *dup, ext2_ino_t ino)
++{
++	struct dir_el *dp;
++	errcode_t err, result = 0;
 +
-+File /dir/foo (inode #16, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir/quux1 (inode #19, mod time Tue Apr 10 21:00:00 2007)
-+	/dir3/baz (inode #18, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/bar (inode #17, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
++	for (dp = dup->dir_list; dp; dp = dp->next) {
++		err = ext2fs_unlink(ctx->fs, dp->dir, NULL, ino, 0);
++		if (err)
++			result = err;
++	}
++	return result;
++}
 +
-+File /dir2/bar (inode #17, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir/quux1 (inode #19, mod time Tue Apr 10 21:00:00 2007)
-+	/dir3/baz (inode #18, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/foo (inode #16, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
+  static void pass1d(e2fsck_t ctx, char *block_buf)
+  {
+  	ext2_filsys fs = ctx->fs;
+@@ -456,6 +495,9 @@ static void pass1d(e2fsck_t ctx, char *b
+  			q = (struct dup_block *) dnode_get(m);
+  			if (q->num_bad > 1)
+  				file_ok = 0;
++			if (q->num_bad == 1 && (ctx->clone == E2F_CLONE_ZERO ||
++			    ctx->shared != E2F_SHARED_PRESERVE))
++				file_ok = 0;
+  			if (check_if_fs_block(ctx, s->block)) {
+  				file_ok = 0;
+  				meta_data = 1;
+@@ -484,7 +526,7 @@ static void pass1d(e2fsck_t ctx, char *b
+  		 */
+  		pctx.inode = &p->inode;
+  		pctx.ino = ino;
+-		pctx.dir = p->dir;
++		pctx.dir = p->dir_list ? p->dir_list->dir : 0;
+  		pctx.blkcount = p->num_dupblocks;
+  		pctx.num = meta_data ? shared_len+1 : shared_len;
+  		fix_problem(ctx, PR_1D_DUP_FILE, &pctx);
+@@ -504,20 +546,32 @@ static void pass1d(e2fsck_t ctx, char *b
+  			 */
+  			pctx.inode = &t->inode;
+  			pctx.ino = shared[i];
+-			pctx.dir = t->dir;
++			pctx.dir = t->dir_list ? t->dir_list->dir : 0;
+  			fix_problem(ctx, PR_1D_DUP_FILE_LIST, &pctx);
+  		}
+  		if (file_ok) {
+  			fix_problem(ctx, PR_1D_DUP_BLOCKS_DEALT, &pctx);
+  			continue;
+  		}
+-		if (fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
++		if (ctx->shared != E2F_SHARED_DELETE &&
++		    fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
+  			pctx.errcode = clone_file(ctx, ino, p, block_buf);
+-			if (pctx.errcode)
++			if (pctx.errcode) {
+  				fix_problem(ctx, PR_1D_CLONE_ERROR, &pctx);
+-			else
+-				continue;
++				goto delete;
++			}
++			if (ctx->shared == E2F_SHARED_LPF &&
++			    fix_problem(ctx, PR_1D_DISCONNECT_QUESTION, &pctx)){
++				pctx.errcode = unlink_all(ctx, p, ino);
++				if (pctx.errcode) {
++					fix_problem(ctx, PR_1D_DISCONNECT_ERROR,
++							&pctx);
++					goto delete;
++				}
++			}
++			continue;
+  		}
++delete:
+  		if (fix_problem(ctx, PR_1D_DELETE_QUESTION, &pctx))
+  			delete_file(ctx, ino, p, block_buf);
+  		else
+@@ -534,7 +588,8 @@ static void decrement_badcount(e2fsck_t
+  {
+  	p->num_bad--;
+  	if (p->num_bad <= 0 ||
+-	    (p->num_bad == 1 && !check_if_fs_block(ctx, block)))
++	    (p->num_bad == 1 && !check_if_fs_block(ctx, block) && 
++	    ctx->clone == E2F_CLONE_DUP))
+  		ext2fs_unmark_block_bitmap(ctx->block_dup_map, block);
+  }
+
+@@ -572,7 +627,7 @@ static int delete_file_block(ext2_filsys
+
+  	return 0;
+  }
+- 
 +
-+File /dir3/baz (inode #18, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir/quux1 (inode #19, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/bar (inode #17, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/foo (inode #16, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
+  static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+  			struct dup_inode *dp, char* block_buf)
+  {
+@@ -680,11 +735,15 @@ static int clone_file_block(ext2_filsys
+  			printf("Cloning block %u to %u\n", *block_nr,
+  			       new_block);
+  #endif
+-			retval = io_channel_read_blk(fs->io, *block_nr, 1,
+-						     cs->buf);
+-			if (retval) {
+-				cs->errcode = retval;
+-				return BLOCK_ABORT;
++			if (ctx->clone == E2F_CLONE_ZERO) {
++				memset(cs->buf, 0, fs->blocksize);
++			} else {
++				retval = io_channel_read_blk(fs->io, *block_nr,
++							1, cs->buf);
++				if (retval) {
++					cs->errcode = retval;
++					return BLOCK_ABORT;
++				}
+  			}
+  			retval = io_channel_write_blk(fs->io, new_block, 1,
+  						      cs->buf);
+@@ -693,6 +752,11 @@ static int clone_file_block(ext2_filsys
+  				return BLOCK_ABORT;
+  			}
+  			decrement_badcount(ctx, *block_nr, p);
++			if (ctx->clone == E2F_CLONE_ZERO && p->num_bad == 0) {
++				ext2fs_unmark_block_bitmap(ctx->block_found_map,
++							   *block_nr);
++				ext2fs_block_alloc_stats(fs, *block_nr, -1);
++			}
+  			*block_nr = new_block;
+  			ext2fs_mark_block_bitmap(ctx->block_found_map,
+  						 new_block);
+Index: e2fsprogs+chaos/e2fsck/problem.h
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/problem.h
++++ e2fsprogs+chaos/e2fsck/problem.h
+@@ -539,7 +539,13 @@ struct problem_context {
+
+  /* Couldn't clone file (error) */
+  #define PR_1D_CLONE_ERROR	0x013008
+- 
 +
-+File /dir/quux1 (inode #19, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir3/baz (inode #18, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/bar (inode #17, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/foo (inode #16, mod time Tue Apr 10 21:00:00 2007)
-+Multiply-claimed blocks already reassigned or cloned.
++/* File with shared blocks found */
++#define PR_1D_DISCONNECT_QUESTION 0x013009
 +
-+File /dir/fee (inode #20, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir4/fum (inode #23, mod time Tue Apr 10 21:00:00 2007)
-+	/dir3/foe (inode #22, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/fie (inode #21, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
++/* Couldn't unlink file (error) */
++#define PR_1D_DISCONNECT_ERROR	0x01300A
 +
-+File /dir2/fie (inode #21, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir4/fum (inode #23, mod time Tue Apr 10 21:00:00 2007)
-+	/dir3/foe (inode #22, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/fee (inode #20, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
+  /*
+   * Pass 2 errors
+   */
+Index: e2fsprogs+chaos/e2fsck/problem.c
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/problem.c
++++ e2fsprogs+chaos/e2fsck/problem.c
+@@ -912,6 +912,14 @@ static struct e2fsck_problem problem_tab
+  	{ PR_1D_CLONE_ERROR,
+  	  N_("Couldn't clone file: %m\n"), PROMPT_NONE, 0 },
+
++	/* File with shared blocks found */
++	{ PR_1D_DISCONNECT_QUESTION,
++	  N_("File with shared blocks found\n"), PROMPT_CONNECT, 0 },
 +
-+File /dir3/foe (inode #22, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir4/fum (inode #23, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/fie (inode #21, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/fee (inode #20, mod time Tue Apr 10 21:00:00 2007)
-+Clone multiply-claimed blocks? yes
++	/* Couldn't unlink file (error) */
++	{ PR_1D_DISCONNECT_ERROR,
++	  N_("Couldn't unlink file: %m\n"), PROMPT_NONE, 0 },
 +
-+File /dir4/fum (inode #23, mod time Tue Apr 10 21:00:00 2007) 
-+  has 1 multiply-claimed block(s), shared with 3 file(s):
-+	/dir3/foe (inode #22, mod time Tue Apr 10 21:00:00 2007)
-+	/dir2/fie (inode #21, mod time Tue Apr 10 21:00:00 2007)
-+	/dir/fee (inode #20, mod time Tue Apr 10 21:00:00 2007)
-+Multiply-claimed blocks already reassigned or cloned.
+  	/* Pass 2 errors */
+
+  	/* Pass 2: Checking directory structure */
+Index: e2fsprogs+chaos/e2fsck/e2fsck.8.in
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.8.in
++++ e2fsprogs+chaos/e2fsck/e2fsck.8.in
+@@ -165,6 +165,19 @@ following options are supported:
+  Assume the format of the extended attribute blocks in the filesystem is
+  the specified version number.  The version number may be 1 or 2.  The
+  default extended attribute version format is 2.
++.TP
++.BI clone= dup|zero
++Resolve files with shared blocks in pass 1D by giving each file a private
++copy of the blocks (dup);
++or replacing the shared blocks with private, zero-filled blocks (zero). 
++The default is dup.
++.TP
++.BI shared= preserve|lost+found|delete
++Files with shared blocks discovered in pass 1D are cloned and then left 
++in place (preserve); 
++cloned and then disconnected from their parent directory,
++then reconnected to /lost+found in pass 3 (lost+found); 
++or simply deleted (delete).  The default is preserve.
+  .RE
+  .TP
+  .B \-f
+Index: e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/e2fsck.conf.5.in
++++ e2fsprogs+chaos/e2fsck/e2fsck.conf.5.in
+@@ -68,6 +68,7 @@ document.
+  This stanza contains general configuration parameters for
+  .BR e2fsck 's
+  behavior.
++.TP
+  .I [problems]
+  This stanza allows the administrator to reconfigure how e2fsck handles
+  various filesystem inconsistencies.
+@@ -87,6 +88,20 @@ This boolean relation controls whether o
+  filesystem checks (either based on time or number of mounts) should
+  be doubled if the system is running on battery.  It defaults to
+  true.
++.TP
++.I clone
++This string relation controls the default handling of shared blocks in pass 1D.
++It can be set to dup or zero.  See the
++.I "-E clone" 
++option description in e2fsck(8).
++.TP
++.I shared
++This string relation controls the default disposition of files discovered to 
++have shared blocks in pass 1D.  It can be set to preserve, lost+found, 
++or delete.  See the
++.I "-E shared" 
++option description in e2fsck(8).
 +
-+Pass 2: Checking directory structure
-+Invalid inode number for '.' in directory inode 20.
-+Fix? yes
+  .SH THE [problems] STANZA
+  Each tag in the
+  .I [problems] 
+Index: e2fsprogs+chaos/e2fsck/ChangeLog
+===================================================================
+--- e2fsprogs+chaos.orig/e2fsck/ChangeLog
++++ e2fsprogs+chaos/e2fsck/ChangeLog
+@@ -1,5 +1,12 @@
+  2007-01-30  Jim Garlick  <garlick@llnl.gov>
+
++	* unix.c, pass1b.c, e2fsck.h : Add command line and config file
++		options to alter shared block handling method in pass 1D.
 +
-+Invalid inode number for '.' in directory inode 21.
-+Fix? yes
++	* problem.c, problem.h (PR_1D_DISCONNECT_*): Add new problem code.
 +
-+Invalid inode number for '.' in directory inode 22.
-+Fix? yes
++2007-01-30  Jim Garlick  <garlick@llnl.gov>
 +
-+Pass 3: Checking directory connectivity
-+'..' in /dir/fee (20) is /dir4 (15), should be /dir (12).
-+Fix? yes
-+
-+'..' in /dir2/fie (21) is /dir4 (15), should be /dir2 (13).
-+Fix? yes
-+
-+'..' in /dir3/foe (22) is /dir4 (15), should be /dir3 (14).
-+Fix? yes
-+
-+Pass 4: Checking reference counts
-+Inode 12 ref count is 4, should be 3.  Fix? yes
-+
-+Inode 13 ref count is 4, should be 3.  Fix? yes
-+
-+Inode 14 ref count is 4, should be 3.  Fix? yes
-+
-+Inode 15 ref count is 0, should be 3.  Fix? yes
-+
-+Inode 16 ref count is 1, should be 3.  Fix? yes
-+
-+Inode 17 ref count is 1, should be 2.  Fix? yes
-+
-+Inode 19 ref count is 1, should be 3.  Fix? yes
-+
-+Pass 5: Checking group summary information
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 23/32 files (0.0% non-contiguous), 35/100 blocks
-+Exit status is 1
-diff -r 365efb1a2299 -r 8bb7637c6508 tests/f_dup4/expect.2
---- /dev/null	Thu Jan 01 00:00:00 1970 +0000
-+++ b/tests/f_dup4/expect.2	Tue Apr 10 22:55:09 2007 -0400
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 23/32 files (0.0% non-contiguous), 35/100 blocks
-+Exit status is 0
-diff -r 365efb1a2299 -r 8bb7637c6508 tests/f_dup4/name
---- /dev/null	Thu Jan 01 00:00:00 1970 +0000
-+++ b/tests/f_dup4/name	Tue Apr 10 22:55:09 2007 -0400
-@@ -0,0 +1,2 @@
-+find all directdory pathnames
-+
-diff -r 365efb1a2299 -r 8bb7637c6508 tests/f_dup4/script
---- /dev/null	Thu Jan 01 00:00:00 1970 +0000
-+++ b/tests/f_dup4/script	Tue Apr 10 22:55:09 2007 -0400
-@@ -0,0 +1,50 @@
-+SKIP_GUNZIP="true"
-+TEST_DATA="test.data"
-+
-+echo "/ Murphy Magic.  The SeCrEt of the UnIvErSe is 43, NOT 42" > $TEST_DATA
-+
-+touch $TMPFILE
-+$MKE2FS -N 32 -F -o Linux -b 1024 $TMPFILE 100 > /dev/null 2>&1 
-+$DEBUGFS -w $TMPFILE << EOF > /dev/null 2>&1
-+set_current_time 200704102100
-+set_super_value lastcheck 0
-+set_super_value hash_seed null
-+set_super_value mkfs_time 0
-+mkdir dir
-+mkdir dir2
-+mkdir dir3
-+mkdir dir4
-+cd /dir
-+write $TEST_DATA foo
-+cd /dir2
-+write $TEST_DATA bar
-+cd /dir3
-+write $TEST_DATA baz
-+cd /dir4
-+write $TEST_DATA quux
-+mkdir /dir/fee
-+mkdir /dir2/fie
-+mkdir /dir3/foe
-+mkdir /dir4/fum
-+link /dir/foo /dir2/foo1
-+link /dir/foo /dir3/foo2
-+link /dir2/bar /dir3/bar1
-+link /dir4/quux /dir/quux1
-+link /dir4/quux /dir2/quux2
-+set_inode_field /dir/foo block[0] 30
-+set_inode_field /dir2/bar block[0] 30
-+set_inode_field /dir3/baz block[0] 30
-+set_inode_field /dir/fee block[0] 34
-+set_inode_field /dir2/fie block[0] 34
-+set_inode_field /dir3/foe block[0] 34
-+q
-+EOF
-+
-+E2FSCK_TIME=200704102100
-+export E2FSCK_TIME
-+
-+. $cmd_dir/run_e2fsck
-+
-+rm -f $TEST_DATA
-+
-+unset E2FSCK_TIME TEST_DATA
+  	* unix.c: Parse config file before command line so command line
+  		has precedence.  Make -E option parsing cumulative.
