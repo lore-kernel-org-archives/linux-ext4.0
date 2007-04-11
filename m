@@ -1,42 +1,170 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: debugfs fill_bgs command?
-Date: Wed, 11 Apr 2007 16:52:37 -0600
-Message-ID: <20070411225237.GH5967@schatzie.adilger.int>
-References: <461D4256.6020509@redhat.com>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 29/31] revert "retries in ext4_prepare_write() violate
+	ordering requirements"
+Date: Wed, 11 Apr 2007 15:52:57 -0700
+Message-ID: <20070411225257.GD24814@kroah.com>
+References: <20070411224329.866978349@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, dev@openvz.org, kenneth.w.chen@intel.com,
+	saw@sw.ru, dmonakhov@openvz.org, linux-ext4@vger.kernel.org,
+	mingo@elte.hu
+To: linux-kernel@vger.kernel.org, stable@kernel.org,
+	torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:34570 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161304AbXDKWwj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Apr 2007 18:52:39 -0400
-Content-Disposition: inline
-In-Reply-To: <461D4256.6020509@redhat.com>
+Received: from canuck.infradead.org ([209.217.80.40]:55844 "EHLO
+	canuck.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161374AbXDKWzr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Apr 2007 18:55:47 -0400
+Content-Disposition: inline; filename="revert-retries-in-ext4_prepare_write-violate-ordering-requirements.patch"
+In-Reply-To: <20070411225100.GA24814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Apr 11, 2007  15:17 -0500, Eric Sandeen wrote:
-> I was wondering if others think it would be useful to have a "fill_bgs"
-> command in debugfs; this would (minimally) mark the lower X bgs as full
-> for both inodes & blocks (possibly either/or), to allow testing the
-> higher block groups.  I'm using a hacked up version of this to do a
-> little ext3 testing above 8T.  Given that this would really only be a
-> testing option in nature, would it be accepted into e2fsprogs?  I'd
-> probably need some sort of "unfill" command as well, to put the bg
-> counters back where they should be; probably by actually reading the
-> bitmaps.  This way fsck would still find a consistent filesystem...
-> 
-> I had originally written a set_bg_field function too, to go with inode &
-> sb variants, though for marking the first few thousand bg's it was going
-> to get a bit tedious... :)
+-stable review patch.  If anyone has any objections, please let us know.
 
-Try "mke2fs -O lazy_bg XXX" and be happy.  Can be used on any kernel as
-it is a COMPAT feature and marks all but first and last groups as full.
+------------------
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+From: Andrew Morton <akpm@linux-foundation.org>
+
+Revert b46be05004abb419e303e66e143eed9f8a6e9f3f.  Same reasoning as for ext3.
+
+Cc: Kirill Korotaev <dev@openvz.org>
+Cc: Ingo Molnar <mingo@elte.hu>
+Cc: Ken Chen <kenneth.w.chen@intel.com>
+Cc: Andrey Savochkin <saw@sw.ru>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Dmitriy Monakhov <dmonakhov@openvz.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/ext4/inode.c |   85 ++++++--------------------------------------------------
+ 1 file changed, 10 insertions(+), 75 deletions(-)
+
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1147,102 +1147,37 @@ static int do_journal_get_write_access(h
+ 	return ext4_journal_get_write_access(handle, bh);
+ }
+ 
+-/*
+- * The idea of this helper function is following:
+- * if prepare_write has allocated some blocks, but not all of them, the
+- * transaction must include the content of the newly allocated blocks.
+- * This content is expected to be set to zeroes by block_prepare_write().
+- * 2006/10/14  SAW
+- */
+-static int ext4_prepare_failure(struct file *file, struct page *page,
+-				unsigned from, unsigned to)
+-{
+-	struct address_space *mapping;
+-	struct buffer_head *bh, *head, *next;
+-	unsigned block_start, block_end;
+-	unsigned blocksize;
+-	int ret;
+-	handle_t *handle = ext4_journal_current_handle();
+-
+-	mapping = page->mapping;
+-	if (ext4_should_writeback_data(mapping->host)) {
+-		/* optimization: no constraints about data */
+-skip:
+-		return ext4_journal_stop(handle);
+-	}
+-
+-	head = page_buffers(page);
+-	blocksize = head->b_size;
+-	for (	bh = head, block_start = 0;
+-		bh != head || !block_start;
+-	    	block_start = block_end, bh = next)
+-	{
+-		next = bh->b_this_page;
+-		block_end = block_start + blocksize;
+-		if (block_end <= from)
+-			continue;
+-		if (block_start >= to) {
+-			block_start = to;
+-			break;
+-		}
+-		if (!buffer_mapped(bh))
+-		/* prepare_write failed on this bh */
+-			break;
+-		if (ext4_should_journal_data(mapping->host)) {
+-			ret = do_journal_get_write_access(handle, bh);
+-			if (ret) {
+-				ext4_journal_stop(handle);
+-				return ret;
+-			}
+-		}
+-	/*
+-	 * block_start here becomes the first block where the current iteration
+-	 * of prepare_write failed.
+-	 */
+-	}
+-	if (block_start <= from)
+-		goto skip;
+-
+-	/* commit allocated and zeroed buffers */
+-	return mapping->a_ops->commit_write(file, page, from, block_start);
+-}
+-
+ static int ext4_prepare_write(struct file *file, struct page *page,
+ 			      unsigned from, unsigned to)
+ {
+ 	struct inode *inode = page->mapping->host;
+-	int ret, ret2;
+-	int needed_blocks = ext4_writepage_trans_blocks(inode);
++	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
+ 	handle_t *handle;
+ 	int retries = 0;
+ 
+ retry:
+ 	handle = ext4_journal_start(inode, needed_blocks);
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out;
++	}
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+ 		ret = nobh_prepare_write(page, from, to, ext4_get_block);
+ 	else
+ 		ret = block_prepare_write(page, from, to, ext4_get_block);
+ 	if (ret)
+-		goto failure;
++		goto prepare_write_failed;
+ 
+ 	if (ext4_should_journal_data(inode)) {
+ 		ret = walk_page_buffers(handle, page_buffers(page),
+ 				from, to, NULL, do_journal_get_write_access);
+-		if (ret)
+-			/* fatal error, just put the handle and return */
+-			ext4_journal_stop(handle);
+ 	}
+-	return ret;
+-
+-failure:
+-	ret2 = ext4_prepare_failure(file, page, from, to);
+-	if (ret2 < 0)
+-		return ret2;
++prepare_write_failed:
++	if (ret)
++		ext4_journal_stop(handle);
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+-	/* retry number exceeded, or other error like -EDQUOT */
++out:
+ 	return ret;
+ }
+ 
+
+-- 
