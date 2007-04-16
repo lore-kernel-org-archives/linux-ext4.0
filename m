@@ -1,217 +1,98 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file allocation
-Date: Mon, 16 Apr 2007 21:22:53 +1000
-Message-ID: <20070416112252.GJ48531920@melbourne.sgi.com>
-References: <20070412110550.GM5967@schatzie.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Copy i_flags to ext3 inode flags on write
+Date: Mon, 16 Apr 2007 19:05:04 +0200
+Message-ID: <20070416170504.GH25785@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, hch@infradead.org
+Content-Type: multipart/mixed; boundary="mP3DRpeJDSE+ciuQ"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:55237 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1030419AbXDPLXH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2007 07:23:07 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:36480 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030894AbXDPRFF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2007 13:05:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20070412110550.GM5967@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 12, 2007 at 05:05:50AM -0600, Andreas Dilger wrote:
-> I'm interested in getting input for implementing an ioctl to efficiently
-> map file extents & holes (FIEMAP) instead of looping over FIBMAP a billion
-> times.  We already have customers with single files in the 10TB range and
-> we additionally need to get the mapping over the network so it needs to
-> be efficient in terms of how data is passed, and how easily it can be
-> extracted from the filesystem.
-> 
-> I had come up with a plan independently and was also steered toward
-> XFS_IOC_GETBMAP* ioctls which are in fact very similar to my original
-> plan, though I think the XFS structs used there are a bit bloated.
 
-Yeah, they were designed with having a long term stable ABI
-that limited expandability. Hence the "future" fields that never
-got used ;)
+--mP3DRpeJDSE+ciuQ
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> There was also recent discussion about SEEK_HOLE and SEEK_DATA as
-> implemented by Sun, but even if we could skip the holes we still might
-> need to do millions of FIBMAPs to see how large files are allocated
-> on disk.  Conversely, having filesystems implement an efficient FIBMAP
-> ioctl (or ->fiemap() method) could in turn be leveraged for SEEK_HOLE
-> and SEEK_DATA instead of doing looping over ->bmap() inside the kernel
-> as I saw one patch.
+  Hello,
 
-Yup.
+  attached is a patch that stores inode flags such as S_IMMUTABLE,
+S_APPEND, etc. from i_flags to EXT3_I(inode)->i_flags when inode is
+written to disk. The same thing is done on GETFLAGS ioctl.
+  Quota code changes these flags on quota files (to make it harder for
+sysadmin to screw himself) and these changes were not correctly
+propagated into the filesystem (especially, lsattr did not show them and
+users were wondering...).
+  If people agree that this patch is fine, I can also rediff it for
+ext4.
 
-> struct fibmap_extent {
-> 	__u64 fe_start;			/* starting offset in bytes */
-> 	__u64 fe_len;			/* length in bytes */
-> }
-> 
-> struct fibmap {
-> 	struct fibmap_extent fm_start;	/* offset, length of desired mapping */
-> 	__u32 fm_extent_count;		/* number of extents in array */
-> 	__u32 fm_flags;			/* flags (similar to XFS_IOC_GETBMAP) */
-> 	__u64 unused;
-> 	struct fibmap_extent fm_extents[0];
-> }
-> 
-> #define FIEMAP_LEN_MASK		0xff000000000000
-> #define FIEMAP_LEN_HOLE     	0x01000000000000
-> #define FIEMAP_LEN_UNWRITTEN	0x02000000000000
-
-I'm not sure I like stealing bits from the length to use a flags -
-I'd prefer an explicit field per fibmap_extent for this.
-
-Given that xfs_bmap uses extra information from the filesystem
-(geometry) to display extra (and frequently used) information
-about the alignment of extents. ie:
-
-chook 681% xfs_bmap -vv fred
-fred:
- EXT: FILE-OFFSET      BLOCK-RANGE          AG AG-OFFSET          TOTAL FLAGS
-   0: [0..151]:        288444888..288445039  8 (1696536..1696687)   152 00010
- FLAG Values:
-    010000 Unwritten preallocated extent
-    001000 Doesn't begin on stripe unit
-    000100 Doesn't end   on stripe unit
-    000010 Doesn't begin on stripe width
-    000001 Doesn't end   on stripe width
-
-This information could be easily passed up in the flags fields if the
-filesystem has geometry information (there go 4 more flags ;). 
-
-Also - what are the explicit sync semantics of this ioctl? The
-XFS ioctl causes a fsync of the file first to convert delalloc
-extents to real extents before returning the bmap. Is this functionality
-going to be the same? If not, then we need a DELALLOC flag to indicate
-extents that haven't been allocated yet. This might be handy to
-have, anyway....
-
-> All offsets are in bytes to allow cases where filesystems are not going
-> block-aligned/sized allocations (e.g. tail packing).
-
-So it'll be ok for a few years yet ;)
-
->  The fm_extents array
-> returned contains the packed list of allocation extents for the file,
-> including entries for holes (which have fe_start == 0, and a flag).
-
-Internalling in XFS, we pass these around as:
-
-#define DELAYSTARTBLOCK         ((xfs_fsblock_t)-1LL)
-#define HOLESTARTBLOCK          ((xfs_fsblock_t)-2LL)
-
-And the offset passed out through XFS_IOC_GETBMAP[X] is a block
-number of -1 for the start of a hole. Hence we don't need a
-flag for this. We can expose delalloc extents like this as well
-without needing flags...
-
-> The ->fm_extents[] array includes all of the holes in addition to
-> allocated extents because this avoids the need to return both the logical
-> and physical address for every extent and does not make processing any
-> harder.
-
-Doesn't really make it any easier to map to disk, either.
-
-> One feature that XFS_IOC_GETBMAPX has that may be desirable is the
-> ability to return unwritten extent information.
-
-You got that with the unwritten flag above.....
-
-> required expanding the per-extent struct from 32 to 48 bytes per extent,
-
-not sure I follow your maths here?
-
-> but I'd rather limit a single extent to e.g. 2^56 bytes (oh, what hardship)
-> and keep 8 bytes or so for input/output flags per extent (would need to
-             ^^^^^ bits?
-> be masked before use).
-> 
-> 
-> Caller works something like:
-> 
-> 	char buf[4096];
-> 	struct fibmap *fm = (struct fibmap *)buf;
-> 	int count = (sizeof(buf) - sizeof(*fm)) / sizeof(fm_extent);
-> 	
-> 	fm->fm_extent.fe_start = 0; /* start of file */
-> 	fm->fm_extent.fe_len = -1;	/* end of file */
-> 	fm->fm_extent_count = count; /* max extents in fm_extents[] array */
-> 	fm->fm_flags = 0;		/* maybe "no DMAPI", etc like XFS */
-> 
-> 	fd = open(path, O_RDONLY);
-> 	printf("logical\t\tphysical\t\tbytes\n");
-> 
-> 	/* The last entry will have less extents than the maximum */
-> 	while (fm->fm_extent_count == count) {
-
-fm_extent_count is an in/out parameter?
-
-> 		rc = ioctl(fd, FIEMAP, fm);
-> 		if (rc)
-> 			break;
-> 
-> 		/* kernel filled in fm_extents[] array, set fm_extent_count
-> 		 * to be actual number of extents returned, leaves fm_start
-> 		 * alone (unlike XFS_IOC_GETBMAP). */
-
-Ok, it is.
-
-> 		for (i = 0; i < fm->fm_extent_count; i++) {
-> 			__u64 len = fm->fm_extents[i].fe_len & FIEMAP_LEN_MASK;
-> 			__u64 fm_next = fm->fm_start + len;
-> 			int hole = fm->fm_extents[i].fe_len & FIEMAP_LEN_HOLE;
-> 			int unwr = fm->fm_extents[i].fe_len & FIEMAP_LEN_UNWRITTEN;
-> 
-> 			printf("%llu-%llu\t%llu-%llu\t%llu\t%s%s\n",
-> 				fm->fm_start, fm_next - 1,
-> 				hole ? 0 : fm->fm_extents[i].fe_start,
-> 				hole ? 0 : fm->fm_extents[i].fe_start +
-> 					   fm->fm_extents[i].fe_len - 1,
-> 				len, hole ? "(hole) " : "",
-> 				unwr ? "(unwritten) " : "");
-> 
-> 			/* get ready for printing next extent, or next ioctl */
-> 			fm->fm_start = fm_next;
-
-Ok, so the only way you can determine where you are in the file
-is by adding up the length of each extent. What happens if the file
-is changing underneath you e.g. someone punches out a hole
-in teh file, or truncates and extends it again between ioctl()
-calls?
-
-Also, what happens if you ask for an offset/len that doesn't map to
-any extent boundaries - are you truncating the extents returned to
-teh off/len passed in?
-
-xfs_bmap gets around this by finding out how many extents there are in the
-file and allocating a buffer that big to hold all the extents so they
-are gathered in a single atomic call (think sparse matrix files)....
-
-> I'm not wedded to an ioctl interface, but it seems consistent with FIBMAP.
-> I'm quite open to suggestions at this point, both in terms of how usable
-> the fibmap data structures are by the caller, and if we need to add anything
-> to make them more flexible for the future.
-
-ioctl is fine by me. perhaps a version number in the structure header
-would be handy so we can modify the interface easily in the future
-without having to worry about breaking userspace....
-
-> In terms of implementing this in the kernel, there was originally code for
-> this during the development of the ext3 extent patches and it was done via
-> a callback in the extent tree iterator so it is very efficient.  I believe
-> it implements all that is needed to allow this interface to be mapped
-> onto XFS_IOC_BMAP internally (or vice versa).
-
-I wouldn't map the ioctls - I'd just write another interface to
-xfs_getbmap(). That way we could eventually get rid of the XFS_IOC_BMAP
-interface. is there any code yet?
-
-Cheers,
-
-Dave.
+								Honza
 -- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
+
+--mP3DRpeJDSE+ciuQ
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="ext3-2.6.21-rc6-propagate_flags.diff"
+
+Propagate flags such as S_APPEND, S_IMMUTABLE, etc. from i_flags into
+ext3-specific i_flags. Hence, when someone sets these flags via a different
+interface than ioctl, they are stored correctly.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.21-rc6/fs/ext3/inode.c linux-2.6.21-rc6-1-ext3_flags_update/fs/ext3/inode.c
+--- linux-2.6.21-rc6/fs/ext3/inode.c	2007-04-10 17:09:55.000000000 +0200
++++ linux-2.6.21-rc6-1-ext3_flags_update/fs/ext3/inode.c	2007-04-12 18:19:29.000000000 +0200
+@@ -2581,6 +2581,25 @@ void ext3_set_inode_flags(struct inode *
+ 		inode->i_flags |= S_DIRSYNC;
+ }
+ 
++/* Propagate flags from i_flags to EXT3_I(inode)->i_flags */
++void ext3_get_inode_flags(struct inode *inode)
++{
++	unsigned int flags = inode->i_flags;
++
++	EXT3_I(inode)->i_flags &= ~(EXT3_SYNC_FL|EXT3_APPEND_FL|
++			EXT3_IMMUTABLE_FL|EXT3_NOATIME_FL|EXT3_DIRSYNC_FL);
++	if (flags & S_SYNC)
++		EXT3_I(inode)->i_flags |= EXT3_SYNC_FL;
++	if (flags & S_APPEND)
++		EXT3_I(inode)->i_flags |= EXT3_APPEND_FL;
++	if (flags & S_IMMUTABLE)
++		EXT3_I(inode)->i_flags |= EXT3_IMMUTABLE_FL;
++	if (flags & S_NOATIME)
++		EXT3_I(inode)->i_flags |= EXT3_NOATIME_FL;
++	if (flags & S_DIRSYNC)
++		EXT3_I(inode)->i_flags |= EXT3_DIRSYNC_FL;
++}
++
+ void ext3_read_inode(struct inode * inode)
+ {
+ 	struct ext3_iloc iloc;
+@@ -2736,6 +2755,7 @@ static int ext3_do_update_inode(handle_t
+ 	if (ei->i_state & EXT3_STATE_NEW)
+ 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
+ 
++	ext3_get_inode_flags(inode);
+ 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
+ 	if(!(test_opt(inode->i_sb, NO_UID32))) {
+ 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.21-rc6/fs/ext3/ioctl.c linux-2.6.21-rc6-1-ext3_flags_update/fs/ext3/ioctl.c
+--- linux-2.6.21-rc6/fs/ext3/ioctl.c	2007-02-07 12:03:23.000000000 +0100
++++ linux-2.6.21-rc6-1-ext3_flags_update/fs/ext3/ioctl.c	2007-04-12 18:22:54.000000000 +0200
+@@ -28,6 +28,7 @@ int ext3_ioctl (struct inode * inode, st
+ 
+ 	switch (cmd) {
+ 	case EXT3_IOC_GETFLAGS:
++		ext3_get_inode_flags(inode);
+ 		flags = ei->i_flags & EXT3_FL_USER_VISIBLE;
+ 		return put_user(flags, (int __user *) arg);
+ 	case EXT3_IOC_SETFLAGS: {
+
+--mP3DRpeJDSE+ciuQ--
