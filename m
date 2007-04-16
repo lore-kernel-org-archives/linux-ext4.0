@@ -1,42 +1,104 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: Add a norecovery option to ext3/4?
-Date: Sun, 15 Apr 2007 18:49:29 +0000
-Message-ID: <20070415184929.GC10097@ucw.cz>
-References: <20070409000556.GA13980@implementation> <461A5F13.7040705@cfl.rr.com> <461A760B.1040103@redhat.com> <461BDD48.2000904@cfl.rr.com> <461BE2FB.5090101@redhat.com> <461D407C.3030706@tmr.com>
+From: Pavel Emelianov <xemul@sw.ru>
+Subject: [PATCH] Check for error returned by kthread_create on creating journal
+ thread
+Date: Mon, 16 Apr 2007 11:41:14 +0400
+Message-ID: <4623289A.1000101@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, Phillip Susi <psusi@cfl.rr.com>,
-	Samuel Thibault <samuel.thibault@ens-lyon.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	joern@lazybastard.org, tytso@mit.edu
-To: Bill Davidsen <davidsen@tmr.com>
+Content-Type: multipart/mixed;
+ boundary="------------020900000406050409030808"
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	devel@openvz.org
+To: sct@redhat.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gprs189-60.eurotel.cz ([160.218.189.60]:3840 "EHLO spitz.ucw.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753532AbXDOT5k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Apr 2007 15:57:40 -0400
-Content-Disposition: inline
-In-Reply-To: <461D407C.3030706@tmr.com>
+Received: from mailhub.sw.ru ([195.214.233.200]:11417 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753072AbXDPHg5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Apr 2007 03:36:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi!
+This is a multi-part message in MIME format.
+--------------020900000406050409030808
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-> >You might not damage the underlying filesystem, but you 
-> >could sure go
-> >off in the weeds trying to read it, if you stumbled 
-> >upon some
-> >half-updated metadata... so while it may be safe for 
-> >the filesystem, I'm
-> >not convinced that it's safe for the host reading the 
-> >filesystem.
-> >
-> Exactly. If the data are protected you can use other 
-> software to access it. For ext3 an explicit ext2 mount 
-> might do it... 
+If the thread failed to create the subsequent wait_event
+will hang forever.
 
-It does not :-(. dirty ext3 is marked incompatible with ext2.
+This is likely to happen if kernel hits max_threads limit.
 
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+Will be critical for virtualization systems that limit the
+number of tasks and kernel memory usage within the container.
+
+--------------020900000406050409030808
+Content-Type: text/plain;
+ name="diff-jbd-check-start-journal-thread-return-value"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="diff-jbd-check-start-journal-thread-return-value"
+
+--- ./fs/jbd/journal.c.jbdthreads	2007-04-16 11:17:36.000000000 +0400
++++ ./fs/jbd/journal.c	2007-04-16 11:30:09.000000000 +0400
+@@ -211,10 +211,16 @@ end_loop:
+ 	return 0;
+ }
+ 
+-static void journal_start_thread(journal_t *journal)
++static int journal_start_thread(journal_t *journal)
+ {
+-	kthread_run(kjournald, journal, "kjournald");
++	struct task_struct *t;
++
++	t = kthread_run(kjournald, journal, "kjournald");
++	if (IS_ERR(t))
++		return PTR_ERR(t);
++
+ 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
++	return 0;
+ }
+ 
+ static void journal_kill_thread(journal_t *journal)
+@@ -840,8 +846,7 @@ static int journal_reset(journal_t *jour
+ 
+ 	/* Add the dynamic fields and write it to disk. */
+ 	journal_update_superblock(journal, 1);
+-	journal_start_thread(journal);
+-	return 0;
++	return journal_start_thread(journal);
+ }
+ 
+ /**
+--- ./fs/jbd2/journal.c.jbdthreads	2007-04-16 11:17:36.000000000 +0400
++++ ./fs/jbd2/journal.c	2007-04-16 11:27:45.000000000 +0400
+@@ -211,10 +211,16 @@ end_loop:
+ 	return 0;
+ }
+ 
+-static void jbd2_journal_start_thread(journal_t *journal)
++static int jbd2_journal_start_thread(journal_t *journal)
+ {
+-	kthread_run(kjournald2, journal, "kjournald2");
++	struct task_struct *t;
++
++	t = kthread_run(kjournald2, journal, "kjournald2");
++	if (IS_ERR(t))
++		return PTR_ERR(t);
++
+ 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
++	return 0;
+ }
+ 
+ static void journal_kill_thread(journal_t *journal)
+@@ -840,8 +846,7 @@ static int journal_reset(journal_t *jour
+ 
+ 	/* Add the dynamic fields and write it to disk. */
+ 	jbd2_journal_update_superblock(journal, 1);
+-	jbd2_journal_start_thread(journal);
+-	return 0;
++	return jbd2_journal_start_thread(journal);
+ }
+ 
+ /**
+
+--------------020900000406050409030808--
