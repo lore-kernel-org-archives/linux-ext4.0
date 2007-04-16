@@ -1,104 +1,119 @@
-From: Pavel Emelianov <xemul@sw.ru>
-Subject: [PATCH] Check for error returned by kthread_create on creating journal
- thread
-Date: Mon, 16 Apr 2007 11:41:14 +0400
-Message-ID: <4623289A.1000101@sw.ru>
+From: Timothy Shimmin <tes@sgi.com>
+Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file allocation
+Date: Mon, 16 Apr 2007 18:01:17 +1000
+Message-ID: <31588A06562720FE1E0F93DF@timothy-shimmins-power-mac-g5.local>
+References: <20070412110550.GM5967@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020900000406050409030808"
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	devel@openvz.org
-To: sct@redhat.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:11417 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753072AbXDPHg5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Apr 2007 03:36:57 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: hch@infradead.org
+To: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070412110550.GM5967@schatzie.adilger.int>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------020900000406050409030808
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Hi Andreas,
 
-If the thread failed to create the subsequent wait_event
-will hang forever.
+--On 12 April 2007 5:05:50 AM -0600 Andreas Dilger <adilger@clusterfs.com> wrote:
 
-This is likely to happen if kernel hits max_threads limit.
+> I'm interested in getting input for implementing an ioctl to efficiently
+> map file extents & holes (FIEMAP) instead of looping over FIBMAP a billion
+> times.
+...
+>
+> I had come up with a plan independently and was also steered toward
+> XFS_IOC_GETBMAP* ioctls which are in fact very similar to my original
+> plan, though I think the XFS structs used there are a bit bloated.
 
-Will be critical for virtualization systems that limit the
-number of tasks and kernel memory usage within the container.
+They certainly seem to be (combining entries and header).
 
---------------020900000406050409030808
-Content-Type: text/plain;
- name="diff-jbd-check-start-journal-thread-return-value"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="diff-jbd-check-start-journal-thread-return-value"
 
---- ./fs/jbd/journal.c.jbdthreads	2007-04-16 11:17:36.000000000 +0400
-+++ ./fs/jbd/journal.c	2007-04-16 11:30:09.000000000 +0400
-@@ -211,10 +211,16 @@ end_loop:
- 	return 0;
- }
- 
--static void journal_start_thread(journal_t *journal)
-+static int journal_start_thread(journal_t *journal)
- {
--	kthread_run(kjournald, journal, "kjournald");
-+	struct task_struct *t;
-+
-+	t = kthread_run(kjournald, journal, "kjournald");
-+	if (IS_ERR(t))
-+		return PTR_ERR(t);
-+
- 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
-+	return 0;
- }
- 
- static void journal_kill_thread(journal_t *journal)
-@@ -840,8 +846,7 @@ static int journal_reset(journal_t *jour
- 
- 	/* Add the dynamic fields and write it to disk. */
- 	journal_update_superblock(journal, 1);
--	journal_start_thread(journal);
--	return 0;
-+	return journal_start_thread(journal);
- }
- 
- /**
---- ./fs/jbd2/journal.c.jbdthreads	2007-04-16 11:17:36.000000000 +0400
-+++ ./fs/jbd2/journal.c	2007-04-16 11:27:45.000000000 +0400
-@@ -211,10 +211,16 @@ end_loop:
- 	return 0;
- }
- 
--static void jbd2_journal_start_thread(journal_t *journal)
-+static int jbd2_journal_start_thread(journal_t *journal)
- {
--	kthread_run(kjournald2, journal, "kjournald2");
-+	struct task_struct *t;
-+
-+	t = kthread_run(kjournald2, journal, "kjournald2");
-+	if (IS_ERR(t))
-+		return PTR_ERR(t);
-+
- 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
-+	return 0;
- }
- 
- static void journal_kill_thread(journal_t *journal)
-@@ -840,8 +846,7 @@ static int journal_reset(journal_t *jour
- 
- 	/* Add the dynamic fields and write it to disk. */
- 	jbd2_journal_update_superblock(journal, 1);
--	jbd2_journal_start_thread(journal);
--	return 0;
-+	return jbd2_journal_start_thread(journal);
- }
- 
- /**
+> struct fibmap_extent {
+> 	__u64 fe_start;			/* starting offset in bytes */
+> 	__u64 fe_len;			/* length in bytes */
+> }
+>
+> struct fibmap {
+> 	struct fibmap_extent fm_start;	/* offset, length of desired mapping */
+> 	__u32 fm_extent_count;		/* number of extents in array */
+> 	__u32 fm_flags;			/* flags (similar to XFS_IOC_GETBMAP) */
+> 	__u64 unused;
+> 	struct fibmap_extent fm_extents[0];
+> }
+>
+># define FIEMAP_LEN_MASK		0xff000000000000
+># define FIEMAP_LEN_HOLE     	0x01000000000000
+># define FIEMAP_LEN_UNWRITTEN	0x02000000000000
+>
+> All offsets are in bytes to allow cases where filesystems are not going
+> block-aligned/sized allocations (e.g. tail packing).  The fm_extents array
+> returned contains the packed list of allocation extents for the file,
+> including entries for holes (which have fe_start == 0, and a flag).
+>
+> The ->fm_extents[] array includes all of the holes in addition to
+> allocated extents because this avoids the need to return both the logical
+> and physical address for every extent and does not make processing any
+> harder.
 
---------------020900000406050409030808--
+Well, that's what stood out for me. I was wondering where the "fe_block" field
+had gone - the "physical address".
+So is your "fe_start; /* starting offset */" actually the disk location
+(not a logical file offset)
+_except_ in the header (fibmap) where it is the desired logical offset.
+Okay, looking at your example use below that's what it looks like.
+And when you refer to fm_start below, you mean fm_start.fe_start?
+Sorry, I realise this is just an approximation but this part confused me.
+So you get rid of all the logical file offsets in the extents because we
+report holes explicitly (and we know everything is contiguous if you
+include the holes).
+
+--Tim
+
+>
+> Caller works something like:
+>
+> 	char buf[4096];
+> 	struct fibmap *fm = (struct fibmap *)buf;
+> 	int count = (sizeof(buf) - sizeof(*fm)) / sizeof(fm_extent);
+> 	
+> 	fm->fm_extent.fe_start = 0; /* start of file */
+> 	fm->fm_extent.fe_len = -1;	/* end of file */
+> 	fm->fm_extent_count = count; /* max extents in fm_extents[] array */
+> 	fm->fm_flags = 0;		/* maybe "no DMAPI", etc like XFS */
+>
+> 	fd = open(path, O_RDONLY);
+> 	printf("logical\t\tphysical\t\tbytes\n");
+>
+> 	/* The last entry will have less extents than the maximum */
+> 	while (fm->fm_extent_count == count) {
+> 		rc = ioctl(fd, FIEMAP, fm);
+> 		if (rc)
+> 			break;
+>
+> 		/* kernel filled in fm_extents[] array, set fm_extent_count
+> 		 * to be actual number of extents returned, leaves fm_start
+> 		 * alone (unlike XFS_IOC_GETBMAP). */
+>
+> 		for (i = 0; i < fm->fm_extent_count; i++) {
+> 			__u64 len = fm->fm_extents[i].fe_len & FIEMAP_LEN_MASK;
+> 			__u64 fm_next = fm->fm_start + len;
+> 			int hole = fm->fm_extents[i].fe_len & FIEMAP_LEN_HOLE;
+> 			int unwr = fm->fm_extents[i].fe_len & FIEMAP_LEN_UNWRITTEN;
+>
+> 			printf("%llu-%llu\t%llu-%llu\t%llu\t%s%s\n",
+> 				fm->fm_start, fm_next - 1,
+> 				hole ? 0 : fm->fm_extents[i].fe_start,
+> 				hole ? 0 : fm->fm_extents[i].fe_start +
+> 					   fm->fm_extents[i].fe_len - 1,
+> 				len, hole ? "(hole) " : "",
+> 				unwr ? "(unwritten) " : "");
+>
+> 			/* get ready for printing next extent, or next ioctl */
+> 			fm->fm_start = fm_next;
+> 		}
+> 	}
+>
+
