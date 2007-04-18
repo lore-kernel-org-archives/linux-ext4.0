@@ -1,63 +1,45 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: Performance degradation with FFSB between 2.6.20 and 2.6.21-rc7
-Date: Wed, 18 Apr 2007 13:57:09 -0700
-Message-ID: <20070418135709.b499e050.akpm@linux-foundation.org>
-References: <462622F8.10107@bull.net>
+From: Bruno Wolff III <bruno@wolff.to>
+Subject: Re: Ext3 behavior on power failure
+Date: Wed, 18 Apr 2007 16:49:04 -0500
+Message-ID: <20070418214904.GA10541@wolff.to>
+References: <A74E8B4A356D8143B79BBEB839421F3004023496@CORPUSMX20B.corp.emc.com>
+	<4603B03E.7080302@emc.com>
+	<20070328124015.GG14935@atrey.karlin.mff.cuni.cz>
+	<alpine.DEB.0.83.0703280915400.30460@sigma.j-a-k-j.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.osdl.org ([65.172.181.24]:46219 "EHLO smtp.osdl.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750888AbXDRU5X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Apr 2007 16:57:23 -0400
-In-Reply-To: <462622F8.10107@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: csar@stanford.edu, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, ext3-users@redhat.com,
+	Ric Wheeler <ric@emc.com>
+To: "John Anthony Kazos Jr." <jakj@j-a-k-j.com>
+Return-path: <ext3-users-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.0.83.0703280915400.30460@sigma.j-a-k-j.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/ext3-users>
+List-Post: <mailto:ext3-users@redhat.com>
+List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=subscribe>
+Sender: ext3-users-bounces@redhat.com
+Errors-To: ext3-users-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-> On Wed, 18 Apr 2007 15:54:00 +0200 Valerie Clement <valerie.clement@bull.net> wrote:
+On Wed, Mar 28, 2007 at 09:17:27 -0400,
+  "John Anthony Kazos Jr." <jakj@j-a-k-j.com> wrote:
+> > If you fsync() your data, you are guaranteed that also your data are
+> >safely on disk when fsync returns. So what is the question here?
 > 
-> Running benchmark tests (FFSB) on an ext4 filesystem, I noticed a 
-> performance degradation (about 15-20 percent) in sequential write tests 
-> between 2.6.19-rc6 and 2.6.21-rc4 kernels.
-> 
-> I ran the same tests on ext3 and XFS filesystems and I saw the same 
-> performance difference between the two kernel versions for these two 
-> filesystems.
-> 
-> I have also reproduced it between 2.6.20.7 and 2.6.21-rc7.
-> The FFSB tests run 16 threads, each creating 1GB files. The tests were 
-> done on the same x86_64 system, with the same kernel configuration and 
-> on the same scsi device. Below are the throughput values given by FFSB.
-> 
->    kernel           XFS                ext3
-> ----------
->   2.6.20.7        48 MB/sec         44 MB/sec
-> 
->   2.6.21-rc7      38 MB/sec         37 MB/sec
-> 
-> Did anyone else run across the problem?
-> Is there a known issue?
-> 
+> Pardon a newbie's intrusion, but I do know this isn't true. There is a 
+> window of possible loss because of the multitude of layers of caching, 
+> especially within the drive itself. Unless there is a super_duper_fsync() 
+> that is able to actually poll the hardware and get a confirmation that the 
+> internal buffers are purged?
 
-That's a new discovery, thanks.
+That is why you need to disable write caching of the drives or use cache
+flushes via write barriers (if the stack of block devices all support them)
+if the hardware cache isn't battery backed or the device doesn't support
+returning the status of particular commands.
 
-It could be due to I/O scheduler changes.  Which one are you using?  CFQ?
-
-Or it could be that there has been some changed behaviour at the VFS/pagecache
-layer: the VFS might be submitting little hunks of lots of files, rather than
-large hunks of few files.
-
-Or it could be a block-layer thing: perhaps some driver change has caused
-us to be placing less data into the queue.  Which device driver is that machine
-using?
-
-Being a simple soul, the first thing I'll try when I get near a test box
-will be
-
-for i in $(seq 1 16)
-do
-	time dd if=/dev/zero of=$i bs=1M count=1024 &
-done
+Of course nothing is perfectly safe.
