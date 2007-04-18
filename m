@@ -1,45 +1,135 @@
-From: Bruno Wolff III <bruno@wolff.to>
-Subject: Re: Ext3 behavior on power failure
-Date: Wed, 18 Apr 2007 16:49:04 -0500
-Message-ID: <20070418214904.GA10541@wolff.to>
-References: <A74E8B4A356D8143B79BBEB839421F3004023496@CORPUSMX20B.corp.emc.com>
-	<4603B03E.7080302@emc.com>
-	<20070328124015.GG14935@atrey.karlin.mff.cuni.cz>
-	<alpine.DEB.0.83.0703280915400.30460@sigma.j-a-k-j.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file allocation
+Date: Wed, 18 Apr 2007 17:03:50 -0600
+Message-ID: <20070418230349.GJ5967@schatzie.adilger.int>
+References: <20070412110550.GM5967@schatzie.adilger.int> <31588A06562720FE1E0F93DF@timothy-shimmins-power-mac-g5.local>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: csar@stanford.edu, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>, ext3-users@redhat.com,
-	Ric Wheeler <ric@emc.com>
-To: "John Anthony Kazos Jr." <jakj@j-a-k-j.com>
-Return-path: <ext3-users-bounces@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, hch@infradead.org
+To: Timothy Shimmin <tes@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:35214 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933083AbXDRXDy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Apr 2007 19:03:54 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.0.83.0703280915400.30460@sigma.j-a-k-j.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/ext3-users>
-List-Post: <mailto:ext3-users@redhat.com>
-List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=subscribe>
-Sender: ext3-users-bounces@redhat.com
-Errors-To: ext3-users-bounces@redhat.com
+In-Reply-To: <31588A06562720FE1E0F93DF@timothy-shimmins-power-mac-g5.local>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 28, 2007 at 09:17:27 -0400,
-  "John Anthony Kazos Jr." <jakj@j-a-k-j.com> wrote:
-> > If you fsync() your data, you are guaranteed that also your data are
-> >safely on disk when fsync returns. So what is the question here?
+On Apr 16, 2007  18:01 +1000, Timothy Shimmin wrote:
+> --On 12 April 2007 5:05:50 AM -0600 Andreas Dilger <adilger@clusterfs.com> 
+> wrote:
+> >struct fiemap_extent {
+> >	__u64 fe_start;			/* starting offset in bytes */
+> >	__u64 fe_len;			/* length in bytes */
+> >}
+> >
+> >struct fiemap {
+> >	struct fiemap_extent fm_start;	/* offset, length of desired mapping 
+> >	*/
+> >	__u32 fm_extent_count;		/* number of extents in array */
+> >	__u32 fm_flags;			/* flags (similar to 
+> >	XFS_IOC_GETBMAP) */
+> >	__u64 unused;
+> >	struct fiemap_extent fm_extents[0];
+> >}
+> >
+> ># define FIEMAP_LEN_MASK		0xff000000000000
+> ># define FIEMAP_LEN_HOLE     	0x01000000000000
+> ># define FIEMAP_LEN_UNWRITTEN	0x02000000000000
+> >
+> >All offsets are in bytes to allow cases where filesystems are not going
+> >block-aligned/sized allocations (e.g. tail packing).  The fm_extents array
+> >returned contains the packed list of allocation extents for the file,
+> >including entries for holes (which have fe_start == 0, and a flag).
+> >
+> >The ->fm_extents[] array includes all of the holes in addition to
+> >allocated extents because this avoids the need to return both the logical
+> >and physical address for every extent and does not make processing any
+> >harder.
 > 
-> Pardon a newbie's intrusion, but I do know this isn't true. There is a 
-> window of possible loss because of the multitude of layers of caching, 
-> especially within the drive itself. Unless there is a super_duper_fsync() 
-> that is able to actually poll the hardware and get a confirmation that the 
-> internal buffers are purged?
+> Well, that's what stood out for me. I was wondering where the "fe_block" 
+> field had gone - the "physical address".
+> So is your "fe_start; /* starting offset */" actually the disk location
+> (not a logical file offset)
+> _except_ in the header (fiemap) where it is the desired logical offset.
 
-That is why you need to disable write caching of the drives or use cache
-flushes via write barriers (if the stack of block devices all support them)
-if the hardware cache isn't battery backed or the device doesn't support
-returning the status of particular commands.
+Correct.  The fm_extent in the request contains the logical start offset
+and length in bytes of the requested fiemap region.  In the returned header
+it represents the logical start offset of the extent that contained the
+requested start offset, and the logical length of all the returned extents.
+I haven't decided whether the returned length should be until EOF, or have
+the "virtual hole" at the end of the file.  I think EOF makes more sense.
 
-Of course nothing is perfectly safe.
+The fe_start + fe_len in the fm_extents represent the physical location on
+the block device for that extent.  fm_extent[i].fe_start (per Anton) is
+undefined if FIEMAP_LEN_HOLE is set, and .fe_len is the length of the hole.
+
+> Okay, looking at your example use below that's what it looks like.
+> And when you refer to fm_start below, you mean fm_start.fe_start?
+> Sorry, I realise this is just an approximation but this part confused me.
+
+Right, I'll write up a new RFC based on feedback here, and correcting the
+various errors in the original proposal.
+
+> So you get rid of all the logical file offsets in the extents because we
+> report holes explicitly (and we know everything is contiguous if you
+> include the holes).
+
+Correct.  It saves space in the common case.
+
+> >Caller works something like:
+> >
+> >	char buf[4096];
+> >	struct fiemap *fm = (struct fiemap *)buf;
+> >	int count = (sizeof(buf) - sizeof(*fm)) / sizeof(fm_extent);
+> >	
+> >	fm->fm_start.fe_start = 0; /* start of file */
+> >	fm->fm_start.fe_len = -1;	/* end of file */
+> >	fm->fm_extent_count = count; /* max extents in fm_extents[] array */
+> >	fm->fm_flags = 0;		/* maybe "no DMAPI", etc like XFS */
+> >
+> >	fd = open(path, O_RDONLY);
+> >	printf("logical\t\tphysical\t\tbytes\n");
+> >
+> >	/* The last entry will have less extents than the maximum */
+> >	while (fm->fm_extent_count == count) {
+> >		rc = ioctl(fd, FIEMAP, fm);
+> >		if (rc)
+> >			break;
+> >
+> >		/* kernel filled in fm_extents[] array, set fm_extent_count
+> >		 * to be actual number of extents returned, leaves
+> >		 * fm_start.fe_start alone (unlike XFS_IOC_GETBMAP). */
+> >
+> >		for (i = 0; i < fm->fm_extent_count; i++) {
+> >			__u64 len = fm->fm_extents[i].fe_len & 
+> >			FIEMAP_LEN_MASK;
+> >			__u64 fm_next = fm->fm_start.fe_start + len;
+> >			int hole = fm->fm_extents[i].fe_len & 
+> >			FIEMAP_LEN_HOLE;
+> >			int unwr = fm->fm_extents[i].fe_len & 
+> >			FIEMAP_LEN_UNWRITTEN;
+> >
+> >			printf("%llu-%llu\t%llu-%llu\t%llu\t%s%s\n",
+> >				fm->fm_start.fe_start, fm_next - 1,
+> >				hole ? 0 : fm->fm_extents[i].fe_start,
+> >				hole ? 0 : fm->fm_extents[i].fe_start +
+> >					   fm->fm_extents[i].fe_len - 1,
+> >				len, hole ? "(hole) " : "",
+> >				unwr ? "(unwritten) " : "");
+> >
+> >			/* get ready for printing next extent, or next ioctl 
+> >			*/
+> >			fm->fm_start.fe_start = fm_next;
+> >		}
+> >	}
+> >
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
