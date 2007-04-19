@@ -1,67 +1,46 @@
-From: Timothy Shimmin <tes@sgi.com>
-Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file allocation
-Date: Thu, 19 Apr 2007 16:23:16 +1000
-Message-ID: <60F23AB8D50382586C1E0BFC@timothy-shimmins-power-mac-g5.local>
-References: <20070412110550.GM5967@schatzie.adilger.int>
- <20070416112252.GJ48531920@melbourne.sgi.com> <20070419002139.GK5967@schatzie.adilger.int>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: Performance degradation with FFSB between 2.6.20 and 2.6.21-rc7
+Date: Thu, 19 Apr 2007 11:03:47 +0200
+Message-ID: <20070419090346.GE20928@kernel.dk>
+References: <462622F8.10107@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, hch@infradead.org
-To: Andreas Dilger <adilger@clusterfs.com>, David Chinner <dgc@sgi.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:46649 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1030864AbXDSGVV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2007 02:21:21 -0400
-In-Reply-To: <20070419002139.GK5967@schatzie.adilger.int>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S2993217AbXDSJGR@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <462622F8.10107@bull.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---On 18 April 2007 6:21:39 PM -0600 Andreas Dilger <adilger@clusterfs.com> wrote:
+On Wed, Apr 18 2007, Valerie Clement wrote:
+> 
+> Running benchmark tests (FFSB) on an ext4 filesystem, I noticed a 
+> performance degradation (about 15-20 percent) in sequential write tests 
+> between 2.6.19-rc6 and 2.6.21-rc4 kernels.
+> 
+> I ran the same tests on ext3 and XFS filesystems and I saw the same 
+> performance difference between the two kernel versions for these two 
+> filesystems.
+> 
+> I have also reproduced it between 2.6.20.7 and 2.6.21-rc7.
+> The FFSB tests run 16 threads, each creating 1GB files. The tests were 
+> done on the same x86_64 system, with the same kernel configuration and 
+> on the same scsi device. Below are the throughput values given by FFSB.
+> 
+>   kernel           XFS                ext3
+> ----------
+>  2.6.20.7        48 MB/sec         44 MB/sec
+> 
+>  2.6.21-rc7      38 MB/sec         37 MB/sec
+> 
+> Did anyone else run across the problem?
+> Is there a known issue?
 
-> Below is an aggregation of the comments in this thread:
->
-> struct fiemap_extent {
-> 	__u64 fe_start;		/* starting offset in bytes */
-> 	__u64 fe_len;		/* length in bytes */
-> 	__u32 fe_flags;		/* FIEMAP_EXTENT_* flags for this extent */
-> 	__u32 fe_lun;		/* logical storage device number in array */
-> }
->
-> struct fiemap {
-> 	__u64 fm_start;		/* logical start offset of mapping (in/out) */
-> 	__u64 fm_len;		/* logical length of mapping (in/out) */
-> 	__u32 fm_flags;		/* FIEMAP_FLAG_* flags for request (in/out) */
-> 	__u32 fm_extent_count;	/* number of extents in fm_extents (in/out) */
-> 	__u64 fm_unused;
-> 	struct fiemap_extent fm_extents[0];
-> }
->
-> /* flags for the fiemap request */
-># define FIEMAP_FLAG_SYNC	0x00000001	/* flush delalloc data to disk*/
-># define FIEMAP_FLAG_HSM_READ	0x00000002	/* retrieve data from HSM */
-># define FIEMAP_FLAG_INCOMPAT    0xff000000	/* must understand these flags*/
->
-> /* flags for the returned extents */
-># define FIEMAP_EXTENT_HOLE	0x00000001	/* no space allocated */
-># define FIEMAP_EXTENT_UNWRITTEN	0x00000002	/* uninitialized space */
-># define FIEMAP_EXTENT_UNKNOWN	0x00000004	/* in use, location unknown */
-># define FIEMAP_EXTENT_ERROR	0x00000008	/* error mapping space */
-># define FIEMAP_EXTENT_NO_DIRECT	0x00000010	/* no direct data access */
->
->
->
-> SUMMARY OF CHANGES
-> ==================
-> - use fm_* fields directly in request instead of making it a fiemap_extent
->   (though they are layed out identically)
+Please tell me how you are running ffsb, and also please include a
+dmessg from a booted system.
 
-I much prefer that - it makes it a lot clearer to me to have fiemap_extent
-just for fm_extents (no different meanings now).
-(Don't like the word "offset" in comment without "physical" or some such but whatever;-)
-I also prefer the flags as separate fields too :)
-
---Tim
+-- 
+Jens Axboe
