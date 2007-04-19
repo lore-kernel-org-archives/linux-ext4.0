@@ -1,46 +1,60 @@
-From: Jens Axboe <jens.axboe@oracle.com>
+From: Valerie Clement <valerie.clement@bull.net>
 Subject: Re: Performance degradation with FFSB between 2.6.20 and 2.6.21-rc7
-Date: Thu, 19 Apr 2007 11:03:47 +0200
-Message-ID: <20070419090346.GE20928@kernel.dk>
-References: <462622F8.10107@bull.net>
+Date: Thu, 19 Apr 2007 11:11:45 +0200
+Message-ID: <46273251.4000403@bull.net>
+References: <462622F8.10107@bull.net> <20070418135709.b499e050.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S2993217AbXDSJGR@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <462622F8.10107@bull.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:45919 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S2993211AbXDSJMk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2007 05:12:40 -0400
+In-Reply-To: <20070418135709.b499e050.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 18 2007, Valerie Clement wrote:
-> 
-> Running benchmark tests (FFSB) on an ext4 filesystem, I noticed a 
-> performance degradation (about 15-20 percent) in sequential write tests 
-> between 2.6.19-rc6 and 2.6.21-rc4 kernels.
-> 
-> I ran the same tests on ext3 and XFS filesystems and I saw the same 
-> performance difference between the two kernel versions for these two 
-> filesystems.
-> 
-> I have also reproduced it between 2.6.20.7 and 2.6.21-rc7.
-> The FFSB tests run 16 threads, each creating 1GB files. The tests were 
-> done on the same x86_64 system, with the same kernel configuration and 
-> on the same scsi device. Below are the throughput values given by FFSB.
-> 
->   kernel           XFS                ext3
-> ----------
->  2.6.20.7        48 MB/sec         44 MB/sec
-> 
->  2.6.21-rc7      38 MB/sec         37 MB/sec
-> 
-> Did anyone else run across the problem?
-> Is there a known issue?
+Andrew Morton wrote:
+> It could be due to I/O scheduler changes.  Which one are you using?  =
+CFQ?
+>=20
+> Or it could be that there has been some changed behaviour at the VFS/=
+pagecache
+> layer: the VFS might be submitting little hunks of lots of files, rat=
+her than
+> large hunks of few files.
+>=20
+> Or it could be a block-layer thing: perhaps some driver change has ca=
+used
+> us to be placing less data into the queue.  Which device driver is th=
+at machine
+> using?
+>=20
+> Being a simple soul, the first thing I'll try when I get near a test =
+box
+> will be
+>=20
+> for i in $(seq 1 16)
+> do
+> 	time dd if=3D/dev/zero of=3D$i bs=3D1M count=3D1024 &
+> done
+>=20
 
-Please tell me how you are running ffsb, and also please include a
-dmessg from a booted system.
+I tried first the test with dd, the results are similar to those of FFS=
+B=20
+tests, about 15 percent of degradation between 2.6.20.7 and 2.6.21-rc7.
 
--- 
-Jens Axboe
+I'm using the CFQ I/O scheduler. I changed it to the "deadline" one and=
+=20
+I don't have any more the problem, I've got similar throughput values=20
+with 2.6.20.7 and 2.6.21-rc7 kernels.
+So can we conclude that it's due to the CFQ scheduler?
+
+I also checked the device driver used, the revision number is the same=20
+in 2.6.20 and 2.6.21.
+
+   Val=E9rie
