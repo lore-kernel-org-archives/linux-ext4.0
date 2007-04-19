@@ -1,61 +1,52 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: Performance degradation with FFSB between 2.6.20 and 2.6.21-rc7
-Date: Thu, 19 Apr 2007 15:22:00 +0200
-Message-ID: <46276CF8.1030109@bull.net>
-References: <462622F8.10107@bull.net> <20070419090346.GE20928@kernel.dk> <462736FC.3090902@bull.net> <20070419115840.GA11780@kernel.dk> <4627644E.7010002@bull.net> <20070419124630.GD11780@kernel.dk>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: Missing JBD2_FEATURE_INCOMPAT_64BIT in ext4
+Date: Thu, 19 Apr 2007 12:15:00 -0700
+Message-ID: <1177010100.6703.8.camel@dyn9047017103.beaverton.ibm.com>
+References: <20070415161606.GG5967@schatzie.adilger.int>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Jens Axboe <jens.axboe@oracle.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57309 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1766659AbXDSNWt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2007 09:22:49 -0400
-In-Reply-To: <20070419124630.GD11780@kernel.dk>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:49370 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1766939AbXDSTPE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2007 15:15:04 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id l3JJCKJh000924
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Apr 2007 15:12:20 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l3JJF22m077550
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Apr 2007 13:15:02 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l3JJF27n011392
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Apr 2007 13:15:02 -0600
+In-Reply-To: <20070415161606.GG5967@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jens Axboe wrote:
-> On Thu, Apr 19 2007, Valerie Clement wrote:
->> Jens Axboe wrote:
->>> On Thu, Apr 19 2007, Valerie Clement wrote:
->>>> Jens Axboe wrote:
->>>>> Please tell me how you are running ffsb, and also please include =
-a
->>>>> dmessg from a booted system.
->>>>>
->>>> Hi,
->>>> our mails crossed! please see my response to Andrew.
->>>> You could reproduce the problem with dd command as suggested, it's=
- more=20
->>>> easy.
->>>> I'm sending you the dmesg info. For my tests I used the scsci sdc =
-device.
->>> Thanks, it does. Can you try one thing for me? If you run the test =
-on
->>> sdc, try doing:
->>>
->>> # echo 64 > /sys/block/sdc/queue/iosched/quantum
->>>
->>> and repeat the test.
->>>
->> OK, that's done.
->>
->> With the change of quantum, the throughput scores are now a little b=
-it=20
->> better in 2.6.21 than in 2.6.20.
->=20
-> Wonderful, now try the patch I sent in the next mail and repeat the
-> test.
->=20
+On Sun, 2007-04-15 at 10:16 -0600, Andreas Dilger wrote:
+> Just a quick note before I forget.  I thought there was a call in ext4
+> to set JBD2_FEATURE_INCOMPAT_64BIT at mount time if the filesystem has
+> more than 2^32 blocks?
 
-That's done too.
-Now I've got the same results in 2.6.21 as in 2.6.20.
-Thanks,
+Question about the online resize case. If the fs is increased to more
+than 2^32 blocks, we should set this JBD2_FEATURE_INCOMPAT_64BIT in the
+journal. What about existing transactions that still stores 32 bit block
+numbers?  I guess the journal need to commit them all so that revoke
+will not get confused about the bits for block numbers later.  After
+that done then JBD2 can set this feature safely.
 
-   Val=E9rie
+
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
