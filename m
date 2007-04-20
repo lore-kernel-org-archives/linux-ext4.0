@@ -1,56 +1,38 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: Interface for the new fallocate() system call
-Date: Fri, 20 Apr 2007 19:21:46 +0530
-Message-ID: <20070420135146.GA21352@amitarora.in.ibm.com>
-References: <20070301183445.GA7911@amitarora.in.ibm.com> <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: Offsets of EAs in inode need not be sorted
+Date: Fri, 20 Apr 2007 10:10:52 -0400
+Message-ID: <20070420141052.GA28227@thunk.org>
+References: <1176984336.3812.10.camel@garfield> <20070420123832.GB18529@thunk.org> <1177074341.7371.19.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
-	suparna@in.ibm.com, Andrew Morton <akpm@linux-foundation.org>,
-	Jakub Jelinek <jakub@redhat.com>, torvalds@linux-foundation.org
-To: Andreas Dilger <adilger@clusterfs.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Kalpak Shah <kalpak@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:53620 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S2993248AbXDTOK4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Apr 2007 10:10:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20070418130600.GW5967@schatzie.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1177074341.7371.19.camel@garfield>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 18, 2007 at 07:06:00AM -0600, Andreas Dilger wrote:
-> On Apr 17, 2007  18:25 +0530, Amit K. Arora wrote:
-> > On Fri, Mar 30, 2007 at 02:14:17AM -0500, Jakub Jelinek wrote:
-> > > Wouldn't
-> > > int fallocate(loff_t offset, loff_t len, int fd, int mode)
-> > > work on both s390 and ppc/arm?  glibc will certainly wrap it and
-> > > reorder the arguments as needed, so there is no need to keep fd first.
-> > 
-> > I think more people are comfirtable with this approach.
+On Fri, Apr 20, 2007 at 06:35:41PM +0530, Kalpak Shah wrote:
 > 
-> Really?  I thought from the last postings that "fd first, wrap on s390"
-> was better.
-> 
-> > Since glibc
-> > will wrap the system call and export the "conventional" interface
-> > (with fd first) to applications, we may not worry about keeping fd first
-> > in kernel code. I am personally fine with this approach.
-> 
-> It would seem to make more sense to wrap the syscall on those architectures
-> that can't handle the "conventional" interface (fd first).
+> I saw this problem when I was running a script which created a random
+> number of EAs for a file of random sizes. If you mount the image I have
+> given, all the EAs are displayed and they can be used/modified/deleted
+> without any problems so its not a bug in ext3 code.
 
-Ok.
-In this case we may have to consider following things:
+Not a bug in the ext3 code, but if a RHEL5 or SLES 10 or Debian etch
+user uses EA-in-Inode, with SELinux enabled, and then uses the e2fsck
+shipped with their distro, some of the unsorted EA's would get
+deleted.... right?  
 
-1) Obviously, for this glibc will have to call fallocate() syscall with
-different arguments on s390, than other archs. I think this should be
-doable and should not be an issue with glibc folks (right?).
+If that's correct, then that's a pretty nasty data corruption problem
+(that with SELinux enabled could cause the system to become completely
+non-functional, further contributing to SELinux's bad reputation...)
+and we'll need to push your patch to the various distro's as a
+relatively high priority bug fix.
 
-2) we also need to see how strace behaves in this case. With little
-knowledge that I have of strace, I don't think it should depend on
-argument ordering of a system call on different archs (since it uses
-ptrace internally and that should take care of it). But, it will be
-nice if someone can confirm this.
-
-Thanks!
---
-Regards,
-Amit Arora
+						- Ted
