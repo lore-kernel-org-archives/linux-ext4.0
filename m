@@ -1,77 +1,114 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Missing JBD2_FEATURE_INCOMPAT_64BIT in ext4
-Date: Thu, 19 Apr 2007 23:03:43 -0600
-Message-ID: <20070420050343.GP5967@schatzie.adilger.int>
-References: <20070415161606.GG5967@schatzie.adilger.int> <1177010100.6703.8.camel@dyn9047017103.beaverton.ibm.com> <20070419211817.GO5967@schatzie.adilger.int> <1177029704.6703.46.camel@dyn9047017103.beaverton.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:36253 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422722AbXDTFDp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Apr 2007 01:03:45 -0400
-Content-Disposition: inline
-In-Reply-To: <1177029704.6703.46.camel@dyn9047017103.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext4-copy-i_flags-to-inode-flags-on-write.patch added to -mm tree
+Date: Fri, 20 Apr 2007 00:49:13 -0700
+Message-ID: <200704200749.l3K7nDXD009778@shell0.pdx.osdl.net>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Apr 19, 2007  17:41 -0700, Mingming Cao wrote:
-> Any concerns about turn on META_BG by default for all new ext4 fs?
-> Initially I thought we only need META_BG for support >256TB, so there is
-> no rush to turn it on for all the new fs. But it appears there are
-> multiple benefits to enable META_BG by default:
 
-I would prefer not to have it default for the first 1TB or so of the
-filesystem or so.  One reason is that using META_BG for all of the groups
-give us only 2 backups of each group descriptor, and those are relatively
-close together.  In the first 1TB we would get 17 backups of the group
-descriptors, which should be plenty.
+The patch titled
+     ext4: copy i_flags to inode flags on write
+has been added to the -mm tree.  Its filename is
+     ext4-copy-i_flags-to-inode-flags-on-write.patch
 
-> - enable online resize >2TB
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Actually, I don't think the current online resize support for META_BG.
-There was a patch last year by Glauber de Oliveira Costa which added
-support for online resizing with META_BG, which would need to be updated
-to work with ext4.  Also, the usage of s_first_meta_bg in that patch is
-incorrect.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-> - support >256TB fs 
+------------------------------------------------------
+Subject: ext4: copy i_flags to inode flags on write
+From: Jan Kara <jack@suse.cz>
 
-True, though not exactly pressing, and filesystems can be changed
-to add META_BG support at any point.
+Propagate flags such as S_APPEND, S_IMMUTABLE, etc.  from i_flags into
+ext4-specific i_flags.  Hence, when someone sets these flags via a
+different interface than ioctl, they are stored correctly.
 
-> - Since metadatas(bitmaps, group descriptors etc) are not put at the
->   beginning of each block group anymore, the 128MB limit(block group size
->   with 4k block size) that used to limit an extent size is removed. 
-> - Speed up fsck since metadata are placed closely. 
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-That isn't really true, even though descriptions of META_BG say this.
-There will still be block and inode bitmaps and the inode table.
-The ext3 code was missing support for moving the bitmaps/itable outside
-their respective groups, and that has not been fixed yet in ext4.
+ fs/ext4/inode.c         |   20 ++++++++++++++++++++
+ fs/ext4/ioctl.c         |    1 +
+ include/linux/ext4_fs.h |    1 +
+ 3 files changed, 22 insertions(+)
 
-The problem is that ext4_check_descriptors() in the kernel was never
-changed to support META_BG, so it does not allow the bitmaps or inode
-table to be outside the group.  Similarly, ext2fs_group_first_block()
-and ext2fs_group_last_block() in lib/ext2fs also don't take META_BG
-into account.
+diff -puN fs/ext4/inode.c~ext4-copy-i_flags-to-inode-flags-on-write fs/ext4/inode.c
+--- a/fs/ext4/inode.c~ext4-copy-i_flags-to-inode-flags-on-write
++++ a/fs/ext4/inode.c
+@@ -2613,6 +2613,25 @@ void ext4_set_inode_flags(struct inode *
+ 		inode->i_flags |= S_DIRSYNC;
+ }
+ 
++/* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
++void ext4_get_inode_flags(struct ext4_inode_info *ei)
++{
++	unsigned int flags = ei->vfs_inode.i_flags;
++
++	ei->i_flags &= ~(EXT4_SYNC_FL|EXT4_APPEND_FL|
++			EXT4_IMMUTABLE_FL|EXT4_NOATIME_FL|EXT4_DIRSYNC_FL);
++	if (flags & S_SYNC)
++		ei->i_flags |= EXT4_SYNC_FL;
++	if (flags & S_APPEND)
++		ei->i_flags |= EXT4_APPEND_FL;
++	if (flags & S_IMMUTABLE)
++		ei->i_flags |= EXT4_IMMUTABLE_FL;
++	if (flags & S_NOATIME)
++		ei->i_flags |= EXT4_NOATIME_FL;
++	if (flags & S_DIRSYNC)
++		ei->i_flags |= EXT4_DIRSYNC_FL;
++}
++
+ void ext4_read_inode(struct inode * inode)
+ {
+ 	struct ext4_iloc iloc;
+@@ -2773,6 +2792,7 @@ static int ext4_do_update_inode(handle_t
+ 	if (ei->i_state & EXT4_STATE_NEW)
+ 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+ 
++	ext4_get_inode_flags(ei);
+ 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
+ 	if(!(test_opt(inode->i_sb, NO_UID32))) {
+ 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
+diff -puN fs/ext4/ioctl.c~ext4-copy-i_flags-to-inode-flags-on-write fs/ext4/ioctl.c
+--- a/fs/ext4/ioctl.c~ext4-copy-i_flags-to-inode-flags-on-write
++++ a/fs/ext4/ioctl.c
+@@ -29,6 +29,7 @@ int ext4_ioctl (struct inode * inode, st
+ 
+ 	switch (cmd) {
+ 	case EXT4_IOC_GETFLAGS:
++ 		ext4_get_inode_flags(ei);
+ 		flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+ 		return put_user(flags, (int __user *) arg);
+ 	case EXT4_IOC_SETFLAGS: {
+diff -puN include/linux/ext4_fs.h~ext4-copy-i_flags-to-inode-flags-on-write include/linux/ext4_fs.h
+--- a/include/linux/ext4_fs.h~ext4-copy-i_flags-to-inode-flags-on-write
++++ a/include/linux/ext4_fs.h
+@@ -949,6 +949,7 @@ extern int ext4_change_inode_journal_fla
+ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
+ extern void ext4_truncate (struct inode *);
+ extern void ext4_set_inode_flags(struct inode *);
++extern void ext4_get_inode_flags(struct ext4_inode_info *);
+ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+_
 
-Also, since the extent format supports at most 2^15 blocks (128MB) it
-doesn't really make much difference in that regard, though it does help
-the allocator somewhat because it has more contiguous space to allocate
-from.
+Patches currently in -mm which might be from jack@suse.cz are
 
-> So I am wondering why not make it default?
-
-It wouldn't be too hard to add in support for this I think, and there
-is definitely some benefit.  Since neither e2fsprogs nor the kernel
-handle this correctly, the placement of bitmaps and inode tables outside
-of their respective groups may as well be a separate feature.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+readahead-improve-heuristic-detecting-sequential-reads.patch
+readahead-code-cleanup.patch
+readahead-code-cleanup-fix.patch
+make-remove_inode_dquot_ref-static.patch
+ext4-copy-i_flags-to-inode-flags-on-write.patch
+udf-use-sector_t-and-loff_t-for-file-offsets.patch
+udf-introduce-struct-extent_position.patch
+udf-use-get_bh.patch
+udf-add-assertions.patch
+udf-support-files-larger-than-1g.patch
+udf-fix-link-counts.patch
