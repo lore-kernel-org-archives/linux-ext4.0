@@ -1,31 +1,37 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs - e2fsck pass1c does extra work if root dir has shared blocks
-Date: Fri, 20 Apr 2007 08:14:57 -0400
-Message-ID: <20070420121457.GA18529@thunk.org>
-References: <Pine.LNX.4.61.0704101344050.29750@webb> <Pine.LNX.4.61.0704101538020.31519@webb>
+Subject: Re: [PATCH] e2fsprogs: Offsets of EAs in inode need not be sorted
+Date: Fri, 20 Apr 2007 08:38:32 -0400
+Message-ID: <20070420123832.GB18529@thunk.org>
+References: <1176984336.3812.10.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jim Garlick <garlick@llnl.gov>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57421 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44834 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1766666AbXDTMPF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Apr 2007 08:15:05 -0400
+	id S2992663AbXDTMif (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Apr 2007 08:38:35 -0400
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.61.0704101538020.31519@webb>
+In-Reply-To: <1176984336.3812.10.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 10, 2007 at 03:39:56PM -0700, Jim Garlick wrote:
+On Thu, Apr 19, 2007 at 05:35:36PM +0530, Kalpak Shah wrote:
+> Hi,
 > 
-> Another small bug I think: if the root directory contains shared 
-> blocks, e2fsck pass1c search_dirent_proc() will be looking for 
-> one more containing directory than it will ever find, and thus 
-> loses an opportunity to terminate early.
-> 
-> Signed-off-by: Jim Garlick <garlick@llnl.gov>
+> This patch removes a code snippet from check_ea_in_inode() in pass1
+> which checks if the EA values in the inode are sorted or not. The
+> comments in fs/ext*/xattr.c state that the EA values in the external
+> EA block are sorted but those in the inode need not be sorted. I
+> have also attached a test image which has unsorted EAs in the
+> inodes. The current e2fsck wrongly clears the EAs in the inode.
 
-Thanks, applied.
+Hmm, have you been able to create test images that have unsorted EA's
+in inodes using a standard ext3 kernel implementat?  If so, then this
+is a patch which we should push to the distro's since it could cause
+data loss, and cause serious malfunctions, especially for people who
+have SELinux enabled and are using large inodes for the EA-in-inode
+feature....
 
-					- Ted
+						- Ted
