@@ -1,46 +1,100 @@
-From: Jakub Jelinek <jakub@redhat.com>
-Subject: Re: Interface for the new fallocate() system call
-Date: Fri, 20 Apr 2007 10:59:18 -0400
-Message-ID: <20070420145918.GY355@devserv.devel.redhat.com>
-References: <20070316143101.GA10152@amitarora.in.ibm.com> <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com>
-Reply-To: Jakub Jelinek <jakub@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] fix up lazy_bg bitmap initialization at mkfs time
+Date: Fri, 20 Apr 2007 09:57:19 -0500
+Message-ID: <4628D4CF.1020804@redhat.com>
+References: <4627DA21.7050002@redhat.com> <20070420101020.GQ5967@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
-	suparna@in.ibm.com, Andrew Morton <akpm@linux-foundation.org>,
-	torvalds@linux-foundation.org
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49496 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:50143 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754059AbXDTPAd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Apr 2007 11:00:33 -0400
-Content-Disposition: inline
-In-Reply-To: <20070420135146.GA21352@amitarora.in.ibm.com>
+	id S2992866AbXDTPCC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Apr 2007 11:02:02 -0400
+In-Reply-To: <20070420101020.GQ5967@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 20, 2007 at 07:21:46PM +0530, Amit K. Arora wrote:
-> Ok.
-> In this case we may have to consider following things:
-> 
-> 1) Obviously, for this glibc will have to call fallocate() syscall with
-> different arguments on s390, than other archs. I think this should be
-> doable and should not be an issue with glibc folks (right?).
+Andreas Dilger wrote:
 
-glibc can cope with this easily, will just add
-sysdeps/unix/sysv/linux/s390/fallocate.c or something similar to override
-the generic Linux implementation.
+> Just as an FYI - it probably makes little sense to have a 128MB journal
+> for a filesystem you want to use for testing, since it would still write
+> 128MB to your loopback device when zeroing the journal.  It still makes
+> sense for mke2fs and libext2fs to be fixed for correctness, but I think
+> it also makes sense for lazy_bg to influence the journal size.
+>   
+yup, it probably should change that heuristic.  With lazy_bg, it should probably 
+look at something like blocks per group * 2 instead of total filesystem blocks...
+see below.
 
-> 2) we also need to see how strace behaves in this case. With little
-> knowledge that I have of strace, I don't think it should depend on
-> argument ordering of a system call on different archs (since it uses
-> ptrace internally and that should take care of it). But, it will be
-> nice if someone can confirm this.
+>> Unfortunately it also increases mkfs time a bit, as it must search
+>> a huge string of unavailable blocks if it has to allocate in the 
+>> last bg.  Ah well...
+>>     
+>
+> It also probably makes sense for libext2fs to check group descriptors
+> while allocating...
+>   
+yeah... I was going with the "lazy" theme.  ;-)  (and the 
+small-functional-change-at-a-time theme...) But for large filesystems, that 
+would certainly be a bonus. 
 
-strace would solve this with #ifdef mess, it already does that in many
-places so guess another few lines don't make it significantly worse.
+/*
+ * Stupid algorithm --- we now just search forward starting from the
+ * goal.  Should put in a smarter one someday....
+ */
+errcode_t ext2fs_new_block(...
 
-	Jakub
+I get the impression that allocation in libext2 is not too glorious in 
+the first place... :)
+
+-Eric
+
+Anyway, how about something like this for calculating journal size in 
+the face of lazy_bg.  I know the last group may be smaller... but I figure
+this is just a heuristic anyway.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: e2fsprogs-1.39_ext4_hg/misc/util.c
+===================================================================
+--- e2fsprogs-1.39_ext4_hg.orig/misc/util.c
++++ e2fsprogs-1.39_ext4_hg/misc/util.c
+@@ -252,8 +252,16 @@ void parse_journal_opts(const char *opts
+ int figure_journal_size(int size, ext2_filsys fs)
+ {
+ 	blk_t j_blocks;
++	blk_t fs_size;
+ 
+-	if (fs->super->s_blocks_count < 2048) {
++	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
++ 				    EXT2_FEATURE_COMPAT_LAZY_BG)) {
++		fs_size = fs->super->s_blocks_per_group * 2; 
++	} else {
++		fs_size = fs->super->s_blocks_count;
++	}
++
++	if (fs_size < 2048) {
+ 		fputs(_("\nFilesystem too small for a journal\n"), stderr);
+ 		return 0;
+ 	}
+@@ -276,13 +284,13 @@ int figure_journal_size(int size, ext2_f
+ 		return j_blocks;
+ 	}
+ 
+-	if (fs->super->s_blocks_count < 32768)
++	if (fs_size < 32768)
+ 		j_blocks = 1400;
+-	else if (fs->super->s_blocks_count < 256*1024)
++	else if (fs_size < 256*1024)
+ 		j_blocks = 4096;
+-	else if (fs->super->s_blocks_count < 512*1024)
++	else if (fs_size < 512*1024)
+ 		j_blocks = 8192;
+-	else if (fs->super->s_blocks_count < 1024*1024)
++	else if (fs_size < 1024*1024)
+ 		j_blocks = 16384;
+ 	else
+ 		j_blocks = 32768;
