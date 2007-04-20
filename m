@@ -1,57 +1,60 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] fix up lazy_bg bitmap initialization at mkfs time
-Date: Fri, 20 Apr 2007 16:19:18 -0600
-Message-ID: <20070420221918.GT5967@schatzie.adilger.int>
-References: <4627DA21.7050002@redhat.com> <20070420101020.GQ5967@schatzie.adilger.int> <4628D4CF.1020804@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] Check for error returned by kthread_create on creating
+ journal thread
+Date: Fri, 20 Apr 2007 15:38:09 -0700
+Message-ID: <20070420153809.8ce9a662.akpm@linux-foundation.org>
+References: <4623289A.1000101@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: sct@redhat.com, linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	devel@openvz.org
+To: Pavel Emelianov <xemul@sw.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:44233 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1766538AbXDTWTU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Apr 2007 18:19:20 -0400
-Content-Disposition: inline
-In-Reply-To: <4628D4CF.1020804@redhat.com>
+Received: from smtp1.linux-foundation.org ([65.172.181.25]:36929 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751615AbXDTWi0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Apr 2007 18:38:26 -0400
+In-Reply-To: <4623289A.1000101@sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Apr 20, 2007  09:57 -0500, Eric Sandeen wrote:
-> Anyway, how about something like this for calculating journal size in 
-> the face of lazy_bg.  I know the last group may be smaller... but I figure
-> this is just a heuristic anyway.
+On Mon, 16 Apr 2007 11:41:14 +0400
+Pavel Emelianov <xemul@sw.ru> wrote:
+
+> If the thread failed to create the subsequent wait_event
+> will hang forever.
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> This is likely to happen if kernel hits max_threads limit.
 > 
-> Index: e2fsprogs-1.39_ext4_hg/misc/util.c
-> ===================================================================
-> --- e2fsprogs-1.39_ext4_hg.orig/misc/util.c
-> +++ e2fsprogs-1.39_ext4_hg/misc/util.c
-> @@ -252,8 +252,16 @@ void parse_journal_opts(const char *opts
->  int figure_journal_size(int size, ext2_filsys fs)
->  {
->  	blk_t j_blocks;
-> +	blk_t fs_size;
+> Will be critical for virtualization systems that limit the
+> number of tasks and kernel memory usage within the container.
+> 
+> 
+> [diff-jbd-check-start-journal-thread-return-value  text/plain (1.7KB)]
+> --- ./fs/jbd/journal.c.jbdthreads	2007-04-16 11:17:36.000000000 +0400
+> +++ ./fs/jbd/journal.c	2007-04-16 11:30:09.000000000 +0400
+> @@ -211,10 +211,16 @@ end_loop:
+>  	return 0;
+>  }
 >  
-> -	if (fs->super->s_blocks_count < 2048) {
-> +	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
-> + 				    EXT2_FEATURE_COMPAT_LAZY_BG)) {
-> +		fs_size = fs->super->s_blocks_per_group * 2; 
-> +	} else {
-> +		fs_size = fs->super->s_blocks_count;
-> +	}
+> -static void journal_start_thread(journal_t *journal)
+> +static int journal_start_thread(journal_t *journal)
+>  {
+> -	kthread_run(kjournald, journal, "kjournald");
+> +	struct task_struct *t;
+> +
+> +	t = kthread_run(kjournald, journal, "kjournald");
+> +	if (IS_ERR(t))
+> +		return PTR_ERR(t);
+> +
+>  	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
+> +	return 0;
+>  }
 
-This should also check for !RO_COMPAT_UNINIT_GROUPS, since LAZY_BG
-can be used in conjunction with UNINIT_GROUPS to mean "don't zero
-uninitialized groups" but doesn't set bg_free_blocks_count == 0.
+Thanks.   Please don't forget those Signed-off-by:s
 
-I was going to suggest using s_free_blocks_count, but that might
-lead to confusion if e.g. e2fsck deletes a journal on a nearly-full
-fs and then tune2fs recreates it much smaller than before.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+I assume that you runtime tested this and that the mount failed in
+an appropriate fashion?
