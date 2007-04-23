@@ -1,103 +1,128 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] Copy i_flags to ext2 inode flags on write
-Date: Mon, 23 Apr 2007 20:35:54 +0200
-Message-ID: <20070423183554.GB6029@duck.suse.cz>
+From: Avantika Mathur <mathur@linux.vnet.ibm.com>
+Subject: Ext4 devel interlock meeting minutes (April 23, 2007)
+Date: Mon, 23 Apr 2007 16:35:38 -0700
+Message-ID: <462D42CA.50509@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="pWyiEgJYm5f9v55/"
-Cc: linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:52097 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1161276AbXDWS1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Apr 2007 14:27:03 -0400
-Content-Disposition: inline
+Received: from e36.co.us.ibm.com ([32.97.110.154]:52048 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754533AbXDWXfb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Apr 2007 19:35:31 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l3NNZLRP006734
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 19:35:21 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l3NNZLCQ199604
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:21 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l3NNZLYE009025
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:21 -0600
+Received: from [9.47.16.99] (mathur.beaverton.ibm.com [9.47.16.99])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l3NNZKB9009010
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:20 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Ext4 Developer Interlock Call: 04/23/2007 Meeting Minutes
 
---pWyiEgJYm5f9v55/
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Attendees: Mingming Cao, Dave Kleikamp, Avantika Mathur, Ted Ts'o,=20
+Suparna Bhattacharya,
+Jean-Pierre Dion, Jean Noel Cordenner, Val=E9rie Cl=E9ment, Jose Santos
 
-  Hi,
+Minutes can be accessed at:=20
+http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Cal=
+l
 
-  attached is a patch that stores i_flags to ext2 specific inode flags on
-write / IOC_GETFLAGS ioctl for ext2.
+- Mingming proposed moving back to 8am PST meeting time, since the 6am=20
+time is inconvenient for
+a few people.  This discussion will be continued through email, to find=
+=20
+a time which works
+for everyone.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+- Next week's meeting will be canceled, unless there is anyone who woul=
+d=20
+like to request a meeting.
 
---pWyiEgJYm5f9v55/
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="ext2-2.6.21-rc6-propagate_flags.diff"
+PATCH STATUS
 
-Propagate flags such as S_APPEND, S_IMMUTABLE, etc. from i_flags into
-ext2-specific i_flags. Hence, when someone sets these flags via a different
-interface than ioctl, they are stored correctly.
+git-tree
+- Mingming will be updating the git tree with extents-fix patches from=20
+Alex, i_flags patch from Honza, i_extra_isize patch from Kalpak.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Uninitialized Block Groups:
+- The patch sent out by Andreas is against 2.6.16 and ext3.  Need to=20
+port this to current ext4, test and then add to git-tree.  Avantika wil=
+l=20
+ask Andreas if he needs help with this.
 
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/ext2.h linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/ext2.h
---- linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/ext2.h	2007-04-23 18:30:41.000000000 +0200
-+++ linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/ext2.h	2007-04-23 18:30:00.000000000 +0200
-@@ -133,6 +133,7 @@ extern int ext2_get_block(struct inode *
- extern void ext2_truncate (struct inode *);
- extern int ext2_setattr (struct dentry *, struct iattr *);
- extern void ext2_set_inode_flags(struct inode *inode);
-+extern void ext2_get_inode_flags(struct ext2_inode_info *);
- 
- /* ioctl.c */
- extern int ext2_ioctl (struct inode *, struct file *, unsigned int,
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/inode.c linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/inode.c
---- linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/inode.c	2006-11-29 22:57:37.000000000 +0100
-+++ linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/inode.c	2007-04-23 19:09:06.000000000 +0200
-@@ -1055,6 +1055,25 @@ void ext2_set_inode_flags(struct inode *
- 		inode->i_flags |= S_DIRSYNC;
- }
- 
-+/* Propagate flags from i_flags to EXT2_I(inode)->i_flags */
-+void ext2_get_inode_flags(struct ext2_inode_info *ei)
-+{
-+	unsigned int flags = ei->vfs_inode.i_flags;
-+
-+	ei->i_flags &= ~(EXT2_SYNC_FL|EXT2_APPEND_FL|
-+			EXT2_IMMUTABLE_FL|EXT2_NOATIME_FL|EXT2_DIRSYNC_FL);
-+	if (flags & S_SYNC)
-+		ei->i_flags |= EXT2_SYNC_FL;
-+	if (flags & S_APPEND)
-+		ei->i_flags |= EXT2_APPEND_FL;
-+	if (flags & S_IMMUTABLE)
-+		ei->i_flags |= EXT2_IMMUTABLE_FL;
-+	if (flags & S_NOATIME)
-+		ei->i_flags |= EXT2_NOATIME_FL;
-+	if (flags & S_DIRSYNC)
-+		ei->i_flags |= EXT2_DIRSYNC_FL;
-+}
-+
- void ext2_read_inode (struct inode * inode)
- {
- 	struct ext2_inode_info *ei = EXT2_I(inode);
-@@ -1188,6 +1207,7 @@ static int ext2_update_inode(struct inod
- 	if (ei->i_state & EXT2_STATE_NEW)
- 		memset(raw_inode, 0, EXT2_SB(sb)->s_inode_size);
- 
-+	ext2_get_inode_flags(ei);
- 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
- 	if (!(test_opt(sb, NO_UID32))) {
- 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(uid));
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/ioctl.c linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/ioctl.c
---- linux-2.6.21-rc6-2-ext4_flags_update/fs/ext2/ioctl.c	2007-02-07 12:03:23.000000000 +0100
-+++ linux-2.6.21-rc6-3-ext2_flags_update/fs/ext2/ioctl.c	2007-04-23 18:27:08.000000000 +0200
-@@ -27,6 +27,7 @@ int ext2_ioctl (struct inode * inode, st
- 
- 	switch (cmd) {
- 	case EXT2_IOC_GETFLAGS:
-+		ext2_get_inode_flags(ei);
- 		flags = ei->i_flags & EXT2_FL_USER_VISIBLE;
- 		return put_user(flags, (int __user *) arg);
- 	case EXT2_IOC_SETFLAGS: {
+JBD statistics:
+- There is a patch to export JDB statistics to /proc.  In order to get=20
+this patch to mainline, there needs to be discussion about the correct=20
+place for the statistics; /proc or perhaps debugfs.
 
---pWyiEgJYm5f9v55/--
+e2fsprogs:
+- Ted will post the current e2fsprogs patches in progress. Ted has been=
+=20
+working with these patches and making changes.
+- Main work areas for making e2fsprogs compatible with extents and 64-b=
+it.
+    - block iterator: make a block iterator work with both extent and=20
+non-extent code. Code that is oblivious to extents will still work with=
+=20
+the block iterator.  This has been written by Andreas Dilger.
+    - extents: in order to preserve ABI compatibility, support for a ne=
+w=20
+interface for extents which uses 64-bit logical and physical block=20
+numbers.  The block iterator then translate from on-disk to in-memory=20
+format.  This will allow for possible future increases of physical and=20
+logical block sizes in extents, without breaking ABI.
+    - bitmaps in e2fsprogs: this will be discussed in more detail at th=
+e=20
+next meeting, after people have a chance to read related email.
+
+preallocation:
+- fallocate syscall interface:  the current plan, based on discussions=20
+on the mailing list, is to create a separate wrapper for s390 in glibc.=
+ =20
+Using regular parameter ordering for all other architectures, but a=20
+different order on s390.  Jakub Jelinek has said that the changes in=20
+glibc can be made pretty easily.
+-  The preallocation patches in the ext4 git-tree are outdated, using=20
+the ioctl interface.  Once Amit re-posts the patches with the syscall=20
+interface, they will be updated in the git-tree as well.
+- Mingming mentioned the need to flush preallocation metadata changes t=
+o=20
+disk if file size or file content is being tested.  Discussed doing an=20
+fsync at Bmap time.
+
+TESTING
+- extents testing
+    - Discussed methods for testing extents on highly fragmented=20
+filesystems.
+    - Jose will look into possible tests, including perhaps using the=20
+'aged' option in FFSB
+    - Ted suggested creating a mountoption that creates a bad block=20
+allocator which it jumps to a new block group every 8 blocks.  This=20
+would force a very large number of extents, and may be a good test for=20
+extents.
+
+- large filesystem
+    - We would like to perform more testing on large (>16TB) filesystem=
+s
+    - currently hardware limitations are preventing this testing.  We=20
+have tested 10TB raid dists, and 16TB loopback devices.  Avantika will=20
+look into creating very large sparse devices for testing.
+
+- Large file deletion
+    - Valerie had recently tested large file deletion on ext3/4, but di=
+d=20
+not see the expected performance gain with ext4 due to compact metadata=
+=20
+when using extents.
+    - Valerie will try re-running the test.  Jose will also be looking=20
+into this test.
