@@ -1,47 +1,47 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: Interface for the new fallocate() system call
-Date: Tue, 24 Apr 2007 17:46:33 +0530
-Message-ID: <20070424121632.GA10136@amitarora.in.ibm.com>
-References: <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: Ext4 devel interlock meeting minutes (April 23, 2007)
+Date: Tue, 24 Apr 2007 16:04:10 +0200
+Message-ID: <462E0E5A.6030707@bull.net>
+References: <462D42CA.50509@linux.vnet.ibm.com> <462D9CE9.1040402@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
-	suparna@in.ibm.com, Andrew Morton <akpm@linux-foundation.org>,
-	torvalds@linux-foundation.org
-To: Jakub Jelinek <jakub@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070420145918.GY355@devserv.devel.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
+To: Alex Tomas <alex@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58803 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161771AbXDXOFD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Apr 2007 10:05:03 -0400
+In-Reply-To: <462D9CE9.1040402@clusterfs.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 20, 2007 at 10:59:18AM -0400, Jakub Jelinek wrote:
-> On Fri, Apr 20, 2007 at 07:21:46PM +0530, Amit K. Arora wrote:
-> > Ok.
-> > In this case we may have to consider following things:
-> > 
-> > 1) Obviously, for this glibc will have to call fallocate() syscall with
-> > different arguments on s390, than other archs. I think this should be
-> > doable and should not be an issue with glibc folks (right?).
-> 
-> glibc can cope with this easily, will just add
-> sysdeps/unix/sysv/linux/s390/fallocate.c or something similar to override
-> the generic Linux implementation.
-> 
-> > 2) we also need to see how strace behaves in this case. With little
-> > knowledge that I have of strace, I don't think it should depend on
-> > argument ordering of a system call on different archs (since it uses
-> > ptrace internally and that should take care of it). But, it will be
-> > nice if someone can confirm this.
-> 
-> strace would solve this with #ifdef mess, it already does that in many
-> places so guess another few lines don't make it significantly worse.
+Alex Tomas wrote:
 
-I will work on the revised fallocate patchset and will post it soon.
+>> - Large file deletion
+>>    - Valerie had recently tested large file deletion on ext3/4, but=20
+>> did not see the expected performance gain with ext4 due to compact=20
+>> metadata when using extents.
+>=20
+> any details?
+>=20
 
-Thanks!
---
-Regards,
-Amit Arora
+Ok, I found my mistake. There was a typo in my test script and the=20
+pagecache was not flushed between the file creation and the deletion.
+
+Here are the results I obtain with a 2.6.17-rc7 kernel to delete a 100G=
+B=20
+file:
+
+ext3 : real  2m35.048s    user  0m0.000s     sys  0m6.424s
+ext4 : real  0m11.160s    user  0m0.000s     sys  0m5.532s
+xfs :  real  0m0.377s     user  0m0.004s     sys  0m0.004s
+
+The performance gain with ext4 is much larger when running a good test.=
+=2E.
+Sorry the wrong information,
+
+    Val=E9rie
