@@ -1,128 +1,301 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: Ext4 devel interlock meeting minutes (April 23, 2007)
-Date: Mon, 23 Apr 2007 16:35:38 -0700
-Message-ID: <462D42CA.50509@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+From: Nick Piggin <npiggin@suse.de>
+Subject: [patch 18/44] ext3 convert to new aops
+Date: Tue, 24 Apr 2007 11:24:04 +1000
+Message-ID: <20070424013435.115724000@suse.de>
+References: <20070424012346.696840000@suse.de>
+Cc: Linux Filesystems <linux-fsdevel@vger.kernel.org>,
+	Mark Fasheh <mark.fasheh@oracle.com>,
+	linux-ext4@vger.kernel.org, Badari Pulavarty <pbadari@us.ibm.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:52048 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754533AbXDWXfb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Apr 2007 19:35:31 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l3NNZLRP006734
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 19:35:21 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l3NNZLCQ199604
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:21 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l3NNZLYE009025
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:21 -0600
-Received: from [9.47.16.99] (mathur.beaverton.ibm.com [9.47.16.99])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l3NNZKB9009010
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Apr 2007 17:35:20 -0600
+Received: from mail.suse.de ([195.135.220.2]:60298 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161596AbXDXFUz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Apr 2007 01:20:55 -0400
+Content-Disposition: inline; filename=fs-ext3-aops.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 Developer Interlock Call: 04/23/2007 Meeting Minutes
+Cc: linux-ext4@vger.kernel.org
+Cc: Linux Filesystems <linux-fsdevel@vger.kernel.org>
+Signed-off-by: Nick Piggin <npiggin@suse.de>
 
-Attendees: Mingming Cao, Dave Kleikamp, Avantika Mathur, Ted Ts'o,=20
-Suparna Bhattacharya,
-Jean-Pierre Dion, Jean Noel Cordenner, Val=E9rie Cl=E9ment, Jose Santos
 
-Minutes can be accessed at:=20
-http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Cal=
-l
+Various fixes and improvements
 
-- Mingming proposed moving back to 8am PST meeting time, since the 6am=20
-time is inconvenient for
-a few people.  This discussion will be continued through email, to find=
-=20
-a time which works
-for everyone.
+Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
 
-- Next week's meeting will be canceled, unless there is anyone who woul=
-d=20
-like to request a meeting.
+ fs/ext3/inode.c |  136 ++++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 88 insertions(+), 48 deletions(-)
 
-PATCH STATUS
+Index: linux-2.6/fs/ext3/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext3/inode.c
++++ linux-2.6/fs/ext3/inode.c
+@@ -1147,51 +1147,68 @@ static int do_journal_get_write_access(h
+ 	return ext3_journal_get_write_access(handle, bh);
+ }
+ 
+-static int ext3_prepare_write(struct file *file, struct page *page,
+-			      unsigned from, unsigned to)
++static int ext3_write_begin(struct file *file, struct address_space *mapping,
++				loff_t pos, unsigned len, unsigned flags,
++				struct page **pagep, void **fsdata)
+ {
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = mapping->host;
+ 	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
+ 	handle_t *handle;
+ 	int retries = 0;
++	struct page *page;
++	pgoff_t index;
++	unsigned from, to;
++
++	index = pos >> PAGE_CACHE_SHIFT;
++	from = pos & (PAGE_CACHE_SIZE - 1);
++	to = from + len;
+ 
+ retry:
++	page = __grab_cache_page(mapping, index);
++	if (!page)
++		return -ENOMEM;
++	*pagep = page;
++
+ 	handle = ext3_journal_start(inode, needed_blocks);
+ 	if (IS_ERR(handle)) {
++		unlock_page(page);
++		page_cache_release(page);
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+ 	}
+-	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+-		ret = nobh_prepare_write(page, from, to, ext3_get_block);
+-	else
+-		ret = block_prepare_write(page, from, to, ext3_get_block);
++	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
++							ext3_get_block);
+ 	if (ret)
+-		goto prepare_write_failed;
++		goto write_begin_failed;
+ 
+ 	if (ext3_should_journal_data(inode)) {
+ 		ret = walk_page_buffers(handle, page_buffers(page),
+ 				from, to, NULL, do_journal_get_write_access);
+ 	}
+-prepare_write_failed:
+-	if (ret)
++write_begin_failed:
++	if (ret) {
+ 		ext3_journal_stop(handle);
++		unlock_page(page);
++		page_cache_release(page);
++	}
+ 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
+ 	return ret;
+ }
+ 
++
+ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+ {
+ 	int err = journal_dirty_data(handle, bh);
+ 	if (err)
+ 		ext3_journal_abort_handle(__FUNCTION__, __FUNCTION__,
+-						bh, handle,err);
++						bh, handle, err);
+ 	return err;
+ }
+ 
+-/* For commit_write() in data=journal mode */
+-static int commit_write_fn(handle_t *handle, struct buffer_head *bh)
++/* For write_end() in data=journal mode */
++static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+ {
+ 	if (!buffer_mapped(bh) || buffer_freed(bh))
+ 		return 0;
+@@ -1206,78 +1223,100 @@ static int commit_write_fn(handle_t *han
+  * ext3 never places buffers on inode->i_mapping->private_list.  metadata
+  * buffers are managed internally.
+  */
+-static int ext3_ordered_commit_write(struct file *file, struct page *page,
+-			     unsigned from, unsigned to)
++static int ext3_ordered_write_end(struct file *file,
++				struct address_space *mapping,
++				loff_t pos, unsigned len, unsigned copied,
++				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = file->f_mapping->host;
++	unsigned from, to;
+ 	int ret = 0, ret2;
+ 
++	from = pos & (PAGE_CACHE_SIZE - 1);
++	to = from + len;
++
+ 	ret = walk_page_buffers(handle, page_buffers(page),
+ 		from, to, NULL, ext3_journal_dirty_data);
+ 
+ 	if (ret == 0) {
+ 		/*
+-		 * generic_commit_write() will run mark_inode_dirty() if i_size
++		 * generic_write_end() will run mark_inode_dirty() if i_size
+ 		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
+ 		 * into that.
+ 		 */
+ 		loff_t new_i_size;
+ 
+-		new_i_size = ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
++		new_i_size = pos + copied;
+ 		if (new_i_size > EXT3_I(inode)->i_disksize)
+ 			EXT3_I(inode)->i_disksize = new_i_size;
+-		ret = generic_commit_write(file, page, from, to);
++		copied = generic_write_end(file, mapping, pos, len, copied,
++							page, fsdata);
++		if (copied < 0)
++			ret = copied;
++	} else {
++		unlock_page(page);
++		page_cache_release(page);
+ 	}
+ 	ret2 = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	return ret;
++	return ret ? ret : copied;
+ }
+ 
+-static int ext3_writeback_commit_write(struct file *file, struct page *page,
+-			     unsigned from, unsigned to)
++static int ext3_writeback_write_end(struct file *file,
++				struct address_space *mapping,
++				loff_t pos, unsigned len, unsigned copied,
++				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = file->f_mapping->host;
+ 	int ret = 0, ret2;
+ 	loff_t new_i_size;
+ 
+-	new_i_size = ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
++	new_i_size = pos + copied;
+ 	if (new_i_size > EXT3_I(inode)->i_disksize)
+ 		EXT3_I(inode)->i_disksize = new_i_size;
+ 
+-	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+-		ret = nobh_commit_write(file, page, from, to);
+-	else
+-		ret = generic_commit_write(file, page, from, to);
++	copied = generic_write_end(file, mapping, pos, len, copied,
++							page, fsdata);
++	if (copied < 0)
++		ret = copied;
+ 
+ 	ret2 = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	return ret;
++	return ret ? ret : copied;
+ }
+ 
+-static int ext3_journalled_commit_write(struct file *file,
+-			struct page *page, unsigned from, unsigned to)
++static int ext3_journalled_write_end(struct file *file,
++				struct address_space *mapping,
++				loff_t pos, unsigned len, unsigned copied,
++				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+ 	int partial = 0;
+-	loff_t pos;
++	unsigned from, to;
+ 
+-	/*
+-	 * Here we duplicate the generic_commit_write() functionality
+-	 */
+-	pos = ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
++	from = pos & (PAGE_CACHE_SIZE - 1);
++	to = from + len;
++
++	if (copied < len) {
++		if (!PageUptodate(page))
++			copied = 0;
++		page_zero_new_buffers(page, from+copied, to);
++	}
+ 
+ 	ret = walk_page_buffers(handle, page_buffers(page), from,
+-				to, &partial, commit_write_fn);
++				to, &partial, write_end_fn);
+ 	if (!partial)
+ 		SetPageUptodate(page);
+-	if (pos > inode->i_size)
+-		i_size_write(inode, pos);
++	unlock_page(page);
++	page_cache_release(page);
++	if (pos+copied > inode->i_size)
++		i_size_write(inode, pos+copied);
+ 	EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
+ 	if (inode->i_size > EXT3_I(inode)->i_disksize) {
+ 		EXT3_I(inode)->i_disksize = inode->i_size;
+@@ -1285,10 +1324,11 @@ static int ext3_journalled_commit_write(
+ 		if (!ret)
+ 			ret = ret2;
+ 	}
++
+ 	ret2 = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	return ret;
++	return ret ? ret : copied;
+ }
+ 
+ /*
+@@ -1546,7 +1586,7 @@ static int ext3_journalled_writepage(str
+ 			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
+ 
+ 		err = walk_page_buffers(handle, page_buffers(page), 0,
+-				PAGE_CACHE_SIZE, NULL, commit_write_fn);
++				PAGE_CACHE_SIZE, NULL, write_end_fn);
+ 		if (ret == 0)
+ 			ret = err;
+ 		EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
+@@ -1706,8 +1746,8 @@ static const struct address_space_operat
+ 	.readpages	= ext3_readpages,
+ 	.writepage	= ext3_ordered_writepage,
+ 	.sync_page	= block_sync_page,
+-	.prepare_write	= ext3_prepare_write,
+-	.commit_write	= ext3_ordered_commit_write,
++	.write_begin	= ext3_write_begin,
++	.write_end	= ext3_ordered_write_end,
+ 	.bmap		= ext3_bmap,
+ 	.invalidatepage	= ext3_invalidatepage,
+ 	.releasepage	= ext3_releasepage,
+@@ -1720,8 +1760,8 @@ static const struct address_space_operat
+ 	.readpages	= ext3_readpages,
+ 	.writepage	= ext3_writeback_writepage,
+ 	.sync_page	= block_sync_page,
+-	.prepare_write	= ext3_prepare_write,
+-	.commit_write	= ext3_writeback_commit_write,
++	.write_begin	= ext3_write_begin,
++	.write_end	= ext3_writeback_write_end,
+ 	.bmap		= ext3_bmap,
+ 	.invalidatepage	= ext3_invalidatepage,
+ 	.releasepage	= ext3_releasepage,
+@@ -1734,8 +1774,8 @@ static const struct address_space_operat
+ 	.readpages	= ext3_readpages,
+ 	.writepage	= ext3_journalled_writepage,
+ 	.sync_page	= block_sync_page,
+-	.prepare_write	= ext3_prepare_write,
+-	.commit_write	= ext3_journalled_commit_write,
++	.write_begin	= ext3_write_begin,
++	.write_end	= ext3_journalled_write_end,
+ 	.set_page_dirty	= ext3_journalled_set_page_dirty,
+ 	.bmap		= ext3_bmap,
+ 	.invalidatepage	= ext3_invalidatepage,
 
-git-tree
-- Mingming will be updating the git tree with extents-fix patches from=20
-Alex, i_flags patch from Honza, i_extra_isize patch from Kalpak.
-
-Uninitialized Block Groups:
-- The patch sent out by Andreas is against 2.6.16 and ext3.  Need to=20
-port this to current ext4, test and then add to git-tree.  Avantika wil=
-l=20
-ask Andreas if he needs help with this.
-
-JBD statistics:
-- There is a patch to export JDB statistics to /proc.  In order to get=20
-this patch to mainline, there needs to be discussion about the correct=20
-place for the statistics; /proc or perhaps debugfs.
-
-e2fsprogs:
-- Ted will post the current e2fsprogs patches in progress. Ted has been=
-=20
-working with these patches and making changes.
-- Main work areas for making e2fsprogs compatible with extents and 64-b=
-it.
-    - block iterator: make a block iterator work with both extent and=20
-non-extent code. Code that is oblivious to extents will still work with=
-=20
-the block iterator.  This has been written by Andreas Dilger.
-    - extents: in order to preserve ABI compatibility, support for a ne=
-w=20
-interface for extents which uses 64-bit logical and physical block=20
-numbers.  The block iterator then translate from on-disk to in-memory=20
-format.  This will allow for possible future increases of physical and=20
-logical block sizes in extents, without breaking ABI.
-    - bitmaps in e2fsprogs: this will be discussed in more detail at th=
-e=20
-next meeting, after people have a chance to read related email.
-
-preallocation:
-- fallocate syscall interface:  the current plan, based on discussions=20
-on the mailing list, is to create a separate wrapper for s390 in glibc.=
- =20
-Using regular parameter ordering for all other architectures, but a=20
-different order on s390.  Jakub Jelinek has said that the changes in=20
-glibc can be made pretty easily.
--  The preallocation patches in the ext4 git-tree are outdated, using=20
-the ioctl interface.  Once Amit re-posts the patches with the syscall=20
-interface, they will be updated in the git-tree as well.
-- Mingming mentioned the need to flush preallocation metadata changes t=
-o=20
-disk if file size or file content is being tested.  Discussed doing an=20
-fsync at Bmap time.
-
-TESTING
-- extents testing
-    - Discussed methods for testing extents on highly fragmented=20
-filesystems.
-    - Jose will look into possible tests, including perhaps using the=20
-'aged' option in FFSB
-    - Ted suggested creating a mountoption that creates a bad block=20
-allocator which it jumps to a new block group every 8 blocks.  This=20
-would force a very large number of extents, and may be a good test for=20
-extents.
-
-- large filesystem
-    - We would like to perform more testing on large (>16TB) filesystem=
-s
-    - currently hardware limitations are preventing this testing.  We=20
-have tested 10TB raid dists, and 16TB loopback devices.  Avantika will=20
-look into creating very large sparse devices for testing.
-
-- Large file deletion
-    - Valerie had recently tested large file deletion on ext3/4, but di=
-d=20
-not see the expected performance gain with ext4 due to compact metadata=
-=20
-when using extents.
-    - Valerie will try re-running the test.  Jose will also be looking=20
-into this test.
+-- 
