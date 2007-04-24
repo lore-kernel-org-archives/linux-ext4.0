@@ -1,41 +1,47 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: Ext4 devel interlock meeting minutes (April 23, 2007)
-Date: Tue, 24 Apr 2007 10:00:09 +0400
-Message-ID: <462D9CE9.1040402@clusterfs.com>
-References: <462D42CA.50509@linux.vnet.ibm.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: Interface for the new fallocate() system call
+Date: Tue, 24 Apr 2007 17:46:33 +0530
+Message-ID: <20070424121632.GA10136@amitarora.in.ibm.com>
+References: <20070316161704.GE8525@osiris.boeblingen.de.ibm.com> <20070317111036.GC29931@parisc-linux.org> <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.rialcom.ru ([80.71.245.247]:51061 "EHLO mail.rialcom.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161659AbXDXG2L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Apr 2007 02:28:11 -0400
-In-Reply-To: <462D42CA.50509@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, cmm@us.ibm.com,
+	suparna@in.ibm.com, Andrew Morton <akpm@linux-foundation.org>,
+	torvalds@linux-foundation.org
+To: Jakub Jelinek <jakub@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070420145918.GY355@devserv.devel.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Avantika Mathur wrote:
-> TESTING
-> - extents testing
->    - Discussed methods for testing extents on highly fragmented 
-> filesystems.
->    - Jose will look into possible tests, including perhaps using the 
-> 'aged' option in FFSB
->    - Ted suggested creating a mountoption that creates a bad block 
-> allocator which it jumps to a new block group every 8 blocks.  This 
-> would force a very large number of extents, and may be a good test for 
-> extents.
+On Fri, Apr 20, 2007 at 10:59:18AM -0400, Jakub Jelinek wrote:
+> On Fri, Apr 20, 2007 at 07:21:46PM +0530, Amit K. Arora wrote:
+> > Ok.
+> > In this case we may have to consider following things:
+> > 
+> > 1) Obviously, for this glibc will have to call fallocate() syscall with
+> > different arguments on s390, than other archs. I think this should be
+> > doable and should not be an issue with glibc folks (right?).
+> 
+> glibc can cope with this easily, will just add
+> sysdeps/unix/sysv/linux/s390/fallocate.c or something similar to override
+> the generic Linux implementation.
+> 
+> > 2) we also need to see how strace behaves in this case. With little
+> > knowledge that I have of strace, I don't think it should depend on
+> > argument ordering of a system call on different archs (since it uses
+> > ptrace internally and that should take care of it). But, it will be
+> > nice if someone can confirm this.
+> 
+> strace would solve this with #ifdef mess, it already does that in many
+> places so guess another few lines don't make it significantly worse.
 
-there is AGGRESSIVE_TEST define which limits number of entries in index/leaf.
+I will work on the revised fallocate patchset and will post it soon.
 
-> - Large file deletion
->    - Valerie had recently tested large file deletion on ext3/4, but did 
-> not see the expected performance gain with ext4 due to compact metadata 
-> when using extents.
-
-any details?
-
-thanks, Alex
+Thanks!
+--
+Regards,
+Amit Arora
