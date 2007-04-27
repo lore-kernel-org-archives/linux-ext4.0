@@ -1,59 +1,32 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Large File Deletion Comparison (ext3, ext4, XFS)
-Date: Fri, 27 Apr 2007 15:41:19 +0200
-Message-ID: <4631FD7F.9030008@bull.net>
+From: Mark Lord <lkml@rtr.ca>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
+ FS is under heavy write load (massive starvation)
+Date: Fri, 27 Apr 2007 09:50:41 -0400
+Message-ID: <4631FFB1.90503@rtr.ca>
+References: <1177660767.6567.41.camel@Homer.simpson.net>	 <20070427013350.d0d7ac38.akpm@linux-foundation.org>	 <698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com> <1177677058.28223.11.camel@twins>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Marat Buharov <marat.buharov@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Mike Galbraith <efault@gmx.de>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:41249 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755834AbXD0NmO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2007 09:42:14 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 1187B19D94C
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2007 15:42:11 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 04389-09 for <linux-ext4@vger.kernel.org>;
- Fri, 27 Apr 2007 15:42:09 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id CC0EE19D939
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2007 15:42:08 +0200 (CEST)
+Received: from rtr.ca ([64.26.128.89]:1473 "EHLO mail.rtr.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755846AbXD0Nun (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Apr 2007 09:50:43 -0400
+In-Reply-To: <1177677058.28223.11.camel@twins>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-As asked by Alex, I included in the test results the file fragmentation=
-=20
-level and the number of I/Os done during the file deletion.
+Peter Zijlstra wrote:
+>
+> No way is globally disabling fsync() a good thing. I guess Andrew just
+> is a sucker for punishment :-)
 
-Here are the results obtained with a not very fragmented 100-GB file:
-
-                  |     ext3       ext4 + extents      xfs
-------------------------------------------------------------
-  nb of fragments |     796             798             15
-  elapsed time    |  2m0.306s        0m11.127s       0m0.553s
-                  |
-  blks read       |  206600            6416            352
-  blks written    |   13592           13064            104
-------------------------------------------------------------
-
-
-And with a more fragmented 100-GB file:
-
-                  |     ext3       ext4 + extents       xfs
-------------------------------------------------------------
-  nb of fragments |   20297           19841            234
-  elapsed time    | 2m18.914s        0m27.429s      0m0.892s
-                  |
-  blks read       |  225624           25432            592
-  blks written    |   52120           50664            872
-------------------------------------------------------------
-
-
-More details on our web site:
-http://www.bullopensource.org/ext4/20070404/FileDeletion.html
-
-    Val=E9rie
+Mmm... perhaps another nice thing to include in laptop-mode operation?
