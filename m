@@ -1,46 +1,69 @@
-From: Gabriel C <nix.or.die@googlemail.com>
-Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
- FS is under heavy write load (massive starvation)
-Date: Fri, 27 Apr 2007 22:29:09 +0200
-Message-ID: <46325D15.90005@googlemail.com>
-References: <1177660767.6567.41.camel@Homer.simpson.net> <20070427013350.d0d7ac38.akpm@linux-foundation.org> <698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com> <alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org> <20070427193130.GD5967@schatzie.adilger.int> <alpine.LFD.0.98.0704271246550.9964@woody.linux-foundation.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: Large File Deletion Comparison (ext3, ext4, XFS)
+Date: Fri, 27 Apr 2007 14:33:11 -0600
+Message-ID: <20070427203311.GI5967@schatzie.adilger.int>
+References: <4631FD7F.9030008@bull.net> <20070427183345.GJ24852@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Marat Buharov <marat.buharov@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mike Galbraith <efault@gmx.de>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Alex Tomas <alex@clusterfs.com>,
-	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.190]:15156 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757209AbXD0Ucm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2007 16:32:42 -0400
-Received: by mu-out-0910.google.com with SMTP id g7so1096528muf
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2007 13:32:41 -0700 (PDT)
-In-Reply-To: <alpine.LFD.0.98.0704271246550.9964@woody.linux-foundation.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:54293 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757214AbXD0UdO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2007 16:33:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20070427183345.GJ24852@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Linus Torvalds wrote:
-> There was even somebody who did something like that for a PhD thesis, I 
-> forget the details (and it apparently died when the thesis was presumably 
-> accepted ;).
->
->   
+On Apr 27, 2007  14:33 -0400, Theodore Tso wrote:
+> > Here are the results obtained with a not very fragmented 100-GB file:
+> > 
+> >                  |     ext3       ext4 + extents      xfs
+> > ------------------------------------------------------------
+> >  nb of fragments |     796             798             15
+> >  elapsed time    |  2m0.306s        0m11.127s       0m0.553s
+> >                  |
+> >  blks read       |  206600            6416            352
+> >  blks written    |   13592           13064            104
+> > ------------------------------------------------------------
+> 
+> The metablockgroups feature should help the file fragmentation level
+> with extents.  It's easy enough to enable this for ext4 (we just need
+> to remove some checks in ext4_check_descriptors), so we should just do
+> it.
 
+I agree in this case that the META_BG feature would help here (100GB / 128MB
+is in fact the 800 fragments shown), I don't think that is the major
+performance hit.
 
-You mean SpadFS[1] right ?
+The fact that we need to read 6000 blocks and write 13000 blocks is the
+more serious part.  I assume that since there are only 800 fragments
+there should be only 800 extents.  We can fit (4096 / 12 - 1) = 340
+extents into each block, and 4 index blocks into the inode, so this
+should allow all 800 extents in only 3 index blocks.  It would be useful
+to know where those 6416 block reads are going in the extent case.
 
-> 			Linus
->   
+I suspect that is because the "tail first" truncation mechanism of ext3
+causes it to zero out FAR more blocks than needed.  With extents and a
+default 128MB journal we should be able to truncate + unlink a file with
+only writes to the inode and the 800 bitmap + gdt blocks.  The reads should
+also be limited to the bitmap blocks and extent indexes (gdt being read at
+mount time).
 
-Gabriel
+What is needed is for truncate to walk the inode block tree (extents or
+indirect blocks) and count the bitmaps + gdt blocks dirtied, and then try
+and do the whole truncate under a single transaction.  That avoids any need
+for truncate to be "restartable" and then there is no need to zero out the
+indirect blocks from the end one-at-a-time.
 
-[1] http://artax.karlin.mff.cuni.cz/~mikulas/spadfs/
+Doing the bitmap read/write will definitely be more efficient with META_BG,
+but that doesn't explain the other 19k blocks undergoing IO.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
