@@ -1,43 +1,47 @@
-From: Chris Wedgwood <cw@f00f.org>
-Subject: Re: [PATCH 0/5] fallocate system call
-Date: Fri, 27 Apr 2007 13:42:07 -0700
-Message-ID: <20070427204207.GA29551@tuatara.stupidest.org>
-References: <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070427121003.GA7808@osiris.boeblingen.de.ibm.com> <20070427144327.GC22949@lazybastard.org> <20070427174613.GA8228@osiris.ibm.com>
+From: Manoj Joseph <manoj.joseph@gmail.com>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
+ FS is under heavy write load (massive starvation)
+Date: Sat, 28 Apr 2007 02:24:33 +0530
+Message-ID: <46326309.3050104@gmail.com>
+References: <1177660767.6567.41.camel@Homer.simpson.net> <20070427013350.d0d7ac38.akpm@linux-foundation.org> <698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com> <alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org> <20070427193130.GD5967@schatzie.adilger.int> <alpine.LFD.0.98.0704271246550.9964@woody.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?iso-8859-1?Q?J=F6rn?= Engel <joern@lazybastard.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
-	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Heiko Carstens <heiko.carstens@de.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp113.sbc.mail.mud.yahoo.com ([68.142.198.212]:47101 "HELO
-	smtp113.sbc.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1757230AbXD0Utr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Apr 2007 16:49:47 -0400
-Content-Disposition: inline
-In-Reply-To: <20070427174613.GA8228@osiris.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Marat Buharov <marat.buharov@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Mike Galbraith <efault@gmx.de>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Alex Tomas <alex@clusterfs.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757162AbXD0Uzw@vger.kernel.org>
+In-Reply-To: <alpine.LFD.0.98.0704271246550.9964@woody.linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 27, 2007 at 07:46:13PM +0200, Heiko Carstens wrote:
+Linus Torvalds wrote:
+> 
+> On Fri, 27 Apr 2007, Andreas Dilger wrote:
+>> It's true that this is a "feature" of ext3 with data=ordered (the default),
+>> but I suspect the same thing is now true in reiserfs too.
+> 
+> Oh, well.. Journalling sucks.
 
-> If one insists to have fd at first argument, what is wrong with
-> having u32 arguments only?
+Go back to ext2? ;)
 
-Well, I was one of those who objected as it seems *UGLY* to me.
+> I was actually _really_ hoping that somebody would come along and tell 
+> everybody that this whole journal-logging is stupid, and that it's just 
+> better to not ever re-write blocks on disk, but instead write to new 
+> blocks with version numbers (and not re-use old blocks until new versions 
+> are stable on disk).
 
-> It's not that this syscall comes even close to what can be
-> considered performance critical...
+Ah, "copy on write"! ZFS (Sun) and WAFL (NetApp) does this. Don't know 
+about WAFL, but ZFS does logging too.
 
-Right.
+-Manoj
 
-> It adds userspace overhead for one architecture. Every *trace and
-> *libc needs special handling on s390 for this syscall. I would
-> prefer to avoid this.
-
-I'm not that bothered about it.  I would prefer it did use clean
-64-bit arguments, but given it's a non-critical syscall I'm don't
-think the aesthetics are worth impossing crud on s390 for.
+-- 
+Manoj Joseph
+http://kerneljunkie.blogspot.com/
