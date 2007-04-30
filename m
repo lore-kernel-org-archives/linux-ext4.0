@@ -1,62 +1,41 @@
-From: David Chinner <dgc@sgi.com>
+From: Chris Wedgwood <cw@f00f.org>
 Subject: Re: [PATCH 0/5] fallocate system call
-Date: Mon, 30 Apr 2007 15:56:32 +1000
-Message-ID: <20070430055632.GR32602149@melbourne.sgi.com>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070430004702.GM32602149@melbourne.sgi.com> <20070430052559.GA13145@tuatara.stupidest.org>
+Date: Sun, 29 Apr 2007 23:01:26 -0700
+Message-ID: <20070430060126.GA15038@tuatara.stupidest.org>
+References: <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070430004702.GM32602149@melbourne.sgi.com> <20070430052559.GA13145@tuatara.stupidest.org> <20070430055632.GR32602149@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
 	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Chris Wedgwood <cw@f00f.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:54805 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1423037AbXD3F5P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Apr 2007 01:57:15 -0400
+To: David Chinner <dgc@sgi.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20070430052559.GA13145@tuatara.stupidest.org>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070430055632.GR32602149@melbourne.sgi.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Apr 29, 2007 at 10:25:59PM -0700, Chris Wedgwood wrote:
-> On Mon, Apr 30, 2007 at 10:47:02AM +1000, David Chinner wrote:
-> 
-> > For FA_ALLOCATE, it's supposed to change the file size if we
-> > allocate past EOF, right?
-> 
-> I would argue no.  Use truncate for that.
+On Mon, Apr 30, 2007 at 03:56:32PM +1000, David Chinner wrote:
+> On Sun, Apr 29, 2007 at 10:25:59PM -0700, Chris Wedgwood wrote:
 
-I'm going from the ext4 implementation because the semantics
-have not been documented yet.
+> IIRC, the argument for FA_ALLOCATE changing file size is that
+> posix_fallocate() is supposed to change the file size.
 
-IIRC, the argument for FA_ALLOCATE changing file size is that
-posix_fallocate() is supposed to change the file size. I think
-that having a mode for real preallocation and another for
-posix_fallocate is a valid thing to do...
+But it's not posix_fallocate; it's something more generic. glibc can
+do posix_fallocate using truncate + fallocate.
 
-Note that the way XFS implements growing the file size after the
-allocation is via a truncate....
+> Note that the way XFS implements growing the file size after the
+> allocation is via a truncate....
 
-> > For FA_DEALLOCATE, does it change the filesize at all?
-> 
-> Same as above.
-> 
-> > Or does
-> > it just punch a hole in the file?
-> 
-> Yes.
+What's wrong with that?  That seems very reasonable.
 
-That's would what I did because otherwise you'd use ftruncate64().
-Without documented behaviour or an ext4 implementation, I have to
-ask what it's supposed to do, though ;)
+> That's would what I did because otherwise you'd use ftruncate64().
+> Without documented behaviour or an ext4 implementation, I have to
+> ask what it's supposed to do, though ;)
 
-Cheers,
+How many *real* users are there for ext4?  Why does 'what ext4 does'
+define 'the semantics'?
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Surely semantics should be decided either by precedent (if there is an
+existing relevant userbase) or sensible thought and some debate?
