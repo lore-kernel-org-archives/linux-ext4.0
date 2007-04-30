@@ -1,75 +1,60 @@
 From: David Chinner <dgc@sgi.com>
-Subject: Re: [PATCH 0/5] fallocate system call
-Date: Mon, 30 Apr 2007 10:47:02 +1000
-Message-ID: <20070430004702.GM32602149@melbourne.sgi.com>
-References: <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com>
+Subject: [PATCH] ia64 fallocate syscall
+Date: Mon, 30 Apr 2007 13:09:24 +1000
+Message-ID: <20070430030924.GN32602149@melbourne.sgi.com>
+References: <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070430004702.GM32602149@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: torvalds@osdl.org, akpm@linux-foundation.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
-	cmm@us.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
+	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: David Chinner <dgc@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:50226 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1422808AbXD3DJz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Apr 2007 23:09:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20070426175056.GA25321@amitarora.in.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20070430004702.GM32602149@melbourne.sgi.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 26, 2007 at 11:20:56PM +0530, Amit K. Arora wrote:
-> Based on the discussion, this new patchset uses following as the
-> interface for fallocate() system call:
-> 
->  asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
+ia64 fallocate syscall support.
 
-Ok, so now for the hard questions - what are the semantics of
-FA_ALLOCATE and FA_DEALLOCATE?
+Signed-Off-By: Dave Chinner <dgc@sgi.com>
 
-For FA_ALLOCATE, it's supposed to change the file size if we
-allocate past EOF, right? What's the return value supposed to
-be? Zero for success, error otherwise? Does this update a/m/ctime
-at all? How persistent is this preallocation? Should it be
-there "forever" or for the lifetime of the currently open fd
-that it was preallocated on?
+---
+ arch/ia64/kernel/entry.S  |    1 +
+ include/asm-ia64/unistd.h |    3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
 
-For FA_DEALLOCATE, does it change the filesize at all? Or does
-it just punch a hole in the file? If it does change file size,
-what happens when you punch out preallocation beyond EOF?
-What's the return value supposed to be?
-
-> Currently we have two modes FA_ALLOCATE and FA_DEALLOCATE, for
-> preallocation and deallocation of preallocated blocks respectively. More
-> modes can be added, when required.
-
-FWIW, we definitely need a FA_PREALLOCATE mode (FA_ALLOCATE but does
-not change file size) so we can preallocate beyond EOF for apps which
-use O_APPEND (i.e. changing file size would cause problems for them).
-
-> ToDos:
-> =====
-> 1>   Implementation on other architectures (other than i386, x86_64, 
-> ppc64 and s390(x)) 
-
-I'll have ia64 soon.
-
-> 2>   A generic file system operation to handle fallocate
-> (generic_fallocate), for filesystems that do _not_ have the fallocate
-> inode operation implemented.
-> 3>   Changes to glibc,
-> 	a) to support fallocate() system call
-> 	b) so that posix_fallocate() and posix_fallocate64() call
-> 	   fallocate() system call
-> 4>   Changes to XFS to implement the fallocate inode operation
-
-And that's what I'm doing now, hence all the questions ;)
-
-BTW, do you have a test program for this, or will I need to write
-one myself?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Index: 2.6.x-xfs-new/arch/ia64/kernel/entry.S
+===================================================================
+--- 2.6.x-xfs-new.orig/arch/ia64/kernel/entry.S	2007-03-29 19:01:41.000000000 +1000
++++ 2.6.x-xfs-new/arch/ia64/kernel/entry.S	2007-04-27 19:12:56.829396661 +1000
+@@ -1612,5 +1612,6 @@ sys_call_table:
+ 	data8 sys_vmsplice
+ 	data8 sys_ni_syscall			// reserved for move_pages
+ 	data8 sys_getcpu
++	data8 sys_fallocate
+ 
+ 	.org sys_call_table + 8*NR_syscalls	// guard against failures to increase NR_syscalls
+Index: 2.6.x-xfs-new/include/asm-ia64/unistd.h
+===================================================================
+--- 2.6.x-xfs-new.orig/include/asm-ia64/unistd.h	2007-03-29 19:03:37.000000000 +1000
++++ 2.6.x-xfs-new/include/asm-ia64/unistd.h	2007-04-27 19:18:18.215568425 +1000
+@@ -293,11 +293,12 @@
+ #define __NR_vmsplice			1302
+ /* 1303 reserved for move_pages */
+ #define __NR_getcpu			1304
++#define __NR_fallocate			1305
+ 
+ #ifdef __KERNEL__
+ 
+ 
+-#define NR_syscalls			281 /* length of syscall table */
++#define NR_syscalls			282 /* length of syscall table */
+ 
+ #define __ARCH_WANT_SYS_RT_SIGACTION
+ 
