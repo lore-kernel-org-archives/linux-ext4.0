@@ -1,41 +1,46 @@
-From: Chris Wedgwood <cw@f00f.org>
-Subject: Re: [PATCH 0/5] fallocate system call
-Date: Sun, 29 Apr 2007 23:01:26 -0700
-Message-ID: <20070430060126.GA15038@tuatara.stupidest.org>
-References: <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070430004702.GM32602149@melbourne.sgi.com> <20070430052559.GA13145@tuatara.stupidest.org> <20070430055632.GR32602149@melbourne.sgi.com>
+From: "Aneesh Kumar" <aneesh.kumar@gmail.com>
+Subject: Re: Ext4 devel interlock meeting minutes (April 23, 2007)
+Date: Mon, 30 Apr 2007 16:36:13 +0530
+Message-ID: <cc723f590704300406l5c3a8a84y2cd3aecd52209c2b@mail.gmail.com>
+References: <462D42CA.50509@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
-	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Avantika Mathur" <mathur@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from nz-out-0506.google.com ([64.233.162.224]:13365 "EHLO
+	nz-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752105AbXD3LGO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Apr 2007 07:06:14 -0400
+Received: by nz-out-0506.google.com with SMTP id o1so1877068nzf
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Apr 2007 04:06:14 -0700 (PDT)
+In-Reply-To: <462D42CA.50509@linux.vnet.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <20070430055632.GR32602149@melbourne.sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 30, 2007 at 03:56:32PM +1000, David Chinner wrote:
-> On Sun, Apr 29, 2007 at 10:25:59PM -0700, Chris Wedgwood wrote:
+On 4/24/07, Avantika Mathur <mathur@linux.vnet.ibm.com> wrote:
+> Ext4 Developer Interlock Call: 04/23/2007 Meeting Minutes
+>
+> TESTING
+> - extents testing
+>     - Discussed methods for testing extents on highly fragmented
+> filesystems.
+>     - Jose will look into possible tests, including perhaps using the
+> 'aged' option in FFSB
+>     - Ted suggested creating a mountoption that creates a bad block
+> allocator which it jumps to a new block group every 8 blocks.  This
+> would force a very large number of extents, and may be a good test for
+> extents.
 
-> IIRC, the argument for FA_ALLOCATE changing file size is that
-> posix_fallocate() is supposed to change the file size.
 
-But it's not posix_fallocate; it's something more generic. glibc can
-do posix_fallocate using truncate + fallocate.
+What i am doing for creating a large number of extents is
 
-> Note that the way XFS implements growing the file size after the
-> allocation is via a truncate....
+dd if=/dev/zero of=myfile count=10
+seek=20
+while [ 1 ]; do dd if=/dev/zero of=myfile count=10 seek=$seek;
+seek=`expr $seek + 20`; done
 
-What's wrong with that?  That seems very reasonable.
 
-> That's would what I did because otherwise you'd use ftruncate64().
-> Without documented behaviour or an ext4 implementation, I have to
-> ask what it's supposed to do, though ;)
-
-How many *real* users are there for ext4?  Why does 'what ext4 does'
-define 'the semantics'?
-
-Surely semantics should be decided either by precedent (if there is an
-existing relevant userbase) or sensible thought and some debate?
+-aneesh
