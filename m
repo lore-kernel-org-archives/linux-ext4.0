@@ -1,53 +1,44 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Ext2/3 block remapping tool
-Date: Mon, 30 Apr 2007 14:29:21 +0200
-Message-ID: <20070430122921.GI28367@duck.suse.cz>
-References: <20070426192953.GC2841@duck.suse.cz> <20070427180942.GB5967@schatzie.adilger.int> <20070430120930.GA10604@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: 2.6.21-ext4-1
+Date: Mon, 30 Apr 2007 11:14:57 -0400
+Message-ID: <E1HiXab-0001QX-Sk@candygram.thunk.org>
+Cc: Johann Lombardi <johann.lombardi@bull.net>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	Dave Chinner <dgc@sgi.com>, linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:45729 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1423187AbXD3MT4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Apr 2007 08:19:56 -0400
-Content-Disposition: inline
-In-Reply-To: <20070430120930.GA10604@thunk.org>
+Received: from thunk.org ([69.25.196.29]:52658 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755453AbXD3PPG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Apr 2007 11:15:06 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 30-04-07 08:09:30, Theodore Tso wrote:
-> On Fri, Apr 27, 2007 at 12:09:42PM -0600, Andreas Dilger wrote:
-> > I'd prefer that such functionality be integrated with Takashi's online
-> > defrag tool, since it needs virtually the same functionality.  For that
-> > matter, this is also very similar to the block-mapped -> extents tool
-> > from Aneesh.  It doesn't make sense to have so many separate tools for
-> > users, especially if they start interfering with each other (i.e. defrag
-> > undoes the remapping done by your tool).
-> 
-> Yep, in fact, I'm really glad that Jan is working on the remapping
-> tool because if the on-line defrag kernel interfaces don't have the
-> right support for it, then that means we need to fix the on-line
-> defrag patches.  :-)
-  ;-) Exactly that was the reason why I wrote the userspace program - so
-that I have something in hands when we start discussing how the kernel
-interface will look like.
 
-> While we're at it, someone want to start thinking about on-line
-> shrinking of ext4 filesystems?  Again, the same block remapping
-> interfaces for defrag and file access optimizations should also be
-> useful for shrinking filesystems (even if some of the files that need
-> to be relocated are being actively used).  If not, that probably means
-> we got the interface wrong.
-  Yes, that's a good idea. Currently it seems to me that block+inode
-relocation (we also need for defrag) would be enough to support filesystem
-shrinking. Actually, in some ancient times (like 6-7 years ago) I had
-written ext2 online filesystem shrinking. Currently, the patch is probably
-unusably obsolete but I can still dig it out and look what functions did I
-need at that time.
+I've respun the ext4 development patchset, with Amit's updated fallocate
+patches.  I've added Dave's patch to add ia64 support to the fallocate
+system call, but *not* the XFS fallocate support patches.  (Probably
+better for them to live in an xfs tree, where they can more easily
+tested and updated.)  Yes, we haven't reached complete closure on the
+fallocate system call calling convention, but it's enough for us to get
+more testing in -mm.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Also added Johann's jbd2-stats-through-procfs patches; it provides
+useful help in turning the size of the journal, which will be useful in
+benchmarking efforts.  In addition, Alex Tomas's patch to free
+just-allocated patches when there is an error inserting the extent into
+the extent tree has also been included.
+
+The patches have been compile-tested on x86, and compile/run-tested on
+x86/UML.  Would appreciate reports about testing on other platforms.
+
+Thanks,
+
+						- Ted
+
+P.S.  One bug which I've noted --- if there is a failure due to disk
+filling up, running e2fsck on the filesystem will show that the i_blocks
+fields on the inodes where there was a failure to allocate disk blocks
+are left incorrect.  I'm guessing this is a bug in the delayed
+allocation patches.  Alex, when you have a moment, could you take a
+look?  Thanks!!
