@@ -1,111 +1,99 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when FS
- is under heavy write load (massive starvation)
-Date: Fri, 4 May 2007 00:18:02 -0700
-Message-ID: <20070504001802.0e86e9dd.akpm@linux-foundation.org>
-References: <1177660767.6567.41.camel@Homer.simpson.net>
-	<20070427013350.d0d7ac38.akpm@linux-foundation.org>
-	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>
-	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>
-	<20070427193130.GD5967@schatzie.adilger.int>
-	<20070427151837.f1439639.akpm@linux-foundation.org>
-	<463A1E02.8020506@clusterfs.com>
-	<20070503165428.855eb7d7.akpm@linux-foundation.org>
-	<463AD024.6060208@clusterfs.com>
-	<20070503233804.9dace4a7.akpm@linux-foundation.org>
-	<463AD948.9090103@clusterfs.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
+Date: Fri, 4 May 2007 17:27:42 +1000
+Message-ID: <20070504072742.GK32602149@melbourne.sgi.com>
+References: <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070503212955.b1b6443c.akpm@linux-foundation.org> <20070504060731.GJ32602149@melbourne.sgi.com> <20070503232815.2f62a75e.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Marat Buharov <marat.buharov@gmail.com>,
-	Mike Galbraith <efault@gmx.de>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Alex Tomas <alex@clusterfs.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:52527 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932231AbXEDHSm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 03:18:42 -0400
-In-Reply-To: <463AD948.9090103@clusterfs.com>
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:41324 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754590AbXEDH2R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 03:28:17 -0400
+Content-Disposition: inline
+In-Reply-To: <20070503232815.2f62a75e.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 04 May 2007 10:57:12 +0400 Alex Tomas <alex@clusterfs.com> wrote:
-
-> Andrew Morton wrote:
-> > On Fri, 04 May 2007 10:18:12 +0400 Alex Tomas <alex@clusterfs.com> wrote:
+On Thu, May 03, 2007 at 11:28:15PM -0700, Andrew Morton wrote:
+> On Fri, 4 May 2007 16:07:31 +1000 David Chinner <dgc@sgi.com> wrote:
+> > On Thu, May 03, 2007 at 09:29:55PM -0700, Andrew Morton wrote:
+> > > On Thu, 26 Apr 2007 23:33:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+> > > 
+> > > > This patch implements the fallocate() system call and adds support for
+> > > > i386, x86_64 and powerpc.
+> > > > 
+> > > > ...
+> > > > +{
+> > > > +	struct file *file;
+> > > > +	struct inode *inode;
+> > > > +	long ret = -EINVAL;
+> > > > +
+> > > > +	if (len == 0 || offset < 0)
+> > > > +		goto out;
+> > > 
+> > > The posix spec implies that negative `len' is permitted - presumably "allocate
+> > > ahead of `offset'".  How peculiar.
 > > 
-> >> Andrew Morton wrote:
-> >>> Yes, there can be issues with needing to allocate journal space within the
-> >>> context of a commit.  But
-> >> no-no, this isn't required. we only need to mark pages/blocks within
-> >> transaction, otherwise race is possible when we allocate blocks in transaction,
-> >> then transacton starts to commit, then we mark pages/blocks to be flushed
-> >> before commit.
+> > I just checked the man page for posix_fallocate() and it says:
 > > 
-> > I don't understand.  Can you please describe the race in more detail?
+> >       EINVAL  offset or len was less than zero.
+> > 
+> > We should probably follow this lead.
 > 
-> if I understood your idea right, then in data=ordered mode, commit thread writes
-> all dirty mapped blocks before real commit.
+> Yes, I think so.  I'm suspecting that
+> http://www.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
+> is just buggy.  Or I can't read.
 > 
-> say, we have two threads: t1 is a thread doing flushing and t2 is a commit thread
+> I mean, if we're going to support negative `len' then is the byte at
+> `offset' inside or outside the segment?  Head spins.
+
+I don't think we should care. If we provide a syscall with the
+semantics of "allocate from offset to offset+len" then glibc's
+implementation can turn negative length into two separate
+fallocate syscalls....
+
+> > > > +	ret = -ENODEV;
+> > > > +	if (!S_ISREG(inode->i_mode))
+> > > > +		goto out_fput;
+> > > 
+> > > So we return ENODEV against an S_ISBLK fd, as per the posix spec.  That
+> > > seems a bit silly of them.
+> > 
+> > Hmmmm - I thought that the intention of sys_fallocate() was to
+> > be generic enough to eventually allow preallocation on directories.
+> > If that is the case, then this check will prevent that....
 > 
-> t1					t2
-> find dirty inode I
-> find some dirty unallocated blocks
-> journal_start()
-> allocate blocks
-> attach them to I
-> journal_stop()
-
-I'm still not understanding.  The terms you're using are a bit ambiguous.
-
-What does "find some dirty unallocated blocks" mean?  Find a page which is
-dirty and which does not have a disk mapping?
-
-Normally the above operation would be implemented via
-ext4_writeback_writepage(), and it runs under lock_page().
-
-
-> 					going to commit
-> 					find inode I dirty
-> 					do NOT find these blocks because they're
-> 					  allocated only, but pages/bhs aren't mapped
-> 					  to them
-> 					start commit
-
-I think you're assuming here that commit would be using ->t_sync_datalist
-to locate dirty buffer_heads.
-
-But under this proposal, t_sync_datalist just gets removed: the new
-ordered-data mode _only_ need to do the sb->inode->page walk.  So if I'm
-understanding you, the way in which we'd handle any such race is to make
-kjournald's writeback of the dirty pages block in lock_page().  Once it
-gets the page lock it can look to see if some other thread has mapped the
-page to disk.
-
-
-
-It may turn out that kjournald needs a private way of getting at the
-I_DIRTY_PAGES inodes to do this properly, but I don't _think_ so.  If we
-had the radix-tree-of-dirty-inodes thing then that's easy enough to do
-anyway, with a tagged search.  But I expect that a single pass through the
-superblock's dirty inodes would suffice for ordered-data.  Files which
-have chattr +j would screw things up, as usual.
-
-I assume (hope) that your delayed allocation code implements
-->writepages()?  Doing the allocation one-page-at-a-time sounds painful...
-
+> The above opengroup page only permits S_ISREG.  Preallocating directories
+> sounds quite useful to me, although it's something which would be pretty
+> hard to emulate if the FS doesn't support it.  And there's a decent case to
+> be made for emulating it - run-anywhere reasons.  Does glibc emulation support
+> directories?  Quite unlikely.
 > 
-> map pages/bhs to just allocate blocks
-> 
-> 
-> so, either we mark pages/bhs someway within journal_start()--journal_stop() or
-> commit thread should do lookup for all dirty pages. the latter doesn't sound nice, IMHO.
-> 
+> But yes, sounds like a desirable thing.  Would XFS support it easily if the above
+> check was relaxed?
 
-I don't think I'm understanding you fully yet.
+No - right now empty blocks are pruned from the directory immediately so I
+don't think we really have a concept of empty blocks in the btree structure.
+dir2 is bloody complex, so adding preallocation is probably not going to
+be simple to do.
+
+It's not high on my list to add, either, because we can typically avoid the
+worst case directory fragmentation by using larger directory block sizes
+(e.g. 16k instead of the default 4k on a 4k block size fs).
+
+IIRC directory preallocation has been talked about more for ext3/4....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
