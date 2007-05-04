@@ -1,99 +1,82 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Fri, 4 May 2007 17:27:42 +1000
-Message-ID: <20070504072742.GK32602149@melbourne.sgi.com>
-References: <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070503212955.b1b6443c.akpm@linux-foundation.org> <20070504060731.GJ32602149@melbourne.sgi.com> <20070503232815.2f62a75e.akpm@linux-foundation.org>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
+ FS is under heavy write load (massive starvation)
+Date: Fri, 04 May 2007 11:39:22 +0400
+Message-ID: <463AE32A.5000902@clusterfs.com>
+References: <1177660767.6567.41.camel@Homer.simpson.net>	<20070427013350.d0d7ac38.akpm@linux-foundation.org>	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>	<20070427193130.GD5967@schatzie.adilger.int>	<20070427151837.f1439639.akpm@linux-foundation.org>	<463A1E02.8020506@clusterfs.com>	<20070503165428.855eb7d7.akpm@linux-foundation.org>	<463AD024.6060208@clusterfs.com>	<20070503233804.9dace4a7.akpm@linux-foundation.org>	<463AD948.9090103@clusterfs.com> <20070504001802.0e86e9dd.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Marat Buharov <marat.buharov@gmail.com>,
+	Mike Galbraith <efault@gmx.de>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:41324 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754590AbXEDH2R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 03:28:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20070503232815.2f62a75e.akpm@linux-foundation.org>
+Received: from mail.chehov.net ([80.71.245.247]:56229 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754596AbXEDHjn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 May 2007 03:39:43 -0400
+In-Reply-To: <20070504001802.0e86e9dd.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 03, 2007 at 11:28:15PM -0700, Andrew Morton wrote:
-> On Fri, 4 May 2007 16:07:31 +1000 David Chinner <dgc@sgi.com> wrote:
-> > On Thu, May 03, 2007 at 09:29:55PM -0700, Andrew Morton wrote:
-> > > On Thu, 26 Apr 2007 23:33:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
-> > > 
-> > > > This patch implements the fallocate() system call and adds support for
-> > > > i386, x86_64 and powerpc.
-> > > > 
-> > > > ...
-> > > > +{
-> > > > +	struct file *file;
-> > > > +	struct inode *inode;
-> > > > +	long ret = -EINVAL;
-> > > > +
-> > > > +	if (len == 0 || offset < 0)
-> > > > +		goto out;
-> > > 
-> > > The posix spec implies that negative `len' is permitted - presumably "allocate
-> > > ahead of `offset'".  How peculiar.
-> > 
-> > I just checked the man page for posix_fallocate() and it says:
-> > 
-> >       EINVAL  offset or len was less than zero.
-> > 
-> > We should probably follow this lead.
+Andrew Morton wrote:
+> I'm still not understanding.  The terms you're using are a bit ambiguous.
 > 
-> Yes, I think so.  I'm suspecting that
-> http://www.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
-> is just buggy.  Or I can't read.
+> What does "find some dirty unallocated blocks" mean?  Find a page which is
+> dirty and which does not have a disk mapping?
 > 
-> I mean, if we're going to support negative `len' then is the byte at
-> `offset' inside or outside the segment?  Head spins.
+> Normally the above operation would be implemented via
+> ext4_writeback_writepage(), and it runs under lock_page().
 
-I don't think we should care. If we provide a syscall with the
-semantics of "allocate from offset to offset+len" then glibc's
-implementation can turn negative length into two separate
-fallocate syscalls....
+I'm mostly worried about delayed allocation case. My impression was that
+holding number of pages locked isn't a good idea, even if they're locked
+in index order. so, I was going to turn number of pages writeback, then
+allocate blocks for all of them at once, then put proper blocknr's into
+bh's (or PG_mappedtodisk?).
 
-> > > > +	ret = -ENODEV;
-> > > > +	if (!S_ISREG(inode->i_mode))
-> > > > +		goto out_fput;
-> > > 
-> > > So we return ENODEV against an S_ISBLK fd, as per the posix spec.  That
-> > > seems a bit silly of them.
-> > 
-> > Hmmmm - I thought that the intention of sys_fallocate() was to
-> > be generic enough to eventually allow preallocation on directories.
-> > If that is the case, then this check will prevent that....
 > 
-> The above opengroup page only permits S_ISREG.  Preallocating directories
-> sounds quite useful to me, although it's something which would be pretty
-> hard to emulate if the FS doesn't support it.  And there's a decent case to
-> be made for emulating it - run-anywhere reasons.  Does glibc emulation support
-> directories?  Quite unlikely.
 > 
-> But yes, sounds like a desirable thing.  Would XFS support it easily if the above
-> check was relaxed?
+>> 					going to commit
+>> 					find inode I dirty
+>> 					do NOT find these blocks because they're
+>> 					  allocated only, but pages/bhs aren't mapped
+>> 					  to them
+>> 					start commit
+> 
+> I think you're assuming here that commit would be using ->t_sync_datalist
+> to locate dirty buffer_heads.
 
-No - right now empty blocks are pruned from the directory immediately so I
-don't think we really have a concept of empty blocks in the btree structure.
-dir2 is bloody complex, so adding preallocation is probably not going to
-be simple to do.
+nope, I mean sb->inode->page walk.
 
-It's not high on my list to add, either, because we can typically avoid the
-worst case directory fragmentation by using larger directory block sizes
-(e.g. 16k instead of the default 4k on a 4k block size fs).
+> But under this proposal, t_sync_datalist just gets removed: the new
+> ordered-data mode _only_ need to do the sb->inode->page walk.  So if I'm
+> understanding you, the way in which we'd handle any such race is to make
+> kjournald's writeback of the dirty pages block in lock_page().  Once it
+> gets the page lock it can look to see if some other thread has mapped the
+> page to disk.
 
-IIRC directory preallocation has been talked about more for ext3/4....
+if I'm right holding number of pages locked, then they won't be locked, but
+writeback. of course kjournald can block on writeback as well, but how does
+it find pages with *newly allocated* blocks only?
 
-Cheers,
+> It may turn out that kjournald needs a private way of getting at the
+> I_DIRTY_PAGES inodes to do this properly, but I don't _think_ so.  If we
+> had the radix-tree-of-dirty-inodes thing then that's easy enough to do
+> anyway, with a tagged search.  But I expect that a single pass through the
+> superblock's dirty inodes would suffice for ordered-data.  Files which
+> have chattr +j would screw things up, as usual.
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+not dirty inodes only, but rather some fast way to find pages with newly
+allocated pages.
+
+> I assume (hope) that your delayed allocation code implements
+> ->writepages()?  Doing the allocation one-page-at-a-time sounds painful...
+
+indeed. this is a root cause of all this complexity.
+
+thanks, Alex
