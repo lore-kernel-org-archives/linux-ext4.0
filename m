@@ -1,66 +1,58 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Fri, 4 May 2007 16:07:31 +1000
-Message-ID: <20070504060731.GJ32602149@melbourne.sgi.com>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070503212955.b1b6443c.akpm@linux-foundation.org>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
+ FS is under heavy write load (massive starvation)
+Date: Fri, 04 May 2007 10:18:12 +0400
+Message-ID: <463AD024.6060208@clusterfs.com>
+References: <1177660767.6567.41.camel@Homer.simpson.net>	<20070427013350.d0d7ac38.akpm@linux-foundation.org>	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>	<20070427193130.GD5967@schatzie.adilger.int>	<20070427151837.f1439639.akpm@linux-foundation.org>	<463A1E02.8020506@clusterfs.com> <20070503165428.855eb7d7.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Marat Buharov <marat.buharov@gmail.com>,
+	Mike Galbraith <efault@gmx.de>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:53879 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932231AbXEDGIG (ORCPT
-	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
-	Fri, 4 May 2007 02:08:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20070503212955.b1b6443c.akpm@linux-foundation.org>
+Received: from mail.chehov.net ([80.71.245.247]:64260 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754431AbXEDGSc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 May 2007 02:18:32 -0400
+In-Reply-To: <20070503165428.855eb7d7.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 03, 2007 at 09:29:55PM -0700, Andrew Morton wrote:
-> On Thu, 26 Apr 2007 23:33:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+Andrew Morton wrote:
+> Yes, there can be issues with needing to allocate journal space within the
+> context of a commit.  But
+
+no-no, this isn't required. we only need to mark pages/blocks within
+transaction, otherwise race is possible when we allocate blocks in transaction,
+then transacton starts to commit, then we mark pages/blocks to be flushed
+before commit.
+
+> a) If the page has newly allocated space on disk then the metadata which
+>    refers to that page is already in the journal: no new journal space
+>    needed.
 > 
-> > This patch implements the fallocate() system call and adds support for
-> > i386, x86_64 and powerpc.
-> > 
-> > ...
-> > +{
-> > +	struct file *file;
-> > +	struct inode *inode;
-> > +	long ret = -EINVAL;
-> > +
-> > +	if (len == 0 || offset < 0)
-> > +		goto out;
+> b) If the page doesn't have space allocated on disk then we don't need
+>    to write it out at ordered-mode commit time, because the post-recovery
+>    filesystem will not have any references to that page.
 > 
-> The posix spec implies that negative `len' is permitted - presumably "allocate
-> ahead of `offset'".  How peculiar.
-
-I just checked the man page for posix_fallocate() and it says:
-
-      EINVAL  offset or len was less than zero.
-
-We should probably follow this lead.
-
-> > +
-> > +	ret = -ENODEV;
-> > +	if (!S_ISREG(inode->i_mode))
-> > +		goto out_fput;
+> c) If the page is dirty due to overwrite then no metadata update was required.
 > 
-> So we return ENODEV against an S_ISBLK fd, as per the posix spec.  That
-> seems a bit silly of them.
+> IOW, under what circumstances would an ordered-mode commit need to allocate
+> space for a delayed-allocate page?
 
-Hmmmm - I thought that the intention of sys_fallocate() was to
-be generic enough to eventually allow preallocation on directories.
-If that is the case, then this check will prevent that....
+no need to allocate space within commit thread, I think. only to take care
+of the race I described above. in hackish version of data=ordered for delayed
+allocation I used counter of submitted bio's with newly-allocated blocks and
+commit thread waits for the counter to reach 0.
 
-Cheers,
+> 
+> However b) might lead to the hey-my-file-is-full-of-zeroes problem.
+> 
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+thanks, Alex
