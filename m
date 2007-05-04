@@ -1,122 +1,80 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when FS
- is under heavy write load (massive starvation)
-Date: Fri, 4 May 2007 01:02:12 -0700
-Message-ID: <20070504010212.ce6eca53.akpm@linux-foundation.org>
-References: <1177660767.6567.41.camel@Homer.simpson.net>
-	<20070427013350.d0d7ac38.akpm@linux-foundation.org>
-	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>
-	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>
-	<20070427193130.GD5967@schatzie.adilger.int>
-	<20070427151837.f1439639.akpm@linux-foundation.org>
-	<463A1E02.8020506@clusterfs.com>
-	<20070503165428.855eb7d7.akpm@linux-foundation.org>
-	<463AD024.6060208@clusterfs.com>
-	<20070503233804.9dace4a7.akpm@linux-foundation.org>
-	<463AD948.9090103@clusterfs.com>
-	<20070504001802.0e86e9dd.akpm@linux-foundation.org>
-	<463AE32A.5000902@clusterfs.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Marat Buharov <marat.buharov@gmail.com>,
-	Mike Galbraith <efault@gmx.de>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Alex Tomas <alex@clusterfs.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][take 4] e2fsprogs: Add ext4migrate
+Date: Fri,  4 May 2007 14:43:20 +0530
+Message-ID: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: aneesh.kumar@linux.vnet.ibm.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:35004 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S965706AbXEDIDl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 04:03:41 -0400
-In-Reply-To: <463AE32A.5000902@clusterfs.com>
+Received: from ausmtp05.au.ibm.com ([202.81.18.154]:42511 "EHLO
+	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1767756AbXEDJNd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 05:13:33 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l449FGeC6099000
+	for <linux-ext4@vger.kernel.org>; Fri, 4 May 2007 19:15:17 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l449GxqK166082
+	for <linux-ext4@vger.kernel.org>; Fri, 4 May 2007 19:17:00 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l449DRkQ008991
+	for <linux-ext4@vger.kernel.org>; Fri, 4 May 2007 19:13:28 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 04 May 2007 11:39:22 +0400 Alex Tomas <alex@clusterfs.com> wrote:
-
-> Andrew Morton wrote:
-> > I'm still not understanding.  The terms you're using are a bit ambiguous.
-> > 
-> > What does "find some dirty unallocated blocks" mean?  Find a page which is
-> > dirty and which does not have a disk mapping?
-> > 
-> > Normally the above operation would be implemented via
-> > ext4_writeback_writepage(), and it runs under lock_page().
-> 
-> I'm mostly worried about delayed allocation case. My impression was that
-> holding number of pages locked isn't a good idea, even if they're locked
-> in index order. so, I was going to turn number of pages writeback, then
-> allocate blocks for all of them at once, then put proper blocknr's into
-> bh's (or PG_mappedtodisk?).
-
-ooh, that sounds hacky and quite worrisome.  If someone comes in and does
-an fsync() we've lost our synchronisation point.  Yes, all callers happen
-to do
-
-	lock_page();
-	wait_on_page_writeback();
-
-(I think) but we've never considered a bare PageWriteback() as something
-which protects page internals.  We're OK wrt page reclaim and we're OK wrt
-truncate and invalidate.  As long as the page is uptodate we _should_ be OK
-wrt readpage().  But still, it'd be better to use the standard locking
-rather than inventing new rules, if poss.
+This is work in progress
 
 
-I'd be 100% OK with locking multiple pages in ascending pgoff_t order. 
-Locking the page is the standard way of doing this synchronisation and the
-only problem I can think of is that having a tremendous number of pages
-locked could cause the wake_up_page() waitqueue hashes to get overloaded
-and go slow.  But it's also possible to lock many, many pages with
-readahead and nobody has reported problems in there.
+Changes from from my previous patches are as follows:
+a) COW unix io manager using libtdb
+b) add ext4replay to  undo the file system changes done during migration
+
+Changes from from my previous patches are as follows:
+a) Mark the file system unclean if we fail migrating
+b) support for migrating more than one file
+c) Support for migrating all the ext3 inode in the file system
+d) Fix the free block counts. ( Make sure fsck pass without errors after migration )
+e) Mark the blocks used for extent idx as used so that we don't double allocate them
+f) Don't mark the blocks used for indirect block map as free untill we fully migrate
+   the inode.This make sure we don't use these blocks for extent idx and overwrite them.
+g) Fix the migration when we end up with more than one extent idx block.
 
 
-> > 
-> > 
-> >> 					going to commit
-> >> 					find inode I dirty
-> >> 					do NOT find these blocks because they're
-> >> 					  allocated only, but pages/bhs aren't mapped
-> >> 					  to them
-> >> 					start commit
-> > 
-> > I think you're assuming here that commit would be using ->t_sync_datalist
-> > to locate dirty buffer_heads.
-> 
-> nope, I mean sb->inode->page walk.
-> 
-> > But under this proposal, t_sync_datalist just gets removed: the new
-> > ordered-data mode _only_ need to do the sb->inode->page walk.  So if I'm
-> > understanding you, the way in which we'd handle any such race is to make
-> > kjournald's writeback of the dirty pages block in lock_page().  Once it
-> > gets the page lock it can look to see if some other thread has mapped the
-> > page to disk.
-> 
-> if I'm right holding number of pages locked, then they won't be locked, but
-> writeback. of course kjournald can block on writeback as well, but how does
-> it find pages with *newly allocated* blocks only?
+Changes from from my previous patches are as follows:
+a) support for files with holes
+b) use the block iterator present in libext2fs
+c) don't mark  the indirect blocks as unused early. If we mark the
+   the blocks unused, they can be resued for extent index. If we later
+   fail to migrate, the indirect blocks content would be overwritten.
 
-I don't think we'd want kjournald to do that.  Even if a page was dirtied
-by an overwrite, we'd want to write it back during commit, just from a
-quality-of-implementation point of view.  If we were to leave these pages
-unwritten during commit then a post-recovery file could have a mix of
-up-to-five-second-old data and up-to-30-seconds-old data.
+ext4migrate command takes the below syntax
+ext4migrate --display | --migrate  <image_name> [<filename>]
 
-> > It may turn out that kjournald needs a private way of getting at the
-> > I_DIRTY_PAGES inodes to do this properly, but I don't _think_ so.  If we
-> > had the radix-tree-of-dirty-inodes thing then that's easy enough to do
-> > anyway, with a tagged search.  But I expect that a single pass through the
-> > superblock's dirty inodes would suffice for ordered-data.  Files which
-> > have chattr +j would screw things up, as usual.
-> 
-> not dirty inodes only, but rather some fast way to find pages with newly
-> allocated pages.
+The --display option helps in displaying the block map details for an ext3 inode
+and extent map details for an ext4 inode. The --migrate option convert a block mapped
+ext3 inode to extent mapped ext4 inode.
 
-Newly allocated blocks, you mean?
+This needs to be run on an unmounted file system (offline migration).
 
-Just write out the overwritten blocks as well as the new ones, I reckon. 
-It's what we do now.
+The extent insert code is derived out of the latest ext4 kernel source. I have tried
+to keep the code as close as possible to the kernel sources. This makes sure that any
+fixes for the tree building code in kernel should be easily applied to ext4migrate.
+The ext3_ext naming convention instead of ext4_ext found in kernel is to
+make  sure we are in sync with rest of e2fsprogs source.
+
+The inode modification is done only at the last stage. This is to make sure that if we
+fail at any intermediate stage, we exit without touching the disk.
+
+The inode update is done as below
+a) Walk the extent index blocks and write them to the disk. If failed exit
+b) Writ the update block bitmap. if failed exit.
+b) Write the inode. if failed Undo the write of block bitmap and exit.
+
+The patch applies on top of e2fsprogs found at
+
+http://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/e2fsprogs-1.39-tyt1/e2fsprogs-1.39-tyt1.tar.bz2
+
+Right now i am building ext4migrate and ext4replay by linking against libtd. This will not
+be needed once I rebase the patches against the latest e2fsprogs which has the tdb code
+available as a part libext2fs
+
+-aneesh
