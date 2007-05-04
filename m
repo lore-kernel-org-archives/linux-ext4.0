@@ -1,93 +1,139 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when FS
- is under heavy write load (massive starvation)
-Date: Thu, 3 May 2007 16:54:28 -0700
-Message-ID: <20070503165428.855eb7d7.akpm@linux-foundation.org>
-References: <1177660767.6567.41.camel@Homer.simpson.net>
-	<20070427013350.d0d7ac38.akpm@linux-foundation.org>
-	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>
-	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>
-	<20070427193130.GD5967@schatzie.adilger.int>
-	<20070427151837.f1439639.akpm@linux-foundation.org>
-	<463A1E02.8020506@clusterfs.com>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and
+ powerpc
+Date: Thu, 3 May 2007 21:29:55 -0700
+Message-ID: <20070503212955.b1b6443c.akpm@linux-foundation.org>
+References: <20070321120425.GA27273@amitarora.in.ibm.com>
+	<20070329115126.GB7374@amitarora.in.ibm.com>
+	<20070329101010.7a2b8783.akpm@linux-foundation.org>
+	<20070330071417.GI355@devserv.devel.redhat.com>
+	<20070417125514.GA7574@amitarora.in.ibm.com>
+	<20070418130600.GW5967@schatzie.adilger.int>
+	<20070420135146.GA21352@amitarora.in.ibm.com>
+	<20070420145918.GY355@devserv.devel.redhat.com>
+	<20070424121632.GA10136@amitarora.in.ibm.com>
+	<20070426175056.GA25321@amitarora.in.ibm.com>
+	<20070426180332.GA7209@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Marat Buharov <marat.buharov@gmail.com>,
-	Mike Galbraith <efault@gmx.de>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Alex Tomas <alex@clusterfs.com>
+Cc: torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:47145 "EHLO
+Received: from smtp1.linux-foundation.org ([65.172.181.25]:33752 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754776AbXECXzS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 May 2007 19:55:18 -0400
-In-Reply-To: <463A1E02.8020506@clusterfs.com>
+	by vger.kernel.org with ESMTP id S1766523AbXEDEaI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 May 2007 00:30:08 -0400
+In-Reply-To: <20070426180332.GA7209@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 03 May 2007 21:38:10 +0400
-Alex Tomas <alex@clusterfs.com> wrote:
+On Thu, 26 Apr 2007 23:33:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
 
-> Andrew Morton wrote:
-> > We can make great improvements here, and I've (twice) previously decribed
-> > how: hoist the entire ordered-mode data handling out of ext3, and out of
-> > the buffer_head layer and move it up into the VFS pagecache layer. 
-> > Basically, do ordered-data with a commit-time inode walk, calling
-> > do_sync_mapping_range().
-> > 
-> > Do it in the VFS.  Make reiserfs use it, remove reiserfs ordered-mode too. 
-> > Make XFS use it, fix the hey-my-files-are-all-full-of-zeroes problem there.
+> This patch implements the fallocate() system call and adds support for
+> i386, x86_64 and powerpc.
 > 
-> I'm not sure it's that easy.
-> 
-> if we move to pages, then we have to mark pages to be flushed holding
-> transaction open. now take delayed allocation into account: we need
-> to allocate number of blocks at once and then mark all pages mapped,
-> again within context of the same transaction.
+> ...
+>
+> +asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
 
-Yes, there can be issues with needing to allocate journal space within the
-context of a commit.  But
+Please add a comment over this function which specifies its behaviour. 
+Really it should be enough material from which a full manpage can be
+written.
 
-a) If the page has newly allocated space on disk then the metadata which
-   refers to that page is already in the journal: no new journal space
-   needed.
+If that's all too much, this material should at least be spelled out in the
+changelog.  Because there's no way in which this change can be fully
+reviewed unless someone (ie: you) tells us what it is setting out to
+achieve.
 
-b) If the page doesn't have space allocated on disk then we don't need
-   to write it out at ordered-mode commit time, because the post-recovery
-   filesystem will not have any references to that page.
+If we 100% implement some standard then a URL for what we claim to
+implement would suffice.  Given that we're at least using different types from
+posix I doubt if such a thing would be sufficient.
 
-c) If the page is dirty due to overwrite then no metadata update was required.
+And given the complexity and potential variability within the filesystem
+implementations of this, I'd expect that _something_ additional needs to be
+said?
 
-IOW, under what circumstances would an ordered-mode commit need to allocate
-space for a delayed-allocate page?
+> +{
+> +	struct file *file;
+> +	struct inode *inode;
+> +	long ret = -EINVAL;
+> +
+> +	if (len == 0 || offset < 0)
+> +		goto out;
 
-However b) might lead to the hey-my-file-is-full-of-zeroes problem.
+The posix spec implies that negative `len' is permitted - presumably "allocate
+ahead of `offset'".  How peculiar.
 
-> so, an implementation
-> would look like the following?
-> 
-> generic_writepages() {
-> 	/* collect set of contig. dirty pages */
-> 	foo_get_blocks() {
-> 		foo_journal_start();
-> 		foo_new_blocks();
-> 		foo_attach_blocks_to_inode();
-> 		generic_mark_pages_mapped();
-> 		foo_journal_stop();
-> 	}
-> }
-> 
-> another question is will it scale well given number of dirty inodes
-> can be much larger than number of inodes with dirty mapped blocks
-> (in delayed allocation case, for example) ?
+> +	ret = -EBADF;
+> +	file = fget(fd);
+> +	if (!file)
+> +		goto out;
+> +	if (!(file->f_mode & FMODE_WRITE))
+> +		goto out_fput;
+> +
+> +	inode = file->f_path.dentry->d_inode;
+> +
+> +	ret = -ESPIPE;
+> +	if (S_ISFIFO(inode->i_mode))
+> +		goto out_fput;
+> +
+> +	ret = -ENODEV;
+> +	if (!S_ISREG(inode->i_mode))
+> +		goto out_fput;
 
-Possibly - zillions of dirty-for-atime inodes might get in the way.  A
-short-term fix would be to create a separate dirty-inode list on the
-superblock (ug).  A long-term fix is to rip all the per-superblock
-dirty-inode lists and use a radix-tree.  Not for lookup purposes, but for
-the tree's ability to do tagged and restartable searches.
+So we return ENODEV against an S_ISBLK fd, as per the posix spec.  That
+seems a bit silly of them.
+
+> +	ret = -EFBIG;
+> +	if (offset + len > inode->i_sb->s_maxbytes)
+> +		goto out_fput;
+
+This code does handle offset+len going negative, but only by accident, I
+suspect.  It happens that s_maxbytes has unsigned type.  Perhaps a comment
+here would settle the reader's mind.
+
+> +	if (inode->i_op && inode->i_op->fallocate)
+> +		ret = inode->i_op->fallocate(inode, mode, offset, len);
+> +	else
+> +		ret = -ENOSYS;
+
+If we _are_ going to support negative `len', as posix suggests, I think we
+should perform the appropriate sanity conversions to `offset' and `len'
+right here, rather than expecting each filesystem to do it.
+
+If we're not going to handle negative `len' then we should check for it.
+
+> +out_fput:
+> +	fput(file);
+> +out:
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL(sys_fallocate);
+
+I don't believe this needs to be exported to modules?
+
+> +/*
+> + * fallocate() modes
+> + */
+> +#define FA_ALLOCATE	0x1
+> +#define FA_DEALLOCATE	0x2
+
+Now those aren't in posix.  They should be documented, along with their
+expected semantics.
+
+>  #ifdef __KERNEL__
+>  
+>  #include <linux/linkage.h>
+> @@ -1125,6 +1131,7 @@ struct inode_operations {
+>  	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+>  	int (*removexattr) (struct dentry *, const char *);
+>  	void (*truncate_range)(struct inode *, loff_t, loff_t);
+> +	long (*fallocate)(struct inode *, int, loff_t, loff_t);
+
+I really do think it's better to put the variable names in definitions such
+as this.  Especially when we have two identically-typed variables next to
+each other like that.  Quick: which one is the offset and which is the
+length?
