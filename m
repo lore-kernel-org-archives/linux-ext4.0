@@ -1,193 +1,111 @@
-From: Dennis Gilmore <dennis@ausil.us>
-Subject: PATCH: use CFLAGS when linking always
-Date: Sat, 5 May 2007 09:20:47 -0500
-Message-ID: <200705050920.56558.dennis@ausil.us>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: random bug generator (was: 2.6.21-git4 Scheduler, NOHZ, VFS bugs)
+Date: Sat, 05 May 2007 20:04:54 +0200
+Message-ID: <463CC746.7050402@googlemail.com>
+References: <463B5D63.2030109@googlemail.com>	 <20070504110158.d2808170.akpm@linux-foundation.org> <6bffcb0e0705050625m6bb05dc0ne0864ec2dba19256@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart3934245.N5Bl8ZHKCe";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>,
+	Thomas Gleixner <tglx@linutronix.de>, viro@ftp.linux.org.uk,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Kay Sievers <kay.sievers@vrfy.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from anubis.ausil.us ([216.75.14.43]:36119 "EHLO mail.ausil.us"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933859AbXEEQcR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 May 2007 12:32:17 -0400
-Received: from localhost (unknown [127.0.0.1])
-	by mail.ausil.us (Postfix) with ESMTP id 67E9E15803B
-	for <linux-ext4@vger.kernel.org>; Sat,  5 May 2007 13:21:08 +0000 (UTC)
-Received: from mail.ausil.us ([127.0.0.1])
-	by localhost (anubis.ausil.us [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id yxqs2nlb2sfD for <linux-ext4@vger.kernel.org>;
-	Sat,  5 May 2007 06:21:06 -0700 (PDT)
-Received: from bratac.ausil.us (74-135-67-221.dhcp.insightbb.com [74.135.67.221])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.ausil.us (Postfix) with ESMTP id 8ED35158031
-	for <linux-ext4@vger.kernel.org>; Sat,  5 May 2007 06:21:06 -0700 (PDT)
+Received: from ug-out-1314.google.com ([66.249.92.169]:54492 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934180AbXEESEw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 May 2007 14:04:52 -0400
+Received: by ug-out-1314.google.com with SMTP id 44so841617uga
+        for <linux-ext4@vger.kernel.org>; Sat, 05 May 2007 11:04:50 -0700 (PDT)
+In-Reply-To: <6bffcb0e0705050625m6bb05dc0ne0864ec2dba19256@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---nextPart3934245.N5Bl8ZHKCe
-Content-Type: multipart/mixed;
-  boundary="Boundary-01=_ALJPGy2hbPT0+jl"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Hi,
 
---Boundary-01=_ALJPGy2hbPT0+jl
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Michal Piotrowski napisa=B3(a):
+> On 04/05/07, Andrew Morton <akpm@linux-foundation.org> wrote:
+>> On Fri, 04 May 2007 18:20:51 +0200 Michal Piotrowski
+>> <michal.k.k.piotrowski@gmail.com> wrote:
+>>
+>> > I ran this script tree times,
+>> >
+>> > #! /bin/sh
+>> >
+>> > for i in `find /sys/ -type f`
+>> > do
+>> >     echo "wy=B6wietlam $i"
+>> >     sudo cat $i > /dev/null
+>> > done
+>> >
+>> > First run - scheduler bug
+>> > Second run - NOHZ bug
+>> > Third - VFS bug
+>> >
+>> > Hmmmm...
+>> >
+>> > [93298.252601] BUG: at /mnt/md0/devel/linux-git/kernel/sched.c:324=
+1
+>> add_preempt_count()
+>> > [93298.260334]  [<c0105039>] show_trace_log_lvl+0x1a/0x2f
+>> > [93298.265507]  [<c0105720>] show_trace+0x12/0x14
+>> > [93298.269974]  [<c01057d2>] dump_stack+0x16/0x18
+>> > [93298.274434]  [<c011d18a>] add_preempt_count+0x89/0x8b
+>> > [93298.279501]  [<c0126492>] irq_enter+0xd/0x2e
+>> > [93298.283788]  [<c0114c1e>] smp_apic_timer_interrupt+0x2a/0x84
+>> > [93298.289458]  [<c0104b2b>] apic_timer_interrupt+0x33/0x38
+>> > [93298.294783]  [<c0257b79>] show_uevent+0x58/0xcd
+>> > [93298.299329]  =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D
+>> > [93390.468056] NOHZ: local_softirq_pending 22
+>> > [93447.105850] NOHZ: local_softirq_pending 22
+>> > [93450.332884] BUG: unable to handle kernel paging request at
+>> virtual address 3e343c0c
+>> > [93450.340626]  printing eip:
+>> > [93450.343333] c018e2bc
+>> > [93450.345520] *pde =3D 00000000
+>> > [93450.348314] Oops: 0000 [#1]
+>>
+>> Nice.  What was the last file which it read before crashing?
+>>
+>> Are you able to consistently crash it by reading just that file?
+>=20
+> Random files, random bugs (usually it starts with a slab corruption).
+>=20
+> git-bisect will give an answer.
 
-for multilib archs default CFLAGS may be inappropriate  and reslut in binar=
-ies=20
-unable to be linked.  since e2fsprogs uses gcc for linking I noticed this=20
-while building for sparc64.  patch has been tested and applied in Aurora=20
-SPARC Linux.=20
+So this is a random bug generator...
 
-Please CC me on responses.
+git-bisect bad
+16574dccd8f62dc1b585325f8a6a0aab10047ed8 is first bad commit
+commit 16574dccd8f62dc1b585325f8a6a0aab10047ed8
+Author: Kay Sievers <kay.sievers@vrfy.org>
+Date:   Fri Apr 6 01:40:38 2007 +0200
 
-Dennis
+    Driver core: make uevent-environment available in uevent-file
 
---Boundary-01=_ALJPGy2hbPT0+jl
-Content-Type: text/x-diff;
-  charset="utf-8";
-  name="e2fsprogs-1.39-useCFLAGSwithCC.patch"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment;
-	filename="e2fsprogs-1.39-useCFLAGSwithCC.patch"
+    This allows sysfs to show the environment variables that are availa=
+ble
+    if the uevent happens.  This lets userspace not have to cache all o=
+f
+    this information as the kernel already knows it.
 
-=2D-- e2fsprogs-1.39/configure.BAD	2006-07-11 20:21:08.000000000 -0400
-+++ e2fsprogs-1.39/configure	2006-07-11 20:21:17.000000000 -0400
-@@ -14645,7 +14645,7 @@
-=20
- if test $cross_compiling =3D no; then
-    BUILD_CFLAGS=3D"$CFLAGS"
-=2D   BUILD_LDFLAGS=3D"$LDFLAGS"
-+   BUILD_LDFLAGS=3D"$CFLAGS $LDFLAGS"
- else
-    BUILD_CFLAGS=3D
-    BUILD_LDFLAGS=3D
-=2D-- e2fsprogs-1.39/configure.in.BAD	2006-07-11 20:27:02.000000000 -0400
-+++ e2fsprogs-1.39/configure.in	2006-07-11 20:27:09.000000000 -0400
-@@ -830,7 +830,7 @@
- dnl
- if test $cross_compiling =3D no; then
-    BUILD_CFLAGS=3D"$CFLAGS"
-=2D   BUILD_LDFLAGS=3D"$LDFLAGS"
-+   BUILD_LDFLAGS=3D"$CFLAGS $LDFLAGS"
- else
-    BUILD_CFLAGS=3D
-    BUILD_LDFLAGS=3D
-=2D-- e2fsprogs-1.39/lib/Makefile.elf-lib.BAD	2006-07-12 10:43:02.000000000=
- -0400
-+++ e2fsprogs-1.39/lib/Makefile.elf-lib	2006-07-12 10:43:12.000000000 -0400
-@@ -24,7 +24,7 @@
-=20
- $(ELF_LIB): $(OBJS)
- 	@echo "	GEN_ELF_SOLIB $(ELF_LIB)"
-=2D	@(cd elfshared; $(CC) --shared -o $(ELF_LIB) $(LDFLAGS) \
-+	@(cd elfshared; $(CC) $(CFLAGS) --shared -o $(ELF_LIB) $(LDFLAGS) \
- 		-Wl,-soname,$(ELF_SONAME) $(OBJS) $(ELF_OTHER_LIBS))
- 	@$(MV) elfshared/$(ELF_LIB) .
- 	@$(RM) -f ../$(ELF_LIB) ../$(ELF_IMAGE).so ../$(ELF_SONAME)
-=2D-- e2fsprogs-1.39/MCONFIG.in.BAD	2006-07-12 12:10:33.000000000 -0400
-+++ e2fsprogs-1.39/MCONFIG.in	2006-07-12 12:10:42.000000000 -0400
-@@ -40,7 +40,7 @@
- ALL_CFLAGS =3D $(CPPFLAGS) $(DEFS) $(USE_WFLAGS) $(CFLAGS) $(XTRA_CFLAGS) \
- 	$(INTL_FLAGS) $(LINUX_INCLUDE)=20
- LDFLAGS =3D @LDFLAGS@
-=2DALL_LDFLAGS =3D $(LDFLAGS)
-+ALL_LDFLAGS =3D $(LDFLAGS) $(CFLAGS)
- BUILD_CFLAGS =3D @BUILD_CFLAGS@
- BUILD_LDFLAGS =3D @BUILD_LDFLAGS@
- RM =3D @RM@
-=2D-- e2fsprogs-1.39/lib/ext2fs/Makefile.in.BAD	2006-07-12 12:41:09.0000000=
-00 -0400
-+++ e2fsprogs-1.39/lib/ext2fs/Makefile.in	2006-07-12 12:44:14.000000000 -04=
-00
-@@ -189,17 +189,17 @@
- 	@echo "	LD $@"
- 	@$(CC) -o tst_badblocks tst_badblocks.o freefs.o \
- 		read_bb_file.o write_bb_file.o badblocks.o \
-=2D		inline.o bitops.o gen_bitmap.o $(LIBCOM_ERR)
-+		inline.o bitops.o gen_bitmap.o $(ALL_CFLAGS) $(LIBCOM_ERR)
-=20
- tst_iscan: tst_iscan.o inode.o badblocks.o test_io.o $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
- 	@$(CC) -o tst_iscan tst_iscan.o inode.o badblocks.o test_io.o \
-=2D		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-+		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-=20
- tst_getsize: tst_getsize.o getsize.o $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
-=2D	@$(CC) -o tst_getsize tst_getsize.o getsize.o $(STATIC_LIBEXT2FS) \
-=2D		$(LIBCOM_ERR)
-+	@$(CC) -o tst_getsize tst_getsize.o getsize.o $(ALL_CFLAGS) \
-+		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-=20
- tst_ismounted: $(srcdir)/ismounted.c $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
-@@ -207,8 +207,8 @@
-=20
- tst_byteswap: tst_byteswap.o bitops.o $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
-=2D	@$(CC) -o tst_byteswap tst_byteswap.o bitops.o $(STATIC_LIBEXT2FS) \
-=2D		$(LIBCOM_ERR)
-+	@$(CC) -o tst_byteswap tst_byteswap.o bitops.o $(ALL_CFLAGS) \
-+		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-=20
- tst_bitops: tst_bitops.o inline.o $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
-@@ -218,11 +218,11 @@
- tst_getsectsize: tst_getsectsize.o getsectsize.o $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
- 	@$(CC) -o tst_sectgetsize tst_getsectsize.o getsectsize.o \
-=2D		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-+		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
-=20
- tst_types: tst_types.o ext2_types.h=20
- 	@echo "	LD $@"
-=2D	@$(CC) -o tst_types tst_types.o=20
-+	@$(CC) -o tst_types tst_types.o $(ALL_CFLAGS)=20
-=20
- mkjournal: mkjournal.c $(STATIC_LIBEXT2FS)
- 	@echo "	LD $@"
-=2D-- e2fsprogs-1.39/lib/blkid/Makefile.in.BAD	2006-07-12 14:03:13.00000000=
-0 -0400
-+++ e2fsprogs-1.39/lib/blkid/Makefile.in	2006-07-12 14:04:31.000000000 -0400
-@@ -114,7 +114,7 @@
-=20
- tst_types: tst_types.o blkid_types.h=20
- 	@echo "	LD $@"
-=2D	@$(CC) -o tst_types tst_types.o=20
-+	@$(CC) -o tst_types tst_types.o $(ALL_CFLAGS)
-=20
- ../../misc/blkid.o: $(top_srcdir)/misc/blkid.c blkid.h
- 	@echo "	CC $@"
-@@ -123,7 +123,7 @@
-=20
- blkid: ../../misc/blkid.o libblkid.a $(DEPLIBUUID)
- 	@echo "	LD $@"
-=2D	@$(CC) -o blkid ../../misc/blkid.o libblkid.a $(LIBUUID)
-+	@$(CC) -o blkid ../../misc/blkid.o libblkid.a $(LIBUUID) $(ALL_CFLAGS)
-=20
- test_probe: test_probe.in Makefile
- 	@echo "Creating test_probe..."
+    Signed-off-by: Kay Sievers <kay.sievers@vrfy.org>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
---Boundary-01=_ALJPGy2hbPT0+jl--
+:040000 040000 34152258985968083c04ab003ced54d73e92a790 c3301e8cd7705c2=
+93817c6747b3cc59d6cbf14bb M      drivers
 
---nextPart3934245.N5Bl8ZHKCe
-Content-Type: application/pgp-signature
+http://www.stardust.webpages.pl/files/tbf/bitis-gabonica/2.6.21-git4/gi=
+t-config
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (GNU/Linux)
+Regards,
+Michal
 
-iD8DBQBGPJLAkSxm47BaWfcRApnmAKCwr2vKbGLobPbiD6R4V55PZRjGygCcCjmK
-jwR0jF4aGBXdkbPeaEr8x2o=
-=PfC8
------END PGP SIGNATURE-----
-
---nextPart3934245.N5Bl8ZHKCe--
+--=20
+Michal K. K. Piotrowski
+Kernel Monkeys
+(http://kernel.wikidot.com/start)
