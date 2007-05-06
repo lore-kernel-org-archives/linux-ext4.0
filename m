@@ -1,37 +1,42 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
-Date: Sat, 5 May 2007 23:17:59 -0600
-Message-ID: <20070506051759.GP6220@schatzie.adilger.int>
-References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: PATCH: use CFLAGS when linking always
+Date: Sun, 6 May 2007 09:54:31 -0400
+Message-ID: <20070506135431.GA4004@thunk.org>
+References: <200705050920.56558.dennis@ausil.us> <20070505192647.GC21049@thunk.org> <200705052206.08371.dennis@ausil.us>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Dennis Gilmore <dennis@ausil.us>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:35647 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754597AbXEFFSD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 May 2007 01:18:03 -0400
+Received: from thunk.org ([69.25.196.29]:34285 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754736AbXEFNyi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 May 2007 09:54:38 -0400
 Content-Disposition: inline
-In-Reply-To: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <200705052206.08371.dennis@ausil.us>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 04, 2007  14:43 +0530, Aneesh Kumar K.V wrote:
-> Changes from from my previous patches are as follows:
-> a) support for files with holes
-> b) use the block iterator present in libext2fs
-> c) don't mark  the indirect blocks as unused early. If we mark the
->    the blocks unused, they can be resued for extent index. If we later
->    fail to migrate, the indirect blocks content would be overwritten.
+On Sat, May 05, 2007 at 10:06:01PM -0500, Dennis Gilmore wrote:
+> Once upon a time Saturday 05 May 2007, Theodore Tso wrote:
+> > On Sat, May 05, 2007 at 09:20:47AM -0500, Dennis Gilmore wrote:
+> > > for multilib archs default CFLAGS may be inappropriate  and reslut in
+> > > binaries unable to be linked.  since e2fsprogs uses gcc for linking I
+> > > noticed this while building for sparc64.  patch has been tested and
+> > > applied in Aurora SPARC Linux.
+> >
+> > What options do you need, and why don't you just specify them via:
+> >
+> > configure --with-ldopts="--foo-ld-flag"
+> >
+> > 					- Ted
+> 
+> defaults on sparc64  result in 64 bit objects  but gcc trying to create a 32 
+> bit binary.  as a result the build blows up horribly.  the patch ensures that 
+> CFLAGS is used in linking.  since gcc is used to link it is needed.
+> 
 
-If this code could also (or optionally just) increase the size of inodes
-it would be very useful.  AFAIK right now it will only change the inodes
-from block-mapped to extent-mapped?
+What CFLAGS are you passing to configure, exactly?  And why can't you
+also pass them to configure via --with-ldopts?
 
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+						- Ted
