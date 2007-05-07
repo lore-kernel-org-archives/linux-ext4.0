@@ -1,51 +1,63 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: JBD: ext2online wants too many credits (744 > 256)
-Date: Mon, 7 May 2007 11:51:44 -0700
-Message-ID: <20070507185144.GC6031@schatzie.adilger.int>
-References: <20070506222626.GA25632@janus> <20070506214014.8b7451ba.akpm@linux-foundation.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
+Date: Mon, 07 May 2007 14:52:45 -0500
+Message-ID: <463F838D.9030508@redhat.com>
+References: <463F545A.10903@redhat.com> <20070507194749.GG17180@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754837AbXEGTtn@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070506214014.8b7451ba.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:56112 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754757AbXEGTzB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 May 2007 15:55:01 -0400
+In-Reply-To: <20070507194749.GG17180@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 06, 2007  21:40 -0700, Andrew Morton wrote:
-> On Mon, 7 May 2007 00:26:26 +0200 Frank van Maarseveen <frankvm@frankvm.com> wrote:
+Theodore Tso wrote:
+> On Mon, May 07, 2007 at 11:31:22AM -0500, Eric Sandeen wrote: One of
+>> our testers filed a bug that said "mkfs.ext3 is much slower when
+>> mke2fs.conf is missing..."
+>>
+>> This is because the shipped defaults in mke2fs.conf do not match the
+>> shipped defaults in the mkfs code itself; he wound up making a 1k
+>> block filesystem on a very large block device, for example.
+>>
+>> So - How about this patch, to bring them back into line?  
 > 
-> > 2.6.20.6, FC4:
-> > 
-> > I created a 91248k ext3 fs with 4k blocksize:
-> > 
-> > Next, I tried to resize it to about 3G using ext2online while mounted:
-> > 
-> > At that time the kernel said:
-> > 
-> > |JBD: ext2online wants too many credits (744 > 256)
-> > 
-> > What is the limitation I should be aware of? Has it something to do with
-> > the journal log size?
+> It doesn't actually bring them completely back into line, since mke2fs
+> will use different block sizes depending on the size of the
+> filesystem.  So your patch makes the default probably a bit more
+> reasonable, and so I'll probably end up applying it, but it definitely
+> isn't a complete replacement for /etc/mke2fs.conf.
 
-Yes, for very small filesystems the default journal size is only 4MB, and
-the maximum transaction size is 1MB (256 blocks).
+Well, sure, I don't mean for it to *replace* mke2fs.conf...
 
-If the filesystem was 128MB or larger in the initial mke2fs then the
-journal would be 16MB and the resize would get up to 1024 blocks for
-the transaction.
+Hm, does having
 
-I'm not sure what the right solution is for this.  If you know you will
-be resizing the fs you could increase the initial journal size at mke2fs
-time (-J size=16).  Alternately, it is possible resize to an intermediate
-size and then delete and recreate the journal via tune2fs (which would
-be the larger size by default) but that can only be done offline.  
+[defaults]
+        blocksize = 4096
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+in mke2fs.conf turn off the blocksize heuristics and force 4k?  is
+what's in mke2fs.conf a starting point or an absolute?  I guess I need
+to read up on the code...
+
+> How likely do you think the case will be that mke2fs.conf would be
+> missing?  I'm trying to figure out how high priority of an item this
+> really is.
+
+Well, not too likely, although for some reason I guess it happened in
+the installer root in FC6 or so.  That's what raised the issue.
+
+> We could enhance the profile code so that it could read in the profile
+> from a memory buffer, and simply compile /etc/mke2fs.conf into mke2fs,
+> but that adds bloat --- the question is how necessary do we think that
+> really is?
+
+I guess it doesn't really sound *necessary* - it's just that if we have
+2 different "defaults" and they drift, it can be confusing...
+
+-Eric
