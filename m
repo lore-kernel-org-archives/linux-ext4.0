@@ -1,49 +1,79 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
-Date: Mon, 07 May 2007 08:56:11 +0530
-Message-ID: <463E9C53.8000503@linux.vnet.ibm.com>
-References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: JBD: ext2online wants too many credits (744 > 256)
+Date: Sun, 6 May 2007 21:40:14 -0700
+Message-ID: <20070506214014.8b7451ba.akpm@linux-foundation.org>
+References: <20070506222626.GA25632@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+Cc: linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:64324 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907AbXEGD0S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 May 2007 23:26:18 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l473jnMA297356
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:45:51 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l473TjGe171636
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:29:45 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l473QE9e026721
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:26:14 +1000
-In-Reply-To: <20070506051759.GP6220@schatzie.adilger.int>
+Received: from smtp1.linux-foundation.org ([65.172.181.25]:56395 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753903AbXEGEkV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 00:40:21 -0400
+In-Reply-To: <20070506222626.GA25632@janus>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Mon, 7 May 2007 00:26:26 +0200 Frank van Maarseveen <frankvm@frankvm.com> wrote:
 
-
-Andreas Dilger wrote:
-> On May 04, 2007  14:43 +0530, Aneesh Kumar K.V wrote:
->> Changes from from my previous patches are as follows:
->> a) support for files with holes
->> b) use the block iterator present in libext2fs
->> c) don't mark  the indirect blocks as unused early. If we mark the
->>    the blocks unused, they can be resued for extent index. If we later
->>    fail to migrate, the indirect blocks content would be overwritten.
+> 2.6.20.6, FC4:
 > 
-> If this code could also (or optionally just) increase the size of inodes
-> it would be very useful.  AFAIK right now it will only change the inodes
-> from block-mapped to extent-mapped?
+> I created a 91248k ext3 fs with 4k blocksize:
+> 
+> | mke2fs -j -b 4096 /dev/vol1/project 
+> | mke2fs 1.38 (30-Jun-2005)
+> | Filesystem label=
+> | OS type: Linux
+> | Block size=4096 (log=2)
+> | Fragment size=4096 (log=2)
+> | 23552 inodes, 23552 blocks
+> | 1177 blocks (5.00%) reserved for the super user
+> | First data block=0
+> | Maximum filesystem blocks=25165824
+> | 1 block group
+> | 32768 blocks per group, 32768 fragments per group
+> | 23552 inodes per group
+> 
+> Writing inode tables: done                            
+> Creating journal (1024 blocks): done
+> Writing superblocks and filesystem accounting information: done
+> 
+> Next, I tried to resize it to about 3G using ext2online while mounted:
+> 
+> | # ext2online /dev/vol1/project 
+> | ext2online v1.1.18 - 2001/03/18 for EXT2FS 0.5b
+> | ext2online: ext2_ioctl: No space left on device
+> |
+> | ext2online: unable to resize /dev/mapper/vol1-project
+> 
+> At that time the kernel said:
+> 
+> |JBD: ext2online wants too many credits (744 > 256)
+> 
+> What is the limitation I should be aware of? Has it something to do with
+> the journal log size?
+> 
+> The size actually did increase a bit, to 128112k.
 > 
 > 
+> Steps to reproduce:
+> Create a 3G partition, say /dev/vol1/project
+> mke2fs -j -b 4096 /dev/vol1/project 22812
+> mount it
+> ext2online /dev/vol1/project said:
+> 
+> | ext2online v1.1.18 - 2001/03/18 for EXT2FS 0.5b
+> | ext2online: ext2_ioctl: No space left on device
+> | 
+> | ext2online: unable to resize /dev/mapper/vol1-project
+> 
+> kernel said:
+> 
+> | JBD: ext2online wants too many credits (721 > 256)
+> 
 
-That is correct. My next step is to enhance the tool to support 
-migration to large inodes.
-
--aneesh
+(added linux-ext4 to cc)
