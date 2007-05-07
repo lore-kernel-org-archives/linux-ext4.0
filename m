@@ -1,49 +1,35 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
-Date: Mon, 7 May 2007 14:27:00 -0700
-Message-ID: <20070507212700.GF8181@schatzie.adilger.int>
-References: <463F545A.10903@redhat.com> <20070507194749.GG17180@thunk.org> <463F838D.9030508@redhat.com>
+Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
+Date: Mon, 7 May 2007 15:21:04 -0700
+Message-ID: <20070507222103.GJ8181@schatzie.adilger.int>
+References: <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426181332.GD7209@amitarora.in.ibm.com> <20070503213133.d1559f52.akpm@linux-foundation.org> <20070507113753.GA5439@schatzie.adilger.int> <20070507135825.f8545a65.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:45228 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966337AbXEGV1F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 17:27:05 -0400
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <463F838D.9030508@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070507135825.f8545a65.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 07, 2007  14:52 -0500, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > How likely do you think the case will be that mke2fs.conf would be
-> > missing?  I'm trying to figure out how high priority of an item this
-> > really is.
-> 
-> Well, not too likely, although for some reason I guess it happened in
-> the installer root in FC6 or so.  That's what raised the issue.
+On May 07, 2007  13:58 -0700, Andrew Morton wrote:
+> Final point: it's fairly disappointing that the present implementation is
+> ext4-only, and extent-only.  I do think we should be aiming at an ext4
+> bitmap-based implementation and an ext3 implementation.
 
-Ah, good point - there are probably lots of installers and rescue disks
-that grab mke2fs but don't know anything about /etc/mke2fs.conf.
-
-> > We could enhance the profile code so that it could read in the profile
-> > from a memory buffer, and simply compile /etc/mke2fs.conf into mke2fs,
-> > but that adds bloat --- the question is how necessary do we think that
-> > really is?
-> 
-> I guess it doesn't really sound *necessary* - it's just that if we have
-> 2 different "defaults" and they drift, it can be confusing...
-
-Since the shipped mke2fs.conf is only on the order of a few hundred bytes
-I don't think it is a huge issue to include it.  I like the idea of it
-being compiled into the code and yet consistent with the default install.
+Actually, this is a non-issue.  The reason that it is handled for extent-only
+is that this is the only way to allocate space in the filesystem without
+doing the explicit zeroing.  For other filesystems (including ext3 and
+ext4 with block-mapped files) the filesystem should return an error (e.g.
+-EOPNOTSUPP) and glibc will do manual zero-filling of the file in userspace.
 
 Cheers, Andreas
 --
 Andreas Dilger
 Principal Software Engineer
 Cluster File Systems, Inc.
+
