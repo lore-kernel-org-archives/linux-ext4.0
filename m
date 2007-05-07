@@ -1,52 +1,62 @@
-From: Ulrich Drepper <drepper@redhat.com>
-Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Mon, 07 May 2007 06:08:43 -0700
-Message-ID: <463F24DB.5040406@redhat.com>
-References: <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070503212955.b1b6443c.akpm@linux-foundation.org> <20070504060731.GJ32602149@melbourne.sgi.com> <20070503232815.2f62a75e.akpm@linux-foundation.org> <20070504065626.GW355@devserv.devel.redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
+Date: Mon, 7 May 2007 09:20:01 -0400
+Message-ID: <20070507132001.GB17180@thunk.org>
+References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int> <463E9C53.8000503@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	David Chinner <dgc@sgi.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Jakub Jelinek <jakub@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44075 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:45970 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933771AbXEGNJL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 09:09:11 -0400
-In-Reply-To: <20070504065626.GW355@devserv.devel.redhat.com>
+	id S933781AbXEGNUL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 May 2007 09:20:11 -0400
+Content-Disposition: inline
+In-Reply-To: <463E9C53.8000503@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jakub Jelinek wrote:
-> is what glibc does ATM.  Seems we violate the case where len =3D=3D 0=
-, as
-> EINVAL in that case is "shall fail".  But reading the standard to imp=
-ly
-> negative len is ok is too much guessing, there is no word what it mea=
-ns
-> when len is negative and
-> "required storage for regular file data starting at offset and contin=
-uing for len bytes"
-> doesn't make sense for negative size. =20
+On Mon, May 07, 2007 at 08:56:11AM +0530, Aneesh Kumar K.V wrote:
+> Andreas Dilger wrote:
+> >If this code could also (or optionally just) increase the size of inodes
+> >it would be very useful.  AFAIK right now it will only change the inodes
+> >from block-mapped to extent-mapped?
 
-This wording has already been cleaned up.  The current draft for the=20
-next revision reads:
+Actually, changing the inode size is actually going to be more useful
+to a larger number of people, since they can use it today to support
+in-inode EA's.  In addition, changing the inode size must be done
+off-line, whereas it's not so clear that off-line conversion to
+extents is the best way to go (more on that below).
 
+One generic concern I have about simply migrating existing files to
+use extents is that unless we actually also combine the tool with
+defragmentation support, the file ends up being fairly badly
+fragmented simply because of the "holes" left in the file from the
+indirect blocks.  Therefore the tree ends up being far larger than it
+needs to be, and future attempts allocate blocks in that block group
+will fill in the holes, further degrading the performance of the
+filesystem and whatever file is being written at the time.
 
-[EINVAL] The len argument is less than or equal to zero, or the offset
-  argument is less than zero, or the underlying file system does not
-  support this operation.
+The other reason why increasing the inode size would actually be more
+valuable is that right now, if we have the disk space, the user can do
+on-line migration of a file simply by copying it and then moving it
+over the original file --- and if we have delayed allocation support
+and sufficient memory, we can avoid the fragmentation problems
+currently with the off-line ext4migration approach.
 
+So we may need to think a bit about what's the best way to handle
+ext4migrate.  It may be that correct approach is to combine it with a
+defragmentation tool, either on-line or off-line.  
 
-I still don't like it since len=3D=3D0 shouldn't create an error (it's=20
-inconsistent) but len<0 is already outlawed.
+> That is correct. My next step is to enhance the tool to support 
+> migration to large inodes.
 
---=20
-=E2=9E=A7 Ulrich Drepper =E2=9E=A7 Red Hat, Inc. =E2=9E=A7 444 Castro S=
-t =E2=9E=A7 Mountain View, CA =E2=9D=96
+I would actually suggest that the place to add that functionality
+would be via "tune2fs -I <inode_size>".  Since mke2fs -I <inode_size>
+is used to set the inode size, it makes sense that tune2fs -I would
+change the inode size.  Obviously this would have to be done when the
+filesystem is not mounted, and tune2fs should abort gracefully if
+determines that the filesystem is mounted.
+
+						- Ted
