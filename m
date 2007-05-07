@@ -1,41 +1,46 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: JBD: ext2online wants too many credits (744 > 256)
-Date: Mon, 7 May 2007 14:06:07 -0700
-Message-ID: <20070507210607.GC8181@schatzie.adilger.int>
-References: <20070506222626.GA25632@janus> <20070507142736.GC17180@thunk.org> <Pine.LNX.4.64.0705070744350.18013@asgard.lang.hm> <20070507155021.GD17180@thunk.org>
+Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
+Date: Mon, 7 May 2007 14:27:00 -0700
+Message-ID: <20070507212700.GF8181@schatzie.adilger.int>
+References: <463F545A.10903@redhat.com> <20070507194749.GG17180@thunk.org> <463F838D.9030508@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, david@lang.hm,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S966952AbXEGVGW@vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:45228 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966337AbXEGV1F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 17:27:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20070507155021.GD17180@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <463F838D.9030508@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 07, 2007  11:50 -0400, Theodore Tso wrote:
-> On Mon, May 07, 2007 at 07:46:38AM -0700, david@lang.hm wrote:
-> > On Mon, 7 May 2007, Theodore Tso wrote:
-> > >We're going to have to rethink the defaults of the journal size as it
-> > >relates to on-line resizing, but there might not be a lot of great
-> > >answers here.  We'll also have to look at the on-line resizing code
-> > >and see if there's a way to break up the resize operation into smaller
-> > >transactions as a way of avoiding this problem --- but that would
-> > >still leave the user stuck with a pathetically small 4M journal on a
-> > >3G filesystem.
+On May 07, 2007  14:52 -0500, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > How likely do you think the case will be that mke2fs.conf would be
+> > missing?  I'm trying to figure out how high priority of an item this
+> > really is.
 > 
-> Clearly the right thing for resize2fs to do when it's doing an
-> off-line resize is to just adjust the journal inode and make it
-> bigger.  I'll add that to my todo list, but of course, patches to do
-> that would be gratefully accepted...
+> Well, not too likely, although for some reason I guess it happened in
+> the installer root in FC6 or so.  That's what raised the issue.
 
-For that matter, there was a paper from U. Wisconsin showing that
-having the journal in the middle of the filesystem gave noticably
-better performance due to lower average seek times.  If anyone is
-looking at messing with the journal that is probably also a good
-and easy place to start (e.g. may be as easy as just giving a goal
-block of s_blocks_count / 2 to the journal create code).
+Ah, good point - there are probably lots of installers and rescue disks
+that grab mke2fs but don't know anything about /etc/mke2fs.conf.
+
+> > We could enhance the profile code so that it could read in the profile
+> > from a memory buffer, and simply compile /etc/mke2fs.conf into mke2fs,
+> > but that adds bloat --- the question is how necessary do we think that
+> > really is?
+> 
+> I guess it doesn't really sound *necessary* - it's just that if we have
+> 2 different "defaults" and they drift, it can be confusing...
+
+Since the shipped mke2fs.conf is only on the order of a few hundred bytes
+I don't think it is a huge issue to include it.  I like the idea of it
+being compiled into the code and yet consistent with the default install.
 
 Cheers, Andreas
 --
