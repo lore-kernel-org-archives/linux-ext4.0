@@ -1,94 +1,45 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
-Date: Mon, 7 May 2007 13:58:25 -0700
-Message-ID: <20070507135825.f8545a65.akpm@linux-foundation.org>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org>
-	<20070330071417.GI355@devserv.devel.redhat.com>
-	<20070417125514.GA7574@amitarora.in.ibm.com>
-	<20070418130600.GW5967@schatzie.adilger.int>
-	<20070420135146.GA21352@amitarora.in.ibm.com>
-	<20070420145918.GY355@devserv.devel.redhat.com>
-	<20070424121632.GA10136@amitarora.in.ibm.com>
-	<20070426175056.GA25321@amitarora.in.ibm.com>
-	<20070426181332.GD7209@amitarora.in.ibm.com>
-	<20070503213133.d1559f52.akpm@linux-foundation.org>
-	<20070507113753.GA5439@schatzie.adilger.int>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
+Date: Mon, 7 May 2007 14:01:15 -0700
+Message-ID: <20070507210115.GB8181@schatzie.adilger.int>
+References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int> <463E9C53.8000503@linux.vnet.ibm.com> <20070507132001.GB17180@thunk.org> <463F2DB7.6090507@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
-	cmm@us.ibm.com
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:33270 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S966635AbXEGU6n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 16:58:43 -0400
-In-Reply-To: <20070507113753.GA5439@schatzie.adilger.int>
+Received: from mail.clusterfs.com ([206.168.112.78]:46858 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966910AbXEGVBR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 17:01:17 -0400
+Content-Disposition: inline
+In-Reply-To: <463F2DB7.6090507@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 7 May 2007 05:37:54 -0600
-Andreas Dilger <adilger@clusterfs.com> wrote:
-
-> > > +	block = offset >> blkbits;
-> > > +	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
-> > > +			 - block;
-> > > +	mutex_lock(&EXT4_I(inode)->truncate_mutex);
-> > > +	credits = ext4_ext_calc_credits_for_insert(inode, NULL);
-> > > +	mutex_unlock(&EXT4_I(inode)->truncate_mutex);
-> > 
-> > Now I'm mystified.  Given that we're allocating an arbitrary amount of disk
-> > space, and that this disk space will require an arbitrary amount of
-> > metadata, how can we work out how much journal space we'll be needing
-> > without at least looking at `len'?
+On May 07, 2007  19:16 +0530, Aneesh Kumar K.V wrote:
+> Theodore Tso wrote:
+> >Actually, changing the inode size is actually going to be more useful
+> >to a larger number of people, since they can use it today to support
+> >in-inode EA's.  In addition, changing the inode size must be done
+> >off-line, whereas it's not so clear that off-line conversion to
+> >extents is the best way to go (more on that below).
 > 
-> Good question.
-> 
-> The uninitialized extent can cover up to 128MB with a single entry.
-> If @path isn't specified, then ext4_ext_calc_credits_for_insert()
-> function returns the maximum number of extents needed to insert a leaf,
-> including splitting all of the index blocks.  That would allow up to 43GB
-> (340 extents/block * 128MB) to be preallocated, but it still needs to take
-> the size of the preallocation into account (adding 3 blocks per 43GB - a
-> leaf block, a bitmap block and a group descriptor).
+> That way we don't need to add kernel code that convert ext3 inode to 
+> ext4 inode while defragmentation. Last time i looked at the online 
+> defrag code, i was not able to figure out a easy way to take indirect 
+> map inode as input, then defrag the same and write the result in extent 
+> map.
 
-I think the use of ext4_journal_extend() (as Amit has proposed) will help
-here, but it is not sufficient.
+I think the online defrag code _should_ be fairly easily made to handle
+defrag of block-mapped files, so long as it is always creating extent-
+mapped files in the end.  All that should be necessary is to have the
+kernel read data from the block-mapped file and write it into the newly
+mapped blocks.  That functionality needs to exist for a long time anyways
+to support upgrading the filesystem so it shouldn't be a huge burden.
 
-Because under some circumstances, a journal_extend() failure could mean
-that we fail to allocate all the required disk space.  If it is infrequent
-enough, that is acceptable when the caller is using fallocate() for
-performance reasons.
-
-But it is very much not acceptable if the caller is using fallocate() for
-space-reservation reasons.  If you used fallocate to reserve 1GB of disk
-and fallocate() "succeeded" and you later get ENOSPC then you'd have a
-right to get a bit upset.
-
-So I think the ext3/4 fallocate() implementation will need to be
-implemented as a loop: 
-
-	while (len) {
-		journal_start();
-		len -= do_fallocate(len, ...);
-		journal_stop();
-	}
-
-
-Now the interesting question is: what do we do if we get halfway through
-this loop and then run out of space?  We could leave the disk all filled up
-and then return failure to the caller, but that's pretty poor behaviour,
-IMO.
-
-
-
-Does the proposed implementation handle quotas correctly, btw?  Has that
-been tested?
-
-
-Final point: it's fairly disappointing that the present implementation is
-ext4-only, and extent-only.  I do think we should be aiming at an ext4
-bitmap-based implementation and an ext3 implementation.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
