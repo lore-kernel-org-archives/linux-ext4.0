@@ -1,61 +1,65 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: Creating a >32bit blocks filesystem.
-Date: Mon, 7 May 2007 11:19:52 -0500
-Message-ID: <20070507111952.7868bc1c@gara>
-References: <20070503140804.463b20e1@naruto>
-	<463B4A1B.4070201@bull.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
+Date: Mon, 07 May 2007 11:31:22 -0500
+Message-ID: <463F545A.10903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Valerie Clement <valerie.clement@bull.net>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:55861 "EHLO e3.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:38314 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965475AbXEGQTy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 12:19:54 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l47FIImO003367
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 11:18:18 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l47GJpof496574
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:51 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l47GJpM8024454
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:51 -0400
-Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l47GJolK024444
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:50 -0400
-In-Reply-To: <463B4A1B.4070201@bull.net>
+	id S965861AbXEGQdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 May 2007 12:33:36 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l47GXaI8029170
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:33:36 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l47GXaQV019429
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:33:36 -0400
+Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l47GXXNN015182
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:33:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 04 May 2007 16:58:35 +0200
-Valerie Clement <valerie.clement@bull.net> wrote:
-> Hi Jose,
-> I began to port our modifications done for the 64-bit support against 
-> the new version of e2fsprogs Ted posted at the beginning of the week.
-> Note that it is *just* for test use as it breaks the backwards 
-> compatibility.
-> I did a few tests with a kernel 2.6.17-rc7 and it seems to work, at 
-> least mkfs, debugfs and fsck tools.
+One of our testers filed a bug that said "mkfs.ext3 is much slower when mke2fs.conf is missing..."
 
-Hi Valerie,
+This is because the shipped defaults in mke2fs.conf do not match the shipped defaults in the
+mkfs code itself; he wound up making a 1k block filesystem on a very large block device,
+for example.
 
-I tried the patches and while the tools such as mkfs and debugfs seem
-to work fine, I am still unable to mount a filesystem with block
-numbers exceeding 32 bits.  I am testing on a 2.6.21.1 kernel with the
-ext4 patches from:
+So - How about this patch, to bring them back into line?  Which makes me wonder; having
+"defaults" in 2 different places is bound to get out of sync; should we instead generate
+both code & config file defaults (and maybe man page defaults) from a common source?
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.21-ext4-1
+Anyway, here's a patch to bring mke2fs.conf and mke2fs.c into line for current defaults...
 
-The following error shows up on the kernel log:
+Thanks,
+-Eric
 
-[12145.598822] EXT4-fs error (device dm-2): ext4_check_descriptors: Block bitmap for group 0 not in group (block 18446744069414584320)!
-[12145.670781] EXT4-fs: group descriptors corrupted!
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-So its failing very early in ext4_check_descriptors().  The hi 32 bits of block_bitmap for the first group seem to be set all to 1s.
-
-Thanks
-
--JRS
+Index: e2fsprogs-hg/misc/mke2fs.c
+===================================================================
+--- e2fsprogs-hg.orig/misc/mke2fs.c
++++ e2fsprogs-hg/misc/mke2fs.c
+@@ -1288,7 +1288,8 @@ static void PRS(int argc, char *argv[])
+ 	tmp = tmp2 = NULL;
+ 	if (fs_param.s_rev_level != EXT2_GOOD_OLD_REV) {
+ 		profile_get_string(profile, "defaults", "base_features", 0,
+-				   "filetype,sparse_super", &tmp);
++				   "sparse_super,filetype,resize_inode,dir_index",
++				   &tmp);
+ 		profile_get_string(profile, "fs_types", fs_type, 
+ 				   "base_features", tmp, &tmp2);
+ 		edit_feature(tmp2, &fs_param.s_feature_compat);
+@@ -1365,7 +1366,7 @@ static void PRS(int argc, char *argv[])
+ 	
+ 	if (blocksize <= 0) {
+ 		profile_get_integer(profile, "defaults", "blocksize", 0,
+-				    1024, &use_bsize);
++				    4096, &use_bsize);
+ 		profile_get_integer(profile, "fs_types", fs_type, 
+ 				    "blocksize", use_bsize, &use_bsize);
+ 
