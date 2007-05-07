@@ -1,63 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
-Date: Mon, 07 May 2007 14:52:45 -0500
-Message-ID: <463F838D.9030508@redhat.com>
-References: <463F545A.10903@redhat.com> <20070507194749.GG17180@thunk.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: 2.6.21-ext4-1
+Date: Mon, 07 May 2007 13:56:23 -0700
+Message-ID: <1178571383.3933.8.camel@dyn9047017103.beaverton.ibm.com>
+References: <E1HiXab-0001QX-Sk@candygram.thunk.org>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	Johann Lombardi <johann.lombardi@bull.net>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	Dave Chinner <dgc@sgi.com>, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:56112 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754757AbXEGTzB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 15:55:01 -0400
-In-Reply-To: <20070507194749.GG17180@thunk.org>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:42817 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966590AbXEGU4j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 16:56:39 -0400
+In-Reply-To: <E1HiXab-0001QX-Sk@candygram.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Mon, May 07, 2007 at 11:31:22AM -0500, Eric Sandeen wrote: One of
->> our testers filed a bug that said "mkfs.ext3 is much slower when
->> mke2fs.conf is missing..."
->>
->> This is because the shipped defaults in mke2fs.conf do not match the
->> shipped defaults in the mkfs code itself; he wound up making a 1k
->> block filesystem on a very large block device, for example.
->>
->> So - How about this patch, to bring them back into line?  
+On Mon, 2007-04-30 at 11:14 -0400, Theodore Ts'o wrote:
+> I've respun the ext4 development patchset, with Amit's updated fallocate
+> patches.  I've added Dave's patch to add ia64 support to the fallocate
+> system call, but *not* the XFS fallocate support patches.  (Probably
+> better for them to live in an xfs tree, where they can more easily
+> tested and updated.)  Yes, we haven't reached complete closure on the
+> fallocate system call calling convention, but it's enough for us to get
+> more testing in -mm.
 > 
-> It doesn't actually bring them completely back into line, since mke2fs
-> will use different block sizes depending on the size of the
-> filesystem.  So your patch makes the default probably a bit more
-> reasonable, and so I'll probably end up applying it, but it definitely
-> isn't a complete replacement for /etc/mke2fs.conf.
+> Also added Johann's jbd2-stats-through-procfs patches; it provides
+> useful help in turning the size of the journal, which will be useful in
+> benchmarking efforts.  In addition, Alex Tomas's patch to free
+> just-allocated patches when there is an error inserting the extent into
+> the extent tree has also been included.
+> 
+> The patches have been compile-tested on x86, and compile/run-tested on
+> x86/UML.  Would appreciate reports about testing on other platforms.
+> 
+I have tested this patch series on ppc64, x86_64 with
+dbench/tiobench/fsx, all runs fine. 
 
-Well, sure, I don't mean for it to *replace* mke2fs.conf...
+I am not sure what level of testing Amit has done about the fallocate()
+and preallocation code on various archs. I couldn't find a available
+s390 and ia64 machines with free partition yet.
 
-Hm, does having
+In any case, it would be useful to add a new set of testsuites for the
+new fallocate() syscall and fsstress in LTP testsuites to automatically
+the preallocation code in ext4/XFS.
 
-[defaults]
-        blocksize = 4096
-
-in mke2fs.conf turn off the blocksize heuristics and force 4k?  is
-what's in mke2fs.conf a starting point or an absolute?  I guess I need
-to read up on the code...
-
-> How likely do you think the case will be that mke2fs.conf would be
-> missing?  I'm trying to figure out how high priority of an item this
-> really is.
-
-Well, not too likely, although for some reason I guess it happened in
-the installer root in FC6 or so.  That's what raised the issue.
-
-> We could enhance the profile code so that it could read in the profile
-> from a memory buffer, and simply compile /etc/mke2fs.conf into mke2fs,
-> but that adds bloat --- the question is how necessary do we think that
-> really is?
-
-I guess it doesn't really sound *necessary* - it's just that if we have
-2 different "defaults" and they drift, it can be confusing...
-
--Eric
+thanks,
+Mingming
+> Thanks,
+> 
+> 						- Ted
+> 
+> P.S.  One bug which I've noted --- if there is a failure due to disk
+> filling up, running e2fsck on the filesystem will show that the i_blocks
+> fields on the inodes where there was a failure to allocate disk blocks
+> are left incorrect.  I'm guessing this is a bug in the delayed
+> allocation patches.  Alex, when you have a moment, could you take a
+> look?  Thanks!!
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
