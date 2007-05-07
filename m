@@ -1,57 +1,70 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
-Date: Mon, 07 May 2007 19:16:31 +0530
-Message-ID: <463F2DB7.6090507@linux.vnet.ibm.com>
-References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int> <463E9C53.8000503@linux.vnet.ibm.com> <20070507132001.GB17180@thunk.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: JBD: ext2online wants too many credits (744 > 256)
+Date: Mon, 7 May 2007 15:53:10 +0200
+Message-ID: <20070507135309.GA32476@janus>
+References: <20070506222626.GA25632@janus> <20070506214014.8b7451ba.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:51092 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933974AbXEGNqj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 09:46:39 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l47E6BqK317724
-	for <linux-ext4@vger.kernel.org>; Tue, 8 May 2007 00:06:11 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.250.242])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l47Do6Jn165876
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 23:50:06 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l47DkY5D004471
-	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 23:46:34 +1000
-In-Reply-To: <20070507132001.GB17180@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934014AbXEGNxP@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070506214014.8b7451ba.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-
-Theodore Tso wrote:
-> On Mon, May 07, 2007 at 08:56:11AM +0530, Aneesh Kumar K.V wrote:
->> Andreas Dilger wrote:
->>> If this code could also (or optionally just) increase the size of inodes
->>> it would be very useful.  AFAIK right now it will only change the inodes
->> >from block-mapped to extent-mapped?
+On Sun, May 06, 2007 at 09:40:14PM -0700, Andrew Morton wrote:
+> On Mon, 7 May 2007 00:26:26 +0200 Frank van Maarseveen <frankvm@frankvm.com> wrote:
 > 
-> Actually, changing the inode size is actually going to be more useful
-> to a larger number of people, since they can use it today to support
-> in-inode EA's.  In addition, changing the inode size must be done
-> off-line, whereas it's not so clear that off-line conversion to
-> extents is the best way to go (more on that below).
-> 
+> > Steps to reproduce:
+> > Create a 3G partition, say /dev/vol1/project
+> > mke2fs -j -b 4096 /dev/vol1/project 22812
+> > mount it
+> > ext2online /dev/vol1/project said:
+> > 
+> > | ext2online v1.1.18 - 2001/03/18 for EXT2FS 0.5b
+> > | ext2online: ext2_ioctl: No space left on device
+> > | 
+> > | ext2online: unable to resize /dev/mapper/vol1-project
+> > 
+> > kernel said:
+> > 
+> > | JBD: ext2online wants too many credits (721 > 256)
 
+There's a threshold for the problem depending on the initial
+size. This one fails:
 
-One of the option i was thinking was to use this tool to migrate to 
-extent map and then towards the end use the online defrag ioctl to 
-defrag the resulting ext4 inode.
+	mke2fs -j -b 4096 /dev/<3GB-blockdev> 32768
+	(mount + ext2online or resize2fs)
+	kernel: JBD: resize2fs wants too many credits (1034 > 1024)
 
-That way we don't need to add kernel code that convert ext3 inode to 
-ext4 inode while defragmentation. Last time i looked at the online 
-defrag code, i was not able to figure out a easy way to take indirect 
-map inode as input, then defrag the same and write the result in extent 
-map.
+Add one block to the initial mke2fs (32768+1 == 32769) and the
+problem is gone.
 
+Without the -b 4096 there's another resize problem
 
--aneesh
+	mke2fs -j /dev/loop1 2048
+	mount /dev/loop1 /1
+	resize2fs /dev/loop1
+
+says:
+	resize2fs 1.40-WIP (14-Nov-2006)
+	Filesystem at /dev/loop1 is mounted on /1; on-line resizing required
+	old desc_blocks = 1, new_desc_blocks = 12
+	Performing an on-line resize of /dev/loop1 to 3072000 (1k) blocks.
+	resize2fs: Invalid argument While trying to add group #256
+
+and the kernel says:
+
+May  7 15:36:08 lokka EXT3-fs warning (device loop1): verify_reserved_gdb: 
+May  7 15:36:08 lokka reserved GDT 10 missing grp 1 (8202)
+May  7 15:36:08 lokka  
+
+After that, the filesystem has been resized to 2GB. I recall a 2G
+(?) limit for ext3 resizing with 1k blocksize but trying the above with
+4096 1k blocks seems to work. fsck says it's ok all the time.
+
+-- 
+Frank
