@@ -1,58 +1,98 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
-Date: Mon, 7 May 2007 15:47:49 -0400
-Message-ID: <20070507194749.GG17180@thunk.org>
-References: <463F545A.10903@redhat.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
+Date: Mon, 7 May 2007 05:37:54 -0600
+Message-ID: <20070507113753.GA5439@schatzie.adilger.int>
+References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426181332.GD7209@amitarora.in.ibm.com> <20070503213133.d1559f52.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:59703 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750925AbXEGTr4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 15:47:56 -0400
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <463F545A.10903@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070503213133.d1559f52.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2007 at 11:31:22AM -0500, Eric Sandeen wrote: One of
-> our testers filed a bug that said "mkfs.ext3 is much slower when
-> mke2fs.conf is missing..."
+On May 03, 2007  21:31 -0700, Andrew Morton wrote:
+> On Thu, 26 Apr 2007 23:43:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+> > + * ext4_fallocate:
+> > + * preallocate space for a file
+> > + * mode is for future use, e.g. for unallocating preallocated blocks etc.
+> > + */
 > 
-> This is because the shipped defaults in mke2fs.conf do not match the
-> shipped defaults in the mkfs code itself; he wound up making a 1k
-> block filesystem on a very large block device, for example.
+> This description is rather thin.  What is the filesystem's actual behaviour
+> here?  If the file is using extents then the implementation will do
+> <something>.  If the file is using bitmaps then we will do <something else>.
 > 
-> So - How about this patch, to bring them back into line?  
+> But what?   Here is where it should be described.
 
-It doesn't actually bring them completely back into line, since mke2fs
-will use different block sizes depending on the size of the
-filesystem.  So your patch makes the default probably a bit more
-reasonable, and so I'll probably end up applying it, but it definitely
-isn't a complete replacement for /etc/mke2fs.conf.
+My understanding is that glibc will handle zero-filling of files for
+filesystems that do not support fallocate().
 
-How likely do you think the case will be that mke2fs.conf would be
-missing?  I'm trying to figure out how high priority of an item this
-really is.
+> > +int ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+> > +{
+> > +	handle_t *handle;
+> > +	ext4_fsblk_t block, max_blocks;
+> > +	int ret, ret2, nblocks = 0, retries = 0;
+> > +	struct buffer_head map_bh;
+> > +	unsigned int credits, blkbits = inode->i_blkbits;
+> > +
+> > +	/* Currently supporting (pre)allocate mode _only_ */
+> > +	if (mode != FA_ALLOCATE)
+> > +		return -EOPNOTSUPP;
+> > +
+> > +	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+> > +		return -ENOTTY;
+> 
+> So we don't implement fallocate on bitmap-based files!  Well that's huge
+> news.  The changelog would be an appropriate place to communicate this,
+> along with reasons why, or a description of the plan to fix it.
+> 
+> Also, posix says nothing about fallocate() returning ENOTTY.
 
-> Which makes me wonder; having "defaults" in 2 different places is
-> bound to get out of sync; should we instead generate both code &
-> config file defaults (and maybe man page defaults) from a common
-> source?
+I _think_ this is to convince glibc to do the zero-filling in userspace,
+but I'm not up on the API specifics.
 
-I had been working on the assumption that the defaults if mke2fs.conf
-were not present were more in the nature of emergency defaults as
-opposed something that could be used a fully functional set of
-configuration parameters.  So the assumption was that when you
-installed the RPM, mke2fs.conf would also be there.
+> > +	block = offset >> blkbits;
+> > +	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
+> > +			 - block;
+> > +	mutex_lock(&EXT4_I(inode)->truncate_mutex);
+> > +	credits = ext4_ext_calc_credits_for_insert(inode, NULL);
+> > +	mutex_unlock(&EXT4_I(inode)->truncate_mutex);
+> 
+> Now I'm mystified.  Given that we're allocating an arbitrary amount of disk
+> space, and that this disk space will require an arbitrary amount of
+> metadata, how can we work out how much journal space we'll be needing
+> without at least looking at `len'?
 
-We could enhance the profile code so that it could read in the profile
-from a memory buffer, and simply compile /etc/mke2fs.conf into mke2fs,
-but that adds bloat --- the question is how necessary do we think that
-really is?
+Good question.
 
-Regards,
+The uninitialized extent can cover up to 128MB with a single entry.
+If @path isn't specified, then ext4_ext_calc_credits_for_insert()
+function returns the maximum number of extents needed to insert a leaf,
+including splitting all of the index blocks.  That would allow up to 43GB
+(340 extents/block * 128MB) to be preallocated, but it still needs to take
+the size of the preallocation into account (adding 3 blocks per 43GB - a
+leaf block, a bitmap block and a group descriptor).
 
-					- Ted
+Also, since @path is not being given then truncate_mutex is not needed.
+
+> > +		ret = ext4_ext_get_blocks(handle, inode, block,
+> > +					  max_blocks, &map_bh,
+> > +					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
+> > +		BUG_ON(!ret);
+> 
+> BUG_ON is vicious.  Is it really justified here?  Possibly a WARN_ON and
+> ext4_error() would be safer and more useful here.
+
+Ouch, not very friendly error handling.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
