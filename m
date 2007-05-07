@@ -1,48 +1,45 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: JBD: ext2online wants too many credits (744 > 256)
-Date: Mon, 7 May 2007 11:50:21 -0400
-Message-ID: <20070507155021.GD17180@thunk.org>
-References: <20070506222626.GA25632@janus> <20070507142736.GC17180@thunk.org> <Pine.LNX.4.64.0705070744350.18013@asgard.lang.hm>
+Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
+Date: Mon, 7 May 2007 11:57:00 -0400
+Message-ID: <20070507155659.GE17180@thunk.org>
+References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int> <463E9C53.8000503@linux.vnet.ibm.com> <20070507132001.GB17180@thunk.org> <463F2DB7.6090507@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: david@lang.hm
+Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39323 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:48357 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934412AbXEGPu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 11:50:28 -0400
+	id S934405AbXEGP5H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 May 2007 11:57:07 -0400
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0705070744350.18013@asgard.lang.hm>
+In-Reply-To: <463F2DB7.6090507@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2007 at 07:46:38AM -0700, david@lang.hm wrote:
-> On Mon, 7 May 2007, Theodore Tso wrote:
+On Mon, May 07, 2007 at 07:16:31PM +0530, Aneesh Kumar K.V wrote:
 > 
-> >We're going to have to rethink the defaults of the journal size as it
-> >relates to on-line resizing, but there might not be a lot of great
-> >answers here.  We'll also have to look at the on-line resizing code
-> >and see if there's a way to break up the resize operation into smaller
-> >transactions as a way of avoiding this problem --- but that would
-> >still leave the user stuck with a pathetically small 4M journal on a
-> >3G filesystem.
-> 
-> why not just allocate a new journal (something along the lines of convert 
-> the ext3 to ext2 then back to ext3 would be the ugly, scripted way of 
-> doing it)
-> 
-> or is the problem that you are trying to resize things without remounting 
-> them (and therefor without flushing the journal)
+> One of the option i was thinking was to use this tool to migrate to 
+> extent map and then towards the end use the online defrag ioctl to 
+> defrag the resulting ext4 inode.
 
-Yes, I'm referring to the difficulties of getting this right when
-doing online (mounted) resizing, as that was the context of the
-original bug report.
+As we discussed on the phone, my recommendation would be to take your
+existing code and move it into the kernel so that triggered off of an
+ioctl, your code could migrate an inode from using indirect blocks to
+extents while a filesystem is mounted.  The main things you will need
+to watch for is to make sure the inode is locked so that another
+process doesn't try to extend or truncate it, and to use the JBD layer
+to provide appropriate journalling support.
 
-Clearly the right thing for resize2fs to do when it's doing an
-off-line resize is to just adjust the journal inode and make it
-bigger.  I'll add that to my todo list, but of course, patches to do
-that would be gratefully accepted...
+Given that ext4migrated imported the kernel extent functions, it
+should be relatively straightforward to simply make them use the
+kernel extent functions while in kernel space.
 
-						- Ted
+Once the the inode has been converted on-line then it can be
+defragmented on-line.  That would be much more convenient than having
+to unmount the filesystem to do the off-line migration, followed by
+mounting it to do the defragmentation.
+
+Regards,
+
+					- Ted
