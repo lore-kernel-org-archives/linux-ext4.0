@@ -1,86 +1,49 @@
-From: Zach Carter <linux@zachcarter.com>
-Subject: [PATCH] trivial: update broken URLs in Documentation/filesystems
-Date: Sun, 06 May 2007 12:16:30 -0700
-Message-ID: <463E298E.5020109@zachcarter.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
+Date: Mon, 07 May 2007 08:56:11 +0530
+Message-ID: <463E9C53.8000503@linux.vnet.ibm.com>
+References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, trivial@kernel.org,
-	Marco.Baye@tu-clausthal.de
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755111AbXEFTQd@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:64324 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750907AbXEGD0S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 May 2007 23:26:18 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l473jnMA297356
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:45:51 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l473TjGe171636
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:29:45 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l473QE9e026721
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 13:26:14 +1000
+In-Reply-To: <20070506051759.GP6220@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-update several broken URLs in Documentation/filesystems.
 
-Signed-off-by: Zach Carter <linux@zachcarter.com>
----
-Documentation/filesystems/befs.txt  |    4 ++--
-Documentation/filesystems/ext2.txt  |    2 +-
-Documentation/filesystems/ext3.txt  |    4 ++--
-Documentation/filesystems/isofs.txt |    2 +-
-4 files changed, 6 insertions(+), 6 deletions(-)
+Andreas Dilger wrote:
+> On May 04, 2007  14:43 +0530, Aneesh Kumar K.V wrote:
+>> Changes from from my previous patches are as follows:
+>> a) support for files with holes
+>> b) use the block iterator present in libext2fs
+>> c) don't mark  the indirect blocks as unused early. If we mark the
+>>    the blocks unused, they can be resued for extent index. If we later
+>>    fail to migrate, the indirect blocks content would be overwritten.
+> 
+> If this code could also (or optionally just) increase the size of inodes
+> it would be very useful.  AFAIK right now it will only change the inodes
+> from block-mapped to extent-mapped?
+> 
+> 
 
-diff --git a/Documentation/filesystems/befs.txt b/Documentation/filesystems/befs.txt
-index 67391a1..ea954f2 100644
---- a/Documentation/filesystems/befs.txt
-+++ b/Documentation/filesystems/befs.txt
-@@ -61,7 +61,7 @@ step 2.  Configuration & make kernel
+That is correct. My next step is to enhance the tool to support 
+migration to large inodes.
 
-The linux kernel has many compile-time options. Most of them are beyond the
-scope of this document. I suggest the Kernel-HOWTO document as a good general
--reference on this topic. <http://www.linux.com/howto/Kernel-HOWTO.html>
-+reference on this topic. <http://www.linuxdocs.org/HOWTOs/Kernel-HOWTO.html>
-
-However, to use the BeFS module, you must enable it at configure time.
-
-@@ -79,7 +79,7 @@ Save your kernel configuration and then build your kernel.
-
-step 3.  Install
-
--See the kernel howto <http://www.linux.com/howto/Kernel-HOWTO.html> for
-+See the kernel howto <http://www.linuxdocs.org/HOWTOs/Kernel-HOWTO.html> for
-instructions on this critical step.
-
-USING BFS
-diff --git a/Documentation/filesystems/ext2.txt b/Documentation/filesystems/ext2.txt
-index 4333e83..e1dbcaa 100644
---- a/Documentation/filesystems/ext2.txt
-+++ b/Documentation/filesystems/ext2.txt
-@@ -377,6 +377,6 @@ Windows 95/98/NT/2000	http://uranus.it.swin.edu.au/~jn/linux/Explore2fs.htm
-Windows 95 (*)		http://www.yipton.demon.co.uk/content.html#FSDEXT2
-DOS client (*)		ftp://metalab.unc.edu/pub/Linux/system/filesystems/ext2/
-OS/2			http://perso.wanadoo.fr/matthieu.willm/ext2-os2/
--RISC OS client		ftp://ftp.barnet.ac.uk/pub/acorn/armlinux/iscafs/
-+RISC OS client		http://www.esw-heim.tu-clausthal.de/~marco/smorbrod/IscaFS/
-
-(*) no longer actively developed/supported (as of Apr 2001)
-diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-index 4aecc9b..37aaa22 100644
---- a/Documentation/filesystems/ext3.txt
-+++ b/Documentation/filesystems/ext3.txt
-@@ -194,5 +194,5 @@ programs: 	http://e2fsprogs.sourceforge.net/
-		http://ext2resize.sourceforge.net
-
-useful links:	http://www.zip.com.au/~akpm/linux/ext3/ext3-usage.html
--		http://www-106.ibm.com/developerworks/linux/library/l-fs7/
--		http://www-106.ibm.com/developerworks/linux/library/l-fs8/
-+		http://www.ibm.com/developerworks/linux/library/l-fs7.html
-+		http://www.ibm.com/developerworks/linux/library/l-fs8.html
-diff --git a/Documentation/filesystems/isofs.txt b/Documentation/filesystems/isofs.txt
-index 758e504..9c93324 100644
---- a/Documentation/filesystems/isofs.txt
-+++ b/Documentation/filesystems/isofs.txt
-@@ -36,7 +36,7 @@ Mount options unique to the isofs filesystem.
-
-Recommended documents about ISO 9660 standard are located at:
-http://www.y-adagio.com/public/standards/iso_cdromr/tocont.htm
--ftp://ftp.ecma.ch/ecma-st/Ecma-119.pdf
-+http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-119.pdf
-Quoting from the PDF "This 2nd Edition of Standard ECMA-119 is technically 
-identical with ISO 9660.", so it is a valid and gratis substitute of the
-official ISO specification.
--- 
-1.5.0.6
+-aneesh
