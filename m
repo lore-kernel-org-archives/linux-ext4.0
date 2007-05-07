@@ -1,45 +1,61 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][take 4] e2fsprogs: Add ext4migrate
-Date: Mon, 7 May 2007 11:57:00 -0400
-Message-ID: <20070507155659.GE17180@thunk.org>
-References: <11782700042368-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070506051759.GP6220@schatzie.adilger.int> <463E9C53.8000503@linux.vnet.ibm.com> <20070507132001.GB17180@thunk.org> <463F2DB7.6090507@linux.vnet.ibm.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: Creating a >32bit blocks filesystem.
+Date: Mon, 7 May 2007 11:19:52 -0500
+Message-ID: <20070507111952.7868bc1c@gara>
+References: <20070503140804.463b20e1@naruto>
+	<463B4A1B.4070201@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:48357 "EHLO thunker.thunk.org"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:55861 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934405AbXEGP5H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 11:57:07 -0400
-Content-Disposition: inline
-In-Reply-To: <463F2DB7.6090507@linux.vnet.ibm.com>
+	id S965475AbXEGQTy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 May 2007 12:19:54 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l47FIImO003367
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 11:18:18 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l47GJpof496574
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:51 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l47GJpM8024454
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:51 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l47GJolK024444
+	for <linux-ext4@vger.kernel.org>; Mon, 7 May 2007 12:19:50 -0400
+In-Reply-To: <463B4A1B.4070201@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2007 at 07:16:31PM +0530, Aneesh Kumar K.V wrote:
-> 
-> One of the option i was thinking was to use this tool to migrate to 
-> extent map and then towards the end use the online defrag ioctl to 
-> defrag the resulting ext4 inode.
+On Fri, 04 May 2007 16:58:35 +0200
+Valerie Clement <valerie.clement@bull.net> wrote:
+> Hi Jose,
+> I began to port our modifications done for the 64-bit support against 
+> the new version of e2fsprogs Ted posted at the beginning of the week.
+> Note that it is *just* for test use as it breaks the backwards 
+> compatibility.
+> I did a few tests with a kernel 2.6.17-rc7 and it seems to work, at 
+> least mkfs, debugfs and fsck tools.
 
-As we discussed on the phone, my recommendation would be to take your
-existing code and move it into the kernel so that triggered off of an
-ioctl, your code could migrate an inode from using indirect blocks to
-extents while a filesystem is mounted.  The main things you will need
-to watch for is to make sure the inode is locked so that another
-process doesn't try to extend or truncate it, and to use the JBD layer
-to provide appropriate journalling support.
+Hi Valerie,
 
-Given that ext4migrated imported the kernel extent functions, it
-should be relatively straightforward to simply make them use the
-kernel extent functions while in kernel space.
+I tried the patches and while the tools such as mkfs and debugfs seem
+to work fine, I am still unable to mount a filesystem with block
+numbers exceeding 32 bits.  I am testing on a 2.6.21.1 kernel with the
+ext4 patches from:
 
-Once the the inode has been converted on-line then it can be
-defragmented on-line.  That would be much more convenient than having
-to unmount the filesystem to do the off-line migration, followed by
-mounting it to do the defragmentation.
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.21-ext4-1
 
-Regards,
+The following error shows up on the kernel log:
 
-					- Ted
+[12145.598822] EXT4-fs error (device dm-2): ext4_check_descriptors: Block bitmap for group 0 not in group (block 18446744069414584320)!
+[12145.670781] EXT4-fs: group descriptors corrupted!
+
+So its failing very early in ext4_check_descriptors().  The hi 32 bits of block_bitmap for the first group seem to be set all to 1s.
+
+Thanks
+
+-JRS
