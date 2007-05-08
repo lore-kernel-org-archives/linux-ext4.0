@@ -1,101 +1,49 @@
-From: Mingming Cao <cmm@us.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
 Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
-Date: Mon, 07 May 2007 17:41:39 -0700
-Message-ID: <1178584899.3933.73.camel@dyn9047017103.beaverton.ibm.com>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org>
-	 <20070330071417.GI355@devserv.devel.redhat.com>
-	 <20070417125514.GA7574@amitarora.in.ibm.com>
-	 <20070507171541.5370a36a.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+Date: Mon, 7 May 2007 18:07:36 -0700
+Message-ID: <20070508010736.GO8181@schatzie.adilger.int>
+References: <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426181332.GD7209@amitarora.in.ibm.com> <20070503213133.d1559f52.akpm@linux-foundation.org> <20070507113753.GA5439@schatzie.adilger.int> <20070507135825.f8545a65.akpm@linux-foundation.org> <20070507222103.GJ8181@schatzie.adilger.int> <463FB008.3080706@garzik.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
 	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com
-To: Andrew Morton <akpm@linux-foundation.org>
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: Jeff Garzik <jeff@garzik.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:44944 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967468AbXEHAlw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 20:41:52 -0400
-In-Reply-To: <20070507171541.5370a36a.akpm@linux-foundation.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:57879 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966205AbXEHBHj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 21:07:39 -0400
+Content-Disposition: inline
+In-Reply-To: <463FB008.3080706@garzik.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-05-07 at 17:15 -0700, Andrew Morton wrote:
-> On Mon, 07 May 2007 17:00:24 -0700
-> Mingming Cao <cmm@us.ibm.com> wrote:
+On May 07, 2007  19:02 -0400, Jeff Garzik wrote:
+> Andreas Dilger wrote:
+> >Actually, this is a non-issue.  The reason that it is handled for 
+> >extent-only is that this is the only way to allocate space in the
+> >filesystem without doing the explicit zeroing.
 > 
-> > > +       while (ret >= 0 && ret < max_blocks) {
-> > > +               block = block + ret;
-> > > +               max_blocks = max_blocks - ret;
-> > > +               ret = ext4_ext_get_blocks(handle, inode, block,
-> > > +                                         max_blocks, &map_bh,
-> > > +                                         EXT4_CREATE_UNINITIALIZED_EXT, 0);
-> > > +               BUG_ON(!ret);
-> > > +               if (ret > 0 && test_bit(BH_New, &map_bh.b_state)
-> > > +                       && ((block + ret) > (i_size_read(inode) << blkbits)))
-> > > +                       nblocks = nblocks + ret;
-> > > +       }
-> > > +
-> > > +       if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> > > +               goto retry;
-> > > +
-> > > Now the interesting question is: what do we do if we get halfway through
-> > > this loop and then run out of space?  We could leave the disk all filled up
-> > > and then return failure to the caller, but that's pretty poor behaviour,
-> > > IMO.
-> > > 
-> > The current code handles earlier ENOSPC by three times retries. After
-> > that if we still run out of space, then it's propably right to notify
-> > the caller there isn't much space left.
-> > 
-> > We could extend the block reservation window size before the while loop
-> > so we could get a lower chance to get more fragmented.
+> Precisely /how/ do you avoid the zeroing issue, for extents?
 > 
-> yes, but my point is that the proposed behaviour is really quite bad.
-> 
-I agree your point, that's why I mention it only helped the
-fragmentation issue but not the ENOSPC case.
+> If I posix_fallocate() 20GB on ext4, it damn well better be zeroed, 
+> otherwise the implementation is broken.
 
+In ext4 (as in XFS) there is a flag stored in the extent that tells if
+the extent is initialized or not.  Reads from uninitialized extents will
+return zero-filled data, and writes that don't span the whole extent
+will cause the uninitialized extent to be split into a regular extent
+and one or two uninitialized extents (depending where the write is).
 
-> We will attempt to allocate the disk space and then we will return failure,
-> having consumed all the disk space and having partially and uselessly
-> populated an unknown amount of the file.
-> 
+My comment was just that the extent doesn't have to be explicitly zero
+filled on the disk, by virtue of the fact that the uninitialized flag
+will cause reads to return zero.
 
-Not totally useless I think. If only half of the space is preallocated
-because run out of space, the application can decide whether it's good
-enough to start to use this preallocated space or wait for the fs to
-have more free space.
-
-> Userspace could presumably repair the mess in most situations by truncating
-> the file back again.  The kernel cannot do that because there might be live
-> data in amongst there.
-> 
-> So we'd need to either keep track of which blocks were newly-allocated and
-> then free them all again on the error path (doesn't work right across
-> commit+crash+recovery) or we could later use the space-reservation scheme which
-> delayed allocation will need to introduce.
-> 
-> Or we could decide to live with the above IMO-crappy behaviour.
-
-In fact Amit and I had raised this issue before, whether it's okay to do
-allow partial preallocation. At that moment the feedback is it's no much
-different than the current zero-out-preallocation behavior: people might
-preallocating half-way then later deal with ENOSPC.
-
-We could check the total number of fs free blocks account before
-preallocation happens, if there isn't enough space left, there is no
-need to bother preallocating.
-
-If there is enough free space, we could make a reservation window that
-have at least N free blocks and mark it not stealable by other files. So
-later we will not run into the ENOSPC error.
-
-The fs free blocks account is just a estimate though.
-
-
-Mingming
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
