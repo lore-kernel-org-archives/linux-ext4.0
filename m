@@ -1,107 +1,101 @@
 From: akpm@linux-foundation.org
-Subject: [patch 014/455] ext2/3/4: fix file date underflow on ext2 3 filesystems on 64 bit systems
-Date: Tue, 08 May 2007 00:23:39 -0700
-Message-ID: <200705080723.l487NdmU016386@shell0.pdx.osdl.net>
-Cc: akpm@linux-foundation.org, Markus.Rechberger@amd.com,
-	adilger@dilger.ca, linux-ext4@vger.kernel.org
+Subject: [patch 183/455] jbd: check for error returned by kthread_create on creating journal thread
+Date: Tue, 08 May 2007 00:30:42 -0700
+Message-ID: <200705080730.l487Ugir017188@shell0.pdx.osdl.net>
+Cc: akpm@linux-foundation.org, xemul@sw.ru, hch@lst.de,
+	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:36227 "EHLO
+Received: from smtp1.linux-foundation.org ([65.172.181.25]:51554 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754349AbXEHHYF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 03:24:05 -0400
+	by vger.kernel.org with ESMTP id S934187AbXEHHb4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 03:31:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Markus Rechberger <Markus.Rechberger@amd.com>
+From: Pavel Emelianov <xemul@sw.ru>
 
-Taken from http://bugzilla.kernel.org/show_bug.cgi?id=5079
+If the thread failed to create the subsequent wait_event will hang forever.
 
-signed long ranges from -2.147.483.648 to 2.147.483.647 on x86 32bit
+This is likely to happen if kernel hits max_threads limit.
 
-10000011110110100100111110111101 .. -2,082,844,739
-10000011110110100100111110111101 ..  2,212,122,557 <- this currently gets 
-stored on the disk but when converting it to a 64bit signed long value it loses 
-its sign and becomes positive.
+Will be critical for virtualization systems that limit the number of tasks
+and kernel memory usage within the container.
 
-Cc: Andreas Dilger <adilger@dilger.ca>
+(akpm: JBD should be converted fully to the kthread API: kthread_should_stop()
+and kthread_stop()).
+
 Cc: <linux-ext4@vger.kernel.org>
-
-Andreas says:
-
-This patch is now treating timestamps with the high bit set as negative
-times (before Jan 1, 1970).  This means we lose 1/2 of the possible range
-of timestamps (lopping off 68 years before unix timestamp overflow -
-now only 30 years away :-) to handle the extremely rare case of setting
-timestamps into the distant past.
-
-If we are only interested in fixing the underflow case, we could just
-limit the values to 0 instead of storing negative values.  At worst this
-will skew the timestamp by a few hours for timezones in the far east
-(files would still show Jan 1, 1970 in "ls -l" output).
-
-That said, it seems 32-bit systems (mine at least) allow files to be set
-into the past (01/01/1907 works fine) so it seems this patch is bringing
-the x86_64 behaviour into sync with other kernels.
-
-On the plus side, we have a patch that is ready to add nanosecond timestamps
-to ext3 and as an added bonus adds 2 high bits to the on-disk timestamp so
-this extends the maximum date to 2242.
-
+Cc: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/inode.c |    6 +++---
- fs/ext3/inode.c |    6 +++---
- fs/ext4/inode.c |    6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ fs/jbd/journal.c  |   13 +++++++++----
+ fs/jbd2/journal.c |   13 +++++++++----
+ 2 files changed, 18 insertions(+), 8 deletions(-)
 
-diff -puN fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext2/inode.c
---- a/fs/ext2/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext2/inode.c
-@@ -1079,9 +1079,9 @@ void ext2_read_inode (struct inode * ino
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_ctime.tv_nsec = 0;
- 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
- 	/* We now have enough fields to check if the inode was active or not.
-diff -puN fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext3/inode.c
-@@ -2608,9 +2608,9 @@ void ext3_read_inode(struct inode * inod
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
+diff -puN fs/jbd/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread
++++ a/fs/jbd/journal.c
+@@ -210,10 +210,16 @@ end_loop:
+ 	return 0;
+ }
  
- 	ei->i_state = 0;
-diff -puN fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext2-3-4-fix-file-date-underflow-on-ext2-3-filesystems-on-64-bit-systems
-+++ a/fs/ext4/inode.c
-@@ -2611,9 +2611,9 @@ void ext4_read_inode(struct inode * inod
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
-+	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
-+	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
-+	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
+-static void journal_start_thread(journal_t *journal)
++static int journal_start_thread(journal_t *journal)
+ {
+-	kthread_run(kjournald, journal, "kjournald");
++	struct task_struct *t;
++
++	t = kthread_run(kjournald, journal, "kjournald");
++	if (IS_ERR(t))
++		return PTR_ERR(t);
++
+ 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
++	return 0;
+ }
  
- 	ei->i_state = 0;
+ static void journal_kill_thread(journal_t *journal)
+@@ -839,8 +845,7 @@ static int journal_reset(journal_t *jour
+ 
+ 	/* Add the dynamic fields and write it to disk. */
+ 	journal_update_superblock(journal, 1);
+-	journal_start_thread(journal);
+-	return 0;
++	return journal_start_thread(journal);
+ }
+ 
+ /**
+diff -puN fs/jbd2/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread fs/jbd2/journal.c
+--- a/fs/jbd2/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread
++++ a/fs/jbd2/journal.c
+@@ -210,10 +210,16 @@ end_loop:
+ 	return 0;
+ }
+ 
+-static void jbd2_journal_start_thread(journal_t *journal)
++static int jbd2_journal_start_thread(journal_t *journal)
+ {
+-	kthread_run(kjournald2, journal, "kjournald2");
++	struct task_struct *t;
++
++	t = kthread_run(kjournald2, journal, "kjournald2");
++	if (IS_ERR(t))
++		return PTR_ERR(t);
++
+ 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
++	return 0;
+ }
+ 
+ static void journal_kill_thread(journal_t *journal)
+@@ -839,8 +845,7 @@ static int journal_reset(journal_t *jour
+ 
+ 	/* Add the dynamic fields and write it to disk. */
+ 	jbd2_journal_update_superblock(journal, 1);
+-	jbd2_journal_start_thread(journal);
+-	return 0;
++	return jbd2_journal_start_thread(journal);
+ }
+ 
+ /**
 _
