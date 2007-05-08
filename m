@@ -1,35 +1,72 @@
-From: Daniel Drake <ddrake@brontes3d.com>
-Subject: Re: [PATCH e2fsprogs] Restore backup superblocks in preen mode
-Date: Tue, 08 May 2007 14:52:20 -0400
-Message-ID: <1178650340.923.26.camel@systems03.mmm.com>
-References: <20070508174324.40EBE7B409F@zog.reactivated.net>
-	 <20070508181459.GA31101@thunk.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: 2.6.21-ext4-1
+Date: Tue, 08 May 2007 15:05:56 -0700
+Message-ID: <1178661957.4135.66.camel@dyn9047017103.beaverton.ibm.com>
+References: <E1HiXab-0001QX-Sk@candygram.thunk.org>
+	 <1178571383.3933.8.camel@dyn9047017103.beaverton.ibm.com>
+	 <20070508025048.GC32602149@melbourne.sgi.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Johann Lombardi <johann.lombardi@bull.net>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-kernel@vger.kernel.org
+To: David Chinner <dgc@sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp116.iad.emailsrvr.com ([207.97.245.116]:50069 "EHLO
-	smtp116.iad.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031545AbXEHTaP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 15:30:15 -0400
-In-Reply-To: <20070508181459.GA31101@thunk.org>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:42450 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751220AbXEHWGF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 18:06:05 -0400
+In-Reply-To: <20070508025048.GC32602149@melbourne.sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-05-08 at 14:14 -0400, Theodore Tso wrote:
-> We could argue about whether or not e2fsck should explicitly ask for
-> permission before using a backup superblock, and possibly printing the
-> label and validating the size, etc., before using it
+On Tue, 2007-05-08 at 12:50 +1000, David Chinner wrote:
+> On Mon, May 07, 2007 at 01:56:23PM -0700, Mingming Cao wrote:
+> > In any case, it would be useful to add a new set of testsuites for the
+> > new fallocate() syscall and fsstress in LTP testsuites to automatically
+> > the preallocation code in ext4/XFS.
+> 
+> I hacked an existing XFS test prog to do manual testing of the fallocate()
+> syscall. In the XFSQA suite we have various pre-alloc enhanced utils (e.g.
+> fsstress, fsx, etc) that we should probably update to be able to use both
+> fallocate and xfsctl so we can test both.
+> 
+> Here's all the programs we use that have preallocation awareness:
+> 
+> chook 982% grep RESVSP ltp/*.c  | awk '/^ltp/  { split($1,a,":"); print a[1] ;}' | uniq
+> ltp/doio.c
+> ltp/fsstress.c
+> ltp/fsx.c
+> ltp/growfiles.c
+> ltp/iogen.c
+> chook 983% grep RESVSP src/* | awk '/^src/ { split($1,a,":"); print a[1] ;}' | uniq
+> src/alloc.c
+> src/fstest.c
+> src/iopat.c
+> src/randholes.c
+> src/resvtest.c
+> src/unwritten_mmap.c
+> src/unwritten_sync.c
+> 
+Thanks for sharing the info. I think Amit used a fsx version with
+preallocation awareness test, but I don't know if we have other ltp
+tests that aware preallocation. I would very appreciate if you could
+share your preallocation test with us.
 
-In that case, I think it should. At least, that would kill the confusion
-where preen mode apparently doesn't want to automate a potentially
-dangerous operation, whereas the standard mode works extremely hard to
-complete the operation with no user intervention (and doesn't even
-require as much info from the user!).
+> BTW, have you guys tested mmap writes into unwritten extents? ;)
+> 
+I am not sure, Amit, have you done some mmap write test into
+uninitialized extents?
 
-Thanks.
--- 
-Daniel Drake
-Brontes Technologies, A 3M Company
+Sorry, I still not quite clear what's the mapped problem you are worry
+about. Could you explain to me a bit more? thanks!
+
+Mingming
+
+
+> Cheers,
+> 
+> Dave.
