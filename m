@@ -1,100 +1,80 @@
-From: akpm@linux-foundation.org
-Subject: [patch 179/455] ext3: copy i_flags to inode flags on write
-Date: Tue, 08 May 2007 00:30:33 -0700
-Message-ID: <200705080730.l487UXBo017172@shell0.pdx.osdl.net>
-Cc: akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:36618 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934134AbXEHHpd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 03:45:33 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
+Date: Tue, 8 May 2007 16:22:47 +0530
+Message-ID: <20070508105247.GA1950@amitarora.in.ibm.com>
+References: <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426181332.GD7209@amitarora.in.ibm.com> <20070503213133.d1559f52.akpm@linux-foundation.org> <20070507120719.GD7012@amitarora.in.ibm.com> <1178551477.12900.6.camel@kleikamp.austin.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1178551477.12900.6.camel@kleikamp.austin.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+On Mon, May 07, 2007 at 10:24:37AM -0500, Dave Kleikamp wrote:
+> On Mon, 2007-05-07 at 17:37 +0530, Amit K. Arora wrote:
+> > On Thu, May 03, 2007 at 09:31:33PM -0700, Andrew Morton wrote:
+> > > On Thu, 26 Apr 2007 23:43:32 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+> 
+> > > > +int ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+> > > > +{
+> > > > +	handle_t *handle;
+> > > > +	ext4_fsblk_t block, max_blocks;
+> > > > +	int ret, ret2, nblocks = 0, retries = 0;
+> > > > +	struct buffer_head map_bh;
+> > > > +	unsigned int credits, blkbits = inode->i_blkbits;
+> > > > +
+> > > > +	/* Currently supporting (pre)allocate mode _only_ */
+> > > > +	if (mode != FA_ALLOCATE)
+> > > > +		return -EOPNOTSUPP;
+> > > > +
+> > > > +	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+> > > > +		return -ENOTTY;
+> > > 
+> > > So we don't implement fallocate on bitmap-based files!  Well that's huge
+> > > news.  The changelog would be an appropriate place to communicate this,
+> > > along with reasons why, or a description of the plan to fix it.
+> > 
+> > Ok. Will add this in the function description as well.
+> > 
+> > > Also, posix says nothing about fallocate() returning ENOTTY.
+> > 
+> > Right. I don't seem to find any suitable error from posix description.
+> > Can you please suggest an error code which might make more sense here ?
+> > Will -ENOTSUPP be ok ? Since we want to say here that we don't support
+> > non-extent files.
+> 
+> Isn't the idea that libc will interpret -ENOTTY, or whatever is returned
+> here, and fall back to the current library code to do preallocation?
+> This way, the caller of fallocate() will never see this return code, so
+> it won't violate posix.
 
-A patch that stores inode flags such as S_IMMUTABLE, S_APPEND, etc.  from
-i_flags to EXT3_I(inode)->i_flags when inode is written to disk.  The same
-thing is done on GETFLAGS ioctl.
+You are right.
 
-Quota code changes these flags on quota files (to make it harder for
-sysadmin to screw himself) and these changes were not correctly propagated
-into the filesystem (especially, lsattr did not show them and users were
-wondering...).
+But, we still need to "standardize" (and limit) the error codes
+which we should return from kernel when we want to fall back on the
+library implementation. The posix_fallocate() library function will have
+to look for a set of errors from fallocate() system call, upon receiving
+which it will do preallocation from user level; or else, it will return
+success/error-code returned by the system call to the user.
 
+I think we can make it fall back to library implementation of fallocate,
+whenever posix_fallocate() receives any of the following errors from
+fallocate() system call:
 
-Propagate flags such as S_APPEND, S_IMMUTABLE, etc.  from i_flags into
-ext3-specific i_flags.  Hence, when someone sets these flags via a
-different interface than ioctl, they are stored correctly.
+1. ENOSYS
+2. EOPNOTSUPP
+3. ENOTTY        (?)
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Now the question is - should we limit the set of errors for this purpose
+to just 1 & 2 above ? In that case I will need to change the error being
+returned here to -EOPNOTSUPP (from current -ENOTTY).
 
- fs/ext3/inode.c         |   20 ++++++++++++++++++++
- fs/ext3/ioctl.c         |    1 +
- include/linux/ext3_fs.h |    1 +
- 3 files changed, 22 insertions(+)
-
-diff -puN fs/ext3/inode.c~ext3-copy-i_flags-to-inode-flags-on-write fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-copy-i_flags-to-inode-flags-on-write
-+++ a/fs/ext3/inode.c
-@@ -2580,6 +2580,25 @@ void ext3_set_inode_flags(struct inode *
- 		inode->i_flags |= S_DIRSYNC;
- }
- 
-+/* Propagate flags from i_flags to EXT3_I(inode)->i_flags */
-+void ext3_get_inode_flags(struct ext3_inode_info *ei)
-+{
-+	unsigned int flags = ei->vfs_inode.i_flags;
-+
-+	ei->i_flags &= ~(EXT3_SYNC_FL|EXT3_APPEND_FL|
-+			EXT3_IMMUTABLE_FL|EXT3_NOATIME_FL|EXT3_DIRSYNC_FL);
-+	if (flags & S_SYNC)
-+		ei->i_flags |= EXT3_SYNC_FL;
-+	if (flags & S_APPEND)
-+		ei->i_flags |= EXT3_APPEND_FL;
-+	if (flags & S_IMMUTABLE)
-+		ei->i_flags |= EXT3_IMMUTABLE_FL;
-+	if (flags & S_NOATIME)
-+		ei->i_flags |= EXT3_NOATIME_FL;
-+	if (flags & S_DIRSYNC)
-+		ei->i_flags |= EXT3_DIRSYNC_FL;
-+}
-+
- void ext3_read_inode(struct inode * inode)
- {
- 	struct ext3_iloc iloc;
-@@ -2735,6 +2754,7 @@ static int ext3_do_update_inode(handle_t
- 	if (ei->i_state & EXT3_STATE_NEW)
- 		memset(raw_inode, 0, EXT3_SB(inode->i_sb)->s_inode_size);
- 
-+	ext3_get_inode_flags(ei);
- 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
- 	if(!(test_opt(inode->i_sb, NO_UID32))) {
- 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
-diff -puN fs/ext3/ioctl.c~ext3-copy-i_flags-to-inode-flags-on-write fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-copy-i_flags-to-inode-flags-on-write
-+++ a/fs/ext3/ioctl.c
-@@ -28,6 +28,7 @@ int ext3_ioctl (struct inode * inode, st
- 
- 	switch (cmd) {
- 	case EXT3_IOC_GETFLAGS:
-+		ext3_get_inode_flags(ei);
- 		flags = ei->i_flags & EXT3_FL_USER_VISIBLE;
- 		return put_user(flags, (int __user *) arg);
- 	case EXT3_IOC_SETFLAGS: {
-diff -puN include/linux/ext3_fs.h~ext3-copy-i_flags-to-inode-flags-on-write include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-copy-i_flags-to-inode-flags-on-write
-+++ a/include/linux/ext3_fs.h
-@@ -824,6 +824,7 @@ extern int ext3_change_inode_journal_fla
- extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
- extern void ext3_truncate (struct inode *);
- extern void ext3_set_inode_flags(struct inode *);
-+extern void ext3_get_inode_flags(struct ext3_inode_info *);
- extern void ext3_set_aops(struct inode *inode);
- 
- /* ioctl.c */
-_
+--
+Regards,
+Amit Arora
