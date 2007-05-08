@@ -1,30 +1,36 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: Offsets of EAs in inode need not be sorted
-Date: Tue, 8 May 2007 01:07:52 -0400
-Message-ID: <20070508050751.GE10940@thunk.org>
-References: <1176984336.3812.10.camel@garfield>
+Subject: Re: [PATCH] e2fsprogs: Check journal inode sanity and recreate journal
+Date: Tue, 8 May 2007 01:40:34 -0400
+Message-ID: <20070508054034.GA28110@thunk.org>
+References: <1173906827.3076.5.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
 To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:47951 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44909 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967866AbXEHFJh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 May 2007 01:09:37 -0400
+	id S968013AbXEHFko (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 May 2007 01:40:44 -0400
 Content-Disposition: inline
-In-Reply-To: <1176984336.3812.10.camel@garfield>
+In-Reply-To: <1173906827.3076.5.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 19, 2007 at 05:35:36PM +0530, Kalpak Shah wrote:
-> This patch removes a code snippet from check_ea_in_inode() in pass1
-> which checks if the EA values in the inode are sorted or not. The
-> comments in fs/ext*/xattr.c state that the EA values in the external
-> EA block are sorted but those in the inode need not be sorted. I
-> have also attached a test image which has unsorted EAs in the
-> inodes. The current e2fsck wrongly clears the EAs in the inode.
+On Thu, Mar 15, 2007 at 02:43:47AM +0530, Kalpak Shah wrote:
+> Index: e2fsprogs-1.39/lib/ext2fs/mkjournal.c
+> ===================================================================
+> --- e2fsprogs-1.39.orig/lib/ext2fs/mkjournal.c
+> +++ e2fsprogs-1.39/lib/ext2fs/mkjournal.c
+> +	if (fs->super->s_blocks_count < 2048) {
+> +		fputs(("\nFilesystem too small for a journal\n"), stderr);
+> +		return 0;
+> +	}
 
-Applied.
+Code in lib/ext2fs isn't allowed to do any output to stdio (except for
+debugging purposes).  It causes internationalization problems, and
+it's just in general a bad idea for ext2fs library code to try to do
+any UI.
 
-					- Ted
+						- Ted
