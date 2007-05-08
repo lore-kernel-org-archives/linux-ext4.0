@@ -1,43 +1,35 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Daniel Drake <ddrake@brontes3d.com>
 Subject: Re: [PATCH e2fsprogs] Restore backup superblocks in preen mode
-Date: Tue, 8 May 2007 14:14:59 -0400
-Message-ID: <20070508181459.GA31101@thunk.org>
+Date: Tue, 08 May 2007 14:52:20 -0400
+Message-ID: <1178650340.923.26.camel@systems03.mmm.com>
 References: <20070508174324.40EBE7B409F@zog.reactivated.net>
+	 <20070508181459.GA31101@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Daniel Drake <ddrake@brontes3d.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33128 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967003AbXEHSPG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 May 2007 14:15:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20070508174324.40EBE7B409F@zog.reactivated.net>
+Received: from smtp116.iad.emailsrvr.com ([207.97.245.116]:50069 "EHLO
+	smtp116.iad.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031545AbXEHTaP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 15:30:15 -0400
+In-Reply-To: <20070508181459.GA31101@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 08, 2007 at 06:43:24PM +0100, Daniel Drake wrote:
-> The restoration of backup superblocks seems to be reversed in the current
-> e2fsprogs:
-> 
-> When running without preen mode, e2fsck searches and locates a backup
-> superblock and fixes the primary superblock without any user intervention.
-> 
-> When running in preen mode, e2fsck prints a message describing how the user
-> can specify the location of a backup superblock, and exits without doing any
-> repair.
+On Tue, 2007-05-08 at 14:14 -0400, Theodore Tso wrote:
+> We could argue about whether or not e2fsck should explicitly ask for
+> permission before using a backup superblock, and possibly printing the
+> label and validating the size, etc., before using it
 
-That's intentional.  If the priumary superblock is wiped out,
-something really bad has happened, and usually the first part of the
-filesystem is gone too --- possibly including the first part of the
-inode table, which would mean the root inode is gone.  So we do want
-the user running e2fsck by hand.
+In that case, I think it should. At least, that would kill the confusion
+where preen mode apparently doesn't want to automate a potentially
+dangerous operation, whereas the standard mode works extremely hard to
+complete the operation with no user intervention (and doesn't even
+require as much info from the user!).
 
-We could argue about whether or not e2fsck should explicitly ask for
-permission before using a backup superblock, and possibly printing the
-label and validating the size, etc., before using it --- but we
-definitely don't want to just blithly use a backup superblock when in
-preen mode.
-
-						- Ted
+Thanks.
+-- 
+Daniel Drake
+Brontes Technologies, A 3M Company
