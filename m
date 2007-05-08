@@ -1,48 +1,30 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Accomodate 32-bit uid/guid values in e2fsprogs
-Date: Tue, 08 May 2007 00:05:34 -0500
-Message-ID: <4640051E.4040703@redhat.com>
-References: <463F5D8D.7080201@redhat.com> <20070508042813.GD10940@thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: Offsets of EAs in inode need not be sorted
+Date: Tue, 8 May 2007 01:07:52 -0400
+Message-ID: <20070508050751.GE10940@thunk.org>
+References: <1176984336.3812.10.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42075 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:47951 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967844AbXEHFFi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 May 2007 01:05:38 -0400
-In-Reply-To: <20070508042813.GD10940@thunk.org>
+	id S967866AbXEHFJh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 May 2007 01:09:37 -0400
+Content-Disposition: inline
+In-Reply-To: <1176984336.3812.10.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Mon, May 07, 2007 at 12:10:37PM -0500, Eric Sandeen wrote:
->> e2fsprogs doesn't handle large (> 16 bit) UID/GID...
-> 
-> Applied, with one correction:
-> 
->> --- e2fsprogs-hg.orig/misc/mke2fs.c
->> +++ e2fsprogs-hg/misc/mke2fs.c
->> @@ -492,9 +494,14 @@ static void create_root_dir(ext2_filsys 
->>  				_("while reading root inode"));
->>  			exit(1);
->>  		}
->> -		inode.i_uid = getuid();
->> -		if (inode.i_uid)
->> -			inode.i_gid = getgid();
->> +		uid = getuid();
->> +		inode.i_uid = uid;
->> +		inode.i_uid_high = uid >> 16;
->> +		if (inode.i_uid) {
-> 		    ^^^^^^^^^^^
-> 
-> This should be "uid" instead.  Otherwise, the gid won't be set if the
-> uid is a multiple of 65536.
-> 
-> 						- Ted
+On Thu, Apr 19, 2007 at 05:35:36PM +0530, Kalpak Shah wrote:
+> This patch removes a code snippet from check_ea_in_inode() in pass1
+> which checks if the EA values in the inode are sorted or not. The
+> comments in fs/ext*/xattr.c state that the EA values in the external
+> EA block are sorted but those in the inode need not be sorted. I
+> have also attached a test image which has unsorted EAs in the
+> inodes. The current e2fsck wrongly clears the EAs in the inode.
 
-Doh... dumb mistake.  nice catch.  thanks.
+Applied.
 
--Eric
+					- Ted
