@@ -1,59 +1,58 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
-Date: Mon, 7 May 2007 21:43:37 -0400
-Message-ID: <20070508014337.GA14072@thunk.org>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070507171541.5370a36a.akpm@linux-foundation.org> <1178584899.3933.73.camel@dyn9047017103.beaverton.ibm.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: 2.6.21-ext4-1
+Date: Tue, 8 May 2007 12:50:48 +1000
+Message-ID: <20070508025048.GC32602149@melbourne.sgi.com>
+References: <E1HiXab-0001QX-Sk@candygram.thunk.org> <1178571383.3933.8.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@clusterfs.com>,
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Johann Lombardi <johann.lombardi@bull.net>,
 	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com
+	Dave Chinner <dgc@sgi.com>, linux-kernel@vger.kernel.org
 To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:42736 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S967642AbXEHCvq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2007 22:51:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1178584899.3933.73.camel@dyn9047017103.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1178571383.3933.8.camel@dyn9047017103.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2007 at 05:41:39PM -0700, Mingming Cao wrote:
-> We could check the total number of fs free blocks account before
-> preallocation happens, if there isn't enough space left, there is no
-> need to bother preallocating.
+On Mon, May 07, 2007 at 01:56:23PM -0700, Mingming Cao wrote:
+> In any case, it would be useful to add a new set of testsuites for the
+> new fallocate() syscall and fsstress in LTP testsuites to automatically
+> the preallocation code in ext4/XFS.
 
-Checking against the fs free blocks is a good idea, since it will
-prevent the obvious error case where someone tries to preallocate 10GB
-when there is only 2GB left.  But it won't help if there are multiple
-processes trying to allocate blocks the same time.  On the other hand,
-that case is probably relatively rare, and in that case, the
-filesystem was probably going to be left completely full in any case.
+I hacked an existing XFS test prog to do manual testing of the fallocate()
+syscall. In the XFSQA suite we have various pre-alloc enhanced utils (e.g.
+fsstress, fsx, etc) that we should probably update to be able to use both
+fallocate and xfsctl so we can test both.
 
-On Mon, May 07, 2007 at 05:15:41PM -0700, Andrew Morton wrote:
-> Userspace could presumably repair the mess in most situations by truncating
-> the file back again.  The kernel cannot do that because there might be live
-> data in amongst there.
+Here's all the programs we use that have preallocation awareness:
 
-Actually, the kernel could do it, in that could simply release all
-unitialized extents back to the system.  The problem is distinguishing
-between the unitialized extents that had just been newly added, versus
-the ones that had there from before.  (On the other hand, if the
-filesystem was completely full, releasing unitialized blocks wouldn't
-be the worse thing in the world to do, although releasing previously
-fallocated blocks probably does violate the princple of least
-surprise, even if it's what the user would have wanted.)
+chook 982% grep RESVSP ltp/*.c  | awk '/^ltp/  { split($1,a,":"); print a[1] ;}' | uniq
+ltp/doio.c
+ltp/fsstress.c
+ltp/fsx.c
+ltp/growfiles.c
+ltp/iogen.c
+chook 983% grep RESVSP src/* | awk '/^src/ { split($1,a,":"); print a[1] ;}' | uniq
+src/alloc.c
+src/fstest.c
+src/iopat.c
+src/randholes.c
+src/resvtest.c
+src/unwritten_mmap.c
+src/unwritten_sync.c
 
-On Mon, May 07, 2007 at 05:41:39PM -0700, Mingming Cao wrote:
-> If there is enough free space, we could make a reservation window that
-> have at least N free blocks and mark it not stealable by other files. So
-> later we will not run into the ENOSPC error.
+BTW, have you guys tested mmap writes into unwritten extents? ;)
 
-Could you really use a single reservation window?  When the filesystem
-is almost full, the free extents are likely going to be scattered all
-over the disk.  The general principle of grabbing all of the extents
-and keeping them in an in-memory data structure, and only adding them
-to the extent tree would work, though; I'm just not sure we could do
-it using the existing reservation window code, since it only supports
-a single reservation window per file, yes?
+Cheers,
 
-						- Ted
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
