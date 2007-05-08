@@ -1,82 +1,56 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
-Date: Tue, 08 May 2007 09:47:54 -0500
-Message-ID: <1178635675.11344.10.camel@kleikamp.austin.ibm.com>
-References: <20070417125514.GA7574@amitarora.in.ibm.com>
-	 <20070418130600.GW5967@schatzie.adilger.int>
-	 <20070420135146.GA21352@amitarora.in.ibm.com>
-	 <20070420145918.GY355@devserv.devel.redhat.com>
-	 <20070424121632.GA10136@amitarora.in.ibm.com>
-	 <20070426175056.GA25321@amitarora.in.ibm.com>
-	 <20070426181332.GD7209@amitarora.in.ibm.com>
-	 <20070503213133.d1559f52.akpm@linux-foundation.org>
-	 <20070507120719.GD7012@amitarora.in.ibm.com>
-	 <1178551477.12900.6.camel@kleikamp.austin.ibm.com>
-	 <20070508105247.GA1950@amitarora.in.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+From: Daniel Drake <ddrake@brontes3d.com>
+Subject: [PATCH e2fsprogs] get_backup_sb: Consider block size when searching for backups
+Date: Tue,  8 May 2007 17:25:36 +0100 (BST)
+Message-ID: <20070508162536.D3B9F7B409F@zog.reactivated.net>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:57393 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S968183AbXEHOr6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 May 2007 10:47:58 -0400
-In-Reply-To: <20070508105247.GA1950@amitarora.in.ibm.com>
+Received: from queue04-winn.ispmail.ntl.com ([81.103.221.58]:2329 "EHLO
+	queue04-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S965748AbXEHQu4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 12:50:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-05-08 at 16:22 +0530, Amit K. Arora wrote:
-> On Mon, May 07, 2007 at 10:24:37AM -0500, Dave Kleikamp wrote:
-> > On Mon, 2007-05-07 at 17:37 +0530, Amit K. Arora wrote:
-> > > On Thu, May 03, 2007 at 09:31:33PM -0700, Andrew Morton wrote:
+I've been investigating why e2fsck refuses to restore the backup superblock
+of a partition with a broken primary superblock.
 
-> > > > So we don't implement fallocate on bitmap-based files!  Well that's huge
-> > > > news.  The changelog would be an appropriate place to communicate this,
-> > > > along with reasons why, or a description of the plan to fix it.
-> > > 
-> > > Ok. Will add this in the function description as well.
-> > > 
-> > > > Also, posix says nothing about fallocate() returning ENOTTY.
-> > > 
-> > > Right. I don't seem to find any suitable error from posix description.
-> > > Can you please suggest an error code which might make more sense here ?
-> > > Will -ENOTSUPP be ok ? Since we want to say here that we don't support
-> > > non-extent files.
-> > 
-> > Isn't the idea that libc will interpret -ENOTTY, or whatever is returned
-> > here, and fall back to the current library code to do preallocation?
-> > This way, the caller of fallocate() will never see this return code, so
-> > it won't violate posix.
-> 
-> You are right.
-> 
-> But, we still need to "standardize" (and limit) the error codes
-> which we should return from kernel when we want to fall back on the
-> library implementation. The posix_fallocate() library function will have
-> to look for a set of errors from fallocate() system call, upon receiving
-> which it will do preallocation from user level; or else, it will return
-> success/error-code returned by the system call to the user.
-> 
-> I think we can make it fall back to library implementation of fallocate,
-> whenever posix_fallocate() receives any of the following errors from
-> fallocate() system call:
-> 
-> 1. ENOSYS
-> 2. EOPNOTSUPP
-> 3. ENOTTY        (?)
-> 
-> Now the question is - should we limit the set of errors for this purpose
-> to just 1 & 2 above ? In that case I will need to change the error being
-> returned here to -EOPNOTSUPP (from current -ENOTTY).
+The partition in question has a block size of 4096, and mke2fs reports that
+backup superblocks were created on blocks 32768, 98304, 163840, ...
 
-If you want my opinion, -EOPNOTSUPP is better than -ENOTTY.
+When running e2fsck, get_backup_sb starts by guessing a block size of 1024
+and backup superblock at block 8193. I'm not sure why, but it actually finds
+a superblock at this location, so returns a context with superblock 8193,
+blocksize 1024. 
 
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+Later on, ext2fs_open2() tries to process this superblock. It then realises
+that the block size value stored in the superblock (4096) does not match what
+it was told (1024), so it bails out with EXT2_ET_UNEXPECTED_BLOCK_SIZE. fsck
+aborts without fixing the partition.
+
+The following patch solves the problem by discounting superblocks which do
+not meet the currently-sought block size.
+As a result, block 32768 (blocksize=4096) is now used to restore the backup,
+which agrees with the first location that mke2fs listed.
+
+This doesn't explain why a superblock backup also appears to exist at
+block 8193 (blocksize=1024), which in terms of my real filesystem is actually
+offset into block 2048 (blocksize=4096). I assume there is an explanation
+for this...
+
+Signed-off-by: Daniel Drake <d.drake@mmm.com>
+
+Index: e2fsprogs-1.39/e2fsck/util.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/util.c
++++ e2fsprogs-1.39/e2fsck/util.c
+@@ -453,7 +453,8 @@ blk_t get_backup_sb(e2fsck_t ctx, ext2_f
+ 		if (sb->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
+ 			ext2fs_swap_super(sb);
+ #endif
+-		if (sb->s_magic == EXT2_SUPER_MAGIC) {
++		if (sb->s_magic == EXT2_SUPER_MAGIC &&
++		    EXT2_BLOCK_SIZE(sb) == blocksize) {
+ 			ret_sb = superblock;
+ 			if (ctx) {
+ 				ctx->superblock = superblock;
