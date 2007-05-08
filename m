@@ -1,56 +1,41 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 4/5] ext4: fallocate support in ext4
-Date: Tue, 8 May 2007 09:52:59 -0700
-Message-ID: <20070508165259.GD6375@schatzie.adilger.int>
-References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070507171541.5370a36a.akpm@linux-foundation.org> <1178584899.3933.73.camel@dyn9047017103.beaverton.ibm.com> <20070508014337.GA14072@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com
+From: Daniel Drake <ddrake@brontes3d.com>
+Subject: [PATCH e2fsprogs] Restore backup superblocks in preen mode
+Date: Tue,  8 May 2007 18:43:24 +0100 (BST)
+Message-ID: <20070508174324.40EBE7B409F@zog.reactivated.net>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:37705 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965975AbXEHQxB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 12:53:01 -0400
-Content-Disposition: inline
-In-Reply-To: <20070508014337.GA14072@thunk.org>
+Received: from mtaout02-winn.ispmail.ntl.com ([81.103.221.48]:52887 "EHLO
+	mtaout02-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S965337AbXEHRn0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 13:43:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 07, 2007  21:43 -0400, Theodore Tso wrote:
-> On Mon, May 07, 2007 at 05:15:41PM -0700, Andrew Morton wrote:
-> > Userspace could presumably repair the mess in most situations by truncating
-> > the file back again.  The kernel cannot do that because there might be live
-> > data in amongst there.
-> 
-> Actually, the kernel could do it, in that could simply release all
-> unitialized extents back to the system.  The problem is distinguishing
-> between the unitialized extents that had just been newly added, versus
-> the ones that had there from before.  (On the other hand, if the
-> filesystem was completely full, releasing unitialized blocks wouldn't
-> be the worse thing in the world to do, although releasing previously
-> fallocated blocks probably does violate the princple of least
-> surprise, even if it's what the user would have wanted.)
+The restoration of backup superblocks seems to be reversed in the current
+e2fsprogs:
 
-I tend to agree with this.  Having fallocate() fill up the filesystem
-is exactly what the caller asked.  Doing a write() hit ENOSPC doesn't
-trucate off the whole write either, nor does "dd" delete the whole file
-when the filesystem is full.
+When running without preen mode, e2fsck searches and locates a backup
+superblock and fixes the primary superblock without any user intervention.
 
-Even checking the statfs() space before doing the fallocate() may be
-counter intuitive, since it will return ENOSPC but the filesystem will
-not actually be full.  Some applications (e.g. database) may WANT to
-fill the filesystem and then get the actual file size back to avoid
-trusting statfs() because of metadata overhead (e.g. indirect blocks).
+When running in preen mode, e2fsck prints a message describing how the user
+can specify the location of a backup superblock, and exits without doing any
+repair.
 
-One of the design goals for sys_fallocate() was to allow FA_DELALLOC
-to deallocate unwritten extents in a safe manner.
+This patch corrects the issue.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Signed-off-by: Daniel Drake <d.drake@mmm.com>
+
+Index: e2fsprogs-1.39/e2fsck/unix.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/unix.c
++++ e2fsprogs-1.39/e2fsck/unix.c
+@@ -932,7 +932,7 @@ restart:
+ 	} else 
+ 		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options, 
+ 				      flags, 0, 0, io_ptr, &fs);
+-	if (!ctx->superblock && !(ctx->options & E2F_OPT_PREEN) &&
++	if (!ctx->superblock && (ctx->options & E2F_OPT_PREEN) &&
+ 	    !(ctx->flags & E2F_FLAG_SB_SPECIFIED) &&
+ 	    ((retval == EXT2_ET_BAD_MAGIC) ||
+ 	     ((retval == 0) && ext2fs_check_desc(fs)))) {
