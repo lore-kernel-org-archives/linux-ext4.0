@@ -1,26 +1,43 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] - Make mke2fs.c defaults match mke2fs.conf defaults
-Date: Mon, 7 May 2007 23:38:45 -0400
-Message-ID: <20070508033845.GB10940@thunk.org>
-References: <463F545A.10903@redhat.com>
+Subject: Re: [PATCH] Accomodate 32-bit uid/guid values in e2fsprogs
+Date: Tue, 8 May 2007 00:28:13 -0400
+Message-ID: <20070508042813.GD10940@thunk.org>
+References: <463F5D8D.7080201@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:38367 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:58665 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S967653AbXEHDiw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 May 2007 23:38:52 -0400
+	id S967652AbXEHE2V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 May 2007 00:28:21 -0400
 Content-Disposition: inline
-In-Reply-To: <463F545A.10903@redhat.com>
+In-Reply-To: <463F5D8D.7080201@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2007 at 11:31:22AM -0500, Eric Sandeen wrote:
-> Anyway, here's a patch to bring mke2fs.conf and mke2fs.c into line
-> for current defaults...
+On Mon, May 07, 2007 at 12:10:37PM -0500, Eric Sandeen wrote:
+> e2fsprogs doesn't handle large (> 16 bit) UID/GID...
 
-Applied.
+Applied, with one correction:
+
+> --- e2fsprogs-hg.orig/misc/mke2fs.c
+> +++ e2fsprogs-hg/misc/mke2fs.c
+> @@ -492,9 +494,14 @@ static void create_root_dir(ext2_filsys 
+>  				_("while reading root inode"));
+>  			exit(1);
+>  		}
+> -		inode.i_uid = getuid();
+> -		if (inode.i_uid)
+> -			inode.i_gid = getgid();
+> +		uid = getuid();
+> +		inode.i_uid = uid;
+> +		inode.i_uid_high = uid >> 16;
+> +		if (inode.i_uid) {
+		    ^^^^^^^^^^^
+
+This should be "uid" instead.  Otherwise, the gid won't be set if the
+uid is a multiple of 65536.
 
 						- Ted
