@@ -1,93 +1,42 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: Ext4 devel interlock meeting minutes (May 7, 2007)
-Date: Wed, 09 May 2007 10:02:14 -0700
-Message-ID: <4641FE96.6010603@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Creating a >32bit blocks filesystem.
+Date: Wed, 09 May 2007 12:02:36 -0500
+Message-ID: <4641FEAC.9090203@redhat.com>
+References: <20070503140804.463b20e1@naruto>	<463B4A1B.4070201@bull.net>	<20070507111952.7868bc1c@gara>	<4641BBB7.8020904@bull.net>	<20070509085547.4785bf7d@gara>	<4641E13D.906@bull.net>	<4641E708.1090109@redhat.com> <20070509113428.760f453a@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:47642 "EHLO e2.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:51206 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754524AbXEIRBu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 May 2007 13:01:50 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l49H1oXN015985
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 13:01:50 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l49H1nQP491964
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 13:01:50 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l49H1nSf021299
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 13:01:49 -0400
-Received: from [9.47.16.99] (mathur.beaverton.ibm.com [9.47.16.99])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l49H1nt8021253
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 13:01:49 -0400
+	id S1753043AbXEIRFT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 May 2007 13:05:19 -0400
+In-Reply-To: <20070509113428.760f453a@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 Developer Interlock Call: 05/07/2007 Meeting Minutes
+Jose R. Santos wrote:
+> On Wed, 09 May 2007 10:21:44 -0500
+> Eric Sandeen <sandeen@redhat.com> wrote:
 
-Attendees: Mingming Cao, Dave Kleikamp, Ted Ts'o, Aneesh Veetil, Takashi 
-Sato, Jose Santos, Avantika Mathur,
+>> Jose, you mentioned that some blocks are still "unsigned long" on
+>> 32-bits... they shouldn't be, the LBD work should have fixed all those
+>> long ago.  But there is still the 16TB page cache limit in force.
+> 
+> Found this in mke2fs.c
+>                 unsigned long blocks = EXT2_BLOCKS_COUNT(fs->super);
+>                 unsigned long start;
 
-Minutes can be accessed at: 
-http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Call
+Ah, ok, I thought you were talking about kernelspace...
 
+yeah, that looks like a problem.  And it's from a patch called
+"use_64bit_block_numbers"  *grin*
 
-Discussed pushing ext4 patches upstream.
+there are a few related typedefs in e2fsprogs, such as blk_t, which is __u64
 
-- Preallocation Patches: These patches are almost ready to push, once we 
-have consensus from all architecture maintainers on the format of the 
-system call.  Mingming will help with this.
+should we be using those for block number containers?
 
-- Nanosecond Timestamps:  Ted will take a closer look at this patch 
-before pushing
-
-- It was proposed to push everything in the ext4 git tree up until the 
-unstable patches.  Before pushing these patches, we must run tests on 
-the patches and use the check-patches scripts to perform sanity checking.
-
-e2fsprogs:
-
-- Ted recently posted e2fsprogs-1.39-tyt3; which includes patches 
-supporting extents.  This is a work in progress.
-
-- Jose used the patches to e2fsprogs sent by Valerie Clement to create 
-large filesystems (with >32-bit block numbers)
-
-   -- Ted suggested that these patches be added to e2fsprogs-tyt3, with 
-a flag set when in use, indicating that no shared libraries should be used.
-
-- Ted is planning to discontinue use of Mercurial for e2fsprogs, and 
-switch entirely to git.  By using git, we can have a stable and 
-development branch for e2fsprogs.  This will also reduce the work Ted 
-does to create a patch series.
-
-Migration:
-
-- Aneesh looked at the online defragmentation code, and feels it may not 
-be usable for migration because it is solely extents based.  Mingming 
-pointed out that the new defrag patches also have support for indirect 
-mapped blocks, Aneesh will look into these new patches.
-
-- Ted suggested doing the migration through two ioctls, the first 
-migrating the inode online via ioctl, and the second using the 
-online-defrag ioctl.
-
-Metablock Groups:
-
-- Mingming mentioned that in the metablock group feature, the inode 
-metadata is not moved with the rest of the metadata.  Ted will check 
-this, as he thought this had been implemented.
-
-- Online resize does not use metablock groups, and is currently limited 
-to 2TB.
-
-- Also need to remove sanity checks in the mount code
-
-- Once these issues are fixed, the metablock group feature can be turned 
-on by default for ext4 filesysytems
-
-- The extents option will be turned on by default for all ext4 
-filesystems with the extents feature enabled.
+-Eric
