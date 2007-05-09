@@ -1,45 +1,38 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: commit only journal entries older than commit period?
-Date: Wed, 9 May 2007 09:20:29 -0700
-Message-ID: <20070509162029.GM6375@schatzie.adilger.int>
-References: <c384c5ea0705090631v1fa61e73kc54e8173b73c25d@mail.gmail.com>
+Subject: Re: Creating a >32bit blocks filesystem.
+Date: Wed, 9 May 2007 09:15:10 -0700
+Message-ID: <20070509161510.GL6375@schatzie.adilger.int>
+References: <20070503140804.463b20e1@naruto> <463B4A1B.4070201@bull.net> <20070507111952.7868bc1c@gara> <4641BBB7.8020904@bull.net> <20070509085547.4785bf7d@gara> <4641E13D.906@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Leon Woestenberg <leon.woestenberg@gmail.com>
+Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:54219 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:54220 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755687AbXEIQoS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 12:44:18 -0400
+	with ESMTP id S1756250AbXEIQoW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 12:44:22 -0400
 Content-Disposition: inline
-In-Reply-To: <c384c5ea0705090631v1fa61e73kc54e8173b73c25d@mail.gmail.com>
+In-Reply-To: <4641E13D.906@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 09, 2007  15:31 +0200, Leon Woestenberg wrote:
-> this is something I have long wondered about but have been afraid to ask.
-> 
-> When my system is chewing away on builds, the disk I/O write access
-> pattern of my ext3 root filesystem (using CFQ, Intel SATA controller,
-> hard disk) when visualized by GNOME System Monitor clearly shows a
-> repetitive landscape of large peaks, 5 seconds apart, which not much
-> activity inbetween.
-> 
-> I understand that's due to the ex3 journal commit interval (defaults
-> to 5 seconds).
-> 
-> But why isn't the filesystem continuously committing only that part of
-> the journal that is older than 5 seconds?
-> 
-> I would then expect the write requests to be smoothened over time,
-> which can only be good in terms of performance and low latency.
+On May 09, 2007  16:57 +0200, Valerie Clement wrote:
+> Jose R. Santos wrote:
+> >I think this has more to do with the fact that I'm on a 32bit
+> >architecture and there are still a couple places where blocks are
+> >represented using "unsigned long".  I'm trying to get access to a 64bit
+> >arch to confirm this.
 
-The journal cannot start checkpoint of blocks to the filesystem until
-the transaction is committed, otherwise a crash would leave the filesystem
-inconsistent.  After the transaction is committed the blocks are written
-into the fs and I'd guess that this can happen quickly enough that it
-only takes a fraction of a second.
+> Oh, I didn't catch that you use a 32-bit system.
+> On 32-bit architectures, the page cache index size imposes a 16TB limit 
+> on the filesystem size (with 4KB blocksize). So you need a 64-bit system 
+> for your test.
+
+The mke2fs code should warn the user in this case that the filesystem will
+not be usable on 32-bit systems.  I believe mke2fs already checks PAGE_SIZE
+in order to validate blocksize > 4096 filesystem requests, and a simple
+check for "sizeof(long)" to see if it is a 32-bit system would be enough.
 
 Cheers, Andreas
 --
