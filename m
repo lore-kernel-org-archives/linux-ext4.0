@@ -1,62 +1,60 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: Creating a >32bit blocks filesystem.
-Date: Wed, 9 May 2007 10:29:40 -0500
-Message-ID: <20070509102940.36493474@gara>
-References: <20070503140804.463b20e1@naruto>
-	<463B4A1B.4070201@bull.net>
-	<20070507111952.7868bc1c@gara>
-	<4641BBB7.8020904@bull.net>
-	<20070509085547.4785bf7d@gara>
-	<4641E13D.906@bull.net>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
+Date: Wed, 9 May 2007 21:31:02 +0530
+Message-ID: <20070509160102.GA30745@amitarora.in.ibm.com>
+References: <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Valerie Clement <valerie.clement@bull.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: torvalds@osdl.org, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:52404 "EHLO
+Received: from e35.co.us.ibm.com ([32.97.110.153]:42088 "EHLO
 	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756085AbXEIP3l convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 11:29:41 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l49FTf2T004490
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 11:29:41 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l49FTfOZ144208
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 09:29:41 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l49FTeoJ028524
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 09:29:40 -0600
-Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l49FTePb028497
-	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 09:29:40 -0600
-In-Reply-To: <4641E13D.906@bull.net>
+	with ESMTP id S1754125AbXEIQBT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 12:01:19 -0400
+Content-Disposition: inline
+In-Reply-To: <20070426180332.GA7209@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 09 May 2007 16:57:01 +0200
-Valerie Clement <valerie.clement@bull.net> wrote:
+I have the updated patches ready which take care of Andrew's comments.
+Will run some tests and post them soon.
 
-> Jose R. Santos wrote:
-> > I think this has more to do with the fact that I'm on a 32bit
-> > architecture and there are still a couple places where blocks are
-> > represented using "unsigned long".  I'm trying to get access to a 6=
-4bit
-> > arch to confirm this.
-> >=20
-> > -JRS
-> >=20
-> Oh, I didn't catch that you use a 32-bit system.
-> On 32-bit architectures, the page cache index size imposes a 16TB lim=
-it=20
-> on the filesystem size (with 4KB blocksize). So you need a 64-bit sys=
-tem=20
-> for your test.
->    Val=C3=A9rie
+But, before submitting these patches, I think it will be better to finalize
+on certain things which might be worth some discussion here:
 
-Thanks for the info.  Would the page cache limitation also restrict deb=
-ugfs and dumpe2fs from reading information on a large filesystem?  Woul=
-d a check need to be in place to limit the use of e2fsprog on 32bit arc=
-hitectures using large block devices.
+1) Should the file size change when preallocation is done beyond EOF ?
+   - Andreas and Chris Wedgwood are in favor of not changing the
+     file size in this case. I also tend to agree with them. Does anyone
+     has an argument in favor of changing the filesize ?
+     If not, I will remove the code which changes the filesize, before I
+     resubmit the concerned ext4 patch.
 
--JRS
+2) For FA_UNALLOCATE mode, should the file system allow unallocation
+   of normal (non-preallocated) blocks (blocks allocated via
+   regular write/truncate operations) also (i.e. work as punch()) ?
+   - Though FA_UNALLOCATE mode is yet to be implemented on ext4, still
+     we need to finalize on the convention here as a general guideline
+     to all the filesystems that implement fallocate.
+
+3) If above is true, the file size will need to be changed
+   for "unallocation" when block holding the EOF gets unallocated.
+   - If we do not "unallocate" normal (non-preallocated) blocks and we
+     do not change the file size on preallocation, then this is a
+     non-issue.
+
+4) Should we update mtime & ctime on a successfull allocation/
+   unallocation ?
+   - David Chinner raised this question in following post:
+     http://lkml.org/lkml/2007/4/29/407
+     I think it makes sense to update the [mc]time for a successfull
+     preallocation/unallocation. Does anyone feel otherwise ?
+     It will be interesting to know how XFS behaves currently. Does XFS
+     update [mc]time for preallocation ?
+
+
+--
+Regards,
+Amit Arora
