@@ -1,34 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: 2.6.21-ext4-1
-Date: Wed, 09 May 2007 09:52:10 -0500
-Message-ID: <4641E01A.50307@redhat.com>
-References: <E1HiXab-0001QX-Sk@candygram.thunk.org> <1178571383.3933.8.camel@dyn9047017103.beaverton.ibm.com> <20070508025048.GC32602149@melbourne.sgi.com> <1178661957.4135.66.camel@dyn9047017103.beaverton.ibm.com> <20070508232449.GG85884050@sgi.com> <20070509143613.GA13375@amitarora.in.ibm.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: Creating a >32bit blocks filesystem.
+Date: Wed, 09 May 2007 16:57:01 +0200
+Message-ID: <4641E13D.906@bull.net>
+References: <20070503140804.463b20e1@naruto>	<463B4A1B.4070201@bull.net>	<20070507111952.7868bc1c@gara>	<4641BBB7.8020904@bull.net> <20070509085547.4785bf7d@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: David Chinner <dgc@sgi.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Johann Lombardi <johann.lombardi@bull.net>,
-	linux-kernel@vger.kernel.org
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40496 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753981AbXEIOz4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 May 2007 10:55:56 -0400
-In-Reply-To: <20070509143613.GA13375@amitarora.in.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:39605 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757890AbXEIO6G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 10:58:06 -0400
+In-Reply-To: <20070509085547.4785bf7d@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Amit K. Arora wrote:
-
-> And, how does XFS behave now if we write to mmapped preallocated blocks,
-> since XFS also doesn't have ->page_mkwrite() implemented as of date ?
-
-unwritten extents remain unwritten after mmap() modifies them
-
-http://oss.sgi.com/bugzilla/show_bug.cgi?id=418
-
-:)
-
--Eric
+Jose R. Santos wrote:
+> I think this has more to do with the fact that I'm on a 32bit
+> architecture and there are still a couple places where blocks are
+> represented using "unsigned long".  I'm trying to get access to a 64b=
+it
+> arch to confirm this.
+>=20
+> -JRS
+>=20
+Oh, I didn't catch that you use a 32-bit system.
+On 32-bit architectures, the page cache index size imposes a 16TB limit=
+=20
+on the filesystem size (with 4KB blocksize). So you need a 64-bit syste=
+m=20
+for your test.
+   Val=C3=A9rie
