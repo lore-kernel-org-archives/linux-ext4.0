@@ -1,69 +1,66 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Ext4 devel interlock meeting minutes (May 7, 2007)
-Date: Wed, 9 May 2007 12:10:38 -0700
-Message-ID: <20070509191038.GR6375@schatzie.adilger.int>
-References: <4641FE96.6010603@linux.vnet.ibm.com> <20070509173740.GQ6375@schatzie.adilger.int> <1178734232.3815.25.camel@dyn9047017103.beaverton.ibm.com>
+From: Shapor Naghibzadeh <shapor@shapor.com>
+Subject: poor performance of mount due to libblkid
+Date: Wed, 9 May 2007 17:06:46 -0500
+Message-ID: <20070509170646.C12805@cbr.shaptech.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:34142 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757401AbXEITKl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 15:10:41 -0400
+Received: from cbr.shaptech.com ([64.246.26.67]:49388 "EHLO cbr.shaptech.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754412AbXEIWEB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 May 2007 18:04:01 -0400
+Received: (from shapor@localhost)
+	by cbr.shaptech.com (8.11.6/8.11.6) id l49M6k125726
+	for linux-ext4@vger.kernel.org; Wed, 9 May 2007 17:06:46 -0500
 Content-Disposition: inline
-In-Reply-To: <1178734232.3815.25.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 09, 2007  11:10 -0700, Mingming Cao wrote:
-> On Wed, 2007-05-09 at 10:37 -0700, Andreas Dilger wrote:
-> > That means it is virtually impossible to allow the group metadata to move
-> > under the META_BG feature.
-> 
-> Understand it's not straightforward to turn on this feature by default.
-> Just try to understand, why the kernel and e2fsprogs issues you
-> mentioned above are not possible to fix to support full META_BG
-> feature? 
 
-Because older kernels and e2fsprogs will think they understand META_BG,
-and will consider the filesystem corrupt due to "badly placed" bitmaps
-and itable.  That is exactly what FEATURE flags are supposed to protect
-against, so we can't change the semantics of the META_BG feature at this
-time.  I understand that we WANTED to have META_BG have different
-semantics, but the implementation didn't follow the design for this flag.
+There is a serious performance degradation with the mount command after
+mounting many unique devices when compiled with libblkid support.  A simple
+"mount" command to display the list of mounted filesystem can take minutes to
+run.  This is due to a call to libblkid's blkid_get_cache and a
+relatively large /etc/blkid.tab (tens of thousands of lines, a few megs in
+size).
 
-> >   It might be possible to predicate this change
-> > under both 64BIT and META_BG, though this is somewhat non-standard.
-> > 
-> > Alternately, we could allow the relocation of bitmaps and itables under
-> > BIG_BG, which is itself covers the relocation aspects and also allows
-> > the ability to change the group size.
-> > 
-> 
-> Well, I think the previous discussion about BIG_BG feature leads us to
-> believe that turn on META_BG feature is good enough to support larger fs
-> and reduce fragmentation(which is the new BIG_BG feature is trying to
-> address).  After all the relocation of metadata (bitmaps, itables and
-> group descriptors) is what META_BG feature means.
+The file is able to grow to a large size because it does not know that device
+mapper devices have been removed and will never be created again.  Neither the
+libblkid api nor blkid command line appear to even provide a facility for
+removing entries if you wanted to do so manually on device removal.
 
-That is what we WANTED the META_BG feature to mean.  What was implemented
-in both ext2/3/4 and e2fsck is that META_BG means "group descriptor backups
-are in 1st, 2nd, last group in metagroup" and nothing else.  At least the
-code is consistent between the two.
+Combined with no (reasonable) bound on the size of the blkid.tab file, this
+causes the mount command to get slower over time.  To make matters worse, the
+cost of reading the file in to memory is n-squared (which happens every time
+the mount command is run, even with "-h" for help!).  I have provided a simple
+shell script which reproduces the problem and generates a graph of mount's
+running time using gnuplot: http://www.shapor.com/libblkid/
 
-So that leaves us in the position that we either need to create a new
-INCOMPAT feature flag to allow relocation of bitmaps/itable, OR we
-need to make this conditional upon both META_BG and 64BIT being set.
-The latter is a bit confusing and is subject to error if only one or
-the other flag is checked by accident.  If we make a new INCOMPAT flag
-then could almost as easily implement BIG_BG and give us more flexibility
-for the future, though I haven't looked at that code in a while.
+I intended to run 100,000 iterations but even 16,000 took almost a day to run
+on a fast computer (2.8GHz P4).  Simply removing the blkid.tab immediately
+restores the original performance at iteration zero.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Conclusions:
+1) mount has libblkid support hacked in sloppily.  It shouldn't attempt to
+read the blkid.tab unless it is trying to guess the filesystem type.  Even if
+it is, what is the point?  Is reading blkid.tab and parsing xml really an
+optimization over reading the superblock (which we are about to do when we
+mount the filesystem) and determining the fs type?  It doesn't even seem to
+help the normal case, and really hurts the worst case badly.  If mount is to
+use the file, it should scan through it only in the case it is actually
+trying to detect the filesystem type, and stop when it finds the entry.
+
+2) The in-memory data structure of the blkid cache was not designed with scale
+in mind.  It should not have to scan the entire list locate a device,
+which happens on every insert when reading it.
+
+3) The use of XML in /etc is not very unixy.  It is difficult for both
+computers and humans to parse.
+
+This list appeared to be the best place to post my findings with mount and the
+libblkid component of e2fsprogs.  If there is a better place, please let me
+know.
+
+Regards,
+Shapor
