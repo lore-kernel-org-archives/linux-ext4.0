@@ -1,114 +1,38 @@
-From: akpm@linux-foundation.org
-Subject: - jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread.patch removed from -mm tree
-Date: Tue, 08 May 2007 19:51:02 -0700
-Message-ID: <200705090251.l492p27f009415@shell0.pdx.osdl.net>
-To: xemul@sw.ru, hch@lst.de, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: e2fsprogs: Undo I/O manager
+Date: Wed,  9 May 2007 13:42:16 +0530
+Message-ID: <11786983382211-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: aneesh.kumar@linux.vnet.ibm.com
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([65.172.181.25]:42246 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1032183AbXEICvt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2007 22:51:49 -0400
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:51091 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752318AbXEIIM2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 04:12:28 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l498Dvrk8388624
+	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 18:13:59 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l498Frep152994
+	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 18:15:54 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l498CL2d024834
+	for <linux-ext4@vger.kernel.org>; Wed, 9 May 2007 18:12:22 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+This is a very early prototype of what i working on. I have done only minimal
+testing of this. To use one need to use the below steps.
 
-The patch titled
-     jbd: check for error returned by kthread_create on creating journal thread
-has been removed from the -mm tree.  Its filename was
-     jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+       io_manager io_mng = stack_io_manager_init();
+       stack_push_io_manager(io_mng, unix_io_manager);
+       stack_push_io_manager(io_mng, undo_io_manager);
+       flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_RW;
+       retval = ext2fs_open2(dev_name,"tdbfilename=/tmp/test.tdb&",
+                                       flags, superblock, block_size,
+                                       io_mng, &current_fs);
 
-------------------------------------------------------
-Subject: jbd: check for error returned by kthread_create on creating journal thread
-From: Pavel Emelianov <xemul@sw.ru>
+I am sending this across to find out if this is the approach that we want to follow.
 
-If the thread failed to create the subsequent wait_event will hang forever.
-
-This is likely to happen if kernel hits max_threads limit.
-
-Will be critical for virtualization systems that limit the number of tasks
-and kernel memory usage within the container.
-
-(akpm: JBD should be converted fully to the kthread API: kthread_should_stop()
-and kthread_stop()).
-
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/journal.c  |   13 +++++++++----
- fs/jbd2/journal.c |   13 +++++++++----
- 2 files changed, 18 insertions(+), 8 deletions(-)
-
-diff -puN fs/jbd/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread
-+++ a/fs/jbd/journal.c
-@@ -210,10 +210,16 @@ end_loop:
- 	return 0;
- }
- 
--static void journal_start_thread(journal_t *journal)
-+static int journal_start_thread(journal_t *journal)
- {
--	kthread_run(kjournald, journal, "kjournald");
-+	struct task_struct *t;
-+
-+	t = kthread_run(kjournald, journal, "kjournald");
-+	if (IS_ERR(t))
-+		return PTR_ERR(t);
-+
- 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
-+	return 0;
- }
- 
- static void journal_kill_thread(journal_t *journal)
-@@ -839,8 +845,7 @@ static int journal_reset(journal_t *jour
- 
- 	/* Add the dynamic fields and write it to disk. */
- 	journal_update_superblock(journal, 1);
--	journal_start_thread(journal);
--	return 0;
-+	return journal_start_thread(journal);
- }
- 
- /**
-diff -puN fs/jbd2/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd-check-for-error-returned-by-kthread_create-on-creating-journal-thread
-+++ a/fs/jbd2/journal.c
-@@ -210,10 +210,16 @@ end_loop:
- 	return 0;
- }
- 
--static void jbd2_journal_start_thread(journal_t *journal)
-+static int jbd2_journal_start_thread(journal_t *journal)
- {
--	kthread_run(kjournald2, journal, "kjournald2");
-+	struct task_struct *t;
-+
-+	t = kthread_run(kjournald2, journal, "kjournald2");
-+	if (IS_ERR(t))
-+		return PTR_ERR(t);
-+
- 	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
-+	return 0;
- }
- 
- static void journal_kill_thread(journal_t *journal)
-@@ -839,8 +845,7 @@ static int journal_reset(journal_t *jour
- 
- 	/* Add the dynamic fields and write it to disk. */
- 	jbd2_journal_update_superblock(journal, 1);
--	jbd2_journal_start_thread(journal);
--	return 0;
-+	return jbd2_journal_start_thread(journal);
- }
- 
- /**
-_
-
-Patches currently in -mm which might be from xemul@sw.ru are
-
-origin.patch
+-aneesh
