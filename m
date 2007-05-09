@@ -1,38 +1,53 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Creating a >32bit blocks filesystem.
-Date: Wed, 9 May 2007 09:15:10 -0700
-Message-ID: <20070509161510.GL6375@schatzie.adilger.int>
-References: <20070503140804.463b20e1@naruto> <463B4A1B.4070201@bull.net> <20070507111952.7868bc1c@gara> <4641BBB7.8020904@bull.net> <20070509085547.4785bf7d@gara> <4641E13D.906@bull.net>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
+Date: Wed, 9 May 2007 09:54:02 -0700
+Message-ID: <20070509165402.GO6375@schatzie.adilger.int>
+References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Valerie Clement <valerie.clement@bull.net>
+Cc: torvalds@osdl.org, akpm@linux-foundation.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:54220 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:54118 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756250AbXEIQoW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 12:44:22 -0400
+	with ESMTP id S1755744AbXEIQyD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 12:54:03 -0400
 Content-Disposition: inline
-In-Reply-To: <4641E13D.906@bull.net>
+In-Reply-To: <20070509160102.GA30745@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 09, 2007  16:57 +0200, Valerie Clement wrote:
-> Jose R. Santos wrote:
-> >I think this has more to do with the fact that I'm on a 32bit
-> >architecture and there are still a couple places where blocks are
-> >represented using "unsigned long".  I'm trying to get access to a 64bit
-> >arch to confirm this.
+On May 09, 2007  21:31 +0530, Amit K. Arora wrote:
+> 2) For FA_UNALLOCATE mode, should the file system allow unallocation
+>    of normal (non-preallocated) blocks (blocks allocated via
+>    regular write/truncate operations) also (i.e. work as punch()) ?
+>    - Though FA_UNALLOCATE mode is yet to be implemented on ext4, still
+>      we need to finalize on the convention here as a general guideline
+>      to all the filesystems that implement fallocate.
 
-> Oh, I didn't catch that you use a 32-bit system.
-> On 32-bit architectures, the page cache index size imposes a 16TB limit 
-> on the filesystem size (with 4KB blocksize). So you need a 64-bit system 
-> for your test.
+I would only allow this on FA_ALLOCATE extents.  That means it won't be
+possible to do this for filesystems that don't understand unwritten
+extents unless there are blocks allocated beyond EOF.
 
-The mke2fs code should warn the user in this case that the filesystem will
-not be usable on 32-bit systems.  I believe mke2fs already checks PAGE_SIZE
-in order to validate blocksize > 4096 filesystem requests, and a simple
-check for "sizeof(long)" to see if it is a 32-bit system would be enough.
+> 3) If above is true, the file size will need to be changed
+>    for "unallocation" when block holding the EOF gets unallocated.
+>    - If we do not "unallocate" normal (non-preallocated) blocks and we
+>      do not change the file size on preallocation, then this is a
+>      non-issue.
+
+Not necessarily.  That will just make the file sparse.  If FA_ALLOCATE
+does not change the file size, why should FA_UNALLOCATE.
+
+> 4) Should we update mtime & ctime on a successfull allocation/
+>    unallocation ?
+
+I would say yes.  If glibc does the fallback fallocate via write() the
+mtime/ctime will be updated, so it makes sense to be consistent for
+both methods.  Also, it just makes sense from the "this file was modified"
+point of view.
 
 Cheers, Andreas
 --
