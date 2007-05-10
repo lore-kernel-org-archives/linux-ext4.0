@@ -1,86 +1,79 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: poor performance of mount due to libblkid
-Date: Wed, 9 May 2007 17:30:05 -0700
-Message-ID: <20070510003005.GV6375@schatzie.adilger.int>
-References: <20070509170646.C12805@cbr.shaptech.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
+Date: Thu, 10 May 2007 10:59:26 +1000
+Message-ID: <20070510005926.GT85884050@sgi.com>
+References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Shapor Naghibzadeh <shapor@shapor.com>
+Cc: torvalds@osdl.org, akpm@linux-foundation.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:37408 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755452AbXEJAaH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 20:30:07 -0400
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:36986 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757590AbXEJA74 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 May 2007 20:59:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20070509170646.C12805@cbr.shaptech.com>
+In-Reply-To: <20070509160102.GA30745@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 09, 2007  17:06 -0500, Shapor Naghibzadeh wrote:
-> There is a serious performance degradation with the mount command after
-> mounting many unique devices when compiled with libblkid support.  A simple
-> "mount" command to display the list of mounted filesystem can take minutes to
-> run.  This is due to a call to libblkid's blkid_get_cache and a
-> relatively large /etc/blkid.tab (tens of thousands of lines, a few megs in
-> size).
->
-> The file is able to grow to a large size because it does not know that device
-> mapper devices have been removed and will never be created again.
-
-Is there something unusual about your system or startup scripts that is
-causing so many entries in /etc/blkid.tab file?
-
-> libblkid api nor blkid command line appear to even provide a facility for
-> removing entries if you wanted to do so manually on device removal.
-
-Using "blkid -c /dev/null" skips the cache load, but I also see it doesn't
-write out a new /etc/blkid.tab file.
-
-> Combined with no (reasonable) bound on the size of the blkid.tab file, this
-> causes the mount command to get slower over time.  To make matters worse, the
-> cost of reading the file in to memory is n-squared (which happens every time
-> the mount command is run, even with "-h" for help!).
-
-I hadn't looked at that previously (it's been a long time since I looked
-at the blkid code), and I also don't have the mount code handy.  Can you
-be more specific? 
-
-> 1) mount has libblkid support hacked in sloppily.  It shouldn't attempt to
-> read the blkid.tab unless it is trying to guess the filesystem type.  Even if
-> it is, what is the point?  Is reading blkid.tab and parsing xml really an
-> optimization over reading the superblock (which we are about to do when we
-> mount the filesystem) and determining the fs type?
-
-The reason for libblkid is twofold:
-- centralize the detection of filesystem types into one library
-- allow userspace applications to find device content type without needing
-  root or read access to the device (hence reason for /etc/blkid.tab)
-
-
-> It doesn't even seem to
-> help the normal case, and really hurts the worst case badly.  If mount is to
-> use the file, it should scan through it only in the case it is actually
-> trying to detect the filesystem type, and stop when it finds the entry.
-
-That makes a lot of sense, but that should be sent to the mount(8) maintainer.
-
-> 2) The in-memory data structure of the blkid cache was not designed with scale
-> in mind.  It should not have to scan the entire list locate a device,
-> which happens on every insert when reading it.
+On Wed, May 09, 2007 at 09:31:02PM +0530, Amit K. Arora wrote:
+> I have the updated patches ready which take care of Andrew's comments.
+> Will run some tests and post them soon.
 > 
-> 3) The use of XML in /etc is not very unixy.  It is difficult for both
-> computers and humans to parse.
+> But, before submitting these patches, I think it will be better to finalize
+> on certain things which might be worth some discussion here:
+> 
+> 1) Should the file size change when preallocation is done beyond EOF ?
+>    - Andreas and Chris Wedgwood are in favor of not changing the
+>      file size in this case. I also tend to agree with them. Does anyone
+>      has an argument in favor of changing the filesize ?
+>      If not, I will remove the code which changes the filesize, before I
+>      resubmit the concerned ext4 patch.
 
-Yeah, but when I wrote it that was what people told me to use.  I guess the
-late 90's was the time when XML was cool.  I don't think people would complain
-too loudly if the blkid code was changed to have a plain-text formatted file,
-so long as that was not initially the default, and the XML parsing support was
-kept around for a while to allow apps which are statically linked to libblkid
-to continue working.
+I think there needs to be both. If we don't have a mechanism to
+atomically change the file size with the preallocation, then
+applications that use stat() to work out if they need to preallocate
+more space will end up racing.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+> 2) For FA_UNALLOCATE mode, should the file system allow unallocation
+>    of normal (non-preallocated) blocks (blocks allocated via
+>    regular write/truncate operations) also (i.e. work as punch()) ?
+
+Yes. That is the current XFS implementation for XFS_IOC_UNRESVSP, and
+what i did for FA_UNALLOCATE as well.
+
+>    - Though FA_UNALLOCATE mode is yet to be implemented on ext4, still
+>      we need to finalize on the convention here as a general guideline
+>      to all the filesystems that implement fallocate.
+> 
+> 3) If above is true, the file size will need to be changed
+>    for "unallocation" when block holding the EOF gets unallocated.
+
+No - we punch a hole. If you want the filesize to change, then
+you use ftruncate() to remove the blocks at EOF and change the
+file size atomically.
+
+> 4) Should we update mtime & ctime on a successfull allocation/
+>    unallocation ?
+>    - David Chinner raised this question in following post:
+>      http://lkml.org/lkml/2007/4/29/407
+>      I think it makes sense to update the [mc]time for a successfull
+>      preallocation/unallocation. Does anyone feel otherwise ?
+>      It will be interesting to know how XFS behaves currently. Does XFS
+>      update [mc]time for preallocation ?
+
+No, XFS does *not* update a/m/ctime on prealloc/punch unless the file size
+changes. If the filesize changes, it behaves exactly the same way that
+ftruncate() behaves.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
