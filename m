@@ -1,61 +1,73 @@
-From: Andreas Dilger <adilger@clusterfs.com>
+From: Eric <erpo41@gmail.com>
 Subject: Re: [RFC] store RAID stride in superblock
-Date: Sat, 12 May 2007 08:26:37 -0700
-Message-ID: <20070512152637.GS6375@schatzie.adilger.int>
-References: <20070512020248.GQ6375@schatzie.adilger.int> <1178957506.20145.41.camel@eric-laptop>
+Date: Sat, 12 May 2007 09:14:17 -0700
+Message-ID: <1178986457.6021.22.camel@eric-laptop>
+References: <20070512020248.GQ6375@schatzie.adilger.int>
+	 <1178957506.20145.41.camel@eric-laptop>  <46457BD5.8040301@clusterfs.com>
+	 <1178962364.20145.99.camel@eric-laptop>  <46458AF9.404@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eric <erpo41@gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-g62yQdXnMXUradmMIT6U"
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:34108 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756561AbXELPu5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 May 2007 11:50:57 -0400
-Content-Disposition: inline
-In-Reply-To: <1178957506.20145.41.camel@eric-laptop>
+Received: from an-out-0708.google.com ([209.85.132.245]:24675 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751747AbXELQOW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 May 2007 12:14:22 -0400
+Received: by an-out-0708.google.com with SMTP id d18so308722and
+        for <linux-ext4@vger.kernel.org>; Sat, 12 May 2007 09:14:21 -0700 (PDT)
+In-Reply-To: <46458AF9.404@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 12, 2007  01:11 -0700, Eric wrote:
-> The concept is really tempting. RAID is good, and not asking the user
-> for information that the system can find out for itself is good too.
-> 
-> In the unlikely event that the RAID stride were to change, I think the
-> autodetect-each-time method would be superior to the store-in-superblock
-> method. Doubly so if the code to detect MD and LVM stride is lean and
-> clean.
 
-I've asked the block layer folks a couple of times if it would be possible
-to have an interface for this in the kernel, but so far I've had little
-success in getting them to do it and I don't have time for it myself.
+--=-g62yQdXnMXUradmMIT6U
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I agree that auto-detection is best (would need a userspace interface too)
-but a lot can be done with a format-time detection.  It is unlikely that
-the RAID striping will change under the filesystem, and if it does then
-the stripe size is usually kept the same (e.g. RAID 5 restriping to add
-a disk).
+> > Perhaps the filesystem driver or mkfs could
+> > probe for the stride in those cases? If the code asks for, say, 10MiB o=
+f
+> > data from the block device and it gets back sectors that are spaced
+> > 128KiB apart before it gets the rest of the data, it can make an
+> > intelligent guess about the stride.
+>
+> do you mean incorporation
+> storage benchmark in the mount procedure?
 
-Even if the stiping does change, the current alignment of bitmaps is
-about the worst possible case for power-of-two stride sizes because a
-single disk has all of the bitmaps (using the terms "stripe = N * stride"
-for N+1 RAID5 or N+2 RAID6 - if anyone knows the "more correct" terms
-please speak up).  It would also be possible to use tune2fs to change
-the stride + stripe size in the superblock to at least tune the mballoc
-allocation even if we can't move the bitmaps around very easily.
+Yes. If the benefits of automatically aligning on-disk data structures
+to the stride of the array are great enough, then a storage
+mini-benchmark may be of use.
 
-> I wonder if, in a RAID 0 configuration, deliberately misaligning data
-> structures smaller than (size of stride * number of disks in array)
-> would yield a performance benefit.
+For example, suppose we have an array with a stride of 1MiB and the
+filesystem driver requests 10MiB of contiguous data from the start of
+the block device. Then the data at +0MiB from the start of the device,
+the data at +1MiB, the data at +2MiB, and so on ought to arrive earlier
+the data at, say, +0.5MiB, +1.5MiB and +2.5MiB. This would allow the
+filesystem driver to detect the stride even when the striping isn't
+being done by the MD or LVM/DM drivers in Linux (which, apparently, have
+well-defined interfaces for discovering the stride in software).
 
-Yes, that would definitely be something to do.  If you have N-disk RAID0,
-each disk having "stride" blocks at a time, then offsetting the bitmaps by
-"stride" blocks each is exactly what "mke2fs -E stride=" does.  The
-mballoc "stripe" option tries to put large allocations covering the whole
-stripe to avoid parity read-modify-write if possible.
+I imagine this would work well for a run-of-the-mill hardware RAID card
+in a PC. However, as you pointed out in your original email, there are
+SANs to be considered. If another host is putting load on the SAN, it
+could throw off the read timings and cause the filesystem driver to make
+a bad guess.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Cheers,
+
+Eric
+
+
+--=-g62yQdXnMXUradmMIT6U
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBGRefZe2L37HVup3ARApjjAJ44duesS2O1YpleRu3ECYAwb4eQZgCfeAFQ
+vbbLNge0vPlSV8YlLv+UYNw=
+=Uu8/
+-----END PGP SIGNATURE-----
+
+--=-g62yQdXnMXUradmMIT6U--
