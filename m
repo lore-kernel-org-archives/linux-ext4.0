@@ -1,121 +1,124 @@
-From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: [RFC] [patch 2/2] i_version update - ext4 part
-Date: Mon, 14 May 2007 13:05:01 +0200
-Message-ID: <1179140701.7733.4.camel@frecb002711.frec.bull.fr>
-Reply-To: jean-noel.cordenner@bull.net
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: [PATCH 0/5][TAKE2] fallocate system call
+Date: Mon, 14 May 2007 18:59:26 +0530
+Message-ID: <20070514132926.GA30768@amitarora.in.ibm.com>
+References: <20070321120425.GA27273@amitarora.in.ibm.com> <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
+	cmm@us.ibm.com
+To: torvalds@osdl.org, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:48488 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758659AbXENLKC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 May 2007 07:10:02 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 220DD19D929
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2007 13:10:04 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 04590-09 for <linux-ext4@vger.kernel.org>;
- Mon, 14 May 2007 13:10:00 +0200 (CEST)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id EF56519D925
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2007 13:09:59 +0200 (CEST)
+Received: from e35.co.us.ibm.com ([32.97.110.153]:53899 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752904AbXENN3g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 May 2007 09:29:36 -0400
+Content-Disposition: inline
+In-Reply-To: <20070426175056.GA25321@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In the ext4 part, the i_version counter is stored into 2 32bit fields in
-the ext4_inode structure i_disk_version and i_disk_version_hi.
+This is the new set of patches which take care of the review comments
+received from the community (mainly from Andrew).
 
-Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+Description:
+-----------
+fallocate() is a new system call being proposed here which will allow
+applications to preallocate space to any file(s) in a file system.
+Each file system implementation that wants to use this feature will need
+to support an inode operation called fallocate.
 
-fs/ext4/ialloc.c        |    1 +
-fs/ext4/inode.c         |    5 +++++
-fs/ext4/super.c         |    2 +-
-include/linux/ext4_fs.h |    5 +++--
+Applications can use this feature to avoid fragmentation to certain
+level and thus get faster access speed. With preallocation, applications
+also get a guarantee of space for particular file(s) - even if later the
+the system becomes full.
 
-Index: linux-2.6.21-rc4-i_version/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.21-rc4-i_version.orig/fs/ext4/ialloc.c	2007-05-10 17:22:23.000000000 +0200
-+++ linux-2.6.21-rc4-i_version/fs/ext4/ialloc.c	2007-05-10 17:26:21.000000000 +0200
-@@ -564,6 +564,7 @@
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
- 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_version = 1;
- 
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_dir_start_lookup = 0;
-Index: linux-2.6.21-rc4-i_version/fs/ext4/inode.c
-===================================================================
---- linux-2.6.21-rc4-i_version.orig/fs/ext4/inode.c	2007-05-10 17:22:23.000000000 +0200
-+++ linux-2.6.21-rc4-i_version/fs/ext4/inode.c	2007-05-10 18:14:43.000000000 +0200
-@@ -2680,6 +2680,8 @@
- 	inode->i_ctime.tv_sec = le32_to_cpu(raw_inode->i_ctime);
- 	inode->i_mtime.tv_sec = le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
-+	inode->i_version = (le32_to_cpu(raw_inode->i_disk_version_hi) << 32) +
-+			    le32_to_cpu(raw_inode->i_disk_version);
- 
- 	ei->i_state = 0;
- 	ei->i_dir_start_lookup = 0;
-@@ -2838,6 +2840,8 @@
- 	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
- 	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
- 	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
-+	raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
-+	raw_inode->i_disk_version_hi = cpu_to_le32(inode->i_version >> 32);
- 	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
-@@ -3111,6 +3115,7 @@
- {
- 	int err = 0;
- 
-+	inode->i_version++;
- 	/* the do_update_inode consumes one bh->b_count */
- 	get_bh(iloc->bh);
- 
-Index: linux-2.6.21-rc4-i_version/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.21-rc4-i_version.orig/include/linux/ext4_fs.h	2007-05-10 17:22:23.000000000 +0200
-+++ linux-2.6.21-rc4-i_version/include/linux/ext4_fs.h	2007-05-10 17:26:21.000000000 +0200
-@@ -291,7 +291,7 @@
- 	__le32	i_flags;	/* File flags */
- 	union {
- 		struct {
--			__u32  l_i_reserved1;
-+			__u32  l_i_disk_version;
- 		} linux1;
- 		struct {
- 			__u32  h_i_translator;
-@@ -331,12 +331,13 @@
- 	} osd2;				/* OS dependent 2 */
- 	__le16	i_extra_isize;
- 	__le16	i_pad1;
-+	__le32	i_disk_version_hi;
- };
- 
- #define i_size_high	i_dir_acl
- 
- #if defined(__KERNEL__) || defined(__linux__)
--#define i_reserved1	osd1.linux1.l_i_reserved1
-+#define i_disk_version	osd1.linux1.l_i_disk_version
- #define i_frag		osd2.linux2.l_i_frag
- #define i_fsize		osd2.linux2.l_i_fsize
- #define i_file_acl_high	osd2.linux2.l_i_file_acl_high
-Index: linux-2.6.21-rc4-i_version/fs/ext4/super.c
-===================================================================
---- linux-2.6.21-rc4-i_version.orig/fs/ext4/super.c	2007-05-10 17:22:23.000000000 +0200
-+++ linux-2.6.21-rc4-i_version/fs/ext4/super.c	2007-05-10 17:26:21.000000000 +0200
-@@ -2804,8 +2804,8 @@
- 		i_size_write(inode, off+len-towrite);
- 		EXT4_I(inode)->i_disksize = inode->i_size;
- 	}
--	inode->i_version++;
- 	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_version = 1;
- 	ext4_mark_inode_dirty(handle, inode);
- 	mutex_unlock(&inode->i_mutex);
- 	return len - towrite;
+Currently, glibc provides an interface called posix_fallocate() which
+can be used for similar cause. Though this has the advantage of working
+on all file systems, but it is quite slow (since it writes zeroes to
+each block that has to be preallocated). Without a doubt, file systems
+can do this more efficiently within the kernel, by implementing
+the proposed fallocate() system call. It is expected that
+posix_fallocate() will be modified to call this new system call first
+and incase the kernel/filesystem does not implement it, it should fall
+back to the current implementation of writing zeroes to the new blocks.
+
+Interface:
+---------
+The proposed system call's layout is:
+
+ asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
+
+fd: The descriptor of the open file.
+
+mode*: This specifies the behavior of the system call. Currently the
+  system call supports two modes - FA_ALLOCATE and FA_DEALLOCATE.
+  FA_ALLOCATE: Applications can use this mode to preallocate blocks to
+    a given file (specified by fd). This mode changes the file size if
+    the preallocation is done beyond the EOF. It also updates the
+    ctime/mtime in the inode of the corresponding file, marking a
+    successfull allocation.
+  FA_DEALLOCATE: This mode can be used by applications to deallocate the
+    previously preallocated blocks. This also may change the file size
+    and the ctime/mtime.
+* New modes might get added in future. One such new mode which is
+  already under discussion is FA_PREALLOCATE, which when used will
+  preallocate space but will not change the filesize and [cm]time.
+  Since the semantics of this new mode is not clear and agreed upon yet,
+  this patchset does not implement it currently.
+
+offset: This is the offset in bytes, from where the preallocation should
+  start.
+
+len: This is the number of bytes requested for preallocation (from
+  offset).
+  
+    
+sys_fallocate() on s390:
+-----------------------
+There is a problem with s390 ABI to implement sys_fallocate() with the
+proposed order of arguments. Martin Schwidefsky has suggested a patch to
+solve this problem which makes use of a wrapper in the kernel. This will
+require special handling of this system call on s390 in glibc as well.
+But, this seems to be the best solution so far.
+
+Known Problem:
+-------------
+mmapped writes into uninitialized extents is a known problem with the
+current ext4 patches. Like XFS, ext4 may need to implement
+->page_mkwrite() to solve this. See:
+http://lkml.org/lkml/2007/5/8/583
+
+Since there is a talk of ->fault() replacing ->page_mkwrite() and also
+with a generic block_page_mkwrite() implementation already posted, we
+can implement this later some time. See:
+http://lkml.org/lkml/2007/3/7/161
+http://lkml.org/lkml/2007/3/18/198
+
+ToDos:
+-----
+1> Implementation on other architectures (other than i386, x86_64,
+ppc64 and s390(x)). David Chinner has already posted a patch for ia64.
+2> A generic file system operation to handle fallocate
+(generic_fallocate), for filesystems that do _not_ have the fallocate
+inode operation implemented.
+3> Changes to glibc,
+   a) to support fallocate() system call
+   b) to make posix_fallocate() and posix_fallocate64() call fallocate()
+
+
+Changelog:
+---------
+Each post will have an individual changelog for the particular patch.
+Following posts with patches follow:
+
+Patch 1/5 : fallocate() implementation on i86, x86_64 and powerpc
+Patch 2/5 : fallocate() on s390
+Patch 3/5 : ext4: Extent overlap bugfix
+Patch 4/5 : ext4: fallocate support in ext4
+Patch 5/5 : ext4: write support for preallocated blocks
+
+--
+Regards,
+Amit Arora
