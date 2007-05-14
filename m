@@ -1,7 +1,7 @@
 From: Fengguang Wu <fengguang.wu@gmail.com>
 Subject: Re: [PATCH] resolve duplicate flag no for PG_lazyfree
 Date: Mon, 14 May 2007 15:55:20 +0800
-Message-ID: <379129320.24602@ustc.edu.cn>
+Message-ID: <20070514075519.GA6255__32494.7182824419$1179129837$gmane$org@mail.ustc.edu.cn>
 References: <379110250.28666@ustc.edu.cn> <20070513224630.3cd0cb54.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,11 +10,15 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
 	Theodore Ts'o <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756475AbXENHzn@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.ustc.edu.cn ([202.38.64.16]:60576 "HELO ustc.edu.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1753575AbXENIDv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 May 2007 04:03:51 -0400
 Message-ID: <20070514075519.GA6255@mail.ustc.edu.cn>
 Content-Disposition: inline
 In-Reply-To: <20070513224630.3cd0cb54.akpm@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Sun, May 13, 2007 at 10:46:30PM -0700, Andrew Morton wrote:
