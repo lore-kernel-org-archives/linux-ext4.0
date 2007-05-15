@@ -1,59 +1,68 @@
-From: Andreas Dilger <adilger@clusterfs.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Subject: Re: [PATCH 0/5][TAKE2] fallocate system call
-Date: Tue, 15 May 2007 00:31:21 -0600
-Message-ID: <20070515063120.GI5286@schatzie.adilger.int>
-References: <20070329115126.GB7374@amitarora.in.ibm.com> <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070514132926.GA30768@amitarora.in.ibm.com>
+Date: Tue, 15 May 2007 18:10:20 +0530
+Message-ID: <20070515124020.GA12964@amitarora.in.ibm.com>
+References: <20070329101010.7a2b8783.akpm@linux-foundation.org> <20070330071417.GI355@devserv.devel.redhat.com> <20070417125514.GA7574@amitarora.in.ibm.com> <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070514132926.GA30768@amitarora.in.ibm.com> <20070515063120.GI5286@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: torvalds@osdl.org, akpm@linux-foundation.org,
+To: torvalds@osdl.org, akpm@linux-foundation.org,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com,
 	cmm@us.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:54997 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759653AbXEOGbX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 May 2007 02:31:23 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20070514132926.GA30768@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070515063120.GI5286@schatzie.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 14, 2007  18:59 +0530, Amit K. Arora wrote:
->  asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
+On Tue, May 15, 2007 at 12:31:21AM -0600, Andreas Dilger wrote:
+> On May 14, 2007  18:59 +0530, Amit K. Arora wrote:
+> >  asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
+> > 
+> > fd: The descriptor of the open file.
+> > 
+> > mode*: This specifies the behavior of the system call. Currently the
+> >   system call supports two modes - FA_ALLOCATE and FA_DEALLOCATE.
+> >   FA_ALLOCATE: Applications can use this mode to preallocate blocks to
+> >     a given file (specified by fd). This mode changes the file size if
+> >     the preallocation is done beyond the EOF. It also updates the
+> >     ctime/mtime in the inode of the corresponding file, marking a
+> >     successfull allocation.
+> >   FA_DEALLOCATE: This mode can be used by applications to deallocate the
+> >     previously preallocated blocks. This also may change the file size
+> >     and the ctime/mtime.
+> > * New modes might get added in future. One such new mode which is
+> >   already under discussion is FA_PREALLOCATE, which when used will
+> >   preallocate space but will not change the filesize and [cm]time.
+> >   Since the semantics of this new mode is not clear and agreed upon yet,
+> >   this patchset does not implement it currently.
+> > 
+> > offset: This is the offset in bytes, from where the preallocation should
+> >   start.
+> > 
+> > len: This is the number of bytes requested for preallocation (from
+> >   offset).
 > 
-> fd: The descriptor of the open file.
-> 
-> mode*: This specifies the behavior of the system call. Currently the
->   system call supports two modes - FA_ALLOCATE and FA_DEALLOCATE.
->   FA_ALLOCATE: Applications can use this mode to preallocate blocks to
->     a given file (specified by fd). This mode changes the file size if
->     the preallocation is done beyond the EOF. It also updates the
->     ctime/mtime in the inode of the corresponding file, marking a
->     successfull allocation.
->   FA_DEALLOCATE: This mode can be used by applications to deallocate the
->     previously preallocated blocks. This also may change the file size
->     and the ctime/mtime.
-> * New modes might get added in future. One such new mode which is
->   already under discussion is FA_PREALLOCATE, which when used will
->   preallocate space but will not change the filesize and [cm]time.
->   Since the semantics of this new mode is not clear and agreed upon yet,
->   this patchset does not implement it currently.
-> 
-> offset: This is the offset in bytes, from where the preallocation should
->   start.
-> 
-> len: This is the number of bytes requested for preallocation (from
->   offset).
+> What is the return value?  I'd hope it is the number of bytes preallocated,
+> in case of interrupted preallocation for whatever reason (interrupt, out of
+> space, etc) like a regular write(2) call.  In this case the return type needs
+> to also be an loff_t to match @len.
 
-What is the return value?  I'd hope it is the number of bytes preallocated,
-in case of interrupted preallocation for whatever reason (interrupt, out of
-space, etc) like a regular write(2) call.  In this case the return type needs
-to also be an loff_t to match @len.
+The return value in current implementation has been kept as "long" where
+zero is returned for success and an error on failure. This is done to
+keep it inline with posix_fallocate behavior.
 
-Cheers, Andreas
+This point was brought up sometime back by Badari. At that time it was
+decided to keep it the way posix_fallocate is designed. Here are the
+posts related to this:
+http://lkml.org/lkml/2007/3/2/18
+http://lkml.org/lkml/2007/3/2/162
+http://lkml.org/lkml/2007/3/2/208
+
+Still if you feel that we should be returning number of bytes
+preallocated, we can again ask for opinion here.
+
+Thanks!
 --
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Regards,
+Amit Arora
