@@ -1,47 +1,60 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: [patch 17/41] ext2 convert to new aops.
-Date: Wed, 16 May 2007 14:45:05 +0200
-Message-ID: <20070516124505.GA29668@wotan.suse.de>
-References: <20070514060619.689648000@wotan.suse.de> <20070514060652.572496000@wotan.suse.de>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [PATCH 1/5][TAKE3] fallocate() implementation on i86, x86_64 and powerpc
+Date: Thu, 17 May 2007 09:40:36 +1000
+Message-ID: <20070516234036.GQ85884050@sgi.com>
+References: <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070515193722.GA3487@amitarora.in.ibm.com> <20070515195421.GA2948@amitarora.in.ibm.com> <20070515200359.GA5834@amitarora.in.ibm.com> <20070516031626.GM85884050@sgi.com> <1179318076.10313.6.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: David Chinner <dgc@sgi.com>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
+	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:35875 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760237AbXEPXlD (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Wed, 16 May 2007 19:41:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20070514060652.572496000@wotan.suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1179318076.10313.6.camel@kleikamp.austin.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 14, 2007 at 04:06:36PM +1000, npiggin@suse.de wrote:
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Linux Filesystems <linux-fsdevel@vger.kernel.org>
-> Signed-off-by: Nick Piggin <npiggin@suse.de>
+On Wed, May 16, 2007 at 07:21:16AM -0500, Dave Kleikamp wrote:
+> On Wed, 2007-05-16 at 13:16 +1000, David Chinner wrote:
+> > On Wed, May 16, 2007 at 01:33:59AM +0530, Amit K. Arora wrote:
+> 
+> > > Following changes were made to the previous version:
+> > >  1) Added description before sys_fallocate() definition.
+> > >  2) Return EINVAL for len<=0 (With new draft that Ulrich pointed to,
+> > >     posix_fallocate should return EINVAL for len <= 0.
+> > >  3) Return EOPNOTSUPP if mode is not one of FA_ALLOCATE or FA_DEALLOCATE
+> > >  4) Do not return ENODEV for dirs (let individual file systems decide if
+> > >     they want to support preallocation to directories or not.
+> > >  5) Check for wrap through zero.
+> > >  6) Update c/mtime if fallocate() succeeds.
+> > 
+> > Please don't make this always happen. c/mtime updates should be dependent
+> > on the mode being used and whether there is visible change to the file. If no
+> > userspace visible changes to the file occurred, then timestamps should not
+> > be changed.
+> 
+> i_blocks will be updated, so it seems reasonable to update ctime.  mtime
+> shouldn't be changed, though, since the contents of the file will be
+> unchanged.
 
-Found a problem in ext2 pagecache directory handling. Trivial fix follows.
-Longer-term, it might be better to rework these things a bit so they can
-directly use the pagecache_write_begin/pagecache_write_end accessors.
----
-Index: linux-2.6/fs/ext2/dir.c
-===================================================================
---- linux-2.6.orig/fs/ext2/dir.c
-+++ linux-2.6/fs/ext2/dir.c
-@@ -70,10 +70,18 @@ static int ext2_commit_chunk(struct page
- 
- 	dir->i_version++;
- 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
-+
-+	if (pos+len > dir->i_size) {
-+		i_size_write(dir, pos+len);
-+		mark_inode_dirty(dir);
-+	}
-+
- 	if (IS_DIRSYNC(dir))
- 		err = write_one_page(page, 1);
- 	else
- 		unlock_page(page);
-+	mark_page_accessed(page);
-+
- 	return err;
- }
- 
+That's assuming blocks were actually allocated - if the prealloc range already
+has underlying blocks there is no change and so we should not be changing
+mtime either. Only the filesystem will know if it has changed the file, so I
+think that timestamp updates need to be driven down to that level, not done
+blindy at the highest layer....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
