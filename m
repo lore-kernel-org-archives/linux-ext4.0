@@ -1,60 +1,60 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [PATCH 1/5][TAKE3] fallocate() implementation on i86, x86_64 and powerpc
-Date: Thu, 17 May 2007 09:40:36 +1000
-Message-ID: <20070516234036.GQ85884050@sgi.com>
-References: <20070418130600.GW5967@schatzie.adilger.int> <20070420135146.GA21352@amitarora.in.ibm.com> <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070515193722.GA3487@amitarora.in.ibm.com> <20070515195421.GA2948@amitarora.in.ibm.com> <20070515200359.GA5834@amitarora.in.ibm.com> <20070516031626.GM85884050@sgi.com> <1179318076.10313.6.camel@kleikamp.austin.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 patch queue git updated to 2.6.22-rc1
+Date: Wed, 16 May 2007 16:49:17 -0700
+Message-ID: <1179359357.3771.19.camel@dyn9047017103.beaverton.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>, torvalds@osdl.org,
-	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com, cmm@us.ibm.com
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	Kalpak Shah <kalpak@clusterfs.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:35875 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1760237AbXEPXlD (ORCPT
-	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
-	Wed, 16 May 2007 19:41:03 -0400
-Content-Disposition: inline
-In-Reply-To: <1179318076.10313.6.camel@kleikamp.austin.ibm.com>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:39788 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763221AbXEPXtX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 May 2007 19:49:23 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id l4GNjgPC006710
+	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2007 19:45:42 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4GNnJvX105974
+	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2007 17:49:19 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4GNnJFp021364
+	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2007 17:49:19 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 16, 2007 at 07:21:16AM -0500, Dave Kleikamp wrote:
-> On Wed, 2007-05-16 at 13:16 +1000, David Chinner wrote:
-> > On Wed, May 16, 2007 at 01:33:59AM +0530, Amit K. Arora wrote:
-> 
-> > > Following changes were made to the previous version:
-> > >  1) Added description before sys_fallocate() definition.
-> > >  2) Return EINVAL for len<=0 (With new draft that Ulrich pointed to,
-> > >     posix_fallocate should return EINVAL for len <= 0.
-> > >  3) Return EOPNOTSUPP if mode is not one of FA_ALLOCATE or FA_DEALLOCATE
-> > >  4) Do not return ENODEV for dirs (let individual file systems decide if
-> > >     they want to support preallocation to directories or not.
-> > >  5) Check for wrap through zero.
-> > >  6) Update c/mtime if fallocate() succeeds.
-> > 
-> > Please don't make this always happen. c/mtime updates should be dependent
-> > on the mode being used and whether there is visible change to the file. If no
-> > userspace visible changes to the file occurred, then timestamps should not
-> > be changed.
-> 
-> i_blocks will be updated, so it seems reasonable to update ctime.  mtime
-> shouldn't be changed, though, since the contents of the file will be
-> unchanged.
+Hi Ted,
 
-That's assuming blocks were actually allocated - if the prealloc range already
-has underlying blocks there is no change and so we should not be changing
-mtime either. Only the filesystem will know if it has changed the file, so I
-think that timestamp updates need to be driven down to that level, not done
-blindy at the highest layer....
+I just updated the ext4 patch queue, rebase to 2.6.22-rc1.
 
-Cheers,
+changes since 2.6.21.1
+#Updated with Amit's latest fallocate() patches posted yesterday.
+fallocate-1-fallocate-syscall
+fallocate-1b-fallocate_inode_op_fix.patch
+fallocate-2-fallocate-syscall-s390
+fallocate-2b-fallocate-syscall-ia64
+fallocate-3-extent-overlap-bugfix
+fallocate-4-ext4-fallocate_and_unitialized_extents
+fallocate-5-ext4-uninit-extents
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+#Added a patch to fix return value of fallocate() inode operation;
+fallocate-1b-fallocate_inode_op_fix.patch
+
+#Added a patch to enable extents mount option by default;
+ext4_extents_on_by_default.patch
+
+#Added a patch to fix compile error with expand inode extra_isize;
+ext4_expand_inode_isize_fix.patch
+
+#Added patch to remove unnecessary exported ext4 symbols;
+ext4_remove_exported_symbles.patch
+
+Tested this series on x86,x86_64,ppc64 with fsx, dbench and tiobench
+
+http://repo.or.cz/w/ext4-patch-queue.git
+
+Mingming
