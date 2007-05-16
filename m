@@ -1,79 +1,68 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 0/5][TAKE3] fallocate system call
-Date: Tue, 15 May 2007 16:52:23 -0700
-Message-ID: <1179273143.4819.15.camel@dyn9047017103.beaverton.ibm.com>
-References: <20070321120425.GA27273@amitarora.in.ibm.com>
-	 <20070329115126.GB7374@amitarora.in.ibm.com>
-	 <20070329101010.7a2b8783.akpm@linux-foundation.org>
-	 <20070330071417.GI355@devserv.devel.redhat.com>
-	 <20070417125514.GA7574@amitarora.in.ibm.com>
-	 <20070418130600.GW5967@schatzie.adilger.int>
-	 <20070420135146.GA21352@amitarora.in.ibm.com>
-	 <20070420145918.GY355@devserv.devel.redhat.com>
-	 <20070424121632.GA10136@amitarora.in.ibm.com>
-	 <20070426175056.GA25321@amitarora.in.ibm.com>
-	 <20070515193722.GA3487@amitarora.in.ibm.com>
-Reply-To: cmm@us.ibm.com
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [PATCH] resolve duplicate flag no for PG_lazyfree
+Date: Wed, 16 May 2007 10:28:10 +1000
+Message-ID: <464A501A.3080209@yahoo.com.au>
+References: <379110250.28666@ustc.edu.cn>	<20070513224630.3cd0cb54.akpm@linux-foundation.org>	<20070514180618.GB9399@thunk.org> <20070514134606.695f087a.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: torvalds@osdl.org, akpm@linux-foundation.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, suparna@in.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:58407 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757391AbXEOXwi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 May 2007 19:52:38 -0400
-In-Reply-To: <20070515193722.GA3487@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: Theodore Tso <tytso@mit.edu>,
+	Fengguang Wu <fengguang.wu@gmail.com>,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	Rik van Riel <riel@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761566AbXEPA20@vger.kernel.org>
+In-Reply-To: <20070514134606.695f087a.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-05-16 at 01:07 +0530, Amit K. Arora wrote:
+Andrew Morton wrote:
+> On Mon, 14 May 2007 14:06:19 -0400
+> Theodore Tso <tytso@mit.edu> wrote:
+> 
+> 
+>>On Sun, May 13, 2007 at 10:46:30PM -0700, Andrew Morton wrote:
+>>
+>>>otoh, the intersection between pages which are PageBooked() and pages which
+>>>are PageLazyFree() should be zreo, so it'd be good to actually formalise
+>>>this reuse within the ext4 patches.
+>>>
+>>>otoh2, PageLazyFree() could have reused PG_owner_priv_1.
+>>>
+>>>Rik, Ted: any thoughts?  We do need to scrimp on page flags: when we
+>>>finally run out, we're screwed.
+>>
+>>It makes sense to me.  PG_lazyfree is currently only in -mm, right?
+> 
+> 
+> Ah, yes, I got confused, sorry.
+> 
+> 
+>> I
+>>don't see it in my git tree.  It would probably would be a good idea
+>>to make sure that we check to add some sanity checking code if it
+>>isn't there already that PG_lazyfree isn't already set when try to set
+>>PG_lazyfree (just in case there is a bug in the future which causes
+>>the should-never-happen case of trying lazy free a PageBooked page).
+>>
+> 
+> 
+> Actually, I think the current status of
+> lazy-freeing-of-memory-through-madv_free.patch is "might not be needed".  I
+> _think_ we've determined that 0a27a14a62921b438bb6f33772690d345a089be6
+> sufficiently fixed the perfomance problems we had in there?
 
-> ToDos:
-> -----
-> 1> Implementation on other architectures (other than i386, x86_64,
-> ppc64 and s390(x)). David Chinner has already posted a patch for ia64.
+I think so far we've found that it fixes the MySQL scalability problem,
+yes. I couldn't see any statistically significant difference with MySQL
+in my tests with MADV_FREE (versus MADV_DONTNEED).
 
-Here is the 2.6.22-rc1 version of David's patch: add fallocate() on ia64
+ebizzy is improved a bit at low concurrency but drops off slightly at
+higher concurrency.
 
-From: David Chinner <dgc@sgi.com>
-Subject: [PATCH] ia64 fallocate syscall
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>, 
-        akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-        suparna@in.ibm.com, cmm@us.ibm.com
+But basically, I don't think we've found a good reason to use a page
+flag and introduce the potential performance regressions that the
+MADV_FREE patch has.
 
-ia64 fallocate syscall support.
-
-Signed-Off-By: Dave Chinner <dgc@sgi.com>
-
----
- arch/ia64/kernel/entry.S  |    1 +
- include/asm-ia64/unistd.h |    3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
-
-Index: linux-2.6.22-rc1/arch/ia64/kernel/entry.S
-===================================================================
---- linux-2.6.22-rc1.orig/arch/ia64/kernel/entry.S	2007-05-12 18:45:56.000000000 -0700
-+++ linux-2.6.22-rc1/arch/ia64/kernel/entry.S	2007-05-15 15:36:48.000000000 -0700
-@@ -1585,5 +1585,6 @@
- 	data8 sys_getcpu
- 	data8 sys_epoll_pwait			// 1305
- 	data8 sys_utimensat
-+	data8 sys_fallocate
- 
- 	.org sys_call_table + 8*NR_syscalls	// guard against failures to increase NR_syscalls
-Index: linux-2.6.22-rc1/include/asm-ia64/unistd.h
-===================================================================
---- linux-2.6.22-rc1.orig/include/asm-ia64/unistd.h	2007-05-12 18:45:56.000000000 -0700
-+++ linux-2.6.22-rc1/include/asm-ia64/unistd.h	2007-05-15 15:37:51.000000000 -0700
-@@ -296,6 +296,7 @@
- #define __NR_getcpu			1304
- #define __NR_epoll_pwait		1305
- #define __NR_utimensat			1306
-+#define __NR_fallocate			1307
- 
- #ifdef __KERNEL__
- 
+-- 
+SUSE Labs, Novell Inc.
