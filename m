@@ -1,71 +1,55 @@
-From: Eric <erpo41@gmail.com>
-Subject: Re: ext2/3/4 online defrag
-Date: Thu, 17 May 2007 22:11:54 -0700
-Message-ID: <1179465114.7891.17.camel@eric-laptop>
-References: <1178770799.26695.11.camel@eric-laptop>
-	 <20070517161119.GB3230@atrey.karlin.mff.cuni.cz>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Ext4 Patch Queue using stgit.
+Date: Fri, 18 May 2007 18:12:23 +0530
+Message-ID: <464D9F2F.3030904@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-qUoeIhFoMbE9XWxH8ffI"
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nz-out-0506.google.com ([64.233.162.237]:30172 "EHLO
-	nz-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755050AbXERFL6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2007 01:11:58 -0400
-Received: by nz-out-0506.google.com with SMTP id r28so1212868nza
-        for <linux-ext4@vger.kernel.org>; Thu, 17 May 2007 22:11:57 -0700 (PDT)
-In-Reply-To: <20070517161119.GB3230@atrey.karlin.mff.cuni.cz>
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:54233 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752306AbXERMmb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2007 08:42:31 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4ID2Zdx255122
+	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 23:02:35 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4ICjw1Q108316
+	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 22:45:58 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4ICgQbZ023115
+	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 22:42:26 +1000
+Received: from [9.124.216.157] ([9.124.216.157])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l4ICgOKh023048
+	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 22:42:25 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi All,
 
---=-qUoeIhFoMbE9XWxH8ffI
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I was looking at ext4 patch queue and was wondering why we are  putting 
+.patch under git. If we are looking for a quilt like functionality, one 
+can achieve the same using stgit. I was using stgit to maintain a set of
+patches before. So if you look at
 
-On Thu, 2007-05-17 at 18:11 +0200, Jan Kara wrote:
-> But me (and several other people
-> independently as I've learnt recently) have written some tools which
-> should result in something useful. If you're interested, you can join
-> prefetch-devel@googlegroups.com - it's led by one guy who is doing
-> defrag and stuff as his google summer of code project.
+http://git.openssi.org/~kvaneesh/gitweb.cgi?p=ci-to-linus.git;a=summary
 
-Is this different from the ext4/extent-based defrag patch that's been
-mentioned on this list?
+you will see the patches i was working on with linus tree as from-linus. 
+Now to find out what changes were made to these patches during the 
+development one can look at the tracking branch. In the above case the 
+latest tracking branch was 2.6.20-rc1-ci-to-linus
 
-> > *An implementation of an ext* filesystem driver can work with any
-> > ext2/3/4 filesystem as long as it supports the necessary revision
-> > (GOOD_OLD_REV or DYNAMIC_REV) and feature flags set in the filesystem.
->   Not sure what you mean here...
+http://git.openssi.org/~kvaneesh/gitweb.cgi?h=2.6.20-rc1-ci-to-linus;p=ci-to-linus.git;a=shortlog
 
-The "ext2 filesystem"/"ext3 filesystem"/"ext4 filesystem" terminology
-was confusing to me when I first started reading about them. In my mind,
-it implied that those three filesystems were more different than they
-actually are.
-
-I think it would be more accurate to say that they are all essentially
-the same filesystem, and that any filesystem driver that can mount a
-given filesystem can mount any other ext2/3/4 filesystem of the same
-revision with the same feature flags set.
-
-I was asking for confirmation of this assumption, but I've since found a
-lot of really good documentation that has cleared up a lot of things.
-
-Thanks,
-
-Eric
+Other tracking branches at different development stages can be found at
+http://git.openssi.org/~kvaneesh/gitweb.cgi?p=ci-to-linus.git;a=heads
 
 
---=-qUoeIhFoMbE9XWxH8ffI
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+This make looking at the diff much easier. diff of .patch does seems to 
+be useful.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
+Only problem i can think of is how multiple people will push to the same 
+repo.
 
-iD8DBQBGTTWae2L37HVup3ARAvTJAJ4m9o/GAAJW8CmO0lL6MGpAWCJPewCdHd3S
-cO3EKllDzj7M0cKxIlKovlw=
-=yleC
------END PGP SIGNATURE-----
-
---=-qUoeIhFoMbE9XWxH8ffI--
+-aneesh
