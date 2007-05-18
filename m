@@ -1,223 +1,130 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: [PATCH 1/1] ext4: allow more than 32000 subdirectories
-Date: Fri, 18 May 2007 02:53:46 +0530
-Message-ID: <1179437029.3925.5.camel@garfield>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: poor performance of mount due to libblkid
+Date: Thu, 17 May 2007 23:20:13 -0400
+Message-ID: <20070518032013.GA8363@thunk.org>
+References: <20070509170646.C12805@cbr.shaptech.com> <20070510003005.GV6375@schatzie.adilger.int> <20070509234532.D12805@cbr.shaptech.com> <20070510064448.GA13450@thunk.org> <20070514164026.E12805@cbr.shaptech.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Mingming Cao <cmm@us.ibm.com>, TheodoreTso <tytso@mit.edu>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Adrian Bunk <bunk@stusta.de>
+To: Shapor Naghibzadeh <shapor@shapor.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:57070 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755877AbXEQVUj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 May 2007 17:20:39 -0400
+Received: from thunk.org ([69.25.196.29]:36501 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755457AbXERDU3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 May 2007 23:20:29 -0400
+Content-Disposition: inline
+In-Reply-To: <20070514164026.E12805@cbr.shaptech.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+Sorry for the delay in getting back to you; I've been on travel this
+past week, didn't have much time to keep completely up on e-mail.
 
-I have rebased this patch to 2.6.22-rc1 so that it can be added to the
-ext4 patch queue. It has been tested by creating more than 65000 subdirs
-and then deleting them and checking the nlinks. The e2fsprogs part of
-this patch was sent earlier by me to linux-ext4 and doesn't need any
-changes, so not submitting it again.
+On Mon, May 14, 2007 at 04:40:26PM -0500, Shapor Naghibzadeh wrote:
+> My point with the USB example was that it keeps their labels around in a
+> world-readable cache infinitely (or until a device with the same name gets
+> mounted again).  Its probably not a security issue in most cases, but its
+> clutter which one doesn't expect to stick around.
 
-----------------------------------------------------------------------
-This patch adds support to ext4 for allowing more than 65000
-subdirectories. Currently the maximum number of subdirectories is capped
-at 32000.
+It's not a lot of clutter in practice.  
 
-If we exceed 65000 subdirectories in an htree directory it sets the
-inode link count to 1 and no longer counts subdirectories.  The
-directory link count is not actually used when determining if a
-directory is empty, as that only counts subdirectories and not regular
-files that might be in there. 
+> > try to stat the device file, and if it doesn't exist, to skip parsing
+> > the line together.  This would prevent blkid.tab from growing without
+> > bound given your workload.
+> 
+> This idea of doing garbage collection every time blkid.tab is read destroys
+> the cache if, for example, you mount /usr or /var before other block devices
+> have been brought up.  AoE and nbd come to mind as a potentially large number
+> of devices that might not exist until later in the boot process.
 
-A EXT4_FEATURE_RO_COMPAT_DIR_NLINK flag has been added and it is set if
-the subdir count for any directory crosses 65000.
+True, for nbd and AoE, that's a real problem.  And certainly there's
+no guarantee that device mapper nodes will be created from the beginning.
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+> > The whole point of blkid.tab file was so that having searched all of
+> > the devices to find the particular filesystem with a specified volume
+> > label or UUID, that all of the information that was gathered doesn't
+> > have to be searched a next time you need to do a mount-by-uuid or
+> > mount-by-label.  And if you have a large number of disks that you
+> > might have to potentially spin up, you definitely want to keep this
+> > cache across boots, which is why we store it in /etc/blkid.tab.
+> 
+> Ok, but why do we bother caching the filesystem type?  The desire to optimize
+> the scanning for UUIDs or labels is indeed a real problem, but caching the
+> filesystem type has the potential for introducing bugs and doesn't seem to
+> have any real payoff.  I for one have been bitten by the ext2 to ext3 upgrade
+> bug more than once.
 
+First of all, what ext2 to ext3 upgrade bug?  What version of blkid/e2fsprogs
+are you using?   It works just fine for me:
 
-Index: linux-2.6.22-rc1/fs/ext4/namei.c
-===================================================================
---- linux-2.6.22-rc1.orig/fs/ext4/namei.c
-+++ linux-2.6.22-rc1/fs/ext4/namei.c
-@@ -1619,6 +1619,27 @@ static int ext4_delete_entry (handle_t *
- 	return -ENOENT;
- }
- 
-+static inline void ext4_inc_count(handle_t *handle, struct inode *inode)
-+{
-+	inc_nlink(inode);
-+	if (is_dx(inode) && inode->i_nlink > 1) {
-+		/* limit is 16-bit i_links_count */
-+		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
-+			inode->i_nlink = 1;
-+			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb,
-+					      EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
-+		}
-+	}
-+}
-+
-+static inline void ext4_dec_count(handle_t *handle, struct inode *inode)
-+{
-+	drop_nlink(inode);
-+	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
-+		inc_nlink(inode);
-+}
-+
-+
- static int ext4_add_nondir(handle_t *handle,
- 		struct dentry *dentry, struct inode *inode)
- {
-@@ -1715,7 +1736,7 @@ static int ext4_mkdir(struct inode * dir
- 	struct ext4_dir_entry_2 * de;
- 	int err, retries = 0;
- 
--	if (dir->i_nlink >= EXT4_LINK_MAX)
-+	if (EXT4_DIR_LINK_MAX(dir))
- 		return -EMLINK;
- 
- retry:
-@@ -1738,7 +1759,7 @@ retry:
- 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
- 	dir_block = ext4_bread (handle, inode, 0, 1, &err);
- 	if (!dir_block) {
--		drop_nlink(inode); /* is this nlink == 0? */
-+		ext4_dec_count(handle, inode); /* is this nlink == 0? */
- 		ext4_mark_inode_dirty(handle, inode);
- 		iput (inode);
- 		goto out_stop;
-@@ -1770,7 +1791,7 @@ retry:
- 		iput (inode);
- 		goto out_stop;
- 	}
--	inc_nlink(dir);
-+	ext4_inc_count(handle, dir);
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 	d_instantiate(dentry, inode);
-@@ -2035,10 +2056,10 @@ static int ext4_rmdir (struct inode * di
- 	retval = ext4_delete_entry(handle, dir, de, bh);
- 	if (retval)
- 		goto end_rmdir;
--	if (inode->i_nlink != 2)
--		ext4_warning (inode->i_sb, "ext4_rmdir",
--			      "empty directory has nlink!=2 (%d)",
--			      inode->i_nlink);
-+	if (!EXT4_DIR_LINK_EMPTY(inode))
-+		ext4_warning(inode->i_sb, "ext4_rmdir",
-+			     "empty directory has too many links (%d)",
-+			     inode->i_nlink);
- 	inode->i_version++;
- 	clear_nlink(inode);
- 	/* There's no need to set i_disksize: the fact that i_nlink is
-@@ -2048,7 +2069,7 @@ static int ext4_rmdir (struct inode * di
- 	ext4_orphan_add(handle, inode);
- 	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
--	drop_nlink(dir);
-+	ext4_dec_count(handle, dir);
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 
-@@ -2099,7 +2120,7 @@ static int ext4_unlink(struct inode * di
- 	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
--	drop_nlink(inode);
-+	ext4_dec_count(handle, inode);
- 	if (!inode->i_nlink)
- 		ext4_orphan_add(handle, inode);
- 	inode->i_ctime = ext4_current_time(inode);
-@@ -2149,7 +2170,7 @@ retry:
- 		err = __page_symlink(inode, symname, l,
- 				mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS);
- 		if (err) {
--			drop_nlink(inode);
-+			ext4_dec_count(handle, inode);
- 			ext4_mark_inode_dirty(handle, inode);
- 			iput (inode);
- 			goto out_stop;
-@@ -2175,8 +2196,9 @@ static int ext4_link (struct dentry * ol
- 	struct inode *inode = old_dentry->d_inode;
- 	int err, retries = 0;
- 
--	if (inode->i_nlink >= EXT4_LINK_MAX)
-+	if (EXT4_DIR_LINK_MAX(inode))
- 		return -EMLINK;
-+
- 	/*
- 	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
- 	 * otherwise has the potential to corrupt the orphan inode list.
-@@ -2194,7 +2216,7 @@ retry:
- 		handle->h_sync = 1;
- 
- 	inode->i_ctime = ext4_current_time(inode);
--	inc_nlink(inode);
-+	ext4_inc_count(handle, inode);
- 	atomic_inc(&inode->i_count);
- 
- 	err = ext4_add_nondir(handle, dentry, inode);
-@@ -2327,7 +2349,7 @@ static int ext4_rename (struct inode * o
- 	}
- 
- 	if (new_inode) {
--		drop_nlink(new_inode);
-+		ext4_dec_count(handle, new_inode);
- 		new_inode->i_ctime = ext4_current_time(new_inode);
- 	}
- 	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
-@@ -2338,11 +2360,13 @@ static int ext4_rename (struct inode * o
- 		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
- 		BUFFER_TRACE(dir_bh, "call ext4_journal_dirty_metadata");
- 		ext4_journal_dirty_metadata(handle, dir_bh);
--		drop_nlink(old_dir);
-+		ext4_dec_count(handle, old_dir);
- 		if (new_inode) {
--			drop_nlink(new_inode);
-+			/* checked empty_dir above, can't have another parent,
-+			 * ext3_dec_count() won't work for many-linked dirs */
-+			new_inode->i_nlink = 0;
- 		} else {
--			inc_nlink(new_dir);
-+			ext4_inc_count(handle, new_dir);
- 			ext4_update_dx_flag(new_dir);
- 			ext4_mark_inode_dirty(handle, new_dir);
- 		}
-Index: linux-2.6.22-rc1/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22-rc1.orig/include/linux/ext4_fs.h
-+++ linux-2.6.22-rc1/include/linux/ext4_fs.h
-@@ -71,7 +71,7 @@
- /*
-  * Maximal count of links to a file
-  */
--#define EXT4_LINK_MAX		32000
-+#define EXT4_LINK_MAX		65000
- 
- /*
-  * Macro-instructions used to manage several block sizes
-@@ -678,6 +678,7 @@ static inline int ext4_valid_inum(struct
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
- #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
-+#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- 
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
-@@ -696,6 +697,7 @@ static inline int ext4_valid_inum(struct
- 					 EXT4_FEATURE_INCOMPAT_64BIT)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE| \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
- 
+# blkid /dev/loop0
+/dev/loop0: UUID="cc211710-904a-48a4-9073-c84821963931" TYPE="ext2" 
+# tune2fs -O has_journal /dev/loop0
+tune2fs 1.40-WIP (14-Nov-2006)
+Creating journal inode: done
+This filesystem will be automatically checked every 30 mounts or
+180 days, whichever comes first.  Use tune2fs -c or -i to override.
+# blkid /dev/loop0
+/dev/loop0: UUID="cc211710-904a-48a4-9073-c84821963931" SEC_TYPE="ext2" TYPE="ext3" 
+# tune2fs -O ^has_journal /dev/loop0
+tune2fs 1.40-WIP (14-Nov-2006)
+# blkid /dev/loop0
+/dev/loop0: UUID="cc211710-904a-48a4-9073-c84821963931" TYPE="ext2" 
 
-Thanks,
-Kalpak.
+As far as caching the filesystem type, the goal was to cache
+everything, since you never know when you might need the information,
+since doing an exhaustive search could be quite expensive.  So we want
+to cache the label and UUID information whenever we get our hands on
+it --- and as it turns out, in order to get the filesystem type,
+getting the label and UUID information comes for free, and contrawise,
+in order to get the label and UUID information, you need to know the
+filesystem type first, so you know where to find label and UUID
+information.
+
+Hence, it makes sense for blkid to know how to find the filesystem
+type information, and in the process of gathering the filesystem type
+information, it is prudent to the cache the UUID and LABEL information
+if it is present.  After all, if doing so avoids needing to do a brute
+force search of all of the devicesin the system, it is a net win.
+
+> There should be a better way of maintaining a UUID and label cache other than
+> having mount keep an XML cache in /etc (which seems to violate the Linux
+> filesystem hierarchy standard).  
+
+Well, the problem is that /var might not be mounted, and in some
+applications, it might itself be located on the SAN network.  One of
+the customers that I am working with is doing precisely that, with the
+blades booting and storing all of their filesystems across a SAN
+filesystem network.  
+
+A certain amount of bootstrapping information in /etc is certainly
+within the sprit of the Linux FHS, and if the root is read-only, it is
+not a disaster, since the blkid code can handle that case by simply
+not relying on the cache.  Basically, you have to store the
+information somewhere, and /etc is the only place that is guaranteed
+to be around when the system is initially coming up.  
+
+> The first and safest step would seem to be removing the use of blkid.tab from
+> mount except when trying to mount by UUID or volume label to prevent the
+> performance issue when the cache is large.  I think garbage collection is more
+> complex to do safely and the whole approach might some re-thinking.
+
+I agree that mount should be patched to only read in the blkid
+information when the blkid library needs to be consulted.  I disagree
+that we shouldn't be caching caching the label and UUID information
+when it is discovered as a side effect of doing a filesystem type
+detection; it could be useful later.  
+
+Probably the right answer is to have an explicit blkid GC operation,
+callable either from the blkid library API, or via /sbin/blkid -g.
+This could be called by the init scripts once the system has been
+brought fully up, or at some other point when a system application
+finds that it is necessary.
+
+Fundamentally, I think the use case that your application brought up
+where vast number of devices are created and then destroyed is unique
+enough that if your application needs to explicit request a garbage
+collection operation, that is an acceptable thing to require of it; it
+is doing something very, very, strange, after all.
+
+						- Ted
