@@ -1,60 +1,85 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Ext4 Patch Queue using stgit.
-Date: Fri, 18 May 2007 22:39:49 +0530
-Message-ID: <464DDDDD.7080308@linux.vnet.ibm.com>
-References: <464D9F2F.3030904@linux.vnet.ibm.com> <20070518160626.GA19911@thunk.org>
+From: Eric <erpo41@gmail.com>
+Subject: Re: Online defragmentation and ext4migrate
+Date: Fri, 18 May 2007 13:19:54 -0700
+Message-ID: <1179519594.6109.40.camel@eric-laptop>
+References: <464DA4ED.9040408@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-x9o6fVgXveCX9yctDWHh"
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:54086 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757398AbXERRJ7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2007 13:09:59 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4IHBbXB6119606
-	for <linux-ext4@vger.kernel.org>; Sat, 19 May 2007 03:11:37 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4IHDOUp139120
-	for <linux-ext4@vger.kernel.org>; Sat, 19 May 2007 03:13:24 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4IH9qAV009114
-	for <linux-ext4@vger.kernel.org>; Sat, 19 May 2007 03:09:52 +1000
-In-Reply-To: <20070518160626.GA19911@thunk.org>
+Received: from wr-out-0506.google.com ([64.233.184.233]:25261 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751975AbXERUT7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2007 16:19:59 -0400
+Received: by wr-out-0506.google.com with SMTP id 76so1129656wra
+        for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 13:19:55 -0700 (PDT)
+In-Reply-To: <464DA4ED.9040408@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+--=-x9o6fVgXveCX9yctDWHh
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Theodore Tso wrote:
-> On Fri, May 18, 2007 at 06:12:23PM +0530, Aneesh Kumar K.V wrote:
->> Hi All,
->>
->> I was looking at ext4 patch queue and was wondering why we are  putting 
->> .patch under git. If we are looking for a quilt like functionality, one 
->> can achieve the same using stgit. I was using stgit to maintain a set of
->> patches before. 
-> 
-> The problem with stgit is that you lose the history of the patches.
-> This is why the stable kernel queue is also kept as a git repository
-> of patches.
-> 
-> 
+On Fri, 2007-05-18 at 18:36 +0530, Aneesh Kumar K.V wrote:
+> The reason why i am asking this is to understand the
+> usefulness of doing a ext4migrate followed by defrag.=20
+> [...]
+> Also looking at the version 0.4 I see that defrag ioctl only work if we=20
+> have EXT4_EXTENTS_FL flag set.=20
 
-What i used to do with
+ext4migrate is necessary because the current ext4 defrag routines will
+only defragment files stored as extents. AFAIK, converting a file to
+extents does not allow the defrag routine to defragment it "better" than
+an indirect block map inode, but converting any file to extents has
+performance benefits regardless of whether it is later defragmented.
 
-http://git.openssi.org/~kvaneesh/gitweb.cgi?p=ci-to-linus.git;a=summary
+> What are the plans for making defrag work=20
+> with indirect block map inode ?
 
-is after doing stg refresh, push all the patches and then commit the 
-diff between the head of the master (which is managed by stgit ) and one 
-of the tracking branches to the tracking branch. That way the history of 
-the patches can be tracked in the tracking branches. In my previous mail 
-i have marked the below urls as eg:
+I think there is a second set of patches to defragment non-extent
+files.=20
 
-http://git.openssi.org/~kvaneesh/gitweb.cgi?h=2.6.20-rc1-ci-to-linus;p=ci-to-linus.git;a=shortlog
+When I started investigating this topic, I would have preferred a defrag
+routine for indirect block map inodes since it would work with the
+filesystems that I and others are using right now. However, as I read
+more code and documentation, I'm beginning to warm up to extents.
 
-http://git.openssi.org/~kvaneesh/gitweb.cgi?h=2.6.19-rc1-ci-to-linus;p=ci-to-linus.git;a=shortlog
+A defragmentation routine makes files contiguous on disk. A better
+defragmentation routine intelligently locates data structures on the
+disk so that files and directories are placed to minimize latency and
+maximize throughput now, AND so that this will continue to happen in the
+future. Typically this means not only making files contiguous, but also
+consolidating free space at the end of the volume so that the block
+allocator can pick contiguous blocks for new files. An even better
+defragmentation routine knows how to balance the time lost to
+defragmentation with the performance gained from a defragmented
+filesystem. IMHO, this requires detailed knowledge of the layout of a
+file's blocks on the disk. Right now, we get this information by looping
+over the FIBMAP ioctl, which I understand can take quite a long time.
+But on an extent file there is a logical, high-performance mapping
+between the on-disk structures that keep track of which blocks belong to
+which files and the data returned by the as-yet-to-be-implemented FIEMAP
+ioctl, which could make defragging faster and more fun.
 
--aneesh
+http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg01434.html
+
+Cheers,
+
+Eric
+
+
+--=-x9o6fVgXveCX9yctDWHh
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBGTgpqe2L37HVup3ARAnKEAKCg3M5nmR0j4POZxP2FcPRI+1yyEACbBjZu
+YyOLGSam2rDMoVGJSUmrR5E=
+=p09w
+-----END PGP SIGNATURE-----
+
+--=-x9o6fVgXveCX9yctDWHh--
