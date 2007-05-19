@@ -1,111 +1,75 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/5][TAKE2] fallocate() implementation on i86, x86_64
-	and powerpc
-Date: Fri, 18 May 2007 16:10:45 -0700
-Message-ID: <1179529845.3768.20.camel@dyn9047017103.beaverton.ibm.com>
-References: <20070418130600.GW5967@schatzie.adilger.int>
-	 <20070420135146.GA21352@amitarora.in.ibm.com>
-	 <20070420145918.GY355@devserv.devel.redhat.com>
-	 <20070424121632.GA10136@amitarora.in.ibm.com>
-	 <20070426175056.GA25321@amitarora.in.ibm.com>
-	 <20070514132926.GA30768@amitarora.in.ibm.com>
-	 <20070514142820.GA31468@amitarora.in.ibm.com>
-	 <20070514144524.GA31748@amitarora.in.ibm.com>
-	 <20070515094436.d441098f.sfr@canb.auug.org.au>
-	 <20070515132353.GB12964@amitarora.in.ibm.com>
-	 <20070518213621.GA10655@thunk.org>
-Reply-To: cmm@us.ibm.com
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] Add stack I/O manager.
+Date: Fri, 18 May 2007 23:31:00 -0400
+Message-ID: <20070519033100.GB8654@thunk.org>
+References: <11786983382211-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <d286e4520f717821cf2363ff3c71a9fff5ecad2f.1178698029.git.aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:42717 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755042AbXERXLG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2007 19:11:06 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l4INB0Wl025659
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 19:11:00 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4INB067220730
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 17:11:00 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4INAx0q016863
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2007 17:10:59 -0600
-In-Reply-To: <20070518213621.GA10655@thunk.org>
+Received: from THUNK.ORG ([69.25.196.29]:36030 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756400AbXESGQp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 May 2007 02:16:45 -0400
+Content-Disposition: inline
+In-Reply-To: <d286e4520f717821cf2363ff3c71a9fff5ecad2f.1178698029.git.aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-05-18 at 17:36 -0400, Theodore Tso wrote:
-> On Tue, May 15, 2007 at 06:53:53PM +0530, Amit K. Arora wrote:
-> > I will rebase it to 2.6.22-rc1 and repost the patches soon.
-> > Thanks!
+On Wed, May 09, 2007 at 01:42:17PM +0530, Aneesh Kumar K.V wrote:
+> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > 
-> I've rebased to 2.6.22-rc1 and put it in the ext4-patch-queue.
->
-> Mingming had rebased your previous (take3) set to 2.6.22-rc1, but
-> apparently the series file was corrupted, so it referenced an
-> incorrect patch filename, and the patch series didn't apply cleanly.
-> I've fixed it and confirmed that it builds and boots under UML.  Will
-> do more testing, but please take a look and confirm that it looks good.
-> 
+> This I/O manager helps in stacking different I/O managers.
+> For example one can stack the undo I/O manager on top
+> of Unix I/O manager to achieve the undo functionality.
 
-Thanks Ted. I am not sure how the series corrupted but I am glad that
-you catch that and updated with fallocate patches.:-)
+This is probably more generality than is strictly necessary; and the
+place where the excess generality gets messy is the fact that you make
+the stacking layer responsible for calling all of the io manager's
+open routines (which is still a FIXME).  So I would flush the stack_io
+layer entirely.
 
-We don't need the ext4-fallocate-1b-fallocate_inode_op_fix.patch as Amit
-fixed the ext4_fallocate() return value type to match VFS fallocate() in
-takes 4, patch 5/6. I will update the series to reflect this and run
-test.
+What I would recommend as the fast and dirty approach.  Basically, ape
+the approach used by test_io layer _exactly_, except instead of using
+a global variable test_io_backing_manager, you provide a function
+which sets the static variable, undo_io_backing_manager.  This
+variable is used only by the subsequent call to the ->open method,
+which just like test_io simply passes the name down to the backing
+manager specified in the static variable.  Then just make the undo_io
+manager work the way test_io does, where does its thing, and then it
+calls the appropriate function in its private->real io_channel.
+Basically, make undo_io responsible for calling the next io_manager
+down in the chain, This is workable because we don't need to
+initialize the tdb file until we first try to write to the io_channel,
+and ext2fs_open() only needs to do read operations, so we can set the
+tdb filename via an optoin after ext2fs_open() returns.
 
-I think Kalpak's patch to remove 32000 subdirs patch can be add to the
-ext4 patch queue as well. Agreed?
+I could imagine a more complicated approach where we still wouldn't
+have a stacking layer, but have an integrated parsing layer which
+would have registered names for each of the io_managers.  It would
+then take the part of the name before the colon, and treat it as the
+type (i.e., "file"), and the part after the colon and pass it to the
+relevant's io_manager (i.e., "/dev/sda4").  So you could pass in a
+name like "file:/dev/sda4".   
 
-> Amit, we should probably get you access to repo.or.cz so you can
-> update the patches yourself.  My normal process is to transfer the
-> patches into git using the 'guilt' tool, and then start doing test
-> builds from there.  After I fix up the patches and do whatever is
-> necessary so they build, I copy them back into the ext4-patch-queue
-> directly, and then do a git-diff to see what has changed, and make the
-> changes to the patches look sane.  Can you send me and/or mingming
-> your ssh key, and we can give you push access to repo.or.cz?
-> 
+For the test_io manager, since it doesn't need any arguments, it could
+just take the part after the colon, and use it to pass back to the
+parsing layer.  So names to test_io manager would look like this:
+"test:file:/dev/sda4".
 
-I am not sure Amit can response this before he leave for vacation.(from
-May 19 for 10 days). 
+For managers that need two names, we would have to do something a bit
+more complicated, like this: "undo:/var/undo/tdbfile#file:/dev/sda4".
+But basically, we still make the stacking up to the individual
+io_manager.  The main advantage with this approach is that all of the
+stacking is done via the ASCII string provided by the user, and
+there's no need for any special ad-hoc options.
 
-I will checked the fallocate patches and run auto tests.
+On the other hand, arguably, you want the program decided where to put
+the undo file, so that it can be found automatically by e2fsck.  So
+the fast-and-dirty approach might be the better one anyway --- it
+certainly is easier!
 
-> We've missed the -rc1 merge window, so the goal should be to make sure
-> that everything in the series file before the "unstable patches" is
-> ready for merging.
-> 
-I tend to agree.  But there are some bug-fix type or mount option
-patches that can try to target for rc2, what do you think?
-
-
-# New patch to fix whitespace before applying new patches
-whitespace.patch
- 
-#New patch to remove unnecessary exported symbols
-ext4_remove_exported_symbles.patch
- 
-# New patch to add mount option to turn off extents
-ext4_noextent_mount_opt.patch
-# Now Turn on extents feature by default
-ext4_extents_on_by_default.patch
- 
-#New patch to propagate inode flags
-ext4-propagate_flags.patch
- 
-#New patch to add extent sanity checks
-ext4-extent-sanity-checks.patch
- 
-#New patch to free blocks when failed to insert an extent
-ext4-free-blocks-on-insert-extent-failure.patch
-
-Cheers,
-Mingming
+Regards,
+	
+						- Ted
