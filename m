@@ -1,41 +1,62 @@
-From: "John Anthony Kazos Jr." <jakj@j-a-k-j.com>
-Subject: Re: A feature??
-Date: Sun, 20 May 2007 07:01:32 -0400 (EDT)
-Message-ID: <alpine.DEB.0.99.0705200700040.12765@sigma.j-a-k-j.com>
-References: <46500C02.3010802@cybericom.co.uk>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/5][TAKE2] fallocate() implementation on i86, x86_64
+	and powerpc
+Date: Sun, 20 May 2007 07:39:32 -0500
+Message-ID: <1179664772.30468.3.camel@kleikamp.austin.ibm.com>
+References: <20070418130600.GW5967@schatzie.adilger.int>
+	 <20070420135146.GA21352@amitarora.in.ibm.com>
+	 <20070420145918.GY355@devserv.devel.redhat.com>
+	 <20070424121632.GA10136@amitarora.in.ibm.com>
+	 <20070426175056.GA25321@amitarora.in.ibm.com>
+	 <20070514132926.GA30768@amitarora.in.ibm.com>
+	 <20070514142820.GA31468@amitarora.in.ibm.com>
+	 <20070514144524.GA31748@amitarora.in.ibm.com>
+	 <20070515094436.d441098f.sfr@canb.auug.org.au>
+	 <20070515132353.GB12964@amitarora.in.ibm.com>
+	 <20070518213621.GA10655@thunk.org>
+	 <1179529845.3768.20.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Chris Lee <cslee-list@cybericom.co.uk>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from seahorse.shentel.net ([204.111.1.244]:32771 "EHLO
-	seahorse.shentel.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755641AbXETL0E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 May 2007 07:26:04 -0400
-In-Reply-To: <46500C02.3010802@cybericom.co.uk>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:45597 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754441AbXETMjl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 May 2007 08:39:41 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l4KCdedT023299
+	for <linux-ext4@vger.kernel.org>; Sun, 20 May 2007 08:39:40 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4KCde1i153166
+	for <linux-ext4@vger.kernel.org>; Sun, 20 May 2007 06:39:40 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4KCddKx024276
+	for <linux-ext4@vger.kernel.org>; Sun, 20 May 2007 06:39:40 -0600
+In-Reply-To: <1179529845.3768.20.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> I am not a FS guru so please tell me where to get off if I sound stupid.
-> After lurking for some time I have come up with something that may be of
-> interest as a feature:
-> 
-> If EXT4 were to pr-allocate a configurable amount of space for a special file
-> and then use that file as a new EXT4 partition;
-> -Use that file for all new writes to disk
-> -Any changed files are changed by writing the change to this file, or the
-> whole changed file, whichever is more efficient end to end.
-> -A section of the file includes tracking of files that need modification in
-> the actual FS.
-> -Then when the disk is put back into normal read write mode the FS data in the
-> file just needs to be worked into the actual FS.
-> 
-> This way the FS could be put into suspended operation while a third party
-> reads it.
-> I know there are other methods like snapshots, but this works at the FS level
-> so that the third party, which obviously needs to know ext4, can access the
-> hard drive directly.
+On Fri, 2007-05-18 at 16:10 -0700, Mingming Cao wrote:
+> On Fri, 2007-05-18 at 17:36 -0400, Theodore Tso wrote:
 
-Sounds like a combination of loopback and union mounting, except more 
-automated. Not sure there'd be much benefit to implementing those concepts 
-redundantly at the filesystem level.
+> > We've missed the -rc1 merge window, so the goal should be to make sure
+> > that everything in the series file before the "unstable patches" is
+> > ready for merging.
+> > 
+> I tend to agree.  But there are some bug-fix type or mount option
+> patches that can try to target for rc2, what do you think?
+
+I agree with Mingming.  There's no reason for these patches not to be in
+mainline.  I am curious why the fallocate patches were put at the top of
+the series file in the first place.  The older patches shouldn't be held
+up by fallocate (which should wait until the next merge window).
+
+Thanks,
+Shaggy
+-- 
+David Kleikamp
+IBM Linux Technology Center
