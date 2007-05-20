@@ -1,35 +1,39 @@
-From: Christoph Lameter <clameter@sgi.com>
-Subject: Re: [PATCH 1/9] readahead: introduce PG_readahead
-Date: Sun, 20 May 2007 00:10:27 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0705200009330.18989@schroedinger.engr.sgi.com>
-References: <20070516224752.500812933@mail.ustc.edu.cn> <379355695.83536@ustc.edu.cn>
- <20070518232824.9917d794.akpm@linux-foundation.org> <379577826.15160@ustc.edu.cn>
- <20070519082504.8baa8d19.akpm@linux-foundation.org> <379630538.31710@ustc.edu.cn>
+From: Chris Lee <cslee-list@cybericom.co.uk>
+Subject: A feature??
+Date: Sun, 20 May 2007 09:51:14 +0100
+Message-ID: <46500C02.3010802@cybericom.co.uk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, Andi Kleen <andi@firstfloor.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Oleg Nesterov <oleg@tv-sign.ru>,
-	Steven Pratt <slpratt@austin.ibm.com>,
-	Ram Pai <linuxram@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Fengguang Wu <wfg@mail.ustc.edu.cn>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:54045 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1759089AbXETHKd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 May 2007 03:10:33 -0400
-In-Reply-To: <379630538.31710@ustc.edu.cn>
+Received: from smtp.nildram.co.uk ([195.149.33.74]:33682 "EHLO
+	smtp.nildram.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754375AbXETJZh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 May 2007 05:25:37 -0400
+Received: from [10.10.10.226] (leenet.gotadsl.co.uk [82.133.126.77])
+	by smtp.nildram.co.uk (Postfix) with ESMTP id 049834DB2C
+	for <linux-ext4@vger.kernel.org>; Sun, 20 May 2007 09:51:14 +0100 (BST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 20 May 2007, Fengguang Wu wrote:
+I am not a FS guru so please tell me where to get off if I sound stupid.
+After lurking for some time I have come up with something that may be of 
+interest as a feature:
 
-> The reuse code would look like the attached one.
-> It still needs more testing, and would fail if Christoph reuses
-> PG_reclaim in higher order pagecache in the future.
+If EXT4 were to pr-allocate a configurable amount of space for a special file 
+and then use that file as a new EXT4 partition;
+-Use that file for all new writes to disk
+-Any changed files are changed by writing the change to this file, or the whole 
+changed file, whichever is more efficient end to end.
+-A section of the file includes tracking of files that need modification in the 
+actual FS.
+-Then when the disk is put back into normal read write mode the FS data in the 
+file just needs to be worked into the actual FS.
 
-Do not worry about that. All higher order pagecache patchsets remove that
-sharing because we will then need these pages on the LRU and thus
-PG_reclaim cannot be shared anymore.
+This way the FS could be put into suspended operation while a third party reads it.
+I know there are other methods like snapshots, but this works at the FS level so 
+that the third party, which obviously needs to know ext4, can access the hard 
+drive directly.
+
+Chris.
