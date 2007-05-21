@@ -1,63 +1,63 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: files mapped funny? (related to online defragmentation)
-Date: Mon, 21 May 2007 11:00:59 -0700
-Message-ID: <1179770459.23003.7.camel@localhost.localdomain>
-References: <1179755398.389.24.camel@eric-laptop>
-Reply-To: cmm@us.ibm.com
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [RFC][PATCH] Multiple mount protection
+Date: Tue, 22 May 2007 01:22:32 +0530
+Message-ID: <1179777153.3910.13.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eric <erpo41@gmail.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:37086 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758215AbXEUSBG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 14:01:06 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l4LI13lN022073
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 14:01:03 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4LI105c260308
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 12:01:03 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4LI10mN010114
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 12:01:00 -0600
-In-Reply-To: <1179755398.389.24.camel@eric-laptop>
+Received: from mail.clusterfs.com ([206.168.112.78]:54011 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935423AbXEUTtO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 15:49:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-05-21 at 06:49 -0700, Eric wrote:
-> Hi,
-> 
-> I'm getting strange results when I map out the blocks used in files
-> larger than a several thousand KB. I never seem to get any more than
-> 1024 contiguous data blocks in a row. 
-> 
-> Here's a portion of the output of my script when I run it on a 176MB
-> file in my home directory:
-> ...
-> Contiguous chunk 67: 2385568 - 2385591  (24 blocks)
-> Contiguous chunk 68: 2385608 - 2386448  (841 blocks)
-> Contiguous chunk 69: 2386450 - 2387473  (1024 blocks)
-> Contiguous chunk 70: 2387475 - 2388498  (1024 blocks)
-> Contiguous chunk 71: 2388500 - 2389523  (1024 blocks)
-> ...
->
-> Maybe this is a bug in my script? Can anyone explain why this would
-> happen?
-> 
-filefrag command comes with e2fsprogs will print the file fragmentation
-info. I guess you can try filefrag -v command and see if that matches
-what your scripts reported.
+Hi,
 
-Mingming
+There have been reported instances of a filesystem having been mounted at 2 places at the same time causing a lot of damage to the filesystem. This patch reserves superblock fields and an INCOMPAT flag for adding multiple mount protection(MMP) support within the ext4 filesystem itself. The superblock will have a block number (s_mmp_block) which will hold a MMP structure which has a sequence number which will be periodically updated every 5 seconds by a mounted filesystem. Whenever a filesystem will be mounted it will wait for s_mmp_interval seconds to make sure that the MMP sequence does not change. To further make sure, we write a random sequence number into the MMP block and wait for another s_mmp_interval secs. If the sequence no. doesn't change then the mount will succeed. In case of failure, the nodename, bdevname and the time at which the MMP block was last updated will be displaye
+ d. tune2fs can be used to set s_mmp_interval as desired.
 
-> I'm attaching my script in case other ext2/3/4 newbies can get any use
-> out of it, and in case anyone needs to see it in order to answer my
-> question. It's pretty self-explanatory, though.
-> 
-> Cheers,
-> 
-> Eric
-> 
+It will also protect against running e2fsck on a mounted filesystem by adding similar logic to ext2fs_open().
+
+Any comments or views are welcome!
+
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: e2fsprogs-1.40/lib/ext2fs/ext2_fs.h
+===================================================================
+--- e2fsprogs-1.40.orig/lib/ext2fs/ext2_fs.h
++++ e2fsprogs-1.40/lib/ext2fs/ext2_fs.h
+@@ -568,8 +568,9 @@ struct ext2_super_block {
+        __u16   s_want_extra_isize;     /* New inodes should reserve # bytes */
+        __u32   s_flags;                /* Miscellaneous flags */
+        __u16   s_raid_stride;          /* RAID stride */
+-       __u16   s_pad;                  /* Padding */
+-       __u32   s_reserved[166];        /* Padding to the end of the block */
++       __u16   s_mmp_interval;         /* Wait for # seconds in MMP checking */
++       __u64   s_mmp_block;            /* Block for multi-mount protection */
++       __u32   s_reserved[164];        /* Padding to the end of the block */
+ };
+
+ /*
+@@ -631,10 +632,12 @@ struct ext2_super_block {
+ #define EXT2_FEATURE_INCOMPAT_META_BG          0x0010
+ #define EXT3_FEATURE_INCOMPAT_EXTENTS          0x0040
+ #define EXT4_FEATURE_INCOMPAT_64BIT            0x0080
++#define EXT4_FEATURE_INCOMPAT_MMP              0x0100
+
+
+ #define EXT2_FEATURE_COMPAT_SUPP       0
+-#define EXT2_FEATURE_INCOMPAT_SUPP     (EXT2_FEATURE_INCOMPAT_FILETYPE)
++#define EXT2_FEATURE_INCOMPAT_SUPP     (EXT2_FEATURE_INCOMPAT_FILETYPE| \
++                                        EXT4_FEATURE_INCOMPAT_MMP)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP    (EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+                                         EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+                                         EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+
+
+Thanks,
+Kalpak.
