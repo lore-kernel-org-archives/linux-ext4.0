@@ -1,52 +1,49 @@
-From: Jan Kara <jack@suse.cz>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: Online defragmentation and ext4migrate
-Date: Mon, 21 May 2007 12:42:03 +0200
-Message-ID: <20070521104203.GC29416@atrey.karlin.mff.cuni.cz>
-References: <464DA4ED.9040408@linux.vnet.ibm.com> <1179519594.6109.40.camel@eric-laptop> <cc723f590705210133w17e84f17t11aae329d1d3062@mail.gmail.com>
+Date: Mon, 21 May 2007 16:07:29 +0530
+Message-ID: <46517669.50804@linux.vnet.ibm.com>
+References: <464DA4ED.9040408@linux.vnet.ibm.com> <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric <erpo41@gmail.com>, linux-ext4 <linux-ext4@vger.kernel.org>
-To: Aneesh Kumar <aneesh.kumar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Takashi Sato <sho@tnes.nec.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:39938 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756383AbXEUKmE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:42:04 -0400
-Content-Disposition: inline
-In-Reply-To: <cc723f590705210133w17e84f17t11aae329d1d3062@mail.gmail.com>
+Received: from ausmtp05.au.ibm.com ([202.81.18.154]:42839 "EHLO
+	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754950AbXEUK70 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:59:26 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4LB0tG97807082
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 21:00:55 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.250.242])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4LAxgC8066966
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 21:02:47 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4LAbaCl028504
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:37:37 +1000
+In-Reply-To: <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On 5/19/07, Eric <erpo41@gmail.com> wrote:
-> >On Fri, 2007-05-18 at 18:36 +0530, Aneesh Kumar K.V wrote:
-> >> The reason why i am asking this is to understand the
-> >> usefulness of doing a ext4migrate followed by defrag.
-> >> [...]
-> >> Also looking at the version 0.4 I see that defrag ioctl only work if we
-> >> have EXT4_EXTENTS_FL flag set.
-> >
-> >ext4migrate is necessary because the current ext4 defrag routines will
-> >only defragment files stored as extents. AFAIK, converting a file to
-> >extents does not allow the defrag routine to defragment it "better" than
-> >an indirect block map inode, but converting any file to extents has
-> >performance benefits regardless of whether it is later defragmented.
-> >
-> >> What are the plans for making defrag work
-> >> with indirect block map inode ?
-> >
-> >I think there is a second set of patches to defragment non-extent
-> >files.
-> >
-> 
-> I was looking at this and didn't find the changes needed to defrag the
-> non extent files.
-> 
-> http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg01522.html
-  I've written a patch that defragments non-extent files but after
-discussion with XFS guys I've decided that the interfaces should be made
-more generic, so that XFS and other filesystems can use them too...
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+
+Takashi Sato wrote:
+> Hi Aneesh san,
+> 
+> 
+> In my opinion, to keep the ioctl simple and small is very important
+> for ease of maintenance.  So I would rather not support indirect
+> block files in the ioctl.
+> Instead, I can add the call of the migration ioctl to my defrag tool in 
+> order
+> to defragment indirect block files.  How do you think of it?
+> 
+
+
+That should be fine. So i will start moving the ext4migrate code as a 
+ext4 ioctl and later will send you a patch to the defrag tool that will 
+migrate and defrag.
+
+
+-aneesh
