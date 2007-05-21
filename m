@@ -1,77 +1,79 @@
-From: "Aneesh Kumar" <aneesh.kumar@gmail.com>
-Subject: Re: Online defragmentation and ext4migrate
-Date: Mon, 21 May 2007 14:03:02 +0530
-Message-ID: <cc723f590705210133w17e84f17t11aae329d1d3062@mail.gmail.com>
-References: <464DA4ED.9040408@linux.vnet.ibm.com>
-	 <1179519594.6109.40.camel@eric-laptop>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/2] Add stack I/O manager.
+Date: Mon, 21 May 2007 15:57:26 +0530
+Message-ID: <4651740E.6090704@linux.vnet.ibm.com>
+References: <11786983382211-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <d286e4520f717821cf2363ff3c71a9fff5ecad2f.1178698029.git.aneesh.kumar@linux.vnet.ibm.com> <20070519033100.GB8654@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eric <erpo41@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wr-out-0506.google.com ([64.233.184.227]:62598 "EHLO
-	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756213AbXEUIdF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 04:33:05 -0400
-Received: by wr-out-0506.google.com with SMTP id 76so1307845wra
-        for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 01:33:03 -0700 (PDT)
-In-Reply-To: <1179519594.6109.40.camel@eric-laptop>
-Content-Disposition: inline
+Received: from ausmtp05.au.ibm.com ([202.81.18.154]:48669 "EHLO
+	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756059AbXEUK1l (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:27:41 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4LATH0C8282206
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:29:17 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4LAV85b160080
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:31:08 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4LARaX3011450
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:27:36 +1000
+In-Reply-To: <20070519033100.GB8654@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 5/19/07, Eric <erpo41@gmail.com> wrote:
-> On Fri, 2007-05-18 at 18:36 +0530, Aneesh Kumar K.V wrote:
-> > The reason why i am asking this is to understand the
-> > usefulness of doing a ext4migrate followed by defrag.
-> > [...]
-> > Also looking at the version 0.4 I see that defrag ioctl only work if we
-> > have EXT4_EXTENTS_FL flag set.
->
-> ext4migrate is necessary because the current ext4 defrag routines will
-> only defragment files stored as extents. AFAIK, converting a file to
-> extents does not allow the defrag routine to defragment it "better" than
-> an indirect block map inode, but converting any file to extents has
-> performance benefits regardless of whether it is later defragmented.
->
-> > What are the plans for making defrag work
-> > with indirect block map inode ?
->
-> I think there is a second set of patches to defragment non-extent
-> files.
->
-
-I was looking at this and didn't find the changes needed to defrag the
-non extent files.
-
-http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg01522.html
 
 
-
-> An even better
-> defragmentation routine knows how to balance the time lost to
-> defragmentation with the performance gained from a defragmented
-> filesystem. IMHO, this requires detailed knowledge of the layout of a
-> file's blocks on the disk. Right now, we get this information by looping
-> over the FIBMAP ioctl, which I understand can take quite a long time.
-
-
-With the takashi's code we use ext4_ext_alloc_blocks and see if the
-number of extents that we got is less than the number of extents
-that we have with the original file that we intent to defrag. I am not sure an
-ioctl is involved here.
-
-
-Well the intent of my mail was to find the advantage of doing an
-online migration.
-If we are not relocating the blocks corresponding to extent index then doing a
-online migration doesn't bring any specific performance bonus.
+Theodore Tso wrote:
+> On Wed, May 09, 2007 at 01:42:17PM +0530, Aneesh Kumar K.V wrote:
+>> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>>
+>> This I/O manager helps in stacking different I/O managers.
+>> For example one can stack the undo I/O manager on top
+>> of Unix I/O manager to achieve the undo functionality.
+> 
+> This is probably more generality than is strictly necessary; and the
+> place where the excess generality gets messy is the fact that you make
+> the stacking layer responsible for calling all of the io manager's
+> open routines (which is still a FIXME).  So I would flush the stack_io
+> layer entirely.
 
 
+Can't we address the FIXME by calling the respective close routine in 
+the failure case.
 
-But yes i agree that there is a performance impact with defrag by
-moving the data
-blocks closer.
+One thing i didn't like with the stack_io was, we will be opening the 
+device at each stacked I/O manager layer; which i also think is okey 
+provided we expect to use these I/O managers independently
+
+> 
+> What I would recommend as the fast and dirty approach.  Basically, ape
+> the approach used by test_io layer _exactly_, except instead of using
+> a global variable test_io_backing_manager, you provide a function
+> which sets the static variable, undo_io_backing_manager.  This
+> variable is used only by the subsequent call to the ->open method,
+> which just like test_io simply passes the name down to the backing
+> manager specified in the static variable.  Then just make the undo_io
+> manager work the way test_io does, where does its thing, and then it
+> calls the appropriate function in its private->real io_channel.
+> Basically, make undo_io responsible for calling the next io_manager
+> down in the chain, This is workable because we don't need to
+> initialize the tdb file until we first try to write to the io_channel,
+> and ext2fs_open() only needs to do read operations, so we can set the
+> tdb filename via an optoin after ext2fs_open() returns.
+> 
+
+One thing i was confused about was the usage of read_blk, write_blk etc 
+pointers in test_private_data. With respect to undo I/O manager do i 
+need to provide them ?. If we really need them, then i was thinking a 
+generic stacking layer as i send in the patches would be better. That 
+means any pluggable functionality that we achieve right now by setting
+test_io_cb_read_blk etc will be implemented as a I/O manager that does 
+the particular task. Later we stack all these I/O manager to get the 
+full functionality.
 
 -aneesh
