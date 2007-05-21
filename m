@@ -1,49 +1,72 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Eric <erpo41@gmail.com>
 Subject: Re: Online defragmentation and ext4migrate
-Date: Mon, 21 May 2007 16:07:29 +0530
-Message-ID: <46517669.50804@linux.vnet.ibm.com>
-References: <464DA4ED.9040408@linux.vnet.ibm.com> <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
+Date: Mon, 21 May 2007 06:36:51 -0700
+Message-ID: <1179754611.389.10.camel@eric-laptop>
+References: <464DA4ED.9040408@linux.vnet.ibm.com>
+	 <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
+	 <20070521103828.GB29416@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Takashi Sato <sho@tnes.nec.co.jp>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-ehRonIVzraqwaNOwZ0hD"
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:42839 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754950AbXEUK70 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:59:26 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4LB0tG97807082
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 21:00:55 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.250.242])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4LAxgC8066966
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 21:02:47 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4LAbaCl028504
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:37:37 +1000
-In-Reply-To: <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
+Received: from wr-out-0506.google.com ([64.233.184.233]:64933 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755100AbXEUNg7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 09:36:59 -0400
+Received: by wr-out-0506.google.com with SMTP id 76so1386221wra
+        for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 06:36:58 -0700 (PDT)
+In-Reply-To: <20070521103828.GB29416@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+--=-ehRonIVzraqwaNOwZ0hD
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Takashi Sato wrote:
-> Hi Aneesh san,
-> 
-> 
-> In my opinion, to keep the ioctl simple and small is very important
-> for ease of maintenance.  So I would rather not support indirect
-> block files in the ioctl.
-> Instead, I can add the call of the migration ioctl to my defrag tool in 
-> order
-> to defragment indirect block files.  How do you think of it?
-> 
+On Mon, 2007-05-21 at 12:38 +0200, Jan Kara wrote:
+>   Yes. On the other hand I believe that some people would like to use
+> defragmentation but stay with ext3. For them conversion to extents is
+> no-go.
+> [...]
+>  I've written a patch that defragments non-extent files but after
+> discussion with XFS guys I've decided that the interfaces should be made
+> more generic, so that XFS and other filesystems can use them too...
+
+I see no reason why the ioctl to convert a file to extents and then
+defragment it should be different from the ioctl to defragment a
+non-extent file.
+
+After all, whether a file's blocks are tracked as lists of blocks or a
+set of extents is just bookkeeping, right? The set of data blocks that
+make up the file and their order is the same regardless of whether the
+extent flag is set in the inode.
+
+If the user is running the ext2/3 driver or the ext4 driver with the
+noextents option, just defragment the file. If the user is running ext4
+without the noextents option, convert to extents and then defragment.
+
+The only problem that I can think of is that defragmenting metadata
+(including indirect block and/or whatever the equivalent is in
+extent-land) presumably has performance benefits too, so maybe a
+defragmenter in userspace would want to have some knowledge/control over
+this process.
+
+Cheers,
+
+Eric
 
 
-That should be fine. So i will start moving the ext4migrate code as a 
-ext4 ioctl and later will send you a patch to the defrag tool that will 
-migrate and defrag.
+--=-ehRonIVzraqwaNOwZ0hD
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
 
--aneesh
+iD8DBQBGUaBze2L37HVup3ARAvoHAKDyNHj6xHbflLpKntKCl1A/vshPFACfb2f9
+ksR85TeIn5H3BrloODNH6CA=
+=c1/R
+-----END PGP SIGNATURE-----
+
+--=-ehRonIVzraqwaNOwZ0hD--
