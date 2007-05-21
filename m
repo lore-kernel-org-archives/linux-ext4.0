@@ -1,150 +1,49 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 0/6][TAKE4] fallocate system call
-Date: Sun, 20 May 2007 22:24:42 -0700
-Message-ID: <1179725082.3936.40.camel@localhost.localdomain>
-References: <20070321120425.GA27273@amitarora.in.ibm.com>
-	 <20070329115126.GB7374@amitarora.in.ibm.com>
-	 <20070329101010.7a2b8783.akpm@linux-foundation.org>
-	 <20070330071417.GI355@devserv.devel.redhat.com>
-	 <20070417125514.GA7574@amitarora.in.ibm.com>
-	 <20070418130600.GW5967@schatzie.adilger.int>
-	 <20070420135146.GA21352@amitarora.in.ibm.com>
-	 <20070420145918.GY355@devserv.devel.redhat.com>
-	 <20070424121632.GA10136@amitarora.in.ibm.com>
-	 <20070426175056.GA25321@amitarora.in.ibm.com>
-	 <20070517141115.GA24260@amitarora.in.ibm.com>
-	 <20070518234444.f53a4230.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/5][TAKE2] fallocate() implementation on i86, x86_64 and powerpc
+Date: Mon, 21 May 2007 01:38:31 -0400
+Message-ID: <20070521053831.GA10269@thunk.org>
+References: <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070514132926.GA30768@amitarora.in.ibm.com> <20070514142820.GA31468@amitarora.in.ibm.com> <20070514144524.GA31748@amitarora.in.ibm.com> <20070515094436.d441098f.sfr@canb.auug.org.au> <20070515132353.GB12964@amitarora.in.ibm.com> <20070518213621.GA10655@thunk.org> <1179529845.3768.20.camel@dyn9047017103.beaverton.ibm.com> <1179664772.30468.3.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, suparna@in.ibm.com
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:43439 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754338AbXEUFYu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 01:24:50 -0400
-In-Reply-To: <20070518234444.f53a4230.akpm@linux-foundation.org>
+Received: from thunk.org ([69.25.196.29]:55546 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751789AbXEUFi5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 May 2007 01:38:57 -0400
+Content-Disposition: inline
+In-Reply-To: <1179664772.30468.3.camel@kleikamp.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-05-18 at 23:44 -0700, Andrew Morton wrote:
-> On Thu, 17 May 2007 19:41:15 +0530 "Amit K. Arora" <aarora@linux.vnet.ibm.com> wrote:
+On Sun, May 20, 2007 at 07:39:32AM -0500, Dave Kleikamp wrote:
+> On Fri, 2007-05-18 at 16:10 -0700, Mingming Cao wrote:
+> > On Fri, 2007-05-18 at 17:36 -0400, Theodore Tso wrote:
 > 
-> > fallocate() is a new system call being proposed here which will allow
-> > applications to preallocate space to any file(s) in a file system.
+> > > We've missed the -rc1 merge window, so the goal should be to make sure
+> > > that everything in the series file before the "unstable patches" is
+> > > ready for merging.
+> > > 
+> > I tend to agree.  But there are some bug-fix type or mount option
+> > patches that can try to target for rc2, what do you think?
 > 
-> I merged the first three patches into -mm, thanks.
-> 
-> All the system call numbers got changed due to recent additions.  They
-> may change in the future, too - nothing is stable until the code lands
-> in mainline.
-> 
-In case you haven't realize it, the ia64 fallocate() patch comes with
-Amit's takes 4 fallocate patch series (3/6) missing one line change,
-thus fail to compile on ia64.
+> I agree with Mingming.  There's no reason for these patches not to be in
+> mainline.  I am curious why the fallocate patches were put at the top of
+> the series file in the first place.  The older patches shouldn't be held
+> up by fallocate (which should wait until the next merge window).
 
-Here is the updated one. Patch tested on ia64. (compile and fsx)
+I've rebased the ext4 patch queue for 2.6.22-rc2, and moved the
+obvious bug fixes to the top of the queue.  There's one patch which I
+missed (ext4-free-blocks-on-insert-extent-failure.patch) which is also
+a bug fixed, that should be moved up.
 
-fallocate() on ia64
-
-ia64 fallocate syscall support.
-
-Signed-Off-By: Dave Chinner <dgc@sgi.com>
-
----
- arch/ia64/kernel/entry.S  |    1 +
- include/asm-ia64/unistd.h |    3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
-
-Index: linux-2.6.22-rc1/arch/ia64/kernel/entry.S
-===================================================================
---- linux-2.6.22-rc1.orig/arch/ia64/kernel/entry.S	2007-05-18 16:30:16.000000000 -0700
-+++ linux-2.6.22-rc1/arch/ia64/kernel/entry.S	2007-05-18 16:32:45.000000000 -0700
-@@ -1585,5 +1585,6 @@
- 	data8 sys_getcpu
- 	data8 sys_epoll_pwait			// 1305
- 	data8 sys_utimensat
-+	data8 sys_fallocate
- 
- 	.org sys_call_table + 8*NR_syscalls	// guard against failures to increase NR_syscalls
-Index: linux-2.6.22-rc1/include/asm-ia64/unistd.h
-===================================================================
---- linux-2.6.22-rc1.orig/include/asm-ia64/unistd.h	2007-05-18 16:30:16.000000000 -0700
-+++ linux-2.6.22-rc1/include/asm-ia64/unistd.h	2007-05-18 17:34:58.000000000 -0700
-@@ -296,11 +296,12 @@
- #define __NR_getcpu			1304
- #define __NR_epoll_pwait		1305
- #define __NR_utimensat			1306
-+#define __NR_fallocate			1307
- 
- #ifdef __KERNEL__
- 
- 
--#define NR_syscalls			283 /* length of syscall table */
-+#define NR_syscalls			285 /* length of syscall table */
- 
- #define __ARCH_WANT_SYS_RT_SIGACTION
- #define __ARCH_WANT_SYS_RT_SIGSUSPEND
-
-
-> I didn't merge any of the ext4 changes as they appear to be in Ted's
-> devel tree.  Although I didn't check that they are 100% the same in 
-> that tree.
-> 
-Since both Amit and Ted are traveling, I will jump in...
-
-Most likely it's not the same one. What in Ted's devel tree is "takes 2"
-patches.
-
-I have incorporated takes 4 patches in the backing ext4 patch git tree
-here:
-http://repo.or.cz/w/ext4-patch-queue.git
-
-I have tested these patch series on ia64,ppc64,x86 and x86_64. I am not
-sure if Ted got a chance to update his ext4 git tree from this patch
-queue git tree yet. 
-
-> What's the plan to get some ext4 updates into mainline, btw?  Things
-> seem to be rather gradual.
-
-
-Last time Ted and I discussed we all agree fallocate patches should go
-into mainline. Actually most patches marked before the "unstable
-patches" can get into mainline, especially the following patches
-(contains a few bug fixes patches)
-
-# New patch to fix whitespace before applying new patches
-whitespace.patch
- 
-#New patch to remove unnecessary exported symbols
-ext4_remove_exported_symbles.patch
- 
-# New patch to add mount option to turn off extents
-ext4_noextent_mount_opt.patch
-# Now Turn on extents feature by default
-ext4_extents_on_by_default.patch
- 
-#New patch to propagate inode flags
-ext4-propagate_flags.patch
- 
-#New patch to add extent sanity checks
-ext4-extent-sanity-checks.patch
- 
-#New patch to free blocks when failed to insert an extent
-ext4-free-blocks-on-insert-extent-failure.patch
-
-We already missed rc-1 window, but if possible, I would like to see ext4
-fallocate patches and above patches in mainline 2.6.22. The nanosecond
-timestamp patch is probably good to go also.
+It's true that some of the older patches are below fallocate in the
+queue, but they are still new features that probably shouldn't be
+pushed at this point.  But yes, I agree that the bug fixes should be
+pushed to Linus before 2.6.22 ships.
 
 Regards,
-Mingming
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+						- Ted
