@@ -1,79 +1,64 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/2] Add stack I/O manager.
-Date: Mon, 21 May 2007 15:57:26 +0530
-Message-ID: <4651740E.6090704@linux.vnet.ibm.com>
-References: <11786983382211-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <d286e4520f717821cf2363ff3c71a9fff5ecad2f.1178698029.git.aneesh.kumar@linux.vnet.ibm.com> <20070519033100.GB8654@thunk.org>
+From: "Takashi Sato" <sho@tnes.nec.co.jp>
+Subject: Re: Online defragmentation and ext4migrate
+Date: Mon, 21 May 2007 19:25:37 +0900
+Message-ID: <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
+References: <464DA4ED.9040408@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+	format=flowed;
+	charset="ISO-8859-1";
+	reply-type=response
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:48669 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756059AbXEUK1l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:27:41 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4LATH0C8282206
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:29:17 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4LAV85b160080
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:31:08 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4LARaX3011450
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 20:27:36 +1000
-In-Reply-To: <20070519033100.GB8654@thunk.org>
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:64568 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760619AbXEUK3u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:29:50 -0400
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id l4LATm3F021026
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 19:29:48 +0900 (JST)
+Received: from mailgate3.nec.co.jp (mailgate53.nec.co.jp [10.7.69.160])
+	by tyo202.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id l4LAPiUR024039
+	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 19:25:44 +0900 (JST)
+Received: (from root@localhost) by mailgate3.nec.co.jp (8.11.7/3.7W-MAILGATE-NEC)
+	id l4LAPhe29190 for linux-ext4@vger.kernel.org; Mon, 21 May 2007 19:25:43 +0900 (JST)
+Received: from secsv3.tnes.nec.co.jp (tnesvc2.tnes.nec.co.jp [10.1.101.15]) by mailsv3.nec.co.jp (8.11.7/3.7W-MAILSV4-NEC) with ESMTP
+	id l4LAPhL14066 for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 19:25:43 +0900 (JST)
+Received: from tnesvc2.tnes.nec.co.jp ([10.1.101.15])
+	by secsv3.tnes.nec.co.jp (ExpressMail 5.10) with SMTP
+	id 20070521.192604.46802192 for <linux-ext4@vger.kernel.org>
+	; Mon, 21 May 2007 19:26:04 +0900
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi Aneesh san,
 
+> While doing online defragmentation do we move the blocks corresponding to extent index ? 
+> The reason why i am asking this is to understand the
+> usefulness of doing a ext4migrate followed by defrag. I understand that defragmentation 
+> in general will improve the performance. But with respect to ext4migrate we are not 
+> touching the data blocks. Instead we build the extent map and if that requires to have 
+> an extent index block then we allocate one. I am trying to understand what would be the 
+> performance impact of this and whether doing a defrag really improve the performance.
 
-Theodore Tso wrote:
-> On Wed, May 09, 2007 at 01:42:17PM +0530, Aneesh Kumar K.V wrote:
->> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->>
->> This I/O manager helps in stacking different I/O managers.
->> For example one can stack the undo I/O manager on top
->> of Unix I/O manager to achieve the undo functionality.
-> 
-> This is probably more generality than is strictly necessary; and the
-> place where the excess generality gets messy is the fact that you make
-> the stacking layer responsible for calling all of the io manager's
-> open routines (which is still a FIXME).  So I would flush the stack_io
-> layer entirely.
+I think converting a file to extents has the benefit for the performance of
+block searching. If we want to improve also the performance of  reading
+file data, we have to run the defrag after that.
 
+> Also looking at the version 0.4 I see that defrag ioctl only work if we have 
+> EXT4_EXTENTS_FL flag set. What are the plans for making defrag work with indirect block 
+> map inode ?
 
-Can't we address the FIXME by calling the respective close routine in 
-the failure case.
+Unfortunately, my defrag doesn't support an indirect block file.
+But we can reduce fragments in the file with the defrag just after
+ext4migrate.
 
-One thing i didn't like with the stack_io was, we will be opening the 
-device at each stacked I/O manager layer; which i also think is okey 
-provided we expect to use these I/O managers independently
+In my opinion, to keep the ioctl simple and small is very important
+for ease of maintenance.  So I would rather not support indirect
+block files in the ioctl.
+Instead, I can add the call of the migration ioctl to my defrag tool in order
+to defragment indirect block files.  How do you think of it?
 
-> 
-> What I would recommend as the fast and dirty approach.  Basically, ape
-> the approach used by test_io layer _exactly_, except instead of using
-> a global variable test_io_backing_manager, you provide a function
-> which sets the static variable, undo_io_backing_manager.  This
-> variable is used only by the subsequent call to the ->open method,
-> which just like test_io simply passes the name down to the backing
-> manager specified in the static variable.  Then just make the undo_io
-> manager work the way test_io does, where does its thing, and then it
-> calls the appropriate function in its private->real io_channel.
-> Basically, make undo_io responsible for calling the next io_manager
-> down in the chain, This is workable because we don't need to
-> initialize the tdb file until we first try to write to the io_channel,
-> and ext2fs_open() only needs to do read operations, so we can set the
-> tdb filename via an optoin after ext2fs_open() returns.
-> 
-
-One thing i was confused about was the usage of read_blk, write_blk etc 
-pointers in test_private_data. With respect to undo I/O manager do i 
-need to provide them ?. If we really need them, then i was thinking a 
-generic stacking layer as i send in the patches would be better. That 
-means any pluggable functionality that we achieve right now by setting
-test_io_cb_read_blk etc will be implemented as a I/O manager that does 
-the particular task. Later we stack all these I/O manager to get the 
-full functionality.
-
--aneesh
+Cheers, Takashi 
