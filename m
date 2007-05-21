@@ -1,56 +1,58 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext2/3/4 online defrag
-Date: Mon, 21 May 2007 12:33:19 +0200
-Message-ID: <20070521103319.GA29416@atrey.karlin.mff.cuni.cz>
-References: <1178770799.26695.11.camel@eric-laptop> <20070517161119.GB3230@atrey.karlin.mff.cuni.cz> <1179465114.7891.17.camel@eric-laptop>
+Subject: Re: Online defragmentation and ext4migrate
+Date: Mon, 21 May 2007 12:38:28 +0200
+Message-ID: <20070521103828.GB29416@atrey.karlin.mff.cuni.cz>
+References: <464DA4ED.9040408@linux.vnet.ibm.com> <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eric <erpo41@gmail.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Takashi Sato <sho@tnes.nec.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:39586 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:39812 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756569AbXEUKdU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:33:20 -0400
+	with ESMTP id S1757324AbXEUKi3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 06:38:29 -0400
 Content-Disposition: inline
-In-Reply-To: <1179465114.7891.17.camel@eric-laptop>
+In-Reply-To: <019c01c79b92$627b3280$4168010a@bsd.tnes.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Thu, 2007-05-17 at 18:11 +0200, Jan Kara wrote:
-> > But me (and several other people
-> > independently as I've learnt recently) have written some tools which
-> > should result in something useful. If you're interested, you can join
-> > prefetch-devel@googlegroups.com - it's led by one guy who is doing
-> > defrag and stuff as his google summer of code project.
-> 
-> Is this different from the ext4/extent-based defrag patch that's been
-> mentioned on this list?
-  Yes, it is different. In particular, it's offline only tool so far...
+  Hello,
 
-> > > *An implementation of an ext* filesystem driver can work with any
-> > > ext2/3/4 filesystem as long as it supports the necessary revision
-> > > (GOOD_OLD_REV or DYNAMIC_REV) and feature flags set in the filesystem.
-> >   Not sure what you mean here...
+> >While doing online defragmentation do we move the blocks corresponding to 
+> >extent index ? The reason why i am asking this is to understand the
+> >usefulness of doing a ext4migrate followed by defrag. I understand that 
+> >defragmentation in general will improve the performance. But with respect 
+> >to ext4migrate we are not touching the data blocks. Instead we build the 
+> >extent map and if that requires to have an extent index block then we 
+> >allocate one. I am trying to understand what would be the performance 
+> >impact of this and whether doing a defrag really improve the performance.
 > 
-> The "ext2 filesystem"/"ext3 filesystem"/"ext4 filesystem" terminology
-> was confusing to me when I first started reading about them. In my mind,
-> it implied that those three filesystems were more different than they
-> actually are.
+> I think converting a file to extents has the benefit for the performance of
+> block searching. If we want to improve also the performance of  reading
+> file data, we have to run the defrag after that.
+  Yes. On the other hand I believe that some people would like to use
+defragmentation but stay with ext3. For them conversion to extents is
+no-go.
+
+> >Also looking at the version 0.4 I see that defrag ioctl only work if we 
+> >have EXT4_EXTENTS_FL flag set. What are the plans for making defrag work 
+> >with indirect block map inode ?
 > 
-> I think it would be more accurate to say that they are all essentially
-> the same filesystem, and that any filesystem driver that can mount a
-> given filesystem can mount any other ext2/3/4 filesystem of the same
-> revision with the same feature flags set.
+> Unfortunately, my defrag doesn't support an indirect block file.
+> But we can reduce fragments in the file with the defrag just after
+> ext4migrate.
 > 
-> I was asking for confirmation of this assumption, but I've since found a
-> lot of really good documentation that has cleared up a lot of things.
-  Yes, basically it's just a question of a feature set. But for example
-current online defrag from Takashi requires extents, which are not
-available for ext2 or ext3.
+> In my opinion, to keep the ioctl simple and small is very important
+> for ease of maintenance.  So I would rather not support indirect block
+> files in the ioctl.  Instead, I can add the call of the migration
+> ioctl to my defrag tool in order to defragment indirect block files.
+> How do you think of it?
+  Yes that could be useful but I don't think it's a complete solution
+for people that don't want to migrate.
 
 								Honza
-
 -- 
 Jan Kara <jack@suse.cz>
 SuSE CR Labs
