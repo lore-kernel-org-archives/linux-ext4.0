@@ -1,63 +1,55 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: [RFC][PATCH] Multiple mount protection
-Date: Tue, 22 May 2007 01:22:32 +0530
-Message-ID: <1179777153.3910.13.camel@garfield>
+From: Eric <erpo41@gmail.com>
+Subject: SOLVED: Re: files mapped funny? (related to online defragmentation)
+Date: Mon, 21 May 2007 19:08:05 -0700
+Message-ID: <1179799685.5779.7.camel@eric-laptop>
+References: <1179755398.389.24.camel@eric-laptop>
+	 <1179770459.23003.7.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-1EtC6QAl6Pma0Ym+0W5v"
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:54011 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935423AbXEUTtO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 15:49:14 -0400
+Received: from py-out-1112.google.com ([64.233.166.183]:48821 "EHLO
+	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758000AbXEVCIk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 May 2007 22:08:40 -0400
+Received: by py-out-1112.google.com with SMTP id a73so499799pye
+        for <linux-ext4@vger.kernel.org>; Mon, 21 May 2007 19:08:39 -0700 (PDT)
+In-Reply-To: <1179770459.23003.7.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
 
-There have been reported instances of a filesystem having been mounted at 2 places at the same time causing a lot of damage to the filesystem. This patch reserves superblock fields and an INCOMPAT flag for adding multiple mount protection(MMP) support within the ext4 filesystem itself. The superblock will have a block number (s_mmp_block) which will hold a MMP structure which has a sequence number which will be periodically updated every 5 seconds by a mounted filesystem. Whenever a filesystem will be mounted it will wait for s_mmp_interval seconds to make sure that the MMP sequence does not change. To further make sure, we write a random sequence number into the MMP block and wait for another s_mmp_interval secs. If the sequence no. doesn't change then the mount will succeed. In case of failure, the nodename, bdevname and the time at which the MMP block was last updated will be displaye
- d. tune2fs can be used to set s_mmp_interval as desired.
+--=-1EtC6QAl6Pma0Ym+0W5v
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-It will also protect against running e2fsck on a mounted filesystem by adding similar logic to ext2fs_open().
+> > I'm getting strange results when I map out the blocks used in files
+> > larger than a several thousand KB. I never seem to get any more than
+> > 1024 contiguous data blocks in a row.=20
+> >=20
+> filefrag command comes with e2fsprogs will print the file fragmentation
+> info. I guess you can try filefrag -v command and see if that matches
+> what your scripts reported.
 
-Any comments or views are welcome!
+Thanks for the pointer. It seems my program only counts data blocks, so
+it sees the indirect block for each 1024 data blocks as a space between
+extents. I will have to read the filefrag source and account for that.
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+Cheers,
 
-Index: e2fsprogs-1.40/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs-1.40.orig/lib/ext2fs/ext2_fs.h
-+++ e2fsprogs-1.40/lib/ext2fs/ext2_fs.h
-@@ -568,8 +568,9 @@ struct ext2_super_block {
-        __u16   s_want_extra_isize;     /* New inodes should reserve # bytes */
-        __u32   s_flags;                /* Miscellaneous flags */
-        __u16   s_raid_stride;          /* RAID stride */
--       __u16   s_pad;                  /* Padding */
--       __u32   s_reserved[166];        /* Padding to the end of the block */
-+       __u16   s_mmp_interval;         /* Wait for # seconds in MMP checking */
-+       __u64   s_mmp_block;            /* Block for multi-mount protection */
-+       __u32   s_reserved[164];        /* Padding to the end of the block */
- };
-
- /*
-@@ -631,10 +632,12 @@ struct ext2_super_block {
- #define EXT2_FEATURE_INCOMPAT_META_BG          0x0010
- #define EXT3_FEATURE_INCOMPAT_EXTENTS          0x0040
- #define EXT4_FEATURE_INCOMPAT_64BIT            0x0080
-+#define EXT4_FEATURE_INCOMPAT_MMP              0x0100
+Eric
 
 
- #define EXT2_FEATURE_COMPAT_SUPP       0
--#define EXT2_FEATURE_INCOMPAT_SUPP     (EXT2_FEATURE_INCOMPAT_FILETYPE)
-+#define EXT2_FEATURE_INCOMPAT_SUPP     (EXT2_FEATURE_INCOMPAT_FILETYPE| \
-+                                        EXT4_FEATURE_INCOMPAT_MMP)
- #define EXT2_FEATURE_RO_COMPAT_SUPP    (EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
-                                         EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
-                                         EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+--=-1EtC6QAl6Pma0Ym+0W5v
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
 
-Thanks,
-Kalpak.
+iD8DBQBGUlCFe2L37HVup3ARAkydAJ9gIlgAN8QLO1IHgbc6QQhO113k/ACg/FnH
+RjnnXXMnjd2R+NdC2Hb9YFM=
+=PHbl
+-----END PGP SIGNATURE-----
+
+--=-1EtC6QAl6Pma0Ym+0W5v--
