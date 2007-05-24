@@ -1,44 +1,87 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC] store RAID stride in superblock
-Date: Thu, 24 May 2007 05:44:42 -0600
-Message-ID: <20070524114442.GA12526@schatzie.adilger.int>
-References: <20070512020248.GQ6375@schatzie.adilger.int>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: [RFC 2/5] inode reservation v0.1 (ext4 kernel patch)
+Date: Thu, 24 May 2007 08:20:37 -0500
+Message-ID: <1180012837.11124.11.camel@kleikamp.austin.ibm.com>
+References: <1179943606.4179.53.camel@coly-t43.site>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: coly <colyli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:52877 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755254AbXEXLoo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 May 2007 07:44:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20070512020248.GQ6375@schatzie.adilger.int>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:57047 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756595AbXEXNUl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 May 2007 09:20:41 -0400
+In-Reply-To: <1179943606.4179.53.camel@coly-t43.site>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 22, 2007  01:22 +0530, Kalpak Shah wrote:
->         __u16   s_raid_stride;          /* RAID stride */
-> -       __u16   s_pad;                  /* Padding */
-> +       __u16   s_mmp_interval;         /* Wait for # seconds in MMP
-> checking */
-> +       __u64   s_mmp_block;            /* Block for multi-mount protection
-> */
+On Thu, 2007-05-24 at 02:06 +0800, coly wrote:
+> The patch is generated based on 2.6.20-ext4-2 branch. you can find the
+> benchmark from other email.
+> 
+> DO NOT waste time on reading the patch :-) I post this patch here is to
+> show that I really spent time on it and the patch can work (even not
+> well).
 
-Ted, I just noticed this updated patch w.r.t. your recent s_raid_stride
-addition.  I also want to have a separate parameter for "s_raid_stripe_width"
-which is normally N * s_raid_stride, where N is the number of disks in a
-RAID 5 N+1 (or RAID 6 N+2) parity stripe.  This is for delalloc+mballoc to
-allow it to align and size new allocations so that writes do not impose
-read-modify-write overhead on the RAID stripes.
+I won't waste my time then.  I'm discouraged from trying by the lack of
+indentation.  It looks like the tabs got converted to a single space
+somehow.
 
-My understanding from the code is that s_raid_stride is to put the bitmaps
-for different groups on different disks to avoid always having a single
-disk busy with bitmap updates.
+> diff --git a/Makefile b/Makefile
+> index 7e2750f..21d21e4 100644
+> --- a/Makefile
+> +++ b/Makefile
+> @@ -1,8 +1,7 @@
+> VERSION = 2
+> PATCHLEVEL = 6
+> SUBLEVEL = 20
+> -EXTRAVERSION =
+> -NAME = Homicidal Dwarf Hamster
+> +EXTRAVERSION = inores
+> 
+> # *DOCUMENTATION*
+> # To see a list of typical targets execute "make help"
+> diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+> index 11e93c1..daf88b4 100644
+> --- a/fs/ext4/bitmap.c
+> +++ b/fs/ext4/bitmap.c
+> @@ -30,3 +30,29 @@ unsigned long ext4_count_free (struct buffer_head *
+> map, unsigned int numchars)
+> 
+> #endif  /*  EXT4FS_DEBUG  */
+> 
+> +/*
+> + * Read the inode allocation bitmap for a given block_group, reading
+> + * into the specified slot in the superblock's bitmap cache.
+> + *
+> + * Return buffer_head of bitmap on success or NULL.
+> + */
+> +struct buffer_head *
+> +read_inode_bitmap(struct super_block * sb, unsigned long block_group)
+> +{
+> + struct ext4_group_desc *desc;
+> + struct buffer_head *bh = NULL;
+> +
+> + desc = ext4_get_group_desc(sb, block_group, NULL);
+> + if (!desc)
+> + goto error_out;
+> +
+> + bh = sb_bread(sb, ext4_inode_bitmap(sb, desc));
+> + if (!bh)
+> + ext4_error(sb, "read_inode_bitmap",
+> + "Cannot read inode bitmap - "
+> + "block_group = %lu, inode_bitmap = %llu",
+> + block_group, ext4_inode_bitmap(sb, desc));
+> +error_out:
+> + return bh;
+> +}
+> +
 
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Shaggy
+-- 
+David Kleikamp
+IBM Linux Technology Center
