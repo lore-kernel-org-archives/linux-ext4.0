@@ -1,98 +1,109 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [RFC][PATCH] Multiple mount protection
-Date: Fri, 25 May 2007 12:14:23 +0530
-Message-ID: <1180075463.4658.12.camel@garfield>
-References: <1179777153.3910.13.camel@garfield>
-	 <4652987D.70209@clusterfs.com> <1179819282.4797.9.camel@garfield>
-	 <20070524232521.GD26432@petra.dvoda.cz>
+From: coly <colyli@gmail.com>
+Subject: Re: it seems Evolution remove the Tabs
+Date: Fri, 25 May 2007 14:42:21 +0800
+Message-ID: <1180075342.4136.4.camel@coly-t43.site>
+References: <1179943606.4179.53.camel@coly-t43.site>
+	 <1180012837.11124.11.camel@kleikamp.austin.ibm.com>
+	 <1180018046.4078.2.camel@coly-t43.site>
+	 <Pine.LNX.4.61.0705241826070.31549@yvahk01.tjqt.qr>
+	 <20070525013003.GA2429@localhost.localdomain>
+	 <Pine.LNX.4.61.0705250745390.14357@yvahk01.tjqt.qr>
+	 <1180073061.4136.3.camel@coly-t43.site>
+	 <d45a3acc0705242333v1f4c65d4x92b0167d51e3b1a6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Manoj Joseph <manoj@clusterfs.com>,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Engelhardt <jengelh@linux01.gwdg.de>,
+	WANG Cong <xiyou.wangcong@gmail.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Karel Zak <kzak@redhat.com>
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: andrew hendry <andrew.hendry@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:33432 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752226AbXEYGkj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 May 2007 02:40:39 -0400
-In-Reply-To: <20070524232521.GD26432@petra.dvoda.cz>
+Received: from ug-out-1314.google.com ([66.249.92.170]:20619 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753270AbXEYGmZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 May 2007 02:42:25 -0400
+Received: by ug-out-1314.google.com with SMTP id j3so1048685ugf
+        for <linux-ext4@vger.kernel.org>; Thu, 24 May 2007 23:42:00 -0700 (PDT)
+In-Reply-To: <d45a3acc0705242333v1f4c65d4x92b0167d51e3b1a6@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-05-25 at 01:25 +0200, Karel Zak wrote:
->  Frankly, I don't understand why we need this feature. The filesystem
->  limitations (=not ready for clusters) should be described in docs.
->  That's enough from my POV...
+Andrew,
 
-It is highly advocated that ext3/4 filesystem should not be multiply
-mounted. This just makes doubly sure of this only if the user desires.
+Thanks for your information :-)
 
+Coly
+
+
+=E5=9C=A8 2007-05-25=E4=BA=94=E7=9A=84 16:33 +1000=EF=BC=8Candrew hendr=
+y=E5=86=99=E9=81=93=EF=BC=9A
+> select your whole mail and use pre-format in evolution.
+> or change it to pre-format and do insert->text file.
+> this should send it with tabs intact, the confusing bit i think is if
+> your testing it by sending it to yourself, then you cant see the tabs
+> again.
+>=20
+> Read it in another mailer, something like sylpheed or mutt to see if
+> the tabs are really there.
+>=20
+> On 5/25/07, coly <colyli@gmail.com> wrote:
+> > Hi,
+> >
+> > I tested again, it seems Evolution removes the Tabs with blanks.
+> > How to resolve this issue on Evolution ?  I am trying :-)
+> >
+> > Coly
+> >
+> > =E5=9C=A8 2007-05-25=E4=BA=94=E7=9A=84 07:52 +0200=EF=BC=8CJan Enge=
+lhardt=E5=86=99=E9=81=93=EF=BC=9A
+> > > On May 25 2007 09:30, WANG Cong wrote:
+> > > >>>
+> > > >>>Yes, I found all TABs gone when I received the mail. When I po=
+st next
+> > > >>>version of the patch, I will test to send to me first :-)
+> > > >>>
+> > > >>>Thanks for your information.
+> > > >>
+> > > >>Blame Gmail.
+> > > >
+> > > >I am using gmail too. That's not gmail's fault,
 > > >
-> > > What would the default value of s_mmp_interval be? 5 seconds? more?
-> > 
-> > I have set the default value to 6 seconds. Depending on specific
-> > conditions (hardware, etc.) it can be increased using tunefs.
-> > > 
-> > > If I am not reading this wrong a mount will take more than 
-> > > 's_mmp_interval' seconds to complete. Wouldn't this be too much of a 
-> > > penalty during boot up if the system has many 'mount at boot' filesystems?
-> > 
-> > Yes it may take a maximum of s_mmp_interval*2 seconds to mount a
-> > filesystem which has INCOMPAT_MMP feature set. Its up to the user to use
-> > this feature, if he finds the penalty is too large, he can do away with
-> > this feature. This feature will mostly be used for filesystems used in
-> > failover scenarios.
-> 
->  I hope the feature will be disabled by default. It sounds strange
->  that I have to way 6 secs to mount a FS if I (and 99% of Linux users)
->  needn't to share same FS between two mountpoint. 
->  
->  I have 5 filesystems on my workstation = 30 secs penality during boot?!
-
-This feature won't be enabled by default. Its absolutely the users
-discretion if he wants to enable this feature. It can be set by tune2fs
-and can be disabled without unmounting the filesystem. So you won't have
-to waste time during mounting unless you choose to.
-
-> 
-> > > Also, I am curious about this. Is there a test case for mounting the 
-> > > same filesystem multiple times? Does this use different paths to reach 
-> > > the device? Or is there a race? Or does it happen on a device shared by 
-> > > multiple hosts?
-> > 
-> > If you are using some HA software, there is the possibility of a race.
-> > Yes it can happen on a device shared by multiple hosts.
-> 
->  That's reason why people use OCFS or GFS.
-
-OCFS and GFS are clustered file systems and hence provide read-write
-support at multiple mount points.
-
-Note that the MMP feature will make that you can't run e2fsck on a
-mounted filesystem. So in short the filesystem cannot be opened in
-read-write mode by more than 1 entity.
-
-> 
-> > A simple test case for this will be:
-> > $ dd if=/dev/zero of=img0 bs=1M count=256
-> > $ mke2fs -F -j img0
-> > $ ln img0 img1
-> > $ losetup /dev/loop0 img0
-> > $ losetup /dev/loop1 img1
-> > $ mount /dev/loop0 /mnt/loop0
-> > $ mount /dev/loop1 /mnt/loop1
-> > 
-> > This succeeds currently causing a multiple mount.
-> 
->  And what? That's wrong FS usage.
-
-Here I had just described a test case for reproducing multiple mounts.
-
-Thanks,
-Kalpak.
-
->  
->     Karel
-> 
+> > > Then it is one of these:
+> > > - gmail's default settings for web input sucks or
+> > >
+> > > - the web browser reformats it
+> > >   (not so much - pastebin.ca suffers from something similar, but =
+*not the
+> > >   same*; in that it translates all tabs into spaces, but at least=
+ it keeps
+> > >   the width.) or
+> > >
+> > > - you are using your own client, and directly SMTPing gmail serve=
+rs,
+> > >   in which case unwanted reformatting by broken MTAs can be bypas=
+sed.
+> > >
+> > > >I think your email client sucks.
+> > > >So which email client are you using, coly? I recommend mutt to y=
+ou. ;)
+> > >
+> > > X-Mailer:      Evolution 2.6.0
+> > >
+> > > Hm, this looks like another of these "Thunderbird" cases. (Means,
+> > > Thunderbird users also get their patches wrapped and twangled unl=
+ess
+> > > they set some option that is not on by default.)
+> > >
+> > >
+> > >       Jan
+> >
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-ker=
+nel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> >
