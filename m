@@ -1,47 +1,40 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH] Multiple mount protection
-Date: Fri, 25 May 2007 10:39:57 -0400
-Message-ID: <20070525143957.GA12669@thunk.org>
-References: <1179777153.3910.13.camel@garfield>
+From: Jean noel Cordenner <jean-noel.cordenner@bull.net>
+Subject: [patch 0/2] i_version update
+Date: Fri, 25 May 2007 18:25:31 +0200
+Message-ID: <46570DFB.3080101@bull.net>
+Reply-To: jean-noel.cordenner@bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Kalpak Shah <kalpak@clusterfs.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40941 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751938AbXEYOkF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 May 2007 10:40:05 -0400
-Content-Disposition: inline
-In-Reply-To: <1179777153.3910.13.camel@garfield>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Kalpak,
+Hi,
 
-On Tue, May 22, 2007 at 01:22:32AM +0530, Kalpak Shah wrote:
-> It will also protect against running e2fsck on a mounted filesystem
-> by adding similar logic to ext2fs_open().
+This is an update of the i_version patch.
+The i_version field is a 64bit counter that is set on every inode
+creation and that is incremented every time the inode data is modified
+(similarly to the "ctime" time-stamp).
+The aim is to fulfill a NFSv4 requirement for rfc3530:
+"5.5.  Mandatory Attributes - Definitions
+Name		#	DataType   Access   Description
+___________________________________________________________________
+change		3	uint64       READ     A value created by the
+		server that the client can use to determine if file
+		data, directory contents or attributes of the object
+		have been modified.  The servermay return the object's
+		time_metadata attribute for this attribute's value but
+		only if the filesystem object can not be updated more
+		frequently than the resolution of time_metadata.
+"
 
-Your patch didn't add this logic to ext2fs_open(); it just reserved
-the space in the superblock.
+The patch set is divided into 2parts, the vfs layer and a ext4 specific 
+code.
 
-I don't mind reserving the space so we don't have to worry about
-conflicting superblock uses, but I'm still on the fence about actually
-adding this functionality (a) into e2fsprogs, and (b) into the ext4
-kernel code.  I guess it depends on how complicated/icky the
-implementation code is, I guess.  The question as before is whether
-the complexity is worth it, given that someone who is actually going
-to be subject to accidentally mounting an ext3/4 filesystem on
-multiple systems needs to be using an HA system anyway.  So basically
-this is just to protect against (a) a bug/failure in the HA subsystem,
-and (b) the idiotic user that failed to realized he/she needed to set
-up an HA subsystem in the first place.  Granted, the universe is going
-to create idiots at a faster rate that we can deal with it, but that's
-why I'm still not 100% convinced the complexity is worth it.
+Any comments welcome.
 
-To be fair, if I was on a L3 support team having to deal with these
-idiots, I'd probably feel differently.  :-)
-
-							- Ted
+Cheers,
+Jean noel
