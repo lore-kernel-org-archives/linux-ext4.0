@@ -1,40 +1,26 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext4 and creation time
-Date: Sun, 27 May 2007 10:25:53 -0600
-Message-ID: <20070527162553.GI5181@schatzie.adilger.int>
-References: <Pine.LNX.4.64.0705102134030.3570@lancer.cnet.absolutedigital.net> <1180089677.27539.4.camel@garfield>
+From: Kirk True <kirk@mustardgrain.com>
+Subject: fallocate for ext2?
+Date: Sun, 27 May 2007 22:45:13 -0700 (PDT)
+Message-ID: <693508.81317.qm@web612.biz.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Cal Peake <cp@absolutedigital.net>, Theodore Tso <tytso@mit.edu>,
-	extfs Mailing List <linux-ext4@vger.kernel.org>
-To: Kalpak Shah <kalpak@clusterfs.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:46672 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755914AbXE0QZz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 May 2007 12:25:55 -0400
-Content-Disposition: inline
-In-Reply-To: <1180089677.27539.4.camel@garfield>
+Received: from web612.biz.mail.mud.yahoo.com ([209.191.88.225]:45854 "HELO
+	web612.biz.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753219AbXE1Fvy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 May 2007 01:51:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 25, 2007  16:11 +0530, Kalpak Shah wrote:
-> On Fri, 2007-05-25 at 06:13 -0400, Cal Peake wrote:
-> > I found this had already been brought up in the past but couldn't find if 
-> > a definitive decision was made.
-> > 
-> > Will ext4 include a creation time field?
-> 
-> Yes, the creation time field will be in ext4. It has already been
-> included in Ted's e2fsprogs tree and will be included in the kernel when
-> the nanosecond patch is sent upstream.
+Hi all,
 
-As a caveat, there is not yet any API to access this.  One possibility is
-to add a virtual extended attribute like user.crtime that returns a
-struct timespec or similar.
+I've been trying to follow the fallocate thread and was curious if it's
+worthwhile or worthless to attempt an implementation for ext2. I know
+ext2 isn't actively developed, per se, but I'm looking for a manageable
+project to cut my teeth on and get up to speed.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Thanks,
+Kirk
