@@ -1,34 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsprogs coverity patch <cid-33.diff>
-Date: Tue, 29 May 2007 18:20:09 -0400
-Message-ID: <20070529222009.GA669@thunk.org>
-References: <200702100211.l1A2BTRb007321@igsi.llnl.gov> <465C75A8.5080506@redhat.com> <20070529205141.GB5181@schatzie.adilger.int> <465C938C.3060101@redhat.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [patch 2/2] i_version update - ext4 part
+Date: Tue, 29 May 2007 16:58:17 -0600
+Message-ID: <20070529225817.GE5181@schatzie.adilger.int>
+References: <46570E16.5040006@bull.net> <1180467854.4204.15.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	"Brian D. Behlendorf" <behlendorf1@llnl.gov>,
-	linux-ext4@vger.kernel.org, wartens2@llnl.gov
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52961 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751629AbXE2WUO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 May 2007 18:20:14 -0400
+Cc: jean-noel.cordenner@bull.net, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-fsdevel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <465C938C.3060101@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <1180467854.4204.15.camel@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 29, 2007 at 03:56:44PM -0500, Eric Sandeen wrote:
-> >I still have it in my "apply atop 1.39-WIP" series, so it appears not
-> >to have made it into Ted's repo.  I'm including the patch again for
-> >posterity.
+On May 29, 2007  12:44 -0700, Mingming Cao wrote:
+> I am a little bit confused about the two patches. 
 > 
-> Thanks Andreas - near as I can tell, it never made it to the list.
+> It appears in the ext4_expand_inode_extra_isize patch by Kalpak, there a
+> new 64 bit i_fs_version field is added to ext4 inode structure for inode
+> versioning support. read/store of this counter are properly handled, but
+> missing the inode versioning counter update.
 
-Yeah, I wondered about that numbering discontinuity --- but IIRC it
-wasn't the only one.  I had assumed that the "missing" cid's were ones
-were human examination of the Coverity report lead to the conclusion
-that it really wasn't a problem....
+For the Lustre use of the inode version we don't care about the VFS changes
+to i_version.  In fact - we want to be able to control the changes to
+inode version ourselves so that e.g. file defragmenting or atime updates
+don't change the inode version, and that recovery can restore the version
+to a known state along with the rest of the metadata.
 
-					- Ted
+That said, since Lustre isn't in the kernel and we patch our version of
+ext3 anyways it doesn't really matter what is done for NFS.  We will just
+patch in our own behaviour if the final ext4 code isn't suitable in all
+of the details.  Having 99% of the code the same at least makes this a
+lot less work.
+
+> But later in the second patch by Jean Noel, he re-used the VFS inode-
+> >i_version for ext4 inode versioning, the counter is being updated every
+> time the file is being changed. 
+
+I don't know what the NFS requirements for the version are.  There may
+also be some complaints from others if the i_version is 64 bits because
+this contributes to generic inode growth and isn't used for other
+filesystems.
+
+> To me, i_fs_version and inode_version are the same thing, right?
+> Shouldn't we choose one(I assume inode i_version?), and combine these
+> two patch together? How about split the inode versioning part from the
+> ext4_expand_inode_extra_isize patch(it does multiple things, and
+> i_versioning doesn't longs there) and put it together with the rest of
+> i_version update patches?
+
+I don't have an objection to that, but I don't think it is required.
+
+> BTW, how could NFS/user space to access the inode version counter?
+
+If the Bull patch uses i_version then knfsd can just access it directly.
+I don't think there is any API to access it from userspace.  One option
+is to add a virtual EA like user.inode_version and have the kernel fill
+this in from i_version.
+
+Lustre will manipulate the ei->i_fs_version directly.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
