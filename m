@@ -1,78 +1,67 @@
-From: Krzysztof Lichota <krzysiek@lichota.net>
-Subject: ext3 and prefetching
-Date: Tue, 29 May 2007 10:42:23 +0200
-Message-ID: <465BE76F.6040106@lichota.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext2_discard_prealloc() called on each iput?
+Date: Tue, 29 May 2007 12:25:45 +0200
+Message-ID: <20070529102544.GA25278@duck.suse.cz>
+References: <20070522161127.GC13633@duck.suse.cz> <20070523123743.GD5608@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig4E61F0BFBC0A5E6FA72A4EE5"
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary="3MwIy2ne0vdjdPXF"
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 23-moo-10.acn.waw.pl ([62.121.101.23]:61590 "EHLO lichota.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761533AbXE2JFj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 May 2007 05:05:39 -0400
+Received: from styx.suse.cz ([82.119.242.94]:52464 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754407AbXE2KOC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 May 2007 06:14:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20070523123743.GD5608@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig4E61F0BFBC0A5E6FA72A4EE5
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
 
-Hello everyone.
-Let me introduce myself to the list :)
-My name is Krzysztof Lichota, I am at the first year of PhD studies at
-the Warsaw University.
-This summer I will be working on "Automatic boot and application start
-file prefetching" project as part of Google Summer of Code.
-Part of this project is implementing offline defragmenter tool for ext3
-which will lay out files on disk in a way to minimize disk seeks during
-application and system start.
+--3MwIy2ne0vdjdPXF
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Two prototypes were considered for this purpose and we chose to use
-ext3remapper tool created by Jan Kara. I will be starting the
-implementation based on this code soon.
+On Wed 23-05-07 08:37:43, Theodore Tso wrote:
+> >   Also I found slightly misleading the comment at ext2_release_file().
+> > As far as I understand the code it isn't when /all/ files are closed but
+> > rather when all fd's for given filp are closed. I.e. if you open the same
+> > file two times, ->release will get called once for each open. Am I right?
+  <snip>
+> still patches to fix the comments might not be a bad idea, since it
+> might save confusion by others later on.
+  OK, attached is a patch that fixes the comment. Andrew, please put it
+into your patch queue... Thanks.
 
-The design summary is put on
-http://code.google.com/p/prefetch/wiki/Ext3LayoutToolDesign page and
-discussed on our mailing list (mainly this thread:
-http://groups.google.com/group/prefetch-devel/browse_thread/thread/2d800d=
-f1ceaab5ae/e0bbb68fe61b3725#e0bbb68fe61b3725).
-Currently the tool is able to relocate file data and indirect blocks,
-relocating inodes is planned.
-The code is available from project SVN repository:
-http://prefetch.googlecode.com/svn/trunk/ext3remapper/
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
 
-If you are interested in prefetching issues or have comments about ext3
-tool implementation or design, you are welcome to join our project -
-main project page is http://code.google.com/p/prefetch/, there is a
-mailing list (http://groups.google.com/group/prefetch-devel), you can
-subscribe by sending e-mail to prefetch-devel-subscribe@googlegroups.com
-or you can browse archives online.
+--3MwIy2ne0vdjdPXF
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="ext2-2.6.21-1-comment_fix.diff"
 
-I would be grateful for reviewing the tool code for potential problems
-when working on ext3 structures, your expertise will be really
-appreciated :)
+Fix a comment when ext2_release_file() is called.
 
-	Krzysztof Lichota
+Signed-off-by: Jan Kara <jack@suse.cz>
 
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.21/fs/ext2/file.c linux-2.6.21-1-ext2_comment_fix/fs/ext2/file.c
+--- linux-2.6.21/fs/ext2/file.c	2007-05-15 14:18:47.000000000 +0200
++++ linux-2.6.21-1-ext2_comment_fix/fs/ext2/file.c	2007-05-29 12:15:59.000000000 +0200
+@@ -24,9 +24,9 @@
+ #include "acl.h"
+ 
+ /*
+- * Called when an inode is released. Note that this is different
+- * from ext2_open_file: open gets called at every open, but release
+- * gets called only when /all/ the files are closed.
++ * Called when filp is released. This happens when all file descriptors
++ * for a single struct file are closed. Note that different open() calls
++ * for the same file yield different struct file structures.
+  */
+ static int ext2_release_file (struct inode * inode, struct file * filp)
+ {
 
-
-
-
---------------enig4E61F0BFBC0A5E6FA72A4EE5
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2.2 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iD8DBQFGW+d2SHJB/1EhaUwRAjgeAJ9yRGbd26sCKnRwjc+3OkfWG3gWFQCcCzoL
-MqldXYMPk0y/dxUkJcKTRkQ=
-=+c2W
------END PGP SIGNATURE-----
-
---------------enig4E61F0BFBC0A5E6FA72A4EE5--
+--3MwIy2ne0vdjdPXF--
