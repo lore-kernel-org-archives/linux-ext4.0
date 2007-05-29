@@ -1,67 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext2_discard_prealloc() called on each iput?
-Date: Tue, 29 May 2007 12:25:45 +0200
-Message-ID: <20070529102544.GA25278@duck.suse.cz>
-References: <20070522161127.GC13633@duck.suse.cz> <20070523123743.GD5608@thunk.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] update ext4-nanosecond-patch comments
+Date: Tue, 29 May 2007 05:53:27 -0600
+Message-ID: <20070529115327.GY5181@schatzie.adilger.int>
+References: <20070529054822.GA14186@skywalker.home.org> <1180420717.4339.8.camel@garfield> <465BE1CF.2040304@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="3MwIy2ne0vdjdPXF"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Kalpak Shah <kalpak@clusterfs.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:52464 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754407AbXE2KOC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 May 2007 06:14:02 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:50641 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752117AbXE2Lx3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 May 2007 07:53:29 -0400
 Content-Disposition: inline
-In-Reply-To: <20070523123743.GD5608@thunk.org>
+In-Reply-To: <465BE1CF.2040304@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On May 29, 2007  13:48 +0530, Aneesh Kumar K.V wrote:
+> Kalpak Shah wrote:
+> >On Tue, 2007-05-29 at 11:18 +0530, Aneesh Kumar K.V wrote:
+> >>Also can we have a description of why s_{min, want}_extra_isize
+> >>fields are added in the commit message ?
+> >
+> >The i_extra_isize for each inode should ideally be s_want_extra_isize
+> >after inode expansion. If expansion by s_want_extra_isize is not
+> >possible, then i_extra_isize must be atleast s_min_extra_isize.
+> 
+> My point was that the commit message of ext4-nanosecond-patch should 
+> explain the usage scenario for these variables. We may want to move the
+> commit message of ext4_expand_inode_extra_isize.patch reworded to this.
+> 
+> BTW i also think that adding s_{min, want}_extra_isize can be a separate 
+> patch altogether.
 
---3MwIy2ne0vdjdPXF
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+When the nanosecond timestamp extension was first proposed, the requirement
+from Ted and Stephen were that s_min_extra_isize was a requirement.  Otherwise
+it would be possible to have a filesystem where the timestamps are going
+backward on some files due to MOST of the files supporting ns timestamps,
+but some with full EAs having to truncate the ns part away.
 
-On Wed 23-05-07 08:37:43, Theodore Tso wrote:
-> >   Also I found slightly misleading the comment at ext2_release_file().
-> > As far as I understand the code it isn't when /all/ files are closed but
-> > rather when all fd's for given filp are closed. I.e. if you open the same
-> > file two times, ->release will get called once for each open. Am I right?
-  <snip>
-> still patches to fix the comments might not be a bad idea, since it
-> might save confusion by others later on.
-  OK, attached is a patch that fixes the comment. Andrew, please put it
-into your patch queue... Thanks.
+Now, this might not be critical for some users, but for others it can be.
+Since this functionality is all here there isn't any reason to move it to
+a separate patch.  The same fields will be important for the inode version
+also.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
-
---3MwIy2ne0vdjdPXF
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="ext2-2.6.21-1-comment_fix.diff"
-
-Fix a comment when ext2_release_file() is called.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.21/fs/ext2/file.c linux-2.6.21-1-ext2_comment_fix/fs/ext2/file.c
---- linux-2.6.21/fs/ext2/file.c	2007-05-15 14:18:47.000000000 +0200
-+++ linux-2.6.21-1-ext2_comment_fix/fs/ext2/file.c	2007-05-29 12:15:59.000000000 +0200
-@@ -24,9 +24,9 @@
- #include "acl.h"
- 
- /*
-- * Called when an inode is released. Note that this is different
-- * from ext2_open_file: open gets called at every open, but release
-- * gets called only when /all/ the files are closed.
-+ * Called when filp is released. This happens when all file descriptors
-+ * for a single struct file are closed. Note that different open() calls
-+ * for the same file yield different struct file structures.
-  */
- static int ext2_release_file (struct inode * inode, struct file * filp)
- {
-
---3MwIy2ne0vdjdPXF--
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
