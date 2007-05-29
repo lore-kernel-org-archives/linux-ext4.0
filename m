@@ -1,100 +1,82 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [patch 2/2] i_version update - ext4 part
-Date: Tue, 29 May 2007 12:44:13 -0700
-Message-ID: <1180467854.4204.15.camel@localhost.localdomain>
-References: <46570E16.5040006@bull.net>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: e2fsprogs coverity patch <cid-33.diff>
+Date: Tue, 29 May 2007 14:51:41 -0600
+Message-ID: <20070529205141.GB5181@schatzie.adilger.int>
+References: <200702100211.l1A2BTRb007321@igsi.llnl.gov> <465C75A8.5080506@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-fsdevel@vger.kernel.org
-To: jean-noel.cordenner@bull.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <46570E16.5040006@bull.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Brian D. Behlendorf" <behlendorf1@llnl.gov>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, wartens2@llnl.gov
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:52960 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750924AbXE2Uvo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 May 2007 16:51:44 -0400
+Content-Disposition: inline
+In-Reply-To: <465C75A8.5080506@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-05-25 at 18:25 +0200, Jean noel Cordenner wrote:
-> The patch is on top of the ext4 tree:
-> http://repo.or.cz/w/ext4-patch-queue.git
+On May 29, 2007  13:49 -0500, Eric Sandeen wrote:
+> Brian D. Behlendorf wrote:
+> >Lawrence Livermore National Labs recently ran the source code
+> >analysis tool Coverity over the e2fsprogs-1.39 source to see 
+> >if it would identify any significant bugs.  The analysis
+> >turned up 38 mostly minor issues which are enumerated here
+> >with patches.  We went through and resolved these issues
+> >but would love to see these mostly minor changes reviewed
+> >and commited upstream.
 > 
-> In this part, the i_version counter is stored into 2 32bit fields of
-> the ext4_inode structure osd1.linux1.l_i_version and i_version_hi.
-> 
-> I included the ext4_expand_inode_extra_isize patch, which does part of 
-> the job, checking if there is enough room for extra fields in the inode 
-> (i_version_hi). The other patch increments the counter on inode 
-> modifications and set it on inode creation.
-> plain text document attachment (i_version_update_ext4)
-> This patch is on top of i_version_update_vfs.
-> The i_version field of the inode is set on inode creation and incremented when
-> the inode is being modified.
-> 
+> Did cid-34.diff get lost?
 
-I am a little bit confused about the two patches. 
+I still have it in my "apply atop 1.39-WIP" series, so it appears not
+to have made it into Ted's repo.  I'm including the patch again for
+posterity.
 
-It appears in the ext4_expand_inode_extra_isize patch by Kalpak, there a
-new 64 bit i_fs_version field is added to ext4 inode structure for inode
-versioning support. read/store of this counter are properly handled, but
-missing the inode versioning counter update.
+=========================================================================
+Coverity ID: 34: Resource Leak
 
-But later in the second patch by Jean Noel, he re-used the VFS inode-
->i_version for ext4 inode versioning, the counter is being updated every
-time the file is being changed. 
+The memory allocated by buf is not reclaimed.  This patch
+addresses the issue.
 
-To me, i_fs_version and inode_version are the same thing, right?
-Shouldn't we choose one(I assume inode i_version?), and combine these
-two patch together? How about split the inode versioning part from the
-ext4_expand_inode_extra_isize patch(it does multiple things, and
-i_versioning doesn't longs there) and put it together with the rest of
-i_version update patches?
+Index: e2fsprogs+chaos/misc/mke2fs.c
+===================================================================
+--- e2fsprogs+chaos.orig/misc/mke2fs.c
++++ e2fsprogs+chaos/misc/mke2fs.c
+@@ -749,7 +749,7 @@ static int set_os(struct ext2_super_bloc
+ static void parse_extended_opts(struct ext2_super_block *param, 
+ 				const char *opts)
+ {
+-	char	*buf, *token, *next, *p, *arg;
++	char	*buf = NULL, *token, *next, *p, *arg;
+ 	int	len;
+ 	int	r_usage = 0;
+ 
+@@ -834,6 +834,7 @@ static void parse_extended_opts(struct e
+ 				if (param->s_rev_level == EXT2_GOOD_OLD_REV) {
+ 					fprintf(stderr, 
+ 	_("On-line resizing not supported with revision 0 filesystems\n"));
++					free(buf);
+ 					exit(1);
+ 				}
+ 				param->s_feature_compat |=
+@@ -852,8 +853,11 @@ static void parse_extended_opts(struct e
+ 			"Valid extended options are:\n"
+ 			"\tstride=<stride length in blocks>\n"
+ 			"\tresize=<resize maximum size in blocks>\n\n"));
++		free(buf);
+ 		exit(1);
+ 	}
++
++	free(buf);
+ }	
+ 
+ static __u32 ok_features[3] = {
+=========================================================================
 
-
-BTW, how could NFS/user space to access the inode version counter?
-
-Thanks,
-Mingming
-
-
-> Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
-> 
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/ialloc.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/ialloc.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/ialloc.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -565,6 +565,7 @@
->  	inode->i_blocks = 0;
->  	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
->  						       ext4_current_time(inode);
-> +	inode->i_version = 1;
-> 
->  	memset(ei->i_data, 0, sizeof(ei->i_data));
->  	ei->i_dir_start_lookup = 0;
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/inode.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/inode.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/inode.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -3082,6 +3082,7 @@
->  {
->  	int err = 0;
-> 
-> +	inode->i_version++;
->  	/* the do_update_inode consumes one bh->b_count */
->  	get_bh(iloc->bh);
-> 
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/super.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/super.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/super.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -2839,8 +2839,8 @@
->  		i_size_write(inode, off+len-towrite);
->  		EXT4_I(inode)->i_disksize = inode->i_size;
->  	}
-> -	inode->i_version++;
->  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-> +	inode->i_version = 1;
->  	ext4_mark_inode_dirty(handle, inode);
->  	mutex_unlock(&inode->i_mutex);
->  	return len - towrite;
-
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
