@@ -1,54 +1,70 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Online defragmentation
-Date: Wed, 30 May 2007 13:18:07 +0530
-Message-ID: <465D2C37.9080905@linux.vnet.ibm.com>
-References: <465D2202.60600@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext2_discard_prealloc() called on each iput?
+Date: Wed, 30 May 2007 11:02:19 +0200
+Message-ID: <20070530090219.GA11957@duck.suse.cz>
+References: <20070522161127.GC13633@duck.suse.cz> <20070523123743.GD5608@thunk.org> <20070528160420.GD21509@duck.suse.cz> <1180473052.4204.27.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Takashi Sato <sho@tnes.nec.co.jp>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:44498 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750937AbXE3Hsq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2007 03:48:46 -0400
-Received: from sd0208e0.au.ibm.com (d23rh904.au.ibm.com [202.81.18.202])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l4U89LS5186630
-	for <linux-ext4@vger.kernel.org>; Wed, 30 May 2007 18:09:21 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l4U7pxeV158832
-	for <linux-ext4@vger.kernel.org>; Wed, 30 May 2007 17:52:07 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l4U7mIKp013576
-	for <linux-ext4@vger.kernel.org>; Wed, 30 May 2007 17:48:21 +1000
-In-Reply-To: <465D2202.60600@linux.vnet.ibm.com>
+Received: from styx.suse.cz ([82.119.242.94]:40828 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751027AbXE3Iuc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 May 2007 04:50:32 -0400
+Content-Disposition: inline
+In-Reply-To: <1180473052.4204.27.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-Aneesh Kumar K.V wrote:
-> Hi Takashi,
+On Tue 29-05-07 14:10:52, Mingming Cao wrote:
+> On Mon, 2007-05-28 at 18:04 +0200, Jan Kara wrote:
+> > On Wed 23-05-07 08:37:43, Theodore Tso wrote:
+> > > On Tue, May 22, 2007 at 06:11:27PM +0200, Jan Kara wrote:
+> > > > 
+> > > >   while fixing some problems with preallocation in UDF, I had a look how
+> > > > ext2 solves similar problems. I found out that ext2_discard_prealloc() is
+> > > > called on every iput() from ext2_put_inode(). Is it really appropriate? I
+> > > > don't see a reason for doing so...
+> > > 
+> > > I agree, it's probably not appropriate.  It's been that way for a long
+> > > time, though (since 2.4.20).  It's not as horrible as it seems since
+> > > unlike traditional Unix systems, we don't call iput() as often, since
+> > > for example operations like close() end up calling dput(), which
+> > > decrements the ref. count on dentry, not the inode.  But it would
+> > > probably be better to check to see if i_count is 1 before deciding to
+> > > discard the preallocation.
+> >   OK, but then you could move the code to drop_inode() which is called at
+> > exactly that moment... I've been thinking more about it when fixing UDF.
 > 
-> I was looking at online defrag code and found that the tmp_inode is 
-> created with tmp_inode->i_nlink equal to zero. Now i am not sure whether 
-> i understand the code correctly, but AFAIU we allocate contiguous block 
-> using this tmp_inode. That means tmp_inode have extent details 
-> corresponding to the blocks. Now we are mapping the file data found in 
-> the original inode to this new blocks. Towards the end we does a iput. 
-> In iput since we have i_nlink as zero it will go ahead and call 
-> generic_delete_inode which will cause these data blocks to be marked 
-> free (right ?)
+> I have tried to optimize ext2 discard preallocation code like ext3
+> discard reservation a while back: we only call ext2_discard_prealloc on
+> the last iput(), i.e. ext2/3_clear_inode().
 > 
+> This patch actually made into mainline for a little while, then later it
+> is being reversed back because of possible leak of preallocated blocks.
+> 
+> Tt the unmount time, someone might still hold the reference of the
+> inode, thus ext2_discard_prealloc() did not get a chance to be called.
+> Since ext2 preallocation is doing pre-allocation on disk, this leads to
+> leak of preallocated blocks, confused fsck later.
+> 
+> http://lkml.org/lkml/2005/4/12/333
+  Interesting. I don't quite understand how it can happen that inode is not
+released at umount time... It must be released for umount to succeed. There
+is a slight problem that inode is not written after calling clear_inode()
+which could cause some problems (i_blocks being wrong) but blocks in
+bitmaps should be freed just right...
 
-Looking at the code again i guess for defragmentation it is okey. I 
-guess what actually happens is the blocks that is corresponding to the 
-original inode get accounted under tmp_inode. (it actually does a swap 
-of blocks ) So doing a iput with i_nlink = 0 is the correct approach.
+> > > anyway, so the preallocated region is less useful.
+> >   OK, but still we could use e.g. i_writecount to check that we drop the
+> > last descriptor for writing...
+> > 
+> Yep, that is what ext3 does in ext3_release_file(), I forget why we
+> didn't fix this for ext2.
+  Hmm, probably we just forgot...
 
-Correct me if i am wrong.
-
-Sorry for the noise.
-
--aneesh
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
