@@ -1,62 +1,57 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: e2fsprogs coverity patch <cid-33.diff>
-Date: Tue, 29 May 2007 17:10:25 -0600
-Message-ID: <20070529231025.GH5181@schatzie.adilger.int>
-References: <200702100211.l1A2BTRb007321@igsi.llnl.gov> <465C75A8.5080506@redhat.com> <20070529205141.GB5181@schatzie.adilger.int> <465C938C.3060101@redhat.com> <20070529222009.GA669@thunk.org>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [patch 0/2] i_version update
+Date: Wed, 30 May 2007 10:21:00 +1000
+Message-ID: <20070530002100.GV85884050@sgi.com>
+References: <46570DFB.3080101@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"Brian D. Behlendorf" <behlendorf1@llnl.gov>,
-	linux-ext4@vger.kernel.org, wartens2@llnl.gov
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Jean noel Cordenner <jean-noel.cordenner@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:58332 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750922AbXE2XK0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 May 2007 19:10:26 -0400
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:52343 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751226AbXE3AVN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 May 2007 20:21:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20070529222009.GA669@thunk.org>
+In-Reply-To: <46570DFB.3080101@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On May 29, 2007  18:20 -0400, Theodore Tso wrote:
-> On Tue, May 29, 2007 at 03:56:44PM -0500, Eric Sandeen wrote:
-> > >I still have it in my "apply atop 1.39-WIP" series, so it appears not
-> > >to have made it into Ted's repo.  I'm including the patch again for
-> > >posterity.
-> > 
-> > Thanks Andreas - near as I can tell, it never made it to the list.
+On Fri, May 25, 2007 at 06:25:31PM +0200, Jean noel Cordenner wrote:
+> Hi,
 > 
-> Yeah, I wondered about that numbering discontinuity --- but IIRC it
-> wasn't the only one.  I had assumed that the "missing" cid's were ones
-> were human examination of the Coverity report lead to the conclusion
-> that it really wasn't a problem....
+> This is an update of the i_version patch.
+> The i_version field is a 64bit counter that is set on every inode
+> creation and that is incremented every time the inode data is modified
+> (similarly to the "ctime" time-stamp).
 
-I also have another outstanding patch:
+My understanding (please correct me if I'm wrong) is that the
+requirements are much more rigourous than simply incrementing an in
+memory counter on every change.  i.e. the this counter has to
+survive server crashes intact so clients never see the counter go
+backwards. That means version number changes need to be journalled
+along with the operation that caused the change of the version
+number.
 
-===========================================================================
-Coverity ID: 6: Forward Null
+> The aim is to fulfill a NFSv4 requirement for rfc3530:
+> "5.5.  Mandatory Attributes - Definitions
+> Name		#	DataType   Access   Description
+> ___________________________________________________________________
+> change		3	uint64       READ     A value created by the
+> 		server that the client can use to determine if file
+> 		data, directory contents or attributes of the object
+                ^^^^
 
-At the second conditional iter->file could still be NULL. We need to check for
-it again.
+File data writes are included in this list of things that need to
+increment the version field. Hence to fulfill the crash requirement,
+that implies server data writes either need to be synchronous or
+journalled...
 
-Index: e2fsprogs+chaos/e2fsck/profile.c
-===================================================================
---- e2fsprogs+chaos.orig/e2fsck/profile.c
-+++ e2fsprogs+chaos/e2fsck/profile.c
-@@ -1260,7 +1260,7 @@ errcode_t profile_node_iterator(void **i
- 	 * If the file has changed, then the node pointer is invalid,
- 	 * so we'll have search the file again looking for it.
- 	 */
--	if (iter->node && (iter->file->upd_serial != iter->file_serial)) {
-+	if (iter->node && (iter->file && iter->file->upd_serial != iter->file_serial)) {
- 		iter->flags &= ~PROFILE_ITER_FINAL_SEEN;
- 		skip_num = iter->num;
- 		iter->node = 0;
-===========================================================================
+Cheers,
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
