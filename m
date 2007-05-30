@@ -1,97 +1,89 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [patch 0/2] i_version update
-Date: Wed, 30 May 2007 16:32:57 -0700
-Message-ID: <1180567978.3794.28.camel@dyn9047017103.beaverton.ibm.com>
-References: <46570DFB.3080101@bull.net>  <20070530002100.GV85884050@sgi.com>
+Subject: Re: [patch 2/2] i_version update - ext4 part
+Date: Wed, 30 May 2007 16:48:44 -0700
+Message-ID: <1180568925.3794.44.camel@dyn9047017103.beaverton.ibm.com>
+References: <46570E16.5040006@bull.net>
+	 <1180467854.4204.15.camel@localhost.localdomain>
+	 <20070529225817.GE5181@schatzie.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org, Jean noel Cordenner <jean-noel.cordenner@bull.net>
-To: David Chinner <dgc@sgi.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070530002100.GV85884050@sgi.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Cc: jean-noel.cordenner@bull.net, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070529225817.GE5181@schatzie.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-05-30 at 10:21 +1000, David Chinner wrote:
-> On Fri, May 25, 2007 at 06:25:31PM +0200, Jean noel Cordenner wrote:
-> > Hi,
+On Tue, 2007-05-29 at 16:58 -0600, Andreas Dilger wrote:
+> On May 29, 2007  12:44 -0700, Mingming Cao wrote:
+> > I am a little bit confused about the two patches. 
 > > 
-> > This is an update of the i_version patch.
-> > The i_version field is a 64bit counter that is set on every inode
-> > creation and that is incremented every time the inode data is modified
-> > (similarly to the "ctime" time-stamp).
+> > It appears in the ext4_expand_inode_extra_isize patch by Kalpak, there a
+> > new 64 bit i_fs_version field is added to ext4 inode structure for inode
+> > versioning support. read/store of this counter are properly handled, but
+> > missing the inode versioning counter update.
 > 
-> My understanding (please correct me if I'm wrong) is that the
-> requirements are much more rigourous than simply incrementing an in
-> memory counter on every change.  i.e. the this counter has to
-> survive server crashes intact so clients never see the counter go
-> backwards. That means version number changes need to be journalled
-> along with the operation that caused the change of the version
-> number.
+> For the Lustre use of the inode version we don't care about the VFS changes
+> to i_version.  In fact - we want to be able to control the changes to
+> inode version ourselves so that e.g. file defragmenting or atime updates
+> don't change the inode version, and that recovery can restore the version
+> to a known state along with the rest of the metadata.
 > 
-Yeah, the i_version is the in memeory counter. From the patch it looks
-like the counter is being updated inside ext4_mark_iloc_dirty(), so it
-is being journalled and being flush to on-disk ext4 inode structure
-immediately (On-disk ext4 inode structure is being modified/expanded to
-store the counter in the first patch). 
+It's a pity that VFS i_version can't serve Lustre need completely. :(
 
->This patch is on top of i_version_update_vfs.
-> The i_version field of the inode is set on inode creation and incremented when
-> the inode is being modified.
-> 
-> Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
-> 
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/ialloc.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/ialloc.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/ialloc.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -565,6 +565,7 @@
->  	inode->i_blocks = 0;
->  	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
->  						       ext4_current_time(inode);
-> +	inode->i_version = 1;
-> 
->  	memset(ei->i_data, 0, sizeof(ei->i_data));
->  	ei->i_dir_start_lookup = 0;
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/inode.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/inode.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/inode.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -3082,6 +3082,7 @@
->  {
->  	int err = 0;
-> 
-> +	inode->i_version++;
->  	/* the do_update_inode consumes one bh->b_count */
->  	get_bh(iloc->bh);
-> 
-> Index: linux-2.6.22-rc2-ext4-1/fs/ext4/super.c
-> ===================================================================
-> --- linux-2.6.22-rc2-ext4-1.orig/fs/ext4/super.c	2007-05-25 18:05:28.000000000 +0200
-> +++ linux-2.6.22-rc2-ext4-1/fs/ext4/super.c	2007-05-25 18:05:40.000000000 +0200
-> @@ -2839,8 +2839,8 @@
->  		i_size_write(inode, off+len-towrite);
->  		EXT4_I(inode)->i_disksize = inode->i_size;
->  	}
-> -	inode->i_version++;
->  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-> +	inode->i_version = 1;
->  	ext4_mark_inode_dirty(handle, inode);
->  	mutex_unlock(&inode->i_mutex);
->  	return len - towrite;
+If the unnecessary inode version update is a concern, then, with current
+implementation (i_version being updated in ext4_mark_inode_dirty()-
+>ext4_mark_iloc_dirty()), the i_version can be increased multiple times
+during one write() operation (unlike ctime update). I know doing the
+update in ext4_mark_inode_dirty() (rather than update inode version on
+every mtime/ctime update) clearly simplified the code changes. So I am
+not sure if the increased update is a concern or not.
 
-I am not very clear about this part -- what is i_version being used for
-with quota? And shall we reset the counter to 1 for ext4_quota_write()? 
+In any case, does the VFS inode version get update when atime updates?
 
-Mingming
+> That said, since Lustre isn't in the kernel and we patch our version of
+> ext3 anyways it doesn't really matter what is done for NFS.  We will just
+> patch in our own behaviour if the final ext4 code isn't suitable in all
+> of the details.  Having 99% of the code the same at least makes this a
+> lot less work.
+>
+> > But later in the second patch by Jean Noel, he re-used the VFS inode-
+> > >i_version for ext4 inode versioning, the counter is being updated every
+> > time the file is being changed. 
+> 
+> I don't know what the NFS requirements for the version are.  There may
+> also be some complaints from others if the i_version is 64 bits because
+> this contributes to generic inode growth and isn't used for other
+> filesystems.
+> 
+That should benefit for other filesystems, as I thought this NFS
+requirements apply to all filesystems. 
+
+> > To me, i_fs_version and inode_version are the same thing, right?
+> > Shouldn't we choose one(I assume inode i_version?), and combine these
+> > two patch together? How about split the inode versioning part from the
+> > ext4_expand_inode_extra_isize patch(it does multiple things, and
+> > i_versioning doesn't longs there) and put it together with the rest of
+> > i_version update patches?
+> 
+> I don't have an objection to that, but I don't think it is required.
+> 
+> > BTW, how could NFS/user space to access the inode version counter?
+> 
+> If the Bull patch uses i_version then knfsd can just access it directly.
+> I don't think there is any API to access it from userspace.  One option
+> is to add a virtual EA like user.inode_version and have the kernel fill
+> this in from i_version.
+> 
+> Lustre will manipulate the ei->i_fs_version directly.
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
+
