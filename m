@@ -1,55 +1,53 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [RFC][PATCH] Multiple mount protection
-Date: Fri, 01 Jun 2007 02:39:32 +0530
-Message-ID: <1180645773.3922.8.camel@garfield>
-References: <1179777153.3910.13.camel@garfield>
-	 <20070525143957.GA12669@thunk.org> <1180128981.3916.13.camel@garfield>
-	 <1180558715.3949.3.camel@garfield>  <20070531161627.GE19088@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Theodore Tso <tytso@mit.edu>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT] Please pull ext4 bug fixes
+Date: Thu, 31 May 2007 17:24:06 -0400
+Message-ID: <E1Hts7q-0001zK-Ce@candygram.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:47982 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751537AbXEaVF5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 May 2007 17:05:57 -0400
-In-Reply-To: <20070531161627.GE19088@thunk.org>
+Received: from THUNK.ORG ([69.25.196.29]:56066 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752580AbXEaVYJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2007 17:24:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-05-31 at 12:16 -0400, Theodore Tso wrote:
-> On Thu, May 31, 2007 at 02:28:33AM +0530, Kalpak Shah wrote:
-> > 
-> > So can I assume that the INCOMPAT_MMP flag and the s_mmp_interval and
-> > s_mmp_block superblock fields will be reserved regardless of whether the
-> > patches go into ext4? I had attached the patches in the last mail so you
-> > can share your views on them.
-> 
-> Yes, i've reserved the code point and superblock fields.
 
-Thanks.
+Hi Linus,
 
->   I'm not going to add INCOMPAT_MMP flag to the supported file until I get and
-> integrate the patch ext2fs_open() that actually tests for the flag,
-> though, since that would be a bit silly.
-> 
-> I assume the patch will add a flag to ext2fs_open which skips the MMP
-> checking.
+Please pull from the "for_linus" branch at:
 
-Yes I have added a EXT2_FLAG_SKIP_MMP flag to ext2fs_open() to bypass
-MMP which will be set if tunefs is used with -f option. Also MMP check
-will not be run if the filesystem is being opened readonly.
+	git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-Thanks,
-Kalpak.
+It contains the following fixes, which (except for the superblock field
+reservations) have all been in the -mm tree for quite a while.
 
->   After all, tune2fs is allowed to make changes to the
-> superblock while the filesystem is mounted.  So it needs to be able to
-> open the filesystem read/only even if it is mounted.
-> 
-> Regards,
-> 
-> 						- Ted
+Thanks, regards,
+
+						- Ted
+
+
+ fs/ext4/balloc.c                |    6 -
+ fs/ext4/extents.c               |  148 +++++++++++++++++++++++++++-------------
+ fs/ext4/inode.c                 |    4 -
+ fs/ext4/namei.c                 |    4 -
+ fs/ext4/super.c                 |    2 
+ include/linux/ext4_fs.h         |   33 +++++---
+ include/linux/ext4_fs_extents.h |    5 -
+ include/linux/ext4_fs_i.h       |    6 -
+ 8 files changed, 134 insertions(+), 74 deletions(-)
+
+Alex Tomas (1):
+      When ext4_ext_insert_extent() fails to insert new blocks
+
+Amit Arora (1):
+      ext4: Extent overlap bugfix
+
+Dave Kleikamp (1):
+      EXT4: Fix whitespace
+
+Mingming Cao (1):
+      Remove unnecessary exported symbols.
+
+Theodore Ts'o (1):
+      Define/reserve new ext4 superblock fields
