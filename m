@@ -1,68 +1,44 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [patch 0/2] i_version update
-Date: Thu, 31 May 2007 11:12:35 -0700
-Message-ID: <1180635156.3862.10.camel@dyn9047017103.beaverton.ibm.com>
-References: <46570DFB.3080101@bull.net> <20070530002100.GV85884050@sgi.com>
-	 <1180567978.3794.28.camel@dyn9047017103.beaverton.ibm.com>
-	 <20070531003344.GD85884050@sgi.com>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC] store RAID stride in superblock
+Date: Thu, 31 May 2007 14:19:02 -0600
+Message-ID: <20070531201902.GF5181@schatzie.adilger.int>
+References: <20070512020248.GQ6375@schatzie.adilger.int> <20070524114442.GA12526@schatzie.adilger.int> <46559E04.5060002@clusterfs.com> <20070531162109.GA23591@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Jean noel Cordenner <jean-noel.cordenner@bull.net>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070531003344.GD85884050@sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Rupesh Thakare <rupesh@clusterfs.com>, linux-ext4@vger.kernel.org,
+	Kalpak Shah <kalpak@clusterfs.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:42739 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757355AbXEaUTI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 May 2007 16:19:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20070531162109.GA23591@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-05-31 at 10:33 +1000, David Chinner wrote:
-> On Wed, May 30, 2007 at 04:32:57PM -0700, Mingming Cao wrote:
-> > On Wed, 2007-05-30 at 10:21 +1000, David Chinner wrote:
-> > > On Fri, May 25, 2007 at 06:25:31PM +0200, Jean noel Cordenner wrote:
-> > > > Hi,
-> > > > 
-> > > > This is an update of the i_version patch.
-> > > > The i_version field is a 64bit counter that is set on every inode
-> > > > creation and that is incremented every time the inode data is modified
-> > > > (similarly to the "ctime" time-stamp).
-> > > 
-> > > My understanding (please correct me if I'm wrong) is that the
-> > > requirements are much more rigourous than simply incrementing an in
-> > > memory counter on every change.  i.e. the this counter has to
-> > > survive server crashes intact so clients never see the counter go
-> > > backwards. That means version number changes need to be journalled
-> > > along with the operation that caused the change of the version
-> > > number.
-> > > 
-> > Yeah, the i_version is the in memeory counter. From the patch it looks
-> > like the counter is being updated inside ext4_mark_iloc_dirty(), so it
-> > is being journalled and being flush to on-disk ext4 inode structure
-> > immediately (On-disk ext4 inode structure is being modified/expanded to
-> > store the counter in the first patch). 
+On May 31, 2007  12:21 -0400, Theodore Tso wrote:
+> On Thu, May 24, 2007 at 07:45:32PM +0530, Rupesh Thakare wrote:
+> > I've added "s_raid_stripe_width" parameter in superblock.
+> > I've also incorporated "s_raid_stride" and "s_raid_stripe_width" 
+> > parameters in tune2fs.
+> > The new options can be specified using  '-E options' in both mke2fs and 
+> > tune2fs.
+> > Both the Man pages (mke2fs and tune2fs) are updated accordingly.
+> > Patch is attached herewith.
 > 
-> Ok, that catches most things (I missed that), but the version number still
-> needs to change on file data changes, right? So if we are overwriting the
-> file, we're calling __mark_inode_dirty(I_DIRTY_PAGES) which means you don't
-> get the callout and so the version number doesn't change or get logged. In
-> that case, the version number is not doing what it needs to do, right?
-> 
+> Thanks.  I've used a different offset for the raid_stripe_width, to
+> avoid conflicting with Kalpak's mmp patch.  
 
-Hmm, maybe I missed something... but looking at the code again, in the
-case of overwrite (file date updated),it seems the ctime/mtime is being
-updated and the inode is being dirtied, so the version number is being
-updated.
+Ah, we've been doing it the other way around here.  It makes sense to keep
+the s_raid_stripe_width fields together.  I think this code is preliminary
+enough that nobody has actually started using it yet.  Can you please post
+what the end of ext2_super_block looks like (whether you decide to reorder
+the fields or not).
 
- vfs_write()->..
-	->__generic_file_aio_write_nolock()
-		->file_update_time()
-			->mark_inode_dirty_sync()
-			->__mark_inode_dirty(I_DIRTY_SYNC)
-				->ext4_dirty_inode()
-					->ext4_mark_inode_dirty()
-
-Regards,
-Mingming
-
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
