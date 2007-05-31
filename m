@@ -1,40 +1,31 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [patch 0/2] i_version update
-Date: Thu, 31 May 2007 08:36:50 -0400
-Message-ID: <1180615010.6696.45.camel@heimdal.trondhjem.org>
-References: <46570DFB.3080101@bull.net> <20070530002100.GV85884050@sgi.com>
-	 <18014.4211.68725.44217@notabene.brown>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: e2fsprogs coverity patch <cid-33.diff>
+Date: Thu, 31 May 2007 11:31:02 -0400
+Message-ID: <20070531153102.GB19088@thunk.org>
+References: <200702100211.l1A2BTRb007321@igsi.llnl.gov> <465C75A8.5080506@redhat.com> <20070529205141.GB5181@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: David Chinner <dgc@sgi.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org,
-	Jean noel Cordenner <jean-noel.cordenner@bull.net>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"Brian D. Behlendorf" <behlendorf1@llnl.gov>,
+	linux-ext4@vger.kernel.org, wartens2@llnl.gov
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:47688 "EHLO pat.uio.no"
+Received: from THUNK.ORG ([69.25.196.29]:41550 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760457AbXEaMg6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2007 08:36:58 -0400
-In-Reply-To: <18014.4211.68725.44217@notabene.brown>
+	id S1752733AbXEaPbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2007 11:31:12 -0400
+Content-Disposition: inline
+In-Reply-To: <20070529205141.GB5181@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-05-31 at 10:01 +1000, Neil Brown wrote:
+On Tue, May 29, 2007 at 02:51:41PM -0600, Andreas Dilger wrote:
+> > Did cid-34.diff get lost?
+> 
+> I still have it in my "apply atop 1.39-WIP" series, so it appears not
+> to have made it into Ted's repo.  I'm including the patch again for
+> posterity.
 
-> This will provide a change number that normally changes only when the
-> file changes and doesn't require any extra storage on disk.
-> The change number will change inappropriately only when the inode has
-> fallen out of cache and is being reload, which is either after a crash
-> (hopefully rare) of when a file hasn't been used for a while, implying
-> that it is unlikely that any client has it in cache.
+Fix applied.
 
-It will also change inappropriately if the server is under heavy load
-and needs to reclaim memory by tossing out inodes that are cached and
-still in use by the clients. That change will trigger clients to
-invalidate their caches and to refetch the data from the server, further
-cranking up the load.
-
-Not an ideal solution...
-
-Trond
+						- Ted
