@@ -1,81 +1,55 @@
-From: Neil Brown <neilb@suse.de>
+From: David Chinner <dgc@sgi.com>
 Subject: Re: [patch 0/2] i_version update
-Date: Thu, 31 May 2007 10:01:55 +1000
-Message-ID: <18014.4211.68725.44217@notabene.brown>
-References: <46570DFB.3080101@bull.net>
-	<20070530002100.GV85884050@sgi.com>
+Date: Thu, 31 May 2007 10:33:44 +1000
+Message-ID: <20070531003344.GD85884050@sgi.com>
+References: <46570DFB.3080101@bull.net> <20070530002100.GV85884050@sgi.com> <1180567978.3794.28.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org, Jean noel Cordenner <jean-noel.cordenner@bull.net>
-To: David Chinner <dgc@sgi.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: message from David Chinner on Wednesday May 30
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>,
+	Jean noel Cordenner <jean-noel.cordenner@bull.net>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1180567978.3794.28.camel@dyn9047017103.beaverton.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wednesday May 30, dgc@sgi.com wrote:
-> On Fri, May 25, 2007 at 06:25:31PM +0200, Jean noel Cordenner wrote:
-> 
-> > The aim is to fulfill a NFSv4 requirement for rfc3530:
-> > "5.5.  Mandatory Attributes - Definitions
-> > Name		#	DataType   Access   Description
-> > ___________________________________________________________________
-> > change		3	uint64       READ     A value created by the
-> > 		server that the client can use to determine if file
-> > 		data, directory contents or attributes of the object
->                 ^^^^
-> 
-> File data writes are included in this list of things that need to
-> increment the version field. Hence to fulfill the crash requirement,
-> that implies server data writes either need to be synchronous or
-> journalled...
+On Wed, May 30, 2007 at 04:32:57PM -0700, Mingming Cao wrote:
+> On Wed, 2007-05-30 at 10:21 +1000, David Chinner wrote:
+> > On Fri, May 25, 2007 at 06:25:31PM +0200, Jean noel Cordenner wrote:
+> > > Hi,
+> > > 
+> > > This is an update of the i_version patch.
+> > > The i_version field is a 64bit counter that is set on every inode
+> > > creation and that is incremented every time the inode data is modified
+> > > (similarly to the "ctime" time-stamp).
+> > 
+> > My understanding (please correct me if I'm wrong) is that the
+> > requirements are much more rigourous than simply incrementing an in
+> > memory counter on every change.  i.e. the this counter has to
+> > survive server crashes intact so clients never see the counter go
+> > backwards. That means version number changes need to be journalled
+> > along with the operation that caused the change of the version
+> > number.
+> > 
+> Yeah, the i_version is the in memeory counter. From the patch it looks
+> like the counter is being updated inside ext4_mark_iloc_dirty(), so it
+> is being journalled and being flush to on-disk ext4 inode structure
+> immediately (On-disk ext4 inode structure is being modified/expanded to
+> store the counter in the first patch). 
 
-I think that would be excessive.
+Ok, that catches most things (I missed that), but the version number still
+needs to change on file data changes, right? So if we are overwriting the
+file, we're calling __mark_inode_dirty(I_DIRTY_PAGES) which means you don't
+get the callout and so the version number doesn't change or get logged. In
+that case, the version number is not doing what it needs to do, right?
 
-The important property if the 'change' number is:
-     If the 'change' number is still the same, then the data and 
-     metadata etc is still the same.
+Cheers,
 
-The converse of this (if the data+metadata is still then same then the
-'change' is still the same) is valuable but less critical.   Having
-the 'change' change when it doesn't need to will defeat client-side
-caching and so will reduce performance but not correctness.
-
-So after a crash, I think it is perfectly acceptable to assign a
-change number that is known to be different to anything previously
-supplied if there is any doubt about recent change history.
-
-e.g. suppose we had a filesystem with 1-second resolution mtime, and
-an in-memory 'change' counter that was incremented on every change.
-When we load an inode from storage, we initialise the counter to
-   -1: if the mtime is earlier than current_seconds
-   current_nanoseconds:  if the mtime is equal to current_seconds.
-
-We arrange that when the ctime changes, the change number is reset to 0.
-
-Then when the 'change' number of an inode is required, we use the
-bottom 32bits of the 'change' counter and the 32bits of the mtime.
-
-This will provide a change number that normally changes only when the
-file changes and doesn't require any extra storage on disk.
-The change number will change inappropriately only when the inode has
-fallen out of cache and is being reload, which is either after a crash
-(hopefully rare) of when a file hasn't been used for a while, implying
-that it is unlikely that any client has it in cache.
-
-So in summary: I think it is impossible to have a change number that
-changes *only* when content changes (as your 'crash' example suggests)
-and it is quite achievable to have a change number that changes rarely
-when the content doesn't change.
-
-NeilBrown
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
