@@ -1,61 +1,55 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [RFC] store RAID stride in superblock
-Date: Fri, 01 Jun 2007 02:32:29 +0530
-Message-ID: <1180645351.3922.1.camel@garfield>
-References: <20070512020248.GQ6375@schatzie.adilger.int>
-	 <20070524114442.GA12526@schatzie.adilger.int>
-	 <46559E04.5060002@clusterfs.com> <20070531162109.GA23591@thunk.org>
-	 <20070531201902.GF5181@schatzie.adilger.int>
+Subject: Re: [RFC][PATCH] Multiple mount protection
+Date: Fri, 01 Jun 2007 02:39:32 +0530
+Message-ID: <1180645773.3922.8.camel@garfield>
+References: <1179777153.3910.13.camel@garfield>
+	 <20070525143957.GA12669@thunk.org> <1180128981.3916.13.camel@garfield>
+	 <1180558715.3949.3.camel@garfield>  <20070531161627.GE19088@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Rupesh Thakare <rupesh@clusterfs.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:44778 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:47982 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750971AbXEaU6z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 May 2007 16:58:55 -0400
-In-Reply-To: <20070531201902.GF5181@schatzie.adilger.int>
+	with ESMTP id S1751537AbXEaVF5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 May 2007 17:05:57 -0400
+In-Reply-To: <20070531161627.GE19088@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-05-31 at 14:19 -0600, Andreas Dilger wrote:
-> On May 31, 2007  12:21 -0400, Theodore Tso wrote:
-> > On Thu, May 24, 2007 at 07:45:32PM +0530, Rupesh Thakare wrote:
-> > > I've added "s_raid_stripe_width" parameter in superblock.
-> > > I've also incorporated "s_raid_stride" and "s_raid_stripe_width" 
-> > > parameters in tune2fs.
-> > > The new options can be specified using  '-E options' in both mke2fs and 
-> > > tune2fs.
-> > > Both the Man pages (mke2fs and tune2fs) are updated accordingly.
-> > > Patch is attached herewith.
+On Thu, 2007-05-31 at 12:16 -0400, Theodore Tso wrote:
+> On Thu, May 31, 2007 at 02:28:33AM +0530, Kalpak Shah wrote:
 > > 
-> > Thanks.  I've used a different offset for the raid_stripe_width, to
-> > avoid conflicting with Kalpak's mmp patch.  
+> > So can I assume that the INCOMPAT_MMP flag and the s_mmp_interval and
+> > s_mmp_block superblock fields will be reserved regardless of whether the
+> > patches go into ext4? I had attached the patches in the last mail so you
+> > can share your views on them.
 > 
-> Ah, we've been doing it the other way around here.  It makes sense to keep
-> the s_raid_stripe_width fields together.  I think this code is preliminary
-> enough that nobody has actually started using it yet.  Can you please post
-> what the end of ext2_super_block looks like (whether you decide to reorder
-> the fields or not).
+> Yes, i've reserved the code point and superblock fields.
 
-I can update the MMP patches when I actually send them for inclusion. So
-I think it makes sense to keep the s_raid_* fields together.
+Thanks.
+
+>   I'm not going to add INCOMPAT_MMP flag to the supported file until I get and
+> integrate the patch ext2fs_open() that actually tests for the flag,
+> though, since that would be a bit silly.
+> 
+> I assume the patch will add a flag to ext2fs_open which skips the MMP
+> checking.
+
+Yes I have added a EXT2_FLAG_SKIP_MMP flag to ext2fs_open() to bypass
+MMP which will be set if tunefs is used with -f option. Also MMP check
+will not be run if the filesystem is being opened readonly.
 
 Thanks,
 Kalpak.
 
+>   After all, tune2fs is allowed to make changes to the
+> superblock while the filesystem is mounted.  So it needs to be able to
+> open the filesystem read/only even if it is mounted.
 > 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Software Engineer
-> Cluster File Systems, Inc.
+> Regards,
 > 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 						- Ted
