@@ -1,56 +1,62 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH] Multiple mount protection
-Date: Fri, 1 Jun 2007 09:52:41 -0400
-Message-ID: <20070601135241.GB28663@thunk.org>
-References: <1179777153.3910.13.camel@garfield> <p731wgwcbac.fsf@bingen.suse.de> <20070601114100.GB13905@thunk.org> <20070601121339.GF7217@one.firstfloor.org>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [RFC][PATCH] Set JBD2_FEATURE_INCOMPAT_64BIT on filesystems larger
+ than 32-bit blocks.
+Date: Fri, 1 Jun 2007 10:52:34 -0500
+Message-ID: <20070601105234.4be40028@rx8>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kalpak Shah <kalpak@clusterfs.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Andi Kleen <andi@firstfloor.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49049 "EHLO thunker.thunk.org"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:40651 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760080AbXFANwp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jun 2007 09:52:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20070601121339.GF7217@one.firstfloor.org>
+	id S1756019AbXFAPxG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Jun 2007 11:53:06 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l51Fr54u013686
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jun 2007 11:53:05 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l51Fr5x9552042
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jun 2007 11:53:05 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l51Fr524007908
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jun 2007 11:53:05 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l51Fr4pI007897
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jun 2007 11:53:05 -0400
+Received: from rx8 (rx8.austin.ibm.com [9.41.41.30])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l51Fr47s045318
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Jun 2007 10:53:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 01, 2007 at 02:13:39PM +0200, Andi Kleen wrote:
-> > Unfortunately, it's not possible to do what you suggest, since one of
-> > the whole points of increasing the sequence number every 5 seconds is
-> > to act as a keep-alive, so another machine trying to access the shared
-> 
-> Clusters usually have other ways to do this, haven't they? 
-> Typically they have STONITH too. It's probably too simple minded
-> to just replace a real cluster setup which also handles split 
-> brain and other conditions. So it's purely against mistakes.
+Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
+than 32bit block sizes during mount time.  This ensure proper record
+lenth when writing to the journal.
 
-Yes, it's only real value is to protect against Cluster-HA
-malfunctions or misconfiguration.
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 
-> Besides relying on it would seem dangerous because it is not synchronous
-> and you could do a lot of damage in 5 seconds. 
+--- .pc/ext4-set_64-bit_JBD_incompat.patch/fs/ext4/super.c	2007-05-31 22:25:21.843984697 -0500
++++ fs/ext4/super.c	2007-05-31 22:26:14.913670672 -0500
+@@ -1824,6 +1824,17 @@ static int ext4_fill_super (struct super
+ 		goto failed_mount3;
+ 	}
+ 
++        /* 
++	 * Make sure to set JBD2_FEATURE_INCOMPAT_64BIT on filesystems
++	 * with more that 32-bit block counts
++	 */
++	if(es->s_blocks_count_hi)
++		if (!jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0, 
++					       JBD2_FEATURE_INCOMPAT_64BIT)){
++			printk(KERN_ERR "ext4: Failed to set 64-bit journal feature\n");
++			goto failed_mount4;
++		}
++
+ 	/* We have now updated the journal if required, so we can
+ 	 * validate the data journaling mode. */
+ 	switch (test_opt(sb, DATA_FLAGS)) {
 
-Well, the MMP feature is assigned an incompatible feature bit, so a
-kernel who doesn't know about MMP will refuse to touch it; and a
-kernel which does follow the MMP protocol will check the MMP block
-(delaying the mount by 10 seconds) to make sure no other system is
-using the block.
 
-So aside from being !@#!@ annoying (which is why it will never be the
-default), it does work, modulo the problem that without STONITH or any
-kind of I/O fencing, we do risk the other system coming back to life
-and then modifying the filesystem in parallel.  So as everyone has
-said, this is not solution that works in isolation, but is really only
-a backup.
-
-The question of whether the complexity and then 10 second mount delay
-for what is only a backup solution is worth it is obviously going to
-be a very subjective one --- and as I've said previously, I'm on the
-fence on this.
-
-						- Ted
+Thanks
+-JRS
