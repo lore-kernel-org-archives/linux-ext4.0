@@ -1,107 +1,32 @@
-From: Vasily Averin <vvs@sw.ru>
-Subject: [RFC PATCH ext3/ext4] orphan list corruption due bad inode
-Date: Mon, 04 Jun 2007 09:19:10 +0400
-Message-ID: <4663A0CE.102@sw.ru>
+From: Kirk True <kirk@mustardgrain.com>
+Subject: Failures in e2fsprogs-1.39-tyt3 'make check'
+Date: Mon, 4 Jun 2007 01:18:23 -0700 (PDT)
+Message-ID: <46497.24764.qm@web606.biz.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=KOI8-R
-Content-Transfer-Encoding: 7bit
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>, devel@openvz.org,
-	linux-ext4@vger.kernel.org, Stephen Tweedie <sct@redhat.com>,
-	adilger@clusterfs.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:38309 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751994AbXFDFT0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jun 2007 01:19:26 -0400
+Received: from web606.biz.mail.mud.yahoo.com ([209.191.88.219]:23530 "HELO
+	web606.biz.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752075AbXFDISX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jun 2007 04:18:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-After ext3 orphan list check has been added into ext3_destroy_inode() (please see my previous patch) the following situation has been detected:
- EXT3-fs warning (device sda6): ext3_unlink: Deleting nonexistent file (37901290), 0
- Inode 00000101a15b7840: orphan list check failed!
- 00000773 6f665f00 74616d72 00000573 65725f00 06737270 66000000 616d726f
-...
- Call Trace: [<ffffffff80211ea9>] ext3_destroy_inode+0x79/0x90
-  [<ffffffff801a2b16>] sys_unlink+0x126/0x1a0
-  [<ffffffff80111479>] error_exit+0x0/0x81
-  [<ffffffff80110aba>] system_call+0x7e/0x83
+Hi all,
 
-First messages said that unlinked inode has i_nlink=0, then ext3_unlink() adds this inode into orphan list.
+I'm getting some errors in the 'make check' step when building 
+e2fsprogs-1.39-tyt3. Many of the errors look to be as a result of
+missing image files, for example:
 
-Second message means that this inode has not been removed from orphan list. Inode dump has showed that i_fop = &bad_file_ops and it can be set in make_bad_inode() only. Then I've found that ext3_read_inode() can call make_bad_inode() without any error/warning messages, for example in the following case:
-...
-        if (inode->i_nlink == 0) {
-                if (inode->i_mode == 0 ||
-                    !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ORPHAN_FS)) {
-                        /* this inode is deleted */
-                        brelse (bh);
-                        goto bad_inode;
-...
+    f_orphan_dotdot_ft: filetype of .. in orphaned directories: 
+    ../../tests/run_e2fsck: line 43: 
+    ../../tests/f_orphan_dotdot_ft/image.gz: No such file or directory
+    rm: cannot remove `./test.img': No such file or directory
 
-Bad inode can live some time, ext3_unlink can add it to orphan list, but
-ext3_delete_inode() do not deleted this inode from orphan list. As
-result we can have orphan list corruption detected in ext3_destroy_inode().
+Sorry if this is a documented, known issue. I'm just being paranoid and
+don't want to do a 'make install' if it will hose up the box.
 
-However it is not clear for me how to fix this issue correctly.
-
-As far as i see is_bad_inode() is called after iget() in all places excluding ext3_lookup() and ext3_get_parent(). I believe it makes sense to add bad inode check to these functions too and call iput if bad inode detected.
-
-Signed-off-by:	Vasily Averin <vvs@sw.ru>
-
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 9bb046d..e3ac8c3 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1019,6 +1019,11 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
- 
- 		if (!inode)
- 			return ERR_PTR(-EACCES);
-+
-+		if (is_bad_inode(inode)) {
-+			iput(inode);
-+			return ERR_PTR(-ENOENT);	
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1054,6 +1059,11 @@ struct dentry *ext3_get_parent(struct dentry *child)
- 	if (!inode)
- 		return ERR_PTR(-EACCES);
- 
-+	if (is_bad_inode(inode)) {
-+		iput(inode);
-+		return ERR_PTR(-ENOENT);	
-+	}
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4ec57be..70db358 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1017,6 +1017,11 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
- 
- 		if (!inode)
- 			return ERR_PTR(-EACCES);
-+
-+		if (is_bad_inode(inode)) {
-+			iput(inode);
-+			return ERR_PTR(-ENOENT);	
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1052,6 +1057,11 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 	if (!inode)
- 		return ERR_PTR(-EACCES);
- 
-+	if (is_bad_inode(inode)) {
-+		iput(inode);
-+		return ERR_PTR(-ENOENT);	
-+	}
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
+Thanks,
+Kirk
