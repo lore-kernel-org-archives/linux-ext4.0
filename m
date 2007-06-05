@@ -1,111 +1,70 @@
-From: Karsten Hopp <karsten@redhat.com>
-Subject: Patch to support LUKS UUIDs in libblkid
-Date: Tue, 05 Jun 2007 13:23:10 +0200
-Message-ID: <4665479E.2060707@redhat.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC][PATCH] Set JBD2_FEATURE_INCOMPAT_64BIT on filesystems
+ larger than 32-bit blocks (take 2).
+Date: Tue, 5 Jun 2007 06:41:09 -0500
+Message-ID: <20070605064109.2cb6bad7@gara>
+References: <20070601105234.4be40028@rx8>
+	<20070601225441.GF5181@schatzie.adilger.int>
+	<20070604113210.1a76934b@gara>
+	<20070604175728.GT5181@schatzie.adilger.int>
+	<1180998105.3770.27.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020105000003030409000105"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33731 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758205AbXFELXM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jun 2007 07:23:12 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l55BNBfA011481
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 07:23:11 -0400
-Received: from pobox.stuttgart.redhat.com (pobox.stuttgart.redhat.com [172.16.2.10])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l55BNAH3031905
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 07:23:11 -0400
-Received: from hagen.stuttgart.redhat.com (hagen.stuttgart.redhat.com [10.32.5.40])
-	by pobox.stuttgart.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id l55BNA13023680
-	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 13:23:10 +0200
+Received: from e36.co.us.ibm.com ([32.97.110.154]:50114 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760444AbXFELl1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jun 2007 07:41:27 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l55BfOSf003051
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 07:41:24 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l55BfMN1266816
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 05:41:24 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l55BfLMc001445
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 05:41:22 -0600
+In-Reply-To: <1180998105.3770.27.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------020105000003030409000105
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Content-Transfer-Encoding: 7bit
+On Mon, 04 Jun 2007 16:01:45 -0700
+Mingming Cao <cmm@us.ibm.com> wrote:
 
-Hello,
+> On Mon, 2007-06-04 at 11:57 -0600, Andreas Dilger wrote:
+> > On Jun 04, 2007  11:32 -0500, Jose R. Santos wrote:
+> > > Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
+> > > than 32bit block sizes during mount time.  This ensure proper record
+> > > lenth when writing to the journal.
+> > > 
+> > > Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> > > ---
+> > >  fs/ext4/super.c |   11 +++++++++++
+> > >  1 file changed, 11 insertions(+)
+> > > 
+> > > Index: linux-2.6.22-rc3/fs/ext4/super.c
+> > > ===================================================================
+> > > --- linux-2.6.22-rc3.orig/fs/ext4/super.c	2007-06-04 11:01:20.028360650 -0500
+> > > +++ linux-2.6.22-rc3/fs/ext4/super.c	2007-06-04 11:05:11.389126418 -0500
+> > > @@ -1824,6 +1824,17 @@ static int ext4_fill_super (struct super
+> > >  		goto failed_mount3;
+> > >  	}
+> > >  
+> > > +        /*
+> > > +	 * Make sure to set JBD2_FEATURE_INCOMPAT_64BIT on filesystems
+> > > +	 * with more that 32-bit block counts
+> > > +	 */
+> > > +	if(es->s_blocks_count_hi &&
+> 
+> This need to be le32_to_cpu(es->s_blocks_count_hi)
 
-I've already posted this at the e2fsprogs sourceforge site, but our e2fsprogs maintainer
-suggested that I should post it here as well for a review:
+I'm curious,
 
+Why do we need to do an endian conversion to check for a non-zero value
+in s_blocks_count_hi?  Seems unnecessary here.
 
-Attached is a patch to add cryptsetup-luks UUID detection in libblkid.so
-This is required when we want to use UUIDs instead of hardcoded device names for
-encrypted partitions.
-
-
-Regards
-
-        Karsten Hopp
-
-
---
-  Karsten Hopp        | Mail: karsten@redhat.de
-  Red Hat Deutschland | Tel: +49-711-96437-0
-  Hauptstaetterstr.58 | Fax: +49-711-613590
-  D-70178 Stuttgart   | http://www.redhat.de
-
---------------020105000003030409000105
-Content-Type: text/x-patch;
- name="e2fsprogs-1.39-luks.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="e2fsprogs-1.39-luks.patch"
-
-e2fsprogs-1.39-luks.patch
-Problem:        libblkid doesn't detect/report UUIDs of cryptsetup-luks partitions
-Solution:       Add probe for luks UUID
-Signed-off-by:  Karsten Hopp <karsten@redhat.com>
-
---- e2fsprogs-1.39/lib/blkid/ChangeLog.luksuuid	2007-05-22 20:51:54.000000000 +0200
-+++ e2fsprogs-1.39/lib/blkid/ChangeLog	2007-05-22 20:55:08.000000000 +0200
-@@ -0,0 +1,4 @@
-+2007-05-22  Karsten Hopp  <karsten@redhat.com> 
-+
-+	* probe.c (probe_luks): Add support for cryptsetup-luks partitions
-+
---- e2fsprogs-1.39/lib/blkid/probe.c.luksuuid	2007-05-22 14:48:12.000000000 +0200
-+++ e2fsprogs-1.39/lib/blkid/probe.c	2007-05-22 20:49:17.000000000 +0200
-@@ -468,6 +468,27 @@ static int probe_jfs(struct blkid_probe 
- 	return 0;
- }
- 
-+/* check it manually as using LUKS_read_phdr from libcryptsetup
-+ * prints too many warnings if it isn't a luks partition and would add a
-+ * dependency on the lib */
-+static int probe_luks(struct blkid_probe *probe,
-+		       struct blkid_magic *id __BLKID_ATTR((unused)), 
-+		       unsigned char *buf)
-+{
-+	const char *luks_magic = id->bim_magic;
-+	unsigned char *p_buf = buf;
-+	unsigned char uuid[40];
-+	if(strncmp(buf, luks_magic, strlen(luks_magic)) == 0)   /* ID matches, continue */
-+	{
-+	/* 168 is the offset to the 40 character uuid: http://luks.endorphin.org/LUKS-on-disk-format.pdf */
-+		p_buf += 168;
-+		strncpy(uuid, p_buf, 40);
-+		blkid_set_tag(probe->dev, "UUID", uuid, sizeof(uuid));
-+		blkid_set_tag(probe->dev, "SEC_TYPE", "crypt_LUKS", sizeof("crypt_LUKS"));
-+	}
-+	return 0;
-+}
-+
- static int probe_romfs(struct blkid_probe *probe,
- 		       struct blkid_magic *id __BLKID_ATTR((unused)), 
- 		       unsigned char *buf)
-@@ -775,6 +796,7 @@ static struct blkid_magic type_array[] =
-   { "ocfs2",	 2,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-+  { "crypt_LUKS",		 0,	 0,	 6,	"LUKS\xba\xbe",			probe_luks },
-   {   NULL,	 0,	 0,  0, NULL,			NULL }
- };
- 
-
---------------020105000003030409000105--
+-JRS
