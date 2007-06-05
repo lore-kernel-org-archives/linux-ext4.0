@@ -1,36 +1,111 @@
-From: Carsten Otte <cotte@de.ibm.com>
-Subject: Re: [PATCH] [RESEND] ext[34] orphan list check on destroy_inode
-Date: Tue, 05 Jun 2007 12:34:31 +0200
-Message-ID: <46653C37.7040303@de.ibm.com>
-References: <466538C9.8080104@sw.ru>
-Reply-To: carsteno@de.ibm.com
+From: Karsten Hopp <karsten@redhat.com>
+Subject: Patch to support LUKS UUIDs in libblkid
+Date: Tue, 05 Jun 2007 13:23:10 +0200
+Message-ID: <4665479E.2060707@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>, devel@openvz.org,
-	linux-ext4@vger.kernel.org, Stephen Tweedie <sct@redhat.com>,
-	adilger@clusterfs.com
-To: Vasily Averin <vvs@sw.ru>
+Content-Type: multipart/mixed;
+ boundary="------------020105000003030409000105"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mtagate7.de.ibm.com ([195.212.29.156]:35400 "EHLO
-	mtagate7.de.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763457AbXFEKef (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jun 2007 06:34:35 -0400
-In-Reply-To: <466538C9.8080104@sw.ru>
+Received: from mx1.redhat.com ([66.187.233.31]:33731 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758205AbXFELXM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jun 2007 07:23:12 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l55BNBfA011481
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 07:23:11 -0400
+Received: from pobox.stuttgart.redhat.com (pobox.stuttgart.redhat.com [172.16.2.10])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l55BNAH3031905
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 07:23:11 -0400
+Received: from hagen.stuttgart.redhat.com (hagen.stuttgart.redhat.com [10.32.5.40])
+	by pobox.stuttgart.redhat.com (8.12.11.20060308/8.12.11) with ESMTP id l55BNA13023680
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 13:23:10 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Vasily Averin wrote:
-> Customers claims to ext3-related errors, investigation showed that ext3 orphan
-> list has been corrupted and have the reference to non-ext3 inode. The following
-> debug helps to understand the reasons of this issue.
-This looks like it might be related to the -as far as I recall- 
-unfixed issue we've noticed some time ago: 
-http://osdir.com/ml/file-systems/2004-02/msg00033.html
+This is a multi-part message in MIME format.
+--------------020105000003030409000105
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I have'nt heard any reports  of a reproduction on modern kernels on 
-390 lately, our issue seems to have disappeared.
+Hello,
 
-so long,
-Carsten
+I've already posted this at the e2fsprogs sourceforge site, but our e2fsprogs maintainer
+suggested that I should post it here as well for a review:
+
+
+Attached is a patch to add cryptsetup-luks UUID detection in libblkid.so
+This is required when we want to use UUIDs instead of hardcoded device names for
+encrypted partitions.
+
+
+Regards
+
+        Karsten Hopp
+
+
+--
+  Karsten Hopp        | Mail: karsten@redhat.de
+  Red Hat Deutschland | Tel: +49-711-96437-0
+  Hauptstaetterstr.58 | Fax: +49-711-613590
+  D-70178 Stuttgart   | http://www.redhat.de
+
+--------------020105000003030409000105
+Content-Type: text/x-patch;
+ name="e2fsprogs-1.39-luks.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="e2fsprogs-1.39-luks.patch"
+
+e2fsprogs-1.39-luks.patch
+Problem:        libblkid doesn't detect/report UUIDs of cryptsetup-luks partitions
+Solution:       Add probe for luks UUID
+Signed-off-by:  Karsten Hopp <karsten@redhat.com>
+
+--- e2fsprogs-1.39/lib/blkid/ChangeLog.luksuuid	2007-05-22 20:51:54.000000000 +0200
++++ e2fsprogs-1.39/lib/blkid/ChangeLog	2007-05-22 20:55:08.000000000 +0200
+@@ -0,0 +1,4 @@
++2007-05-22  Karsten Hopp  <karsten@redhat.com> 
++
++	* probe.c (probe_luks): Add support for cryptsetup-luks partitions
++
+--- e2fsprogs-1.39/lib/blkid/probe.c.luksuuid	2007-05-22 14:48:12.000000000 +0200
++++ e2fsprogs-1.39/lib/blkid/probe.c	2007-05-22 20:49:17.000000000 +0200
+@@ -468,6 +468,27 @@ static int probe_jfs(struct blkid_probe 
+ 	return 0;
+ }
+ 
++/* check it manually as using LUKS_read_phdr from libcryptsetup
++ * prints too many warnings if it isn't a luks partition and would add a
++ * dependency on the lib */
++static int probe_luks(struct blkid_probe *probe,
++		       struct blkid_magic *id __BLKID_ATTR((unused)), 
++		       unsigned char *buf)
++{
++	const char *luks_magic = id->bim_magic;
++	unsigned char *p_buf = buf;
++	unsigned char uuid[40];
++	if(strncmp(buf, luks_magic, strlen(luks_magic)) == 0)   /* ID matches, continue */
++	{
++	/* 168 is the offset to the 40 character uuid: http://luks.endorphin.org/LUKS-on-disk-format.pdf */
++		p_buf += 168;
++		strncpy(uuid, p_buf, 40);
++		blkid_set_tag(probe->dev, "UUID", uuid, sizeof(uuid));
++		blkid_set_tag(probe->dev, "SEC_TYPE", "crypt_LUKS", sizeof("crypt_LUKS"));
++	}
++	return 0;
++}
++
+ static int probe_romfs(struct blkid_probe *probe,
+ 		       struct blkid_magic *id __BLKID_ATTR((unused)), 
+ 		       unsigned char *buf)
+@@ -775,6 +796,7 @@ static struct blkid_magic type_array[] =
+   { "ocfs2",	 2,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
++  { "crypt_LUKS",		 0,	 0,	 6,	"LUKS\xba\xbe",			probe_luks },
+   {   NULL,	 0,	 0,  0, NULL,			NULL }
+ };
+ 
+
+--------------020105000003030409000105--
