@@ -1,35 +1,60 @@
 From: Vasily Averin <vvs@sw.ru>
-Subject: Re: [RFC PATCH ext3/ext4] orphan list corruption due bad inode
-Date: Tue, 05 Jun 2007 11:31:10 +0400
-Message-ID: <4665113E.5070908@sw.ru>
-References: <4663A0CE.102@sw.ru> <20070604190340.dba85bb0.akpm@linux-foundation.org> <4664FE80.4080801@sw.ru> <20070605061315.GA25760@infradead.org>
+Subject: [PATCH] [RESEND] ext[34] orphan list check on destroy_inode
+Date: Tue, 05 Jun 2007 14:19:53 +0400
+Message-ID: <466538C9.8080104@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=KOI8-R
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@infradead.org>, Vasily Averin <vvs@sw.ru>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	devel@openvz.org, linux-ext4@vger.kernel.org,
-	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1763917AbXFEHbd@vger.kernel.org>
-In-Reply-To: <20070605061315.GA25760@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>, devel@openvz.org,
+	linux-ext4@vger.kernel.org, Stephen Tweedie <sct@redhat.com>,
+	adilger@clusterfs.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.233.200]:40776 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762901AbXFEKUO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jun 2007 06:20:14 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig wrote:
-> On Tue, Jun 05, 2007 at 10:11:12AM +0400, Vasily Averin wrote:
->>>>  	return d_splice_alias(inode, dentry);
->>>>  }
->>> Seems reasonable.  So this prevents the bad inodes from getting onto the
->>> orphan list in the first place?
->> make_bad_inode() is called from ext3_read_inode() that is called from iget() only.
-> 
-> Which is artefact of using the read_inode interface.  Please switch from
-> iget to iget_locked and you can handle this case without ever inserting the
-> "bad" inode into the inode hash.
+Customers claims to ext3-related errors, investigation showed that ext3 orphan
+list has been corrupted and have the reference to non-ext3 inode. The following
+debug helps to understand the reasons of this issue.
 
-Sorry, I do not understand your proposal. Could you please explain your idea in
-more details?
+Signed-off-by:	Vasily Averin <vvs@sw.ru>
 
-thank you,
-	Vasily Averin
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 6e30629..e986376 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -459,6 +459,13 @@ static struct inode *ext3_alloc_inode(struct super_block *sb)
+
+ static void ext3_destroy_inode(struct inode *inode)
+ {
++	if (!list_empty(&(EXT3_I(inode)->i_orphan))) {
++		printk("EXT3 Inode %p: orphan list check failed!\n",
++			EXT3_I(inode));
++		print_hex_dump(KERN_INFO, DUMP_PREFIX_ADDRESS,
++				EXT3_I(inode), sizeof(struct ext3_inode_info));
++		dump_stack();
++	}
+ 	kmem_cache_free(ext3_inode_cachep, EXT3_I(inode));
+ }
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index cb9afdd..935420d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -510,6 +510,13 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+
+ static void ext4_destroy_inode(struct inode *inode)
+ {
++	if (!list_empty(&(EXT4_I(inode)->i_orphan))) {
++		printk("EXT4 Inode %p: orphan list check failed!\n",
++			EXT4_I(inode));
++		print_hex_dump(KERN_INFO, DUMP_PREFIX_ADDRESS,
++				EXT4_I(inode), sizeof(struct ext4_inode_info));
++		dump_stack();
++	}
+ 	kmem_cache_free(ext4_inode_cachep, EXT4_I(inode));
+ }
