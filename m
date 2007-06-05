@@ -1,34 +1,60 @@
-From: Andreas Dilger <adilger@clusterfs.com>
+From: Vasily Averin <vvs@sw.ru>
 Subject: Re: [RFC PATCH ext3/ext4] orphan list corruption due bad inode
-Date: Mon, 4 Jun 2007 21:52:32 -0600
-Message-ID: <20070605035232.GC5181@schatzie.adilger.int>
+Date: Tue, 05 Jun 2007 10:11:12 +0400
+Message-ID: <4664FE80.4080801@sw.ru>
 References: <4663A0CE.102@sw.ru> <20070604190340.dba85bb0.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Vasily Averin <vvs@sw.ru>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	devel@openvz.org, linux-ext4@vger.kernel.org,
-	Stephen Tweedie <sct@redhat.com>
+	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:39626 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760205AbXFEDwe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jun 2007 23:52:34 -0400
-Content-Disposition: inline
+Received: from mailhub.sw.ru ([195.214.233.200]:18585 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755121AbXFEGLj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jun 2007 02:11:39 -0400
 In-Reply-To: <20070604190340.dba85bb0.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 04, 2007  19:03 -0700, Andrew Morton wrote:
-> What caused those inodes to be bad, anyway?  Memory allocation failures?
+Andrew Morton wrote:
+> On Mon, 04 Jun 2007 09:19:10 +0400 Vasily Averin <vvs@sw.ru> wrote:
+>> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+>> index 9bb046d..e3ac8c3 100644
+>> --- a/fs/ext3/namei.c
+>> +++ b/fs/ext3/namei.c
+>> @@ -1019,6 +1019,11 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
+>>  
+>>  		if (!inode)
+>>  			return ERR_PTR(-EACCES);
+>> +
+>> +		if (is_bad_inode(inode)) {
+>> +			iput(inode);
+>> +			return ERR_PTR(-ENOENT);	
+>> +		}
+>>  	}
+>>  	return d_splice_alias(inode, dentry);
+>>  }
+> Seems reasonable.  So this prevents the bad inodes from getting onto the
+> orphan list in the first place?
 
-This can happen if e.g. NFS has a stale file handle - it will look up
-the inode by inum, but ext3_read_inode() will create a bad inode due to
-i_nlink = 0.
+make_bad_inode() is called from ext3_read_inode() that is called from iget() only.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+When we found that inode is bad we will call iput ASAP. I expect it should be
+enough to exclude any chances to call any functions that can include this inode
+into orphan list.
+
+ext3_lookup
+  iget
+    ext3_read_inode
+       make_bad_inode
+  is_bad_inode? --> iput
+
+However am I probably err?
+
+Probably is better to add is_bad_inode check to ext3_orphan_add()?
+
+thank you,
+	Vasily Averin
