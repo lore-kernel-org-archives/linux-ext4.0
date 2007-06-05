@@ -1,62 +1,76 @@
-From: "Mark Knibbs" <markk@clara.co.uk>
-Subject: Possible ext2 bug with large sparse files?
-Date: Tue, 05 Jun 2007 13:25:29 +0100
-Message-ID: <E1HvY6M-000Ai0-Ff@oceanus.uk.clara.net>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: [RFC][PATCH] Set JBD2_FEATURE_INCOMPAT_64BIT on filesystems
+	larger than 32-bit blocks (take 2).
+Date: Tue, 05 Jun 2007 08:14:43 -0500
+Message-ID: <1181049283.18452.0.camel@kleikamp.austin.ibm.com>
+References: <20070601105234.4be40028@rx8>
+	 <20070601225441.GF5181@schatzie.adilger.int> <20070604113210.1a76934b@gara>
+	 <20070604175728.GT5181@schatzie.adilger.int>
+	 <1180998105.3770.27.camel@dyn9047017103.beaverton.ibm.com>
+	 <20070605064109.2cb6bad7@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="iso-8859-1"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: markk@clara.co.uk
-To: linux-ext4@vger.kernel.org
+Cc: cmm@us.ibm.com, Andreas Dilger <adilger@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oceanus.uk.clara.net ([80.168.70.150]:1206 "EHLO
-	oceanus.uk.clara.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756428AbXFEM40 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jun 2007 08:56:26 -0400
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:34846 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758675AbXFENOp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jun 2007 09:14:45 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l55DEjEx019662
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 09:14:45 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l55DEjdG551938
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 09:14:45 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l55DEio9026925
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 09:14:45 -0400
+In-Reply-To: <20070605064109.2cb6bad7@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi, 
+On Tue, 2007-06-05 at 06:41 -0500, Jose R. Santos wrote:
+> On Mon, 04 Jun 2007 16:01:45 -0700
+> Mingming Cao <cmm@us.ibm.com> wrote:
+> 
+> > On Mon, 2007-06-04 at 11:57 -0600, Andreas Dilger wrote:
+> > > On Jun 04, 2007  11:32 -0500, Jose R. Santos wrote:
+> > > > Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
+> > > > than 32bit block sizes during mount time.  This ensure proper record
+> > > > lenth when writing to the journal.
+> > > > 
+> > > > Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> > > > ---
+> > > >  fs/ext4/super.c |   11 +++++++++++
+> > > >  1 file changed, 11 insertions(+)
+> > > > 
+> > > > Index: linux-2.6.22-rc3/fs/ext4/super.c
+> > > > ===================================================================
+> > > > --- linux-2.6.22-rc3.orig/fs/ext4/super.c	2007-06-04 11:01:20.028360650 -0500
+> > > > +++ linux-2.6.22-rc3/fs/ext4/super.c	2007-06-04 11:05:11.389126418 -0500
+> > > > @@ -1824,6 +1824,17 @@ static int ext4_fill_super (struct super
+> > > >  		goto failed_mount3;
+> > > >  	}
+> > > >  
+> > > > +        /*
+> > > > +	 * Make sure to set JBD2_FEATURE_INCOMPAT_64BIT on filesystems
+> > > > +	 * with more that 32-bit block counts
+> > > > +	 */
+> > > > +	if(es->s_blocks_count_hi &&
+> > 
+> > This need to be le32_to_cpu(es->s_blocks_count_hi)
+> 
+> I'm curious,
+> 
+> Why do we need to do an endian conversion to check for a non-zero value
+> in s_blocks_count_hi?  Seems unnecessary here.
 
-I have encountered a problem/issue relating to using ext2 filesystems with 
-(very) large sparse files, where the file length is much larger than the 
-filesystem size. 
+Jose is right.  The endian conversion is unnecessary.
 
-I'm using an x86 PC, the same issue appears in kernel 2.6.14 & 2.6.20. Use 
-dd 5.97 to replicate the problem. 
-
-On a ~500MB ext2 volume with about 60MB free (a 512MB flash card in a USB 
-reader), testing using dd like this:
- dd if=/dev/zero of=test.bin bs=1 count=1 seek=17247252479
-works fine, but
- dd if=/dev/zero of=test.bin bs=1 count=1 seek=17247252480
-gives a "File size limit exceeded" message and this warning appears in dmesg 
-output:
- "EXT2-fs warning (device sdd): ext2_block_to_path: block > big" 
-
-[For whatever reason, it seems the maximum file size for that
-partition is 17,247,252,480 bytes. In itself that behaviour isn't 
-necessarily a bug; but if you have any clue how the ext2 maximum file size 
-is related (or not) to the amount of free space or the volume size, please 
-let me know!] 
-
-After doing
- dd if=/dev/zero of=test.bin bs=1 count=1 seek=17247252480
-ls -l shows test.bin to be 17247252480 bytes long. 
-
-I unmounted the partition and used e2fsck -f to check it:
- # e2fsck -f /dev/sdd
- e2fsck 1.38 (30-Jun-2005)
- Pass 1: Checking inodes, blocks, and sizes
- Inode 123466, i_size is 17247252480, should be 0.  Fix<y>? yes 
-
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information 
-
- VolName: ***** FILE SYSTEM WAS MODIFIED *****
- VolName: 107/125488 files (2.8% non-contiguous), 428147/501760 blocks 
-
-
-Regards,
- -- Mark 
+Shaggy
+-- 
+David Kleikamp
+IBM Linux Technology Center
