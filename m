@@ -1,168 +1,114 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [RFC PATCH 1/1] e2fsprogs: Add undo I/O manager.
-Date: Wed, 06 Jun 2007 15:32:27 +0530
-Message-ID: <46668633.7060403@linux.vnet.ibm.com>
-References: <4c7823c85d4ea3b4535f9fc0e4afa93078317f81.1179828850.git.aneesh.kumar@linux.vnet.ibm.com> <20070603231701.GA10140@thunk.org>
+Date: Wed, 6 Jun 2007 08:02:18 -0400
+Message-ID: <20070606120218.GC32603@thunk.org>
+References: <4c7823c85d4ea3b4535f9fc0e4afa93078317f81.1179828850.git.aneesh.kumar@linux.vnet.ibm.com> <20070603231701.GA10140@thunk.org> <46668633.7060403@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:44627 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757786AbXFFKDx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2007 06:03:53 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l56A5HaO8134732
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 20:05:22 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l56A72lX050766
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 20:07:15 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l56A39sr029104
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 20:03:09 +1000
-In-Reply-To: <20070603231701.GA10140@thunk.org>
+Received: from THUNK.ORG ([69.25.196.29]:49651 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758569AbXFFMCe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jun 2007 08:02:34 -0400
+Content-Disposition: inline
+In-Reply-To: <46668633.7060403@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-Theodore Tso wrote:
-> On Tue, May 22, 2007 at 03:47:33PM +0530, Aneesh Kumar K.V wrote:
->> This I/O manager saves the contents of the location being overwritten
->> to a tdb database. This helps in undoing the changes done to the
->> file system.
->>
->> +	/* loop through the existing entries and find if they overlap */
->> +	for (key = tdb_firstkey(tdb); key.dptr; key = tdb_nextkey(tdb, key)) {
->> +		data = tdb_fetch(tdb, key);
->> +		/*
->> +		 * we are not interested in the data
->> +		 */
->> +		free(data.dptr);
+On Wed, Jun 06, 2007 at 03:32:27PM +0530, Aneesh Kumar K.V wrote:
 > 
-> Youch.  This is going to be painful; it means that for every single
-> write, we need to iterate over every single entry in the TDB.  This
-> doesn't scale terribly well.  :-(
+> If we allow to change the block size in between that would mean the
+> records that we store in the tdb database will be of variable size ( 
+> different block sizes). That would also add all the code/complexity that 
+> i have in is_trans_overlapping. So if we are looking at avoiding the 
+> above for() loop then we should have constant block size (4K ?).  But in 
+> your above statement, you are counting overhead as a percentage of 
+> blocksize. So how do we handle this ?
+
+As I suggested in my previous mail message, the block size rarely
+changes (mke2fs being the primary counter-example, and then only in a
+fairly restricted case).  So as far as the tdb is concerned, we have
+to use a constant blocksize (the first one which is used when writing
+to the i/o block).  So the undo manager would save away the blocksize
+the first time it was written to --- and yes, we would have to store
+that information in the tdb file so the restore program knows what
+block size is used, but that's easy; just write out the blocksize that
+out as an ascii number (to avoid byte swapping issues) with the key
+"blocksize" :-).
+
+Once the block size has been established, all writes to the tdb file
+would be in terms of that block size.  For correctness' sake, the undo
+manager would have to pass any blocksize changes to the underlying i/o
+manager, and keep track of what the "current" blocksize, and if the
+"current" blocksize is different from the blocksized used to store the
+original contents of the filesystem in the tdb file, it would have to
+translate the block numbers appropriately.  So for example if in the
+tdb file everything is stored in terms of 4k blocks, and the blocksize
+changes to 512, and a write to sector 23 is attempted, 23 in 512 byte
+sectors is equivalent to block #5 assuming a 4k blocksize, and the
+undo manager would check to see if block #5 had been saved, and if it
+hadn't, it would temporarily set the blocksize of the underlying i/o
+manager to 4k, read block #5, save it to the tdb, and then restore the
+blocksize back to the current 512 byte blocksize.
+
+If the tdb blocksize is 512, and the block size gets switched to 4k,
+then we have to do the reverse; we would need to take the 4k block
+number, translate it to 512 byte sector numbers, and then save out 8
+entries in the tdb file to correspond to each 4k block that the first
+time each 4k block is written.
+
+Makes sense?  As I said, in practice this happens but rarely, so this
+is just for correctness's sake, so it doesn't have to be efficient.
+If necessary we can modify mke2fs to make sure the first write is the
+native filesystem blocksize write, so that the undo manager will be
+efficient if used with mke2fs.
+
+> >This looks like notes to yourself; but it's not obvious what's going
+> >on here.  Fortunately with the above suggested change in algorith,
+> >most of this will go away, but please make your comments more obvious.
+> >
 > 
-> I suspect you will do much better by using a different encoding for
-> the tdb database; namely, one where you don't use an extent-based
-> encoding, but rather something which is strictly block based.  So that
-> means a separate entry in the tdb database for each block entry.  That
-> will be slightly more inefficient in terms of overhead stored in the
-> tdb database, yes, but as a percentage of the blocksize (typically
-> 4k), the overhead isn't that great, and the performance improvement
-> will be huge.
+> rl -> req_loc
+> cl -> cur_loc
+> rs -> req_size
+> cs -> cur_size
+
+Yes, I could figure it out, but the point I was trying to make was
+that obscure comments don't improve code readability.  When writing
+comments, it's polite to think in terms of a future reader of the
+code.  (As E.B. White wrote in the introduction of the classic, 'The
+Elements of Style' by Oliver Strunk, "All through 'The Elements of
+Style', one finds evidence of the author's deep sympathy for the
+reader."  This general philosophy applies just as much to code as it
+does to English prose.)
+
+So if it really is necessary to document the various sizes, then do
+something like this:
+
+	/* req_loc < cur_loc < req_lock+req_size < cur_loc+cur+size */
+
+Or perhaps something more explicit in english text explaining the case
+that you're dealing with --- but only if it's adding something beyond
+the C code.   As others have said, this is not particularly useful:
+
+	/* Add two to the block count */
+	block_count += 2;
+
+> >What version of e2fsprogs are you developing against?
 > 
-> The downside of doing this is that you need to take into account
-> changes in blocksize via set_blksize() (this is rare; it's only done
-> by mke2fs, and then only to zap various MD superblocks, et. al), and
-> if the size is negative (in which case it represents the size in
-> bytes, which could be more or less than a blocksize, and not
-> necessarily a multiple of a blocksize).
+> Right now i am manually linking it against libtdb.
 > 
+> dpkg --search /usr/lib/libtdb.so
+> tdb-dev: /usr/lib/libtdb.so
 
+Any particular reason you're not using the development version from
+Mercurial for your development?  In general it's good practice to send
+patches against the latest develoment tip.  What caught my eye of that
+particular comment was that it was pretty much saying that you weren't
+doing that....
 
-If we allow to change the block size in between that would mean the
-records that we store in the tdb database will be of variable size ( 
-different block sizes). That would also add all the code/complexity that 
-i have in is_trans_overlapping. So if we are looking at avoiding the 
-above for() loop then we should have constant block size (4K ?).  But in 
-your above statement, you are counting overhead as a percentage of 
-blocksize. So how do we handle this ?
+Thanks, regards,
 
-
-Now with constant block size The write_blk gets complex because of there 
-won't be a 1:1 mapping between the block number we need to use in 
-tdb_database and the backing I/O manager.
-
-
-
-
-> But that's not too bad, since now you just have to do is figure out
-> which block(s) need to be saved, and then check to see if a record
-> already exists in the tdb; if it does, the original value has been
-> saved, and you don't have to do anything; if it doesn't then you just
-> save the entire block.  The undo manager need to save the first
-> blocksize specified, and backup the original data in the tdb file in
-> terms of that first blocksize, regardless of any later changes in the
-> blocksize (which as I said is rare).
-> 
-
->> +		if (req_loc < cur_loc) {
->> +			if (req_loc+req_size > cur_loc) {
->> +				/*  ------------------
->> +				 *  |      |    |    |
->> +				 *  ------------------
->> +				 *  rl     cl   rs   cs
->> +				 */
-> 
-> This looks like notes to yourself; but it's not obvious what's going
-> on here.  Fortunately with the above suggested change in algorith,
-> most of this will go away, but please make your comments more obvious.
-> 
-
-
-rl -> req_loc
-cl -> cur_loc
-rs -> req_size
-cs -> cur_size
-
-
-
-
->> +	// I have libtdb1. Enable after rebasing to latest e2fsprogs that has this API
->> +	//tdb_transaction_start(data->tdb);
-> 
-> What version of e2fsprogs are you developing against?
-> 
-
-
-Right now i am manually linking it against libtdb.
-
-dpkg --search /usr/lib/libtdb.so
-tdb-dev: /usr/lib/libtdb.so
-
-
-
->> +		/* FIXME!! Not sure what should be the error */
->> +		//tdb_transaction_cancel(data->tdb);
->> +		retval = EXT2_ET_SHORT_WRITE;
->> +		goto error_out;
-> 
-> I would add a new error code in lib/ext2fs/ext2_err.et.in; that way we
-> can have a very specific error code explaining that we have a failure
-> to save the original version of the block.  
-> 
-
-
-Will do this
-
-
->> +       actual = read(data->dev, tdb_data.dptr, size);
->> +       if (actual != size) {
-> 
-> Instead of using ext2fs_llseek() and read(), please use the underlying
-> io_manager.  That way the undo manager might have a chance to work on
-> some other io manager other than unix_io.  Yes, that means that you
-> might in some cases need to save and restore the current blksize.  But
-> that's not going to be the common case, and it will make the code much
-> more general.
-> 
->> +error_out:
->> +	/* Move the location back */
->> +	if (ext2fs_llseek(data->dev, cur_loc, SEEK_SET) != cur_loc) {
->> +		retval = errno ? errno : EXT2_ET_LLSEEK_FAILED;
->> +		goto error_out;
->> +	}
-> 
-> Why do you need to move the location back?  As far as I know nothing
-> should be depending on current offset of the file descriptor.
-> 
->
-
-No specific reason.
-
-
--aneesh
+						- Ted
