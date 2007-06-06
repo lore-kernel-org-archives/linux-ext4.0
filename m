@@ -1,86 +1,60 @@
-From: Laurent Vivier <Laurent.Vivier@bull.net>
-Subject: Re: [PATCH] Set JBD2_FEATURE_INCOMPAT_64BIT on filesystems larger
- than 32-bit blocks
-Date: Wed, 06 Jun 2007 09:56:10 +0200
-Message-ID: <4666689A.8070605@bull.net>
-References: <20070605230912.1d6c4377@gara>
+From: Kirk True <kirk@mustardgrain.com>
+Subject: [PATCH] Add static to functions local to fs/ext4/balloc.c
+Date: Wed, 6 Jun 2007 02:30:48 -0700 (PDT)
+Message-ID: <585414.24040.qm@web610.biz.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigF18E9132106A44D41E5CEEE4"
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:46579 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752129AbXFFH40 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2007 03:56:26 -0400
-In-Reply-To: <20070605230912.1d6c4377@gara>
+Received: from web610.biz.mail.mud.yahoo.com ([209.191.88.223]:33271 "HELO
+	web610.biz.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753921AbXFFJat (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2007 05:30:49 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigF18E9132106A44D41E5CEEE4
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+ext4_reserve_local, ext4_rebalance_reservation, and
+ext4_reserve_global are all local to balloc.c and can be made
+static.
 
-Jose R. Santos wrote:
-> Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
-> than 32bit block sizes during mount time.  This ensure proper record
-> lenth when writing to the journal.
->=20
-> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-> Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> ---
->  fs/ext4/super.c |   11 +++++++++++
->  1 file changed, 11 insertions(+)
->=20
-> Index: linux-2.6.22-rc3/fs/ext4/super.c
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- linux-2.6.22-rc3.orig/fs/ext4/super.c	2007-06-04 11:01:20.028360650=
- -0500
-> +++ linux-2.6.22-rc3/fs/ext4/super.c	2007-06-05 21:14:33.974854532 -050=
-0
-> @@ -1824,6 +1824,13 @@ static int ext4_fill_super (struct super
->  		goto failed_mount3;
->  	}
-> =20
-> +	if (ext4_blocks_count(es) > 0xffffffff &&
+This is against the 2.6.22-rc4-ext4-1 tree that was announced
+on:
 
-Perhaps you should use 0xffffffffULL ?
+    http://lists.openwall.net/linux-ext4/2007/06/05/15
 
-> +	    !jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
-> +				       JBD2_FEATURE_INCOMPAT_64BIT)) {
-> +		printk(KERN_ERR "ext4: Failed to set 64-bit journal feature\n");
-> +		goto failed_mount4;
-> +	}
-> +
->  	/* We have now updated the journal if required, so we can
->  	 * validate the data journaling mode. */
->  	switch (test_opt(sb, DATA_FLAGS)) {
+Signed-off-by: Kirk True <kirk@mustardgrain.com>
 
-Regards,
-Laurent
---=20
-------------- Laurent.Vivier@bull.net  --------------
-       "Any sufficiently advanced technology is
-  indistinguishable from magic." - Arthur C. Clarke
+Index: linux-2.6.22-rc4/fs/ext4/balloc.c
+===================================================================
+diff -uprN linux-2.6.22-rc4-orig/fs/ext4/balloc.c linux-2.6.22-rc4/fs/ext4/balloc.c
+--- linux-2.6.22-rc4-orig/fs/ext4/balloc.c      2007-06-06 02:02:29.000000000 -0700
++++ linux-2.6.22-rc4/fs/ext4/balloc.c   2007-06-06 01:59:24.000000000 -0700
+@@ -1868,7 +1868,7 @@ struct ext4_reservation_slot {
+ } ____cacheline_aligned;
 
+-
+-int ext4_reserve_local(struct super_block *sb, int blocks)
++static int ext4_reserve_local(struct super_block *sb, int blocks)
+ {
+        struct ext4_sb_info *sbi = EXT4_SB(sb);
+        struct ext4_reservation_slot *rs;
+@@ -1888,8 +1888,7 @@ int ext4_reserve_local(struct super_bloc
+        return rc;
+ }
 
---------------enigF18E9132106A44D41E5CEEE4
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.7 (GNU/Linux)
-
-iD8DBQFGZmim9Kffa9pFVzwRAnhoAKCsE3io+RgOn6SbGDj8xCZiw7AN2ACgxOUb
-A/6j9Sm/kC96YmsPv/iLIk8=
-=ekxX
------END PGP SIGNATURE-----
-
---------------enigF18E9132106A44D41E5CEEE4--
+-
+-void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
++static void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
+ {
+        int i, used_slots = 0;
+        __u64 chunk;
+@@ -1916,7 +1915,7 @@ void ext4_rebalance_reservation(struct e
+        BUG_ON(free);
+ }
+ 
+-int ext4_reserve_global(struct super_block *sb, int blocks)
++static int ext4_reserve_global(struct super_block *sb, int blocks)
+ {        
+        struct ext4_sb_info *sbi = EXT4_SB(sb);
+        struct ext4_reservation_slot *rs;
