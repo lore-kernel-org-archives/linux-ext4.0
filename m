@@ -1,68 +1,65 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Patch to support LUKS UUIDs in libblkid
-Date: Tue, 5 Jun 2007 17:17:12 -0600
-Message-ID: <20070605231712.GS5181@schatzie.adilger.int>
-References: <4665479E.2060707@redhat.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH] Set JBD2_FEATURE_INCOMPAT_64BIT on filesystems larger than
+ 32-bit blocks
+Date: Tue, 5 Jun 2007 23:09:12 -0500
+Message-ID: <20070605230912.1d6c4377@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Karsten Hopp <karsten@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:45810 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932950AbXFEXRP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jun 2007 19:17:15 -0400
-Content-Disposition: inline
-In-Reply-To: <4665479E.2060707@redhat.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:38899 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750940AbXFFEJ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jun 2007 00:09:27 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5636qIM012988
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 23:06:52 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5649P65559714
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 00:09:25 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5649PX5031706
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 00:09:25 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l5649PLN031703
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Jun 2007 00:09:25 -0400
+Received: from gara (sig-9-48-59-140.mts.ibm.com [9.48.59.140])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l5649OJP041930
+	for <linux-ext4@vger.kernel.org>; Tue, 5 Jun 2007 23:09:24 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 05, 2007  13:23 +0200, Karsten Hopp wrote:
-> Attached is a patch to add cryptsetup-luks UUID detection in libblkid.so
-> This is required when we want to use UUIDs instead of hardcoded device 
-> names for
-> encrypted partitions.
-> 
-> 
-> +/* check it manually as using LUKS_read_phdr from libcryptsetup
-> + * prints too many warnings if it isn't a luks partition and would add a
-> + * dependency on the lib */
 
-This is true of all superblock probing, so I'm not sure it deserves a
-comment.
+Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
+than 32bit block sizes during mount time.  This ensure proper record
+lenth when writing to the journal.
 
-> +static int probe_luks(struct blkid_probe *probe,
-> +		       struct blkid_magic *id __BLKID_ATTR((unused)), 
-> +		       unsigned char *buf)
-> +{
-> +	const char *luks_magic = id->bim_magic;
-> +	unsigned char *p_buf = buf;
-> +	unsigned char uuid[40];
-> +	if(strncmp(buf, luks_magic, strlen(luks_magic)) == 0)   /* ID matches, continue */
-> +	{
-> +	/* 168 is the offset to the 40 character uuid: http://luks.endorphin.org/LUKS-on-disk-format.pdf */
-> +		p_buf += 168;
-> +		strncpy(uuid, p_buf, 40);
-> +		blkid_set_tag(probe->dev, "UUID", uuid, sizeof(uuid));
-> +		blkid_set_tag(probe->dev, "SEC_TYPE", "crypt_LUKS", sizeof("crypt_LUKS"));
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/super.c |   11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Please wrap lines at 80 columns.
+Index: linux-2.6.22-rc3/fs/ext4/super.c
+===================================================================
+--- linux-2.6.22-rc3.orig/fs/ext4/super.c	2007-06-04 11:01:20.028360650 -0500
++++ linux-2.6.22-rc3/fs/ext4/super.c	2007-06-05 21:14:33.974854532 -0500
+@@ -1824,6 +1824,13 @@ static int ext4_fill_super (struct super
+ 		goto failed_mount3;
+ 	}
+ 
++	if (ext4_blocks_count(es) > 0xffffffff &&
++	    !jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
++				       JBD2_FEATURE_INCOMPAT_64BIT)) {
++		printk(KERN_ERR "ext4: Failed to set 64-bit journal feature\n");
++		goto failed_mount4;
++	}
++
+ 	/* We have now updated the journal if required, so we can
+ 	 * validate the data journaling mode. */
+ 	switch (test_opt(sb, DATA_FLAGS)) {
 
-Also, why use SEC_TYPE here?  That is "secondary type" and not (you
-might think) "security type".  That should only be used if there are
-two filesystem types that could mount the filesystem, and the SEC_TYPE
-is the less-preferred one.
 
-> @@ -775,6 +796,7 @@ static struct blkid_magic type_array[] =
->    { "ocfs2",	 2,	 0,  6,	"OCFSV2",		probe_ocfs2 },
->    { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
->    { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-> +  { "crypt_LUKS",		 0,	 0,	 6,	"LUKS\xba\xbe",			probe_luks },
-
-Please fix the alignment here.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+-JRS
