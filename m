@@ -1,62 +1,347 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Possible ext2 bug with large sparse files?
-Date: Thu, 7 Jun 2007 11:51:55 -0600
-Message-ID: <20070607175154.GM5181@schatzie.adilger.int>
-References: <E1HvvOu-000Ok2-Fh@oceanus.uk.clara.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/2] ext234: remove unused bh in calls to get_group_desc
+Date: Thu, 07 Jun 2007 14:38:53 -0500
+Message-ID: <46685ECD.6030103@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mark Knibbs <markk@clara.co.uk>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:55269 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933599AbXFGRv5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jun 2007 13:51:57 -0400
-Content-Disposition: inline
-In-Reply-To: <E1HvvOu-000Ok2-Fh@oceanus.uk.clara.net>
+Received: from mx1.redhat.com ([66.187.233.31]:55603 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932728AbXFGTmI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jun 2007 15:42:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 06, 2007  14:18 +0100, Mark Knibbs wrote:
-> This is a follow-up to my previous message. The bug is also present in 
-> ext3, and applies to partitions with 2K blocks and (at least in part) to 
-> those with 4K blocks. There is also another issue, which may well be a bug 
-> in e2fsck. 
+ext[234]_get_group_desc only sets the bh argument if it is non-null,
+and several callers pass in a bh which is not subsequently used -
+it may as well be NULL.
 
-Could you please clarify what the particular defect is that you are looking
-at?  Presumably it is not just that there is an upper limit on the size of
-a file?
+Compiled & booted & lightly tested.
 
-> For partitions with 2K blocks the maximum file size is 275,415,851,008 
-> bytes; changing the seek= argument in the dd examples to 275415851007 & 
-> 275415851008 gives similar results. 
-> 
-> The maximum file size on partitions with 4K blocks is 2,196,875,759,616 
-> bytes, so I tested using dd with seek=2196875759615 & 2196875759616. With 
-> 4K blocks there don't seem to be any problems with warnings in dmesg 
-> output, or fsck. The only bug (or what I think is a bug) is that
-> dd if=/dev/zero of=test.bin bs=1 count=1 seek=2196875759616
-> causes the file size to show as 2196875759616, but it shouldn't since no 
-> actual write took place. 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-The reason for this limitation is due to indirect block limits in the
-ext2/3 file layout.  In ext4 it is theoretically possible to have files
-up to 2^60 bytes in size, because the extent format handles 2^48-bit
-block numbers, and the inode has an extra 16 bits to store the high part
-of the block count.
-
-> If instead you do
-> dd if=/dev/zero of=test.bin bs=1 count=1 seek=17247252479
-> (which should work okay, since the maximum file size is 17247252480) then 
-> fsck -f gives a strange message:
-> "Inode 6073, i_size is 17247252480, should be 17247252480.  Fix<y>?"
-> Even if you say yes to "fix" it, repeatedly running fsck always asks that 
-> question. 
-
-This is definitely a bug...
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Index: linux-2.6.22-rc3/fs/ext3/ialloc.c
+===================================================================
+--- linux-2.6.22-rc3.orig/fs/ext3/ialloc.c
++++ linux-2.6.22-rc3/fs/ext3/ialloc.c
+@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT3_SB(sb)->s_groups_count;
+ 	unsigned int freei, avefreei;
+ 	struct ext3_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh;
+ 	int group, best_group = -1;
+ 
+ 	freei = percpu_counter_read_positive(&EXT3_SB(sb)->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+ 
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
+ 	ext3_grpblk_t min_blocks;
+ 	int group = -1, i;
+ 	struct ext3_group_desc *desc;
+-	struct buffer_head *bh;
+ 
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -286,7 +284,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext3_get_group_desc (sb, group, &bh);
++			desc = ext3_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -319,7 +317,7 @@ static int find_group_orlov(struct super
+ 
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
+@@ -334,7 +332,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -358,14 +356,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT3_I(parent)->i_block_group;
+ 	int ngroups = EXT3_SB(sb)->s_groups_count;
+ 	struct ext3_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
+ 
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext3_get_group_desc (sb, group, &bh);
++	desc = ext3_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		return group;
+@@ -389,7 +386,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			return group;
+@@ -403,7 +400,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			return group;
+ 	}
+Index: linux-2.6.22-rc3/fs/ext2/ialloc.c
+===================================================================
+--- linux-2.6.22-rc3.orig/fs/ext2/ialloc.c
++++ linux-2.6.22-rc3/fs/ext2/ialloc.c
+@@ -177,7 +177,6 @@ static void ext2_preread_inode(struct in
+ 	unsigned long block_group;
+ 	unsigned long offset;
+ 	unsigned long block;
+-	struct buffer_head *bh;
+ 	struct ext2_group_desc * gdp;
+ 	struct backing_dev_info *bdi;
+ 
+@@ -188,7 +187,7 @@ static void ext2_preread_inode(struct in
+ 		return;
+ 
+ 	block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
+-	gdp = ext2_get_group_desc(inode->i_sb, block_group, &bh);
++	gdp = ext2_get_group_desc(inode->i_sb, block_group, NULL);
+ 	if (gdp == NULL)
+ 		return;
+ 
+@@ -217,11 +216,10 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT2_SB(sb)->s_groups_count;
+ 	int avefreei = ext2_count_free_inodes(sb) / ngroups;
+ 	struct ext2_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh, *best_bh = NULL;
+ 	int group, best_group = -1;
+ 
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -231,7 +229,6 @@ static int find_group_dir(struct super_b
+ 		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
+ 			best_group = group;
+ 			best_desc = desc;
+-			best_bh = bh;
+ 		}
+ 	}
+ 	if (!best_desc)
+@@ -284,7 +281,6 @@ static int find_group_orlov(struct super
+ 	int max_debt, max_dirs, min_blocks, min_inodes;
+ 	int group = -1, i;
+ 	struct ext2_group_desc *desc;
+-	struct buffer_head *bh;
+ 
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -295,7 +291,6 @@ static int find_group_orlov(struct super
+ 	if ((parent == sb->s_root->d_inode) ||
+ 	    (EXT2_I(parent)->i_flags & EXT2_TOPDIR_FL)) {
+ 		struct ext2_group_desc *best_desc = NULL;
+-		struct buffer_head *best_bh = NULL;
+ 		int best_ndir = inodes_per_group;
+ 		int best_group = -1;
+ 
+@@ -303,7 +298,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext2_get_group_desc (sb, group, &bh);
++			desc = ext2_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -315,11 +310,9 @@ static int find_group_orlov(struct super
+ 			best_group = group;
+ 			best_ndir = le16_to_cpu(desc->bg_used_dirs_count);
+ 			best_desc = desc;
+-			best_bh = bh;
+ 		}
+ 		if (best_group >= 0) {
+ 			desc = best_desc;
+-			bh = best_bh;
+ 			group = best_group;
+ 			goto found;
+ 		}
+@@ -345,7 +338,7 @@ static int find_group_orlov(struct super
+ 
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (sbi->s_debts[group] >= max_debt)
+@@ -362,7 +355,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -389,14 +382,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT2_I(parent)->i_block_group;
+ 	int ngroups = EXT2_SB(sb)->s_groups_count;
+ 	struct ext2_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
+ 
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext2_get_group_desc (sb, group, &bh);
++	desc = ext2_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		goto found;
+@@ -420,7 +412,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			goto found;
+@@ -434,7 +426,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			goto found;
+ 	}
+Index: linux-2.6.22-rc3/fs/ext2/inode.c
+===================================================================
+--- linux-2.6.22-rc3.orig/fs/ext2/inode.c
++++ linux-2.6.22-rc3/fs/ext2/inode.c
+@@ -1010,7 +1010,7 @@ static struct ext2_inode *ext2_get_inode
+ 		goto Einval;
+ 
+ 	block_group = (ino - 1) / EXT2_INODES_PER_GROUP(sb);
+-	gdp = ext2_get_group_desc(sb, block_group, &bh);
++	gdp = ext2_get_group_desc(sb, block_group, NULL);
+ 	if (!gdp)
+ 		goto Egdp;
+ 	/*
+Index: linux-2.6.22-rc3/fs/ext4/ialloc.c
+===================================================================
+--- linux-2.6.22-rc3.orig/fs/ext4/ialloc.c
++++ linux-2.6.22-rc3/fs/ext4/ialloc.c
+@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT4_SB(sb)->s_groups_count;
+ 	unsigned int freei, avefreei;
+ 	struct ext4_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh;
+ 	int group, best_group = -1;
+ 
+ 	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+ 
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
+ 	ext4_grpblk_t min_blocks;
+ 	int group = -1, i;
+ 	struct ext4_group_desc *desc;
+-	struct buffer_head *bh;
+ 
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -287,7 +285,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext4_get_group_desc (sb, group, &bh);
++			desc = ext4_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -322,7 +320,7 @@ static int find_group_orlov(struct super
+ 
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
+@@ -337,7 +335,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -361,14 +359,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT4_I(parent)->i_block_group;
+ 	int ngroups = EXT4_SB(sb)->s_groups_count;
+ 	struct ext4_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
+ 
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext4_get_group_desc (sb, group, &bh);
++	desc = ext4_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		return group;
+@@ -392,7 +389,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			return group;
+@@ -406,7 +403,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			return group;
+ 	}
