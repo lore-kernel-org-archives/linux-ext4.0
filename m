@@ -1,38 +1,36 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Patch to support LUKS UUIDs in libblkid
-Date: Fri, 8 Jun 2007 11:36:00 -0400
-Message-ID: <20070608153600.GA9726@thunk.org>
-References: <4665479E.2060707@redhat.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: ext4-delalloc-extents-48bit.patch
+Date: Fri, 8 Jun 2007 16:47:26 -0600
+Message-ID: <20070608224726.GA32480@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Karsten Hopp <karsten@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:51006 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752478AbXFHWq1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jun 2007 18:46:27 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:48603 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752581AbXFHWr3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jun 2007 18:47:29 -0400
+Received: from localhost.adilger.int (S0106000bdb95b39c.cg.shawcable.net [70.72.213.136])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.clusterfs.com (Postfix) with ESMTP id A23C37BA3B1
+	for <linux-ext4@vger.kernel.org>; Fri,  8 Jun 2007 16:47:28 -0600 (MDT)
 Content-Disposition: inline
-In-Reply-To: <4665479E.2060707@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In addition to the comments already posted:
+I just noticed while looking through ext4-delalloc-extents-48bit.patch in
+git that it is doing all of the bit shifting explicitly, instead of using
+the ext_pblock() and ext_store_pblock() helpers...
 
-> +/* check it manually as using LUKS_read_phdr from libcryptsetup
-> + * prints too many warnings if it isn't a luks partition and would add a
-> + * dependency on the lib */
-> +static int probe_luks(struct blkid_probe *probe,
-> +		       struct blkid_magic *id __BLKID_ATTR((unused)), 
-> +		       unsigned char *buf)
-> +{
-> +	const char *luks_magic = id->bim_magic;
-> +	unsigned char *p_buf = buf;
-> +	unsigned char uuid[40];
-> +	if(strncmp(buf, luks_magic, strlen(luks_magic)) == 0)   /* ID matches, continue */
+It also appears that some of the extent code is using "ee_len" directly
+instead of the ext4_get_actual_len() helper to mask off the unwritten
+extent flag (e.g. delalloc_extents*.patch).  I wonder if we should change
+the ee_len type so that it isn't easy to access it directly (e.g. put it
+inside a named union) so this mistake is visible more easily in the future.
 
-There's no point in doing this check, since it's replicating a check
-already done in the generic code.  The probe function won't be called
-if the bim_magic didn't match the specified offset. 
-
-						- Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
