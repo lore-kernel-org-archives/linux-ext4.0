@@ -1,226 +1,162 @@
 From: Valerie Clement <valerie.clement@bull.net>
-Subject: [RFC][PATCH 1/12] new ext4 group desc struct in e2fsprogs
-Date: Mon, 11 Jun 2007 18:42:08 +0200
-Message-ID: <466D7B60.3050108@bull.net>
+Subject: [RFC][PATCH 2/12] add new macro EXT2_DESC_PER_BLOCK in e2fsprogs
+Date: Mon, 11 Jun 2007 18:42:16 +0200
+Message-ID: <466D7B68.30307@bull.net>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------030603060001020105000108"
+ boundary="------------010506070904040802050404"
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:48126 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:48144 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752331AbXFKQkq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 12:40:46 -0400
+	with ESMTP id S1752569AbXFKQkz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 12:40:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 This is a multi-part message in MIME format.
---------------030603060001020105000108
+--------------010506070904040802050404
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 
-A different groups descriptor structure was introduced for ext4 filesystems.
-This patch handles that.
+This patch introduces a new macro EXT2_DESC_PER_BLOCK to calculate
+the number of group descriptors per block as two different structures 
+are defined.
 
-  debugfs/debugfs.c    |    9 +++++++++
-  debugfs/set_fields.c |    4 ++++
-  e2fsck/super.c       |    4 ++++
-  lib/ext2fs/closefs.c |    5 +++++
-  lib/ext2fs/ext2fs.h  |    8 ++++++++
-  lib/ext2fs/openfs.c  |    7 ++++++-
-  lib/ext2fs/swapfs.c  |    4 ++++
-  misc/mke2fs.c        |    4 ++++
-  resize/resize2fs.c   |    2 +-
-  9 files changed, 45 insertions(+), 2 deletions(-)
+  lib/ext2fs/closefs.c    |    2 +-
+  lib/ext2fs/ext2_fs.h    |    4 +++-
+  lib/ext2fs/initialize.c |    2 +-
+  lib/ext2fs/openfs.c     |    4 ++--
+  misc/mke2fs.c           |    5 ++---
+  resize/resize2fs.c      |    7 +++----
+  6 files changed, 12 insertions(+), 12 deletions(-)
 
 
-
---------------030603060001020105000108
+--------------010506070904040802050404
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain;
- name="01-handle-new-ext4-group-desc-struct"
+ name="02-add-new-macro-to-get-nb-desc-per-block"
 Content-Disposition: inline;
- filename="01-handle-new-ext4-group-desc-struct"
+ filename="02-add-new-macro-to-get-nb-desc-per-block"
 
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ext2fs.h	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2fs.h	2007-06-08 12:40:21.000000000 +0200
-@@ -213,7 +213,11 @@ struct struct_ext2_filsys {
- 	int				fragsize;
- 	dgrp_t				group_desc_count;
- 	unsigned long			desc_blocks;
-+#ifdef _EXT4FS_
-+	struct ext4_group_desc *	group_desc;
-+#else
- 	struct ext2_group_desc *	group_desc;
-+#endif
- 	int				inode_blocks_per_group;
- 	ext2fs_inode_bitmap		inode_map;
- 	ext2fs_block_bitmap		block_map;
-@@ -1003,7 +1007,11 @@ extern errcode_t ext2fs_copy_bitmap(ext2
- extern void ext2fs_swap_ext_attr(char *to, char *from, int bufsize, 
- 				 int has_header);
- extern void ext2fs_swap_super(struct ext2_super_block * super);
-+#ifdef _EXT4FS_
-+extern void ext2fs_swap_group_desc(struct ext4_group_desc *gdp);
-+#else
- extern void ext2fs_swap_group_desc(struct ext2_group_desc *gdp);
-+#endif
- extern void ext2fs_swap_extent_header(struct ext3_extent_header *eh);
- extern void ext2fs_swap_extent_index(struct ext3_extent_idx *ix);
- extern void ext2fs_swap_extent(struct ext3_extent *ex);
-Index: e2fsprogs-1.39-tyt3-v6/debugfs/set_fields.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/debugfs/set_fields.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/debugfs/set_fields.c	2007-06-08 12:40:21.000000000 +0200
-@@ -31,7 +31,11 @@
- 
- static struct ext2_super_block set_sb;
- static struct ext2_inode set_inode;
-+#ifdef _EXT4FS_
-+static struct ext4_group_desc set_gd;
-+#else
- static struct ext2_group_desc set_gd;
-+#endif
- static ext2_ino_t set_ino;
- static int array_idx;
- 
-Index: e2fsprogs-1.39-tyt3-v6/resize/resize2fs.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/resize/resize2fs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/resize/resize2fs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -365,7 +365,7 @@ retry:
- 	for (i = old_fs->group_desc_count;
- 	     i < fs->group_desc_count; i++) {
- 		memset(&fs->group_desc[i], 0,
--		       sizeof(struct ext2_group_desc));
-+		       sizeof(fs->group_desc[0]));
- 		adjblocks = 0;
- 
- 		if (i == fs->group_desc_count-1) {
 Index: e2fsprogs-1.39-tyt3-v6/misc/mke2fs.c
 ===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/misc/mke2fs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/misc/mke2fs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -449,7 +449,11 @@ static void setup_lazy_bg(ext2_filsys fs
- 	dgrp_t i;
- 	int blks;
- 	struct ext2_super_block *sb = fs->super;
-+#ifdef _EXT4FS_
-+	struct ext4_group_desc *bg = fs->group_desc;
-+#else
- 	struct ext2_group_desc *bg = fs->group_desc;
-+#endif
- 
- 	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
- 				    EXT2_FEATURE_COMPAT_LAZY_BG)) {
-Index: e2fsprogs-1.39-tyt3-v6/debugfs/debugfs.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/debugfs/debugfs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/debugfs/debugfs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -267,8 +267,13 @@ static void print_features(struct ext2_s
- 	fputs("\n", f);
- }
- 
-+#ifdef _EXT4FS_
-+static void print_bg_opts(struct ext4_group_desc *gdp, int mask,
-+			  const char *str, int *first, FILE *f)
-+#else
- static void print_bg_opts(struct ext2_group_desc *gdp, int mask,
- 			  const char *str, int *first, FILE *f)
-+#endif
- {
- 	if (gdp->bg_flags & mask) {
- 		if (*first) {
-@@ -284,7 +289,11 @@ void do_show_super_stats(int argc, char 
- {
- 	dgrp_t	i;
- 	FILE 	*out;
-+#ifdef _EXT4FS_
-+	struct ext4_group_desc *gdp;
-+#else
- 	struct ext2_group_desc *gdp;
-+#endif
- 	int	c, header_only = 0;
- 	int	numdirs = 0, first;
- 
-Index: e2fsprogs-1.39-tyt3-v6/e2fsck/super.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/e2fsck/super.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/e2fsck/super.c	2007-06-08 12:40:21.000000000 +0200
-@@ -470,7 +470,11 @@ void check_super_block(e2fsck_t ctx)
- 	ext2_filsys fs = ctx->fs;
- 	blk_t	first_block, last_block;
- 	struct ext2_super_block *sb = fs->super;
-+#ifdef _EXT4FS_
-+	struct ext4_group_desc *gd;
-+#else
- 	struct ext2_group_desc *gd;
-+#endif
- 	blk_t	blocks_per_group = fs->super->s_blocks_per_group;
- 	blk_t	bpg_max;
- 	int	inodes_per_block;
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/swapfs.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/swapfs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/swapfs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -77,7 +77,11 @@ void ext2fs_swap_super(struct ext2_super
- 
- }
- 
-+#ifdef _EXT4FS_
-+void ext2fs_swap_group_desc(struct ext4_group_desc *gdp)
-+#else
- void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
-+#endif
- {
- 	gdp->bg_block_bitmap = ext2fs_swab32(gdp->bg_block_bitmap);
- 	gdp->bg_inode_bitmap = ext2fs_swab32(gdp->bg_inode_bitmap);
+--- e2fsprogs-1.39-tyt3-v6.orig/misc/mke2fs.c	2007-06-08 12:40:21.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/misc/mke2fs.c	2007-06-08 12:40:26.000000000 +0200
+@@ -691,8 +691,7 @@ static void show_stats(ext2_filsys fs)
+ 	if (s->s_reserved_gdt_blocks)
+ 		printf(_("Maximum filesystem blocks=%lu\n"),
+ 		       (s->s_reserved_gdt_blocks + fs->desc_blocks) *
+-		       (fs->blocksize / sizeof(struct ext2_group_desc)) *
+-		       s->s_blocks_per_group);
++		       EXT2_DESC_PER_BLOCK(s) * s->s_blocks_per_group);
+ 	if (fs->group_desc_count > 1)
+ 		printf(_("%u block groups\n"), fs->group_desc_count);
+ 	else
+@@ -824,7 +823,7 @@ static void parse_extended_opts(struct e
+ 			bpg = param->s_blocks_per_group;
+ 			if (!bpg)
+ 				bpg = blocksize * 8;
+-			gdpb = blocksize / sizeof(struct ext2_group_desc);
++			gdpb = EXT2_DESC_PER_BLOCK(param);
+ 			group_desc_count = 
+ 				ext2fs_div_ceil(param->s_blocks_count, bpg);
+ 			desc_blocks = (group_desc_count +
 Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/openfs.c
 ===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/openfs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/openfs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -90,7 +90,6 @@ errcode_t ext2fs_open2(const char *name,
- 	int		j, groups_per_block, blocks_per_group, io_flags;
- 	blk_t		group_block, blk;
- 	char		*dest, *cp;
--	struct ext2_group_desc *gdp;
- 	
- 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/openfs.c	2007-06-08 12:40:21.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/openfs.c	2007-06-08 12:40:26.000000000 +0200
+@@ -39,7 +39,7 @@ blk_t ext2fs_descriptor_block_loc(ext2_f
+ 	    (i < fs->super->s_first_meta_bg))
+ 		return (group_block + i + 1);
  
-@@ -289,7 +288,13 @@ errcode_t ext2fs_open2(const char *name,
- 			goto cleanup;
- #ifdef EXT2FS_ENABLE_SWAPFS
- 		if (fs->flags & EXT2_FLAG_SWAP_BYTES) {
-+#ifdef _EXT4FS_
-+			struct ext4_group_desc *gdp;
-+			gdp = (struct ext4_group_desc *) dest;
-+#else
-+			struct ext2_group_desc *gdp;
- 			gdp = (struct ext2_group_desc *) dest;
-+#endif
- 			for (j=0; j < groups_per_block; j++)
- 				ext2fs_swap_group_desc(gdp++);
- 		}
+-	bg = (fs->blocksize / sizeof (struct ext2_group_desc)) * i;
++	bg = EXT2_DESC_PER_BLOCK(fs->super) * i;
+ 	if (ext2fs_bg_has_super(fs, bg))
+ 		has_super = 1;
+ 	ret_blk = (fs->super->s_first_data_block + has_super + 
+@@ -280,7 +280,7 @@ errcode_t ext2fs_open2(const char *name,
+ 	if (!group_block)
+ 		group_block = fs->super->s_first_data_block;
+ 	dest = (char *) fs->group_desc;
+-	groups_per_block = fs->blocksize / sizeof(struct ext2_group_desc);
++	groups_per_block = EXT2_DESC_PER_BLOCK(fs->super);
+ 	for (i=0 ; i < fs->desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc(fs, group_block, i);
+ 		retval = io_channel_read_blk(fs->io, blk, 1, dest);
 Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/closefs.c
 ===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/closefs.c	2007-06-08 12:40:04.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/closefs.c	2007-06-08 12:40:21.000000000 +0200
-@@ -209,8 +209,13 @@ errcode_t ext2fs_flush(ext2_filsys fs)
- 	errcode_t	retval;
- 	unsigned long	fs_state;
- 	struct ext2_super_block *super_shadow = 0;
-+#ifdef _EXT4FS_
-+	struct ext4_group_desc *group_shadow = 0;
-+	struct ext4_group_desc *s, *t;
-+#else
- 	struct ext2_group_desc *group_shadow = 0;
- 	struct ext2_group_desc *s, *t;
-+#endif
- 	char	*group_ptr;
- 	int	old_desc_blocks;
- 	
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/closefs.c	2007-06-08 12:40:21.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/closefs.c	2007-06-08 12:40:26.000000000 +0200
+@@ -81,7 +81,7 @@ int ext2fs_super_and_bgd_loc(ext2_filsys
+ 		super_blk = group_block;
+ 		numblocks--;
+ 	}
+-	meta_bg_size = (fs->blocksize / sizeof (struct ext2_group_desc));
++	meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
+ 	meta_bg = group / meta_bg_size;
+ 
+ 	if (!(fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) ||
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2_fs.h
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ext2_fs.h	2007-06-08 12:40:01.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2_fs.h	2007-06-08 12:40:26.000000000 +0200
+@@ -227,7 +227,9 @@ struct ext2_dx_countlimit {
+ #define EXT2_DESC_PER_BLOCK(s)		(EXT2_SB(s)->s_desc_per_block)
+ #define EXT2_DESC_PER_BLOCK_BITS(s)	(EXT2_SB(s)->s_desc_per_block_bits)
+ #else
+-#define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
++#define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / \
++	((EXT2_SB(s)->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) ? \
++	 sizeof(struct ext4_group_desc) : sizeof(struct ext2_group_desc)))
+ #endif
+ 
+ /*
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/initialize.c
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/initialize.c	2007-06-08 12:40:01.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/initialize.c	2007-06-08 12:40:26.000000000 +0200
+@@ -67,7 +67,7 @@ static unsigned int calc_reserved_gdt_bl
+ {
+ 	struct ext2_super_block *sb = fs->super;
+ 	unsigned long bpg = sb->s_blocks_per_group;
+-	unsigned int gdpb = fs->blocksize / sizeof(struct ext2_group_desc);
++	unsigned int gdpb = EXT2_DESC_PER_BLOCK(sb);
+ 	unsigned long max_blocks = 0xffffffff;
+ 	unsigned long rsv_groups;
+ 	unsigned int rsv_gdb;
+Index: e2fsprogs-1.39-tyt3-v6/resize/resize2fs.c
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/resize/resize2fs.c	2007-06-08 12:40:21.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/resize/resize2fs.c	2007-06-08 12:40:26.000000000 +0200
+@@ -382,8 +382,7 @@ retry:
+ 			ext2fs_mark_block_bitmap(fs->block_map, group_block);
+ 			adjblocks++;
+ 		}
+-		meta_bg_size = (fs->blocksize /
+-				sizeof (struct ext2_group_desc));
++		meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
+ 		meta_bg = i / meta_bg_size;
+ 		if (!(fs->super->s_feature_incompat &
+ 		      EXT2_FEATURE_INCOMPAT_META_BG) ||
+@@ -549,7 +548,7 @@ static errcode_t mark_table_blocks(ext2_
+ 	unsigned long		meta_bg_size;
+ 	unsigned int		old_desc_blocks;
+ 
+-	meta_bg_size = (fs->blocksize / sizeof (struct ext2_group_desc));
++	meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+ 		old_desc_blocks = fs->super->s_first_meta_bg;
+ 	else
+@@ -716,7 +715,7 @@ static errcode_t blocks_to_move(ext2_res
+ 	 * If we're increasing the number of descriptor blocks, life
+ 	 * gets interesting....  
+ 	 */
+-	meta_bg_size = (fs->blocksize / sizeof (struct ext2_group_desc));
++	meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
+ 	for (i = 0; i < max_groups; i++) {
+ 		has_super = ext2fs_bg_has_super(fs, i);
+ 		if (has_super)
 
---------------030603060001020105000108--
+--------------010506070904040802050404--
