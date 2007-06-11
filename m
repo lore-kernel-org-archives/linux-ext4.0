@@ -1,209 +1,362 @@
 From: Valerie Clement <valerie.clement@bull.net>
-Subject: [RFC][PATCH 8/12] 48-bit extents in e2fsprogs
-Date: Mon, 11 Jun 2007 18:47:24 +0200
-Message-ID: <466D7C9C.10500@bull.net>
+Subject: [RFC][PATCH 9/12] indirect block type conversion in e2fsprogs
+Date: Mon, 11 Jun 2007 18:54:33 +0200
+Message-ID: <466D7E49.8070606@bull.net>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------000002090604020901020609"
+ boundary="------------040706060006070604000008"
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:48568 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49357 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752743AbXFKQqC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 12:46:02 -0400
+	with ESMTP id S1753461AbXFKQxM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 12:53:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 This is a multi-part message in MIME format.
---------------000002090604020901020609
+--------------040706060006070604000008
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 
-This patch contains the changes to support 48-bit block numbers in
-extents.
+This patch converts the indirect block definitions from blkt_t type
+to __u32.
 
-This patch is not complete, the new function block_iterate_extents() was
-not updated.
+  e2fsck/pass1.c         |    2 -
+  lib/ext2fs/block.c     |   71 
+++++++++++++++++++++++++++++++-------------------
+  lib/ext2fs/ext2fs.h    |    4 +-
+  lib/ext2fs/ind_block.c |    4 +-
+  lib/ext2fs/inode.c     |    4 +-
+  misc/e2image.c         |    2 -
+  6 files changed, 52 insertions(+), 35 deletions(-)
 
-  e2fsck/pass1.c            |   15 +++++++++------
-  lib/ext2fs/bmap.c         |    6 +++---
-  lib/ext2fs/ext3_extents.h |   30 ++++++++++++++++++++++++++++++
-  lib/ext2fs/extent.c       |   16 ++++++----------
-  4 files changed, 48 insertions(+), 19 deletions(-)
 
 
 
---------------000002090604020901020609
+--------------040706060006070604000008
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain;
- name="08-48bit-support-in-extents"
+ name="09-indirect-block-type"
 Content-Disposition: inline;
- filename="08-48bit-support-in-extents"
+ filename="09-indirect-block-type"
 
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/extent.c
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/block.c
 ===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/extent.c	2007-06-11 12:48:52.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/extent.c	2007-06-11 12:48:57.000000000 +0200
-@@ -105,8 +105,7 @@ errcode_t ext2fs_extent_verify(ext2_fils
- 			       struct ext3_extent_idx *ix, int ix_len)
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/block.c	2007-06-11 12:48:52.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/block.c	2007-06-11 12:48:59.000000000 +0200
+@@ -305,7 +305,7 @@ static int block_iterate_ind(blk_t *ind_
  {
- 	ext_show_extent(ex);
--	/* FIXME: 48-bit support */
--	if (ex->ee_start > EXT2_BLOCKS_COUNT(fs->super))
-+	if (EXT4_EE_START(ex) > EXT2_BLOCKS_COUNT(fs->super))
- 		return EXT2_ET_EXTENT_LEAF_BAD;
+ 	int	ret = 0, changed = 0;
+ 	int	i, flags, limit, offset;
+-	blk_t	*block_nr;
++	__u32	*block_nr;
  
- 	if (ex->ee_len == 0)
-@@ -120,19 +119,18 @@ errcode_t ext2fs_extent_verify(ext2_fils
- 		if (ex->ee_block == 0)
- 			return EXT2_ET_EXTENT_LEAF_BAD;
- 
--		/* FIXME: 48-bit support */
- 		/* extents must be in logical offset order */
- 		if (ex->ee_block < ex_prev->ee_block + ex_prev->ee_len)
- 			return EXT2_ET_EXTENT_LEAF_BAD;
- 
- 		/* extents must not overlap physical blocks */
--		if ((ex->ee_start < ex_prev->ee_start + ex_prev->ee_len) &&
--		    (ex->ee_start + ex->ee_len > ex_prev->ee_start))
-+		if ((EXT4_EE_START(ex) < 
-+		     EXT4_EE_START(ex_prev) + ex_prev->ee_len) &&
-+		    (EXT4_EE_START(ex) + ex->ee_len > EXT4_EE_START(ex_prev)))
- 			return EXT2_ET_EXTENT_LEAF_BAD;
+ 	limit = ctx->fs->blocksize >> 2;
+ 	if (!(ctx->flags & BLOCK_FLAG_DEPTH_TRAVERSE) &&
+@@ -330,33 +330,37 @@ static int block_iterate_ind(blk_t *ind_
+ 		return ret;
  	}
  
- 	if (ix) {
--		/* FIXME: 48-bit support */
- 		if (ex->ee_block < ix->ei_block)
- 			return EXT2_ET_EXTENT_LEAF_BAD;
- 
-@@ -148,8 +146,7 @@ errcode_t ext2fs_extent_index_verify(ext
- 				     struct ext3_extent_idx *ix_prev)
+-	block_nr = (blk_t *) ctx->ind_buf;
++	block_nr = (__u32 *) ctx->ind_buf;
+ 	offset = 0;
+ 	if (ctx->flags & BLOCK_FLAG_APPEND) {
+ 		for (i = 0; i < limit; i++, ctx->bcount++, block_nr++) {
+-			flags = (*ctx->func)(ctx->fs, block_nr, ctx->bcount,
++			blk_t b = *block_nr;
++			flags = (*ctx->func)(ctx->fs, &b, ctx->bcount,
+ 					     *ind_block, offset, 
+ 					     ctx->priv_data);
++			*block_nr = b;
+ 			changed	|= flags;
+ 			if (flags & BLOCK_ABORT) {
+ 				ret |= BLOCK_ABORT;
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	} else {
+ 		for (i = 0; i < limit; i++, ctx->bcount++, block_nr++) {
++			blk_t b = *block_nr;
+ 			if (*block_nr == 0)
+ 				continue;
+-			flags = (*ctx->func)(ctx->fs, block_nr, ctx->bcount,
++			flags = (*ctx->func)(ctx->fs, &b, ctx->bcount,
+ 					     *ind_block, offset, 
+ 					     ctx->priv_data);
++			*block_nr = b;
+ 			changed	|= flags;
+ 			if (flags & BLOCK_ABORT) {
+ 				ret |= BLOCK_ABORT;
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	}
+ 	if (changed & BLOCK_CHANGED) {
+@@ -379,7 +383,7 @@ static int block_iterate_dind(blk_t *din
  {
- 	ext_show_index(ix);
--	/* FIXME: 48-bit support */
--	if (ix->ei_leaf > EXT2_BLOCKS_COUNT(fs->super))
-+	if (EXT4_EI_LEAF(ix) > EXT2_BLOCKS_COUNT(fs->super))
- 		return EXT2_ET_EXTENT_INDEX_BAD;
+ 	int	ret = 0, changed = 0;
+ 	int	i, flags, limit, offset;
+-	blk_t	*block_nr;
++	__u32	*block_nr;
  
- 	if (ix_prev == NULL)
-@@ -193,10 +190,9 @@ errcode_t ext2fs_extent_split_internal(s
- 	++eh->eh_entries;
+ 	limit = ctx->fs->blocksize >> 2;
+ 	if (!(ctx->flags & (BLOCK_FLAG_DEPTH_TRAVERSE |
+@@ -404,35 +408,39 @@ static int block_iterate_dind(blk_t *din
+ 		return ret;
+ 	}
  
- 	ex->ee_len = offs;
--	/* FIXME: 48-bit support */
- 	ex_new->ee_len -= offs;
- 	ex_new->ee_block += offs;
--	ex_new->ee_start += offs;
-+	EXT4_EE_START_SET(ex_new, EXT4_EE_START(ex_new) + offs);
+-	block_nr = (blk_t *) ctx->dind_buf;
++	block_nr = (__u32 *) ctx->dind_buf;
+ 	offset = 0;
+ 	if (ctx->flags & BLOCK_FLAG_APPEND) {
+ 		for (i = 0; i < limit; i++, block_nr++) {
+-			flags = block_iterate_ind(block_nr,
++			blk_t b = *block_nr;
++			flags = block_iterate_ind(&b,
+ 						  *dind_block, offset,
+ 						  ctx);
++			*block_nr = b;
+ 			changed |= flags;
+ 			if (flags & (BLOCK_ABORT | BLOCK_ERROR)) {
+ 				ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	} else {
+ 		for (i = 0; i < limit; i++, block_nr++) {
++			blk_t b = *block_nr;
+ 			if (*block_nr == 0) {
+ 				ctx->bcount += limit;
+ 				continue;
+ 			}
+-			flags = block_iterate_ind(block_nr,
++			flags = block_iterate_ind(&b,
+ 						  *dind_block, offset,
+ 						  ctx);
++			*block_nr = b;
+ 			changed |= flags;
+ 			if (flags & (BLOCK_ABORT | BLOCK_ERROR)) {
+ 				ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	}
+ 	if (changed & BLOCK_CHANGED) {
+@@ -455,7 +463,7 @@ static int block_iterate_tind(blk_t *tin
+ {
+ 	int	ret = 0, changed = 0;
+ 	int	i, flags, limit, offset;
+-	blk_t	*block_nr;
++	__u32	*block_nr;
  
- 	return 0;
+ 	limit = ctx->fs->blocksize >> 2;
+ 	if (!(ctx->flags & (BLOCK_FLAG_DEPTH_TRAVERSE |
+@@ -480,35 +488,39 @@ static int block_iterate_tind(blk_t *tin
+ 		return ret;
+ 	}
+ 
+-	block_nr = (blk_t *) ctx->tind_buf;
++	block_nr = (__u32 *) ctx->tind_buf;
+ 	offset = 0;
+ 	if (ctx->flags & BLOCK_FLAG_APPEND) {
+ 		for (i = 0; i < limit; i++, block_nr++) {
+-			flags = block_iterate_dind(block_nr,
++			blk_t b = *block_nr;
++			flags = block_iterate_dind(&b,
+ 						   *tind_block,
+ 						   offset, ctx);
++			*block_nr = b;
+ 			changed |= flags;
+ 			if (flags & (BLOCK_ABORT | BLOCK_ERROR)) {
+ 				ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	} else {
+ 		for (i = 0; i < limit; i++, block_nr++) {
++			blk_t b = *block_nr;
+ 			if (*block_nr == 0) {
+ 				ctx->bcount += limit*limit;
+ 				continue;
+ 			}
+-			flags = block_iterate_dind(block_nr,
++			flags = block_iterate_dind(&b,
+ 						   *tind_block,
+ 						   offset, ctx);
++			*block_nr = b;
+ 			changed |= flags;
+ 			if (flags & (BLOCK_ABORT | BLOCK_ERROR)) {
+ 				ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+ 				break;
+ 			}
+-			offset += sizeof(blk_t);
++			offset += sizeof(__u32);
+ 		}
+ 	}
+ 	if (changed & BLOCK_CHANGED) {
+@@ -541,7 +553,7 @@ errcode_t ext2fs_block_iterate2(ext2_fil
+ {
+ 	int	i;
+ 	int	ret = 0;
+-	blk_t	blocks[EXT2_N_BLOCKS];	/* directory data blocks */
++	__u32	blocks[EXT2_N_BLOCKS];	/* directory data blocks */
+ 	struct ext2_inode inode;
+ 	errcode_t	retval;
+ 	struct block_context ctx;
+@@ -613,29 +625,34 @@ errcode_t ext2fs_block_iterate2(ext2_fil
+ 	 */
+ 	for (i = 0; i < EXT2_NDIR_BLOCKS ; i++, ctx.bcount++) {
+ 		if (blocks[i] || (flags & BLOCK_FLAG_APPEND)) {
+-			ret |= (*ctx.func)(fs, &blocks[i],
++			blk_t b = blocks[i];
++			ret |= (*ctx.func)(fs, &b,
+ 					    ctx.bcount, 0, i, priv_data);
++			blocks[i] = b;
+ 			if (ret & BLOCK_ABORT)
+ 				goto abort_exit;
+ 		}
+ 	}
+ 	if (*(blocks + EXT2_IND_BLOCK) || (flags & BLOCK_FLAG_APPEND)) {
+-		ret |= block_iterate_ind(blocks + EXT2_IND_BLOCK,
+-					 0, EXT2_IND_BLOCK, &ctx);
++		blk_t b = *(blocks + EXT2_IND_BLOCK);
++		ret |= block_iterate_ind(&b, 0, EXT2_IND_BLOCK, &ctx);
++		*(blocks + EXT2_IND_BLOCK) = b;
+ 		if (ret & BLOCK_ABORT)
+ 			goto abort_exit;
+ 	} else
+ 		ctx.bcount += limit;
+ 	if (*(blocks + EXT2_DIND_BLOCK) || (flags & BLOCK_FLAG_APPEND)) {
+-		ret |= block_iterate_dind(blocks + EXT2_DIND_BLOCK,
+-					  0, EXT2_DIND_BLOCK, &ctx);
++		blk_t b = *(blocks + EXT2_DIND_BLOCK);
++		ret |= block_iterate_dind(&b, 0, EXT2_DIND_BLOCK, &ctx);
++		*(blocks + EXT2_DIND_BLOCK) = b;
+ 		if (ret & BLOCK_ABORT)
+ 			goto abort_exit;
+ 	} else
+ 		ctx.bcount += limit * limit;
+ 	if (*(blocks + EXT2_TIND_BLOCK) || (flags & BLOCK_FLAG_APPEND)) {
+-		ret |= block_iterate_tind(blocks + EXT2_TIND_BLOCK,
+-					  0, EXT2_TIND_BLOCK, &ctx);
++		blk_t b = *(blocks + EXT2_TIND_BLOCK);
++		ret |= block_iterate_tind(&b, 0, EXT2_TIND_BLOCK, &ctx);
++		*(blocks + EXT2_TIND_BLOCK) = b;
+ 		if (ret & BLOCK_ABORT)
+ 			goto abort_exit;
+ 	}
+@@ -643,7 +660,7 @@ errcode_t ext2fs_block_iterate2(ext2_fil
+ abort_exit:
+ 	if (ret & BLOCK_CHANGED) {
+ 		for (i=0; i < EXT2_N_BLOCKS; i++)
+-			inode.i_block[i] = blocks[i];
++			inode.i_block[i] = (__u32)blocks[i];
+ 		retval = ext2fs_write_inode(fs, ino, &inode);
+ 		if (retval)
+ 			return retval;
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ind_block.c
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ind_block.c	2007-06-11 12:48:33.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ind_block.c	2007-06-11 12:48:59.000000000 +0200
+@@ -34,7 +34,7 @@ errcode_t ext2fs_read_ind_block(ext2_fil
+ #ifdef EXT2FS_ENABLE_SWAPFS
+ 	if (fs->flags & (EXT2_FLAG_SWAP_BYTES | EXT2_FLAG_SWAP_BYTES_READ)) {
+ 		int	limit = fs->blocksize >> 2;
+-		blk_t	*block_nr = (blk_t *)buf;
++		__u32	*block_nr = (__u32 *)buf;
+ 		int	i;
+ 
+ 		for (i = 0; i < limit; i++, block_nr++)
+@@ -52,7 +52,7 @@ errcode_t ext2fs_write_ind_block(ext2_fi
+ #ifdef EXT2FS_ENABLE_SWAPFS
+ 	if (fs->flags & (EXT2_FLAG_SWAP_BYTES | EXT2_FLAG_SWAP_BYTES_WRITE)) {
+ 		int	limit = fs->blocksize >> 2;
+-		blk_t	*block_nr = (blk_t *)buf;
++		__u32	*block_nr = (__u32 *)buf;
+ 		int	i;
+ 
+ 		for (i = 0; i < limit; i++, block_nr++)
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2fs.h
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ext2fs.h	2007-06-11 12:48:52.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2fs.h	2007-06-11 12:48:59.000000000 +0200
+@@ -248,7 +248,7 @@ struct struct_ext2_filsys {
+ 	int				inode_blocks_per_group;
+ 	ext2fs_inode_bitmap		inode_map;
+ 	ext2fs_block_bitmap		block_map;
+-	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
++	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, __u32 *blocks);
+ 	errcode_t (*check_directory)(ext2_filsys fs, ext2_ino_t ino);
+ 	errcode_t (*write_bitmaps)(ext2_filsys fs);
+ 	errcode_t (*read_inode)(ext2_filsys fs, ext2_ino_t ino,
+@@ -937,7 +937,7 @@ extern errcode_t ext2fs_write_inode(ext2
+ 			    struct ext2_inode * inode);
+ extern errcode_t ext2fs_write_new_inode(ext2_filsys fs, ext2_ino_t ino,
+ 			    struct ext2_inode * inode);
+-extern errcode_t ext2fs_get_blocks(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
++extern errcode_t ext2fs_get_blocks(ext2_filsys fs, ext2_ino_t ino, __u32 *blocks);
+ extern errcode_t ext2fs_check_directory(ext2_filsys fs, ext2_ino_t ino);
+ 
+ /* inode_io.c */
+Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/inode.c
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/inode.c	2007-06-11 12:48:54.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/inode.c	2007-06-11 12:48:59.000000000 +0200
+@@ -107,7 +107,7 @@ errcode_t ext2fs_open_inode_scan(ext2_fi
+ {
+ 	ext2_inode_scan	scan;
+ 	errcode_t	retval;
+-	errcode_t (*save_get_blocks)(ext2_filsys f, ext2_ino_t ino, blk_t *blocks);
++	errcode_t (*save_get_blocks)(ext2_filsys f, ext2_ino_t ino, __u32 *blocks);
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
+@@ -758,7 +758,7 @@ errcode_t ext2fs_write_new_inode(ext2_fi
  }
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext3_extents.h
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ext3_extents.h	2007-06-11 12:48:33.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext3_extents.h	2007-06-11 12:48:57.000000000 +0200
-@@ -87,6 +87,36 @@ struct ext3_extent_idx {
- 	__u16	ei_unused;
- };
  
-+#ifdef _EXT4FS_
-+#define EXT4_EE_START(e) (((__u64)(e)->ee_start_hi << 32) + (e)->ee_start)
-+#define EXT4_EI_LEAF(ix) (((__u64)(ix)->ei_leaf_hi << 32) + (ix)->ei_leaf)
-+
-+#define EXT4_EE_START_SET(e,blk)			\
-+	do {						\
-+		(e)->ee_start = (blk);			\
-+		(e)->ee_start_hi = (blk) >> 32;		\
-+	} while(0)
-+
-+#define EXT4_EI_LEAF_SET(e,blk)				\
-+	do {						\
-+		(ix)->ei_leaf = (blk);			\
-+		(ix)->ei_leaf_hi = (blk) >> 32;		\
-+	} while(0)
-+#else
-+#define EXT4_EE_START(e)	((e)->ee_start)
-+#define EXT4_EI_LEAF(ix)	((ix)->ei_leaf)
-+
-+#define EXT4_EE_START_SET(e,blk)			\
-+	do {						\
-+		(e)->ee_start = (blk);			\
-+	} while(0)
-+
-+#define EXT4_EI_LEAF_SET(e,blk)				\
-+	do {						\
-+		(ix)->ei_leaf = (blk);			\
-+	} while(0)
-+#endif
-+
- /*
-  * each block (leaves and indexes), even inode-stored has header
-  */
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/bmap.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/bmap.c	2007-06-11 12:48:33.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/bmap.c	2007-06-11 12:48:57.000000000 +0200
-@@ -52,8 +52,8 @@ static errcode_t block_bmap_extents(void
- 				continue;
- 
- 			if (block < ex->ee_block + ex->ee_len)
--				/* FIXME: 48-bit */
--				*phys_blk = ex->ee_start + block - ex->ee_block;
-+				*phys_blk = EXT4_EE_START(ex) +
-+					(block - ex->ee_block);
- 
- 			/* only the first extent > block could hold the block
- 			 * otherwise the extents would overlap */
-@@ -72,7 +72,7 @@ static errcode_t block_bmap_extents(void
- 			if (block < ix->ei_block)
- 				continue;
- 
--			ret = io_channel_read_blk(fs->io, ix->ei_leaf, 1,
-+			ret = io_channel_read_blk(fs->io, EXT4_EI_LEAF(ix), 1,
- 						  block_buf);
- 			if (ret)
- 				goto free_buf;
+  
+-errcode_t ext2fs_get_blocks(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks)
++errcode_t ext2fs_get_blocks(ext2_filsys fs, ext2_ino_t ino, __u32 *blocks)
+ {
+ 	struct ext2_inode	inode;
+ 	int			i;
 Index: e2fsprogs-1.39-tyt3-v6/e2fsck/pass1.c
 ===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/e2fsck/pass1.c	2007-06-11 12:48:54.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/e2fsck/pass1.c	2007-06-11 12:48:57.000000000 +0200
-@@ -1604,6 +1604,10 @@ static int e2fsck_ext_block_verify(struc
- 	e2fsck_t ctx = p->ctx;
- 	struct problem_context *pctx = p->pctx;
- 	int i, problem = 0;
-+	int flag_64bit;
-+
-+	flag_64bit = p->ctx->fs->super->s_feature_incompat &
-+			EXT4_FEATURE_INCOMPAT_64BIT;
+--- e2fsprogs-1.39-tyt3-v6.orig/e2fsck/pass1.c	2007-06-11 12:48:57.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/e2fsck/pass1.c	2007-06-11 12:48:59.000000000 +0200
+@@ -2433,7 +2433,7 @@ static void mark_table_blocks(e2fsck_t c
+  * the inode again.
+  */
+ static errcode_t pass1_get_blocks(ext2_filsys fs, ext2_ino_t ino,
+-				  blk_t *blocks)
++				  __u32 *blocks)
+ {
+ 	e2fsck_t ctx = (e2fsck_t) fs->priv_data;
+ 	int	i;
+Index: e2fsprogs-1.39-tyt3-v6/misc/e2image.c
+===================================================================
+--- e2fsprogs-1.39-tyt3-v6.orig/misc/e2image.c	2007-06-11 12:48:54.000000000 +0200
++++ e2fsprogs-1.39-tyt3-v6/misc/e2image.c	2007-06-11 12:48:59.000000000 +0200
+@@ -165,7 +165,7 @@ static struct ext2_inode *stashed_inode;
  
- 	if (ext2fs_extent_header_verify(eh, buflen))
- 		return PR_1_EXTENT_IDX_BAD;
-@@ -1618,9 +1622,8 @@ static int e2fsck_ext_block_verify(struc
- 		struct ext3_extent *ex = EXT_FIRST_EXTENT(eh), *ex_prev = NULL;
- 
- 		for (i = 0; i < eh->eh_entries; i++, ex++) {
--			/* FIXME: 48-bit check for s_blocks_count_hi */
--			if (ex->ee_start_hi && fix_problem(ctx, PR_1_EXTENT_HI,
--							   pctx)) {
-+			if (!flag_64bit && ex->ee_start_hi &&
-+				fix_problem(ctx, PR_1_EXTENT_HI, pctx)) {
- 				ex->ee_start_hi = 0;
- 				problem = PR_1_EXTENT_CHANGED;
- 			}
-@@ -1644,9 +1647,9 @@ static int e2fsck_ext_block_verify(struc
- 		struct ext3_extent_idx *ix =EXT_FIRST_INDEX(eh), *ix_prev =NULL;
- 
- 		for (i = 0; i < eh->eh_entries; i++, ix++) {
--			/* FIXME: 48-bit check for s_blocks_count_hi */
--			if (ix->ei_leaf_hi && fix_problem(ctx, PR_1_EXTENT_HI,
--							  pctx)) {
-+			if (!flag_64bit &&
-+			    ix->ei_leaf_hi && 
-+			    fix_problem(ctx, PR_1_EXTENT_HI, pctx)) {
- 				ix->ei_leaf_hi = ix->ei_unused = 0;
- 				problem = PR_1_EXTENT_CHANGED;
- 			}
+ static errcode_t meta_get_blocks(ext2_filsys fs EXT2FS_ATTR((unused)), 
+ 				 ext2_ino_t ino,
+-				 blk_t *blocks)
++				 __u32 *blocks)
+ {
+ 	int	i;
+ 	
 
---------------000002090604020901020609--
+--------------040706060006070604000008--
