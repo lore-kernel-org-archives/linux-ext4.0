@@ -1,74 +1,108 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [BUG] fs/buffer.c:1821 in 2.6.22-rc4-mm2
-Date: Mon, 11 Jun 2007 00:55:29 -0700
-Message-ID: <20070611005529.422d1678.akpm@linux-foundation.org>
-References: <20070610155714.GA21592@alice>
+From: Karsten Hopp <karsten@redhat.com>
+Subject: Re: Patch to support LUKS UUIDs in libblkid
+Date: Mon, 11 Jun 2007 13:51:24 +0200
+Message-ID: <466D373C.6000502@redhat.com>
+References: <4665479E.2060707@redhat.com> <20070608153600.GA9726@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Nick Piggin <nickpiggin@yahoo.com.au>
-To: Eric Sesterhenn / Snakebyte <snakebyte@gmx.de>
+Content-Type: multipart/mixed;
+ boundary="------------070301080601080808090700"
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:58413 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751926AbXFKHzj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Jun 2007 03:55:39 -0400
-In-Reply-To: <20070610155714.GA21592@alice>
+Received: from mx1.redhat.com ([66.187.233.31]:36674 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751184AbXFKLvf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jun 2007 07:51:35 -0400
+In-Reply-To: <20070608153600.GA9726@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 10 Jun 2007 17:57:14 +0200 Eric Sesterhenn / Snakebyte <snakebyte@gmx.de> wrote:
+This is a multi-part message in MIME format.
+--------------070301080601080808090700
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> hi,
+Theodore Tso schrieb:
+> In addition to the comments already posted:
 > 
-> i got the following BUG while running the syscalls.sh
-> from ltp-full-20070531 on an ext3 partition, it is easily reproducible
-> for me
+>> +/* check it manually as using LUKS_read_phdr from libcryptsetup
+>> + * prints too many warnings if it isn't a luks partition and would add a
+>> + * dependency on the lib */
+>> +static int probe_luks(struct blkid_probe *probe,
+>> +		       struct blkid_magic *id __BLKID_ATTR((unused)), 
+>> +		       unsigned char *buf)
+>> +{
+>> +	const char *luks_magic = id->bim_magic;
+>> +	unsigned char *p_buf = buf;
+>> +	unsigned char uuid[40];
+>> +	if(strncmp(buf, luks_magic, strlen(luks_magic)) == 0)   /* ID matches, continue */
 > 
-> [  476.338068] ------------[ cut here ]------------
-> [  476.338223] kernel BUG at fs/buffer.c:1821!
-> [  476.338324] invalid opcode: 0000 [#1]
-> [  476.338423] PREEMPT 
-> [  476.338665] Modules linked in:
-> [  476.338833] CPU:    0
-> [  476.338836] EIP:    0060:[<c01a1914>]    Not tainted VLI
-> [  476.338840] EFLAGS: 00010202   (2.6.22-rc4-mm2 #1)
-> [  476.339206] EIP is at __block_prepare_write+0x64/0x410
-> [  476.339311] eax: 00000001   ebx: c136fbb8   ecx: c07faf28   edx:
-> 00000001
-> [  476.339417] esi: c1dc9040   edi: c32d2dfc   ebp: c3733db8   esp:
-> c3733d50
-> [  476.339584] ds: 007b   es: 007b   fs: 0000  gs: 0033  ss: 0068
-> [  476.339690] Process vmsplice01 (pid: 7680, ti=c3733000 task=c351ed60
-> task.ti=c3733000)
-> [  476.339796] Stack: c3733d70 c0143e76 c1a0eab0 00000046 00000000
-> c2509d64 00000cd8 c136fbb8 
-> [  476.340675]        c32d2dfc 00000296 c02313b6 c1086088 00000050
-> c02313b6 c1dc9040 c2509d50 
-> [  476.341491]        c1dc9054 c3733dc4 c02313e9 c3733dbc c015728d
-> c32d2f0c 00000000 c136fbb8 
-> [  476.342371] Call Trace:
-> [  476.342565]  [<c01a1d83>] block_write_begin+0x83/0xf0
-> [  476.342804]  [<c0207778>] ext3_write_begin+0xc8/0x1c0
-> [  476.342987]  [<c01595bf>] pagecache_write_begin+0x4f/0x150
-> [  476.343243]  [<c019db3b>] pipe_to_file+0x9b/0x170
-> [  476.343418]  [<c019d4b0>] __splice_from_pipe+0x70/0x260
-> [  476.343654]  [<c019d6e8>] splice_from_pipe+0x48/0x70
-> [  476.343828]  [<c019d9f8>] generic_file_splice_write+0x88/0x130
-> [  476.344066]  [<c019d267>] do_splice_from+0xb7/0xc0
-> [  476.344240]  [<c019ea51>] sys_splice+0x1a1/0x230
-> [  476.344474]  [<c01043be>] sysenter_past_esp+0x5f/0x99
-> [  476.344656]  [<ffffe410>] 0xffffe410
-> [  476.344882]  =======================
-> [  476.344984] INFO: lockdep is turned off.
-> [  476.345084] Code: 00 0f 97 c2 e8 ee 2f 22 00 85 c0 74 04 0f 0b eb fe
-> 31 d2 b8 28 af 7f c0 81 7d 08 00 10 00 00 0f 97 c2 e8 d0 2f 22 00 85 c0
-> 74 04 <0f> 0b eb fe 8b 55 08 39 55 b0 0f 97 c0 0f b6 d0 b8 0c af 7f c0 
-> [  476.350365] EIP: [<c01a1914>] __block_prepare_write+0x64/0x410 SS:ESP
-> 0068:c3733d50
+> There's no point in doing this check, since it's replicating a check
+> already done in the generic code.  The probe function won't be called
+> if the bim_magic didn't match the specified offset. 
+> 
+> 						- Ted
 
-Yep, vmsplice01 is not supported on -mm kernels ;)
+Thanks everyone for the replys.
+I'll attach a new patch with the suggested fixes.
 
-Nick has a protofix but I don't think it's been tested yet.
+    Karsten
+
+--
+  Karsten Hopp        | Mail: karsten@redhat.de
+  Red Hat Deutschland | Tel: +49-711-96437-0
+  Hauptstaetterstr.58 | Fax: +49-711-613590
+  D-70178 Stuttgart   | http://www.redhat.de
+
+--------------070301080601080808090700
+Content-Type: text/x-patch;
+ name="e2fsprogs-1.39-luks.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="e2fsprogs-1.39-luks.patch"
+
+e2fsprogs-1.39-luks.patch
+Problem:        libblkid doesn't detect/report UUIDs of cryptsetup-luks partitions
+Solution:       Add probe for luks UUID
+Signed-off-by:  Karsten Hopp <karsten@redhat.com>
+
+--- e2fsprogs-1.39/lib/blkid/ChangeLog.luksuuid	2007-06-11 13:40:14.000000000 +0200
++++ e2fsprogs-1.39/lib/blkid/ChangeLog	2007-06-11 13:40:14.000000000 +0200
+@@ -0,0 +1,4 @@
++2007-05-22  Karsten Hopp  <karsten@redhat.com> 
++
++	* probe.c (probe_luks): Add support for cryptsetup-luks partitions
++
+--- e2fsprogs-1.39/lib/blkid/probe.c.luksuuid	2007-06-11 13:40:14.000000000 +0200
++++ e2fsprogs-1.39/lib/blkid/probe.c	2007-06-11 13:46:28.000000000 +0200
+@@ -468,6 +468,20 @@ static int probe_jfs(struct blkid_probe 
+ 	return 0;
+ }
+ 
++static int probe_luks(struct blkid_probe *probe,
++		       struct blkid_magic *id __BLKID_ATTR((unused)), 
++		       unsigned char *buf)
++{
++	unsigned char *p_buf = buf;
++	unsigned char uuid[40];
++	/* 168 is the offset to the 40 character uuid: 
++	 * http://luks.endorphin.org/LUKS-on-disk-format.pdf */
++	p_buf += 168;
++	strncpy(uuid, p_buf, 40);
++	blkid_set_tag(probe->dev, "UUID", uuid, sizeof(uuid));
++	return 0;
++}
++
+ static int probe_romfs(struct blkid_probe *probe,
+ 		       struct blkid_magic *id __BLKID_ATTR((unused)), 
+ 		       unsigned char *buf)
+@@ -775,6 +789,7 @@ static struct blkid_magic type_array[] =
+   { "ocfs2",	 2,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
++  { "crypt_LUKS",0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
+   {   NULL,	 0,	 0,  0, NULL,			NULL }
+ };
+ 
+
+--------------070301080601080808090700--
