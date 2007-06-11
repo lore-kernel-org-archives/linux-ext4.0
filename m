@@ -1,120 +1,43 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: [RFC][PATCH 12/12] 48-bit block number for ACL in e2fsprogs
-Date: Mon, 11 Jun 2007 18:54:50 +0200
-Message-ID: <466D7E5A.6080805@bull.net>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC][PATCH 4/12] convert some block types in e2fsprogs
+Date: Mon, 11 Jun 2007 15:59:30 -0500
+Message-ID: <20070611155930.0bbcccbf@gara>
+References: <466D7B74.5000207@bull.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050900070805020000050505"
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49397 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753973AbXFKQx2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 12:53:28 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:45168 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751251AbXFKVAA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2007 17:00:00 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5BL00En014893
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Jun 2007 17:00:00 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5BKxuCm263868
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Jun 2007 15:00:00 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5BKxu16025366
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Jun 2007 14:59:56 -0600
+In-Reply-To: <466D7B74.5000207@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------050900070805020000050505
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+On Mon, 11 Jun 2007 18:42:28 +0200
+Valerie Clement <valerie.clement@bull.net> wrote:
 
-This patch is intended to contain the changes to support 48-bit block
-numbers for ACL. For now, it only contains modifications in the inode
-structure. It has to be completed.
+> This patch converts some int or unsigned int block number definitions
+> to blk_t type.  Most conversions are necessary for 64-bit porting.
 
-  ext2_fs.h |   10 ++++++----
-  swapfs.c  |    6 ++++--
-  2 files changed, 10 insertions(+), 6 deletions(-)
+What about unsigned long?  There are various places where block is
+represented by using unsigned long which is 32-bit when running 32 bit
+binaries. Most PPC64 distributions compile their user-space tools in
+32-bit binaries.
 
+I wonder how badly it will break.
 
---------------050900070805020000050505
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
- name="12-handle-i_file_acl_high-in-inode"
-Content-Disposition: inline;
- filename="12-handle-i_file_acl_high-in-inode"
-
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/ext2_fs.h	2007-06-11 15:31:48.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/ext2_fs.h	2007-06-11 15:39:34.000000000 +0200
-@@ -339,7 +339,7 @@ struct ext2_inode {
- 	union {
- 		struct {
- 			__u16	l_i_blocks_hi;
--			__u16	i_pad1;
-+			__u16	l_i_file_acl_high;
- 			__u16	l_i_uid_high;	/* these 2 fields    */
- 			__u16	l_i_gid_high;	/* were reserved2[0] */
- 			__u32	l_i_reserved2;
-@@ -355,7 +355,7 @@ struct ext2_inode {
- 		struct {
- 			__u8	m_i_frag;	/* Fragment number */
- 			__u8	m_i_fsize;	/* Fragment size */
--			__u16	m_pad1;
-+			__u16	m_i_file_acl_high;
- 			__u32	m_i_reserved2[2];
- 		} masix2;
- 	} osd2;				/* OS dependent 2 */
-@@ -395,7 +395,7 @@ struct ext2_inode_large {
- 	union {
- 		struct {
- 			__u16	l_i_blocks_hi;
--			__u16	i_pad1;
-+			__u16	l_i_file_acl_high;
- 			__u16	l_i_uid_high;	/* these 2 fields    */
- 			__u16	l_i_gid_high;	/* were reserved2[0] */
- 			__u32	l_i_reserved2;
-@@ -411,7 +411,7 @@ struct ext2_inode_large {
- 		struct {
- 			__u8	m_i_frag;	/* Fragment number */
- 			__u8	m_i_fsize;	/* Fragment size */
--			__u16	m_pad1;
-+			__u16	m_i_file_acl_high;
- 			__u32	m_i_reserved2[2];
- 		} masix2;
- 	} osd2;				/* OS dependent 2 */
-@@ -430,6 +430,7 @@ struct ext2_inode_large {
- #define i_reserved1	osd1.linux1.l_i_reserved1
- #define i_frag		osd2.linux2.l_i_frag
- #define i_fsize		osd2.linux2.l_i_fsize
-+#define i_file_acl_high	osd2.linux2.l_i_file_acl_high
- #define i_uid_low	i_uid
- #define i_gid_low	i_gid
- #define i_uid_high	osd2.linux2.l_i_uid_high
-@@ -452,6 +453,7 @@ struct ext2_inode_large {
- #define i_reserved1	osd1.masix1.m_i_reserved1
- #define i_frag		osd2.masix2.m_i_frag
- #define i_fsize		osd2.masix2.m_i_fsize
-+#define i_file_acl_high	osd2.masix2.m_i_file_acl_high
- #define i_reserved2	osd2.masix2.m_i_reserved2
- 
- #endif  /* __masix__ */
-Index: e2fsprogs-1.39-tyt3-v6/lib/ext2fs/swapfs.c
-===================================================================
---- e2fsprogs-1.39-tyt3-v6.orig/lib/ext2fs/swapfs.c	2007-06-11 15:31:48.000000000 +0200
-+++ e2fsprogs-1.39-tyt3-v6/lib/ext2fs/swapfs.c	2007-06-11 15:39:34.000000000 +0200
-@@ -213,7 +213,8 @@ void ext2fs_swap_inode_full(ext2_filsys 
- 			ext2fs_swab32(f->osd1.linux1.l_i_version);
- 		t->osd2.linux2.l_i_blocks_hi = 
- 			ext2fs_swab16(f->osd2.linux2.l_i_blocks_hi);
--		t->osd2.linux2.i_pad1 = ext2fs_swab16(f->osd2.linux2.i_pad1);
-+		t->osd2.linux2.l_i_file_acl_high =
-+			ext2fs_swab16(f->osd2.linux2.l_i_file_acl_high);
- 		t->osd2.linux2.l_i_uid_high =
- 		  ext2fs_swab16 (f->osd2.linux2.l_i_uid_high);
- 		t->osd2.linux2.l_i_gid_high =
-@@ -240,7 +241,8 @@ void ext2fs_swap_inode_full(ext2_filsys 
- 			ext2fs_swab32(f->osd1.masix1.m_i_reserved1);
- 		t->osd2.masix2.m_i_frag = f->osd2.masix2.m_i_frag;
- 		t->osd2.masix2.m_i_fsize = f->osd2.masix2.m_i_fsize;
--		t->osd2.masix2.m_pad1 = ext2fs_swab16(f->osd2.masix2.m_pad1);
-+		t->osd2.masix2.m_i_file_acl_high =
-+			ext2fs_swab16(f->osd2.masix2.m_i_file_acl_high);
- 		t->osd2.masix2.m_i_reserved2[0] =
- 			ext2fs_swab32(f->osd2.masix2.m_i_reserved2[0]);
- 		t->osd2.masix2.m_i_reserved2[1] =
-
---------------050900070805020000050505--
+-JRS
