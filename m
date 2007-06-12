@@ -1,34 +1,52 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC][PATCH 12/12] 48-bit block number for ACL in e2fsprogs
-Date: Tue, 12 Jun 2007 04:17:06 -0600
-Message-ID: <20070612101706.GQ5181@schatzie.adilger.int>
-References: <466D7E5A.6080805@bull.net>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [RFC][PATCH 0/12] e2fsprogs: add 64-bit support
+Date: Tue, 12 Jun 2007 13:25:37 +0200
+Message-ID: <466E82B1.5000709@bull.net>
+References: <466D7B54.7050005@bull.net> <20070611231248.GE5181@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Theodore Tso <tytso@mit.edu>,
 	ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:41861 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752106AbXFLKRI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 06:17:08 -0400
-Content-Disposition: inline
-In-Reply-To: <466D7E5A.6080805@bull.net>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49218 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753660AbXFLLYT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 07:24:19 -0400
+In-Reply-To: <20070611231248.GE5181@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 11, 2007  18:54 +0200, Valerie Clement wrote:
-> This patch is intended to contain the changes to support 48-bit block
-> numbers for ACL. For now, it only contains modifications in the inode
-> structure. It has to be completed.
+Andreas Dilger wrote:
+> On Jun 11, 2007  18:41 +0200, Valerie Clement wrote:
+>> This patchset is also not complete:
+>> TODO:
+>>   - update code under ext2ed/,
+>=20
+> This code should just be removed entirely.  It is dangerous to use, a=
+nd
+> by including it in e2fsprogs it lends a false sense of credibility to
+> the code.  Hopefully most of the functionality here has been incorpor=
+ated
+> into debugfs?
+>=20
+OK.
 
-This should go in ASAP, if just to reserve the fields.  If we are in
-there, it probably makes sense to rename this "i_file_ea" and "i_file_ea_hi"?
-And also replace i_dir_acl with i_size_hi?
+>> Code compiled, booted and briefly tested on a 20TB device (mkfs,=20
+>> debugfs, e2fsck, dumpe2fs, filefrag tested)
+>> Some non-regression tests also done on ext3 filesystems when compili=
+ng=20
+>> code without _EXT4FS_ option.
+>=20
+> Did you run the "make check" tests?  We've found these invaluable for
+> catching regressions.  Ideally there would also be some test cases
+> for this support using "lazy_bg", a script to generate the filesystem=
+,
+> and conditional upon being able to create sparse files that big.
+>=20
+I missed to mention that some changes have to be done under tests/ too.
+Without changes, "make check" fails.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+     Val=E9rie
