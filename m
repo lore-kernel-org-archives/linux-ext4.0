@@ -1,49 +1,32 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Tue, 12 Jun 2007 18:11:28 +1000
-Message-ID: <20070612081128.GS86004887@sgi.com>
-References: <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com> <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: Add EXT4_IOC_MIGRATE ioctl
+Date: Tue, 12 Jun 2007 03:24:29 -0600
+Message-ID: <20070612092429.GK5181@schatzie.adilger.int>
+References: <20070612064757.GA12991@skywalker.home.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	Suparna Bhattacharya <suparna@in.ibm.com>, torvalds@osdl.org,
-	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, cmm@us.ibm.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([206.168.112.78]:35207 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751260AbXFLJYa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 05:24:30 -0400
 Content-Disposition: inline
-In-Reply-To: <20070612061652.GA6320@amitarora.in.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20070612064757.GA12991@skywalker.home.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 12, 2007 at 11:46:52AM +0530, Amit K. Arora wrote:
-> On Sat, May 12, 2007 at 06:01:57PM +1000, David Chinner wrote:
-> > Minimal definition to replace what applicaitons use on XFS and to
-> > support poasix_fallocate are the thre that have been mentioned so
-> > far (FA_ALLOCATE, FA_PREALLOCATE, FA_DEALLOCATE). I'll document them
-> > all in a man page...
-> 
-> Hi Dave,
-> 
-> Did you get time to write the above man page ? It will help to push
-> further patches in time (eg. for FA_PREALLOCATE mode).
+On Jun 12, 2007  12:17 +0530, Aneesh Kumar K.V wrote:
+> The below patch add ioctl for migrating ext3 indirect block mapped inode
+> to ext4 extent mapped inode.
 
-No, I didn't. Instead of working on new preallocation stuff, I've
-been spending all my time fixing bugs found by new and interesting
-(ab)uses of preallocation and hole punching.
+How does this relate to the migrate ioctl used by Takashi in the current
+ext4 defragmenter patch series?  Ideally, the code shouldn't really care
+whether it is migrating from/to a block-mapped or extent-mapped file.
 
-> The idea I had was to push the patch with bare minimum functionality
-> (FA_ALLOCATE and FA_DEALLOCATE modes) and parallely finalize on other
-> new mode(s) based on the man page you planned to provide.
-
-Push them. I'll just make XFS work with whatever is provided.
-Is there a test harness for the syscall yet?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
