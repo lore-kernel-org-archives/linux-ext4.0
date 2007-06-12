@@ -1,73 +1,49 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+From: David Chinner <dgc@sgi.com>
 Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Tue, 12 Jun 2007 11:46:52 +0530
-Message-ID: <20070612061652.GA6320@amitarora.in.ibm.com>
-References: <20070420145918.GY355@devserv.devel.redhat.com> <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com> <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com>
+Date: Tue, 12 Jun 2007 18:11:28 +1000
+Message-ID: <20070612081128.GS86004887@sgi.com>
+References: <20070424121632.GA10136@amitarora.in.ibm.com> <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com> <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Suparna Bhattacharya <suparna@in.ibm.com>, torvalds@osdl.org,
+Cc: David Chinner <dgc@sgi.com>,
+	Suparna Bhattacharya <suparna@in.ibm.com>, torvalds@osdl.org,
 	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com, cmm@us.ibm.com
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:44335 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750775AbXFLHLG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 03:11:06 -0400
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20070512080157.GF85884050@sgi.com>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070612061652.GA6320@amitarora.in.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, May 12, 2007 at 06:01:57PM +1000, David Chinner wrote:
-> On Fri, May 11, 2007 at 04:33:01PM +0530, Suparna Bhattacharya wrote:
-> > On Fri, May 11, 2007 at 08:39:50AM +1000, David Chinner wrote:
-> > > All I'm really interested in right now is that the fallocate
-> > > _interface_ can be used as a *complete replacement* for the
-> > > pre-existing XFS-specific ioctls that are already used by
-> > > applications.  What ext4 can or can't do right now is irrelevant to
-> > > this discussion - the interface definition needs to take priority
-> > > over implementation....
-> > 
-> > Would you like to write up an interface definition description (likely
-> > man page) and post it for review, possibly with a mention of apps using
-> > it today ?
+On Tue, Jun 12, 2007 at 11:46:52AM +0530, Amit K. Arora wrote:
+> On Sat, May 12, 2007 at 06:01:57PM +1000, David Chinner wrote:
+> > Minimal definition to replace what applicaitons use on XFS and to
+> > support poasix_fallocate are the thre that have been mentioned so
+> > far (FA_ALLOCATE, FA_PREALLOCATE, FA_DEALLOCATE). I'll document them
+> > all in a man page...
 > 
-> Yeah, I started doing that yesterday as i figured it was the only way
-> to cut the discussion short....
+> Hi Dave,
 > 
-> > One reason for introducing the mode parameter was to allow the interface to
-> > evolve incrementally as more options / semantic questions are proposed, so
-> > that we don't have to make all the decisions right now. 
-> > So it would be good to start with a *minimal* definition, even just one mode.
-> > The rest could follow as subsequent patches, each being reviewed and debated
-> > separately. Otherwise this discussion can drag on for a long time.
-> 
-> Minimal definition to replace what applicaitons use on XFS and to
-> support poasix_fallocate are the thre that have been mentioned so
-> far (FA_ALLOCATE, FA_PREALLOCATE, FA_DEALLOCATE). I'll document them
-> all in a man page...
+> Did you get time to write the above man page ? It will help to push
+> further patches in time (eg. for FA_PREALLOCATE mode).
 
-Hi Dave,
+No, I didn't. Instead of working on new preallocation stuff, I've
+been spending all my time fixing bugs found by new and interesting
+(ab)uses of preallocation and hole punching.
 
-Did you get time to write the above man page ? It will help to push
-further patches in time (eg. for FA_PREALLOCATE mode).
+> The idea I had was to push the patch with bare minimum functionality
+> (FA_ALLOCATE and FA_DEALLOCATE modes) and parallely finalize on other
+> new mode(s) based on the man page you planned to provide.
 
-The idea I had was to push the patch with bare minimum functionality
-(FA_ALLOCATE and FA_DEALLOCATE modes) and parallely finalize on other
-new mode(s) based on the man page you planned to provide.
+Push them. I'll just make XFS work with whatever is provided.
+Is there a test harness for the syscall yet?
 
-Thanks!
---
-Regards,
-Amit Arora
+Cheers,
 
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> Principal Engineer
-> SGI Australian Software Group
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
