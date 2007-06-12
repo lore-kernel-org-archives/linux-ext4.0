@@ -1,78 +1,86 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [RFC][PATCH 4/12] convert some block types in e2fsprogs
-Date: Tue, 12 Jun 2007 09:57:57 -0500
-Message-ID: <20070612095757.2f1fe23d@gara>
-References: <466D7B74.5000207@bull.net>
-	<20070611155930.0bbcccbf@gara>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Fix deadlock of ext3_remount() and orphan list handling (fwd)
+Date: Tue, 12 Jun 2007 17:54:39 +0200
+Message-ID: <20070612155439.GE6590@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Valerie Clement <valerie.clement@bull.net>,
-	Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:39620 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752674AbXFLO61 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jun 2007 10:58:27 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5CEwQo9032522
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 10:58:26 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5CEwQoU546796
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 10:58:26 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5CEwP3d011266
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 10:58:25 -0400
-In-Reply-To: <20070611155930.0bbcccbf@gara>
+Received: from styx.suse.cz ([82.119.242.94]:47921 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753919AbXFLPlr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jun 2007 11:41:47 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 11 Jun 2007 15:59:30 -0500
-"Jose R. Santos" <jrs@us.ibm.com> wrote:
+  Resending the message as I've screwed up the mailing list address...
 
-> On Mon, 11 Jun 2007 18:42:28 +0200
-> Valerie Clement <valerie.clement@bull.net> wrote:
-> 
-> > This patch converts some int or unsigned int block number definitions
-> > to blk_t type.  Most conversions are necessary for 64-bit porting.
-> 
-> What about unsigned long?  There are various places where block is
-> represented by using unsigned long which is 32-bit when running 32 bit
-> binaries. Most PPC64 distributions compile their user-space tools in
-> 32-bit binaries.
-> 
-> I wonder how badly it will break.
+									Honza
+----- Forwarded message from Jan Kara <jack@suse.cz> -----
 
-I found a PPC64 box to test this out and it seems to break pretty badly
-when compiled in the default 32bit mode.  Should ext2_get_device_size()
-fail if the number of block is greater than 2**32 and the size of
-unsigned long is 4?  At least until it can be verified that this will
-work under 32bit binaries since it could corrupt a filesystem to do
-an fsck.
+From: Jan Kara <jack@suse.cz>
+To: ext4-devel@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, Mark Lord <lkml@rtr.ca>
+Subject: [PATCH] Fix deadlock of ext3_remount() and orphan list handling
 
-mke2fs 1.39-tyt3 (29-Apr-2007)
+  Hi,
 
-Warning:Filesystem greater than 2**32 blocks, 64-bit incompatible feature forced.
+  attached patch should fix deadlock Mark Lord has experienced
+(http://lkml.org/lkml/2007/6/8/601). Please have a look whether the change
+looks sane. I think so but ...
 
-Filesystem label=
-OS type: Linux
-Block size=1024 (log=0)
-Fragment size=1024 (log=0)
-4194304 inodes, 5 blocks
-0 blocks (0.00%) reserved for the super user
-First data block=1
-524288 block groups
-8192 blocks per group, 8192 fragments per group
-8 inodes per group
-Superblock backups stored on blocks: 
-        267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 
-        267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 
-        267387660, 267387660, 267387660, 267387660, 267387660, 267387660, 
-        267387660, 267387660, 267387660, 267387660
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
 
-mke2fs: Could not allocate block in ext2 filesystem while trying to allocate filesystem tables
+ext3_orphan_add() and ext3_orphan_del() functions lock sb->s_lock with
+a transaction started with ext3_mark_recovery_complete() waits for
+a transaction holding sb->s_lock, thus leading to a possible deadlock.
+At the moment we call ext3_mark_recovery_complete() from ext3_remount()
+we have done all the work needed for remounting and thus we are safe
+to drop sb->s_lock before we wait for transactions to commit. Note
+that at this moment we are still guarded by s_umount lock against
+other remounts/umounts.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.22-rc4/fs/ext3/super.c linux-2.6.22-rc4-1-ext3_orphan_deadlock/fs/ext3/super.c
+--- linux-2.6.22-rc4/fs/ext3/super.c	2007-06-11 12:29:06.000000000 +0200
++++ linux-2.6.22-rc4-1-ext3_orphan_deadlock/fs/ext3/super.c	2007-06-12 12:51:42.000000000 +0200
+@@ -2139,12 +2139,14 @@ static void ext3_mark_recovery_complete(
+ 
+ 	journal_lock_updates(journal);
+ 	journal_flush(journal);
++	lock_super(sb);
+ 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
+ 	    sb->s_flags & MS_RDONLY) {
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		sb->s_dirt = 0;
+ 		ext3_commit_super(sb, es, 1);
+ 	}
++	unlock_super(sb);
+ 	journal_unlock_updates(journal);
+ }
+ 
+@@ -2333,7 +2335,13 @@ static int ext3_remount (struct super_bl
+ 			    (sbi->s_mount_state & EXT3_VALID_FS))
+ 				es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 
++			/*
++			 * We have to unlock super so that we can wait for
++			 * transactions.
++			 */
++			unlock_super(sb);
+ 			ext3_mark_recovery_complete(sb, es);
++			lock_super(sb);
+ 		} else {
+ 			__le32 ret;
+ 			if ((ret = EXT3_HAS_RO_COMPAT_FEATURE(sb,
 
 
--JRS
+----- End forwarded message -----
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
