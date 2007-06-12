@@ -1,56 +1,77 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Add EXT4_IOC_MIGRATE ioctl
-Date: Tue, 12 Jun 2007 15:21:15 +0530
-Message-ID: <466E6C93.2070205@linux.vnet.ibm.com>
-References: <20070612064757.GA12991@skywalker.home.org> <20070612092429.GK5181@schatzie.adilger.int>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [RFC][PATCH 6/12] handling of 64-bit block counts in e2fsprofs
+Date: Tue, 12 Jun 2007 04:02:20 -0600
+Message-ID: <20070612100220.GM5181@schatzie.adilger.int>
+References: <466D7B83.2010508@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Takashi Sato <sho@tnes.nec.co.jp>
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:34859 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750741AbXFLJwF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 05:52:05 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l5CADK8k172092
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 20:13:20 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5C9tQV7038548
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 19:55:27 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5C9pXqt018363
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 19:51:44 +1000
-In-Reply-To: <20070612092429.GK5181@schatzie.adilger.int>
+Received: from mail.clusterfs.com ([206.168.112.78]:52705 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751354AbXFLKCW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2007 06:02:22 -0400
+Content-Disposition: inline
+In-Reply-To: <466D7B83.2010508@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Jun 11, 2007  18:42 +0200, Valerie Clement wrote:
+> +#ifdef _EXT4FS_
+> +#define EXT2_BLOCKS_PER_GROUP(s)	((__u64)EXT2_SB(s)->s_blocks_per_group)
+> +#else
+>  #define EXT2_BLOCKS_PER_GROUP(s)	(EXT2_SB(s)->s_blocks_per_group)
+> +#endif
+
+Are there actually plans for s_blocks_per_group > 2^32?  We can already handle
+up to 2^32 groups, so we have plenty of room to spare.
+
+> @@ -573,6 +577,54 @@ struct ext2_super_block {
+>  	__u32	s_reserved[167];	/* Padding to the end of the block */
+>  };
+>  
+> +#ifdef _EXT4FS_
+> +#define EXT2_BLOCKS_COUNT(s)						\
+> +	((s)->s_blocks_count + ((__u64)(s)->s_blocks_count_hi << 32))
+> +
+> +#define EXT2_BLOCKS_COUNT_SET(s, v)			\
+> +	do {						\
+> +		(s)->s_blocks_count = (v);		\
+> +		(s)->s_blocks_count_hi = (v) >> 32;	\
+> +	} while (0)
+> +
+> +#define EXT2_R_BLOCKS_COUNT(s)						\
+> +	((s)->s_r_blocks_count + ((__u64)(s)->s_r_blocks_count_hi << 32))
+> +
+> +#define EXT2_R_BLOCKS_COUNT_SET(s, v)			\
+> +	do {						\
+> +		(s)->s_r_blocks_count = (v);		\
+> +		(s)->s_r_blocks_count_hi = (v) >> 32;	\
+> +	} while (0)
+> +
+> +#define EXT2_FREE_BLOCKS_COUNT(s)					\
+> +	((s)->s_free_blocks_count + ((__u64)(s)->s_free_blocks_hi << 32))
+> +
+> +#define EXT2_FREE_BLOCKS_COUNT_SET(s, v)		\
+> +	do {						\
+> +		(s)->s_free_blocks_count = (v);		\
+> +		(s)->s_free_blocks_hi = (v) >> 32;	\
+> +	} while (0)
+> +#else
+> +#define EXT2_BLOCKS_COUNT(s)		((s)->s_blocks_count)
+> +#define EXT2_R_BLOCKS_COUNT(s)		((s)->s_r_blocks_count)
+> +#define EXT2_FREE_BLOCKS_COUNT(s)	((s)->s_free_blocks_count)
+
+I don't think any of this (above or in most/all of the rest of this patch)
+should be conditional upon #ifdef _EXT4FS_.  Instead, it should depend on
+INCOMPAT_64BIT being set in the superblock.  I don't think it introduces
+any compatibility issues by itself.
 
 
-Andreas Dilger wrote:
-> On Jun 12, 2007  12:17 +0530, Aneesh Kumar K.V wrote:
->> The below patch add ioctl for migrating ext3 indirect block mapped inode
->> to ext4 extent mapped inode.
-> 
-> How does this relate to the migrate ioctl used by Takashi in the current
-> ext4 defragmenter patch series?  
-
-You mean EXT4_IOC_DEFRAG ?.  I guess the last version of defragmentation 
-patches (ver4) handled only extent mapped inode.
-
-
-Ideally, the code shouldn't really care
-> whether it is migrating from/to a block-mapped or extent-mapped file.
-> 
->
-
-As per the last discussion with Takashi the defragmentation is going to 
-work on extent mapped file only. The plan right now is to convert a 
-block mapped inode to extent mapped inode and then defrag. Later we 
-update the user space tool to issue two ioctl if the user wanted to 
-defrag a block mapped inode. There will also be a separate command line 
-option to just migrate.
-
-
--aneesh
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
