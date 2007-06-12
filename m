@@ -1,86 +1,106 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] Fix deadlock of ext3_remount() and orphan list handling (fwd)
-Date: Tue, 12 Jun 2007 17:54:39 +0200
-Message-ID: <20070612155439.GE6590@duck.suse.cz>
+From: Avantika Mathur <mathur@linux.vnet.ibm.com>
+Subject: Ext4 devel interlock meeting minutes (June 11, 2007)
+Date: Tue, 12 Jun 2007 09:56:34 -0700
+Message-ID: <466ED042.50401@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:47921 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753919AbXFLPlr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jun 2007 11:41:47 -0400
-Content-Disposition: inline
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:54734 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756869AbXFLQ4c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jun 2007 12:56:32 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5CFrjcR024768
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 11:53:45 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5CGuVmU557880
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 12:56:31 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5CGuVxo015061
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 12:56:31 -0400
+Received: from [9.47.16.99] (mathur.beaverton.ibm.com [9.47.16.99])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l5CGuULY014832
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Jun 2007 12:56:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Resending the message as I've screwed up the mailing list address...
+Ext4 Developer Interlock Call: Jun 11, 2007 Meeting Minutes
 
-									Honza
------ Forwarded message from Jan Kara <jack@suse.cz> -----
+Minutes can be accessed at: 
+http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Call
 
-From: Jan Kara <jack@suse.cz>
-To: ext4-devel@vger.kernel.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, Mark Lord <lkml@rtr.ca>
-Subject: [PATCH] Fix deadlock of ext3_remount() and orphan list handling
+Attendees: Mingming Cao, Ted T'so, Dave Kleikamp, Takashi Sato, Suparna 
+Bhattacharya, Jose Santos, Andreas Dilger, Avantika Mathur
 
-  Hi,
+EXT4 GIT TREE
+- We need to start preparing patches to be moved upstream.  This 
+includes final review and formatting comments properly for merging to 
+Linux. 
 
-  attached patch should fix deadlock Mark Lord has experienced
-(http://lkml.org/lkml/2007/6/8/601). Please have a look whether the change
-looks sane. I think so but ...
+- For those with access to the git tree, they can modify their patches 
+directly.  Otherwise this will be done on the mailing list, and Ted, 
+Mingming or Shaggy will update the tree.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+- Ted suggested that we run the checkpatch.pl script (that was posted on 
+lkml and is now in mainline) against all new patches in the git tree.  
+The output can then be posted on the ext4 mailing list, and the authors 
+can fix any problems with their patches.  He encourages everyone to run 
+the script on patches before posting, to prevent comments on small issues.
 
-ext3_orphan_add() and ext3_orphan_del() functions lock sb->s_lock with
-a transaction started with ext3_mark_recovery_complete() waits for
-a transaction holding sb->s_lock, thus leading to a possible deadlock.
-At the moment we call ext3_mark_recovery_complete() from ext3_remount()
-we have done all the work needed for remounting and thus we are safe
-to drop sb->s_lock before we wait for transactions to commit. Note
-that at this moment we are still guarded by s_umount lock against
-other remounts/umounts.
+- Each time the git tree is updated a set of tests is automatically run 
+to test for regressions.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+- The plan is to move as many patches as possible to mainline once 
+2.6.22 is released
 
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.22-rc4/fs/ext3/super.c linux-2.6.22-rc4-1-ext3_orphan_deadlock/fs/ext3/super.c
---- linux-2.6.22-rc4/fs/ext3/super.c	2007-06-11 12:29:06.000000000 +0200
-+++ linux-2.6.22-rc4-1-ext3_orphan_deadlock/fs/ext3/super.c	2007-06-12 12:51:42.000000000 +0200
-@@ -2139,12 +2139,14 @@ static void ext3_mark_recovery_complete(
- 
- 	journal_lock_updates(journal);
- 	journal_flush(journal);
-+	lock_super(sb);
- 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		sb->s_dirt = 0;
- 		ext3_commit_super(sb, es, 1);
- 	}
-+	unlock_super(sb);
- 	journal_unlock_updates(journal);
- }
- 
-@@ -2333,7 +2335,13 @@ static int ext3_remount (struct super_bl
- 			    (sbi->s_mount_state & EXT3_VALID_FS))
- 				es->s_state = cpu_to_le16(sbi->s_mount_state);
- 
-+			/*
-+			 * We have to unlock super so that we can wait for
-+			 * transactions.
-+			 */
-+			unlock_super(sb);
- 			ext3_mark_recovery_complete(sb, es);
-+			lock_super(sb);
- 		} else {
- 			__le32 ret;
- 			if ((ret = EXT3_HAS_RO_COMPAT_FEATURE(sb,
+PATCHES
+- Extents on by default:  Ted suggested updating this patch, so that 
+extents feature is on by default only if the extents incompat feature is 
+turned on.  It was decided that for EXT4DEV, extents will always be on 
+by default, and when we move to Ext4, extents will only be defaulted 
+with the feature is turned on.  Another choice is to make extents a 
+config option.
+
+- Mingming will add Jose's JBD2 patches to the patch queue, as long as 
+there are no remaining comments on the list.
+
+- Preallocation: The fallocate system call has been finalized, with no 
+remaining issues.  David Chinner had said he would write a man page for 
+the system call; this should be added to the patches.
+
+- Online Defragmentation: Takashi will send out his new patches this 
+weekend.
+
+- delayed allocation: These patches are ready to move to mainline, 
+except for an outstanding request from Andrew for more comments.  
+Mingming will ping Alex to see what the status is.
+
+- Journal Checksumming: These patches are broken on ppc machines. 
+Andreas is working on fixing the endian-ness of the checksums.
+
+- Uninitialized Block Group: Andreas will post an inter-diff to the 
+ported patches Avantika posted.
+
+- nanosecond timestamp and subdir-limit patches are ready to push upstream.
+
+i_version:
+- Kalpak will be separating i_version code from his expand-inode-size 
+patch, and merging with the other i_version patches
+
+- Mingming will respond to last week's meeting minutes asking Trond what 
+he thinks of implementing this feature in the VFS.  If Trond is ok with 
+the feature as is, it will be ready to push.
+
+- Steve French who works on Samba and CIFS has shown interest in this 
+feature, particularly in having it exported to userspace (preferrably 
+not using xattrs).
 
 
------ End forwarded message -----
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+E2fsprogs:
+- Ted plans to get 1.40 out soon.  He will then move the tree to git, 
+and work to get all of the extents patches integrated.
+
+- Mingming will be rebasing and re-ordering the git tree, based on 
+today's discussions.
