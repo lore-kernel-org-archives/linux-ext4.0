@@ -1,117 +1,123 @@
-From: Karsten Hopp <karsten@redhat.com>
-Subject: Re: Patch to support LUKS UUIDs in libblkid
-Date: Wed, 13 Jun 2007 13:00:34 +0200
-Message-ID: <466FCE52.4000605@redhat.com>
-References: <4665479E.2060707@redhat.com> <20070608153600.GA9726@thunk.org> <466D373C.6000502@redhat.com> <20070612234004.GA12189@thunk.org>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: + fs-introduce-write_begin-write_end-and-perform_write-aops.patch added to -mm tree
+Date: Wed, 13 Jun 2007 13:43:56 +0200
+Message-ID: <20070613114356.GD17547@wotan.suse.de>
+References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------090800060007010105020007"
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60568 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755442AbXFMLAg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2007 07:00:36 -0400
-In-Reply-To: <20070612234004.GA12189@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>
+To: linux-kernel@vger.kernel.org, mark.fasheh@oracle.com,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758474AbXFMLoR@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070613134005.GA13815@localhost.sw.ru>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------090800060007010105020007
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Wed, Jun 13, 2007 at 05:40:05PM +0400, Dmitriy Monakhov wrote:
+> On 14:19 ?????? 29 ??????     , akpm@linux-foundation.org wrote:
+> > 
+> > The patch titled
+> >      fs: introduce write_begin, write_end, and perform_write aops
+> > has been added to the -mm tree.  Its filename is
+> >      fs-introduce-write_begin-write_end-and-perform_write-aops.patch
+> > 
+> > *** Remember to use Documentation/SubmitChecklist when testing your code ***
+> > 
+> > See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+> > out what to do about this
+> > 
+> > ------------------------------------------------------
+> > Subject: fs: introduce write_begin, write_end, and perform_write aops
+> > From: Nick Piggin <npiggin@suse.de>
+> > 
+> > These are intended to replace prepare_write and commit_write with more
+> > flexible alternatives that are also able to avoid the buffered write
+> > deadlock problems efficiently (which prepare_write is unable to do).
+> > 
+> > [mark.fasheh@oracle.com: API design contributions, code review and fixes]
+> > Signed-off-by: Nick Piggin <npiggin@suse.de>
+> > Signed-off-by: Mark Fasheh <mark.fasheh@oracle.com>
+> > Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> I've finaly find time to review Nick's "write_begin/write_end aop" patch set.
+> And i have some fixes and questions. My be i've missed somthing and it was 
+> already disscussed, but i cant find in LKML.
 
-Theodore Tso schrieb:
-> On Mon, Jun 11, 2007 at 01:51:24PM +0200, Karsten Hopp wrote:
->> +static int probe_luks(struct blkid_probe *probe,
->> +		       struct blkid_magic *id __BLKID_ATTR((unused)), 
->> +		       unsigned char *buf)
->> +{
->> +	unsigned char *p_buf = buf;
->> +	unsigned char uuid[40];
->> +	/* 168 is the offset to the 40 character uuid: 
->> +	 * http://luks.endorphin.org/LUKS-on-disk-format.pdf */
->> +	p_buf += 168;
->> +	strncpy(uuid, p_buf, 40);
-> 
-> Why bother with p_buf?  It would actually be shorter and sweeter to
-> do:
-> 
-> 	strncpy(uuid, buf+168, 40);
-> 
-> And remove the lines dealing with p_buf above.
-> 
->> +  { "crypt_LUKS",0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
-> 
-> Any particular reason to use "crypt_LUKS" instead of just "LUKS"?  In
-> your documentation you generally just refer to it as LUKS.
-> 
-> 					- Ted
+Thanks, that's really helpful.
 
-I've used 'luks' in my first patch, but changed it to 'crypt_LUKS' when
-Karel Zak pointed out that libvolume_id from udev already uses 'crypt_LUKS'
-for this.
-My first patch also did some other (unnecessary) stuff with p_buf and I just
-didn't bother to remove it.
-I'll attach a new patch without p_buf.
-
-    Karsten
-
---
-  Karsten Hopp        | Mail: karsten@redhat.de
-  Red Hat Deutschland | Tel: +49-711-96437-0
-  Hauptstaetterstr.58 | Fax: +49-711-613590
-  D-70178 Stuttgart   | http://www.redhat.de
-
---------------090800060007010105020007
-Content-Type: text/x-patch;
- name="e2fsprogs-1.39-luks.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="e2fsprogs-1.39-luks.patch"
-
-e2fsprogs-1.39-luks.patch
-Problem:        libblkid doesn't detect/report UUIDs of cryptsetup-luks partitio
-ns
-Solution:       Add probe for luks UUID
-Signed-off-by:  Karsten Hopp <karsten@redhat.com>
-
---- e2fsprogs-1.39/lib/blkid/ChangeLog.luksuuid	2007-06-11 13:40:14.000000000 +0200
-+++ e2fsprogs-1.39/lib/blkid/ChangeLog	2007-06-11 13:40:14.000000000 +0200
-@@ -0,0 +1,4 @@
-+2007-05-22  Karsten Hopp  <karsten@redhat.com> 
-+
-+	* probe.c (probe_luks): Add support for cryptsetup-luks partitions
-+
---- e2fsprogs-1.39/lib/blkid/probe.c.luksuuid	2007-06-11 13:40:14.000000000 +0200
-+++ e2fsprogs-1.39/lib/blkid/probe.c	2007-06-13 12:50:27.000000000 +0200
-@@ -468,6 +468,18 @@ static int probe_jfs(struct blkid_probe 
- 	return 0;
- }
  
-+static int probe_luks(struct blkid_probe *probe,
-+		       struct blkid_magic *id __BLKID_ATTR((unused)), 
-+		       unsigned char *buf)
-+{
-+	unsigned char uuid[40];
-+	/* 168 is the offset to the 40 character uuid: 
-+	 * http://luks.endorphin.org/LUKS-on-disk-format.pdf */
-+	strncpy(uuid, buf+168, 40);
-+	blkid_set_tag(probe->dev, "UUID", uuid, sizeof(uuid));
-+	return 0;
-+}
-+
- static int probe_romfs(struct blkid_probe *probe,
- 		       struct blkid_magic *id __BLKID_ATTR((unused)), 
- 		       unsigned char *buf)
-@@ -775,6 +787,7 @@ static struct blkid_magic type_array[] =
-   { "ocfs2",	 2,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-+  { "crypt_LUKS",0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
-   {   NULL,	 0,	 0,  0, NULL,			NULL }
- };
- 
+> 1) loop dev:
+> 	loop.c code itself is not perfect. In fact before Nick's patch
+> 	partial write was't possible. Assumption what write chunks are
+> 	always page aligned is realy weird ( see "index++" line).
+> 	Fixed by "new aop loop fix" patch
 
---------------090800060007010105020007--
+I think you're right, fix looks good.
+
+ 
+> 2)block_write_begin:
+> 	After we enter to block_write_begin with *pagep == NULL and
+> 	some page was grabed we remember this page in *pagep
+> 	And if __block_prepare_write() we have to clear *pagep , as 
+> 	it was before. Because this may confuse caller.
+> 	for example caller may have folowing code:
+> 		ret = block_write_begin(..., pagep,...)
+> 		if (ret && *pagep != NULL) {
+> 			unlock_page(*pagep);
+> 			page_cache_release(*pagep);
+> 		}
+> 	Fixed my "new aop block_write_begin fix" patch
+
+I don't think the caller can rely on that if it returns failure.
+But that is more defensive I guess. Maybe setting it to 1 or
+so would catch abusers.
+
+ 
+> 3) __page_symlink:
+> 	Nick's patch add folowing code:
+> 	+ err = pagecache_write_begin(NULL, mapping, 0,PAGE_CACHE_SIZE,
+> 	+                 AOP_FLAG_UNINTERRUPTIBLE, &page,&fsdata);
+> 	symlink now consume whole page. I have only one question "WHY???".
+> 	I don't see any advantages, but where are huge list of
+> 	dissdvantages:
+> 	a) fs with blksize == 1k and pagesize == 16k after this patch
+> 	   waste more than 10x times disk space for nothing.
+> 	b) What happends if we want use fs with blksize == 4k on i386
+> 	   after it was used by ia64 ??? (before this patch it was
+> 	   possible).
+> 	
+> 	I dont prepare patch for this because i dont understand issue
+> 	witch Nick aimed to fix.
+
+I don't know why myself :P I think it would be just fine to use
+len-1 as it did previously, so it must have been a typo?
+
+
+> 4) iov_iter_fault_in_readable:
+> 	Function prerform check for signgle region, with out respect to
+> 	segment nature of iovec, For example writev no longer works :) :
+> 	writev(3, [{"\1", 1}, {"\2"..., 4096}], 2) = -1 EFAULT (Bad address)
+> 	this hidden bug, and it was invisiable because XXXX_fault_in_readable
+> 	return value was ignored before. Lets iov_iter_fault_in_readable
+> 	perform checks for all segments.
+> 	Fixed by :"iov_iter_fault_in_readable fix"
+
+OK thanks. I would rather just change this to use the length of
+the first iovec always (prefaulting multiple iovecs would have to
+be benchmarked on real apps that make heavy use of writev, I
+suspect).
+
+ 
+> 5) ext3_write_end:
+> 	Before  write_begin/write_end patch set we have folowing locking
+> 	order:
+> 		stop_journal(handle);
+> 		unlock_page(page);
+> 	But now order is oposite:
+> 		unlock_page(page);
+> 		stop_journal(handle);
+> 	Can we got any race condition now? I'm not sure is it actual problem,
+> 	may be somebody cant describe this.
+
+Can we just change it to the original order? That would seem to be
+safest unless one of the ext3 devs explicitly acks it.
