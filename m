@@ -1,123 +1,75 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: + fs-introduce-write_begin-write_end-and-perform_write-aops.patch added to -mm tree
-Date: Wed, 13 Jun 2007 13:43:56 +0200
-Message-ID: <20070613114356.GD17547@wotan.suse.de>
-References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru>
+From: Hugh Dickins <hugh@veritas.com>
+Subject: Re: [patch] new aop loop fix
+Date: Wed, 13 Jun 2007 14:36:14 +0100 (BST)
+Message-ID: <Pine.LNX.4.64.0706131426070.4539@blonde.wat.veritas.com>
+References: <20070613134631.GB13815@localhost.sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>
-To: linux-kernel@vger.kernel.org, mark.fasheh@oracle.com,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758474AbXFMLoR@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070613134005.GA13815@localhost.sw.ru>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, npiggin@suse.de,
+	mark.fasheh@oracle.com, linux-ext4@vger.kernel.org
+To: Dmitriy Monakhov <dmonakhov@sw.ru>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from extu-mxob-2.symantec.com ([216.10.194.135]:59939 "EHLO
+	extu-mxob-2.symantec.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752903AbXFMNgr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2007 09:36:47 -0400
+In-Reply-To: <20070613134631.GB13815@localhost.sw.ru>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 13, 2007 at 05:40:05PM +0400, Dmitriy Monakhov wrote:
-> On 14:19 ?????? 29 ??????     , akpm@linux-foundation.org wrote:
-> > 
-> > The patch titled
-> >      fs: introduce write_begin, write_end, and perform_write aops
-> > has been added to the -mm tree.  Its filename is
-> >      fs-introduce-write_begin-write_end-and-perform_write-aops.patch
-> > 
-> > *** Remember to use Documentation/SubmitChecklist when testing your code ***
-> > 
-> > See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-> > out what to do about this
-> > 
-> > ------------------------------------------------------
-> > Subject: fs: introduce write_begin, write_end, and perform_write aops
-> > From: Nick Piggin <npiggin@suse.de>
-> > 
-> > These are intended to replace prepare_write and commit_write with more
-> > flexible alternatives that are also able to avoid the buffered write
-> > deadlock problems efficiently (which prepare_write is unable to do).
-> > 
-> > [mark.fasheh@oracle.com: API design contributions, code review and fixes]
-> > Signed-off-by: Nick Piggin <npiggin@suse.de>
-> > Signed-off-by: Mark Fasheh <mark.fasheh@oracle.com>
-> > Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> I've finaly find time to review Nick's "write_begin/write_end aop" patch set.
-> And i have some fixes and questions. My be i've missed somthing and it was 
-> already disscussed, but i cant find in LKML.
+On Wed, 13 Jun 2007, Dmitriy Monakhov wrote:
 
-Thanks, that's really helpful.
-
- 
-> 1) loop dev:
 > 	loop.c code itself is not perfect. In fact before Nick's patch
 > 	partial write was't possible. Assumption what write chunks are
 > 	always page aligned is realy weird ( see "index++" line).
-> 	Fixed by "new aop loop fix" patch
+> 
+> Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
 
-I think you're right, fix looks good.
+I'm interested, because I'm trying to chase down an -mm bug which
+occasionally leaves me with 1k of zeroes where it shouldn't (in a
+1k bsize ext2 looped over tmpfs).  The length of time for this to
+happen varies a lot, so bisection has been misleading: maybe the
+problem lies in Nick's patches, maybe it does not.
 
- 
-> 2)block_write_begin:
-> 	After we enter to block_write_begin with *pagep == NULL and
-> 	some page was grabed we remember this page in *pagep
-> 	And if __block_prepare_write() we have to clear *pagep , as 
-> 	it was before. Because this may confuse caller.
-> 	for example caller may have folowing code:
-> 		ret = block_write_begin(..., pagep,...)
-> 		if (ret && *pagep != NULL) {
-> 			unlock_page(*pagep);
-> 			page_cache_release(*pagep);
-> 		}
-> 	Fixed my "new aop block_write_begin fix" patch
+But I don't understand your fix below at all.  _If_ you need to
+change the handling of index, then you need to change the handling
+of offset too, don't you?
 
-I don't think the caller can rely on that if it returns failure.
-But that is more defensive I guess. Maybe setting it to 1 or
-so would catch abusers.
+But what's wrong with how inded was handled anyway?  Yes, it might
+be being incremented at the bottom of the loop when we haven't
+reached the end of this page, but in that case we're not going
+round the loop again anyway: len will now be 0.  So no problem.
 
- 
-> 3) __page_symlink:
-> 	Nick's patch add folowing code:
-> 	+ err = pagecache_write_begin(NULL, mapping, 0,PAGE_CACHE_SIZE,
-> 	+                 AOP_FLAG_UNINTERRUPTIBLE, &page,&fsdata);
-> 	symlink now consume whole page. I have only one question "WHY???".
-> 	I don't see any advantages, but where are huge list of
-> 	dissdvantages:
-> 	a) fs with blksize == 1k and pagesize == 16k after this patch
-> 	   waste more than 10x times disk space for nothing.
-> 	b) What happends if we want use fs with blksize == 4k on i386
-> 	   after it was used by ia64 ??? (before this patch it was
-> 	   possible).
-> 	
-> 	I dont prepare patch for this because i dont understand issue
-> 	witch Nick aimed to fix.
+One of us is missing something: please enlighten me - thanks.
 
-I don't know why myself :P I think it would be just fine to use
-len-1 as it did previously, so it must have been a typo?
+Hugh
 
-
-> 4) iov_iter_fault_in_readable:
-> 	Function prerform check for signgle region, with out respect to
-> 	segment nature of iovec, For example writev no longer works :) :
-> 	writev(3, [{"\1", 1}, {"\2"..., 4096}], 2) = -1 EFAULT (Bad address)
-> 	this hidden bug, and it was invisiable because XXXX_fault_in_readable
-> 	return value was ignored before. Lets iov_iter_fault_in_readable
-> 	perform checks for all segments.
-> 	Fixed by :"iov_iter_fault_in_readable fix"
-
-OK thanks. I would rather just change this to use the length of
-the first iovec always (prefaulting multiple iovecs would have to
-be benchmarked on real apps that make heavy use of writev, I
-suspect).
-
- 
-> 5) ext3_write_end:
-> 	Before  write_begin/write_end patch set we have folowing locking
-> 	order:
-> 		stop_journal(handle);
-> 		unlock_page(page);
-> 	But now order is oposite:
-> 		unlock_page(page);
-> 		stop_journal(handle);
-> 	Can we got any race condition now? I'm not sure is it actual problem,
-> 	may be somebody cant describe this.
-
-Can we just change it to the original order? That would seem to be
-safest unless one of the ext3 devs explicitly acks it.
+> 
+> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+> index 4bab9b1..8726da5 100644
+> --- a/drivers/block/loop.c
+> +++ b/drivers/block/loop.c
+> @@ -215,7 +215,6 @@ static int do_lo_send_aops(struct loop_device *lo, struct bio_vec *bvec,
+>  	int len, ret;
+>  
+>  	mutex_lock(&mapping->host->i_mutex);
+> -	index = pos >> PAGE_CACHE_SHIFT;
+>  	offset = pos & ((pgoff_t)PAGE_CACHE_SIZE - 1);
+>  	bv_offs = bvec->bv_offset;
+>  	len = bvec->bv_len;
+> @@ -226,6 +225,7 @@ static int do_lo_send_aops(struct loop_device *lo, struct bio_vec *bvec,
+>  		struct page *page;
+>  		void *fsdata;
+>  
+> +		index = pos >> PAGE_CACHE_SHIFT;
+>  		IV = ((sector_t)index << (PAGE_CACHE_SHIFT - 9))+(offset >> 9);
+>  		size = PAGE_CACHE_SIZE - offset;
+>  		if (size > len)
+> @@ -255,7 +255,6 @@ static int do_lo_send_aops(struct loop_device *lo, struct bio_vec *bvec,
+>  		bv_offs += copied;
+>  		len -= copied;
+>  		offset = 0;
+> -		index++;
+>  		pos += copied;
+>  	}
+>  	ret = 0;
