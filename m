@@ -1,189 +1,150 @@
-From: Dmitriy Monakhov <dmonakhov@sw.ru>
-Subject: Re: + fs-introduce-write_begin-write_end-and-perform_write-aops.patch added to -mm tree
-Date: Wed, 13 Jun 2007 22:51:46 +0400
-Message-ID: <20070613185146.GF13815@localhost.sw.ru>
-References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613114356.GD17547@wotan.suse.de>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 patch queue updated
+Date: Wed, 13 Jun 2007 13:20:59 -0700
+Message-ID: <1181766059.3887.22.camel@dyn9047017103.beaverton.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, mark.fasheh@oracle.com,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Nick Piggin <npiggin@suse.de>
+Content-Type: multipart/mixed; boundary="=-2dbl5D2SkVEIMjkRrwgm"
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, "Jose R. Santos" <jrs@us.ibm.com>,
+	alex@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:4262 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758312AbXFMPvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2007 11:51:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20070613114356.GD17547@wotan.suse.de>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:53408 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752373AbXFMUVX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2007 16:21:23 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5DKLKvm005714
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2007 16:21:20 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5DKLC8w237750
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2007 14:21:15 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5DKL68w020917
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2007 14:21:12 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 13:43 =D0=A1=D1=80=D0=B4 13 =D0=98=D1=8E=D0=BD     , Nick Piggin wro=
-te:
-> On Wed, Jun 13, 2007 at 05:40:05PM +0400, Dmitriy Monakhov wrote:
-> > On 14:19 ?????? 29 ??????     , akpm@linux-foundation.org wrote:
-> > >=20
-> > > The patch titled
-> > >      fs: introduce write_begin, write_end, and perform_write aops
-> > > has been added to the -mm tree.  Its filename is
-> > >      fs-introduce-write_begin-write_end-and-perform_write-aops.pa=
-tch
-> > >=20
-> > > *** Remember to use Documentation/SubmitChecklist when testing yo=
-ur code ***
-> > >=20
-> > > See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.t=
-xt to find
-> > > out what to do about this
-> > >=20
-> > > ------------------------------------------------------
-> > > Subject: fs: introduce write_begin, write_end, and perform_write =
-aops
-> > > From: Nick Piggin <npiggin@suse.de>
-> > >=20
-> > > These are intended to replace prepare_writ eand commit_write with=
- more
-> > > flexible alternatives that are also able to avoid the buffered wr=
-ite
-> > > deadlock problems efficiently (which prepare_write is unable to d=
-o).
-> > >=20
-> > > [mark.fasheh@oracle.com: API design contributions, code review an=
-d fixes]
-> > > Signed-off-by: Nick Piggin <npiggin@suse.de>
-> > > Signed-off-by: Mark Fasheh <mark.fasheh@oracle.com>
-> > > Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> > I've finaly find time to review Nick's "write_begin/write_end aop" =
-patch set.
-> > And i have some fixes and questions. My be i've missed somthing and=
- it was=20
-> > already disscussed, but i cant find in LKML.
->=20
-> Thanks, that's really helpful.
->=20
-> =20
-> > 1) loop dev:
-> > 	loop.c code itself is not perfect. In fact before Nick's patch
-> > 	partial write was't possible. Assumption what write chunks are
-> > 	always page aligned is realy weird ( see "index++" line).
-> > 	Fixed by "new aop loop fix" patch
->=20
-> I think you're right, fix looks good.
->=20
-> =20
-> > 2)block_write_begin:
-> > 	After we enter to block_write_begin with *pagep =3D=3D NULL and
-> > 	some page was grabed we remember this page in *pagep
-> > 	And if __block_prepare_write() we have to clear *pagep , as=20
-> > 	it was before. Because this may confuse caller.
-> > 	for example caller may have folowing code:
-> > 		ret =3D block_write_begin(..., pagep,...)
-> > 		if (ret && *pagep !=3D NULL) {
-> > 			unlock_page(*pagep);
-> > 			page_cache_release(*pagep);
-> > 		}
-> > 	Fixed my "new aop block_write_begin fix" patch
->=20
-> I don't think the caller can rely on that if it returns failure.
-> But that is more defensive I guess. Maybe setting it to 1 or
-> so would catch abusers.
->=20
-> =20
-> > 3) __page_symlink:
-> > 	Nick's patch add folowing code:
-> > 	+ err =3D pagecache_write_begin(NULL, mapping, 0,PAGE_CACHE_SIZE,
-> > 	+                 AOP_FLAG_UNINTERRUPTIBLE, &page,&fsdata);
-> > 	symlink now consume whole page. I have only one question "WHY???".
-> > 	I don't see any advantages, but where are huge list of
-> > 	dissdvantages:
-> > 	a) fs with blksize =3D=3D 1k and pagesize =3D=3D 16k after this pa=
-tch
-> > 	   waste more than 10x times disk space for nothing.
-> > 	b) What happends if we want use fs with blksize =3D=3D 4k on i386
-> > 	   after it was used by ia64 ??? (before this patch it was
-> > 	   possible).
-One more visiable effect caused by wrong symlink size:
-fsstress cause folowing error:
-<LOG BEGIN>
-EXT3-fs unexpected failure: !buffer_revoked(bh);=20
-inconsistent data on disk
-ext3_forget: aborting transaction: IO failure in __ext3_journal_revoke
-ext3_abort called.
 
-EXT3-fs error (device dm-4): ext3_forget: error -5 when attempting
-revoke
-Remounting filesystem read-only=20
-Aborting journal on device dm-4.
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-EXT3-fs error (device dm-4) in ext3_free_blocks_sb: Journal has aborted
+--=-2dbl5D2SkVEIMjkRrwgm
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-journal commit I/O error
-journal commit I/O error
-EXT3-fs error (device dm-4) in ext3_reserve_inode_write: Journal has
-aborted
-EXT3-fs error (device dm-4) in ext3_truncate: IO failure
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-journal commit I/O error
-EXT3-fs error (device dm-4) in ext3_reserve_inode_write: Journal has
-aborted
-EXT3-fs error (device dm-4) in ext3_orphan_del: Journal has aborted
-EXT3-fs error (device dm-4) in ext3_reserve_inode_write: Journal has
-aborted
-EXT3-fs error (device dm-4) in ext3_delete_inode: IO failure
-<LOG END>
+Just updated the ext4 patch queue
 
-After symlink size was fixed to len-1 problem dissappeared.=20
-> > =09
-> > 	I dont prepare patch for this because i dont understand issue
-> > 	witch Nick aimed to fix.
->=20
-> I don't know why myself :P I think it would be just fine to use
-> len-1 as it did previously, so it must have been a typo?
->=20
->=20
-> > 4) iov_iter_fault_in_readable:
-> > 	Function prerform check for signgle region, with out respect to
-> > 	segment nature of iovec, For example writev no longer works :) :
-> > 	writev(3, [{"\1", 1}, {"\2"..., 4096}], 2) =3D -1 EFAULT (Bad addr=
-ess)
-> > 	this hidden bug, and it was invisiable because XXXX_fault_in_reada=
-ble
-> > 	return value was ignored before. Lets iov_iter_fault_in_readable
-> > 	perform checks for all segments.
-> > 	Fixed by :"iov_iter_fault_in_readable fix"
->=20
-> OK thanks. I would rather just change this to use the length of
-> the first iovec always (prefaulting multiple iovecs would have to
-> be benchmarked on real apps that make heavy use of writev, I
-> suspect).
->=20
-> =20
-> > 5) ext3_write_end:
-> > 	Before  write_begin/write_end patch set we have folowing locking
-> > 	order:
-> > 		stop_journal(handle);
-> > 		unlock_page(page);
-> > 	But now order is oposite:
-> > 		unlock_page(page);
-> > 		stop_journal(handle);
-> > 	Can we got any race condition now? I'm not sure is it actual probl=
-em,
-> > 	may be somebody cant describe this.
->=20
-> Can we just change it to the original order? That would seem to be
-> safest unless one of the ext3 devs explicitly acks it.
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+http://repo.or.cz/w/ext4-patch-queue
+
+Changes:
+
+Added these three patches from Jose Santos:
+ext4_set_jbd2_64bit_feature.patch
+jbd2_config_jbd2_debug_fix.patch
+jbd2_move_jbd2_debug_to_debugfs.patch
+
+Reordered the series, move 
+jbd-stats-through-procfs and ext4_remove_subdirs_limit.patch before
+delayed allocation patches
+
+
+Run checkpatch.pl http://lwn.net/Articles/237451/
+I fixed coding style issues for most patches by hand except the delayed
+allocation patch ext4-delayed-allocation.patch.  That need a bit more
+work and requires someone family with the code better. Alex, can you
+help on this? Attached is the checkpatch.pl output, thanks.
+
+
+Mingming
+
+
+
+--=-2dbl5D2SkVEIMjkRrwgm
+Content-Disposition: attachment; filename=a.out
+Content-Type: text/plain; name=a.out; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+printk() should include KERN_ facility level
+#275: FILE: fs/ext4/writeback.c:73:
++#define wb_debug(fmt, a...)	printk(fmt, ##a);
+
+do not use assignment in condition
+#338: FILE: fs/ext4/writeback.c:136:
++		while (!bio && (nr_vecs /= 2))
+
+printk() should include KERN_ facility level
+#826: FILE: fs/ext4/writeback.c:624:
++			printk("no mem for ext4_wb_pages!\n");
+
+#if 0 -- if this code redundant remove it
+#946: FILE: fs/ext4/writeback.c:744:
++#if 0
+
+line over 80 characters
+#948: FILE: fs/ext4/writeback.c:746:
++					printk("#%u: wow! short extent %d for flush on #%lu\n",
+
+printk() should include KERN_ facility level
+#948: FILE: fs/ext4/writeback.c:746:
++					printk("#%u: wow! short extent %d for flush on #%lu\n",
+
+line over 80 characters
+#949: FILE: fs/ext4/writeback.c:747:
++						(unsigned) current->pid, wc.len, inode->i_ino);
+
+line over 80 characters
+#950: FILE: fs/ext4/writeback.c:748:
++					printk("#%u: done = %d, nr_to_write %ld, sync = %d\n",
+
+printk() should include KERN_ facility level
+#950: FILE: fs/ext4/writeback.c:748:
++					printk("#%u: done = %d, nr_to_write %ld, sync = %d\n",
+
+line over 80 characters
+#951: FILE: fs/ext4/writeback.c:749:
++						(unsigned) current->pid, done, wbc->nr_to_write,
+
+printk() should include KERN_ facility level
+#953: FILE: fs/ext4/writeback.c:751:
++					printk("#%u: written %d, extents %d\n",
+
+line over 80 characters
+#954: FILE: fs/ext4/writeback.c:752:
++						(unsigned) current->pid, written, extents);
+
+printk() should include KERN_ facility level
+#955: FILE: fs/ext4/writeback.c:753:
++					printk("#%u: cur %lu, prev %lu\n",
+
+#if 0 -- if this code redundant remove it
+#985: FILE: fs/ext4/writeback.c:783:
++#if 0
+
+line over 80 characters
+#991: FILE: fs/ext4/writeback.c:789:
++				atomic_inc(&EXT4_SB(inode->i_sb)->s_wb_congested);
+
+printk() should include KERN_ facility level
+#1370: FILE: fs/ext4/writeback.c:1168:
++	printk("EXT4-fs: writeback: %d blocks %d extents in %d reqs (%d ave)\n",
+
+line over 80 characters
+#1375: FILE: fs/ext4/writeback.c:1173:
++	printk("EXT4-fs: writeback: %d nr_to_write, %d congestions, %d singles\n",
+
+printk() should include KERN_ facility level
+#1375: FILE: fs/ext4/writeback.c:1173:
++	printk("EXT4-fs: writeback: %d nr_to_write, %d congestions, %d singles\n",
+
+printk() should include KERN_ facility level
+#1379: FILE: fs/ext4/writeback.c:1177:
++	printk("EXT4-fs: writeback: %d collisions, %d single-page collisions\n",
+
+printk() should include KERN_ facility level
+#1382: FILE: fs/ext4/writeback.c:1180:
++	printk("EXT4-fs: writeback: %d allocated, %d dropped\n",
+
+Missing Signed-off-by: line(s)
+Your patch has style problems, please review.  If any of these errors
+are false positives report them to the maintainer, see
+CHECKPATCH in MAINTAINERS.
+
+--=-2dbl5D2SkVEIMjkRrwgm--
