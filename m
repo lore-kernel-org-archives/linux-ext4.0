@@ -1,50 +1,44 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [PATCH 4/6] add noversion mount option
-Date: Fri, 15 Jun 2007 03:22:06 +0530
-Message-ID: <1181857932.3926.4.camel@garfield>
-References: <1181835073.7779.9.camel@garfield>
-	 <1181836579.7779.46.camel@garfield>
-	 <1181854214.3883.10.camel@dyn9047017103.beaverton.ibm.com>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: iov_iter_fault_in_readable fix
+Date: Fri, 15 Jun 2007 08:21:09 +1000
+Message-ID: <20070614222109.GF86004887@sgi.com>
+References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613135759.GD13815@localhost.sw.ru> <20070614173153.GA14771@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Jean noel Cordenner <jean-noel.cordenner@bull.net>
-To: cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+To: Christoph Hellwig <hch@infradead.org>,
+	linux-kernel@vger.kernel.org, npiggin@suse.de,
+	mark.fasheh@oracle.com, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:59289 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750984AbXFNVxV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 17:53:21 -0400
-In-Reply-To: <1181854214.3883.10.camel@dyn9047017103.beaverton.ibm.com>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:37206 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751465AbXFNWVd (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2007 18:21:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20070614173153.GA14771@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-06-14 at 13:50 -0700, Mingming Cao wrote:
-> On Thu, 2007-06-14 at 21:26 +0530, Kalpak Shah wrote:
-> > This patch adds a "noversion" mount option to disable inode version
-> > updates.
+On Thu, Jun 14, 2007 at 06:31:53PM +0100, Christoph Hellwig wrote:
+> On Wed, Jun 13, 2007 at 05:57:59PM +0400, Dmitriy Monakhov wrote:
+> >  	Function prerform check for signgle region, with out respect to
+> >  	segment nature of iovec, For example writev no longer works :)
 > 
-> Can you explain a bit more why we need this mount option? Is it because
-> of performance concern? 
+> Btw, could someone please start to collect all sniplets like this in
+> a nice simple regression test suite?  If no one wants to start a new
+> one we should probably just put it into xfsqa (which should be useable
+> for other filesystems aswell despite the name)
 
-Lustre requires the counter to be globally unique on the entire
-filesystem and hence needs to turnoff per-inode version updates. So in
-the interlock meeting on 5th June, Ted has suggested the this approach.
+Yeah, it can run a subset of the tests on NFS and UDF filesystems as well and
+there are some specific UDF-only tests in it too.  I think the NFS test group
+is mostly generic tests that don't use or test specific XFS features.
 
-"- Ted suggested having a flag in the superblock for i_version, with an 
-additional option of having a global counter for Lustre's requirements.
-i_version would be on by default, but give users who do not use the 
-feature the option to turn it off and avoid any performance impact."
+I'd be happy to accumulate tests like these in xfsqa...
 
-Thanks,
-Kalpak.
+Cheers,
 
-> 
-> Mingming
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
