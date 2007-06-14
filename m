@@ -1,107 +1,141 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: [PATCH 4/6] add noversion mount option
-Date: Thu, 14 Jun 2007 21:29:17 +0530
-Message-ID: <1181836757.15456.0.camel@garfield>
+Subject: [PATCH 5/6] VFS updates to i_version
+Date: Thu, 14 Jun 2007 21:29:24 +0530
+Message-ID: <1181836764.15456.1.camel@garfield>
 References: <1181835073.7779.9.camel@garfield>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-3W6CRDnSi709i/GwydHX"
+Content-Type: multipart/mixed; boundary="=-mxOQwUXRAXToXPU49MkB"
 Cc: Mingming Cao <cmm@us.ibm.com>,
 	Andreas Dilger <adilger@clusterfs.com>,
 	Jean noel Cordenner <jean-noel.cordenner@bull.net>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:52875 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:52880 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751992AbXFNP7G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:59:06 -0400
+	with ESMTP id S1752083AbXFNP7N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:59:13 -0400
 In-Reply-To: <1181835073.7779.9.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---=-3W6CRDnSi709i/GwydHX
+--=-mxOQwUXRAXToXPU49MkB
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-This patch adds a "noversion" mount option to disable inode version
-updates.
+The VFS-level updates of the inode version. These may not be necessary
+since the i_version is being updated in ext4_mark_iloc_dirty().
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
 ---
- fs/ext4/inode.c         |    4 +++-
- fs/ext4/super.c         |    6 +++++-
- include/linux/ext4_fs.h |    1 +
- 3 files changed, 9 insertions(+), 2 deletions(-)
+ binfmt_misc.c |    1 +
+ libfs.c       |    9 +++++++++
+ pipe.c        |    1 +
+ 3 files changed, 11 insertions(+)
 
 
---=-3W6CRDnSi709i/GwydHX
-Content-Disposition: attachment; filename=ext4_no_version.patch
-Content-Type: text/x-patch; name=ext4_no_version.patch; charset=UTF-8
+--=-mxOQwUXRAXToXPU49MkB
+Content-Disposition: attachment; filename=i_version_update_vfs.patch
+Content-Type: text/x-patch; name=i_version_update_vfs.patch; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
-Add a "noversion" mount option to disable inode version updates.
+The patch modifies the i_version field of the inode on the VFS layer.
+The i_version field become a 64bit counter that is set on inode creation and
+that is incremented every time the inode data is modified (similarly to the
+"ctime" time-stamp).
+The aim is to fulfill a NFSv4 requirement for rfc3530:
+"5.5.  Mandatory Attributes - Definitions
+Name		#	DataType   Access   Description
+___________________________________________________________________
+change		3	uint64       READ     A value created by the
+		server that the client can use to determine if file
+		data, directory contents or attributes of the object
+		have been modified.  The servermay return the object's
+		time_metadata attribute for this attribute's value but
+		only if the filesystem object can not be updated more
+		frequently than the resolution of time_metadata."
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
 
-Index: linux-2.6.21/fs/ext4/super.c
+Index: linux-2.6.22-rc4/fs/binfmt_misc.c
 ===================================================================
---- linux-2.6.21.orig/fs/ext4/super.c
-+++ linux-2.6.21/fs/ext4/super.c
-@@ -725,7 +725,7 @@ enum {
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
--	Opt_grpquota, Opt_extents, Opt_noextents,
-+	Opt_grpquota, Opt_extents, Opt_noextents, Opt_noversion,
- };
- 
- static match_table_t tokens = {
-@@ -777,6 +777,7 @@ static match_table_t tokens = {
- 	{Opt_barrier, "barrier=%u"},
- 	{Opt_extents, "extents"},
- 	{Opt_noextents, "noextents"},
-+	{Opt_noversion, "noversion"},
- 	{Opt_err, NULL},
- 	{Opt_resize, "resize"},
- };
-@@ -1115,6 +1116,9 @@ clear_qf_name:
- 		case Opt_noextents:
- 			clear_opt (sbi->s_mount_opt, EXTENTS);
- 			break;
-+		case Opt_noversion:
-+			set_opt(sbi->s_mount_opt, NOVERSION);
-+			break;
- 		default:
- 			printk (KERN_ERR
- 				"EXT4-fs: Unrecognized mount option \"%s\" "
-Index: linux-2.6.21/include/linux/ext4_fs.h
+--- linux-2.6.22-rc4.orig/fs/binfmt_misc.c	2007-06-04 17:57:25.000000000 -0700
++++ linux-2.6.22-rc4/fs/binfmt_misc.c	2007-06-13 17:24:57.000000000 -0700
+@@ -508,6 +508,7 @@ static struct inode *bm_get_inode(struct
+ 		inode->i_blocks = 0;
+ 		inode->i_atime = inode->i_mtime = inode->i_ctime =
+ 			current_fs_time(inode->i_sb);
++		inode->i_version = 1;
+ 	}
+ 	return inode;
+ }
+Index: linux-2.6.22-rc4/fs/libfs.c
 ===================================================================
---- linux-2.6.21.orig/include/linux/ext4_fs.h
-+++ linux-2.6.21/include/linux/ext4_fs.h
-@@ -473,6 +473,7 @@ do {									       \
- #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
- #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
- #define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
-+#define EXT4_MOUNT_NOVERSION		0x800000 /* No inode version updates */
+--- linux-2.6.22-rc4.orig/fs/libfs.c	2007-06-04 17:57:25.000000000 -0700
++++ linux-2.6.22-rc4/fs/libfs.c	2007-06-13 17:24:57.000000000 -0700
+@@ -232,6 +232,7 @@ int get_sb_pseudo(struct file_system_typ
+ 	root->i_mode = S_IFDIR | S_IRUSR | S_IWUSR;
+ 	root->i_uid = root->i_gid = 0;
+ 	root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
++	root->i_version = 1;
+ 	dentry = d_alloc(NULL, &d_name);
+ 	if (!dentry) {
+ 		iput(root);
+@@ -255,6 +256,8 @@ int simple_link(struct dentry *old_dentr
+ 	struct inode *inode = old_dentry->d_inode;
  
- /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
-Index: linux-2.6.21/fs/ext4/inode.c
+ 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
++	inode->i_version++;
++	dir->i_version++;
+ 	inc_nlink(inode);
+ 	atomic_inc(&inode->i_count);
+ 	dget(dentry);
+@@ -287,6 +290,8 @@ int simple_unlink(struct inode *dir, str
+ 	struct inode *inode = dentry->d_inode;
+ 
+ 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
++	inode->i_version++;
++	dir->i_version++;
+ 	drop_nlink(inode);
+ 	dput(dentry);
+ 	return 0;
+@@ -323,6 +328,8 @@ int simple_rename(struct inode *old_dir,
+ 
+ 	old_dir->i_ctime = old_dir->i_mtime = new_dir->i_ctime =
+ 		new_dir->i_mtime = inode->i_ctime = CURRENT_TIME;
++	old_dir->i_version++;
++	new_dir->i_version++;
+ 
+ 	return 0;
+ }
+@@ -399,6 +406,7 @@ int simple_fill_super(struct super_block
+ 	inode->i_uid = inode->i_gid = 0;
+ 	inode->i_blocks = 0;
+ 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++	inode->i_version = 1;
+ 	inode->i_op = &simple_dir_inode_operations;
+ 	inode->i_fop = &simple_dir_operations;
+ 	inode->i_nlink = 2;
+@@ -427,6 +435,7 @@ int simple_fill_super(struct super_block
+ 		inode->i_uid = inode->i_gid = 0;
+ 		inode->i_blocks = 0;
+ 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++		inode->i_version = 1;
+ 		inode->i_fop = files->ops;
+ 		inode->i_ino = i;
+ 		d_add(dentry, inode);
+Index: linux-2.6.22-rc4/fs/pipe.c
 ===================================================================
---- linux-2.6.21.orig/fs/ext4/inode.c
-+++ linux-2.6.21/fs/ext4/inode.c
-@@ -3082,7 +3082,9 @@ int ext4_mark_iloc_dirty(handle_t *handl
- {
- 	int err = 0;
+--- linux-2.6.22-rc4.orig/fs/pipe.c	2007-06-04 17:57:25.000000000 -0700
++++ linux-2.6.22-rc4/fs/pipe.c	2007-06-13 17:24:57.000000000 -0700
+@@ -882,6 +882,7 @@ static struct inode * get_pipe_inode(voi
+ 	inode->i_uid = current->fsuid;
+ 	inode->i_gid = current->fsgid;
+ 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
++	inode->i_version = 1;
  
--	inode->i_version++;
-+	if (!test_opt(inode->i_sb, NOVERSION))
-+		inode->i_version++;
-+
- 	/* the do_update_inode consumes one bh->b_count */
- 	get_bh(iloc->bh);
+ 	return inode;
  
 
---=-3W6CRDnSi709i/GwydHX--
+--=-mxOQwUXRAXToXPU49MkB--
