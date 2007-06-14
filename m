@@ -1,54 +1,65 @@
-From: Dmitriy Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4:fix unexpected error from ext4_reserve_global
-Date: Thu, 14 Jun 2007 19:29:27 +0400
-Message-ID: <20070614152927.GC6517@localhost.sw.ru>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [PATCH 1/6] Separated 64-bit i_version patch
+Date: Thu, 14 Jun 2007 21:26:14 +0530
+Message-ID: <1181836574.7779.43.camel@garfield>
+References: <1181835073.7779.9.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-fs3ri4778co8xr3IX7GR"
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	Jean noel Cordenner <jean-noel.cordenner@bull.net>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:45036 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751162AbXFNP24 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jun 2007 11:28:56 -0400
-Content-Disposition: inline
+Received: from mail.clusterfs.com ([206.168.112.78]:32984 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752089AbXFNP4L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:56:11 -0400
+In-Reply-To: <1181835073.7779.9.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I just cant belive my eyes then i saw this at the first time...
-simple test: strace dd if=/dev/zero of=/mnt/file
 
-open("/dev/zero", O_RDONLY)             = 0
-close(1)                                = 0
-open("/mnt/test/file", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 1
-read(0, "\0\0\0\0\0\0\0\0\0"..., 512) = 512
-write(1, "\0\0\0\0\0\0\0\0"..., 512) = 512
-read(0, "\0\0\0\0\0\0\0\0\0"..., 512) = 512
-write(1, "\0\0\0\0\0\0\0\0"..., 512) = -1 ENOENT (No such fil
-e or directory)
+--=-fs3ri4778co8xr3IX7GR
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-This strange error returned from ext4_reserve_global().
-It's just typo because:
-a) In fact this is 100% ENOSPC situation
-b) simular function ext4_reserve_local() returns -ENOSPC
+64-bit-i_version.patch which only replaces the 32-bit i_version field in
+the generic inode with a 64-bit i_version field. 
 
-Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 ---
- fs/ext4/balloc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 4d7bfd2..43ae8f8 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1920,7 +1920,7 @@ int ext4_reserve_global(struct super_block *sb, int blocks)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_reservation_slot *rs;
--	int i, rc = -ENOENT;
-+	int i, rc = -ENOSPC;
- 	__u64 free = 0;
- 
- 	rs = sbi->s_reservation_slots;
--- 
-1.5.2
+P.S. The VFS-level updates of the inode version are still in the
+i_version_update_vfs.patch and this patch has been moved to the bottom
+of the patch series.
+
+
+--=-fs3ri4778co8xr3IX7GR
+Content-Disposition: attachment; filename=64-bit-i_version.patch
+Content-Type: text/x-patch; name=64-bit-i_version.patch; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+This patch converts the 32-bit i_version in the generic inode to a 64-bit
+i_version field.
+
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: linux-2.6.21/include/linux/fs.h
+===================================================================
+--- linux-2.6.21.orig/include/linux/fs.h
++++ linux-2.6.21/include/linux/fs.h
+@@ -549,7 +549,7 @@ struct inode {
+ 	uid_t			i_uid;
+ 	gid_t			i_gid;
+ 	dev_t			i_rdev;
+-	unsigned long		i_version;
++	uint64_t		i_version;
+ 	loff_t			i_size;
+ #ifdef __NEED_I_SIZE_ORDERED
+ 	seqcount_t		i_size_seqcount;
+
+--=-fs3ri4778co8xr3IX7GR--
