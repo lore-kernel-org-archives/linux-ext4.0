@@ -1,69 +1,47 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: inode version updates
-Date: Thu, 14 Jun 2007 03:53:59 -0600
-Message-ID: <20070614095359.GJ5181@schatzie.adilger.int>
-References: <1181782962.13428.26.camel@dyn9047017103.beaverton.ibm.com>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: + fs-introduce-write_begin-write_end-and-perform_write-aops.patch added to -mm tree
+Date: Thu, 14 Jun 2007 12:39:03 +0200
+Message-ID: <20070614103903.GA6703@wotan.suse.de>
+References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613114356.GD17547@wotan.suse.de> <1181776021.21924.87.camel@dyn9047017100.beaverton.ibm.com> <20070614095249.GG17819@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: Badari Pulavarty <pbadari@gmail.com>,
+	lkml <linux-kernel@vger.kernel.org>, mark.fasheh@oracle.com,
+	ext4 <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:44810 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751395AbXFNJyB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 05:54:01 -0400
-Received: from localhost.adilger.int (S0106000bdb95b39c.cg.shawcable.net [70.72.213.136])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.clusterfs.com (Postfix) with ESMTP id 3A4767BA318
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jun 2007 03:54:00 -0600 (MDT)
+Received: from ns1.suse.de ([195.135.220.2]:56079 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751235AbXFNKjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2007 06:39:11 -0400
 Content-Disposition: inline
-In-Reply-To: <1181782962.13428.26.camel@dyn9047017103.beaverton.ibm.com>
+In-Reply-To: <20070614095249.GG17819@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mingming Cao <cmm@us.ibm.com> writes:
-> I took out the i_version code from Kalpak's
-> ext4_expand_inode_extra_isize.patch. 
->
-> http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=ext4_i_version_hi_2.patch;h=4519dd6540a78cadd235dad68248456d59c3384c;hb=8b956b5c5ccc3731f23fbce8d036b21f378fbdec
->
-> Added Jean noel's inode version VFS patch and Ext4 patches. Now the full
-> inode version patch series can be found at ext4 patch queue:
-> 
-> # inode verion patch series
-> # inode versioning is needed for NFSv4
-> 
-> # vfs changes, 64 bit inode->i_version
-> i_version_update_vfs.patch
+On Thu, Jun 14, 2007 at 11:52:49AM +0200, Jan Kara wrote:
+> > On Wed, 2007-06-13 at 13:43 +0200, Nick Piggin wrote:
+> > ..
+> > >  
+> > > > 5) ext3_write_end:
+> > > > 	Before  write_begin/write_end patch set we have folowing locking
+> > > > 	order:
+> > > > 		stop_journal(handle);
+> > > > 		unlock_page(page);
+> > > > 	But now order is oposite:
+> > > > 		unlock_page(page);
+> > > > 		stop_journal(handle);
+> > > > 	Can we got any race condition now? I'm not sure is it actual problem,
+> > > > 	may be somebody cant describe this.
+> > > 
+> > > Can we just change it to the original order? That would seem to be
+> > > safest unless one of the ext3 devs explicitly acks it.
+>   Sorry, I've missed beginning of this thread. But what problems can
+> exactly cause this ordering change? ext3_journal_stop has no need to be
+> protected by the page lock - it can be even better that it's not
+> protected as it can trigger commit and all that would happen
+> unnecessarily under page lock...
 
-Looking through this, I don't understand why there are i_version updates
-in the VFS?  The comments here imply that this is only for filesystems
-which will never be mounted (e.g. pipefs).  Having i_version updates there
-is confusing and I don't think it helps anyone.
-
-> # ext4 inode version update
-> i_version_update_ext4.patch
-> --- linux-2.6.22-rc4.orig/fs/ext4/super.c       2007-06-13 17:19:11.000000000 -0700
-> +++ linux-2.6.22-rc4/fs/ext4/super.c    2007-06-13 17:24:45.000000000 -0700
-> @@ -2846,8 +2846,8 @@ out:
->                i_size_write(inode, off+len-towrite);
->                EXT4_I(inode)->i_disksize = inode->i_size;
->        }
->-       inode->i_version++;
->        inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->+       inode->i_version = 1;
->        ext4_mark_inode_dirty(handle, inode);
->        mutex_unlock(&inode->i_mutex);
->        return len - towrite;
-
-The change from "i_version++" to "i_version = 1" in ext4_update_quota()
-is confusing.  Why was this change made?  If there is a good reason why
-the inode version stays at 1 for the quota file, maybe it deserves
-a comment explaining it.
-
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Sure, if you think it is safe. I would rather it be done in a
+different patch though.
