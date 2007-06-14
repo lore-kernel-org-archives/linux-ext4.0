@@ -1,100 +1,93 @@
-From: Dmitriy Monakhov <dmonakhov@sw.ru>
-Subject: delayed allocatiou result in Oops
-Date: Thu, 14 Jun 2007 11:23:52 +0400
-Message-ID: <20070614072352.GA6517@localhost.sw.ru>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
+Date: Thu, 14 Jun 2007 03:14:58 -0600
+Message-ID: <20070614091458.GH5181@schatzie.adilger.int>
+References: <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com> <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	Suparna Bhattacharya <suparna@in.ibm.com>, torvalds@osdl.org,
+	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, cmm@us.ibm.com
+To: David Chinner <dgc@sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:26506 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751172AbXFNHXR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jun 2007 03:23:17 -0400
-Received: from sw.ru ([192.168.3.106])
-	by relay.sw.ru (8.13.4/8.13.4) with SMTP id l5E7NDKl000373
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jun 2007 11:23:14 +0400 (MSD)
+Received: from mail.clusterfs.com ([206.168.112.78]:38414 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750886AbXFNJPC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 05:15:02 -0400
 Content-Disposition: inline
+In-Reply-To: <20070613235217.GS86004887@sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Simple test failed on ext4 when delayed allocation was used.
-#mkfs.ext3 -b4096 /dev/vzvg/test2
-#mount -text4dev /dev/vzvg/test2  /mnt/test -odelalloc
-#fsstress -d /mnt/test/ -l100  -n100000 -p20  -f dwrite=0
+On Jun 14, 2007  09:52 +1000, David Chinner wrote:
+> B FA_PREALLOCATE
+> provides the same functionality as
+> B FA_ALLOCATE
+> except it does not ever change the file size. This allows allocation
+> of zero blocks beyond the end of file and is useful for optimising
+> append workloads.
+> TP
+> B FA_DEALLOCATE
+> removes the underlying disk space with the given range. The disk space
+> shall be removed regardless of it's contents so both allocated space
+> from
+> B FA_ALLOCATE
+> and
+> B FA_PREALLOCATE
+> as well as from
+> B write(3)
+> will be removed.
+> B FA_DEALLOCATE
+> shall never remove disk blocks outside the range specified.
 
-<CONSOLE LOG>
-EXT4-fs: writeback error = -28
-......
-EXT4-fs: writeback error = -28
-Unable to handle kernel NULL pointer dereference at 0000000000000000 RIP: 
- [<ffffffff802a12d2>] block_read_full_page+0xab/0x25f
-PGD 44c1067 PUD 44fd067 PMD 0 
-Oops: 0000 [2] SMP 
-CPU 0 
-Modules linked in: ext4dev jbd2
-Pid: 4833, comm: fsstress Not tainted 2.6.22-rc4-mm2 #9
-RIP: 0010:[<ffffffff802a12d2>]  [<ffffffff802a12d2>] block_read_full_page+0xab/0x25f
-RSP: 0018:ffff810004df9a58  EFLAGS: 00010203
-RAX: 0000000000001000 RBX: ffff8100cf4256f8 RCX: 000000000000000c
+So this is essentially the same as "punch".  There doesn't seem to be
+a mechanism to only unallocate unused FA_{PRE,}ALLOCATE space at the
+end.
 
-RDX: 0000000000000001 RSI: 000000000000000c RDI: ffff8100cf4256f8
-RBP: 0000000000000000 R08: ffff810004df9be8 R09: ffff810004df9c58
-R10: 8888888888888888 R11: 8888888888888888 R12: 0000000000000052
-R13: 0000000000001000 R14: 0000000000000000 R15: 00000000000000d3
-FS:  00002adfe3f7d6f0(0000) GS:ffffffff80730000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000000 CR3: 0000000004362000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process fsstress (pid: 4833, threadinfo ffff810004df8000, task ffff810004c867a0)
-Stack:  ffffffff880180f2 ffff8100054a23f0 0000000000000000 0000000000000000
- ffff810005dcbb80 ffff81000549bf00 0000000000000000 ffff810005def8b0
- ffffffff88029e60 ffffffff8025b2be ffff8100054da540 ffff8100cf496fb0
-Call Trace:
- [<ffffffff880180f2>] :ext4dev:ext4_get_block+0x0/0x109
- [<ffffffff8025b2be>] find_get_page+0x21/0x51
- [<ffffffff802a5b45>] do_mpage_readpage+0x45f/0x480
- [<ffffffff880180f2>] :ext4dev:ext4_get_block+0x0/0x109
- [<ffffffff88003d64>] :jbd2:jbd2_journal_dirty_metadata+0x197/0x1be
- [<ffffffff80245f3b>] bit_waitqueue+0x1c/0x99
- [<ffffffff802a5bb4>] mpage_readpage+0x4e/0x67
- [<ffffffff880180f2>] :ext4dev:ext4_get_block+0x0/0x109
- [<ffffffff8028817e>] do_lookup+0x63/0x1ae
- [<ffffffff8025b1ae>] file_read_actor+0x8d/0xf6
- [<ffffffff8025b2be>] find_get_page+0x21/0x51
- [<ffffffff8025b93a>] do_generic_mapping_read+0x23c/0x3da
- [<ffffffff8025b121>] file_read_actor+0x0/0xf6
- [<ffffffff8025d123>] generic_file_aio_read+0x119/0x156
- [<ffffffff80281848>] do_sync_read+0xc9/0x10c
+> B FA_DEALLOCATE
+> shall never change the file size. If changing the file size
+> is required when deallocating blocks from an offset to end
+> of file (or beyond end of file) is required,
+> B ftuncate64(3)
+> should be used.
 
- [<ffffffff802845b2>] cp_new_stat+0xe5/0xfd
- [<ffffffff80246007>] autoremove_wake_function+0x0/0x2e
- [<ffffffff80281fba>] vfs_read+0xaa/0x132
- [<ffffffff80282356>] sys_read+0x45/0x6e
- [<ffffffff8020b41e>] system_call+0x7e/0x83
-Code: 8b 45 00 a8 01 0f 85 e6 00 00 00 8b 45 00 a8 20 0f 85 c9 00 
-<CONSOLE LOG>
+This also seems to be a bit of a wart, since it isn't a natural converse
+of either of the above functions.  How about having two modes,
+similar to FA_ALLOCATE and FA_PREALLOCATE?  Say, FA_PUNCH (which
+would be as you describe here - deletes all data in the specified
+range changing the file size if it overlaps EOF, and FA_DEALLOCATE,
+which only deallocates unused FA_{PRE,}ALLOCATE space?
 
-I've digged this a litle bit with folowig results:
+We might also consider making @mode be a mask instead of an enumeration:
 
-int block_read_full_page(struct page *page, get_block_t *get_block)
-{
-...
-1914:	if (!page_has_buffers(page)) <<< page_has_buffers(page) == true 
-		create_empty_buffers(page, blocksize, 0);
-	head = page_buffers(page); <<<<  page_buffers(page) == NULL  
-<<<i've add debug info here:
-<<< page->flags == 100000000000821
-<<< PagePrivate(page) == 1, (page)->private == NULL
-<<< So we have private page without buffers, it is WRONG.
+FA_FL_DEALLOC	0x01 (default allocate)
+FA_FL_KEEP_SIZE	0x02 (default extend/shrink size)
+FA_FL_DEL_DATA	0x04 (default keep written data on DEALLOC)
 
-	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-	lblock = (i_size_read(inode)+blocksize-1) >> inode->i_blkbits;
-	bh = head;
-	nr = 0;
-	i = 0;
+We might then build FA_ALLOCATE and FA_DEALLOCATE out of these flags
+without making the interface sub-optimal.
 
-	do {
-		if (buffer_uptodate(bh)) << Null pointer deref here result in oops
-.......
-}
+I suppose it might be a bit late in the game to add a "goal"
+parameter and e.g. FA_FL_REQUIRE_GOAL, FA_FL_NEAR_GOAL, etc to make
+the API more suitable for XFS?  The goal could be a single __u64, or
+a struct with e.g. __u64 byte offset (possibly also __u32 lun like
+in FIEMAP).  I guess the one potential limitation here is the
+number of function parameters on some architectures.
+
+> B ENOSPC
+> There is not enough space left on the device containing the file
+> referred to by
+> IR fd.
+
+Should probably say whether space is removed on failure or not.  In
+some (primitive) implementations it might no longer be possible to
+distinguish between unwritten extents and zero-filled blocks, though
+at this point DEALLOC of zero-filled blocks might not be harmful either.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
