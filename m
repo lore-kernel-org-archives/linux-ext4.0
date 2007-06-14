@@ -1,25 +1,25 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
 Subject: [PATCH 4/6] add noversion mount option
-Date: Thu, 14 Jun 2007 21:26:19 +0530
-Message-ID: <1181836579.7779.46.camel@garfield>
+Date: Thu, 14 Jun 2007 21:29:17 +0530
+Message-ID: <1181836757.15456.0.camel@garfield>
 References: <1181835073.7779.9.camel@garfield>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-wMlZA71HTUtP4QFNzZWg"
+Content-Type: multipart/mixed; boundary="=-3W6CRDnSi709i/GwydHX"
 Cc: Mingming Cao <cmm@us.ibm.com>,
 	Andreas Dilger <adilger@clusterfs.com>,
 	Jean noel Cordenner <jean-noel.cordenner@bull.net>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:33008 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:52875 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753143AbXFNP4b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:56:31 -0400
+	with ESMTP id S1751992AbXFNP7G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:59:06 -0400
 In-Reply-To: <1181835073.7779.9.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---=-wMlZA71HTUtP4QFNzZWg
+--=-3W6CRDnSi709i/GwydHX
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
@@ -35,7 +35,7 @@ Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
  3 files changed, 9 insertions(+), 2 deletions(-)
 
 
---=-wMlZA71HTUtP4QFNzZWg
+--=-3W6CRDnSi709i/GwydHX
 Content-Disposition: attachment; filename=ext4_no_version.patch
 Content-Type: text/x-patch; name=ext4_no_version.patch; charset=UTF-8
 Content-Transfer-Encoding: 7bit
@@ -104,4 +104,4 @@ Index: linux-2.6.21/fs/ext4/inode.c
  	get_bh(iloc->bh);
  
 
---=-wMlZA71HTUtP4QFNzZWg--
+--=-3W6CRDnSi709i/GwydHX--
