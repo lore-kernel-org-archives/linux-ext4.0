@@ -1,141 +1,117 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: [PATCH 5/6] VFS updates to i_version
-Date: Thu, 14 Jun 2007 21:29:24 +0530
-Message-ID: <1181836764.15456.1.camel@garfield>
+Subject: [PATCH 6/6] Updated series file
+Date: Thu, 14 Jun 2007 21:29:26 +0530
+Message-ID: <1181836766.15456.2.camel@garfield>
 References: <1181835073.7779.9.camel@garfield>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-mxOQwUXRAXToXPU49MkB"
+Content-Type: multipart/mixed; boundary="=-kKh6Bm70qvS8esbZE3QF"
 Cc: Mingming Cao <cmm@us.ibm.com>,
 	Andreas Dilger <adilger@clusterfs.com>,
 	Jean noel Cordenner <jean-noel.cordenner@bull.net>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:52880 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:52883 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752083AbXFNP7N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:59:13 -0400
+	with ESMTP id S1752197AbXFNP7T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 11:59:19 -0400
 In-Reply-To: <1181835073.7779.9.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---=-mxOQwUXRAXToXPU49MkB
+--=-kKh6Bm70qvS8esbZE3QF
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
-The VFS-level updates of the inode version. These may not be necessary
-since the i_version is being updated in ext4_mark_iloc_dirty().
+The updated series file.
 
 
-Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
----
- binfmt_misc.c |    1 +
- libfs.c       |    9 +++++++++
- pipe.c        |    1 +
- 3 files changed, 11 insertions(+)
-
-
---=-mxOQwUXRAXToXPU49MkB
-Content-Disposition: attachment; filename=i_version_update_vfs.patch
-Content-Type: text/x-patch; name=i_version_update_vfs.patch; charset=UTF-8
+--=-kKh6Bm70qvS8esbZE3QF
+Content-Disposition: attachment; filename=series
+Content-Type: text/plain; name=series; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
-The patch modifies the i_version field of the inode on the VFS layer.
-The i_version field become a 64bit counter that is set on inode creation and
-that is incremented every time the inode data is modified (similarly to the
-"ctime" time-stamp).
-The aim is to fulfill a NFSv4 requirement for rfc3530:
-"5.5.  Mandatory Attributes - Definitions
-Name		#	DataType   Access   Description
-___________________________________________________________________
-change		3	uint64       READ     A value created by the
-		server that the client can use to determine if file
-		data, directory contents or attributes of the object
-		have been modified.  The servermay return the object's
-		time_metadata attribute for this attribute's value but
-		only if the filesystem object can not be updated more
-		frequently than the resolution of time_metadata."
+# Rebased the patches to 2.6.22-rc4
 
-Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+# Add mount option to turn off extents
+ext4_noextent_mount_opt.patch
 
-Index: linux-2.6.22-rc4/fs/binfmt_misc.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/binfmt_misc.c	2007-06-04 17:57:25.000000000 -0700
-+++ linux-2.6.22-rc4/fs/binfmt_misc.c	2007-06-13 17:24:57.000000000 -0700
-@@ -508,6 +508,7 @@ static struct inode *bm_get_inode(struct
- 		inode->i_blocks = 0;
- 		inode->i_atime = inode->i_mtime = inode->i_ctime =
- 			current_fs_time(inode->i_sb);
-+		inode->i_version = 1;
- 	}
- 	return inode;
- }
-Index: linux-2.6.22-rc4/fs/libfs.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/libfs.c	2007-06-04 17:57:25.000000000 -0700
-+++ linux-2.6.22-rc4/fs/libfs.c	2007-06-13 17:24:57.000000000 -0700
-@@ -232,6 +232,7 @@ int get_sb_pseudo(struct file_system_typ
- 	root->i_mode = S_IFDIR | S_IRUSR | S_IWUSR;
- 	root->i_uid = root->i_gid = 0;
- 	root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
-+	root->i_version = 1;
- 	dentry = d_alloc(NULL, &d_name);
- 	if (!dentry) {
- 		iput(root);
-@@ -255,6 +256,8 @@ int simple_link(struct dentry *old_dentr
- 	struct inode *inode = old_dentry->d_inode;
- 
- 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-+	inode->i_version++;
-+	dir->i_version++;
- 	inc_nlink(inode);
- 	atomic_inc(&inode->i_count);
- 	dget(dentry);
-@@ -287,6 +290,8 @@ int simple_unlink(struct inode *dir, str
- 	struct inode *inode = dentry->d_inode;
- 
- 	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-+	inode->i_version++;
-+	dir->i_version++;
- 	drop_nlink(inode);
- 	dput(dentry);
- 	return 0;
-@@ -323,6 +328,8 @@ int simple_rename(struct inode *old_dir,
- 
- 	old_dir->i_ctime = old_dir->i_mtime = new_dir->i_ctime =
- 		new_dir->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	old_dir->i_version++;
-+	new_dir->i_version++;
- 
- 	return 0;
- }
-@@ -399,6 +406,7 @@ int simple_fill_super(struct super_block
- 	inode->i_uid = inode->i_gid = 0;
- 	inode->i_blocks = 0;
- 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_version = 1;
- 	inode->i_op = &simple_dir_inode_operations;
- 	inode->i_fop = &simple_dir_operations;
- 	inode->i_nlink = 2;
-@@ -427,6 +435,7 @@ int simple_fill_super(struct super_block
- 		inode->i_uid = inode->i_gid = 0;
- 		inode->i_blocks = 0;
- 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+		inode->i_version = 1;
- 		inode->i_fop = files->ops;
- 		inode->i_ino = i;
- 		d_add(dentry, inode);
-Index: linux-2.6.22-rc4/fs/pipe.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/pipe.c	2007-06-04 17:57:25.000000000 -0700
-+++ linux-2.6.22-rc4/fs/pipe.c	2007-06-13 17:24:57.000000000 -0700
-@@ -882,6 +882,7 @@ static struct inode * get_pipe_inode(voi
- 	inode->i_uid = current->fsuid;
- 	inode->i_gid = current->fsgid;
- 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_version = 1;
- 
- 	return inode;
- 
+# Mounted ext4dev fs with extents by default for testing purpose,
+# for Ext4 product release, extents mount option
+# will be turn on only if the fs has EXTENTS feature on
+ext4_extents_on_by_default.patch
 
---=-mxOQwUXRAXToXPU49MkB--
+# Propagate inode flags
+ext4-propagate_flags.patch
+
+# Add extent sanity checks
+ext4-extent-sanity-checks.patch
+
+# Bug fix:set 64bit JBD2 feature on >32bit ext4 fs
+ext4_set_jbd2_64bit_feature.patch
+
+# Fix: Rename CONFIG_JBD_DEBUG to CONFIG_JBD2_DEBUG
+jbd2_config_jbd2_debug_fix.patch
+
+# Export jbd2-debug via debugfs
+ext4_CONFIG_JBD2_DEBUG.patch
+jbd2_move_jbd2_debug_to_debugfs.patch
+
+# fallocate() syscall patches and ext4 fallocate() implementation
+# Missing manpages
+ext4-fallocate-1-syscall_i386_amd64_ppc
+ext4-fallocate-2-syscall_s390
+ext4-fallocate-3-syscall_ia64
+ext4-fallocate-5-ext4_support
+ext4-fallocate-6-uninit_write_support
+
+# Nanosecond timestamp support
+ext4-nanosecond-patch
+
+# inode verion patch series
+# inode versioning is needed for NFSv4
+
+# vfs changes, 64 bit inode->i_version
+64-bit-i_version.patch
+# reserve hi 32 bit inode version on ext4 on-disk inode
+i_version_hi.patch
+# ext4 inode version read/store
+ext4_i_version_hi_2.patch
+# ext4 inode version update
+i_version_update_ext4.patch
+# add a noversion mount option to disable inode version updates
+ext4_no_version.patch
+# VFS-level updates of inode version.
+i_version_update_vfs.patch
+
+# New patch to expand inode i_extra_isize to support features
+# in high part of inode (>128 bytes)
+ext4_expand_inode_extra_isize.patch
+
+# Export jbd stats through procfs
+# Shall this move to debugfs?
+jbd-stats-through-procfs
+
+# Remove 32000 subdirs limit. 
+ext4_remove_subdirs_limit.patch
+
+##############################################################
+# Unstable patches
+# Note: still lots of outstanding comments from linux-ext4 list, 12/2006
+# Missing signed-off-by:
+booked-page-flag.patch
+
+# Reserve blocks for delalloc
+ext4-block-reservation.patch
+
+# Delayed allocation support for data=writeback mode
+# Needs support for ordered mode and pagesize!= fs block size
+ext4-delayed-allocation.patch
+
+# 48 bit block number support in delalloc
+ext4-delalloc-extents-48bit.patch
+
+# Add mount option to turn off delayed allocation
+ext4_nodelalloc_mount_opt.patch
+
+--=-kKh6Bm70qvS8esbZE3QF--
