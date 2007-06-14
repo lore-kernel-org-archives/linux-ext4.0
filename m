@@ -1,152 +1,45 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: iov_iter_fault_in_readable fix
-Date: Thu, 14 Jun 2007 18:31:53 +0100
-Message-ID: <20070614173153.GA14771@infradead.org>
-References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613135759.GD13815@localhost.sw.ru>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Couple of queries related to htree directory
+Date: Thu, 14 Jun 2007 14:46:31 -0400
+Message-ID: <20070614184630.GB14911@thunk.org>
+References: <ffa0f8300706140622j104ad6d7ra3abb2c8779dece@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-kernel@vger.kernel.org, npiggin@suse.de,
-	mark.fasheh@oracle.com, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+Cc: linux-ext4@vger.kernel.org
+To: Tejas Sumant <tejas.sumant@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:43672 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750862AbXFNRbz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 13:31:55 -0400
+Received: from thunk.org ([69.25.196.29]:47333 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751168AbXFNSqz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2007 14:46:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20070613135759.GD13815@localhost.sw.ru>
+In-Reply-To: <ffa0f8300706140622j104ad6d7ra3abb2c8779dece@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 13, 2007 at 05:57:59PM +0400, Dmitriy Monakhov wrote:
->  	Function prerform check for signgle region, with out respect to
->  	segment nature of iovec, For example writev no longer works :)
+On Thu, Jun 14, 2007 at 06:52:01PM +0530, Tejas Sumant wrote:
+> 
+> Any idea, how to search a directory on given ext3 file system, which
+> is having htree structure?
 
-Btw, could someone please start to collect all sniplets like this in
-a nice simple regression test suite?  If no one wants to start a new
-one we should probably just put it into xfsqa (which should be useable
-for other filesystems aswell despite the name)
+The same way you search any other Linux/Unix system.  I.e., using
+opendir()/readir() from a C program, or /bin/ls from a shell program,
+etc.  It's completely transparent. 
 
-> 
-> 	/* TESTCASE BEGIN */
-> 	#include <stdio.h>
-> 	#include <sys/types.h>
-> 	#include <sys/stat.h>
-> 	#include <fcntl.h>
-> 	#include <sys/uio.h>
-> 	#include <sys/mman.h>
-> 	#define SIZE  (4096 * 2)
-> 	int main(int argc, char* argv[])
-> 	{	
-> 		char* ptr[4];
-> 		struct iovec iov[2];
-> 		int fd, ret;
-> 		ptr[0] = mmap(NULL, SIZE, PROT_READ|PROT_WRITE,
-> 			MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
-> 		ptr[1] = mmap(NULL, SIZE, PROT_NONE,
-> 			MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
-> 		ptr[2] = mmap(NULL, SIZE, PROT_READ|PROT_WRITE,
-> 			MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
-> 		ptr[3] = mmap(NULL, SIZE, PROT_NONE, 
-> 			MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
-> 
-> 		iov[0].iov_base = ptr[0] + (SIZE -1);
-> 		iov[0].iov_len = 1;
-> 		memset(ptr[0], 1, SIZE);
-> 
-> 		iov[1].iov_base = ptr[2];
-> 		iov[1].iov_len = SIZE;
-> 		memset(ptr[2], 2, SIZE);
-> 
-> 		fd = open(argv[1], O_CREAT|O_RDWR|O_TRUNC, 0666);
-> 		ret = writev(fd, iov, sizeof(iov) / sizeof(struct iovec));
-> 		return 0;
-> 	}	
-> 	/* TESTCASE END*/
-> 	We will get folowing result:
-> 		writev(3, [{"\1", 1}, {"\2"..., 8192}], 2) = -1 EFAULT (Bad address)
->  	
-> 	this is hidden bug, and it was invisiable because XXXX_fault_in_readable
->  	return value was ignored before. Lets iov_iter_fault_in_readable
->  	perform checks for all segments.
-> 
-> Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
-> 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index fef19fc..7e025ea 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -433,7 +433,7 @@ size_t iov_iter_copy_from_user_atomic(struct page *page,
->  size_t iov_iter_copy_from_user(struct page *page,
->  		struct iov_iter *i, unsigned long offset, size_t bytes);
->  void iov_iter_advance(struct iov_iter *i, size_t bytes);
-> -int iov_iter_fault_in_readable(struct iov_iter *i, size_t bytes);
-> +int iov_iter_fault_in_readable(struct iov_iter *i, size_t *bytes);
->  size_t iov_iter_single_seg_count(struct iov_iter *i);
->  
->  static inline void iov_iter_init(struct iov_iter *i,
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 8d59ed9..8600c3e 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -1817,10 +1817,32 @@ void iov_iter_advance(struct iov_iter *i, size_t bytes)
->  }
->  EXPORT_SYMBOL(iov_iter_advance);
->  
-> -int iov_iter_fault_in_readable(struct iov_iter *i, size_t bytes)
-> +int iov_iter_fault_in_readable(struct iov_iter *i, size_t* bytes)
->  {
-> -	char __user *buf = i->iov->iov_base + i->iov_offset;
-> -	return fault_in_pages_readable(buf, bytes);
-> +	size_t len = *bytes;
-> +	int ret;
-> +	if (likely(i->nr_segs == 1)) {
-> +		ret = fault_in_pages_readable(i->iov->iov_base, len);
-> +		if (ret)
-> +			*bytes = 0;
-> +	} else {
-> +		const struct iovec *iov = i->iov;
-> +		size_t base = i->iov_offset;
-> +		*bytes = 0;
-> +		while (len) {
-> +			int copy = min(len, iov->iov_len - base);
-> +			if ((ret = fault_in_pages_readable(iov->iov_base + base, copy)))
-> +				break;
-> +			*bytes += copy;
-> +			len -= copy;
-> +			base += copy;
-> +			if (iov->iov_len == base) {
-> +				iov++;
-> +				base = 0;
-> +			}
-> +		}
-> +	}
-> +	return ret;	
->  }
->  EXPORT_SYMBOL(iov_iter_fault_in_readable);
->  
-> @@ -2110,7 +2132,7 @@ static ssize_t generic_perform_write_2copy(struct file *file,
->  		 * to check that the address is actually valid, when atomic
->  		 * usercopies are used, below.
->  		 */
-> -		if (unlikely(iov_iter_fault_in_readable(i, bytes))) {
-> +		if (unlikely(iov_iter_fault_in_readable(i, &bytes) && !bytes)) {
->  			status = -EFAULT;
->  			break;
->  		}
-> @@ -2284,7 +2306,7 @@ again:
->  		 * to check that the address is actually valid, when atomic
->  		 * usercopies are used, below.
->  		 */
-> -		if (unlikely(iov_iter_fault_in_readable(i, bytes))) {
-> +		if (unlikely(iov_iter_fault_in_readable(i, &bytes)&& !bytes)) {
->  			status = -EFAULT;
->  			break;
->  		}
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
----end quoted text---
+> Also is there any way to create a htree indexed directory explicitly?
+> using some command or tool?
+
+Once the dir_index feature is enabled, for all new directories and all
+directories which are only take one disk block grow to bigger than one
+disk block, they automatically get indexed.  (There's no point
+indexing a single directory block since that's equivalent to a single
+leaf block.)
+
+To convert existing directories, you need to unmount the filesystem
+and use the command:
+
+	e2fsck -fD /dev/hdXX
+
+This really should be added to an FAQ on ext4.wiki.kernel.org....
+
+					 - Ted
