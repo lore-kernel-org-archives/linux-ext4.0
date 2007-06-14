@@ -1,93 +1,48 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 1/5] fallocate() implementation in i86, x86_64 and powerpc
-Date: Thu, 14 Jun 2007 03:14:58 -0600
-Message-ID: <20070614091458.GH5181@schatzie.adilger.int>
-References: <20070426175056.GA25321@amitarora.in.ibm.com> <20070426180332.GA7209@amitarora.in.ibm.com> <20070509160102.GA30745@amitarora.in.ibm.com> <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: + fs-introduce-write_begin-write_end-and-perform_write-aops.patch added to -mm tree
+Date: Thu, 14 Jun 2007 11:52:49 +0200
+Message-ID: <20070614095249.GG17819@atrey.karlin.mff.cuni.cz>
+References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613114356.GD17547@wotan.suse.de> <1181776021.21924.87.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	Suparna Bhattacharya <suparna@in.ibm.com>, torvalds@osdl.org,
-	akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, cmm@us.ibm.com
-To: David Chinner <dgc@sgi.com>
+Cc: Nick Piggin <npiggin@suse.de>, lkml <linux-kernel@vger.kernel.org>,
+	mark.fasheh@oracle.com, ext4 <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com
+To: Badari Pulavarty <pbadari@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:38414 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750886AbXFNJPC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 05:15:02 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:54480 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751052AbXFNJwu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 05:52:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20070613235217.GS86004887@sgi.com>
+In-Reply-To: <1181776021.21924.87.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 14, 2007  09:52 +1000, David Chinner wrote:
-> B FA_PREALLOCATE
-> provides the same functionality as
-> B FA_ALLOCATE
-> except it does not ever change the file size. This allows allocation
-> of zero blocks beyond the end of file and is useful for optimising
-> append workloads.
-> TP
-> B FA_DEALLOCATE
-> removes the underlying disk space with the given range. The disk space
-> shall be removed regardless of it's contents so both allocated space
-> from
-> B FA_ALLOCATE
-> and
-> B FA_PREALLOCATE
-> as well as from
-> B write(3)
-> will be removed.
-> B FA_DEALLOCATE
-> shall never remove disk blocks outside the range specified.
+> On Wed, 2007-06-13 at 13:43 +0200, Nick Piggin wrote:
+> ..
+> >  
+> > > 5) ext3_write_end:
+> > > 	Before  write_begin/write_end patch set we have folowing locking
+> > > 	order:
+> > > 		stop_journal(handle);
+> > > 		unlock_page(page);
+> > > 	But now order is oposite:
+> > > 		unlock_page(page);
+> > > 		stop_journal(handle);
+> > > 	Can we got any race condition now? I'm not sure is it actual problem,
+> > > 	may be somebody cant describe this.
+> > 
+> > Can we just change it to the original order? That would seem to be
+> > safest unless one of the ext3 devs explicitly acks it.
+  Sorry, I've missed beginning of this thread. But what problems can
+exactly cause this ordering change? ext3_journal_stop has no need to be
+protected by the page lock - it can be even better that it's not
+protected as it can trigger commit and all that would happen
+unnecessarily under page lock...
 
-So this is essentially the same as "punch".  There doesn't seem to be
-a mechanism to only unallocate unused FA_{PRE,}ALLOCATE space at the
-end.
+								Honza
 
-> B FA_DEALLOCATE
-> shall never change the file size. If changing the file size
-> is required when deallocating blocks from an offset to end
-> of file (or beyond end of file) is required,
-> B ftuncate64(3)
-> should be used.
-
-This also seems to be a bit of a wart, since it isn't a natural converse
-of either of the above functions.  How about having two modes,
-similar to FA_ALLOCATE and FA_PREALLOCATE?  Say, FA_PUNCH (which
-would be as you describe here - deletes all data in the specified
-range changing the file size if it overlaps EOF, and FA_DEALLOCATE,
-which only deallocates unused FA_{PRE,}ALLOCATE space?
-
-We might also consider making @mode be a mask instead of an enumeration:
-
-FA_FL_DEALLOC	0x01 (default allocate)
-FA_FL_KEEP_SIZE	0x02 (default extend/shrink size)
-FA_FL_DEL_DATA	0x04 (default keep written data on DEALLOC)
-
-We might then build FA_ALLOCATE and FA_DEALLOCATE out of these flags
-without making the interface sub-optimal.
-
-I suppose it might be a bit late in the game to add a "goal"
-parameter and e.g. FA_FL_REQUIRE_GOAL, FA_FL_NEAR_GOAL, etc to make
-the API more suitable for XFS?  The goal could be a single __u64, or
-a struct with e.g. __u64 byte offset (possibly also __u32 lun like
-in FIEMAP).  I guess the one potential limitation here is the
-number of function parameters on some architectures.
-
-> B ENOSPC
-> There is not enough space left on the device containing the file
-> referred to by
-> IR fd.
-
-Should probably say whether space is removed on failure or not.  In
-some (primitive) implementations it might no longer be possible to
-distinguish between unwritten extents and zero-filled blocks, though
-at this point DEALLOC of zero-filled blocks might not be harmful either.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
