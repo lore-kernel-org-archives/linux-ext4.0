@@ -1,63 +1,33 @@
-From: Jean noel Cordenner <jean-noel.cordenner@bull.net>
-Subject: Re: [PATCH 0/6] inode version updated patches
-Date: Fri, 15 Jun 2007 16:28:49 +0200
-Message-ID: <4672A221.2050002@bull.net>
-References: <1181836571.7779.42.camel@garfield> <1181854139.3883.7.camel@dyn9047017103.beaverton.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Couple of queries related to htree directory
+Date: Fri, 15 Jun 2007 12:32:48 -0400
+Message-ID: <20070615163248.GE14911@thunk.org>
+References: <ffa0f8300706140622j104ad6d7ra3abb2c8779dece@mail.gmail.com> <20070614184630.GB14911@thunk.org> <ffa0f8300706150400u39c31a13l2805f4d8217eb4cf@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Kalpak Shah <kalpak@clusterfs.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Tejas Sumant <tejas.sumant@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43737 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751289AbXFOOeq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jun 2007 10:34:46 -0400
-In-Reply-To: <1181854139.3883.7.camel@dyn9047017103.beaverton.ibm.com>
+Received: from THUNK.ORG ([69.25.196.29]:57963 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757904AbXFOQcz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jun 2007 12:32:55 -0400
+Content-Disposition: inline
+In-Reply-To: <ffa0f8300706150400u39c31a13l2805f4d8217eb4cf@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mingming Cao a =E9crit :
-> On Thu, 2007-06-14 at 21:26 +0530, Kalpak Shah wrote:
->> Hi,
->>
->> I have updated the inode version patches and below are the details:
->>
->> 64-bit-i_version.patch which only replaces the 32-bit i_version fiel=
-d in
->> the generic inode with a 64-bit i_version field. The VFS-level updat=
-es
->> of the inode version are still in the i_version_update_vfs.patch and
->> this patch has been moved to the bottom of the patch series.
->>
->> ext4_i_version_hi_2.patch was still using ei->i_fs_version instead o=
-f
->> inode->i_version. I have corrected this patch.
->>
->> Also there were whitespace problems in i_version_hi.patch.
->>
->> I am also attaching a ext4_no_version.patch which adds a "noversion"
->> mount option to disable inode version updates.
->>
->> I am not sure why i_version needs to be updated in VFS since it is b=
-eing
->> updated in ext4_mark_iloc_dirty().
->>
->=20
-> Yes I think we can remove the inode version update in VFS patch. So I=
- am
-> going to drop the patch 5/6.  Jean Noel, if you disagree, please let =
-me
-> know.
->=20
+On Fri, Jun 15, 2007 at 04:30:02PM +0530, Tejas Sumant wrote:
+> Hi Theodore,
+> 
+> My file system has dir_index feature.
+> When I created new directory larger than blocksize and run htree
+> command of debugfs on it, I received message that the directory is not
+> in htree format.
 
-I agree, the update of the i_version in the vfs are done in
-simple_rename() , simple_link() , simple_unlink() , which are mainly=20
-used by fs/ramfs and fs/hugetlbfs. So I think if each fs can update the=
-=20
-i_version, that will be good.
+Can you run the debugfs stat command on the directory and send me the
+output?
 
-Jean noel
+Thanks,
+
+						- Ted
