@@ -1,28 +1,28 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: iov_iter_fault_in_readable fix
-Date: Thu, 14 Jun 2007 23:34:48 +0100
-Message-ID: <20070614223448.GA28420@infradead.org>
-References: <200705292119.l4TLJtAD011726@shell0.pdx.osdl.net> <20070613134005.GA13815@localhost.sw.ru> <20070613135759.GD13815@localhost.sw.ru> <20070614173153.GA14771@infradead.org> <20070614222109.GF86004887@sgi.com>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: ext4 patch queue updated
+Date: Fri, 15 Jun 2007 09:13:22 +0400
+Message-ID: <46721FF2.7070207@clusterfs.com>
+References: <1181766059.3887.22.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-kernel@vger.kernel.org, npiggin@suse.de,
-	mark.fasheh@oracle.com, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: David Chinner <dgc@sgi.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, "Jose R. Santos" <jrs@us.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:60418 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752664AbXFNWet (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Jun 2007 18:34:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20070614222109.GF86004887@sgi.com>
+Received: from mail.chehov.net ([80.71.245.247]:61877 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750946AbXFOFNe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jun 2007 01:13:34 -0400
+In-Reply-To: <1181766059.3887.22.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 15, 2007 at 08:21:09AM +1000, David Chinner wrote:
-> Yeah, it can run a subset of the tests on NFS and UDF filesystems as well and
-> there are some specific UDF-only tests in it too.  I think the NFS test group
-> is mostly generic tests that don't use or test specific XFS features.
+OK
 
-Actually most testcases can run on any reasonable posixish filesystem, we
-just need some glue to tell the testsuite it's actually okay.
+Mingming Cao wrote:
+> Run checkpatch.pl http://lwn.net/Articles/237451/
+> I fixed coding style issues for most patches by hand except the delayed
+> allocation patch ext4-delayed-allocation.patch.  That need a bit more
+> work and requires someone family with the code better. Alex, can you
+> help on this? Attached is the checkpatch.pl output, thanks.
