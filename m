@@ -1,66 +1,63 @@
-From: "Tejas Sumant" <tejas.sumant@gmail.com>
-Subject: Re: Couple of queries related to htree directory
-Date: Fri, 15 Jun 2007 16:30:02 +0530
-Message-ID: <ffa0f8300706150400u39c31a13l2805f4d8217eb4cf@mail.gmail.com>
-References: <ffa0f8300706140622j104ad6d7ra3abb2c8779dece@mail.gmail.com>
-	 <20070614184630.GB14911@thunk.org>
+From: Jean noel Cordenner <jean-noel.cordenner@bull.net>
+Subject: Re: [PATCH 0/6] inode version updated patches
+Date: Fri, 15 Jun 2007 16:28:49 +0200
+Message-ID: <4672A221.2050002@bull.net>
+References: <1181836571.7779.42.camel@garfield> <1181854139.3883.7.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Kalpak Shah <kalpak@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.251]:31390 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750936AbXFOLAC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jun 2007 07:00:02 -0400
-Received: by an-out-0708.google.com with SMTP id d31so184044and
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Jun 2007 04:00:02 -0700 (PDT)
-In-Reply-To: <20070614184630.GB14911@thunk.org>
-Content-Disposition: inline
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43737 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751289AbXFOOeq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jun 2007 10:34:46 -0400
+In-Reply-To: <1181854139.3883.7.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Theodore,
+Mingming Cao a =E9crit :
+> On Thu, 2007-06-14 at 21:26 +0530, Kalpak Shah wrote:
+>> Hi,
+>>
+>> I have updated the inode version patches and below are the details:
+>>
+>> 64-bit-i_version.patch which only replaces the 32-bit i_version fiel=
+d in
+>> the generic inode with a 64-bit i_version field. The VFS-level updat=
+es
+>> of the inode version are still in the i_version_update_vfs.patch and
+>> this patch has been moved to the bottom of the patch series.
+>>
+>> ext4_i_version_hi_2.patch was still using ei->i_fs_version instead o=
+f
+>> inode->i_version. I have corrected this patch.
+>>
+>> Also there were whitespace problems in i_version_hi.patch.
+>>
+>> I am also attaching a ext4_no_version.patch which adds a "noversion"
+>> mount option to disable inode version updates.
+>>
+>> I am not sure why i_version needs to be updated in VFS since it is b=
+eing
+>> updated in ext4_mark_iloc_dirty().
+>>
+>=20
+> Yes I think we can remove the inode version update in VFS patch. So I=
+ am
+> going to drop the patch 5/6.  Jean Noel, if you disagree, please let =
+me
+> know.
+>=20
 
-My file system has dir_index feature.
-When I created new directory larger than blocksize and run htree
-command of debugfs on it, I received message that the directory is not
-in htree format.
+I agree, the update of the i_version in the vfs are done in
+simple_rename() , simple_link() , simple_unlink() , which are mainly=20
+used by fs/ramfs and fs/hugetlbfs. So I think if each fs can update the=
+=20
+i_version, that will be good.
 
-Any idea why this happened?
-
-Thanks
-
-On 6/15/07, Theodore Tso <tytso@mit.edu> wrote:
-> On Thu, Jun 14, 2007 at 06:52:01PM +0530, Tejas Sumant wrote:
-> >
-> > Any idea, how to search a directory on given ext3 file system, which
-> > is having htree structure?
->
-> The same way you search any other Linux/Unix system.  I.e., using
-> opendir()/readir() from a C program, or /bin/ls from a shell program,
-> etc.  It's completely transparent.
->
-> > Also is there any way to create a htree indexed directory explicitly?
-> > using some command or tool?
->
-> Once the dir_index feature is enabled, for all new directories and all
-> directories which are only take one disk block grow to bigger than one
-> disk block, they automatically get indexed.  (There's no point
-> indexing a single directory block since that's equivalent to a single
-> leaf block.)
->
-> To convert existing directories, you need to unmount the filesystem
-> and use the command:
->
->        e2fsck -fD /dev/hdXX
->
-> This really should be added to an FAQ on ext4.wiki.kernel.org....
->
->                                         - Ted
->
-
-
--- 
-Tejas Sumant
+Jean noel
