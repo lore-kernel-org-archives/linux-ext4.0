@@ -1,50 +1,47 @@
-From: Dmitriy Monakhov <dmonakhov@sw.ru>
-Subject: [PATCH] deny partial write for loop dev fd
-Date: Sat, 16 Jun 2007 19:39:17 +0400
-Message-ID: <20070616153917.GC14349@localhost.sw.ru>
-References: <20070613134631.GB13815@localhost.sw.ru> <Pine.LNX.4.64.0706131426070.4539@blonde.wat.veritas.com> <20070613172939.GE13815@localhost.sw.ru> <Pine.LNX.4.64.0706131543380.10580@blonde.wat.veritas.com>
+From: Jim Meyering <jim@meyering.net>
+Subject: avoid leak upon failed realloc
+Date: Sat, 16 Jun 2007 19:31:01 +0200
+Message-ID: <87ejkbbycq.fsf@rho.meyering.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, npiggin@suse.de,
-	mark.fasheh@oracle.com, linux-ext4@vger.kernel.org
-To: Hugh Dickins <hugh@veritas.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:40842 "EHLO relay.sw.ru"
+Received: from smtp3-g19.free.fr ([212.27.42.29]:59686 "EHLO smtp3-g19.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757780AbXFPPjE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 Jun 2007 11:39:04 -0400
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0706131543380.10580@blonde.wat.veritas.com>
+	id S1751088AbXFPRbD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 16 Jun 2007 13:31:03 -0400
+Received: from mx.meyering.net (mx.meyering.net [82.230.74.64])
+	by smtp3-g19.free.fr (Postfix) with ESMTP id 36E1A5A210
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Jun 2007 19:31:02 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Partial write can be easily supported by LO_CRYPT_NONE mode, but
-it is not easy in LO_CRYPT_CRYPTOAPI case, because of its block nature.
-I don't know who still used cryptoapi, but theoretically it is possible.
-So let's leave things as they are. Loop device doesn't support partial
-write before Nick's "write_begin/write_end" patch set, and let's it 
-behave the same way after.
+Here's a tiny fix to avoid a leak when realloc fails:
 
-Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
----
- drivers/block/loop.c |    4 +---
- 1 files changed, 1 insertions(+), 3 deletions(-)
+2007-06-16  Jim Meyering  <jim@meyering.net>
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 4bab9b1..de122f3 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -244,10 +244,8 @@ static int do_lo_send_aops(struct loop_device *lo, struct bio_vec *bvec,
- 
- 		ret = pagecache_write_end(file, mapping, pos, size, copied,
- 							page, fsdata);
--		if (ret < 0)
-+		if (ret < 0 || ret != copied)
- 			goto fail;
--		if (ret < copied)
--			copied = ret;
- 
- 		if (unlikely(transfer_result))
- 			goto fail;
--- 
-1.5.2
+	* tdb.c (tdb_append): Don't leak a buffer when realloc fails.
+
+diff -r 777972a573b3 lib/ext2fs/tdb.c
+--- a/lib/ext2fs/tdb.c	Fri Jun 15 18:05:09 2007 +0200
++++ b/lib/ext2fs/tdb.c	Sat Jun 16 19:28:50 2007 +0200
+@@ -3460,8 +3460,15 @@ int tdb_append(struct tdb_context *tdb,
+ 	if (dbuf.dptr == NULL) {
+ 		dbuf.dptr = (unsigned char *)malloc(new_dbuf.dsize);
+ 	} else {
+-		dbuf.dptr = (unsigned char *)realloc(dbuf.dptr,
+-						     dbuf.dsize + new_dbuf.dsize);
++		unsigned char *new_dptr
++		  = (unsigned char *)realloc(dbuf.dptr,
++					     dbuf.dsize + new_dbuf.dsize);
++		if (new_dptr == NULL) {
++			free(dbuf.dptr);
++			dbuf.dptr = NULL;
++		} else {
++			dbuf.dptr = new_dptr;
++		}
+ 	}
+
+ 	if (dbuf.dptr == NULL) {
+
+Signed-off-by: Jim Meyering <jim@meyering.net>
