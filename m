@@ -1,47 +1,60 @@
-From: Dmitriy Monakhov <dmonakhov@sw.ru>
-Subject: [patch] e2fsprogs time value is interpreted as signed
-Date: Sun, 17 Jun 2007 13:47:40 +0400
-Message-ID: <20070617094740.GG14349@localhost.sw.ru>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: Correction to nanosecond timestamp patch for 64-bit arch
+Date: Sun, 17 Jun 2007 18:32:46 +0530
+Message-ID: <1182085374.4141.5.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Mingming Cao <cmm@us.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:20099 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760081AbXFQJqx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Jun 2007 05:46:53 -0400
-Received: from sw.ru ([192.168.3.106])
-	by relay.sw.ru (8.13.4/8.13.4) with SMTP id l5H9kpvo018320
-	for <linux-ext4@vger.kernel.org>; Sun, 17 Jun 2007 13:46:51 +0400 (MSD)
-Content-Disposition: inline
+Received: from mail.clusterfs.com ([206.168.112.78]:51020 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753765AbXFQNDJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jun 2007 09:03:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-after bug: http://bugzilla.kernel.org/show_bug.cgi?id=5079
-was fixed by:
-commit 4d7bf11d649c72621ca31b8ea12b9c94af380e63
-Author: Markus Rechberger <Markus.Rechberger@amd.com>
-Date:   Tue May 8 00:23:39 2007 -0700
-__u32 time value becomes interpreat as signed value. This patch add
-coresponding fix to debug fs routine.
+http://bugzilla.kernel.org/show_bug.cgi?id=5079 mentions the problem with timestamps in ext2/3/4. If the timestamp is set to before epoch, the files have their dates changed on 64-bit partitions.
 
-Signed-off-by: Dmitriy Monakhov <dmonakhov@openvz.org>
----
- debugfs/util.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+The corrections from this bug also need to be incorporated in the nanosecond patch. 
 
-diff --git a/debugfs/util.c b/debugfs/util.c
-index c6096ab..53a0813 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -187,7 +187,7 @@ int check_fs_bitmaps(char *name)
- char *time_to_string(__u32 cl)
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: linux-2.6.21/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.21.orig/include/linux/ext4_fs.h
++++ linux-2.6.21/include/linux/ext4_fs.h
+@@ -366,9 +366,9 @@ static inline __le32 ext4_encode_extra_t
+ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
  {
- 	static int	do_gmt = -1;
--	time_t		t = (time_t) cl;
-+	time_t		t = (time_t)(signed) cl;
- 	char *		tz;
+        if (sizeof(time->tv_sec) > 4)
+-	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+-			       << 32;
+-       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
++	       time->tv_sec |= (__u64)((signed)le32_to_cpu(extra) &
++				       EXT4_EPOCH_MASK) << 32;
++       time->tv_nsec = ((signed)le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
+ }
  
- 	if (do_gmt == -1) {
--- 
-1.5.2
+ #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
+@@ -390,7 +390,7 @@ do {									       \
+ 
+ #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
+ do {									       \
+-	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
++	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+ 		ext4_decode_extra_time(&(inode)->xtime,			       \
+ 				       raw_inode->xtime ## _extra);	       \
+@@ -399,7 +399,8 @@ do {									       \
+ #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
+ do {									       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+-		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
++		(einode)->xtime.tv_sec = 				       \
++				(signed)le32_to_cpu((raw_inode)->xtime);       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+ 		ext4_decode_extra_time(&(einode)->xtime,		       \
+ 				       raw_inode->xtime ## _extra);	       \
