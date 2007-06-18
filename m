@@ -1,60 +1,50 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Correction to nanosecond timestamp patch for 64-bit arch
-Date: Sun, 17 Jun 2007 18:32:46 +0530
-Message-ID: <1182085374.4141.5.camel@garfield>
+From: "Tejas Sumant" <tejas.sumant@gmail.com>
+Subject: Re: Couple of queries related to htree directory
+Date: Mon, 18 Jun 2007 07:45:37 +0530
+Message-ID: <ffa0f8300706171915y73e10f9bvf9c936b1985975d5@mail.gmail.com>
+References: <ffa0f8300706140622j104ad6d7ra3abb2c8779dece@mail.gmail.com>
+	 <20070614184630.GB14911@thunk.org>
+	 <ffa0f8300706150400u39c31a13l2805f4d8217eb4cf@mail.gmail.com>
+	 <20070615163248.GE14911@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Mingming Cao <cmm@us.ibm.com>
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:51020 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753765AbXFQNDJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jun 2007 09:03:09 -0400
+Received: from an-out-0708.google.com ([209.85.132.242]:57294 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751061AbXFRCPi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Jun 2007 22:15:38 -0400
+Received: by an-out-0708.google.com with SMTP id d31so301899and
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Jun 2007 19:15:37 -0700 (PDT)
+In-Reply-To: <20070615163248.GE14911@thunk.org>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=5079 mentions the problem with timestamps in ext2/3/4. If the timestamp is set to before epoch, the files have their dates changed on 64-bit partitions.
+Ok. I will try lsattr. I willl let you know outcome.
 
-The corrections from this bug also need to be incorporated in the nanosecond patch. 
+Thanks
 
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 
-Index: linux-2.6.21/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.21.orig/include/linux/ext4_fs.h
-+++ linux-2.6.21/include/linux/ext4_fs.h
-@@ -366,9 +366,9 @@ static inline __le32 ext4_encode_extra_t
- static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
- {
-        if (sizeof(time->tv_sec) > 4)
--	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
--			       << 32;
--       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
-+	       time->tv_sec |= (__u64)((signed)le32_to_cpu(extra) &
-+				       EXT4_EPOCH_MASK) << 32;
-+       time->tv_nsec = ((signed)le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
- }
- 
- #define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
-@@ -390,7 +390,7 @@ do {									       \
- 
- #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
- do {									       \
--	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
-+	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
- 		ext4_decode_extra_time(&(inode)->xtime,			       \
- 				       raw_inode->xtime ## _extra);	       \
-@@ -399,7 +399,8 @@ do {									       \
- #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
- do {									       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
--		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
-+		(einode)->xtime.tv_sec = 				       \
-+				(signed)le32_to_cpu((raw_inode)->xtime);       \
- 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
- 		ext4_decode_extra_time(&(einode)->xtime,		       \
- 				       raw_inode->xtime ## _extra);	       \
+On 6/15/07, Theodore Tso <tytso@mit.edu> wrote:
+> On Fri, Jun 15, 2007 at 04:30:02PM +0530, Tejas Sumant wrote:
+> > Hi Theodore,
+> >
+> > My file system has dir_index feature.
+> > When I created new directory larger than blocksize and run htree
+> > command of debugfs on it, I received message that the directory is not
+> > in htree format.
+>
+> Can you run the debugfs stat command on the directory and send me the
+> output?
+>
+> Thanks,
+>
+>                                                 - Ted
+>
+
+
+-- 
+Tejas Sumant
