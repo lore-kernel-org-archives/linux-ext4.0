@@ -1,113 +1,78 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: ext4-block-reservation.patch
-Date: Tue, 19 Jun 2007 22:46:48 +0530
-Message-ID: <46780F80.8030003@linux.vnet.ibm.com>
-References: <4677B00A.3010600@linux.vnet.ibm.com> <4677F0B3.4050805@redhat.com> <46780D76.9040706@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: Updated patches for journal checksums.
+Date: Tue, 19 Jun 2007 13:06:46 -0600
+Message-ID: <20070619190645.GT5181@schatzie.adilger.int>
+References: <1182239437.3784.11.camel@dhcp7.linsyssoft.com> <46778DBE.3090801@clusterfs.com> <1182240928.3784.18.camel@dhcp7.linsyssoft.com> <20070619085141.GR5181@schatzie.adilger.int> <46779D9D.2090109@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------030706010505040203010709"
-Cc: Eric Sandeen <sandeen@redhat.com>, alex@clusterfs.com,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Girish Shilamkar <girish@clusterfs.com>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:54190 "EHLO
-	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758811AbXFSRQz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 13:16:55 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l5JHI0SJ6664352
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 03:18:00 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5JHKOMR203934
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 03:20:24 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5JHGqva019823
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 03:16:52 +1000
-In-Reply-To: <46780D76.9040706@linux.vnet.ibm.com>
+Received: from mail.clusterfs.com ([206.168.112.78]:39990 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932285AbXFSTGt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 15:06:49 -0400
+Content-Disposition: inline
+In-Reply-To: <46779D9D.2090109@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------030706010505040203010709
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-
-
-Aneesh Kumar K.V wrote:
+On Jun 19, 2007  13:10 +0400, Alex Tomas wrote:
+> Andreas Dilger wrote:
+> >I _think_ Alex is asking "what happens if during a transaction undergoing
+> >checkpoint of blocks to filesystem (not the last one in the journal) is
+> >interrupted by a crash and upon restart the partially-checkpointed
+> >transaction is found to have a checksum error?"
 > 
+> yup, thanks for clarification.
 > 
-> Eric Sandeen wrote:
->> Aneesh Kumar K.V wrote:
->>> Hi,
->>>
->>> In block reservation code while rebalancing the free blocks why are 
->>> we not looking at the reservation slots that have no free blocks 
->>> left.  Rebalancing
->>> the free blocks equally across all the reservation slots will make sure
->>> we have less chances of failure later when we try to reserve blocks.
->>>
->>> I understand that we consider the CPU slot on which reservation 
->>> failed while
->>> rebalancing. But what is preventing considering other CPU slot that 
->>> might have
->>> zero blocks left ?
->>>
->>>
->>>
->>>
->>> +void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, 
->>> __u64 free)
->>> +{
->>> +       int i, used_slots = 0;
->>> +       __u64 chunk;
->>> +
->>> +       /* let's know what slots have been used */
->>> +       for (i = 0; i < NR_CPUS; i++)
->>
->> BTW... I think you really want:
->>
->>   +       for_each_possible_cpu(i) {
->>
->> in this and other similar places.
->>
->> NR_CPUS is a config-time option that may be much more than your actual
->> count of runtime possible CPUs... on ia64 it's 512 by default, for
->> example.  That's a lot of pointlessness on a 2, 4 or 8 cpu box :)
->>
->> I can whip up a proper patch for current code to send (again)...
->>
+> >>>what do we do if transaction in the journal is found with wrong
+> >>>checksum? leave partial transaction in-place?
+> >>The sanity of the transaction is checked in PASS_SCAN. And if checksum
+> >>is found to be incorrect for nth transaction then last transaction which
+> >>is written to disk is (n - 1).
+> >
+> >The recovery.c code (AFAIK) does not do replay for any transaction that
+> >does not have a valid checksum, or transactions beyond that.  If the
+> >bad transaction had already started chekpoint (i.e. isn't the last
+> >committed transaction) then the journal _should_ return an error up to
+> >the filesystem, so it can call ext4_error() at startup.  For e2fsck
+> >(which normally does journal replay & recovery) it can do a full
+> >filesystem check at this point.
 > 
-> This is what i have modified. I am yet to build test it. I am looking at 
-> forward porting the
-> mballoc patches and was planning to send it together.
-> 
+> hmm. it actually can be last transaction (following no activity?)
 
-I build tested the patch. I guess we need the below small patch on top of the previous
-patch.
+The current implementation is that if you are running with sync commits
+(i.e. the current 2-phase write {data blocks} {wait} {commit block}
+{wait}) and you detect a checksum error in the last transaction this
+SHOULD result in the filesystem being marked in error (I haven't
+verified this is in the most recent version of the code).  This is
+what JBD_FEATURE_COMPAT_CHECKSUM does - it only adds checksums to the
+commit blocks.
+
+However, in the case of async commits (JBD_FEATURE_INCOMPAT_ASYNC_COMMIT
+- write {data blocks} {commit block} {wait}, which is what gives the
+performance gain) there isn't any way to tell the difference between a
+checksum error in the last transaction and the case of an interrupted
+commit.  In the case of an interrupted commit there would not have been
+any checkpointing into the filesystem yet, so this case shouldn't matter.
+
+This leaves only the "last transaction, finished async commit, started
+checkpoint, crash, corruption, checksum error" case.  I agree this could
+cause data corruption.  One possibility is to limit the corruption to
+at most a single block by adding checksums to the transaction descriptor
+blocks (which already hold the transaction ID to verify they are not
+stale) and cover the block numbers.  This would seem to be the only place
+that we could get error "fan out" and then we would limit the corruption
+to the block(s) that were actually corrupted.  This wouldn't be any
+different than having random corruption of disk blocks inside the fs.
+This would probably be a separate INCOMPAT flag.
 
 
--aneesh
-
---------------030706010505040203010709
-Content-Type: text/plain;
- name="k"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="k"
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index ad3f57c..df6b83c 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1981,7 +1981,7 @@ int ext4_reserve_init(struct super_block *sb)
- 	struct ext4_reservation_slot *rs;
- 	int i;
- 
--	rs = percpu_alloc(sizeof(struct ext4_reservation_slot), GFP_KERNEL);
-+	rs = alloc_percpu(struct ext4_reservation_slot);
- 	if (rs == NULL)
- 		return -ENOMEM;
- 	sbi->s_reservation_slots = rs;
-
---------------030706010505040203010709--
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
