@@ -1,41 +1,69 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: delayed allocatiou result in Oops
-Date: Tue, 19 Jun 2007 13:36:56 +0400
-Message-ID: <4677A3B8.3000007@clusterfs.com>
-References: <20070614072352.GA6517@localhost.sw.ru> <4672202C.4080304@clusterfs.com> <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com> <20070616081426.GB14349@localhost.sw.ru> <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com> <46778186.9030306@clusterfs.com> <20070619091628.GB20172@localhost.sw.ru>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: ext4-block-reservation.patch
+Date: Tue, 19 Jun 2007 15:59:30 +0530
+Message-ID: <4677B00A.3010600@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@sw.ru>
+To: alex@clusterfs.com, linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.chehov.net ([80.71.245.247]:64060 "EHLO mail.rialcom.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754035AbXFSJhK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Jun 2007 05:37:10 -0400
-In-Reply-To: <20070619091628.GB20172@localhost.sw.ru>
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:46483 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758173AbXFSKaH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 06:30:07 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l5JAV0If3239990
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 20:31:06 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5JAXBmM070986
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 20:33:12 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5JATcNO011861
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 20:29:39 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dmitry Monakhov wrote:
-> But whole approach based on using PagePrivate bit and page->private
-> ptr for special purposes is realy dengerous, and imho wrong,
-> because avery fs-related code assume that page->private points to
-> page_buffers. Especially this approach not work for blksize < pgsize.
-> The best way to store/pass any block related info is buffer_head flags.
-> This approach works for blksize < pgsize case  too.
+Hi,
 
-it's not dangerous as buffer_heads is optional facility
-and any filesystem is free to use them or not. or even
-use own mechanism like reiser4 does. this is why struct
-page got private field instead of buffers (in 2.4).
+In block reservation code while rebalancing the free blocks why are we not 
+looking at the reservation slots that have no free blocks left.  Rebalancing
+the free blocks equally across all the reservation slots will make sure
+we have less chances of failure later when we try to reserve blocks. 
 
-buffer_heads have cost - 56 bytes/page (on 32bit arch)
-+ cpu cycles to maintain them.
 
-current delayed allocation isn't supposed to work with
-bsize != PAGE_CACHE_SIZE. this will be resolved by the
-upcoming patch, but bsize == PAGE_CACHE_SIZE is worthwhile
-to optimize, I believe.
+I understand that we consider the CPU slot on which reservation failed while
+rebalancing. But what is preventing considering other CPU slot that might have
+zero blocks left ?
 
-thanks, Alex
+
+
+
++void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
++{
++       int i, used_slots = 0;
++       __u64 chunk;
++
++       /* let's know what slots have been used */
++       for (i = 0; i < NR_CPUS; i++)
++               if (rs[i].rs_reserved || i == smp_processor_id())
++                       used_slots++;
++
++       /* chunk is a number of block every used
++        * slot will get. make sure it isn't 0 */
++       chunk = free + used_slots - 1;
++       do_div(chunk, used_slots);
++
++       for (i = 0; i < NR_CPUS; i++) {
++               if (free < chunk)
++                       chunk = free;
++               if (rs[i].rs_reserved || i == smp_processor_id()) {
++                       rs[i].rs_reserved = chunk;
++                       free -= chunk;
++                       BUG_ON(free < 0);
++               }
++       }
++       BUG_ON(free);
++}
+
+
+-aneesh
