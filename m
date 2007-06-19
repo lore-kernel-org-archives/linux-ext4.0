@@ -1,149 +1,116 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: delayed allocatiou result in Oops
-Date: Mon, 18 Jun 2007 18:01:17 -0700
-Message-ID: <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com>
-References: <20070614072352.GA6517@localhost.sw.ru>
-	 <4672202C.4080304@clusterfs.com>
-	 <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com>
-	 <20070616081426.GB14349@localhost.sw.ru>
-Reply-To: cmm@us.ibm.com
+From: John Marconi <jamarconi@sbcglobal.net>
+Subject: Re: kjournald hang on ext3 to ext3 copy
+Date: Mon, 18 Jun 2007 22:53:02 -0500
+Message-ID: <4677531E.1030108@sbcglobal.net>
+References: <4673E2F1.2090704@sbcglobal.net>
+	<20070618062027.GB5181@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
-To: Dmitriy Monakhov <dmonakhov@sw.ru>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:59627 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761980AbXFSBB3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jun 2007 21:01:29 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id l5J0uhDN018466
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 20:56:43 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5J11Q15052680
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 19:01:26 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5J11Pgd027429
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 19:01:26 -0600
-In-Reply-To: <20070616081426.GB14349@localhost.sw.ru>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: John Marconi <jamarconi@sbcglobal.net>, ext3-users@redhat.com,
+	linux-ext4@vger.kernel.org
+Return-path: <ext3-users-bounces@redhat.com>
+In-Reply-To: <20070618062027.GB5181@schatzie.adilger.int>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/ext3-users>
+List-Post: <mailto:ext3-users@redhat.com>
+List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=subscribe>
+Sender: ext3-users-bounces@redhat.com
+Errors-To: ext3-users-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 2007-06-16 at 12:14 +0400, Dmitriy Monakhov wrote:
-> On 16:16 =D0=9F=D1=82=D0=BD 15 =D0=98=D1=8E=D0=BD     , Mingming Cao =
-wrote:
-> > I hit almost the same issue today also, but with different error #,=
- and
-> > one more kernel oops, when run fsstress on x86_64.=20
-> >=20
-> > EXT4-fs: writeback error =3D -2
-> > EXT4-fs: writeback error =3D -2
-> This error never happens in writeback in my case, only ENOSPC.
-I see why, error -2 is ENOENT, your kernel already patched with your
-previus patch to fix the return error from ext4_reserve_global() from
-ENOENT to ENOSPC.
+Andreas Dilger wrote:
+> On Jun 16, 2007  08:17 -0500, John Marconi wrote:
+>   
+>> I am running into a situation in which one of my ext3 filesystems is 
+>> getting hung during normal usage.  There are three ext3 filesystems on a 
+>> CompactFLASH.  One is mounted as / and one as /tmp.  In my test, I am 
+>> copying a 100 MB file from /root to /tmp repeatedly.  While doing this 
+>> test, I eventually see the copying stop, and any attempts to access /tmp 
+>> fail - if I even do ls /tmp the command will hang.
+>>
+>> I suspect kjournald because of the following ps output:
+>> PID      PPID   WCHAN:20      PCPU  %MEM  PSR  COMM
+>> 8847    99 start_this_handle        1.1  0.0  28     pdflush
+>> 8853    99 schedule_timeout       0.2  0.0   7     pdflush
+>>  188     1 kswapd                       0.0  0.0  19   kswapd0
+>> 8051     1 mtd_blktrans_thread   0.0  0.0  22   mtdblockd
+>> 8243     1 kjournald                    0.0  0.0   0   kjournald
+>> 8305     1 schedule_timeout        0.0  0.0   2   udevd
+>> 8378     1 kjournald                    0.0  0.0   0   kjournald
+>> 8379     1 journal_commit_trans 16.6  0.0   0   kjournald
+>> 8437     1 schedule_timeout       0.0  0.0   0   evlogd
+>> 8527     1 syslog                        0.0  0.0   1   klogd
+>> 8534     1 schedule_timeout       0.0  0.0   0   portmap
+>> 8569     1 schedule_timeout       0.0  0.0   0   rngd
+>> 8639     1 schedule_timeout       0.1  0.0  24   sshd
+>> 8741  8639 schedule_timeout    0.0  0.0   0     sshd
+>> 8743  8741 wait                        0.0  0.0   9       bash
+>> 8857  8743 schedule_timeout    4.9  0.0   7         cp
+>> 8664     1 schedule_timeout       0.0  0.0   0   xinetd
+>> 8679     1 schedule_timeout       0.0  0.0   0   evlnotifyd
+>> 8689     1 schedule_timeout       0.0  0.0   0   evlactiond
+>> 8704     1 wait                           0.0  0.0   1   bash
+>> 8882  8704 -                            0.0  0.0   2     ps
+>>
+>> If I run ps repeatedly, I always see process 8379 in 
+>> journal_commit_transaction, and it is always taking between 12% and 20% 
+>> of processor 0 up.  This process never completes.  I also see process 
+>> 8847 in start_this_handle forever as well - so I believe they are related. 
+>>
+>> This system is using a 2.6.14 kernel.
+>>     
+>
+> Please try to reproduce with a newer kernel, as this kind of problem
+> might have been fixed already.
+>
+>
+> Two tips for debugging this kind of issue:
+> - you need to have detailed stack traces (e.g. sysrq-t) of all the
+>   interesting processes
+>
+> - if a process is stuck inside a large function (e.g. 8379 in example)
+>   you need to provide the exact line number.  this can be found by compiling
+>   the kernel with CONFIG_DEBUG_INFO (-g flag to gcc) and then doing
+>   "gdb vmlinux" and "p *(journal_commit_transaction+{offset})", where the
+>   byte offset is printed in the sysrq-t output, and then include the code
+>   surrounding that line from the source file
+>
+> - a process stuck in "start_this_handle()" is often just an innocent
+>   bystander.  It is waiting for the currently committing transaction to
+>   complete before it can start a new filesystem-modifying operation (handle).
+>   That said, the journal handle acts like a lock and has been the cause of
+>   many deadlock problems (e.g. process 1 holds lock, waits for handle;
+>   process 2 holds transaction open waiting for lock).  pdflush might be one
+>   of the "process 1" kind of tasks, and some other process is holding the
+>   transaction open preventing it from completing.
+>
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+>
+>
+>   
+Andreas,
 
-> > > > I've digged this a litle bit with folowig results:
-> > > >=20
-> > > > int block_read_full_page(struct page *page, get_block_t *get_bl=
-ock)
-> > > > {
-> > > > ...
-> > > > 1914:	if (!page_has_buffers(page)) <<< page_has_buffers(page) =3D=
-=3D true=20
-> > > > 		create_empty_buffers(page, blocksize, 0);
-> > > > 	head =3D page_buffers(page); <<<<  page_buffers(page) =3D=3D N=
-ULL =20
-> > > > <<<i've add debug info here:
-> > > > <<< page->flags =3D=3D 100000000000821
-> > > > <<< PagePrivate(page) =3D=3D 1, (page)->private =3D=3D NULL
-> > > > <<< So we have private page without buffers, it is WRONG.
-> > > >=20
+Thanks for the information.
 
-Right, I think the problem is the PagePrivate() is being set without a
-valid page->private pointer.
+I am not able to update the entire kernel to a new version for a variety 
+of reasons, however I can update certain parts in my system (such as the 
+filesystem).  I did a diff of the 2.6.16 kernel against my kernel, and 
+the changes to jbd were minimal.  I plan on looking at the latest 
+versions of the kernel to determine if anything has changed since 2.6.16.
 
-The PagePrivate flag is being set by delayed allocation in the
-ext4_wb_commit_write().
+I took a look at the place that kjournald was stuck - it is in the 
+journal_commit_transaction "while (comiit_transaction->t_updates)" loop 
+and it is trying to "spin_lock(&journal->j_state_lock).  When I look at 
+pdflush, it is also trying to take the journal->j_state_lock.  Do you 
+have any tips on finding out which process might own journal->j_state_lock?
 
-Looking at ext4-delayed-allocation.patch
-
-+int ext4_wb_commit_write(struct file *file, struct page *page,
-+                            unsigned from, unsigned to)
-+{
-+       loff_t pos =3D ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
-+       struct inode *inode =3D page->mapping->host;
-+       int err =3D 0;
-+
-+       wb_debug("commit page %lu (%u-%u) for inode %lu\n",
-+                       page->index, from, to, inode->i_ino);
-+
-+       /* mark page private so that we get
-+        * called to invalidate/release page */
-+       SetPagePrivate(page);
-+
-+       if (!PageBooked(page) && !PageMappedToDisk(page)) {
-+               /* ->prepare_write() observed that block for this
-+                * page hasn't been allocated yet. there fore it
-+                * asked to reserve block for later allocation */
-+               BUG_ON(page->private =3D=3D 0);
-+               page->private =3D 0;
-+               err =3D ext4_wb_reserve_space_page(page, 1);
-+               if (err)
-+                       return err;
-+       }
-
-
-It sets the PagePrivate flag at the commit_write() time.  And the page-
->private is cleared to 0. page->private is being set to 1 at
-ext4_wb_prepare_write():
-
-+int ext4_wb_prepare_write(struct file *file, struct page *page,
-+                             unsigned from, unsigned to)
-+{
-+       struct inode *inode =3D page->mapping->host;
-+       struct buffer_head bh, *bhw =3D &bh;
-+       int err =3D 0;
-+
-+       wb_debug("prepare page %lu (%u-%u) for inode %lu\n",
-+                       page->index, from, to, page->mapping->host->i_i=
-no);
-+
-+       /* if page is uptodate this means that ->prepare_write() has
-+        * been called on page before and page is mapped to disk or
-+        * we did reservation. page is protected and nobody can
-+        * access it. hence, it safe to use page->private to pass
-+        * flag that ->commit_write() has to reserve blocks. because
-+        * an error may occur after ->prepare_write() we should not
-+        * reserve block here. it's better to do in ->commit_write()
-+        * when we're sure page is to be written */
-+       page->private =3D 0;
-+       if (!PageUptodate(page)) {
-+               /* first write to this page */
-+               bh.b_state =3D 0;
-+               err =3D ext4_get_block(inode, page->index, bhw, 0);
-+               if (err)
-+                       return err;
-+               if (!buffer_mapped(bhw)) {
-+                       /* this block isn't allocated yet, reserve spac=
-e */
-+                       wb_debug("reserve space for new block\n");
-+                       page->private =3D 1;
-+                       ext4_wb_clear_page(page, from, to);
-+                       ClearPageMappedToDisk(page);
-
-
-
->From the comments it says the page->private is set to 1 to letting
-commit_write know that it needs block reservation, but I don't see the
-page->private value being checked in ext4_wb_commit_write(). Instead,
-the PageMappedToDisk(page) flag is being checked.
-
-Alex, can you clarify the use of page->private and PagePrivate flag
-here? Do we still need the page->private for delayed allocation, with
-PageBooked flag and PageMappedToDisk page flag?
-
-Thanks,
-
-Mingming
+Thanks again,
+John
