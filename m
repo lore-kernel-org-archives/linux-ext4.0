@@ -1,53 +1,39 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC] extent whiteouts
-Date: Tue, 19 Jun 2007 02:14:04 -0600
-Message-ID: <20070619081404.GA27147@schatzie.adilger.int>
-References: <20070514230808.GA5581@schatzie.adilger.int>
+From: Girish Shilamkar <girish@clusterfs.com>
+Subject: Re: Updated patches for journal checksums.
+Date: Tue, 19 Jun 2007 13:45:28 +0530
+Message-ID: <1182240928.3784.18.camel@dhcp7.linsyssoft.com>
+References: <1182239437.3784.11.camel@dhcp7.linsyssoft.com>
+	 <46778DBE.3090801@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:50946 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:50951 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753198AbXFSIOH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 04:14:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20070514230808.GA5581@schatzie.adilger.int>
+	with ESMTP id S1752645AbXFSIP3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 04:15:29 -0400
+In-Reply-To: <46778DBE.3090801@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Did anyone ever see this?
+On Tue, 2007-06-19 at 12:03 +0400, Alex Tomas wrote:
+> say, at mount time we fund transaction logged. this means part of it can be
+> on a disk. 
+I am not sure I understand this completely. Still I hope the following
+answers your question.
 
-This is a relatively simple (and actually safe) change to make now, but
-would be harder to do as ext4 becomes more widely used.
-
-I think all that would be needed is that when accessing an extent with
-ext_pblock() (ee_start | ee_start_hi) == 0 we return zeroes, just as if
-reading from an uninitialized extent or hole.  When allocating to this
-extent we treat the ee_start == 0 extent similar to an uninitialized
-extent, in that it needs to be split and can't merge with neighbour extents.
-
-On May 14, 2007  17:08 -0600, Andreas Dilger wrote:
-> For snapshot filesystems and in some cases where it is expected to do tree
-> rebalancing it would be desirable to allow a "whiteout" for an extent.  That
-> means the extent would be present in the tree, and would explicitly list
-> the data blocks as a "hole" (i.e. ee_start == 0).  This is useful because
-> it avoids the need to search all of the "backing" inodes to see if there is
-> allocated data, and it also handles the case where the new file is truncated
-> and extended (leaving a hole) but there is still data in the backing file.
+> what do we do if transaction in the journal is found with wrong
+> checksum? leave partial transaction in-place?
 > 
-> Since block == 0 is not a valid data for ext3 it should never happen,
-> and if it ever did happen it would be better to return all zeros (and
-> not allow writing to the extent) instead of overwriting the superblock).
-> 
-> This would need some special casing in the extent code, but it probably
-> would not be much different than what is currently the case for preallocated
-> extents, and it would be a good time to add this in along with the
-> preallocated extents.
+The sanity of the transaction is checked in PASS_SCAN. And if checksum
+is found to be incorrect for nth transaction then last transaction which
+is written to disk is (n - 1).
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+
+
+Regards,
+Girish
