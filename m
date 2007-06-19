@@ -1,84 +1,89 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4-block-reservation.patch
-Date: Tue, 19 Jun 2007 10:05:23 -0500
-Message-ID: <4677F0B3.4050805@redhat.com>
-References: <4677B00A.3010600@linux.vnet.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: delayed allocatiou result in Oops
+Date: Tue, 19 Jun 2007 09:23:49 -0700
+Message-ID: <1182270229.4113.8.camel@dyn9047017103.beaverton.ibm.com>
+References: <20070614072352.GA6517@localhost.sw.ru>
+	 <4672202C.4080304@clusterfs.com>
+	 <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com>
+	 <20070616081426.GB14349@localhost.sw.ru>
+	 <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com>
+	 <46778186.9030306@clusterfs.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: alex@clusterfs.com, linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Dmitriy Monakhov <dmonakhov@sw.ru>, linux-ext4@vger.kernel.org
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59678 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754802AbXFSPLZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Jun 2007 11:11:25 -0400
-In-Reply-To: <4677B00A.3010600@linux.vnet.ibm.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:59052 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757987AbXFSQYB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 12:24:01 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5JGNxdS009505
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 12:23:59 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5JGNwuM217914
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 10:23:58 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5JGNw0F019214
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jun 2007 10:23:58 -0600
+In-Reply-To: <46778186.9030306@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Aneesh Kumar K.V wrote:
-> Hi,
+On Tue, 2007-06-19 at 11:11 +0400, Alex Tomas wrote:
+> Mingming Cao wrote:
+> >>From the comments it says the page->private is set to 1 to letting
+> > commit_write know that it needs block reservation, but I don't see the
+> > page->private value being checked in ext4_wb_commit_write(). Instead,
+> > the PageMappedToDisk(page) flag is being checked.
+> > 
+> > Alex, can you clarify the use of page->private and PagePrivate flag
+> > here? Do we still need the page->private for delayed allocation, with
+> > PageBooked flag and PageMappedToDisk page flag?
 > 
-> In block reservation code while rebalancing the free blocks why are we not 
-> looking at the reservation slots that have no free blocks left.  Rebalancing
-> the free blocks equally across all the reservation slots will make sure
-> we have less chances of failure later when we try to reserve blocks. 
-> 
-> 
-> I understand that we consider the CPU slot on which reservation failed while
-> rebalancing. But what is preventing considering other CPU slot that might have
-> zero blocks left ?
-> 
-> 
-> 
-> 
-> +void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
-> +{
-> +       int i, used_slots = 0;
-> +       __u64 chunk;
-> +
-> +       /* let's know what slots have been used */
-> +       for (i = 0; i < NR_CPUS; i++)
-
-BTW... I think you really want:
-
-  +       for_each_possible_cpu(i) {
-
-in this and other similar places.
-
-NR_CPUS is a config-time option that may be much more than your actual
-count of runtime possible CPUs... on ia64 it's 512 by default, for
-example.  That's a lot of pointlessness on a 2, 4 or 8 cpu box :)
-
-I can whip up a proper patch for current code to send (again)...
-
--Eric
+> sorry for confusion, we need PagePrivate so that truncate calls our
+> ->invalidatepage(). in turn this call is needed to drop unused reservation.
 
 
-> +               if (rs[i].rs_reserved || i == smp_processor_id())
-> +                       used_slots++;
-> +
-> +       /* chunk is a number of block every used
-> +        * slot will get. make sure it isn't 0 */
-> +       chunk = free + used_slots - 1;
-> +       do_div(chunk, used_slots);
-> +
-> +       for (i = 0; i < NR_CPUS; i++) {
-> +               if (free < chunk)
-> +                       chunk = free;
-> +               if (rs[i].rs_reserved || i == smp_processor_id()) {
-> +                       rs[i].rs_reserved = chunk;
-> +                       free -= chunk;
-> +                       BUG_ON(free < 0);
-> +               }
-> +       }
-> +       BUG_ON(free);
-> +}
+One more question, do we still need page->private? I don't see page-
+>private value being checked anywhere.  I see you cleared
+PageMappedToDisk page flag at prepare_write, and checked
+PageMappedToDisk in commit_write()...
+
+Hmm, PageMappedToDisk is probably not sufficient enough for pagesize!
+=blocksize. Is that the reason we need page->private to pass the
+request?
+
+
+> block_read_full_page() must not happen to pages being delayed allocated
+> in the first place - it's uptodate by definition. I think the problem
+> began when ext4_wb_commit_write() exited due to -ENOSPC but left not
+> uptodate *and* with PG_private. then subsequent access to page turned to
+> block_read_full_page() which relies on PG_private and meaningful private
+> field. Dmitry, could you repeat the test with SetPagePrivate(page) moved
+> to after that if() with ext4_wb_reserve_space_page(), please?
 > 
 > 
-> -aneesh
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> as i'm here ... status update: I've been reworking delayed allocation
+> patches to support blocksize < PAGE_CACHE_SIZE (and address akpm's request
+> for more generic implementation). the patch isn't ready for review, but
+> hopefully will be in few days.
+> 
+
+That's good to know, thanks for the update. So probably above error case
+handling will be addressed in the new version? 
+
+BTW, can you point me your latest and greatest mballoc patch? I am
+trying to forward port and merge that patch to ext4 patch queue....
+
+
+Thanks,
+
+
+Mingming
+> 
+> thanks, Alex
+> 
+> 
