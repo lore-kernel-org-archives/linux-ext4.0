@@ -1,184 +1,149 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck journal recovery can corrupt all superblock backups
-Date: Mon, 18 Jun 2007 18:27:56 -0400
-Message-ID: <20070618222756.GA1218@thunk.org>
-References: <20070209062444.GA2438@schatzie.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: delayed allocatiou result in Oops
+Date: Mon, 18 Jun 2007 18:01:17 -0700
+Message-ID: <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com>
+References: <20070614072352.GA6517@localhost.sw.ru>
+	 <4672202C.4080304@clusterfs.com>
+	 <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com>
+	 <20070616081426.GB14349@localhost.sw.ru>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jim Garlick <garlick@llnl.gov>
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
+To: Dmitriy Monakhov <dmonakhov@sw.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:46845 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762879AbXFRW2F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jun 2007 18:28:05 -0400
-Content-Disposition: inline
-In-Reply-To: <20070209062444.GA2438@schatzie.adilger.int>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:59627 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761980AbXFSBB3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jun 2007 21:01:29 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id l5J0uhDN018466
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 20:56:43 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5J11Q15052680
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 19:01:26 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5J11Pgd027429
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Jun 2007 19:01:26 -0600
+In-Reply-To: <20070616081426.GB14349@localhost.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 08, 2007 at 11:24:44PM -0700, Andreas Dilger wrote:
-> Looking through the e2fsck code it would also seem possible to move the
-> setting of EXT2_FLAG_MASTER_SB_ONLY before the journal replay.  That
-> is the second patch.  I'm not sure which one is better.
+On Sat, 2007-06-16 at 12:14 +0400, Dmitriy Monakhov wrote:
+> On 16:16 =D0=9F=D1=82=D0=BD 15 =D0=98=D1=8E=D0=BD     , Mingming Cao =
+wrote:
+> > I hit almost the same issue today also, but with different error #,=
+ and
+> > one more kernel oops, when run fsstress on x86_64.=20
+> >=20
+> > EXT4-fs: writeback error =3D -2
+> > EXT4-fs: writeback error =3D -2
+> This error never happens in writeback in my case, only ENOSPC.
+I see why, error -2 is ENOENT, your kernel already patched with your
+previus patch to fix the return error from ext4_reserve_global() from
+ENOENT to ENOSPC.
 
-I ended up doing both just to be paranoid; the following will be in
-e2fsprogs 1.40.
+> > > > I've digged this a litle bit with folowig results:
+> > > >=20
+> > > > int block_read_full_page(struct page *page, get_block_t *get_bl=
+ock)
+> > > > {
+> > > > ...
+> > > > 1914:	if (!page_has_buffers(page)) <<< page_has_buffers(page) =3D=
+=3D true=20
+> > > > 		create_empty_buffers(page, blocksize, 0);
+> > > > 	head =3D page_buffers(page); <<<<  page_buffers(page) =3D=3D N=
+ULL =20
+> > > > <<<i've add debug info here:
+> > > > <<< page->flags =3D=3D 100000000000821
+> > > > <<< PagePrivate(page) =3D=3D 1, (page)->private =3D=3D NULL
+> > > > <<< So we have private page without buffers, it is WRONG.
+> > > >=20
 
-					- Ted
+Right, I think the problem is the PagePrivate() is being set without a
+valid page->private pointer.
 
-# HG changeset patch
-# User tytso@mit.edu
-# Date 1182205610 14400
-# Node ID 5c00c21991974cc750efa2474fab484b0a1f1522
-# Parent  449d075befe0e4be32cce9d34ca1f03575e292d2
-Don't write changes to the backup superblocks by default
+The PagePrivate flag is being set by delayed allocation in the
+ext4_wb_commit_write().
 
-This patch changes ext2fs_open() to set EXT2_FLAG_MASTER_SB_ONLY by
-default.  This avoids some problems in e2fsck (reported by Jim Garlick)
-where a corrupt journal can end up writing the bad superblock to the
-backups.  In general, only e2fsck (after the filesystem is clean),
-tune2fs, and resize2fs should change the backup superblocks by default.
-Most callers of ext2fs_open() should not be touching anything where the
-backups should be touched.  So let's change the defaults to avoid
-potential problems.
+Looking at ext4-delayed-allocation.patch
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
++int ext4_wb_commit_write(struct file *file, struct page *page,
++                            unsigned from, unsigned to)
++{
++       loff_t pos =3D ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
++       struct inode *inode =3D page->mapping->host;
++       int err =3D 0;
++
++       wb_debug("commit page %lu (%u-%u) for inode %lu\n",
++                       page->index, from, to, inode->i_ino);
++
++       /* mark page private so that we get
++        * called to invalidate/release page */
++       SetPagePrivate(page);
++
++       if (!PageBooked(page) && !PageMappedToDisk(page)) {
++               /* ->prepare_write() observed that block for this
++                * page hasn't been allocated yet. there fore it
++                * asked to reserve block for later allocation */
++               BUG_ON(page->private =3D=3D 0);
++               page->private =3D 0;
++               err =3D ext4_wb_reserve_space_page(page, 1);
++               if (err)
++                       return err;
++       }
 
-diff -r 449d075befe0 -r 5c00c2199197 e2fsck/ChangeLog
---- a/e2fsck/ChangeLog	Mon Jun 04 01:49:51 2007 -0400
-+++ b/e2fsck/ChangeLog	Mon Jun 18 18:26:50 2007 -0400
-@@ -1,3 +1,10 @@ 2007-06-04  Theodore Tso  <tytso@mit.edu
-+2007-06-18  Theodore Tso  <tytso@mit.edu>
+
+It sets the PagePrivate flag at the commit_write() time.  And the page-
+>private is cleared to 0. page->private is being set to 1 at
+ext4_wb_prepare_write():
+
++int ext4_wb_prepare_write(struct file *file, struct page *page,
++                             unsigned from, unsigned to)
++{
++       struct inode *inode =3D page->mapping->host;
++       struct buffer_head bh, *bhw =3D &bh;
++       int err =3D 0;
 +
-+	* journal.c (e2fsck_run_ext3_journal), unix.c (main): Explicitly
-+		add the EXT2_FLAG_MASTER_SB_ONLY flag to make sure we
-+		won't write out the backup superblocks until we're sure
-+		that we want write them out.
++       wb_debug("prepare page %lu (%u-%u) for inode %lu\n",
++                       page->index, from, to, page->mapping->host->i_i=
+no);
 +
- 2007-06-04  Theodore Tso  <tytso@mit.edu>
- 
- 	* super.c (check_super_block, e2fsck_get_device_size), 
-diff -r 449d075befe0 -r 5c00c2199197 e2fsck/journal.c
---- a/e2fsck/journal.c	Mon Jun 04 01:49:51 2007 -0400
-+++ b/e2fsck/journal.c	Mon Jun 18 18:26:50 2007 -0400
-@@ -832,6 +832,7 @@ int e2fsck_run_ext3_journal(e2fsck_t ctx
- 	}
- 	ctx->fs->priv_data = ctx;
- 	ctx->fs->now = ctx->now;
-+	ctx->fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
- 
- 	/* Set the superblock flags */
- 	e2fsck_clear_recover(ctx, recover_retval);
-diff -r 449d075befe0 -r 5c00c2199197 e2fsck/unix.c
---- a/e2fsck/unix.c	Mon Jun 04 01:49:51 2007 -0400
-+++ b/e2fsck/unix.c	Mon Jun 18 18:26:50 2007 -0400
-@@ -981,6 +981,18 @@ restart:
- 			fix_problem(ctx, PR_0_SB_CORRUPT, &pctx);
- 		fatal_error(ctx, 0);
- 	}
-+	/*
-+	 * We only update the master superblock because (a) paranoia;
-+	 * we don't want to corrupt the backup superblocks, and (b) we
-+	 * don't need to update the mount count and last checked
-+	 * fields in the backup superblock (the kernel doesn't update
-+	 * the backup superblocks anyway).  With newer versions of the
-+	 * library this flag is set by ext2fs_open2(), but we set this
-+	 * here just to be sure.  (No, we don't support e2fsck running
-+	 * with some other libext2fs than the one that it was shipped
-+	 * with, but just in case....)
-+	 */
-+	fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
- 
- 	if (!(ctx->flags & E2F_FLAG_GOT_DEVSIZE)) {
- 		__u32 blocksize = EXT2_BLOCK_SIZE(fs->super);
-@@ -1127,15 +1139,6 @@ restart:
- 	    !(ctx->options & E2F_OPT_READONLY))
- 		ext2fs_mark_super_dirty(fs);
- 
--	/*
--	 * We only update the master superblock because (a) paranoia;
--	 * we don't want to corrupt the backup superblocks, and (b) we
--	 * don't need to update the mount count and last checked
--	 * fields in the backup superblock (the kernel doesn't
--	 * update the backup superblocks anyway).
--	 */
--	fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
--
- 	ehandler_init(fs->io);
- 
- 	if (ctx->superblock)
-diff -r 449d075befe0 -r 5c00c2199197 lib/ext2fs/ChangeLog
---- a/lib/ext2fs/ChangeLog	Mon Jun 04 01:49:51 2007 -0400
-+++ b/lib/ext2fs/ChangeLog	Mon Jun 18 18:26:50 2007 -0400
-@@ -1,3 +1,10 @@ 2007-05-31  Theodore Tso  <tytso@mit.edu
-+2007-06-12  Theodore Tso  <tytso@mit.edu>
-+
-+	* openfs.c (ext2fs_open2): We now set EXT2_FLAG_MASTER_SB_ONLY
-+		when we open a filesystem.  Applications that want to
-+		write changes to the backup superblocks need to explicitly
-+		clear this flag.
-+
- 2007-05-31  Theodore Tso  <tytso@mit.edu>
- 
- 	* tst_super_size.c (main): Add sanity check to make sure the
-diff -r 449d075befe0 -r 5c00c2199197 lib/ext2fs/openfs.c
---- a/lib/ext2fs/openfs.c	Mon Jun 04 01:49:51 2007 -0400
-+++ b/lib/ext2fs/openfs.c	Mon Jun 18 18:26:50 2007 -0400
-@@ -101,6 +101,8 @@ errcode_t ext2fs_open2(const char *name,
- 	memset(fs, 0, sizeof(struct struct_ext2_filsys));
- 	fs->magic = EXT2_ET_MAGIC_EXT2FS_FILSYS;
- 	fs->flags = flags;
-+	/* don't overwrite sb backups unless flag is explicitly cleared */
-+	fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
- 	fs->umask = 022;
- 	retval = ext2fs_get_mem(strlen(name)+1, &fs->device_name);
- 	if (retval)
-diff -r 449d075befe0 -r 5c00c2199197 misc/ChangeLog
---- a/misc/ChangeLog	Mon Jun 04 01:49:51 2007 -0400
-+++ b/misc/ChangeLog	Mon Jun 18 18:26:50 2007 -0400
-@@ -1,3 +1,9 @@ 2007-06-04  Theodore Tso  <tytso@mit.edu
-+2007-06-12  Theodore Tso  <tytso@mit.edu>
-+
-+	* tune2fs.c (main): Clear the EXT2_FLAG_MASTER_SB_ONLY flag
-+		because we want tune2fs changes to get written to the
-+		backup blocks.
-+
- 2007-06-04  Theodore Tso  <tytso@mit.edu>
- 
- 	* badblocks.c (main): Fix error checking of the last-block and
-diff -r 449d075befe0 -r 5c00c2199197 misc/tune2fs.c
---- a/misc/tune2fs.c	Mon Jun 04 01:49:51 2007 -0400
-+++ b/misc/tune2fs.c	Mon Jun 18 18:26:50 2007 -0400
-@@ -780,6 +780,7 @@ int main (int argc, char ** argv)
- 		exit(1);
- 	}
- 	sb = fs->super;
-+	fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
- 	if (print_label) {
- 		/* For e2label emulation */
- 		printf("%.*s\n", (int) sizeof(sb->s_volume_name),
-diff -r 449d075befe0 -r 5c00c2199197 resize/ChangeLog
---- a/resize/ChangeLog	Mon Jun 04 01:49:51 2007 -0400
-+++ b/resize/ChangeLog	Mon Jun 18 18:26:50 2007 -0400
-@@ -1,3 +1,9 @@ 2007-05-22  Theodore Tso  <tytso@mit.edu
-+2007-06-12  Theodore Tso  <tytso@mit.edu>
-+
-+	* resize2fs.c (resize_fs): Clear the EXT2_FLAG_MASTER_SB_ONLY flag
-+		to make sure the superblock changes are written out to the
-+		backup superblocks.
-+
- 2007-05-22  Theodore Tso  <tytso@mit.edu>
- 
- 	* sim_progress.c (ext2fs_progress_init): Fix type-punning warning.
-diff -r 449d075befe0 -r 5c00c2199197 resize/resize2fs.c
---- a/resize/resize2fs.c	Mon Jun 04 01:49:51 2007 -0400
-+++ b/resize/resize2fs.c	Mon Jun 18 18:26:50 2007 -0400
-@@ -138,6 +138,7 @@ errcode_t resize_fs(ext2_filsys fs, blk_
- 	if (retval)
- 		goto errout;
- 
-+	rfs->new_fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;	
- 	retval = ext2fs_close(rfs->new_fs);
- 	if (retval)
- 		goto errout;
++       /* if page is uptodate this means that ->prepare_write() has
++        * been called on page before and page is mapped to disk or
++        * we did reservation. page is protected and nobody can
++        * access it. hence, it safe to use page->private to pass
++        * flag that ->commit_write() has to reserve blocks. because
++        * an error may occur after ->prepare_write() we should not
++        * reserve block here. it's better to do in ->commit_write()
++        * when we're sure page is to be written */
++       page->private =3D 0;
++       if (!PageUptodate(page)) {
++               /* first write to this page */
++               bh.b_state =3D 0;
++               err =3D ext4_get_block(inode, page->index, bhw, 0);
++               if (err)
++                       return err;
++               if (!buffer_mapped(bhw)) {
++                       /* this block isn't allocated yet, reserve spac=
+e */
++                       wb_debug("reserve space for new block\n");
++                       page->private =3D 1;
++                       ext4_wb_clear_page(page, from, to);
++                       ClearPageMappedToDisk(page);
+
+
+
+>From the comments it says the page->private is set to 1 to letting
+commit_write know that it needs block reservation, but I don't see the
+page->private value being checked in ext4_wb_commit_write(). Instead,
+the PageMappedToDisk(page) flag is being checked.
+
+Alex, can you clarify the use of page->private and PagePrivate flag
+here? Do we still need the page->private for delayed allocation, with
+PageBooked flag and PageMappedToDisk page flag?
+
+Thanks,
+
+Mingming
