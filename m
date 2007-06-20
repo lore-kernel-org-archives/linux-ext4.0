@@ -1,50 +1,64 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [PATCH] Endianness bugs in e2fsck
-Date: Thu, 21 Jun 2007 01:06:48 +0530
-Message-ID: <1182368214.3969.7.camel@garfield>
-References: <1182331988.9772.7.camel@garfield>
-	 <20070620150902.GA15561@thunk.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [36/37] Large blocksize support for ext2
+Date: Wed, 20 Jun 2007 14:56:02 -0600
+Message-ID: <20070620205602.GI5181@schatzie.adilger.int>
+References: <20070620182907.506775016@sgi.com> <20070620183014.438784820@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>, Mel Gorman <mel@skynet.ie>,
+	William Lee Irwin III <wli@holomorphy.com>,
+	David Chinner <dgc@sgi.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Badari Pulavarty <pbadari@gmail.com>,
+	Maxim Levitsky <maximlevitsky@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: clameter@sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:39725 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:42177 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753820AbXFTThn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2007 15:37:43 -0400
-In-Reply-To: <20070620150902.GA15561@thunk.org>
+	with ESMTP id S1751260AbXFTU4G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2007 16:56:06 -0400
+Content-Disposition: inline
+In-Reply-To: <20070620183014.438784820@sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-06-20 at 11:09 -0400, Theodore Tso wrote:
-> Hi Kalpak, 
-> 
-> 	In the future it would be really helpful if you split up your
-> patches so that each different thing is done in separate patches.
+On Jun 20, 2007  11:29 -0700, clameter@sgi.com wrote:
+> This adds support for a block size of up to 64k on any platform.
+> It enables the mounting filesystems that have a larger blocksize
+> than the page size.
 
-Sure. Do you want me to split this patch too and resend?
+Might have been good to CC the ext2/3/4 maintainers here?  I definitely
+have been waiting for a patch like this for ages (so definitely no
+objection from me), but there are a few caveats before this will work
+on ext2/3/4.
 
-> 
-> 	Also, note there is a recent bug fix in this area, and the
-> byte-swapping extended attributes.  The issues involved here are
-> subtle; please see the discussion here:
-> 
-> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=232663
-> 
-> So before your patches go in, we need to do a careful audit to make
-> sure they don't interact properly with this patch which is already in
-> e2fsprogs mainline.
+> Hmmm... Actually there is nothing additional to be done after the earlier
+> cleanup of the macros. So just modify copyright.
 
-This fix is already in our tree. We periodically keep syncing our tree
-with the mainline changes. So I have tested my changes with this patch
-present. 
+It is NOT possible to have 64kB blocksize on ext2/3/4 without some small
+changes to the directory handling code.  The reason is that an empty 64kB
+directory block would have a rec_len == (__u16)2^16 == 0, and this would
+cause an error to be hit in the filesystem.  What is needed is to put
+2 empty records in such a directory, or to special-case an impossible
+value like rec_len = 0xffff to handle this.
 
-Actually I had created test images for the expand-extra-isize patches
-which failed on big-endian machines which brought these bugs to my
-notice.
+There was a patch to fix the 64kB blocksize directory problem, but it
+hasn't been merged anywhere yet seeing as there wasn't previously a
+patch to allow larger blocksize...
 
-Thanks,
-Kalpak.
+Having 32kB blocksize has no problems that I'm aware of.  Also, I'm not
+sure how it happened, but ext2 SHOULD have an explicit check (as
+ext3/4 does) limiting it to EXT2_MAX_BLOCK_SIZE.  Otherwise it appears
+that there would be no error reported if the superblock reports e.g. 16MB
+blocksize, and all kinds of things would break.
+
+There shouldn't be a problem with increasing EXT{2,3,4}_MAX_BLOCK_SIZE to
+32kB (AFAIK), but I haven't looked into this in a while.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
