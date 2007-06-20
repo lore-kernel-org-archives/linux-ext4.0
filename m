@@ -1,70 +1,41 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext4-block-reservation.patch
-Date: Tue, 19 Jun 2007 16:10:49 -0600
-Message-ID: <20070619221048.GW5181@schatzie.adilger.int>
-References: <4677B00A.3010600@linux.vnet.ibm.com> <4677F0B3.4050805@redhat.com> <46780D76.9040706@linux.vnet.ibm.com>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: delayed allocatiou result in Oops
+Date: Wed, 20 Jun 2007 12:15:09 +0400
+Message-ID: <4678E20D.6060108@clusterfs.com>
+References: <20070614072352.GA6517@localhost.sw.ru>	 <4672202C.4080304@clusterfs.com>	 <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com>	 <20070616081426.GB14349@localhost.sw.ru>	 <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com>	 <46778186.9030306@clusterfs.com> <1182270229.4113.8.camel@dyn9047017103.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <esandeen@redhat.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Dmitriy Monakhov <dmonakhov@sw.ru>, linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:46181 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753251AbXFSWKv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2007 18:10:51 -0400
-Content-Disposition: inline
-In-Reply-To: <46780D76.9040706@linux.vnet.ibm.com>
+Received: from mail.chehov.net ([80.71.245.247]:61152 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753021AbXFTIPa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jun 2007 04:15:30 -0400
+In-Reply-To: <1182270229.4113.8.camel@dyn9047017103.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 19, 2007  22:38 +0530, Aneesh Kumar K.V wrote:
-> This is what i have modified. I am yet to build test it. I am looking at 
-> forward porting the
-> mballoc patches and was planning to send it together.
+Mingming Cao wrote:
+> Hmm, PageMappedToDisk is probably not sufficient enough for pagesize!
+> =blocksize. Is that the reason we need page->private to pass the
+> request?
 
-> +int ext4_reserve_local(struct super_block *sb, int blocks)
-> +{
-> +	preempt_disable();
-> +	rs = sbi->s_reservation_slots + smp_processor_id();
+PageMappedToDisk isn't enough in that case, definitely. bh is the way
+to track state of each block (this is what i'm implementing now), but
+I think current nobh version (per-page flags are used) is valuable.
 
-Should this be instead "rs = sbi->s_reservation_slots + get_cpu()"
+> That's good to know, thanks for the update. So probably above error case
+> handling will be addressed in the new version? 
 
-> +	spin_lock(&rs->rs_lock);
-> +	if (likely(rs->rs_reserved >= blocks)) {
-> +		rs->rs_reserved -= blocks;
-> +		rc = 0;
-> +	}
-> +	spin_unlock(&rs->rs_lock);
-> +
-> +	preempt_enable();
+well, you actually can move that SetPagePrivate() few lines above
+(Dmitriy already tested this).
 
-And "put_cpu()" here?
+> BTW, can you point me your latest and greatest mballoc patch? I am
+> trying to forward port and merge that patch to ext4 patch queue....
 
-> +void ext4_rebalance_reservation(struct ext4_reservation_slot *rs, __u64 free)
-> +{
-> +	/* chunk is a number of block every used
-> +	 * slot will get. make sure it isn't 0 */
-> +	chunk = free + used_slots - 1;
-> +	do_div(chunk, used_slots);
-> +
-> +	for_each_possible_cpu(i) {
-> +		if (free < chunk)
-> +			chunk = free;
-> +		if (rs[i].rs_reserved || i == smp_processor_id()) {
-> +			rs[i].rs_reserved = chunk;
-> +			free -= chunk;
-> +			BUG_ON(free < 0);
-> +		}
-> +	}
+I don't have version for mainline yet. will prepare soon. thanks for
+your interest.
 
-Should we be assigning reservations to offline CPUs?  Doesn't it make sense
-to assign 0 reservation to offline CPUs until they come back?  In the first
-loop, if it is "for_each_possible_cpu()" it would drop reservations from
-offline CPUs, and then the bottom one is "for_each_online_cpu()".
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+thanks, Alex
