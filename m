@@ -1,80 +1,67 @@
-From: Girish Shilamkar <girish@clusterfs.com>
-Subject: Re: [PATCH] uninitialized groups ported - kernel
-Date: Wed, 20 Jun 2007 17:26:20 +0530
-Message-ID: <1182340580.3819.3.camel@dhcp7.linsyssoft.com>
-References: <1181065733.5219.8.camel@mathur-dsktp>
-	 <4665AFEF.3060602@redhat.com> <20070605212005.GM5181@schatzie.adilger.int>
-	 <467755D3.8030802@linux.vnet.ibm.com>
-	 <20070619075034.GQ5181@schatzie.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: ext2fs_block_iterate() on fast symlink
+Date: Wed, 20 Jun 2007 14:56:53 +0200
+Message-ID: <20070620125653.GG27218@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-2sf4JJIW9dgW4T7Tjwfz"
-Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: multipart/mixed; boundary="MGYHOYXEY6WxJCY8"
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:37069 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752799AbXFTL4S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2007 07:56:18 -0400
-In-Reply-To: <20070619075034.GQ5181@schatzie.adilger.int>
+Received: from styx.suse.cz ([82.119.242.94]:46806 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754104AbXFTMnU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jun 2007 08:43:20 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---=-2sf4JJIW9dgW4T7Tjwfz
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+--MGYHOYXEY6WxJCY8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+  Hello,
 
-> 
-> I've asked Girish to send an incremental patch.
-> 
-Here is the incremental patch,  to be applied after the patch sent by
-Avantika for 2.6.22-rc4 kernel.
+  when  ext2fs_block_iterate() is called on a fast symlink (and I assume
+device inodes would be no different), then random things happen - the
+problem is ext2fs_block_iterate() just blindly takes portions of the inode
+and treats them as block numbers. Now I agree that garbage went in (it
+makes no sence to call this function on such inode) so garbage results but
+maybe it would be nicer to handle it more gracefully. Attached patch should
+do it.
 
-Regards,
-Girish.
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
 
---=-2sf4JJIW9dgW4T7Tjwfz
-Content-Disposition: attachment; filename=update-uninit.patch
-Content-Type: text/x-patch; name=update-uninit.patch; charset=utf-8
-Content-Transfer-Encoding: 7bit
+--MGYHOYXEY6WxJCY8
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="e2fsprogs-block_iterate_fix.diff"
 
-Index: linux-2.6.22-rc4/fs/ext4/super.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/super.c
-+++ linux-2.6.22-rc4/fs/ext4/super.c
-@@ -1298,9 +1298,12 @@ __le16 ext4_group_desc_csum(struct ext4_
- 		offset += sizeof(gdp->bg_checksum); /* skip checksum */
- 		/*BUG_ON(offset != sizeof(*gdp)); /* XXX handle s_desc_size */
- 		/* for checksum of struct ext4_group_desc do the rest...*/
--		if (offset < sbi->s_es->s_desc_size) {
-+		if ((sbi->s_es->s_feature_incompat &
-+		     cpu_to_le32(EXT4_FEATURE_INCOMPAT_64BIT)) && 
-+		    offset < le16_to_cpu(sbi->s_es->s_desc_size)) {
- 			crc = crc16(crc, (__u8 *)gdp + offset,
--				    sbi->s_es->s_desc_size - offset);
-+				    le16_to_cpu(sbi->s_es->s_desc_size)
-+					- offset);
- 		} 
- 	}
+--- a/lib/ext2fs/inode.c	2007-06-20 13:55:52.000000000 +0200
++++ b/lib/ext2fs/inode.c	2007-06-20 14:11:15.000000000 +0200
+@@ -771,6 +771,10 @@ errcode_t ext2fs_get_blocks(ext2_filsys 
+ 	retval = ext2fs_read_inode(fs, ino, &inode);
+ 	if (retval)
+ 		return retval;
++	if (LINUX_S_ISCHR(inode.i_mode) || LINUX_S_ISBLK(inode.i_mode) ||
++	    (LINUX_S_ISLNK(inode.i_mode) &&
++	     ext2fs_inode_data_blocks(fs, &inode) == 0))
++		return EXT2_ET_INVAL_INODE_TYPE;
+ 	for (i=0; i < EXT2_N_BLOCKS; i++)
+ 		blocks[i] = inode.i_block[i];
+ 	return 0;
+--- a/lib/ext2fs/ext2_err.et.in	2007-06-20 14:09:18.000000000 +0200
++++ b/lib/ext2fs/ext2_err.et.in	2007-06-20 14:11:25.000000000 +0200
+@@ -296,5 +296,8 @@ ec	EXT2_ET_RESIZE_INODE_CORRUPT,
+ ec	EXT2_ET_SET_BMAP_NO_IND,
+ 	"Missing indirect block not present"
  
-Index: linux-2.6.22-rc4/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs.h
-+++ linux-2.6.22-rc4/include/linux/ext4_fs.h
-@@ -687,11 +687,11 @@ static inline int ext4_valid_inum(struct
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
--#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0040
- 
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
- #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
-+#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
++ec	EXT2_ET_INVAL_INODE_TYPE,
++	"Invalid inode type for the operation."
++
+ 	end
  
 
---=-2sf4JJIW9dgW4T7Tjwfz--
+--MGYHOYXEY6WxJCY8--
