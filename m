@@ -1,54 +1,86 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC][PATCH 11/11][take 2] 48-bit block number for ACL in e2fsprogs
-Date: Thu, 21 Jun 2007 16:44:28 -0600
-Message-ID: <20070621224428.GE5181@schatzie.adilger.int>
-References: <467A9E02.5030701@bull.net>
+From: Avantika Mathur <mathur@linux.vnet.ibm.com>
+Subject: Re: [PATCH] uninitialized groups ported - kernel
+Date: Thu, 21 Jun 2007 16:54:14 -0700
+Message-ID: <467B0FA6.1090509@linux.vnet.ibm.com>
+References: <1181065733.5219.8.camel@mathur-dsktp> <4665AFEF.3060602@redhat.com> <20070605212005.GM5181@schatzie.adilger.int> <467755D3.8030802@linux.vnet.ibm.com> <20070619075034.GQ5181@schatzie.adilger.int> <1182340580.3819.3.camel@dhcp7.linsyssoft.com> <20070621173757.GA1075@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+Content-Type: multipart/mixed;
+ boundary="------------070006050303090506060008"
+Cc: Girish Shilamkar <girish@clusterfs.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:58917 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750740AbXFUWob (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 18:44:31 -0400
-Content-Disposition: inline
-In-Reply-To: <467A9E02.5030701@bull.net>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:50567 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751268AbXFUXyE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Jun 2007 19:54:04 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5LNs4Xf001906
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5LNs4sA503050
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5LNs3WI030499
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
+In-Reply-To: <20070621173757.GA1075@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 21, 2007  17:49 +0200, Valerie Clement wrote:
-> This patch is intended to contain the changes to support 48-bit block
-> numbers for ACL. For now, it only contains modifications in the inode
-> structure. It has to be completed.
->=20
-> Andreas proposed to rename i_file_acl to i_file_ea
-> and i_file_acl_high to i_file_ea_hi.
+This is a multi-part message in MIME format.
+--------------070006050303090506060008
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Yes, it is misleading that these are called "ACL", since the ACL is onl=
-y
-optionally stored internal to the EA block.  We should provide compatib=
-ility
-macros to avoid breaking old code, which will also allow incremental
-migration.
+Kernel build was failing with the uninitialized patches when 
+CONFIG_CRC16=m. The patch below resolves this issue.
 
-> @@ -449,6 +450,7 @@ struct ext2_inode_large {
->  #define i_reserved1	osd1.masix1.m_i_reserved1
->  #define i_frag		osd2.masix2.m_i_frag
->  #define i_fsize		osd2.masix2.m_i_fsize
-> +#define i_file_acl_high	osd2.masix2.m_i_file_acl_high
->  #define i_reserved2	osd2.masix2.m_i_reserved2
+Also, when testing the patches, filesystem mount fails:
 
-On an unrelated note - does MASIX even exist anymore?  I think it was o=
-nly
-a very experimental OS that R=E9my Card worked on, and the home page do=
-esn't
-even exist anymore.
+EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 1 failed (0!=1)
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+EXT4-fs: group descriptors corrupted!
+
+EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 7 failed (0!=1)
+
+Even though the uninitgrps feature is not enabled, the gdp->bg_checksum 
+on disk is nonzero.
+Mingming will pull the patches out of the patch queue until this is fixed.
+
+Thanks
+Avantika
+---
+
+
+--------------070006050303090506060008
+Content-Type: text/x-patch;
+ name="uninit-fix.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="uninit-fix.patch"
+
+diff -uprN linux-2.6.22-rc5/fs/ext4/group.h linux-2.6.22-rc5-patch/fs/ext4/group.h
+--- linux-2.6.22-rc5/fs/ext4/group.h	2007-06-21 16:32:52.000000000 -0700
++++ linux-2.6.22-rc5-patch/fs/ext4/group.h	2007-06-21 16:30:33.000000000 -0700
+@@ -8,7 +8,7 @@
+ 
+ #ifndef _LINUX_EXT4_GROUP_H
+ #define _LINUX_EXT4_GROUP_H
+-#if defined(CONFIG_CRC16) || defined(CONFIG_CRC16_MODULE)
++#if defined(CONFIG_CRC16)
+ #include <linux/crc16.h>
+ #endif
+ 
+diff -uprN linux-2.6.22-rc5/fs/ext4/super.c linux-2.6.22-rc5-patch/fs/ext4/super.c
+--- linux-2.6.22-rc5/fs/ext4/super.c	2007-06-21 16:32:53.000000000 -0700
++++ linux-2.6.22-rc5-patch/fs/ext4/super.c	2007-06-21 16:30:22.000000000 -0700
+@@ -1232,7 +1232,7 @@ static int ext4_setup_super(struct super
+ 	return res;
+ }
+ 
+-#if !defined(CONFIG_CRC16) && !defined(CONFIG_CRC16_MODULE)
++#if !defined(CONFIG_CRC16)
+ /** CRC table for the CRC-16. The poly is 0x8005 (x16 + x15 + x2 + 1) */
+ __u16 const crc16_table[256] = {
+ 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
+
+--------------070006050303090506060008--
