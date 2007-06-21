@@ -1,40 +1,56 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] uninitialized groups ported - kernel
-Date: Thu, 21 Jun 2007 11:37:57 -0600
-Message-ID: <20070621173757.GA1075@schatzie.adilger.int>
-References: <1181065733.5219.8.camel@mathur-dsktp> <4665AFEF.3060602@redhat.com> <20070605212005.GM5181@schatzie.adilger.int> <467755D3.8030802@linux.vnet.ibm.com> <20070619075034.GQ5181@schatzie.adilger.int> <1182340580.3819.3.camel@dhcp7.linsyssoft.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Patch to support LUKS UUIDs in libblkid
+Date: Thu, 21 Jun 2007 13:56:18 -0400
+Message-ID: <20070621175618.GA22285@thunk.org>
+References: <4665479E.2060707@redhat.com> <20070608153600.GA9726@thunk.org> <466D373C.6000502@redhat.com> <20070612234004.GA12189@thunk.org> <466FCE52.4000605@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Girish Shilamkar <girish@clusterfs.com>
+Cc: linux-ext4@vger.kernel.org, dm-crypt@saout.de
+To: Karsten Hopp <karsten@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:33716 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756710AbXFURiA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 13:38:00 -0400
+Received: from thunk.org ([69.25.196.29]:33771 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755751AbXFUR42 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Jun 2007 13:56:28 -0400
 Content-Disposition: inline
-In-Reply-To: <1182340580.3819.3.camel@dhcp7.linsyssoft.com>
+In-Reply-To: <466FCE52.4000605@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 20, 2007  17:26 +0530, Girish Shilamkar wrote:
->  			crc = crc16(crc, (__u8 *)gdp + offset,
-> -				    sbi->s_es->s_desc_size - offset);
-> +				    le16_to_cpu(sbi->s_es->s_desc_size)
-> +					- offset);
+Thanks, I've applied the blkid LUKS patch to the e2fsprogs SCM (modulo
+a minor whitespace breakage which I fixed up).
 
-Minor nit - please put '-' at the end of the previous line, and align
-"offset" with '(sbi-> ...'.
+BTW, there appears to be a problem here in udev regarding LUKS
+identification:
 
-Also, we're missing the signoff:
+https://bugs.launchpad.net/ubuntu/+source/e2fsprogs/+bug/93921
 
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Girish Shilamkar <girish@clusterfs.com>
+The problem is that udev sets its magic string in the first 512 bytes
+of the partition.  This is dangerous and error-prone, because other
+things like boot sectors and BSD disk labels tend to live in the first
+512 byte sector.  Hence, many programs are very careful before zapping
+the first 512 byte sector.  LUKS was added to the vol_id program very
+high in the list of filesystems to be probed, ahead of ext2/ext3, so a
+filesystem previously contained a LUKS setup, but then was later
+mke2fs'ed to be used as a normal ext2/3 filesyste, may get
+misidentified by udev's vol_id as still being a LUKS filesystem if
+other fields in the first 512 byte sector cause mke2fs to mistakenly
+think there was a BSD disklabel in the sector and thus refuse to zero
+it out.
 
+This won't be a problem with blkid, since LUKS is placed *after*
+ext3/4.  However, it would be a good idea to check and make sure that
+whever is setting up a LUKS partition clears the first and last 32k of
+a filesystem, to avoid potential confusion by other in-band filesystem
+type checkers.  It would probably be a good idea to (after you make
+sure this is done) to submit a patch to the uev folks changing the
+probing order of vol_id so that it probes for the LUK filesystem after
+ext2/3.   
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+I am currently consider adding specific kludges to mke2fs that checks
+the first couple of bytes of the 512 byte sector for the problematic
+filesystem types (NTFS and LUKS), explicitly clearing just those bytes
+to avoid future confusion.  But that won't help the existing
+filesystems that are out there....
+
+						- Ted
