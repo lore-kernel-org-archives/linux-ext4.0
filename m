@@ -1,52 +1,55 @@
-From: "LIOU Payphone" <lioupayphone@gmail.com>
-Subject: ask for help; hash-directory machanism of ext3 cannot work well
-Date: Thu, 21 Jun 2007 16:40:55 +0800
-Message-ID: <467a39a0.1997600a.2ec2.ffffd4d1@mx.google.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: ext2fs_block_iterate() on fast symlink
+Date: Thu, 21 Jun 2007 03:33:43 -0600
+Message-ID: <20070621093343.GO5181@schatzie.adilger.int>
+References: <20070620125653.GG27218@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: 7bit
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qb-out-0506.google.com ([72.14.204.229]:22387 "EHLO
-	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753188AbXFUIlI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 04:41:08 -0400
-Received: by qb-out-0506.google.com with SMTP id e7so516858qbe
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 01:41:05 -0700 (PDT)
+Received: from mail.clusterfs.com ([206.168.112.78]:50256 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751218AbXFUJdq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 05:33:46 -0400
+Content-Disposition: inline
+In-Reply-To: <20070620125653.GG27218@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-firstly, with many thanks! ^-^
+On Jun 20, 2007  14:56 +0200, Jan Kara wrote:
+>   when  ext2fs_block_iterate() is called on a fast symlink (and I assume
+> device inodes would be no different), then random things happen - the
+> problem is ext2fs_block_iterate() just blindly takes portions of the inode
+> and treats them as block numbers. Now I agree that garbage went in (it
+> makes no sence to call this function on such inode) so garbage results but
+> maybe it would be nicer to handle it more gracefully. Attached patch should
+> do it.
 
-my problem :
-(1) when i want to format /dev/sda1 to be ext3-filesystem, i  set
-"s_def_hash_version" of "struct ext3_super_block" to be "DX_HASH_LEGACY".
-when the filesystem was formatted successfully, i mounted it under a
-directory named "/mnt". 
-(2) subsequently, i created 40000 empty regular-files under "/mnt" named
-from "0" to "39999".
-(3) then , "ls -li  /mnt" was executed; i saw a puzzling thing : there are
-two indentical entries of the directory named "mnt"!  both inode->i_ino and
-filename are in the same. 
+> --- a/lib/ext2fs/inode.c	2007-06-20 13:55:52.000000000 +0200
+> +++ b/lib/ext2fs/inode.c	2007-06-20 14:11:15.000000000 +0200
+> @@ -771,6 +771,10 @@ errcode_t ext2fs_get_blocks(ext2_filsys 
+>  	retval = ext2fs_read_inode(fs, ino, &inode);
+>  	if (retval)
+>  		return retval;
+> +	if (LINUX_S_ISCHR(inode.i_mode) || LINUX_S_ISBLK(inode.i_mode) ||
+> +	    (LINUX_S_ISLNK(inode.i_mode) &&
+> +	     ext2fs_inode_data_blocks(fs, &inode) == 0))
+> +		return EXT2_ET_INVAL_INODE_TYPE;
 
-32203 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24010
-32204 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24011
-32205 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24012
-32206 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24013 
-32207 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24014
-32208 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24015
-32209 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24016
-33220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 25027
-3220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3090
-3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
-3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
+I would prefer that we NOT continue to make fast symlinks conditional upon
+the i_blocks count.  That causes problems if e.g. an EA block is present
+(that would cause this blocks == 0 test to incorrectly fail), and may making
+the check (blocks - !!i_file_acl) can still fail for other reasons where a
+block is added to an inode (e.g. if we have larger EAs, etc).
 
-(4) when i change "DX_HASH_LEGACY" to be "DX_HASH_TEA", the problem listed
-above not happend. 
+I'd prefer to make this check "i_size < sizeof(i_block)" or similar, which
+has always been true for fast symlinks, for every kernel that I have ever
+seen.
 
-i scratched my head over it, failed to find any reasonable answers.  :-(
-so, i sent my question to u and expecting eagerly some help from you. 
 
-thanks again! :-)
-  Payphone LIOU
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
