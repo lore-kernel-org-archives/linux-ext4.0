@@ -1,112 +1,52 @@
-From: Dmitry Monakhov <dmonakhov@sw.ru>
-Subject: Re: delayed allocatiou result in Oops
-Date: Thu, 21 Jun 2007 08:50:58 +0400
-Message-ID: <20070621045058.GG20172@localhost.sw.ru>
-References: <20070614072352.GA6517@localhost.sw.ru> <4672202C.4080304@clusterfs.com> <1181949368.3808.7.camel@dyn9047017103.beaverton.ibm.com> <20070616081426.GB14349@localhost.sw.ru> <1182214878.3711.21.camel@dyn9047017103.beaverton.ibm.com> <46778186.9030306@clusterfs.com> <1182270229.4113.8.camel@dyn9047017103.beaverton.ibm.com> <4678E20D.6060108@clusterfs.com> <1182383170.22978.11.camel@localhost.localdomain>
+From: "LIOU Payphone" <lioupayphone@gmail.com>
+Subject: ask for help; hash-directory machanism of ext3 cannot work well
+Date: Thu, 21 Jun 2007 16:40:55 +0800
+Message-ID: <467a39a0.1997600a.2ec2.ffffd4d1@mx.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Alex Tomas <alex@clusterfs.com>, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:32323 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752614AbXFUEuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jun 2007 00:50:16 -0400
-Content-Disposition: inline
-In-Reply-To: <1182383170.22978.11.camel@localhost.localdomain>
+Received: from qb-out-0506.google.com ([72.14.204.229]:22387 "EHLO
+	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753188AbXFUIlI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 04:41:08 -0400
+Received: by qb-out-0506.google.com with SMTP id e7so516858qbe
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 01:41:05 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 16:46 =D0=A1=D1=80=D0=B4 20 =D0=98=D1=8E=D0=BD     , Mingming Cao wr=
-ote:
-> On Wed, 2007-06-20 at 12:15 +0400, Alex Tomas wrote:
-> > Mingming Cao wrote:
-> > > Hmm, PageMappedToDisk is probably not sufficient enough for pages=
-ize!
-> > > =3Dblocksize. Is that the reason we need page->private to pass th=
-e
-> > > request?
-> >=20
-> > PageMappedToDisk isn't enough in that case, definitely. bh is the w=
-ay
-> > to track state of each block (this is what i'm implementing now), b=
-ut
-> > I think current nobh version (per-page flags are used) is valuable.
-> >=20
-> > > That's good to know, thanks for the update. So probably above err=
-or case
-> > > handling will be addressed in the new version?=20
-> >=20
-> > well, you actually can move that SetPagePrivate() few lines above
-> > (Dmitriy already tested this).
->=20
-> Like this?
-Of course not, we may set page private bit only if=20
-space was successfully reserved by ext4_wb_reserve_space_page().
-So patch looks like this:
-diff --git a/fs/ext4/writeback.c b/fs/ext4/writeback.c
-index 3e669d6..84e5029 100644
---- a/fs/ext4/writeback.c
-+++ b/fs/ext4/writeback.c
-@@ -904,9 +904,6 @@ int ext4_wb_commit_write(struct file *file, struct =
-page *page,
- 	wb_debug("commit page %lu (%u-%u) for inode %lu\n",
- 			page->index, from, to, inode->i_ino);
-=20
--	/* mark page private so that we get
--	 * called to invalidate/release page */
--	SetPagePrivate(page);
-=20
- 	if (!PageBooked(page) && !PageMappedToDisk(page)) {
- 		/* ->prepare_write() observed that block for this
-@@ -918,6 +915,9 @@ int ext4_wb_commit_write(struct file *file, struct =
-page *page,
- 		if (err)
- 			return err;
- 	}
-+	/* mark page private so that we get
-+	 * called to invalidate/release page */
-+	SetPagePrivate(page);
-=20
- 	/* ok. block for this page is allocated already or it has
- 	 * been reserved succesfully. so, user may use it */
---=20
-1.5.2
->=20
-> Index: linux-2.6.22-rc5/fs/ext4/writeback.c
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- linux-2.6.22-rc5.orig/fs/ext4/writeback.c	2007-06-20 16:41:26.000=
-000000 -0700
-> +++ linux-2.6.22-rc5/fs/ext4/writeback.c	2007-06-20 16:44:10.00000000=
-0 -0700
-> @@ -918,16 +918,16 @@ int ext4_wb_commit_write(struct file *fi
->  	wb_debug("commit page %lu (%u-%u) for inode %lu\n",
->  			page->index, from, to, inode->i_ino);
-> =20
-> -	/* mark page private so that we get
-> -	 * called to invalidate/release page */
-> -	SetPagePrivate(page);
-> -
->  	if (!PageBooked(page) && !PageMappedToDisk(page)) {
->  		/* ->prepare_write() observed that block for this
->  		 * page hasn't been allocated yet. there fore it
->  		 * asked to reserve block for later allocation */
->  		BUG_ON(page->private =3D=3D 0);
->  		page->private =3D 0;
-> +		/* mark page private so that we get
-> +		 * called to invalidate/release page */
-> +		SetPagePrivate(page);
-> +
->  		err =3D ext4_wb_reserve_space_page(page, 1);
->  		if (err)
->  			return err;
->=20
->=20
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+firstly, with many thanks! ^-^
+
+my problem :
+(1) when i want to format /dev/sda1 to be ext3-filesystem, i  set
+"s_def_hash_version" of "struct ext3_super_block" to be "DX_HASH_LEGACY".
+when the filesystem was formatted successfully, i mounted it under a
+directory named "/mnt". 
+(2) subsequently, i created 40000 empty regular-files under "/mnt" named
+from "0" to "39999".
+(3) then , "ls -li  /mnt" was executed; i saw a puzzling thing : there are
+two indentical entries of the directory named "mnt"!  both inode->i_ino and
+filename are in the same. 
+
+32203 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24010
+32204 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24011
+32205 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24012
+32206 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24013 
+32207 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24014
+32208 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24015
+32209 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24016
+33220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 25027
+3220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3090
+3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
+3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
+
+(4) when i change "DX_HASH_LEGACY" to be "DX_HASH_TEA", the problem listed
+above not happend. 
+
+i scratched my head over it, failed to find any reasonable answers.  :-(
+so, i sent my question to u and expecting eagerly some help from you. 
+
+thanks again! :-)
+  Payphone LIOU
