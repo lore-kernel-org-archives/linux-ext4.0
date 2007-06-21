@@ -1,61 +1,70 @@
-From: Daniel Drake <ddrake@brontes3d.com>
-Subject: ext3/journalling deadlock on old kernel
-Date: Thu, 21 Jun 2007 10:42:26 -0400
-Message-ID: <1182436946.8035.6.camel@systems03.mmm.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: [RFC][PATCH 0/11] [take 2] e2fsprogs: add 64-bit support
+Date: Thu, 21 Jun 2007 17:56:23 +0200
+Message-ID: <467A9FA7.1070804@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp136.iad.emailsrvr.com ([207.97.245.136]:47124 "EHLO
-	smtp136.iad.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755060AbXFUPHP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 11:07:15 -0400
-Received: from [169.14.245.222] (host34.155.212.242.conversent.net [155.212.242.34])
-	(Authenticated sender: ddrake@brontes3d.com)
-	by relay3.r3.iad.emailsrvr.com (SMTP Server) with ESMTP id A2FB144C00F
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 10:42:26 -0400 (EDT)
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:36951 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755921AbXFUPzK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 11:55:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
 
-To start with, this was seen on a 2.6.18 kernel which was tainted. I
-know how it doesn't make sense to work on a report from such an old code
-base, never mind a tainted kernel, so feel free to ignore this if it's
-not interesting..
+I have updated my patchset taking into account comments received from
+Andreas and Jose, except for the last patch concerning the ACLs/EAs for
+which I did not do anything.
+As the changes are rather significant, I send here a new version for re=
+view.
 
-I left a system running overnight, running "stress --cpu 4 --io 1 --vm 1
---hdd 1" on a 4 way opteron system. While running stress
-(http://weather.ou.edu/~apw/projects/stress/) it was also repeatedly
-checking the md5sums of several large files. The system was under both
-CPU and IO (DMA) load.
+Changes from the previous version:
+- support of different group descriptor sizes for ext4 filesystems:
+  -- Add new inline functions to get/set the block bitmap block, the
+inode bitmap block and the inode table block of a group.
+  -- Add a new inline function to get the descriptor of a group.
+- remove some '_EXT4FS_' conditional compilation and use instead
+INCOMPAT_64BIT tests.
+- Fix errors found in the test suite "make check"
 
-After a few hours, it hung, but caps lock, ping, and sysrq were still
-responsive. sysrq shows me this trace:
 
-EIP at .text.lock.spinlock+0x2/0x97
-Trace:
-journal_dirty_data+0x78
-ext3_journal_dirty_data+0x1d
-walk_page_buffers+0x68
-ext3_journal_dirty_data+0x0
-ext3_ordered_commit_write+0x73
-generic_file_buffered_write
-__generic_file_aio_write
-do_get_write_access
-generic_file_aio_write
-ext3_file_write
-do_sync_write
+TODOs:
+   - support of 48-bit in extents to complete,
+   - support of 48-bit block number for EAs to do,
+   - change the format string %u for a block number to %llu in case of
+64 bits (many occurences in the code)
+   - more testing
 
-The lock it hung on, according to gdb:
 
-	spin_lock(&journal->j_list_lock);
+Current status:
+the code was compiled with _EXT4FS_ option, booted and briefly tested o=
+n
+a 20TB device on an x86_64 system (mkfs, debugfs, e2fsck, dumpe2fs,
+filefrag commands tested).
+Some non-regression tests also done on ext3 filesystems when compiling
+code without _EXT4FS_ option.
 
-If a fix is known for this issue, I'd appreciate any pointers. I'll
-continue attempting to reproduce this with a serial console hooked up.
+This patchset applies to the version e2fsprogs-1.39-tyt3 of e2fsprogs i=
+n
+the following order:
 
-Thanks.
--- 
-Daniel Drake
-Brontes Technologies, A 3M Company
+[PATCH 1/11] add new mkfs option to create ext4 filesystems
+[PATCH 2/11] add new macro EXT2_DESC_PER_BLOCK in e2fsprogs
+[PATCH 3/11] new badblocks interface in e2fsprogs
+[PATCH 4/11] convert some block types in e2fsprogs
+[PATCH 5/11] new bitmaps interface in e2fsprogs
+[PATCH 6/11] handling of 64-bit block counts in e2fsprofs
+[PATCH 7/11] handling of 64-bit block numbers in group desc in e2fsprog=
+s
+[PATCH 8/11] 48-bit extents in e2fsprogs
+[PATCH 9/11] indirect block type conversion in e2fsprogs
+[PATCH 10/11] convert blk_t to 64-bit for ext4 FS in e2fsprogs
+[PATCH 11/11] 48-bit block number for ACL in e2fsprogs
+
+Regards,
+    Val=E9rie
