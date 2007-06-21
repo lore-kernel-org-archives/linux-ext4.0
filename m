@@ -1,38 +1,101 @@
-From: Mark Fasheh <mark.fasheh@oracle.com>
-Subject: Re: [PATCH] zero_user_page conversion
-Date: Wed, 20 Jun 2007 17:21:16 -0700
-Message-ID: <20070621002116.GB17713@ca-server1.us.oracle.com>
-References: <4679A558.1010107@redhat.com>
-Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 patch queue rebased to linux2.6.22-rc5
+Date: Wed, 20 Jun 2007 17:50:01 -0700
+Message-ID: <1182387001.22978.26.camel@localhost.localdomain>
+References: <1181766059.3887.22.camel@dyn9047017103.beaverton.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cluster-devel@redhat.com, ext4 development <linux-ext4@vger.kernel.org>,
-        samba-technical@lists.samba.org,
-        linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-        ocfs2-devel@oss.oracle.com
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
-Content-Disposition: inline
-In-Reply-To: <4679A558.1010107@redhat.com>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, avmathur@us.ibm.com,
+	alex@clusterfs.com, Girish Shilamkar <girish@clusterfs.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:49231 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751099AbXFUAuE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jun 2007 20:50:04 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5L0o3Kf016506
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 20:50:03 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5L0o3As477112
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 20:50:03 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5L0o2IV023278
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2007 20:50:03 -0400
+In-Reply-To: <1181766059.3887.22.camel@dyn9047017103.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 20, 2007 at 05:08:24PM -0500, Eric Sandeen wrote:
-> Use zero_user_page() in cifs, ocfs2, ext4, and gfs2 where possible.
+http://repo.or.cz/w/ext4-patch-queue.git
 
-Ok, the ocfs2 bits looked fine so I folded that part of the patch into
-ocfs2.git, thanks.
-	--Mark
+diff --git a/series b/series
 
---
-Mark Fasheh
-Senior Software Developer, Oracle
-mark.fasheh@oracle.com
+
+index d68345c..766f3eb 100644 (file)
+
+
+--- a/series
+
++++ b/series
+
+@@ -1,4 +1,4 @@
+
+-# Rebased the patches to 2.6.22-rc4
+
++# Rebased the patches to 2.6.22-rc5
+
+ 
+
+ # Add mount option to turn off extents
+
+ ext4_noextent_mount_opt.patch
+
+@@ -60,6 +60,14 @@ jbd-stats-through-procfs
+
+ # Remove 32000 subdirs limit. 
+
+ ext4_remove_subdirs_limit.patch
+
+ 
+
++# Add unused inode watermark and checksum to blockgroup descriptors
+
++ext4_uninit_blockgroup.patch
+
++# need sign off
+
++update-uninit.patch
+
++
+
++# Need sing off and fix coding style
+
++# Add journal checksums
+
++ext4-journal_chksum-2.6.20.patch
+
+ ##############################################################
+
+ # Unstable patches
+
+ # Note: still lots of outstanding comments from linux-ext4 list, 12/2006
+
+@@ -81,3 +89,8 @@ ext4_nodelalloc_mount_opt.patch
+
+ 
+
+ # Fix error returned from ext4_reserve_global
+
+ ext4_reserve_global_return_error_fix.patch
+
++
+
++#Fix invariant checking in ext4_rebalance_reservation()
+
++#Missing signed offs
+
++ext4_rebalance_reservation_invariant_checking_fix.patch
+
++ext4_delalloc_setpageprivate_fix.patch
