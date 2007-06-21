@@ -1,158 +1,178 @@
 From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: [RFC][PATCH 4/10] Get free blocks distribution of the target block group
-Date: Thu, 21 Jun 2007 10:53:39 +0900
-Message-ID: <20070621105339t-sato@rifu.yk.jp.nec.com>
+Subject: [RFC][PATCH 5/10] Get all extents information of specified inode number
+Date: Thu, 21 Jun 2007 10:54:09 +0900
+Message-ID: <20070621105409t-sato@rifu.yk.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:63574 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755047AbXFUBxk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2007 21:53:40 -0400
-Received: from mailgate4.nec.co.jp (mailgate53.nec.co.jp [10.7.69.184])
-	by tyo201.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id l5L1rcAj017407
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 10:53:39 +0900 (JST)
-Received: (from root@localhost) by mailgate4.nec.co.jp (8.11.7/3.7W-MAILGATE-NEC)
-	id l5L1rcq24939 for linux-ext4@vger.kernel.org; Thu, 21 Jun 2007 10:53:38 +0900 (JST)
-Received: from secsv3.tnes.nec.co.jp (tnesvc2.tnes.nec.co.jp [10.1.101.15]) by mailsv.nec.co.jp (8.11.7/3.7W-MAILSV-NEC) with ESMTP
-	id l5L1rcB15882 for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 10:53:38 +0900 (JST)
-Received: from tnesvc2.tnes.nec.co.jp ([10.1.101.15])
-	by secsv3.tnes.nec.co.jp (ExpressMail 5.10) with SMTP
-	id 20070621.105337.31202060 for <linux-ext4@vger.kernel.org>
-	; Thu, 21 Jun 2007 10:53:37 +0900
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-- Get free blocks distribution of the target block group to know
-  how many free blocks it has.
+- Get all extents information of specified inode number to calculate
+  the combination of extents which should be moved to other block group.
 
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 ---
-diff -X Online-Defrag_linux-2.6.19-rc6-git/Documentation/dontdiff -upNr Online-Defrag_linux-2.6.19-rc6-git-FREE_BLOCKS_INFO/fs/ext4/extents.c Online-Defrag_linux-2.6.19-rc6-git-EXTENTS_INFO/fs/ext4/extents.c
---- Online-Defrag_linux-2.6.19-rc6-git-FREE_BLOCKS_INFO/fs/ext4/extents.c	2007-06-20 09:05:37.000000000 +0900
-+++ Online-Defrag_linux-2.6.19-rc6-git-EXTENTS_INFO/fs/ext4/extents.c	2007-06-20 08:50:57.000000000 +0900
-@@ -2478,6 +2478,99 @@ ext4_ext_next_extent(struct inode *inode
- 	return 1;
+diff -X Online-Defrag_linux-2.6.19-rc6-git/Documentation/dontdiff -upNr Online-Defrag_linux-2.6.19-rc6-git-EXTENTS_INFO/fs/ext4/extents.c Online-Defrag_linux-2.6.19-rc6-git-MOVE_VICTIM/fs/ext4/extents.c
+--- Online-Defrag_linux-2.6.19-rc6-git-EXTENTS_INFO/fs/ext4/extents.c	2007-06-20 08:50:57.000000000 +0900
++++ Online-Defrag_linux-2.6.19-rc6-git-MOVE_VICTIM/fs/ext4/extents.c	2007-06-20 08:27:44.000000000 +0900
+@@ -43,6 +43,12 @@
+ #include <linux/ext4_fs_extents.h>
+ #include <asm/uaccess.h>
+ 
++#define DIO_CREDITS (EXT4_RESERVE_TRANS_BLOCKS + 32)
++#define EXT_SET_EXTENT_DATA(src, dest)  do {\
++		dest.block = le32_to_cpu(src->ee_block);\
++		dest.start = ext_pblock(src);\
++		dest.len = le16_to_cpu(src->ee_len);\
++					} while (0)
+ /*
+  * ext_pblock:
+  * combine low and high parts of physical block number into ext4_fsblk_t
+@@ -2479,6 +2485,121 @@ ext4_ext_next_extent(struct inode *inode
  }
  
-+/**
-+ * ext4_ext_fblocks_distribution - Search free block distribution
-+ * @filp      target file
-+ * @ex_info   ext4_extents_info
+ /**
++ * ext4_ext_extents_info() - get extents information
 + *
-+ * This function returns 0 if succeeded, otherwise
-+ * returns error value
++ * @ext_info:                   pointer to ext4_extents_info
++ *  @ext_info->ino              describe an inode which is used to get extent
++ *                              information
++ *  @ext_info->max_entries:     defined by DEFRAG_MAX_ENT
++ *  @ext_info->entries:	        amount of extents (output)
++ *  @ext_info->ext[]:           array of extent (output)
++ *  @ext_info->offset:          starting block offset of targeted extent
++ *                              (file relative)
++ *
++ * @sb:                         for iget()
++ *
++ * This function returns 0 if next extent(s) exists,
++ * or returns 1 if next extent doesn't exist, otherwise returns error value.
++ * Called under truncate_mutex lock.
 + */
-+static int ext4_ext_fblocks_distribution(struct inode *inode,
-+			struct ext4_extents_info *ext_info)
++static int ext4_ext_extents_info(struct ext4_extents_info *ext_info,
++				struct super_block *sb)
 +{
-+	handle_t *handle;
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct super_block *sb = inode->i_sb;
-+	struct ext4_super_block *es;
-+	unsigned long group_no;
-+	int max_entries = ext_info->max_entries;
-+	ext4_grpblk_t blocks_per_group;
-+	ext4_grpblk_t start;
-+	ext4_grpblk_t end;
-+	int num = 0;
-+	int len = 0;
-+	int i = 0;
++	struct ext4_ext_path *path = NULL;
++	struct ext4_extent *ext = NULL;
++	struct inode *inode = NULL;
++	unsigned long offset = ext_info->offset;
++	int max = ext_info->max_entries;
++	int is_last_extent = 0;
++	int depth = 0;
++	int entries = 0;
 +	int err = 0;
-+	int block_set = 0;
-+	int start_block = 0;
 +
-+	if (!sb) {
-+		printk("ext4_ext_fblock_distribution: nonexitent device\n");
-+		return -ENOSPC;
-+	}
-+	es = EXT4_SB(sb)->s_es;
++	inode = iget(sb, ext_info->ino);
++	if (!inode)
++		return -EACCES;
 +
-+	group_no = (inode->i_ino -1) / EXT4_INODES_PER_GROUP(sb);
-+	start = ext_info->offset;
-+	blocks_per_group = EXT4_BLOCKS_PER_GROUP(sb);
-+	end = blocks_per_group -1;
++	mutex_lock(&EXT4_I(inode)->truncate_mutex);
 +
-+	handle = ext4_journal_start(inode, 1);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		return err;
-+	}
-+
-+	bitmap_bh = read_block_bitmap(sb, group_no);
-+	if (!bitmap_bh) {
-+		err = -EIO;
++	/* if a file doesn't exist*/
++	if ((!inode->i_nlink) || (inode->i_ino < 12) ||
++			!S_ISREG(inode->i_mode)) {
++		ext_info->entries = 0;
++		err = -ENOENT;
 +		goto out;
 +	}
 +
-+	BUFFER_TRACE(bitmap_bh, "get undo access for new block");
-+	err = ext4_journal_get_undo_access(handle, bitmap_bh);
-+	if (err)
-+		goto out;
++	path = ext4_ext_find_extent(inode, offset, NULL);
++	if (IS_ERR(path)) {
++		err = PTR_ERR(path);
++		path = NULL;
++ 		goto out;
++	}
++	depth = ext_depth(inode);
++	ext = path[depth].p_ext;
++	EXT_SET_EXTENT_DATA(ext, ext_info->ext[entries]);
++	entries = 1;
 +
-+	for (i = start; i <= end ; i++) {
-+		if (bitmap_search_next_usable_block(i, bitmap_bh, i+1) >= 0) {
-+			len++;
-+			/* if the free block is the first one in a region */
-+			if (!block_set) {
-+				start_block =
-+					i + group_no * blocks_per_group;
-+				block_set = 1;
-+			}
-+		} else if (len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
-+			len = 0;
-+			block_set = 0;
-+			if (num == max_entries) {
-+				ext_info->offset = i + 1;
++	/*
++	 * The ioctl can return 'max' ext4_extent_data per a call,
++	 * so if @inode has > 'max' extents, we must get away here.
++	 */
++	while (entries < max) {
++		is_last_extent = ext4_ext_next_extent(inode, path, &ext);
++		/* found next extent (not the last one)*/
++		if (is_last_extent == 0) {
++			EXT_SET_EXTENT_DATA(ext, ext_info->ext[entries]);
++			entries++;
++
++			/*
++			 * If @inode has > 'max' extents,
++			 * this function should be called again,
++			 * (per a call, it can resolve only 'max' extents)
++			 * next time we have to start from 'max*n+1'th extent.
++			 */
++			if (entries == max) {
++				ext_info->offset =
++						le32_to_cpu(ext->ee_block) +
++						le32_to_cpu(ext->ee_len);
++				/* check the extent is the last one or not*/
++				is_last_extent =
++					ext4_ext_next_extent(inode, path, &ext);
++				if (is_last_extent) {
++					is_last_extent = 1;
++					err = is_last_extent;
++				} else if (is_last_extent < 0) {
++					/*ERR*/
++					err = is_last_extent;
++					goto out;
++				}
 +				break;
 +			}
-+		}
-+		if ((i == end) && len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
++
++		/* the extent is the last one */
++		} else if (is_last_extent == 1) {
++			ext_info->offset = 0;
++			err = is_last_extent;
++			break;
++		} else {
++			/* ERR */
++			err = is_last_extent;
++			goto out;
 +		}
 +	}
 +
-+	ext_info->entries = num;
++	ext_info->entries = entries;
++
 +out:
-+	ext4_journal_release_buffer(handle, bitmap_bh);
-+	brelse(bitmap_bh);
-+
-+	if (handle)
-+		ext4_journal_stop(handle);
-+
++	if (path) {
++		ext4_ext_drop_refs(path);
++		kfree(path);
++	}
++	mutex_unlock(&EXT4_I(inode)->truncate_mutex);
++	iput(inode);
 +	return err;
 +}
 +
- int ext4_ext_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 			unsigned long arg)
- {
-@@ -2545,6 +2638,21 @@ int ext4_ext_ioctl(struct inode *inode, 
- 		if (copy_to_user((struct ext4_group_data_info *)arg,
- 			&grp_data, sizeof(grp_data)))
- 			return -EFAULT;
-+	} else if (cmd == EXT4_IOC_FREE_BLOCKS_INFO) {
++/**
+  * ext4_ext_fblocks_distribution - Search free block distribution
+  * @filp      target file
+  * @ex_info   ext4_extents_info
+@@ -2653,6 +2774,20 @@ int ext4_ext_ioctl(struct inode *inode, 
+ 		if (!err)
+ 			err = copy_to_user((struct ext4_extents_info*)arg,
+ 				&ext_info, sizeof(ext_info));
++	} else if (cmd == EXT4_IOC_EXTENTS_INFO) {
 +		struct ext4_extents_info ext_info;
 +
 +		if (copy_from_user(&ext_info,
-+			(struct ext4_extents_info __user *)arg,
-+			sizeof(ext_info)))
++				(struct ext4_extents_info __user *)arg,
++				sizeof(ext_info)))
 +			return -EFAULT;
 +
-+		BUG_ON(ext_info.ino != inode->i_ino);
-+
-+		err = ext4_ext_fblocks_distribution(inode, &ext_info);
-+
-+		if (!err)
-+			err = copy_to_user((struct ext4_extents_info*)arg,
-+				&ext_info, sizeof(ext_info));
++		err = ext4_ext_extents_info(&ext_info, inode->i_sb);
++		if (err >= 0) {
++			if (copy_to_user((struct ext4_extents_info __user *)arg,
++				&ext_info, sizeof(ext_info)))
++				return -EFAULT;
++		}
  	} else if (cmd == EXT4_IOC_DEFRAG) {
  		struct ext4_ext_defrag_data defrag;
  
+
