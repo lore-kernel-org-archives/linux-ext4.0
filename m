@@ -1,60 +1,61 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext2fs_block_iterate() on fast symlink
-Date: Thu, 21 Jun 2007 05:10:46 -0600
-Message-ID: <20070621111046.GS5181@schatzie.adilger.int>
-References: <20070620125653.GG27218@duck.suse.cz> <20070621093343.GO5181@schatzie.adilger.int> <20070621095449.GA3744@duck.suse.cz>
+From: Daniel Drake <ddrake@brontes3d.com>
+Subject: ext3/journalling deadlock on old kernel
+Date: Thu, 21 Jun 2007 10:42:26 -0400
+Message-ID: <1182436946.8035.6.camel@systems03.mmm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:34070 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753708AbXFULKt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 07:10:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20070621095449.GA3744@duck.suse.cz>
+Received: from smtp136.iad.emailsrvr.com ([207.97.245.136]:47124 "EHLO
+	smtp136.iad.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755060AbXFUPHP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 11:07:15 -0400
+Received: from [169.14.245.222] (host34.155.212.242.conversent.net [155.212.242.34])
+	(Authenticated sender: ddrake@brontes3d.com)
+	by relay3.r3.iad.emailsrvr.com (SMTP Server) with ESMTP id A2FB144C00F
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 10:42:26 -0400 (EDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 21, 2007  11:54 +0200, Jan Kara wrote:
-> On Thu 21-06-07 03:33:43, Andreas Dilger wrote:
-> > > +	if (LINUX_S_ISCHR(inode.i_mode) || LINUX_S_ISBLK(inode.i_mode) ||
-> > > +	    (LINUX_S_ISLNK(inode.i_mode) &&
-> > > +	     ext2fs_inode_data_blocks(fs, &inode) == 0))
-> > > +		return EXT2_ET_INVAL_INODE_TYPE;
-> > 
-> > I would prefer that we NOT continue to make fast symlinks conditional upon
-> > the i_blocks count.  That causes problems if e.g. an EA block is present
-> > (that would cause this blocks == 0 test to incorrectly fail), and may making
-> > the check (blocks - !!i_file_acl) can still fail for other reasons where a
-> > block is added to an inode (e.g. if we have larger EAs, etc).
->
->   Note that ext2fs_inode_data_blocks() subtract number of EA blocks, so it
-> is equivalent to (blocks - !!i_file_acl). The function is supposed to
-> return the number of real data blocks so the test should be fine even in
-> future.
+Hi,
 
-This is where I disagree.  We had a whole series of bugs in different places
-when SELinux patched ext2/3 to allow EAs on symlinks (also breaking ext2/3
-compatibility in the process), because fast symlink checking was based on
-i_blocks and not i_size.  Then we fixed those bugs, but we are open to a
-whole series of new bugs should any other blocks be assigned to an symlink.
+To start with, this was seen on a 2.6.18 kernel which was tainted. I
+know how it doesn't make sense to work on a report from such an old code
+base, never mind a tainted kernel, so feel free to ignore this if it's
+not interesting..
 
-> > I'd prefer to make this check "i_size < sizeof(i_block)" or similar, which
-> > has always been true for fast symlinks, for every kernel that I have ever
-> > seen.
->
->   Personally I don't mind much. If Ted finds this better, I'll change that.
-> Maybe introducing some macro LINUX_S_ISFASTLNK() would be fine.
+I left a system running overnight, running "stress --cpu 4 --io 1 --vm 1
+--hdd 1" on a 4 way opteron system. While running stress
+(http://weather.ou.edu/~apw/projects/stress/) it was also repeatedly
+checking the md5sums of several large files. The system was under both
+CPU and IO (DMA) load.
 
-Ted, are you aware of any kernel that ever wrote a short symlink into an
-external block?  Since it isn't possible to modify a symlink after it is
-created (except adding an EA ;-) it should never be possible that a "slow"
-symlink is shortened but left in the external block.
+After a few hours, it hung, but caps lock, ping, and sysrq were still
+responsive. sysrq shows me this trace:
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+EIP at .text.lock.spinlock+0x2/0x97
+Trace:
+journal_dirty_data+0x78
+ext3_journal_dirty_data+0x1d
+walk_page_buffers+0x68
+ext3_journal_dirty_data+0x0
+ext3_ordered_commit_write+0x73
+generic_file_buffered_write
+__generic_file_aio_write
+do_get_write_access
+generic_file_aio_write
+ext3_file_write
+do_sync_write
+
+The lock it hung on, according to gdb:
+
+	spin_lock(&journal->j_list_lock);
+
+If a fix is known for this issue, I'd appreciate any pointers. I'll
+continue attempting to reproduce this with a serial console hooked up.
+
+Thanks.
+-- 
+Daniel Drake
+Brontes Technologies, A 3M Company
