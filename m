@@ -1,48 +1,51 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [RFC][1/4] ext2/3/4: enlarge blocksize
-Date: Thu, 21 Jun 2007 16:34:43 -0600
-Message-ID: <20070621223443.GA2178@schatzie.adilger.int>
-References: <20060908131144sho@rifu.tnes.nec.co.jp>
+Subject: Re: [RFC][PATCH 11/11][take 2] 48-bit block number for ACL in e2fsprogs
+Date: Thu, 21 Jun 2007 16:44:28 -0600
+Message-ID: <20070621224428.GE5181@schatzie.adilger.int>
+References: <467A9E02.5030701@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: sho@tnes.nec.co.jp
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:49500 "EHLO
+Received: from mail.clusterfs.com ([206.168.112.78]:58917 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753983AbXFUWer (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 18:34:47 -0400
+	with ESMTP id S1750740AbXFUWob (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 18:44:31 -0400
 Content-Disposition: inline
-In-Reply-To: <20060908131144sho@rifu.tnes.nec.co.jp>
+In-Reply-To: <467A9E02.5030701@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 08, 2006  13:11 +0900, sho@tnes.nec.co.jp wrote:
-> On July 7, 2006, sho wrote:
-> These patches support large blocksize up to PAGESIZE (max 64KB).
-> NOTE:
-> They limit the end of a directory block to 65532(64K - 4)
-> to avoid overflow only when using 64KB block.
+On Jun 21, 2007  17:49 +0200, Valerie Clement wrote:
+> This patch is intended to contain the changes to support 48-bit block
+> numbers for ACL. For now, it only contains modifications in the inode
+> structure. It has to be completed.
+>=20
+> Andreas proposed to rename i_file_acl to i_file_ea
+> and i_file_acl_high to i_file_ea_hi.
 
-Takashi, in light of the (very exciting ;-) patches to handle 64kB
-PAGE_SIZE on x86 systems, could you please update the large blocksize
-patch to the latest ext4 tree?
+Yes, it is misleading that these are called "ACL", since the ACL is onl=
+y
+optionally stored internal to the EA block.  We should provide compatib=
+ility
+macros to avoid breaking old code, which will also allow incremental
+migration.
 
-> diff -upNr -X linux-2.6.18-rc4-mingming/Documentation/dontdiff linux-2.6.18-rc4-mingming/fs/ext2/super.c linux-2.6.18-rc4-mingming-tnes/fs/ext2/super.c
-> --- linux-2.6.18-rc4-mingming/fs/ext2/super.c	2006-08-07 03:20:11.000000000 +0900
-> +++ linux-2.6.18-rc4-mingming-tnes/fs/ext2/super.c	2006-09-08 09:00:40.000000000 +0900
-> @@ -725,7 +725,7 @@ static int ext2_fill_super(struct super_
->  		brelse(bh);
->  
->  		if (!sb_set_blocksize(sb, blocksize)) {
-> -			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
-> +			printk(KERN_ERR "EXT2-fs: bad blocksize %d.\n", blocksize);
->  			goto failed_sbi;
->  		}
+> @@ -449,6 +450,7 @@ struct ext2_inode_large {
+>  #define i_reserved1	osd1.masix1.m_i_reserved1
+>  #define i_frag		osd2.masix2.m_i_frag
+>  #define i_fsize		osd2.masix2.m_i_fsize
+> +#define i_file_acl_high	osd2.masix2.m_i_file_acl_high
+>  #define i_reserved2	osd2.masix2.m_i_reserved2
 
-We need a check in ext2 (like ext3/ext4) to ensure that blocksize <
-EXT2_MAX_BLOCK_SIZE.  It could be increased to 32768 without danger
-I think, only the directory problem prevents it from working with 65536.
+On an unrelated note - does MASIX even exist anymore?  I think it was o=
+nly
+a very experimental OS that R=E9my Card worked on, and the home page do=
+esn't
+even exist anymore.
 
 Cheers, Andreas
 --
