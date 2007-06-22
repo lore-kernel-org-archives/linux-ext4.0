@@ -1,77 +1,192 @@
-From: "LIOU Payphone" <lioupayphone@gmail.com>
-Subject: Re: ask for help; hash-directory machanism of ext3 cannot work well
-Date: Fri, 22 Jun 2007 09:52:55 +0800
-Message-ID: <467b2b7b.0f98600a.1bbc.ffff9c53@mx.google.com>
-References: <20070621165749.GA5664@thunk.org>
+From: sftf <sftf-misc@mail.ru>
+Subject: IRON filesystem papers - development of robust and fault tolerant filesystems
+Date: Fri, 22 Jun 2007 10:28:30 +0600
+Message-ID: <1823488273.20070622102830@mail.ru>
+Reply-To: sftf <sftf-misc@mail.ru>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>
-To: "'Theodore Tso'" <tytso@mit.edu>
+Content-Type: text/plain; charset=Windows-1251
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wr-out-0506.google.com ([64.233.184.233]:60973 "EHLO
-	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751290AbXFVBxC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 21:53:02 -0400
-Received: by wr-out-0506.google.com with SMTP id q50so628059wrq
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 18:53:00 -0700 (PDT)
-In-Reply-To: <20070621165749.GA5664@thunk.org>
+Received: from fallback.mail.ru ([194.67.57.14]:33378 "EHLO mx4.mail.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751505AbXFVD24 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 23:28:56 -0400
+Received: from mx27.mail.ru (mx27.mail.ru [194.67.23.64])
+	by mx4.mail.ru (mPOP.Fallback_MX) with ESMTP id 8C0A334315F
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jun 2007 07:28:54 +0400 (MSD)
+Received: from [195.162.52.178] (port=11238 helo=[192.168.2.1])
+	by mx27.mail.ru with asmtp
+	id 1I1Zp2-0008zF-00
+	for linux-ext4@vger.kernel.org; Fri, 22 Jun 2007 07:28:32 +0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello, Ted. I think I failed to represent it very well. But many thanks. :-)
+Hello!
+I suggest developers to consider ext4 design from the point of view of =
+these papers:
+IRON FILE SYSTEMS -
+http://www.cs.wisc.edu/wind/Publications/vijayan-thesis06.pdf
+IMHO - very impressive paper and  developers of close future filesystem=
+s can't
+ignore these problems and solutions.
 
-What makes me puzzled is there are two entries both  named  "3220" with ino
-"3350" were shown under "/mnt" when I "ls  -li  /mnt".
-The version of kernel is 2.6.17-1.2142; and e2fsprogs-1.28. 
-You know that we can set "s_def_hash_version" to be "DX_HASH_LEAGCY" in
-function  "main{}" of mke2fs.c 
-But I don't know why the latest version e2fsprogs-1.39 takes "DX_HASH_TEA"
-for default. Why "DX_HASH_LEAGCY" cannot be taken for default? Could you
-tell me the reason for it? Thanks.  :-)
+and "Failure Analysis of SGI XFS File System"
+http://www.cs.wisc.edu/~vshree/xfs.pdf =20
 
-------
-On Thu, Jun 21, 2007 at 04:40:55PM +0800, LIOU Payphone wrote:
-> 
-> my problem :
+=46rom IRON FILE SYSTEMS:
+"Disk drives are widely used as a primary medium for storing informatio=
+n.
+While commodity file systems trust disks to either work or fail complet=
+ely, modern
+disks exhibit complex failure modes such as latent sector faults and bl=
+ock corruptions,
+where only portions of a disk fail.
+=2E..
+=46irst, we design new low-level redundancy techniques that a file
+system can use to handle disk faults.
+We begin by qualitatively and quantitatively
+evaluating various redundancy information such as checksum, parity, and=
+ replica,
+=46inally, we describe
+two update strategies: a overwrite and no-overwrite approach that a fil=
+e system can
+use to update its data and parity blocks atomically without NVRAM suppo=
+rt.
+Over all, we show that low-level redundant information can greatly enha=
+nce file system
+robustness while incurring modest time and space overheads.
 
-First of all, what version of e2fsprogs and kernel are you using?n
+Second, to remedy the problem of failure handling diffusion, we develop=
+ amodified
+ext3 that unifies all failure handling in a Centralized Failure Handler=
+ (CFH).
+We then showcase the power of centralized failure handling in ext3c, a =
+modified
+IRON version of ext3 that uses CFH by demonstrating its support for fle=
+xible, consistent,
+and fine-grained policies. By carefully separating policy from mechanis=
+m,
+ext3c demonstrates how a file system can provide a thorough, comprehens=
+ive, and
+easily understandable failure-handling policy.
+=2E..
+The importance of building dependable systems cannot be overstated. One=
+ of the
+fundamental requirements in computer systems is to store and retrieve i=
+nformation
+reliably.
+=2E..
+The fault model presented by modern disk drives, however, is much more =
+complex.
+=46or example, modern drives can exhibit latent sector faults [14, 28, =
+45, 60,
+100], where a block or set of blocks are inaccessible. Under latent sec=
+tor fault,
+the sector fault occurs sometime in the past but the fault is detected =
+only when the
+sector is accessed for storing or retrieving information [59]. Blocks s=
+ometimes become
+corrupted [16] and worse, this can happen silently without the disk bei=
+ng able
+to detect it [47, 74, 126]. Finally, disks sometimes exhibit transient =
+performance
+problems [11, 115].
 
-> (1) when i want to format /dev/sda1 to be ext3-filesystem, i  set
-> "s_def_hash_version" of "struct ext3_super_block" to be "DX_HASH_LEGACY".
-> when the filesystem was formatted successfully, i mounted it under a
-> directory named "/mnt". 
+There are several reasons for these complex disk failure modes. First, =
+a trend
+that is common in the drive industry is to pack more bits per square in=
+ch (BPS)
+as the areal densities of disk drives are growing at a rapid rate [48].
+=2E..
+In addition, increased density can also increase the complexity of the
+logic, that is the firmware that manages the data [7], which can result=
+ in increased
+number of bugs. For example, buggy firmwares are known to issue misdire=
+cted
+writes [126], where correct data is placed on disk but in the wrong loc=
+ation.
 
-How did you set the s_def_hash_version?   Were you using debugfs?
+Second, increased use of low-end desktop drives such as the IDE/ATA dri=
+ves
+worsens the reliability problem. Low cost dominates the design of perso=
+nal storage
+drives [7] and therefore, they are less tested and have less machinery =
+to handle
+disk errors [56].
 
-And did you turn on the dir_index feature?  
+=46inally, amount of software used on the storage stack has increased. =
+=46irmware
+on a desktop drive contains about 400 thousand lines of code [33]. More=
+over,
+the storage stack consists of several layers of low-level device driver=
+ code that
+have been considered to have more bugs than the rest of the operating s=
+ystem
+code [38, 113]. As Jim Gray points out in his study of Tandem Availabil=
+ity, =93As the
+other components of the system become increasingly reliable, software n=
+ecessarily
+becomes the dominant cause of outages=94 [44].
+=2E..
+Our study focuses on four important and substantially different open-so=
+urce file
+systems, ext3 [121], ReiserFS [89], IBM=92s JFS [19], and XFS [112] and=
+ one closedsource
+file system, Windows NTFS [109]. From our analysis results, we find tha=
+t
+the technology used by high-end systems (e.g., checksumming, disk scrub=
+bing, and
+so on) has not filtered down to the realm of commodity file systems. Ac=
+ross all platforms,
+we find ad hoc failure handling and a great deal of illogical inconsist=
+ency in
+failure policy, often due to the diffusion of failure handling code thr=
+ough the kernel;
+such inconsistency leads to substantially different detection and recov=
+ery strategies
+under similar fault scenarios, resulting in unpredictable and often und=
+esirable
+fault-handling strategies. Moreover, failure handling diffusion makes i=
+t difficult to
+examine any one or few portions of the code and determine how failure h=
+andling
+is supposed to behave. Diffusion also implies that failure handling is =
+inflexible;
+policies that are spread across so many locations within the code base =
+are hard to
+change. In addition, we observe that failure handling is quite coarse-g=
+rained; it is
+challenging to implement nuanced policies in the current system.
 
-With recent versions of e2fsprogs the dir_index feature is enabled
-default, with DX_HASH_TEA as the default.
+We also discover that most systems implement portions of their failure =
+policy
+incorrectly; the presence of bugs in the implementations demonstrates t=
+he difficulty
+and complexity of correctly handling certain classes of disk failure.
+=2E..
+We show that none of the file
+systems can recover from partial disk failures, due to a lack of in-dis=
+k redundancy.
+=2E..
 
-> (2) subsequently, i created 40000 empty regular-files under "/mnt" named
-> from "0" to "39999".
-> (3) then , "ls -li  /mnt" was executed; i saw a puzzling thing : there are
-> two indentical entries under the directory named "mnt"!  both inode->i_ino
-and
-> filename are in the same. The filename is 3220 and ino 3350
+We found a number of bugs and inconsistencies in the ext3 failure polic=
+y.
+=46irst,errors are not always propagated to the user (e.g., truncate an=
+d rmdir fail
+silently).
 
-Huh?  What do you mean by that?  Are you seeing two entries named
-"mnt" in the /mnt directory?   I wasn't able to reproduce this.
+Second, ext3 does not always perform sanity checking; for example,
+unlink does not check the linkscount field before modifying it and ther=
+efore
+a corrupted value can lead to a system crash.
 
-> 32203 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24010
-> 32204 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24011
-> 32205 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24012
-> 32206 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24013 
-> 32207 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24014
-> 32208 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24015
-> 32209 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24016
-> 33220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 25027
-> 3220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3090
-> 3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
-> 3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
+Third, although ext3 has redundant
+copies of the superblock (RRedundancy), these copies are never updated =
+after file
+system creation and hence are not useful. Finally, there are important =
+cases when
+ext3 violates the journaling semantics, committing or checkpointing inv=
+alid transactions."
 
-You didn't list any "mnt" entries above.  So I don't know what you saw.
-
-						- Ted
+Thanks for attention!
