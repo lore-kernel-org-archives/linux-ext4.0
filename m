@@ -1,86 +1,77 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: Re: [PATCH] uninitialized groups ported - kernel
-Date: Thu, 21 Jun 2007 16:54:14 -0700
-Message-ID: <467B0FA6.1090509@linux.vnet.ibm.com>
-References: <1181065733.5219.8.camel@mathur-dsktp> <4665AFEF.3060602@redhat.com> <20070605212005.GM5181@schatzie.adilger.int> <467755D3.8030802@linux.vnet.ibm.com> <20070619075034.GQ5181@schatzie.adilger.int> <1182340580.3819.3.camel@dhcp7.linsyssoft.com> <20070621173757.GA1075@schatzie.adilger.int>
+From: "LIOU Payphone" <lioupayphone@gmail.com>
+Subject: Re: ask for help; hash-directory machanism of ext3 cannot work well
+Date: Fri, 22 Jun 2007 09:52:55 +0800
+Message-ID: <467b2b7b.0f98600a.1bbc.ffff9c53@mx.google.com>
+References: <20070621165749.GA5664@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------070006050303090506060008"
-Cc: Girish Shilamkar <girish@clusterfs.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>
+To: "'Theodore Tso'" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:50567 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751268AbXFUXyE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jun 2007 19:54:04 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5LNs4Xf001906
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5LNs4sA503050
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5LNs3WI030499
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 19:54:04 -0400
-In-Reply-To: <20070621173757.GA1075@schatzie.adilger.int>
+Received: from wr-out-0506.google.com ([64.233.184.233]:60973 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751290AbXFVBxC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2007 21:53:02 -0400
+Received: by wr-out-0506.google.com with SMTP id q50so628059wrq
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jun 2007 18:53:00 -0700 (PDT)
+In-Reply-To: <20070621165749.GA5664@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------070006050303090506060008
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Hello, Ted. I think I failed to represent it very well. But many thanks. :-)
 
-Kernel build was failing with the uninitialized patches when 
-CONFIG_CRC16=m. The patch below resolves this issue.
+What makes me puzzled is there are two entries both  named  "3220" with ino
+"3350" were shown under "/mnt" when I "ls  -li  /mnt".
+The version of kernel is 2.6.17-1.2142; and e2fsprogs-1.28. 
+You know that we can set "s_def_hash_version" to be "DX_HASH_LEAGCY" in
+function  "main{}" of mke2fs.c 
+But I don't know why the latest version e2fsprogs-1.39 takes "DX_HASH_TEA"
+for default. Why "DX_HASH_LEAGCY" cannot be taken for default? Could you
+tell me the reason for it? Thanks.  :-)
 
-Also, when testing the patches, filesystem mount fails:
+------
+On Thu, Jun 21, 2007 at 04:40:55PM +0800, LIOU Payphone wrote:
+> 
+> my problem :
 
-EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 1 failed (0!=1)
+First of all, what version of e2fsprogs and kernel are you using?n
 
-EXT4-fs: group descriptors corrupted!
+> (1) when i want to format /dev/sda1 to be ext3-filesystem, i  set
+> "s_def_hash_version" of "struct ext3_super_block" to be "DX_HASH_LEGACY".
+> when the filesystem was formatted successfully, i mounted it under a
+> directory named "/mnt". 
 
-EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 7 failed (0!=1)
+How did you set the s_def_hash_version?   Were you using debugfs?
 
-Even though the uninitgrps feature is not enabled, the gdp->bg_checksum 
-on disk is nonzero.
-Mingming will pull the patches out of the patch queue until this is fixed.
+And did you turn on the dir_index feature?  
 
-Thanks
-Avantika
----
+With recent versions of e2fsprogs the dir_index feature is enabled
+default, with DX_HASH_TEA as the default.
 
+> (2) subsequently, i created 40000 empty regular-files under "/mnt" named
+> from "0" to "39999".
+> (3) then , "ls -li  /mnt" was executed; i saw a puzzling thing : there are
+> two indentical entries under the directory named "mnt"!  both inode->i_ino
+and
+> filename are in the same. The filename is 3220 and ino 3350
 
---------------070006050303090506060008
-Content-Type: text/x-patch;
- name="uninit-fix.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="uninit-fix.patch"
+Huh?  What do you mean by that?  Are you seeing two entries named
+"mnt" in the /mnt directory?   I wasn't able to reproduce this.
 
-diff -uprN linux-2.6.22-rc5/fs/ext4/group.h linux-2.6.22-rc5-patch/fs/ext4/group.h
---- linux-2.6.22-rc5/fs/ext4/group.h	2007-06-21 16:32:52.000000000 -0700
-+++ linux-2.6.22-rc5-patch/fs/ext4/group.h	2007-06-21 16:30:33.000000000 -0700
-@@ -8,7 +8,7 @@
- 
- #ifndef _LINUX_EXT4_GROUP_H
- #define _LINUX_EXT4_GROUP_H
--#if defined(CONFIG_CRC16) || defined(CONFIG_CRC16_MODULE)
-+#if defined(CONFIG_CRC16)
- #include <linux/crc16.h>
- #endif
- 
-diff -uprN linux-2.6.22-rc5/fs/ext4/super.c linux-2.6.22-rc5-patch/fs/ext4/super.c
---- linux-2.6.22-rc5/fs/ext4/super.c	2007-06-21 16:32:53.000000000 -0700
-+++ linux-2.6.22-rc5-patch/fs/ext4/super.c	2007-06-21 16:30:22.000000000 -0700
-@@ -1232,7 +1232,7 @@ static int ext4_setup_super(struct super
- 	return res;
- }
- 
--#if !defined(CONFIG_CRC16) && !defined(CONFIG_CRC16_MODULE)
-+#if !defined(CONFIG_CRC16)
- /** CRC table for the CRC-16. The poly is 0x8005 (x16 + x15 + x2 + 1) */
- __u16 const crc16_table[256] = {
- 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
+> 32203 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24010
+> 32204 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24011
+> 32205 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24012
+> 32206 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24013 
+> 32207 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24014
+> 32208 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24015
+> 32209 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 24016
+> 33220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:37 25027
+> 3220 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3090
+> 3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
+> 3350 -rwxrwxrwx 1 liupf liupf 0 Jun 14 11:31 3220
 
---------------070006050303090506060008--
+You didn't list any "mnt" entries above.  So I don't know what you saw.
+
+						- Ted
