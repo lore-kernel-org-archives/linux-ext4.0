@@ -1,32 +1,44 @@
-From: Jeremy Allison <jra@samba.org>
-Subject: Re: avoid leak upon failed realloc
-Date: Fri, 22 Jun 2007 14:02:12 -0700
-Message-ID: <20070622210212.GA11851@samba1>
-References: <87ejkbbycq.fsf@rho.meyering.net> <1182175456.13184.7.camel@kleikamp.austin.ibm.com> <87wsy15p5n.fsf@rho.meyering.net> <20070622064144.GC17097@thunk.org> <20070622172704.GA10211@samba1> <20070622202020.GJ15285@thunk.org>
-Reply-To: Jeremy Allison <jra@samba.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: IRON filesystem papers - development of robust and fault tolerant filesystems
+Date: Fri, 22 Jun 2007 16:20:17 -0600
+Message-ID: <20070622222017.GU5181@schatzie.adilger.int>
+References: <1823488273.20070622102830@mail.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeremy Allison <jra@samba.org>, Jim Meyering <jim@meyering.net>,
-	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: sftf <sftf-misc@mail.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.samba.org ([66.70.73.150]:38062 "EHLO lists.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752874AbXFVVC1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2007 17:02:27 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:43200 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753741AbXFVWUU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2007 18:20:20 -0400
 Content-Disposition: inline
-In-Reply-To: <20070622202020.GJ15285@thunk.org>
+In-Reply-To: <1823488273.20070622102830@mail.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 22, 2007 at 04:20:20PM -0400, Theodore Tso wrote:
+On Jun 22, 2007  10:28 +0600, sftf wrote:
+> Hello!
+> I suggest developers to consider ext4 design from the point of view of these papers:
+> IRON FILE SYSTEMS -
+> http://www.cs.wisc.edu/wind/Publications/vijayan-thesis06.pdf
+> IMHO - very impressive paper and  developers of close future filesystems can't
+> ignore these problems and solutions.
 > 
-> Hmm.... There are actually several realloc calls in the tdb sources,
-> not just the one which Jim pointed out.  If it's better I can just
-> simply hack one of my patches to provide a realloc wrapper that deals
-> with all of the cases in one fell swoop.
+> and "Failure Analysis of SGI XFS File System"
+> http://www.cs.wisc.edu/~vshree/xfs.pdf  
+ 
+Thanks, I think most of the ext4 developers have already read these papers.
+They are definitely of interest, and reducing e2fsck time is a very important
+area of development these days.
 
-I checked. I think all other realloc uses in tdb are safe.
+We have already implemented the IRON FS journal checksumming feature, and
+this will go into ext4 shortly.  There is lots of work needed in order to
+implement checksumming for the rest of the filesystem, so if you are
+interested to work on this please let us know.
 
-Jeremy.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
