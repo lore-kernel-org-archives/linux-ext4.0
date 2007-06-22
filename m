@@ -1,50 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ask for help; hash-directory machanism of ext3 cannot work well
-Date: Fri, 22 Jun 2007 02:20:00 -0400
-Message-ID: <20070622062000.GA17097@thunk.org>
-References: <20070621165749.GA5664@thunk.org> <467b2b7b.0f98600a.1bbc.ffff9c53@mx.google.com>
+Subject: Re: [PATCH] added sanity check for xattr validation
+Date: Fri, 22 Jun 2007 02:23:10 -0400
+Message-ID: <20070622062310.GB17097@thunk.org>
+References: <20070226223322.GA30215@schatzie.adilger.int> <467AE49D.6030207@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: LIOU Payphone <lioupayphone@gmail.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org,
+	Jim Garlick <garlick@llnl.gov>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38126 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:47144 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751219AbXFVGUQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2007 02:20:16 -0400
+	id S1754644AbXFVGXV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jun 2007 02:23:21 -0400
 Content-Disposition: inline
-In-Reply-To: <467b2b7b.0f98600a.1bbc.ffff9c53@mx.google.com>
+In-Reply-To: <467AE49D.6030207@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 22, 2007 at 09:52:55AM +0800, LIOU Payphone wrote:
+On Thu, Jun 21, 2007 at 03:50:37PM -0500, Eric Sandeen wrote:
+> Andreas Dilger wrote:
+> > Ted,
+> > the attached patch adds an extra validity test in check_ext_attr().  If
+> > an attribute's e_value_size is zero the current code does not allocate
+> > a region for it and as a result the e_value_offs value is not verified.
+> > However, if e_value_offs is very large then the later call to
+> > ext2fs_ext_attr_hash_entry() can dereference bad memory and crash e2fsck.
 > 
-> What makes me puzzled is there are two entries both  named  "3220" with ino
-> "3350" were shown under "/mnt" when I "ls  -li  /mnt".
+> Did this patch get lost?  Don't see it in Hg...
 
-Hmm.  I still can't verify this.
+Thanks, I just committed it.
 
-Can you replicate the result?  If so, can you send me the output of
-dumpe2fs?
-
-> The version of kernel is 2.6.17-1.2142; and e2fsprogs-1.28. 
-
-That looks like a vendor version of the kernel; what distribution are
-you using?
-
-E2fsprogs 1.28 is a frighteningly old version of e2fsprogs.  Did you
-really mean 1.28?  Or 1.38?
-
-> You know that we can set "s_def_hash_version" to be "DX_HASH_LEAGCY" in
-> function  "main{}" of mke2fs.c 
-
-Oh, so you were modifying your sources to set this variable?
-
-> But I don't know why the latest version e2fsprogs-1.39 takes "DX_HASH_TEA"
-> for default. Why "DX_HASH_LEAGCY" cannot be taken for default? Could you
-> tell me the reason for it? Thanks.  :-)
-
-Because DX_HASH_TEA is a better hash, and because it is keyed off of a
-per-filesystem secret hash value stored in the superblock.
-
-						- Ted
+						-Ted
