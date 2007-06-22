@@ -1,89 +1,65 @@
 From: Dmitry Monakhov <dmonakhov@sw.ru>
-Subject: [PATCH 2/3] extent compilation fixes
-Date: Fri, 22 Jun 2007 16:17:53 +0400
-Message-ID: <20070622121753.GC395@localhost.sw.ru>
+Subject: [PATCH 3/3]  ext4: extent macros cleanup
+Date: Fri, 22 Jun 2007 16:18:35 +0400
+Message-ID: <20070622121835.GD395@localhost.sw.ru>
 References: <20070622121509.GA395@localhost.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Alex Tomas <alex@clusterfs.com>, devel@openvz.org
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:1073 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.233.200]:37793 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752698AbXFVMQr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2007 08:16:47 -0400
+	id S1751856AbXFVMR2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jun 2007 08:17:28 -0400
 Content-Disposition: inline
 In-Reply-To: <20070622121509.GA395@localhost.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Fix compilation with EXT_DEBUG, also fix leXX_to_cpu convertions.
+- Replace math equation to it's macro equivalent
+- make ext4_ext_grow_indepth() indexes/leaf correct
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |   18 ++++++++++--------
- 1 files changed, 10 insertions(+), 8 deletions(-)
+ fs/ext4/extents.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6f72dcb..12fe3d7 100644
+index 12fe3d7..1fd00ac 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -382,13 +382,14 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
- 			r = m - 1;
- 		else
- 			l = m + 1;
--		ext_debug("%p(%u):%p(%u):%p(%u) ", l, l->ei_block,
--				m, m->ei_block, r, r->ei_block);
-+		ext_debug("%p(%u):%p(%u):%p(%u) ", l, le32_to_cpu(l->ei_block),
-+				m, le32_to_cpu(m->ei_block),
-+				r, le32_to_cpu(r->ei_block));
- 	}
+@@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
+ 	ext_debug("binsearch for %d(idx):  ", block);
  
- 	path->p_idx = l - 1;
- 	ext_debug("  -> %d->%lld ", le32_to_cpu(path->p_idx->ei_block),
--		  idx_block(path->p_idx));
-+		  idx_pblock(path->p_idx));
+ 	l = EXT_FIRST_INDEX(eh) + 1;
+-	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
++	r = EXT_LAST_INDEX(eh);
+ 	while (l <= r) {
+ 		m = l + (r - l) / 2;
+ 		if (block < le32_to_cpu(m->ei_block))
+@@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
+ 	ext_debug("binsearch for %d:  ", block);
  
- #ifdef CHECK_BINSEARCH
- 	{
-@@ -447,8 +448,9 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
- 			r = m - 1;
- 		else
- 			l = m + 1;
--		ext_debug("%p(%u):%p(%u):%p(%u) ", l, l->ee_block,
--				m, m->ee_block, r, r->ee_block);
-+		ext_debug("%p(%u):%p(%u):%p(%u) ", l, le32_to_cpu(l->ee_block),
-+				m, le32_to_cpu(m->ee_block),
-+				r, le32_to_cpu(r->ee_block));
- 	}
+ 	l = EXT_FIRST_EXTENT(eh) + 1;
+-	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
++	r = EXT_LAST_EXTENT(eh);
  
- 	path->p_ext = l - 1;
-@@ -580,7 +582,7 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
- 		if (curp->p_idx != EXT_LAST_INDEX(curp->p_hdr)) {
- 			len = (len - 1) * sizeof(struct ext4_extent_idx);
- 			len = len < 0 ? 0 : len;
--			ext_debug("insert new index %d after: %d. "
-+			ext_debug("insert new index %d after: %llu. "
- 					"move %d from 0x%p to 0x%p\n",
- 					logical, ptr, len,
- 					(curp->p_idx + 1), (curp->p_idx + 2));
-@@ -591,7 +593,7 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
- 		/* insert before */
- 		len = len * sizeof(struct ext4_extent_idx);
- 		len = len < 0 ? 0 : len;
--		ext_debug("insert new index %d before: %d. "
-+		ext_debug("insert new index %d before: %llu. "
- 				"move %d from 0x%p to 0x%p\n",
- 				logical, ptr, len,
- 				curp->p_idx, (curp->p_idx + 1));
-@@ -791,7 +793,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		BUG_ON(EXT_MAX_INDEX(path[i].p_hdr) !=
- 				EXT_LAST_INDEX(path[i].p_hdr));
- 		while (path[i].p_idx <= EXT_MAX_INDEX(path[i].p_hdr)) {
--			ext_debug("%d: move %d:%d in new index %llu\n", i,
-+			ext_debug("%d: move %d:%llu in new index %llu\n", i,
- 					le32_to_cpu(path[i].p_idx->ei_block),
- 					idx_pblock(path[i].p_idx),
- 					newblock);
+ 	while (l <= r) {
+ 		m = l + (r - l) / 2;
+@@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
+ 	curp->p_hdr->eh_entries = cpu_to_le16(1);
+ 	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
+-	/* FIXME: it works, but actually path[0] can be index */
+-	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
++	
++	if (path[0].p_hdr->eh_depth)
++	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
++	else
++	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+ 	ext4_idx_store_pblock(curp->p_idx, newblock);
+ 
+ 	neh = ext_inode_hdr(inode);
 -- 
 1.5.2
