@@ -1,65 +1,52 @@
-From: Dmitry Monakhov <dmonakhov@sw.ru>
-Subject: [PATCH 3/3]  ext4: extent macros cleanup
-Date: Fri, 22 Jun 2007 16:18:35 +0400
-Message-ID: <20070622121835.GD395@localhost.sw.ru>
-References: <20070622121509.GA395@localhost.sw.ru>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] uninitialized groups ported - kernel
+Date: Fri, 22 Jun 2007 10:04:54 -0600
+Message-ID: <20070622160454.GM5181@schatzie.adilger.int>
+References: <1181065733.5219.8.camel@mathur-dsktp> <4665AFEF.3060602@redhat.com> <20070605212005.GM5181@schatzie.adilger.int> <467755D3.8030802@linux.vnet.ibm.com> <20070619075034.GQ5181@schatzie.adilger.int> <1182340580.3819.3.camel@dhcp7.linsyssoft.com> <20070621173757.GA1075@schatzie.adilger.int> <467B0FA6.1090509@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>, devel@openvz.org
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: Girish Shilamkar <girish@clusterfs.com>, linux-ext4@vger.kernel.org
+To: Avantika Mathur <mathur@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.233.200]:37793 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751856AbXFVMR2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2007 08:17:28 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:34313 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756207AbXFVQE4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2007 12:04:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20070622121509.GA395@localhost.sw.ru>
+In-Reply-To: <467B0FA6.1090509@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-- Replace math equation to it's macro equivalent
-- make ext4_ext_grow_indepth() indexes/leaf correct
+On Jun 21, 2007  16:54 -0700, Avantika Mathur wrote:
+> Kernel build was failing with the uninitialized patches when 
+> CONFIG_CRC16=m. The patch below resolves this issue.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/extents.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+No patch?
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 12fe3d7..1fd00ac 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
- 	ext_debug("binsearch for %d(idx):  ", block);
- 
- 	l = EXT_FIRST_INDEX(eh) + 1;
--	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
-+	r = EXT_LAST_INDEX(eh);
- 	while (l <= r) {
- 		m = l + (r - l) / 2;
- 		if (block < le32_to_cpu(m->ei_block))
-@@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
- 	ext_debug("binsearch for %d:  ", block);
- 
- 	l = EXT_FIRST_EXTENT(eh) + 1;
--	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
-+	r = EXT_LAST_EXTENT(eh);
- 
- 	while (l <= r) {
- 		m = l + (r - l) / 2;
-@@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
- 	curp->p_hdr->eh_entries = cpu_to_le16(1);
- 	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
--	/* FIXME: it works, but actually path[0] can be index */
--	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
-+	
-+	if (path[0].p_hdr->eh_depth)
-+	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
-+	else
-+	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
- 	ext4_idx_store_pblock(curp->p_idx, newblock);
- 
- 	neh = ext_inode_hdr(inode);
--- 
-1.5.2
+> Also, when testing the patches, filesystem mount fails:
+> 
+> EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 1 
+> failed (0!=1)
+> 
+> EXT4-fs: group descriptors corrupted!
+> 
+> EXT4-fs error (device sdc1): ext4_check_descriptors: Checksum for group 7 
+> failed (0!=1)
+> 
+> Even though the uninitgrps feature is not enabled, the gdp->bg_checksum 
+> on disk is nonzero.
+
+Can you figure out why the on-disk checksum is non-zero?  That should not
+happen.  Is it possible that the kernel patch and e2fsprogs somehow have
+the wrong struct alignment?  Is mke2fs not zeroing out the on-disk data -
+the error is reporting that bg_checksum on disk is 1 when it should be 0?
+
+I suppose it is possible for the patch to just ignore the on-disk data if
+checksums are not enabled, but we didn't have any such problems in the past...
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
