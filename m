@@ -1,44 +1,34 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: IRON filesystem papers - development of robust and fault tolerant filesystems
-Date: Fri, 22 Jun 2007 16:20:17 -0600
-Message-ID: <20070622222017.GU5181@schatzie.adilger.int>
-References: <1823488273.20070622102830@mail.ru>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] Endianness bugs in e2fsck
+Date: Fri, 22 Jun 2007 18:20:58 -0400
+Message-ID: <20070622222056.GB22889@thunk.org>
+References: <1182331988.9772.7.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: sftf <sftf-misc@mail.ru>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:43200 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753741AbXFVWUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2007 18:20:20 -0400
+Received: from thunk.org ([69.25.196.29]:60275 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751106AbXFVWml (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jun 2007 18:42:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1823488273.20070622102830@mail.ru>
+In-Reply-To: <1182331988.9772.7.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 22, 2007  10:28 +0600, sftf wrote:
-> Hello!
-> I suggest developers to consider ext4 design from the point of view of these papers:
-> IRON FILE SYSTEMS -
-> http://www.cs.wisc.edu/wind/Publications/vijayan-thesis06.pdf
-> IMHO - very impressive paper and  developers of close future filesystems can't
-> ignore these problems and solutions.
-> 
-> and "Failure Analysis of SGI XFS File System"
-> http://www.cs.wisc.edu/~vshree/xfs.pdf  
- 
-Thanks, I think most of the ext4 developers have already read these papers.
-They are definitely of interest, and reducing e2fsck time is a very important
-area of development these days.
+On Wed, Jun 20, 2007 at 03:03:08PM +0530, Kalpak Shah wrote:
+> In ext2fs_swap_inode_full() if to and from inodes are not the same
+> (which is the case when called from e2fsck_get_next_inode_full),
+> then e2fsck cannot recognize any in-inode EAs since the un-swabbed
+> i_extra_isize was being used. So corrected that to use swabbed
+> values all the time.
 
-We have already implemented the IRON FS journal checksumming feature, and
-this will go into ext4 shortly.  There is lots of work needed in order to
-implement checksumming for the rest of the filesystem, so if you are
-interested to work on this please let us know.
+Actually, this is wrong.  Remember, the swab functions are used to
+swap *from* and *to* host byte order and on-disk order.  So yes, there
+was a bug in that we were also using the f->i_extra_size, but using
+t->i_extra_size is also going to be wrong in some cases.  That's what
+the hostorder parameter to ext2fs_swap_inode_full() is for.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+					- Ted
