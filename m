@@ -1,34 +1,97 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] added sanity check for xattr validation
-Date: Fri, 22 Jun 2007 02:23:10 -0400
-Message-ID: <20070622062310.GB17097@thunk.org>
-References: <20070226223322.GA30215@schatzie.adilger.int> <467AE49D.6030207@redhat.com>
+Subject: Re: avoid leak upon failed realloc
+Date: Fri, 22 Jun 2007 02:41:44 -0400
+Message-ID: <20070622064144.GC17097@thunk.org>
+References: <87ejkbbycq.fsf@rho.meyering.net> <1182175456.13184.7.camel@kleikamp.austin.ibm.com> <87wsy15p5n.fsf@rho.meyering.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>, linux-ext4@vger.kernel.org,
-	Jim Garlick <garlick@llnl.gov>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: multipart/mixed; boundary="wac7ysb48OaltWcw"
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, samba-technical@lists.samba.org
+To: Jim Meyering <jim@meyering.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47144 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:45578 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754644AbXFVGXV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2007 02:23:21 -0400
+	id S1751803AbXFVGmB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jun 2007 02:42:01 -0400
 Content-Disposition: inline
-In-Reply-To: <467AE49D.6030207@redhat.com>
+In-Reply-To: <87wsy15p5n.fsf@rho.meyering.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 21, 2007 at 03:50:37PM -0500, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > Ted,
-> > the attached patch adds an extra validity test in check_ext_attr().  If
-> > an attribute's e_value_size is zero the current code does not allocate
-> > a region for it and as a result the e_value_offs value is not verified.
-> > However, if e_value_offs is very large then the later call to
-> > ext2fs_ext_attr_hash_entry() can dereference bad memory and crash e2fsck.
+
+--wac7ysb48OaltWcw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Mon, Jun 18, 2007 at 04:10:44PM +0200, Jim Meyering wrote:
+> Here's a tiny fix to avoid a leak when realloc fails:
 > 
-> Did this patch get lost?  Don't see it in Hg...
+> 2007-06-16  Jim Meyering  <jim@meyering.net>
+> 
+> 	* tdb.c (tdb_append): Don't leak a buffer when realloc fails.
 
-Thanks, I just committed it.
+Hi Jim,
 
-						-Ted
+	Thanks for the patch!  I actually automatically build the
+tdb.c file from the Samba SVN tree (with a series of patches and
+scripts) at: 
+
+	svn://svnanon.samba.org/samba/branches/SAMBA_4_0/source/lib/tdb
+
+So I'm going to forward this patch (attached) to the Samba developers.
+It appears to apply cleanly to .../source/lib/tdb/common/tdb.c.  Once
+they commit it into their SVN tree, I can just pick it up from there.
+
+Regards,
+
+						- Ted
+
+
+--wac7ysb48OaltWcw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=tdb-patch
+
+Dave Kleikamp <shaggy@linux.vnet.ibm.com> wrote:
+> Not a big deal, but this part could be simplified to:
+>
+> 		if (new_dptr == NULL)
+> 			free(dbuf.dptr);
+> 		dbuf.dptr = new_dptr;
+
+Of course!
+Thanks!
+
+In case it helps, here's the updated patch:
+
+Here's a tiny fix to avoid a leak when realloc fails:
+
+2007-06-16  Jim Meyering  <jim@meyering.net>
+
+	* tdb.c (tdb_append): Don't leak a buffer when realloc fails.
+
+diff -r 777972a573b3 lib/ext2fs/tdb.c
+--- a/lib/ext2fs/tdb.c	Fri Jun 15 18:05:09 2007 +0200
++++ b/lib/ext2fs/tdb.c	Mon Jun 18 16:08:24 2007 +0200
+@@ -3460,8 +3460,12 @@ int tdb_append(struct tdb_context *tdb,
+ 	if (dbuf.dptr == NULL) {
+ 		dbuf.dptr = (unsigned char *)malloc(new_dbuf.dsize);
+ 	} else {
+-		dbuf.dptr = (unsigned char *)realloc(dbuf.dptr,
+-						     dbuf.dsize + new_dbuf.dsize);
++		unsigned char *new_dptr
++		  = (unsigned char *)realloc(dbuf.dptr,
++					     dbuf.dsize + new_dbuf.dsize);
++		if (new_dptr == NULL)
++			free(dbuf.dptr);
++		dbuf.dptr = new_dptr;
+ 	}
+ 
+ 	if (dbuf.dptr == NULL) {
+
+Signed-off-by: Jim Meyering <jim@meyering.net>
+-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--wac7ysb48OaltWcw--
