@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-remove-extra-is_rdonly-check.patch added to -mm tree
-Date: Sat, 23 Jun 2007 09:53:25 -0700
-Message-ID: <200706231653.l5NGrMKd019674@imap1.linux-foundation.org>
+Subject: + ext4-remove-extra-is_rdonly-check.patch added to -mm tree
+Date: Sat, 23 Jun 2007 09:54:28 -0700
+Message-ID: <200706231654.l5NGsPNl019755@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: haveblue@us.ibm.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
@@ -11,9 +11,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: remove extra IS_RDONLY() check
+     ext4: remove extra IS_RDONLY() check
 has been added to the -mm tree.  Its filename is
-     ext3-remove-extra-is_rdonly-check.patch
+     ext4-remove-extra-is_rdonly-check.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -21,11 +21,11 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext3: remove extra IS_RDONLY() check
+Subject: ext4: remove extra IS_RDONLY() check
 From: Dave Hansen <haveblue@us.ibm.com>
 
-ext3_change_inode_journal_flag() is only called from one location:
-ext3_ioctl(EXT3_IOC_SETFLAGS).  That ioctl case already has a IS_RDONLY()
+ext4_change_inode_journal_flag() is only called from one location:
+ext4_ioctl(EXT3_IOC_SETFLAGS).  That ioctl case already has a IS_RDONLY()
 call in it so this one is superfluous.
 
 Signed-off-by: Dave Hansen <haveblue@us.ibm.com>
@@ -33,21 +33,21 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |    2 +-
+ fs/ext4/inode.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext3/inode.c~ext3-remove-extra-is_rdonly-check fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-remove-extra-is_rdonly-check
-+++ a/fs/ext3/inode.c
-@@ -3235,7 +3235,7 @@ int ext3_change_inode_journal_flag(struc
+diff -puN fs/ext4/inode.c~ext4-remove-extra-is_rdonly-check fs/ext4/inode.c
+--- a/fs/ext4/inode.c~ext4-remove-extra-is_rdonly-check
++++ a/fs/ext4/inode.c
+@@ -3352,7 +3352,7 @@ int ext4_change_inode_journal_flag(struc
  	 */
  
- 	journal = EXT3_JOURNAL(inode);
+ 	journal = EXT4_JOURNAL(inode);
 -	if (is_journal_aborted(journal) || IS_RDONLY(inode))
 +	if (is_journal_aborted(journal))
  		return -EROFS;
  
- 	journal_lock_updates(journal);
+ 	jbd2_journal_lock_updates(journal);
 _
 
 Patches currently in -mm which might be from haveblue@us.ibm.com are
