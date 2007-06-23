@@ -1,35 +1,79 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] zero_user_page conversion
-Date: Sat, 23 Jun 2007 09:51:57 -0700
-Message-ID: <20070623095157.5a574afb.akpm@linux-foundation.org>
-References: <4679A558.1010107@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <samba-technical-bounces+gnsi-samba-technical=m.gmane.org@lists.samba.org>
-In-Reply-To: <4679A558.1010107@redhat.com>
-List-Unsubscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
-	<mailto:samba-technical-request@lists.samba.org?subject=unsubscribe>
-List-Archive: <http://lists.samba.org/archive/samba-technical>
-List-Post: <mailto:samba-technical@lists.samba.org>
-List-Help: <mailto:samba-technical-request@lists.samba.org?subject=help>
-List-Subscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
-	<mailto:samba-technical-request@lists.samba.org?subject=subscribe>
-Sender: samba-technical-bounces+gnsi-samba-technical=m.gmane.org@lists.samba.org
-Errors-To: samba-technical-bounces+gnsi-samba-technical=m.gmane.org@lists.samba.org
+From: akpm@linux-foundation.org
+Subject: + ext3-remove-extra-is_rdonly-check.patch added to -mm tree
+Date: Sat, 23 Jun 2007 09:53:25 -0700
+Message-ID: <200706231653.l5NGrMKd019674@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: haveblue@us.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Wed, 20 Jun 2007 17:08:24 -0500 Eric Sandeen <sandeen@redhat.com> wrote:
-> Use zero_user_page() in cifs, ocfs2, ext4, and gfs2 where possible.
 
-One patch, splattered across four maintainers, each of whom maintain separate
-trees.
+The patch titled
+     ext3: remove extra IS_RDONLY() check
+has been added to the -mm tree.  Its filename is
+     ext3-remove-extra-is_rdonly-check.patch
 
-Sigh.  Please, don't.  _someone_ has to split this up, and it might as well
-not be me.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-<splits it up>
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+------------------------------------------------------
+Subject: ext3: remove extra IS_RDONLY() check
+From: Dave Hansen <haveblue@us.ibm.com>
+
+ext3_change_inode_journal_flag() is only called from one location:
+ext3_ioctl(EXT3_IOC_SETFLAGS).  That ioctl case already has a IS_RDONLY()
+call in it so this one is superfluous.
+
+Signed-off-by: Dave Hansen <haveblue@us.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -puN fs/ext3/inode.c~ext3-remove-extra-is_rdonly-check fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-remove-extra-is_rdonly-check
++++ a/fs/ext3/inode.c
+@@ -3235,7 +3235,7 @@ int ext3_change_inode_journal_flag(struc
+ 	 */
+ 
+ 	journal = EXT3_JOURNAL(inode);
+-	if (is_journal_aborted(journal) || IS_RDONLY(inode))
++	if (is_journal_aborted(journal))
+ 		return -EROFS;
+ 
+ 	journal_lock_updates(journal);
+_
+
+Patches currently in -mm which might be from haveblue@us.ibm.com are
+
+document-nlink-function.patch
+ext3-remove-extra-is_rdonly-check.patch
+ext4-remove-extra-is_rdonly-check.patch
+cpuset-zero-malloc-revert-the-old-cpuset-fix.patch
+containersv10-basic-container-framework.patch
+containersv10-basic-container-framework-fix.patch
+containersv10-example-cpu-accounting-subsystem.patch
+containersv10-example-cpu-accounting-subsystem-fix.patch
+containersv10-add-tasks-file-interface.patch
+containersv10-add-tasks-file-interface-fix.patch
+containersv10-add-fork-exit-hooks.patch
+containersv10-add-fork-exit-hooks-fix.patch
+containersv10-add-container_clone-interface.patch
+containersv10-add-container_clone-interface-fix.patch
+containersv10-add-procfs-interface.patch
+containersv10-add-procfs-interface-fix.patch
+containersv10-make-cpusets-a-client-of-containers.patch
+containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships.patch
+containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships-fix.patch
+containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships-cpuset-zero-malloc-fix-for-new-containers.patch
+containersv10-simple-debug-info-subsystem.patch
+containersv10-simple-debug-info-subsystem-fix.patch
+containersv10-simple-debug-info-subsystem-fix-2.patch
+containersv10-support-for-automatic-userspace-release-agents.patch
+page-owner-tracking-leak-detector.patch
