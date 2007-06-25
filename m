@@ -1,70 +1,126 @@
-From: akpm@linux-foundation.org
-Subject: + is_power_of_2-ext4-superc.patch added to -mm tree
-Date: Mon, 25 Jun 2007 12:13:44 -0700
-Message-ID: <200706251913.l5PJDiCa008705@imap1.linux-foundation.org>
-Cc: vignesh.babu@wipro.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:57447 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754232AbXFYTNv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Jun 2007 15:13:51 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Mon, 25 Jun 2007 15:46:26 -0600
+Message-ID: <20070625214626.GJ5181@schatzie.adilger.int>
+References: <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+	suparna@in.ibm.com, cmm@us.ibm.com, xfs@oss.sgi.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070625150320.GA8686@amitarora.in.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Jun 25, 2007  20:33 +0530, Amit K. Arora wrote:
+> I have not implemented FA_FL_FREE_ENOSPC and FA_ZERO_SPACE flags yet, as
+> *suggested* by Andreas in http://lkml.org/lkml/2007/6/14/323  post.
+> If it is decided that these flags are also needed, I will update this
+> patch. Thanks!
 
-The patch titled
-     is_power_of_2: ext3/super.c
-has been added to the -mm tree.  Its filename is
-     is_power_of_2-ext4-superc.patch
+Can you clarify - what is the current behaviour when ENOSPC (or some other
+error) is hit?  Does it keep the current fallocate() or does it free it?
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+For FA_ZERO_SPACE - I'd think this would (IMHO) be the default - we
+don't want to expose uninitialized disk blocks to userspace.  I'm not
+sure if this makes sense at all.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+> On Mon, Jun 25, 2007 at 07:15:00PM +0530, Amit K. Arora wrote:
+> > Implement new flags and values for mode argument.
+> > 
+> > This patch implements the new flags and values for the "mode" argument
+> > of the fallocate system call. It is based on the discussion between
+> > Andreas Dilger and David Chinner on the man page proposed (by the later)
+> > on fallocate.
+> > 
+> > Signed-off-by: Amit Arora <aarora@in.ibm.com>
+> > 
+> > Index: linux-2.6.22-rc4/include/linux/fs.h
+> > ===================================================================
+> > --- linux-2.6.22-rc4.orig/include/linux/fs.h
+> > +++ linux-2.6.22-rc4/include/linux/fs.h
+> > @@ -267,15 +267,16 @@ extern int dir_notify_enable;
+> >  #define SYNC_FILE_RANGE_WAIT_AFTER	4
+> > 
+> >  /*
+> > - * sys_fallocate modes
+> > - * Currently sys_fallocate supports two modes:
+> > - * FA_ALLOCATE  : This is the preallocate mode, using which an application/user
+> > - *		  may request (pre)allocation of blocks.
+> > - * FA_DEALLOCATE: This is the deallocate mode, which can be used to free
+> > - *		  the preallocated blocks.
+> > + * sys_fallocate mode flags and values
+> >   */
+> > -#define FA_ALLOCATE	0x1
+> > -#define FA_DEALLOCATE	0x2
+> > +#define FA_FL_DEALLOC	0x01 /* default is allocate */
+> > +#define FA_FL_KEEP_SIZE	0x02 /* default is extend/shrink size */
+> > +#define FA_FL_DEL_DATA	0x04 /* default is keep written data on DEALLOC */
+> > +
+> > +#define FA_ALLOCATE	0
+> > +#define FA_DEALLOCATE	FA_FL_DEALLOC
+> > +#define FA_RESV_SPACE	FA_FL_KEEP_SIZE
+> > +#define FA_UNRESV_SPACE	(FA_FL_DEALLOC | FA_FL_KEEP_SIZE | FA_FL_DEL_DATA)
+> > 
+> >  #ifdef __KERNEL__
+> > 
+> > Index: linux-2.6.22-rc4/fs/open.c
+> > ===================================================================
+> > --- linux-2.6.22-rc4.orig/fs/open.c
+> > +++ linux-2.6.22-rc4/fs/open.c
+> > @@ -356,23 +356,26 @@ asmlinkage long sys_ftruncate64(unsigned
+> >   * sys_fallocate - preallocate blocks or free preallocated blocks
+> >   * @fd: the file descriptor
+> >   * @mode: mode specifies if fallocate should preallocate blocks OR free
+> > - *	  (unallocate) preallocated blocks. Currently only FA_ALLOCATE and
+> > - *	  FA_DEALLOCATE modes are supported.
+> > + *	  (unallocate) preallocated blocks.
+> >   * @offset: The offset within file, from where (un)allocation is being
+> >   *	    requested. It should not have a negative value.
+> >   * @len: The amount (in bytes) of space to be (un)allocated, from the offset.
+> >   *
+> >   * This system call, depending on the mode, preallocates or unallocates blocks
+> >   * for a file. The range of blocks depends on the value of offset and len
+> > - * arguments provided by the user/application. For FA_ALLOCATE mode, if this
+> > + * arguments provided by the user/application. For FA_ALLOCATE and
+> > + * FA_RESV_SPACE modes, if the sys_fallocate()
+> >   * system call succeeds, subsequent writes to the file in the given range
+> >   * (specified by offset & len) should not fail - even if the file system
+> >   * later becomes full. Hence the preallocation done is persistent (valid
+> > - * even after reopen of the file and remount/reboot).
+> > + * even after reopen of the file and remount/reboot). If FA_RESV_SPACE mode
+> > + * is passed, the file size will not be changed even if the preallocation
+> > + * is beyond EOF.
+> >   *
+> >   * It is expected that the ->fallocate() inode operation implemented by the
+> >   * individual file systems will update the file size and/or ctime/mtime
+> > - * depending on the mode and also on the success of the operation.
+> > + * depending on the mode (change is visible to user or not - say file size)
+> > + * and obviously, on the success of the operation.
+> >   *
+> >   * Note: Incase the file system does not support preallocation,
+> >   * posix_fallocate() should fall back to the library implementation (i.e.
+> > @@ -398,7 +401,8 @@ asmlinkage long sys_fallocate(int fd, in
+> > 
+> >  	/* Return error if mode is not supported */
+> >  	ret = -EOPNOTSUPP;
+> > -	if (mode != FA_ALLOCATE && mode != FA_DEALLOCATE)
+> > +	if (!(mode == FA_ALLOCATE || mode == FA_DEALLOCATE ||
+> > +		mode == FA_RESV_SPACE || mode == FA_UNRESV_SPACE))
+> >  		goto out;
+> > 
+> >  	ret = -EBADF;
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-------------------------------------------------------
-Subject: is_power_of_2: ext3/super.c
-From: vignesh babu <vignesh.babu@wipro.com>
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
-Replace (n & (n-1)) in the context of power of 2 checks with is_power_of_2()
-
-Signed-off-by: vignesh babu <vignesh.babu@wipro.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/super.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletion(-)
-
-diff -puN fs/ext4/super.c~is_power_of_2-ext4-superc fs/ext4/super.c
---- a/fs/ext4/super.c~is_power_of_2-ext4-superc
-+++ a/fs/ext4/super.c
-@@ -36,6 +36,7 @@
- #include <linux/namei.h>
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
-+#include <linux/log2.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -1662,7 +1663,7 @@ static int ext4_fill_super (struct super
- 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
- 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
- 		if ((sbi->s_inode_size < EXT4_GOOD_OLD_INODE_SIZE) ||
--		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
-+		    (!is_power_of_2(sbi->s_inode_size)) ||
- 		    (sbi->s_inode_size > blocksize)) {
- 			printk (KERN_ERR
- 				"EXT4-fs: unsupported inode size: %d\n",
-_
-
-Patches currently in -mm which might be from vignesh.babu@wipro.com are
-
-git-ubi.patch
-use-is_power_of_2-in-cxgb3-cxgb3_mainc.patch
-use-is_power_of_2-in-myri10ge-myri10gec.patch
-is_power_of_2-ext3-superc.patch
-is_power_of_2-ext4-superc.patch
-is_pwoer_of_2-jbd.patch
