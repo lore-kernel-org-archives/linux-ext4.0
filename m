@@ -1,8 +1,8 @@
 From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [PATCH 0/6][TAKE5] fallocate system call
-Date: Mon, 25 Jun 2007 18:58:10 +0530
-Message-ID: <20070625132810.GA1951@amitarora.in.ibm.com>
-References: <20070510005926.GT85884050@sgi.com> <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int>
+Subject: [PATCH 1/7][TAKE5] fallocate() implementation on i386, x86_64 and powerpc
+Date: Mon, 25 Jun 2007 19:10:12 +0530
+Message-ID: <20070625134012.GB1951@amitarora.in.ibm.com>
+References: <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: David Chinner <dgc@sgi.com>,
@@ -10,142 +10,275 @@ Cc: David Chinner <dgc@sgi.com>,
 	cmm@us.ibm.com, xfs@oss.sgi.com
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:49236 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752251AbXFYNkF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2007 09:40:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20070614193347.GN5181@schatzie.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20070625132810.GA1951@amitarora.in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-N O T E: 
--------
-1) Only Patches 4/7 and 7/7 are NEW. Rest of them are _already_ part
-   of ext4 patch queue git tree hosted by Ted.
-2) The above new patches (4/7 and 7/7) are based on the dicussion
-   between Andreas Dilger and David Chinner on the mode argument,
-   when later posted a man page on fallocate.
-3) All of these patches are based on 2.6.22-rc4 kernel and apply to
-   2.6.22-rc5 too (with some successfull hunks, though  - since the
-   ext4 patch queue git tree has some other patches as well before
-   fallocate patches in the patch series).
+This patch implements sys_fallocate() and adds support on i386, x86_64
+and powerpc platforms.
 
 Changelog:
 ---------
-Changes from Take4 to Take5:
-	1) New Patch 4/7 implements new flags and values for mode
-	   argument of fallocate system call.
-	2) New Patch 7/7 implements 2 (out of 4) modes in ext4.
-	   Implementation of rest of the (two) modes is yet to be done.
-	3) Updated the interface description below to mention new modes
-	   being supported.
-	4) Removed "extent overlap check" bugfix (patch 4/6 in TAKE4,
-	   since it is now part of mainline.
-	5) Corrected format of couple of multi-line comments, which got
-	   missed in earlier take.
-
+Changes from Take3 to Take4:
+ 1) Do not update c/mtime. Let each filesystem update ctime (update of
+    mtime will not be required for allocation since we touch only
+    metadata/inode and not blocks), if required.
 Changes from Take2 to Take3:
-        1) Return type is now described in the interface description
-           above.
-        2) Patches rebased to 2.6.22-rc1 kernel.
-
-** Each post will have an individual changelog for a particular patch.
-
-
-Description:
------------
-fallocate() is a new system call being proposed here which will allow
-applications to preallocate space to any file(s) in a file system.
-Each file system implementation that wants to use this feature will need
-to support an inode operation called fallocate.
-
-Applications can use this feature to avoid fragmentation to certain
-level and thus get faster access speed. With preallocation, applications
-also get a guarantee of space for particular file(s) - even if later the
-the system becomes full.
-
-Currently, glibc provides an interface called posix_fallocate() which
-can be used for similar cause. Though this has the advantage of working
-on all file systems, but it is quite slow (since it writes zeroes to
-each block that has to be preallocated). Without a doubt, file systems
-can do this more efficiently within the kernel, by implementing
-the proposed fallocate() system call. It is expected that
-posix_fallocate() will be modified to call this new system call first
-and incase the kernel/filesystem does not implement it, it should fall
-back to the current implementation of writing zeroes to the new blocks.
-
-Interface:
----------
-The system call's layout is:
-
- asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len);
-
-fd: The descriptor of the open file.
-
-mode*: This specifies the behavior of the system call. Currently the
-  system call supports four modes - FA_ALLOCATE, FA_DEALLOCATE, 
-  FA_RESV_SPACE and FA_UNRESV_SPACE.
-  FA_ALLOCATE: Applications can use this mode to preallocate blocks to
-    a given file (specified by fd). This mode changes the file size if
-    the preallocation is done beyond the EOF. It also updates the
-    ctime in the inode of the corresponding file, marking a
-    successfull allocation.
-  FA_FA_RESV_SPACE: This mode is quite same as FA_ALLOCATE. The only
-    difference being that the file size will not be changed.
-  FA_DEALLOCATE: This mode can be used by applications to deallocate the
-    previously preallocated blocks. This also may change the file size
-    and the ctime/mtime. This is reverse of FA_ALLOCATE mode.
-  FA_UNRESV_SPACE: This mode is quite same as FA_DEALLOCATE. The
-    difference being that the file size is not changed and the data is
-    also deleted.
-* New modes might get added in future.
-
-offset: This is the offset in bytes, from where the preallocation should
-  start.
-
-len: This is the number of bytes requested for preallocation (from
-  offset).
-
-RETURN VALUE: The system call returns 0 on success and an error on
-failure. This is done to keep the semantics same as of
-posix_fallocate().
-
-sys_fallocate() on s390:
------------------------
-There is a problem with s390 ABI to implement sys_fallocate() with the
-proposed order of arguments. Martin Schwidefsky has suggested a patch to
-solve this problem which makes use of a wrapper in the kernel. This will
-require special handling of this system call on s390 in glibc as well.
-But, this seems to be the best solution so far.
-
-Known Problem:
--------------
-mmapped writes into uninitialized extents is a known problem with the
-current ext4 patches. Like XFS, ext4 may need to implement
-->page_mkwrite() to solve this. See:
-http://lkml.org/lkml/2007/5/8/583
-
-Since there is a talk of ->fault() replacing ->page_mkwrite() and also
-with a generic block_page_mkwrite() implementation already posted, we
-can implement this later some time. See:
-http://lkml.org/lkml/2007/3/7/161
-http://lkml.org/lkml/2007/3/18/198
-
-ToDos:
------
-1> Implementation on other architectures (other than i386, x86_64,
-ia64, ppc64 and s390(x)).
-2> A generic file system operation to handle fallocate
-(generic_fallocate), for filesystems that do _not_ have the fallocate
-inode operation implemented.
-3> Changes to glibc,
-   a) to support fallocate() system call
-   b) to make posix_fallocate() and posix_fallocate64() call fallocate()
+ 1) Patches now based on 2.6.22-rc1 kernel.
+Changes from Take1(initial post on 26th April, 2007) to Take2:
+ 1) Added description before sys_fallocate() definition.
+ 2) Return EINVAL for len<=0 (With new draft that Ulrich pointed to,
+    posix_fallocate should return EINVAL for len <= 0.
+ 3) Return EOPNOTSUPP if mode is not one of FA_ALLOCATE or FA_DEALLOCATE
+ 4) Do not return ENODEV for dirs (let individual file systems decide if
+    they want to support preallocation to directories or not.
+ 5) Check for wrap through zero.
+ 6) Update c/mtime if fallocate() succeeds.
+ 7) Added mode descriptions in fs.h
+ 8) Added variable names to function definition (fallocate inode op)
 
 
-Following patches follow:
-Patch 1/6 : fallocate() implementation on i386, x86_64 and powerpc
-Patch 2/7 : fallocate() on s390(x)
-Patch 3/7 : fallocate() on ia64
-Patch 4/7 : support new modes in fallocate
-Patch 5/7 : ext4: fallocate support in ext4
-Patch 6/7 : ext4: write support for preallocated blocks
-Patch 7/7 : ext4: support new modes
+Signed-off-by: Amit Arora <aarora@in.ibm.com>
+
+Index: linux-2.6.22-rc4/arch/i386/kernel/syscall_table.S
+===================================================================
+--- linux-2.6.22-rc4.orig/arch/i386/kernel/syscall_table.S
++++ linux-2.6.22-rc4/arch/i386/kernel/syscall_table.S
+@@ -323,3 +323,4 @@ ENTRY(sys_call_table)
+ 	.long sys_signalfd
+ 	.long sys_timerfd
+ 	.long sys_eventfd
++	.long sys_fallocate
+Index: linux-2.6.22-rc4/arch/powerpc/kernel/sys_ppc32.c
+===================================================================
+--- linux-2.6.22-rc4.orig/arch/powerpc/kernel/sys_ppc32.c
++++ linux-2.6.22-rc4/arch/powerpc/kernel/sys_ppc32.c
+@@ -773,6 +773,13 @@ asmlinkage int compat_sys_truncate64(con
+ 	return sys_truncate(path, (high << 32) | low);
+ }
+ 
++asmlinkage long compat_sys_fallocate(int fd, int mode, u32 offhi, u32 offlo,
++				     u32 lenhi, u32 lenlo)
++{
++	return sys_fallocate(fd, mode, ((loff_t)offhi << 32) | offlo,
++			     ((loff_t)lenhi << 32) | lenlo);
++}
++
+ asmlinkage int compat_sys_ftruncate64(unsigned int fd, u32 reg4, unsigned long high,
+ 				 unsigned long low)
+ {
+Index: linux-2.6.22-rc4/arch/x86_64/ia32/ia32entry.S
+===================================================================
+--- linux-2.6.22-rc4.orig/arch/x86_64/ia32/ia32entry.S
++++ linux-2.6.22-rc4/arch/x86_64/ia32/ia32entry.S
+@@ -719,4 +719,5 @@ ia32_sys_call_table:
+ 	.quad compat_sys_signalfd
+ 	.quad compat_sys_timerfd
+ 	.quad sys_eventfd
++	.quad sys_fallocate
+ ia32_syscall_end:
+Index: linux-2.6.22-rc4/fs/open.c
+===================================================================
+--- linux-2.6.22-rc4.orig/fs/open.c
++++ linux-2.6.22-rc4/fs/open.c
+@@ -353,6 +353,92 @@ asmlinkage long sys_ftruncate64(unsigned
+ #endif
+ 
+ /*
++ * sys_fallocate - preallocate blocks or free preallocated blocks
++ * @fd: the file descriptor
++ * @mode: mode specifies if fallocate should preallocate blocks OR free
++ *	  (unallocate) preallocated blocks. Currently only FA_ALLOCATE and
++ *	  FA_DEALLOCATE modes are supported.
++ * @offset: The offset within file, from where (un)allocation is being
++ *	    requested. It should not have a negative value.
++ * @len: The amount (in bytes) of space to be (un)allocated, from the offset.
++ *
++ * This system call, depending on the mode, preallocates or unallocates blocks
++ * for a file. The range of blocks depends on the value of offset and len
++ * arguments provided by the user/application. For FA_ALLOCATE mode, if this
++ * system call succeeds, subsequent writes to the file in the given range
++ * (specified by offset & len) should not fail - even if the file system
++ * later becomes full. Hence the preallocation done is persistent (valid
++ * even after reopen of the file and remount/reboot).
++ *
++ * It is expected that the ->fallocate() inode operation implemented by the
++ * individual file systems will update the file size and/or ctime/mtime
++ * depending on the mode and also on the success of the operation.
++ *
++ * Note: Incase the file system does not support preallocation,
++ * posix_fallocate() should fall back to the library implementation (i.e.
++ * allocating zero-filled new blocks to the file).
++ *
++ * Return Values
++ *	0	: On SUCCESS a value of zero is returned.
++ *	error	: On Failure, an error code will be returned.
++ * An error code of -ENOSYS or -EOPNOTSUPP should make posix_fallocate()
++ * fall back on library implementation of fallocate.
++ *
++ * <TBD> Generic fallocate to be added for file systems that do not
++ *	 support fallocate it.
++ */
++asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
++{
++	struct file *file;
++	struct inode *inode;
++	long ret = -EINVAL;
++
++	if (offset < 0 || len <= 0)
++		goto out;
++
++	/* Return error if mode is not supported */
++	ret = -EOPNOTSUPP;
++	if (mode != FA_ALLOCATE && mode != FA_DEALLOCATE)
++		goto out;
++
++	ret = -EBADF;
++	file = fget(fd);
++	if (!file)
++		goto out;
++	if (!(file->f_mode & FMODE_WRITE))
++		goto out_fput;
++
++	inode = file->f_path.dentry->d_inode;
++
++	ret = -ESPIPE;
++	if (S_ISFIFO(inode->i_mode))
++		goto out_fput;
++
++	ret = -ENODEV;
++	/*
++	 * Let individual file system decide if it supports preallocation
++	 * for directories or not.
++	 */
++	if (!S_ISREG(inode->i_mode) && !S_ISDIR(inode->i_mode))
++		goto out_fput;
++
++	ret = -EFBIG;
++	/* Check for wrap through zero too */
++	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
++		goto out_fput;
++
++	if (inode->i_op && inode->i_op->fallocate)
++		ret = inode->i_op->fallocate(inode, mode, offset, len);
++	else
++		ret = -ENOSYS;
++
++out_fput:
++	fput(file);
++out:
++	return ret;
++}
++
++/*
+  * access() needs to use the real uid/gid, not the effective uid/gid.
+  * We do this by temporarily clearing all FS-related capabilities and
+  * switching the fsuid/fsgid around to the real ones.
+Index: linux-2.6.22-rc4/include/asm-i386/unistd.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/asm-i386/unistd.h
++++ linux-2.6.22-rc4/include/asm-i386/unistd.h
+@@ -329,10 +329,11 @@
+ #define __NR_signalfd		321
+ #define __NR_timerfd		322
+ #define __NR_eventfd		323
++#define __NR_fallocate		324
+ 
+ #ifdef __KERNEL__
+ 
+-#define NR_syscalls 324
++#define NR_syscalls 325
+ 
+ #define __ARCH_WANT_IPC_PARSE_VERSION
+ #define __ARCH_WANT_OLD_READDIR
+Index: linux-2.6.22-rc4/include/asm-powerpc/systbl.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/asm-powerpc/systbl.h
++++ linux-2.6.22-rc4/include/asm-powerpc/systbl.h
+@@ -308,6 +308,7 @@ COMPAT_SYS_SPU(move_pages)
+ SYSCALL_SPU(getcpu)
+ COMPAT_SYS(epoll_pwait)
+ COMPAT_SYS_SPU(utimensat)
++COMPAT_SYS(fallocate)
+ COMPAT_SYS_SPU(signalfd)
+ COMPAT_SYS_SPU(timerfd)
+ SYSCALL_SPU(eventfd)
+Index: linux-2.6.22-rc4/include/asm-powerpc/unistd.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/asm-powerpc/unistd.h
++++ linux-2.6.22-rc4/include/asm-powerpc/unistd.h
+@@ -330,10 +330,11 @@
+ #define __NR_signalfd		305
+ #define __NR_timerfd		306
+ #define __NR_eventfd		307
++#define __NR_fallocate		308
+ 
+ #ifdef __KERNEL__
+ 
+-#define __NR_syscalls		308
++#define __NR_syscalls		309
+ 
+ #define __NR__exit __NR_exit
+ #define NR_syscalls	__NR_syscalls
+Index: linux-2.6.22-rc4/include/asm-x86_64/unistd.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/asm-x86_64/unistd.h
++++ linux-2.6.22-rc4/include/asm-x86_64/unistd.h
+@@ -630,6 +630,8 @@ __SYSCALL(__NR_signalfd, sys_signalfd)
+ __SYSCALL(__NR_timerfd, sys_timerfd)
+ #define __NR_eventfd		283
+ __SYSCALL(__NR_eventfd, sys_eventfd)
++#define __NR_fallocate		284
++__SYSCALL(__NR_fallocate, sys_fallocate)
+ 
+ #ifndef __NO_STUBS
+ #define __ARCH_WANT_OLD_READDIR
+Index: linux-2.6.22-rc4/include/linux/fs.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/linux/fs.h
++++ linux-2.6.22-rc4/include/linux/fs.h
+@@ -266,6 +266,17 @@ extern int dir_notify_enable;
+ #define SYNC_FILE_RANGE_WRITE		2
+ #define SYNC_FILE_RANGE_WAIT_AFTER	4
+ 
++/*
++ * sys_fallocate modes
++ * Currently sys_fallocate supports two modes:
++ * FA_ALLOCATE  : This is the preallocate mode, using which an application/user
++ *		  may request (pre)allocation of blocks.
++ * FA_DEALLOCATE: This is the deallocate mode, which can be used to free
++ *		  the preallocated blocks.
++ */
++#define FA_ALLOCATE	0x1
++#define FA_DEALLOCATE	0x2
++
+ #ifdef __KERNEL__
+ 
+ #include <linux/linkage.h>
+@@ -1138,6 +1149,8 @@ struct inode_operations {
+ 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+ 	int (*removexattr) (struct dentry *, const char *);
+ 	void (*truncate_range)(struct inode *, loff_t, loff_t);
++	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
++			  loff_t len);
+ };
+ 
+ struct seq_file;
+Index: linux-2.6.22-rc4/include/linux/syscalls.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/linux/syscalls.h
++++ linux-2.6.22-rc4/include/linux/syscalls.h
+@@ -608,6 +608,7 @@ asmlinkage long sys_signalfd(int ufd, si
+ asmlinkage long sys_timerfd(int ufd, int clockid, int flags,
+ 			    const struct itimerspec __user *utmr);
+ asmlinkage long sys_eventfd(unsigned int count);
++asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len);
+ 
+ int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
+ 
