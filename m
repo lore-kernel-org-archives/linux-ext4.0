@@ -1,58 +1,67 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [PATCH] Endianness bugs in e2fsck
-Date: Mon, 25 Jun 2007 13:43:59 +0530
-Message-ID: <1182759239.6016.8.camel@garfield>
-References: <1182331988.9772.7.camel@garfield>
-	 <20070623003646.GD22889@thunk.org>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [PATCH 3/3]  ext4: extent macros cleanup
+Date: Mon, 25 Jun 2007 15:06:33 +0400
+Message-ID: <467FA1B9.30702@clusterfs.com>
+References: <20070622121509.GA395@localhost.sw.ru> <20070622121835.GD395@localhost.sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, devel@openvz.org
+To: Dmitry Monakhov <dmonakhov@sw.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:60581 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750781AbXFYINc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2007 04:13:32 -0400
-In-Reply-To: <20070623003646.GD22889@thunk.org>
+Received: from mail.chehov.net ([80.71.245.247]:53598 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751319AbXFYLHC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2007 07:07:02 -0400
+In-Reply-To: <20070622121835.GD395@localhost.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-06-22 at 20:36 -0400, Theodore Tso wrote:
-> On Wed, Jun 20, 2007 at 03:03:08PM +0530, Kalpak Shah wrote:
-> > In ext2fs_swap_inode_full() only the first (GOOD_OLD_INODE_SIZE +
-> > i_extra_isize)bytes are copied into inode. The rest of the inode is
-> > not zeroed. So memset the inode to zero if swapfs is enabled. 
+Acked-off-by: Alex Tomas <alex@clusterfs.com>
+
+
+Dmitry Monakhov wrote:
+> - Replace math equation to it's macro equivalent
+> - make ext4_ext_grow_indepth() indexes/leaf correct
 > 
-> This was due to the bug where we weren't dealing with the i_extra_size
-> correctly, right?  ext2fs_swap_inode_full *should* be swapping the
-> extra fields and copying it into the inode.  If not, that's should be
-> the real bug, and adding the memset(inode, 0, bufset) doesn't seem to
-> be useful.
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/extents.c |   11 +++++++----
+>  1 files changed, 7 insertions(+), 4 deletions(-)
 > 
-> Am I missing something?
-
-Hi Ted,
-
-In e2fsck_pass1(), a buffer is allocated for the scratch inode,
-inode = (struct ext2_inode *) e2fsck_allocate_memory(ctx, inode_size,   
-						"scratch inode");
-
-Now on big-endian systems, while swapping, ext2fs_swap_inode_full()
-swaps only 128+extra_isize bytes and the EAs if they are present. Now if
-inode N has EAs, (and this is the inode in the "scratch inode") then
-inode N+1 also carries seems to have them since the "scratch inode" was
-never zeroed. In ext2fs_swap_inode_full(), this occurs:
-
-        if (ext2fs_swab32(*eaf) != EXT2_EXT_ATTR_MAGIC)
-                return; /* it seems no magic here */
-
-So as I said only the first 128+extra_isize bytes are actually copied
-into the *to* inode.
-
-Thanks,
-Kalpak.
-
-> 
-> 						- Ted
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 12fe3d7..1fd00ac 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
+>  	ext_debug("binsearch for %d(idx):  ", block);
+>  
+>  	l = EXT_FIRST_INDEX(eh) + 1;
+> -	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
+> +	r = EXT_LAST_INDEX(eh);
+>  	while (l <= r) {
+>  		m = l + (r - l) / 2;
+>  		if (block < le32_to_cpu(m->ei_block))
+> @@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
+>  	ext_debug("binsearch for %d:  ", block);
+>  
+>  	l = EXT_FIRST_EXTENT(eh) + 1;
+> -	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
+> +	r = EXT_LAST_EXTENT(eh);
+>  
+>  	while (l <= r) {
+>  		m = l + (r - l) / 2;
+> @@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+>  	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
+>  	curp->p_hdr->eh_entries = cpu_to_le16(1);
+>  	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
+> -	/* FIXME: it works, but actually path[0] can be index */
+> -	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+> +	
+> +	if (path[0].p_hdr->eh_depth)
+> +	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
+> +	else
+> +	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+>  	ext4_idx_store_pblock(curp->p_idx, newblock);
+>  
+>  	neh = ext_inode_hdr(inode);
