@@ -1,68 +1,108 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [PATCH 7/7][TAKE5] ext4: support new modes
-Date: Mon, 25 Jun 2007 19:20:51 +0530
-Message-ID: <20070625135051.GH1951@amitarora.in.ibm.com>
-References: <20070510115620.GB21400@amitarora.in.ibm.com> <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [RFC][PATCH 1/11][take 2] add new mkfs option to create ext4
+ filesystems
+Date: Mon, 25 Jun 2007 20:24:18 +0530
+Message-ID: <467FD71A.7030003@linux.vnet.ibm.com>
+References: <467A936F.7030502@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	Andreas Dilger <adilger@clusterfs.com>, suparna@in.ibm.com,
-	cmm@us.ibm.com, xfs@oss.sgi.com
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:52865 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753792AbXFYNup (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2007 09:50:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20070625132810.GA1951@amitarora.in.ibm.com>
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:64351 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754965AbXFYOzJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2007 10:55:09 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l5PEu83s6041764
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 00:56:08 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5PEwF44212366
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 00:58:16 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5PEshW6003491
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 00:54:43 +1000
+In-Reply-To: <467A936F.7030502@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Support new values of mode in ext4.
 
-This patch supports new mode values/flags in ext4. With this patch ext4
-will be able to support FA_ALLOCATE and FA_RESV_SPACE modes. Supporting
-FA_DEALLOCATE and FA_UNRESV_SPACE fallocate modes in ext4 is a work for
-future.
 
-Signed-off-by: Amit Arora <aarora@in.ibm.com>
+Valerie Clement wrote:
+> This patch adds a new option '-D' to mkfs to allow creating ext4 
+> filesystem.
+> 
+>  lib/ext2fs/ext2_fs.h    |    7 +++++++
+>  lib/ext2fs/initialize.c |    1 +
+>  misc/mke2fs.c           |   18 ++++++++++++++++--
+>  3 files changed, 24 insertions(+), 2 deletions(-)
+> 
+> 
+> 
+> 
+> 
+> ------------------------------------------------------------------------
+> 
+> Index: e2fsprogs-1.39-tyt3-v7/misc/mke2fs.c
+> ===================================================================
+> --- e2fsprogs-1.39-tyt3-v7.orig/misc/mke2fs.c	2007-04-30 07:10:05.000000000 +0200
+> +++ e2fsprogs-1.39-tyt3-v7/misc/mke2fs.c	2007-06-14 12:03:48.000000000 +0200
+> @@ -96,7 +96,7 @@ static void usage(void)
+>  {
+>  	fprintf(stderr, _("Usage: %s [-c|-t|-l filename] [-b block-size] "
+>  	"[-f fragment-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+> -	"[-j] [-J journal-options]\n"
+> +	"[-D descriptor-size] [-j] [-J journal-options]\n"
+>  	"\t[-N number-of-inodes] [-m reserved-blocks-percentage] "
+>  	"[-o creator-os]\n\t[-g blocks-per-group] [-L volume-label] "
+>  	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+> @@ -899,6 +899,7 @@ static void PRS(int argc, char *argv[])
+>  	int		blocksize = 0;
+>  	int		inode_ratio = 0;
+>  	int		inode_size = 0;
+> +	int		desc_size = 0;
+>  	double		reserved_ratio = 5.0;
+>  	int		sector_size = 0;
+>  	int		show_version_only = 0;
+> @@ -977,7 +978,7 @@ static void PRS(int argc, char *argv[])
+>  	}
+> 
+>  	while ((c = getopt (argc, argv,
+> -		    "b:cf:g:i:jl:m:no:qr:s:tvE:FI:J:L:M:N:O:R:ST:V")) != EOF) {
+> +		    "b:cf:g:i:jl:m:no:qr:s:tvD:E:FI:J:L:M:N:O:R:ST:V")) != EOF) {
+>  		switch (c) {
+>  		case 'b':
+>  			blocksize = strtol(optarg, &tmp, 0);
+> @@ -1094,6 +1095,14 @@ static void PRS(int argc, char *argv[])
+>  				exit(1);
+>  			}
+>  			break;
+> +		case 'D':
+> +			desc_size = strtoul(optarg, &tmp, 0);
+> +			if (*tmp) {
+> +				com_err(program_name, 0,
+> +					_("invalid descriptor size - %s"), optarg);
+> +				exit(1);
+> +			}
+> +			break;
+>  		case 'v':
+>  			verbose = 1;
+>  			break;
+> @@ -1422,6 +1431,11 @@ static void PRS(int argc, char *argv[])
+>  		}
+>  	}
+> 
+> +	if (desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
+> +		fs_param.s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
+> +		fs_param.s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
+> +	}
+> +
+>  	if (!force && fs_param.s_blocks_count >= ((unsigned) 1 << 31)) {
+>
 
-Index: linux-2.6.22-rc4/fs/ext4/extents.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/extents.c
-+++ linux-2.6.22-rc4/fs/ext4/extents.c
-@@ -2477,7 +2477,8 @@ int ext4_ext_writepage_trans_blocks(stru
- /*
-  * preallocate space for a file. This implements ext4's fallocate inode
-  * operation, which gets called from sys_fallocate system call.
-- * Currently only FA_ALLOCATE mode is supported on extent based files.
-+ * Currently only FA_ALLOCATE  and FA_RESV_SPACE modes are supported on
-+ * extent based files.
-  * We may have more modes supported in future - like FA_DEALLOCATE, which
-  * tells fallocate to unallocate previously (pre)allocated blocks.
-  * For block-mapped files, posix_fallocate should fall back to the method
-@@ -2499,7 +2500,8 @@ long ext4_fallocate(struct inode *inode,
- 	 * currently supporting (pre)allocate mode for extent-based
- 	 * files _only_
- 	 */
--	if (mode != FA_ALLOCATE || !(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) ||
-+		!(mode == FA_ALLOCATE || mode == FA_RESV_SPACE))
- 		return -EOPNOTSUPP;
- 
- 	/* preallocation to directories is currently not supported */
-@@ -2572,9 +2574,10 @@ retry:
- 
- 	/*
- 	 * Time to update the file size.
--	 * Update only when preallocation was requested beyond the file size.
-+	 * Update only when preallocation was requested beyond the file size
-+	 * and when FA_FL_KEEP_SIZE mode is not specified!
- 	 */
--	if ((offset + len) > i_size_read(inode)) {
-+	if (!(mode & FA_FL_KEEP_SIZE) && (offset + len) > i_size_read(inode)) {
- 		if (ret > 0) {
- 			/*
- 			 * if no error, we assume preallocation succeeded
+Why would one need variable descriptor size. Right now we have only two descriptor sizes right (32 and 64 ).  Can't we figure out
+the descriptor size we should use by looking at the partition size ? What is that i am missing ?. 
+
+-aneesh
