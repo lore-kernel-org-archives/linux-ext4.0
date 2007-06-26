@@ -1,71 +1,53 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Journal Checksum - rebased to 2.6.22-rc5
-Date: Tue, 26 Jun 2007 09:13:57 -0500
-Message-ID: <1182867237.11569.2.camel@kleikamp.austin.ibm.com>
-References: <1182504986.3788.18.camel@dhcp7.linsyssoft.com>
-	 <1182854850.3041.16.camel@dhcp7.linsyssoft.com>
+From: Heiko Carstens <heiko.carstens@de.ibm.com>
+Subject: Re: [PATCH 2/7][TAKE5] fallocate() on s390(x)
+Date: Tue, 26 Jun 2007 17:15:05 +0200
+Message-ID: <20070626151505.GA15160@osiris.boeblingen.de.ibm.com>
+References: <20070510223950.GD86004887@sgi.com> <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134255.GC1951@amitarora.in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-To: Girish Shilamkar <girish@linsyssoft.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+	Andreas Dilger <adilger@clusterfs.com>, suparna@in.ibm.com,
+	cmm@us.ibm.com, xfs@oss.sgi.com
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:55051 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751466AbXFZOOB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jun 2007 10:14:01 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5QEDx8g029718
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 10:13:59 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5QEDxju554078
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 10:13:59 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5QEDwLK023237
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2007 10:13:58 -0400
-In-Reply-To: <1182854850.3041.16.camel@dhcp7.linsyssoft.com>
+Received: from mtagate2.uk.ibm.com ([195.212.29.135]:11246 "EHLO
+	mtagate2.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753111AbXFZPPJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 11:15:09 -0400
+Content-Disposition: inline
+In-Reply-To: <20070625134255.GC1951@amitarora.in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-06-26 at 16:17 +0530, Girish Shilamkar wrote:
-> On Fri, 2007-06-22 at 15:06 +0530, Girish Shilamkar wrote:
-> > Hi,
-> > 	The previous patch was an old one. Hence I am sending the latest patch
-> > rebased to 2.6.22-rc5. I have also fixed few coding style issues in both
-> > the patches.
-> > 
-> > Regards,
-> > Girish
-> This patch had a bug. Thanks to Valerie for pointing it out.
-
-I updated the patch queue with the updated patch and this fix.
-
-Thanks,
-Shaggy
-
-> Regards,
-> Girish.
-> 
-> Index: linux-2.6.22-rc5/fs/jbd2/commit.c
+> Index: linux-2.6.22-rc4/arch/s390/kernel/syscalls.S
 > ===================================================================
-> --- linux-2.6.22-rc5.orig/fs/jbd2/commit.c
-> +++ linux-2.6.22-rc5/fs/jbd2/commit.c
-> @@ -121,8 +121,8 @@ static int journal_submit_commit_record(
->         bh = jh2bh(descriptor);
-> 
->         for (i = 0; i < bh->b_size; i += 512) {
-> -               struct commit_header *tmp = (struct commit_header *)bh->b_data +
-> -                                           i;
-> +               struct commit_header *tmp = (struct commit_header *)(bh->b_data+
-> +                                           i);
->                 tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
->                 tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
->                 tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
-> 
-> 
+> --- linux-2.6.22-rc4.orig/arch/s390/kernel/syscalls.S	2007-06-11 16:16:01.000000000 -0700
+> +++ linux-2.6.22-rc4/arch/s390/kernel/syscalls.S	2007-06-11 16:27:29.000000000 -0700
+> @@ -322,6 +322,7 @@
+>  SYSCALL(sys_getcpu,sys_getcpu,sys_getcpu_wrapper)
+>  SYSCALL(sys_epoll_pwait,sys_epoll_pwait,compat_sys_epoll_pwait_wrapper)
+>  SYSCALL(sys_utimes,sys_utimes,compat_sys_utimes_wrapper)
+> +SYSCALL(s390_fallocate,sys_fallocate,sys_fallocate_wrapper)
+>  NI_SYSCALL							/* 314 sys_fallocate */
 
--- 
-David Kleikamp
-IBM Linux Technology Center
+You need to remove the NI_SYSCALL line. Otherwise all following entries
+will be wrong.
+
+>  SYSCALL(sys_utimensat,sys_utimensat,compat_sys_utimensat_wrapper)	/* 315 */
+>  SYSCALL(sys_signalfd,sys_signalfd,compat_sys_signalfd_wrapper)
+> Index: linux-2.6.22-rc4/include/asm-s390/unistd.h
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/include/asm-s390/unistd.h	2007-06-11 16:16:01.000000000 -0700
+> +++ linux-2.6.22-rc4/include/asm-s390/unistd.h	2007-06-11 16:27:29.000000000 -0700
+> @@ -256,7 +256,8 @@
+>  #define __NR_signalfd		316
+>  #define __NR_timerfd		317
+>  #define __NR_eventfd		318
+> -#define NR_syscalls 319
+> +#define __NR_fallocate		319
+> +#define NR_syscalls 320
+
+Erm... no. You use slot 314 in the syscall table but assign number 319.
+That won't work. Please use 314 for both.
+I assume this got broken when updating to newer kernel versions.
