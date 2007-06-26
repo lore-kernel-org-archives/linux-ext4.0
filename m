@@ -1,41 +1,51 @@
-From: Girish Shilamkar <girish@clusterfs.com>
-Subject: Re: performance testing
-Date: Tue, 26 Jun 2007 16:06:51 +0530
-Message-ID: <1182854211.3041.10.camel@dhcp7.linsyssoft.com>
-References: <467BE4C0.2020203@bull.net>
-	 <1182541578.9939.3.camel@localhost.localdomain>
-	 <467C99F5.6060603@clusterfs.com>
-	 <1182755567.4067.1.camel@localhost.localdomain> <467FE8A5.4030508@bull.net>
-	 <467FEAF7.7060902@clusterfs.com> <4680CE9B.1030602@bull.net>
-	 <4680E0FE.8080102@bull.net>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Tue, 26 Jun 2007 16:15:46 +0530
+Message-ID: <20070626104546.GB19870@amitarora.in.ibm.com>
+References: <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625215239.GK5181@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <alex@clusterfs.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:41402 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752109AbXFZKgf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 06:36:35 -0400
-In-Reply-To: <4680E0FE.8080102@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+	suparna@in.ibm.com, cmm@us.ibm.com, xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070625215239.GK5181@schatzie.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-06-26 at 11:48 +0200, Valerie Clement wrote:
-> Shouldn't it be :
+On Mon, Jun 25, 2007 at 03:52:39PM -0600, Andreas Dilger wrote:
+> On Jun 25, 2007  19:15 +0530, Amit K. Arora wrote:
+> > +#define FA_FL_DEALLOC	0x01 /* default is allocate */
+> > +#define FA_FL_KEEP_SIZE	0x02 /* default is extend/shrink size */
+> > +#define FA_FL_DEL_DATA	0x04 /* default is keep written data on DEALLOC */
 > 
->    struct commit_header *tmp = (struct commit_header*)(bh->b_data + i);
-> 
-Ohhh, yes you are right. This is the correct thing to do.
-This patch which is been used has some endian-ness bugs. I had sent an
-updated patch for 2.6.22-rc5 on 
-19 June. I think we should be using the updated patch else it may break
-on big-endian machines. 
-Even the updated patch has this bug i.e "struct commit_header *tmp
-=...."
+> In XFS one of the (many) ALLOC modes is to zero existing data on allocate.
+> For ext4 all this would mean is calling ext4_ext_mark_uninitialized() on
+> each extent.  For some workloads this would be much faster than truncate
+> and reallocate of all the blocks in a file.
 
-Thanks,
-Girish.
+In ext4, we already mark each extent having preallocated blocks as
+uninitialized. This is done as part of following code (which is part of
+patch 5/7) in ext4_ext_get_blocks() :  
+
+@@ -2122,6 +2160,8 @@ int ext4_ext_get_blocks(handle_t *handle
+        /* try to insert new extent into found leaf and return */
+        ext4_ext_store_pblock(&newex, newblock);
+        newex.ee_len = cpu_to_le16(allocated);
++       if (create == EXT4_CREATE_UNINITIALIZED_EXT)  /* Mark uninitialized */
++               ext4_ext_mark_uninitialized(&newex);
+        err = ext4_ext_insert_extent(handle, inode, path, &newex);
+        if (err) {
+                /* free data blocks we just allocated */
+
+
+> In that light, please change the comment to /* default is keep existing data */
+> so that it doesn't imply this is only for DEALLOC.
+
+Ok. Will update the comment.
+
+Thanks!
+--
+Regards,
+Amit Arora
