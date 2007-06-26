@@ -1,48 +1,47 @@
-From: Girish Shilamkar <girish@linsyssoft.com>
-Subject: Re: [PATCH] Journal Checksum - rebased to 2.6.22-rc5
-Date: Tue, 26 Jun 2007 16:17:30 +0530
-Message-ID: <1182854850.3041.16.camel@dhcp7.linsyssoft.com>
-References: <1182504986.3788.18.camel@dhcp7.linsyssoft.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: performance testing
+Date: Tue, 26 Jun 2007 13:03:15 +0200
+Message-ID: <4680F273.3080809@bull.net>
+References: <467BE4C0.2020203@bull.net>	 <1182541578.9939.3.camel@localhost.localdomain>	 <467C99F5.6060603@clusterfs.com>	 <1182755567.4067.1.camel@localhost.localdomain> <467FE8A5.4030508@bull.net>	 <467FEAF7.7060902@clusterfs.com> <4680CE9B.1030602@bull.net>	 <4680E0FE.8080102@bull.net> <1182854211.3041.10.camel@dhcp7.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-To: Ext4 Mailing List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Alex Tomas <alex@clusterfs.com>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Girish Shilamkar <girish@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from svr68.ehostpros.com ([67.15.48.48]:53260 "EHLO
-	svr68.ehostpros.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751984AbXFZKrT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 06:47:19 -0400
-In-Reply-To: <1182504986.3788.18.camel@dhcp7.linsyssoft.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:54355 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752209AbXFZLCI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 07:02:08 -0400
+In-Reply-To: <1182854211.3041.10.camel@dhcp7.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-06-22 at 15:06 +0530, Girish Shilamkar wrote:
-> Hi,
-> 	The previous patch was an old one. Hence I am sending the latest patch
-> rebased to 2.6.22-rc5. I have also fixed few coding style issues in both
-> the patches.
-> 
-> Regards,
-> Girish
-This patch had a bug. Thanks to Valerie for pointing it out.
-
-Regards,
-Girish.
-
-Index: linux-2.6.22-rc5/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.22-rc5.orig/fs/jbd2/commit.c
-+++ linux-2.6.22-rc5/fs/jbd2/commit.c
-@@ -121,8 +121,8 @@ static int journal_submit_commit_record(
-        bh = jh2bh(descriptor);
-
-        for (i = 0; i < bh->b_size; i += 512) {
--               struct commit_header *tmp = (struct commit_header *)bh->b_data +
--                                           i;
-+               struct commit_header *tmp = (struct commit_header *)(bh->b_data+
-+                                           i);
-                tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
-                tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
-                tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
+Girish Shilamkar wrote:
+> On Tue, 2007-06-26 at 11:48 +0200, Valerie Clement wrote:
+>> Shouldn't it be :
+>>
+>>    struct commit_header *tmp =3D (struct commit_header*)(bh->b_data =
++ i);
+>>
+> Ohhh, yes you are right. This is the correct thing to do.
+> This patch which is been used has some endian-ness bugs. I had sent a=
+n
+> updated patch for 2.6.22-rc5 on=20
+> 19 June. I think we should be using the updated patch else it may bre=
+ak
+> on big-endian machines.=20
+> Even the updated patch has this bug i.e "struct commit_header *tmp
+> =3D...."
+>=20
+> Thanks,
+> Girish.
+>=20
+Hi Girish,
+I made the change on my system and tested it. Good news, everything=20
+seems to work well now. Could you please make and post the patch?
+Thanks,
+   Val=E9rie
