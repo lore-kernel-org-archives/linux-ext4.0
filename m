@@ -1,72 +1,51 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: performance testing
-Date: Tue, 26 Jun 2007 11:48:46 +0200
-Message-ID: <4680E0FE.8080102@bull.net>
-References: <467BE4C0.2020203@bull.net>	 <1182541578.9939.3.camel@localhost.localdomain>	 <467C99F5.6060603@clusterfs.com> <1182755567.4067.1.camel@localhost.localdomain> <467FE8A5.4030508@bull.net> <467FEAF7.7060902@clusterfs.com> <4680CE9B.1030602@bull.net>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Tue, 26 Jun 2007 16:02:47 +0530
+Message-ID: <20070626103247.GA19870@amitarora.in.ibm.com>
+References: <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>,
-	Alex Tomas <alex@clusterfs.com>,
-	Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+	suparna@in.ibm.com, cmm@us.ibm.com, xfs@oss.sgi.com
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:60211 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751531AbXFZJrm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 05:47:42 -0400
-In-Reply-To: <4680CE9B.1030602@bull.net>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:53617 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752373AbXFZKck (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jun 2007 06:32:40 -0400
+Content-Disposition: inline
+In-Reply-To: <20070625214626.GJ5181@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Valerie Clement wrote:
-> Alex Tomas wrote:
->> Jean noel Cordenner wrote:
->>> The last patch queue concerns the  2.6.22-rc4 kernel, so we took th=
-e
->>> previous ext4 patch queue including the modifications suggested by=20
->>> dmitriy:
->>> http://article.gmane.org/gmane.comp.file-systems.ext4/2291
->>> This solve the oops problem but after a while, the system hangs. We=
- are
->>> still trying to find where the bug is.
->>> When we remove all the patches until booked-page-flag.patch in the
->>> series, the system still hangs. When using another filesystem, or
->>> whithout any patches it works.
->>
->> any details? backtraces? dmesg?
->=20
-> We are trying to get some traces, but with 2.6.22-rc5 and 2.6.22-rc6=20
-> kernels, the serial console isn't working on our systems (x86_64), th=
-e=20
-> magic SysRq keys either. Strange...
->=20
-> When the system hangs, no messages are logged.
-> It seems that the hangs only occur with ext4 FS when applying the=20
-> patches of the current git tree.
-> We are trying now to find which patch is faulty.
->=20
->    Val=E9rie
->=20
+On Mon, Jun 25, 2007 at 03:46:26PM -0600, Andreas Dilger wrote:
+> On Jun 25, 2007  20:33 +0530, Amit K. Arora wrote:
+> > I have not implemented FA_FL_FREE_ENOSPC and FA_ZERO_SPACE flags yet, as
+> > *suggested* by Andreas in http://lkml.org/lkml/2007/6/14/323  post.
+> > If it is decided that these flags are also needed, I will update this
+> > patch. Thanks!
+> 
+> Can you clarify - what is the current behaviour when ENOSPC (or some other
+> error) is hit?  Does it keep the current fallocate() or does it free it?
 
-It seems that the faulty patch is "ext4-journal_chksum-2.6.20.patch".
-Looking at the patch, I think the following change is not correct:
+Currently it is left on the file system implementation. In ext4, we do
+not undo preallocation if some error (say, ENOSPC) is hit. Hence it may
+end up with partial (pre)allocation. This is inline with dd and
+posix_fallocate, which also do not free the partially allocated space.
+ 
+> For FA_ZERO_SPACE - I'd think this would (IMHO) be the default - we
+> don't want to expose uninitialized disk blocks to userspace.  I'm not
+> sure if this makes sense at all.
 
-@@ -116,21 +120,36 @@ static int journal_write_commit_record(j
+I don't think we need to make it default - atleast for filesystems which
+have a mechanism to distinguish preallocated blocks from "regular" ones.
+In ext4, for example, we will have a way to mark uninitialized extents.
+All the preallocated blocks will be part of these uninitialized extents.
+And any read on these extents will treat them as a hole, returning
+zeroes to user land. Thus any existing data on uninitialized blocks will
+not be exposed to the userspace.
 
-     bh =3D jh2bh(descriptor);
-
--   /* AKPM: buglet - add `i' to tmp! */
-     for (i =3D 0; i < bh->b_size; i +=3D 512) {
--       journal_header_t *tmp =3D (journal_header_t*)bh->b_data;
-+       struct commit_header *tmp =3D (struct commit_header*)bh->b_data=
- +
-+                                           i;
-
-Shouldn't it be :
-
-   struct commit_header *tmp =3D (struct commit_header*)(bh->b_data + i=
-);
-
-Val=E9rie
+--
+Regards,
+Amit Arora 
