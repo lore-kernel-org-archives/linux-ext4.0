@@ -1,45 +1,72 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [Patch] mistaken ext4_inode_bitmap for ext4_block_bitmap
-Date: Tue, 26 Jun 2007 13:24:10 +0900
-Message-ID: <468094EA.60609@jp.fujitsu.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: performance testing
+Date: Tue, 26 Jun 2007 11:48:46 +0200
+Message-ID: <4680E0FE.8080102@bull.net>
+References: <467BE4C0.2020203@bull.net>	 <1182541578.9939.3.camel@localhost.localdomain>	 <467C99F5.6060603@clusterfs.com> <1182755567.4067.1.camel@localhost.localdomain> <467FE8A5.4030508@bull.net> <467FEAF7.7060902@clusterfs.com> <4680CE9B.1030602@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>,
+	Alex Tomas <alex@clusterfs.com>,
+	Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:52285 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbXFZEY4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 00:24:56 -0400
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:60211 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751531AbXFZJrm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2007 05:47:42 -0400
+In-Reply-To: <4680CE9B.1030602@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi.
+Valerie Clement wrote:
+> Alex Tomas wrote:
+>> Jean noel Cordenner wrote:
+>>> The last patch queue concerns the  2.6.22-rc4 kernel, so we took th=
+e
+>>> previous ext4 patch queue including the modifications suggested by=20
+>>> dmitriy:
+>>> http://article.gmane.org/gmane.comp.file-systems.ext4/2291
+>>> This solve the oops problem but after a while, the system hangs. We=
+ are
+>>> still trying to find where the bug is.
+>>> When we remove all the patches until booked-page-flag.patch in the
+>>> series, the system still hangs. When using another filesystem, or
+>>> whithout any patches it works.
+>>
+>> any details? backtraces? dmesg?
+>=20
+> We are trying to get some traces, but with 2.6.22-rc5 and 2.6.22-rc6=20
+> kernels, the serial console isn't working on our systems (x86_64), th=
+e=20
+> magic SysRq keys either. Strange...
+>=20
+> When the system hangs, no messages are logged.
+> It seems that the hangs only occur with ext4 FS when applying the=20
+> patches of the current git tree.
+> We are trying now to find which patch is faulty.
+>=20
+>    Val=E9rie
+>=20
 
-I found an obvious mistake in ext4_new_blocks().
-I made a fix patch for it.
-Please confirm it.
+It seems that the faulty patch is "ext4-journal_chksum-2.6.20.patch".
+Looking at the patch, I think the following change is not correct:
 
-This patch is for 2.6.22-rc5.
+@@ -116,21 +120,36 @@ static int journal_write_commit_record(j
 
----
+     bh =3D jh2bh(descriptor);
 
-In ext4_new_blocks(), one of two ext4_block_bitmap() calls should be ext4_inode_bitmap() call.
-It is not harmful in normal processing, but it should be fixed.
+-   /* AKPM: buglet - add `i' to tmp! */
+     for (i =3D 0; i < bh->b_size; i +=3D 512) {
+-       journal_header_t *tmp =3D (journal_header_t*)bh->b_data;
++       struct commit_header *tmp =3D (struct commit_header*)bh->b_data=
+ +
++                                           i;
 
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
----
- fs/ext4/balloc.c |    2 +-
- 1 files changed, 1 insertion(+), 1 deletion(-)
---- linux-2.6.22-rc5.org/fs/ext4/balloc.c	2007-06-17 11:09:12.000000000 +0900
-+++ linux-2.6.22-rc5/fs/ext4/balloc.c	2007-06-22 13:50:22.000000000 +0900
-@@ -1585,7 +1585,7 @@ allocated:
- 	ret_block = grp_alloc_blk + ext4_group_first_block_no(sb, group_no);
+Shouldn't it be :
 
- 	if (in_range(ext4_block_bitmap(sb, gdp), ret_block, num) ||
--	    in_range(ext4_block_bitmap(sb, gdp), ret_block, num) ||
-+	    in_range(ext4_inode_bitmap(sb, gdp), ret_block, num) ||
- 	    in_range(ret_block, ext4_inode_table(sb, gdp),
- 		     EXT4_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, ext4_inode_table(sb, gdp),
+   struct commit_header *tmp =3D (struct commit_header*)(bh->b_data + i=
+);
+
+Val=E9rie
