@@ -1,46 +1,43 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Performance testing results
-Date: Wed, 27 Jun 2007 14:19:35 -0700
-Message-ID: <1182979175.31356.1.camel@localhost.localdomain>
-References: <46828D2E.8080705@bull.net>
-Reply-To: cmm@us.ibm.com
+From: Nathan Scott <nscott@aconex.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Thu, 28 Jun 2007 09:28:36 +1000
+Message-ID: <1182986916.15488.88.camel@edge.yarra.acx>
+References: <20070613235217.GS86004887@sgi.com>
+	 <20070614091458.GH5181@schatzie.adilger.int>
+	 <20070614120413.GD86004887@sgi.com>
+	 <20070614193347.GN5181@schatzie.adilger.int>
+	 <20070625132810.GA1951@amitarora.in.ibm.com>
+	 <20070625134500.GE1951@amitarora.in.ibm.com>
+	 <20070625150320.GA8686@amitarora.in.ibm.com>
+	 <20070625214626.GJ5181@schatzie.adilger.int>
+	 <20070626231431.GO31489@sgi.com>
+	 <20070627034915.GR6652@schatzie.adilger.int>
+	 <20070627133657.GQ989688@sgi.com>
+Reply-To: nscott@aconex.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
-	Avantika Mathur <mathur@linux.vnet.ibm.com>
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:56780 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754904AbXF0STj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jun 2007 14:19:39 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5RIJc7i010980
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Jun 2007 14:19:38 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5RIJcdD268394
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Jun 2007 12:19:38 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5RIJbAm011979
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Jun 2007 12:19:38 -0600
-In-Reply-To: <46828D2E.8080705@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>, "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        suparna@in.ibm.com, cmm@us.ibm.com
+To: David Chinner <dgc@sgi.com>, Andreas Dilger <adilger@clusterfs.com>
+Return-path: <xfs-bounce@oss.sgi.com>
+In-Reply-To: <20070627133657.GQ989688@sgi.com>
+Sender: xfs-bounce@oss.sgi.com
+Errors-to: xfs-bounce@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-06-27 at 18:15 +0200, Valerie Clement wrote:
-> Hi,
-> I re-ran some FFSB tests on ext3, ext4 and xfs filesystems, on a=20
-> 2.6.22-rc5 kernel and with the latest ext4-git-tree (update of June 2=
-6).
->=20
-> The results are available here:
-> http://www.bullopensource.org/ext4/20070627/ffsb-write.html
->=20
-> Regards,
->    Val=C3=A9rie
->=20
->=20
+On Wed, 2007-06-27 at 23:36 +1000, David Chinner wrote:
+> .... Allows setup_swap_extents() to use preallocated files on XFS
+> filesystems for swap files without ever needing to convert them.
 
-Thanks a lot Valerie!!
+Using unwritten extents (as opposed to the MKSWAP flag mentioned
+earlier) has the unfortunate down side of requiring transactions,
+possibly additional IO, and memory allocation during swap.  (but,
+this patch should probably go in regardless, as teaching generic
+code about unwritten extents is not a bad idea).
+
+cheers.
+
+--
+Nathan
