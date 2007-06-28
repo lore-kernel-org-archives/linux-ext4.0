@@ -1,50 +1,57 @@
 From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [PATCH 7/7][TAKE5] ext4: support new modes
-Date: Thu, 28 Jun 2007 23:37:50 +0530
-Message-ID: <20070628180750.GB1674@amitarora.in.ibm.com>
-References: <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625135051.GH1951@amitarora.in.ibm.com> <20070625215625.GL5181@schatzie.adilger.int> <20070626120751.GC19870@amitarora.in.ibm.com> <20070626161400.GE6652@schatzie.adilger.int> <20070626192908.GC13324@amitarora.in.ibm.com> <20070627000456.GT31489@sgi.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Thu, 28 Jun 2007 23:49:13 +0530
+Message-ID: <20070628181913.GC1674@amitarora.in.ibm.com>
+References: <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070626153413.GC6652@schatzie.adilger.int> <20070626231803.GQ31489@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
-	xfs@oss.sgi.com
+        linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
+        xfs@oss.sgi.com
 To: David Chinner <dgc@sgi.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <xfs-bounce@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20070627000456.GT31489@sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20070626231803.GQ31489@sgi.com>
+Sender: xfs-bounce@oss.sgi.com
+Errors-to: xfs-bounce@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 27, 2007 at 10:04:56AM +1000, David Chinner wrote:
-> On Wed, Jun 27, 2007 at 12:59:08AM +0530, Amit K. Arora wrote:
-> > On Tue, Jun 26, 2007 at 12:14:00PM -0400, Andreas Dilger wrote:
-> > > On Jun 26, 2007  17:37 +0530, Amit K. Arora wrote:
-> > > > I think, modifying ctime/mtime should be dependent on the other flags.
-> > > > E.g., if we do not zero out data blocks on allocation/deallocation,
-> > > > update only ctime. Otherwise, update ctime and mtime both.
+On Wed, Jun 27, 2007 at 09:18:04AM +1000, David Chinner wrote:
+> On Tue, Jun 26, 2007 at 11:34:13AM -0400, Andreas Dilger wrote:
+> > On Jun 26, 2007  16:02 +0530, Amit K. Arora wrote:
+> > > On Mon, Jun 25, 2007 at 03:46:26PM -0600, Andreas Dilger wrote:
+> > > > Can you clarify - what is the current behaviour when ENOSPC (or some other
+> > > > error) is hit?  Does it keep the current fallocate() or does it free it?
 > > > 
-> > > I'm only being the advocate for requirements David Chinner has put
-> > > forward due to existing behaviour in XFS.  This is one of the reasons
-> > > why I think the "flags" mechanism we now have - we can encode the
-> > > various different behaviours in any way we want and leave it to the
-> > > caller.
+> > > Currently it is left on the file system implementation. In ext4, we do
+> > > not undo preallocation if some error (say, ENOSPC) is hit. Hence it may
+> > > end up with partial (pre)allocation. This is inline with dd and
+> > > posix_fallocate, which also do not free the partially allocated space.
 > > 
-> > I understand. May be we can confirm once more with David Chinner if this
-> > is really required. Will it really be a compatibility issue if new XFS
-> > preallocations (ie. via fallocate) update mtime/ctime?
+> > Since I believe the XFS allocation ioctls do it the opposite way (free
+> > preallocated space on error) this should be encoded into the flags.
+> > Having it "filesystem dependent" just means that nobody will be happy.
 > 
-> It should be left up to the filesystem to decide. Only the
-> filesystem knows whether something changed and the timestamp should
-> or should not be updated.
+> No, XFs does not free preallocated space on error. it is up to the
+> application to clean up.
 
-Since Andreas had suggested FA_FL_NO_MTIME flag thinking it as a
-requirement from XFS (whereas XFS does not need this flag), I don't think
-we need to add this new flag.
+Since XFS also does not free preallocated space on error and this
+behavior is inline with dd, posix_fallocate() and the current ext4
+implementation, do we still need FA_FL_FREE_ENOSPC flag ?
+ 
+> > What I mean is that any data read from the file should have the "appearance"
+> > of being zeroed (whether zeroes are actually written to disk or not).  What
+> > I _think_ David is proposing is to allow fallocate() to return without
+> > marking the blocks even "uninitialized" and subsequent reads would return
+> > the old data from the disk.
+> 
+> Correct, but for swap files that's not an issue - no user should be able
+> too read them, and FA_MKSWAP would really need root privileges to execute.
 
-Please let know if someone still feels FA_FL_NO_MTIME flag can be
-useful.
+Will the FA_MKSWAP mode still be required with your suggested change of
+teaching do_mpage_readpage() about unwritten extents being in place ?
+Or, will you still like to have FA_MKSWAP mode ?
 
 --
 Regards,
 Amit Arora
-
