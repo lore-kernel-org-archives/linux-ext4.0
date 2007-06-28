@@ -1,52 +1,27 @@
-From: Nathan Scott <nscott@aconex.com>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Thu, 28 Jun 2007 10:53:08 +1000
-Message-ID: <1182991988.15488.95.camel@edge.yarra.acx>
-References: <20070614120413.GD86004887@sgi.com>
-	 <20070614193347.GN5181@schatzie.adilger.int>
-	 <20070625132810.GA1951@amitarora.in.ibm.com>
-	 <20070625134500.GE1951@amitarora.in.ibm.com>
-	 <20070625150320.GA8686@amitarora.in.ibm.com>
-	 <20070625214626.GJ5181@schatzie.adilger.int>
-	 <20070626231431.GO31489@sgi.com>
-	 <20070627034915.GR6652@schatzie.adilger.int>
-	 <20070627133657.GQ989688@sgi.com>
-	 <1182986916.15488.88.camel@edge.yarra.acx>
-	 <20070628003921.GW989688@sgi.com>
-Reply-To: nscott@aconex.com
+From: sftf <sftf-misc@mail.ru>
+Subject: Re: Performance testing results
+Date: Thu, 28 Jun 2007 10:46:52 +0600
+Message-ID: <1692756695.20070628104652@mail.ru>
+Reply-To: sftf <sftf-misc@mail.ru>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>, xfs-oss <xfs@oss.sgi.com>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	suparna@in.ibm.com, cmm@us.ibm.com
-To: David Chinner <dgc@sgi.com>
+To: valerie.clement@bull.net, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.app.aconex.com ([203.89.192.138]:45897 "EHLO
-	postoffice.aconex.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752446AbXF1AyM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jun 2007 20:54:12 -0400
-In-Reply-To: <20070628003921.GW989688@sgi.com>
+Received: from mx28.mail.ru ([194.67.23.67]:5830 "EHLO mx28.mail.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762536AbXF1Drl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jun 2007 23:47:41 -0400
+Received: from mx33.mail.ru (mx33.mail.ru [194.67.23.194])
+	by mx28.mail.ru (mPOP.Fallback_MX) with ESMTP id E1185B3A51
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Jun 2007 07:47:39 +0400 (MSD)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-06-28 at 10:39 +1000, David Chinner wrote:
-> 
-> 
-> I don't think it does - swapfile I/O looks like it goes direct to
-> bio without passing through the filesystem.  When the swapfile is
-> mapped, it scans and records the extent map of the entire swapfile
-> in a separate structure and AFAICT the swap code uses that built map
-> without touching the filesystem at all.
-> 
-> If that is true then the written/unwritten state of the extents is
-> irrelevant; all we need is allocated disk space for the file and
-> swapping should work. And it's not like anyone should be reading
-> the contents of that swapfile through the filesystem, either. ;)
+Hi!
+  IMHO this test is not 100% correct.
+  ext3 | data=writeback
+  ext4 | data=writeback,extents,delalloc
+  xfs  | defaults is ordered !
 
-Ah, yes, good point - thats true.  Unwritten extents are ideal for
-this then, as attempts to read swap via the regular interfaces will
-return zeros instead of random swapped out memory contents.
-
-cheers.
+ So you have compared ext's in writeback (which fastest mode) vs xfs in ordered.
