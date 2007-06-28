@@ -1,49 +1,47 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 0/6][TAKE5] fallocate system call
-Date: Thu, 28 Jun 2007 16:34:25 -0400
-Message-ID: <20070628203425.GB5789@schatzie.adilger.int>
-References: <20070511110301.GB28425@in.ibm.com> <20070512080157.GF85884050@sgi.com> <20070612061652.GA6320@amitarora.in.ibm.com> <20070613235217.GS86004887@sgi.com> <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070628025543.9467216f.akpm@linux-foundation.org> <20070628175757.GA1674@amitarora.in.ibm.com>
+From: Nathan Scott <nscott@aconex.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Fri, 29 Jun 2007 09:39:40 +1000
+Message-ID: <1183073980.15488.134.camel@edge.yarra.acx>
+References: <20070614091458.GH5181@schatzie.adilger.int>
+	 <20070614120413.GD86004887@sgi.com>
+	 <20070614193347.GN5181@schatzie.adilger.int>
+	 <20070625132810.GA1951@amitarora.in.ibm.com>
+	 <20070625134500.GE1951@amitarora.in.ibm.com>
+	 <20070625150320.GA8686@amitarora.in.ibm.com>
+	 <20070625214626.GJ5181@schatzie.adilger.int>
+	 <20070626103247.GA19870@amitarora.in.ibm.com>
+	 <20070626153413.GC6652@schatzie.adilger.int>
+	 <20070626231803.GQ31489@sgi.com>
+	 <20070628181913.GC1674@amitarora.in.ibm.com>
+Reply-To: nscott@aconex.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: David Chinner <dgc@sgi.com>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	suparna@in.ibm.com, cmm@us.ibm.com, xfs@oss.sgi.com
 To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:48906 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757192AbXF1Ue1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jun 2007 16:34:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20070628175757.GA1674@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070628181913.GC1674@amitarora.in.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 28, 2007  23:27 +0530, Amit K. Arora wrote:
-> On Thu, Jun 28, 2007 at 02:55:43AM -0700, Andrew Morton wrote:
-> > Are we all supposed to re-review the entire patchset (or at least #4 and
-> > #7) again?
+On Thu, 2007-06-28 at 23:49 +0530, Amit K. Arora wrote:
 > 
-> As I mentioned in the note above, only patches #4 and #7 were new and
-> thus these needed to be reviewed. Other patches are _not_ replacements
-> of any of the patches which are already part of -mm and/or in Ted's
-> patch queue. They were posted again as just "placeholders" so that the
-> two new patches (#4 & #7) could be reviewed. Sorry for any confusion.
+> > Correct, but for swap files that's not an issue - no user should be
+> able
+> > too read them, and FA_MKSWAP would really need root privileges to
+> execute.
+> 
+> Will the FA_MKSWAP mode still be required with your suggested change
+> of
+> teaching do_mpage_readpage() about unwritten extents being in place ?
+> Or, will you still like to have FA_MKSWAP mode ? 
 
-The new patches are definitely a big improvement over the previous API,
-and need to go in before fallocate() goes into mainline.  This last set
-of changes allows the behaviour of these syscalls to accomodate the various
-different semantics desired by XFS in a sensible manner instead of tying
-all of the individual behaviours (time update, size update, alloc/free, etc)
-into monolithic modes that will never make everyone happy.
+There's no need for a MKSWAP flag.
 
-My understanding is that you only need to grab #4 and #7 to get your tree
-into get fallocate in sync with the ext4 patch queue (i.e. they are
-incremental over the previous set).
+cheers.
 
-Cheers, Andreas
 --
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Nathan
+
