@@ -1,60 +1,68 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: fallocate support for bitmap-based files
-Date: Fri, 29 Jun 2007 17:46:15 -0400
-Message-ID: <20070629214615.GB5026@schatzie.adilger.int>
-References: <20070629130120.ec0d1c75.akpm@linux-foundation.org> <20070629205525.GD32178@thunk.org>
+From: "Hanno =?utf-8?q?B=C3=B6ck?=" <ml@hboeck.de>
+Subject: Re: E2fsprogs 1.40 release imminent!
+Date: Fri, 29 Jun 2007 23:51:29 +0200
+Message-ID: <200706292351.33006.ml@hboeck.de>
+References: <E1I2aKE-0008RV-KP@tinytim.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Mike Waychison <mikew@google.com>,
-	Sreenivasa Busam <sreenivasac@google.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: multipart/signed;
+  boundary="nextPart1614229.jyitLLbpRa";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	Lennert Buytenhek <buytenh@wantstofly.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([206.168.112.78]:41669 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752747AbXF2VqR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jun 2007 17:46:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20070629205525.GD32178@thunk.org>
+Received: from zucker.schokokeks.org ([85.10.204.247]:41663 "EHLO
+	zucker.schokokeks.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755533AbXF2V4G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jun 2007 17:56:06 -0400
+In-Reply-To: <E1I2aKE-0008RV-KP@tinytim.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jun 29, 2007  16:55 -0400, Theodore Tso wrote:
-> What's the eventual goal of this work?  Would it be for mainline use,
-> or just something that would be used internally at Google?  I'm not
-> particularly ennthused about supporting two ways of doing fallocate();
-> one for ext4 and one for bitmap-based files in ext2/3/4.  Is the
-> benefit reallyworth it?
-> 
-> What I would suggest, which would make much easier, is to make this be
-> an incompatible extensions (which you as you point out is needed for
-> security reasons anyway) and then steal the high bit from the block
-> number field to indicate whether or not the block has been initialized
-> or not.  That way you don't end up having to seek to a potentially
-> distant part of the disk to check out the bitmap.  Also, you don't
-> have to worry about how to recover if the "block initialized bitmap"
-> inode gets smashed.  
-> 
-> The downside is that it reduces the maximum size of the filesystem
-> supported by ext2 by a factor of two.  But, there are at least two
-> patch series floating about that promise to allow filesystem block
-> sizes > than PAGE_SIZE which would allow you to recover the maximum
-> size supported by the filesytem.
+--nextPart1614229.jyitLLbpRa
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-I don't think ext2 is safe for > 8TB filesystems anyways, so this
-isn't a huge loss.
+Am Montag 25 Juni 2007 schrieb Theodore Ts'o:
+> ... contains what I hope to be the e2fsprogs 1.40 release.  If folks
+> could test it and let me know if they find any embarassing bugs, I would
+> greatly appreciate it.  It can also be found at:
 
-The other possibility is, assuming Google likes ext2 because they
-don't care about e2fsck, is to patch ext4 to not use any
-journaling (i.e. make all of the ext4_journal*() wrappers be
-no-ops).  That way they would get extents, mballoc and other speedups.
+There are a bunch of patches applied in the gentoo package that might be wo=
+rth=20
+looking at:
+http://dev.gentoo.org/~hanno/e2fsprogs/
 
-That said, what is the reason for not using ext3?  Presumably performance
-(which is greatly improved in ext4) or is there something else?
+All of them still seem to apply to the current mercurial source. I'm not=20
+really familiar with them, just noted that there are a lot of patches and=20
+nobody seemed to care sending upstream in the past.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+e2fsprogs-1.32-mk_cmds-cosmetic.patc
+e2fsprogs-1.38-tests-locale.patch
+e2fsprogs-1.39-makefile.patch
+e2fsprogs-1.39-parse-types.patch
+e2fsprogs-1.39-util-strptime.patch
+e2fsprogs-1.40-libintl.patch
+
+
+=2D-=20
+Hanno B=C3=B6ck		Blog:   http://www.hboeck.de/
+GPG: 3DBD3B20		Jabber: jabber@hboeck.de
+
+--nextPart1614229.jyitLLbpRa
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.4 (GNU/Linux)
+
+iD8DBQBGhX7kr2QksT29OyARAuKqAJ4qRDHygpm/WDAGMBxtSSeLt5mWpQCfYp1a
+kFurlTXtJm28iJdgPwrTHFg=
+=ijvv
+-----END PGP SIGNATURE-----
+
+--nextPart1614229.jyitLLbpRa--
