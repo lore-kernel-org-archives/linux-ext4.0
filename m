@@ -1,64 +1,85 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [RFC] BIG_BG vs extended META_BG in ext4
-Date: Fri, 29 Jun 2007 17:09:58 -0500
-Message-ID: <20070629170958.13b7700c@gara>
+From: Mike Waychison <mikew@google.com>
+Subject: Re: fallocate support for bitmap-based files
+Date: Fri, 29 Jun 2007 18:26:30 -0400
+Message-ID: <46858716.2050901@google.com>
+References: <20070629130120.ec0d1c75.akpm@linux-foundation.org> <20070629205525.GD32178@thunk.org> <20070629214615.GB5026@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Sreenivasa Busam <sreenivasac@google.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:54938 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755667AbXF2WLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2007 18:11:07 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5TMB6x9018936
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5TMB64T263498
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5TMB6lU024347
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
-Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l5TMB5bV024339
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:05 -0400
-Received: from gara (sig-9-65-2-100.mts.ibm.com [9.65.2.100])
-	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l5TMB5UV032484
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 17:11:05 -0500
+Received: from smtp-out.google.com ([216.239.45.13]:60615 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751608AbXF2W1W (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jun 2007 18:27:22 -0400
+In-Reply-To: <20070629214615.GB5026@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi folks,
+Andreas Dilger wrote:
+> On Jun 29, 2007  16:55 -0400, Theodore Tso wrote:
+> 
+>>What's the eventual goal of this work?  Would it be for mainline use,
+>>or just something that would be used internally at Google?  I'm not
+>>particularly ennthused about supporting two ways of doing fallocate();
+>>one for ext4 and one for bitmap-based files in ext2/3/4.  Is the
+>>benefit reallyworth it?
+>>
+>>What I would suggest, which would make much easier, is to make this be
+>>an incompatible extensions (which you as you point out is needed for
+>>security reasons anyway) and then steal the high bit from the block
+>>number field to indicate whether or not the block has been initialized
+>>or not.  That way you don't end up having to seek to a potentially
+>>distant part of the disk to check out the bitmap.  Also, you don't
+>>have to worry about how to recover if the "block initialized bitmap"
+>>inode gets smashed.  
+>>
+>>The downside is that it reduces the maximum size of the filesystem
+>>supported by ext2 by a factor of two.  But, there are at least two
+>>patch series floating about that promise to allow filesystem block
+>>sizes > than PAGE_SIZE which would allow you to recover the maximum
+>>size supported by the filesytem.
+> 
+> 
+> I don't think ext2 is safe for > 8TB filesystems anyways, so this
+> isn't a huge loss.
 
-I've been looking at getting around some of the limitations imposed by
-the block groups and was wondering what are peoples thoughts about
-implementing this using either bigger block groups or storing the
-bitmaps and inode tables outside of the block groups.  
+This is reference to the idea of overloading the high-bit and not 
+related to the >PAGE_SIZE blocks correct?
 
-I think the BIG_BG feature is better suited to the design philosophy of
-ext2/3.  Since all the important meta-data is easily accessible thanks
-to the static filesystem  layout, I would expect for easier fsck
-recovery.  This should also provide with some performance improvements
-for both extents (allowing each extent to be larger than 128M) as well
-as fsck since bitmaps would be place closer together.
+> 
+> The other possibility is, assuming Google likes ext2 because they
+> don't care about e2fsck, is to patch ext4 to not use any
+> journaling (i.e. make all of the ext4_journal*() wrappers be
+> no-ops).  That way they would get extents, mballoc and other speedups.
+> 
 
-An extended version of metadata block group could provide better
-performance improvements during fsck time since we could pack all of
-the filesystem bitmaps together.  Having the inode tables separated
-from the block groups could mean that we could implement dynamic inodes
-in the future as well.  This feature seems like it would be more
-invasive for e2fspros at first glance (at least for fsck).  Also, with
-no metadata in the block groups, there is essentially no need to have a
-concept of block groups anymore which would mean that this is a
-completely different filesystem layout compared to ext2/3.
+We do care about the e2fsck problem, though the cost/benefit of e2fsck 
+times/memory problems vs the overhead of journalling doesn't weigh in 
+journalling's favour for a lot of our per-spindle-latency bound 
+applications.  These apps manage to get pretty good disk locality 
+guarantees and the journal overheads can induce undesired head movement.
 
-Since I have not much experience with ext4 development, I was wondering
-if anybody had any opinion as to which of these two methods would
-better serve the need of the intended users and see which one would be
-worth to prototype first.
+ext4 does look very promising, though I'm not certain it's ready for our 
+consumption.
 
-Comments?
+What are people's thoughts on providing ext3 non-journal mode?  We could 
+benefit from several of the additions to ext3 that aren't available in 
+ext2 and disabling journalling there sounds much more feasible for us 
+instead of trying to backport each ext3 component to ext2.
 
+Mike Waychison
 
--JRS
+> That said, what is the reason for not using ext3?  Presumably performance
+> (which is greatly improved in ext4) or is there something else?
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
