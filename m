@@ -1,88 +1,75 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+From: Andrew Morton <akpm@linux-foundation.org>
 Subject: Re: fallocate support for bitmap-based files
-Date: Fri, 29 Jun 2007 16:24:55 -0500
-Message-ID: <1183152295.12702.20.camel@kleikamp.austin.ibm.com>
+Date: Fri, 29 Jun 2007 14:38:18 -0700
+Message-ID: <20070629143818.9f4ac7d7.akpm@linux-foundation.org>
 References: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
-	 <1183149414.12702.10.camel@kleikamp.austin.ibm.com>
-	 <46857107.2000106@google.com>
+	<20070629205525.GD32178@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@clusterfs.com>,
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Mike Waychison <mikew@google.com>,
 	Sreenivasa Busam <sreenivasac@google.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Mike Waychison <mikew@google.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:34829 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754160AbXF2VZD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2007 17:25:03 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5TKLa6P014138
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 16:21:36 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5TLOv4E455960
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 17:24:57 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5TLOuko028167
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 17:24:57 -0400
-In-Reply-To: <46857107.2000106@google.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:36487 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753994AbXF2Vi7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Jun 2007 17:38:59 -0400
+In-Reply-To: <20070629205525.GD32178@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-06-29 at 16:52 -0400, Mike Waychison wrote:
-> Dave Kleikamp wrote:
+On Fri, 29 Jun 2007 16:55:25 -0400
+Theodore Tso <tytso@mit.edu> wrote:
+
+> On Fri, Jun 29, 2007 at 01:01:20PM -0700, Andrew Morton wrote:
 > > 
-> > By truncating the blocks file at the correct byte offset, only needing
-> > to zero some bits of the last byte of the file.
+> > Guys, Mike and Sreenivasa at google are looking into implementing
+> > fallocate() on ext2.  Of course, any such implementation could and should
+> > also be portable to ext3 and ext4 bitmapped files.
 > 
-> We were thinking the unwritten blocks file would be indexed by physical 
-> block number of the block device.  There wouldn't be a logical to 
-> physical relationship for the blocks, so we wouldn't be able to get away 
-> with truncating the blocks file itself.
+> What's the eventual goal of this work?  Would it be for mainline use,
+> or just something that would be used internally at Google?
 
-I misunderstood.  I was thinking about a block-file per regular file
-(that had preallocated blocks).  Ignore that comment.
+Mainline, preferably.
 
-> >>- When the fs comes to read a block from disk, it will need to consult
-> >>  the unwritten blocks file to see if that block should be zeroed by the
-> >>  CPU.
-> >>
-> >>- When the unwritten-block is written to, its bit in the unwritten blocks
-> >>  file gets zeroed.
-> >>
-> >>- An obvious efficiency concern: if a user file has no unwritten blocks
-> >>  in it, we don't need to consult the unwritten blocks file.
-> >>
-> >>  Need to work out how to do this.  An obvious solution would be to have
-> >>  a number-of-unwritten-blocks counter in the inode.  But do we have space
-> >>  for that?
-> > 
-> > 
-> > Would it be too expensive to test the blocks-file page each time a bit
-> > is cleared to see if it is all-zero, and then free the page, making it a
-> > hole?  This test would stop if if finds any non-zero word, so it may not
-> > be too bad.  (This could further be done on a block basis if the block
-> > size is less than a page.)
+>  I'm not
+> particularly ennthused about supporting two ways of doing fallocate();
+> one for ext4 and one for bitmap-based files in ext2/3/4.  Is the
+> benefit reallyworth it?
+
+umm, it's worth it if you don't want to wear the overhead of journalling,
+and/or if you don't want to wait on the, err, rather slow progress of ext4.
+
+> What I would suggest, which would make much easier, is to make this be
+> an incompatible extensions (which you as you point out is needed for
+> security reasons anyway) and then steal the high bit from the block
+> number field to indicate whether or not the block has been initialized
+> or not.  That way you don't end up having to seek to a potentially
+> distant part of the disk to check out the bitmap.  Also, you don't
+> have to worry about how to recover if the "block initialized bitmap"
+> inode gets smashed.  
 > 
-> When clearing the bits, we'd likely see a large stream of writes to the 
-> unwritten blocks, which could result in a O(n^2) pass of rescanning the 
-> page over and over.  
+> The downside is that it reduces the maximum size of the filesystem
+> supported by ext2 by a factor of two.  But, there are at least two
+> patch series floating about that promise to allow filesystem block
+> sizes > than PAGE_SIZE which would allow you to recover the maximum
+> size supported by the filesytem.
+> 
+> Furthermore, I suspect (especially after listening to a very fasting
+> Usenix Invited Talk by Jeffery Dean, a fellow from Google two weeks
+> ago) that for many of Google's workloads, using a filesystem blocksize
+> of 16K or 32K might not be a bad thing in any case.
+> 
+> It would be a lot simpler....
+> 
 
-If you start checking for zero at the bit that was just zeroed, you'd
-likely find a non-zero bit right away, so you wouldn't be looking at too
-much of the page in the typical case.
+Hadn't thought of that.
 
-> Maybe a per-unwritten-block-file block 
-> per-block-header with a count that could be cheaply tested?  Ie: the 
-> unwritten block file is composed of blocks that each have a small header 
-> that contains count -- when the count hits zero, we could punch a hole 
-> in the file.
+Also, it's unclear to me why google is going this way rather than using
+(perhaps suitably-tweaked) ext2 reservations code.
 
-Having the data be just a bitmap seems more elegant to me.  It would be
-nice to avoid keeping a count in the bitmap page if possible.
--- 
-David Kleikamp
-IBM Linux Technology Center
+Because the stock ext2 block allcoator sucks big-time.
