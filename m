@@ -1,57 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: fallocate support for bitmap-based files
-Date: Fri, 29 Jun 2007 16:55:25 -0400
-Message-ID: <20070629205525.GD32178@thunk.org>
-References: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 0/6][TAKE5] fallocate system call
+Date: Fri, 29 Jun 2007 13:57:09 -0700
+Message-ID: <20070629135709.6cf0264d.akpm@linux-foundation.org>
+References: <20070512080157.GF85884050@sgi.com>
+	<20070612061652.GA6320@amitarora.in.ibm.com>
+	<20070613235217.GS86004887@sgi.com>
+	<20070614091458.GH5181@schatzie.adilger.int>
+	<20070614120413.GD86004887@sgi.com>
+	<20070614193347.GN5181@schatzie.adilger.int>
+	<20070625132810.GA1951@amitarora.in.ibm.com>
+	<20070628025543.9467216f.akpm@linux-foundation.org>
+	<20070628175757.GA1674@amitarora.in.ibm.com>
+	<20070628113342.c9c0f49c.akpm@linux-foundation.org>
+	<20070629135612.GH29279@thunk.org>
+	<46852A2C.9040407@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Mike Waychison <mikew@google.com>,
-	Sreenivasa Busam <sreenivasac@google.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, David Chinner <dgc@sgi.com>,
+	Andreas Dilger <adilger@clusterfs.com>, suparna@in.ibm.com,
+	xfs@oss.sgi.com
+To: Mingming Caoc <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:52980 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752727AbXF2Uzf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2007 16:55:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:49789 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754477AbXF2U5f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Jun 2007 16:57:35 -0400
+In-Reply-To: <46852A2C.9040407@us.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 29, 2007 at 01:01:20PM -0700, Andrew Morton wrote:
-> 
-> Guys, Mike and Sreenivasa at google are looking into implementing
-> fallocate() on ext2.  Of course, any such implementation could and should
-> also be portable to ext3 and ext4 bitmapped files.
+On Fri, 29 Jun 2007 11:50:04 -0400
+Mingming Caoc <cmm@us.ibm.com> wrote:
 
-What's the eventual goal of this work?  Would it be for mainline use,
-or just something that would be used internally at Google?  I'm not
-particularly ennthused about supporting two ways of doing fallocate();
-one for ext4 and one for bitmap-based files in ext2/3/4.  Is the
-benefit reallyworth it?
+> I think the ext4 patch queue is in good shape now.
 
-What I would suggest, which would make much easier, is to make this be
-an incompatible extensions (which you as you point out is needed for
-security reasons anyway) and then steal the high bit from the block
-number field to indicate whether or not the block has been initialized
-or not.  That way you don't end up having to seek to a potentially
-distant part of the disk to check out the bitmap.  Also, you don't
-have to worry about how to recover if the "block initialized bitmap"
-inode gets smashed.  
+Which ext4 patches are you intending to merge into 2.6.23?
 
-The downside is that it reduces the maximum size of the filesystem
-supported by ext2 by a factor of two.  But, there are at least two
-patch series floating about that promise to allow filesystem block
-sizes > than PAGE_SIZE which would allow you to recover the maximum
-size supported by the filesytem.
-
-Furthermore, I suspect (especially after listening to a very fasting
-Usenix Invited Talk by Jeffery Dean, a fellow from Google two weeks
-ago) that for many of Google's workloads, using a filesystem blocksize
-of 16K or 32K might not be a bad thing in any case.
-
-It would be a lot simpler....
-
-						- Ted
+Please send all those out to lkml for review?
