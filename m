@@ -1,105 +1,64 @@
-From: Mike Waychison <mikew@google.com>
-Subject: Re: fallocate support for bitmap-based files
-Date: Fri, 29 Jun 2007 18:07:25 -0400
-Message-ID: <4685829D.2020401@google.com>
-References: <20070629130120.ec0d1c75.akpm@linux-foundation.org>	<20070629205525.GD32178@thunk.org> <20070629143818.9f4ac7d7.akpm@linux-foundation.org>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [RFC] BIG_BG vs extended META_BG in ext4
+Date: Fri, 29 Jun 2007 17:09:58 -0500
+Message-ID: <20070629170958.13b7700c@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Sreenivasa Busam <sreenivasac@google.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:58484 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754156AbXF2WHu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jun 2007 18:07:50 -0400
-In-Reply-To: <20070629143818.9f4ac7d7.akpm@linux-foundation.org>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:54938 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755667AbXF2WLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Jun 2007 18:11:07 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5TMB6x9018936
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5TMB64T263498
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5TMB6lU024347
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:06 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l5TMB5bV024339
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 18:11:05 -0400
+Received: from gara (sig-9-65-2-100.mts.ibm.com [9.65.2.100])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l5TMB5UV032484
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Jun 2007 17:11:05 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
-> On Fri, 29 Jun 2007 16:55:25 -0400
-> Theodore Tso <tytso@mit.edu> wrote:
-> 
-> 
->>On Fri, Jun 29, 2007 at 01:01:20PM -0700, Andrew Morton wrote:
->>
->>>Guys, Mike and Sreenivasa at google are looking into implementing
->>>fallocate() on ext2.  Of course, any such implementation could and should
->>>also be portable to ext3 and ext4 bitmapped files.
->>
->>What's the eventual goal of this work?  Would it be for mainline use,
->>or just something that would be used internally at Google?
-> 
-> 
-> Mainline, preferably.
-> 
-> 
->> I'm not
->>particularly ennthused about supporting two ways of doing fallocate();
->>one for ext4 and one for bitmap-based files in ext2/3/4.  Is the
->>benefit reallyworth it?
-> 
-> 
-> umm, it's worth it if you don't want to wear the overhead of journalling,
-> and/or if you don't want to wait on the, err, rather slow progress of ext4.
-> 
-> 
->>What I would suggest, which would make much easier, is to make this be
->>an incompatible extensions (which you as you point out is needed for
->>security reasons anyway) and then steal the high bit from the block
->>number field to indicate whether or not the block has been initialized
->>or not.  That way you don't end up having to seek to a potentially
->>distant part of the disk to check out the bitmap.  Also, you don't
->>have to worry about how to recover if the "block initialized bitmap"
->>inode gets smashed.  
->>
->>The downside is that it reduces the maximum size of the filesystem
->>supported by ext2 by a factor of two.  But, there are at least two
->>patch series floating about that promise to allow filesystem block
->>sizes > than PAGE_SIZE which would allow you to recover the maximum
->>size supported by the filesytem.
->>
->>Furthermore, I suspect (especially after listening to a very fasting
->>Usenix Invited Talk by Jeffery Dean, a fellow from Google two weeks
->>ago) that for many of Google's workloads, using a filesystem blocksize
->>of 16K or 32K might not be a bad thing in any case.
->>
->>It would be a lot simpler....
->>
-> 
-> 
-> Hadn't thought of that.
-> 
-> Also, it's unclear to me why google is going this way rather than using
-> (perhaps suitably-tweaked) ext2 reservations code.
-> 
-> Because the stock ext2 block allcoator sucks big-time.
+Hi folks,
 
-The primary reason this is a problem is that our writers into these 
-files aren't neccesarily coming from the same hosts in the cluster, so 
-their arrival times aren't sequential.  It ends up looking to the kernel 
-like a random write workload, which in turn ends up causing odd 
-fragmentation patterns that aren't very deterministic.  That data is 
-often eventually streamed off the disk though, which is when the 
-fragmentation hurts.
+I've been looking at getting around some of the limitations imposed by
+the block groups and was wondering what are peoples thoughts about
+implementing this using either bigger block groups or storing the
+bitmaps and inode tables outside of the block groups.  
 
-Currently, our clustered filesystem supports pre-allocation of the 
-target chunks of files, but this is implemented by writting effectively 
-zeroes to files, which in turn causes pagecache churn and a double 
-write-out of the blocks.  Recently, we've changed the code to minimize 
-this pagecache churn and double write out by performing an ftruncate to 
-extend files, but then we'll be back to square-one in terms of 
-fragmentation for the random writes.
+I think the BIG_BG feature is better suited to the design philosophy of
+ext2/3.  Since all the important meta-data is easily accessible thanks
+to the static filesystem  layout, I would expect for easier fsck
+recovery.  This should also provide with some performance improvements
+for both extents (allowing each extent to be larger than 128M) as well
+as fsck since bitmaps would be place closer together.
 
-Relying on (a tweaked) reservations code is also somewhat limitting at 
-this stage given that reservations are lost on close(fd).  Unless we 
-change the lifetime of the reservations (maybe for the lifetime of the 
-in-core inode?), crank up the reservation sizes and deal with the 
-overcommit issues, I can't think of any better way at this time to deal 
-with the problem.
+An extended version of metadata block group could provide better
+performance improvements during fsck time since we could pack all of
+the filesystem bitmaps together.  Having the inode tables separated
+from the block groups could mean that we could implement dynamic inodes
+in the future as well.  This feature seems like it would be more
+invasive for e2fspros at first glance (at least for fsck).  Also, with
+no metadata in the block groups, there is essentially no need to have a
+concept of block groups anymore which would mean that this is a
+completely different filesystem layout compared to ext2/3.
 
-Mike Waychison
+Since I have not much experience with ext4 development, I was wondering
+if anybody had any opinion as to which of these two methods would
+better serve the need of the intended users and see which one would be
+worth to prototype first.
+
+Comments?
+
+
+-JRS
