@@ -1,54 +1,74 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: E2fsprogs 1.40 release imminent!
-Date: Fri, 29 Jun 2007 21:04:35 -0400
-Message-ID: <20070630010435.GE32178@thunk.org>
-References: <E1I2aKE-0008RV-KP@tinytim.thunk.org> <200706292351.33006.ml@hboeck.de>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: fallocate support for bitmap-based files
+Date: Sat, 30 Jun 2007 01:14:36 -0400
+Message-ID: <20070630051436.GB5535@schatzie.adilger.int>
+References: <20070629130120.ec0d1c75.akpm@linux-foundation.org> <20070629205525.GD32178@thunk.org> <20070629214615.GB5026@schatzie.adilger.int> <46858716.2050901@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	Lennert Buytenhek <buytenh@wantstofly.org>
-To: Hanno =?iso-8859-1?Q?B=F6ck?= <ml@hboeck.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Sreenivasa Busam <sreenivasac@google.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mike Waychison <mikew@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:38189 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751136AbXF3BEn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2007 21:04:43 -0400
+Received: from mail.clusterfs.com ([206.168.112.78]:59784 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751405AbXF3FOi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2007 01:14:38 -0400
 Content-Disposition: inline
-In-Reply-To: <200706292351.33006.ml@hboeck.de>
+In-Reply-To: <46858716.2050901@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 29, 2007 at 11:51:29PM +0200, Hanno B=F6ck wrote:
-> Am Montag 25 Juni 2007 schrieb Theodore Ts'o:
-> > ... contains what I hope to be the e2fsprogs 1.40 release.  If folk=
-s
-> > could test it and let me know if they find any embarassing bugs, I =
-would
-> > greatly appreciate it.  It can also be found at:
->=20
-> There are a bunch of patches applied in the gentoo package that might=
- be worth=20
-> looking at:
-> http://dev.gentoo.org/~hanno/e2fsprogs/
->=20
-> All of them still seem to apply to the current mercurial source. I'm =
-not=20
-> really familiar with them, just noted that there are a lot of patches=
- and=20
-> nobody seemed to care sending upstream in the past.
->=20
-> e2fsprogs-1.32-mk_cmds-cosmetic.patc
-> e2fsprogs-1.38-tests-locale.patch
-> e2fsprogs-1.39-makefile.patch
-> e2fsprogs-1.39-parse-types.patch
-> e2fsprogs-1.39-util-strptime.patch
-> e2fsprogs-1.40-libintl.patch
+On Jun 29, 2007  18:26 -0400, Mike Waychison wrote:
+> Andreas Dilger wrote:
+> >I don't think ext2 is safe for > 8TB filesystems anyways, so this
+> >isn't a huge loss.
+> 
+> This is reference to the idea of overloading the high-bit and not 
+> related to the >PAGE_SIZE blocks correct?
 
-Thanks, none of these are critical.  I'll go through them and apply
-them after the 1.40 release.
+Correct - just that the high-bit use wouldn't unduely impact the
+already-existing 8TB limit of ext2.
 
-e2fsprogs-1.39-util-strptime.patch was fixed in another way in my
-sources.
+The other thing to note is that Val Henson already ported the ext3
+reservation code to ext2, so this is a pretty straight forward
+option for you and also doesn't affect the on-disk format.
 
-					- Ted
+> >The other possibility is, assuming Google likes ext2 because they
+> >don't care about e2fsck, is to patch ext4 to not use any
+> >journaling (i.e. make all of the ext4_journal*() wrappers be
+> >no-ops).  That way they would get extents, mballoc and other speedups.
+> 
+> We do care about the e2fsck problem, though the cost/benefit of e2fsck 
+> times/memory problems vs the overhead of journalling doesn't weigh in 
+> journalling's favour for a lot of our per-spindle-latency bound 
+> applications.  These apps manage to get pretty good disk locality 
+> guarantees and the journal overheads can induce undesired head movement.
+
+You could push the journal to a separate spindle, but that may not be
+practical.
+
+> ext4 does look very promising, though I'm not certain it's ready for our 
+> consumption.
+
+FYI, the extents code (the most complex part of ext4) has been running for
+a couple of years on many PB of storage at CFS, so it is by no means new
+and untried code.  There are definitely less-well tested changes in ext4
+but they are mostly straight forward.  I'm not saying you should jump right
+into ext4, but it isn't as far away as you might think.
+
+> What are people's thoughts on providing ext3 non-journal mode?  We could 
+> benefit from several of the additions to ext3 that aren't available in 
+> ext2 and disabling journalling there sounds much more feasible for us 
+> instead of trying to backport each ext3 component to ext2.
+
+This is something we've talked about for a long time, and I'd be happy to
+have this possibility.  This would also allow you to take similar advantage
+of extents, the improved allocator and other features.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
