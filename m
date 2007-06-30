@@ -1,170 +1,105 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: fallocate support for bitmap-based files
-Date: Sat, 30 Jun 2007 10:13:20 -0400
-Message-ID: <1183212800.9505.12.camel@localhost.localdomain>
-References: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
+Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
+Date: Sat, 30 Jun 2007 10:24:55 -0400
+Message-ID: <1183213495.9505.21.camel@localhost.localdomain>
+References: <20070629170958.13b7700c@gara>
+	 <20070630055125.GC5535@schatzie.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Mike Waychison <mikew@google.com>,
-	Sreenivasa Busam <sreenivasac@google.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: "Jose R. Santos" <jrs@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:42658 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755688AbXF3ONX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2007 10:13:23 -0400
+Received: from e32.co.us.ibm.com ([32.97.110.150]:38016 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755231AbXF3OY5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2007 10:24:57 -0400
 Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5UEDMCN005289
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 10:13:22 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5UEDMXv071716
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 08:13:22 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5UEDLUa005099
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 08:13:22 -0600
-In-Reply-To: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
+	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id l5UEJoNV010538
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 10:19:50 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5UEOuUS202750
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 08:24:56 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5UEOu41005280
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 08:24:56 -0600
+In-Reply-To: <20070630055125.GC5535@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-06-29 at 13:01 -0700, Andrew Morton wrote:
-> Guys, Mike and Sreenivasa at google are looking into implementing
-> fallocate() on ext2.  Of course, any such implementation could and should
-> also be portable to ext3 and ext4 bitmapped files.
+On Sat, 2007-06-30 at 01:51 -0400, Andreas Dilger wrote:
+> On Jun 29, 2007  17:09 -0500, Jose R. Santos wrote:
+> > I think the BIG_BG feature is better suited to the design philosophy of
+> > ext2/3.  Since all the important meta-data is easily accessible thanks
+> > to the static filesystem  layout, I would expect for easier fsck
+> > recovery.  This should also provide with some performance improvements
+> > for both extents (allowing each extent to be larger than 128M) as well
+> > as fsck since bitmaps would be place closer together.
+> > 
+> > An extended version of metadata block group could provide better
+> > performance improvements during fsck time since we could pack all of
+> > the filesystem bitmaps together.  Having the inode tables separated
+> > from the block groups could mean that we could implement dynamic inodes
+> > in the future as well.  This feature seems like it would be more
+> > invasive for e2fspros at first glance (at least for fsck).  Also, with
+> > no metadata in the block groups, there is essentially no need to have a
+> > concept of block groups anymore which would mean that this is a
+> > completely different filesystem layout compared to ext2/3.
+> > 
+> > Since I have not much experience with ext4 development, I was wondering
+> > if anybody had any opinion as to which of these two methods would
+> > better serve the need of the intended users and see which one would be
+> > worth to prototype first.
 > 
-> I believe that Sreenivasa will mainly be doing the implementation work.
-> 
-> 
-> The basic plan is as follows:
-> 
-> - Create (with tune2fs and mke2fs) a hidden file using one of the
->   reserved inode numbers.  That file will be sized to have one bit for each
->   block in the partition.  Let's call this the "unwritten block file".
-> 
->   The unwritten block file will be initialised with all-zeroes
-> 
-> - at fallocate()-time, allocate the blocks to the user's file (in some
->   yet-to-be-determined fashion) and, for each one which is uninitialised,
->   set its bit in the unwritten block file.  The set bit means "this block
->   is uninitialised and needs to be zeroed out on read".
-> 
-> - truncate() would need to clear out set-bits in the unwritten blocks file.
-> 
-> - When the fs comes to read a block from disk, it will need to consult
->   the unwritten blocks file to see if that block should be zeroed by the
->   CPU.
-> 
-> - When the unwritten-block is written to, its bit in the unwritten blocks
->   file gets zeroed.
-> 
-> - An obvious efficiency concern: if a user file has no unwritten blocks
->   in it, we don't need to consult the unwritten blocks file.
-> 
->   Need to work out how to do this.  An obvious solution would be to have
->   a number-of-unwritten-blocks counter in the inode.  But do we have space
->   for that?
-> 
->   (I expect google and others would prefer that the on-disk format be
->   compatible with legacy ext2!)
-> 
-> - One concern is the following scenario:
-> 
->   - Mount fs with "new" kernel, fallocate() some blocks to a file.
-> 
->   - Now, mount the fs under "old" kernel (which doesn't understand the
->     unwritten blocks file).
-> 
->     - This kernel will be able to read uninitialised data from that
->       fallocated-to file, which is a security concern.
-> 
->   - Now, the "old" kernel writes some data to a fallocated block.  But
->     this kernel doesn't know that it needs to clear that block's flag in
->     the unwritten blocks file!
-> 
->   - Now mount that fs under the "new" kernel and try to read that file.
->      The flag for the block is set, so this kernel will still zero out the
->     data on a read, thus corrupting the user's data
-> 
->   So how to fix this?  Perhaps with a per-inode flag indicating "this
->   inode has unwritten blocks".  But to fix this problem, we'd require that
->   the "old" kernel clear out that flag.
-> 
->   Can anyone propose a solution to this?
-> 
->   Ah, I can!  Use the compatibility flags in such a way as to prevent the
->   "old" kernel from mounting this filesystem at all.  To mount this fs
->   under an "old" kernel the user will need to run some tool which will
-> 
->   - read the unwritten blocks file
-> 
->   - for each set-bit in the unwritten blocks file, zero out the
->     corresponding block
-> 
->   - zero out the unwritten blocks file
-> 
->   - rewrite the superblock to indicate that this fs may now be mounted
->     by an "old" kernel.
-> 
->   Sound sane?
-> 
-> - I'm assuming that there are more reserved inodes available, and that
->   the changes to tune2fs and mke2fs will be basically a copy-n-paste job
->   from the `tune2fs -j' code.  Correct?
-> 
-> - I haven't thought about what fsck changes would be needed.
-> 
->   Presumably quite a few.  For example, fsck should check that set-bits
->   in the unwriten blobks file do not correspond to freed blocks.  If they
->   do, that should be fixed up.
-> 
->   And fsck can check each inodes number-of-unwritten-blocks counters
->   against the unwritten blocks file (if we implement the per-inode
->   number-of-unwritten-blocks counter)
-> 
->   What else should fsck do?
-> 
-> - I haven't thought about the implications of porting this into ext3/4. 
->   Probably the commit to the unwritten blocks file will need to be atomic
->   with the commit to the user's file's metadata, so the unwritten-blocks
->   file will effectively need to be in journalled-data mode.
-> 
->   Or, more likely, we access the unwritten blocks file via the blockdev
->   pagecache (ie: use bmap, like the journal file) and then we're just
->   talking direct to the disk's blocks and it becomes just more fs metadata.
-> 
-> - I guess resize2fs will need to be taught about the unwritten blocks
->   file: to shrink and grow it appropriately.
-> 
-> 
-> That's all I can think of for now - I probably missed something. 
-> 
-> Suggestions and thought are sought, please.
-> 
-> 
+> I don't think there is actually any fundamental difference between these
+> proposals. 
 
-Another approach we have been thinking  is using a backing
-inode(per-inode-with-preallocation) to store the preallocated blocks.
-When user asked for preallocation on the base inode, ext2/3 create a
-temporary backing inode, and it's (pre)allocate the
-corresponding blocks in the backing inode. 
+I agree. The more I think about the extended META BG, the more I think
+it's pretty much the BIG_BG. Only difference is,  with extended META BG,
+it removed the restriction that all fs block descriptors has to store in
+the first block group. Thus online resize volume size doesn't has to be
+dependent on the block group size.
 
-When writes to the base inode, and realize we need to block allocation
-on, before doing the fs real block allocation, it will check if the file
-has a backing inode stores some preallocated blocks for the same logical
-blocks.  If so, it will transfer the preallocated blocks from backing
-inode to the base inode.
 
-We need to link the two inodes in some way, maybe store the backing
-inode number via EA in the base inode, and flag the base inode that it
-has a backing inode to get preallocated blocks.
-
-Since it doesn't change the block mapping on the original file until
-writeout, so it doesn't require a incompat feature to protect the
-preallocated contents to be read in "old" kernel. There some work need
-to be done in e2fsck to understand the backing inode.
-
-Mingming
+>  The reality is that we cannot change the semantics of the
+> META_BG flag at this point, since both e2fsprogs and ext3/ext4 in the
+> kernel understand META_BG to mean only "group descriptor backups are
+> in groups {0, 1, last} of the metagroup" and nothing else.
+> 
+> If we want to allow the bitmaps and inode table outside the group they
+> represent then this needs to be a separate feature flag, and we may as
+> well include the additional improvement of the BIG_BG feature at the
+> same time.  I don't think this really any reason to claim there is "no
+> need to have a concept of block groups".
+> 
+> Also note that e2fsprogs already reserves the bg_free_*_bg fields for
+> BIG_BG in the expanded group descriptors, though there is no official
+> definition for BIG_BG:
+> 
+> struct ext4_group_desc
+> {
+>         [ ext3_group_desc ]
+>         __u32   bg_block_bitmap_hi;     /* Blocks bitmap block MSB */
+>         __u32   bg_inode_bitmap_hi;     /* Inodes bitmap block MSB */
+>         __u32   bg_inode_table_hi;      /* Inodes table block MSB */
+>         __u16   bg_free_blocks_count_hi;/* Free blocks count MSB */
+>         __u16   bg_free_inodes_count_hi;/* Free inodes count MSB */
+>         __u16   bg_used_dirs_count_hi;  /* Directories count MSB */
+>         __u16   bg_pad;
+>         __u32   bg_reserved2[3];
+> };
+> 
+> 
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
