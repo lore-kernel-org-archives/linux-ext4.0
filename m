@@ -1,56 +1,84 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: fallocate support for bitmap-based files
-Date: Sat, 30 Jun 2007 10:31:45 -0400
-Message-ID: <1183213905.9505.29.camel@localhost.localdomain>
-References: <20070629130120.ec0d1c75.akpm@linux-foundation.org>
-	 <20070629205525.GD32178@thunk.org>
-	 <20070629214615.GB5026@schatzie.adilger.int> <46858716.2050901@google.com>
-	 <20070630051436.GB5535@schatzie.adilger.int>
-Reply-To: cmm@us.ibm.com
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
+Date: Sat, 30 Jun 2007 23:39:08 -0500
+Message-ID: <20070630233908.115ec78e@gara>
+References: <20070629170958.13b7700c@gara>
+ <20070630055125.GC5535@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Mike Waychison <mikew@google.com>, Theodore Tso <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Sreenivasa Busam <sreenivasac@google.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:34517 "EHLO e6.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:45490 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756006AbXF3Obv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 30 Jun 2007 10:31:51 -0400
+	id S1751192AbXGAEkZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jul 2007 00:40:25 -0400
 Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l5UEX0r3003560
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 10:33:00 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l5UEVo8A511604
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 10:31:50 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l5UEVnlX017614
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 10:31:50 -0400
-In-Reply-To: <20070630051436.GB5535@schatzie.adilger.int>
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l614fYpa002331
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:41:34 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l614eOrc490410
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:40:24 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l614eO1d019496
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:40:24 -0400
+In-Reply-To: <20070630055125.GC5535@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 2007-06-30 at 01:14 -0400, Andreas Dilger wrote:
-> On Jun 29, 2007  18:26 -0400, Mike Waychison wrote:
-> > Andreas Dilger wrote:
-> > >I don't think ext2 is safe for > 8TB filesystems anyways, so this
-> > >isn't a huge loss.
-> > 
-> > This is reference to the idea of overloading the high-bit and not 
-> > related to the >PAGE_SIZE blocks correct?
+On Sat, 30 Jun 2007 01:51:25 -0400
+Andreas Dilger <adilger@clusterfs.com> wrote:
+> I don't think there is actually any fundamental difference between these
+> proposals.  The reality is that we cannot change the semantics of the
+> META_BG flag at this point, since both e2fsprogs and ext3/ext4 in the
+> kernel understand META_BG to mean only "group descriptor backups are
+> in groups {0, 1, last} of the metagroup" and nothing else.
+
+Agree.  I call it extended META_BG for lack of a better name, but a new
+feature flag will be required.
+
+> If we want to allow the bitmaps and inode table outside the group they
+> represent then this needs to be a separate feature flag, and we may as
+> well include the additional improvement of the BIG_BG feature at the
+> same time.  I don't think this really any reason to claim there is "no
+> need to have a concept of block groups".
+
+Well when I think about block groups, it seems to me that its basically
+a range of blocks with some blocks dedicated for holding important meta
+data.  If you remove the meta data, then all that is left is a range of
+blocks with some backup data scatter around specific locations on the
+disk.  Of course, my definition of what a block group is could just be
+wrong. :)
+
+We could blur the difference between these two features though.
+
+> Also note that e2fsprogs already reserves the bg_free_*_bg fields for
+> BIG_BG in the expanded group descriptors, though there is no official
+> definition for BIG_BG:
 > 
-> Correct - just that the high-bit use wouldn't unduely impact the
-> already-existing 8TB limit of ext2.
+> struct ext4_group_desc
+> {
+>         [ ext3_group_desc ]
+>         __u32   bg_block_bitmap_hi;     /* Blocks bitmap block MSB */
+>         __u32   bg_inode_bitmap_hi;     /* Inodes bitmap block MSB */
+>         __u32   bg_inode_table_hi;      /* Inodes table block MSB */
+>         __u16   bg_free_blocks_count_hi;/* Free blocks count MSB */
+>         __u16   bg_free_inodes_count_hi;/* Free inodes count MSB */
+>         __u16   bg_used_dirs_count_hi;  /* Directories count MSB */
+>         __u16   bg_pad;
+>         __u32   bg_reserved2[3];
+> };
+> 
+> 
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
 > 
 
-The 8TB limit on mainline ext2 was simplely caused by kernel block
-variable type bugs. The bug fixes were ported back from ext3 to ext2,
-when reservation+simple-multiple-balloc were backported from ext3 to
-ext2. I believe ext2 in mm tree is able to address 16TB in the kernel
-side.  Not sure if there are remaining work to be done in e2fsck to
-handle 16TB ext2, but I assume it's not huge work.
+Thanks for the pointer.
 
-Mingming
+-JRS
