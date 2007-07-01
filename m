@@ -1,87 +1,282 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [EXT4 set 2][PATCH 1/5] cleanups: Propagate some i_flags to disk
-Date: Sun, 01 Jul 2007 03:36:12 -0400
-Message-ID: <1183275372.4010.120.camel@localhost.localdomain>
+Subject: [EXT4 set 2][PATCH 2/5] cleanups: Add extent sanity checks
+Date: Sun, 01 Jul 2007 03:36:22 -0400
+Message-ID: <1183275382.4010.121.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:57610 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756599AbXGAHgO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 1 Jul 2007 03:36:14 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Propagate flags such as S_APPEND, S_IMMUTABLE, etc. from i_flags into
-ext4-specific i_flags. Hence, when someone sets these flags via a different
-interface than ioctl, they are stored correctly.
+with the patch all headers are checked. the code should become
+more resistant to on-disk corruptions. needless BUG_ON() have
+been removed. please, review for inclusion.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Alex Tomas <alex@clusterfs.com>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-Index: linux-2.6.22-rc4/fs/ext4/inode.c
+Index: linux-2.6.22-rc4/fs/ext4/extents.c
 ===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/inode.c	2007-06-11 17:24:01.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/inode.c	2007-06-11 17:24:28.000000000 -0700
-@@ -2583,6 +2583,25 @@
- 		inode->i_flags |= S_DIRSYNC;
+--- linux-2.6.22-rc4.orig/fs/ext4/extents.c	2007-06-11 17:22:15.000000000 -0700
++++ linux-2.6.22-rc4/fs/ext4/extents.c	2007-06-11 17:27:57.000000000 -0700
+@@ -91,36 +91,6 @@
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
  }
  
-+/* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
-+void ext4_get_inode_flags(struct ext4_inode_info *ei)
+-static int ext4_ext_check_header(const char *function, struct inode *inode,
+-				struct ext4_extent_header *eh)
+-{
+-	const char *error_msg = NULL;
+-
+-	if (unlikely(eh->eh_magic != EXT4_EXT_MAGIC)) {
+-		error_msg = "invalid magic";
+-		goto corrupted;
+-	}
+-	if (unlikely(eh->eh_max == 0)) {
+-		error_msg = "invalid eh_max";
+-		goto corrupted;
+-	}
+-	if (unlikely(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max))) {
+-		error_msg = "invalid eh_entries";
+-		goto corrupted;
+-	}
+-	return 0;
+-
+-corrupted:
+-	ext4_error(inode->i_sb, function,
+-			"bad header in inode #%lu: %s - magic %x, "
+-			"entries %u, max %u, depth %u",
+-			inode->i_ino, error_msg, le16_to_cpu(eh->eh_magic),
+-			le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
+-			le16_to_cpu(eh->eh_depth));
+-
+-	return -EIO;
+-}
+-
+ static handle_t *ext4_ext_journal_restart(handle_t *handle, int needed)
+ {
+ 	int err;
+@@ -269,6 +239,70 @@
+ 	return size;
+ }
+ 
++static inline int
++ext4_ext_max_entries(struct inode *inode, int depth)
 +{
-+	unsigned int flags = ei->vfs_inode.i_flags;
++	int max;
 +
-+	ei->i_flags &= ~(EXT4_SYNC_FL|EXT4_APPEND_FL|
-+			EXT4_IMMUTABLE_FL|EXT4_NOATIME_FL|EXT4_DIRSYNC_FL);
-+	if (flags & S_SYNC)
-+		ei->i_flags |= EXT4_SYNC_FL;
-+	if (flags & S_APPEND)
-+		ei->i_flags |= EXT4_APPEND_FL;
-+	if (flags & S_IMMUTABLE)
-+		ei->i_flags |= EXT4_IMMUTABLE_FL;
-+	if (flags & S_NOATIME)
-+		ei->i_flags |= EXT4_NOATIME_FL;
-+	if (flags & S_DIRSYNC)
-+		ei->i_flags |= EXT4_DIRSYNC_FL;
++	if (depth == ext_depth(inode)) {
++		if (depth == 0)
++			max = ext4_ext_space_root(inode);
++		else
++			max = ext4_ext_space_root_idx(inode);
++	} else {
++		if (depth == 0)
++			max = ext4_ext_space_block(inode);
++		else
++			max = ext4_ext_space_block_idx(inode);
++	}
++
++	return max;
 +}
 +
- void ext4_read_inode(struct inode * inode)
++static int __ext4_ext_check_header(const char *function, struct inode *inode,
++					struct ext4_extent_header *eh,
++					int depth)
++{
++	const char *error_msg = NULL;
++	int max = 0;
++
++	if (unlikely(eh->eh_magic != EXT4_EXT_MAGIC)) {
++		error_msg = "invalid magic";
++		goto corrupted;
++	}
++	if (unlikely(le16_to_cpu(eh->eh_depth) != depth)) {
++		error_msg = "unexpected eh_depth";
++		goto corrupted;
++	}
++	if (unlikely(eh->eh_max == 0)) {
++		error_msg = "invalid eh_max";
++		goto corrupted;
++	}
++	max = ext4_ext_max_entries(inode, depth);
++	if (unlikely(le16_to_cpu(eh->eh_max) > max)) {
++		error_msg = "too large eh_max";
++		goto corrupted;
++	}
++	if (unlikely(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max))) {
++		error_msg = "invalid eh_entries";
++		goto corrupted;
++	}
++	return 0;
++
++corrupted:
++	ext4_error(inode->i_sb, function,
++			"bad header in inode #%lu: %s - magic %x, "
++			"entries %u, max %u(%u), depth %u(%u)",
++			inode->i_ino, error_msg, le16_to_cpu(eh->eh_magic),
++			le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
++			max, le16_to_cpu(eh->eh_depth), depth);
++
++	return -EIO;
++}
++
++#define ext4_ext_check_header(inode, eh, depth)	\
++	__ext4_ext_check_header(__FUNCTION__, inode, eh, depth)
++
+ #ifdef EXT_DEBUG
+ static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
  {
- 	struct ext4_iloc iloc;
-@@ -2742,6 +2761,7 @@
- 	if (ei->i_state & EXT4_STATE_NEW)
- 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+@@ -329,6 +363,7 @@
+ /*
+  * ext4_ext_binsearch_idx:
+  * binary search for the closest index of the given block
++ * the header must be checked before calling this
+  */
+ static void
+ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int block)
+@@ -336,9 +371,6 @@
+ 	struct ext4_extent_header *eh = path->p_hdr;
+ 	struct ext4_extent_idx *r, *l, *m;
  
-+	ext4_get_inode_flags(ei);
- 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
- 	if(!(test_opt(inode->i_sb, NO_UID32))) {
- 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
-Index: linux-2.6.22-rc4/fs/ext4/ioctl.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/ioctl.c	2007-06-11 17:24:01.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/ioctl.c	2007-06-11 17:25:11.000000000 -0700
-@@ -28,6 +28,7 @@
+-	BUG_ON(eh->eh_magic != EXT4_EXT_MAGIC);
+-	BUG_ON(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max));
+-	BUG_ON(le16_to_cpu(eh->eh_entries) <= 0);
  
- 	switch (cmd) {
- 	case EXT4_IOC_GETFLAGS:
-+		ext4_get_inode_flags(ei);
- 		flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
- 		return put_user(flags, (int __user *) arg);
- 	case EXT4_IOC_SETFLAGS: {
-Index: linux-2.6.22-rc4/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs.h	2007-06-11 17:24:01.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs.h	2007-06-11 17:24:28.000000000 -0700
-@@ -862,6 +862,7 @@
- extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern void ext4_truncate (struct inode *);
- extern void ext4_set_inode_flags(struct inode *);
-+extern void ext4_get_inode_flags(struct ext4_inode_info *);
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+ 	ext_debug("binsearch for %d(idx):  ", block);
+ 
+@@ -388,6 +420,7 @@
+ /*
+  * ext4_ext_binsearch:
+  * binary search for closest extent of the given block
++ * the header must be checked before calling this
+  */
+ static void
+ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
+@@ -395,9 +428,6 @@
+ 	struct ext4_extent_header *eh = path->p_hdr;
+ 	struct ext4_extent *r, *l, *m;
+ 
+-	BUG_ON(eh->eh_magic != EXT4_EXT_MAGIC);
+-	BUG_ON(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max));
+-
+ 	if (eh->eh_entries == 0) {
+ 		/*
+ 		 * this leaf is empty:
+@@ -468,11 +498,10 @@
+ 	short int depth, i, ppos = 0, alloc = 0;
+ 
+ 	eh = ext_inode_hdr(inode);
+-	BUG_ON(eh == NULL);
+-	if (ext4_ext_check_header(__FUNCTION__, inode, eh))
++	i = depth = ext_depth(inode);
++	if (ext4_ext_check_header(inode, eh, depth))
+ 		return ERR_PTR(-EIO);
+ 
+-	i = depth = ext_depth(inode);
+ 
+ 	/* account possible depth increase */
+ 	if (!path) {
+@@ -488,6 +517,7 @@
+ 	while (i) {
+ 		ext_debug("depth %d: num %d, max %d\n",
+ 			  ppos, le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
++
+ 		ext4_ext_binsearch_idx(inode, path + ppos, block);
+ 		path[ppos].p_block = idx_pblock(path[ppos].p_idx);
+ 		path[ppos].p_depth = i;
+@@ -504,7 +534,7 @@
+ 		path[ppos].p_hdr = eh;
+ 		i--;
+ 
+-		if (ext4_ext_check_header(__FUNCTION__, inode, eh))
++		if (ext4_ext_check_header(inode, eh, i))
+ 			goto err;
+ 	}
+ 
+@@ -513,9 +543,6 @@
+ 	path[ppos].p_ext = NULL;
+ 	path[ppos].p_idx = NULL;
+ 
+-	if (ext4_ext_check_header(__FUNCTION__, inode, eh))
+-		goto err;
+-
+ 	/* find extent */
+ 	ext4_ext_binsearch(inode, path + ppos, block);
+ 
+@@ -1673,13 +1700,12 @@
+ 	unsigned short ex_ee_len;
+ 	struct ext4_extent *ex;
+ 
++	/* the header must be checked already in ext4_ext_remove_space() */
+ 	ext_debug("truncate since %lu in leaf\n", start);
+ 	if (!path[depth].p_hdr)
+ 		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
+ 	eh = path[depth].p_hdr;
+ 	BUG_ON(eh == NULL);
+-	BUG_ON(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max));
+-	BUG_ON(eh->eh_magic != EXT4_EXT_MAGIC);
+ 
+ 	/* find where to start removing */
+ 	ex = EXT_LAST_EXTENT(eh);
+@@ -1825,7 +1851,7 @@
+ 		return -ENOMEM;
+ 	}
+ 	path[0].p_hdr = ext_inode_hdr(inode);
+-	if (ext4_ext_check_header(__FUNCTION__, inode, path[0].p_hdr)) {
++	if (ext4_ext_check_header(inode, path[0].p_hdr, depth)) {
+ 		err = -EIO;
+ 		goto out;
+ 	}
+@@ -1846,17 +1872,8 @@
+ 		if (!path[i].p_hdr) {
+ 			ext_debug("initialize header\n");
+ 			path[i].p_hdr = ext_block_hdr(path[i].p_bh);
+-			if (ext4_ext_check_header(__FUNCTION__, inode,
+-							path[i].p_hdr)) {
+-				err = -EIO;
+-				goto out;
+-			}
+ 		}
+ 
+-		BUG_ON(le16_to_cpu(path[i].p_hdr->eh_entries)
+-			   > le16_to_cpu(path[i].p_hdr->eh_max));
+-		BUG_ON(path[i].p_hdr->eh_magic != EXT4_EXT_MAGIC);
+-
+ 		if (!path[i].p_idx) {
+ 			/* this level hasn't been touched yet */
+ 			path[i].p_idx = EXT_LAST_INDEX(path[i].p_hdr);
+@@ -1873,17 +1890,24 @@
+ 				i, EXT_FIRST_INDEX(path[i].p_hdr),
+ 				path[i].p_idx);
+ 		if (ext4_ext_more_to_rm(path + i)) {
++			struct buffer_head *bh;
+ 			/* go to the next level */
+ 			ext_debug("move to level %d (block %llu)\n",
+ 				  i + 1, idx_pblock(path[i].p_idx));
+ 			memset(path + i + 1, 0, sizeof(*path));
+-			path[i+1].p_bh =
+-				sb_bread(sb, idx_pblock(path[i].p_idx));
+-			if (!path[i+1].p_bh) {
++			bh = sb_bread(sb, idx_pblock(path[i].p_idx));
++			if (!bh) {
+ 				/* should we reset i_size? */
+ 				err = -EIO;
+ 				break;
+ 			}
++			BUG_ON(i + 1 > depth);
++			if (ext4_ext_check_header(inode, ext_block_hdr(bh),
++							depth - i - 1)) {
++				err = -EIO;
++				break;
++			}
++			path[i+1].p_bh = bh;
+ 
+ 			/* save actual number of indexes since this
+ 			 * number is changed at the next iteration */
+
+
