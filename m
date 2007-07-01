@@ -1,7 +1,8 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
-Date: Sun, 01 Jul 2007 03:36:56 -0400
-Message-ID: <1183275416.4010.125.camel@localhost.localdomain>
+Subject: [EXT4 set 2][PATCH 3/5] cleanups: set_jbd2_64bit_feature for >16TB
+	ext4 fs
+Date: Sun, 01 Jul 2007 03:36:32 -0400
+Message-ID: <1183275392.4010.122.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -12,395 +13,35 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch is a spinoff of the old nanosecond patches.
+Set the journals JBD2_FEATURE_INCOMPAT_64BIT on devices with more
+than 32bit block sizes during mount time.  This ensure proper record
+lenth when writing to the journal.
 
-It includes some cleanups and addition of a creation timestamp. The
-EXT3_FEATURE_RO_COMPAT_EXTRA_ISIZE flag has also been added along with
-s_{min, want}_extra_isize fields in struct ext3_super_block.
-
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Laurent Vivier <Laurent.Vivier@bull.net>
+---
+ fs/ext4/super.c |   11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Index: linux-2.6.22-rc4/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/ialloc.c	2007-06-11 17:22:15.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/ialloc.c	2007-06-11 17:39:05.000000000 -0700
-@@ -563,7 +563,8 @@
- 	inode->i_ino = ino;
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
-+						       ext4_current_time(inode);
- 
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_dir_start_lookup = 0;
-@@ -595,9 +596,8 @@
- 	spin_unlock(&sbi->s_next_gen_lock);
- 
- 	ei->i_state = EXT4_STATE_NEW;
--	ei->i_extra_isize =
--		(EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) ?
--		sizeof(struct ext4_inode) - EXT4_GOOD_OLD_INODE_SIZE : 0;
-+
-+	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
- 
- 	ret = inode;
- 	if(DQUOT_ALLOC_INODE(inode)) {
-Index: linux-2.6.22-rc4/fs/ext4/inode.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/inode.c	2007-06-11 17:24:28.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/inode.c	2007-06-11 17:39:05.000000000 -0700
-@@ -726,7 +726,7 @@
- 
- 	/* We are done with atomic stuff, now do the rest of housekeeping */
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
- 	/* had we spliced it onto indirect block? */
-@@ -2375,7 +2375,7 @@
- 	ext4_discard_reservation(inode);
- 
- 	mutex_unlock(&ei->truncate_mutex);
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
- 	/*
-@@ -2629,10 +2629,6 @@
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
- 	inode->i_size = le32_to_cpu(raw_inode->i_size);
--	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
--	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
--	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
--	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
- 
- 	ei->i_state = 0;
- 	ei->i_dir_start_lookup = 0;
-@@ -2708,6 +2704,11 @@
- 	} else
- 		ei->i_extra_isize = 0;
- 
-+	EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
-+	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
-+	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
-+	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
-+
- 	if (S_ISREG(inode->i_mode)) {
- 		inode->i_op = &ext4_file_inode_operations;
- 		inode->i_fop = &ext4_file_operations;
-@@ -2789,9 +2790,12 @@
- 	}
- 	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
- 	raw_inode->i_size = cpu_to_le32(ei->i_disksize);
--	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
--	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
--	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
-+
-+	EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
-+	EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
-+	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
-+	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
-+
- 	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
-Index: linux-2.6.22-rc4/fs/ext4/ioctl.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/ioctl.c	2007-06-11 17:25:11.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/ioctl.c	2007-06-11 17:39:05.000000000 -0700
-@@ -97,7 +97,7 @@
- 		ei->i_flags = flags;
- 
- 		ext4_set_inode_flags(inode);
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = ext4_current_time(inode);
- 
- 		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
- flags_err:
-@@ -134,7 +134,7 @@
- 			return PTR_ERR(handle);
- 		err = ext4_reserve_inode_write(handle, inode, &iloc);
- 		if (err == 0) {
--			inode->i_ctime = CURRENT_TIME_SEC;
-+			inode->i_ctime = ext4_current_time(inode);
- 			inode->i_generation = generation;
- 			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 		}
-Index: linux-2.6.22-rc4/fs/ext4/namei.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/namei.c	2007-06-11 17:22:15.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/namei.c	2007-06-11 17:39:05.000000000 -0700
-@@ -1285,7 +1285,7 @@
- 	 * happen is that the times are slightly out of date
- 	 * and/or different from the directory change time.
- 	 */
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	dir->i_version++;
- 	ext4_mark_inode_dirty(handle, dir);
-@@ -2046,7 +2046,7 @@
- 	 * recovery. */
- 	inode->i_size = 0;
- 	ext4_orphan_add(handle, inode);
--	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 	drop_nlink(dir);
- 	ext4_update_dx_flag(dir);
-@@ -2096,13 +2096,13 @@
- 	retval = ext4_delete_entry(handle, dir, de, bh);
- 	if (retval)
- 		goto end_unlink;
--	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
-+	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 	drop_nlink(inode);
- 	if (!inode->i_nlink)
- 		ext4_orphan_add(handle, inode);
--	inode->i_ctime = dir->i_ctime;
-+	inode->i_ctime = ext4_current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 	retval = 0;
- 
-@@ -2193,7 +2193,7 @@
- 	if (IS_DIRSYNC(dir))
- 		handle->h_sync = 1;
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = ext4_current_time(inode);
- 	inc_nlink(inode);
- 	atomic_inc(&inode->i_count);
- 
-@@ -2295,7 +2295,7 @@
- 	 * Like most other Unix systems, set the ctime for inodes on a
- 	 * rename.
- 	 */
--	old_inode->i_ctime = CURRENT_TIME_SEC;
-+	old_inode->i_ctime = ext4_current_time(old_inode);
- 	ext4_mark_inode_dirty(handle, old_inode);
- 
- 	/*
-@@ -2328,9 +2328,9 @@
- 
- 	if (new_inode) {
- 		drop_nlink(new_inode);
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = ext4_current_time(new_inode);
- 	}
--	old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
-+	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
- 	ext4_update_dx_flag(old_dir);
- 	if (dir_bh) {
- 		BUFFER_TRACE(dir_bh, "get_write_access");
 Index: linux-2.6.22-rc4/fs/ext4/super.c
 ===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-11 17:28:09.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-11 17:39:05.000000000 -0700
-@@ -1642,6 +1642,8 @@
- 				sbi->s_inode_size);
- 			goto failed_mount;
- 		}
-+		if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE)
-+			sb->s_time_gran = 1 << (EXT4_EPOCH_BITS - 2);
- 	}
- 	sbi->s_frag_size = EXT4_MIN_FRAG_SIZE <<
- 				   le32_to_cpu(es->s_log_frag_size);
-@@ -1865,6 +1867,32 @@
+--- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-11 16:15:54.000000000 -0700
++++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-11 16:16:10.000000000 -0700
+@@ -1804,6 +1804,13 @@
+ 		goto failed_mount3;
  	}
  
- 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
-+
-+	/* determine the minimum size of new large inodes, if present */
-+	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
-+		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-+						     EXT4_GOOD_OLD_INODE_SIZE;
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)) {
-+			if (sbi->s_want_extra_isize <
-+			    le16_to_cpu(es->s_want_extra_isize))
-+				sbi->s_want_extra_isize =
-+					le16_to_cpu(es->s_want_extra_isize);
-+			if (sbi->s_want_extra_isize <
-+			    le16_to_cpu(es->s_min_extra_isize))
-+				sbi->s_want_extra_isize =
-+					le16_to_cpu(es->s_min_extra_isize);
-+		}
-+	}
-+	/* Check if enough inode space is available */
-+	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-+							sbi->s_inode_size) {
-+		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-+						       EXT4_GOOD_OLD_INODE_SIZE;
-+		printk(KERN_INFO "EXT4-fs: required extra inode space not"
-+			"available.\n");
++	if (ext4_blocks_count(es) > 0xffffffffULL &&
++	    !jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
++				       JBD2_FEATURE_INCOMPAT_64BIT)) {
++		printk(KERN_ERR "ext4: Failed to set 64-bit journal feature\n");
++		goto failed_mount4;
 +	}
 +
- 	/*
- 	 * akpm: core read_super() calls in here with the superblock locked.
- 	 * That deadlocks, because orphan cleanup needs to lock the superblock
-Index: linux-2.6.22-rc4/fs/ext4/xattr.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/xattr.c	2007-06-11 17:22:15.000000000 -0700
-+++ linux-2.6.22-rc4/fs/ext4/xattr.c	2007-06-11 17:39:05.000000000 -0700
-@@ -1013,7 +1013,7 @@
- 	}
- 	if (!error) {
- 		ext4_xattr_update_super_block(handle, inode->i_sb);
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = ext4_current_time(inode);
- 		error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
- 		/*
- 		 * The bh is consumed by ext4_mark_iloc_dirty, even with
-Index: linux-2.6.22-rc4/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs.h	2007-06-11 17:36:13.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs.h	2007-06-11 17:41:55.000000000 -0700
-@@ -288,7 +288,7 @@
- 	__le16	i_uid;		/* Low 16 bits of Owner Uid */
- 	__le32	i_size;		/* Size in bytes */
- 	__le32	i_atime;	/* Access time */
--	__le32	i_ctime;	/* Creation time */
-+	__le32	i_ctime;	/* Inode Change time */
- 	__le32	i_mtime;	/* Modification time */
- 	__le32	i_dtime;	/* Deletion Time */
- 	__le16	i_gid;		/* Low 16 bits of Group Id */
-@@ -337,10 +337,74 @@
- 	} osd2;				/* OS dependent 2 */
- 	__le16	i_extra_isize;
- 	__le16	i_pad1;
-+	__le32  i_ctime_extra;  /* extra Change time      (nsec << 2 | epoch) */
-+	__le32  i_mtime_extra;  /* extra Modification time(nsec << 2 | epoch) */
-+	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
-+	__le32  i_crtime;       /* File Creation time */
-+	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
- };
- 
- #define i_size_high	i_dir_acl
- 
-+#define EXT4_EPOCH_BITS 2
-+#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-+#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
-+
-+#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
-+	((offsetof(typeof(*ext4_inode), field) +	\
-+	  sizeof((ext4_inode)->field))			\
-+	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
-+	    (einode)->i_extra_isize))			\
-+
-+static inline __le32 ext4_encode_extra_time(struct timespec *time)
-+{
-+       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
-+			   time->tv_sec >> 32 : 0) |
-+			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
-+}
-+
-+static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-+{
-+       if (sizeof(time->tv_sec) > 4)
-+	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-+			       << 32;
-+       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
-+}
-+
-+#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
-+do {									       \
-+	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-+		(raw_inode)->xtime ## _extra =				       \
-+				ext4_encode_extra_time(&(inode)->xtime);       \
-+} while (0)
-+
-+#define EXT4_EINODE_SET_XTIME(xtime, einode, raw_inode)			       \
-+do {									       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
-+		(raw_inode)->xtime = cpu_to_le32((einode)->xtime.tv_sec);      \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
-+		(raw_inode)->xtime ## _extra =				       \
-+				ext4_encode_extra_time(&(einode)->xtime);      \
-+} while (0)
-+
-+#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
-+do {									       \
-+	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
-+		ext4_decode_extra_time(&(inode)->xtime,			       \
-+				       raw_inode->xtime ## _extra);	       \
-+} while (0)
-+
-+#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
-+do {									       \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
-+		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
-+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
-+		ext4_decode_extra_time(&(einode)->xtime,		       \
-+				       raw_inode->xtime ## _extra);	       \
-+} while (0)
-+
- #if defined(__KERNEL__) || defined(__linux__)
- #define i_reserved1	osd1.linux1.l_i_reserved1
- #define i_frag		osd2.linux2.l_i_frag
-@@ -539,6 +603,13 @@
- 	return container_of(inode, struct ext4_inode_info, vfs_inode);
- }
- 
-+static inline struct timespec ext4_current_time(struct inode *inode)
-+{
-+	return (inode->i_sb->s_time_gran < NSEC_PER_SEC) ?
-+		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
-+}
-+
-+
- static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- {
- 	return ino == EXT4_ROOT_INO ||
-@@ -609,6 +680,7 @@
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
- #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
-+#define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- 
- #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-@@ -626,6 +698,7 @@
- 					 EXT4_FEATURE_INCOMPAT_64BIT)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
- 
- /*
-Index: linux-2.6.22-rc4/include/linux/ext4_fs_i.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs_i.h	2007-06-11 17:22:15.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs_i.h	2007-06-11 17:39:05.000000000 -0700
-@@ -153,6 +153,7 @@
- 
- 	unsigned long i_ext_generation;
- 	struct ext4_ext_cache i_cached_extent;
-+	struct timespec i_crtime;
- };
- 
- #endif	/* _LINUX_EXT4_FS_I */
-Index: linux-2.6.22-rc4/include/linux/ext4_fs_sb.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs_sb.h	2007-06-11 17:28:15.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs_sb.h	2007-06-11 17:39:05.000000000 -0700
-@@ -79,6 +79,7 @@
- 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
- 	int s_jquota_fmt;			/* Format of quota to use */
- #endif
-+	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
- 
- #ifdef EXTENTS_STATS
- 	/* ext4 extents stats */
+ 	/* We have now updated the journal if required, so we can
+ 	 * validate the data journaling mode. */
+ 	switch (test_opt(sb, DATA_FLAGS)) {
 
 
