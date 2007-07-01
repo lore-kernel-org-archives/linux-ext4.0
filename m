@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [EXT4 set 6][PATCH 1/1]Export jbd stats through procfs
-Date: Sun, 01 Jul 2007 03:38:10 -0400
-Message-ID: <1183275490.4010.134.camel@localhost.localdomain>
+Subject: [EXT4 set 7][PATCH 1/1]Remove 32000 subdirs limit.
+Date: Sun, 01 Jul 2007 03:38:18 -0400
+Message-ID: <1183275498.4010.135.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -9,778 +9,213 @@ Content-Transfer-Encoding: 7bit
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:58964 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756827AbXGAHiN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2007 03:38:13 -0400
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:46661 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757296AbXGAHiU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jul 2007 03:38:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-[PATCH] jbd2 stats through procfs
+>From kalpak@clusterfs.com Thu May 17 17:21:08 2007
+Hi,
 
-The patch below updates the jbd stats patch to 2.6.20/jbd2.
-The initial patch was posted by Alex Tomas in December 2005
-(http://marc.info/?l=linux-ext4&m=113538565128617&w=2).
-It provides statistics via procfs such as transaction lifetime and size.
+I have rebased this patch to 2.6.22-rc1 so that it can be added to the
+ext4 patch queue. It has been tested by creating more than 65000 subdirs
+and then deleting them and checking the nlinks. The e2fsprogs part of
+this patch was sent earlier by me to linux-ext4 and doesn't need any
+changes, so not submitting it again.
 
-[ This probably should be rewritten to use debugfs?   -- Ted]
+----------------------------------------------------------------------
+This patch adds support to ext4 for allowing more than 65000
+subdirectories. Currently the maximum number of subdirectories is capped
+at 32000.
 
-Signed-off-by: Johann Lombardi <johann.lombardi@bull.net>
---
+If we exceed 65000 subdirectories in an htree directory it sets the
+inode link count to 1 and no longer counts subdirectories.  The
+directory link count is not actually used when determining if a
+directory is empty, as that only counts subdirectories and not regular
+files that might be in there. 
 
-Index: linux-2.6.22-rc4/include/linux/jbd2.h
+A EXT4_FEATURE_RO_COMPAT_DIR_NLINK flag has been added and it is set if
+the subdir count for any directory crosses 65000.
+
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+
+Index: linux-2.6.22-rc4/fs/ext4/namei.c
 ===================================================================
---- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 17:28:17.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-13 10:45:21.000000000 -0700
-@@ -408,6 +408,16 @@
- };
- 
- 
-+/*
-+ * Some stats for checkpoint phase
-+ */
-+struct transaction_chp_stats_s {
-+	unsigned long		cs_chp_time;
-+	unsigned long		cs_forced_to_close;
-+	unsigned long		cs_written;
-+	unsigned long		cs_dropped;
-+};
-+
- /* The transaction_t type is the guts of the journaling mechanism.  It
-  * tracks a compound transaction through its various states:
-  *
-@@ -543,6 +553,21 @@
- 	spinlock_t		t_handle_lock;
- 
- 	/*
-+	 * Longest time some handle had to wait for running transaction
-+	 */
-+	unsigned long		t_max_wait;
-+
-+	/*
-+	 * When transaction started
-+	 */
-+	unsigned long		t_start;
-+
-+	/*
-+	 * Checkpointing stats [j_checkpoint_sem]
-+	 */
-+	struct transaction_chp_stats_s t_chp_stats;
-+
-+	/*
- 	 * Number of outstanding updates running on this transaction
- 	 * [t_handle_lock]
- 	 */
-@@ -573,6 +598,57 @@
- 
- };
- 
-+struct transaction_run_stats_s {
-+	unsigned long		rs_wait;
-+	unsigned long		rs_running;
-+	unsigned long		rs_locked;
-+	unsigned long		rs_flushing;
-+	unsigned long		rs_logging;
-+
-+	unsigned long		rs_handle_count;
-+	unsigned long		rs_blocks;
-+	unsigned long		rs_blocks_logged;
-+};
-+
-+struct transaction_stats_s
-+{
-+	int 			ts_type;
-+	unsigned long		ts_tid;
-+	union {
-+		struct transaction_run_stats_s run;
-+		struct transaction_chp_stats_s chp;
-+	} u;
-+};
-+
-+#define JBD2_STATS_RUN		1
-+#define JBD2_STATS_CHECKPOINT	2
-+
-+#define ts_wait			u.run.rs_wait
-+#define ts_running		u.run.rs_running
-+#define ts_locked		u.run.rs_locked
-+#define ts_flushing		u.run.rs_flushing
-+#define ts_logging		u.run.rs_logging
-+#define ts_handle_count		u.run.rs_handle_count
-+#define ts_blocks		u.run.rs_blocks
-+#define ts_blocks_logged	u.run.rs_blocks_logged
-+
-+#define ts_chp_time		u.chp.cs_chp_time
-+#define ts_forced_to_close	u.chp.cs_forced_to_close
-+#define ts_written		u.chp.cs_written
-+#define ts_dropped		u.chp.cs_dropped
-+
-+#define CURRENT_MSECS		(jiffies_to_msecs(jiffies))
-+
-+static inline unsigned int
-+jbd2_time_diff(unsigned int start, unsigned int end)
-+{
-+	if (unlikely(start > end))
-+		end = end + (~0UL - start);
-+	else
-+		end -= start;
-+	return end;
-+}
-+
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-@@ -634,6 +710,12 @@
-  * @j_wbufsize: maximum number of buffer_heads allowed in j_wbuf, the
-  *	number that will fit in j_blocksize
-  * @j_last_sync_writer: most recent pid which did a synchronous write
-+ * @j_history: Buffer storing the transactions statistics history
-+ * @j_history_max: Maximum number of transactions in the statistics history
-+ * @j_history_cur: Current number of transactions in the statistics history
-+ * @j_history_lock: Protect the transactions statistics history
-+ * @j_proc_entry: procfs entry for the jbd statistics directory
-+ * @j_stats: Overall statistics
-  * @j_private: An opaque pointer to fs-private information.
-  */
- 
-@@ -826,6 +908,16 @@
- 	pid_t			j_last_sync_writer;
- 
- 	/*
-+	 * Journal statistics
-+	 */
-+	struct transaction_stats_s *j_history;
-+	int			j_history_max;
-+	int			j_history_cur;
-+	spinlock_t		j_history_lock;
-+	struct proc_dir_entry	*j_proc_entry;
-+	struct transaction_stats_s j_stats;
-+
-+	/*
- 	 * An opaque pointer to fs-private information.  ext3 puts its
- 	 * superblock pointer here
- 	 */
-Index: linux-2.6.22-rc4/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/transaction.c	2007-06-11 17:22:14.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/transaction.c	2007-06-13 10:47:56.000000000 -0700
-@@ -59,6 +59,8 @@
- 
- 	J_ASSERT(journal->j_running_transaction == NULL);
- 	journal->j_running_transaction = transaction;
-+	transaction->t_max_wait = 0;
-+	transaction->t_start = CURRENT_MSECS;
- 
- 	return transaction;
- }
-@@ -85,6 +87,7 @@
- 	int nblocks = handle->h_buffer_credits;
- 	transaction_t *new_transaction = NULL;
- 	int ret = 0;
-+	unsigned long ts = CURRENT_MSECS;
- 
- 	if (nblocks > journal->j_max_transaction_buffers) {
- 		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
-@@ -218,6 +221,12 @@
- 	/* OK, account for the buffers that this operation expects to
- 	 * use and add the handle to the running transaction. */
- 
-+	if (time_after(transaction->t_start, ts)) {
-+		ts = jbd2_time_diff(ts, transaction->t_start);
-+		if (ts > transaction->t_max_wait)
-+			transaction->t_max_wait = ts;
-+	}
-+
- 	handle->h_transaction = transaction;
- 	transaction->t_outstanding_credits += nblocks;
- 	transaction->t_updates++;
-Index: linux-2.6.22-rc4/fs/jbd2/checkpoint.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/checkpoint.c	2007-06-11 17:22:14.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/checkpoint.c	2007-06-13 10:48:44.000000000 -0700
-@@ -232,7 +232,8 @@
-  * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
-  */
- static int __process_buffer(journal_t *journal, struct journal_head *jh,
--			struct buffer_head **bhs, int *batch_count)
-+			struct buffer_head **bhs, int *batch_count,
-+			transaction_t *transaction)
- {
- 	struct buffer_head *bh = jh2bh(jh);
- 	int ret = 0;
-@@ -250,6 +251,7 @@
- 		transaction_t *t = jh->b_transaction;
- 		tid_t tid = t->t_tid;
- 
-+		transaction->t_chp_stats.cs_forced_to_close++;
- 		spin_unlock(&journal->j_list_lock);
- 		jbd_unlock_bh_state(bh);
- 		jbd2_log_start_commit(journal, tid);
-@@ -279,6 +281,7 @@
- 		bhs[*batch_count] = bh;
- 		__buffer_relink_io(jh);
- 		jbd_unlock_bh_state(bh);
-+		transaction->t_chp_stats.cs_written++;
- 		(*batch_count)++;
- 		if (*batch_count == NR_BATCH) {
- 			spin_unlock(&journal->j_list_lock);
-@@ -322,6 +325,8 @@
- 	if (!journal->j_checkpoint_transactions)
- 		goto out;
- 	transaction = journal->j_checkpoint_transactions;
-+	if (transaction->t_chp_stats.cs_chp_time == 0)
-+		transaction->t_chp_stats.cs_chp_time = CURRENT_MSECS;
- 	this_tid = transaction->t_tid;
- restart:
- 	/*
-@@ -346,7 +351,8 @@
- 				retry = 1;
- 				break;
- 			}
--			retry = __process_buffer(journal, jh, bhs,&batch_count);
-+			retry = __process_buffer(journal, jh, bhs, &batch_count,
-+						 transaction);
- 			if (!retry && lock_need_resched(&journal->j_list_lock)){
- 				spin_unlock(&journal->j_list_lock);
- 				retry = 1;
-@@ -668,6 +674,8 @@
- 
- void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transaction)
- {
-+	struct transaction_stats_s stats;
-+
- 	assert_spin_locked(&journal->j_list_lock);
- 	if (transaction->t_cpnext) {
- 		transaction->t_cpnext->t_cpprev = transaction->t_cpprev;
-@@ -693,5 +701,26 @@
- 	J_ASSERT(journal->j_running_transaction != transaction);
- 
- 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
-+
-+	/*
-+	 * File the transaction for history
-+	 */
-+	if (transaction->t_chp_stats.cs_written != 0 ||
-+			transaction->t_chp_stats.cs_chp_time != 0) {
-+		stats.ts_type = JBD2_STATS_CHECKPOINT;
-+		stats.ts_tid = transaction->t_tid;
-+		stats.u.chp = transaction->t_chp_stats;
-+		if (stats.ts_chp_time)
-+			stats.ts_chp_time =
-+				jbd2_time_diff(stats.ts_chp_time,
-+						CURRENT_MSECS);
-+		spin_lock(&journal->j_history_lock);
-+		memcpy(journal->j_history + journal->j_history_cur, &stats,
-+				sizeof(stats));
-+		if (++journal->j_history_cur == journal->j_history_max)
-+			journal->j_history_cur = 0;
-+		spin_unlock(&journal->j_history_lock);
-+	}
-+
- 	kfree(transaction);
- }
-Index: linux-2.6.22-rc4/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/commit.c	2007-06-11 17:22:14.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/commit.c	2007-06-13 10:45:21.000000000 -0700
-@@ -20,6 +20,7 @@
- #include <linux/slab.h>
- #include <linux/mm.h>
- #include <linux/pagemap.h>
-+#include <linux/jiffies.h>
- 
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -290,6 +291,7 @@
-  */
- void jbd2_journal_commit_transaction(journal_t *journal)
- {
-+	struct transaction_stats_s stats;
- 	transaction_t *commit_transaction;
- 	struct journal_head *jh, *new_jh, *descriptor;
- 	struct buffer_head **wbuf = journal->j_wbuf;
-@@ -337,6 +339,11 @@
- 	spin_lock(&journal->j_state_lock);
- 	commit_transaction->t_state = T_LOCKED;
- 
-+	stats.ts_wait = commit_transaction->t_max_wait;
-+	stats.ts_locked = CURRENT_MSECS;
-+	stats.ts_running = jbd2_time_diff(commit_transaction->t_start,
-+						stats.ts_locked);
-+
- 	spin_lock(&commit_transaction->t_handle_lock);
- 	while (commit_transaction->t_updates) {
- 		DEFINE_WAIT(wait);
-@@ -407,6 +414,9 @@
- 	 */
- 	jbd2_journal_switch_revoke_table(journal);
- 
-+	stats.ts_flushing = CURRENT_MSECS;
-+	stats.ts_locked = jbd2_time_diff(stats.ts_locked, stats.ts_flushing);
-+
- 	commit_transaction->t_state = T_FLUSH;
- 	journal->j_committing_transaction = commit_transaction;
- 	journal->j_running_transaction = NULL;
-@@ -498,6 +508,11 @@
- 	 */
- 	commit_transaction->t_state = T_COMMIT;
- 
-+	stats.ts_logging = CURRENT_MSECS;
-+	stats.ts_flushing = jbd2_time_diff(stats.ts_flushing, stats.ts_logging);
-+	stats.ts_blocks = commit_transaction->t_outstanding_credits;
-+	stats.ts_blocks_logged = 0;
-+
- 	descriptor = NULL;
- 	bufs = 0;
- 	while (commit_transaction->t_buffers) {
-@@ -646,6 +661,7 @@
- 				submit_bh(WRITE, bh);
- 			}
- 			cond_resched();
-+			stats.ts_blocks_logged += bufs;
- 
- 			/* Force a new descriptor to be generated next
-                            time round the loop. */
-@@ -816,6 +832,7 @@
- 		cp_transaction = jh->b_cp_transaction;
- 		if (cp_transaction) {
- 			JBUFFER_TRACE(jh, "remove from old cp transaction");
-+			cp_transaction->t_chp_stats.cs_dropped++;
- 			__jbd2_journal_remove_checkpoint(jh);
- 		}
- 
-@@ -890,6 +907,36 @@
- 
- 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
- 
-+	commit_transaction->t_start = CURRENT_MSECS;
-+	stats.ts_logging = jbd2_time_diff(stats.ts_logging,
-+						commit_transaction->t_start);
-+
-+	/*
-+	 * File the transaction for history
-+	 */
-+	stats.ts_type = JBD2_STATS_RUN;
-+	stats.ts_tid = commit_transaction->t_tid;
-+	stats.ts_handle_count = commit_transaction->t_handle_count;
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(journal->j_history + journal->j_history_cur, &stats,
-+			sizeof(stats));
-+	if (++journal->j_history_cur == journal->j_history_max)
-+		journal->j_history_cur = 0;
-+
-+	/*
-+	 * Calculate overall stats
-+	 */
-+	journal->j_stats.ts_tid++;
-+	journal->j_stats.ts_wait += stats.ts_wait;
-+	journal->j_stats.ts_running += stats.ts_running;
-+	journal->j_stats.ts_locked += stats.ts_locked;
-+	journal->j_stats.ts_flushing += stats.ts_flushing;
-+	journal->j_stats.ts_logging += stats.ts_logging;
-+	journal->j_stats.ts_handle_count += stats.ts_handle_count;
-+	journal->j_stats.ts_blocks += stats.ts_blocks;
-+	journal->j_stats.ts_blocks_logged += stats.ts_blocks_logged;
-+	spin_unlock(&journal->j_history_lock);
-+
- 	commit_transaction->t_state = T_FINISHED;
- 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
- 	journal->j_commit_sequence = commit_transaction->t_tid;
-Index: linux-2.6.22-rc4/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 17:28:17.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-13 12:11:49.000000000 -0700
-@@ -36,6 +36,7 @@
- #include <linux/poison.h>
- #include <linux/proc_fs.h>
- #include <linux/debugfs.h>
-+#include <linux/seq_file.h>
- 
- #include <asm/uaccess.h>
- #include <asm/page.h>
-@@ -641,6 +642,306 @@
- 	return jbd2_journal_add_journal_head(bh);
+--- linux-2.6.22-rc4.orig/fs/ext4/namei.c	2007-06-14 17:30:47.000000000 -0700
++++ linux-2.6.22-rc4/fs/ext4/namei.c	2007-06-14 17:32:55.000000000 -0700
+@@ -1619,6 +1619,27 @@ static int ext4_delete_entry (handle_t *
+ 	return -ENOENT;
  }
  
-+struct jbd2_stats_proc_session {
-+	journal_t *journal;
-+	struct transaction_stats_s *stats;
-+	int start;
-+	int max;
-+};
-+
-+static void *jbd2_history_skip_empty(struct jbd2_stats_proc_session *s,
-+					struct transaction_stats_s *ts,
-+					int first)
++static inline void ext4_inc_count(handle_t *handle, struct inode *inode)
 +{
-+	if (ts == s->stats + s->max)
-+		ts = s->stats;
-+	if (!first && ts == s->stats + s->start)
-+		return NULL;
-+	while (ts->ts_type == 0) {
-+		ts++;
-+		if (ts == s->stats + s->max)
-+			ts = s->stats;
-+		if (ts == s->stats + s->start)
-+			return NULL;
-+	}
-+	return ts;
-+
-+}
-+
-+static void *jbd2_seq_history_start(struct seq_file *seq, loff_t *pos)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	struct transaction_stats_s *ts;
-+	int l = *pos;
-+
-+	if (l == 0)
-+		return SEQ_START_TOKEN;
-+	ts = jbd2_history_skip_empty(s, s->stats + s->start, 1);
-+	if (!ts)
-+		return NULL;
-+	l--;
-+	while (l) {
-+		ts = jbd2_history_skip_empty(s, ++ts, 0);
-+		if (!ts)
-+			break;
-+		l--;
-+	}
-+	return ts;
-+}
-+
-+static void *jbd2_seq_history_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	struct transaction_stats_s *ts = v;
-+
-+	++*pos;
-+	if (v == SEQ_START_TOKEN)
-+		return jbd2_history_skip_empty(s, s->stats + s->start, 1);
-+	else
-+		return jbd2_history_skip_empty(s, ++ts, 0);
-+}
-+
-+static int jbd2_seq_history_show(struct seq_file *seq, void *v)
-+{
-+	struct transaction_stats_s *ts = v;
-+	if (v == SEQ_START_TOKEN) {
-+		seq_printf(seq, "%-4s %-5s %-5s %-5s %-5s %-5s %-5s %-6s %-5s "
-+				"%-5s %-5s %-5s %-5s %-5s\n", "R/C", "tid",
-+				"wait", "run", "lock", "flush", "log", "hndls",
-+				"block", "inlog", "ctime", "write", "drop",
-+				"close");
-+		return 0;
-+	}
-+	if (ts->ts_type == JBD2_STATS_RUN)
-+		seq_printf(seq, "%-4s %-5lu %-5lu %-5lu %-5lu %-5lu %-5lu "
-+				"%-6lu %-5lu %-5lu\n", "R", ts->ts_tid,
-+				ts->ts_wait, ts->ts_running, ts->ts_locked,
-+				ts->ts_flushing, ts->ts_logging,
-+				ts->ts_handle_count, ts->ts_blocks,
-+				ts->ts_blocks_logged);
-+	else if (ts->ts_type == JBD2_STATS_CHECKPOINT)
-+		seq_printf(seq, "%-4s %-5lu %48s %-5lu %-5lu %-5lu %-5lu\n",
-+				"C", ts->ts_tid, " ", ts->ts_chp_time,
-+				ts->ts_written, ts->ts_dropped,
-+				ts->ts_forced_to_close);
-+	else
-+		J_ASSERT(0);
-+	return 0;
-+}
-+
-+static void jbd2_seq_history_stop(struct seq_file *seq, void *v)
-+{
-+}
-+
-+static struct seq_operations jbd2_seq_history_ops = {
-+	.start  = jbd2_seq_history_start,
-+	.next   = jbd2_seq_history_next,
-+	.stop   = jbd2_seq_history_stop,
-+	.show   = jbd2_seq_history_show,
-+};
-+
-+static int jbd2_seq_history_open(struct inode *inode, struct file *file)
-+{
-+	journal_t *journal = PDE(inode)->data;
-+	struct jbd2_stats_proc_session *s;
-+	int rc, size;
-+
-+	s = kmalloc(sizeof(*s), GFP_KERNEL);
-+	if (s == NULL)
-+		return -EIO;
-+	size = sizeof(struct transaction_stats_s) * journal->j_history_max;
-+	s->stats = kmalloc(size, GFP_KERNEL);
-+	if (s == NULL) {
-+		kfree(s);
-+		return -EIO;
-+	}
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(s->stats, journal->j_history, size);
-+	s->max = journal->j_history_max;
-+	s->start = journal->j_history_cur % s->max;
-+	spin_unlock(&journal->j_history_lock);
-+
-+	rc = seq_open(file, &jbd2_seq_history_ops);
-+	if (rc == 0) {
-+		struct seq_file *m = (struct seq_file *)file->private_data;
-+		m->private = s;
-+	} else {
-+		kfree(s->stats);
-+		kfree(s);
-+	}
-+	return rc;
-+
-+}
-+
-+static int jbd2_seq_history_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *seq = (struct seq_file *)file->private_data;
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	kfree(s->stats);
-+	kfree(s);
-+	return seq_release(inode, file);
-+}
-+
-+static struct file_operations jbd2_seq_history_fops = {
-+	.owner		= THIS_MODULE,
-+	.open           = jbd2_seq_history_open,
-+	.read           = seq_read,
-+	.llseek         = seq_lseek,
-+	.release        = jbd2_seq_history_release,
-+};
-+
-+static void *jbd2_seq_info_start(struct seq_file *seq, loff_t *pos)
-+{
-+	return *pos ? NULL : SEQ_START_TOKEN;
-+}
-+
-+static void *jbd2_seq_info_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	return NULL;
-+}
-+
-+static int jbd2_seq_info_show(struct seq_file *seq, void *v)
-+{
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	if (v != SEQ_START_TOKEN)
-+		return 0;
-+	seq_printf(seq, "%lu transaction, each upto %u blocks\n",
-+			s->stats->ts_tid,
-+			s->journal->j_max_transaction_buffers);
-+	if (s->stats->ts_tid == 0)
-+		return 0;
-+	seq_printf(seq, "average: \n  %lums waiting for transaction\n",
-+			s->stats->ts_wait / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums running transaction\n",
-+			s->stats->ts_running / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums transaction was being locked\n",
-+			s->stats->ts_locked / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums flushing data (in ordered mode)\n",
-+			s->stats->ts_flushing / s->stats->ts_tid);
-+	seq_printf(seq, "  %lums logging transaction\n",
-+			s->stats->ts_logging / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu handles per transaction\n",
-+			s->stats->ts_handle_count / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu blocks per transaction\n",
-+			s->stats->ts_blocks / s->stats->ts_tid);
-+	seq_printf(seq, "  %lu logged blocks per transaction\n",
-+			s->stats->ts_blocks_logged / s->stats->ts_tid);
-+	return 0;
-+}
-+
-+static void jbd2_seq_info_stop(struct seq_file *seq, void *v)
-+{
-+}
-+
-+static struct seq_operations jbd2_seq_info_ops = {
-+	.start  = jbd2_seq_info_start,
-+	.next   = jbd2_seq_info_next,
-+	.stop   = jbd2_seq_info_stop,
-+	.show   = jbd2_seq_info_show,
-+};
-+
-+static int jbd2_seq_info_open(struct inode *inode, struct file *file)
-+{
-+	journal_t *journal = PDE(inode)->data;
-+	struct jbd2_stats_proc_session *s;
-+	int rc, size;
-+
-+	s = kmalloc(sizeof(*s), GFP_KERNEL);
-+	if (s == NULL)
-+		return -EIO;
-+	size = sizeof(struct transaction_stats_s);
-+	s->stats = kmalloc(size, GFP_KERNEL);
-+	if (s == NULL) {
-+		kfree(s);
-+		return -EIO;
-+	}
-+	spin_lock(&journal->j_history_lock);
-+	memcpy(s->stats, &journal->j_stats, size);
-+	s->journal = journal;
-+	spin_unlock(&journal->j_history_lock);
-+
-+	rc = seq_open(file, &jbd2_seq_info_ops);
-+	if (rc == 0) {
-+		struct seq_file *m = (struct seq_file *)file->private_data;
-+		m->private = s;
-+	} else {
-+		kfree(s->stats);
-+		kfree(s);
-+	}
-+	return rc;
-+
-+}
-+
-+static int jbd2_seq_info_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *seq = (struct seq_file *)file->private_data;
-+	struct jbd2_stats_proc_session *s = seq->private;
-+	kfree(s->stats);
-+	kfree(s);
-+	return seq_release(inode, file);
-+}
-+
-+static struct file_operations jbd2_seq_info_fops = {
-+	.owner		= THIS_MODULE,
-+	.open           = jbd2_seq_info_open,
-+	.read           = seq_read,
-+	.llseek         = seq_lseek,
-+	.release        = jbd2_seq_info_release,
-+};
-+
-+static struct proc_dir_entry *proc_jbd2_stats = NULL;
-+
-+static void jbd2_stats_proc_init(journal_t *journal)
-+{
-+	char name[64];
-+
-+	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
-+	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
-+	if (journal->j_proc_entry) {
-+		struct proc_dir_entry *p;
-+		p = create_proc_entry("history", S_IRUGO,
-+				journal->j_proc_entry);
-+		if (p) {
-+			p->proc_fops = &jbd2_seq_history_fops;
-+			p->data = journal;
-+			p = create_proc_entry("info", S_IRUGO,
-+						journal->j_proc_entry);
-+			if (p) {
-+				p->proc_fops = &jbd2_seq_info_fops;
-+				p->data = journal;
-+			}
++	inc_nlink(inode);
++	if (is_dx(inode) && inode->i_nlink > 1) {
++		/* limit is 16-bit i_links_count */
++		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
++			inode->i_nlink = 1;
++			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb,
++					      EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
 +		}
 +	}
 +}
 +
-+static void jbd2_stats_proc_exit(journal_t *journal)
++static inline void ext4_dec_count(handle_t *handle, struct inode *inode)
 +{
-+	char name[64];
-+
-+	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
-+	remove_proc_entry("info", journal->j_proc_entry);
-+	remove_proc_entry("history", journal->j_proc_entry);
-+	remove_proc_entry(name, proc_jbd2_stats);
++	drop_nlink(inode);
++	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
++		inc_nlink(inode);
 +}
 +
-+static void journal_init_stats(journal_t *journal)
-+{
-+	int size;
 +
-+	if (proc_jbd2_stats == NULL)
-+		return;
+ static int ext4_add_nondir(handle_t *handle,
+ 		struct dentry *dentry, struct inode *inode)
+ {
+@@ -1715,7 +1736,7 @@ static int ext4_mkdir(struct inode * dir
+ 	struct ext4_dir_entry_2 * de;
+ 	int err, retries = 0;
+ 
+-	if (dir->i_nlink >= EXT4_LINK_MAX)
++	if (EXT4_DIR_LINK_MAX(dir))
+ 		return -EMLINK;
+ 
+ retry:
+@@ -1738,7 +1759,7 @@ retry:
+ 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
+ 	dir_block = ext4_bread (handle, inode, 0, 1, &err);
+ 	if (!dir_block) {
+-		drop_nlink(inode); /* is this nlink == 0? */
++		ext4_dec_count(handle, inode); /* is this nlink == 0? */
+ 		ext4_mark_inode_dirty(handle, inode);
+ 		iput (inode);
+ 		goto out_stop;
+@@ -1770,7 +1791,7 @@ retry:
+ 		iput (inode);
+ 		goto out_stop;
+ 	}
+-	inc_nlink(dir);
++	ext4_inc_count(handle, dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 	d_instantiate(dentry, inode);
+@@ -2035,10 +2056,10 @@ static int ext4_rmdir (struct inode * di
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_rmdir;
+-	if (inode->i_nlink != 2)
+-		ext4_warning (inode->i_sb, "ext4_rmdir",
+-			      "empty directory has nlink!=2 (%d)",
+-			      inode->i_nlink);
++	if (!EXT4_DIR_LINK_EMPTY(inode))
++		ext4_warning(inode->i_sb, "ext4_rmdir",
++			     "empty directory has too many links (%d)",
++			     inode->i_nlink);
+ 	inode->i_version++;
+ 	clear_nlink(inode);
+ 	/* There's no need to set i_disksize: the fact that i_nlink is
+@@ -2048,7 +2069,7 @@ static int ext4_rmdir (struct inode * di
+ 	ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+-	drop_nlink(dir);
++	ext4_dec_count(handle, dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 
+@@ -2099,7 +2120,7 @@ static int ext4_unlink(struct inode * di
+ 	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+-	drop_nlink(inode);
++	ext4_dec_count(handle, inode);
+ 	if (!inode->i_nlink)
+ 		ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = ext4_current_time(inode);
+@@ -2149,7 +2170,7 @@ retry:
+ 		err = __page_symlink(inode, symname, l,
+ 				mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS);
+ 		if (err) {
+-			drop_nlink(inode);
++			ext4_dec_count(handle, inode);
+ 			ext4_mark_inode_dirty(handle, inode);
+ 			iput (inode);
+ 			goto out_stop;
+@@ -2175,8 +2196,9 @@ static int ext4_link (struct dentry * ol
+ 	struct inode *inode = old_dentry->d_inode;
+ 	int err, retries = 0;
+ 
+-	if (inode->i_nlink >= EXT4_LINK_MAX)
++	if (EXT4_DIR_LINK_MAX(inode))
+ 		return -EMLINK;
 +
-+	journal->j_history_max = 100;
-+	size = sizeof(struct transaction_stats_s) * journal->j_history_max;
-+	journal->j_history = kmalloc(size, GFP_KERNEL);
-+	if (journal->j_history == NULL) {
-+		journal->j_history_max = 0;
-+		return;
-+	}
-+	memset(journal->j_history, 0, size);
-+	spin_lock_init(&journal->j_history_lock);
-+}
-+
+ 	/*
+ 	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
+ 	 * otherwise has the potential to corrupt the orphan inode list.
+@@ -2194,7 +2216,7 @@ retry:
+ 		handle->h_sync = 1;
+ 
+ 	inode->i_ctime = ext4_current_time(inode);
+-	inc_nlink(inode);
++	ext4_inc_count(handle, inode);
+ 	atomic_inc(&inode->i_count);
+ 
+ 	err = ext4_add_nondir(handle, dentry, inode);
+@@ -2327,7 +2349,7 @@ static int ext4_rename (struct inode * o
+ 	}
+ 
+ 	if (new_inode) {
+-		drop_nlink(new_inode);
++		ext4_dec_count(handle, new_inode);
+ 		new_inode->i_ctime = ext4_current_time(new_inode);
+ 	}
+ 	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
+@@ -2338,11 +2360,13 @@ static int ext4_rename (struct inode * o
+ 		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_journal_dirty_metadata");
+ 		ext4_journal_dirty_metadata(handle, dir_bh);
+-		drop_nlink(old_dir);
++		ext4_dec_count(handle, old_dir);
+ 		if (new_inode) {
+-			drop_nlink(new_inode);
++			/* checked empty_dir above, can't have another parent,
++			 * ext3_dec_count() won't work for many-linked dirs */
++			new_inode->i_nlink = 0;
+ 		} else {
+-			inc_nlink(new_dir);
++			ext4_inc_count(handle, new_dir);
+ 			ext4_update_dx_flag(new_dir);
+ 			ext4_mark_inode_dirty(handle, new_dir);
+ 		}
+Index: linux-2.6.22-rc4/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.22-rc4.orig/include/linux/ext4_fs.h	2007-06-14 17:32:41.000000000 -0700
++++ linux-2.6.22-rc4/include/linux/ext4_fs.h	2007-06-14 17:32:55.000000000 -0700
+@@ -71,7 +71,7 @@
  /*
-  * Management for journal control blocks: functions to create and
-  * destroy journal_t structures, and to initialise and read existing
-@@ -683,6 +984,9 @@
- 		kfree(journal);
- 		goto fail;
- 	}
-+
-+	journal_init_stats(journal);
-+
- 	return journal;
- fail:
- 	return NULL;
-@@ -733,6 +1037,7 @@
- 		journal = NULL;
- 		goto out;
- 	}
-+	jbd2_stats_proc_init(journal);
- 	journal->j_dev = bdev;
- 	journal->j_fs_dev = fs_dev;
- 	journal->j_blk_offset = start;
-@@ -775,6 +1080,7 @@
+  * Maximal count of links to a file
+  */
+-#define EXT4_LINK_MAX		32000
++#define EXT4_LINK_MAX		65000
  
- 	journal->j_maxlen = inode->i_size >> inode->i_sb->s_blocksize_bits;
- 	journal->j_blocksize = inode->i_sb->s_blocksize;
-+	jbd2_stats_proc_init(journal);
+ /*
+  * Macro-instructions used to manage several block sizes
+@@ -685,6 +685,7 @@ static inline int ext4_valid_inum(struct
+ #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+ #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
++#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
  
- 	/* journal descriptor can store up to n blocks -bzzz */
- 	n = journal->j_blocksize / sizeof(journal_block_tag_t);
-@@ -1162,6 +1468,8 @@
- 		brelse(journal->j_sb_buffer);
- 	}
- 
-+	if (journal->j_proc_entry)
-+		jbd2_stats_proc_exit(journal);
- 	if (journal->j_inode)
- 		iput(journal->j_inode);
- 	if (journal->j_revoke)
-@@ -1989,6 +2297,28 @@
- 
- #endif
- 
-+#if defined(CONFIG_PROC_FS)
-+
-+#define JBD2_STATS_PROC_NAME "fs/jbd2"
-+
-+static void __init jbd2_create_jbd_stats_proc_entry(void)
-+{
-+	proc_jbd2_stats = proc_mkdir(JBD2_STATS_PROC_NAME, NULL);
-+}
-+
-+static void __exit jbd2_remove_jbd_stats_proc_entry(void)
-+{
-+	if (proc_jbd2_stats)
-+		remove_proc_entry(JBD2_STATS_PROC_NAME, NULL);
-+}
-+
-+#else
-+
-+#define jbd2_create_jbd_stats_proc_entry() do {} while (0)
-+#define jbd2_remove_jbd_stats_proc_entry() do {} while (0)
-+
-+#endif
-+
- struct kmem_cache *jbd2_handle_cache;
- 
- static int __init journal_init_handle_cache(void)
-@@ -2046,6 +2376,7 @@
- 	if (ret != 0)
- 		jbd2_journal_destroy_caches();
- 	jbd2_create_debugfs_entry();
-+	jbd2_create_jbd_stats_proc_entry();
- 	return ret;
- }
- 
-@@ -2057,6 +2388,7 @@
- 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
- #endif
- 	jbd2_remove_debugfs_entry();
-+	jbd2_remove_jbd_stats_proc_entry();
- 	jbd2_journal_destroy_caches();
- }
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+@@ -703,6 +704,7 @@ static inline int ext4_valid_inum(struct
+ 					 EXT4_FEATURE_INCOMPAT_64BIT)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
++					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
  
