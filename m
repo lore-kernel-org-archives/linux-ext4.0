@@ -1,153 +1,42 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [EXT4 set 2][PATCH 4/5] cleanups: Rename CONFIG_JBD_DEBUG to
-	CONFIG_JBD2_DEBUG
-Date: Sun, 01 Jul 2007 03:36:37 -0400
-Message-ID: <1183275397.4010.123.camel@localhost.localdomain>
+Subject: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
+Date: Sun, 01 Jul 2007 03:37:04 -0400
+Message-ID: <1183275424.4010.126.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-When the JBD code was forked to create the new JBD2 code base, the
-references to CONFIG_JBD_DEBUG where never changed to
-CONFIG_JBD2_DEBUG.  This patch fixes that.
+This patch converts the 32-bit i_version in the generic inode to a 64-bit
+i_version field.
 
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
----
-Index: linux-2.6.22-rc4/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 16:15:49.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-11 16:16:18.000000000 -0700
-@@ -528,7 +528,7 @@
- {
- 	int err = 0;
- 
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 	spin_lock(&journal->j_state_lock);
- 	if (!tid_geq(journal->j_commit_request, tid)) {
- 		printk(KERN_EMERG
-@@ -1709,7 +1709,7 @@
-  * Journal_head storage management
-  */
- static struct kmem_cache *jbd2_journal_head_cache;
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- static atomic_t nr_journal_heads = ATOMIC_INIT(0);
- #endif
- 
-@@ -1747,7 +1747,7 @@
- 	struct journal_head *ret;
- 	static unsigned long last_warning;
- 
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 	atomic_inc(&nr_journal_heads);
- #endif
- 	ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
-@@ -1768,7 +1768,7 @@
- 
- static void journal_free_journal_head(struct journal_head *jh)
- {
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 	atomic_dec(&nr_journal_heads);
- 	memset(jh, JBD_POISON_FREE, sizeof(*jh));
- #endif
-@@ -1953,12 +1953,12 @@
- /*
-  * /proc tunables
-  */
--#if defined(CONFIG_JBD_DEBUG)
-+#if defined(CONFIG_JBD2_DEBUG)
- int jbd2_journal_enable_debug;
- EXPORT_SYMBOL(jbd2_journal_enable_debug);
- #endif
- 
--#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
-+#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_PROC_FS)
- 
- static struct proc_dir_entry *proc_jbd_debug;
- 
-@@ -2073,7 +2073,7 @@
- 
- static void __exit journal_exit(void)
- {
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 	int n = atomic_read(&nr_journal_heads);
- 	if (n)
- 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
-Index: linux-2.6.22-rc4/fs/jbd2/recovery.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/jbd2/recovery.c	2007-06-04 17:57:25.000000000 -0700
-+++ linux-2.6.22-rc4/fs/jbd2/recovery.c	2007-06-11 16:16:18.000000000 -0700
-@@ -295,7 +295,7 @@
- 		printk(KERN_ERR "JBD: error %d scanning journal\n", err);
- 		++journal->j_transaction_sequence;
- 	} else {
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
- #endif
- 		jbd_debug(0,
-Index: linux-2.6.22-rc4/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs.h	2007-06-11 16:15:59.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs.h	2007-06-11 16:16:18.000000000 -0700
-@@ -237,7 +237,7 @@
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
- #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
- #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- #define EXT4_IOC_WAIT_FOR_READONLY	_IOR('f', 99, long)
- #endif
- #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
-@@ -253,7 +253,7 @@
- #define EXT4_IOC32_GETRSVSZ		_IOR('f', 5, int)
- #define EXT4_IOC32_SETRSVSZ		_IOW('f', 6, int)
- #define EXT4_IOC32_GROUP_EXTEND		_IOW('f', 7, unsigned int)
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- #define EXT4_IOC32_WAIT_FOR_READONLY	_IOR('f', 99, int)
- #endif
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
-Index: linux-2.6.22-rc4/include/linux/ext4_fs_sb.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/ext4_fs_sb.h	2007-06-11 16:15:55.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/ext4_fs_sb.h	2007-06-11 16:16:18.000000000 -0700
-@@ -71,7 +71,7 @@
- 	struct list_head s_orphan;
- 	unsigned long s_commit_interval;
- 	struct block_device *journal_bdev;
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- 	struct timer_list turn_ro_timer;	/* For turning read-only (crash simulation) */
- 	wait_queue_head_t ro_wait_queue;	/* For people waiting for the fs to go read-only */
- #endif
-Index: linux-2.6.22-rc4/include/linux/jbd2.h
-===================================================================
---- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 16:15:49.000000000 -0700
-+++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-11 16:16:18.000000000 -0700
-@@ -50,11 +50,11 @@
-  */
- #define JBD_DEFAULT_MAX_COMMIT_AGE 5
- 
--#ifdef CONFIG_JBD_DEBUG
-+#ifdef CONFIG_JBD2_DEBUG
- /*
-  * Define JBD_EXPENSIVE_CHECKING to enable more expensive internal
-  * consistency checks.  By default we don't do this unless
-- * CONFIG_JBD_DEBUG is on.
-+ * CONFIG_JBD2_DEBUG is on.
-  */
- #define JBD_EXPENSIVE_CHECKING
- extern int jbd2_journal_enable_debug;
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 
-
+Index: linux-2.6.21/include/linux/fs.h
+===================================================================
+--- linux-2.6.21.orig/include/linux/fs.h
++++ linux-2.6.21/include/linux/fs.h
+@@ -549,7 +549,7 @@ struct inode {
+ 	uid_t			i_uid;
+ 	gid_t			i_gid;
+ 	dev_t			i_rdev;
+-	unsigned long		i_version;
++	u64			i_version;
+ 	loff_t			i_size;
+ #ifdef __NEED_I_SIZE_ORDERED
+ 	seqcount_t		i_size_seqcount;
