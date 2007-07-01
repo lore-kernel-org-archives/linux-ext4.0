@@ -1,84 +1,93 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
 Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
-Date: Sat, 30 Jun 2007 23:39:08 -0500
-Message-ID: <20070630233908.115ec78e@gara>
+Date: Sat, 30 Jun 2007 23:40:11 -0500
+Message-ID: <20070630234011.38b4bb22@gara>
 References: <20070629170958.13b7700c@gara>
- <20070630055125.GC5535@schatzie.adilger.int>
+	<D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+To: Laurent Vivier <Laurent.Vivier@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:45490 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751192AbXGAEkZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 1 Jul 2007 00:40:25 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l614fYpa002331
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:41:34 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l614eOrc490410
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:40:24 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l614eO1d019496
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:40:24 -0400
-In-Reply-To: <20070630055125.GC5535@schatzie.adilger.int>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:55763 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751156AbXGAElX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2007 00:41:23 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l614fMZf013143
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:41:23 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l614fMJK205820
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l614fMMc029324
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l614fMRU029321
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
+In-Reply-To: <D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 30 Jun 2007 01:51:25 -0400
-Andreas Dilger <adilger@clusterfs.com> wrote:
-> I don't think there is actually any fundamental difference between these
-> proposals.  The reality is that we cannot change the semantics of the
-> META_BG flag at this point, since both e2fsprogs and ext3/ext4 in the
-> kernel understand META_BG to mean only "group descriptor backups are
-> in groups {0, 1, last} of the metagroup" and nothing else.
+On Sat, 30 Jun 2007 11:06:16 -0400
+Laurent Vivier <Laurent.Vivier@bull.net> wrote:
 
-Agree.  I call it extended META_BG for lack of a better name, but a new
-feature flag will be required.
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+>=20
+> Le 29 juin 07 =C3=A0 18:09, Jose R. Santos a =C3=A9crit :
+> Hi Jose,
 
-> If we want to allow the bitmaps and inode table outside the group they
-> represent then this needs to be a separate feature flag, and we may as
-> well include the additional improvement of the BIG_BG feature at the
-> same time.  I don't think this really any reason to claim there is "no
-> need to have a concept of block groups".
+Hi Laurent,
 
-Well when I think about block groups, it seems to me that its basically
-a range of blocks with some blocks dedicated for holding important meta
-data.  If you remove the meta data, then all that is left is a range of
-blocks with some backup data scatter around specific locations on the
-disk.  Of course, my definition of what a block group is could just be
-wrong. :)
+Seems like your emails are not making it to the mailing list.  I got
+them fine though.
 
-We could blur the difference between these two features though.
+> Thank you for the question ;-)
+>=20
+> BIG_BG allows to limit the number of groups (at least in the group =20
+> counter).
+> IMHO, I think it could be important in some cases.
 
-> Also note that e2fsprogs already reserves the bg_free_*_bg fields for
-> BIG_BG in the expanded group descriptors, though there is no official
-> definition for BIG_BG:
-> 
-> struct ext4_group_desc
-> {
->         [ ext3_group_desc ]
->         __u32   bg_block_bitmap_hi;     /* Blocks bitmap block MSB */
->         __u32   bg_inode_bitmap_hi;     /* Inodes bitmap block MSB */
->         __u32   bg_inode_table_hi;      /* Inodes table block MSB */
->         __u16   bg_free_blocks_count_hi;/* Free blocks count MSB */
->         __u16   bg_free_inodes_count_hi;/* Free inodes count MSB */
->         __u16   bg_used_dirs_count_hi;  /* Directories count MSB */
->         __u16   bg_pad;
->         __u32   bg_reserved2[3];
-> };
-> 
-> 
-> 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Software Engineer
-> Cluster File Systems, Inc.
-> 
+Yes, I think bigger block groups will benefit extents a great deal
+since not only can we have larger extents, but I believe that as the
+filesystem ages the chances of getting large number contiguous block ca=
+n
+be reduce with small block groups.
+=20
+> For instance, if we keep the same inode table allocation politic, we =
+=20
+> divide the total number of inode in the FS by the total number of =20
+> groups.
+> For the moment, number of inode < 2^32 and if we have number of block=
+ =20
+> group > 2^32 the number of inode per group is 0.... is META_BG able =20
+> to manage this case ?
 
-Thanks for the pointer.
+Good point.  It is a scenario that needs to be looked, although I
+sincerely hope that we get 64-bit inodes implemented by the time
+storage devices get that big. ;)
+=20
+> With META_BG, a 2^48 blocks FS will have 2^48 / 2^12 =3D 2^36 groups.=
+ =20
+> Perhaps it could be interesting to have less groups ?
+
+Agree...
+=20
+> With less groups, we load less group descriptors in memory, we have =20
+> less I/O to read bitmap and inode array (because we manage less group=
+ =20
+> descriptors again, because we load bigger bitmap and array in one tim=
+e)
+
+Presumably, we would still need to access the same amount data but
+latencies should be reduce since we could do larger IO's and less seeks
+to read the bitmaps.  I also wonder if there are benefits in terms of
+locality to having the bitmaps closer to its blocks vs having them far
+away like in xMETA_BG.
+
+> Regards,
+> Laurent
 
 -JRS
