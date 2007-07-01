@@ -1,93 +1,142 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
-Date: Sat, 30 Jun 2007 23:40:11 -0500
-Message-ID: <20070630234011.38b4bb22@gara>
-References: <20070629170958.13b7700c@gara>
-	<D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Ext4 patches for 2.6.22-rc6
+Date: Sun, 01 Jul 2007 03:35:31 -0400
+Message-ID: <1183275331.4010.116.camel@localhost.localdomain>
+References: <20070512080157.GF85884050@sgi.com>
+	 <20070612061652.GA6320@amitarora.in.ibm.com>
+	 <20070613235217.GS86004887@sgi.com>
+	 <20070614091458.GH5181@schatzie.adilger.int>
+	 <20070614120413.GD86004887@sgi.com>
+	 <20070614193347.GN5181@schatzie.adilger.int>
+	 <20070625132810.GA1951@amitarora.in.ibm.com>
+	 <20070628025543.9467216f.akpm@linux-foundation.org>
+	 <20070628175757.GA1674@amitarora.in.ibm.com>
+	 <20070628113342.c9c0f49c.akpm@linux-foundation.org>
+	 <20070629135612.GH29279@thunk.org> <46852A2C.9040407@us.ibm.com>
+	 <20070629135709.6cf0264d.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Laurent Vivier <Laurent.Vivier@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:55763 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751156AbXGAElX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2007 00:41:23 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l614fMZf013143
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jul 2007 00:41:23 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l614fMJK205820
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l614fMMc029324
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
-Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l614fMRU029321
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Jun 2007 22:41:22 -0600
-In-Reply-To: <D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070629135709.6cf0264d.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 30 Jun 2007 11:06:16 -0400
-Laurent Vivier <Laurent.Vivier@bull.net> wrote:
+On Fri, 2007-06-29 at 13:57 -0700, Andrew Morton wrote:
+> On Fri, 29 Jun 2007 11:50:04 -0400
+> Mingming Caoc <cmm@us.ibm.com> wrote:
+> 
+> > I think the ext4 patch queue is in good shape now.
+> 
+> Which ext4 patches are you intending to merge into 2.6.23?
+> 
+> Please send all those out to lkml for review?
 
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
->=20
-> Le 29 juin 07 =C3=A0 18:09, Jose R. Santos a =C3=A9crit :
-> Hi Jose,
+Hi Andrew, 
 
-Hi Laurent,
+Here are the patches in ext4-patch-queue that I think can be considered
+to be merged to upstream. Please review.
 
-Seems like your emails are not making it to the mailing list.  I got
-them fine though.
+All of the patches have been posted on ext4 mailinglist before. Some are
+bug fixes, some are features, to summaries:
+- make extents on by default in ext4dev
+- nanosecond timestamp
+- 64 bit inode versioning support
+- remove 32k subdir limits
+- journal  checksumming
+- journal stats via procfs
+- delayed allocation for ext4 writeback mode
+- fallocate()
 
-> Thank you for the question ;-)
->=20
-> BIG_BG allows to limit the number of groups (at least in the group =20
-> counter).
-> IMHO, I think it could be important in some cases.
+All the patches can be found at http://repo.or.cz/w/ext4-patch-queue.git
+and have been tested(with fsx ,dbench, FFSB, iozone) on
+x86,x86_64,ppc64, with extents and delayed allocation enabled
 
-Yes, I think bigger block groups will benefit extents a great deal
-since not only can we have larger extents, but I believe that as the
-filesystem ages the chances of getting large number contiguous block ca=
-n
-be reduce with small block groups.
-=20
-> For instance, if we keep the same inode table allocation politic, we =
-=20
-> divide the total number of inode in the FS by the total number of =20
-> groups.
-> For the moment, number of inode < 2^32 and if we have number of block=
- =20
-> group > 2^32 the number of inode per group is 0.... is META_BG able =20
-> to manage this case ?
+And the full series can be found at
+http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=series;h=2f43431db28778ce8d2149bce7a51566a2d2517c;hb=56e27e20cf228b32f5162a76b3bad154d1d3b730
 
-Good point.  It is a scenario that needs to be looked, although I
-sincerely hope that we get 64-bit inodes implemented by the time
-storage devices get that big. ;)
-=20
-> With META_BG, a 2^48 blocks FS will have 2^48 / 2^12 =3D 2^36 groups.=
- =20
-> Perhaps it could be interesting to have less groups ?
+I will post the patches-in-good-shape (in 9 set of patches) to lkml in
+the following emails, except for the bottom two feature:
 
-Agree...
-=20
-> With less groups, we load less group descriptors in memory, we have =20
-> less I/O to read bitmap and inode array (because we manage less group=
- =20
-> descriptors again, because we load bigger bitmap and array in one tim=
-e)
+*the fallocate() patches, which Amit just posted a few days ago and are
+under review (hopefully we can reach a agreement on the interface and
+the "modes" before 2.6.23-rc1 window closed).
 
-Presumably, we would still need to access the same amount data but
-latencies should be reduce since we could do larger IO's and less seeks
-to read the bitmaps.  I also wonder if there are benefits in terms of
-locality to having the bitmaps closer to its blocks vs having them far
-away like in xMETA_BG.
+*Another one is the delayed allocation patches in ext4 patch queue. Alex
+mentioned in another email that he is working on another version of
+delalloc that can handle block size < page size, and move some work to
+vfs. So it's probably not very useful to post this version for people to
+review.
 
-> Regards,
-> Laurent
 
--JRS
+So, here is the series file.
+
+# Rebased the patches to 2.6.22-rc6
+
+# Add mount option to turn off extents
+ext4_noextent_mount_opt.patch
+
+# Mounted ext4dev fs with extents by default for testing purpose,
+# for Ext4 product release, extents mount option
+# will be turn on only if the fs has EXTENTS feature on
+ext4_extents_on_by_default.patch
+
+# Propagate inode flags
+ext4-propagate_flags.patch
+
+# Add extent sanity checks
+ext4-extent-sanity-checks.patch
+
+# Bug fix:set 64bit JBD2 feature on >32bit ext4 fs
+ext4_set_jbd2_64bit_feature.patch
+
+# Fix: Rename CONFIG_JBD_DEBUG to CONFIG_JBD2_DEBUG
+jbd2_config_jbd2_debug_fix.patch
+
+# Export jbd2-debug via debugfs
+ext4_CONFIG_JBD2_DEBUG.patch
+jbd2_move_jbd2_debug_to_debugfs.patch
+
+# Nanosecond timestamp support
+ext4-nanosecond-patch
+
+# inode verion patch series
+# inode versioning is needed for NFSv4
+
+# vfs changes, 64 bit inode->i_version
+64-bit-i_version.patch
+# reserve hi 32 bit inode version on ext4 on-disk inode
+i_version_hi.patch
+# ext4 inode version read/store
+ext4_i_version_hi_2.patch
+# ext4 inode version update
+i_version_update_ext4.patch
+# add a noversion mount option to disable inode version updates
+ext4_no_version.patch
+
+# New patch to expand inode i_extra_isize to support features
+# in high part of inode (>128 bytes)
+ext4_expand_inode_extra_isize.patch
+
+# Export jbd stats through procfs
+# Shall this move to debugfs?
+jbd-stats-through-procfs
+
+# Remove 32000 subdirs limit. 
+ext4_remove_subdirs_limit.patch
+
+# Add journal checksums
+ext4-journal_chksum-2.6.20.patch
+
+# Various Cleanups
+ext4-zero_user_page.patch
+is_power_of_2-ext4-superc.patch
+ext4-remove-extra-is_rdonly-check.patch
+ext4_extent_compilation_fixes.patch
+ext4_extent_macros_cleanup.patch
+
+
