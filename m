@@ -1,8 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [EXT4 set 9][PATCH 2/5]Morecleanups: use is_power_of_2 () in
-	fill_super
-Date: Sun, 01 Jul 2007 03:38:37 -0400
-Message-ID: <1183275518.4010.138.camel@localhost.localdomain>
+Subject: [EXT4 set 9][PATCH 5/5]Extent micro cleanups
+Date: Sun, 01 Jul 2007 03:38:59 -0400
+Message-ID: <1183275539.4010.141.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -10,54 +9,59 @@ Content-Transfer-Encoding: 7bit
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:59604 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757352AbXGAHij (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2007 03:38:39 -0400
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:37922 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757477AbXGAHjB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jul 2007 03:39:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Subject: is_power_of_2: ext4/super.c
-From: vignesh babu <vignesh.babu@wipro.com>
+From: Dmitry Monakhov <dmonakhov@sw.ru>
+Subject: ext4: extent macros cleanup
 
-Replace (n & (n-1)) in the context of power of 2 checks with is_power_of_2()
+- Replace math equation to it's macro equivalent
+- make ext4_ext_grow_indepth() indexes/leaf correct
 
-Signed-off-by: vignesh babu <vignesh.babu@wipro.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+Acked-by: Alex Tomas <alex@clusterfs.com>
 Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 ---
+ fs/ext4/extents.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
- fs/ext4/super.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletion(-)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 12fe3d7..1fd00ac 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
+ 	ext_debug("binsearch for %d(idx):  ", block);
 
-diff -puN fs/ext4/super.c~is_power_of_2-ext4-superc fs/ext4/super.c
---- a/fs/ext4/super.c~is_power_of_2-ext4-superc
-+++ a/fs/ext4/super.c
-@@ -36,6 +36,7 @@
- #include <linux/namei.h>
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
-+#include <linux/log2.h>
+ 	l = EXT_FIRST_INDEX(eh) + 1;
+-	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
++	r = EXT_LAST_INDEX(eh);
+ 	while (l <= r) {
+ 		m = l + (r - l) / 2;
+ 		if (block < le32_to_cpu(m->ei_block))
+@@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
+ 	ext_debug("binsearch for %d:  ", block);
 
- #include <asm/uaccess.h>
+ 	l = EXT_FIRST_EXTENT(eh) + 1;
+-	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
++	r = EXT_LAST_EXTENT(eh);
 
-@@ -1662,7 +1663,7 @@ static int ext4_fill_super (struct super
- 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
- 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
- 		if ((sbi->s_inode_size < EXT4_GOOD_OLD_INODE_SIZE) ||
--		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
-+		    (!is_power_of_2(sbi->s_inode_size)) ||
- 		    (sbi->s_inode_size > blocksize)) {
- 			printk (KERN_ERR
- 				"EXT4-fs: unsupported inode size: %d\n",
-_
+ 	while (l <= r) {
+ 		m = l + (r - l) / 2;
+@@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
+ 	curp->p_hdr->eh_entries = cpu_to_le16(1);
+ 	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
+-	/* FIXME: it works, but actually path[0] can be index */
+-	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
++	
++	if (path[0].p_hdr->eh_depth)
++	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
++	else
++	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+ 	ext4_idx_store_pblock(curp->p_idx, newblock);
 
-Patches currently in -mm which might be from vignesh.babu@wipro.com are
-
-git-ubi.patch
-use-is_power_of_2-in-cxgb3-cxgb3_mainc.patch
-use-is_power_of_2-in-myri10ge-myri10gec.patch
-is_power_of_2-ext3-superc.patch
-is_power_of_2-ext4-superc.patch
-is_pwoer_of_2-jbd.patch
+ 	neh = ext_inode_hdr(inode);
