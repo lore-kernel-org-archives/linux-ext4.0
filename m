@@ -1,73 +1,93 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Mon, 2 Jul 2007 17:17:30 +0530
-Message-ID: <20070702114730.GA21966@amitarora.in.ibm.com>
-References: <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070701225543.GW31489@sgi.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
+Date: Mon, 2 Jul 2007 09:39:03 -0500
+Message-ID: <20070702093903.77e0f947@rx8>
+References: <20070629170958.13b7700c@gara>
+	<D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
+	<20070630234011.38b4bb22@gara>
+	<20070701163153.GB5419@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
-	xfs@oss.sgi.com
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070701225543.GW31489@sgi.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Laurent Vivier <Laurent.Vivier@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:54231 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755770AbXGBOmB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2007 10:42:01 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l62EfxIe014838
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 10:41:59 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l62Efm24260318
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 08:41:56 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l62EfbVo020365
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 08:41:37 -0600
+In-Reply-To: <20070701163153.GB5419@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 02, 2007 at 08:55:43AM +1000, David Chinner wrote:
-> On Sat, Jun 30, 2007 at 11:21:11AM +0100, Christoph Hellwig wrote:
-> > On Tue, Jun 26, 2007 at 04:02:47PM +0530, Amit K. Arora wrote:
-> > > > Can you clarify - what is the current behaviour when ENOSPC (or some other
-> > > > error) is hit?  Does it keep the current fallocate() or does it free it?
-> > > 
-> > > Currently it is left on the file system implementation. In ext4, we do
-> > > not undo preallocation if some error (say, ENOSPC) is hit. Hence it may
-> > > end up with partial (pre)allocation. This is inline with dd and
-> > > posix_fallocate, which also do not free the partially allocated space.
-> > 
-> > I can't find anything in the specification of posix_fallocate
-> > (http://www.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html)
-> > that tells what should happen to allocate blocks on error.
+On Sun, 1 Jul 2007 12:31:53 -0400
+Andreas Dilger <adilger@clusterfs.com> wrote:
+
+> On Jun 30, 2007  23:40 -0500, Jose R. Santos wrote:
+> > Yes, I think bigger block groups will benefit extents a great deal
+> > since not only can we have larger extents, but I believe that as the
+> > filesystem ages the chances of getting large number contiguous
+> > block can be reduce with small block groups.
 > 
-> Yeah, and AFAICT glibc leaves them behind ATM.
+> This turns out not to be true, and in fact we need to change the
+> unwritten extents patch a tiny bit.  The reason is that we have
+> limited the maximum extent size to 2^16-1 = 32767 blocks.  The
+> current maximum for the number of blocks in a group is 65528, so that
+> we can always fit the "free blocks" count into a __u16 if the bitmaps
+> and inode table are moved out of the group.  Moving the bitmaps and
+> itable will hit the max extent length.
 
-Yes, it does.
+I miss this while looking at the extent code.  I thought that the
+extents limit was caused by being unable to allocate enough contiguous
+blocks due to the small block groups.
+
+Are there no plans to support very large extents?  It seems like this
+would be a good reason to support either BIG_BG or xMETA_BG.  Aside
+from some possible alignment issues with the structure, what else would
+keep would keep ee_len from being larger?
  
-> > But common sense would be to not leak disk space on failure of this
-> > syscall, and this definitively should not be left up to the filesystem,
-> > either we always leak it or always free it, and I'd strongly favour
-> > the latter variant.
+> There are still other benefits to moving the metadata together.
+> 
+> Now, the one minor problem with the unwritten extent patches is that
+> by using the high bit of the ee_len this limits the extent length to
+> 2^15-1 blocks, but it would be MUCH better if this limit was 2^16
+> blocks and it fit evenly into an empty group, consecutive extents
+> were aligned, etc. It also doesn't make sense to have an
+> uninitialized 0-length extent, so I think the unwritten extent
+> (fallocate) patch needs to special case the ee_len = 65536 to be a
+> "regular" extent instead of "unwritten"
+> 
+> > > With less groups, we load less group descriptors in memory, we
+> > > have less I/O to read bitmap and inode array (because we manage
+> > > less group descriptors again, because we load bigger bitmap and
+> > > array in one time)
+> > 
+> > Presumably, we would still need to access the same amount data but
+> > latencies should be reduce since we could do larger IO's and less
+> > seeks to read the bitmaps.  I also wonder if there are benefits in
+> > terms of locality to having the bitmaps closer to its blocks vs
+> > having them far away like in xMETA_BG.
+> 
+> Having the bitmaps together will fix this independent of "BIG_BG".
 
-I would not call it a "leak", since the blocks which got allocated as
-part of the partial success of the fallocate syscall can be strictly
-accounted for (i.e. they are assigned to a particular inode). And these
-can be freed by the application, using a suitable @mode of fallocate.
- 
-> We can't simply walk the range an remove unwritten extents, as some
-> of them may have been present before the fallocate() call. That
-> makes it extremely difficult to undo a failed call and not remove
-> more pre-existing pre-allocations.
+I was referring to the locality of block bit maps and the actual free
+blocks.  If we move the block bitmaps out of block group, wouldn't we 
+be promoting larger seeks on operations that heavily write to both the
+bitmaps and blocks?
 
-Same is true for ext4 too. It is very difficult to keep track of which
-uninitialized (unwritten) extents got allocated as part of the current
-syscall. This is because, as David mentions, some of them might be
-already present; and also because some of the older ones may have got
-merged with the *new* uninitialized/unwritten extents as part of the
-current syscall. 
- 
-> Given the current behaviour for posix_fallocate() in glibc, I think
-> that retaining the same error semantic and punting the cleanup to
-> userspace (where the app will fail with ENOSPC anyway) is the only
-> sane thing we can do here. Trying to undo this in the kernel leads
-> to lots of extra rarely used code in error handling paths...
+This would not be a problem for inode bitmap and itables since those
+would be move together in xMETA_BG.
 
-Right. This gives applications the free hand if they really want to use
-the partially preallocated space, OR they want to free it; without
-introducing additional complexity in the kernel.
+Thanks
 
---
-Regards,
-Amit Arora
+-JRS
