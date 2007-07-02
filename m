@@ -1,93 +1,55 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
-Date: Mon, 2 Jul 2007 09:39:03 -0500
-Message-ID: <20070702093903.77e0f947@rx8>
-References: <20070629170958.13b7700c@gara>
-	<D5D3223C-4EB0-413B-A81A-05F6DDC0FEEB@bull.net>
-	<20070630234011.38b4bb22@gara>
-	<20070701163153.GB5419@schatzie.adilger.int>
+Date: Mon, 2 Jul 2007 11:49:39 -0400
+Message-ID: <20070702154939.GC4720@thunk.org>
+References: <20070629170958.13b7700c@gara> <20070630055125.GC5535@schatzie.adilger.int> <20070630233908.115ec78e@gara> <20070701123054.GC28917@thunk.org> <20070701094833.47035331@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Laurent Vivier <Laurent.Vivier@bull.net>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@clusterfs.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:54231 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755770AbXGBOmB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2007 10:42:01 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l62EfxIe014838
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 10:41:59 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l62Efm24260318
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 08:41:56 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l62EfbVo020365
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jul 2007 08:41:37 -0600
-In-Reply-To: <20070701163153.GB5419@schatzie.adilger.int>
+Received: from THUNK.ORG ([69.25.196.29]:49744 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752701AbXGBPtu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jul 2007 11:49:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20070701094833.47035331@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 1 Jul 2007 12:31:53 -0400
-Andreas Dilger <adilger@clusterfs.com> wrote:
+On Sun, Jul 01, 2007 at 09:48:33AM -0500, Jose R. Santos wrote:
+> Is your concern due to being unable to find contiguous block in the
+> case that a bad disk area is in one of the bitmap blocks?  One thing we
+> can do is try to search for another set of contiguous blocks and if we
+> fail to find one, we can flag the block group and move to an indirect
+> block approach to allocating the bitmaps.  At this point, we do lose
+> some of the performance benefits of BIG_BG, but we would still be able
+> to use the block group.
 
-> On Jun 30, 2007  23:40 -0500, Jose R. Santos wrote:
-> > Yes, I think bigger block groups will benefit extents a great deal
-> > since not only can we have larger extents, but I believe that as the
-> > filesystem ages the chances of getting large number contiguous
-> > block can be reduce with small block groups.
-> 
-> This turns out not to be true, and in fact we need to change the
-> unwritten extents patch a tiny bit.  The reason is that we have
-> limited the maximum extent size to 2^16-1 = 32767 blocks.  The
-> current maximum for the number of blocks in a group is 65528, so that
-> we can always fit the "free blocks" count into a __u16 if the bitmaps
-> and inode table are moved out of the group.  Moving the bitmaps and
-> itable will hit the max extent length.
+Yes, my concern is what we might need to do if for some reason e2fsck
+needs to reallocate the bitmap blocks.  I don't think an indirect
+block scheme is the right approach, though; we're adding a lot of
+complexity for a case that probably wouldn't be used but very, very
+rarely.
 
-I miss this while looking at the extent code.  I thought that the
-extents limit was caused by being unable to allocate enough contiguous
-blocks due to the small block groups.
+My proposal (as we discsused) in the call, is to implement BIG_BG as
+meaning the following:
 
-Are there no plans to support very large extents?  It seems like this
-would be a good reason to support either BIG_BG or xMETA_BG.  Aside
-from some possible alignment issues with the structure, what else would
-keep would keep ee_len from being larger?
- 
-> There are still other benefits to moving the metadata together.
-> 
-> Now, the one minor problem with the unwritten extent patches is that
-> by using the high bit of the ee_len this limits the extent length to
-> 2^15-1 blocks, but it would be MUCH better if this limit was 2^16
-> blocks and it fit evenly into an empty group, consecutive extents
-> were aligned, etc. It also doesn't make sense to have an
-> uninitialized 0-length extent, so I think the unwritten extent
-> (fallocate) patch needs to special case the ee_len = 65536 to be a
-> "regular" extent instead of "unwritten"
-> 
-> > > With less groups, we load less group descriptors in memory, we
-> > > have less I/O to read bitmap and inode array (because we manage
-> > > less group descriptors again, because we load bigger bitmap and
-> > > array in one time)
-> > 
-> > Presumably, we would still need to access the same amount data but
-> > latencies should be reduce since we could do larger IO's and less
-> > seeks to read the bitmaps.  I also wonder if there are benefits in
-> > terms of locality to having the bitmaps closer to its blocks vs
-> > having them far away like in xMETA_BG.
-> 
-> Having the bitmaps together will fix this independent of "BIG_BG".
+	1) Implementations must understand and use the s_desc_size
+	superblock field to determine whether block group descriptors
+	are the old 32 bytes or the newer 64 bytes format.  
+	
+	2) Implementations must support the newer ext4_group_desc
+	format in particular to support bg_free_blocks_count_hi and
+	bg_free_inodes_count_hi
 
-I was referring to the locality of block bit maps and the actual free
-blocks.  If we move the block bitmaps out of block group, wouldn't we 
-be promoting larger seeks on operations that heavily write to both the
-bitmaps and blocks?
+	3) Implementations will relax constraints on where the
+	superblock, bitmaps, and inode tables for a particular block
+	group will be stored.
 
-This would not be a problem for inode bitmap and itables since those
-would be move together in xMETA_BG.
+So with that, we can experiment with what size block groups really
+make sense, versus using the extended metablockgroup idea, or possibly
+doing both.
 
-Thanks
-
--JRS
+						- Ted
