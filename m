@@ -1,34 +1,65 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Tue, 3 Jul 2007 18:15:22 -0400
-Message-ID: <20070703221522.GE14074@fieldses.org>
-References: <1183275424.4010.126.camel@localhost.localdomain> <1183388313.3864.35.camel@localhost.localdomain>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] fix error handling in ext3_create_journal
+Date: Tue, 3 Jul 2007 15:25:43 -0700
+Message-ID: <20070703152543.e58ad39a.akpm@linux-foundation.org>
+References: <20070701221111.GA8627@gollum.tnic>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1183388313.3864.35.camel@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: bbpetkov@yahoo.de
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:33226 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757397AbXGCWZu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2007 18:25:50 -0400
+In-Reply-To: <20070701221111.GA8627@gollum.tnic>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 02, 2007 at 10:58:33AM -0400, Mingming Cao wrote:
-> Trond or Bruce, can you please review these patch series and ack if you
-> agrees?
+On Mon, 2 Jul 2007 00:11:11 +0200
+Borislav Petkov <bbpetkov@yahoo.de> wrote:
 
-Thanks, looks like what we need!
+> 
+> ---
+> From: Borislav Petkov <bbpetkov@yahoo.de>
+> 
+> Fix error handling in ext3_create_journal according to kernel conventions.
+> 
+> Signed-off-by: Borislav Petkov <bbpetkov@yahoo.de>
+> --
+> 
+> Index: linux-2.6.22-rc6/fs/ext3/super.c
+> ===================================================================
+> --- linux-2.6.22-rc6/fs/ext3/super.c.orig	2007-07-01 21:12:51.000000000 +0200
+> +++ linux-2.6.22-rc6/fs/ext3/super.c	2007-07-01 21:14:32.000000000 +0200
+> @@ -2075,6 +2075,7 @@
+>  			       unsigned int journal_inum)
+>  {
+>  	journal_t *journal;
+> +	int err;
+>  
+>  	if (sb->s_flags & MS_RDONLY) {
+>  		printk(KERN_ERR "EXT3-fs: readonly filesystem when trying to "
+> @@ -2082,13 +2083,15 @@
+>  		return -EROFS;
+>  	}
+>  
+> -	if (!(journal = ext3_get_journal(sb, journal_inum)))
+> +	journal = ext3_get_journal(sb, journal_inum);
+> +	if (!journal)
+>  		return -EINVAL;
+>  
+>  	printk(KERN_INFO "EXT3-fs: creating new journal on inode %u\n",
+>  	       journal_inum);
+>  
+> -	if (journal_create(journal)) {
+> +	err = journal_create(journal);
+> +	if (err) {
+>  		printk(KERN_ERR "EXT3-fs: error creating journal.\n");
+>  		journal_destroy(journal);
+>  		return -EIO;
 
-How will nfsd tell whether it can really on a given filesystem's
-i_version, or whether it should fall back on ctime?
-
-> As to performance concerns that raise before the inode version counter
-> (at least for ext4) is done inside ext4_mark_inode_dirty), so there is
-> no extra IO work to store this counter to disk.
-
-So what's the motivation for the "noversion" mount option?
-
---b.
+Please prepare the equivalent patch for ext4.  Without that, it'd probably
+be better to avoid applying the ext3 patch: there are advantages to keeping
+the two in sync where possible.
