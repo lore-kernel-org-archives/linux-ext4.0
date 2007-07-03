@@ -1,65 +1,52 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] fix error handling in ext3_create_journal
-Date: Tue, 3 Jul 2007 15:25:43 -0700
-Message-ID: <20070703152543.e58ad39a.akpm@linux-foundation.org>
-References: <20070701221111.GA8627@gollum.tnic>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
+Date: Tue, 3 Jul 2007 17:32:00 -0600
+Message-ID: <20070703233200.GL6578@schatzie.adilger.int>
+References: <1183275424.4010.126.camel@localhost.localdomain>
+	<1183388313.3864.35.camel@localhost.localdomain>
+	<20070703221522.GE14074@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: bbpetkov@yahoo.de
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:33226 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757397AbXGCWZu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2007 18:25:50 -0400
-In-Reply-To: <20070701221111.GA8627@gollum.tnic>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+Content-Disposition: inline
+In-Reply-To: <20070703221522.GE14074@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2 Jul 2007 00:11:11 +0200
-Borislav Petkov <bbpetkov@yahoo.de> wrote:
+On Jul 03, 2007  18:15 -0400, J. Bruce Fields wrote:
+> How will nfsd tell whether it can really on a given filesystem's
+> i_version, or whether it should fall back on ctime?
 
-> 
-> ---
-> From: Borislav Petkov <bbpetkov@yahoo.de>
-> 
-> Fix error handling in ext3_create_journal according to kernel conventions.
-> 
-> Signed-off-by: Borislav Petkov <bbpetkov@yahoo.de>
-> --
-> 
-> Index: linux-2.6.22-rc6/fs/ext3/super.c
-> ===================================================================
-> --- linux-2.6.22-rc6/fs/ext3/super.c.orig	2007-07-01 21:12:51.000000000 +0200
-> +++ linux-2.6.22-rc6/fs/ext3/super.c	2007-07-01 21:14:32.000000000 +0200
-> @@ -2075,6 +2075,7 @@
->  			       unsigned int journal_inum)
->  {
->  	journal_t *journal;
-> +	int err;
->  
->  	if (sb->s_flags & MS_RDONLY) {
->  		printk(KERN_ERR "EXT3-fs: readonly filesystem when trying to "
-> @@ -2082,13 +2083,15 @@
->  		return -EROFS;
->  	}
->  
-> -	if (!(journal = ext3_get_journal(sb, journal_inum)))
-> +	journal = ext3_get_journal(sb, journal_inum);
-> +	if (!journal)
->  		return -EINVAL;
->  
->  	printk(KERN_INFO "EXT3-fs: creating new journal on inode %u\n",
->  	       journal_inum);
->  
-> -	if (journal_create(journal)) {
-> +	err = journal_create(journal);
-> +	if (err) {
->  		printk(KERN_ERR "EXT3-fs: error creating journal.\n");
->  		journal_destroy(journal);
->  		return -EIO;
+Good question.
 
-Please prepare the equivalent patch for ext4.  Without that, it'd probably
-be better to avoid applying the ext3 patch: there are advantages to keeping
-the two in sync where possible.
+> > As to performance concerns that raise before the inode version counter
+> > (at least for ext4) is done inside ext4_mark_inode_dirty), so there is
+> > no extra IO work to store this counter to disk.
+> 
+> So what's the motivation for the "noversion" mount option?
+
+Lustre needs to be able to control the version number directly (version
+number needs to be ordered between all inodes, is set by Lustre to be a
+transaction number).  Instead of trying to incorporate this unused code
+into ext4 we just turn off the ext4 version code and let Lustre control
+this directly.  It may even be that NFSv4 will need to control the version
+numbers itself...
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
