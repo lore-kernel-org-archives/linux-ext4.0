@@ -1,83 +1,43 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Tue, 3 Jul 2007 17:16:50 +0530
-Message-ID: <20070703114650.GB14936@amitarora.in.ibm.com>
-References: <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070630165246.GA5159@schatzie.adilger.int> <20070703100848.GA14936@amitarora.in.ibm.com> <20070703103107.GA29763@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
+Date: Tue, 03 Jul 2007 10:24:42 -0400
+Message-ID: <1183472682.6494.38.camel@heimdal.trondhjem.org>
+References: <1183275424.4010.126.camel@localhost.localdomain>
+	 <1183388313.3864.35.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	David Chinner <dgc@sgi.com>, suparna@in.ibm.com,
-	cmm@us.ibm.com, xfs@oss.sgi.com
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:39175 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757425AbXGCLqt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2007 07:46:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20070703103107.GA29763@infradead.org>
+Received: from pat.uio.no ([129.240.10.15]:60637 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753742AbXGCO3H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jul 2007 10:29:07 -0400
+In-Reply-To: <1183388313.3864.35.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2007 at 11:31:07AM +0100, Christoph Hellwig wrote:
-> On Tue, Jul 03, 2007 at 03:38:48PM +0530, Amit K. Arora wrote:
-> > > FA_FL_DEALLOC		0x01 /* deallocate unwritten extent (default allocate) */
-> > > FA_FL_KEEP_SIZE	0x02 /* keep size for EOF {pre,de}alloc (default change size) */
-> > > FA_FL_DEL_DATA	0x04 /* delete existing data in alloc range (default keep) */
-> > 
-> > We now have two sets of flags - 
-> > 1) the above three with which I think no one has any issues with, and
+On Mon, 2007-07-02 at 10:58 -0400, Mingming Cao wrote:
+> Trond or Bruce, can you please review these patch series and ack if you
+> agrees? Thanks.
 > 
-> Yes, I do.  FA_FL_DEL_DATA is plain stupid, a preallocation call should
-> never delete data.  FA_FL_DEALLOC should probably be a separate syscall
-> because it's very different functionality.
+> As to performance concerns that raise before the inode version counter
+> (at least for ext4) is done inside ext4_mark_inode_dirty), so there is
+> no extra IO work to store this counter to disk.
 
-Well, if you see the modes proposed using above flags :
+Hi Mingming,
 
-#define FA_ALLOCATE	0
-#define FA_DEALLOCATE	FA_FL_DEALLOC
-#define FA_RESV_SPACE	FA_FL_KEEP_SIZE
-#define FA_UNRESV_SPACE	(FA_FL_DEALLOC | FA_FL_KEEP_SIZE | FA_FL_DEL_DATA)
+It looks OK to me, but you might want to strip out the now redundant
+i_version updates in add_dirent_to_buf(), ext4_rmdir(), ext4_rename().
 
-FA_FL_DEL_DATA is _not_ being used for preallocation. We have two modes
-for preallocation FA_ALLOCATE and FA_RESV_SPACE, which do not use this
-flag. Hence prealloction will never delete data.
-This mode is required only for FA_UNRESV_SPACE, which is a deallocation
-mode, to support any existing XFS aware applications/usage-scenarios.
+I also have some questions about how this will affect the readdir code:
+unless I missed something, the filp->f_version is still unsigned long,
+so the comparisons and assignments in ext4_readdir()/ext4_dx_readdir()
+no longer make sense.
 
-And, regarding FA_FL_DEALLOC being a separate syscall - I think then the
-very purpose of @mode argument is not justified. We have this mode so
-that we can provide more features like this. That said, I don't say that
-we should make things very complicated; but, atleast we should provide
-some basic features which we expect most of the applications wanting
-preallocation to use. To start with, we need to cater to already
-existing applications/user base who use XFS preallocation feature.
-
-And further advanced features, like goal based preallocation, can be
-implemented as a separate syscall.
-
-> While we're at it I also dislike the FA_ prefix becuase it doesn't say
-> anything and is far too generic.  FALLOC_ is much better.
-
-Ok. This can be changed in the next take.
- 
-> > > FA_FL_ERR_FREE	0x08 /* free preallocation on error (default keep prealloc) */
-> 
-> NACK on this one.  We should have just one behaviour, and from the thread
-> that not freeing the allocation on error.
-
-I agree on this one. 
- 
-> > > FA_FL_NO_MTIME	0x10 /* keep same mtime (default change on size, data change) */
-> > > FA_FL_NO_CTIME	0x20 /* keep same ctime (default change on size, data change) */
-> 
-> NACK to these aswell.  If i_size changes c/mtime need updates, if the size
-> doesn't chamge they don't.  No need to add more flags for this.
-
-This requirement was from the point of view of HSM applications. Hope
-you saw Andreas previous post and are keeping that in mind.
-
---
-Regards,
-Amit Arora
+Cheers
+  Trond
