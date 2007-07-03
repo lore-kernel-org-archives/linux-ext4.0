@@ -1,48 +1,69 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Tue, 3 Jul 2007 11:31:07 +0100
-Message-ID: <20070703103107.GA29763@infradead.org>
-References: <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070630165246.GA5159@schatzie.adilger.int> <20070703100848.GA14936@amitarora.in.ibm.com>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
+Date: Tue, 03 Jul 2007 16:11:15 +0530
+Message-ID: <1183459275.4102.6.camel@garfield.linsyssoft.com>
+References: <1183275416.4010.125.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	David Chinner <dgc@sgi.com>, suparna@in.ibm.com,
-	cmm@us.ibm.com, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:47416 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754006AbXGCKbR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2007 06:31:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20070703100848.GA14936@amitarora.in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+	Mingming Cao <cmm@us.ibm.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1183275416.4010.125.camel@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2007 at 03:38:48PM +0530, Amit K. Arora wrote:
-> > FA_FL_DEALLOC		0x01 /* deallocate unwritten extent (default allocate) */
-> > FA_FL_KEEP_SIZE	0x02 /* keep size for EOF {pre,de}alloc (default change size) */
-> > FA_FL_DEL_DATA	0x04 /* delete existing data in alloc range (default keep) */
-> 
-> We now have two sets of flags - 
-> 1) the above three with which I think no one has any issues with, and
+On Sun, 2007-07-01 at 03:36 -0400, Mingming Cao wrote:
+> +
+> +#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)                               \
+> +do {                                                                        \
+> +     (inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);               \
+> +     if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+> +             ext4_decode_extra_time(&(inode)->xtime,                        \
+> +                                    raw_inode->xtime ## _extra);            \
+> +} while (0)
+> +
+> +#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)                             \
+> +do {                                                                        \
+> +     if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))                      \
+> +             (einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
+> +     if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))            \
+> +             ext4_decode_extra_time(&(einode)->xtime,                       \
+> +                                    raw_inode->xtime ## _extra);            \
+> +} while (0)
+> +
 
-Yes, I do.  FA_FL_DEL_DATA is plain stupid, a preallocation call should
-never delete data.  FA_FL_DEALLOC should probably be a separate syscall
-because it's very different functionality.
+This nanosecond patch seems to be missing the fix below which is required for http://bugzilla.kernel.org/show_bug.cgi?id=5079
 
-While we're at it I also dislike the FA_ prefix becuase it doesn't say
-anything and is far too generic.  FALLOC_ is much better.
+If the timestamp is set to before epoch i.e. a negative timestamp then the file may have its date set into the future on 64-bit systems. So when the timestamp is read it must be cast as signed.
 
-> > FA_FL_ERR_FREE	0x08 /* free preallocation on error (default keep prealloc) */
+Index: linux-2.6.21/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.21.orig/include/linux/ext4_fs.h
++++ linux-2.6.21/include/linux/ext4_fs.h
+@@ -390,7 +390,7 @@ do {                                                                               \
 
-NACK on this one.  We should have just one behaviour, and from the thread
-that not freeing the allocation on error.
+ #define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)                         \
+ do {                                                                          \
+-       (inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);               \
++       (inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+        if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+                ext4_decode_extra_time(&(inode)->xtime,                        \
+                                       raw_inode->xtime ## _extra);            \
+@@ -399,7 +399,8 @@ do {                                                                               \
+ #define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)                               \
+ do {                                                                          \
+        if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))                      \
+-               (einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
++               (einode)->xtime.tv_sec =                                       \
++                               (signed)le32_to_cpu((raw_inode)->xtime);       \
+        if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))            \
+                ext4_decode_extra_time(&(einode)->xtime,                       \
+                                       raw_inode->xtime ## _extra);            \
 
-> > FA_FL_NO_MTIME	0x10 /* keep same mtime (default change on size, data change) */
-> > FA_FL_NO_CTIME	0x20 /* keep same ctime (default change on size, data change) */
 
-NACK to these aswell.  If i_size changes c/mtime need updates, if the size
-doesn't chamge they don't.  No need to add more flags for this.
+Thanks,
+Kalpak.
+
+
