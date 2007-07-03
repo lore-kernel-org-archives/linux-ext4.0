@@ -1,55 +1,87 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Mon, 02 Jul 2007 10:58:33 -0400
-Message-ID: <1183388313.3864.35.camel@localhost.localdomain>
-References: <1183275424.4010.126.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] Teach do_mpage_readpage() about unwritten buffers
+Date: Mon, 2 Jul 2007 20:28:27 -0700
+Message-ID: <20070702202827.ffc59255.akpm@linux-foundation.org>
+References: <20070703011019.GQ989688@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: linux-fsdevel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1183275424.4010.126.camel@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: lkml <linux-kernel@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: David Chinner <dgc@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:51912 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752802AbXGCD2i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2007 23:28:38 -0400
+In-Reply-To: <20070703011019.GQ989688@sgi.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Trond or Bruce, can you please review these patch series and ack if you
-agrees? Thanks.
+On Tue, 3 Jul 2007 11:10:19 +1000 David Chinner <dgc@sgi.com> wrote:
 
-As to performance concerns that raise before the inode version counter
-(at least for ext4) is done inside ext4_mark_inode_dirty), so there is
-no extra IO work to store this counter to disk.
-
-Mingming
-On Sun, 2007-07-01 at 03:37 -0400, Mingming Cao wrote:
-> This patch converts the 32-bit i_version in the generic inode to a 64-bit
-> i_version field.
+> Teach do_mpage_readpage() about unwritten extents so we can
+> always map them in get_blocks rather than they are are holes on
+> read. Allows setup_swap_extents() to use preallocated files on XFS
+> filesystems for swap files without ever needing to convert them.
 > 
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
-> Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+> Signed-Off-By: Dave Chinner <dgc@sgi.com>
 > 
-> Index: linux-2.6.21/include/linux/fs.h
+> ---
+>  fs/mpage.c                  |    5 +++--
+>  fs/xfs/linux-2.6/xfs_aops.c |   13 +++----------
+>  2 files changed, 6 insertions(+), 12 deletions(-)
+> 
+> Index: 2.6.x-xfs-new/fs/mpage.c
 > ===================================================================
-> --- linux-2.6.21.orig/include/linux/fs.h
-> +++ linux-2.6.21/include/linux/fs.h
-> @@ -549,7 +549,7 @@ struct inode {
->  	uid_t			i_uid;
->  	gid_t			i_gid;
->  	dev_t			i_rdev;
-> -	unsigned long		i_version;
-> +	u64			i_version;
->  	loff_t			i_size;
->  #ifdef __NEED_I_SIZE_ORDERED
->  	seqcount_t		i_size_seqcount;
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --- 2.6.x-xfs-new.orig/fs/mpage.c	2007-05-29 16:17:59.000000000 +1000
+> +++ 2.6.x-xfs-new/fs/mpage.c	2007-06-27 22:39:35.568852270 +1000
+> @@ -207,7 +207,8 @@ do_mpage_readpage(struct bio *bio, struc
+>  	 * Map blocks using the result from the previous get_blocks call first.
+>  	 */
+>  	nblocks = map_bh->b_size >> blkbits;
+> -	if (buffer_mapped(map_bh) && block_in_file > *first_logical_block &&
+> +	if (buffer_mapped(map_bh) && !buffer_unwritten(map_bh) &&
+> +			block_in_file > *first_logical_block &&
+>  			block_in_file < (*first_logical_block + nblocks)) {
+>  		unsigned map_offset = block_in_file - *first_logical_block;
+>  		unsigned last = nblocks - map_offset;
+> @@ -242,7 +243,7 @@ do_mpage_readpage(struct bio *bio, struc
+>  			*first_logical_block = block_in_file;
+>  		}
+>  
+> -		if (!buffer_mapped(map_bh)) {
+> +		if (!buffer_mapped(map_bh) || buffer_unwritten(map_bh)) {
+>  			fully_mapped = 0;
+>  			if (first_hole == blocks_per_page)
+>  				first_hole = page_block;
+> Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_aops.c
+> ===================================================================
+> --- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_aops.c	2007-06-05 22:14:39.000000000 +1000
+> +++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_aops.c	2007-06-27 22:39:29.545636749 +1000
+> @@ -1340,16 +1340,9 @@ __xfs_get_blocks(
+>  		return 0;
+>  
+>  	if (iomap.iomap_bn != IOMAP_DADDR_NULL) {
+> -		/*
+> -		 * For unwritten extents do not report a disk address on
+> -		 * the read case (treat as if we're reading into a hole).
+> -		 */
+> -		if (create || !(iomap.iomap_flags & IOMAP_UNWRITTEN)) {
+> -			xfs_map_buffer(bh_result, &iomap, offset,
+> -				       inode->i_blkbits);
+> -		}
+> -		if (create && (iomap.iomap_flags & IOMAP_UNWRITTEN)) {
+> -			if (direct)
+> +		xfs_map_buffer(bh_result, &iomap, offset, inode->i_blkbits);
+> +		if (iomap.iomap_flags & IOMAP_UNWRITTEN) {
+> +			if (create && direct)
+>  				bh_result->b_private = inode;
+>  			set_buffer_unwritten(bh_result);
+>  		}
 
+Seems sane, although one does wonder whether it's a worthy tradeoff.  We
+add additional overhead to readpage[s]() just to avoid some IO during
+mkswap?
+
+Also, I wonder what ext4 does in this situation?
