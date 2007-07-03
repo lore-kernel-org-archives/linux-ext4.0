@@ -1,57 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [EXT4 set 4][PATCH 2/5] i_version: Add hi 32 bit inode version on
-	ext4 on-disk inode
-Date: Tue, 3 Jul 2007 17:37:22 -0400
-Message-ID: <20070703213722.GZ14074@fieldses.org>
-References: <1183275436.4010.127.camel@localhost.localdomain>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
+Date: Tue, 3 Jul 2007 15:41:31 -0600
+Message-ID: <20070703214131.GH6578@schatzie.adilger.int>
+References: <1183275465.4010.130.camel@localhost.localdomain> <4689F17C.7050304@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1183275436.4010.127.camel@localhost.localdomain>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+In-Reply-To: <4689F17C.7050304@linux.vnet.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jul 01, 2007 at 03:37:16AM -0400, Mingming Cao wrote:
-> This patch adds a 32-bit i_version_hi field to ext4_inode, which can be used for 64-bit inode versions. This field will store the higher 32 bits of the version, while Jean Noel's patch has added support to store the lower 32-bits in osd1.linux1.l_i_version.
+On Jul 03, 2007  12:19 +0530, Aneesh Kumar K.V wrote:
+> Mingming Cao wrote:
+> >Index: linux-2.6.22-rc4/fs/ext4/super.c
+> >===================================================================
+> >--- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-13 
+> >17:19:11.000000000 -0700
+> >+++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-13 17:24:45.000000000 -0700
+> >@@ -2846,8 +2846,8 @@ out:
+> > 		i_size_write(inode, off+len-towrite);
+> > 		EXT4_I(inode)->i_disksize = inode->i_size;
+> > 	}
+> >-	inode->i_version++;
+> > 	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+> >+	inode->i_version = 1;
+> > 	ext4_mark_inode_dirty(handle, inode);
+> > 	mutex_unlock(&inode->i_mutex);
+> > 	return len - towrite;
 > 
+> 
+> Is this correct ? . Why do we set the qutoa file inodes version to 1  
+> during write ?
 
-Sorry, I'm a little lost--where's that earlier patch, and exactly what
-tree should this patch series apply to?
+Hmm, I thought we had previously fixed this?
 
---b.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
 
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-> Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
-> ---
-> Index: linux-2.6.21/include/linux/ext4_fs.h
-> ===================================================================
-> --- linux-2.6.21.orig/include/linux/ext4_fs.h
-> +++ linux-2.6.21/include/linux/ext4_fs.h
-> @@ -342,6 +342,7 @@ struct ext4_inode {
->  	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
->  	__le32  i_crtime;       /* File Creation time */
->  	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
-> +	__le32	i_version_hi;	/* high 32 bits for 64-bit version */
->  };
-> 
->  #define i_size_high	i_dir_acl
-> 
-> 
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
