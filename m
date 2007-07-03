@@ -1,87 +1,53 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: David Chinner <dgc@sgi.com>
 Subject: Re: [PATCH] Teach do_mpage_readpage() about unwritten buffers
-Date: Mon, 2 Jul 2007 20:28:27 -0700
-Message-ID: <20070702202827.ffc59255.akpm@linux-foundation.org>
-References: <20070703011019.GQ989688@sgi.com>
+Date: Tue, 3 Jul 2007 13:52:27 +1000
+Message-ID: <20070703035227.GS989688@sgi.com>
+References: <20070703011019.GQ989688@sgi.com> <20070702202827.ffc59255.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: lkml <linux-kernel@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>, lkml <linux-kernel@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: David Chinner <dgc@sgi.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:51912 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752802AbXGCD2i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2007 23:28:38 -0400
-In-Reply-To: <20070703011019.GQ989688@sgi.com>
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]:39876 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753615AbXGCDwg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2007 23:52:36 -0400
+Content-Disposition: inline
+In-Reply-To: <20070702202827.ffc59255.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 3 Jul 2007 11:10:19 +1000 David Chinner <dgc@sgi.com> wrote:
-
-> Teach do_mpage_readpage() about unwritten extents so we can
-> always map them in get_blocks rather than they are are holes on
-> read. Allows setup_swap_extents() to use preallocated files on XFS
-> filesystems for swap files without ever needing to convert them.
+On Mon, Jul 02, 2007 at 08:28:27PM -0700, Andrew Morton wrote:
+> On Tue, 3 Jul 2007 11:10:19 +1000 David Chinner <dgc@sgi.com> wrote:
 > 
-> Signed-Off-By: Dave Chinner <dgc@sgi.com>
-> 
-> ---
->  fs/mpage.c                  |    5 +++--
->  fs/xfs/linux-2.6/xfs_aops.c |   13 +++----------
->  2 files changed, 6 insertions(+), 12 deletions(-)
-> 
-> Index: 2.6.x-xfs-new/fs/mpage.c
-> ===================================================================
-> --- 2.6.x-xfs-new.orig/fs/mpage.c	2007-05-29 16:17:59.000000000 +1000
-> +++ 2.6.x-xfs-new/fs/mpage.c	2007-06-27 22:39:35.568852270 +1000
-> @@ -207,7 +207,8 @@ do_mpage_readpage(struct bio *bio, struc
->  	 * Map blocks using the result from the previous get_blocks call first.
->  	 */
->  	nblocks = map_bh->b_size >> blkbits;
-> -	if (buffer_mapped(map_bh) && block_in_file > *first_logical_block &&
-> +	if (buffer_mapped(map_bh) && !buffer_unwritten(map_bh) &&
-> +			block_in_file > *first_logical_block &&
->  			block_in_file < (*first_logical_block + nblocks)) {
->  		unsigned map_offset = block_in_file - *first_logical_block;
->  		unsigned last = nblocks - map_offset;
-> @@ -242,7 +243,7 @@ do_mpage_readpage(struct bio *bio, struc
->  			*first_logical_block = block_in_file;
->  		}
->  
-> -		if (!buffer_mapped(map_bh)) {
-> +		if (!buffer_mapped(map_bh) || buffer_unwritten(map_bh)) {
->  			fully_mapped = 0;
->  			if (first_hole == blocks_per_page)
->  				first_hole = page_block;
-> Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_aops.c
-> ===================================================================
-> --- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_aops.c	2007-06-05 22:14:39.000000000 +1000
-> +++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_aops.c	2007-06-27 22:39:29.545636749 +1000
-> @@ -1340,16 +1340,9 @@ __xfs_get_blocks(
->  		return 0;
->  
->  	if (iomap.iomap_bn != IOMAP_DADDR_NULL) {
-> -		/*
-> -		 * For unwritten extents do not report a disk address on
-> -		 * the read case (treat as if we're reading into a hole).
-> -		 */
-> -		if (create || !(iomap.iomap_flags & IOMAP_UNWRITTEN)) {
-> -			xfs_map_buffer(bh_result, &iomap, offset,
-> -				       inode->i_blkbits);
-> -		}
-> -		if (create && (iomap.iomap_flags & IOMAP_UNWRITTEN)) {
-> -			if (direct)
-> +		xfs_map_buffer(bh_result, &iomap, offset, inode->i_blkbits);
-> +		if (iomap.iomap_flags & IOMAP_UNWRITTEN) {
-> +			if (create && direct)
->  				bh_result->b_private = inode;
->  			set_buffer_unwritten(bh_result);
->  		}
+> Seems sane, although one does wonder whether it's a worthy tradeoff.  We
+> add additional overhead to readpage[s]() just to avoid some IO during
+> mkswap?
 
-Seems sane, although one does wonder whether it's a worthy tradeoff.  We
-add additional overhead to readpage[s]() just to avoid some IO during
-mkswap?
+It removes the hidden magic from XFS that hides unwritten extents
+behind holes so that they get zero filled by readpages. With other
+filesystems starting to use unwritten extents, these sorts of tricksy
+hacks should be avoided and we should be explicitly handling unwritten
+buffers just like we explicitly handle holes.
 
-Also, I wonder what ext4 does in this situation?
+The side effect of this change is that other things (like sys_swapon)
+behave sanely when faced with unwritten extents (i.e. they are not
+detected incorrectly as holes).
+
+FWIW, using unwritten extents for swap files means you can allocate
+gigabytes of swap space on demand, even under severe memory pressure
+because you don't need to write those gigabytes of data to disk.
+Also, the only way to read the contents of the swap file is to go
+directly to the underlying device so even if you screw up the
+permissions on the swap file it will still always read as zeros.
+So there are some benefits here....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
