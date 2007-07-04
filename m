@@ -1,133 +1,51 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
-Date: Tue, 03 Jul 2007 23:31:28 -0400
-Message-ID: <1183519888.3922.5.camel@localhost.localdomain>
-References: <1183275465.4010.130.camel@localhost.localdomain>
-	 <4689F2D2.7020809@linux.vnet.ibm.com> <468B2F82.6000808@linux.vnet.ibm.com>
+Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
+Date: Tue, 03 Jul 2007 23:32:55 -0400
+Message-ID: <1183519975.3922.7.camel@localhost.localdomain>
+References: <1183275416.4010.125.camel@localhost.localdomain>
+	 <1183458506.4102.5.camel@garfield.linsyssoft.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:60800 "EHLO e2.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:53499 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758050AbXGDGbc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jul 2007 02:31:32 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l646VVCN011178
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 02:31:31 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l646VVJs437578
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 02:31:31 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l646VV6i014032
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 02:31:31 -0400
-In-Reply-To: <468B2F82.6000808@linux.vnet.ibm.com>
+	id S1753379AbXGDGcy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jul 2007 02:32:54 -0400
+In-Reply-To: <1183458506.4102.5.camel@garfield.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-07-04 at 10:56 +0530, Aneesh Kumar K.V wrote:
+On Tue, 2007-07-03 at 15:58 +0530, Kalpak Shah wrote:
+> On Sun, 2007-07-01 at 03:36 -0400, Mingming Cao wrote:
+> > +
+> > +#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
+> > +do {									       \
+> > +	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
+> > +	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+> > +		ext4_decode_extra_time(&(inode)->xtime,			       \
+> > +				       raw_inode->xtime ## _extra);	       \
+> > +} while (0)
+> > +
+> > +#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
+> > +do {									       \
+> > +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+> > +		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
+> > +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+> > +		ext4_decode_extra_time(&(einode)->xtime,		       \
+> > +				       raw_inode->xtime ## _extra);	       \
+> > +} while (0)
+> > +
 > 
-> Aneesh Kumar K.V wrote:
+> This nanosecond patch seems to be missing the fix below which is required for http://bugzilla.kernel.org/show_bug.cgi?id=5079
 > 
-> > 
-> > If we bump i_version  in ext4_mark_iloc_dity then we should be removing 
-> > the i_version update
-> > at other places. A simple grep of ext4 dir shows i_version being updated 
-> > followed by ext4_mark_inode_dirty.
-> > 
-> > 
-> 
-> How about the below patch. I also removed the i_version = 1 from 
-> ext4_new_inode because we do the same in ext4_alloc_inode. I also added
-> the From:  line. 
-> 
+> If the timestamp is set to before epoch i.e. a negative timestamp then the file may have its date set into the future on 64-bit systems. So when the timestamp is read it must be cast as signed.
 
-Acked.
+Missed this one.
+Thanks. Will update ext4 patch queue tonight with this fix.
 
-Ha, I actually just finished on a incremental patch to cleanup redundant
-i_version update.:) But I missed the ext4_new_inode().
-
-Thanks. I will replace this patch in the ext4 patch queue
-
-
-> -aneesh
-> 
-> From ccdfc4a6a8edbdbf5d21d32fd2350f36399a89f8 Mon Sep 17 00:00:00 2001
-> From: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
-> Date: Wed, 4 Jul 2007 10:51:50 +0530
-> Subject: [PATCH] This patch is on top of i_version_update_vfs.
->  The i_version field of the inode is set on inode creation and incremented when
->  the inode is being modified.
-> 
-> Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> ---
->  fs/ext4/inode.c |    1 +
->  fs/ext4/namei.c |    4 ----
->  fs/ext4/super.c |    1 -
->  3 files changed, 1 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index cb9f1f4..cd3e886 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3084,6 +3084,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
->  {
->  	int err = 0;
-> 
-> +	inode->i_version++;
->  	/* the do_update_inode consumes one bh->b_count */
->  	get_bh(iloc->bh);
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 477b6d2..a1dc5ef 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1287,7 +1287,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
->  	 */
->  	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
->  	ext4_update_dx_flag(dir);
-> -	dir->i_version++;
->  	ext4_mark_inode_dirty(handle, dir);
->  	BUFFER_TRACE(bh, "call ext4_journal_dirty_metadata");
->  	err = ext4_journal_dirty_metadata(handle, bh);
-> @@ -1606,7 +1605,6 @@ static int ext4_delete_entry (handle_t *handle,
->  						    le16_to_cpu(de->rec_len));
->  			else
->  				de->inode = 0;
-> -			dir->i_version++;
->  			BUFFER_TRACE(bh, "call ext4_journal_dirty_metadata");
->  			ext4_journal_dirty_metadata(handle, bh);
->  			return 0;
-> @@ -2039,7 +2037,6 @@ static int ext4_rmdir (struct inode * dir, struct dentry *dentry)
->  		ext4_warning (inode->i_sb, "ext4_rmdir",
->  			      "empty directory has nlink!=2 (%d)",
->  			      inode->i_nlink);
-> -	inode->i_version++;
->  	clear_nlink(inode);
->  	/* There's no need to set i_disksize: the fact that i_nlink is
->  	 * zero will ensure that the right thing happens during any
-> @@ -2284,7 +2281,6 @@ static int ext4_rename (struct inode * old_dir, struct dentry *old_dentry,
->  		if (EXT4_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
->  					      EXT4_FEATURE_INCOMPAT_FILETYPE))
->  			new_de->file_type = old_de->file_type;
-> -		new_dir->i_version++;
->  		BUFFER_TRACE(new_bh, "call ext4_journal_dirty_metadata");
->  		ext4_journal_dirty_metadata(handle, new_bh);
->  		brelse(new_bh);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 914c273..55b99b3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2846,7 +2846,6 @@ out:
->  		i_size_write(inode, off+len-towrite);
->  		EXT4_I(inode)->i_disksize = inode->i_size;
->  	}
-> -	inode->i_version++;
->  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->  	ext4_mark_inode_dirty(handle, inode);
->  	mutex_unlock(&inode->i_mutex);
+Mingming
