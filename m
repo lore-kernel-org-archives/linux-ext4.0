@@ -1,44 +1,83 @@
-From: Timothy Shimmin <tes@sgi.com>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Wed, 04 Jul 2007 15:37:01 +1000
-Message-ID: <468B31FD.2020703@sgi.com>
-References: <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070630165246.GA5159@schatzie.adilger.int> <20070703100848.GA14936@amitarora.in.ibm.com> <20070703103107.GA29763@infradead.org> <20070703114650.GB14936@amitarora.in.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: finding the author of the patches in ext4-patch-queue
+Date: Tue, 03 Jul 2007 23:27:29 -0400
+Message-ID: <1183519649.3922.1.camel@localhost.localdomain>
+References: <468B2AF5.5060207@linux.vnet.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
-	David Chinner <dgc@sgi.com>, suparna@in.ibm.com,
-	cmm@us.ibm.com, xfs@oss.sgi.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:54893 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751565AbXGDFh1 (ORCPT
-	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
-	Wed, 4 Jul 2007 01:37:27 -0400
-In-Reply-To: <20070703114650.GB14936@amitarora.in.ibm.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:56030 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752761AbXGDG1a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jul 2007 02:27:30 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l646RUpV027292
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 02:27:30 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l646RTOO218786
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 00:27:29 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l646RTZO003830
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 00:27:29 -0600
+In-Reply-To: <468B2AF5.5060207@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Amit K. Arora wrote:
->>>> FA_FL_NO_MTIME	0x10 /* keep same mtime (default change on size, data change) */
->>>> FA_FL_NO_CTIME	0x20 /* keep same ctime (default change on size, data change) */
->> NACK to these aswell.  If i_size changes c/mtime need updates, if the size
->> doesn't chamge they don't.  No need to add more flags for this.
+On Wed, 2007-07-04 at 10:37 +0530, Aneesh Kumar K.V wrote:
+> Hi Mingming,
 > 
-> This requirement was from the point of view of HSM applications. Hope
-> you saw Andreas previous post and are keeping that in mind.
+> With respect to ext4-patch-queue it is kind of difficult to find who wrote the patch.
+> I guess we can solve this by adding From: < author name > in the patches. This will make sure
+> when the patches get applied to linus tree we have the right author.
 > 
-We use this capability in XFS at the moment.
-I think this is mainly for DMF (HSM) but is done via the xfs handle interface
-(xfs_open_by_handle) AFAICT.
 
-This sets up a set of invisible operations (xfs_invis_file_operations).
-xfs_file_ioctl_invis goes on to set IO_INVIS which goes on to set ATTR_DMI
-which is then tested in xfs_change_file_space() (which handles XFS_IOC_RESVSP & friends)
-for whether xfs_ichgtime(ip, XFS_ICHGTIME_MOD | XFS_ICHGTIME_CHG)
-is called or not.
+Thanks, Aneesh, I will add From: <authro> for all patches in ext4 patch
+queue.
 
---Tim
+Mingming
+> with the below diff to noextent_mount option patch i get the below history when applying the patches
+> using stgit via stgit --import --series 
+> 
+> 
+> diff --git a/ext4_noextent_mount_opt.patch b/ext4_noextent_mount_opt.patch
+> index c349afb..e9a8d6f 100644
+> --- a/ext4_noextent_mount_opt.patch
+> +++ b/ext4_noextent_mount_opt.patch
+> @@ -1,3 +1,4 @@
+> +From: Mingming Cao <cmm@us.ibm.com>
+>  Add a mount option to turn off extents.
+> 
+>  Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> 
+> $ git log 
+> commit f89bcb4ca03dde8b12d3c722483aae84c3d2072d
+> Author: Mingming Cao <cmm@us.ibm.com>
+> Date:   Wed Jul 4 10:32:19 2007 +0530
+> 
+>     Add a mount option to turn off extents.
+>     
+>     Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> 
+> Without the change: I get below
+> 
+> commit 4a4f228f99e263767fe5b395cdb843a5c5d083fe
+> Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Date:   Wed Jul 4 10:05:19 2007 +0530
+> 
+>     Turn on extents feature by default in ext4 filesystem. User could use
+>     -o noextents to turn it off.
+>     
+>     Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> 
+> 
+> -aneesh
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
