@@ -1,28 +1,27 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
-Date: Wed, 04 Jul 2007 10:56:36 +0530
-Message-ID: <468B2F8C.8010106@linux.vnet.ibm.com>
+Date: Wed, 04 Jul 2007 10:56:26 +0530
+Message-ID: <468B2F82.6000808@linux.vnet.ibm.com>
 References: <1183275465.4010.130.camel@localhost.localdomain> <4689F2D2.7020809@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:54978 "EHLO
-	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752045AbXGDF1O (ORCPT
+Received: from ausmtp05.au.ibm.com ([202.81.18.154]:51928 "EHLO
+	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751959AbXGDF1O (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jul 2007 01:27:14 -0400
 Received: from sd0208e0.au.ibm.com (d23rh904.au.ibm.com [202.81.18.202])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l645RrxW2285796
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:27:59 +1000
+	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l645S1wH2502838
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:28:10 +1000
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.250.243])
-	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l645UCx9025990
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:30:16 +1000
+	by sd0208e0.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l645U6tk230208
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:30:07 +1000
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l645QdPK013829
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:26:39 +1000
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l645QVQi013638
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2007 15:26:32 +1000
 In-Reply-To: <4689F2D2.7020809@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
