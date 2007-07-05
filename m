@@ -1,206 +1,112 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 3/4] Add some new  function for searching extent tree.
-Date: Thu,  5 Jul 2007 23:33:22 +0530
-Message-ID: <11836587021546-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1183658603788-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11836586131887-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1183658628862-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: aneesh.kumar@linux.vnet.ibm.com, Alex Tomas <alex@clusterfs.com>
-To: linux-ext4@vger.kernel.org
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: [PATCH] ext2 statfs speed up
+Date: Thu, 05 Jul 2007 11:11:29 -0700
+Message-ID: <1183659089.19473.7.camel@dyn9047017100.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:60815 "EHLO
-	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758694AbXGESFg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jul 2007 14:05:36 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l65I6Orq3154138
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jul 2007 04:06:26 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l65I8xHm137114
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jul 2007 04:08:59 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l65I5QbV015288
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jul 2007 04:05:26 +1000
-In-Reply-To: <1183658628862-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Message-Id: <8a5f723608dee42cd37ef2ad2e67dea4d8dfb75f.1183658085.git.aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <c69d5860cee44bebe28450367491b96c57225402.1183658085.git.aneesh.kumar@linux.vnet.ibm.com>
-References: <c69d5860cee44bebe28450367491b96c57225402.1183658085.git.aneesh.kumar@linux.vnet.ibm.com>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:60133 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759652AbXGESJ7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jul 2007 14:09:59 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l65I9tPB019259
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 14:09:55 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l65I9qbF149094
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 12:09:54 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l65I9p4W002800
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 12:09:52 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Alex Tomas <alex@clusterfs.com>
+This is a patch that speeds up statfs.  It is very simple - 
+the "overhead" calculation, which takes a huge amount of time 
+for large filesystems, never changes unless the size of the 
+filesystem itself changes.  That means we can store it in memory 
+and only recalculate if the filesystem has been resized (almost 
+never).
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c               |  142 +++++++++++++++++++++++++++++++++++++++
- include/linux/ext4_fs_extents.h |    2 +
- 2 files changed, 144 insertions(+), 0 deletions(-)
+It also fixes a minor problem that we never update the on-disk 
+superblock free blocks/inodes counts until the filesystem is 
+unmounted.  While not fatal, we may as well update that on disk 
+when we have the information, and it makes things like debugfs 
+and dumpe2fs report a bit more accurate info.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 16df6e0..4e31439 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1011,6 +1011,148 @@ out:
- }
+Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+
+ fs/ext2/super.c            |   20 ++++++++++++++------
+ include/linux/ext2_fs_sb.h |    2 ++
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+Index: linux-2.6.22-rc7/include/linux/ext2_fs_sb.h
+===================================================================
+--- linux-2.6.22-rc7.orig/include/linux/ext2_fs_sb.h	2007-07-01 12:54:24.000000000 -0700
++++ linux-2.6.22-rc7/include/linux/ext2_fs_sb.h	2007-07-04 22:02:01.000000000 -0700
+@@ -33,6 +33,8 @@ struct ext2_sb_info {
+ 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+ 	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
+ 	unsigned long s_groups_count;	/* Number of groups in the fs */
++	unsigned long s_overhead_last;  /* Last calculated overhead */
++	unsigned long s_blocks_last;    /* Last seen block count */
+ 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+ 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
+ 	struct buffer_head ** s_group_desc;
+Index: linux-2.6.22-rc7/fs/ext2/super.c
+===================================================================
+--- linux-2.6.22-rc7.orig/fs/ext2/super.c	2007-07-01 12:54:24.000000000 -0700
++++ linux-2.6.22-rc7/fs/ext2/super.c	2007-07-05 12:29:03.000000000 -0700
+@@ -1099,15 +1099,18 @@ static int ext2_statfs (struct dentry * 
+ 	struct super_block *sb = dentry->d_sb;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+ 	struct ext2_super_block *es = sbi->s_es;
+-	unsigned long overhead;
+-	int i;
+ 	u64 fsid;
  
- /*
-+ * search the closest allocated block to the left for *logical
-+ * and returns it at @logical + it's physical address at @phys
-+ * if *logical is the smallest allocated block, the function
-+ * returns 0 at @phys
-+ * return value contains 0 (success) or error code
-+ */
-+int
-+ext4_ext_search_left(struct inode *inode, struct ext4_ext_path *path,
-+			ext4_fsblk_t *logical, ext4_fsblk_t *phys)
-+{
-+	struct ext4_extent_idx *ix;
-+	struct ext4_extent *ex;
-+	int depth;
+ 	if (test_opt (sb, MINIX_DF))
+-		overhead = 0;
+-	else {
++		sbi->s_overhead_last = 0;
++	else if (sbi->s_blocks_last != le32_to_cpu(es->s_blocks_count)) {
++		unsigned long i, overhead = 0;
++		smp_rmb();
 +
-+	BUG_ON(path == NULL);
-+	depth = path->p_depth;
-+	*phys = 0;
-+
-+	if (depth == 0 && path->p_ext == NULL)
-+		return 0;
-+
-+	/* usually extent in the path covers blocks smaller
-+	 * then *logical, but it can be that extent is the
-+	 * first one in the file */
-+
-+	ex = path[depth].p_ext;
-+	if (*logical < le32_to_cpu(ex->ee_block)) {
-+		BUG_ON(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex);
-+		while (--depth >= 0) {
-+			ix = path[depth].p_idx;
-+			BUG_ON(ix != EXT_FIRST_INDEX(path[depth].p_hdr));
-+		}
-+		return 0;
-+	}
-+
-+	BUG_ON(*logical < le32_to_cpu(ex->ee_block) + le16_to_cpu(ex->ee_len));
-+
-+	*logical = le32_to_cpu(ex->ee_block) + le16_to_cpu(ex->ee_len) - 1;
-+	*phys = ext_pblock(ex) + le16_to_cpu(ex->ee_len) - 1;
-+	return 0;
-+}
-+
-+/*
-+ * search the closest allocated block to the right for *logical
-+ * and returns it at @logical + it's physical address at @phys
-+ * if *logical is the smallest allocated block, the function
-+ * returns 0 at @phys
-+ * return value contains 0 (success) or error code
-+ */
-+int
-+ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
-+			ext4_fsblk_t *logical, ext4_fsblk_t *phys)
-+{
-+	struct buffer_head *bh = NULL;
-+	struct ext4_extent_header *eh;
-+	struct ext4_extent_idx *ix;
-+	struct ext4_extent *ex;
-+	ext4_fsblk_t block;
-+	int depth;
-+
-+	BUG_ON(path == NULL);
-+	depth = path->p_depth;
-+	*phys = 0;
-+
-+	if (depth == 0 && path->p_ext == NULL)
-+		return 0;
-+
-+	/* usually extent in the path covers blocks smaller
-+	 * then *logical, but it can be that extent is the
-+	 * first one in the file */
-+
-+	ex = path[depth].p_ext;
-+	if (*logical < le32_to_cpu(ex->ee_block)) {
-+		BUG_ON(EXT_FIRST_EXTENT(path[depth].p_hdr) != ex);
-+		while (--depth >= 0) {
-+			ix = path[depth].p_idx;
-+			BUG_ON(ix != EXT_FIRST_INDEX(path[depth].p_hdr));
-+		}
-+		*logical = le32_to_cpu(ex->ee_block);
-+		*phys = ext_pblock(ex);
-+		return 0;
-+	}
-+
-+	BUG_ON(*logical < le32_to_cpu(ex->ee_block) + le16_to_cpu(ex->ee_len));
-+
-+	if (ex != EXT_LAST_EXTENT(path[depth].p_hdr)) {
-+		/* next allocated block in this leaf */
-+		ex++;
-+		*logical = le32_to_cpu(ex->ee_block);
-+		*phys = ext_pblock(ex);
-+		return 0;
-+	}
-+
-+	/* go up and search for index to the right */
-+	while (--depth >= 0) {
-+		ix = path[depth].p_idx;
-+		if (ix != EXT_LAST_INDEX(path[depth].p_hdr))
-+			break;
-+	}
-+
-+	if (depth < 0) {
-+		/* we've gone up to the root and
-+		 * found no index to the right */
-+		return 0;
-+	}
-+
-+	/* we've found index to the right, let's
-+	 * follow it and find the closest allocated
-+	 * block to the right */
-+	ix++;
-+	block = idx_pblock(ix);
-+	while (++depth < path->p_depth) {
-+		bh = sb_bread(inode->i_sb, block);
-+		if (bh == NULL)
-+			return -EIO;
-+		eh = ext_block_hdr(bh);
-+		if (ext4_ext_check_header(inode, eh, depth)) {
-+			brelse(bh);
-+			return -EIO;
-+		}
-+		ix = EXT_FIRST_INDEX(eh);
-+		block = idx_pblock(ix);
-+		brelse(bh);
-+	}
-+
-+	bh = sb_bread(inode->i_sb, block);
-+	if (bh == NULL)
-+		return -EIO;
-+	eh = ext_block_hdr(bh);
-+	if (ext4_ext_check_header(inode, eh, depth)) {
-+		brelse(bh);
-+		return -EIO;
-+	}
-+	ex = EXT_FIRST_EXTENT(eh);
-+	*logical = le32_to_cpu(ex->ee_block);
-+	*phys = ext_pblock(ex);
-+	brelse(bh);
-+	return 0;
-+
-+}
-+
-+/*
-  * ext4_ext_next_allocated_block:
-  * returns allocated block in subsequent extent or EXT_MAX_BLOCK.
-  * NOTE: it considers block number from index entry as
-diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
-index f67c755..1909a78 100644
---- a/include/linux/ext4_fs_extents.h
-+++ b/include/linux/ext4_fs_extents.h
-@@ -213,6 +213,8 @@ extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_pa
- extern int ext4_ext_walk_space(struct inode *, unsigned long, unsigned long, ext_prepare_callback, void *);
- extern struct ext4_ext_path * ext4_ext_find_extent(struct inode *, int, struct ext4_ext_path *);
- int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks);
-+extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *, ext4_fsblk_t *, ext4_fsblk_t *);
-+extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *, ext4_fsblk_t *, ext4_fsblk_t *);
+ 		/*
+-		 * Compute the overhead (FS structures)
++		 * Compute the overhead (FS structures). This is constant
++		 * for a given filesystem unless the number of block groups
++		 * changes so we cache the previous value until it does.
+ 		 */
  
- #endif /* _LINUX_EXT4_EXTENTS */
+ 		/*
+@@ -1131,17 +1134,22 @@ static int ext2_statfs (struct dentry * 
+ 		 */
+ 		overhead += (sbi->s_groups_count *
+ 			     (2 + sbi->s_itb_per_group));
++		sbi->s_overhead_last = overhead;
++		smp_wmb();
++		sbi->s_blocks_last = le32_to_cpu(es->s_blocks_count);
+ 	}
  
--- 
-1.5.3.rc0.30.g114fd-dirty
+ 	buf->f_type = EXT2_SUPER_MAGIC;
+ 	buf->f_bsize = sb->s_blocksize;
+-	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
++	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - sbi->s_overhead_last;
+ 	buf->f_bfree = ext2_count_free_blocks(sb);
++	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
+ 	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+ 	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+ 		buf->f_bavail = 0;
+ 	buf->f_files = le32_to_cpu(es->s_inodes_count);
+ 	buf->f_ffree = ext2_count_free_inodes(sb);
++	es->s_free_inodes_count = cpu_to_le32(buf->f_ffree);
+ 	buf->f_namelen = EXT2_NAME_LEN;
+ 	fsid = le64_to_cpup((void *)es->s_uuid) ^
+ 	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
