@@ -1,43 +1,55 @@
-From: Valerie Henson <val@nmt.edu>
-Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
-Date: Thu, 5 Jul 2007 00:56:56 -0600
-Message-ID: <20070705065656.GC3854@rainbow>
-References: <20070629170958.13b7700c@gara> <20070630055125.GC5535@schatzie.adilger.int> <20070630233908.115ec78e@gara> <20070701123054.GC28917@thunk.org> <20070701094833.47035331@gara> <20070702154939.GC4720@thunk.org> <1183385577.3864.7.camel@localhost.localdomain>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: finding the author of the patches in ext4-patch-queue
+Date: Thu, 05 Jul 2007 08:40:11 -0500
+Message-ID: <1183642811.13486.2.camel@kleikamp.austin.ibm.com>
+References: <468B2AF5.5060207@linux.vnet.ibm.com>
+	 <1183519649.3922.1.camel@localhost.localdomain>
+	 <20070705045416.GA5633@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, "Jose R. Santos" <jrs@us.ibm.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhost.nmt.edu ([129.138.4.52]:49729 "EHLO mailhost.nmt.edu"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:55384 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756563AbXGEG47 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jul 2007 02:56:59 -0400
-Content-Disposition: inline
-In-Reply-To: <1183385577.3864.7.camel@localhost.localdomain>
+	id S1759850AbXGENkS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jul 2007 09:40:18 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l65DfSAY019336
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 09:41:28 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l65DeEGS559024
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 09:40:17 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l65DeEev006736
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jul 2007 09:40:14 -0400
+In-Reply-To: <20070705045416.GA5633@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 02, 2007 at 10:12:57AM -0400, Mingming Cao wrote:
+On Wed, 2007-07-04 at 22:54 -0600, Andreas Dilger wrote:
+> On Jul 03, 2007  23:27 -0400, Mingming Cao wrote:
+> > On Wed, 2007-07-04 at 10:37 +0530, Aneesh Kumar K.V wrote:
+> > > With respect to ext4-patch-queue it is kind of difficult to find who wrote the patch.
+> > > I guess we can solve this by adding From: < author name > in the patches. This will make sure
+> > > when the patches get applied to linus tree we have the right author.
+> > > 
+> > 
+> > Thanks, Aneesh, I will add From: <authro> for all patches in ext4 patch
+> > queue.
 > 
-> How about incorporating some of the chunkfs ideas into this BIG_BG or
-> extended metablockgroups? The original block group size (128MB) is
-> probably too small that would results in many continous inodes. By
-> enlarging the size of groups via BIG_BG or extended metablockgroups, we
-> could add dirty/clean bit to allow partical/parallel fsck, and something
-> like that. Any thoughts on thhis?
+> You may as well add "Signed-off-by: <author>", since that is the standard
+> way to do this.  If you have any questions about who wrote a particular
+> CFS patch I can tell you.
 
-We looked into this in the 2006 OLS paper
-(http://infohost.nmt.edu/~val/review/ext2fsck.pdf) and concluded that
-it's pretty hard to do anything useful on a per-block group basis.
-The only metadata that could be checked and repaired on a per-bg basis
-are the block group summaries of free/used inodes and free/used
-blocks.  So if we had a situation in which the metadata in the block
-group was consistent in all ways (link counts, directory entries,
-etc.) except that we hadn't updated the bg summary info, then it would
-be useful - but I don't think that happens very often.  Anything more
-useful than that will require on-disk format changes; at which point
-why restrict ourselves to a bit in the block group descriptor?
+You should never add someone else's Signed-off-by without being
+explicitly asked to do so.
 
--VAL
+Shaggy
+-- 
+David Kleikamp
+IBM Linux Technology Center
