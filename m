@@ -1,41 +1,43 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: finding the author of the patches in ext4-patch-queue
-Date: Wed, 4 Jul 2007 22:54:16 -0600
-Message-ID: <20070705045416.GA5633@schatzie.adilger.int>
-References: <468B2AF5.5060207@linux.vnet.ibm.com> <1183519649.3922.1.camel@localhost.localdomain>
+From: Valerie Henson <val@nmt.edu>
+Subject: Re: [RFC] BIG_BG vs extended META_BG in ext4
+Date: Thu, 5 Jul 2007 00:56:56 -0600
+Message-ID: <20070705065656.GC3854@rainbow>
+References: <20070629170958.13b7700c@gara> <20070630055125.GC5535@schatzie.adilger.int> <20070630233908.115ec78e@gara> <20070701123054.GC28917@thunk.org> <20070701094833.47035331@gara> <20070702154939.GC4720@thunk.org> <1183385577.3864.7.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+Cc: Theodore Tso <tytso@mit.edu>, "Jose R. Santos" <jrs@us.ibm.com>,
+	Andreas Dilger <adilger@clusterfs.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
 To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:33231 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647AbXGEEyU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jul 2007 00:54:20 -0400
+Received: from mailhost.nmt.edu ([129.138.4.52]:49729 "EHLO mailhost.nmt.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756563AbXGEG47 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jul 2007 02:56:59 -0400
 Content-Disposition: inline
-In-Reply-To: <1183519649.3922.1.camel@localhost.localdomain>
+In-Reply-To: <1183385577.3864.7.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 03, 2007  23:27 -0400, Mingming Cao wrote:
-> On Wed, 2007-07-04 at 10:37 +0530, Aneesh Kumar K.V wrote:
-> > With respect to ext4-patch-queue it is kind of difficult to find who wrote the patch.
-> > I guess we can solve this by adding From: < author name > in the patches. This will make sure
-> > when the patches get applied to linus tree we have the right author.
-> > 
+On Mon, Jul 02, 2007 at 10:12:57AM -0400, Mingming Cao wrote:
 > 
-> Thanks, Aneesh, I will add From: <authro> for all patches in ext4 patch
-> queue.
+> How about incorporating some of the chunkfs ideas into this BIG_BG or
+> extended metablockgroups? The original block group size (128MB) is
+> probably too small that would results in many continous inodes. By
+> enlarging the size of groups via BIG_BG or extended metablockgroups, we
+> could add dirty/clean bit to allow partical/parallel fsck, and something
+> like that. Any thoughts on thhis?
 
-You may as well add "Signed-off-by: <author>", since that is the standard
-way to do this.  If you have any questions about who wrote a particular
-CFS patch I can tell you.
+We looked into this in the 2006 OLS paper
+(http://infohost.nmt.edu/~val/review/ext2fsck.pdf) and concluded that
+it's pretty hard to do anything useful on a per-block group basis.
+The only metadata that could be checked and repaired on a per-bg basis
+are the block group summaries of free/used inodes and free/used
+blocks.  So if we had a situation in which the metadata in the block
+group was consistent in all ways (link counts, directory entries,
+etc.) except that we hadn't updated the bg summary info, then it would
+be useful - but I don't think that happens very often.  Anything more
+useful than that will require on-disk format changes; at which point
+why restrict ourselves to a bit in the block group descriptor?
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+-VAL
