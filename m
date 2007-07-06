@@ -1,49 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Fri, 6 Jul 2007 09:51:56 -0400
-Message-ID: <20070706135156.GD10812@fieldses.org>
-References: <1183275424.4010.126.camel@localhost.localdomain> <1183388313.3864.35.camel@localhost.localdomain> <20070703221522.GE14074@fieldses.org> <20070703233200.GL6578@schatzie.adilger.int>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: simple block bitmap sanity checking
+Date: Fri, 6 Jul 2007 12:48:56 -0600
+Message-ID: <20070706184856.GA13812@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Mingming Cao <cmm@us.ibm.com>, linux-fsdevel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:50556 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403AbXGFNwE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Jul 2007 09:52:04 -0400
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:56684 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757283AbXGFStA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jul 2007 14:49:00 -0400
+Received: from localhost.adilger.int (S01060004e23cfc51.ek.shawcable.net [24.66.76.119])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.clusterfs.com (Postfix) with ESMTP id BADB84E4594
+	for <linux-ext4@vger.kernel.org>; Fri,  6 Jul 2007 12:48:58 -0600 (MDT)
 Content-Disposition: inline
-In-Reply-To: <20070703233200.GL6578@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2007 at 05:32:00PM -0600, Andreas Dilger wrote:
-> On Jul 03, 2007  18:15 -0400, J. Bruce Fields wrote:
-> > How will nfsd tell whether it can really on a given filesystem's
-> > i_version, or whether it should fall back on ctime?
-> 
-> Good question.
+During a discussion at OLS, I came up with a very simple way of validating
+the ext2/3/4 block bitmaps at read time.  Until such a time when we have
+checksums for the bitmaps we can have a simple but quite robust mechanism
+that is useful for ext2/3/4.
 
-Well, we don't need anything particularly complicated--just a one-bit
-flag on the superblock would be enough.
+When a new block bitmap is read from disk in read_block_bitmap() there are a
+few bits that should ALWAYS be set.  In particular, the blocks given by
+desc->bg_block_bitmap, desc->bg_inode_bitmap, and the inode table in
+[desc->bg_inode_table, +sbi->s_itb_per_group].  If those bits (shifted to be
+relative to the current group, of course) are not set then the on-disk group
+descriptor is corrupt, or there is some problem reading it from disk, and
+this needs to generate an extN_error() call[*] to make the fs read-only.
 
-> > So what's the motivation for the "noversion" mount option?
-> 
-> Lustre needs to be able to control the version number directly (version
-> number needs to be ordered between all inodes, is set by Lustre to be a
-> transaction number).  Instead of trying to incorporate this unused code
-> into ext4 we just turn off the ext4 version code and let Lustre control
-> this directly.  It may even be that NFSv4 will need to control the version
-> numbers itself...
+A similar check can be done with the inode bitmap - it should have the
+bits at the end of each bitmap set, for bits higher than s_inodes_per_group.
 
-I can't think of any reason we would need to in the near future, but
-maybe I'm insufficiently creative.
+What I'm wondering is if anyone has time to implement this idea?  I'm
+estimating it wouldn't be about 30 lines of simple code in total.
 
-The use of a mount option means the change attribute could be
-inconsistent across mounts.  If we really need this, wouldn't it make
-more sense for it to be a persistent feature of the filesystem, set at
-mkfs time?
+[*] This reminds me - we should make the default ext4 error behaviour be
+    the safer "remount-ro" instead of the dangerous "continue".
 
---b.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
