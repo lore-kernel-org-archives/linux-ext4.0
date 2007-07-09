@@ -1,47 +1,81 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: E2fsprogs git tree
-Date: Mon, 09 Jul 2007 11:02:30 -0400
-Message-ID: <E1I7ukw-0001ht-T0@candygram.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [e2fsprogs] Bug in salvage_directory
+Date: Mon, 9 Jul 2007 12:50:16 -0400
+Message-ID: <20070709165016.GA21922@thunk.org>
+References: <1183973522.3889.10.camel@garfield.linsyssoft.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56643 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:38226 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750788AbXGIPCe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2007 11:02:34 -0400
+	id S1753303AbXGIQuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2007 12:50:20 -0400
+Content-Disposition: inline
+In-Reply-To: <1183973522.3889.10.camel@garfield.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-People may have noticed that e2fsprogs 1.40 and roughly a week later
-e2fsprogs 1.40.1 have been released, while there hasn't been any
-activity at http://thunk.org/hg/e2fsprogs.  That's because right after
-e2fsprogs 1.40, I have moved the e2fsprogs development activity over to
-git.  The public repositories can be found here:
+On Mon, Jul 09, 2007 at 03:02:02PM +0530, Kalpak Shah wrote:
+> Hi Ted,
+> 
+> Recently, one of our customers found this message in pass2 of e2fsck while doing some regression testing:
+> "Entry '4, 0x695a, 0x81ff, 0x0040, 0x8320, 0xa192, 0x0021' in ??? (136554) has
+> rec_len of 14200, should be 26908."
+> 
+> Both the displayed rec_len and the "should be" value are bogus. The
+> reason is that salvage_directory sets a offset beyond blocksize
+> leading to bogus messages.
 
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+Do you have a test case where this happens?  I don't think your patch
+is right, because if dirent->rec_len is too big, this yes, your patch
+will make sure offset doesn't get set beyond fs->blocksize, but it
+ends up leaving prev->rec_len also pointing beyond fs->blocksize ---
+which means a 2nd e2fsck should result in a complaint about that.
 
-and here:
+>  	if (prev && dirent->rec_len && (dirent->rec_len % 4) == 0) {
+>  		prev->rec_len += dirent->rec_len;
+			      ^^^^^^^^^^^^^^^^^^^
+> -		*offset += dirent->rec_len;
+> +		if (*offset + dirent->rec_len <= fs->blocksize)
+> +			*offset += dirent->rec_len;
+> +		else
+> +			*offset = fs->blocksize;
 
-	git://repo.or.cz/e2fsprogs.git
-	http://repo.or.cz/r/e2fsprogs.git
 
-There are currently two branches, "maint" and "master".  Bug-fixes will
-go on the maint branch, obvious development updates will go on the
-"master" branch.  If something requires a longer cooking phase, I will
-create "topic" branches and "next" and "pu" branches much like how Junio
-manages the git development tree.  (The difference between "next" and
-"pu" --- proposed updates --- is "maint", "master", and "next" are
-guaranteed never to rewind or go "back in time", where as the "pu"
-branch will get rewound and is meant for more aggressive experiments.)
+I think this is a better fix for the problem:
 
-People who send me patches that can be more easily merged into the
-"maint" or "master" will receive a hundred blessings --- and said
-patches will get merged much more quickly.  :-)
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index e235348..5e088e2 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -675,11 +675,12 @@ static void salvage_directory(ext2_filsys fs,
+ 		return;
+ 	}
+ 	/*
+-	 * If the directory entry is a multiple of four, so it is
+-	 * valid, let the previous directory entry absorb the invalid
+-	 * one. 
++	 * If the record length of the directory entry is a multiple
++	 * of four, and not too big, such that it is valid, let the
++	 * previous directory entry absorb the invalid one.
+ 	 */
+-	if (prev && dirent->rec_len && (dirent->rec_len % 4) == 0) {
++	if (prev && dirent->rec_len && (dirent->rec_len % 4) == 0 &&
++	    (*offset + dirent->rec_len <= fs->blocksize)) {
+ 		prev->rec_len += dirent->rec_len;
+ 		*offset += dirent->rec_len;
+ 		return;
 
-Patches that don't introduce changes to the ABI will also get accepted
-much more quickly; new interfaces need to be considered very carefully,
-and existing interfaces NEVER get broken without a major version number
-bump of the shared library in question, and that is something we will do
-only very cautiously.
+If the dirent->rec_len is too big, then the default salvage method
+which follows will do the right thing.
 
-							- Ted
+I'd like to have a test case to make sure this works, though, so if
+you have a quick test case whipped up, that would be great.  Otherwise
+I'll have to cons one up when I have a moment.
+
+Thanks, regards,
+
+     	     	      	      	       - Ted
