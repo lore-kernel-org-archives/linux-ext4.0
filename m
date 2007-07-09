@@ -1,76 +1,54 @@
-From: "Ninel Evol" <myLC@gmx.net>
-Subject: inserting/deleting into/from the middle of large files?
-Date: Sun, 08 Jul 2007 15:13:31 +0200
-Message-ID: <20070708131331.212980@gmx.net>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: [PATCH] Faster ext2_clear_inode()
+Date: Mon, 9 Jul 2007 08:11:22 +0400
+Message-ID: <20070709041122.GA5889@martell.zuzino.mipt.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: akpm@osdl.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:47981 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1752368AbXGHNNd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 Jul 2007 09:13:33 -0400
+Received: from ug-out-1314.google.com ([66.249.92.175]:48669 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751230AbXGIEL1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2007 00:11:27 -0400
+Received: by ug-out-1314.google.com with SMTP id j3so1063570ugf
+        for <linux-ext4@vger.kernel.org>; Sun, 08 Jul 2007 21:11:25 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+If CONFIG_EXT2_FS_POSIX_ACL is not configured, ext2_clear_inode() will be empty
+function. However, there still will be call and immediate return which can be
+avoided.
 
-'lo there, =3D)
+Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+---
 
-having a DVB-S receiver running Linux (PPC) I found myself=20
-wondering how to delete data from the middle of a large file=20
-(stripping a recording of ads, for example - or messing=20
-around in a virtual disk file, etc.). Currently, the common=20
-way of doing this seems to be by copying the file (leaving a=20
-part behind) and then deleting the original. Of course, on a=20
-large file (say 12 GB) this can take an eternity; also you=20
-can run into trouble if the filesystem is nearly full...
+ fs/ext2/super.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Is it me, or doesn't that make any sense?
-Having a block-oriented filesystem, operations like this=20
-should only take an instance.
-
-So basically I'm looking for functions to:
-- insert a chunk into a file
-- delete a chunk from a file
-- move a chunk from one file into another
-
-All of the above would be very useful when dealing with=20
-large data, such as DVB-recordings (Linux being the nr.1 OS=20
-on those receivers, naturally:-).
-
-Seeing a large file as a chain of blocks, making such an=20
-operation on a block-sized basis should already be easy to=20
-accomplish. However, if you want full support there should=20
-be the possibility to insert "sparse blocks" (less content=20
-than the usual) within a chain of blocks (including the=20
-beginning).
-
-Is this already possible?
-Would it be difficult to implement?
-
-Think about it: instead of copying gigabytes with the=20
-drive's heads clicking around - taking minutes to hours,=20
-such operations could be performed in (milli)seconds.
-
-I think that there should indeed be a standard (Posix?) for=20
-providing such functionality. (One call could be to=20
-determine if the filesystem supports those operations fast -
-it could return a version for instance, 0 meaning that the=20
-operations, although provided, will be slow.)
-
-What is needed in the first place however, is a filesystem=20
-supporting those operations - making it first choice for=20
-VDRs running Linux. (The others would surely follow soon=20
-after, at which point there should be the chance for=20
-establishing a standard.)
-
-
-Looking forward for some enlightenment... :-)
-
-                                           LC (myLC@gmx.net)
-
-
---=20
-Psssst! Schon vom neuen GMX MultiMessenger geh=F6rt?
-Der kanns mit allen: http://www.gmx.net/de/go/multimessenger
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -184,9 +184,9 @@ static void destroy_inodecache(void)
+ 	kmem_cache_destroy(ext2_inode_cachep);
+ }
+ 
++#ifdef CONFIG_EXT2_FS_POSIX_ACL
+ static void ext2_clear_inode(struct inode *inode)
+ {
+-#ifdef CONFIG_EXT2_FS_POSIX_ACL
+ 	struct ext2_inode_info *ei = EXT2_I(inode);
+ 
+ 	if (ei->i_acl && ei->i_acl != EXT2_ACL_NOT_CACHED) {
+@@ -197,8 +197,10 @@ static void ext2_clear_inode(struct inode *inode)
+ 		posix_acl_release(ei->i_default_acl);
+ 		ei->i_default_acl = EXT2_ACL_NOT_CACHED;
+ 	}
+-#endif
+ }
++#else
++#define ext2_clear_inode NULL
++#endif
+ 
+ static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ {
