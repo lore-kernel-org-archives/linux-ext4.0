@@ -1,38 +1,35 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-Subject: Re: [PATCH] Faster ext2_clear_inode()
-Date: Mon, 9 Jul 2007 22:00:03 +0200
-Message-ID: <20070709200003.GA18501@lazybastard.org>
-References: <20070709041122.GA5889@martell.zuzino.mipt.ru> <20070709083431.GA14761@lazybastard.org> <20070709180148.GA5747@martell.zuzino.mipt.ru>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [e2fsprogs] Bug in salvage_directory
+Date: Mon, 9 Jul 2007 16:20:25 -0400
+Message-ID: <20070709202025.GD2343@thunk.org>
+References: <1183973522.3889.10.camel@garfield.linsyssoft.com> <20070709165016.GA21922@thunk.org> <1184003549.4347.6.camel@garfield> <20070709182923.GB2343@thunk.org> <20070709191733.GY5633@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>, akpm@osdl.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Alexey Dobriyan <adobriyan@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Kalpak Shah <kalpak@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lazybastard.de ([212.112.238.170]:59264 "EHLO
-	longford.lazybastard.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751917AbXGIUDa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2007 16:03:30 -0400
+Received: from THUNK.ORG ([69.25.196.29]:35581 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752917AbXGIUU2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2007 16:20:28 -0400
 Content-Disposition: inline
-In-Reply-To: <20070709180148.GA5747@martell.zuzino.mipt.ru>
+In-Reply-To: <20070709191733.GY5633@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 9 July 2007 22:01:48 +0400, Alexey Dobriyan wrote:
->=20
-> Yes. Note that ext2_clear_inode() is referenced from ext2_sops, so ev=
-en
-> empty, it leaves traces in resulting kernel.
+On Mon, Jul 09, 2007 at 01:17:33PM -0600, Andreas Dilger wrote:
+> On Jul 09, 2007  14:29 -0400, Theodore Tso wrote:
+> > On Mon, Jul 09, 2007 at 11:22:05PM +0530, Kalpak Shah wrote:
+> > > Yes even prev->rec_len cannot be beyond fs->blocksize. 
+> > 
+> > Really?  Even after this:
+> > 
+> >                prev->rec_len += dirent->rec_len;
+> >                              ^^^^^^^^^^^^^^^^^^^
+> 
+> I think Kalpak was agreeing with you...
 
-Is that your opinion or have you actually measured a difference?
-I strongly suspect that compilers are smart enough to optimize away a
-call to an empty static function.
+Sorry, I misread his note.
 
-J=C3=B6rn
-
---=20
-=46ancy algorithms are slow when n is small, and n is usually small.
-=46ancy algorithms have big constants. Until you know that n is
-frequently going to be big, don't get fancy.
--- Rob Pike
+       	 				- Ted
