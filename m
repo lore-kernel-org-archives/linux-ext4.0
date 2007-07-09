@@ -1,54 +1,58 @@
-From: Alexey Dobriyan <adobriyan@gmail.com>
-Subject: [PATCH] Faster ext2_clear_inode()
-Date: Mon, 9 Jul 2007 08:11:22 +0400
-Message-ID: <20070709041122.GA5889@martell.zuzino.mipt.ru>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
+Subject: Re: [PATCH] Faster ext2_clear_inode()
+Date: Mon, 9 Jul 2007 10:34:32 +0200
+Message-ID: <20070709083431.GA14761@lazybastard.org>
+References: <20070709041122.GA5889@martell.zuzino.mipt.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: akpm@osdl.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.175]:48669 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751230AbXGIEL1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2007 00:11:27 -0400
-Received: by ug-out-1314.google.com with SMTP id j3so1063570ugf
-        for <linux-ext4@vger.kernel.org>; Sun, 08 Jul 2007 21:11:25 -0700 (PDT)
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: akpm@osdl.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Alexey Dobriyan <adobriyan@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070709041122.GA5889@martell.zuzino.mipt.ru>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-If CONFIG_EXT2_FS_POSIX_ACL is not configured, ext2_clear_inode() will be empty
-function. However, there still will be call and immediate return which can be
-avoided.
+On Mon, 9 July 2007 08:11:22 +0400, Alexey Dobriyan wrote:
+>=20
+> If CONFIG_EXT2_FS_POSIX_ACL is not configured, ext2_clear_inode() wil=
+l be empty
+> function. However, there still will be call and immediate return whic=
+h can be
+> avoided.
+> [...]
+> +#ifdef CONFIG_EXT2_FS_POSIX_ACL
+>  static void ext2_clear_inode(struct inode *inode)
+>  {
+> -#ifdef CONFIG_EXT2_FS_POSIX_ACL
+>  	struct ext2_inode_info *ei =3D EXT2_I(inode);
+> =20
+>  	if (ei->i_acl && ei->i_acl !=3D EXT2_ACL_NOT_CACHED) {
+> @@ -197,8 +197,10 @@ static void ext2_clear_inode(struct inode *inode=
+)
+>  		posix_acl_release(ei->i_default_acl);
+>  		ei->i_default_acl =3D EXT2_ACL_NOT_CACHED;
+>  	}
+> -#endif
+>  }
+> +#else
+> +#define ext2_clear_inode NULL
+> +#endif
 
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
----
+Are you sure your patch makes a difference?  Does the resulting binary
+change at all?
 
- fs/ext2/super.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+J=C3=B6rn
 
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -184,9 +184,9 @@ static void destroy_inodecache(void)
- 	kmem_cache_destroy(ext2_inode_cachep);
- }
- 
-+#ifdef CONFIG_EXT2_FS_POSIX_ACL
- static void ext2_clear_inode(struct inode *inode)
- {
--#ifdef CONFIG_EXT2_FS_POSIX_ACL
- 	struct ext2_inode_info *ei = EXT2_I(inode);
- 
- 	if (ei->i_acl && ei->i_acl != EXT2_ACL_NOT_CACHED) {
-@@ -197,8 +197,10 @@ static void ext2_clear_inode(struct inode *inode)
- 		posix_acl_release(ei->i_default_acl);
- 		ei->i_default_acl = EXT2_ACL_NOT_CACHED;
- 	}
--#endif
- }
-+#else
-+#define ext2_clear_inode NULL
-+#endif
- 
- static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
- {
+--=20
+=46ancy algorithms are slow when n is small, and n is usually small.
+=46ancy algorithms have big constants. Until you know that n is
+frequently going to be big, don't get fancy.
+-- Rob Pike
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
