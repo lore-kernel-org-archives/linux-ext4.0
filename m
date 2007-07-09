@@ -1,66 +1,170 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [e2fsprogs] Bug in salvage_directory
-Date: Mon, 9 Jul 2007 14:29:23 -0400
-Message-ID: <20070709182923.GB2343@thunk.org>
-References: <1183973522.3889.10.camel@garfield.linsyssoft.com> <20070709165016.GA21922@thunk.org> <1184003549.4347.6.camel@garfield>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: simple block bitmap sanity checking
+Date: Mon, 9 Jul 2007 12:58:54 -0600
+Message-ID: <20070709185854.GW5633@schatzie.adilger.int>
+References: <20070706184856.GA13812@schatzie.adilger.int> <46926EC2.7030706@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Kalpak Shah <kalpak@clusterfs.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:53232 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753858AbXGIS30 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2007 14:29:26 -0400
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:34767 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755312AbXGIS66 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2007 14:58:58 -0400
 Content-Disposition: inline
-In-Reply-To: <1184003549.4347.6.camel@garfield>
+In-Reply-To: <46926EC2.7030706@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 09, 2007 at 11:22:05PM +0530, Kalpak Shah wrote:
-> On Mon, 2007-07-09 at 12:50 -0400, Theodore Tso wrote:
-> > On Mon, Jul 09, 2007 at 03:02:02PM +0530, Kalpak Shah wrote:
-> > > Hi Ted,
-> > > 
-> > > Recently, one of our customers found this message in pass2 of e2fsck while doing some regression testing:
-> > > "Entry '4, 0x695a, 0x81ff, 0x0040, 0x8320, 0xa192, 0x0021' in ??? (136554) has
-> > > rec_len of 14200, should be 26908."
-> > > 
-> > > Both the displayed rec_len and the "should be" value are bogus. The
-> > > reason is that salvage_directory sets a offset beyond blocksize
-> > > leading to bogus messages.
-> > 
-> > Do you have a test case where this happens?  I don't think your patch
-> > is right, because if dirent->rec_len is too big, this yes, your patch
-> > will make sure offset doesn't get set beyond fs->blocksize, but it
-> > ends up leaving prev->rec_len also pointing beyond fs->blocksize ---
-> > which means a 2nd e2fsck should result in a complaint about that.
+On Jul 09, 2007  22:52 +0530, Aneesh Kumar K.V wrote:
+> Something like this ?. If yes i can send a patch with full changelog
 > 
-> Yes even prev->rec_len cannot be beyond fs->blocksize. 
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 44c6254..b9a334c 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -115,17 +115,50 @@ read_block_bitmap(struct super_block *sb, unsigned 
+> int block_group)
+> {
+> 	struct ext4_group_desc * desc;
+> 	struct buffer_head * bh = NULL;
+> +	ext4_fsblk_t bitmap_blk, grp_rel_blk, grp_first_blk;
+> 
+> 	desc = ext4_get_group_desc (sb, block_group, NULL);
+> 	if (!desc)
+> 		goto error_out;
+> -	bh = sb_bread(sb, ext4_block_bitmap(sb, desc));
+> +	bitmap_blk = ext4_block_bitmap(sb, desc);
+> +	bh = sb_bread(sb, bitmap_blk);
+> 	if (!bh)
+> 		ext4_error (sb, "read_block_bitmap",
 
-Really?  Even after this:
+I prefer ext4_error(sb, __FUNCTION__, ...) since then we don't need to
+update the error message when the function name changes, so while we are
+here you may as well change it...
 
-               prev->rec_len += dirent->rec_len;
-                             ^^^^^^^^^^^^^^^^^^^
+> 			    "Cannot read block bitmap - "
+> 			    "block_group = %d, block_bitmap = %llu",
+> -			    block_group,
+> -			    ext4_block_bitmap(sb, desc));
+> +			    block_group, bitmap_blk);
+> +
+> +	/* check whether block bitmap block number is set */
+> +	printk("blk bitmap = %llu first block = %llu block group = %u \n",
+> +			bitmap_blk, ext4_group_first_block_no(sb, block_group),
+> +			block_group);
+> +	grp_first_blk = ext4_group_first_block_no(sb, block_group);
+> +
 
-... when *offset + dirent->rec_len > fs->blocksize?  If the else part
-of your conditional triggers, then dirent->rec_len is too big; it
-could potentially be huge.  So just blindly adding that invalid value
-to prev->rec_len can't be right.
+This should be wrapped as ext4_debug(), and you may as well calculate
+grp_first_blk and use that for the printed message.
 
-> I do have the corrupt filesystem image but it is a large one. 
+> +	grp_rel_blk = bitmap_blk - grp_first_blk;
+> +	if (!ext4_test_bit(grp_rel_blk, bh->b_data)) {
+> +		/* bad block bitmap */
+> +		brelse(bh);
+> +		return NULL;
+> +	}
+> +
+> +	/* check whether the inode bitmap block number is set */
+> +	bitmap_blk = ext4_inode_bitmap(sb, desc);
+> +	grp_rel_blk = bitmap_blk - grp_first_blk;
+> +	if (!ext4_test_bit(grp_rel_blk, bh->b_data)) {
+> +		/* bad block bitmap */
+> +		brelse(bh);
+> +		return NULL;
+> +	}
+> +	/* check whether the inode table block number is set */
+> +	bitmap_blk = ext4_inode_table(sb, desc);
+> +	grp_rel_blk = bitmap_blk - grp_first_blk;
+> +	if (!ext4_test_bit(grp_rel_blk, bh->b_data)) {
+> +		/* bad block bitmap */
+> +		brelse(bh);
+> +		return NULL;
+> +	}
 
-Can you use debugfs's "dump" command to dump out the contents of the
-directory in question?  i.e.:
+Each of these error returns should have an ext4_error() message so that the
+filesystem is marked read-only if this happens.  It might make sense to
+just have the error message referenced by a char *, goto err_brelse and then
+a single call and brelse(bh) at the end of the function.  I've rewritten
+the code below, but note this is a hand-edit and not a patch...  Also note
+that we can do the same for inode bitmaps, checking the bits between
+[sbi->s_inodes_per_group, sb->s_blocksize * 8 - 1] are set.
 
-<tytso.root@candygram> {/usr/projects/ext4-patch-queue}, level 2  [master]
-504# debugfs /dev/sda2
-debugfs 1.40.1 (08-Jul-2007)
-debugfs:  dump /home/tytso/isync/mit/new /tmp/new-dir.img
-debugfs:  q
-<tytso.root@candygram> {/usr/projects/ext4-patch-queue}, level 2  [master]
-505# ls -l /tmp/new-dir.img
-408 -rw-r--r-- 1 root root 409600 2007-07-09 14:28 /tmp/new-dir.img
+We likely also need to skip these checks for uninit groups, so the context
+of this patch should change to go into the ext4 patch queue (the checks go
+into the "else" clause).
 
-    	       	      	   	  	     - Ted
+
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -115,19 +115,54 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
+	struct ext4_group_desc * desc;
+	struct buffer_head * bh = NULL;
++	ext4_fsblk_t bitmap_blk, grp_first_blk;
++	int i;
++	const char *msg;
+
+	desc = ext4_get_group_desc (sb, block_group, NULL);
+	if (!desc)
+		goto error_out;
+-	bh = sb_bread(sb, ext4_block_bitmap(sb, desc));
+-	if (!bh)
+-		ext4_error (sb, "read_block_bitmap",
+-			    "Cannot read block bitmap - "
+-			    "block_group = %d, block_bitmap = %llu",
+-			    block_group,
+-			    ext4_block_bitmap(sb, desc));
++	bitmap_blk = ext4_block_bitmap(sb, desc);
++	bh = sb_bread(sb, bitmap_blk);
++	if (!bh) {
++		msg = "Cannot read block bitmap"
++		goto error_out;
++	}
++
++	grp_first_blk = ext4_group_first_block_no(sb, block_group);
++
++	ext4_debug("blk bitmap = %llu first block = %llu block group = %u\n",
++		   bitmap_blk, grp_first_blk, block_group);
++
++	/* check whether block bitmap block number is set */
++	if (!ext4_test_bit(bitmap_blk - grp_first_blk, bh->b_data)) {
++		msg = "Block bitmap block not marked in use";
++		goto error_brelse;
++	}
++
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = ext4_inode_bitmap(sb, desc);
++	if (!ext4_test_bit(bitmap_blk - grp_first_blk, bh->b_data)) {
++		msg = "Inode bitmap block not marked in use";
++		goto error_brelse;
++	}
++
++	/* check whether the inode table blocks are set */
++	bitmap_blk = ext4_inode_table(sb, desc);
++	for (i = 0; i < EXT4_SB(sb)->s_itb_per_group; i++, bitmap_blk++)
++		if (!ext4_test_bit(bitmap_blk - grp_first_blk, bh->b_data)){
++			msg = "Inode table block not marked in use";
++			goto error_brelse;
++		}
++	}
++	return bh;
++
++error_brelse:
++	brelse(bh);
+ error_out:
+-	return bh;
++	ext4_error(sb, __FUNCTION__, "%s - block_group %u, block %llu\n"
++		   block_group, bitmap_blk);
++	return NULL;
+ }
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
