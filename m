@@ -1,58 +1,48 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-Subject: Re: [PATCH] Faster ext2_clear_inode()
-Date: Mon, 9 Jul 2007 10:34:32 +0200
-Message-ID: <20070709083431.GA14761@lazybastard.org>
-References: <20070709041122.GA5889@martell.zuzino.mipt.ru>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: [e2fsprogs] Bug in salvage_directory
+Date: Mon, 09 Jul 2007 15:02:02 +0530
+Message-ID: <1183973522.3889.10.camel@garfield.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: akpm@osdl.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Alexey Dobriyan <adobriyan@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070709041122.GA5889@martell.zuzino.mipt.ru>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: TheodoreTso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:44983 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751315AbXGIJbM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2007 05:31:12 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 9 July 2007 08:11:22 +0400, Alexey Dobriyan wrote:
->=20
-> If CONFIG_EXT2_FS_POSIX_ACL is not configured, ext2_clear_inode() wil=
-l be empty
-> function. However, there still will be call and immediate return whic=
-h can be
-> avoided.
-> [...]
-> +#ifdef CONFIG_EXT2_FS_POSIX_ACL
->  static void ext2_clear_inode(struct inode *inode)
->  {
-> -#ifdef CONFIG_EXT2_FS_POSIX_ACL
->  	struct ext2_inode_info *ei =3D EXT2_I(inode);
-> =20
->  	if (ei->i_acl && ei->i_acl !=3D EXT2_ACL_NOT_CACHED) {
-> @@ -197,8 +197,10 @@ static void ext2_clear_inode(struct inode *inode=
-)
->  		posix_acl_release(ei->i_default_acl);
->  		ei->i_default_acl =3D EXT2_ACL_NOT_CACHED;
->  	}
-> -#endif
->  }
-> +#else
-> +#define ext2_clear_inode NULL
-> +#endif
+Hi Ted,
 
-Are you sure your patch makes a difference?  Does the resulting binary
-change at all?
+Recently, one of our customers found this message in pass2 of e2fsck while doing some regression testing:
+"Entry '4, 0x695a, 0x81ff, 0x0040, 0x8320, 0xa192, 0x0021' in ??? (136554) has
+rec_len of 14200, should be 26908."
 
-J=C3=B6rn
+Both the displayed rec_len and the "should be" value are bogus. The reason is that salvage_directory sets a offset beyond blocksize leading to bogus messages.
 
---=20
-=46ancy algorithms are slow when n is small, and n is usually small.
-=46ancy algorithms have big constants. Until you know that n is
-frequently going to be big, don't get fancy.
--- Rob Pike
--
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: e2fsprogs-1.39/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs-1.39.orig/e2fsck/pass2.c
++++ e2fsprogs-1.39/e2fsck/pass2.c
+@@ -690,7 +690,10 @@ static void salvage_directory(ext2_filsy
+ 	 */
+ 	if (prev && dirent->rec_len && (dirent->rec_len % 4) == 0) {
+ 		prev->rec_len += dirent->rec_len;
+-		*offset += dirent->rec_len;
++		if (*offset + dirent->rec_len <= fs->blocksize)
++			*offset += dirent->rec_len;
++		else
++			*offset = fs->blocksize;
+ 		return;
+ 	}
+ 	/*
+
+
+Thanks,
+Kalpak.
