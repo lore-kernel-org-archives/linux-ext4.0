@@ -1,8 +1,8 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 4][PATCH 3/5] i_version:ext4 inode version read/store
-Date: Tue, 10 Jul 2007 16:31:17 -0700
-Message-ID: <20070710163117.d14fce90.akpm@linux-foundation.org>
-References: <1183275456.4010.129.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
+Date: Tue, 10 Jul 2007 16:31:33 -0700
+Message-ID: <20070710163133.030ddba7.akpm@linux-foundation.org>
+References: <1183275465.4010.130.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
@@ -10,76 +10,71 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:49194 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41669 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763310AbXGJXb0 (ORCPT
+	by vger.kernel.org with ESMTP id S1762899AbXGJXbo (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 19:31:26 -0400
-In-Reply-To: <1183275456.4010.129.camel@localhost.localdomain>
+	Tue, 10 Jul 2007 19:31:44 -0400
+In-Reply-To: <1183275465.4010.130.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:37:36 -0400
+On Sun, 01 Jul 2007 03:37:45 -0400
 Mingming Cao <cmm@us.ibm.com> wrote:
 
-> This patch adds 64-bit inode version support to ext4. The lower 32 bits
-> are stored in the osd1.linux1.l_i_version field while the high 32 bits
-> are stored in the i_version_hi field newly created in the ext4_inode.
+> This patch is on top of i_version_update_vfs.
+> The i_version field of the inode is set on inode creation and incremented when
+> the inode is being modified.
+> 
 
-So reading the code here does serve to answer the question I raised against
-the earlier patch.  A bit.
-
-I'd have thought that this patch and the one which adds i_version_hi should
-be folded into a single diff?
+Again, I don't think I've ever seen this patch before.  It is at least a
+month old.
 
 > 
-> Index: linux-2.6.21/fs/ext4/inode.c
+> Index: linux-2.6.22-rc4/fs/ext4/ialloc.c
 > ===================================================================
-> --- linux-2.6.21.orig/fs/ext4/inode.c
-> +++ linux-2.6.21/fs/ext4/inode.c
-> @@ -2709,6 +2709,13 @@ void ext4_read_inode(struct inode * inod
->  	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
->  	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
-> 
-> +	inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-> +		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
-> +			inode->i_version |=
-> +			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
+> --- linux-2.6.22-rc4.orig/fs/ext4/ialloc.c	2007-06-13 17:16:28.000000000 -0700
+> +++ linux-2.6.22-rc4/fs/ext4/ialloc.c	2007-06-13 17:24:45.000000000 -0700
+> @@ -565,6 +565,7 @@ got:
+>  	inode->i_blocks = 0;
+>  	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
+>  						       ext4_current_time(inode);
+> +	inode->i_version = 1;
+>  
+>  	memset(ei->i_data, 0, sizeof(ei->i_data));
+>  	ei->i_dir_start_lookup = 0;
+> Index: linux-2.6.22-rc4/fs/ext4/inode.c
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/fs/ext4/inode.c	2007-06-13 17:21:29.000000000 -0700
+> +++ linux-2.6.22-rc4/fs/ext4/inode.c	2007-06-13 17:24:45.000000000 -0700
+> @@ -3082,6 +3082,7 @@ int ext4_mark_iloc_dirty(handle_t *handl
+>  {
+>  	int err = 0;
+>  
+> +	inode->i_version++;
+>  	/* the do_update_inode consumes one bh->b_count */
+>  	get_bh(iloc->bh);
+>  
+> Index: linux-2.6.22-rc4/fs/ext4/super.c
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-13 17:19:11.000000000 -0700
+> +++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-13 17:24:45.000000000 -0700
+> @@ -2846,8 +2846,8 @@ out:
+>  		i_size_write(inode, off+len-towrite);
+>  		EXT4_I(inode)->i_disksize = inode->i_size;
+>  	}
+> -	inode->i_version++;
+>  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+> +	inode->i_version = 1;
+>  	ext4_mark_inode_dirty(handle, inode);
+>  	mutex_unlock(&inode->i_mutex);
+>  	return len - towrite;
 
-<checks the precedence of "(type)" versus "<<">
+ext4 already has code to update i_version on directories.  Here we appear
+to be udpating it on regular files?
 
-<OK>
+But for what reason?  The changelog doesn't say?
 
-> +	}
-
-I don't quite see how the above two tests are sufficient to unambiguously
-determine that the i_version_hi field is present on-disk.
-
-I guess we're implicitly assuming that if the on-disk inode is big enough
-then it _must_ have i_version_hi in there?  If so, why is the comparison
-with EXT4_GOOD_OLD_INODE_SIZE needed?
-
-Some description of the overall approach to inode version identification
-would be helpful here.
-
->  	if (S_ISREG(inode->i_mode)) {
->  		inode->i_op = &ext4_file_inode_operations;
->  		inode->i_fop = &ext4_file_operations;
-> @@ -2852,8 +2859,14 @@ static int ext4_do_update_inode(handle_t
->  	} else for (block = 0; block < EXT4_N_BLOCKS; block++)
->  		raw_inode->i_block[block] = ei->i_data[block];
-> 
-> -	if (ei->i_extra_isize)
-> +	raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
-> +	if (ei->i_extra_isize) {
-> +		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi)) {
-
-There's no comparison with EXT4_GOOD_OLD_INODE_SIZE here...
-
-> +			raw_inode->i_version_hi =
-> +				cpu_to_le32(inode->i_version >> 32);
-> +		}
->  		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
-> +	}
-> 
+AFAICT the code forgets to update i_version during file overwrites (unless
+the overwrite was over a hole).  But without a decent description of this
+change I cannot tell whether this was a bug.
