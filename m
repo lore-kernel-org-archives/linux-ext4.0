@@ -1,81 +1,361 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: random ext3 image bugs
-Date: Tue, 10 Jul 2007 13:43:51 +0200
-Message-ID: <469370F7.5000809@googlemail.com>
+From: Kalpak Shah <kalpak@clusterfs.com>
+Subject: Random corruption test for e2fsck
+Date: Tue, 10 Jul 2007 18:37:40 +0530
+Message-ID: <1184072860.4440.39.camel@garfield.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed; boundary="=-6Li0RNTpFKN640kQMOAj"
+Cc: TheodoreTso <tytso@mit.edu>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hu-out-0506.google.com ([72.14.214.228]:20803 "EHLO
-	hu-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754519AbXGJLo3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2007 07:44:29 -0400
-Received: by hu-out-0506.google.com with SMTP id 19so719479hue
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 04:44:27 -0700 (PDT)
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:56115 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753128AbXGJNGv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2007 09:06:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
 
-My insane file system test triggered a few bugs in ext3 image. Anyone interested?
+--=-6Li0RNTpFKN640kQMOAj
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-[40859.103232] SELinux: initialized (dev loop7, type ext3), uses xattr
-[40859.119575] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 757: bad block 4829
-[40859.129837] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=757
-[40859.139840] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 8381: bad block 4829
-[40859.149436] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=8381
-[40859.164064] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 4314: bad block 4829
-[40859.172919] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=4314
-[40859.183789] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 760: bad block 4829
-[40859.192601] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=760
-[40859.209274] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 6390: bad block 4829
-[40859.218258] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=6390
-[40859.256550] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 14610: bad block 4829
-[40859.266803] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=14610
-[40859.284814] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 764: bad block 4829
-[40859.293644] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=764
-[..]
+Hi,
 
-[40861.091690] EXT3-fs error (device loop2): ext3_readdir: bad entry in directory #11: rec_len % 4 != 0 - offset=0, inode=3925999616, rec_len=1023, name_len=0
-[40862.667815] EXT3-fs error (device loop2): ext3_readdir: bad entry in directory #11: rec_len % 4 != 0 - offset=0, inode=3925999616, rec_len=1023, name_len=0
+This is a random corruption test which can be included in the e2fsprogs
+regression tests. It does the following:
+1) Create an test fs and format it with ext2/3/4 and random selection of
+features.
+2) Mount it and copy data into it.
+3) Move around the blocks of the filesystem randomly causing corruption.
+Also overwrite some random blocks with garbage from /dev/urandom. Create
+a copy of this corrupted filesystem.
+4) Unmount and run e2fsck. If the first run of e2fsck produces any
+errors like uncorrected errors, library error, segfault, usage error,
+etc. then it is deemed a bug. But in any case, a second run of e2fsck is
+done to check if it renders the filesystem clean. 
+5) If the test went by without any errors the test image is deleted and
+in case of any errors the user is notified that the log of this test run
+should be mailed to linux-ext4@ and the image should be preserved.
 
-[..]
+Any comments are welcome.
 
-25999616, rec_len=1023, name_len=0
-[40870.459390] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.478123] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.514409] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #10426: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.557496] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #12477: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.575138] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #12471: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.607312] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.624644] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.664405] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.681864] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.707222] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #10431: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.736133] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6225: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.754564] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #12466: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.775175] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6266: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.800203] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.818098] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.838409] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #14524: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.860820] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.879037] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.899012] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #12483: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40870.918856] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #2205: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40881.007567] EXT3-fs error (device loop2): ext3_readdir: bad entry in directory #11: rec_len % 4 != 0 - offset=0, inode=3925999616, rec_len=1023, name_len=0
-[40881.079469] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #10426: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40881.133465] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #12477: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40881.168670] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #6301: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
-[40881.209803] EXT3-fs error (device loop2): htree_dirblock_to_tree: bad entry in directory #4168: rec_len is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
+---
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 
-http://www.stardust.webpages.pl/files/tbf/bitis-gabonica/ext3/ext3.img.bz2
 
-fs test (not finished yet - a few ideas from racer and fsfuzzer) http://www.stardust.webpages.pl/files/tbf/bitis-gabonica/ext3/nokturn.tar.bz2
+Thanks,
+Kalpak.
 
-Regards,
-Michal
 
--- 
-LOG
-http://www.stardust.webpages.pl/log/
+--=-6Li0RNTpFKN640kQMOAj
+Content-Disposition: attachment; filename=e2fsprogs-tests-f_random_corruption.patch
+Content-Type: text/x-patch; name=e2fsprogs-tests-f_random_corruption.patch; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Index: e2fsprogs-regression/tests/f_random_corruption/script
+===================================================================
+--- /dev/null
++++ e2fsprogs-regression/tests/f_random_corruption/script
+@@ -0,0 +1,277 @@
++# This is to make sure that if this test fails other tests can still be run
++# instead of doing an exit. We break before the end of the loop.
++while (( 1 )); do
++
++# choose block and inode sizes randomly
++BLK_SIZES=(1024 2048 4096)
++INODE_SIZES=(128 256 512 1024)
++
++SEED=$(head -1 /dev/urandom | od -N 1 | awk '{ print $2 }')
++RANDOM=$SEED
++
++IMAGE=${IMAGE:-$TMPFILE}
++DATE=`date '+%Y%m%d%H%M%S'`
++ARCHIVE=$IMAGE.$DATE
++SIZE=${SIZE:-$(( 192000 + RANDOM + RANDOM )) }
++FS_TYPE=${FS_TYPE:-ext3}
++BLK_SIZE=${BLK_SIZES[(( $RANDOM % ${#BLK_SIZES[*]} ))]}
++INODE_SIZE=${INODE_SIZES[(( $RANDOM % ${#INODE_SIZES[*]} ))]}
++DEF_FEATURES="sparse_super,filetype,resize_inode,dir_index"
++FEATURES=${FEATURES:-$DEF_FEATURES}
++MOUNT_OPTS="-o loop"
++MNTPT=$test_dir/temp
++OUT=$test_name.$DATE.log
++
++# Do you want to try and mount the filesystem?
++MOUNT_AFTER_CORRUPTION=${MOUNT_AFTER_CORRUPTION:-"no"}
++# Do you want to remove the files from the mounted filesystem? Ideally use it
++# only in test environment.
++REMOVE_FILES=${REMOVE_FILES:-"no"}
++
++# In KB
++CORRUPTION_SIZE=${CORRUPTION_SIZE:-16}
++CORRUPTION_ITERATIONS=${CORRUPTION_ITERATIONS:-5}
++
++MKFS=../misc/mke2fs
++E2FSCK=../e2fsck/e2fsck
++FIRST_FSCK_OPTS="-fyv"
++SECOND_FSCK_OPTS="-fyv"
++
++# Lets check if the image can fit in the current filesystem.
++BASE_BS=`stat -f . | grep "Block size:" | cut -d " " -f3`
++BASE_AVAIL_BLOCKS=`stat -f . | grep "Available:" | cut -d ":" -f5`
++
++if (( BASE_BS * BASE_AVAIL_BLOCKS < NUM_BLKS * BLK_SIZE )); then
++	echo "The base filesystem does not have enough space to accomodate the"
++	echo "test image. Aborting test...."
++	break;
++fi
++
++# Lets have a journal more times than not.
++HAVE_JOURNAL=$(( $RANDOM % 12 ))
++if (( HAVE_JOURNAL == 0 )); then
++	FS_TYPE="ext2"
++	HAVE_JOURNAL=""
++else
++	HAVE_JOURNAL="-j"
++fi
++
++# Experimental features should not be used too often.
++LAZY_BG=$(( $RANDOM % 12 ))
++if (( LAZY_BG == 0 )); then
++       	FEATURES=$FEATURES,lazy_bg
++fi
++META_BG=$(( $RANDOM % 12 ))
++if (( META_BG == 0 )); then
++       	FEATURES=$FEATURES,meta_bg
++fi
++
++modprobe ext4 2> /dev/null
++modprobe ext4dev 2> /dev/null
++
++# If ext4 is present in the kernel then we can play with ext4 options
++EXT4=`grep ext4 /proc/filesystems`
++if [ -n "$EXT4" ]; then
++	USE_EXT4=$(( $RANDOM % 2 ))
++	if (( USE_EXT4 == 1 )); then
++		FS_TYPE="ext4dev"
++	fi
++fi
++
++if [ "$FS_TYPE" = "ext4dev" ]; then
++	UNINIT_GROUPS=$(( $RANDOM % 12 ))
++	if (( UNINIT_GROUPS == 0 )); then
++		FEATURES=$FEATURES,uninit_groups
++	fi
++	EXPAND_ESIZE=$(( $RANDOM % 12 ))
++	if (( EXPAND_EISIZE == 0 )); then
++		FIRST_FSCK_OPTS=$FIRST_FSCK_OPTS," -E expand_extra_isize"
++	fi
++fi
++
++MKFS_OPTS=" $HAVE_JOURNAL -b $BLK_SIZE -I $INODE_SIZE -O $FEATURES"
++
++NUM_BLKS=$(( (SIZE * 1024) / BLK_SIZE ))
++
++unset_vars()
++{
++	unset IMAGE DATE ARCHIVE FS_TYPE SIZE BLK_SIZE MKFS_OPTS MOUNT_OPTS
++	unset E2FSCK FIRST_FSCK_OPTS SECOND_FSCK_OPTS OUT
++}
++
++cleanup()
++{
++	echo "Error occured..." >> $OUT.failed
++        umount -f $MNTPT > /dev/null 2>&1 | tee -a $OUT
++	echo " failed"
++	echo "*** This appears to be a bug in e2fsprogs ***"
++	echo "Please contact linux-ext4 for further assistance."
++	echo "Include $OUT as an attachment, and save $ARCHIVE locally for future reference."
++	unset_vars
++	break;
++}
++
++echo -n "Random corruption test for e2fsck:"
++# Truncate the output log file
++> $OUT
++
++get_random_location()
++{
++	total=$1
++
++	tmp=$(( (RANDOM * 32768) % total ))
++
++	# Try and have more corruption in metadata at the start of the
++	# filesystem.
++	if (( tmp % 3 == 0 || tmp % 5 == 0 || tmp % 7 == 0 )); then
++		tmp=$(( $tmp % 32768 ))
++	fi
++
++	echo $tmp
++}
++
++make_fs_dirty()
++{
++        MAX_BLKS_TO_DIRTY=${1:-NUM_BLKS}
++        from=$(( (RANDOM * RANDOM) % NUM_BLKS ))
++
++        # Number of blocks to write garbage into should be within fs and should
++        # not be too many.
++        num_blks_to_dirty=$(( RANDOM % MAX_BLKS_TO_DIRTY ))
++
++        # write garbage into the selected blocks
++        dd if=/dev/urandom of=$IMAGE seek=$from conv=notrunc count=$num_blks_to_dirty bs=$BLK_SIZE >> $OUT 2>&1
++}
++
++
++touch $IMAGE
++echo "Format the filesystem image..." >> $OUT
++echo >> $OUT
++# Write some garbage blocks into the filesystem to make sure e2fsck has to do
++# a more difficult job than checking blocks of zeroes.
++echo "Copy some random data into filesystem image...." >> $OUT
++make_fs_dirty
++echo "$MKFS $MKFS_OPTS -F $IMAGE  >> $OUT" >> $OUT
++$MKFS $MKFS_OPTS -F $IMAGE $NUM_BLKS >> $OUT 2>&1
++if [ $? -ne 0 ]
++then
++	zero_size=`grep "Device size reported to be zero" $OUT`
++	short_write=`grep "Attempt to write block from filesystem resulted in short write" $OUT`
++
++	if (( zero_size != 0 || short_write != 0 )); then
++		echo "mkfs failed due to device size of 0 or a short write. This is harmless and need not be reported."
++	else
++		echo "mkfs failed - internal error during operation. Aborting random regression test..."
++		cleanup;
++	fi
++fi
++
++mkdir -p $MNTPT
++if [ $? -ne 0 ]
++then
++	echo "Failed to create or find mountpoint...." >> $OUT
++fi
++
++mount -t $FS_TYPE $MOUNT_OPTS $IMAGE $MNTPT > /dev/null 2>&1 | tee -a $OUT
++if [ $? -ne 0 ]
++then
++	echo "Unable to mount file system - skipped" >> $OUT
++else
++	df -h >> $OUT
++	echo "Copying data into the test filesystem..." >> $OUT
++
++	cp -r ../ $MNTPT >> $OUT 2>&1
++	sync
++	umount -f $MNTPT > /dev/null 2>&1 | tee -a $OUT
++fi
++
++echo "Corrupt the image by moving around blocks of data..." >> $OUT
++echo >> $OUT
++for (( i = 0; i < $CORRUPTION_ITERATIONS; i++ ))
++do
++	from=`get_random_location $NUM_BLKS`
++	to=`get_random_location $NUM_BLKS`
++
++	echo "Moving $CORRUPTION_SIZE KB data from $(($from * $BLK_SIZE)) " >> $OUT
++	echo " to $(($to * $BLK_SIZE))." >> $OUT
++	dd if=$IMAGE of=$IMAGE bs=1k count=$CORRUPTION_SIZE conv=notrunc skip=$from seek=$to >> $OUT 2>&1
++
++	# more corruption by overwriting blocks from within the filesystem.
++	make_fs_dirty $(( NUM_BLKS / 256 ))
++done
++
++# Copy the image for reproducing the bug.
++cp --sparse=auto $IMAGE $ARCHIVE >> $OUT 2>&1
++
++echo "First pass of fsck..." >> $OUT
++$E2FSCK $FIRST_FSCK_OPTS $IMAGE >> $OUT 2>&1
++RET=$?
++CORRECTED=$(( $RET & 1 ))
++REBOOT=$(( $RET & 2 ))
++UNCORRECTED=$(( $RET & 4 ))
++OPERROR=$(( $RET & 8 ))
++USEERROR=$(( $RET & 16 ))
++CANCELED=$(( $RET & 32 ))
++LIBERROR=$(( $RET & 128 ))
++
++# Run e2fsck for the second time and check if the problem gets solved. After
++# we can report error with pass1.
++export PASS1_ERROR
++PASS1_ERROR="no"
++[ $CORRECTED == 0 ] || { echo "The first fsck corrected errors" >> $OUT; }
++[ $REBOOT == 0 ] || { echo "The first fsck wants a reboot" >> $OUT.failed; PASS1_ERROR="yes"; }
++[ $UNCORRECTED == 0 ] || { echo "The first fsck left uncorrected errors" >> $OUT.failed; PASS1_ERROR="yes"; }
++[ $OPERROR == 0 ] || { echo "The first fsck claims there was an operational error" >> $OUT.failed; PASS1_ERROR="yes"; }
++[ $USEERROR == 0 ] || { echo "The first fsck claims there was a usage error" >> $OUT.failed; PASS1_ERROR="yes"; }
++[ $CANCELED == 0 ] || { echo "The first fsck claims it was canceled" >> $OUT.failed; PASS1_ERROR="yes"; }
++[ $LIBERROR == 0 ] || { echo "The first fsck claims there was a library error" >> $OUT.failed; PASS1_ERROR="yes"; }
++
++echo --------------------------------------------------------- >> $OUT
++
++echo "Second pass of fsck..." >> $OUT
++$E2FSCK $SECOND_FSCK_OPTS $IMAGE >> $OUT 2>&1
++RET=$?
++CORRECTED=$(( $RET & 1 ))
++REBOOT=$(( $RET & 2 ))
++UNCORRECTED=$(( $RET & 4 ))
++OPERROR=$(( $RET & 8 ))
++USEERROR=$(( $RET & 16 ))
++CANCELED=$(( $RET & 32 ))
++LIBERROR=$(( $RET & 128 ))
++[ $CORRECTED == 0 ] || { echo "The second fsck claimed to correct errors!" >> $OUT.failed; cleanup; }
++[ $REBOOT == 0 ] || { echo "The second fsck wants a reboot" >> $OUT.failed; cleanup; }
++[ $UNCORRECTED == 0 ] || { echo "The second fsck left uncorrected errors" >> $OUT.failed; cleanup; }
++[ $OPERROR == 0 ] || { echo "The second fsck claims there was an operational error" >> $OUT.failed; cleanup; }
++[ $USEERROR == 0 ] || { echo "The second fsck claims there was a usage error" >> $OUT.failed;  cleanup; }
++[ $CANCELED == 0 ] || { echo "The second fsck claims it was canceled" >> $OUT.failed;  cleanup; }
++[ $LIBERROR == 0 ] || { echo "The second fsck claims there was a library error" >> $OUT.failed; cleanup; }
++
++if [ "PASS1_ERROR" = "yes" ]; then
++	cleanup;
++fi
++
++if [ "$MOUNT_AFTER_CORRUPTION" = "yes" ]; then
++	mount -t $FS_TYPE $MOUNT_OPTS $IMAGE $MNTPT 2>&1 | tee -a $OUT
++	if [ $? -ne 0 ]
++	then
++		echo "Unable to mount file system - skipped" >> $OUT
++	fi
++
++	if [ "$REMOVE_FILES" = "yes" ]; then
++		rm -rf $MNTPT/* >> $OUT
++	fi
++	umount -f $MNTPT > /dev/null 2>&1 | tee -a $OUT
++fi
++
++rm -f	$ARCHIVE
++rm -f	$OUT.failed
++
++# Report success
++echo "ok"
++echo "Succeeded..." > $OUT.ok
++
++unset_vars
++
++break;
++
++done
+Index: e2fsprogs-regression/tests/Makefile.in
+===================================================================
+--- e2fsprogs-regression.orig/tests/Makefile.in
++++ e2fsprogs-regression/tests/Makefile.in
+@@ -24,6 +24,8 @@ test_script: test_script.in Makefile
+ 	@chmod +x test_script
+ 
+ check:: test_script
++	@echo "Removing remnants of earlier tests..."
++	$(RM) -f *~ *.log *.new *.failed *.ok test.img2*
+ 	@echo "Running e2fsprogs test suite..."
+ 	@echo " "
+ 	@./test_script
+@@ -63,7 +65,7 @@ testend: test_script ${TDIR}/image
+ 	@echo "If all is well, edit ${TDIR}/name and rename ${TDIR}."
+ 
+ clean::
+-	$(RM) -f *~ *.log *.new *.failed *.ok test.img test_script
++	$(RM) -f *~ *.log *.new *.failed *.ok test.img* test_script
+ 
+ distclean:: clean
+ 	$(RM) -f Makefile
+
+--=-6Li0RNTpFKN640kQMOAj--
