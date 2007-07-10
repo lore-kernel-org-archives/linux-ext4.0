@@ -1,80 +1,88 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
-Date: Tue, 10 Jul 2007 16:31:33 -0700
-Message-ID: <20070710163133.030ddba7.akpm@linux-foundation.org>
-References: <1183275465.4010.130.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 4][PATCH 5/5] i_version: noversion mount option to
+ disable inode version updates
+Date: Tue, 10 Jul 2007 16:31:44 -0700
+Message-ID: <20070710163144.21b739f9.akpm@linux-foundation.org>
+References: <1183275474.4010.132.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
+	linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41669 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762899AbXGJXbo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 19:31:44 -0400
-In-Reply-To: <1183275465.4010.130.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1183275474.4010.132.camel@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:37:45 -0400
+On Sun, 01 Jul 2007 03:37:53 -0400
 Mingming Cao <cmm@us.ibm.com> wrote:
 
-> This patch is on top of i_version_update_vfs.
-> The i_version field of the inode is set on inode creation and incremented when
-> the inode is being modified.
-> 
+> Add a "noversion" mount option to disable inode version updates.
 
-Again, I don't think I've ever seen this patch before.  It is at least a
-month old.
+Why is this option being offered to our users?  To reduce disk traffic,
+like noatime?
 
+If so, what are the implications of this?  What would the user lose?
+
+> Index: linux-2.6.21/fs/ext4/super.c
+> ===================================================================
+> --- linux-2.6.21.orig/fs/ext4/super.c
+> +++ linux-2.6.21/fs/ext4/super.c
+> @@ -725,7 +725,7 @@ enum {
+>  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+>  	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+>  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+> -	Opt_grpquota, Opt_extents, Opt_noextents,
+> +	Opt_grpquota, Opt_extents, Opt_noextents, Opt_noversion,
+>  };
 > 
-> Index: linux-2.6.22-rc4/fs/ext4/ialloc.c
+>  static match_table_t tokens = {
+> @@ -777,6 +777,7 @@ static match_table_t tokens = {
+>  	{Opt_barrier, "barrier=%u"},
+>  	{Opt_extents, "extents"},
+>  	{Opt_noextents, "noextents"},
+> +	{Opt_noversion, "noversion"},
+>  	{Opt_err, NULL},
+>  	{Opt_resize, "resize"},
+>  };
+> @@ -1115,6 +1116,9 @@ clear_qf_name:
+>  		case Opt_noextents:
+>  			clear_opt (sbi->s_mount_opt, EXTENTS);
+>  			break;
+> +		case Opt_noversion:
+> +			set_opt(sbi->s_mount_opt, NOVERSION);
+> +			break;
+>  		default:
+>  			printk (KERN_ERR
+>  				"EXT4-fs: Unrecognized mount option \"%s\" "
+> Index: linux-2.6.21/include/linux/ext4_fs.h
 > ===================================================================
-> --- linux-2.6.22-rc4.orig/fs/ext4/ialloc.c	2007-06-13 17:16:28.000000000 -0700
-> +++ linux-2.6.22-rc4/fs/ext4/ialloc.c	2007-06-13 17:24:45.000000000 -0700
-> @@ -565,6 +565,7 @@ got:
->  	inode->i_blocks = 0;
->  	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
->  						       ext4_current_time(inode);
-> +	inode->i_version = 1;
->  
->  	memset(ei->i_data, 0, sizeof(ei->i_data));
->  	ei->i_dir_start_lookup = 0;
-> Index: linux-2.6.22-rc4/fs/ext4/inode.c
+> --- linux-2.6.21.orig/include/linux/ext4_fs.h
+> +++ linux-2.6.21/include/linux/ext4_fs.h
+> @@ -473,6 +473,7 @@ do {									       \
+>  #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+>  #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+>  #define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
+> +#define EXT4_MOUNT_NOVERSION		0x800000 /* No inode version updates */
+> 
+>  /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
+>  #ifndef _LINUX_EXT2_FS_H
+> Index: linux-2.6.21/fs/ext4/inode.c
 > ===================================================================
-> --- linux-2.6.22-rc4.orig/fs/ext4/inode.c	2007-06-13 17:21:29.000000000 -0700
-> +++ linux-2.6.22-rc4/fs/ext4/inode.c	2007-06-13 17:24:45.000000000 -0700
-> @@ -3082,6 +3082,7 @@ int ext4_mark_iloc_dirty(handle_t *handl
+> --- linux-2.6.21.orig/fs/ext4/inode.c
+> +++ linux-2.6.21/fs/ext4/inode.c
+> @@ -3082,7 +3082,9 @@ int ext4_mark_iloc_dirty(handle_t *handl
 >  {
 >  	int err = 0;
->  
-> +	inode->i_version++;
+> 
+> -	inode->i_version++;
+> +	if (!test_opt(inode->i_sb, NOVERSION))
+> +		inode->i_version++;
+> +
 >  	/* the do_update_inode consumes one bh->b_count */
 >  	get_bh(iloc->bh);
->  
-> Index: linux-2.6.22-rc4/fs/ext4/super.c
-> ===================================================================
-> --- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-13 17:19:11.000000000 -0700
-> +++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-13 17:24:45.000000000 -0700
-> @@ -2846,8 +2846,8 @@ out:
->  		i_size_write(inode, off+len-towrite);
->  		EXT4_I(inode)->i_disksize = inode->i_size;
->  	}
-> -	inode->i_version++;
->  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-> +	inode->i_version = 1;
->  	ext4_mark_inode_dirty(handle, inode);
->  	mutex_unlock(&inode->i_mutex);
->  	return len - towrite;
 
-ext4 already has code to update i_version on directories.  Here we appear
-to be udpating it on regular files?
+An update to Documentation/filesystems/ext4.txt would be an appropriate
+way in which to address the above questions.
 
-But for what reason?  The changelog doesn't say?
-
-AFAICT the code forgets to update i_version during file overwrites (unless
-the overwrite was over a hole).  But without a decent description of this
-change I cannot tell whether this was a bug.
