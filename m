@@ -1,50 +1,60 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [PATHC] Fix for ext2 reservation (Re: -mm merge plans for
-	2.6.23)
-Date: Tue, 10 Jul 2007 17:21:50 -0700
-Message-ID: <20070711002150.GA28535@kroah.com>
-References: <20070710113704.8b20f3c3.akpm@linux-foundation.org> <4693E07E.4010300@mbligh.org> <1184105757.8390.6.camel@dyn9047017100.beaverton.ibm.com> <20070710165507.f8e61bb2.akpm@linux-foundation.org> <1184112257.8390.8.camel@dyn9047017100.beaverton.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 1][PATCH 2/2] Enable extents by default for ext4dev
+Date: Tue, 10 Jul 2007 17:35:13 -0400
+Message-ID: <1184103313.3759.44.camel@localhost.localdomain>
+References: <1183275361.4010.119.camel@localhost.localdomain>
+	 <20070710163015.ab40ed2a.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Martin Bligh <mbligh@mbligh.org>,
-	Alexey Dobriyan <adobriyan@gmail.com>,
-	Hugh Dickins <hugh@veritas.com>,
-	Jeremy Orlow <jorlow@google.com>,
-	Nick Piggin <piggin@cyberone.com.au>,
-	Mingming Cao <cmm@us.ibm.com>,
-	ext4 <linux-ext4@vger.kernel.org>, stable@kernel.org
-To: Badari Pulavarty <pbadari@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from canuck.infradead.org ([209.217.80.40]:55243 "EHLO
-	canuck.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752607AbXGKAWf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2007 20:22:35 -0400
-Content-Disposition: inline
-In-Reply-To: <1184112257.8390.8.camel@dyn9047017100.beaverton.ibm.com>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:54321 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751119AbXGKAfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jul 2007 20:35:12 -0400
+In-Reply-To: <20070710163015.ab40ed2a.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 10, 2007 at 05:04:17PM -0700, Badari Pulavarty wrote:
-> On Tue, 2007-07-10 at 16:55 -0700, Andrew Morton wrote:
-> > On Tue, 10 Jul 2007 15:15:57 -0700
-> > Badari Pulavarty <pbadari@us.ibm.com> wrote:
-> > 
-> > > Well, I looked at the problem now and here is the fix :)
-> > 
-> > whee, thanks.
-> > 
-> > > Greg, Please consider this for stable release also.
-> > 
-> > No, it is only relevant to -mm's ext2-reservations.patch.
+On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
+> On Sun, 01 Jul 2007 03:36:01 -0400
+> Mingming Cao <cmm@us.ibm.com> wrote:
 > 
-> Yes. Sorry. I was looking at -mm tree and assumed that
-> ext2-reservation code made into mainline also :(
+> > Turn on extents feature by default in ext4 filesystem. User could use
+> > -o noextents to turn it off.
+> > 
 > 
-> Greg, please ignore the patch for stable.
+> Oh, there you go.
+> 
+> > 
+> > Index: linux-2.6.22-rc4/fs/ext4/super.c
+> > ===================================================================
+> > --- linux-2.6.22-rc4.orig/fs/ext4/super.c	2007-06-11 17:02:22.000000000 -0700
+> > +++ linux-2.6.22-rc4/fs/ext4/super.c	2007-06-11 17:03:09.000000000 -0700
+> > @@ -1546,6 +1546,12 @@
+> >  
+> >  	set_opt(sbi->s_mount_opt, RESERVATION);
+> >  
+> > +	/*
+> > +	 * turn on extents feature by default in ext4 filesystem
+> > +	 * User -o noextents to turn it off
+> > +	 */
+> > +	set_opt (sbi->s_mount_opt, EXTENTS);
+> > +
+> 
+> Broken coding style.
+> 
+> Please feed all the ext4 patches through scripts/checkpatch.pl (preferably
+> version 0.07 - see Andy's patch on lkml) and then consider addressing the
+> (quite large) number of mistakes which are detected.
+> 
 
-Ok, dropped from my -stable queue mbox.
+Sorry about this. I was using version 0.04. The latest one I can find
+for now is 0.05(searching lkml), but it didn't catch this codling style
+bug either. I appreciate if anyone can point me the version 0.07, thanks
 
-thanks,
-
-greg k-h
+Mingming
