@@ -1,153 +1,36 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: [PATCH 7/7] ext4: change for better extent-to-group alignment
-Date: Wed, 11 Jul 2007 01:56:03 +0530
-Message-ID: <20070710202603.GG8797@amitarora.in.ibm.com>
-References: <20070710201200.GA10255@amitarora.in.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: ext4-patch-queue rebased to 2.6.22
+Date: Tue, 10 Jul 2007 14:26:45 -0600
+Message-ID: <20070710202645.GC6417@schatzie.adilger.int>
+References: <E1I7xBM-00044G-2v@candygram.thunk.org> <20070710145422.GA1636@amitarora.in.ibm.com> <20070710170939.GA6417@schatzie.adilger.int> <20070710175558.GA15345@amitarora.in.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:52021 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763277AbXGJU0s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2007 16:26:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20070710201200.GA10255@amitarora.in.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20070710175558.GA15345@amitarora.in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Amit Arora <aarora@in.ibm.com>
-Change on-disk format for extent to represent uninitialized/initialized extents
+On Jul 10, 2007  23:25 +0530, Amit K. Arora wrote:
+> On Tue, Jul 10, 2007 at 11:09:39AM -0600, Andreas Dilger wrote:
+> > It might even make sense to change the other #define to be called
+> > EXT_INIT_MAX_LEN so people have to think about this when using the #define.
+> 
+> Done. Changes are in ext4 patch queue.
+> Can you please have a quick look and see if this is what you preferred ?
 
-This change was suggested by Andreas Dilger as part of the following
-post:
-http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg02445.html
+Yes, it looks good, though I wonder if it also makes sense to change the
+ext4_ext_*_uninitialized() code to use EXT_INIT_MAX_LEN instead of 0x8000,
+since that makes it a bit clearer that the two are related.
 
-This patch changes the EXT_MAX_LEN value and extent code which marks/checks
-uninitialized extents. With this change it will be possible to have
-initialized extents with 2^15 blocks (earlier the max blocks we could have
-was 2^15 - 1). This way we can have better extent-to-block alignment.
-Now, maximum number of blocks we can have in an initialized extent is 2^15
-and in an uninitialized extent is 2^15 - 1.
-
-Signed-off-by: Amit Arora <aarora@in.ibm.com>
-
-Index: linux-2.6.22/fs/ext4/extents.c
-===================================================================
---- linux-2.6.22.orig/fs/ext4/extents.c
-+++ linux-2.6.22/fs/ext4/extents.c
-@@ -1106,7 +1106,7 @@ static int
- ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
- 				struct ext4_extent *ex2)
- {
--	unsigned short ext1_ee_len, ext2_ee_len;
-+	unsigned short ext1_ee_len, ext2_ee_len, max_len;
- 
- 	/*
- 	 * Make sure that either both extents are uninitialized, or
-@@ -1115,6 +1115,11 @@ ext4_can_extents_be_merged(struct inode 
- 	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
- 		return 0;
- 
-+	if (ext4_ext_is_uninitialized(ex1))
-+		max_len = EXT_UNINIT_MAX_LEN;
-+	else
-+		max_len = EXT_INIT_MAX_LEN;
-+
- 	ext1_ee_len = ext4_ext_get_actual_len(ex1);
- 	ext2_ee_len = ext4_ext_get_actual_len(ex2);
- 
-@@ -1127,7 +1132,7 @@ ext4_can_extents_be_merged(struct inode 
- 	 * as an RO_COMPAT feature, refuse to merge to extents if
- 	 * this can result in the top bit of ee_len being set.
- 	 */
--	if (ext1_ee_len + ext2_ee_len > EXT_MAX_LEN)
-+	if (ext1_ee_len + ext2_ee_len > max_len)
- 		return 0;
- #ifdef AGGRESSIVE_TEST
- 	if (le16_to_cpu(ex1->ee_len) >= 4)
-@@ -1814,7 +1819,11 @@ ext4_ext_rm_leaf(handle_t *handle, struc
- 
- 		ex->ee_block = cpu_to_le32(block);
- 		ex->ee_len = cpu_to_le16(num);
--		if (uninitialized)
-+		/*
-+		 * Do not mark uninitialized if all the blocks in the
-+		 * extent have been removed.
-+		 */
-+		if (uninitialized && num)
- 			ext4_ext_mark_uninitialized(ex);
- 
- 		err = ext4_ext_dirty(handle, inode, path + depth);
-@@ -2307,6 +2316,18 @@ int ext4_ext_get_blocks(handle_t *handle
- 	/* allocate new block */
- 	goal = ext4_ext_find_goal(inode, path, iblock);
- 
-+	/*
-+	 * See if request is beyond maximum number of blocks we can have in
-+	 * a single extent. For an initialized extent this limit is
-+	 * EXT_INIT_MAX_LEN and for an uninitialized extent this limit is
-+	 * EXT_UNINIT_MAX_LEN.
-+	 */
-+	if (max_blocks > EXT_INIT_MAX_LEN && create != EXT4_CREATE_UNINITIALIZED_EXT)
-+		max_blocks = EXT_INIT_MAX_LEN;
-+	else if (max_blocks > EXT_UNINIT_MAX_LEN &&
-+		 create == EXT4_CREATE_UNINITIALIZED_EXT)
-+		max_blocks = EXT_UNINIT_MAX_LEN;
-+
- 	/* Check if we can really insert (iblock)::(iblock+max_blocks) extent */
- 	newex.ee_block = cpu_to_le32(iblock);
- 	newex.ee_len = cpu_to_le16(max_blocks);
-Index: linux-2.6.22/include/linux/ext4_fs_extents.h
-===================================================================
---- linux-2.6.22.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.22/include/linux/ext4_fs_extents.h
-@@ -141,7 +141,25 @@ typedef int (*ext_prepare_callback)(stru
- 
- #define EXT_MAX_BLOCK	0xffffffff
- 
--#define EXT_MAX_LEN	((1UL << 15) - 1)
-+/*
-+ * EXT_INIT_MAX_LEN is the maximum number of blocks we can have in an
-+ * initialized extent. This is 2^15 and not (2^16 - 1), since we use the
-+ * MSB of ee_len field in the extent datastructure to signify if this
-+ * particular extent is an initialized extent or an uninitialized (i.e.
-+ * preallocated).
-+ * EXT_UNINIT_MAX_LEN is the maximum number of blocks we can have in an
-+ * uninitialized extent.
-+ * If ee_len is <= 0x8000, it is an initialized extent. Otherwise, it is an
-+ * uninitialized one. In other words, if MSB of ee_len is set, it is an
-+ * uninitialized extent with only one special scenario when ee_len = 0x8000.
-+ * In this case we can not have an uninitialized extent of zero length and
-+ * thus we make it as a special case of initialized extent with 0x8000 length.
-+ * This way we get better extent-to-group alignment for initialized extents.
-+ * Hence, the maximum number of blocks we can have in an *initialized*
-+ * extent is 2^15 (32768) and in an *uninitialized* extent is 2^15-1 (32767).
-+ */
-+#define EXT_INIT_MAX_LEN	(1UL << 15)
-+#define EXT_UNINIT_MAX_LEN	(EXT_INIT_MAX_LEN - 1)
- 
- 
- #define EXT_FIRST_EXTENT(__hdr__) \
-@@ -190,17 +208,21 @@ ext4_ext_invalidate_cache(struct inode *
- 
- static inline void ext4_ext_mark_uninitialized(struct ext4_extent *ext)
- {
-+	/* We can not have an uninitialized extent of zero length! */
-+	BUG_ON((le16_to_cpu(ext->ee_len) & ~0x8000) == 0);
- 	ext->ee_len |= cpu_to_le16(0x8000);
- }
- 
- static inline int ext4_ext_is_uninitialized(struct ext4_extent *ext)
- {
--	return (int)(le16_to_cpu((ext)->ee_len) & 0x8000);
-+	/* Extent with ee_len of 0x8000 is treated as an initialized extent */
-+	return (le16_to_cpu(ext->ee_len) > 0x8000);
- }
- 
- static inline int ext4_ext_get_actual_len(struct ext4_extent *ext)
- {
--	return (int)(le16_to_cpu((ext)->ee_len) & 0x7FFF);
-+	return (le16_to_cpu(ext->ee_len) <= 0x8000 ? le16_to_cpu(ext->ee_len) :
-+		(le16_to_cpu(ext->ee_len) - 0x8000));
- }
- 
- extern int ext4_extent_tree_init(handle_t *, struct inode *);
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
