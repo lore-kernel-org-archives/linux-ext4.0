@@ -1,46 +1,60 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: random ext3 image bugs
-Date: Tue, 10 Jul 2007 10:44:02 -0500
-Message-ID: <4693A942.9000900@redhat.com>
-References: <469370F7.5000809@googlemail.com>
+Subject: Re: Random corruption test for e2fsck
+Date: Tue, 10 Jul 2007 10:47:06 -0500
+Message-ID: <4693A9FA.7040106@redhat.com>
+References: <1184072860.4440.39.camel@garfield.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	TheodoreTso <tytso@mit.edu>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:55890 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57093 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754516AbXGJPrx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 11:47:53 -0400
-In-Reply-To: <469370F7.5000809@googlemail.com>
+	id S1754189AbXGJPu6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jul 2007 11:50:58 -0400
+In-Reply-To: <1184072860.4440.39.camel@garfield.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Michal Piotrowski wrote:
-> Hi all,
+Kalpak Shah wrote:
+> Hi,
 > 
-> My insane file system test triggered a few bugs in ext3 image. Anyone interested?
+> This is a random corruption test which can be included in the e2fsprogs
+> regression tests. It does the following:
+> 1) Create an test fs and format it with ext2/3/4 and random selection of
+> features.
+> 2) Mount it and copy data into it.
+> 3) Move around the blocks of the filesystem randomly causing corruption.
+> Also overwrite some random blocks with garbage from /dev/urandom. Create
+> a copy of this corrupted filesystem.
+> 4) Unmount and run e2fsck. If the first run of e2fsck produces any
+> errors like uncorrected errors, library error, segfault, usage error,
+> etc. then it is deemed a bug. But in any case, a second run of e2fsck is
+> done to check if it renders the filesystem clean. 
+> 5) If the test went by without any errors the test image is deleted and
+> in case of any errors the user is notified that the log of this test run
+> should be mailed to linux-ext4@ and the image should be preserved.
+> 
+> Any comments are welcome.
 
-Not yet; all the errors below are ext3 properly coping with the
-corrupted image, no?  But if you can make it oops, that's more
-interesting.  :)
+Seems like a pretty good idea.  I had played with such a thing using
+fsfuzzer... fsfuzzer always seemed at least as useful useful as a fsck
+tester than a kernel code tester anyway.  (OOC, did you look at fsfuzzer
+when you did this?)
 
+My only concern is that since it's introducing random corruption, new
+things will probably pop up from time to time; when we do an rpm build
+for Fedora/RHEL, it automatically runs make check:
+
+%check
+make check
+
+which seems like a reasonably good idea to me.  However, I'd rather not
+have last-minute build failures introduced by new random collection of
+bits that have never been seen before.  Maybe "make RANDOM=0 check" as
+an option would be a good idea for automated builds...?
+
+Thanks,
 -Eric
-
-> [40859.103232] SELinux: initialized (dev loop7, type ext3), uses xattr
-> [40859.119575] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 757: bad block 4829
-> [40859.129837] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=757
-> [40859.139840] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 8381: bad block 4829
-> [40859.149436] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=8381
-> [40859.164064] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 4314: bad block 4829
-> [40859.172919] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=4314
-> [40859.183789] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 760: bad block 4829
-> [40859.192601] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=760
-> [40859.209274] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 6390: bad block 4829
-> [40859.218258] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=6390
-> [40859.256550] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 14610: bad block 4829
-> [40859.266803] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=14610
-> [40859.284814] EXT3-fs error (device loop7): ext3_xattr_block_get: inode 764: bad block 4829
-> [40859.293644] inode_doinit_with_dentry:  getxattr returned 5 for dev=loop7 ino=764
-> [..]
