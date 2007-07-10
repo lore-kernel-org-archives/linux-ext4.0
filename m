@@ -1,49 +1,65 @@
-From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
-Subject: Re: ext4-patch-queue rebased to 2.6.22
-Date: Tue, 10 Jul 2007 20:24:22 +0530
-Message-ID: <20070710145422.GA1636@amitarora.in.ibm.com>
-References: <E1I7xBM-00044G-2v@candygram.thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Random corruption test for e2fsck
+Date: Tue, 10 Jul 2007 10:58:55 -0400
+Message-ID: <20070710145855.GB27033@thunk.org>
+References: <1184072860.4440.39.camel@garfield.linsyssoft.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:41811 "EHLO e6.ny.us.ibm.com"
+Received: from THUNK.ORG ([69.25.196.29]:42521 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753915AbXGJOyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 10:54:15 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6AEtQfS031178
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 10:55:26 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l6AEsEaP503434
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 10:54:14 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6AEsEWN018386
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 10:54:14 -0400
+	id S1754328AbXGJO66 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jul 2007 10:58:58 -0400
 Content-Disposition: inline
-In-Reply-To: <E1I7xBM-00044G-2v@candygram.thunk.org>
+In-Reply-To: <1184072860.4440.39.camel@garfield.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 09, 2007 at 01:37:56PM -0400, Theodore Ts'o wrote:
-> So we're just waiting for Amit to make the minor on-disk format change
-> Andreas suggested before we push to Linus.
+On Tue, Jul 10, 2007 at 06:37:40PM +0530, Kalpak Shah wrote:
+> Hi,
+> 
+> This is a random corruption test which can be included in the e2fsprogs
+> regression tests. 
+> 1) Create an test fs and format it with ext2/3/4 and random selection of
+> features.
+> 2) Mount it and copy data into it.
 
-I have commited following changes to the ext4 patch queue:
+This requires root privileges in order to mount the loop filesystem.
+Any chance you could change it to use debugfs to populate the
+filesystem, so we don't need root privs in order to mount it.
 
-1. Updated ext4-fallocate-1-syscall_i386_amd64_ppc to add compat wrapper
-   for x86_64/ia32. This addresses Heiko's concern that we did not have
-   a wrapper for ia32.
+This will increase the number of people that will actually run the
+test, and more importantly not encourage people from running "make
+check" as root.
 
-2. Added a new patch ext4-fallocate-8-new-ondisk-format and updated
-   the series file. This patch, as suggested by Andreas, will allow
-   an initialized extent to be of max 2^15 length. Main purpose of this
-   change is to have a better extent-to-group alignment.
-   For uninitialized extents the max length remains same - i.e. 2^15 - 1.
+> 3) Move around the blocks of the filesystem randomly causing corruption.
+> Also overwrite some random blocks with garbage from /dev/urandom. Create
+> a copy of this corrupted filesystem.
+>
+> 4) Unmount and run e2fsck. If the first run of e2fsck produces any
+> errors like uncorrected errors, library error, segfault, usage error,
+> etc. then it is deemed a bug. But in any case, a second run of e2fsck is
+> done to check if it renders the filesystem clean. 
 
+Err, you do unmount the filesystem first before you start corrupting
+it, right?  (Checking script; sure looks like it.)
 
-Thanks!
---
+> 5) If the test went by without any errors the test image is deleted and
+> in case of any errors the user is notified that the log of this test run
+> should be mailed to linux-ext4@ and the image should be preserved.
+
+I certainly like the general concept!!
+
+I wonder if the code to create a random filesystem and corrupting it
+should be kept as separate shell script, since it can be reused in
+another of interesting ways.  One thought would be to write a test
+script that mounts corrupted filesystems using UML and then does some
+exercises on it (tar cvf on the filesyste, random renames on the
+filesystem, rm -rf of all of the contents of the filesystems), to see
+whether we can provoke a kernel oops.
+
 Regards,
-Amit Arora
+
+							- Ted
