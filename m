@@ -1,42 +1,314 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Mon, 09 Jul 2007 17:16:30 -0400
-Message-ID: <1184015790.3864.26.camel@localhost.localdomain>
-References: <1183275424.4010.126.camel@localhost.localdomain>
-	 <1183388313.3864.35.camel@localhost.localdomain>
-	 <20070703221522.GE14074@fieldses.org>
-	 <20070703233200.GL6578@schatzie.adilger.int>
-	 <20070706135156.GD10812@fieldses.org>
-	 <20070706225300.GB5633@schatzie.adilger.int>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-fsdevel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org,
-	Kalpak Shah <kalpak@clusterfs.com>
-To: Andreas Dilger <adilger@clusterfs.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070706225300.GB5633@schatzie.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext2/ext3/ext4: Add block bitmap validation
+Date: Tue, 10 Jul 2007 10:13:37 +0530
+Message-ID: <1184042617617-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: cmm@us.ibm.com, tytso@mit.edu,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:38849 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751189AbXGJEoH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2007 00:44:07 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6A56aMX323110
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 15:06:38 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l6A4lNds202458
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 14:47:25 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6A4hnW3008033
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 14:43:50 +1000
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-07-06 at 16:53 -0600, Andreas Dilger wrote:
-> On Jul 06, 2007  09:51 -0400, J. Bruce Fields wrote:
-> > The use of a mount option means the change attribute could be
-> > inconsistent across mounts.  If we really need this, wouldn't it make
-> > more sense for it to be a persistent feature of the filesystem, set at
-> > mkfs time?
-> 
-> Yes, having it stored into the superblock in s_flags is probably a good
-> idea.  Kalpak, do you think you could get a patch that adds e.g.
-> EXT4_FLAGS_NO_INODE_VERSION (like EXT4_FLAGS_SIGNED_HASH in e2fsprogs).
-> 
-Per our ext4 interlock discussion today, I have dropped the
-ext4-no-inode version-mount-option patch from ext4 patch queue. 
+When a new block bitmap is read from disk in read_block_bitmap()
+there are a few bits that should ALWAYS be set. In particular, the
+blocks given by ext4_blk_bitmap, ext4_inode_bitmap and ext4_inode_table.
+Validate the block bitmap against these blocks.
 
-Thanks,
-Mingming
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+---
+ fs/ext2/balloc.c |   56 ++++++++++++++++++++++++++++++++++++++----------
+ fs/ext3/balloc.c |   53 ++++++++++++++++++++++++++++++++++++---------
+ fs/ext4/balloc.c |   62 ++++++++++++++++++++++++++++++++++++++++-------------
+ 3 files changed, 133 insertions(+), 38 deletions(-)
 
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index baf71dd..917a443 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -69,6 +69,14 @@ struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
+ 	return desc + offset;
+ }
+ 
++static inline int
++block_in_use(unsigned long block, struct super_block *sb, unsigned char *map)
++{
++	return ext2_test_bit ((block -
++		le32_to_cpu(EXT2_SB(sb)->s_es->s_first_data_block)) %
++			 EXT2_BLOCKS_PER_GROUP(sb), map);
++}
++
+ /*
+  * Read the bitmap for a given block_group, reading into the specified 
+  * slot in the superblock's bitmap cache.
+@@ -78,20 +86,51 @@ struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
+ static struct buffer_head *
+ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
++	int i;
+ 	struct ext2_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
+-	
++	unsigned int bitmap_blk;
++
+ 	desc = ext2_get_group_desc (sb, block_group, NULL);
+ 	if (!desc)
+-		goto error_out;
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
++		return NULL;
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	bh = sb_bread(sb, bitmap_blk);
+ 	if (!bh)
+-		ext2_error (sb, "read_block_bitmap",
++		ext2_error (sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %u",
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+-error_out:
++
++	/* check whether block bitmap block number is set */
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++	/* check whether the inode table block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
++	for (i = 0; i < EXT2_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
++		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++			/* bad block bitmap */
++			goto error_out;
++		}
++	}
++
+ 	return bh;
++
++error_out:
++	brelse(bh);
++	ext2_error(sb, __FUNCTION__,
++			"Invalid block bitmap - "
++			"block_group = %d, block = %u",
++			block_group, bitmap_blk);
++	return NULL;
+ }
+ 
+ /*
+@@ -583,13 +622,6 @@ unsigned long ext2_count_free_blocks (struct super_block * sb)
+ #endif
+ }
+ 
+-static inline int
+-block_in_use(unsigned long block, struct super_block *sb, unsigned char *map)
+-{
+-	return ext2_test_bit ((block -
+-		le32_to_cpu(EXT2_SB(sb)->s_es->s_first_data_block)) %
+-			 EXT2_BLOCKS_PER_GROUP(sb), map);
+-}
+ 
+ static inline int test_root(int a, int b)
+ {
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index ca8aee6..b44c76f 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -79,6 +79,13 @@ struct ext3_group_desc * ext3_get_group_desc(struct super_block * sb,
+ 		*bh = sbi->s_group_desc[group_desc];
+ 	return desc + offset;
+ }
++static inline int
++block_in_use(ext3_fsblk_t block, struct super_block *sb, unsigned char *map)
++{
++	return ext3_test_bit ((block -
++		le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block)) %
++			 EXT3_BLOCKS_PER_GROUP(sb), map);
++}
+ 
+ /**
+  * read_block_bitmap()
+@@ -93,20 +100,51 @@ struct ext3_group_desc * ext3_get_group_desc(struct super_block * sb,
+ static struct buffer_head *
+ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
++	int i;
+ 	struct ext3_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
++	ext3_fsblk_t bitmap_blk;
+ 
+ 	desc = ext3_get_group_desc (sb, block_group, NULL);
+ 	if (!desc)
+-		goto error_out;
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
++		return NULL;
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	bh = sb_bread(sb, bitmap_blk);
+ 	if (!bh)
+-		ext3_error (sb, "read_block_bitmap",
++		ext3_error (sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %u",
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+-error_out:
++
++	/* check whether block bitmap block number is set */
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++	/* check whether the inode table block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
++	for (i = 0; i < EXT3_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
++		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++			/* bad block bitmap */
++			goto error_out;
++		}
++	}
++
+ 	return bh;
++
++error_out:
++	brelse(bh);
++	ext3_error(sb, __FUNCTION__,
++			"Invalid block bitmap - "
++			"block_group = %d, block = %lu",
++			block_group, bitmap_blk);
++	return NULL;
+ }
+ /*
+  * The reservation window structure operations
+@@ -1733,13 +1771,6 @@ ext3_fsblk_t ext3_count_free_blocks(struct super_block *sb)
+ #endif
+ }
+ 
+-static inline int
+-block_in_use(ext3_fsblk_t block, struct super_block *sb, unsigned char *map)
+-{
+-	return ext3_test_bit ((block -
+-		le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block)) %
+-			 EXT3_BLOCKS_PER_GROUP(sb), map);
+-}
+ 
+ static inline int test_root(int a, int b)
+ {
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 3b64bb1..7d58f12 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -99,6 +99,15 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ 		*bh = sbi->s_group_desc[group_desc];
+ 	return desc;
+ }
++static inline int
++block_in_use(ext4_fsblk_t block, struct super_block *sb, unsigned char *map)
++{
++	ext4_grpblk_t offset;
++
++	ext4_get_group_no_and_offset(sb, block, NULL, &offset);
++	return ext4_test_bit (offset, map);
++}
++
+ 
+ /**
+  * read_block_bitmap()
+@@ -113,21 +122,53 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ static struct buffer_head *
+ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
++	int i;
+ 	struct ext4_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
++	ext4_fsblk_t bitmap_blk;
+ 
+ 	desc = ext4_get_group_desc (sb, block_group, NULL);
+ 	if (!desc)
+-		goto error_out;
+-	bh = sb_bread(sb, ext4_block_bitmap(sb, desc));
++		return NULL;
++	bitmap_blk = ext4_block_bitmap(sb, desc);
++	bh = sb_bread(sb, bitmap_blk);
+ 	if (!bh)
+-		ext4_error (sb, "read_block_bitmap",
++		ext4_error (sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %llu",
+-			    block_group,
+-			    ext4_block_bitmap(sb, desc));
+-error_out:
++			    block_group, bitmap_blk);
++
++	/* check whether block bitmap block number is set */
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = ext4_inode_bitmap(sb, desc);
++	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++		/* bad block bitmap */
++		goto error_out;
++	}
++	/* check whether the inode table block number is set */
++	bitmap_blk = ext4_inode_table(sb, desc);
++	for (i = 0; i < EXT4_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
++		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++			/* bad block bitmap */
++			goto error_out;
++		}
++	}
++
+ 	return bh;
++
++error_out:
++	brelse(bh);
++	ext4_error(sb, __FUNCTION__,
++			"Invalid block bitmap - "
++			"block_group = %d, block = %llu",
++			block_group, bitmap_blk);
++	return NULL;
++
+ }
+ /*
+  * The reservation window structure operations
+@@ -1747,15 +1788,6 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ #endif
+ }
+ 
+-static inline int
+-block_in_use(ext4_fsblk_t block, struct super_block *sb, unsigned char *map)
+-{
+-	ext4_grpblk_t offset;
+-
+-	ext4_get_group_no_and_offset(sb, block, NULL, &offset);
+-	return ext4_test_bit (offset, map);
+-}
+-
+ static inline int test_root(int a, int b)
+ {
+ 	int num = b;
+-- 
+1.5.3.rc0.63.gc956-dirty
