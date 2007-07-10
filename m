@@ -1,9 +1,8 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 2][PATCH 1/5] cleanups: Propagate some i_flags to
- disk
-Date: Tue, 10 Jul 2007 16:30:17 -0700
-Message-ID: <20070710163017.7c8f1043.akpm@linux-foundation.org>
-References: <1183275372.4010.120.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 2][PATCH 5/5] cleanups: Export jbd2-debug via debugfs
+Date: Tue, 10 Jul 2007 16:30:25 -0700
+Message-ID: <20070710163025.9db582f8.akpm@linux-foundation.org>
+References: <1183275408.4010.124.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
@@ -11,38 +10,129 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:42965 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:56269 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760870AbXGJXab (ORCPT
+	by vger.kernel.org with ESMTP id S1761324AbXGJXad (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 19:30:31 -0400
-In-Reply-To: <1183275372.4010.120.camel@localhost.localdomain>
+	Tue, 10 Jul 2007 19:30:33 -0400
+In-Reply-To: <1183275408.4010.124.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:36:12 -0400
+On Sun, 01 Jul 2007 03:36:48 -0400
 Mingming Cao <cmm@us.ibm.com> wrote:
 
-> Propagate flags such as S_APPEND, S_IMMUTABLE, etc. from i_flags into
-> ext4-specific i_flags. Hence, when someone sets these flags via a different
-> interface than ioctl, they are stored correctly.
+> > On Jun 07, 2007  23:45 -0500, Jose R. Santos wrote:
+> > > The jbd2-debug file used to be located in /proc/sys/fs/jbd2-debug, but
+> > > create_proc_entry() does not do lookups on file names with more that one
+> > > directory deep.  This causes the entry creation to fail and hence, no proc
+> > > file is created.  This patch moves the file to /proc/jbd2-degug.
+> > > 
+> > > The file could be move to /proc/fs/jbd2/jbd2-debug, but it would require
+> > > some minor alterations to the jbd-stats patch.
+> > 
+> > I don't think we really want to be adding top-level files in /proc.
+> > What about using the "debugfs" filesystem (not to be confused with
+> > the e2fsprogs 'debugfs' command)?
 > 
+> How about this then?  Moved the file to use debugfs as well as having
+> the nice effect of removing more lines than what it adds.
+> 
+> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 
-This changelog is inadequate.  I had to hunt down the equivalent ext3
-patch's changelog to understand the reasons for this change.  Please update
-this patch's changelog using the below: 
+Please clean up the changelog.
 
-    ext3: copy i_flags to inode flags on write
-    
-    A patch that stores inode flags such as S_IMMUTABLE, S_APPEND, etc.  from
-    i_flags to EXT3_I(inode)->i_flags when inode is written to disk.  The same
-    thing is done on GETFLAGS ioctl.
-    
-    Quota code changes these flags on quota files (to make it harder for
-    sysadmin to screw himself) and these changes were not correctly propagated
-    into the filesystem (especially, lsattr did not show them and users were
-    wondering...).
-    
-    Propagate flags such as S_APPEND, S_IMMUTABLE, etc.  from i_flags into
-    ext3-specific i_flags.  Hence, when someone sets these flags via a
-    different interface than ioctl, they are stored correctly.
+The changelog should include information about the location and the content
+of these debugfs files.  it should provide any instructions which users
+will need to be able to create and use those files.
+
+Alternatively (and preferably) do this via an update to
+Documentation/filesystems/ext4.txt.
+
+>  fs/jbd2/journal.c    |   62    20 +    42 -    0 !
+>  include/linux/jbd2.h |    2    1 +     1 -     0 !
+>  2 files changed, 21 insertions(+), 43 deletions(-)
+
+Again, this patch isn't in Ted's kernel.org directory and hasn't been in -mm.
+
+Apart from the lack of testing and review which this causes, it means I
+can't just do `pushpatch name-of-this-patch' and look at it in tkdiff.  So
+I squint at the diff, but that's harder when the diff wasn't prepared with
+`diff -p'.  Oh well.
+
+
+> Index: linux-2.6.22-rc4/fs/jbd2/journal.c
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 16:16:18.000000000 -0700
+> +++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-11 16:36:10.000000000 -0700
+> @@ -35,6 +35,7 @@
+>  #include <linux/kthread.h>
+>  #include <linux/poison.h>
+>  #include <linux/proc_fs.h>
+> +#include <linux/debugfs.h>
+>  
+>  #include <asm/uaccess.h>
+>  #include <asm/page.h>
+> @@ -1954,60 +1955,37 @@
+>   * /proc tunables
+>   */
+>  #if defined(CONFIG_JBD2_DEBUG)
+> -int jbd2_journal_enable_debug;
+> +u16 jbd2_journal_enable_debug;
+>  EXPORT_SYMBOL(jbd2_journal_enable_debug);
+>  #endif
+>  
+> -#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_PROC_FS)
+> +#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+
+Has this been compile-tested with CONFIG_DEBUGFS=n?
+
+>  
+> -#define create_jbd_proc_entry() do {} while (0)
+> -#define jbd2_remove_jbd_proc_entry() do {} while (0)
+> +#define jbd2_create_debugfs_entry() do {} while (0)
+> +#define jbd2_remove_debugfs_entry() do {} while (0)
+
+I suggest that these be converted to (preferable) inline functions while
+you're there.
+
+>  #endif
+>  
+> @@ -2067,7 +2045,7 @@
+>  	ret = journal_init_caches();
+>  	if (ret != 0)
+>  		jbd2_journal_destroy_caches();
+> -	create_jbd_proc_entry();
+> +	jbd2_create_debugfs_entry();
+>  	return ret;
+>  }
+>  
+> @@ -2078,7 +2056,7 @@
+>  	if (n)
+>  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+>  #endif
+> -	jbd2_remove_jbd_proc_entry();
+> +	jbd2_remove_debugfs_entry();
+>  	jbd2_journal_destroy_caches();
+>  }
+>  
+> Index: linux-2.6.22-rc4/include/linux/jbd2.h
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 16:16:18.000000000 -0700
+> +++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-11 16:35:25.000000000 -0700
+> @@ -57,7 +57,7 @@
+>   * CONFIG_JBD2_DEBUG is on.
+>   */
+>  #define JBD_EXPENSIVE_CHECKING
+
+JBD2?
+
+> -extern int jbd2_journal_enable_debug;
+> +extern u16 jbd2_journal_enable_debug;
+
+Why was this made 16-bit?  To save 2 bytes?  Could have saved 3 if we're
+going to do that.
+
+
+Shoudln't all this debug info be a per-superblock thing rather than
+kernel-wide?
