@@ -1,177 +1,163 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 2][PATCH 2/5] cleanups: Add extent sanity checks
-Date: Tue, 10 Jul 2007 16:30:20 -0700
-Message-ID: <20070710163020.196d32a0.akpm@linux-foundation.org>
-References: <1183275382.4010.121.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
+Date: Tue, 10 Jul 2007 16:30:27 -0700
+Message-ID: <20070710163027.1bf7e94e.akpm@linux-foundation.org>
+References: <1183275416.4010.125.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>
+	linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:54738 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:44868 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762791AbXGJXbB (ORCPT
+	by vger.kernel.org with ESMTP id S1761848AbXGJXam (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2007 19:31:01 -0400
-In-Reply-To: <1183275382.4010.121.camel@localhost.localdomain>
+	Tue, 10 Jul 2007 19:30:42 -0400
+In-Reply-To: <1183275416.4010.125.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:36:22 -0400
+On Sun, 01 Jul 2007 03:36:56 -0400
 Mingming Cao <cmm@us.ibm.com> wrote:
 
-> with the patch all headers are checked. the code should become
-> more resistant to on-disk corruptions. needless BUG_ON() have
-> been removed. please, review for inclusion.
-> 
-> ...
+> This patch is a spinoff of the old nanosecond patches.
 
-> @@ -269,6 +239,70 @@
->  	return size;
+I don't know what the "old nanosecond patches" are.  A link to a suitable
+changlog for those patches would do in a pinch.  Preferable would be to
+write a proper changelog for this patch.
+
+> It includes some cleanups and addition of a creation timestamp. The
+> EXT3_FEATURE_RO_COMPAT_EXTRA_ISIZE flag has also been added along with
+> s_{min, want}_extra_isize fields in struct ext3_super_block.
+> 
+> Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+> Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> 
+> Index: linux-2.6.22-rc4/fs/ext4/ialloc.c
+
+Please include diffstat output when preparing patches.
+
+> +
+> +#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
+> +	((offsetof(typeof(*ext4_inode), field) +	\
+> +	  sizeof((ext4_inode)->field))			\
+> +	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+> +	    (einode)->i_extra_isize))			\
+
+Please add explanatory commentary to EXT4_FITS_IN_INODE(): tell readers
+under what circumstances something will not fit in an inode and what the
+consequences of this are.
+
+> +static inline __le32 ext4_encode_extra_time(struct timespec *time)
+> +{
+> +       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+> +			   time->tv_sec >> 32 : 0) |
+> +			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
+> +}
+> +
+> +static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+> +{
+> +       if (sizeof(time->tv_sec) > 4)
+> +	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+> +			       << 32;
+> +       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
+> +}
+
+Consider uninlining these functions.
+
+> +#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
+> +do {									       \
+> +	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+> +		(raw_inode)->xtime ## _extra =				       \
+> +				ext4_encode_extra_time(&(inode)->xtime);       \
+> +} while (0)
+> +
+> +#define EXT4_EINODE_SET_XTIME(xtime, einode, raw_inode)			       \
+> +do {									       \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+> +		(raw_inode)->xtime = cpu_to_le32((einode)->xtime.tv_sec);      \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+> +		(raw_inode)->xtime ## _extra =				       \
+> +				ext4_encode_extra_time(&(einode)->xtime);      \
+> +} while (0)
+> +
+> +#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
+> +do {									       \
+> +	(inode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);	       \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+> +		ext4_decode_extra_time(&(inode)->xtime,			       \
+> +				       raw_inode->xtime ## _extra);	       \
+> +} while (0)
+> +
+> +#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
+> +do {									       \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+> +		(einode)->xtime.tv_sec = le32_to_cpu((raw_inode)->xtime);      \
+> +	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+> +		ext4_decode_extra_time(&(einode)->xtime,		       \
+> +				       raw_inode->xtime ## _extra);	       \
+> +} while (0)
+
+Ugly.  I expect these could be implemented as plain old C functions. 
+Caller could pass in the address of the ext4_inode field which the function
+is to operate upon.
+
+>  #if defined(__KERNEL__) || defined(__linux__)
+
+(What's the __linux__ for?)
+
+>  #define i_reserved1	osd1.linux1.l_i_reserved1
+>  #define i_frag		osd2.linux2.l_i_frag
+> @@ -539,6 +603,13 @@
+>  	return container_of(inode, struct ext4_inode_info, vfs_inode);
 >  }
 >  
-> +static inline int
-> +ext4_ext_max_entries(struct inode *inode, int depth)
-
-Please remove the `inline'.
-
-`inline' is usually wrong.  It is wrong here.  If this function has a
-single callsite (it has) then the compiler will inline it.  If the function
-later gains more callsites then the compiler will know (correctly) not to
-inline it.
-
-We hope.  If we find the compiler still inlines a function as large as this
-one then we'd need to use noinline and complain at the gcc developers.
-
+> +static inline struct timespec ext4_current_time(struct inode *inode)
 > +{
-> +	int max;
-> +
-> +	if (depth == ext_depth(inode)) {
-> +		if (depth == 0)
-> +			max = ext4_ext_space_root(inode);
-> +		else
-> +			max = ext4_ext_space_root_idx(inode);
-> +	} else {
-> +		if (depth == 0)
-> +			max = ext4_ext_space_block(inode);
-> +		else
-> +			max = ext4_ext_space_block_idx(inode);
-> +	}
-> +
-> +	return max;
+> +	return (inode->i_sb->s_time_gran < NSEC_PER_SEC) ?
+> +		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
 > +}
-> +
-> +static int __ext4_ext_check_header(const char *function, struct inode *inode,
-> +					struct ext4_extent_header *eh,
-> +					int depth)
-> +{
-> +	const char *error_msg = NULL;
 
-Unneeded initialisation.
+Now, I've forgotten how this works.  Remind me, please.  Can ext4
+filesystems ever have one-second timestamp granularity?  If so, how does
+one cause that to come about?
 
-> +	int max = 0;
-> +
-> +	if (unlikely(eh->eh_magic != EXT4_EXT_MAGIC)) {
-> +		error_msg = "invalid magic";
-> +		goto corrupted;
-> +	}
-> +	if (unlikely(le16_to_cpu(eh->eh_depth) != depth)) {
-> +		error_msg = "unexpected eh_depth";
-> +		goto corrupted;
-> +	}
-> +	if (unlikely(eh->eh_max == 0)) {
-> +		error_msg = "invalid eh_max";
-> +		goto corrupted;
-> +	}
-> +	max = ext4_ext_max_entries(inode, depth);
-> +	if (unlikely(le16_to_cpu(eh->eh_max) > max)) {
-> +		error_msg = "too large eh_max";
-> +		goto corrupted;
-> +	}
-> +	if (unlikely(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max))) {
-> +		error_msg = "invalid eh_entries";
-> +		goto corrupted;
-> +	}
-> +	return 0;
-> +
-> +corrupted:
-> +	ext4_error(inode->i_sb, function,
-> +			"bad header in inode #%lu: %s - magic %x, "
-> +			"entries %u, max %u(%u), depth %u(%u)",
-> +			inode->i_ino, error_msg, le16_to_cpu(eh->eh_magic),
-> +			le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
-> +			max, le16_to_cpu(eh->eh_depth), depth);
-> +
-> +	return -EIO;
-> +}
-> +
->
-> ...
->
-> +	i = depth = ext_depth(inode);
->
-
-Mulitple assignments like this are somewhat unpopular from the coding-style
-POV.  
-
-We have a local variable called `i' which is not used as a simple counter
-and which has no explanatory comment.  This is plain bad.  Please find a
-better name for this variable.  Review the code for other such lack of
-clarity - I'm sure there's more.
-
-
-> -	BUG_ON(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max));
-> -	BUG_ON(eh->eh_magic != EXT4_EXT_MAGIC);
-
-Yeah, this patch improves things a lot.
-
-How well-tested is it?  Have any of these errors actually been triggered?
-
->  			path[i].p_hdr = ext_block_hdr(path[i].p_bh);
-> -			if (ext4_ext_check_header(__FUNCTION__, inode,
-> -							path[i].p_hdr)) {
-> -				err = -EIO;
-> -				goto out;
-> -			}
->  		}
+> --- linux-2.6.22-rc4.orig/include/linux/ext4_fs_i.h	2007-06-11 17:22:15.000000000 -0700
+> +++ linux-2.6.22-rc4/include/linux/ext4_fs_i.h	2007-06-11 17:39:05.000000000 -0700
+> @@ -153,6 +153,7 @@
 >  
-> -		BUG_ON(le16_to_cpu(path[i].p_hdr->eh_entries)
-> -			   > le16_to_cpu(path[i].p_hdr->eh_max));
-> -		BUG_ON(path[i].p_hdr->eh_magic != EXT4_EXT_MAGIC);
-> -
->  		if (!path[i].p_idx) {
->  			/* this level hasn't been touched yet */
->  			path[i].p_idx = EXT_LAST_INDEX(path[i].p_hdr);
-> @@ -1873,17 +1890,24 @@
->  				i, EXT_FIRST_INDEX(path[i].p_hdr),
->  				path[i].p_idx);
->  		if (ext4_ext_more_to_rm(path + i)) {
-> +			struct buffer_head *bh;
->  			/* go to the next level */
->  			ext_debug("move to level %d (block %llu)\n",
->  				  i + 1, idx_pblock(path[i].p_idx));
->  			memset(path + i + 1, 0, sizeof(*path));
-> -			path[i+1].p_bh =
-> -				sb_bread(sb, idx_pblock(path[i].p_idx));
-> -			if (!path[i+1].p_bh) {
-> +			bh = sb_bread(sb, idx_pblock(path[i].p_idx));
-> +			if (!bh) {
->  				/* should we reset i_size? */
->  				err = -EIO;
->  				break;
->  			}
-> +			BUG_ON(i + 1 > depth);
+>  	unsigned long i_ext_generation;
+>  	struct ext4_ext_cache i_cached_extent;
+> +	struct timespec i_crtime;
+>  };
 
-ouch.  Couldn't we do WARN_ON then return -EIO here?
+It is unobvious what this field does.  Please prefer to add commentary to
+_all_ struct fields - it really helps.
 
-> +			if (ext4_ext_check_header(inode, ext_block_hdr(bh),
-> +							depth - i - 1)) {
-> +				err = -EIO;
-> +				break;
-> +			}
-> +			path[i+1].p_bh = bh;
+I thought checkpatch was going to have a little whine about that but the
+version I have here doesn't.
 
-Really that should have been "i + 1".  checkpatch misses this.  It seems to
-be missing more stuff that it used to lately.
+>  
+>  #endif	/* _LINUX_EXT4_FS_I */
+> Index: linux-2.6.22-rc4/include/linux/ext4_fs_sb.h
+> ===================================================================
+> --- linux-2.6.22-rc4.orig/include/linux/ext4_fs_sb.h	2007-06-11 17:28:15.000000000 -0700
+> +++ linux-2.6.22-rc4/include/linux/ext4_fs_sb.h	2007-06-11 17:39:05.000000000 -0700
+> @@ -79,6 +79,7 @@
+>  	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+>  	int s_jquota_fmt;			/* Format of quota to use */
+>  #endif
+> +	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
+>  
+>  #ifdef EXTENTS_STATS
+
+OK, I can kind-of see how this is working, but some overall description of
+how the inode sizing design operates would be helpful.  It would certainly
+make reviewing of this proposed change more fruitful.  Perhaps that new
+comment over EXT4_FITS_IN_INODE() would be a suitable place.
