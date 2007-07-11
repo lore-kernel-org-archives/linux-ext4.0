@@ -1,109 +1,164 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
-	features in larger inode
-Date: Thu, 12 Jul 2007 00:54:13 +0530
-Message-ID: <1184181856.3931.1.camel@garfield>
-References: <1183275482.4010.133.camel@localhost.localdomain>
-	 <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
-	 <20070711121056.GV6417@schatzie.adilger.int>
-	 <20070711103405.1656dd71.akpm@linux-foundation.org>
+Subject: Re: Ext3 onlie resize failure due to small journal size
+Date: Thu, 12 Jul 2007 01:17:49 +0530
+Message-ID: <1184183271.3931.13.camel@garfield>
+References: <4694E279.1060107@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>, cmm@us.ibm.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070711103405.1656dd71.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: adilger@clusterfs.com, aneesh.kumar@linux.vnet.ibm.com,
+	linux-ext4@vger.kernel.org, Amit K Arora <amitarora@in.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>
+To: Suzuki <suzuki@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:48177 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758156AbXGKTrX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 15:47:23 -0400
+In-Reply-To: <4694E279.1060107@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-07-11 at 10:34 -0700, Andrew Morton wrote:
-> On Wed, 11 Jul 2007 06:10:56 -0600 Andreas Dilger <adilger@clusterfs.com> wrote:
+On Wed, 2007-07-11 at 19:30 +0530, Suzuki wrote:
+> Hi Andreas,
 > 
-> > On Jul 10, 2007  16:32 -0700, Andrew Morton wrote:
-> > > >  	err = ext4_reserve_inode_write(handle, inode, &iloc);
-> > > > +	if (EXT4_I(inode)->i_extra_isize <
-> > > > +	    EXT4_SB(inode->i_sb)->s_want_extra_isize &&
-> > > > +	    !(EXT4_I(inode)->i_state & EXT4_STATE_NO_EXPAND)) {
-> > > > +		/* We need extra buffer credits since we may write into EA block
-> > > > +		 * with this same handle */
-> > > > +		if ((jbd2_journal_extend(handle,
-> > > > +			     EXT4_DATA_TRANS_BLOCKS(inode->i_sb))) == 0) {
-> > > > +			ret = ext4_expand_extra_isize(inode,
-> > > > +				EXT4_SB(inode->i_sb)->s_want_extra_isize,
-> > > > +				iloc, handle);
-> > > > +			if (ret) {
-> > > > +				EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
-> > > > +				if (!expand_message) {
-> > > > +					ext4_warning(inode->i_sb, __FUNCTION__,
-> > > > +					"Unable to expand inode %lu. Delete"
-> > > > +					" some EAs or run e2fsck.",
-> > > > +					inode->i_ino);
-> > > > +					expand_message = 1;
-> > > > +				}
-> > > > +			}
-> > > > +		}
-> > > > +	}
-> > > 
-> > > Maybe that message should come out once per mount rather than once per boot
-> > > (or once per modprobe)?
-> > 
-> > Probably true.
-> > 
-> > > What are the consequences of a jbd2_journal_extend() failure in here?
-> > 
-> > Not fatal, just like every user of i_extra_isize.  If the inode isn't a
-> > large inode, or it can't be expanded then there will be a minor loss of
-> > functionality on that inode.  If the i_extra_isize is critical, then
-> > the sysadmin will have run e2fsck to force s_min_extra_isize large enough.
-> > 
-> > Note that this is only applicable for filesystems which are upgraded.  For
-> > new inodes (i.e. all inodes that exist in the filesystem if it was always
-> > run on a kernel with the currently understood extra fields) then this will
-> > never be invoked (until such a time new extra fields are added).
-> 
-> I'd suggest that we get a comment in the code explaining this: this
-> unchecked error does rather stand out.
-> 
-> > > > +	if (EXT4_I(inode)->i_file_acl) {
-> > > > +		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-> > > > +		error = -EIO;
-> > > > +		if (!bh)
-> > > > +			goto cleanup;
-> > > > +		if (ext4_xattr_check_block(bh)) {
-> > > > +			ext4_error(inode->i_sb, __FUNCTION__,
-> > > > +				"inode %lu: bad block %llu", inode->i_ino,
-> > > > +				EXT4_I(inode)->i_file_acl);
-> > > > +			error = -EIO;
-> > > > +			goto cleanup;
-> > > > +		}
-> > > > +		base = BHDR(bh);
-> > > > +		first = BFIRST(bh);
-> > > > +		end = bh->b_data + bh->b_size;
-> > > > +		min_offs = end - base;
-> > > > +		free = ext4_xattr_free_space(first, &min_offs, base,
-> > > > +					     &total_blk);
-> > > > +		if (free < new_extra_isize) {
-> > > > +			if (!tried_min_extra_isize && s_min_extra_isize) {
-> > > > +				tried_min_extra_isize++;
-> > > > +				new_extra_isize = s_min_extra_isize;
-> > > 
-> > > Aren't we missing a brelse(bh) here?
-> > 
-> > Seems likely, yes.
-> 
-> OK - could we get a positive ack from someone indicating that this will get
-> looked at?  Because I am about to forget about it.
+> Trying to resize a mounted ext3 filesystem fails due to small journal size.
 
-I will send a patch to add the comments and make the suggested
-corrections.
+A similar problem was discussed in an earlier thread "JBD: ext2online
+wants too many credits (744 > 256)". The problem here is that the
+maximum allowed transaction size is 4MB while a bigger transaction is
+required to resize the filesystem.
+
+In your case, you can delete the journal using "tune2fs -O ^has_journal
+<dev>" and add a bigger journal "tune2fs -J size=16M <dev>". I think
+this will solve your problem.
 
 Thanks,
 Kalpak.
 
+> 
+> Background :
+> 
+> The filesystem was created with default values, except blocksize = 4K on 
+> a LV partition. Later we tried extended the partition to +16M and tried 
+> to resize the fs using resize2fs, while it was mounted.
+> 
+> [root@llm47 ~]# resize2fs  /dev/mapper/testvg-tmp
+> resize2fs 1.39 (29-May-2006)
+> Filesystem at /dev/mapper/testvg-tmp is mounted on /tmp; on-line 
+> resizing required
+> Performing an on-line resize of /dev/mapper/testvg-tmp to 186368 (4k) 
+> blocks.
+> resize2fs: No space left on device While trying to add group #4
+> 
+> Analysis :
+> 
+> While adding the new blockgroup, inside setup_new_group_blocks() we hit 
+> the limit because we are requesting for a a credit value of 2 + 
+> sbi->s_itb_per_group which in the case of the file system below is 1026 
+> while the max_transaction credits possible is 1024 for the fs.
+> 
+> journal->j_maxlen = inode->i_size / blocksize = 16M/4K = 4K
+> 
+> journal->j_max_transaction_buffers = journal->j_maxlen / 4 = 1K
+> 
+> journal->j_max_transaction_buffers = 1024.
+> 
+> 
+> 
+> 
+> # dumpe2fs  /dev/mapper/testvg-tmp
+> dumpe2fs 1.39 (29-May-2006)
+> Filesystem volume name:   <none>
+> Last mounted on:          <not available>
+> Filesystem UUID:          7d82f07b-cb22-4c7d-b290-a35749121bbb
+> Filesystem magic number:  0xEF53
+> Filesystem revision #:    1 (dynamic)
+> Filesystem features:      has_journal resize_inode dir_index filetype 
+> needs_recovery sparse_super large_file
+> Default mount options:    (none)
+> Filesystem state:         clean
+> Errors behavior:          Continue
+> Filesystem OS type:       Linux
+> Inode count:              131072
+> Block count:              131072
+> Reserved block count:     6553
+> Free blocks:              122753
+> Free inodes:              131056
+> First block:              0
+> Block size:               4096
+> Fragment size:            4096
+> Reserved GDT blocks:      31
+> Blocks per group:         32768
+> Fragments per group:      32768
+> Inodes per group:         32768
+> Inode blocks per group:   1024
+> Filesystem created:       Mon Jul  9 00:09:23 2007
+> Last mount time:          Tue Jul 10 02:44:44 2007
+> Last write time:          Tue Jul 10 02:44:44 2007
+> Mount count:              7
+> Maximum mount count:      33
+> Last checked:             Mon Jul  9 00:09:23 2007
+> Check interval:           15552000 (6 months)
+> Next check after:         Sat Jan  5 00:09:23 2008
+> Reserved blocks uid:      0 (user root)
+> Reserved blocks gid:      0 (group root)
+> First inode:              11
+> Inode size:               128
+> Journal inode:            8
+> Default directory hash:   tea
+> Directory Hash Seed:      0a57077d-9778-4f3a-8605-7f0c86f18d8a
+> Journal backup:           inode blocks
+> Journal size:             16M
+> 
+> 
+> Group 0: (Blocks 0-32767)
+> 	Primary superblock at 0, Group descriptors at 1-1
+> 	Reserved GDT blocks at 2-32
+> 	Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
+> 	Inode table at 35-1058 (+35)
+> 	27600 free blocks, 32755 free inodes, 2 directories
+> 	Free blocks: 5168-32767
+> 	Free inodes: 14-32768
+> Group 1: (Blocks 32768-65535)
+> 	Backup superblock at 32768, Group descriptors at 32769-32769
+> 	Reserved GDT blocks at 32770-32800
+> 	Block bitmap at 32801 (+33), Inode bitmap at 32802 (+34)
+> 	Inode table at 32803-33826 (+35)
+> 	31708 free blocks, 32767 free inodes, 1 directories
+> 	Free blocks: 33828-65535
+> 	Free inodes: 32770-65536
+> Group 2: (Blocks 65536-98303)
+> 	Block bitmap at 65536 (+0), Inode bitmap at 65537 (+1)
+> 	Inode table at 65538-66561 (+2)
+> 	31740 free blocks, 32764 free inodes, 2 directories
+> 	Free blocks: 66562-83967, 83969-94207, 94209-98303
+> 	Free inodes: 65541-98304
+> Group 3: (Blocks 98304-131071)
+> 	Backup superblock at 98304, Group descriptors at 98305-98305
+> 	Reserved GDT blocks at 98306-98336
+> 	Block bitmap at 98337 (+33), Inode bitmap at 98338 (+34)
+> 	Inode table at 98339-99362 (+35)
+> 	31704 free blocks, 32766 free inodes, 1 directories
+> 	Free blocks: 99363-126976, 126982-131071
+> 	Free inodes: 98305, 98308-131072
+> 
+> 
+> 
+> Is this a supported operation ? If yes, what could be the best way to 
+> fix it ?
+> 
+> Resizing the journal is not supported at the moment :(.
+> 
+> Thoughts ?
+> 
+> Thanks
+> 
+> Suzuki
+> IBM Linux Technology Centre
+> 
+> 
+> -
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
