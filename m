@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + jbd-commit-fix-transaction-dropping.patch added to -mm tree
-Date: Wed, 11 Jul 2007 11:32:26 -0700
-Message-ID: <200707111832.l6BIWQvx007644@imap1.linux-foundation.org>
+Subject: + jbd2-commit-fix-transaction-dropping.patch added to -mm tree
+Date: Wed, 11 Jul 2007 11:32:32 -0700
+Message-ID: <200707111832.l6BIWWST007653@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: jack@suse.cz, cebbert@redhat.com, dev@openvz.org,
 	linux-ext4@vger.kernel.org, stable@kernel.org
@@ -12,9 +12,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd commit: fix transaction dropping
+     jbd2 commit: fix transaction dropping
 has been added to the -mm tree.  Its filename is
-     jbd-commit-fix-transaction-dropping.patch
+     jbd2-commit-fix-transaction-dropping.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -22,7 +22,7 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: jbd commit: fix transaction dropping
+Subject: jbd2 commit: fix transaction dropping
 From: Jan Kara <jack@suse.cz>
 
 We have to check that also the second checkpoint list is non-empty before
@@ -36,20 +36,20 @@ Cc: <stable@kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |    3 ++-
+ fs/jbd2/commit.c |    3 ++-
  1 files changed, 2 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd/commit.c~jbd-commit-fix-transaction-dropping fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-commit-fix-transaction-dropping
-+++ a/fs/jbd/commit.c
-@@ -887,7 +887,8 @@ restart_loop:
+diff -puN fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping fs/jbd2/commit.c
+--- a/fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping
++++ a/fs/jbd2/commit.c
+@@ -896,7 +896,8 @@ restart_loop:
  	journal->j_committing_transaction = NULL;
  	spin_unlock(&journal->j_state_lock);
  
 -	if (commit_transaction->t_checkpoint_list == NULL) {
 +	if (commit_transaction->t_checkpoint_list == NULL &&
 +	    commit_transaction->t_checkpoint_io_list == NULL) {
- 		__journal_drop_transaction(journal, commit_transaction);
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
  	} else {
  		if (journal->j_checkpoint_transactions == NULL) {
 _
