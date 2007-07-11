@@ -1,64 +1,97 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 8][PATCH 1/1]Add journal checksums
-Date: Wed, 11 Jul 2007 10:29:17 -0700
-Message-ID: <20070711102917.88ef762a.akpm@linux-foundation.org>
-References: <1183275505.4010.136.camel@localhost.localdomain>
-	<20070710231601.798304e0.akpm@linux-foundation.org>
-	<1184154399.3867.44.camel@dhcp4.linsyssoft.com>
-	<20070711130108.GB6417@schatzie.adilger.int>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
+ features in larger inode
+Date: Wed, 11 Jul 2007 10:34:05 -0700
+Message-ID: <20070711103405.1656dd71.akpm@linux-foundation.org>
+References: <1183275482.4010.133.camel@localhost.localdomain>
+	<20070710163247.5c8bfa3f.akpm@linux-foundation.org>
+	<20070711121056.GV6417@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Girish Shilamkar <girish@clusterfs.com>, cmm@us.ibm.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andy Whitcroft <apw@shadowen.org>
 To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070711130108.GB6417@schatzie.adilger.int>
+In-Reply-To: <20070711121056.GV6417@schatzie.adilger.int>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 11 Jul 2007 07:01:08 -0600 Andreas Dilger <adilger@clusterfs.com> wrote:
+On Wed, 11 Jul 2007 06:10:56 -0600 Andreas Dilger <adilger@clusterfs.com> wrote:
 
-> > > > -	/* AKPM: buglet - add `i' to tmp! */
-> > > 
-> > > Damn.  After, what, seven years, someone actually fixed it?
-> > > 
-> > > >  	for (i = 0; i < bh->b_size; i += 512) {
-> > > > -		journal_header_t *tmp = (journal_header_t*)bh->b_data;
-> > > > +		struct commit_header *tmp =
-> > > > +			(struct commit_header *)(bh->b_data + i);
-> > > >  		tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
-> > > >  		tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
-> > > >  		tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
-> > > > +
-> > > > +		if (JBD2_HAS_COMPAT_FEATURE(journal,
-> > > > +					    JBD2_FEATURE_COMPAT_CHECKSUM)) {
-> > > > +			tmp->h_chksum_type 	= JBD2_CRC32_CHKSUM;
-> > > > +			tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
-> > > > +			tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
-> > > > +		}
-> > > >  	}
-> > > 
-> > > And in doing so, changed the on-disk format of the journal commit blocks.
-> > > 
-> > > Surely this was worth a mention in the changelog, if not a standalone patch?
-> > > 
-> > > I don't think this is worth doing, really.  Why not just leave the format
-> > > as it was, take the loop out and run this code once rather than eight
-> > > times?
+> On Jul 10, 2007  16:32 -0700, Andrew Morton wrote:
+> > >  	err = ext4_reserve_inode_write(handle, inode, &iloc);
+> > > +	if (EXT4_I(inode)->i_extra_isize <
+> > > +	    EXT4_SB(inode->i_sb)->s_want_extra_isize &&
+> > > +	    !(EXT4_I(inode)->i_state & EXT4_STATE_NO_EXPAND)) {
+> > > +		/* We need extra buffer credits since we may write into EA block
+> > > +		 * with this same handle */
+> > > +		if ((jbd2_journal_extend(handle,
+> > > +			     EXT4_DATA_TRANS_BLOCKS(inode->i_sb))) == 0) {
+> > > +			ret = ext4_expand_extra_isize(inode,
+> > > +				EXT4_SB(inode->i_sb)->s_want_extra_isize,
+> > > +				iloc, handle);
+> > > +			if (ret) {
+> > > +				EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
+> > > +				if (!expand_message) {
+> > > +					ext4_warning(inode->i_sb, __FUNCTION__,
+> > > +					"Unable to expand inode %lu. Delete"
+> > > +					" some EAs or run e2fsck.",
+> > > +					inode->i_ino);
+> > > +					expand_message = 1;
+> > > +				}
+> > > +			}
+> > > +		}
+> > > +	}
+> > 
+> > Maybe that message should come out once per mount rather than once per boot
+> > (or once per modprobe)?
 > 
-> Well, we aren't using the rest of the commit block in any case.  I think
-> the original intention was that we'd get 8 copies of the commit block so
-> we would be sure to get a good one.
+> Probably true.
 > 
-> I don't know whether we'd rather have 8 copies of the commit block, or
-> more potential to expand the commit block?  I don't personally have any
-> preference, since the checksum should be a more robust way of checking
-> validity than having multiple copies, so we may as well remove the loop
-> and stick with a single copy for now.
+> > What are the consequences of a jbd2_journal_extend() failure in here?
+> 
+> Not fatal, just like every user of i_extra_isize.  If the inode isn't a
+> large inode, or it can't be expanded then there will be a minor loss of
+> functionality on that inode.  If the i_extra_isize is critical, then
+> the sysadmin will have run e2fsck to force s_min_extra_isize large enough.
+> 
+> Note that this is only applicable for filesystems which are upgraded.  For
+> new inodes (i.e. all inodes that exist in the filesystem if it was always
+> run on a kernel with the currently understood extra fields) then this will
+> never be invoked (until such a time new extra fields are added).
 
-We've never altered any commit block sectors apart from the zeroeth one
-(eight times) due to the above bug.  So I'd suggest that we should formalise
-the old bug and leave the format as-is.  That'll leave lots of space spare in
-the commit block.
+I'd suggest that we get a comment in the code explaining this: this
+unchecked error does rather stand out.
+
+> > > +	if (EXT4_I(inode)->i_file_acl) {
+> > > +		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+> > > +		error = -EIO;
+> > > +		if (!bh)
+> > > +			goto cleanup;
+> > > +		if (ext4_xattr_check_block(bh)) {
+> > > +			ext4_error(inode->i_sb, __FUNCTION__,
+> > > +				"inode %lu: bad block %llu", inode->i_ino,
+> > > +				EXT4_I(inode)->i_file_acl);
+> > > +			error = -EIO;
+> > > +			goto cleanup;
+> > > +		}
+> > > +		base = BHDR(bh);
+> > > +		first = BFIRST(bh);
+> > > +		end = bh->b_data + bh->b_size;
+> > > +		min_offs = end - base;
+> > > +		free = ext4_xattr_free_space(first, &min_offs, base,
+> > > +					     &total_blk);
+> > > +		if (free < new_extra_isize) {
+> > > +			if (!tried_min_extra_isize && s_min_extra_isize) {
+> > > +				tried_min_extra_isize++;
+> > > +				new_extra_isize = s_min_extra_isize;
+> > 
+> > Aren't we missing a brelse(bh) here?
+> 
+> Seems likely, yes.
+
+OK - could we get a positive ack from someone indicating that this will get
+looked at?  Because I am about to forget about it.
+
