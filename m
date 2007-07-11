@@ -1,48 +1,40 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Tue, 10 Jul 2007 23:18:50 -0400
-Message-ID: <1184123930.20193.61.camel@localhost.localdomain>
-References: <1183275424.4010.126.camel@localhost.localdomain>
-	 <20070710163038.ceb2ae94.akpm@linux-foundation.org>
-	 <1184105380.3759.65.camel@localhost.localdomain>
-	 <20070710182237.e2f88bf3.akpm@linux-foundation.org>
-	 <18068.19667.942363.686858@notabene.brown>
-	 <1184119748.20193.37.camel@localhost.localdomain>
-	 <20070710221721.23c46edf.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [EXT4 set 9][PATCH
+ 4/5]Morecleanups:ext4_extent_compilation_fixes
+Date: Tue, 10 Jul 2007 23:18:37 -0700
+Message-ID: <20070710231837.2848ab83.akpm@linux-foundation.org>
+References: <1183275531.4010.140.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070710221721.23c46edf.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:59839 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756507AbXGKGTQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jul 2007 02:19:16 -0400
+In-Reply-To: <1183275531.4010.140.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-07-10 at 22:17 -0700, Andrew Morton wrote:
-> On Tue, 10 Jul 2007 22:09:08 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
-> 
-> > David Chinneer pointed that we need to journal the version number
-> > updates together with the operations that causes the change of the inode
-> > version number, in order to survive server crashes so clients won't see
-> > the counter go backwards.
-> > 
-> > So increment i_version in fs code is probably the place to ensure the
-> > inode version changes are stored to disk. It's seems update the ext4
-> > inode version in every ext4_mark_inode_dirty() is the easiest way.
-> 
-> That still makes us dependent upon _something_ changing the inode.  For
-> overwrites the only something is mtime.
-> 
-> If we don't want to have a peculiar dependency upon s_time_gran=1e9 (and
-> I don't think we do) then I guess we'll need new code in or around
-> file_update_time() to do this.
+On Sun, 01 Jul 2007 03:38:51 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
 
-do you mean mark inode dirty all the times in file_update_time()? Not
-sure about the overhead for ext3/4.
+> Subject: [EXT4 set 9][PATCH 4/5]Morecleanups:ext4_extent_compilation_fixes
+> Date: 	Sun, 01 Jul 2007 03:38:51 -0400
+> Sender: linux-kernel-owner@vger.kernel.org
+> Organization: IBM Linux Technology Center
+> X-Mailer: Evolution 2.8.0 (2.8.0-33.el5) 
+> 
+> From: Dmitry Monakhov <dmonakhov@sw.ru>
+> Subject: ext4: extent compilation fixes
 
-Mingming
+I hope this patch series will hit git with nice titles like "ext4: extent
+compilation fixes" and not funny ones like
+"Morecleanups:ext4_extent_compilation_fixes".
 
+> Fix compilation with EXT_DEBUG, also fix leXX_to_cpu convertions.
+
+"conversions".
