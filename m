@@ -1,76 +1,53 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 9][PATCH 5/5]Extent micro cleanups
-Date: Tue, 10 Jul 2007 23:20:08 -0700
-Message-ID: <20070710232008.599b25aa.akpm@linux-foundation.org>
-References: <1183275539.4010.141.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 2][PATCH 5/5] cleanups: Export jbd2-debug via debugfs
+Date: Tue, 10 Jul 2007 23:25:09 -0700
+Message-ID: <20070710232509.4838644e.akpm@linux-foundation.org>
+References: <1183275408.4010.124.camel@localhost.localdomain>
+	<20070710163025.9db582f8.akpm@linux-foundation.org>
+	<20070711003809.3ced667b@naruto>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:33153 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:53412 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755729AbXGKGUq (ORCPT
+	by vger.kernel.org with ESMTP id S1754107AbXGKGZ0 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 02:20:46 -0400
-In-Reply-To: <1183275539.4010.141.camel@localhost.localdomain>
+	Wed, 11 Jul 2007 02:25:26 -0400
+In-Reply-To: <20070711003809.3ced667b@naruto>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:38:59 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+On Wed, 11 Jul 2007 00:38:09 -0500 "Jose R. Santos" <jrs@us.ibm.com> wrote:
 
-> From: Dmitry Monakhov <dmonakhov@sw.ru>
-> Subject: ext4: extent macros cleanup
 > 
-> - Replace math equation to it's macro equivalent
-
-s/it's/its/;)
-
-> - make ext4_ext_grow_indepth() indexes/leaf correct
-
-hm, what was wrong with it?
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> Acked-by: Alex Tomas <alex@clusterfs.com>
-> Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-> ---
->  fs/ext4/extents.c |   11 +++++++----
->  1 files changed, 7 insertions(+), 4 deletions(-)
+> > Alternatively (and preferably) do this via an update to
+> > Documentation/filesystems/ext4.txt.
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 12fe3d7..1fd00ac 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
->  	ext_debug("binsearch for %d(idx):  ", block);
-> 
->  	l = EXT_FIRST_INDEX(eh) + 1;
-> -	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
-> +	r = EXT_LAST_INDEX(eh);
->  	while (l <= r) {
->  		m = l + (r - l) / 2;
->  		if (block < le32_to_cpu(m->ei_block))
-> @@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
->  	ext_debug("binsearch for %d:  ", block);
-> 
->  	l = EXT_FIRST_EXTENT(eh) + 1;
-> -	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
-> +	r = EXT_LAST_EXTENT(eh);
-> 
->  	while (l <= r) {
->  		m = l + (r - l) / 2;
-> @@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
->  	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
->  	curp->p_hdr->eh_entries = cpu_to_le16(1);
->  	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
-> -	/* FIXME: it works, but actually path[0] can be index */
-> -	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
-> +	
-> +	if (path[0].p_hdr->eh_depth)
-> +	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
-> +	else
-> +	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+> Seems like I also need to update the doc on Kconfig as well.  Do you
+> prefer this in separate patches? (current patch, kconfig patch, ext4
+> doc update patch?
 
-whitespace bustage there.
+All these changes are logically connected (aren't they?).  A single patch
+is fine.
+
+> > Shoudln't all this debug info be a per-superblock thing rather than
+> > kernel-wide?
+> 
+> I don't think it is worth pursuing this feature since this seems to
+> have been broken for a while now (its been there since the first git
+> revission in ext3) and nobody has noticed it until now.  It could be
+> address on a later patch though, since the initial purpose of the patch
+> was to fix the broken JBD2_DEBUG option. Of course, this may not be
+> clearly express in the changelog. :)
+> 
+
+I don't think that making it all per-superblock is worth the effort - it's
+a developer-only thing and developer will have the knowledge to test ext4
+on an otherwise-ext3 setup if they're really fussed about the accuracy.
+
+So yes, a bare make-it-work patch sounds appropriate.  Or remove it, but
+hey, it might be useful.  The timestamping stuff certainly looks useful.
