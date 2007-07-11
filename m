@@ -1,164 +1,93 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: Ext3 onlie resize failure due to small journal size
-Date: Thu, 12 Jul 2007 01:17:49 +0530
-Message-ID: <1184183271.3931.13.camel@garfield>
-References: <4694E279.1060107@linux.vnet.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
+Date: Wed, 11 Jul 2007 16:04:30 -0400
+Message-ID: <20070711200430.GF4138@fieldses.org>
+References: <1183275424.4010.126.camel@localhost.localdomain>
+	<20070710163038.ceb2ae94.akpm@linux-foundation.org>
+	<1184105380.3759.65.camel@localhost.localdomain>
+	<20070710182237.e2f88bf3.akpm@linux-foundation.org>
+	<18068.19667.942363.686858@notabene.brown>
+	<18068.25879.745638.343290@notabene.brown>
+	<1184164086.12154.15.camel@kleikamp.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: adilger@clusterfs.com, aneesh.kumar@linux.vnet.ibm.com,
-	linux-ext4@vger.kernel.org, Amit K Arora <amitarora@in.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>
-To: Suzuki <suzuki@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:48177 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758156AbXGKTrX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 15:47:23 -0400
-In-Reply-To: <4694E279.1060107@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+Content-Disposition: inline
+In-Reply-To: <1184164086.12154.15.camel@kleikamp.austin.ibm.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-07-11 at 19:30 +0530, Suzuki wrote:
-> Hi Andreas,
+On Wed, Jul 11, 2007 at 09:28:06AM -0500, Dave Kleikamp wrote:
+> On Wed, 2007-07-11 at 15:05 +1000, Neil Brown wrote:
+> > It just occurred to me:
+> > 
+> >  If i_version is 64bit, then knfsd would need to be careful when
+> >  reading it on a 32bit host.  What are the locking rules?
 > 
-> Trying to resize a mounted ext3 filesystem fails due to small journal size.
+> How does knfsd use i_version?  I would think that if all it was doing
+> was to compare (i_version == previous_version)
 
-A similar problem was discussed in an earlier thread "JBD: ext2online
-wants too many credits (744 > 256)". The problem here is that the
-maximum allowed transaction size is 4MB while a bigger transaction is
-required to resize the filesystem.
+That's correct.  (Though it's the client that's doing the comparison,
+actually--the server is just reporting the value.)
 
-In your case, you can delete the journal using "tune2fs -O ^has_journal
-<dev>" and add a bigger journal "tune2fs -J size=16M <dev>". I think
-this will solve your problem.
+> then locking wouldn't really matter.  Well, theoretically,
+> previous_version could be 0x100000000, and i_version could be
+> 0x1ffffffff, knfsd checks the high word, then ext4 updates i_version
+> to 0x200000000, then knfsd checks the low word, detecting no change.
+> How likely is this?
 
-Thanks,
-Kalpak.
+The choice of upper word in your example is arbitrary, but other than
+that I believe your example is essentially the only one.  So this would
+only happen when *both*
 
+	- the read of the new value of the low word happens precisely
+	  2^32 i_version updates after the word was read on the client's
+	  previous cache revalidation, and
+	- the value of i_version itself is close enough to a 32-bit
+	  boundary that wraparound can happen between the reads of the
+	  high and low words.
+
+> (I don't understand why i_version even needs to be 64 bits in the
+> first place.)
+
+A 32-bit i_version could in theory wrap pretty quickly, couldn't it?
+That's not a problem in itself--the problem would only arise if two
+subsequent client queries of the change attribute happened a multiple of
+2^32 i_version increments apart.
+
+This is more likely than the previous scenario, but still very unlikely.
+I would have guessed that even in situations with a very high rate of
+updates and a low rate of client revalidations, the chance of two
+revalidations happening exactly 2^32 updates apart would still be no
+more than 1 in 2^32.  (Could odd characteristics of the workloads (like
+updates that tend to happen in power-of-2 groups?) make it any more
+likely?)
+
+I'd be happier if ext4 at least allowed the possibility of 64 bits in
+the future.  And there's always the chance someone would find a use for
+an i_version that was nondecreasing, even if nfs didn't care.
+
+> >  Presumably it is only updated under i_mutex protection, but having to
+> >  get i_mutex to read it would seem a little heavy handed.
 > 
-> Background :
-> 
-> The filesystem was created with default values, except blocksize = 4K on 
-> a LV partition. Later we tried extended the partition to +16M and tried 
-> to resize the fs using resize2fs, while it was mounted.
-> 
-> [root@llm47 ~]# resize2fs  /dev/mapper/testvg-tmp
-> resize2fs 1.39 (29-May-2006)
-> Filesystem at /dev/mapper/testvg-tmp is mounted on /tmp; on-line 
-> resizing required
-> Performing an on-line resize of /dev/mapper/testvg-tmp to 186368 (4k) 
-> blocks.
-> resize2fs: No space left on device While trying to add group #4
-> 
-> Analysis :
-> 
-> While adding the new blockgroup, inside setup_new_group_blocks() we hit 
-> the limit because we are requesting for a a credit value of 2 + 
-> sbi->s_itb_per_group which in the case of the file system below is 1026 
-> while the max_transaction credits possible is 1024 for the fs.
-> 
-> journal->j_maxlen = inode->i_size / blocksize = 16M/4K = 4K
-> 
-> journal->j_max_transaction_buffers = journal->j_maxlen / 4 = 1K
-> 
-> journal->j_max_transaction_buffers = 1024.
-> 
-> 
-> 
-> 
-> # dumpe2fs  /dev/mapper/testvg-tmp
-> dumpe2fs 1.39 (29-May-2006)
-> Filesystem volume name:   <none>
-> Last mounted on:          <not available>
-> Filesystem UUID:          7d82f07b-cb22-4c7d-b290-a35749121bbb
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal resize_inode dir_index filetype 
-> needs_recovery sparse_super large_file
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              131072
-> Block count:              131072
-> Reserved block count:     6553
-> Free blocks:              122753
-> Free inodes:              131056
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      31
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         32768
-> Inode blocks per group:   1024
-> Filesystem created:       Mon Jul  9 00:09:23 2007
-> Last mount time:          Tue Jul 10 02:44:44 2007
-> Last write time:          Tue Jul 10 02:44:44 2007
-> Mount count:              7
-> Maximum mount count:      33
-> Last checked:             Mon Jul  9 00:09:23 2007
-> Check interval:           15552000 (6 months)
-> Next check after:         Sat Jan  5 00:09:23 2008
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               128
-> Journal inode:            8
-> Default directory hash:   tea
-> Directory Hash Seed:      0a57077d-9778-4f3a-8605-7f0c86f18d8a
-> Journal backup:           inode blocks
-> Journal size:             16M
-> 
-> 
-> Group 0: (Blocks 0-32767)
-> 	Primary superblock at 0, Group descriptors at 1-1
-> 	Reserved GDT blocks at 2-32
-> 	Block bitmap at 33 (+33), Inode bitmap at 34 (+34)
-> 	Inode table at 35-1058 (+35)
-> 	27600 free blocks, 32755 free inodes, 2 directories
-> 	Free blocks: 5168-32767
-> 	Free inodes: 14-32768
-> Group 1: (Blocks 32768-65535)
-> 	Backup superblock at 32768, Group descriptors at 32769-32769
-> 	Reserved GDT blocks at 32770-32800
-> 	Block bitmap at 32801 (+33), Inode bitmap at 32802 (+34)
-> 	Inode table at 32803-33826 (+35)
-> 	31708 free blocks, 32767 free inodes, 1 directories
-> 	Free blocks: 33828-65535
-> 	Free inodes: 32770-65536
-> Group 2: (Blocks 65536-98303)
-> 	Block bitmap at 65536 (+0), Inode bitmap at 65537 (+1)
-> 	Inode table at 65538-66561 (+2)
-> 	31740 free blocks, 32764 free inodes, 2 directories
-> 	Free blocks: 66562-83967, 83969-94207, 94209-98303
-> 	Free inodes: 65541-98304
-> Group 3: (Blocks 98304-131071)
-> 	Backup superblock at 98304, Group descriptors at 98305-98305
-> 	Reserved GDT blocks at 98306-98336
-> 	Block bitmap at 98337 (+33), Inode bitmap at 98338 (+34)
-> 	Inode table at 98339-99362 (+35)
-> 	31704 free blocks, 32766 free inodes, 1 directories
-> 	Free blocks: 99363-126976, 126982-131071
-> 	Free inodes: 98305, 98308-131072
-> 
-> 
-> 
-> Is this a supported operation ? If yes, what could be the best way to 
-> fix it ?
-> 
-> Resizing the journal is not supported at the moment :(.
-> 
-> Thoughts ?
-> 
-> Thanks
-> 
-> Suzuki
-> IBM Linux Technology Centre
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> How does knfsd protect itself from the inode changing after i_version is
+> checked?  Is any locking being done otherwise?
+
+If the client always requests the change attribute before reading, and
+the i_version is always updated after data is modified, I think we're
+OK.  Admittedly this is a little subtle.
+
+--b.
