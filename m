@@ -1,9 +1,8 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 9][PATCH
- 4/5]Morecleanups:ext4_extent_compilation_fixes
-Date: Tue, 10 Jul 2007 23:18:37 -0700
-Message-ID: <20070710231837.2848ab83.akpm@linux-foundation.org>
-References: <1183275531.4010.140.camel@localhost.localdomain>
+Subject: Re: [EXT4 set 9][PATCH 5/5]Extent micro cleanups
+Date: Tue, 10 Jul 2007 23:20:08 -0700
+Message-ID: <20070710232008.599b25aa.akpm@linux-foundation.org>
+References: <1183275539.4010.141.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
@@ -11,30 +10,67 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:59839 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:33153 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756507AbXGKGTQ (ORCPT
+	by vger.kernel.org with ESMTP id S1755729AbXGKGUq (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 02:19:16 -0400
-In-Reply-To: <1183275531.4010.140.camel@localhost.localdomain>
+	Wed, 11 Jul 2007 02:20:46 -0400
+In-Reply-To: <1183275539.4010.141.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:38:51 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+On Sun, 01 Jul 2007 03:38:59 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
 
-> Subject: [EXT4 set 9][PATCH 4/5]Morecleanups:ext4_extent_compilation_fixes
-> Date: 	Sun, 01 Jul 2007 03:38:51 -0400
-> Sender: linux-kernel-owner@vger.kernel.org
-> Organization: IBM Linux Technology Center
-> X-Mailer: Evolution 2.8.0 (2.8.0-33.el5) 
-> 
 > From: Dmitry Monakhov <dmonakhov@sw.ru>
-> Subject: ext4: extent compilation fixes
+> Subject: ext4: extent macros cleanup
+> 
+> - Replace math equation to it's macro equivalent
 
-I hope this patch series will hit git with nice titles like "ext4: extent
-compilation fixes" and not funny ones like
-"Morecleanups:ext4_extent_compilation_fixes".
+s/it's/its/;)
 
-> Fix compilation with EXT_DEBUG, also fix leXX_to_cpu convertions.
+> - make ext4_ext_grow_indepth() indexes/leaf correct
 
-"conversions".
+hm, what was wrong with it?
+
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Acked-by: Alex Tomas <alex@clusterfs.com>
+> Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/extents.c |   11 +++++++----
+>  1 files changed, 7 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 12fe3d7..1fd00ac 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -375,7 +375,7 @@ ext4_ext_binsearch_idx(struct inode *inode, struct ext4_ext_path *path, int bloc
+>  	ext_debug("binsearch for %d(idx):  ", block);
+> 
+>  	l = EXT_FIRST_INDEX(eh) + 1;
+> -	r = EXT_FIRST_INDEX(eh) + le16_to_cpu(eh->eh_entries) - 1;
+> +	r = EXT_LAST_INDEX(eh);
+>  	while (l <= r) {
+>  		m = l + (r - l) / 2;
+>  		if (block < le32_to_cpu(m->ei_block))
+> @@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode, struct ext4_ext_path *path, int block)
+>  	ext_debug("binsearch for %d:  ", block);
+> 
+>  	l = EXT_FIRST_EXTENT(eh) + 1;
+> -	r = EXT_FIRST_EXTENT(eh) + le16_to_cpu(eh->eh_entries) - 1;
+> +	r = EXT_LAST_EXTENT(eh);
+> 
+>  	while (l <= r) {
+>  		m = l + (r - l) / 2;
+> @@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+>  	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
+>  	curp->p_hdr->eh_entries = cpu_to_le16(1);
+>  	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
+> -	/* FIXME: it works, but actually path[0] can be index */
+> -	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+> +	
+> +	if (path[0].p_hdr->eh_depth)
+> +	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
+> +	else
+> +	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+
+whitespace bustage there.
