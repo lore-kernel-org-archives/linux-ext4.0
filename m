@@ -1,215 +1,172 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 7][PATCH 1/1]Remove 32000 subdirs limit.
-Date: Tue, 10 Jul 2007 22:40:11 -0700
-Message-ID: <20070710224011.e60b9864.akpm@linux-foundation.org>
-References: <1183275498.4010.135.camel@localhost.localdomain>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 2][PATCH 5/5] cleanups: Export jbd2-debug via debugfs
+Date: Tue, 10 Jul 2007 23:10:29 -0400
+Message-ID: <1184123429.20193.54.camel@localhost.localdomain>
+References: <1183275408.4010.124.camel@localhost.localdomain>
+	 <20070710163025.9db582f8.akpm@linux-foundation.org>
+	 <20070711003809.3ced667b@naruto>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:56507 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753186AbXGKFkV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 01:40:21 -0400
-In-Reply-To: <1183275498.4010.135.camel@localhost.localdomain>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:38348 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752433AbXGKGLa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 02:11:30 -0400
+In-Reply-To: <20070711003809.3ced667b@naruto>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 01 Jul 2007 03:38:18 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
-
-> >From kalpak@clusterfs.com Thu May 17 17:21:08 2007
-> Hi,
+On Wed, 2007-07-11 at 00:38 -0500, Jose R. Santos wrote:
+> On Tue, 10 Jul 2007 16:30:25 -0700
+> Andrew Morton <akpm@linux-foundation.org> wrote:
 > 
-> I have rebased this patch to 2.6.22-rc1 so that it can be added to the
-> ext4 patch queue. It has been tested by creating more than 65000 subdirs
-> and then deleting them and checking the nlinks. The e2fsprogs part of
-> this patch was sent earlier by me to linux-ext4 and doesn't need any
-> changes, so not submitting it again.
+> > On Sun, 01 Jul 2007 03:36:48 -0400
+> > Mingming Cao <cmm@us.ibm.com> wrote:
+> > 
+> > > > On Jun 07, 2007  23:45 -0500, Jose R. Santos wrote:
+> > > > > The jbd2-debug file used to be located in /proc/sys/fs/jbd2-debug, but
+> > > > > create_proc_entry() does not do lookups on file names with more that one
+> > > > > directory deep.  This causes the entry creation to fail and hence, no proc
+> > > > > file is created.  This patch moves the file to /proc/jbd2-degug.
+> > > > > 
+> > > > > The file could be move to /proc/fs/jbd2/jbd2-debug, but it would require
+> > > > > some minor alterations to the jbd-stats patch.
+> > > > 
+> > > > I don't think we really want to be adding top-level files in /proc.
+> > > > What about using the "debugfs" filesystem (not to be confused with
+> > > > the e2fsprogs 'debugfs' command)?
+> > > 
+> > > How about this then?  Moved the file to use debugfs as well as having
+> > > the nice effect of removing more lines than what it adds.
+> > > 
+> > > Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> > 
+> > Please clean up the changelog.
+> > 
+> > The changelog should include information about the location and the content
+> > of these debugfs files.  it should provide any instructions which users
+> > will need to be able to create and use those files.
 > 
-> ----------------------------------------------------------------------
-> This patch adds support to ext4 for allowing more than 65000
-> subdirectories. Currently the maximum number of subdirectories is capped
-> at 32000.
+> Will fix.
 > 
-> If we exceed 65000 subdirectories in an htree directory it sets the
-> inode link count to 1 and no longer counts subdirectories.  The
-> directory link count is not actually used when determining if a
-> directory is empty, as that only counts subdirectories and not regular
-> files that might be in there. 
+> > Alternatively (and preferably) do this via an update to
+> > Documentation/filesystems/ext4.txt.
 > 
-> A EXT4_FEATURE_RO_COMPAT_DIR_NLINK flag has been added and it is set if
-> the subdir count for any directory crosses 65000.
+> Seems like I also need to update the doc on Kconfig as well.  Do you
+> prefer this in separate patches? (current patch, kconfig patch, ext4
+> doc update patch?
+> 
+> > >  fs/jbd2/journal.c    |   62    20 +    42 -    0 !
+> > >  include/linux/jbd2.h |    2    1 +     1 -     0 !
+> > >  2 files changed, 21 insertions(+), 43 deletions(-)
+> > 
+> > Again, this patch isn't in Ted's kernel.org directory and hasn't been in -mm.
+> > 
+> > Apart from the lack of testing and review which this causes, it means I
+> > can't just do `pushpatch name-of-this-patch' and look at it in tkdiff.  So
+> > I squint at the diff, but that's harder when the diff wasn't prepared with
+> > `diff -p'.  Oh well.
+> 
+> Will fix.
+> 
+> > 
+> > > Index: linux-2.6.22-rc4/fs/jbd2/journal.c
+> > > ===================================================================
+> > > --- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 16:16:18.000000000 -0700
+> > > +++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-11 16:36:10.000000000 -0700
+> > > @@ -35,6 +35,7 @@
+> > >  #include <linux/kthread.h>
+> > >  #include <linux/poison.h>
+> > >  #include <linux/proc_fs.h>
+> > > +#include <linux/debugfs.h>
+> > >  
+> > >  #include <asm/uaccess.h>
+> > >  #include <asm/page.h>
+> > > @@ -1954,60 +1955,37 @@
+> > >   * /proc tunables
+> > >   */
+> > >  #if defined(CONFIG_JBD2_DEBUG)
+> > > -int jbd2_journal_enable_debug;
+> > > +u16 jbd2_journal_enable_debug;
+> > >  EXPORT_SYMBOL(jbd2_journal_enable_debug);
+> > >  #endif
+> > >  
+> > > -#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_PROC_FS)
+> > > +#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+> > 
+> > Has this been compile-tested with CONFIG_DEBUGFS=n?
+> 
+> I think I did, but honestly don't remember.  Will check with the new
+> patch. :) 
 > 
 
-Would I be correct in assuming that a later fsck will clear
-EXT4_FEATURE_RO_COMPAT_DIR_NLINK if there are no longer any >65000 subdir
-directories?
+Yes, I remember I did, that discovered some inconsistency in ext4 code,
+which has already been fixed.
 
-If so, that is worth a mention in the changelog, perhaps?
-
-Please remind us what is the behaviour of an RO_COMPAT flag?  It means that
-old ext4, ext3 and ext2 can only mount this fs read-only, yes?
-
+> > >  
+> > > -#define create_jbd_proc_entry() do {} while (0)
+> > > -#define jbd2_remove_jbd_proc_entry() do {} while (0)
+> > > +#define jbd2_create_debugfs_entry() do {} while (0)
+> > > +#define jbd2_remove_debugfs_entry() do {} while (0)
+> > 
+> > I suggest that these be converted to (preferable) inline functions while
+> > you're there.
 > 
-> Index: linux-2.6.22-rc4/fs/ext4/namei.c
-> ===================================================================
-> --- linux-2.6.22-rc4.orig/fs/ext4/namei.c	2007-06-14 17:30:47.000000000 -0700
-> +++ linux-2.6.22-rc4/fs/ext4/namei.c	2007-06-14 17:32:55.000000000 -0700
-> @@ -1619,6 +1619,27 @@ static int ext4_delete_entry (handle_t *
->  	return -ENOENT;
->  }
->  
-> +static inline void ext4_inc_count(handle_t *handle, struct inode *inode)
-> +{
-> +	inc_nlink(inode);
-> +	if (is_dx(inode) && inode->i_nlink > 1) {
-> +		/* limit is 16-bit i_links_count */
-> +		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
-> +			inode->i_nlink = 1;
-> +			EXT4_SET_RO_COMPAT_FEATURE(inode->i_sb,
-> +					      EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
-> +		}
-> +	}
-> +}
-
-Looks too big to be inlined.
-
-Why do we set EXT4_FEATURE_RO_COMPAT_DIR_NLINK if i_nlink==2?
-
-> +static inline void ext4_dec_count(handle_t *handle, struct inode *inode)
-> +{
-> +	drop_nlink(inode);
-> +	if (S_ISDIR(inode->i_mode) && inode->i_nlink == 0)
-> +		inc_nlink(inode);
-> +}
-
-Probably too big to inline.
-
-> +
->  static int ext4_add_nondir(handle_t *handle,
->  		struct dentry *dentry, struct inode *inode)
->  {
-> @@ -1715,7 +1736,7 @@ static int ext4_mkdir(struct inode * dir
->  	struct ext4_dir_entry_2 * de;
->  	int err, retries = 0;
->  
-> -	if (dir->i_nlink >= EXT4_LINK_MAX)
-> +	if (EXT4_DIR_LINK_MAX(dir))
->  		return -EMLINK;
->  
->  retry:
-> @@ -1738,7 +1759,7 @@ retry:
->  	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
->  	dir_block = ext4_bread (handle, inode, 0, 1, &err);
->  	if (!dir_block) {
-> -		drop_nlink(inode); /* is this nlink == 0? */
-> +		ext4_dec_count(handle, inode); /* is this nlink == 0? */
->  		ext4_mark_inode_dirty(handle, inode);
->  		iput (inode);
->  		goto out_stop;
-> @@ -1770,7 +1791,7 @@ retry:
->  		iput (inode);
->  		goto out_stop;
->  	}
-> -	inc_nlink(dir);
-> +	ext4_inc_count(handle, dir);
->  	ext4_update_dx_flag(dir);
->  	ext4_mark_inode_dirty(handle, dir);
->  	d_instantiate(dentry, inode);
-> @@ -2035,10 +2056,10 @@ static int ext4_rmdir (struct inode * di
->  	retval = ext4_delete_entry(handle, dir, de, bh);
->  	if (retval)
->  		goto end_rmdir;
-> -	if (inode->i_nlink != 2)
-> -		ext4_warning (inode->i_sb, "ext4_rmdir",
-> -			      "empty directory has nlink!=2 (%d)",
-> -			      inode->i_nlink);
-> +	if (!EXT4_DIR_LINK_EMPTY(inode))
-> +		ext4_warning(inode->i_sb, "ext4_rmdir",
-> +			     "empty directory has too many links (%d)",
-> +			     inode->i_nlink);
->  	inode->i_version++;
->  	clear_nlink(inode);
->  	/* There's no need to set i_disksize: the fact that i_nlink is
-> @@ -2048,7 +2069,7 @@ static int ext4_rmdir (struct inode * di
->  	ext4_orphan_add(handle, inode);
->  	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
-> -	drop_nlink(dir);
-> +	ext4_dec_count(handle, dir);
->  	ext4_update_dx_flag(dir);
->  	ext4_mark_inode_dirty(handle, dir);
->  
-> @@ -2099,7 +2120,7 @@ static int ext4_unlink(struct inode * di
->  	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
->  	ext4_update_dx_flag(dir);
->  	ext4_mark_inode_dirty(handle, dir);
-> -	drop_nlink(inode);
-> +	ext4_dec_count(handle, inode);
->  	if (!inode->i_nlink)
->  		ext4_orphan_add(handle, inode);
->  	inode->i_ctime = ext4_current_time(inode);
-> @@ -2149,7 +2170,7 @@ retry:
->  		err = __page_symlink(inode, symname, l,
->  				mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS);
->  		if (err) {
-> -			drop_nlink(inode);
-> +			ext4_dec_count(handle, inode);
->  			ext4_mark_inode_dirty(handle, inode);
->  			iput (inode);
->  			goto out_stop;
-> @@ -2175,8 +2196,9 @@ static int ext4_link (struct dentry * ol
->  	struct inode *inode = old_dentry->d_inode;
->  	int err, retries = 0;
->  
-> -	if (inode->i_nlink >= EXT4_LINK_MAX)
-> +	if (EXT4_DIR_LINK_MAX(inode))
->  		return -EMLINK;
-
-argh.  WHY_IS_EXT4_FULL_OF_UPPER_CASE_MACROS_WHICH_COULD_BE_IMPLEMENTED
-as_lower_case_inlines?  Sigh.  It's all the old-timers, I guess.
-
-EXT4_DIR_LINK_MAX() is buggy: it evaluates its arg twice.
-
->  	/*
->  	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
->  	 * otherwise has the potential to corrupt the orphan inode list.
-> @@ -2194,7 +2216,7 @@ retry:
->  		handle->h_sync = 1;
->  
->  	inode->i_ctime = ext4_current_time(inode);
-> -	inc_nlink(inode);
-> +	ext4_inc_count(handle, inode);
->  	atomic_inc(&inode->i_count);
->  
->  	err = ext4_add_nondir(handle, dentry, inode);
-> @@ -2327,7 +2349,7 @@ static int ext4_rename (struct inode * o
->  	}
->  
->  	if (new_inode) {
-> -		drop_nlink(new_inode);
-> +		ext4_dec_count(handle, new_inode);
->  		new_inode->i_ctime = ext4_current_time(new_inode);
->  	}
->  	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
-> @@ -2338,11 +2360,13 @@ static int ext4_rename (struct inode * o
->  		PARENT_INO(dir_bh->b_data) = cpu_to_le32(new_dir->i_ino);
->  		BUFFER_TRACE(dir_bh, "call ext4_journal_dirty_metadata");
->  		ext4_journal_dirty_metadata(handle, dir_bh);
-> -		drop_nlink(old_dir);
-> +		ext4_dec_count(handle, old_dir);
->  		if (new_inode) {
-> -			drop_nlink(new_inode);
-> +			/* checked empty_dir above, can't have another parent,
-> +			 * ext3_dec_count() won't work for many-linked dirs */
-> +			new_inode->i_nlink = 0;
->  		} else {
-> -			inc_nlink(new_dir);
-> +			ext4_inc_count(handle, new_dir);
->  			ext4_update_dx_flag(new_dir);
->  			ext4_mark_inode_dirty(handle, new_dir);
->  		}
+> OK.
+> 
+> > >  #endif
+> > >  
+> > > @@ -2067,7 +2045,7 @@
+> > >  	ret = journal_init_caches();
+> > >  	if (ret != 0)
+> > >  		jbd2_journal_destroy_caches();
+> > > -	create_jbd_proc_entry();
+> > > +	jbd2_create_debugfs_entry();
+> > >  	return ret;
+> > >  }
+> > >  
+> > > @@ -2078,7 +2056,7 @@
+> > >  	if (n)
+> > >  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+> > >  #endif
+> > > -	jbd2_remove_jbd_proc_entry();
+> > > +	jbd2_remove_debugfs_entry();
+> > >  	jbd2_journal_destroy_caches();
+> > >  }
+> > >  
+> > > Index: linux-2.6.22-rc4/include/linux/jbd2.h
+> > > ===================================================================
+> > > --- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 16:16:18.000000000 -0700
+> > > +++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-11 16:35:25.000000000 -0700
+> > > @@ -57,7 +57,7 @@
+> > >   * CONFIG_JBD2_DEBUG is on.
+> > >   */
+> > >  #define JBD_EXPENSIVE_CHECKING
+> > 
+> > JBD2?
+> >
+> > > -extern int jbd2_journal_enable_debug;
+> > > +extern u16 jbd2_journal_enable_debug;
+> > 
+> > Why was this made 16-bit?  To save 2 bytes?  Could have saved 3 if we're
+> > going to do that.
+> 
+> OK.
+> 
+> > Shoudln't all this debug info be a per-superblock thing rather than
+> > kernel-wide?
+> 
+> I don't think it is worth pursuing this feature since this seems to
+> have been broken for a while now (its been there since the first git
+> revission in ext3) and nobody has noticed it until now.  It could be
+> address on a later patch though, since the initial purpose of the patch
+> was to fix the broken JBD2_DEBUG option. Of course, this may not be
+> clearly express in the changelog. :)
+> 
+> -JRS
