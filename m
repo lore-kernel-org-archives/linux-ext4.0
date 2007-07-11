@@ -1,40 +1,68 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Wed, 11 Jul 2007 12:57:24 -0400
-Message-ID: <20070711165724.GD4138@fieldses.org>
-References: <1183275424.4010.126.camel@localhost.localdomain> <20070710163038.ceb2ae94.akpm@linux-foundation.org> <1184105380.3759.65.camel@localhost.localdomain> <20070710182237.e2f88bf3.akpm@linux-foundation.org> <1184113156.20193.13.camel@localhost.localdomain>
+Date: Wed, 11 Jul 2007 13:26:23 -0400
+Message-ID: <20070711172623.GE4138@fieldses.org>
+References: <1183275424.4010.126.camel@localhost.localdomain>
+	<20070710163038.ceb2ae94.akpm@linux-foundation.org>
+	<1184105380.3759.65.camel@localhost.localdomain>
+	<20070710182237.e2f88bf3.akpm@linux-foundation.org>
+	<18068.19667.942363.686858@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54128 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752136AbXGKQ53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 12:57:29 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfsv4-bounces@linux-nfs.org>
 Content-Disposition: inline
-In-Reply-To: <1184113156.20193.13.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <18068.19667.942363.686858@notabene.brown>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 10, 2007 at 08:19:16PM -0400, Mingming Cao wrote:
-> On Tue, 2007-07-10 at 18:22 -0700, Andrew Morton wrote:
-> > And how does the NFS server know that the filesystem implements i_version? 
-> > Will a zero-value of i_version have special significance, telling the
-> > server to not send this attribute, perhaps?
+On Wed, Jul 11, 2007 at 01:21:55PM +1000, Neil Brown wrote:
+> And just by-the-way, the server doesn't really have the option of not
+> sending the attribute.  If i_version isn't defined, it has to fake
+> something using mtime, and hope that is good enough.
+
+ctime, actually--the change attribute is also supposed to be updated on
+attribute updates.
+
+> Alternately we could mandate that i_version is always kept up-to-date
+> and if a filesystem doesn't have anything to load from storage, it
+> just sets it to the current time in nanoseconds.
 > 
-> Bruce raised up this question a few days back when he reviewed this
-> patch, I think the solution is add a superblock flag for fs support
-> inode versioning, probably at VFS layer?
+> That would mean that a client would need to flush it's cache whenever
+> the inode fell out of cache on the server, but I don't think we can
+> reliably do better than that.
+> 
+> I think I like that approach.
+> 
+> So my vote is to increment i_version in common code every time any
+> change is made to the file, and alloc_inode should initialise it to
+> current time, which might be changed by the filesystem before it calls
+> unlock_new_inode. 
 
-Sounds fine.  As long as it's something that's standard across
-filesystems, then I can just do something like
+So the client would be invalidating its cache more often than necessary,
+rather than failing to invalidate it when it should.  I agree that
+that's probably the better tradeoff, although I wish I had a better idea
+of the downside.  I don't know, for example, whether users might see
+unpleasant results if every client has to reread its cached data on a
+reboot.
 
-	if (sb->s_flags & MS_CHANGEATTR)
-		/* return i_version to client as change attribute */
-	else
-		/* return ctime to client as change attribute */
+The currently proposed change--just providing a model change attribute
+implementation for ext4 and leaving other filesystems untouched--is a
+more conservative step.
+
+So I'm inclined to just do this ext4 thing first, and then look into
+further change attribute experiments next time around....
 
 --b.
