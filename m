@@ -1,37 +1,25 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [EXT4 set 4][PATCH 4/5] i_version:ext4 inode version update
-Date: Wed, 11 Jul 2007 13:02:47 +0100
-Message-ID: <20070711120247.GA26370@infradead.org>
-References: <1183275465.4010.130.camel@localhost.localdomain> <20070711084737.GA17675@infradead.org> <20070711115224.GT6417@schatzie.adilger.int>
+Subject: Re: [EXT4 set 4][PATCH 5/5] i_version: noversion mount option to disable inode version updates
+Date: Wed, 11 Jul 2007 13:03:46 +0100
+Message-ID: <20070711120346.GB26370@infradead.org>
+References: <1183275474.4010.132.camel@localhost.localdomain> <20070710163144.21b739f9.akpm@linux-foundation.org> <20070711115716.GU6417@schatzie.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Christoph Hellwig <hch@infradead.org>,
-	Mingming Cao <cmm@us.ibm.com>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	nfsv4@linux-nfs.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:45956 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756698AbXGKMCt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 08:02:49 -0400
+To: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20070711115224.GT6417@schatzie.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070711115716.GU6417@schatzie.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 11, 2007 at 05:52:24AM -0600, Andreas Dilger wrote:
-> On Jul 11, 2007  09:47 +0100, Christoph Hellwig wrote:
-> > On Sun, Jul 01, 2007 at 03:37:45AM -0400, Mingming Cao wrote:
-> > > This patch is on top of i_version_update_vfs.
-> > > The i_version field of the inode is set on inode creation and incremented
-> > > when the inode is being modified.
-> > 
-> > Which is not what i_version is supposed to do.  It'll get you tons of misses
-> > for NFSv3 filehandles that rely on the generation staying the same for the
-> > same file.  Please add a new field for the NFSv4 sequence counter instead
-> > of making i_version unuseable.
-> 
-> You are confusing i_generation (the instance of this inode number) with
-> i_version (whether this file has been modified)?
+On Wed, Jul 11, 2007 at 05:57:17AM -0600, Andreas Dilger wrote:
+> Ah, this is the patch to disable i_version updates for Lustre.  I don't
+> think any normal user would use this mount option, so I don't know if
+> there is a need to document it.
 
-Yes, sorry.  Objection dropped.
+This is a reason to not merge it at all.  If the only user of this is
+the out of tree lustre code there is no need to put this in.  I should
+rather stay in clusterfs' patchkit.
+
