@@ -1,132 +1,164 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: Initial results of FLEX_BG feature.
-Date: Wed, 11 Jul 2007 00:30:04 -0500
-Message-ID: <20070711003004.531c9307@naruto>
-References: <20070710112307.34c2ba5c@rx8>
-	<20070711041213.GH6417@schatzie.adilger.int>
+Subject: Re: [EXT4 set 2][PATCH 5/5] cleanups: Export jbd2-debug via debugfs
+Date: Wed, 11 Jul 2007 00:38:09 -0500
+Message-ID: <20070711003809.3ced667b@naruto>
+References: <1183275408.4010.124.camel@localhost.localdomain>
+ <20070710163025.9db582f8.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:52919 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760114AbXGKFaN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 01:30:13 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6B5UDL3029328
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Jul 2007 01:30:13 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l6B5UCUZ244164
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 23:30:12 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6B5UCxt029613
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 23:30:12 -0600
-In-Reply-To: <20070711041213.GH6417@schatzie.adilger.int>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:37815 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751989AbXGKFiO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 01:38:14 -0400
+In-Reply-To: <20070710163025.9db582f8.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 10 Jul 2007 22:12:14 -0600
-Andreas Dilger <adilger@clusterfs.com> wrote:
+On Tue, 10 Jul 2007 16:30:25 -0700
+Andrew Morton <akpm@linux-foundation.org> wrote:
 
-> On Jul 10, 2007  11:23 -0500, Jose R. Santos wrote:
-> > I've started playing with the FLEX_BG feature (for now packing of
-> > block group metadata closer together) and started doing some
-> > preliminary benchmarking to see if the feature is worth pursuing.
-> > I chose an FFSB profile that does single threaded small creates and
-> > writes and then does an fsync.  This is something I ran for a customer
-> > a while ago in which ext3 performed poorly.
+> On Sun, 01 Jul 2007 03:36:48 -0400
+> Mingming Cao <cmm@us.ibm.com> wrote:
 > 
-> Jose,
-> thanks for the information and testing.  This is definitely very
-> interesting and shows this is an avenue we should pursue.
-> 
-> > Here are some of the results (in transactions/sec@%CPU util) on a single
-> > 143GB@10K rpm disk.
+> > > On Jun 07, 2007  23:45 -0500, Jose R. Santos wrote:
+> > > > The jbd2-debug file used to be located in /proc/sys/fs/jbd2-debug, but
+> > > > create_proc_entry() does not do lookups on file names with more that one
+> > > > directory deep.  This causes the entry creation to fail and hence, no proc
+> > > > file is created.  This patch moves the file to /proc/jbd2-degug.
+> > > > 
+> > > > The file could be move to /proc/fs/jbd2/jbd2-debug, but it would require
+> > > > some minor alterations to the jbd-stats patch.
+> > > 
+> > > I don't think we really want to be adding top-level files in /proc.
+> > > What about using the "debugfs" filesystem (not to be confused with
+> > > the e2fsprogs 'debugfs' command)?
 > > 
-> > ext4				1680.54@2.9%
-> > ext4(flex_bg)			2105.56@3.7% 20% improvement
-> > ext4(data=writeback)		1374.50@2.0% <- hum...
-> > ext4(flex_bg data=writeback)	2323.12@3.7% 28% over best ext4
-> > ext3				1025.84@1.7%
-> > ext3(data=writeback)		1136.85@1.7%
-> > ext2				1152.59@0.9%
-> > xfs				1968.84@1.9%
-> > jfs				1424.05@1.2%
+> > How about this then?  Moved the file to use debugfs as well as having
+> > the nice effect of removing more lines than what it adds.
 > > 
-> > The results are from packing the metadata of 64 block groups closer
-> > together at fsck time.  Still need to clean up the e2fsprog patches,
+> > Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 > 
-> Does this mean that you are just moving the bitmaps and inode table
-> at mke2fs time, or also such things as directory blocks at fsck time?
-
-Right now what I've done is allocate the bitmaps and inode tables at the
-beginning of each group of 64 BG.  Still need to work on fsck since just
-removing the restriction on were the bitmaps and inode table are
-located still gives me errors of uninitialized inodes with dtime set.
-Seems like fsck still expect inode information to be located at
-specific locations within the disk.
-
-> > but I hope to submit them to the list later this week for others to
-> > try.  It seems like fsck doesn't quite like the new location of the
-> > metadata and I'm not sure how big of an effort it will be to fix it.  I
-> > mentioned this since one of the assumptions of implementing FLEX_BG was
-> > the reduce time in fsck and it could be a while before I'm able to test
-> > this.
+> Please clean up the changelog.
 > 
-> i think in the spirit of the original META_BG option, Ted had wanted to
-> put all the bitmaps from EXT4_DESC_PER_BLOCK groups somewhere within the
-> metagroup.  It would also be interesting to see if moving ALL of the
-> group metadata to a single location in the filesystem makes a bit difference.
-> If not, then we may as well keep it spread out for safety.
+> The changelog should include information about the location and the content
+> of these debugfs files.  it should provide any instructions which users
+> will need to be able to create and use those files.
 
-This is by no means a final implementation, rather it's a means to
-test whether this feature is worth pursuing.  I plan on testing various
-thing before coming up with a final design of what the feature should
-look like.
+Will fix.
 
-I did try moving all of the groups metadata at the beginning of the
-disk but it was slightly slower on an rsync test.  Have not tried it
-with FFSB yet.
+> Alternatively (and preferably) do this via an update to
+> Documentation/filesystems/ext4.txt.
 
-Things on the TODO list of testing needed to be done are:
-
-- More metadata intensive FFSB profile testing.  I've been meaning to
-add more operations to FFSB in order to make this possible.  Now I have
-an excuse.
-
-- Testing of different ratios of groups per flex groups.
-
-- Testing with storage devices with fast write cache.  When I did the
-customer testing a couple of months ago with this FFSB profile, JFS was
-the fastest of the filesystems when paired with a decent storage
-subsystem with fast write cache.  It would be interesting to see what
-effects do fast write caching have on such a feature.
-
-- Testing fsck time once e2fsprogs understands how to read such a
-filesystem.
-
-- Testing an aged file systems to see what effects (if any) this
-feature has in a fragmented filesystem.
-
+Seems like I also need to update the doc on Kconfig as well.  Do you
+prefer this in separate patches? (current patch, kconfig patch, ext4
+doc update patch?
  
-> You might also want to test out placement of the journal in the middle
-> of the filesystem, the U. Wisconsin folks tested this in one of their
-> papers and showed some noticable improvements.  That isn't exactly
-> related, but it is a relatively simple tweak to mke2fs/tune2fs to give
-> it an allocation goal of group_desc[s_groups_count / 2].bg_inode_table
-> (to put it past inode table in middle group).
-
-Make sense.  Do you have a link to the paper?
-
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Software Engineer
-> Cluster File Systems, Inc.
+> >  fs/jbd2/journal.c    |   62    20 +    42 -    0 !
+> >  include/linux/jbd2.h |    2    1 +     1 -     0 !
+> >  2 files changed, 21 insertions(+), 43 deletions(-)
 > 
+> Again, this patch isn't in Ted's kernel.org directory and hasn't been in -mm.
+> 
+> Apart from the lack of testing and review which this causes, it means I
+> can't just do `pushpatch name-of-this-patch' and look at it in tkdiff.  So
+> I squint at the diff, but that's harder when the diff wasn't prepared with
+> `diff -p'.  Oh well.
 
-Thanks
+Will fix.
+
+> 
+> > Index: linux-2.6.22-rc4/fs/jbd2/journal.c
+> > ===================================================================
+> > --- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 16:16:18.000000000 -0700
+> > +++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-11 16:36:10.000000000 -0700
+> > @@ -35,6 +35,7 @@
+> >  #include <linux/kthread.h>
+> >  #include <linux/poison.h>
+> >  #include <linux/proc_fs.h>
+> > +#include <linux/debugfs.h>
+> >  
+> >  #include <asm/uaccess.h>
+> >  #include <asm/page.h>
+> > @@ -1954,60 +1955,37 @@
+> >   * /proc tunables
+> >   */
+> >  #if defined(CONFIG_JBD2_DEBUG)
+> > -int jbd2_journal_enable_debug;
+> > +u16 jbd2_journal_enable_debug;
+> >  EXPORT_SYMBOL(jbd2_journal_enable_debug);
+> >  #endif
+> >  
+> > -#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_PROC_FS)
+> > +#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+> 
+> Has this been compile-tested with CONFIG_DEBUGFS=n?
+
+I think I did, but honestly don't remember.  Will check with the new
+patch. :) 
+
+> >  
+> > -#define create_jbd_proc_entry() do {} while (0)
+> > -#define jbd2_remove_jbd_proc_entry() do {} while (0)
+> > +#define jbd2_create_debugfs_entry() do {} while (0)
+> > +#define jbd2_remove_debugfs_entry() do {} while (0)
+> 
+> I suggest that these be converted to (preferable) inline functions while
+> you're there.
+
+OK.
+
+> >  #endif
+> >  
+> > @@ -2067,7 +2045,7 @@
+> >  	ret = journal_init_caches();
+> >  	if (ret != 0)
+> >  		jbd2_journal_destroy_caches();
+> > -	create_jbd_proc_entry();
+> > +	jbd2_create_debugfs_entry();
+> >  	return ret;
+> >  }
+> >  
+> > @@ -2078,7 +2056,7 @@
+> >  	if (n)
+> >  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+> >  #endif
+> > -	jbd2_remove_jbd_proc_entry();
+> > +	jbd2_remove_debugfs_entry();
+> >  	jbd2_journal_destroy_caches();
+> >  }
+> >  
+> > Index: linux-2.6.22-rc4/include/linux/jbd2.h
+> > ===================================================================
+> > --- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 16:16:18.000000000 -0700
+> > +++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-11 16:35:25.000000000 -0700
+> > @@ -57,7 +57,7 @@
+> >   * CONFIG_JBD2_DEBUG is on.
+> >   */
+> >  #define JBD_EXPENSIVE_CHECKING
+> 
+> JBD2?
+>
+> > -extern int jbd2_journal_enable_debug;
+> > +extern u16 jbd2_journal_enable_debug;
+> 
+> Why was this made 16-bit?  To save 2 bytes?  Could have saved 3 if we're
+> going to do that.
+
+OK.
+ 
+> Shoudln't all this debug info be a per-superblock thing rather than
+> kernel-wide?
+
+I don't think it is worth pursuing this feature since this seems to
+have been broken for a while now (its been there since the first git
+revission in ext3) and nobody has noticed it until now.  It could be
+address on a later patch though, since the initial purpose of the patch
+was to fix the broken JBD2_DEBUG option. Of course, this may not be
+clearly express in the changelog. :)
 
 -JRS
