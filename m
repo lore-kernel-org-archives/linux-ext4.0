@@ -1,28 +1,61 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
-Date: Wed, 11 Jul 2007 10:05:16 +0100
-Message-ID: <20070711090516.GC18301@infradead.org>
-References: <20070614091458.GH5181@schatzie.adilger.int> <20070614120413.GD86004887@sgi.com> <20070614193347.GN5181@schatzie.adilger.int> <20070625132810.GA1951@amitarora.in.ibm.com> <20070625134500.GE1951@amitarora.in.ibm.com> <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070701225543.GW31489@sgi.com>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/7] manpage for fallocate
+Date: Wed, 11 Jul 2007 14:42:24 +0530
+Message-ID: <20070711091224.GA30545@amitarora.in.ibm.com>
+References: <20070710201200.GA10255@amitarora.in.ibm.com> <20070710201820.GA8797@amitarora.in.ibm.com> <20070710213701.GG3400@zakalwe.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, suparna@in.ibm.com, cmm@us.ibm.com,
-	xfs@oss.sgi.com
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761828AbXGKJFk@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Heikki Orsila <shdl@zakalwe.fi>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20070701225543.GW31489@sgi.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20070710213701.GG3400@zakalwe.fi>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 02, 2007 at 08:55:43AM +1000, David Chinner wrote:
-> Given the current behaviour for posix_fallocate() in glibc, I think
-> that retaining the same error semantic and punting the cleanup to
-> userspace (where the app will fail with ENOSPC anyway) is the only
-> sane thing we can do here. Trying to undo this in the kernel leads
-> to lots of extra rarely used code in error handling paths...
+On Wed, Jul 11, 2007 at 12:37:01AM +0300, Heikki Orsila wrote:
+> On Wed, Jul 11, 2007 at 01:48:20AM +0530, Amit K. Arora wrote:
+> > .BI "int syscall(int, int fd, int mode, loff_t offset, loff_t len);
+> 
+> Correction: "int syscall(int fd, int mode, ...)",
 
-Agreed, looks like we should stay with the user has to clean up behaviour.
+Here, we have syscall() with first argument being the system call number
+- so what you suggested is not correct.
+
+But, yes, the synopsis should change at some time. Maybe to something
+like:
+
+	#include <fcntl.h>
+
+	long fallocate(int fd, int mode, loff_t offset, loff_t len);
+
+> > .TP
+> > .B ENOSPC
+> > There is not enough space left on the device containing the file
+> > referred to by
+> > .IR fd.
+> > .TP
+> > .B ESPIPE
+> > .I fd
+> > refers to a pipe of file descriptor.
+> > .B ENOSYS
+> > The filesystem underlying the file descriptor does not support this
+> > operation.
+> 
+> EINTR?
+
+Will add following errors:
+
+  EINTR		A signal was caught during execution
+  EIO		An I/O error occurred while reading from or writing to
+		a file system.
+  EOPNOTSUPP	The mode is not supported on the file descriptor.
+
+and will update following :
+
+  EINVAL	offset was less than 0, or len was less than or equal to 0.
+
+--
+Regards,
+Amit Arora
