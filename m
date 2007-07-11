@@ -1,135 +1,132 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Tue, 10 Jul 2007 22:27:57 -0400
-Message-ID: <1184120877.20193.49.camel@localhost.localdomain>
-References: <1183275424.4010.126.camel@localhost.localdomain>
-	 <20070710163038.ceb2ae94.akpm@linux-foundation.org>
-	 <1184105380.3759.65.camel@localhost.localdomain>
-	 <20070710182237.e2f88bf3.akpm@linux-foundation.org>
-	 <1184113156.20193.13.camel@localhost.localdomain>
-	 <20070710212237.06aac2a3.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: Initial results of FLEX_BG feature.
+Date: Wed, 11 Jul 2007 00:30:04 -0500
+Message-ID: <20070711003004.531c9307@naruto>
+References: <20070710112307.34c2ba5c@rx8>
+	<20070711041213.GH6417@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, nfsv4@linux-nfs.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:45291 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752675AbXGKF16 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 01:27:58 -0400
-In-Reply-To: <20070710212237.06aac2a3.akpm@linux-foundation.org>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:52919 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760114AbXGKFaN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 01:30:13 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6B5UDL3029328
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jul 2007 01:30:13 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.3) with ESMTP id l6B5UCUZ244164
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 23:30:12 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6B5UCxt029613
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 23:30:12 -0600
+In-Reply-To: <20070711041213.GH6417@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-07-10 at 21:22 -0700, Andrew Morton wrote:
-> On Tue, 10 Jul 2007 20:19:16 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+On Tue, 10 Jul 2007 22:12:14 -0600
+Andreas Dilger <adilger@clusterfs.com> wrote:
+
+> On Jul 10, 2007  11:23 -0500, Jose R. Santos wrote:
+> > I've started playing with the FLEX_BG feature (for now packing of
+> > block group metadata closer together) and started doing some
+> > preliminary benchmarking to see if the feature is worth pursuing.
+> > I chose an FFSB profile that does single threaded small creates and
+> > writes and then does an fsync.  This is something I ran for a customer
+> > a while ago in which ext3 performed poorly.
 > 
-> > On Tue, 2007-07-10 at 18:22 -0700, Andrew Morton wrote:
-> > > On Tue, 10 Jul 2007 18:09:40 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
-> > > 
-> > > > On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
-> > > > > On Sun, 01 Jul 2007 03:37:04 -0400
-> > > > > Mingming Cao <cmm@us.ibm.com> wrote:
-> > > > > 
-> > > > > > This patch converts the 32-bit i_version in the generic inode to a 64-bit
-> > > > > > i_version field.
-> > > > > > 
-> > > > > 
-> > > > > That's obvious from the patch.  But what was the reason for making this
-> > > > > (unrelated to ext4) change?
-> > > > > 
-> > > > 
-> > > > The need is came from NFSv4
-> > > > 
-> > > > On Fri, 2007-05-25 at 18:25 +0200, Jean noel Cordenner wrote: 
-> > > > > Hi,
-> > > > > 
-> > > > > This is an update of the i_version patch.
-> > > > > The i_version field is a 64bit counter that is set on every inode
-> > > > > creation and that is incremented every time the inode data is modified
-> > > > > (similarly to the "ctime" time-stamp).
-> > > > > The aim is to fulfill a NFSv4 requirement for rfc3530:
-> > > > > "5.5.  Mandatory Attributes - Definitions
-> > > > > Name		#	DataType   Access   Description
-> > > > > ___________________________________________________________________
-> > > > > change		3	uint64       READ     A value created by the
-> > > > > 		server that the client can use to determine if file
-> > > > > 		data, directory contents or attributes of the object
-> > > > > 		have been modified.  The servermay return the object's
-> > > > > 		time_metadata attribute for this attribute's value but
-> > > > > 		only if the filesystem object can not be updated more
-> > > > > 		frequently than the resolution of time_metadata.
-> > > > > "
-> > > > > 
-> > > > 
-> > > > > Please update the changelog for this.
-> > > > > 
-> > > > 
-> > > > Is above description clear to you?
-> > > > 
-> > > 
-> > > Yes, thanks.  It doesn't actually tell us why we want to implement
-> > > this attribute and it doesn't tell us what the implications of failing
-> > > to do so are, but I guess we can take that on trust from the NFS guys.
-> > > 
-> > > But I suspect the ext4 implementation doesn't actually do this.  afaict we
-> > > won't update i_version for file overwrites (especially if s_time_gran can
-> > > indeed be 1,000,000,000) and of course for MAP_SHARED modifications.  What
-> > > would be the implications of this?
-> > > 
+> Jose,
+> thanks for the information and testing.  This is definitely very
+> interesting and shows this is an avenue we should pursue.
+> 
+> > Here are some of the results (in transactions/sec@%CPU util) on a single
+> > 143GB@10K rpm disk.
 > > 
-> > In the case of overwrite (file date updated), I assume the ctime/mtime
-> > is being updated and the inode is being dirtied, so the version number
-> > is being updated.
+> > ext4				1680.54@2.9%
+> > ext4(flex_bg)			2105.56@3.7% 20% improvement
+> > ext4(data=writeback)		1374.50@2.0% <- hum...
+> > ext4(flex_bg data=writeback)	2323.12@3.7% 28% over best ext4
+> > ext3				1025.84@1.7%
+> > ext3(data=writeback)		1136.85@1.7%
+> > ext2				1152.59@0.9%
+> > xfs				1968.84@1.9%
+> > jfs				1424.05@1.2%
 > > 
-> >  vfs_write()->..
-> >         ->__generic_file_aio_write_nolock()
-> >                 ->file_update_time()
-> >                         ->mark_inode_dirty_sync()
-> >                         ->__mark_inode_dirty(I_DIRTY_SYNC)
-> >                                 ->ext4_dirty_inode()
-> >                                         ->ext4_mark_inode_dirty()
+> > The results are from packing the metadata of 64 block groups closer
+> > together at fsck time.  Still need to clean up the e2fsprog patches,
 > 
-> That assumes an mtime update for every write().  OK, so two writes in a
-> single nanosecond won't be happening.  But in that case why is this code:
+> Does this mean that you are just moving the bitmaps and inode table
+> at mke2fs time, or also such things as directory blocks at fsck time?
+
+Right now what I've done is allocate the bitmaps and inode tables at the
+beginning of each group of 64 BG.  Still need to work on fsck since just
+removing the restriction on were the bitmaps and inode table are
+located still gives me errors of uninitialized inodes with dtime set.
+Seems like fsck still expect inode information to be located at
+specific locations within the disk.
+
+> > but I hope to submit them to the list later this week for others to
+> > try.  It seems like fsck doesn't quite like the new location of the
+> > metadata and I'm not sure how big of an effort it will be to fix it.  I
+> > mentioned this since one of the assumptions of implementing FLEX_BG was
+> > the reduce time in fsck and it could be a while before I'm able to test
+> > this.
 > 
-> static inline struct timespec ext4_current_time(struct inode *inode)
-> {
-> 	return (inode->i_sb->s_time_gran < NSEC_PER_SEC) ?
-> 		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
-> }
-> 
-> checking (s_time_gran < NSEC_PER_SEC) ??
+> i think in the spirit of the original META_BG option, Ted had wanted to
+> put all the bitmaps from EXT4_DESC_PER_BLOCK groups somewhere within the
+> metagroup.  It would also be interesting to see if moving ALL of the
+> group metadata to a single location in the filesystem makes a bit difference.
+> If not, then we may as well keep it spread out for safety.
+
+This is by no means a final implementation, rather it's a means to
+test whether this feature is worth pursuing.  I plan on testing various
+thing before coming up with a final design of what the feature should
+look like.
+
+I did try moving all of the groups metadata at the beginning of the
+disk but it was slightly slower on an rsync test.  Have not tried it
+with FFSB yet.
+
+Things on the TODO list of testing needed to be done are:
+
+- More metadata intensive FFSB profile testing.  I've been meaning to
+add more operations to FFSB in order to make this possible.  Now I have
+an excuse.
+
+- Testing of different ratios of groups per flex groups.
+
+- Testing with storage devices with fast write cache.  When I did the
+customer testing a couple of months ago with this FFSB profile, JFS was
+the fastest of the filesystems when paired with a decent storage
+subsystem with fast write cache.  It would be interesting to see what
+effects do fast write caching have on such a feature.
+
+- Testing fsck time once e2fsprogs understands how to read such a
+filesystem.
+
+- Testing an aged file systems to see what effects (if any) this
+feature has in a fragmented filesystem.
+
+ 
+> You might also want to test out placement of the journal in the middle
+> of the filesystem, the U. Wisconsin folks tested this in one of their
+> papers and showed some noticable improvements.  That isn't exactly
+> related, but it is a relatively simple tweak to mke2fs/tune2fs to give
+> it an allocation goal of group_desc[s_groups_count / 2].bg_inode_table
+> (to put it past inode table in middle group).
+
+Make sense.  Do you have a link to the paper?
+
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
 > 
 
-Ext4 can still load/read ext3 fs (which by default with 128 bytes old
-inode size, means doens't have support nanosecond timestamps), so it's
-not always gurantee nanosecond timestamps granularity.(it depends on the
-size of the inode (>128 bytes), by default, a fresh ext4  increase inode
-size to 256 bytes to have the room to store nanoseond timestamps, inode
-versioning etc)
+Thanks
 
-> Overall it is a bit unpleasing to rely upon mtime updates for a correct NFS
-> server implementation: if we were to later decrease s_time_gran (as we
-> might do, for performance reasons), the NFS server implementation starts
-> reporting incorrect information.
-> 
-
-:( that is a problem...
-
-> > > And how does the NFS server know that the filesystem implements i_version? 
-> > > Will a zero-value of i_version have special significance, telling the
-> > > server to not send this attribute, perhaps?
-> > 
-> > Bruce raised up this question a few days back when he reviewed this
-> > patch, I think the solution is add a superblock flag for fs support
-> > inode versioning, probably at VFS layer?
-> 
-> That would work.
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-JRS
