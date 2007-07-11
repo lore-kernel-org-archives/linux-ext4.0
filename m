@@ -1,58 +1,56 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
-Date: Wed, 11 Jul 2007 05:41:13 -0600
-Message-ID: <20070711114113.GQ6417@schatzie.adilger.int>
-References: <1183275424.4010.126.camel@localhost.localdomain>
-	<20070710163038.ceb2ae94.akpm@linux-foundation.org>
-	<1184105380.3759.65.camel@localhost.localdomain>
-	<20070710182237.e2f88bf3.akpm@linux-foundation.org>
-	<18068.19667.942363.686858@notabene.brown>
-	<1184124869.6480.99.camel@heimdal.trondhjem.org>
+Subject: Re: [EXT4 set 4][PATCH 2/5] i_version: Add hi 32 bit inode version on ext4 on-disk inode
+Date: Wed, 11 Jul 2007 05:46:16 -0600
+Message-ID: <20070711114616.GR6417@schatzie.adilger.int>
+References: <1183275436.4010.127.camel@localhost.localdomain> <20070710163047.1aba94f9.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org, cmm@us.ibm.com,
-	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:50771 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760729AbXGKLqT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 07:46:19 -0400
 Content-Disposition: inline
-In-Reply-To: <1184124869.6480.99.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+In-Reply-To: <20070710163047.1aba94f9.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 10, 2007  23:34 -0400, Trond Myklebust wrote:
-> On Wed, 2007-07-11 at 13:21 +1000, Neil Brown wrote:
-> > So my vote is to increment i_version in common code every time any
-> > change is made to the file, and alloc_inode should initialise it to
-> > current time, which might be changed by the filesystem before it calls
-> > unlock_new_inode. 
-> > ... but doesn't lustre want to control its i_version... so maybe not :-(
+On Jul 10, 2007  16:30 -0700, Andrew Morton wrote:
+> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> > Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+> > Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+> > ---
+> > Index: linux-2.6.21/include/linux/ext4_fs.h
+> > ===================================================================
+> > --- linux-2.6.21.orig/include/linux/ext4_fs.h
+> > +++ linux-2.6.21/include/linux/ext4_fs.h
+> > @@ -342,6 +342,7 @@ struct ext4_inode {
+> >  	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
+> >  	__le32  i_crtime;       /* File Creation time */
+> >  	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
+> > +	__le32	i_version_hi;	/* high 32 bits for 64-bit version */
+> >  };
 > 
-> If lustre wants to be exportable via pNFS (as Peter Braam has suggested
-> it should), then it had better be able to return a change attribute that
-> is compatible with the NFSv4.1 spec...
+> Aren't there forward- backward-compatibility issues here?  How does the
+> filesystem driver work out whether this field is present and valid?
 
-The Lustre use of i_version is a superset of what NFSv4 needs - the Lustre
-version can be used to compare the updates of two inodes.  It is set
-to be the Lustre transaction number (which is sequentially incremented
-on a per filesystem basis), so that we can use the per-inode version
-to do replay of client operations even if they have been disconnected for
-a long time, which is why we want to be able to control the actual value.
-We don't want the version to be updated for e.g. file defragmentation
-or other similar internal-only changes which need ext4_mark_inode_dirty().
+This uses the same EXT4_FITS_IN_INODE() check as any other, so the
+compatibility issues are handled.  NFSv4 could live with 32-bit versions
+with only a small danger of overflow, so we can still export ext3
+filesystems with 128-byte inodes that have been updated to ext4.  For
+Lustre (which requires 64-bit versions), we will enforce that space is
+available with s_min_extra_isize and RO_COMPAT_EXTRA_ISIZE.
 
-We had a patch to disable ext4 inode versioning by a flag the superblock,
-but we dropped it at the last minute because it needed some updates and
-we didn't want to wait on that for submitting these changes upstream.
+In the case where an older ext3/ext4 filesystem with large inodes does
+not have enough space for i_version_hi the EAs that follow i_extra_isize
+will be shifted to make room for it (if possible, which is likely).  There
+are no critical fields inside i_extra_isize so in the rare case of a
+failure to enlarge the i_extra_isize is not a cause for alarm.
 
 Cheers, Andreas
 --
