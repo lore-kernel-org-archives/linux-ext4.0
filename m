@@ -1,172 +1,42 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 2][PATCH 5/5] cleanups: Export jbd2-debug via debugfs
-Date: Tue, 10 Jul 2007 23:10:29 -0400
-Message-ID: <1184123429.20193.54.camel@localhost.localdomain>
-References: <1183275408.4010.124.camel@localhost.localdomain>
-	 <20070710163025.9db582f8.akpm@linux-foundation.org>
-	 <20070711003809.3ced667b@naruto>
+Subject: Re: [EXT4 set 1][PATCH 2/2] Enable extents by default for ext4dev
+Date: Tue, 10 Jul 2007 23:15:24 -0400
+Message-ID: <1184123724.20193.58.camel@localhost.localdomain>
+References: <1183275361.4010.119.camel@localhost.localdomain>
+	 <20070710163015.ab40ed2a.akpm@linux-foundation.org>
+	 <1184103313.3759.44.camel@localhost.localdomain>
+	 <20070711033553.GA27564@redhat.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+	Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Jones <davej@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:38348 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752433AbXGKGLa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 02:11:30 -0400
-In-Reply-To: <20070711003809.3ced667b@naruto>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:39900 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753145AbXGKGPX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 02:15:23 -0400
+In-Reply-To: <20070711033553.GA27564@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2007-07-11 at 00:38 -0500, Jose R. Santos wrote:
-> On Tue, 10 Jul 2007 16:30:25 -0700
-> Andrew Morton <akpm@linux-foundation.org> wrote:
+On Tue, 2007-07-10 at 23:35 -0400, Dave Jones wrote:
+> On Tue, Jul 10, 2007 at 05:35:13PM -0400, Mingming Cao wrote:
+>  > 
+>  > Sorry about this. I was using version 0.04. The latest one I can find
+>  > for now is 0.05(searching lkml), but it didn't catch this codling style
+>  > bug either. I appreciate if anyone can point me the version 0.07, thanks
 > 
-> > On Sun, 01 Jul 2007 03:36:48 -0400
-> > Mingming Cao <cmm@us.ibm.com> wrote:
-> > 
-> > > > On Jun 07, 2007  23:45 -0500, Jose R. Santos wrote:
-> > > > > The jbd2-debug file used to be located in /proc/sys/fs/jbd2-debug, but
-> > > > > create_proc_entry() does not do lookups on file names with more that one
-> > > > > directory deep.  This causes the entry creation to fail and hence, no proc
-> > > > > file is created.  This patch moves the file to /proc/jbd2-degug.
-> > > > > 
-> > > > > The file could be move to /proc/fs/jbd2/jbd2-debug, but it would require
-> > > > > some minor alterations to the jbd-stats patch.
-> > > > 
-> > > > I don't think we really want to be adding top-level files in /proc.
-> > > > What about using the "debugfs" filesystem (not to be confused with
-> > > > the e2fsprogs 'debugfs' command)?
-> > > 
-> > > How about this then?  Moved the file to use debugfs as well as having
-> > > the nice effect of removing more lines than what it adds.
-> > > 
-> > > Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-> > 
-> > Please clean up the changelog.
-> > 
-> > The changelog should include information about the location and the content
-> > of these debugfs files.  it should provide any instructions which users
-> > will need to be able to create and use those files.
-> 
-> Will fix.
-> 
-> > Alternatively (and preferably) do this via an update to
-> > Documentation/filesystems/ext4.txt.
-> 
-> Seems like I also need to update the doc on Kconfig as well.  Do you
-> prefer this in separate patches? (current patch, kconfig patch, ext4
-> doc update patch?
-> 
-> > >  fs/jbd2/journal.c    |   62    20 +    42 -    0 !
-> > >  include/linux/jbd2.h |    2    1 +     1 -     0 !
-> > >  2 files changed, 21 insertions(+), 43 deletions(-)
-> > 
-> > Again, this patch isn't in Ted's kernel.org directory and hasn't been in -mm.
-> > 
-> > Apart from the lack of testing and review which this causes, it means I
-> > can't just do `pushpatch name-of-this-patch' and look at it in tkdiff.  So
-> > I squint at the diff, but that's harder when the diff wasn't prepared with
-> > `diff -p'.  Oh well.
-> 
-> Will fix.
-> 
-> > 
-> > > Index: linux-2.6.22-rc4/fs/jbd2/journal.c
-> > > ===================================================================
-> > > --- linux-2.6.22-rc4.orig/fs/jbd2/journal.c	2007-06-11 16:16:18.000000000 -0700
-> > > +++ linux-2.6.22-rc4/fs/jbd2/journal.c	2007-06-11 16:36:10.000000000 -0700
-> > > @@ -35,6 +35,7 @@
-> > >  #include <linux/kthread.h>
-> > >  #include <linux/poison.h>
-> > >  #include <linux/proc_fs.h>
-> > > +#include <linux/debugfs.h>
-> > >  
-> > >  #include <asm/uaccess.h>
-> > >  #include <asm/page.h>
-> > > @@ -1954,60 +1955,37 @@
-> > >   * /proc tunables
-> > >   */
-> > >  #if defined(CONFIG_JBD2_DEBUG)
-> > > -int jbd2_journal_enable_debug;
-> > > +u16 jbd2_journal_enable_debug;
-> > >  EXPORT_SYMBOL(jbd2_journal_enable_debug);
-> > >  #endif
-> > >  
-> > > -#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_PROC_FS)
-> > > +#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
-> > 
-> > Has this been compile-tested with CONFIG_DEBUGFS=n?
-> 
-> I think I did, but honestly don't remember.  Will check with the new
-> patch. :) 
+> It's now in-tree in scripts/checkpatch.pl
+> (linus' tree is still at 0.06 though, I suspect Andrew has something
+>  newer in -mm)
 > 
 
-Yes, I remember I did, that discovered some inconsistency in ext4 code,
-which has already been fixed.
+Thanks, Andy has uploaded the 0.07 version at
+http://www.shadowen.org/~apw/public/checkpatch/checkpatch.pl-0.07
 
-> > >  
-> > > -#define create_jbd_proc_entry() do {} while (0)
-> > > -#define jbd2_remove_jbd_proc_entry() do {} while (0)
-> > > +#define jbd2_create_debugfs_entry() do {} while (0)
-> > > +#define jbd2_remove_debugfs_entry() do {} while (0)
-> > 
-> > I suggest that these be converted to (preferable) inline functions while
-> > you're there.
-> 
-> OK.
-> 
-> > >  #endif
-> > >  
-> > > @@ -2067,7 +2045,7 @@
-> > >  	ret = journal_init_caches();
-> > >  	if (ret != 0)
-> > >  		jbd2_journal_destroy_caches();
-> > > -	create_jbd_proc_entry();
-> > > +	jbd2_create_debugfs_entry();
-> > >  	return ret;
-> > >  }
-> > >  
-> > > @@ -2078,7 +2056,7 @@
-> > >  	if (n)
-> > >  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
-> > >  #endif
-> > > -	jbd2_remove_jbd_proc_entry();
-> > > +	jbd2_remove_debugfs_entry();
-> > >  	jbd2_journal_destroy_caches();
-> > >  }
-> > >  
-> > > Index: linux-2.6.22-rc4/include/linux/jbd2.h
-> > > ===================================================================
-> > > --- linux-2.6.22-rc4.orig/include/linux/jbd2.h	2007-06-11 16:16:18.000000000 -0700
-> > > +++ linux-2.6.22-rc4/include/linux/jbd2.h	2007-06-11 16:35:25.000000000 -0700
-> > > @@ -57,7 +57,7 @@
-> > >   * CONFIG_JBD2_DEBUG is on.
-> > >   */
-> > >  #define JBD_EXPENSIVE_CHECKING
-> > 
-> > JBD2?
-> >
-> > > -extern int jbd2_journal_enable_debug;
-> > > +extern u16 jbd2_journal_enable_debug;
-> > 
-> > Why was this made 16-bit?  To save 2 bytes?  Could have saved 3 if we're
-> > going to do that.
-> 
-> OK.
-> 
-> > Shoudln't all this debug info be a per-superblock thing rather than
-> > kernel-wide?
-> 
-> I don't think it is worth pursuing this feature since this seems to
-> have been broken for a while now (its been there since the first git
-> revission in ext3) and nobody has noticed it until now.  It could be
-> address on a later patch though, since the initial purpose of the patch
-> was to fix the broken JBD2_DEBUG option. Of course, this may not be
-> clearly express in the changelog. :)
-> 
-> -JRS
+
+Mingming
