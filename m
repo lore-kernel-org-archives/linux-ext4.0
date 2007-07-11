@@ -1,72 +1,50 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: block groups with no inode tables
-Date: Tue, 10 Jul 2007 22:31:18 -0600
-Message-ID: <20070711043118.GJ6417@schatzie.adilger.int>
-References: <20070710121221.5478a1e3@rx8> <20070710203050.GH27033@thunk.org>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: Re: [EXT4 set 6][PATCH 1/1]Export jbd stats through procfs
+Date: Wed, 11 Jul 2007 08:37:58 +0400
+Message-ID: <20070711043758.GA5766@martell.zuzino.mipt.ru>
+References: <1183275490.4010.134.camel@localhost.localdomain> <20070710193117.a4ef6298.akpm@linux-foundation.org> <f56c1ba00707102021k13a758cbx66cbb6ec8bffac49@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Jose R. Santos" <jrs@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: =?iso-8859-1?Q?C=E9dric?= Augonnet <cedric.augonnet@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:46160 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752159AbXGKEbU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 00:31:20 -0400
+Received: from ug-out-1314.google.com ([66.249.92.173]:47641 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752024AbXGKEiF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2007 00:38:05 -0400
+Received: by ug-out-1314.google.com with SMTP id j3so34492ugf
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2007 21:38:04 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20070710203050.GH27033@thunk.org>
+In-Reply-To: <f56c1ba00707102021k13a758cbx66cbb6ec8bffac49@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 10, 2007  16:30 -0400, Theodore Tso wrote:
-> On Tue, Jul 10, 2007 at 12:12:21PM -0500, Jose R. Santos wrote:
-> > As I play with the allocation of the metadata for the FLEX_BG feature,
-> > it seems that we could benefit from having block groups with no inode
-> > tables.  Right now we allocate one inode table per bg base on the
-> > inode_blocks_per_group.  For FLEX_BG though, it would make more sense
-> > to have a larger inode tables that fully use the inode bitmap allocated
-> > on the first few block groups.  Once we reach the number of inode per
-> > FLEX_BG, then the remaining block groups could then have no inode
-> > tables defined.
-> > 
-> > The idea here is that we better utilize the inode bitmaps and reduce the
-> > number of inode tables to improve mkfs/fsck times. We could also
-> > support expansion of inode since we have block groups that have empty
-> > entries in the block group descriptors and as long as we can find
-> > enough empty blocks for the inode table expanding the number of inodes
-> > should be relatively easy.
-> > 
-> > Don't know if ext4 currently supports this.  Any thoughts?
-> 
-> Plans to support are there; Andreas sent a patch back in April to
-> implement this, using bg_itable_unused, which is already reserved in
-> the block group data structure.  The idea here is to speed up fsck by
-> specifying how many inodes are actually in use in the block group, so
-> we don't have to initialize them until they are to be used.  This is
-> tied with the checksum patches, since doing this means we need to
-> really worry about the accuracy of the block group descriptors or we
-> could lose a lot of data if the block group descriptors are corrupted.
+On Tue, Jul 10, 2007 at 11:21:49PM -0400, C=E9dric Augonnet wrote:
+> 2007/7/10, Andrew Morton <akpm@linux-foundation.org>:
+>=20
+> Hi all,
+>=20
+> >> +     size =3D sizeof(struct transaction_stats_s);
+> >> +     s->stats =3D kmalloc(size, GFP_KERNEL);
+> >> +     if (s =3D=3D NULL) {
+	       ^
+> >> +             kfree(s);
+> >> +             return -EIO;
+> >
+> >ENOMEM
 
-I think Jose means something slightly different, but in the end the
-uninit_groups feature (patches in the patch queue, but disabled for
-some reason) essentially implements this.  We don't need to read inode
-bitmaps from disk if the INODE_UNINIT flag is in the group.
+That, and
 
-I think all that is needed to get the semantics Jose wants is to tune
-the inode allocation in ext4_new_inode() to avoid inode bitmaps that
-are not yet initialized.  I suppose the other incremental feature would
-be to allow the blocks in the inode table become used for file allocation,
-but this exposes us to potential malicious corruption in some cases if
-users create "inode looking" data files (e.g. suid root inodes) on a full
-filesystem and e2fsck is convinced to treat them as inodes.
+	if (s->stats =3D=3D NULL)
+		kfree(s);
 
-We might instead limit this space to directories and indirect/index
-blocks, which wouldn't be a bad idea but when we get to changing the
-inode structures too much I'd like to combine several of the other
-changes.
+> I'm sorry if i missed some point, but i just don't see the use of suc=
+h
+> a kfree here, not sure Andrew meant you should only return ENOMEM
+> instead, but why issuing those kfree(NULL), instead of just a if (!s)
+> return ENOMEM ?
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+kfree() is correct, check isn't.
