@@ -1,42 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Initial results of FLEX_BG feature.
-Date: Wed, 11 Jul 2007 18:14:25 -0400
-Message-ID: <20070711221425.GH19456@thunk.org>
-References: <20070710112307.34c2ba5c@rx8> <20070711041213.GH6417@schatzie.adilger.int> <20070711003004.531c9307@naruto>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 9][PATCH 5/5]Extent micro cleanups
+Date: Wed, 11 Jul 2007 17:29:35 -0400
+Message-ID: <1184189375.3886.31.camel@localhost.localdomain>
+References: <1183275539.4010.141.camel@localhost.localdomain>
+	 <20070710232008.599b25aa.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60398 "EHLO thunker.thunk.org"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:39294 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761750AbXGKWO2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 18:14:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20070711003004.531c9307@naruto>
+	id S964900AbXGLA3f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jul 2007 20:29:35 -0400
+In-Reply-To: <20070710232008.599b25aa.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 11, 2007 at 12:30:04AM -0500, Jose R. Santos wrote:
-> Right now what I've done is allocate the bitmaps and inode tables at the
-> beginning of each group of 64 BG.  Still need to work on fsck since just
-> removing the restriction on were the bitmaps and inode table are
-> located still gives me errors of uninitialized inodes with dtime set.
-> Seems like fsck still expect inode information to be located at
-> specific locations within the disk.
+On Tue, 2007-07-10 at 23:20 -0700, Andrew Morton wrote:
+> On Sun, 01 Jul 2007 03:38:59 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+> 
+> > From: Dmitry Monakhov <dmonakhov@sw.ru>
+> > Subject: ext4: extent macros cleanup
+> > 
+> > - Replace math equation to it's macro equivalent
+> 
+> s/it's/its/;)
+Okay.
 
-Can you send me the patch which you were playing with?  I might be
-able to help you with this.  It should be pretty straightforward to
-remove the constraint on the inode table location.  
+> 
+> > - make ext4_ext_grow_indepth() indexes/leaf correct
+> 
+> hm, what was wrong with it?
+> 
+Looking at the code, ext4_ext_ext_grow_indepth() implements tree growing
+procedure. It allocates a new index block, moves the top-level data of
+the tree(root or leaf blocks in i_data) into the new block, initializes
+the new root, creating index that points to the just created index block
 
-It really should only be a check in e2fsck/super.c:check_super_block(),
-as far as I know.
+The original top-level data (in i_data) could be extent tree root (index
+block) or extents (leaf block). The current code (without the patch)
+treats the top-level data always be the leaf block, which is incorrect.
 
-If you're seeing errors of unitialized inodes with dtime set, that
-sounds like maybe something else is going on.  All of e2fsprogs should
-be referencing the inode table via fs->group_desc[group_num].bg_inode_table.  
-See lib/ext2fs/inode.c, functions ext2fs_open_inode_scan(), 
-get_next_blockgroup(), and ext2fs_read_inode_full().
 
-							- Ted
+assumes when the tree is growing the extent structure pass in is always
+> > @@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+> >  	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
+> >  	curp->p_hdr->eh_entries = cpu_to_le16(1);
+> >  	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
+> > -	/* FIXME: it works, but actually path[0] can be index */
+> > -	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+> > +	
+> > +	if (path[0].p_hdr->eh_depth)
+> > +	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
+> > +	else
+> > +	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
+> 
+> whitespace bustage there.
+> 
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
