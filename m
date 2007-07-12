@@ -1,145 +1,48 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
-Date: Thu, 12 Jul 2007 18:28:46 +0530
-Message-ID: <1184245126.4299.20.camel@garfield>
-References: <1183275416.4010.125.camel@localhost.localdomain>
-	 <20070710163027.1bf7e94e.akpm@linux-foundation.org>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [PATCH 4/7][TAKE5] support new modes in fallocate
+Date: Thu, 12 Jul 2007 23:13:34 +1000
+Message-ID: <20070712131334.GY31489@sgi.com>
+References: <20070625150320.GA8686@amitarora.in.ibm.com> <20070625214626.GJ5181@schatzie.adilger.int> <20070626103247.GA19870@amitarora.in.ibm.com> <20070630102111.GB23568@infradead.org> <20070630165246.GA5159@schatzie.adilger.int> <20070703100848.GA14936@amitarora.in.ibm.com> <20070703103107.GA29763@infradead.org> <20070703114650.GB14936@amitarora.in.ibm.com> <20070711090312.GA18301@infradead.org> <20070712072813.GA31260@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-Yj6/pte0b0iSbPhUdoJA"
-Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
+	David Chinner <dgc@sgi.com>, cmm@us.ibm.com, xfs@oss.sgi.com
+To: Suparna Bhattacharya <suparna@in.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:51274 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757740AbXGLM5v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jul 2007 08:57:51 -0400
-In-Reply-To: <20070710163027.1bf7e94e.akpm@linux-foundation.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:39574 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932396AbXGLNOF (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Thu, 12 Jul 2007 09:14:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20070712072813.GA31260@in.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
---=-Yj6/pte0b0iSbPhUdoJA
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-
-On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
-> On Sun, 01 Jul 2007 03:36:56 -0400
-> Mingming Cao <cmm@us.ibm.com> wrote:
+On Thu, Jul 12, 2007 at 12:58:13PM +0530, Suparna Bhattacharya wrote:
 > 
-> > This patch is a spinoff of the old nanosecond patches.
+> Why don't we just merge the interface for preallocation (essentially
+> enough to satisfy posix_fallocate() and the simple XFS requirement for 
+> space reservation without changing file size), which there is clear agreement
+> on (I hope :)).  After all, this was all that we set out to do when we
+> started.
 > 
-> I don't know what the "old nanosecond patches" are.  A link to a suitable
-> changlog for those patches would do in a pinch.  Preferable would be to
-> write a proper changelog for this patch.
-
-The incremental patch contains a proper changelog describing the patch.
-
-> > +static inline __le32 ext4_encode_extra_time(struct timespec *time)
-> > +{
-> > +       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
-> > +			   time->tv_sec >> 32 : 0) |
-> > +			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
-> > +}
-> > +
-> > +static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-> > +{
-> > +       if (sizeof(time->tv_sec) > 4)
-> > +	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-> > +			       << 32;
-> > +       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
-> > +}
+> And leave all the dealloc/punch/hsm type features for separate future patches/
+> debates, those really shouldn't hold up the basic fallocate interface.
+> I agree with Christoph that we are just diverging too much in trying to
+> club those decisions here.
 > 
-> Consider uninlining these functions.
+> Dave, Andreas, Ted ?
 
-Done.
+Sure. I'll just make XFS work with whatever it is that gets merged.
 
-This patch adds comments, few small corrections and an appropriate
-changelog entry.
+Cheers,
 
-Thanks,
-Kalpak.
-
---=-Yj6/pte0b0iSbPhUdoJA
-Content-Disposition: attachment; filename=ext4_nanosecond_correction.patch
-Content-Type: text/x-patch; name=ext4_nanosecond_correction.patch; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-
-This patch adds nanosecond timestamps for ext4. This involves adding
-*time_extra fields to the ext4_inode to extend the timestamps to 64-bits.
-Creation time is also added by this patch.
-
-These extended fields will fit into an inode if the filesystem was formatted
-with large inodes (-I 256 or larger) and there are currently no EAs
-consuming all of the available space. For new inodes we always reserve
-enough space for the kernel's known extended fields, but for inodes
-created with an old kernel this might not have been the case. So this patch
-also adds the EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE feature flag(ro-compat so that
-older kernels can't create inodes with a smaller extra_isize). which indicates
-if the fields fitting inside s_min_extra_isize are available or not.
-If the expansion of inodes if unsuccessful then this feature will be disabled.
-This feature is only enabled if requested by the sysadmin.
-
-None of the extended inode fields is critical for correct filesystem operation.
-
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-
-Index: linux-2.6.22/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.22.orig/include/linux/ext4_fs.h
-+++ linux-2.6.22/include/linux/ext4_fs.h
-@@ -350,20 +350,30 @@ struct ext4_inode {
- #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
- #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
- 
-+/*
-+ * Extended fields will fit into an inode if the filesystem was formatted
-+ * with large inodes (-I 256 or larger) and there are not currently any EAs
-+ * consuming all of the available space. For new inodes we always reserve
-+ * enough space for the kernel's known extended fields, but for inodes
-+ * created with an old kernel this might not have been the case. None of
-+ * the extended inode fields is critical for correct filesystem operation.
-+ * This macro checks if a certain field fits in the inode. Note that
-+ * inode-size = GOOD_OLD_INODE_SIZE + i_extra_isize
-+ */
- #define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
- 	((offsetof(typeof(*ext4_inode), field) +	\
- 	  sizeof((ext4_inode)->field))			\
- 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
- 	    (einode)->i_extra_isize))			\
- 
--static inline __le32 ext4_encode_extra_time(struct timespec *time)
-+static __le32 ext4_encode_extra_time(struct timespec *time)
- {
-        return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
- 			   time->tv_sec >> 32 : 0) |
- 			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
- }
- 
--static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-+static void ext4_decode_extra_time(struct timespec *time, __le32 extra)
- {
-        if (sizeof(time->tv_sec) > 4)
- 	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
-Index: linux-2.6.22/include/linux/ext4_fs_i.h
-===================================================================
---- linux-2.6.22.orig/include/linux/ext4_fs_i.h
-+++ linux-2.6.22/include/linux/ext4_fs_i.h
-@@ -153,6 +153,10 @@ struct ext4_inode_info {
- 
- 	unsigned long i_ext_generation;
- 	struct ext4_ext_cache i_cached_extent;
-+	/*
-+	 * File creation time. Its function is same as that of
-+	 * struct timespec i_{a,c,m}time in the generic inode.
-+	 */
- 	struct timespec i_crtime;
- };
- 
-
---=-Yj6/pte0b0iSbPhUdoJA--
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
