@@ -1,68 +1,54 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [EXT4 set 9][PATCH 5/5]Extent micro cleanups
-Date: Wed, 11 Jul 2007 17:29:35 -0400
-Message-ID: <1184189375.3886.31.camel@localhost.localdomain>
-References: <1183275539.4010.141.camel@localhost.localdomain>
-	 <20070710232008.599b25aa.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [EXT4 set 4][PATCH 1/5] i_version:64 bit inode version
+Date: Wed, 11 Jul 2007 22:56:35 -0600
+Message-ID: <20070712045635.GA5586@schatzie.adilger.int>
+References: <1183275424.4010.126.camel@localhost.localdomain> <20070710163038.ceb2ae94.akpm@linux-foundation.org> <1184105380.3759.65.camel@localhost.localdomain> <20070710182237.e2f88bf3.akpm@linux-foundation.org> <18068.19667.942363.686858@notabene.brown> <18068.25879.745638.343290@notabene.brown> <1184164086.12154.15.camel@kleikamp.austin.ibm.com> <20070711200430.GF4138@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Neil Brown <neilb@suse.de>, nfsv4@linux-nfs.org,
+	linux-kernel@vger.kernel.org, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:39294 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964900AbXGLA3f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2007 20:29:35 -0400
-In-Reply-To: <20070710232008.599b25aa.akpm@linux-foundation.org>
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:48328 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906AbXGLE4f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jul 2007 00:56:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20070711200430.GF4138@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-07-10 at 23:20 -0700, Andrew Morton wrote:
-> On Sun, 01 Jul 2007 03:38:59 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+On Jul 11, 2007  16:04 -0400, J. Bruce Fields wrote:
+> A 32-bit i_version could in theory wrap pretty quickly, couldn't it?
+> That's not a problem in itself--the problem would only arise if two
+> subsequent client queries of the change attribute happened a multiple of
+> 2^32 i_version increments apart.
 > 
-> > From: Dmitry Monakhov <dmonakhov@sw.ru>
-> > Subject: ext4: extent macros cleanup
-> > 
-> > - Replace math equation to it's macro equivalent
+> This is more likely than the previous scenario, but still very unlikely.
+> I would have guessed that even in situations with a very high rate of
+> updates and a low rate of client revalidations, the chance of two
+> revalidations happening exactly 2^32 updates apart would still be no
+> more than 1 in 2^32.  (Could odd characteristics of the workloads (like
+> updates that tend to happen in power-of-2 groups?) make it any more
+> likely?)
 > 
-> s/it's/its/;)
-Okay.
+> I'd be happier if ext4 at least allowed the possibility of 64 bits in
+> the future.  And there's always the chance someone would find a use for
+> an i_version that was nondecreasing, even if nfs didn't care.
 
-> 
-> > - make ext4_ext_grow_indepth() indexes/leaf correct
-> 
-> hm, what was wrong with it?
-> 
-Looking at the code, ext4_ext_ext_grow_indepth() implements tree growing
-procedure. It allocates a new index block, moves the top-level data of
-the tree(root or leaf blocks in i_data) into the new block, initializes
-the new root, creating index that points to the just created index block
+This would indeed be the case for ext3 filesystems updated to ext4.
+They will only be able to store the low 32 bits of the version, which
+is itself normally enough for NFSv4 because it only uses the inequality
+check.  Having the full 64 bits available eliminates the risk of
+collisions, and given that the spec mandates a 64-bit version I'm sure
+someone will take full advantage of it in NFS at some point.
 
-The original top-level data (in i_data) could be extent tree root (index
-block) or extents (leaf block). The current code (without the patch)
-treats the top-level data always be the leaf block, which is incorrect.
-
-
-assumes when the tree is growing the extent structure pass in is always
-> > @@ -922,8 +922,11 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
-> >  	curp->p_hdr->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode));
-> >  	curp->p_hdr->eh_entries = cpu_to_le16(1);
-> >  	curp->p_idx = EXT_FIRST_INDEX(curp->p_hdr);
-> > -	/* FIXME: it works, but actually path[0] can be index */
-> > -	curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
-> > +	
-> > +	if (path[0].p_hdr->eh_depth)
-> > +	  curp->p_idx->ei_block = EXT_FIRST_INDEX(path[0].p_hdr)->ei_block;
-> > +	else
-> > +	  curp->p_idx->ei_block = EXT_FIRST_EXTENT(path[0].p_hdr)->ee_block;
-> 
-> whitespace bustage there.
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
