@@ -1,61 +1,60 @@
-From: Badari Pulavarty <pbadari@us.ibm.com>
-Subject: [PATCH] ext2 statfs improvement for block and inode free count
-Date: Fri, 13 Jul 2007 18:36:54 -0700
-Message-ID: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support features in larger inode
+Date: Fri, 13 Jul 2007 10:12:33 -0600
+Message-ID: <20070713161233.GH5880@schatzie.adilger.int>
+References: <1183275482.4010.133.camel@localhost.localdomain> <20070710163247.5c8bfa3f.akpm@linux-foundation.org> <20070713020529.1486491f.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:58563 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1765640AbXGNBfL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 21:35:11 -0400
+Received: from mail.clusterfs.com ([74.0.229.162]:59346 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751112AbXGNEVz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Jul 2007 00:21:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20070713020529.1486491f.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew,
+On Jul 13, 2007  02:05 -0700, Andrew Morton wrote:
+> On Tue, 10 Jul 2007 16:32:47 -0700 Andrew Morton <akpm@linux-foundation.org> wrote:
+> 
+> > > +	brelse(bh);
+> > > +	up_write(&EXT4_I(inode)->xattr_sem);
+> > > +	return error;
+> > > +}
+> > > +
+> > 
+> > We're doing GFP_KERNEL memory allocations while holding xattr_sem.  This
+> > can cause the VM to reenter the filesystem, perhaps taking i_mutex and/or
+> > i_truncate_sem and/or journal_start() (I forget whether this still
+> > happens).  Have we checked whether this can occur and if so, whether we are
+> > OK from a lock ranking POV?  Bear in mind that journalled-data mode is more
+> > complex in this regard.
+> 
+> I notice that everyone carefully avoided addressing this ;)
+> 
+> Oh well, hopefully people are testing with lockdep enabled.  As long
+> as the fs is put under extreme memory pressure, most bugs should be reported.
 
-Can you include it in -mm ? 
+I have no objection to changing these to GFP_NOFS or GFP_ATOMIC, because
+the number of times this function is called is really quite small (only
+for existing inodes when the size of the fixed fields in the inode is
+increasing) and the buffers are freed immediately so this won't put any
+undue strain on the atomic memory pools.
 
-BTW, this patch is against mainline, won't apply cleanly to -mm, due to
-other statfs() improvements.
+That said, there is also a GFP_KERNEL allocations in ext3_xattr_block_set()
+under xattr_sem, so the same problem would exist there.
 
-Thanks,
-Badari
+I also just noticed that "buffer" and "b_entry_name" are leaked in
+ext4_expand_extra_isize() if the while loop is run more than one time
+(again a relatively rare event).
 
-More statfs() improvements for ext2. ext2 already maintains
-percpu counters for free blocks and inodes. Derive free
-block count and inode count by summing up percpu counters,
-instead of counting up all the groups in the filesystem
-each time.
-
-
-Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
-Acked-by: Andreas Dilger <adilger@clusterfs.com>
-
- fs/ext2/super.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-Index: linux-2.6.22/fs/ext2/super.c
-===================================================================
---- linux-2.6.22.orig/fs/ext2/super.c	2007-07-13 20:06:38.000000000 -0700
-+++ linux-2.6.22/fs/ext2/super.c	2007-07-13 20:06:51.000000000 -0700
-@@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
- 	buf->f_type = EXT2_SUPER_MAGIC;
- 	buf->f_bsize = sb->s_blocksize;
- 	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
--	buf->f_bfree = ext2_count_free_blocks(sb);
-+ 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
- 	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
- 	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
- 		buf->f_bavail = 0;
- 	buf->f_files = le32_to_cpu(es->s_inodes_count);
--	buf->f_ffree = ext2_count_free_inodes(sb);
-+ 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
- 	buf->f_namelen = EXT2_NAME_LEN;
- 	fsid = le64_to_cpup((void *)es->s_uuid) ^
- 	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
