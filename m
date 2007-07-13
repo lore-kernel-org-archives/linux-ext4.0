@@ -1,60 +1,72 @@
 From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
-Date: Fri, 13 Jul 2007 12:35:18 +0530
-Message-ID: <1184310318.4372.5.camel@garfield>
-References: <1183275416.4010.125.camel@localhost.localdomain>
-	 <20070710163027.1bf7e94e.akpm@linux-foundation.org>
-	 <1184245126.4299.20.camel@garfield>  <4696FFBE.3030806@linux.vnet.ibm.com>
+Subject: Re: Random corruption test for e2fsck
+Date: Fri, 13 Jul 2007 12:42:37 +0530
+Message-ID: <1184310757.4372.14.camel@garfield>
+References: <1184072860.4440.39.camel@garfield.linsyssoft.com>
+	 <p73myy3x8z0.fsf@bingen.suse.de>
+	 <20070712051938.GD5586@schatzie.adilger.int>
+	 <20070712110923.GA500@one.firstfloor.org>
+	 <20070712221624.GA5880@schatzie.adilger.int>
+	 <20070712222426.GB1011@one.firstfloor.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@clusterfs.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	TheodoreTso <tytso@mit.edu>
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:57852 "EHLO
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:56077 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761662AbXGMHE1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 03:04:27 -0400
-In-Reply-To: <4696FFBE.3030806@linux.vnet.ibm.com>
+	with ESMTP id S1750937AbXGMHLl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 03:11:41 -0400
+In-Reply-To: <20070712222426.GB1011@one.firstfloor.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-07-13 at 09:59 +0530, Aneesh Kumar K.V wrote:
-> 
-> Kalpak Shah wrote:
-> > On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
-> >> On Sun, 01 Jul 2007 03:36:56 -0400
-> >> Mingming Cao <cmm@us.ibm.com> wrote:
-> >>
-> >>> This patch is a spinoff of the old nanosecond patches.
-> >> I don't know what the "old nanosecond patches" are.  A link to a suitable
-> >> changlog for those patches would do in a pinch.  Preferable would be to
-> >> write a proper changelog for this patch.
+On Fri, 2007-07-13 at 00:24 +0200, Andi Kleen wrote:
+> On Thu, Jul 12, 2007 at 04:16:24PM -0600, Andreas Dilger wrote:
+> > On Jul 12, 2007  13:09 +0200, Andi Kleen wrote:
+> > > > "dd if=/dev/urandom bs=1k ..." than to spin in a loop getting 16-bit
+> > > > random numbers from bash.  We would also be at the mercy of the shell
+> > > > being identical on the user and debugger's systems.
+> > > 
+> > > With /dev/urandom you have the guarantee you'll never ever reproduce
+> > > it again. 
 > > 
-> > The incremental patch contains a proper changelog describing the patch.
-> > 
+> > That is kind of the point of this testing - getting new test images for
+> > each user that runs "make check" or "make rpm".  I'm We also save the
+> > generated image before e2fsck touches it so that it can be used for
+> > debugging if needed.
 > 
+> If you seed a good pseudo RNG with the time (or even a few bytes from 
+> /dev/urandom; although the time tends to work as well) you'll also effectively 
+> get a new image every time.
 > 
-> Instead of  putting incremental patches it would be nice if we can have replacement patches.
-> for the already existing patches with the comments addressed. For example if we have a 
-> review comment on the patch message ( commit log ) then adding an incremental patch doesn't help.
+> But the advantage is if you print out the seed the image
+> can be easily recreated just by re-running the fuzzer
+> with the same seed. No need to ship potentially huge images
+> around.
+> 
+> You can essentially compress your whole image into a single
+> number this way.
 
-I think that it would be easier to review just the changes that have
-been made to the patches instead of having people go through the entire
-patch again. I was hoping that someone with write access to ext4-git
-would update the commit logs.
+Firstly the filesystem is populated with files from the e2fsprogs source
+directory. The filesystem is also corrupted by copying blocks in the
+filesystem to some arbitary locations within it.
 
-If replacement patches are preferred, then I will send them again.
+	from=`get_random_location $NUM_BLKS`
+	to=`get_random_location $NUM_BLKS`
+	dd if=$IMAGE of=$IMAGE bs=1k count=$CORRUPTION_SIZE conv=notrunc skip=
+$from seek=$to >> $OUT 2>&1
+
+Then the filesystem also undergoes corruption with /dev/urandom. To be
+able to recreate the exact same filesystem with the seed, the filesystem
+would need to allocate the _same_ blocks and metadata on both the
+clients and the testers machine, which is obviously not possible.
 
 Thanks,
 Kalpak.
 
 > 
-> 
-> -aneesh
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -Andi
