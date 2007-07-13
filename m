@@ -1,72 +1,43 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: Random corruption test for e2fsck
-Date: Fri, 13 Jul 2007 12:42:37 +0530
-Message-ID: <1184310757.4372.14.camel@garfield>
-References: <1184072860.4440.39.camel@garfield.linsyssoft.com>
-	 <p73myy3x8z0.fsf@bingen.suse.de>
-	 <20070712051938.GD5586@schatzie.adilger.int>
-	 <20070712110923.GA500@one.firstfloor.org>
-	 <20070712221624.GA5880@schatzie.adilger.int>
-	 <20070712222426.GB1011@one.firstfloor.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
+ features in larger inode
+Date: Fri, 13 Jul 2007 02:05:29 -0700
+Message-ID: <20070713020529.1486491f.akpm@linux-foundation.org>
+References: <1183275482.4010.133.camel@localhost.localdomain>
+	<20070710163247.5c8bfa3f.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	TheodoreTso <tytso@mit.edu>
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:56077 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750937AbXGMHLl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 03:11:41 -0400
-In-Reply-To: <20070712222426.GB1011@one.firstfloor.org>
-Sender: linux-ext4-owner@vger.kernel.org
+To: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andy Whitcroft <apw@shadowen.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-07-13 at 00:24 +0200, Andi Kleen wrote:
-> On Thu, Jul 12, 2007 at 04:16:24PM -0600, Andreas Dilger wrote:
-> > On Jul 12, 2007  13:09 +0200, Andi Kleen wrote:
-> > > > "dd if=/dev/urandom bs=1k ..." than to spin in a loop getting 16-bit
-> > > > random numbers from bash.  We would also be at the mercy of the shell
-> > > > being identical on the user and debugger's systems.
-> > > 
-> > > With /dev/urandom you have the guarantee you'll never ever reproduce
-> > > it again. 
-> > 
-> > That is kind of the point of this testing - getting new test images for
-> > each user that runs "make check" or "make rpm".  I'm We also save the
-> > generated image before e2fsck touches it so that it can be used for
-> > debugging if needed.
+On Tue, 10 Jul 2007 16:32:47 -0700 Andrew Morton <akpm@linux-foundation.org> wrote:
+
+> > +	brelse(bh);
+> > +	up_write(&EXT4_I(inode)->xattr_sem);
+> > +	return error;
+> > +}
+> > +
 > 
-> If you seed a good pseudo RNG with the time (or even a few bytes from 
-> /dev/urandom; although the time tends to work as well) you'll also effectively 
-> get a new image every time.
-> 
-> But the advantage is if you print out the seed the image
-> can be easily recreated just by re-running the fuzzer
-> with the same seed. No need to ship potentially huge images
-> around.
-> 
-> You can essentially compress your whole image into a single
-> number this way.
+> We're doing GFP_KERNEL memory allocations while holding xattr_sem.  This
+> can cause the VM to reenter the filesystem, perhaps taking i_mutex and/or
+> i_truncate_sem and/or journal_start() (I forget whether this still
+> happens).  Have we checked whether this can occur and if so, whether we are
+> OK from a lock ranking POV?  Bear in mind that journalled-data mode is more
+> complex in this regard.
 
-Firstly the filesystem is populated with files from the e2fsprogs source
-directory. The filesystem is also corrupted by copying blocks in the
-filesystem to some arbitary locations within it.
+I notice that everyone carefully avoided addressing this ;)
 
-	from=`get_random_location $NUM_BLKS`
-	to=`get_random_location $NUM_BLKS`
-	dd if=$IMAGE of=$IMAGE bs=1k count=$CORRUPTION_SIZE conv=notrunc skip=
-$from seek=$to >> $OUT 2>&1
+Oh well, hopefully people are testing with lockdep enabled.  As long
+as the fs is put under extreme memory pressure, most bugs should be reported.
 
-Then the filesystem also undergoes corruption with /dev/urandom. To be
-able to recreate the exact same filesystem with the seed, the filesystem
-would need to allocate the _same_ blocks and metadata on both the
-clients and the testers machine, which is obviously not possible.
+Except lockdep doesn't know about journal_start(), which has ranking
+requirements similar to a semaphore.  Nor does it know about lock_page().
+We already have hard-to-hit but deadlockable bugs in this area.
 
-Thanks,
-Kalpak.
 
-> 
-> -Andi
