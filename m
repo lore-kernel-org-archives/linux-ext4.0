@@ -1,49 +1,66 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
- features in larger inode
-Date: Fri, 13 Jul 2007 12:12:59 -0700
-Message-ID: <20070713121259.20066d5b.akpm@linux-foundation.org>
-References: <1183275482.4010.133.camel@localhost.localdomain>
-	<20070710163247.5c8bfa3f.akpm@linux-foundation.org>
-	<20070713020529.1486491f.akpm@linux-foundation.org>
-	<1184333621.20032.85.camel@twins>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
+Date: Fri, 13 Jul 2007 14:46:58 -0700
+Message-ID: <1184363218.16045.0.camel@localhost.localdomain>
+References: <1183275416.4010.125.camel@localhost.localdomain>
+	 <20070710163027.1bf7e94e.akpm@linux-foundation.org>
+	 <1184245126.4299.20.camel@garfield>  <4696FFBE.3030806@linux.vnet.ibm.com>
+	 <1184310318.4372.5.camel@garfield>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andy Whitcroft <apw@shadowen.org>
-To: Peter Zijlstra <peterz@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:48675 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757492AbXGMTOc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Jul 2007 15:14:32 -0400
-In-Reply-To: <1184333621.20032.85.camel@twins>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@clusterfs.com>
+To: Kalpak Shah <kalpak@clusterfs.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1184310318.4372.5.camel@garfield>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 13 Jul 2007 15:33:41 +0200
-Peter Zijlstra <peterz@infradead.org> wrote:
-
-> On Fri, 2007-07-13 at 02:05 -0700, Andrew Morton wrote:
+On Fri, 2007-07-13 at 12:35 +0530, Kalpak Shah wrote:
+> On Fri, 2007-07-13 at 09:59 +0530, Aneesh Kumar K.V wrote:
+> > 
+> > Kalpak Shah wrote:
+> > > On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
+> > >> On Sun, 01 Jul 2007 03:36:56 -0400
+> > >> Mingming Cao <cmm@us.ibm.com> wrote:
+> > >>
+> > >>> This patch is a spinoff of the old nanosecond patches.
+> > >> I don't know what the "old nanosecond patches" are.  A link to a suitable
+> > >> changlog for those patches would do in a pinch.  Preferable would be to
+> > >> write a proper changelog for this patch.
+> > > 
+> > > The incremental patch contains a proper changelog describing the patch.
+> > > 
+> > 
+> > 
+> > Instead of  putting incremental patches it would be nice if we can have replacement patches.
+> > for the already existing patches with the comments addressed. For example if we have a 
+> > review comment on the patch message ( commit log ) then adding an incremental patch doesn't help.
 > 
-> > Except lockdep doesn't know about journal_start(), which has ranking
-> > requirements similar to a semaphore.  
+> I think that it would be easier to review just the changes that have
+> been made to the patches instead of having people go through the entire
+> patch again. I was hoping that someone with write access to ext4-git
+> would update the commit logs.
 > 
-> Something like so?
+> If replacement patches are preferred, then I will send them again.
+> 
 
-Looks OK.
+No need, I already fold your fix patch to the parent patches, so in the
+updated ext4-patch-queue it saved the updated nanosecond patch.
 
-> Or can journal_stop() be done by a different task than the one that did
-> journal_start()? - in which case nothing much can be done :-/
+> Thanks,
+> Kalpak.
+> 
+> > 
+> > 
+> > -aneesh
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Yeah, journal_start() and journal_stop() are well-behaved.
- 
-> This seems to boot... albeit I did not push it hard.
-
-I fear the consequences of this change :(
-
-Oh well, please keep it alive, maybe beat on it a bit, resend it
-later on?
