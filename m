@@ -1,38 +1,40 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/6][TAKE7] fallocate() implementation in i386, x86_64 and powerpc
-Date: Fri, 13 Jul 2007 15:46:12 +0100
-Message-ID: <20070713144612.GA26879@infradead.org>
-References: <20070713123816.GA18000@amitarora.in.ibm.com> <20070713124755.GB22961@amitarora.in.ibm.com> <20070713132118.GA23256@infradead.org> <20070713141858.GB27291@amitarora.in.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support features in larger inode
+Date: Fri, 13 Jul 2007 09:43:43 -0600
+Message-ID: <20070713154343.GG5880@schatzie.adilger.int>
+References: <1183275482.4010.133.camel@localhost.localdomain> <20070710163247.5c8bfa3f.akpm@linux-foundation.org> <20070713020529.1486491f.akpm@linux-foundation.org> <1184333621.20032.85.camel@twins>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
+Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, tytso@mit.edu,
-	cmm@us.ibm.com, suparna@in.ibm.com, adilger@clusterfs.com,
-	dgc@sgi.com
-To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>
+To: Peter Zijlstra <peterz@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:43392 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760157AbXGMOqT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 10:46:19 -0400
+Received: from 74-0-229-162.T1.lbdsl.net ([74.0.229.162]:50006 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761569AbXGMPnq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2007 11:43:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20070713141858.GB27291@amitarora.in.ibm.com>
+In-Reply-To: <1184333621.20032.85.camel@twins>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 13, 2007 at 07:48:58PM +0530, Amit K. Arora wrote:
-> Ok. Since we have only one flag (FALLOC_FL_KEEP_SIZE) and we do not want
-> to declare the default mode (FALLOC_ALLOCATE), we can _just_ have this
-> flag and remove the other mode too (FALLOC_RESV_SPACE).
-> Is this what you are suggesting ?
+On Jul 13, 2007  15:33 +0200, Peter Zijlstra wrote:
+> On Fri, 2007-07-13 at 02:05 -0700, Andrew Morton wrote:
+> Or can journal_stop() be done by a different task than the one that did
+> journal_start()? - in which case nothing much can be done :-/
 
-Yes.
+The call to journal_stop() has to be in the same process, since the
+journal handle is also held in current->journal_info so the handle
+does not need to be passed as an argument all over the VFS.
 
-> Should we need a header file just to declare one flag - i.e.
-> FALLOC_FL_KEEP_SIZE (since now there is no point of declaring the two
-> modes) ? If "linux/fs.h" is not a good place, will "asm-generic/fcntl.h"
-> be a sane place for this flag ?
+> This seems to boot... albeit I did not push it hard.
 
-It might sound a litte silly but is the cleanest thing we could do by
-far.  And I suspect there will be more more flags soon..
+Can you please also make a patch for jbd2.
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
