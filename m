@@ -1,14 +1,14 @@
-From: Peter Zijlstra <peterz@infradead.org>
+From: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
 	features in larger inode
-Date: Sun, 15 Jul 2007 15:02:23 +0200
-Message-ID: <1184504543.5284.96.camel@lappy>
+Date: Sun, 15 Jul 2007 15:14:02 +0200
+Message-ID: <1184505242.5284.98.camel@lappy>
 References: <1183275482.4010.133.camel@localhost.localdomain>
 	 <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
 	 <20070713020529.1486491f.akpm@linux-foundation.org>
 	 <1184333621.20032.85.camel@twins>
 	 <20070713121259.20066d5b.akpm@linux-foundation.org>
-	 <20070713214746.GH23255@mami.zabbo.net>
+	 <20070713214746.GH23255@mami.zabbo.net>  <1184504543.5284.96.camel@lappy>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
@@ -18,157 +18,117 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
 	Ingo Molnar <mingo@elte.hu>
 To: Zach Brown <zach.brown@oracle.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070713214746.GH23255@mami.zabbo.net>
+In-Reply-To: <1184504543.5284.96.camel@lappy>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-07-13 at 14:47 -0700, Zach Brown wrote:
-
-> Peter, do you have any interest in seeing how far we can get
-> at tracking lock_page()?  I'm not holding my breath, but any little bit
-> would probably help.
-
-Would this be a valid report? 
-
-( /me goes hunt a x86_64 unwinder patch that will apply to this tree.
-  These stacktraces are pain )
+On Sun, 2007-07-15 at 15:02 +0200, Peter Zijlstra wrote:
+> On Fri, 2007-07-13 at 14:47 -0700, Zach Brown wrote:
+> 
+> > Peter, do you have any interest in seeing how far we can get
+> > at tracking lock_page()?  I'm not holding my breath, but any little bit
+> > would probably help.
+> 
+> Would this be a valid report? 
 
 =======================================================
 [ INFO: possible circular locking dependency detected ]
-[ 2.6.22-rt3-dirty #34
+[ 2.6.22-rt3-dirty #35
 -------------------------------------------------------
-mount/1296 is trying to acquire lock:
- (&ei->truncate_mutex){--..}, at: [<ffffffff802f75e5>] ext3_get_blocks_handle+0x1a4/0x8f7
+mkdir/1662 is trying to acquire lock:
+ (lock_page_0){--..}, at: [<ffffffff80265df6>] add_to_page_cache_lru+0xe/0x23
 
 but task is already holding lock:
- (lock_page_0){--..}, at: [<ffffffff80267107>] generic_file_buffered_write+0x1ee/0x646
+ (jbd_handle){--..}, at: [<ffffffff80305797>] journal_start+0x108/0x12c
 
 which lock already depends on the new lock.
 
 
 the existing dependency chain (in reverse order) is:
 
--> #1 (lock_page_0){--..}:
-       [<ffffffff80251b26>] __lock_acquire+0xa72/0xc35
-       [<ffffffff802520c9>] lock_acquire+0x48/0x61
-       [<ffffffff80265e22>] add_to_page_cache_lru+0xe/0x23
-       [<ffffffff80265d31>] add_to_page_cache+0x1de/0x2c1
-       [<ffffffff80265e22>] add_to_page_cache_lru+0xe/0x23
-       [<ffffffff80266985>] find_or_create_page+0x4c/0x73
-       [<ffffffff802ae716>] __getblk+0x118/0x23c
-       [<ffffffff802afa91>] __bread+0x6/0x9c
-       [<ffffffff802f382d>] read_block_bitmap+0x34/0x65
-       [<ffffffff802f3e1b>] ext3_free_blocks_sb+0xec/0x3d4
-       [<ffffffff802f4131>] ext3_free_blocks+0x2e/0x61
-       [<ffffffff802f82bc>] ext3_free_data+0xaa/0xda
-       [<ffffffff802f8976>] ext3_truncate+0x4d2/0x84e
-       [<ffffffff8026df5a>] pagevec_lookup+0x17/0x1e
-       [<ffffffff8026e7b1>] truncate_inode_pages_range+0x1f4/0x323
-       [<ffffffff802614b4>] add_preempt_count+0x14/0xe4
-       [<ffffffff80304d13>] journal_stop+0x1fe/0x21d
-       [<ffffffff8027661a>] vmtruncate+0xa2/0xc0
-       [<ffffffff802a292b>] inode_setattr+0x22/0x10a
-       [<ffffffff802f9b51>] ext3_setattr+0x136/0x18f
-       [<ffffffff802a2b1d>] notify_change+0x10a/0x241
-       [<ffffffff802a2b3b>] notify_change+0x128/0x241
-       [<ffffffff8028e35e>] do_truncate+0x56/0x7f
-       [<ffffffff8028e369>] do_truncate+0x61/0x7f
-       [<ffffffff80296278>] get_write_access+0x3f/0x45
-       [<ffffffff802973c7>] may_open+0x193/0x1af
-       [<ffffffff80299869>] open_namei+0x2cb/0x63e
-       [<ffffffff8025718b>] rt_up_read+0x53/0x5c
-       [<ffffffff8056da59>] do_page_fault+0x479/0x7cc
-       [<ffffffff8028dce1>] do_filp_open+0x1c/0x38
-       [<ffffffff8056a4f9>] rt_spin_unlock+0x17/0x47
-       [<ffffffff8028da05>] get_unused_fd+0xf9/0x107
-       [<ffffffff8028dd45>] do_sys_open+0x48/0xd5
+-> #1 (jbd_handle){--..}:
+       [<ffffffff80251b16>] __lock_acquire+0xa72/0xc35
+       [<ffffffff802520b9>] lock_acquire+0x48/0x61
+       [<ffffffff80305797>] journal_start+0x108/0x12c
+       [<ffffffff803057b3>] journal_start+0x124/0x12c
+       [<ffffffff802f92e9>] ext3_prepare_write+0x42/0x17b
+       [<ffffffff80267185>] generic_file_buffered_write+0x298/0x646
+       [<ffffffff8023943e>] current_fs_time+0x3b/0x40
+       [<ffffffff802614a4>] add_preempt_count+0x14/0xe4
+       [<ffffffff80267882>] __generic_file_aio_write_nolock+0x34f/0x3b9
+       [<ffffffff8024ed2d>] put_lock_stats+0xe/0x2a
+       [<ffffffff80267938>] generic_file_aio_write+0x4c/0xc4
+       [<ffffffff8026794d>] generic_file_aio_write+0x61/0xc4
+       [<ffffffff802fce88>] ext3_orphan_del+0x53/0x19f
+       [<ffffffff802f56d8>] ext3_file_write+0x1c/0x9d
+       [<ffffffff8028eedd>] do_sync_write+0xcc/0x10f
+       [<ffffffff80246f8d>] autoremove_wake_function+0x0/0x2e
+       [<ffffffff8024ecee>] get_lock_stats+0xe/0x3f
+       [<ffffffff8024ed8a>] lock_release_holdtime+0x41/0x4f
+       [<ffffffff8024ed2d>] put_lock_stats+0xe/0x2a
+       [<ffffffff8028df5d>] sys_fchmod+0xa3/0xbd
+       [<ffffffff8056a6d7>] _mutex_unlock+0x17/0x20
+       [<ffffffff8028f679>] vfs_write+0xb6/0x148
+       [<ffffffff8028fc0d>] sys_write+0x48/0x74
        [<ffffffff8020950e>] system_call+0x7e/0x83
        [<ffffffffffffffff>] 0xffffffffffffffff
 
--> #0 (&ei->truncate_mutex){--..}:
-       [<ffffffff802503b9>] print_circular_bug_header+0xcc/0xd3
-       [<ffffffff80251a22>] __lock_acquire+0x96e/0xc35
-       [<ffffffff802520c9>] lock_acquire+0x48/0x61
-       [<ffffffff802f75e5>] ext3_get_blocks_handle+0x1a4/0x8f7
-       [<ffffffff8056a6d4>] _mutex_lock+0x26/0x52
-       [<ffffffff802f75e5>] ext3_get_blocks_handle+0x1a4/0x8f7
-       [<ffffffff802504b2>] find_usage_backwards+0xb0/0xd9
-       [<ffffffff802504b2>] find_usage_backwards+0xb0/0xd9
-       [<ffffffff80250d7c>] debug_check_no_locks_freed+0x11d/0x129
-       [<ffffffff80250c33>] trace_hardirqs_on_caller+0x115/0x138
-       [<ffffffff8024efdc>] lockdep_init_map+0xac/0x41f
-       [<ffffffff802614b4>] add_preempt_count+0x14/0xe4
-       [<ffffffff802f8035>] ext3_get_block+0xc2/0xe4
-       [<ffffffff802aeed3>] __block_prepare_write+0x195/0x442
-       [<ffffffff802f7f73>] ext3_get_block+0x0/0xe4
-       [<ffffffff802af19a>] block_prepare_write+0x1a/0x25
-       [<ffffffff802f93e9>] ext3_prepare_write+0xb2/0x17b
-       [<ffffffff802671b1>] generic_file_buffered_write+0x298/0x646
-       [<ffffffff8023944e>] current_fs_time+0x3b/0x40
-       [<ffffffff802614b4>] add_preempt_count+0x14/0xe4
-       [<ffffffff802678ae>] __generic_file_aio_write_nolock+0x34f/0x3b9
-       [<ffffffff8024ed3d>] put_lock_stats+0xe/0x2a
-       [<ffffffff80267964>] generic_file_aio_write+0x4c/0xc4
-       [<ffffffff80267979>] generic_file_aio_write+0x61/0xc4
-       [<ffffffff802fcf18>] ext3_orphan_del+0x53/0x19f
-       [<ffffffff802f5768>] ext3_file_write+0x1c/0x9d
-       [<ffffffff8028ef31>] do_sync_write+0xcc/0x10f
-       [<ffffffff80246f9c>] autoremove_wake_function+0x0/0x2e
-       [<ffffffff8024ecfe>] get_lock_stats+0xe/0x3f
-       [<ffffffff8024ed9a>] lock_release_holdtime+0x41/0x4f
-       [<ffffffff8024ed3d>] put_lock_stats+0xe/0x2a
-       [<ffffffff8028dfb1>] sys_fchmod+0xa3/0xbd
-       [<ffffffff8056a717>] _mutex_unlock+0x17/0x20
-       [<ffffffff8028f6cd>] vfs_write+0xb6/0x148
-       [<ffffffff8028fc61>] sys_write+0x48/0x74
+-> #0 (lock_page_0){--..}:
+       [<ffffffff802503a9>] print_circular_bug_header+0xcc/0xd3
+       [<ffffffff80251a12>] __lock_acquire+0x96e/0xc35
+       [<ffffffff802520b9>] lock_acquire+0x48/0x61
+       [<ffffffff80265df6>] add_to_page_cache_lru+0xe/0x23
+       [<ffffffff80265d05>] add_to_page_cache+0x1de/0x2c1
+       [<ffffffff80265df6>] add_to_page_cache_lru+0xe/0x23
+       [<ffffffff80266959>] find_or_create_page+0x4c/0x73
+       [<ffffffff802ae6c2>] __getblk+0x118/0x23c
+       [<ffffffff802f7d9a>] ext3_getblk+0xf2/0x23b
+       [<ffffffff80306337>] journal_dirty_metadata+0x1a8/0x1b3
+       [<ffffffff80301e3e>] __ext3_journal_dirty_metadata+0x1e/0x46
+       [<ffffffff802f6c63>] ext3_mark_iloc_dirty+0x293/0x30a
+       [<ffffffff802f70a1>] ext3_mark_inode_dirty+0x3f/0x48
+       [<ffffffff802f644e>] ext3_new_inode+0x8ff/0x943
+       [<ffffffff802f8c9c>] ext3_bread+0x11/0x84
+       [<ffffffff802fccc3>] ext3_mkdir+0xdd/0x24f
+       [<ffffffff80296893>] vfs_mkdir+0x6d/0xb5
+       [<ffffffff8029902e>] sys_mkdirat+0xa1/0xec
+       [<ffffffff80569f4d>] trace_hardirqs_on_thunk+0x3a/0x3c
+       [<ffffffff80250c23>] trace_hardirqs_on_caller+0x115/0x138
+       [<ffffffff80569f4d>] trace_hardirqs_on_thunk+0x3a/0x3c
        [<ffffffff8020950e>] system_call+0x7e/0x83
        [<ffffffffffffffff>] 0xffffffffffffffff
 
 other info that might help us debug this:
 
-2 locks held by mount/1296:
- #0:  (&inode->i_mutex){--..}, at: [<ffffffff80267964>] generic_file_aio_write+0x4c/0xc4
- #1:  (lock_page_0){--..}, at: [<ffffffff80267107>] generic_file_buffered_write+0x1ee/0x646
+2 locks held by mkdir/1662:
+ #0:  (&inode->i_mutex/1){--..}, at: [<ffffffff80297154>] lookup_create+0x26/0x8b
+ #1:  (jbd_handle){--..}, at: [<ffffffff80305797>] journal_start+0x108/0x12c
 
 stack backtrace:
 
 Call Trace:
- [<ffffffff8024ffbd>] print_circular_bug_tail+0x69/0x72
- [<ffffffff802503b9>] print_circular_bug_header+0xcc/0xd3
- [<ffffffff80251a22>] __lock_acquire+0x96e/0xc35
- [<ffffffff802520c9>] lock_acquire+0x48/0x61
- [<ffffffff802f75e5>] ext3_get_blocks_handle+0x1a4/0x8f7
- [<ffffffff8056a6d4>] _mutex_lock+0x26/0x52
- [<ffffffff802f75e5>] ext3_get_blocks_handle+0x1a4/0x8f7
- [<ffffffff802504b2>] find_usage_backwards+0xb0/0xd9
- [<ffffffff802504b2>] find_usage_backwards+0xb0/0xd9
- [<ffffffff80250d7c>] debug_check_no_locks_freed+0x11d/0x129
- [<ffffffff80250c33>] trace_hardirqs_on_caller+0x115/0x138
- [<ffffffff8024efdc>] lockdep_init_map+0xac/0x41f
- [<ffffffff802614b4>] add_preempt_count+0x14/0xe4
- [<ffffffff802f8035>] ext3_get_block+0xc2/0xe4
- [<ffffffff802aeed3>] __block_prepare_write+0x195/0x442
- [<ffffffff802f7f73>] ext3_get_block+0x0/0xe4
- [<ffffffff802af19a>] block_prepare_write+0x1a/0x25
- [<ffffffff802f93e9>] ext3_prepare_write+0xb2/0x17b
- [<ffffffff802671b1>] generic_file_buffered_write+0x298/0x646
- [<ffffffff8023944e>] current_fs_time+0x3b/0x40
- [<ffffffff802614b4>] add_preempt_count+0x14/0xe4
- [<ffffffff802678ae>] __generic_file_aio_write_nolock+0x34f/0x3b9
- [<ffffffff8024ed3d>] put_lock_stats+0xe/0x2a
- [<ffffffff80267964>] generic_file_aio_write+0x4c/0xc4
- [<ffffffff80267979>] generic_file_aio_write+0x61/0xc4
- [<ffffffff802fcf18>] ext3_orphan_del+0x53/0x19f
- [<ffffffff802f5768>] ext3_file_write+0x1c/0x9d
- [<ffffffff8028ef31>] do_sync_write+0xcc/0x10f
- [<ffffffff80246f9c>] autoremove_wake_function+0x0/0x2e
- [<ffffffff8024ecfe>] get_lock_stats+0xe/0x3f
- [<ffffffff8024ed9a>] lock_release_holdtime+0x41/0x4f
- [<ffffffff8024ed3d>] put_lock_stats+0xe/0x2a
- [<ffffffff8028dfb1>] sys_fchmod+0xa3/0xbd
- [<ffffffff8056a717>] _mutex_unlock+0x17/0x20
- [<ffffffff8028f6cd>] vfs_write+0xb6/0x148
- [<ffffffff8028fc61>] sys_write+0x48/0x74
+ [<ffffffff8024ffad>] print_circular_bug_tail+0x69/0x72
+ [<ffffffff802503a9>] print_circular_bug_header+0xcc/0xd3
+ [<ffffffff80251a12>] __lock_acquire+0x96e/0xc35
+ [<ffffffff802520b9>] lock_acquire+0x48/0x61
+ [<ffffffff80265df6>] add_to_page_cache_lru+0xe/0x23
+ [<ffffffff80265d05>] add_to_page_cache+0x1de/0x2c1
+ [<ffffffff80265df6>] add_to_page_cache_lru+0xe/0x23
+ [<ffffffff80266959>] find_or_create_page+0x4c/0x73
+ [<ffffffff802ae6c2>] __getblk+0x118/0x23c
+ [<ffffffff802f7d9a>] ext3_getblk+0xf2/0x23b
+ [<ffffffff80306337>] journal_dirty_metadata+0x1a8/0x1b3
+ [<ffffffff80301e3e>] __ext3_journal_dirty_metadata+0x1e/0x46
+ [<ffffffff802f6c63>] ext3_mark_iloc_dirty+0x293/0x30a
+ [<ffffffff802f70a1>] ext3_mark_inode_dirty+0x3f/0x48
+ [<ffffffff802f644e>] ext3_new_inode+0x8ff/0x943
+ [<ffffffff802f8c9c>] ext3_bread+0x11/0x84
+ [<ffffffff802fccc3>] ext3_mkdir+0xdd/0x24f
+ [<ffffffff80296893>] vfs_mkdir+0x6d/0xb5
+ [<ffffffff8029902e>] sys_mkdirat+0xa1/0xec
+ [<ffffffff80569f4d>] trace_hardirqs_on_thunk+0x3a/0x3c
+ [<ffffffff80250c23>] trace_hardirqs_on_caller+0x115/0x138
+ [<ffffffff80569f4d>] trace_hardirqs_on_thunk+0x3a/0x3c
  [<ffffffff8020950e>] system_call+0x7e/0x83
 
 INFO: lockdep is turned off.
