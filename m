@@ -1,44 +1,39 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: e2fsprogs v1.40.2 released
-Date: Sat, 14 Jul 2007 09:32:25 -0400
-Message-ID: <E1I9hjV-0001ph-Nd@candygram.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
+	features in larger inode
+Date: Sun, 15 Jul 2007 12:21:21 +0200
+Message-ID: <1184494881.5284.92.camel@lappy>
+References: <1183275482.4010.133.camel@localhost.localdomain>
+	 <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
+	 <20070713020529.1486491f.akpm@linux-foundation.org>
+	 <1184333621.20032.85.camel@twins>
+	 <20070713121259.20066d5b.akpm@linux-foundation.org>
+	 <20070713214746.GH23255@mami.zabbo.net>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>
+To: Zach Brown <zach.brown@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:55235 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756843AbXGNNc2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 Jul 2007 09:32:28 -0400
+Received: from pentafluge.infradead.org ([213.146.154.40]:36784 "EHLO
+	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757587AbXGOKVp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Jul 2007 06:21:45 -0400
+In-Reply-To: <20070713214746.GH23255@mami.zabbo.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Fri, 2007-07-13 at 14:47 -0700, Zach Brown wrote:
 
-E2fsprogs 1.40.2 has been released.  It can be downloaded from one of
-the following sites:
+> Peter, do you have any interest in seeing how far we can get
+> at tracking lock_page()?  I'm not holding my breath, but any little bit
+> would probably help.
 
-http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.40.2.tar.gz
+I ran headfirst into the fact the unlock_page() need not be called by
+the same task that did lock_page().
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/e2fsprogs-1.40.2.tar.gz
-
-Release notes follow...
-
-E2fsprogs 1.40.2 (July 12, 2007)
-================================
-
-A recent change to e2fsck_add_dir_info() to use tdb files to check
-filesystems with a very large number of filesystems had a typo which
-caused us to resize the wrong data structure.  This would cause a
-array overrun leading to malloc pointer corruptions and segfaults.
-Since we normally can very accurately predict how big the the dirinfo
-array needs to be, this bug only got triggered on very badly corrupted
-filesystems.
-
-Fix a bug in e2fsck which caused it to incorrectly salvange
-directories when the last entry's rec_len is bogusly too big.  This
-resulted in a nonsense filesystem corruption to be reported, and
-required a second run of e2fsck to fully fix up the directory.
-
-Update tune2fs man page to include more discussion of reserved blocks
-(Addresses Launchpad bug #47817)
-
-Update Turkish, Polish, Dutch, and Vietnamese PO files from the
-Translation Project
+Esp IO-completion interrupts love to unlock pages they did not lock
+themselves. Not at all sure that is fixable, it seems to be the nature
+of the async structure of the problem :-(
