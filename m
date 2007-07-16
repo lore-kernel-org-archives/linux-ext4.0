@@ -1,50 +1,156 @@
-From: Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
-	features in larger inode
-Date: Sun, 15 Jul 2007 22:13:20 +0200
-Message-ID: <1184530400.5284.111.camel@lappy>
-References: <1183275482.4010.133.camel@localhost.localdomain>
-	 <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
-	 <20070713020529.1486491f.akpm@linux-foundation.org>
-	 <1184333621.20032.85.camel@twins>
-	 <20070713121259.20066d5b.akpm@linux-foundation.org>
-	 <20070713214746.GH23255@mami.zabbo.net> <1184504543.5284.96.camel@lappy>
-	 <20070715111109.a2775ae4.akpm@linux-foundation.org>
-	 <1184527263.5284.110.camel@lappy>
-	 <20070715125921.87574a3a.akpm@linux-foundation.org>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/6][TAKE7] manpage for fallocate
+Date: Mon, 16 Jul 2007 11:02:35 +0530
+Message-ID: <20070716053235.GA10945@amitarora.in.ibm.com>
+References: <20070713123816.GA18000@amitarora.in.ibm.com> <20070713124601.GA22961@amitarora.in.ibm.com> <20070714082342.174830@gmx.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Zach Brown <zach.brown@oracle.com>, cmm@us.ibm.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>,
-	Ingo Molnar <mingo@elte.hu>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from canuck.infradead.org ([209.217.80.40]:33984 "EHLO
-	canuck.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751412AbXGOUOP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Jul 2007 16:14:15 -0400
-In-Reply-To: <20070715125921.87574a3a.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, mtk-manpages@gmx.net, dgc@sgi.com,
+	adilger@clusterfs.com, suparna@in.ibm.com, cmm@us.ibm.com,
+	tytso@mit.edu, xfs@oss.sgi.com
+To: Michael Kerrisk <michael.kerrisk@gmx.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070714082342.174830@gmx.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 2007-07-15 at 12:59 -0700, Andrew Morton wrote:
-> On Sun, 15 Jul 2007 21:21:03 +0200 Peter Zijlstra <peterz@infradead.org> wrote:
+On Sat, Jul 14, 2007 at 10:23:42AM +0200, Michael Kerrisk wrote:
+> [CC += mtk-manpages@gmx.net]
 > 
-> > Shows the current stacktrace where we violate the previously established
-> > locking order.
-> 
-> yup, but the lock_page() which we did inside truncate_mutex was a 
-> lock_page() against a different address_space: the blockdev mapping.
-> 
-> So this is OK - we'll never take truncate_mutex against the blockdev
-> mapping (it doesn't have one, for a start ;))
-> 
-> This is similar to the quite common case where we take inode A's
-> i_mutex inside inode B's i_mutex, which needs special lockdep annotations.
-> 
-> I think.  I haven't looked into this in detail.
+> Amit,
+ 
+Hi Michael,
 
-Right, I can make lock_page classes per address space. Lets see if this
-one goes away.
+> Thanks for this page.  I will endeavour to review it in 
+> the coming days.  In the meantime, the better address to CC
+> me on fot man pages stuff is mtk-manpages@gmx.net.
+
+Sure.
+
+BTW, this man page has changed a bit and the one in TAKE8 of fallocate
+patches is the latest one. You are copied on that too.
+I will forward that mail to "mtk-manpages@gmx.net" id also, so that you
+do not miss it. Thanks!
+
+--
+Regards,
+Amit Arora
+
+> 
+> Cheers,
+> 
+> Michael
+> 
+> > Following is the modified version of the manpage originally submitted by
+> > David Chinner. Please use `nroff -man fallocate.2 | less` to view.
+> > 
+> > This includes changes suggested by Heikki Orsila and Barry Naujok.
+> > 
+> > 
+> > .TH fallocate 2
+> > .SH NAME
+> > fallocate \- allocate or remove file space
+> > .SH SYNOPSIS
+> > .nf
+> > .B #include <fcntl.h>
+> > .PP
+> > .BI "long fallocate(int " fd ", int " mode ", loff_t " offset ", loff_t "
+> > len);
+> > .SH DESCRIPTION
+> > The
+> > .B fallocate
+> > syscall allows a user to directly manipulate the allocated disk space
+> > for the file referred to by
+> > .I fd
+> > for the byte range starting at
+> > .I offset
+> > and continuing for
+> > .I len
+> > bytes.
+> > The
+> > .I mode
+> > parameter determines the operation to be performed on the given range.
+> > Currently there are two modes:
+> > .TP
+> > .B FALLOC_ALLOCATE
+> > allocates and initialises to zero the disk space within the given range.
+> > After a successful call, subsequent writes are guaranteed not to fail
+> > because
+> > of lack of disk space.  If the size of the file is less than
+> > .IR offset + len ,
+> > then the file is increased to this size; otherwise the file size is left
+> > unchanged.
+> > .B FALLOC_ALLOCATE
+> > closely resembles
+> > .BR posix_fallocate (3)
+> > and is intended as a method of optimally implementing this function.
+> > .B FALLOC_ALLOCATE
+> > may allocate a larger range than that was specified.
+> > .TP
+> > .B FALLOC_RESV_SPACE
+> > provides the same functionality as
+> > .B FALLOC_ALLOCATE
+> > except it does not ever change the file size. This allows allocation
+> > of zero blocks beyond the end of file and is useful for optimising
+> > append workloads.
+> > .SH RETURN VALUE
+> > .B fallocate
+> > returns zero on success, or an error number on failure.
+> > Note that
+> > .I errno
+> > is not set.
+> > .SH ERRORS
+> > .TP
+> > .B EBADF
+> > .I fd
+> > is not a valid file descriptor, or is not opened for writing.
+> > .TP
+> > .B EFBIG
+> > .IR offset + len
+> > exceeds the maximum file size.
+> > .TP
+> > .B EINVAL
+> > .I offset
+> > was less than 0, or
+> > .I len
+> > was less than or equal to 0.
+> > .TP
+> > .B ENODEV
+> > .I fd
+> > does not refer to a regular file or a directory.
+> > .TP
+> > .B ENOSPC
+> > There is not enough space left on the device containing the file
+> > referred to by
+> > .IR fd .
+> > .TP
+> > .B ESPIPE
+> > .I fd
+> > refers to a pipe of file descriptor.
+> > .TP
+> > .B ENOSYS
+> > The filesystem underlying the file descriptor does not support this
+> > operation.
+> > .TP
+> > .B EINTR
+> > A signal was caught during execution
+> > .TP
+> > .B EIO
+> > An I/O error occurred while reading from or writing to a file system.
+> > .TP
+> > .B EOPNOTSUPP
+> > The mode is not supported on the file descriptor.
+> > .SH AVAILABILITY
+> > The
+> > .B fallocate
+> > system call is available since 2.6.XX
+> > .SH SEE ALSO
+> > .BR syscall (2),
+> > .BR posix_fadvise (3),
+> > .BR ftruncate (3).
+> 
+> -- 
+> Ist Ihr Browser Vista-kompatibel? Jetzt die neuesten 
+> Browser-Versionen downloaden: http://www.gmx.net/de/go/browser
