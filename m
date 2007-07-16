@@ -1,70 +1,47 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: Initial results of FLEX_BG feature.
-Date: Mon, 16 Jul 2007 07:27:18 -0500
-Message-ID: <20070716072718.339551e0@gara>
-References: <20070710112307.34c2ba5c@rx8>
-	<20070711041213.GH6417@schatzie.adilger.int>
-	<20070711003004.531c9307@naruto>
-	<20070711221425.GH19456@thunk.org>
-	<20070712100906.2e2afb9c@gara>
-	<20070716063457.GA5992@schatzie.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 patch queue updated
+Date: Mon, 16 Jul 2007 07:56:57 -0700
+Message-ID: <1184597817.4005.43.camel@localhost.localdomain>
+References: <1183275408.4010.124.camel@localhost.localdomain>
+	 <20070710163025.9db582f8.akpm@linux-foundation.org>
+	 <1184573972.4005.21.camel@localhost.localdomain>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:40323 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760263AbXGPM3E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2007 08:29:04 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6GCUHGw029548
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:30:17 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6GCT4f8557362
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:29:04 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6GCT3pa030410
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:29:03 -0400
-In-Reply-To: <20070716063457.GA5992@schatzie.adilger.int>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:56354 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757989AbXGPO5E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2007 10:57:04 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6GEv1Rt025540
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 10:57:01 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6GEuvMV258586
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:56:59 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6GEutX8009835
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:56:56 -0600
+In-Reply-To: <1184573972.4005.21.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 16 Jul 2007 00:34:57 -0600
-Andreas Dilger <adilger@clusterfs.com> wrote:
+I have updated ext4 patch queue.  The updated ext4 patch queue includes
+updated patches from Kalpak, Jose, and me.  It now addresses most of
+review comments from Andrew, including checkpatch.pl complains, add
+"diffstat"  etc. Also I noticed Amit has updated fallocate() patch
+series as well.
 
-> On Jul 12, 2007  10:09 -0500, Jose R. Santos wrote:
-> > @@ -1271,6 +1271,9 @@ static int ext4_check_descriptors (struc
-> >  
-> >  	ext4_debug ("Checking group descriptors");
-> >  
-> > +	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> > +		return 1;
-> > +
-> >  	for (i = 0; i < sbi->s_groups_count; i++)
-> >  	{
-> >  		if (i == sbi->s_groups_count - 1)
-> 
-> It looks pretty straight forward to just change this code to leave
-> first_block at s_first_data_block, and leave last_block at ext4_blocks_count()
-> if FLEX_BG is set.
+The patches that still need more attentions are:
 
-Sure.  I'll add that.
- 
-> Even with FLEX_BG we want to keep the group metadata within the bounds of
-> the filesystem.
+ext4-journal_chksum-2.6.20.patch
+jbd-stats-through-procfs_fix.patch
+and inode version patch series
 
-Eventually, I want to be able to export the groups per flex groups so
-that we can correctly calculate where the bounds of each block groups
-metadata should be.
 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Software Engineer
-> Cluster File Systems, Inc.
-> 
-
--JRS
+Thanks,
+Mingming Cao
