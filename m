@@ -1,61 +1,60 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] Update series file
-Date: Mon, 16 Jul 2007 09:25:14 -0700
-Message-ID: <1184603114.4005.48.camel@localhost.localdomain>
-References: <469B8CFF.8040303@linux.vnet.ibm.com>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: akpm@linux-foundation.org
+Subject: - jbd2-commit-fix-transaction-dropping.patch removed from -mm tree
+Date: Mon, 16 Jul 2007 13:48:07 -0700
+Message-ID: <200707162048.l6GKm71o001012@imap1.linux-foundation.org>
+To: jack@suse.cz, cebbert@redhat.com, dev@openvz.org,
+	linux-ext4@vger.kernel.org, stable@kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:49944 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756121AbXGPQZP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2007 12:25:15 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6GGPEFs030913
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 12:25:14 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6GGPEMY498964
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 12:25:14 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6GGPDxL010327
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 12:25:14 -0400
-In-Reply-To: <469B8CFF.8040303@linux.vnet.ibm.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:57996 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753281AbXGPUs3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2007 16:48:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-07-16 at 20:51 +0530, Aneesh Kumar K.V wrote:
-> I think the series file got updated wrongly
-> 
 
-Thanks for catching this! Corrected.
+The patch titled
+     jbd2 commit: fix transaction dropping
+has been removed from the -mm tree.  Its filename was
+     jbd2-commit-fix-transaction-dropping.patch
 
-Mingming
-> -aneesh
-> 
-> diff --git a/series b/series
-> index 183d72e..bf34353 100644
-> --- a/series
-> +++ b/series
-> @@ -2,14 +2,10 @@
-> 
->  # fallocate() syscall patches and ext4 fallocate() implementation
->  # Missing manpages
-> -ext4-fallocate-1-syscall_i386_amd64_ppc
-> -ext4-fallocate-2-syscall_s390
-> -ext4-fallocate-3-syscall_ia64
-> -ext4-fallocate-4-new_modes
-> -ext4-fallocate-5-ext4_support
-> -ext4-fallocate-6-uninit_write_support
-> -ext4-fallocate-7-ext4_new_modes
-> -ext4-fallocate-8-new-ondisk-format
-> +ext4-fallocate-2-syscall_i386_amd64_ppc
-> +ext4-fallocate-3-ext4_support
-> +ext4-fallocate-4-uninit_write_support
-> +ext4-fallocate-5-new-ondisk-format
-> 
->  # Add mount option to turn off extents
->  ext4_noextent_mount_opt.patch
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+------------------------------------------------------
+Subject: jbd2 commit: fix transaction dropping
+From: Jan Kara <jack@suse.cz>
+
+We have to check that also the second checkpoint list is non-empty before
+dropping the transaction.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: Chuck Ebbert <cebbert@redhat.com>
+Cc: Kirill Korotaev <dev@openvz.org>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd2/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff -puN fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping fs/jbd2/commit.c
+--- a/fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping
++++ a/fs/jbd2/commit.c
+@@ -896,7 +896,8 @@ restart_loop:
+ 	journal->j_committing_transaction = NULL;
+ 	spin_unlock(&journal->j_state_lock);
+ 
+-	if (commit_transaction->t_checkpoint_list == NULL) {
++	if (commit_transaction->t_checkpoint_list == NULL &&
++	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
+ 	} else {
+ 		if (journal->j_checkpoint_transactions == NULL) {
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+origin.patch
