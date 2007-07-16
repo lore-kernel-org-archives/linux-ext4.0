@@ -1,68 +1,50 @@
-From: akpm@linux-foundation.org
-Subject: [patch 196/268] ext4: fix deadlock in ext4_remount() and orphan list handling
-Date: Sun, 15 Jul 2007 23:41:09 -0700
-Message-ID: <200707160641.l6G6f9GU014978@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, sandeen@sandeen.net
-To: torvalds@linux-foundation.org
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 9][PATCH
+	4/5]Morecleanups:ext4_extent_compilation_fixes
+Date: Mon, 16 Jul 2007 00:19:46 -0700
+Message-ID: <1184570386.4005.13.camel@localhost.localdomain>
+References: <1183275531.4010.140.camel@localhost.localdomain>
+	 <20070710231837.2848ab83.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:45536 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753530AbXGPGss (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2007 02:48:48 -0400
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:54776 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752198AbXGPHUC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2007 03:20:02 -0400
+In-Reply-To: <20070710231837.2848ab83.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+On Tue, 2007-07-10 at 23:18 -0700, Andrew Morton wrote:
+> On Sun, 01 Jul 2007 03:38:51 -0400 Mingming Cao <cmm@us.ibm.com> wrote:
+> 
+> > Subject: [EXT4 set 9][PATCH 4/5]Morecleanups:ext4_extent_compilation_fixes
+> > Date: 	Sun, 01 Jul 2007 03:38:51 -0400
+> > Sender: linux-kernel-owner@vger.kernel.org
+> > Organization: IBM Linux Technology Center
+> > X-Mailer: Evolution 2.8.0 (2.8.0-33.el5) 
+> > 
+> > From: Dmitry Monakhov <dmonakhov@sw.ru>
+> > Subject: ext4: extent compilation fixes
+> 
+> I hope this patch series will hit git with nice titles like "ext4: extent
+> compilation fixes" and not funny ones like
+> "Morecleanups:ext4_extent_compilation_fixes".
+> 
+Sure, the changelog keep the nice tile "Subject: ext4: extent
+compilation fixes"
 
-ext4_orphan_add() and ext4_orphan_del() functions lock sb->s_lock with a
-transaction started with ext4_mark_recovery_complete() waits for a transaction
-holding sb->s_lock, thus leading to a possible deadlock.  At the moment we
-call ext4_mark_recovery_complete() from ext4_remount() we have done all the
-work needed for remounting and thus we are safe to drop sb->s_lock before we
-wait for transactions to commit.  Note that at this moment we are still
-guarded by s_umount lock against other remounts/umounts.
+> > Fix compilation with EXT_DEBUG, also fix leXX_to_cpu convertions.
+> 
+> "conversions".
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: Eric Sandeen <sandeen@sandeen.net>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Done.
 
- fs/ext4/super.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff -puN fs/ext4/super.c~ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling
-+++ a/fs/ext4/super.c
-@@ -2222,12 +2222,14 @@ static void ext4_mark_recovery_complete(
- 
- 	jbd2_journal_lock_updates(journal);
- 	jbd2_journal_flush(journal);
-+	lock_super(sb);
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		sb->s_dirt = 0;
- 		ext4_commit_super(sb, es, 1);
- 	}
-+	unlock_super(sb);
- 	jbd2_journal_unlock_updates(journal);
- }
- 
-@@ -2416,7 +2418,13 @@ static int ext4_remount (struct super_bl
- 			    (sbi->s_mount_state & EXT4_VALID_FS))
- 				es->s_state = cpu_to_le16(sbi->s_mount_state);
- 
-+			/*
-+			 * We have to unlock super so that we can wait for
-+			 * transactions.
-+			 */
-+			unlock_super(sb);
- 			ext4_mark_recovery_complete(sb, es);
-+			lock_super(sb);
- 		} else {
- 			__le32 ret;
- 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-_
+Thanks,
+Mingming
