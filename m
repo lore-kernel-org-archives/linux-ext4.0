@@ -1,47 +1,53 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: ext4 patch queue updated
-Date: Mon, 16 Jul 2007 07:56:57 -0700
-Message-ID: <1184597817.4005.43.camel@localhost.localdomain>
-References: <1183275408.4010.124.camel@localhost.localdomain>
-	 <20070710163025.9db582f8.akpm@linux-foundation.org>
-	 <1184573972.4005.21.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] Update series file
+Date: Mon, 16 Jul 2007 20:51:35 +0530
+Message-ID: <469B8CFF.8040303@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: tytso@mit.edu
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:56354 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757989AbXGPO5E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2007 10:57:04 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6GEv1Rt025540
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 10:57:01 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6GEuvMV258586
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:56:59 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6GEutX8009835
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2007 08:56:56 -0600
-In-Reply-To: <1184573972.4005.21.camel@localhost.localdomain>
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:56993 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754981AbXGPPV6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2007 11:21:58 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6GFievL294692
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 01:44:49 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6GFPANb126836
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 01:25:11 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6GFLcRm022794
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 01:21:38 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I have updated ext4 patch queue.  The updated ext4 patch queue includes
-updated patches from Kalpak, Jose, and me.  It now addresses most of
-review comments from Andrew, including checkpatch.pl complains, add
-"diffstat"  etc. Also I noticed Amit has updated fallocate() patch
-series as well.
+I think the series file got updated wrongly
 
-The patches that still need more attentions are:
+-aneesh
 
-ext4-journal_chksum-2.6.20.patch
-jbd-stats-through-procfs_fix.patch
-and inode version patch series
-
-
-Thanks,
-Mingming Cao
+diff --git a/series b/series
+index 183d72e..bf34353 100644
+--- a/series
++++ b/series
+@@ -2,14 +2,10 @@
+ 
+ # fallocate() syscall patches and ext4 fallocate() implementation
+ # Missing manpages
+-ext4-fallocate-1-syscall_i386_amd64_ppc
+-ext4-fallocate-2-syscall_s390
+-ext4-fallocate-3-syscall_ia64
+-ext4-fallocate-4-new_modes
+-ext4-fallocate-5-ext4_support
+-ext4-fallocate-6-uninit_write_support
+-ext4-fallocate-7-ext4_new_modes
+-ext4-fallocate-8-new-ondisk-format
++ext4-fallocate-2-syscall_i386_amd64_ppc
++ext4-fallocate-3-ext4_support
++ext4-fallocate-4-uninit_write_support
++ext4-fallocate-5-new-ondisk-format
+ 
+ # Add mount option to turn off extents
+ ext4_noextent_mount_opt.patch
