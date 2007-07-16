@@ -1,81 +1,101 @@
-From: akpm@linux-foundation.org
-Subject: - ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling.patch removed from -mm tree
-Date: Mon, 16 Jul 2007 13:57:05 -0700
-Message-ID: <200707162057.l6GKv5JT002154@imap1.linux-foundation.org>
-To: jack@suse.cz, linux-ext4@vger.kernel.org, sandeen@sandeen.net,
-	mm-commits@vger.kernel.org
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 5][PATCH 1/1] expand inode i_extra_isize to support
+	features in larger inode
+Date: Mon, 16 Jul 2007 16:52:03 -0700
+Message-ID: <1184629924.3836.5.camel@localhost.localdomain>
+References: <1183275482.4010.133.camel@localhost.localdomain>
+	 <20070710163247.5c8bfa3f.akpm@linux-foundation.org>
+	 <20070713020529.1486491f.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:60141 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759837AbXGPVRM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2007 17:17:12 -0400
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:46435 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761598AbXGPXwD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2007 19:52:03 -0400
+In-Reply-To: <20070713020529.1486491f.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Fri, 2007-07-13 at 02:05 -0700, Andrew Morton wrote:
+> On Tue, 10 Jul 2007 16:32:47 -0700 Andrew Morton <akpm@linux-foundation.org> wrote:
+> 
+> > > +	brelse(bh);
+> > > +	up_write(&EXT4_I(inode)->xattr_sem);
+> > > +	return error;
+> > > +}
+> > > +
+> > 
+> > We're doing GFP_KERNEL memory allocations while holding xattr_sem.  This
+> > can cause the VM to reenter the filesystem, perhaps taking i_mutex and/or
+> > i_truncate_sem and/or journal_start() (I forget whether this still
+> > happens).  Have we checked whether this can occur and if so, whether we are
+> > OK from a lock ranking POV?  Bear in mind that journalled-data mode is more
+> > complex in this regard.
+> 
+> I notice that everyone carefully avoided addressing this ;)
 
-The patch titled
-     ext4: fix deadlock in ext4_remount() and orphan list handling
-has been removed from the -mm tree.  Its filename was
-     ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling.patch
+I am not sure why we need GFP_KERNEL flag here. I think we should use
+GFP_NOFS instead. The following patch use the GFP_NOFS flag, as well as
+fixing memory leak issue introduced by the ext4 expand inode extra isize
+patch.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Fixing memory allocation issue with expand inode extra isize patch.
 
-------------------------------------------------------
-Subject: ext4: fix deadlock in ext4_remount() and orphan list handling
-From: Jan Kara <jack@suse.cz>
+- use GFP_NOFS instead of GFP_KERNEL flag for memory allocation
+- use kzalloc instead of kmalloc
+- fix memory leak in the success case, at the end of while loop.
 
-ext4_orphan_add() and ext4_orphan_del() functions lock sb->s_lock with a
-transaction started with ext4_mark_recovery_complete() waits for a transaction
-holding sb->s_lock, thus leading to a possible deadlock.  At the moment we
-call ext4_mark_recovery_complete() from ext4_remount() we have done all the
-work needed for remounting and thus we are safe to drop sb->s_lock before we
-wait for transactions to commit.  Note that at this moment we are still
-guarded by s_umount lock against other remounts/umounts.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: Eric Sandeen <sandeen@sandeen.net>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
+ fs/ext4/xattr.c |   16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
- fs/ext4/super.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff -puN fs/ext4/super.c~ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-fix-deadlock-in-ext4_remount-and-orphan-list-handling
-+++ a/fs/ext4/super.c
-@@ -2222,12 +2222,14 @@ static void ext4_mark_recovery_complete(
+Index: linux-2.6.22/fs/ext4/xattr.c
+===================================================================
+--- linux-2.6.22.orig/fs/ext4/xattr.c	2007-07-16 16:12:18.000000000 -0700
++++ linux-2.6.22/fs/ext4/xattr.c	2007-07-16 16:35:59.000000000 -0700
+@@ -1204,8 +1204,8 @@ retry:
+ 		unsigned int shift_bytes; /* No. of bytes to shift EAs by? */
+ 		unsigned int min_total_size = ~0U;
  
- 	jbd2_journal_lock_updates(journal);
- 	jbd2_journal_flush(journal);
-+	lock_super(sb);
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		sb->s_dirt = 0;
- 		ext4_commit_super(sb, es, 1);
+-		is = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_KERNEL);
+-		bs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_KERNEL);
++		is = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);
++		bs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_NOFS);
+ 		if (!is || !bs) {
+ 			error = -ENOMEM;
+ 			goto cleanup;
+@@ -1251,8 +1251,8 @@ retry:
+ 		size = le32_to_cpu(entry->e_value_size);
+ 		entry_size = EXT4_XATTR_LEN(entry->e_name_len);
+ 		i.name_index = entry->e_name_index,
+-		buffer = kmalloc(EXT4_XATTR_SIZE(size), GFP_KERNEL);
+-		b_entry_name = kmalloc(entry->e_name_len + 1, GFP_KERNEL);
++		buffer = kzalloc(EXT4_XATTR_SIZE(size), GFP_NOFS);
++		b_entry_name = kzalloc(entry->e_name_len + 1, GFP_NOFS);
+ 		if (!buffer || !b_entry_name) {
+ 			error = -ENOMEM;
+ 			goto cleanup;
+@@ -1302,7 +1302,15 @@ retry:
+ 		error = ext4_xattr_block_set(handle, inode, &i, bs);
+ 		if (error)
+ 			goto cleanup;
++		kfree(b_entry_name);
++		kfree(buffer);
++		brelse(is->iloc.bh);
++		kfree(is);
++		kfree(bs);
++		brelse(bh);
  	}
-+	unlock_super(sb);
- 	jbd2_journal_unlock_updates(journal);
- }
++	up_write(&EXT4_I(inode)->xattr_sem);
++        return 0;
  
-@@ -2416,7 +2418,13 @@ static int ext4_remount (struct super_bl
- 			    (sbi->s_mount_state & EXT4_VALID_FS))
- 				es->s_state = cpu_to_le16(sbi->s_mount_state);
- 
-+			/*
-+			 * We have to unlock super so that we can wait for
-+			 * transactions.
-+			 */
-+			unlock_super(sb);
- 			ext4_mark_recovery_complete(sb, es);
-+			lock_super(sb);
- 		} else {
- 			__le32 ret;
- 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-origin.patch
+ cleanup:
+ 	kfree(b_entry_name);
