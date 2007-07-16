@@ -1,44 +1,46 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Initial results of FLEX_BG feature.
-Date: Mon, 16 Jul 2007 00:34:57 -0600
-Message-ID: <20070716063457.GA5992@schatzie.adilger.int>
-References: <20070710112307.34c2ba5c@rx8> <20070711041213.GH6417@schatzie.adilger.int> <20070711003004.531c9307@naruto> <20070711221425.GH19456@thunk.org> <20070712100906.2e2afb9c@gara>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+From: akpm@linux-foundation.org
+Subject: [patch 003/268] jbd2 commit: fix transaction dropping
+Date: Sun, 15 Jul 2007 23:37:20 -0700
+Message-ID: <200707160637.l6G6bKPk013984@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, jack@suse.cz, cebbert@redhat.com,
+	dev@openvz.org, linux-ext4@vger.kernel.org, stable@kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:53946 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752921AbXGPGfA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2007 02:35:00 -0400
-Content-Disposition: inline
-In-Reply-To: <20070712100906.2e2afb9c@gara>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:57587 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752218AbXGPGhm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2007 02:37:42 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 12, 2007  10:09 -0500, Jose R. Santos wrote:
-> @@ -1271,6 +1271,9 @@ static int ext4_check_descriptors (struc
->  
->  	ext4_debug ("Checking group descriptors");
->  
-> +	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> +		return 1;
-> +
->  	for (i = 0; i < sbi->s_groups_count; i++)
->  	{
->  		if (i == sbi->s_groups_count - 1)
+From: Jan Kara <jack@suse.cz>
 
-It looks pretty straight forward to just change this code to leave
-first_block at s_first_data_block, and leave last_block at ext4_blocks_count()
-if FLEX_BG is set.
+We have to check that also the second checkpoint list is non-empty before
+dropping the transaction.
 
-Even with FLEX_BG we want to keep the group metadata within the bounds of
-the filesystem.
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: Chuck Ebbert <cebbert@redhat.com>
+Cc: Kirill Korotaev <dev@openvz.org>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+ fs/jbd2/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff -puN fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping fs/jbd2/commit.c
+--- a/fs/jbd2/commit.c~jbd2-commit-fix-transaction-dropping
++++ a/fs/jbd2/commit.c
+@@ -896,7 +896,8 @@ restart_loop:
+ 	journal->j_committing_transaction = NULL;
+ 	spin_unlock(&journal->j_state_lock);
+ 
+-	if (commit_transaction->t_checkpoint_list == NULL) {
++	if (commit_transaction->t_checkpoint_list == NULL &&
++	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
+ 	} else {
+ 		if (journal->j_checkpoint_transactions == NULL) {
+_
