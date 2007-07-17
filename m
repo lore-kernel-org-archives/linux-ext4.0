@@ -1,94 +1,91 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: ext4 patch queue updated
-Date: Tue, 17 Jul 2007 13:44:41 -0700
-Message-ID: <1184705081.3820.10.camel@localhost.localdomain>
-References: <1183275416.4010.125.camel@localhost.localdomain>
-	 <20070710163027.1bf7e94e.akpm@linux-foundation.org>
-	 <1184633395.3836.24.camel@localhost.localdomain>
-	 <1184666370.7063.13.camel@garfield.linsyssoft.com>
-	 <1184699323.3820.3.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] Endianness bugs in e2fsck
+Date: Tue, 17 Jul 2007 16:19:45 -0500
+Message-ID: <469D3271.8050908@redhat.com>
+References: <1182331988.9772.7.camel@garfield>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	TheodoreTso <tytso@mit.edu>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Kalpak Shah <kalpak@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:37984 "EHLO e5.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:43544 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758313AbXGQUoj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Jul 2007 16:44:39 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6HKic2w030930
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 16:44:38 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6HKid2t389012
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 16:44:39 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6HKiclg024198
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 16:44:39 -0400
-In-Reply-To: <1184699323.3820.3.camel@localhost.localdomain>
+	id S1752085AbXGQVY6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Jul 2007 17:24:58 -0400
+In-Reply-To: <1182331988.9772.7.camel@garfield>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+Kalpak Shah wrote:
+...
 
-The ext4 patch queue has been updated with updates to address latest
-review comments.  http://repo.or.cz/w/ext4-patch-queue.git
+> Index: e2fsprogs-1.39/lib/ext2fs/inode.c
+> ===================================================================
+> --- e2fsprogs-1.39.orig/lib/ext2fs/inode.c      2007-06-19 22:31:21.000000000 -0700
+> +++ e2fsprogs-1.39/lib/ext2fs/inode.c   2007-06-20 01:06:18.017788976 -0700
+> @@ -471,6 +471,7 @@ errcode_t ext2fs_get_next_inode_full(ext
+>                 scan->bytes_left -= scan->inode_size - extra_bytes;
+> 
+>  #ifdef EXT2FS_ENABLE_SWAPFS
+> +               memset(inode, 0, bufsize);
+>                 if ((scan->fs->flags & EXT2_FLAG_SWAP_BYTES) ||
+>                     (scan->fs->flags & EXT2_FLAG_SWAP_BYTES_READ))
+>                         ext2fs_swap_inode_full(scan->fs,
+> @@ -485,6 +486,7 @@ errcode_t ext2fs_get_next_inode_full(ext
+>                 scan->scan_flags &= ~EXT2_SF_BAD_EXTRA_BYTES;
+>         } else {
+>  #ifdef EXT2FS_ENABLE_SWAPFS
+> +               memset(inode, 0, bufsize);
+>                 if ((scan->fs->flags & EXT2_FLAG_SWAP_BYTES) ||
+>                     (scan->fs->flags & EXT2_FLAG_SWAP_BYTES_READ))
+>                         ext2fs_swap_inode_full(scan->fs,
 
-The series is being reordered: the patches still has outstanding
-comments are moved to the end of the series. Per our discussion on
-Monday, tThose patches are ready for submission are
 
-# Rebased the patches to 2.6.22
+This is making "make check" fail for me on ppc64:
+(git-bisect claims 1ed49d2c2ab7fdb02158d5feeb86288ece7eb17c is the first
+bad commit...)  Any ideas?  Looking into it now.
 
-# fallocate() syscall patches and ext4 fallocate() implementation
-# Missing manpages
-#ext4-fallocate-1-man-page
-ext4-fallocate-2-syscall_i386_amd64_ppc
-ext4-fallocate-3-ext4_support
-ext4-fallocate-4-uninit_write_support
-ext4-fallocate-5-new-ondisk-format
+--- ./f_clear_xattr/expect.1    2007-06-30 12:58:35.000000000 +0000
++++ f_clear_xattr.1.log 2007-07-17 19:48:17.000000000 +0000
+@@ -1,10 +1,10 @@
+ Pass 1: Checking inodes, blocks, and sizes
+-Inode 14, i_blocks is 2, should be 0.  Fix? yes
+-
+ Inode 12, i_blocks is 4, should be 2.  Fix? yes
 
-# Add mount option to turn off extents
-ext4_noextent_mount_opt.patch
+ Inode 13, i_blocks is 2, should be 0.  Fix? yes
 
-# Mounted ext4dev fs with extents by default for testing purpose,
-# for Ext4 product release, extents mount option
-# will be turn on only if the fs has EXTENTS feature on
-ext4_extents_on_by_default.patch
++Inode 14, i_blocks is 2, should be 0.  Fix? yes
++
+ Inode 15, i_blocks is 4, should be 2.  Fix? yes
 
-# Propagate inode flags
-ext4-propagate_flags.patch
+ Pass 2: Checking directory structure
+@@ -17,6 +17,9 @@
+ i_file_acl for inode 14 (/symlink) is 22, should be zero.
+ Clear? yes
 
-# Add extent sanity checks
-ext4-extent-sanity-checks.patch
++Symlink /symlink (inode #14) is invalid.
++Clear? yes
++
+ i_file_acl for inode 15 (/long-symlink) is 23, should be zero.
+ Clear? yes
 
-# Bug fix:set 64bit JBD2 feature on >32bit ext4 fs
-ext4_set_jbd2_64bit_feature.patch
+@@ -34,5 +37,5 @@
 
-# Fix: Rename CONFIG_JBD_DEBUG to CONFIG_JBD2_DEBUG
-jbd2_config_jbd2_debug_fix.patch
 
-# Export jbd2-debug via debugfs
-jbd2_move_jbd2_debug_to_debugfs.patch
-
-# Nanosecond timestamp support
-ext4-nanosecond-patch
-ext4_negative_timestamp_handle_fix.patch
-
-# New patch to expand inode i_extra_isize to support features
-# in high part of inode (>128 bytes)
-ext4_expand_inode_extra_isize.patch
-
-# Remove 32000 subdirs limit. 
-ext4_remove_subdirs_limit.patch
-
-# Various Cleanups
-ext4-zero_user_page.patch
-is_power_of_2-ext4-superc.patch
-ext4-remove-extra-is_rdonly-check.patch
-ext4_extent_compilation_fixes.patch
-ext4_extent_macros_cleanup.patch
-
-#JBD->JBD2 naming cleanups
+ test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+-test_filesys: 15/16 files (0.0% non-contiguous), 22/100 blocks
++test_filesys: 14/16 files (0.0% non-contiguous), 22/100 blocks
+ Exit status is 1
+--- ./f_clear_xattr/expect.2    2007-06-30 12:58:35.000000000 +0000
++++ f_clear_xattr.2.log 2007-07-17 19:48:17.000000000 +0000
+@@ -3,5 +3,5 @@
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+-test_filesys: 15/16 files (0.0% non-contiguous), 22/100 blocks
++test_filesys: 14/16 files (0.0% non-contiguous), 22/100 blocks
+ Exit status is 0
