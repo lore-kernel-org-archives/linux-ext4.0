@@ -1,72 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: build warning in e2fsprogs...
-Date: Tue, 17 Jul 2007 13:47:46 -0500
-Message-ID: <469D0ED2.2070101@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [EXT4 set 3][PATCH 1/1] ext4 nanosecond timestamp
+Date: Tue, 17 Jul 2007 12:08:43 -0700
+Message-ID: <1184699323.3820.3.camel@localhost.localdomain>
+References: <1183275416.4010.125.camel@localhost.localdomain>
+	 <20070710163027.1bf7e94e.akpm@linux-foundation.org>
+	 <1184633395.3836.24.camel@localhost.localdomain>
+	 <1184666370.7063.13.camel@garfield.linsyssoft.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38785 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754419AbXGQSwz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Jul 2007 14:52:55 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l6HIqsYq019590
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 14:52:54 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l6HIqrOE019349
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 14:52:53 -0400
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id l6HIqr7n012570
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jul 2007 14:52:53 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Kalpak Shah <kalpak@clusterfs.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1184666370.7063.13.camel@garfield.linsyssoft.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-on x86_64:
+On Tue, 2007-07-17 at 15:29 +0530, Kalpak Shah wrote:
+> On Mon, 2007-07-16 at 17:49 -0700, Mingming Cao wrote:
+> > On Tue, 2007-07-10 at 16:30 -0700, Andrew Morton wrote:
+> > > On Sun, 01 Jul 2007 03:36:56 -0400
+> > > Mingming Cao <cmm@us.ibm.com> wrote:
+> > > > +static inline __le32 ext4_encode_extra_time(struct timespec *time)
+> > > > +{
+> > > > +       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+> > > > +			   time->tv_sec >> 32 : 0) |
+> > > > +			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
+> > > > +}
+> > > > +
+> > > > +static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+> > > > +{
+> > > > +       if (sizeof(time->tv_sec) > 4)
+> > > > +	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+> > > > +			       << 32;
+> > > > +       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
+> > > > +}
+> > > 
+> > > Consider uninlining these functions.
+> > > 
+> > I got compile warining after apply Kalpal's update nanosecond patch,
+> > which makes these two function inline. It complains these functions are
+> > defined but not used. It's being used only in the following
+> > micros(EXT4_INODE_SET_XTIME etc).  So if the .c file included the
+> > ext4_fs.h but not using the micros, the compile will think these two
+> > functions are not used.
+> 
+> The compile warnings were introduced because the functions were
+> uninlined. So we can either keep these functions inlined or consider
+> adding a "__used" attribute to these two functions. 
+> 
+okay for now I keep these functions inlined. 
 
-badblocks.c:995: warning: comparison is always false due to limited range of data type
-badblocks.c:1008: warning: comparison is always false due to limited range of data type
+> Thanks,
+> Kalpak.
+> 
 
-due to this sort of thing:
-
-    if (*tmp || errno ||
-        (last_block == ULONG_MAX && errno == ERANGE)) {
-            com_err (program_name, 0, _("invalid blocks count - %s"),         
-                     argv[optind]);
-            exit (1);
-
-last_block (and from_count) are both blk_t, or __u32... shouldn't 
-this be UINT_MAX instead?  (though I guess at some point it *will* be 64
-bits... but for now... how about the following patch...)
-
--Eric
-
------
-
-Fix build warning on x86_64 due to comparison of __u32 and ULONG_MAX
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
-Index: e2fsprogs-1.40.2/misc/badblocks.c
-===================================================================
---- e2fsprogs-1.40.2.orig/misc/badblocks.c
-+++ e2fsprogs-1.40.2/misc/badblocks.c
-@@ -992,7 +992,7 @@ int main (int argc, char ** argv)
- 		last_block = strtoul (argv[optind], &tmp, 0);
- 		printf("last_block = %d (%s)\n", last_block, argv[optind]);
- 		if (*tmp || errno || 
--		    (last_block == ULONG_MAX && errno == ERANGE)) {
-+		    (last_block == UINT_MAX && errno == ERANGE)) {
- 			com_err (program_name, 0, _("invalid blocks count - %s"),
- 				 argv[optind]);
- 			exit (1);
-@@ -1005,7 +1005,7 @@ int main (int argc, char ** argv)
- 		from_count = strtoul (argv[optind], &tmp, 0);
- 		printf("from_count = %d\n", from_count);
- 		if (*tmp || errno ||
--		    (from_count == ULONG_MAX && errno == ERANGE)) {
-+		    (from_count == UINT_MAX && errno == ERANGE)) {
- 			com_err (program_name, 0, _("invalid starting block - %s"),
- 				 argv[optind]);
- 			exit (1);
