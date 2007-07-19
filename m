@@ -1,49 +1,27 @@
-From: Zephiris <zephiris@gmail.com>
-Subject: e2fsprogs-1.39-tyt3 and ext4 question
-Date: Thu, 19 Jul 2007 03:55:10 -0700
-Message-ID: <f7nfun$lcs$1@sea.gmane.org>
+From: "Yan Zheng" <ukernel@gmail.com>
+Subject: Why max_debt isn't used in ext4's find_group_orlov(...) ?
+Date: Thu, 19 Jul 2007 21:00:46 +0800
+Message-ID: <3d0408630707190600r3c630db8h3dcc6550e93cfb27@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:45311 "EHLO ciao.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752870AbXGSLAL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jul 2007 07:00:11 -0400
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1IBTjm-0003VZ-3F
-	for linux-ext4@vger.kernel.org; Thu, 19 Jul 2007 13:00:02 +0200
-Received: from c-71-193-243-251.hsd1.or.comcast.net ([71.193.243.251])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Jul 2007 13:00:02 +0200
-Received: from zephiris by c-71-193-243-251.hsd1.or.comcast.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Jul 2007 13:00:02 +0200
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I've searched the lists and only saw a previous reference to possibly
-harmless 'make check' failures on this version, so I'll just ask.
-I've been trying to get ext4 running for some time,  but it appears to be
-working normally lately. e4defrag and mballoc patches also appear to be
-working fine (everything against 2.6.22.1). But that version of e2fsprogs
-(1.39-tyt3), even with the last round of patches against it, appears to
-generate many bogus errors when checking the filesystem with 'fsck -fn'.
-While using 'data=journal' and other things should reduce the chance of
-needing a fsck, it makes me worried.
+Hi all
 
-Is there anything at current that can get around this all, or verify that
-the errors it's coming up with are indeed bogus (they certainly look it,
-hundreds of errors at block 0 or -1, for instance)?
+max_debt is used in ext2's find_group_orlov .  In ext4's
+find_group_orlov, max_debt is only computed, but not used.  I wonder
+whether it's a typo,  Can anyone give me a answer? The kernel source I
+read is 2.6.22.
 
-For previous attempts at ext4, running that version of e2fsprogs would come
-up with legitimate looking errors, then 'fix' it. But even rebooting
-immediately afterwards into emergency read-only mode would generate the
-same errors again. Multiple attempts to fix the errors (with probable
-legitimate corruption on a few files from a bad attempt at getting e4defrag
-working) effectively just shredded the filesystem. 
+Thanks in advance.
 
-Ext4 is appearing rather stable right now, which is also making me think
-it's fsck's fault.
+----------------
+Best Regards
+
+YZ
