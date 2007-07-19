@@ -1,58 +1,87 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: Why max_debt isn't used in ext4's find_group_orlov(...) ?
-Date: Thu, 19 Jul 2007 20:28:20 +0530
-Message-ID: <1184857100.4001.8.camel@garfield.linsyssoft.com>
-References: <3d0408630707190600r3c630db8h3dcc6550e93cfb27@mail.gmail.com>
+From: Badari Pulavarty <pbadari@us.ibm.com>
+Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
+Date: Thu, 19 Jul 2007 08:18:02 -0700
+Message-ID: <1184858282.18188.83.camel@dyn9047017100.beaverton.ibm.com>
+References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
+	 <20070718201808.ccc7bdf5.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Yan Zheng <ukernel@gmail.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:54085 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S938879AbXGSO5L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jul 2007 10:57:11 -0400
-In-Reply-To: <3d0408630707190600r3c630db8h3dcc6550e93cfb27@mail.gmail.com>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:40309 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754667AbXGSPQW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jul 2007 11:16:22 -0400
+In-Reply-To: <20070718201808.ccc7bdf5.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-07-19 at 21:00 +0800, Yan Zheng wrote:
-> Hi all
+On Wed, 2007-07-18 at 20:18 -0700, Andrew Morton wrote:
+> On Fri, 13 Jul 2007 18:36:54 -0700 Badari Pulavarty <pbadari@us.ibm.com> wrote:
 > 
-> max_debt is used in ext2's find_group_orlov .  In ext4's
-> find_group_orlov, max_debt is only computed, but not used.  I wonder
-> whether it's a typo,  Can anyone give me a answer? The kernel source I
-> read is 2.6.22.
+> > More statfs() improvements for ext2. ext2 already maintains
+> > percpu counters for free blocks and inodes. Derive free
+> > block count and inode count by summing up percpu counters,
+> > instead of counting up all the groups in the filesystem
+> > each time.
+> > 
+> 
+> hm, another speedup patch with no measurements which demonstrate its
+> benefit.
 
-I think you are right, max_debt is currently unused in the current
-ext3/4 code. In ext2 max_debt is used along with s_debts (in struct
-ext2_sb_info) to decide inode allocations. s_debts is no longer present
-in ext3/4. 
+In my setups (4 & 8-way), I didn't measure any significant performance
+improvements (in any reasonable workload). I see some decent
+improvements on cooked-up (1 million stats) tests :(
+> 
+> > 
+> > Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+> > Acked-by: Andreas Dilger <adilger@clusterfs.com>
+> > 
+> >  fs/ext2/super.c |    4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > Index: linux-2.6.22/fs/ext2/super.c
+> > ===================================================================
+> > --- linux-2.6.22.orig/fs/ext2/super.c	2007-07-13 20:06:38.000000000 -0700
+> > +++ linux-2.6.22/fs/ext2/super.c	2007-07-13 20:06:51.000000000 -0700
+> > @@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
+> >  	buf->f_type = EXT2_SUPER_MAGIC;
+> >  	buf->f_bsize = sb->s_blocksize;
+> >  	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
+> > -	buf->f_bfree = ext2_count_free_blocks(sb);
+> > + 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
+> >  	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+> >  	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+> >  		buf->f_bavail = 0;
+> >  	buf->f_files = le32_to_cpu(es->s_inodes_count);
+> > -	buf->f_ffree = ext2_count_free_inodes(sb);
+> > + 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
+> >  	buf->f_namelen = EXT2_NAME_LEN;
+> >  	fsid = le64_to_cpup((void *)es->s_uuid) ^
+> >  	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+> > 
+> 
+> Well there's a tradeoff here.  At large CPU counts, percpu_counter_sum()
+> becomes quite expensive - it takes a global lock and then goes off fishing
+> in every CPU's percpu_alloced memory.
+> 
+> So there is some value of (num_online_cpus / sb->s_groups_count) at which
+> this change becomes a loss.  Where does that value lie?
 
-You can find the reason for removing s_debts here:
-http://osdir.com/ml/file-systems.ext2.devel/2004-09/msg00027.html
+Yes. I debated long time whether I should submit this or not - due to
+very reason. Old code wasn't holding any locks. I don't have any high
+count CPU machine (>8way) with me. I will request for time on one.
 
-Basically use of s_debts was unsafe since it performed unlocked byte
-increment/decrement on words which may be being accessed simultaneously
-on other CPUs and since it was a dynamic in-memory table, it required
-extension during online resize which needed proper locking.
+> 
+> Bear in mind that the global lock in percpu_counter_sum() will tilt the
+> scales quite a bit.
 
-Until s_debts is added again, I think the code relating to max_debts
-should be removed?
-
+Noticed that too. I added WARN_ON() to see if percpu sum doesn't match
+computed sum. I saw few stacks in a 24 hour run of fsx runs. 
 
 Thanks,
-Kalpak.
-
-> 
-> Thanks in advance.
-> 
-> ----------------
-> Best Regards
-> 
-> YZ
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Badari
