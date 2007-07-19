@@ -1,66 +1,38 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
-Date: Wed, 18 Jul 2007 20:18:08 -0700
-Message-ID: <20070718201808.ccc7bdf5.akpm@linux-foundation.org>
-References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
+From: Mark Fasheh <mark.fasheh@oracle.com>
+Subject: Re: [PATCH 1/5][TAKE8] manpage for fallocate
+Date: Wed, 18 Jul 2007 20:41:55 -0700
+Message-ID: <20070719034155.GE32734@ca-server1.us.oracle.com>
+References: <20070713184125.GA12156@amitarora.in.ibm.com> <20070713184625.GB12156@amitarora.in.ibm.com>
+Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Badari Pulavarty <pbadari@us.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934863AbXGSDSk@vger.kernel.org>
-In-Reply-To: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, tytso@mit.edu,
+	cmm@us.ibm.com, suparna@in.ibm.com, adilger@clusterfs.com,
+	dgc@sgi.com, michael.kerrisk@gmx.net
+To: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20070713184625.GB12156@amitarora.in.ibm.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 13 Jul 2007 18:36:54 -0700 Badari Pulavarty <pbadari@us.ibm.com> wrote:
+On Sat, Jul 14, 2007 at 12:16:25AM +0530, Amit K. Arora wrote:
+> After a successful call, subsequent writes are guaranteed not to fail because
+> of lack of disk space.
+  
+If a write to an unwritten region requires a node split, that could result
+in the allocation of new meta data which obviously could fail if the disk is
+truly full.
 
-> More statfs() improvements for ext2. ext2 already maintains
-> percpu counters for free blocks and inodes. Derive free
-> block count and inode count by summing up percpu counters,
-> instead of counting up all the groups in the filesystem
-> each time.
-> 
+Granted that's unlikely to happen but maybe we should be conservative and
+say something like:
 
-hm, another speedup patch with no measurements which demonstrate its
-benefit.
+"After a successful call, subsequent writes are guaranteed to never require
+allocation of file data." ?
+        --Mark
 
-> 
-> Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
-> Acked-by: Andreas Dilger <adilger@clusterfs.com>
-> 
->  fs/ext2/super.c |    4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> Index: linux-2.6.22/fs/ext2/super.c
-> ===================================================================
-> --- linux-2.6.22.orig/fs/ext2/super.c	2007-07-13 20:06:38.000000000 -0700
-> +++ linux-2.6.22/fs/ext2/super.c	2007-07-13 20:06:51.000000000 -0700
-> @@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
->  	buf->f_type = EXT2_SUPER_MAGIC;
->  	buf->f_bsize = sb->s_blocksize;
->  	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
-> -	buf->f_bfree = ext2_count_free_blocks(sb);
-> + 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
->  	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
->  	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
->  		buf->f_bavail = 0;
->  	buf->f_files = le32_to_cpu(es->s_inodes_count);
-> -	buf->f_ffree = ext2_count_free_inodes(sb);
-> + 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
->  	buf->f_namelen = EXT2_NAME_LEN;
->  	fsid = le64_to_cpup((void *)es->s_uuid) ^
->  	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
-> 
-
-Well there's a tradeoff here.  At large CPU counts, percpu_counter_sum()
-becomes quite expensive - it takes a global lock and then goes off fishing
-in every CPU's percpu_alloced memory.
-
-So there is some value of (num_online_cpus / sb->s_groups_count) at which
-this change becomes a loss.  Where does that value lie?
-
-Bear in mind that the global lock in percpu_counter_sum() will tilt the
-scales quite a bit.
+--
+Mark Fasheh
+Senior Software Developer, Oracle
+mark.fasheh@oracle.com
