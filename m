@@ -1,41 +1,29 @@
-From: Tim Bird <tim.bird@am.sony.com>
-Subject: Re: e2fsck bogus error report on orphan-list
-Date: Thu, 19 Jul 2007 14:05:44 -0700
-Message-ID: <469FD228.9070908@am.sony.com>
-References: <873azkl7x4.wl%ryoichi@me.sony.co.jp> <20070719165510.GB14815@thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Take 2]e2fsprogs: Undo I/O manager
+Date: Thu, 19 Jul 2007 17:20:27 -0400
+Message-ID: <20070719212027.GB26752@thunk.org>
+References: <11848678881380-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Ryoichi.Kato@jp.sony.com, linux-ext4@vger.kernel.org,
-	sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from outbound-sin.frontbridge.com ([207.46.51.80]:47065 "EHLO
-	outbound2-sin-R.bigfish.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757117AbXGSVB2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jul 2007 17:01:28 -0400
-In-Reply-To: <20070719165510.GB14815@thunk.org>
+Received: from THUNK.ORG ([69.25.196.29]:56628 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761882AbXGSVUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jul 2007 17:20:30 -0400
+Content-Disposition: inline
+In-Reply-To: <11848678881380-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Fri, Jul 20, 2007 at 12:39:19AM +0900, Ryoichi.Kato@jp.sony.com wrote:
->> The following sequence produces bogus e2fsck error report:
->> "/dev/XXX: Inodes that were part of a corrupted orphan linked list found."
->>
->>    1. Delete a file in an ext3 filesystem in early 1970
-> 
-> Dare I ask *why* the system clock was set in the 1970's?  Umm... don't
-> do that.
+On Thu, Jul 19, 2007 at 11:28:06PM +0530, Aneesh Kumar K.V wrote:
+> This patch fixes some bugs found during testing of the large
+> inode migration patches.
 
-It is not uncommon for embedded boards to omit battery backing
-on the RTC, so they always boot with a bogus (start-of-epoch) time.
+How are you testing it?  I notice you haven't wired these into any of
+the existing e2fsprogs programs.
 
- -- Tim
+Regards,
 
-=============================
-Tim Bird
-Architecture Group Chair, CE Linux Forum
-Senior Staff Engineer, Sony Corporation of America
-=============================
+						- Ted
