@@ -1,80 +1,66 @@
-From: akpm@linux-foundation.org
-Subject: - ext4-remove-extra-is_rdonly-check.patch removed from -mm tree
-Date: Wed, 18 Jul 2007 11:52:52 -0700
-Message-ID: <200707181852.l6IIqqdg023718@imap1.linux-foundation.org>
-To: haveblue@us.ibm.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:57475 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934613AbXGRSzL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Jul 2007 14:55:11 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
+Date: Wed, 18 Jul 2007 20:18:08 -0700
+Message-ID: <20070718201808.ccc7bdf5.akpm@linux-foundation.org>
+References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	lkml <linux-kernel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Badari Pulavarty <pbadari@us.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934863AbXGSDSk@vger.kernel.org>
+In-Reply-To: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Fri, 13 Jul 2007 18:36:54 -0700 Badari Pulavarty <pbadari@us.ibm.com> wrote:
 
-The patch titled
-     ext4: remove extra IS_RDONLY() check
-has been removed from the -mm tree.  Its filename was
-     ext4-remove-extra-is_rdonly-check.patch
+> More statfs() improvements for ext2. ext2 already maintains
+> percpu counters for free blocks and inodes. Derive free
+> block count and inode count by summing up percpu counters,
+> instead of counting up all the groups in the filesystem
+> each time.
+> 
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+hm, another speedup patch with no measurements which demonstrate its
+benefit.
 
-------------------------------------------------------
-Subject: ext4: remove extra IS_RDONLY() check
-From: Dave Hansen <haveblue@us.ibm.com>
+> 
+> Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+> Acked-by: Andreas Dilger <adilger@clusterfs.com>
+> 
+>  fs/ext2/super.c |    4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> Index: linux-2.6.22/fs/ext2/super.c
+> ===================================================================
+> --- linux-2.6.22.orig/fs/ext2/super.c	2007-07-13 20:06:38.000000000 -0700
+> +++ linux-2.6.22/fs/ext2/super.c	2007-07-13 20:06:51.000000000 -0700
+> @@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
+>  	buf->f_type = EXT2_SUPER_MAGIC;
+>  	buf->f_bsize = sb->s_blocksize;
+>  	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
+> -	buf->f_bfree = ext2_count_free_blocks(sb);
+> + 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
+>  	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+>  	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+>  		buf->f_bavail = 0;
+>  	buf->f_files = le32_to_cpu(es->s_inodes_count);
+> -	buf->f_ffree = ext2_count_free_inodes(sb);
+> + 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
+>  	buf->f_namelen = EXT2_NAME_LEN;
+>  	fsid = le64_to_cpup((void *)es->s_uuid) ^
+>  	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+> 
 
-ext4_change_inode_journal_flag() is only called from one location:
-ext4_ioctl(EXT3_IOC_SETFLAGS).  That ioctl case already has a IS_RDONLY()
-call in it so this one is superfluous.
+Well there's a tradeoff here.  At large CPU counts, percpu_counter_sum()
+becomes quite expensive - it takes a global lock and then goes off fishing
+in every CPU's percpu_alloced memory.
 
-Signed-off-by: Dave Hansen <haveblue@us.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+So there is some value of (num_online_cpus / sb->s_groups_count) at which
+this change becomes a loss.  Where does that value lie?
 
- fs/ext4/inode.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff -puN fs/ext4/inode.c~ext4-remove-extra-is_rdonly-check fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext4-remove-extra-is_rdonly-check
-+++ a/fs/ext4/inode.c
-@@ -3382,7 +3382,7 @@ int ext4_change_inode_journal_flag(struc
- 	 */
- 
- 	journal = EXT4_JOURNAL(inode);
--	if (is_journal_aborted(journal) || IS_RDONLY(inode))
-+	if (is_journal_aborted(journal))
- 		return -EROFS;
- 
- 	jbd2_journal_lock_updates(journal);
-_
-
-Patches currently in -mm which might be from haveblue@us.ibm.com are
-
-origin.patch
-cpuset-zero-malloc-revert-the-old-cpuset-fix.patch
-containersv10-basic-container-framework.patch
-containersv10-basic-container-framework-fix.patch
-containersv10-example-cpu-accounting-subsystem.patch
-containersv10-example-cpu-accounting-subsystem-fix.patch
-containersv10-add-tasks-file-interface.patch
-containersv10-add-tasks-file-interface-fix.patch
-containersv10-add-fork-exit-hooks.patch
-containersv10-add-fork-exit-hooks-fix.patch
-containersv10-add-container_clone-interface.patch
-containersv10-add-container_clone-interface-fix.patch
-containersv10-add-procfs-interface.patch
-containersv10-add-procfs-interface-fix.patch
-containersv10-make-cpusets-a-client-of-containers.patch
-containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships.patch
-containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships-fix.patch
-containersv10-share-css_group-arrays-between-tasks-with-same-container-memberships-cpuset-zero-malloc-fix-for-new-containers.patch
-containersv10-simple-debug-info-subsystem.patch
-containersv10-simple-debug-info-subsystem-fix.patch
-containersv10-simple-debug-info-subsystem-fix-2.patch
-containersv10-support-for-automatic-userspace-release-agents.patch
-containers-implement-subsys-post_clone.patch
-containers-implement-namespace-tracking-subsystem-v3.patch
-page-owner-tracking-leak-detector.patch
+Bear in mind that the global lock in percpu_counter_sum() will tilt the
+scales quite a bit.
