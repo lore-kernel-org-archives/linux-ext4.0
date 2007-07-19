@@ -1,50 +1,49 @@
-From: Mark Fasheh <mark.fasheh@oracle.com>
-Subject: Re: [PATCH 1/5][TAKE8] manpage for fallocate
-Date: Wed, 18 Jul 2007 22:31:56 -0700
-Message-ID: <20070719053156.GF32734@ca-server1.us.oracle.com>
-References: <20070713184125.GA12156@amitarora.in.ibm.com> <20070713184625.GB12156@amitarora.in.ibm.com> <20070719034155.GE32734@ca-server1.us.oracle.com> <20070719051052.GE12413810@sgi.com>
-Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
+From: Zephiris <zephiris@gmail.com>
+Subject: e2fsprogs-1.39-tyt3 and ext4 question
+Date: Thu, 19 Jul 2007 03:55:10 -0700
+Message-ID: <f7nfun$lcs$1@sea.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, tytso@mit.edu,
-	cmm@us.ibm.com, suparna@in.ibm.com, adilger@clusterfs.com,
-	michael.kerrisk@gmx.net
-To: David Chinner <dgc@sgi.com>
+Content-Transfer-Encoding: 7Bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:30911 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753153AbXGSFhp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jul 2007 01:37:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20070719051052.GE12413810@sgi.com>
+Received: from main.gmane.org ([80.91.229.2]:45311 "EHLO ciao.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752870AbXGSLAL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jul 2007 07:00:11 -0400
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1IBTjm-0003VZ-3F
+	for linux-ext4@vger.kernel.org; Thu, 19 Jul 2007 13:00:02 +0200
+Received: from c-71-193-243-251.hsd1.or.comcast.net ([71.193.243.251])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Jul 2007 13:00:02 +0200
+Received: from zephiris by c-71-193-243-251.hsd1.or.comcast.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Jul 2007 13:00:02 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 19, 2007 at 03:10:52PM +1000, David Chinner wrote:
-> % git-log 84e1e99f112dead8f9ba036c02d24a9f5ce7f544 |head -10
-> commit 84e1e99f112dead8f9ba036c02d24a9f5ce7f544
-> Author: David Chinner <dgc@sgi.com>
-> Date:   Mon Jun 18 16:50:27 2007 +1000
-> 
->     [XFS] Prevent ENOSPC from aborting transactions that need to succeed
-> 
->     During delayed allocation extent conversion or unwritten extent
->     conversion, we need to reserve some blocks for transactions reservations.
->     We need to reserve these blocks in case a btree split occurs and we need
->     to allocate some blocks.
-> 
-> ------
-> 
-> IOWs, XFS didn't provide this guarantee until about a month ago....
+I've searched the lists and only saw a previous reference to possibly
+harmless 'make check' failures on this version, so I'll just ask.
+I've been trying to get ext4 running for some time,  but it appears to be
+working normally lately. e4defrag and mballoc patches also appear to be
+working fine (everything against 2.6.22.1). But that version of e2fsprogs
+(1.39-tyt3), even with the last round of patches against it, appears to
+generate many bogus errors when checking the filesystem with 'fsck -fn'.
+While using 'data=journal' and other things should reduce the chance of
+needing a fsck, it makes me worried.
 
-Ok, once again XFS is ahead of the curve ;)
+Is there anything at current that can get around this all, or verify that
+the errors it's coming up with are indeed bogus (they certainly look it,
+hundreds of errors at block 0 or -1, for instance)?
 
-Comment rescinded then...
-	--Mark
+For previous attempts at ext4, running that version of e2fsprogs would come
+up with legitimate looking errors, then 'fix' it. But even rebooting
+immediately afterwards into emergency read-only mode would generate the
+same errors again. Multiple attempts to fix the errors (with probable
+legitimate corruption on a few files from a bad attempt at getting e4defrag
+working) effectively just shredded the filesystem. 
 
---
-Mark Fasheh
-Senior Software Developer, Oracle
-mark.fasheh@oracle.com
+Ext4 is appearing rather stable right now, which is also making me think
+it's fsck's fault.
