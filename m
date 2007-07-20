@@ -1,79 +1,86 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Take 2]e2fsprogs: Undo I/O manager
-Date: Fri, 20 Jul 2007 08:35:09 +0530
-Message-ID: <46A02665.9090200@linux.vnet.ibm.com>
-References: <11848678881380-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20070719212027.GB26752@thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: e2fsck bogus error report on orphan-list
+Date: Fri, 20 Jul 2007 00:10:52 -0400
+Message-ID: <20070720041052.GD26752@thunk.org>
+References: <873azkl7x4.wl%ryoichi@me.sony.co.jp> <20070719165510.GB14815@thunk.org> <87fy3krnet.wl%ryoichi@me.sony.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	tim.bird@am.sony.com
+To: Ryoichi KATO <Ryoichi.Kato@jp.sony.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:52716 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756970AbXGTDFS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jul 2007 23:05:18 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6K3SOod271198
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2007 13:28:25 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6K38jlP211038
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2007 13:08:45 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6K35CPN006921
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2007 13:05:12 +1000
-In-Reply-To: <20070719212027.GB26752@thunk.org>
+Received: from THUNK.ORG ([69.25.196.29]:51612 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750770AbXGTEK6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jul 2007 00:10:58 -0400
+Content-Disposition: inline
+In-Reply-To: <87fy3krnet.wl%ryoichi@me.sony.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-Theodore Tso wrote:
-> On Thu, Jul 19, 2007 at 11:28:06PM +0530, Aneesh Kumar K.V wrote:
->> This patch fixes some bugs found during testing of the large
->> inode migration patches.
+On Fri, Jul 20, 2007 at 08:20:26AM +0900, Ryoichi KATO wrote:
+> > >    1. Delete a file in an ext3 filesystem in early 1970
+> > 
+> > Dare I ask *why* the system clock was set in the 1970's?  Umm... don't
+> > do that.
 > 
-> How are you testing it?  I notice you haven't wired these into any of
-> the existing e2fsprogs programs.
+> As Tim pointed out, embedded devices offten omit RTC battery.
+
+Yes, I added the busted_fs_clock specifically to handle this.
+
+> > There is code that detects when the time is set back in the 1970's
+> > (normally due to a bad clock battery) and thus disables this
+> > particular check.  So it only triggers when the clock was previously
+> > bad, and is now good.
 > 
-> Regards,
-> 
+> Actually, it's a *real* problem happend for my car navigation product.
+> Until GPS signal is available, it's clock was 1970.
+> And for servers and PCs, it's possible that RTC backup battery run out,
+> then clock get set correctly afterward by, say, NTP.
 
+Sure, but we have checks to detect if the last superblock write *or*
+last mount time is before 1970, and if so, we declare the filesystem
+has having a busted/insane system clock, and and we disable the
+dtime/orphaned inode checks.  This in practice is plenty since it
+means that the mount-time is in the 1970's, and then when NTP sets the
+time, we're fine, since that's generally after the e2fsck and the
+mount of the filesystem.  
 
-Attaching below is a simple test program i used to verify this. I also used
-this along with the ext3 ext4 migration tool.
+So for it to trigger it requires a very strange set of modulations of
+the time.  You need to have time be correct at the time of the mount
+(so s_mtime is sane, implying that the RTC backup battery is not
+dead), and *then* reset to the 1970's, delete some files, then be
+correct when the filesystem is unmounted (so s_wtime is sane).  That's
+pretty hard to accomplishl; and I would submit, even on embedded
+systems.  The system clock must be crazily warping back and forth
+between correct time and 1970's/insane time in order for this to be an
+issue.  
 
--aneesh
+This has been true since e2fsprogs 1.38, released June 30, 2005;
+before that point we only checked s_wtime for sanity, and we did have
+a few cases slip through, but ever since I added the s_wtime check, I
+haven't had anyone report a problem until now.  (Although if people
+don't e-mail me, and just do conference presentations, I'd have no way
+of finding out unless I was lucky enough to attend the conference.  :-)
 
+>  * It is very difficult to relate RTC to the problem.
+>    No clue without digging into e2fsck source code.
 
-diff --git a/test.aneesh/test.c b/test.aneesh/test.c
-new file mode 100644
-index 0000000..7d0a3e3
---- /dev/null
-+++ b/test.aneesh/test.c
-@@ -0,0 +1,25 @@
-+
-+#include "ext2fs/ext2_fs.h"
-+#include "ext2fs/ext2fs.h"
-+
-+main(int argc, char *argv[])
-+{
-+	char *dev_name, *file_name;
-+	int flags, superblock = 0;
-+	unsigned int block_size = 0;
-+	ext2_filsys current_fs = NULL;
-+
-+	dev_name = argv[1];
-+	file_name = argv[2];
-+	flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_RW;
-+	set_undo_io_backing_manager(unix_io_manager);
-+	set_undo_io_backup_file(file_name);
-+	ext2fs_open2(dev_name, 0,
-+			flags, superblock, block_size,
-+			undo_io_manager, &current_fs);
-+
-+	/* Now write super block with junk */
-+	memcpy(current_fs->super, "crash me", 8);
-+	ext2fs_mark_super_dirty(current_fs);
-+	ext2fs_close(current_fs);
-+}
+Yes.  As I said, it might be a good idea to add an
+unreliable_system_time config parameter to e2fsck in the future to
+catch this case.  That would also document the issue to avoid future
+people from running into this.
+
+>  * -p (preen) option of e2fsck doen't fix it automatically.
+>    Though I'm not sure but, maybe it's safe to correct the
+>    problem automatically?
+
+Yes, but this was deliberate; if there was a bug in the kernel's
+orphan handling code, I really wanted to know about it, and if it was
+just -p, most folk would never know.  (Although if there were orphan
+list handling bugs, it could cause some truncates would not be
+reliably replayed, so it might cause even **harder** to diagnose bugs.
+Life is always full of tradeoffs.)
+
+							- Ted
