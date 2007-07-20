@@ -1,60 +1,89 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
-Date: Fri, 20 Jul 2007 03:01:19 -0600
-Message-ID: <20070720090119.GD5992@schatzie.adilger.int>
-References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com> <20070718201808.ccc7bdf5.akpm@linux-foundation.org> <1184858282.18188.83.camel@dyn9047017100.beaverton.ibm.com>
+From: Ryoichi KATO <Ryoichi.Kato@jp.sony.com>
+Subject: Re: e2fsck bogus error report on orphan-list
+Date: Fri, 20 Jul 2007 18:45:35 +0900
+Message-ID: <87tzrz1k8w.wl%ryoichi@me.sony.co.jp>
+References: <873azkl7x4.wl%ryoichi@me.sony.co.jp>
+	<20070719165510.GB14815@thunk.org>
+	<87fy3krnet.wl%ryoichi@me.sony.co.jp>
+	<20070720041052.GD26752@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Badari Pulavarty <pbadari@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	tim.bird@am.sony.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:41799 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752801AbXGTJBW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jul 2007 05:01:22 -0400
-Content-Disposition: inline
-In-Reply-To: <1184858282.18188.83.camel@dyn9047017100.beaverton.ibm.com>
+Received: from NS4.Sony.CO.JP ([137.153.0.44]:51606 "EHLO ns4.sony.co.jp"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755948AbXGTJqb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jul 2007 05:46:31 -0400
+In-Reply-To: <20070720041052.GD26752@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 19, 2007  08:18 -0700, Badari Pulavarty wrote:
-> In my setups (4 & 8-way), I didn't measure any significant performance
-> improvements (in any reasonable workload). I see some decent
-> improvements on cooked-up (1 million stats) tests :(
+At Fri, 20 Jul 2007 00:10:52 -0400,
+Theodore Tso wrote:
+> So for it to trigger it requires a very strange set of modulations of
+> the time.  You need to have time be correct at the time of the mount
+> (so s_mtime is sane, implying that the RTC backup battery is not
+> dead), and *then* reset to the 1970's, delete some files, then be
+> correct when the filesystem is unmounted (so s_wtime is sane).  That's
+> pretty hard to accomplishl; and I would submit, even on embedded
+> systems.  The system clock must be crazily warping back and forth
+> between correct time and 1970's/insane time in order for this to be an
+> issue.  
 
-I don't have any numbers to publish, but this did help internally
-for large filesystems.
+If I'm understanding correctly, once you have deleted a file in 1970,
+it might stay in a filesystem for a certain period of time, like a time bomb.
+Then you don't have to have the clock to jump back and forth.
+I seems to me that evan a typical PCs can have the symptom,
+after two reboots like this:
 
-> > Well there's a tradeoff here.  At large CPU counts, percpu_counter_sum()
-> > becomes quite expensive - it takes a global lock and then goes off fishing
-> > in every CPU's percpu_alloced memory.
-> > 
-> > So there is some value of (num_online_cpus / sb->s_groups_count) at which
-> > this change becomes a loss.  Where does that value lie?
+  1.  RTC backup run out
+  2.  hardware reboot; set RTC to 1970.
+  3.  mount, delete a file (in 2007)
+  4.  umount
+  5.  Set clock to 2007 (manually, or by NTP)
+  - - - -
+  6.  reboot (software reset which don't reset the RTC, or replace battery.)
+  7.  e2fsck (no problem this time)
+  8.  mount (in 2007)
+  9.  write (in 2007)
+  10. umount 
+  - - - -
+  11. reboot
+  12. e2fsck, hit the problem.
+
+No way to notice the real reason (RTC), if the system is a server
+and only reboots once a year.
+
+ 
+> >  * It is very difficult to relate RTC to the problem.
+> >    No clue without digging into e2fsck source code.
 > 
-> Yes. I debated long time whether I should submit this or not - due to
-> very reason. Old code wasn't holding any locks. I don't have any high
-> count CPU machine (>8way) with me. I will request for time on one.
+> Yes.  As I said, it might be a good idea to add an
+> unreliable_system_time config parameter to e2fsck in the future to
+> catch this case.  That would also document the issue to avoid future
+> people from running into this.
+And might it be also very helpful to have some hint in the e2fsck message?
 
-Considering that large (16TB) filesystems have 128000 groups in them,
-I'd suspect that iterating over all of the group descriptors is a loss
-until you have an unusually huge number of CPUs.  What was even worse
-was before caching "overhead" it walked the groups list twice (once
-for "overhead" and once for the per-group summary).
 
-It might be that for the filesystem sizes ext2 is used on this isn't
-a win, but I didn't submit the patch for ext2...
+> >  * -p (preen) option of e2fsck doen't fix it automatically.
+> >    Though I'm not sure but, maybe it's safe to correct the
+> >    problem automatically?
+> 
+> Yes, but this was deliberate; if there was a bug in the kernel's
+> orphan handling code, I really wanted to know about it, and if it was
+> just -p, most folk would never know.  (Although if there were orphan
+> list handling bugs, it could cause some truncates would not be
+> reliably replayed, so it might cause even **harder** to diagnose bugs.
+> Life is always full of tradeoffs.)
+OK, I agree.  You have at least one example of such person here :-)
 
-> I added WARN_ON() to see if percpu sum doesn't match
-> computed sum. I saw few stacks in a 24 hour run of fsx runs. 
 
-That could just be because the filesystem is changing between these
-two checks...
-
-Cheers, Andreas
+Regards,
 --
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Ryoichi KATO <Ryoichi.Kato@jp.sony.com>
+    Audio Development & Engineering Div.
+    Sony Corporation Audio Business Group
+    Tel +81-3-3599-3862 / Fax +81-3-3599-3859
