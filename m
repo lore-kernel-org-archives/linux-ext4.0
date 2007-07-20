@@ -1,45 +1,39 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 1/5][TAKE8] manpage for fallocate
-Date: Thu, 19 Jul 2007 17:58:25 -0600
-Message-ID: <20070719235825.GY5992@schatzie.adilger.int>
-References: <20070713184125.GA12156@amitarora.in.ibm.com> <20070713184625.GB12156@amitarora.in.ibm.com> <20070719034155.GE32734@ca-server1.us.oracle.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] Faster ext2_clear_inode()
+Date: Thu, 19 Jul 2007 17:31:41 -0700
+Message-ID: <20070719173141.51217ba8.akpm@linux-foundation.org>
+References: <20070709041122.GA5889@martell.zuzino.mipt.ru>
+	<20070709083431.GA14761@lazybastard.org>
+	<20070709180148.GA5747@martell.zuzino.mipt.ru>
+	<20070709200003.GA18501@lazybastard.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, tytso@mit.edu,
-	cmm@us.ibm.com, suparna@in.ibm.com, dgc@sgi.com,
-	michael.kerrisk@gmx.net
-To: Mark Fasheh <mark.fasheh@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20070719034155.GE32734@ca-server1.us.oracle.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Alexey Dobriyan <adobriyan@gmail.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: =?ISO-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:44480 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758423AbXGTAcW convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jul 2007 20:32:22 -0400
+In-Reply-To: <20070709200003.GA18501@lazybastard.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 18, 2007  20:41 -0700, Mark Fasheh wrote:
-> On Sat, Jul 14, 2007 at 12:16:25AM +0530, Amit K. Arora wrote:
-> > After a successful call, subsequent writes are guaranteed not to fail
-> > because of lack of disk space.
->   
-> If a write to an unwritten region requires a node split, that could result
-> in the allocation of new meta data which obviously could fail if the disk is
-> truly full.
-> 
-> Granted that's unlikely to happen but maybe we should be conservative and
-> say something like:
-> 
-> "After a successful call, subsequent writes are guaranteed to never require
-> allocation of file data." ?
->         --Mark
+On Mon, 9 Jul 2007 22:00:03 +0200
+J=F6rn Engel <joern@logfs.org> wrote:
 
-In the worst case, the unwritten extent could be zero-filled before the write
-is done, so no exent split is needed.  We discussed this recently for the
-ext4 fallocate, but didn't consider it important enough to hold the code.
+> On Mon, 9 July 2007 22:01:48 +0400, Alexey Dobriyan wrote:
+> >=20
+> > Yes. Note that ext2_clear_inode() is referenced from ext2_sops, so =
+even
+> > empty, it leaves traces in resulting kernel.
+>=20
+> Is that your opinion or have you actually measured a difference?
+> I strongly suspect that compilers are smart enough to optimize away a
+> call to an empty static function.
+>=20
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
-
+It saves a big 16 bytes of text here.
