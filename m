@@ -1,53 +1,112 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] properly calculate overhead in ext2fs_initialize()
-Date: Mon, 23 Jul 2007 13:00:15 -0500
-Message-ID: <46A4ECAF.3040800@redhat.com>
-References: <46A12D62.2010704@redhat.com> <20070722193129.GB16658@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: [PATCH 1/3] ext2: show all mount options
+Date: Mon, 23 Jul 2007 22:12:54 +0200
+Message-ID: <E1ID4H0-00065Q-00@dorka.pomaz.szeredi.hu>
+Cc: akpm@linux-foundation.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33983 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933942AbXGWSGe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jul 2007 14:06:34 -0400
-In-Reply-To: <20070722193129.GB16658@thunk.org>
+Received: from mail-gw2.sa.eol.hu ([212.108.200.109]:36149 "EHLO
+	mail-gw2.sa.eol.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757139AbXGWUSd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jul 2007 16:18:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Fri, Jul 20, 2007 at 04:47:14PM -0500, Eric Sandeen wrote:
->> For some odd geometries*, mkfs will try to allocate inode tables off
->> the end of the block group and fail, rather than warning that too
->> many inodes have been requested.
->>
->> This is because when ext2fs_initialize calculates metadata overhead,
->> it is only adding in group descriptor blocks and the superblock
->> if the *last* bg contains them - but the first bg also has all of 
->> the various metadata bits taking up space.
->>
->> Unconditionally adding those counts into the overhead seems to fix
->> it properly.
-> 
-> Yes, but it screws up the test right after that.  We need to calculate
-> the overheads for both the first and last block group.  When I respun
-> your patch and applied it to git, I fixed this.
+From: Miklos Szeredi <mszeredi@suse.cz>
 
-Yep, I missed that.  Thanks for catching....
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+---
 
-> I also added an explicit "Addresses-Red-Hat-Bugzilla: " entry to the
-> commit log.  (This is mainly for your convenience when you're
-> cherry-picking patches.)
-
-Thanks, I appreciate that.
-
-> Finally, your patch didn't apply because you apparently nuked a
-> newline in the patch here:
-
-Urhg, sorry.  Not sure how that happened.
-
-Thanks,
-
--Eric
+Index: linux-2.6/fs/ext2/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext2/super.c	2007-07-23 17:41:29.000000000 +0200
++++ linux-2.6/fs/ext2/super.c	2007-07-23 18:02:38.000000000 +0200
+@@ -203,10 +203,66 @@ static void ext2_clear_inode(struct inod
+ 
+ static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ {
+-	struct ext2_sb_info *sbi = EXT2_SB(vfs->mnt_sb);
++	struct super_block *sb = vfs->mnt_sb;
++	struct ext2_sb_info *sbi = EXT2_SB(sb);
++	struct ext2_super_block *es = sbi->s_es;
++	unsigned long def_mount_opts;
++
++	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+ 
+-	if (sbi->s_mount_opt & EXT2_MOUNT_GRPID)
++	if (sbi->s_sb_block != 1)
++		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
++	if (test_opt(sb, MINIX_DF))
++		seq_puts(seq, ",minixdf");
++	if (test_opt(sb, GRPID))
+ 		seq_puts(seq, ",grpid");
++	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT2_DEFM_BSDGROUPS))
++		seq_puts(seq, ",nogrpid");
++	if (sbi->s_resuid != EXT2_DEF_RESUID ||
++	    le16_to_cpu(es->s_def_resuid) != EXT2_DEF_RESUID) {
++		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
++	}
++	if (sbi->s_resgid != EXT2_DEF_RESGID ||
++	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
++		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
++	}
++	if (test_opt(sb, ERRORS_CONT)) {
++		int def_errors = le16_to_cpu(es->s_errors);
++
++		if (def_errors == EXT2_ERRORS_PANIC ||
++		    def_errors == EXT2_ERRORS_RO) {
++			seq_puts(seq, ",errors=continue");
++		}
++	}
++	if (test_opt(sb, ERRORS_RO))
++		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_PANIC))
++		seq_puts(seq, ",errors=panic");
++	if (test_opt(sb, NO_UID32))
++		seq_puts(seq, ",nouid32");
++	if (test_opt(sb, DEBUG))
++		seq_puts(seq, ",debug");
++	if (test_opt(sb, OLDALLOC))
++		seq_puts(seq, ",oldalloc");
++
++#ifdef CONFIG_EXT2_FS_XATTR
++	if (test_opt(sb, XATTR_USER))
++		seq_puts(seq, ",user_xattr");
++	if (!test_opt(sb, XATTR_USER) &&
++	    (def_mount_opts & EXT2_DEFM_XATTR_USER)) {
++		seq_puts(seq, ",nouser_xattr");
++	}
++#endif
++
++#ifdef CONFIG_EXT2_FS_POSIX_ACL
++	if (test_opt(sb, POSIX_ACL))
++		seq_puts(seq, ",acl");
++	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT2_DEFM_ACL))
++		seq_puts(seq, ",noacl");
++#endif
++
++	if (test_opt(sb, NOBH))
++		seq_puts(seq, ",nobh");
+ 
+ #if defined(CONFIG_QUOTA)
+ 	if (sbi->s_mount_opt & EXT2_MOUNT_USRQUOTA)
+@@ -658,6 +714,7 @@ static int ext2_fill_super(struct super_
+ 	if (!sbi)
+ 		return -ENOMEM;
+ 	sb->s_fs_info = sbi;
++	sbi->s_sb_block = sb_block;
+ 
+ 	/*
+ 	 * See what the current blocksize for the device is, and
+Index: linux-2.6/include/linux/ext2_fs_sb.h
+===================================================================
+--- linux-2.6.orig/include/linux/ext2_fs_sb.h	2007-07-23 17:41:29.000000000 +0200
++++ linux-2.6/include/linux/ext2_fs_sb.h	2007-07-23 18:01:40.000000000 +0200
+@@ -39,6 +39,7 @@ struct ext2_sb_info {
+ 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
+ 	struct buffer_head ** s_group_desc;
+ 	unsigned long  s_mount_opt;
++	unsigned long s_sb_block;
+ 	uid_t s_resuid;
+ 	gid_t s_resgid;
+ 	unsigned short s_mount_state;
