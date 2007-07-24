@@ -1,7 +1,7 @@
 From: Fengguang Wu <fengguang.wu@gmail.com>
 Subject: Re: [PATCH 0/3] readahead drop behind and size adjustment
 Date: Tue, 24 Jul 2007 08:47:28 +0800
-Message-ID: <385238729.01475@ustc.edu.cn>
+Message-ID: <20070724004728.GA8026__45501.9400026233$1185238779$gmane$org@mail.ustc.edu.cn>
 References: <20070721210005.000228000@chello.nl> <20070722023923.GA6438@mail.ustc.edu.cn> <20070722024428.GA724@redhat.com> <20070722081010.GA6317@mail.ustc.edu.cn> <1185093236.6344.87.camel@localhost.localdomain> <46A46E4B.7050007@yahoo.com.au> <385201377.00678@ustc.edu.cn> <20070723124009.5fcf4fef.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,15 +19,11 @@ Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
 	David Mosberger-Tang <davidm@hpl.hp.com>,
 	Kyle McMartin <kyle@parisc-linux.org>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:45447 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1756615AbXGXA7A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jul 2007 20:59:00 -0400
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933340AbXGXA7V@vger.kernel.org>
 Message-ID: <20070724004728.GA8026@mail.ustc.edu.cn>
 Content-Disposition: inline
 In-Reply-To: <20070723124009.5fcf4fef.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Mon, Jul 23, 2007 at 12:40:09PM -0700, Andrew Morton wrote:
