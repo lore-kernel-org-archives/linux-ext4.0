@@ -1,73 +1,44 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: New e2fsprog doc on the ext4 wiki page.
-Date: Tue, 24 Jul 2007 22:30:27 +0530
-Message-ID: <46A6302B.1020505@linux.vnet.ibm.com>
-References: <20070724110741.65ade06e@rx8> <46A62672.70808@linux.vnet.ibm.com> <20070724113507.72ed9687@rx8>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Patch 0/13] Patches for e2fsprogs
+Date: Tue, 24 Jul 2007 13:25:52 -0400
+Message-ID: <20070724172552.GH11826@thunk.org>
+References: <1185275071.3789.65.camel@dhcp4.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Girish Shilamkar <girish@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:53650 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755268AbXGXRBt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jul 2007 13:01:49 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6OHPAJe334688
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 03:25:10 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6OH42cn211908
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 03:04:02 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6OH0TkH014888
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 03:00:30 +1000
-In-Reply-To: <20070724113507.72ed9687@rx8>
+Received: from THUNK.ORG ([69.25.196.29]:48479 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753874AbXGXRZ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jul 2007 13:25:56 -0400
+Content-Disposition: inline
+In-Reply-To: <1185275071.3789.65.camel@dhcp4.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jul 24, 2007 at 04:34:31PM +0530, Girish Shilamkar wrote:
+> Hi,
+> 	I am sending the patches for e2fsprogs as decided in the ext4 conf
+> call.
+> The patches are based on e2fsprogs-1.40.1. Some of these patches have
+> already been sent on the list before.
 
+One other minor thing; it would be greatly appreciated it if when
+folks send multiple patches in a bundle by having all of the patches
+be a reply to the an introductory message.  i.e.:
 
-Jose R. Santos wrote:
-> On Tue, 24 Jul 2007 21:48:58 +0530
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> 
->>
->> Jose R. Santos wrote:
->>> Hi folks
->>>
->>>
->>>
->>> ext4migrate:
->>> - Patches submited to the mailing list by Aneesh Kumar
->>> http://thread.gmane.org/gmane.comp.file-systems.ext4/1395
->>>
->>
->> I guess what we are looking at here is 
->>
->> a) ext3 -> ext4 conversion would be done via option for defrag. This
->> conversion is now done via a ioctl. This is the suggested method for
->> defragmenting an ext3 inode (convert to ext4 and then defrag). 
->>
->> b) small inode to large inode conversion is done via tune2fs -I <
->> new_inode_size> I have patches for this ready. Will be sending them
->> in a day or two.
->>
->> So the ext4migrate command may not be really needed.
->>
->>
->> -aneesh  
-> 
-> I will remove this item then and add the tune2fs changes.
-> 
-> Is the defrag code going to be part of e2fsprogs or is this going to be
-> a standalone app?
->
+[Patch 0/13] Patches for e2fsprogs
+  |---> [Patch 1/13] iostats.
+  |---> [Patch 2/13] Cleanup.
+  |---> [Patch 3/13] Rpm Check.
+  |---> [Patch 4/14] Allow regular files to be preallocated on-disk.
 
-As per the last version posted
+This makes it easier to make sure the patches stay together in mail
+readers even when there are replies to the patches.  It just makes
+life a little easier for people going through mail archives.
 
-http://article.gmane.org/gmane.comp.file-systems.ext4/2290
+Thanks!!
 
-There is a e4defrag command.
-
--aneesh
+						- Ted
