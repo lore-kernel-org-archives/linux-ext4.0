@@ -1,8 +1,7 @@
 From: Girish Shilamkar <girish@clusterfs.com>
-Subject: [Patch 9/13] Adds two extended options and config file
-	counterparts.
-Date: Tue, 24 Jul 2007 16:35:04 +0530
-Message-ID: <1185275104.3789.74.camel@dhcp4.linsyssoft.com>
+Subject: [Patch 10/13] SLES10 patch which adds -m flag support to fsck
+Date: Tue, 24 Jul 2007 16:35:07 +0530
+Message-ID: <1185275107.3789.75.camel@dhcp4.linsyssoft.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
@@ -10,357 +9,169 @@ Cc: Andreas Dilger <adilger@clusterfs.com>,
 	Theodore Tso <tytso@mit.edu>
 To: Ext4 Mailing List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:40572 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:40578 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933124AbXGXLEi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jul 2007 07:04:38 -0400
+	with ESMTP id S933062AbXGXLEt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jul 2007 07:04:49 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds two extended options and config file counterparts.
-On the command line:
+SLES10 patch which adds -m flag support to fsck
 
-  -E clone=dup|zero
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Girish Shilamkar <girish@clusterfs.com>
 
-     Select the block cloning method.  "dup" is old behavior which remains
-     the default.  "zero" is a new method that substitutes zero-filled
-     blocks for the shared blocks in all the files that claim them.
-
-  -E shared=preserve|lost+found|delete
-
-     Select the disposition of files containing shared blocks.  "preserve"
-     is the old behavior which remains the default.  "lost+found" causes
-     files to be unlinked after cloning so they will be reconnected to
-     /lost+found in pass 3.   "delete" skips cloning entirely and simply
-     deletes the files.
-
-In the config file:
-   [options]
-       clone=dup|zero
-       shared=preserve|lost+found|delete
-
-Signed-off-by: Jim Garlick  <garlick@llnl.gov>
-
-Index: e2fsprogs-1.40.1/e2fsck/e2fsck.h
+Index: e2fsprogs-1.40.1/misc/fsck.8.in
 ===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/e2fsck.h
-+++ e2fsprogs-1.40.1/e2fsck/e2fsck.h
-@@ -183,6 +183,17 @@ struct resource_track {
- #define E2F_PASS_5	5
- #define E2F_PASS_1B	6
- 
-+typedef	enum { 
-+	E2F_SHARED_PRESERVE = 0, 
-+	E2F_SHARED_DELETE,
-+	E2F_SHARED_LPF
-+} shared_opt_t;
-+
-+typedef enum {
-+	E2F_CLONE_DUP = 0,
-+	E2F_CLONE_ZERO
-+} clone_opt_t;
-+
- /*
-  * Define the extended attribute refcount structure
-  */
-@@ -332,6 +343,8 @@ struct e2fsck_struct {
- 	time_t now;
- 
- 	int ext_attr_ver;
-+	shared_opt_t shared;
-+	clone_opt_t clone;
- 
- 	profile_t	profile;
- 
-Index: e2fsprogs-1.40.1/e2fsck/unix.c
+--- e2fsprogs-1.40.1.orig/misc/fsck.8.in
++++ e2fsprogs-1.40.1/misc/fsck.8.in
+@@ -180,6 +180,10 @@ option, 
+ will use the specified filesystem type.  If this type is not
+ available, then the default file system type (currently ext2) is used. 
+ .TP
++.B \-m
++Do not check mounted filesystems and return an exit code of 0
++for mounted filesystems.
++.TP
+ .B \-A
+ Walk through the
+ .I /etc/fstab
+Index: e2fsprogs-1.40.1/misc/fsck.c
 ===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/unix.c
-+++ e2fsprogs-1.40.1/e2fsck/unix.c
-@@ -510,6 +510,49 @@ static void signal_cancel(int sig EXT2FS
- }
+--- e2fsprogs-1.40.1.orig/misc/fsck.c
++++ e2fsprogs-1.40.1/misc/fsck.c
+@@ -103,6 +103,7 @@ int noexecute = 0;
+ int serialize = 0;
+ int skip_root = 0;
+ int like_mount = 0;
++int ignore_mounted = 0;
+ int notitle = 0;
+ int parallel_root = 0;
+ int progress = 0;
+@@ -793,7 +794,7 @@ static void compile_fs_type(char *fs_typ
+ #if 0
+ 		printf("Adding %s to list (type %d).\n", s, cmp->type[num]);
  #endif
- 
-+static void initialize_profile_options(e2fsck_t ctx)
-+{
-+	char *tmp;
-+
-+	/* [options] shared=preserve|lost+found|delete */
-+	tmp = NULL;
-+	ctx->shared = E2F_SHARED_PRESERVE; 
-+	profile_get_string(ctx->profile, "options", "shared", 0,
-+		           "preserve", &tmp);
-+	if (tmp) {
-+		if (strcmp(tmp, "preserve") == 0)
-+			ctx->shared = E2F_SHARED_PRESERVE; 
-+		else if (strcmp(tmp, "delete") == 0)
-+			ctx->shared = E2F_SHARED_DELETE; 
-+		else if (strcmp(tmp, "lost+found") == 0)
-+			ctx->shared = E2F_SHARED_LPF; 
-+		else {
-+			com_err(ctx->program_name, 0, 
-+				_("configuration error: 'shared=%s'"), tmp);
-+			fatal_error(ctx, 0);
-+		}
-+		free(tmp);
-+	}
-+
-+	/* [options] clone=dup|zero */
-+	tmp = NULL;
-+	ctx->clone = E2F_CLONE_DUP;
-+	profile_get_string(ctx->profile, "options", "clone", 0,
-+			   "dup", &tmp);
-+	if (tmp) {
-+		if (strcmp(tmp, "dup") == 0)
-+			ctx->clone = E2F_CLONE_DUP;
-+		else if (strcmp(tmp, "zero") == 0)
-+			ctx->clone = E2F_CLONE_ZERO;
-+		else {
-+			com_err(ctx->program_name, 0, 
-+				_("configuration error: 'clone=%s'"), tmp);
-+			fatal_error(ctx, 0);
-+		}
-+		free(tmp);
-+	}
-+}
-+
- static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- {
- 	char	*buf, *token, *next, *p, *arg;
-@@ -543,6 +586,36 @@ static void parse_extended_opts(e2fsck_t
- 				continue;
- 			}
- 			ctx->ext_attr_ver = ea_ver;
-+		/* -E shared=preserve|lost+found|delete */
-+		} else if (strcmp(token, "shared") == 0) {
-+			if (!arg) {
-+				extended_usage++;
-+				continue;
-+			}
-+			if (strcmp(arg, "preserve") == 0) {
-+				ctx->shared = E2F_SHARED_PRESERVE;
-+			} else if (strcmp(arg, "lost+found") == 0) {
-+				ctx->shared = E2F_SHARED_LPF;
-+			} else if (strcmp(arg, "delete") == 0) {
-+				ctx->shared = E2F_SHARED_DELETE;
-+			} else {
-+				extended_usage++;
-+				continue;
-+			}
-+		/* -E clone=dup|zero */
-+		} else if (strcmp(token, "clone") == 0) {
-+			if (!arg) {
-+				extended_usage++;
-+				continue;
-+			}
-+			if (strcmp(arg, "dup") == 0) {
-+				ctx->clone = E2F_CLONE_DUP;
-+			} else if (strcmp(arg, "zero") == 0) {
-+				ctx->clone = E2F_CLONE_ZERO;
-+			} else {
-+				extended_usage++;
-+				continue;
-+			}
- 		} else {
- 			fprintf(stderr, _("Unknown extended option: %s\n"),
- 				token);
-@@ -556,6 +629,8 @@ static void parse_extended_opts(e2fsck_t
- 		       "and may take an argument which\n"
- 		       "is set off by an equals ('=') sign.  "
- 			"Valid extended options are:\n"
-+		       "\tshared=<preserve|lost+found|delete>\n"
-+		       "\tclone=<dup|zero>\n"
- 		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
- 		exit(1);
+-	        cmp->list[num++] = string_copy(s);
++		cmp->list[num++] = string_copy(s);
+ 		s = strtok(NULL, ",");
  	}
-@@ -614,6 +689,7 @@ static errcode_t PRS(int argc, char *arg
- 		config_fn[0] = cp;
- 	profile_set_syntax_err_cb(syntax_err_report);
- 	profile_init(config_fn, &ctx->profile);
-+	initialize_profile_options(ctx);
- 
- 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
- 		switch (c) {
-Index: e2fsprogs-1.40.1/e2fsck/pass1b.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/pass1b.c
-+++ e2fsprogs-1.40.1/e2fsck/pass1b.c
-@@ -456,6 +456,9 @@ static void pass1d(e2fsck_t ctx, char *b
- 			q = (struct dup_block *) dnode_get(m);
- 			if (q->num_bad > 1)
- 				file_ok = 0;
-+			if (q->num_bad == 1 && (ctx->clone == E2F_CLONE_ZERO ||
-+			    ctx->shared != E2F_SHARED_PRESERVE))
-+				file_ok = 0;
- 			if (check_if_fs_block(ctx, s->block)) {
- 				file_ok = 0;
- 				meta_data = 1;
-@@ -511,13 +514,26 @@ static void pass1d(e2fsck_t ctx, char *b
- 			fix_problem(ctx, PR_1D_DUP_BLOCKS_DEALT, &pctx);
- 			continue;
+ 	free(list);
+@@ -819,7 +820,7 @@ static int opt_in_list(char *opt, char *
  		}
--		if (fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
-+		if (ctx->shared != E2F_SHARED_DELETE &&
-+		    fix_problem(ctx, PR_1D_CLONE_QUESTION, &pctx)) {
- 			pctx.errcode = clone_file(ctx, ino, p, block_buf);
--			if (pctx.errcode)
-+			if (pctx.errcode) {
- 				fix_problem(ctx, PR_1D_CLONE_ERROR, &pctx);
--			else
--				continue;
-+				goto delete;
-+			}
-+			if (ctx->shared == E2F_SHARED_LPF &&
-+			    fix_problem(ctx, PR_1D_DISCONNECT_QUESTION, &pctx)) {
-+				pctx.errcode = ext2fs_unlink(fs, p->dir, 
-+							     NULL, ino, 0);
-+				if (pctx.errcode) {
-+					fix_problem(ctx, PR_1D_DISCONNECT_ERROR,
-+						    &pctx);
-+					goto delete;
-+				}
-+			}
-+			continue;
- 		}
-+delete:
- 		if (fix_problem(ctx, PR_1D_DELETE_QUESTION, &pctx))
- 			delete_file(ctx, ino, p, block_buf);
- 		else
-@@ -534,7 +550,8 @@ static void decrement_badcount(e2fsck_t 
- {
- 	p->num_bad--;
- 	if (p->num_bad <= 0 ||
--	    (p->num_bad == 1 && !check_if_fs_block(ctx, block)))
-+	    (p->num_bad == 1 && !check_if_fs_block(ctx, block) && 
-+	    ctx->clone == E2F_CLONE_DUP))
- 		ext2fs_unmark_block_bitmap(ctx->block_dup_map, block);
- }
- 
-@@ -572,7 +589,7 @@ static int delete_file_block(ext2_filsys
- 		
+ 		s = strtok(NULL, ",");
+ 	}
+-        free(list);
++	free(list);
  	return 0;
  }
--		
+ 
+@@ -855,6 +856,56 @@ static int fs_match(struct fs_info *fs, 
+ 	return (cmp->negate ? !ret : ret);
+ }
+ 
++/* Check to see whether a filesystem is already mounted */
++static int is_mounted(struct fs_info *fs)
++{
++	struct stat st_buf;
++	dev_t fs_rdev;
++	char *testdir;
++	int retval = 0;
 +
- static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 			struct dup_inode *dp, char* block_buf)
++	if (!fs->mountpt) {
++		/*
++		 * We have already read /proc/mounts
++		 * so any device without a mountpoint
++		 * is indeed not mounted.
++		 */
++		return 0;
++	}
++
++	if (!strcmp(fs->mountpt,"/")) {
++		/* Root should be always mounted */
++		return 1;
++	}
++
++	if (stat(fs->mountpt, &st_buf) < 0)
++		return 0;
++
++	if (!S_ISDIR(st_buf.st_mode)) {
++		/* This is not a directory, cannot be mounted */
++		return 0;
++	}
++
++	fs_rdev = st_buf.st_dev;
++
++	/* Compare with the upper directory */
++	testdir = malloc(strlen(fs->mountpt) + 4);
++	strcpy(testdir,fs->mountpt);
++	if (fs->mountpt[strlen(fs->mountpt) - 1] == '/')
++		strcat(testdir,"..");
++	else
++		strcat(testdir,"/..");
++
++	if (stat(testdir, &st_buf) == 0) {
++		if (st_buf.st_dev != fs_rdev) {
++			retval = 1;
++		}
++	}
++	free(testdir);
++
++	return retval;
++}
++
+ /* Check if we should ignore this filesystem. */
+ static int ignore(struct fs_info *fs)
  {
-@@ -680,11 +697,15 @@ static int clone_file_block(ext2_filsys 
- 			printf("Cloning block %u to %u\n", *block_nr,
- 			       new_block);
- #endif
--			retval = io_channel_read_blk(fs->io, *block_nr, 1,
--						     cs->buf);
--			if (retval) {
--				cs->errcode = retval;
--				return BLOCK_ABORT;
-+			if (ctx->clone == E2F_CLONE_ZERO) {
-+				memset(cs->buf, 0, fs->blocksize);
-+			} else {
-+				retval = io_channel_read_blk(fs->io, *block_nr,
-+							1, cs->buf);
-+				if (retval) {
-+					cs->errcode = retval;
-+					return BLOCK_ABORT;
+@@ -1002,6 +1053,15 @@ static int check_all(NOARGS)
+ 				not_done_yet++;
+ 				continue;
+ 			}
++			if (ignore_mounted) {
++				/*
++				 * Ignore mounted devices.
++				 */
++				if (is_mounted(fs)) {
++					fs->flags |= FLAG_DONE;
++					continue;
 +				}
- 			}
- 			retval = io_channel_write_blk(fs->io, new_block, 1,
- 						      cs->buf);
-@@ -693,6 +714,11 @@ static int clone_file_block(ext2_filsys 
- 				return BLOCK_ABORT;
- 			}
- 			decrement_badcount(ctx, *block_nr, p);
-+			if (ctx->clone == E2F_CLONE_ZERO && p->num_bad == 0) {
-+				ext2fs_unmark_block_bitmap(ctx->block_found_map,
-+							   *block_nr);
-+				ext2fs_block_alloc_stats(fs, *block_nr, -1);
 +			}
- 			*block_nr = new_block;
- 			ext2fs_mark_block_bitmap(ctx->block_found_map,
- 						 new_block);
-Index: e2fsprogs-1.40.1/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/problem.h
-+++ e2fsprogs-1.40.1/e2fsck/problem.h
-@@ -542,7 +542,13 @@ struct problem_context {
+ 			/*
+ 			 * If a filesystem on a particular device has
+ 			 * already been spawned, then we need to defer
+@@ -1179,6 +1239,9 @@ static void PRS(int argc, char *argv[])
+ 			case 'P':
+ 				parallel_root++;
+ 				break;
++			case 'm':
++				ignore_mounted++;
++				break;
+ 			case 's':
+ 				serialize++;
+ 				break;
+@@ -1254,6 +1317,10 @@ int main(int argc, char *argv[])
+ 		fstab = _PATH_MNTTAB;
+ 	load_fs_info(fstab);
  
- /* Couldn't clone file (error) */
- #define PR_1D_CLONE_ERROR	0x013008
--		
++	/* Load info from /proc/mounts, too */
++	if (ignore_mounted)
++		load_fs_info("/proc/mounts");
 +
-+/* File with shared blocks found */
-+#define PR_1D_DISCONNECT_QUESTION 0x013009
-+
-+/* Couldn't unlink file (error) */
-+#define PR_1D_DISCONNECT_ERROR	0x01300A
-+
- /*
-  * Pass 2 errors
-  */
-Index: e2fsprogs-1.40.1/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/problem.c
-+++ e2fsprogs-1.40.1/e2fsck/problem.c
-@@ -917,6 +917,14 @@ static struct e2fsck_problem problem_tab
- 	{ PR_1D_CLONE_ERROR,
- 	  N_("Couldn't clone file: %m\n"), PROMPT_NONE, 0 },
- 
-+	/* File with shared blocks found */
-+	{ PR_1D_DISCONNECT_QUESTION,
-+	  N_("File with shared blocks found\n"), PROMPT_CONNECT, 0 },
-+
-+	/* Couldn't unlink file (error) */
-+	{ PR_1D_DISCONNECT_ERROR,
-+	  N_("Couldn't unlink file: %m\n"), PROMPT_NONE, 0 },
-+
- 	/* Pass 2 errors */
- 
- 	/* Pass 2: Checking directory structure */
-Index: e2fsprogs-1.40.1/e2fsck/e2fsck.8.in
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/e2fsck.8.in
-+++ e2fsprogs-1.40.1/e2fsck/e2fsck.8.in
-@@ -165,6 +165,19 @@ following options are supported:
- Assume the format of the extended attribute blocks in the filesystem is
- the specified version number.  The version number may be 1 or 2.  The
- default extended attribute version format is 2.
-+.TP
-+.BI clone= dup|zero
-+Resolve files with shared blocks in pass 1D by giving each file a private
-+copy of the blocks (dup);
-+or replacing the shared blocks with private, zero-filled blocks (zero).  
-+The default is dup.
-+.TP
-+.BI shared= preserve|lost+found|delete
-+Files with shared blocks discovered in pass 1D are cloned and then left 
-+in place (preserve); 
-+cloned and then disconnected from their parent directory,
-+then reconnected to /lost+found in pass 3 (lost+found); 
-+or simply deleted (delete).  The default is preserve.
- .RE
- .TP
- .B \-f
-Index: e2fsprogs-1.40.1/e2fsck/e2fsck.conf.5.in
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/e2fsck.conf.5.in
-+++ e2fsprogs-1.40.1/e2fsck/e2fsck.conf.5.in
-@@ -92,6 +92,20 @@ This boolean relation controls whether o
- filesystem checks (either based on time or number of mounts) should 
- be doubled if the system is running on battery.  It defaults to 
- true.
-+.TP
-+.I clone
-+This string relation controls the default handling of shared blocks in pass 1D.
-+It can be set to dup or zero.  See the
-+.I "-E clone" 
-+option description in e2fsck(8).
-+.TP
-+.I shared
-+This string relation controls the default disposition of files discovered to 
-+have shared blocks in pass 1D.  It can be set to preserve, lost+found, 
-+or delete.  See the
-+.I "-E shared" 
-+option description in e2fsck(8).
-+
- .SH THE [problems] STANZA
- Each tag in the
- .I [problems] 
+ 	/* Update our search path to include uncommon directories. */
+ 	if (oldpath) {
+ 		fsck_path = malloc (strlen (fsck_prefix_path) + 1 +
+@@ -1296,6 +1363,14 @@ int main(int argc, char *argv[])
+ 			if (!fs)
+ 				continue;
+ 		}
++		if (ignore_mounted) {
++			/*
++			 * Ignore mounted devices.
++			 */
++			if (is_mounted(fs)) {
++				continue;
++			}
++		}
+ 		fsck_device(fs, interactive);
+ 		if (serialize ||
+ 		    (max_running && (num_running >= max_running))) {
