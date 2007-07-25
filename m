@@ -1,88 +1,90 @@
 From: Andreas Dilger <adilger@clusterfs.com>
 Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Wed, 25 Jul 2007 13:46:25 -0600
-Message-ID: <20070725194625.GR5992@schatzie.adilger.int>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org>
+Date: Wed, 25 Jul 2007 13:49:08 -0600
+Message-ID: <20070725194908.GS5992@schatzie.adilger.int>
+References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:50481 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:50576 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933890AbXGYTqb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2007 15:46:31 -0400
+	with ESMTP id S1750977AbXGYTtL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2007 15:49:11 -0400
 Content-Disposition: inline
-In-Reply-To: <20070725143209.GA23613@thunk.org>
+In-Reply-To: <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 25, 2007  10:32 -0400, Theodore Tso wrote:
-> The problem with your patch is:
-> 
-> 	* By shrinking the number of inodes, it can constrain the
->           ability of the filesystem to create new files in the future.
-> 
-> 	* It ruins the inode and block placement algorithms where we
->           try to keep inodes in the same block group as their parent
->           directory, and we try to allocate blocks in the same block
->           group as their containing inode.
-> 
-> 	* Because when the current patch makes no attempt to relocate
->           inodes, and when it doubles the inode size, it chops the
->           number of inodes in half, there must be no inodes in the
->           last half of the inode table.  That is if there are N block
->           groups, the inode tables in blockgroups N/2 to N-1 must be
->           empty.  But because of the block group spreading algorithm,
->           where new directories get pushed out to new block groups, in
->           any real real-life filesystem, the use of block groups is
->           evenly spread out, which means in practice you won't see
->           case where the last half of the inodes will not be in use.
->           Hence, your patch won't actually work in practice.
+On Jul 25, 2007  11:06 +0530, Aneesh Kumar K.V wrote:
+> This helps in reverting the changes if end results
+> are not correct.The environment variable TUNE2FS_SCRATCH_DIR
+> is used to indicate the  directory within which the tdb
+> file need to be created. The file will be named tune2fs-XXXXXX
 
-I was just going to write the same things.  However, it should be noted
-that we DO in fact use only the start of each inode table block in
-normal cases.  We did a survey of this across some hundreds of filesystems
-and because all kernels scan each block group's itable from the start of
-the bitmap we only find the beginning of each itable used.
+> @@ -702,6 +705,23 @@ static void parse_tune2fs_options(int argc, char **argv)
+>  				break;
+> +			case 'I':
+> +				new_inode_size = strtoul (optarg, &tmp, 0);
+> +				if (!((new_inode_size & (new_inode_size - 1)) == 0)) {
+> +					com_err (program_name, 0,
+> +							_("bad Inode size - %s"),
+> +							optarg);
+> +					usage();
+> +				}
 
-That said, if we were going to follow this approach (which isn't so bad,
-IMHO, because most filesystems are far over-provisioned in terms of
-inodes) then we shouldn't _require_ that the last inodes are unused, but
-rather that < 1/2 of the inodes in each group are unused.  Also, we
-should still keep the inodes in the same block group, and do renumbering
-of the inodes in the directories.  At this point, we have a tool that
-could also allow changing the total number of inodes in the filesystem,
-which is something we've wanted in the past.
+Please print a more useful message like "inode size must be a power of two",
+as "bad inode size - 200" isn't very useful to the user to figure out what
+a good inode size is.
 
-> So unfortunately, the right answer *will* require expanding the inode
-> tables, and potentially moving blocks out of the way in order to make
-> room for it.  A lot of that machinery is in resize2fs, actually, and
-> I'm wondering if the right answer is to move resize2fs's functionality
-> into tune2fs.  We will also need this to be able to add the resize
-> inode after the fact.
+> +static void *ext2fs_read_next_inode(ext2_filsys fs,
+> +				void *inode, void *inode_table,
+> +				int *retval)
+> +{
+> +	blk = fs->group_desc[group].bg_inode_table;
+> +	*retval = io_channel_read_blk(fs->io, blk,
+> +			fs->inode_blocks_per_group, inode_table);
 
-Well, since this isn't exactly a common occurrance, I don't think we
-need to push everything into tune2fs.  Having a separate resize2fs
-seems reasonable (we are resizing the inodes after all), and keeping
-so much complexity out of tune2fs helps ensure that we don't introduce
-bugs into tune2fs itself (which is a far more used and critical tool IMHO).
+This isn't doing swabbing of the inodes?
 
-> > tune2fs use undo I/O manager when migrating to large
-> > inode. This helps in reverting the changes if end results
-> > are not correct.The environment variable TUNE2FS_SCRATCH_DIR
-> > is used to indicate the  directory within which the tdb
-> > file need to be created. The file will be named tune2fs-XXXXXX
-> 
-> My suggestion would be to use something like /var/lib/e2fsprogs as the
-> defalut directory.  And we should also do some tests to make sure
-> something sane happens if we run out of room for the undo file.
-> Presumably the only thing we can do is to abort the run and then back
-> out the chnages using what was written out to the undo file.
+> +}
+> +
+> +static int ext2fs_write_itb(ext2_filsys fs, int group,
+> +				void *inode_table_block, int free_inodes_count)
+> +{
+> +	int retval;
+> +	int blk = fs->group_desc[group].bg_inode_table;
+> +	retval = io_channel_write_blk(fs->io, blk,
+> +				fs->inode_blocks_per_group, inode_table_block);
 
-I was going to say /var/tmp, since we don't want to start having to
-manage old versions of these files, add entries to logrotate, etc.
+This isn't doing swabbing either?
+
+> +static int resize_inode(ext2_filsys fs, unsigned long int new_inode_size)
+> +{
+> +	ext2_ino_t inode_num;
+> +	int itable_size, retval;
+> +	int new_inode_per_group, new_max_inode;
+> +	int copied_inode_count = 0;
+> +	void *inode, *buf, *tmp_buf, *inode_table;
+> +	int free_inodes_count = 0, group_count = 0;
+> +	int old_size = EXT2_INODE_SIZE(fs->super);
+> +	int max_group = fs->super->s_inodes_count/fs->super->s_inodes_per_group;
+> +
+> +	if (new_inode_size <= fs->super->s_inode_size ) {
+> +		fprintf(stderr, _("New Inode size too small\n"));
+> +		return EXT2_ET_INVALID_ARGUMENT;
+> +	}
+
+Shouldn't this be verified when the inode size is parsed instead of down here?
+
+> +	if (I_flag) {
+> +		if (mount_flags & EXT2_MF_MOUNTED) {
+> +			fputs(_("The Inode size may only be "
+> +				"changed when the filesystem is "
+> +				"unmounted.\n"), stderr);
+
+Why do you capitalize "Inode" in all of the messages?
 
 Cheers, Andreas
 --
