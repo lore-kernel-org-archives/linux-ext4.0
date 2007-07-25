@@ -1,155 +1,35 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-show-all-mount-options.patch added to -mm tree
-Date: Tue, 24 Jul 2007 15:20:17 -0700
-Message-ID: <200707242220.l6OMKHv4003882@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: mszeredi@suse.cz, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: e2fsprogs: Undo I/O Manager and large inode migration support in tune2fs
+Date: Wed, 25 Jul 2007 11:06:25 +0530
+Message-ID: <11853417881304-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:49398 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750862AbXGYFgn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2007 01:36:43 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6P602cC255200
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 16:00:02 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6P5e8xw207094
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 15:40:08 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6P5aZfh013261
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 15:36:35 +1000
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-The patch titled
-     ext3: show all mount options
-has been added to the -mm tree.  Its filename is
-     ext3-show-all-mount-options.patch
+Hi Ted,
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+The series is on top of
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+f1f115a78f5ea599fc5f8815a741d43fedd5840d
 
-------------------------------------------------------
-Subject: ext3: show all mount options
-From: Miklos Szeredi <mszeredi@suse.cz>
+Changes from last post include
 
-Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/super.c            |   70 +++++++++++++++++++++++++++++++++++
- include/linux/ext3_fs_sb.h |    1 
- 2 files changed, 71 insertions(+)
-
-diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-show-all-mount-options
-+++ a/fs/ext3/super.c
-@@ -545,9 +545,78 @@ static inline void ext3_show_quota_optio
- #endif
- }
- 
-+/*
-+ * Show an option if
-+ *  - it's set to a non-default value OR
-+ *  - if the per-sb default is different from the global default
-+ */
- static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
- {
- 	struct super_block *sb = vfs->mnt_sb;
-+	struct ext3_sb_info *sbi = EXT3_SB(sb);
-+	struct ext3_super_block *es = sbi->s_es;
-+	unsigned long def_mount_opts;
-+
-+	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
-+
-+	if (sbi->s_sb_block != 1)
-+		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
-+	if (test_opt(sb, MINIX_DF))
-+		seq_puts(seq, ",minixdf");
-+	if (test_opt(sb, GRPID))
-+		seq_puts(seq, ",grpid");
-+	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT3_DEFM_BSDGROUPS))
-+		seq_puts(seq, ",nogrpid");
-+	if (sbi->s_resuid != EXT3_DEF_RESUID ||
-+	    le16_to_cpu(es->s_def_resuid) != EXT3_DEF_RESUID) {
-+		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
-+	}
-+	if (sbi->s_resgid != EXT3_DEF_RESGID ||
-+	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
-+		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
-+	}
-+	if (test_opt(sb, ERRORS_CONT)) {
-+		int def_errors = le16_to_cpu(es->s_errors);
-+
-+		if (def_errors == EXT3_ERRORS_PANIC ||
-+		    def_errors == EXT3_ERRORS_RO) {
-+			seq_puts(seq, ",errors=continue");
-+		}
-+	}
-+	if (test_opt(sb, ERRORS_RO))
-+		seq_puts(seq, ",errors=remount-ro");
-+	if (test_opt(sb, ERRORS_PANIC))
-+		seq_puts(seq, ",errors=panic");
-+	if (test_opt(sb, NO_UID32))
-+		seq_puts(seq, ",nouid32");
-+	if (test_opt(sb, DEBUG))
-+		seq_puts(seq, ",debug");
-+	if (test_opt(sb, OLDALLOC))
-+		seq_puts(seq, ",oldalloc");
-+#ifdef CONFIG_EXT3_FS_XATTR
-+	if (test_opt(sb, XATTR_USER))
-+		seq_puts(seq, ",user_xattr");
-+	if (!test_opt(sb, XATTR_USER) &&
-+	    (def_mount_opts & EXT3_DEFM_XATTR_USER)) {
-+		seq_puts(seq, ",nouser_xattr");
-+	}
-+#endif
-+#ifdef CONFIG_EXT3_FS_POSIX_ACL
-+	if (test_opt(sb, POSIX_ACL))
-+		seq_puts(seq, ",acl");
-+	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT3_DEFM_ACL))
-+		seq_puts(seq, ",noacl");
-+#endif
-+	if (!test_opt(sb, RESERVATION))
-+		seq_puts(seq, ",noreservation");
-+	if (sbi->s_commit_interval) {
-+		seq_printf(seq, ",commit=%u",
-+			   (unsigned) (sbi->s_commit_interval / HZ));
-+	}
-+	if (test_opt(sb, BARRIER))
-+		seq_puts(seq, ",barrier=1");
-+	if (test_opt(sb, NOBH))
-+		seq_puts(seq, ",nobh");
- 
- 	if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA)
- 		seq_puts(seq, ",data=journal");
-@@ -1424,6 +1493,7 @@ static int ext3_fill_super (struct super
- 	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT3_DEF_RESUID;
- 	sbi->s_resgid = EXT3_DEF_RESGID;
-+	sbi->s_sb_block = sb_block;
- 
- 	unlock_kernel();
- 
-diff -puN include/linux/ext3_fs_sb.h~ext3-show-all-mount-options include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~ext3-show-all-mount-options
-+++ a/include/linux/ext3_fs_sb.h
-@@ -44,6 +44,7 @@ struct ext3_sb_info {
- 	struct ext3_super_block * s_es;	/* Pointer to the super block in the buffer */
- 	struct buffer_head ** s_group_desc;
- 	unsigned long  s_mount_opt;
-+	ext3_fsblk_t s_sb_block;
- 	uid_t s_resuid;
- 	gid_t s_resgid;
- 	unsigned short s_mount_state;
-_
-
-Patches currently in -mm which might be from mszeredi@suse.cz are
-
-fuse-convert-to-new-aops.patch
-ext2-show-all-mount-options.patch
-ext3-show-all-mount-options.patch
-ext4-show-all-mount-options.patch
-unprivileged-mounts-add-user-mounts-to-the-kernel.patch
-unprivileged-mounts-allow-unprivileged-umount.patch
-unprivileged-mounts-account-user-mounts.patch
-unprivileged-mounts-propagate-error-values-from-clone_mnt.patch
-unprivileged-mounts-allow-unprivileged-bind-mounts.patch
-unprivileged-mounts-put-declaration-of-put_filesystem-in-fsh.patch
-unprivileged-mounts-allow-unprivileged-mounts.patch
-unprivileged-mounts-allow-unprivileged-fuse-mounts.patch
-unprivileged-mounts-propagation-inherit-owner-from-parent.patch
-unprivileged-mounts-propagation-inherit-owner-from-parent-fix-for-git-audit.patch
-unprivileged-mounts-add-no-submounts-flag.patch
+a) Add O_EXCL flag to tdb_open.
+b) Fix the return value when we fail to create the tdb file
+c) Add tune2fs -I <new_inode_size> for migrating to large inode size.
