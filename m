@@ -1,103 +1,61 @@
-From: akpm@linux-foundation.org
-Subject: + fix-inode_table-test-in-ext234_check_descriptors.patch added to -mm tree
-Date: Wed, 25 Jul 2007 00:06:47 -0700
-Message-ID: <200707250706.l6P76lGC022314@imap1.linux-foundation.org>
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: New e2fsprog doc on the ext4 wiki page.
+Date: Wed, 25 Jul 2007 19:30:36 +0530
+Message-ID: <20070725140036.GA30970@amitarora.in.ibm.com>
+References: <20070724110741.65ade06e@rx8>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:33635 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750944AbXGYHHB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Jul 2007 03:07:01 -0400
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:42476 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752599AbXGYOAW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Jul 2007 10:00:22 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6PE1b7E015611
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 10:01:37 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6PE0L8E417680
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 10:00:22 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6PE0LIW003471
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Jul 2007 10:00:21 -0400
+Content-Disposition: inline
+In-Reply-To: <20070724110741.65ade06e@rx8>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jul 24, 2007 at 11:07:41AM -0500, Jose R. Santos wrote:
+> Hi folks
+> 
+> As discussed in the conference call, we are going to create a new doc
+> on the ext4 wiki dedicated to track the development of some of the
+> features needed in e2fsprogs.  The page will consist of mostly changes
+> needed in order to keep e2fsprogs up to date with mainline ext4 kernel
+> code.
+> 
+> I don't plan to add bug fixes, cleanup or trivial changes to the page
+> as this would make it hard to keep the page up to date.  The link to
+> the page will be:
+> 
+> http://ext4.wiki.kernel.org/index.php?title=E2fsprogs_features_and_patches&action=edit
+> 
+> Comments on what you would like to see of this page or in the initial
+> list of features I have gather below are welcome. 
+:
+:
+> Extents support:
+> - Patches submitted?
 
-The patch titled
-     fix inode_table test in ext234_check_descriptors
-has been added to the -mm tree.  Its filename is
-     fix-inode_table-test-in-ext234_check_descriptors.patch
+Uninitialized extents:
+We will need uninitialized extents support for preallocated blocks
+(allocated by fallocate()) too.
+I can send a patch for this, but I don't think extents support is there
+in 1.40.2 release. Is there a place where I can find the latest extents
+support patch on top of 1.40 ? I can prepare patch for uninitialized
+extents on top of it.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-------------------------------------------------------
-Subject: fix inode_table test in ext234_check_descriptors
-From: Eric Sandeen <sandeen@redhat.com>
-
-ext[234]_check_descriptors sanity checks block group descriptor geometry at
-mount time, testing whether the block bitmap, inode bitmap, and inode table
-reside wholly within the blockgroup.  However, the inode table test is off
-by one so that if the last block in the inode table resides on the last
-block of the block group, the test incorrectly fails.  This is because it
-tests the last block as (start + length) rather than (start + length - 1).
-
-This can be seen by trying to mount a filesystem made such as:
-
- mkfs.ext2 -F -b 1024 -m 0 -g 256 -N 3744 fsfile 1024
-
-which yields:
-
- EXT2-fs error (device loop0): ext2_check_descriptors: Inode table for group 0 not in group (block 101)!
- EXT2-fs: group descriptors corrupted!
-
-There is a similar bug in e2fsprogs, patch already sent for that.
-
-(I wonder if inside(), outside(), and/or in_range() should someday be
-used in this and other tests throughout the ext filesystems...)
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/super.c |    2 +-
- fs/ext3/super.c |    2 +-
- fs/ext4/super.c |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
-
-diff -puN fs/ext2/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext2/super.c
---- a/fs/ext2/super.c~fix-inode_table-test-in-ext234_check_descriptors
-+++ a/fs/ext2/super.c
-@@ -580,7 +580,7 @@ static int ext2_check_descriptors (struc
- 			return 0;
- 		}
- 		if (le32_to_cpu(gdp->bg_inode_table) < first_block ||
--		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group >
-+		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group - 1 >
- 		    last_block)
- 		{
- 			ext2_error (sb, "ext2_check_descriptors",
-diff -puN fs/ext3/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext3/super.c
---- a/fs/ext3/super.c~fix-inode_table-test-in-ext234_check_descriptors
-+++ a/fs/ext3/super.c
-@@ -1221,7 +1221,7 @@ static int ext3_check_descriptors (struc
- 			return 0;
- 		}
- 		if (le32_to_cpu(gdp->bg_inode_table) < first_block ||
--		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group >
-+		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group - 1 >
- 		    last_block)
- 		{
- 			ext3_error (sb, "ext3_check_descriptors",
-diff -puN fs/ext4/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext4/super.c
---- a/fs/ext4/super.c~fix-inode_table-test-in-ext234_check_descriptors
-+++ a/fs/ext4/super.c
-@@ -1283,7 +1283,7 @@ static int ext4_check_descriptors (struc
- 		}
- 		inode_table = ext4_inode_table(sb, gdp);
- 		if (inode_table < first_block ||
--		    inode_table + sbi->s_itb_per_group > last_block)
-+		    inode_table + sbi->s_itb_per_group - 1 > last_block)
- 		{
- 			ext4_error (sb, "ext4_check_descriptors",
- 				    "Inode table for group %d"
-_
-
-Patches currently in -mm which might be from sandeen@redhat.com are
-
-fix-inode_table-test-in-ext234_check_descriptors.patch
-udf-fix-uid-and-gid-mount-option-ignorance.patch
+--
+Regards,
+Amit Arora
