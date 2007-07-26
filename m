@@ -1,39 +1,27 @@
-From: Alex Tomas <alex@clusterfs.com>
-Subject: Re: [RFC] basic delayed allocation in VFS
-Date: Thu, 26 Jul 2007 17:33:08 +0400
-Message-ID: <46A8A294.2070106@clusterfs.com>
-References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <46A878FC.5040600@clusterfs.com> <46A88DFD.7030609@garzik.org>
+From: "Yan Zheng" <yanzheng@21cn.com>
+Subject: Why the third parameter of "ext4_ext_put_in_cache" is __u32?
+Date: Thu, 26 Jul 2007 22:54:41 +0800
+Message-ID: <3d0408630707260754w71df514bh719a6e40cc6e2fdb@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>
-To: Jeff Garzik <jeff@garzik.org>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.chehov.net ([80.71.245.247]:63976 "EHLO mail.rialcom.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755871AbXGZNdd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jul 2007 09:33:33 -0400
-In-Reply-To: <46A88DFD.7030609@garzik.org>
+Received: from mu-out-0910.google.com ([209.85.134.186]:45941 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754283AbXGZOym (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jul 2007 10:54:42 -0400
+Received: by mu-out-0910.google.com with SMTP id i10so804937mue
+        for <linux-ext4@vger.kernel.org>; Thu, 26 Jul 2007 07:54:41 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It duplicates fs/mpage.c in bio building and introduces new generic API
-(iomap, map_blocks_t, etc). In contrast, my trivial implementation re-use
-existing code in fs/mpage.c, doesn't introduce new API and I tend to think
-provides quite the same functionality. I can be wrong, of course ...
+Hi all
 
-thanks, Alex
+  The third parameter of "ext4_ext_put_in_cache" is used to receive
+physical block number. I think the data type should be "ext4_fsblk_t".
 
-Jeff Garzik wrote:
-> The XFS one is proven and the work was already completed.
-> 
-> What were the specific technical issues that made it unsuitable for ext4?
-> 
-> I would rather not reinvent the wheel, particularly if the reinvention 
-> is less capable than the existing work.
-> 
->     Jeff
-> 
-> 
+Thanks in advance.
+
+YZ
