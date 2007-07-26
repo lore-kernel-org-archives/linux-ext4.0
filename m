@@ -1,17 +1,17 @@
 From: Alex Tomas <alex@clusterfs.com>
-Subject: [RFC] basic delayed allocation in ext4
-Date: Thu, 26 Jul 2007 13:00:04 +0400
-Message-ID: <46A86294.6050608@clusterfs.com>
+Subject: [RFC] basic delayed allocation in VFS
+Date: Thu, 26 Jul 2007 12:59:57 +0400
+Message-ID: <46A8628D.6070103@clusterfs.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>,
 	linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.chehov.net ([80.71.245.247]:50374 "EHLO mail.rialcom.ru"
+Received: from mail.chehov.net ([80.71.245.247]:60015 "EHLO mail.rialcom.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1764556AbXGZJA2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jul 2007 05:00:28 -0400
+	id S1752874AbXGZKDJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jul 2007 06:03:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -21,252 +21,461 @@ please review ...
 
 thanks, Alex
 
-Basic delayed allocation in ext4
 
-Two special ->get_block() methods are introduced:
+basic delayed allocation in VFS:
 
-  * ext4_da_get_block_prep()
-    to be used with ->prepare_write(), defers allocation till flush
-  * ext4_da_get_block_write()
-    to be used with mpage_da_writepages(), allocate blocks and correct on-disk size
+  * block_prepare_write() can be passed special ->get_block() which
+    doesn't allocate blocks, but reserve them and mark bh delayed
+  * a filesystem can use mpage_da_writepages() with other ->get_block()
+    which doesn't defer allocation. mpage_da_writepages() finds all
+    non-allocated blocks and try to allocate them with minimal calls
+    to ->get_block(), then submit IO using __mpage_writepage()
 
-Current implementation works with data=writeback only, you should
-mount filesystem with delalloc,data=writeback options.
-
-TODO:
-  * reservation
-  * data=ordered
-  * quota
-  * bmap
 
 Signed-off-by: Alex Tomas <alex@clusterfs.com>
 
 
-Index: linux-2.6.22/include/linux/ext4_fs.h
+Index: linux-2.6.22-rc4/fs/buffer.c
 ===================================================================
---- linux-2.6.22.orig/include/linux/ext4_fs.h	2007-07-26 12:30:25.000000000 +0400
-+++ linux-2.6.22/include/linux/ext4_fs.h	2007-07-26 12:32:04.000000000 +0400
-@@ -488,6 +488,7 @@ do {									       \
-  #define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
-  #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
-  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
-+#define EXT4_MOUNT_DELALLOC		0x2000000 /* Delalloc support */
-  /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
-  #ifndef _LINUX_EXT2_FS_H
-  #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
-Index: linux-2.6.22/fs/ext4/super.c
+--- linux-2.6.22-rc4.orig/fs/buffer.c	2007-06-05 04:57:25.000000000 +0400
++++ linux-2.6.22-rc4/fs/buffer.c	2007-07-17 22:40:49.000000000 +0400
+@@ -1630,7 +1630,8 @@ static int __block_write_full_page(struc
+  			 */
+  			clear_buffer_dirty(bh);
+  			set_buffer_uptodate(bh);
+-		} else if (!buffer_mapped(bh) && buffer_dirty(bh)) {
++		} else if ((!buffer_mapped(bh) || buffer_delay(bh))
++				&& buffer_dirty(bh)) {
+  			WARN_ON(bh->b_size != blocksize);
+  			err = get_block(inode, block, bh, 1);
+  			if (err)
+Index: linux-2.6.22-rc4/include/linux/mpage.h
 ===================================================================
---- linux-2.6.22.orig/fs/ext4/super.c	2007-07-26 12:30:25.000000000 +0400
-+++ linux-2.6.22/fs/ext4/super.c	2007-07-26 12:32:04.000000000 +0400
-@@ -728,7 +728,7 @@ enum {
-  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-  	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
-  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
--	Opt_grpquota, Opt_extents, Opt_noextents,
-+	Opt_grpquota, Opt_extents, Opt_noextents, Opt_delalloc,
-  };
+--- linux-2.6.22-rc4.orig/include/linux/mpage.h	2007-06-05 04:57:25.000000000 +0400
++++ linux-2.6.22-rc4/include/linux/mpage.h	2007-07-25 09:48:44.000000000 +0400
+@@ -20,5 +20,7 @@ int mpage_writepages(struct address_spac
+  		struct writeback_control *wbc, get_block_t get_block);
+  int mpage_writepage(struct page *page, get_block_t *get_block,
+  		struct writeback_control *wbc);
++int mpage_da_writepages(struct address_space *mapping,
++		struct writeback_control *wbc, get_block_t get_block);
 
-  static match_table_t tokens = {
-@@ -782,6 +782,7 @@ static match_table_t tokens = {
-  	{Opt_barrier, "barrier=%u"},
-  	{Opt_extents, "extents"},
-  	{Opt_noextents, "noextents"},
-+	{Opt_delalloc, "delalloc"},
-  	{Opt_err, NULL},
-  	{Opt_resize, "resize"},
-  };
-@@ -1127,6 +1128,9 @@ clear_qf_name:
-  		case Opt_noextents:
-  			clear_opt (sbi->s_mount_opt, EXTENTS);
-  			break;
-+		case Opt_delalloc:
-+			set_opt (sbi->s_mount_opt, DELALLOC);
-+			break;
-  		default:
-  			printk (KERN_ERR
-  				"EXT4-fs: Unrecognized mount option \"%s\" "
-Index: linux-2.6.22/fs/ext4/inode.c
+  #endif
+Index: linux-2.6.22-rc4/fs/mpage.c
 ===================================================================
---- linux-2.6.22.orig/fs/ext4/inode.c	2007-07-26 12:30:22.000000000 +0400
-+++ linux-2.6.22/fs/ext4/inode.c	2007-07-26 12:32:04.000000000 +0400
-@@ -39,6 +39,8 @@
-  #include "xattr.h"
-  #include "acl.h"
-
-+static void ext4_invalidatepage(struct page *page, unsigned long offset);
-+
-  /*
-   * Test whether an inode is a fast symlink.
+--- linux-2.6.22-rc4.orig/fs/mpage.c	2007-06-05 04:57:25.000000000 +0400
++++ linux-2.6.22-rc4/fs/mpage.c	2007-07-26 11:59:39.000000000 +0400
+@@ -10,6 +10,8 @@
+   *		Initial version
+   * 27Jun2002	axboe@suse.de
+   *		use bio_add_page() to build bio's just the right size
++ * 26Jul2007	alex@clusterfs.com AKA bzzz
++ *		basic delayed allocation support
    */
-@@ -1291,6 +1293,142 @@ static int ext4_journalled_commit_write(
-  }
 
-  /*
-+ * this is a special callback for ->prepare_write() only
-+ * it's intention is to return mapped block or reserve space
+  #include <linux/kernel.h>
+@@ -732,3 +734,404 @@ int mpage_writepage(struct page *page, g
+  	return ret;
+  }
+  EXPORT_SYMBOL(mpage_writepage);
++
++/*
++ * Delayed allocation stuff
 + */
-+static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
-+				struct buffer_head *bh_result, int create)
++
++struct mpage_da_data {
++	struct inode *inode;
++	struct buffer_head lbh;			/* extent of blocks */
++	unsigned long first_page, next_page;	/* extent of pages */
++	get_block_t *get_block;
++	struct writeback_control *wbc;
++};
++
++
++/*
++ * mpage_da_submit_io - walks through extent of pages and try to write
++ * them with __mpage_writepage()
++ *
++ * @mpd->inode: inode
++ * @mpd->first_page: first page of the extent
++ * @mpd->next_page: page after the last page of the extent
++ * @mpd->get_block: the filesystem's block mapper function
++ *
++ * By the time mpage_da_submit_io() is called we expect all blocks
++ * to be allocated. this may be wrong if allocation failed.
++ *
++ * As pages are already locked by write_cache_pages(), we can't use it
++ */
++static int mpage_da_submit_io(struct mpage_da_data *mpd)
 +{
-+	int ret = 0;
++	struct address_space *mapping = mpd->inode->i_mapping;
++	struct mpage_data mpd_pp = {
++		.bio = NULL,
++		.last_block_in_bio = 0,
++		.get_block = mpd->get_block,
++		.use_writepage = 1,
++	};
++	int ret = 0, err, nr_pages, i;
++	unsigned long index, end;
++	struct pagevec pvec;
 +
-+	BUG_ON(create == 0);
-+	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
++	BUG_ON(mpd->next_page <= mpd->first_page);
 +
-+	/* first, we need to know whether the block is allocated already
-+	 * XXX: when the filesystem has a lot of free blocks, we could
-+	 * reserve even allocated blocks to save this lookup */
-+	ret = ext4_get_blocks_wrap(NULL, inode, iblock, 1,  bh_result, 0, 0);
-+	if (ret >= 0) {
-+		if (buffer_mapped(bh_result)) {
-+			bh_result->b_size = (ret << inode->i_blkbits);
-+		} else {
-+			/* OK, the block isn't allocated yet, let's reserve space */
-+			/* XXX: call reservation here */
-+			/* XXX: __block_prepare_write() unmaps passed block, is it OK? */
-+			map_bh(bh_result, inode->i_sb, 0);
-+			set_buffer_new(bh_result);
-+			set_buffer_delay(bh_result);
-+		}
-+		ret = 0;
-+	}
++	pagevec_init(&pvec, 0);
++	index = mpd->first_page;
++	end = mpd->next_page - 1;
 +
-+	return ret;
-+}
++	while (index <= end) {
++		/* XXX: optimize tail */
++		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		if (nr_pages == 0)
++			break;for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
 +
++			index = page->index;
++			if (index > end)
++				break;
++			index++;
 +
-+static int ext4_da_prepare_write(struct file *file, struct page *page,
-+			      		unsigned from, unsigned to)
-+{
-+	return block_prepare_write(page, from, to, ext4_da_get_block_prep);
-+}
++			err = __mpage_writepage(page, mpd->wbc, &mpd_pp);
 +
-+static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
-+				struct buffer_head *bh_result, int create)
-+{
-+	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
-+	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
-+	loff_t disksize = EXT4_I(inode)->i_disksize;
-+	handle_t *handle = NULL;
-+
-+	if (create) {
-+		handle = ext4_journal_start(inode, needed_blocks);
-+		if (IS_ERR(handle)) {
-+			ret = PTR_ERR(handle);
-+			goto out;
-+		}
-+	}
-+
-+	ret = ext4_get_blocks_wrap(handle, inode, iblock,
-+				max_blocks, bh_result, create, 0);
-+	if (ret > 0) {
-+		bh_result->b_size = (ret << inode->i_blkbits);
-+
-+		/*
-+		 * Update on-disk size along with block allocation
-+		 * we don't use 'extend_disksize' as size may change
-+		 * within already allocated block -bzzz
-+		 */
-+		disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
-+		if (disksize > i_size_read(inode))
-+			disksize = i_size_read(inode);
-+		if (disksize > EXT4_I(inode)->i_disksize) {
 +			/*
-+			 * XXX: replace with spinlock if seen contended -bzzz
++			 * In error case, we have to continue because
++			 * remaining pages are still locked
++			 * XXX: unlock and re-dirty them?
 +			 */
-+			mutex_lock(&EXT4_I(inode)->truncate_mutex);
-+			if (disksize > EXT4_I(inode)->i_disksize)
-+				EXT4_I(inode)->i_disksize = disksize;
-+			mutex_unlock(&EXT4_I(inode)->truncate_mutex);
-+
-+			if (EXT4_I(inode)->i_disksize == disksize) {
-+				if (handle == NULL)
-+					handle = ext4_journal_start(inode, 1);
-+				if (!IS_ERR(handle))
-+					ext4_mark_inode_dirty(handle, inode);
-+			}
++			if (ret == 0)
++				ret = err;
 +		}
-+
-+		ret = 0;
++		pagevec_release(&pvec);
 +	}
-+
-+out:
-+	if (handle && !IS_ERR(handle))
-+		ext4_journal_stop(handle);
++	if (mpd_pp.bio)
++		mpage_bio_submit(WRITE, mpd_pp.bio);
 +
 +	return ret;
 +}
 +
-+static int ext4_da_writepages(struct address_space *mapping,
-+				struct writeback_control *wbc)
++/*
++ * mpage_put_bnr_to_bhs - walk blocks and assign them actual numbers
++ *
++ * @mpd->inode - inode to walk through
++ * @exbh->b_blocknr - first block on a disk
++ * @exbh->b_size - amount of space in bytes
++ * @logical - first logical block to start assignment with
++ *
++ * the function goes through all passed space and put actual disk
++ * block numbers into buffer heads, dropping BH_Delay
++ */
++static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd, sector_t logical,
++				struct buffer_head *exbh)
 +{
-+	return mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
-+}
-+
-+static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
-+{
++	struct inode *inode = mpd->inode;
++	struct address_space *mapping = inode->i_mapping;
++	int blocks = exbh->b_size >> inode->i_blkbits;
++	sector_t pblock = exbh->b_blocknr, cur_logical;
 +	struct buffer_head *head, *bh;
-+	unsigned int curr_off = 0;
++	unsigned long index, end;
++	struct pagevec pvec;
++	int nr_pages, i;
 +
-+	/*
-+	 * Drop reserved blocks
-+	 */
-+	BUG_ON(!PageLocked(page));
-+	if (!page_has_buffers(page))
-+		goto out;
++	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
++	end = (logical + blocks - 1) >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
++	cur_logical = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
 +
-+	bh = head = page_buffers(page);
-+	do {
-+		unsigned int next_off = curr_off + bh->b_size;
++	pagevec_init(&pvec, 0);
 +
-+		/*
-+		 * is this block fully invalidated?
-+		 */
-+		if (offset <= curr_off && buffer_delay(bh)) {
-+			clear_buffer_delay(bh);
-+			/* XXX: add real stuff here */
++	while (index <= end) {
++		/* XXX: optimize tail */
++		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		if (nr_pages == 0)
++			break;
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++
++			index = page->index;
++			if (index > end)
++				break;
++			index++;
++
++			BUG_ON(!PageLocked(page));
++			BUG_ON(PageWriteback(page));
++			BUG_ON(!page_has_buffers(page));
++
++			head = bh = page_buffers(page);
++
++			/* skip blocks out of the range */
++			do {
++				if (cur_logical >= logical)
++					break;
++				cur_logical++;
++				pblock++;
++			} while ((bh = bh->b_this_page) != head);
++
++			do {
++				if (cur_logical >= logical + blocks)
++					break;
++
++				if (buffer_delay(bh)) {
++					bh->b_blocknr = pblock;
++					clear_buffer_delay(bh);
++				} else if (buffer_mapped(bh)) {
++					BUG_ON(bh->b_blocknr != pblock);
++				}
++
++				cur_logical++;
++				pblock++;
++			} while ((bh = bh->b_this_page) != head);
 +		}
-+		curr_off = next_off;
-+		bh = bh->b_this_page;
-+	} while (bh != head);
-+
-+out:
-+	ext4_invalidatepage(page, offset);
-+
-+	return;
++		pagevec_release(&pvec);
++	}
 +}
 +
 +
 +/*
-   * bmap() is special.  It gets used by applications such as lilo and by
-   * the swapper to find the on-disk block of a specific piece of data.
-   *
-@@ -1741,10 +1879,28 @@ static const struct address_space_operat
-  	.releasepage	= ext4_releasepage,
-  };
-
-+static const struct address_space_operations ext4_da_aops = {
-+	.readpage	= ext4_readpage,
-+	.readpages	= ext4_readpages,
-+	.writepage	= ext4_writeback_writepage,
-+	.writepages	= ext4_da_writepages,
-+	.sync_page	= block_sync_page,
-+	.prepare_write	= ext4_da_prepare_write,
-+	.commit_write	= generic_commit_write,
-+	.bmap		= ext4_bmap,
-+	.invalidatepage	= ext4_da_invalidatepage,
-+	.releasepage	= ext4_releasepage,
-+	.direct_IO	= ext4_direct_IO,
-+	.migratepage	= buffer_migrate_page,
-+};
++ * __unmap_underlying_blocks - just a helper function to unmap
++ * set of blocks described by @bh
++ */
++static inline void __unmap_underlying_blocks(struct inode *inode,
++					struct buffer_head *bh)
++{
++	struct block_device *bdev = inode->i_sb->s_bdev;
++	int blocks, i;
 +
-  void ext4_set_aops(struct inode *inode)
-  {
-  	if (ext4_should_order_data(inode))
-  		inode->i_mapping->a_ops = &ext4_ordered_aops;
-+	else if (ext4_should_writeback_data(inode) &&
-+			test_opt(inode->i_sb, DELALLOC))
-+		inode->i_mapping->a_ops = &ext4_da_aops;
-  	else if (ext4_should_writeback_data(inode))
-  		inode->i_mapping->a_ops = &ext4_writeback_aops;
-  	else
++	blocks = bh->b_size >> inode->i_blkbits;
++	for (i = 0; i < blocks; i++)
++		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
++}
++
++/*
++ * mpage_da_map_blocks - go through given space
++ *
++ * @mpd->lbh - bh describing space
++ * @mpd->get_block - the filesystem's block mapper function
++ *
++ * The function skips space we know is already mapped to disk blocks.
++ *
++ * The function ignores errors ->get_block() returns, thus real
++ * error handling is postponed to __mpage_writepage()
++ */
++static void mpage_da_map_blocks(struct mpage_da_data *mpd)
++{
++	struct buffer_head *lbh = &mpd->lbh;
++	int err = 0, remain = lbh->b_size;
++	sector_t next = lbh->b_blocknr;
++	struct buffer_head new;
++
++	/*
++	 * We consider only non-mapped and non-allocated blocks
++	 */
++	if (buffer_mapped(lbh) && !buffer_delay(lbh))
++		return;
++
++	while (remain) {
++		new.b_state = lbh->b_state;
++		new.b_blocknr = 0;
++		new.b_size = remain;
++		err = mpd->get_block(mpd->inode, next, &new, 1);
++		if (err) {
++			/*
++			 * Rather than implement own error handling
++			 * here, we just leave remaining blocks
++			 * unallocated and try again with ->writepage()
++			 */
++			break;
++		}
++		BUG_ON(new.b_size == 0);
++
++		if (buffer_new(&new))
++			__unmap_underlying_blocks(mpd->inode, &new);
++
++		/*
++		 * If blocks are delayed marked, we need to
++		 * put actual blocknr and drop delayed bit
++		 */
++		if (buffer_delay(lbh))
++			mpage_put_bnr_to_bhs(mpd, next, &new);
++
++		/* go for the remaining blocks */
++		next += new.b_size >> mpd->inode->i_blkbits;
++		remain -= new.b_size;
++	}
++}
++
++#define BH_FLAGS	((1 << BH_Uptodate) | (1 << BH_Mapped) | (1 << BH_Delay))
++
++/*
++ * mpage_add_bh_to_extent - try to add one more block to extent of blocks
++ *
++ * @mpd->lbh - extent of blocks
++ * @logical - logical number of the block in the file
++ * @bh - bh of the block (used to access block's state)
++ *
++ * the function is used to collect contig. blocks in same state
++ */
++static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
++				sector_t logical, struct buffer_head *bh)
++{
++	struct buffer_head *lbh = &mpd->lbh;
++	sector_t next;
++
++	next = lbh->b_blocknr + (lbh->b_size >> mpd->inode->i_blkbits);
++
++	/*
++	 * First block in the extent
++	 */
++	if (lbh->b_size == 0) {
++		lbh->b_blocknr = logical;
++		lbh->b_size = bh->b_size;
++		lbh->b_state = bh->b_state & BH_FLAGS;
++		return;
++	}
++
++	/*
++	 * Can we merge the block to our big extent?
++	 */
++	if (logical == next && (bh->b_state & BH_FLAGS) == lbh->b_state) {
++		lbh->b_size += bh->b_size;
++		return;
++	}
++
++	/*
++	 * We couldn't merge the block to our extent, so we
++	 * need to flush current  extent and start new one
++	 */
++	mpage_da_map_blocks(mpd);
++
++	/*
++	 * Now start a new extent
++	 */
++	lbh->b_size = bh->b_size;
++	lbh->b_state = bh->b_state & BH_FLAGS;
++	lbh->b_blocknr = logical;
++}
++
++/*
++ * __mpage_da_writepage - finds extent of pages and blocks
++ *
++ * @page: page to consider
++ * @wbc: not used, we just follow rules
++ * @data: context
++ *
++ * The function finds extents of pages and scan them for all blocks.
++ */
++static int __mpage_da_writepage(struct page *page,
++			struct writeback_control *wbc, void *data)
++{
++	struct mpage_da_data *mpd = data;
++	struct inode *inode = mpd->inode;
++	struct buffer_head *bh, *head, fake;
++	sector_t logical;
++
++	/*
++	 * Can we merge this page to current extent?
++	 */
++	if (mpd->next_page != page->index) {
++		/*
++		 * Nope, we can't. So, we map non-allocated blocks
++		 * and start IO on them using __mpage_writepage()
++		 */
++		if (mpd->next_page != mpd->first_page) {
++			mpage_da_map_blocks(mpd);
++			mpage_da_submit_io(mpd);
++		}
++
++		/*
++		 * Start next extent of pages ...
++		 */
++		mpd->first_page = page->index;
++
++		/*
++		 * ... and blocks
++		 */
++		mpd->lbh.b_size = 0;
++		mpd->lbh.b_state = 0;
++		mpd->lbh.b_blocknr = 0;
++	}
++
++	mpd->next_page = page->index + 1;
++	logical = (sector_t) page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
++
++	if (!page_has_buffers(page)) {
++		/*
++		 * There is no attached buffer heads yet (mmap?)
++		 * we treat the page asfull of dirty blocks
++		 */
++		bh = &fake;
++		bh->b_size = PAGE_CACHE_SIZE;
++		bh->b_state = 0;
++		set_buffer_dirty(bh);
++		set_buffer_uptodate(bh);
++		mpage_add_bh_to_extent(mpd, logical, bh);
++	} else {
++		/*
++		 * Page with regular buffer heads, just add all dirty ones
++		 */
++		bh = head = page_buffers(page);
++		do {
++			BUG_ON(buffer_locked(bh));
++			if (buffer_dirty(bh))
++				mpage_add_bh_to_extent(mpd, logical, bh);
++			logical++;
++		} while ((bh = bh->b_this_page) != head);
++	}
++
++	return 0;
++}
++
++/*
++ * mpage_da_writepages - walk the list of dirty pages of the given
++ * address space, allocates non-allocated blocks, maps newly-allocated
++ * blocks to existing bhs and issue IO them
++ *
++ * @mapping: address space structure to write
++ * @wbc: subtract the number of written pages from *@wbc->nr_to_write
++ * @get_block: the filesystem's block mapper function.
++ *
++ * This is a library function, which implements the writepages()
++ * address_space_operation.
++ *
++ * In order to avoid duplication of logic that deals with partial pages,
++ * multiple bio per page, etc, we find non-allocated blocks, allocate
++ * them with minimal calls to ->get_block() and re-use __mpage_writepage()
++ *
++ * It's important that we call __mpage_writepage() only once for each
++ * involved page, otherwise we'd have to implement more complicated logic
++ * to deal with pages w/o PG_lock or w/ PG_writeback and so on.
++ *
++ * See comments to mpage_writepages()
++ */
++int mpage_da_writepages(struct address_space *mapping,
++		struct writeback_control *wbc, get_block_t get_block)
++{
++	struct mpage_da_data mpd;
++	int ret;
++
++	if (!get_block)
++		return generic_writepages(mapping, wbc);
++
++	mpd.wbc = wbc;
++	mpd.inode = mapping->host;
++	mpd.lbh.b_size = 0;
++	mpd.lbh.b_state = 0;
++	mpd.lbh.b_blocknr = 0;
++	mpd.first_page = 0;
++	mpd.next_page = 0;
++	mpd.get_block = get_block;
++
++	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
++
++	/*
++	 * Handle last extent of pages
++	 */
++	if (mpd.next_page != mpd.first_page) {
++		mpage_da_map_blocks(&mpd);
++		mpage_da_submit_io(&mpd);
++	}
++
++	return ret;
++}
++EXPORT_SYMBOL(mpage_da_writepages);
++
