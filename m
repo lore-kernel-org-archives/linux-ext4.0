@@ -1,84 +1,86 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Thu, 26 Jul 2007 12:13:25 -0400
-Message-ID: <20070726161325.GB12895@thunk.org>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org> <46A8895A.5000308@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: akpm@linux-foundation.org
+Subject: [patch 25/39] fix inode_table test in ext234_check_descriptors
+Date: Thu, 26 Jul 2007 10:41:11 -0700
+Message-ID: <200707261745.l6QHjmAI012336@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58817 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758166AbXGZQN3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jul 2007 12:13:29 -0400
-Content-Disposition: inline
-In-Reply-To: <46A8895A.5000308@linux.vnet.ibm.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:46141 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S935540AbXGZR4h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jul 2007 13:56:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 26, 2007 at 05:15:30PM +0530, Aneesh Kumar K.V wrote:
-> >Let me guess, you're testing with a filesystem with two block groups,
-> >right?  And to date you've tested *only* by doubling the size of the
-> >inode.
-> 
-> I tested this with multiple ( 1 and 7 ) groups. But yes all the
-> testing was to change inode size from 128 to 256.
+From: Eric Sandeen <sandeen@redhat.com>
 
-Your patch comments stated "As a part of increasing the inode size we
-throw away the free inodes in the last block group."  This is *only*
-true if the filesystem has two (and exactly two) block groups.  Hence
-my guess that only tested on filesystems with two block groups.
+ext[234]_check_descriptors sanity checks block group descriptor geometry at
+mount time, testing whether the block bitmap, inode bitmap, and inode table
+reside wholly within the blockgroup.  However, the inode table test is off
+by one so that if the last block in the inode table resides on the last
+block of the block group, the test incorrectly fails.  This is because it
+tests the last block as (start + length) rather than (start + length - 1).
 
-If you tested with larger numbers of block groups, the filesystem must
-have been mostly empty, or at least not a large number of directories,
-or else you would have noticed that most of the time that your
-algorithm wouldn't work.
+This can be seen by trying to mount a filesystem made such as:
 
-> I guess Undo I/O manager can go in because I have been using it for
-> the ext3 -> ext4 inode migration testing and for testing the above patch.
+ mkfs.ext2 -F -b 1024 -m 0 -g 256 -N 3744 fsfile 1024
 
-Well, I really want a valid use case for undo code, and right now the
-above patch is IMHO not suitable for merging into mainline, given all
-of the problems that it has.
+which yields:
 
-> Why would one need to recover on mkfs. He can very well run mkfs again 
-> right ?
+ EXT2-fs error (device loop0): ext2_check_descriptors: Inode table for group 0 not in group (block 101)!
+ EXT2-fs: group descriptors corrupted!
 
-The idea is if there is a valid ext2/3 filesystem, and someone runs
-mkfs on that filesystem, that it creates an undo file so that if
-someone fumble-figured the arguments to mkfs, it becomes possible to
-undo it.
+There is a similar bug in e2fsprogs, patch already sent for that.
 
-In the ideal case the undo file would be copied into blocks that were
-not in use by the original file, and placed into the new filesystem,
-so that, so that it would be possible to undo the mkfs without needing
-a separate file.  But I think it would be acceptable to say, "previous
-ext3 filesystem detected; to undo the mke2fs operation, please run the
-command 'undoe2fs /var/tmp/XXXX /dev/sdYY' in order to recover".
+(I wonder if inside(), outside(), and/or in_range() should someday be
+used in this and other tests throughout the ext filesystems...)
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-> >Presumably the only thing we can do is to abort the run and then back
-> >out the chnages using what was written out to the undo file.
-> >
-> 
-> I had a FIXME!! in the code which stated it would be nice to use the
-> conf file But right now the conffile is e2fsck specific
+ fs/ext2/super.c |    2 +-
+ fs/ext3/super.c |    2 +-
+ fs/ext4/super.c |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-Actually, e2fsck and mke2fs have their own config files.  An open
-issue is whether we should have a separate tune2fs config file, or a
-more general e2fsprogs.conf file.  Or we could have tune2fs use the
-mke2fs.conf file, which is a bit of UI surprise; OTOH, tune2fs and
-mke2fs do share code already, so it does make sense from a progamming
-point of view.  I do consider it a UI botch, though.
-
-Another possibility is to merge e2fsck.conf and mke2fs.conf into a
-single config file, with symlinks for backwards compatibility.  My
-current thinking is to just to add a new e2fsprogs.conf file, and let
-tune2fs use it.  But I'm certainly willing to hear arguments for other
-ways of handling this.
-
-Or maybe we could just simply add a default of /var/lib/e2fsprogs, and
-just leave it be for now.
-
-					- Ted
+diff -puN fs/ext2/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext2/super.c
+--- a/fs/ext2/super.c~fix-inode_table-test-in-ext234_check_descriptors
++++ a/fs/ext2/super.c
+@@ -580,7 +580,7 @@ static int ext2_check_descriptors (struc
+ 			return 0;
+ 		}
+ 		if (le32_to_cpu(gdp->bg_inode_table) < first_block ||
+-		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group >
++		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group - 1 >
+ 		    last_block)
+ 		{
+ 			ext2_error (sb, "ext2_check_descriptors",
+diff -puN fs/ext3/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext3/super.c
+--- a/fs/ext3/super.c~fix-inode_table-test-in-ext234_check_descriptors
++++ a/fs/ext3/super.c
+@@ -1221,7 +1221,7 @@ static int ext3_check_descriptors (struc
+ 			return 0;
+ 		}
+ 		if (le32_to_cpu(gdp->bg_inode_table) < first_block ||
+-		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group >
++		    le32_to_cpu(gdp->bg_inode_table) + sbi->s_itb_per_group - 1 >
+ 		    last_block)
+ 		{
+ 			ext3_error (sb, "ext3_check_descriptors",
+diff -puN fs/ext4/super.c~fix-inode_table-test-in-ext234_check_descriptors fs/ext4/super.c
+--- a/fs/ext4/super.c~fix-inode_table-test-in-ext234_check_descriptors
++++ a/fs/ext4/super.c
+@@ -1283,7 +1283,7 @@ static int ext4_check_descriptors (struc
+ 		}
+ 		inode_table = ext4_inode_table(sb, gdp);
+ 		if (inode_table < first_block ||
+-		    inode_table + sbi->s_itb_per_group > last_block)
++		    inode_table + sbi->s_itb_per_group - 1 > last_block)
+ 		{
+ 			ext4_error (sb, "ext4_check_descriptors",
+ 				    "Inode table for group %d"
+_
