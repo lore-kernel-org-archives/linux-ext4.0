@@ -1,93 +1,272 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Wed, 25 Jul 2007 13:49:08 -0600
-Message-ID: <20070725194908.GS5992@schatzie.adilger.int>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: [RFC] basic delayed allocation in ext4
+Date: Thu, 26 Jul 2007 13:00:04 +0400
+Message-ID: <46A86294.6050608@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:50576 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750977AbXGYTtL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2007 15:49:11 -0400
-Content-Disposition: inline
-In-Reply-To: <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail.chehov.net ([80.71.245.247]:50374 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1764556AbXGZJA2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jul 2007 05:00:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Jul 25, 2007  11:06 +0530, Aneesh Kumar K.V wrote:
-> This helps in reverting the changes if end results
-> are not correct.The environment variable TUNE2FS_SCRATCH_DIR
-> is used to indicate the  directory within which the tdb
-> file need to be created. The file will be named tune2fs-XXXXXX
+Good day,
 
-> @@ -702,6 +705,23 @@ static void parse_tune2fs_options(int argc, char **argv)
->  				break;
-> +			case 'I':
-> +				new_inode_size = strtoul (optarg, &tmp, 0);
-> +				if (!((new_inode_size & (new_inode_size - 1)) == 0)) {
-> +					com_err (program_name, 0,
-> +							_("bad Inode size - %s"),
-> +							optarg);
-> +					usage();
-> +				}
+please review ...
 
-Please print a more useful message like "inode size must be a power of two",
-as "bad inode size - 200" isn't very useful to the user to figure out what
-a good inode size is.
+thanks, Alex
 
-> +static void *ext2fs_read_next_inode(ext2_filsys fs,
-> +				void *inode, void *inode_table,
-> +				int *retval)
-> +{
-> +	blk = fs->group_desc[group].bg_inode_table;
-> +	*retval = io_channel_read_blk(fs->io, blk,
-> +			fs->inode_blocks_per_group, inode_table);
+Basic delayed allocation in ext4
 
-This isn't doing swabbing of the inodes?
+Two special ->get_block() methods are introduced:
 
-> +}
-> +
-> +static int ext2fs_write_itb(ext2_filsys fs, int group,
-> +				void *inode_table_block, int free_inodes_count)
-> +{
-> +	int retval;
-> +	int blk = fs->group_desc[group].bg_inode_table;
-> +	retval = io_channel_write_blk(fs->io, blk,
-> +				fs->inode_blocks_per_group, inode_table_block);
+  * ext4_da_get_block_prep()
+    to be used with ->prepare_write(), defers allocation till flush
+  * ext4_da_get_block_write()
+    to be used with mpage_da_writepages(), allocate blocks and correct on-disk size
 
-This isn't doing swabbing either?
+Current implementation works with data=writeback only, you should
+mount filesystem with delalloc,data=writeback options.
 
-> +static int resize_inode(ext2_filsys fs, unsigned long int new_inode_size)
-> +{
-> +	ext2_ino_t inode_num;
-> +	int itable_size, retval;
-> +	int new_inode_per_group, new_max_inode;
-> +	int copied_inode_count = 0;
-> +	void *inode, *buf, *tmp_buf, *inode_table;
-> +	int free_inodes_count = 0, group_count = 0;
-> +	int old_size = EXT2_INODE_SIZE(fs->super);
-> +	int max_group = fs->super->s_inodes_count/fs->super->s_inodes_per_group;
-> +
-> +	if (new_inode_size <= fs->super->s_inode_size ) {
-> +		fprintf(stderr, _("New Inode size too small\n"));
-> +		return EXT2_ET_INVALID_ARGUMENT;
-> +	}
+TODO:
+  * reservation
+  * data=ordered
+  * quota
+  * bmap
 
-Shouldn't this be verified when the inode size is parsed instead of down here?
+Signed-off-by: Alex Tomas <alex@clusterfs.com>
 
-> +	if (I_flag) {
-> +		if (mount_flags & EXT2_MF_MOUNTED) {
-> +			fputs(_("The Inode size may only be "
-> +				"changed when the filesystem is "
-> +				"unmounted.\n"), stderr);
 
-Why do you capitalize "Inode" in all of the messages?
+Index: linux-2.6.22/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.22.orig/include/linux/ext4_fs.h	2007-07-26 12:30:25.000000000 +0400
++++ linux-2.6.22/include/linux/ext4_fs.h	2007-07-26 12:32:04.000000000 +0400
+@@ -488,6 +488,7 @@ do {									       \
+  #define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
+  #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
++#define EXT4_MOUNT_DELALLOC		0x2000000 /* Delalloc support */
+  /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
+  #ifndef _LINUX_EXT2_FS_H
+  #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
+Index: linux-2.6.22/fs/ext4/super.c
+===================================================================
+--- linux-2.6.22.orig/fs/ext4/super.c	2007-07-26 12:30:25.000000000 +0400
++++ linux-2.6.22/fs/ext4/super.c	2007-07-26 12:32:04.000000000 +0400
+@@ -728,7 +728,7 @@ enum {
+  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+  	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+-	Opt_grpquota, Opt_extents, Opt_noextents,
++	Opt_grpquota, Opt_extents, Opt_noextents, Opt_delalloc,
+  };
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+  static match_table_t tokens = {
+@@ -782,6 +782,7 @@ static match_table_t tokens = {
+  	{Opt_barrier, "barrier=%u"},
+  	{Opt_extents, "extents"},
+  	{Opt_noextents, "noextents"},
++	{Opt_delalloc, "delalloc"},
+  	{Opt_err, NULL},
+  	{Opt_resize, "resize"},
+  };
+@@ -1127,6 +1128,9 @@ clear_qf_name:
+  		case Opt_noextents:
+  			clear_opt (sbi->s_mount_opt, EXTENTS);
+  			break;
++		case Opt_delalloc:
++			set_opt (sbi->s_mount_opt, DELALLOC);
++			break;
+  		default:
+  			printk (KERN_ERR
+  				"EXT4-fs: Unrecognized mount option \"%s\" "
+Index: linux-2.6.22/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.22.orig/fs/ext4/inode.c	2007-07-26 12:30:22.000000000 +0400
++++ linux-2.6.22/fs/ext4/inode.c	2007-07-26 12:32:04.000000000 +0400
+@@ -39,6 +39,8 @@
+  #include "xattr.h"
+  #include "acl.h"
+
++static void ext4_invalidatepage(struct page *page, unsigned long offset);
++
+  /*
+   * Test whether an inode is a fast symlink.
+   */
+@@ -1291,6 +1293,142 @@ static int ext4_journalled_commit_write(
+  }
+
+  /*
++ * this is a special callback for ->prepare_write() only
++ * it's intention is to return mapped block or reserve space
++ */
++static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
++				struct buffer_head *bh_result, int create)
++{
++	int ret = 0;
++
++	BUG_ON(create == 0);
++	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
++
++	/* first, we need to know whether the block is allocated already
++	 * XXX: when the filesystem has a lot of free blocks, we could
++	 * reserve even allocated blocks to save this lookup */
++	ret = ext4_get_blocks_wrap(NULL, inode, iblock, 1,  bh_result, 0, 0);
++	if (ret >= 0) {
++		if (buffer_mapped(bh_result)) {
++			bh_result->b_size = (ret << inode->i_blkbits);
++		} else {
++			/* OK, the block isn't allocated yet, let's reserve space */
++			/* XXX: call reservation here */
++			/* XXX: __block_prepare_write() unmaps passed block, is it OK? */
++			map_bh(bh_result, inode->i_sb, 0);
++			set_buffer_new(bh_result);
++			set_buffer_delay(bh_result);
++		}
++		ret = 0;
++	}
++
++	return ret;
++}
++
++
++static int ext4_da_prepare_write(struct file *file, struct page *page,
++			      		unsigned from, unsigned to)
++{
++	return block_prepare_write(page, from, to, ext4_da_get_block_prep);
++}
++
++static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
++				struct buffer_head *bh_result, int create)
++{
++	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
++	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
++	loff_t disksize = EXT4_I(inode)->i_disksize;
++	handle_t *handle = NULL;
++
++	if (create) {
++		handle = ext4_journal_start(inode, needed_blocks);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out;
++		}
++	}
++
++	ret = ext4_get_blocks_wrap(handle, inode, iblock,
++				max_blocks, bh_result, create, 0);
++	if (ret > 0) {
++		bh_result->b_size = (ret << inode->i_blkbits);
++
++		/*
++		 * Update on-disk size along with block allocation
++		 * we don't use 'extend_disksize' as size may change
++		 * within already allocated block -bzzz
++		 */
++		disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
++		if (disksize > i_size_read(inode))
++			disksize = i_size_read(inode);
++		if (disksize > EXT4_I(inode)->i_disksize) {
++			/*
++			 * XXX: replace with spinlock if seen contended -bzzz
++			 */
++			mutex_lock(&EXT4_I(inode)->truncate_mutex);
++			if (disksize > EXT4_I(inode)->i_disksize)
++				EXT4_I(inode)->i_disksize = disksize;
++			mutex_unlock(&EXT4_I(inode)->truncate_mutex);
++
++			if (EXT4_I(inode)->i_disksize == disksize) {
++				if (handle == NULL)
++					handle = ext4_journal_start(inode, 1);
++				if (!IS_ERR(handle))
++					ext4_mark_inode_dirty(handle, inode);
++			}
++		}
++
++		ret = 0;
++	}
++
++out:
++	if (handle && !IS_ERR(handle))
++		ext4_journal_stop(handle);
++
++	return ret;
++}
++
++static int ext4_da_writepages(struct address_space *mapping,
++				struct writeback_control *wbc)
++{
++	return mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
++}
++
++static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
++{
++	struct buffer_head *head, *bh;
++	unsigned int curr_off = 0;
++
++	/*
++	 * Drop reserved blocks
++	 */
++	BUG_ON(!PageLocked(page));
++	if (!page_has_buffers(page))
++		goto out;
++
++	bh = head = page_buffers(page);
++	do {
++		unsigned int next_off = curr_off + bh->b_size;
++
++		/*
++		 * is this block fully invalidated?
++		 */
++		if (offset <= curr_off && buffer_delay(bh)) {
++			clear_buffer_delay(bh);
++			/* XXX: add real stuff here */
++		}
++		curr_off = next_off;
++		bh = bh->b_this_page;
++	} while (bh != head);
++
++out:
++	ext4_invalidatepage(page, offset);
++
++	return;
++}
++
++
++/*
+   * bmap() is special.  It gets used by applications such as lilo and by
+   * the swapper to find the on-disk block of a specific piece of data.
+   *
+@@ -1741,10 +1879,28 @@ static const struct address_space_operat
+  	.releasepage	= ext4_releasepage,
+  };
+
++static const struct address_space_operations ext4_da_aops = {
++	.readpage	= ext4_readpage,
++	.readpages	= ext4_readpages,
++	.writepage	= ext4_writeback_writepage,
++	.writepages	= ext4_da_writepages,
++	.sync_page	= block_sync_page,
++	.prepare_write	= ext4_da_prepare_write,
++	.commit_write	= generic_commit_write,
++	.bmap		= ext4_bmap,
++	.invalidatepage	= ext4_da_invalidatepage,
++	.releasepage	= ext4_releasepage,
++	.direct_IO	= ext4_direct_IO,
++	.migratepage	= buffer_migrate_page,
++};
++
+  void ext4_set_aops(struct inode *inode)
+  {
+  	if (ext4_should_order_data(inode))
+  		inode->i_mapping->a_ops = &ext4_ordered_aops;
++	else if (ext4_should_writeback_data(inode) &&
++			test_opt(inode->i_sb, DELALLOC))
++		inode->i_mapping->a_ops = &ext4_da_aops;
+  	else if (ext4_should_writeback_data(inode))
+  		inode->i_mapping->a_ops = &ext4_writeback_aops;
+  	else
