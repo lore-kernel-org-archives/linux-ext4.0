@@ -1,91 +1,84 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Thu, 26 Jul 2007 10:58:57 -0400
-Message-ID: <20070726145857.GA12895@thunk.org>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org> <20070725194625.GR5992@schatzie.adilger.int>
+Date: Thu, 26 Jul 2007 12:13:25 -0400
+Message-ID: <20070726161325.GB12895@thunk.org>
+References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org> <46A8895A.5000308@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:54791 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:58817 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756625AbXGZO7O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jul 2007 10:59:14 -0400
+	id S1758166AbXGZQN3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jul 2007 12:13:29 -0400
 Content-Disposition: inline
-In-Reply-To: <20070725194625.GR5992@schatzie.adilger.int>
+In-Reply-To: <46A8895A.5000308@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 25, 2007 at 01:46:25PM -0600, Andreas Dilger wrote:
-> I was just going to write the same things.  However, it should be noted
-> that we DO in fact use only the start of each inode table block in
-> normal cases.  We did a survey of this across some hundreds of filesystems
-> and because all kernels scan each block group's itable from the start of
-> the bitmap we only find the beginning of each itable used.
-
-Yep, granted.
-
-> That said, if we were going to follow this approach (which isn't so bad,
-> IMHO, because most filesystems are far over-provisioned in terms of
-> inodes) then we shouldn't _require_ that the last inodes are unused, but
-> rather that < 1/2 of the inodes in each group are unused.  Also, we
-> should still keep the inodes in the same block group, and do renumbering
-> of the inodes in the directories.  At this point, we have a tool that
-> could also allow changing the total number of inodes in the filesystem,
-> which is something we've wanted in the past.
-
-The problem is without the block relocation code, all we will be able
-to do is shrink the total number of inodes in the filesystem --- and
-most of the time, there's not a lot of value in shrinking the size of
-the inode table.  Sure, you get a tiny amount of space back, and maybe
-e2fsck times speed up, but that's about it.  Most of the time people
-who want to change the total number of inodes want to increase it.
-
-> Well, since this isn't exactly a common occurrance, I don't think we
-> need to push everything into tune2fs.  Having a separate resize2fs
-> seems reasonable (we are resizing the inodes after all), and keeping
-> so much complexity out of tune2fs helps ensure that we don't introduce
-> bugs into tune2fs itself (which is a far more used and critical tool IMHO).
-
-Well, if you look at resize2fs, the major complexity can roughly be
-broken down as follows:
-
-* 30% -- Inode mover (and iterating over directory entries)
-* 30% -- Block mover (and iterating over inodes to fix up entries)
-* 5% -- Moving the inode table 
-* 10% -- Updating the superblock/block group descriptors
-* 25% -- Making sure nothing bad happens if resize2fs crashes in the 
-      	 	middle (except when moving the inode table; then we cross 
-		our fingers and pray)
-
-With the undo I/O manager, the last goes away, and if you need to deal
-with iterating over the directory entries, what's left is mostly the
-block mover, which really isn't that hard, since the inode mover and
-the block mover shares a fair amount of the infrastructure to keep
-track what had moved where.
-
-> > My suggestion would be to use something like /var/lib/e2fsprogs as the
-> > defalut directory.  And we should also do some tests to make sure
-> > something sane happens if we run out of room for the undo file.
-> > Presumably the only thing we can do is to abort the run and then back
-> > out the chnages using what was written out to the undo file.
+On Thu, Jul 26, 2007 at 05:15:30PM +0530, Aneesh Kumar K.V wrote:
+> >Let me guess, you're testing with a filesystem with two block groups,
+> >right?  And to date you've tested *only* by doubling the size of the
+> >inode.
 > 
-> I was going to say /var/tmp, since we don't want to start having to
-> manage old versions of these files, add entries to logrotate, etc.
+> I tested this with multiple ( 1 and 7 ) groups. But yes all the
+> testing was to change inode size from 128 to 256.
 
-Well, I wanted them in a separate directory so that we could
-automatically find the undo files and deal with them automatically.
-For example, e2fsck would be able to deal with recovering from an
-interrupted resize2fs or tune2fs operation if the system crashed.
+Your patch comments stated "As a part of increasing the inode size we
+throw away the free inodes in the last block group."  This is *only*
+true if the filesystem has two (and exactly two) block groups.  Hence
+my guess that only tested on filesystems with two block groups.
 
-In some cases you wouldn't want to automatically reuse them after a
-completed operation (i.e., an e2fsck "undo" file would rarely get
-used), so we would need to tag the undo file with what program
-generated them, and some kind of temporal identifer (i.e., the
-superblock last write/mount time).
+If you tested with larger numbers of block groups, the filesystem must
+have been mostly empty, or at least not a large number of directories,
+or else you would have noticed that most of the time that your
+algorithm wouldn't work.
 
-I also don't think logrotate entries are that bad of an idea....
+> I guess Undo I/O manager can go in because I have been using it for
+> the ext3 -> ext4 inode migration testing and for testing the above patch.
 
-	    	      	 	 	      	  - Ted
+Well, I really want a valid use case for undo code, and right now the
+above patch is IMHO not suitable for merging into mainline, given all
+of the problems that it has.
+
+> Why would one need to recover on mkfs. He can very well run mkfs again 
+> right ?
+
+The idea is if there is a valid ext2/3 filesystem, and someone runs
+mkfs on that filesystem, that it creates an undo file so that if
+someone fumble-figured the arguments to mkfs, it becomes possible to
+undo it.
+
+In the ideal case the undo file would be copied into blocks that were
+not in use by the original file, and placed into the new filesystem,
+so that, so that it would be possible to undo the mkfs without needing
+a separate file.  But I think it would be acceptable to say, "previous
+ext3 filesystem detected; to undo the mke2fs operation, please run the
+command 'undoe2fs /var/tmp/XXXX /dev/sdYY' in order to recover".
+
+
+> >Presumably the only thing we can do is to abort the run and then back
+> >out the chnages using what was written out to the undo file.
+> >
+> 
+> I had a FIXME!! in the code which stated it would be nice to use the
+> conf file But right now the conffile is e2fsck specific
+
+Actually, e2fsck and mke2fs have their own config files.  An open
+issue is whether we should have a separate tune2fs config file, or a
+more general e2fsprogs.conf file.  Or we could have tune2fs use the
+mke2fs.conf file, which is a bit of UI surprise; OTOH, tune2fs and
+mke2fs do share code already, so it does make sense from a progamming
+point of view.  I do consider it a UI botch, though.
+
+Another possibility is to merge e2fsck.conf and mke2fs.conf into a
+single config file, with symlinks for backwards compatibility.  My
+current thinking is to just to add a new e2fsprogs.conf file, and let
+tune2fs use it.  But I'm certainly willing to hear arguments for other
+ways of handling this.
+
+Or maybe we could just simply add a default of /var/lib/e2fsprogs, and
+just leave it be for now.
+
+					- Ted
