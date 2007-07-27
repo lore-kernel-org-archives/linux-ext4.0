@@ -1,46 +1,59 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Fri, 27 Jul 2007 11:34:19 -0400
-Message-ID: <20070727153419.GA13515@thunk.org>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org> <46A8895A.5000308@linux.vnet.ibm.com> <20070726161325.GB12895@thunk.org> <46A95F93.3020001@linux.vnet.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [BUG?] "ext4_ext_put_in_cache" uses __u32 to receive physical
+	block number.
+Date: Fri, 27 Jul 2007 08:39:43 -0700
+Message-ID: <1185550783.6656.4.camel@localhost.localdomain>
+References: <3d0408630707262216i3f8e1c35ub49be9c210f963d8@mail.gmail.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Yan Zheng <yanzheng@21cn.com>, akpm@osdl.org, stable@kernel.org,
+	tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39514 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761302AbXG0Peb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jul 2007 11:34:31 -0400
-Content-Disposition: inline
-In-Reply-To: <46A95F93.3020001@linux.vnet.ibm.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:38449 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756854AbXG0Pjt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jul 2007 11:39:49 -0400
+In-Reply-To: <3d0408630707262216i3f8e1c35ub49be9c210f963d8@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 27, 2007 at 08:29:31AM +0530, Aneesh Kumar K.V wrote:
-> What are the issues you see with PATCH 1 and PATCH 2 which implement 
-> Undo I/O Manager and undoe2fs other than it is not hooked into any of
-> the existing tools. I will try to add it to mke2fs as you suggested. But
-> should that prevent it from going in ?
+On Fri, 2007-07-27 at 13:16 +0800, Yan Zheng wrote:
+> Hi, all
+> 
+> I think I found a bug in ext4/extents.c, "ext4_ext_put_in_cache" uses
+> "__u32" to receive physical block number.  "ext4_ext_put_in_cache" is
+> used in "ext4_ext_get_blocks", it sets ext4 inode's extent cache
+> according most recently tree lookup (higher 16 bits of saved physical
+> block number are always zero). when serving a mapping request,
+> "ext4_ext_get_blocks" first check whether the logical block is in
+> inode's extent cache. if the logical block is in the cache and the
+> cached region isn't a gap, "ext4_ext_get_blocks" gets physical block
+> number by using cached region's physical block number and offset in
+> the cached region.  as described above, "ext4_ext_get_blocks" may
+> return wrong result when there are physical block numbers bigger than
+> 0xffffffff.
+> 
+> Regards
+> 
+> YZ
 
-The main issue is that it's not used by an in-tree caller.  If you can
-add it to mke2fs, that would be great; otherwise, it's something
-that's on my todo list so we can merge the undo manager.  The other
-possibility is that I might use this as justification for creating a
-"pu" (proposed update) branch which has the property that patches on
-the pu branch can get removed or modified at any time, and the "pu"
-branch can get rewound or rebased at any time.
+You are right.  Thanks for reporting this!
 
-See the section of text starting at line #68 (and going on to line
-#160) in the following git's maintainer notes for a much more
-comprehensive description of "maint", "master", "next", and "pu",
-which is the direction in which I plan to take the e2fsprogs git tree:
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-http://git.kernel.org/?p=git/git.git;a=blob;f=MaintNotes;h=8bf0352adf2b4ac775d6100ad937600ecb5be5f2;hb=962753f75390f5c5ea23a2d1e6996f6027003478
-
-But yes, the main reason why I haven't merged the undo manager is
-because we don't have an in-tree user of that interface.  We don't
-even have test cases in the tree, either (also on my todo list, but
-feel free to beat me to it).
-
-						- Ted
+Index: linux-2.6.22/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.22.orig/fs/ext4/extents.c	2007-07-27 08:31:02.000000000 -0700
++++ linux-2.6.22/fs/ext4/extents.c	2007-07-27 08:31:48.000000000 -0700
+@@ -1544,7 +1544,7 @@ int ext4_ext_walk_space(struct inode *in
+ 
+ static void
+ ext4_ext_put_in_cache(struct inode *inode, __u32 block,
+-			__u32 len, __u32 start, int type)
++			__u32 len, ext4_fsblk_t start, int type)
+ {
+ 	struct ext4_ext_cache *cex;
+ 	BUG_ON(len == 0);
