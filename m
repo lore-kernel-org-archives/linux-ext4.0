@@ -1,69 +1,70 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 3/3] e2fsprogs: Support for large inode migration.
-Date: Fri, 27 Jul 2007 08:29:31 +0530
-Message-ID: <46A95F93.3020001@linux.vnet.ibm.com>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <3ae4c55b831a13f9fbb9a187efcd65d29434bf09.1185341470.git.aneesh.kumar@linux.vnet.ibm.com> <20070725143209.GA23613@thunk.org> <46A8895A.5000308@linux.vnet.ibm.com> <20070726161325.GB12895@thunk.org>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] basic delayed allocation in VFS
+Date: Fri, 27 Jul 2007 15:07:14 +1000
+Message-ID: <20070727050714.GS12413810@sgi.com>
+References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <46A878FC.5040600@clusterfs.com> <46A88DFD.7030609@garzik.org> <46A8A294.2070106@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:57486 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753502AbXG0C7j (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jul 2007 22:59:39 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.18.232])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l6R3N7O2234594
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jul 2007 13:23:09 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l6R2wtxe208396
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jul 2007 12:58:55 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l6R2xYQF001265
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jul 2007 12:59:35 +1000
-In-Reply-To: <20070726161325.GB12895@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Garzik <jeff@garzik.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>
+To: Alex Tomas <alex@clusterfs.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <46A8A294.2070106@clusterfs.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+[please don't top post!]
 
+On Thu, Jul 26, 2007 at 05:33:08PM +0400, Alex Tomas wrote:
+> Jeff Garzik wrote:
+> >The XFS one is proven and the work was already completed.
+> >
+> >What were the specific technical issues that made it unsuitable for ext4?
+> >
+> >I would rather not reinvent the wheel, particularly if the reinvention 
+> >is less capable than the existing work.
+>
+> It duplicates fs/mpage.c in bio building and introduces new generic API
+> (iomap, map_blocks_t, etc).
 
-Theodore Tso wrote:
-> On Thu, Jul 26, 2007 at 05:15:30PM +0530, Aneesh Kumar K.V wrote:
->>> Let me guess, you're testing with a filesystem with two block groups,
->>> right?  And to date you've tested *only* by doubling the size of the
->>> inode.
->> I tested this with multiple ( 1 and 7 ) groups. But yes all the
->> testing was to change inode size from 128 to 256.
-> 
-> Your patch comments stated "As a part of increasing the inode size we
-> throw away the free inodes in the last block group."  This is *only*
-> true if the filesystem has two (and exactly two) block groups.  Hence
-> my guess that only tested on filesystems with two block groups.
-> 
+Using a new API for new functionality is a bad thing?
 
-Okey i didn't stress the "last" part in the above sentence. What i wanted
-to convey was inodes in the block groups towards the end (well more than one).
+> In contrast, my trivial implementation re-use
+> existing code in fs/mpage.c, doesn't introduce new API and I tend to think
+> provides quite the same functionality. I can be wrong, of course ...
 
+No, it doesn't provide the same functionality.
 
+Firstly, XFS attaches a different I/O completion to delalloc writes
+to allow us to update the file size when the write is beyond the
+current on disk EOF. This code cannot do that as all it does is
+allocation and present "normal looking" buffers to the generic code
+path.
 
-> If you tested with larger numbers of block groups, the filesystem must
-> have been mostly empty, or at least not a large number of directories,
-> or else you would have noticed that most of the time that your
-> algorithm wouldn't work.
-> 
->> I guess Undo I/O manager can go in because I have been using it for
->> the ext3 -> ext4 inode migration testing and for testing the above patch.
-> 
-> Well, I really want a valid use case for undo code, and right now the
-> above patch is IMHO not suitable for merging into mainline, given all
-> of the problems that it has.
-> 
+Secondly, apart from delalloc, XFS cannot use the generic code paths
+for writeback because unwritten extent conversion also requires
+custom I/O completion handlers. Given that __mpage_writepage() only
+calls ->writepage when it is confused, XFS simply cannot use this
+API.
 
-What are the issues you see with PATCH 1 and PATCH 2 which implement 
-Undo I/O Manager and undoe2fs other than it is not hooked into any of
-the existing tools. I will try to add it to mke2fs as you suggested. But
-should that prevent it from going in ?
+Also, looking at the way mpage_da_map_blocks() is done - if we have
+an 128MB delalloc extent - ext4 will allocate that will allocate it
+in one go, right? What happens if we then crash after only writing a
+few megabytes of that extent? stale data exposure? XFS can allocate
+multiple gigabytes in a single get_blocks call so even if ext4 can't
+do this, it's a problem for XFS.....
 
+So without the ability to attach specific I/O completions to bios
+or support for unwritten extents directly in __mpage_writepage,
+there is no way XFS can use this "generic" delayed allocation code.
 
--aneesh
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
