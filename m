@@ -1,38 +1,33 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [RFC] basic delayed allocation in VFS
-Date: Sat, 28 Jul 2007 20:51:14 +0100
-Message-ID: <20070728195114.GA5952@infradead.org>
-References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org>
+Date: Sat, 28 Jul 2007 20:53:30 +0100
+Message-ID: <20070728195330.GB5952@infradead.org>
+References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <46A878FC.5040600@clusterfs.com> <46A88DFD.7030609@garzik.org> <46A8A294.2070106@clusterfs.com> <20070727050714.GS12413810@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <alex@clusterfs.com>,
+Cc: Alex Tomas <alex@clusterfs.com>, Jeff Garzik <jeff@garzik.org>,
 	ext4 development <linux-ext4@vger.kernel.org>,
 	linux-fsdevel@vger.kernel.org,
 	Christoph Hellwig <hch@infradead.org>
-To: Jeff Garzik <jeff@garzik.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:53119 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754451AbXG1TvY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jul 2007 15:51:24 -0400
+To: David Chinner <dgc@sgi.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <46A87858.40005@garzik.org>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070727050714.GS12413810@sgi.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 26, 2007 at 06:32:56AM -0400, Jeff Garzik wrote:
-> Is this based on Christoph's work?
+On Fri, Jul 27, 2007 at 03:07:14PM +1000, David Chinner wrote:
+> > It duplicates fs/mpage.c in bio building and introduces new generic API
+> > (iomap, map_blocks_t, etc).
 > 
-> Christoph, or some other XFS hacker, already did generic delalloc, 
-> modeled on the XFS delalloc code.
+> Using a new API for new functionality is a bad thing?
 
-This is not based on my attempt to make the xfs writeout path generic.
-Alex's variant is a lot simpler and thus missed various bits required
-for high sustained writeout performance or xfs functionality.
+Depends on wht you do.  This patch is just a quickhack to shoe-horn
+delalloc support into ext4.  Introducing a new abstraction is overkill.
+If we really want an overhaul of the writeback path that's extent-aware,
+and efficient for delalloc and unwritten extents introducing a proper
+iomap-like data structure would make sense.  That beeing said I personally
+hate the ubffer_head abuse for bmap data that we have in various places
+as it's utterly confusing and wasting stack space, but that's a different
+discussion.
 
-That doesn't mean I want to arge against Alex's code although I'd of
-course be more happy if we could actually shared code between multiple
-filesystems.
-
-Of ourse the code in it's current form should not go into mpage.c but
-rather into ext4 so that it doesn't bloat the kernel for everyone.
