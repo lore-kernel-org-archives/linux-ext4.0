@@ -1,36 +1,28 @@
-From: Alex Tomas <alex@clusterfs.com>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [RFC] basic delayed allocation in VFS
-Date: Sat, 28 Jul 2007 23:56:14 +0400
-Message-ID: <46AB9F5E.8080703@clusterfs.com>
-References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <20070728195114.GA5952@infradead.org>
+Date: Sat, 28 Jul 2007 20:57:14 +0100
+Message-ID: <20070728195714.GD5952@infradead.org>
+References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <46A878FC.5040600@clusterfs.com> <46A88DFD.7030609@garzik.org> <46A8A294.2070106@clusterfs.com> <20070727050714.GS12413810@sgi.com> <46A9E754.5070904@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jeff Garzik <jeff@garzik.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>, Jeff Garzik <jeff@garzik.org>,
 	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+	linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.chehov.net ([80.71.245.247]:50904 "EHLO mail.rialcom.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754028AbXG1T4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Jul 2007 15:56:40 -0400
-In-Reply-To: <20070728195114.GA5952@infradead.org>
+Received: from pentafluge.infradead.org ([213.146.154.40]:34973 "EHLO
+	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753328AbXG1T5S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jul 2007 15:57:18 -0400
+Content-Disposition: inline
+In-Reply-To: <46A9E754.5070904@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig wrote:
-> This is not based on my attempt to make the xfs writeout path generic.
-> Alex's variant is a lot simpler and thus missed various bits required
-> for high sustained writeout performance or xfs functionality.
+On Fri, Jul 27, 2007 at 04:38:44PM +0400, Alex Tomas wrote:
+> I just realized that you're talking about data=ordered mode in ext4,
+> where care is taken to prevent on-disk references to no-yet-written
+> blocks.
 
-I'd very appreciate any details about high writeout performance.
-
-> That doesn't mean I want to arge against Alex's code although I'd of
-> course be more happy if we could actually shared code between multiple
-> filesystems.
-
-I'm not against at all, of course. but xfs writeout code looks .. hmm ..
-very xfs :)
-
-thanks, Alex
+Any reference to non-written blocks is a bug.
