@@ -1,76 +1,72 @@
-From: akpm@linux-foundation.org
-Subject: + ext4_ext_put_in_cache-uses-__u32-to-receive-physical.patch added to -mm tree
-Date: Sun, 29 Jul 2007 00:00:04 -0700
-Message-ID: <200707290700.l6T7043g012725@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org, stable@kernel.org,
-	yanzheng@21cn.com
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] basic delayed allocation in VFS
+Date: Sun, 29 Jul 2007 19:18:07 +1000
+Message-ID: <20070729091807.GF31489@sgi.com>
+References: <46A8628D.6070103@clusterfs.com> <46A87858.40005@garzik.org> <46A878FC.5040600@clusterfs.com> <46A88DFD.7030609@garzik.org> <46A8A294.2070106@clusterfs.com> <20070727050714.GS12413810@sgi.com> <46A9A41C.7080104@clusterfs.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: David Chinner <dgc@sgi.com>, Jeff Garzik <jeff@garzik.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>
+To: Alex Tomas <alex@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:59490 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760746AbXG2JS2 (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Sun, 29 Jul 2007 05:18:28 -0400
+Content-Disposition: inline
+In-Reply-To: <46A9A41C.7080104@clusterfs.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Fri, Jul 27, 2007 at 11:51:56AM +0400, Alex Tomas wrote:
+> David Chinner wrote:
+> >Using a new API for new functionality is a bad thing?
+> 
+> if existing API can be used ...
 
-The patch titled
-     "ext4_ext_put_in_cache" uses __u32 to receive physical block number
-has been added to the -mm tree.  Its filename is
-     ext4_ext_put_in_cache-uses-__u32-to-receive-physical.patch
+Sure, but using the existing APIs is no good if the only filesystem
+in the kernel that supports delalloc cannot use the new code....
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+> >Also, looking at the way mpage_da_map_blocks() is done - if we have
+> >an 128MB delalloc extent - ext4 will allocate that will allocate it
+> >in one go, right? What happens if we then crash after only writing a
+> >few megabytes of that extent? stale data exposure? XFS can allocate
+> >multiple gigabytes in a single get_blocks call so even if ext4 can't
+> >do this, it's a problem for XFS.....
+> 
+> what happens if IO to 2nd MB is completed, while IO to 1st MB is not
+> (probably sitting in queue) ? do you update on-disk size in this case?
+> how do you track this?
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+We're updating the in-memory on-disk inode here, not the actual
+inode on disk. That means that if we crashed right here, the file
+size on disk would not be changed at all and the filesystem would
+behave as if both writes did not ever occur and we simply end up
+with empty "preallocated" blocks beyond EOF....
 
-------------------------------------------------------
-Subject: "ext4_ext_put_in_cache" uses __u32 to receive physical block number
-From: Mingming Cao <cmm@us.ibm.com>
+But this is really irrelevant - the issue at hand is what we want
+for VFS level delalloc support. IMO, that mechanism needs to support
+both XFS and ext4, and I'd prefer if it doesn't perpetuate the
+bufferhead abuses of the past (i.e. define an iomap structure
+instead of overloading bufferheads yet again).
 
-Yan Zheng wrote:
+> >So without the ability to attach specific I/O completions to bios
+> >or support for unwritten extents directly in __mpage_writepage,
+> >there is no way XFS can use this "generic" delayed allocation code.
+> 
+> I didn't say "generic", see Subject: :)
 
-> I think I found a bug in ext4/extents.c, "ext4_ext_put_in_cache" uses
-> "__u32" to receive physical block number.  "ext4_ext_put_in_cache" is
-> used in "ext4_ext_get_blocks", it sets ext4 inode's extent cache
-> according most recently tree lookup (higher 16 bits of saved physical
-> block number are always zero). when serving a mapping request,
-> "ext4_ext_get_blocks" first check whether the logical block is in
-> inode's extent cache. if the logical block is in the cache and the
-> cached region isn't a gap, "ext4_ext_get_blocks" gets physical block
-> number by using cached region's physical block number and offset in
-> the cached region.  as described above, "ext4_ext_get_blocks" may
-> return wrong result when there are physical block numbers bigger than
-> 0xffffffff.
->
+No, you didn't, but VFS level functionality implies that
+functionality is both generic and able to be used by all
+filesystems.....
 
-You are right.  Thanks for reporting this!
+Cheers,
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: Yan Zheng <yanzheng@21cn.com>
-Cc: <stable@kernel.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/extents.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff -puN fs/ext4/extents.c~ext4_ext_put_in_cache-uses-__u32-to-receive-physical fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4_ext_put_in_cache-uses-__u32-to-receive-physical
-+++ a/fs/ext4/extents.c
-@@ -1544,7 +1544,7 @@ int ext4_ext_walk_space(struct inode *in
- 
- static void
- ext4_ext_put_in_cache(struct inode *inode, __u32 block,
--			__u32 len, __u32 start, int type)
-+			__u32 len, ext4_fsblk_t start, int type)
- {
- 	struct ext4_ext_cache *cex;
- 	BUG_ON(len == 0);
-_
-
-Patches currently in -mm which might be from cmm@us.ibm.com are
-
-ext4_ext_put_in_cache-uses-__u32-to-receive-physical.patch
-convert-ill-defined-log2-to-ilog2.patch
-ext2-reservations.patch
-fix-for-ext2-reservation.patch
-ext2-balloc-use-io_error-label.patch
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
