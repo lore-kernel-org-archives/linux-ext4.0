@@ -1,26 +1,76 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: 64 bit support for ext4 problem
-Date: Tue, 31 Jul 2007 17:03:40 +0200
-Message-ID: <46AF4F4C.8070406@bull.net>
-References: <46AEE61B.5000207@fmi.uni-sofia.bg> <46AF033D.6020909@bull.net> <20070731143516.GH5469@schatzie.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: anton.andreev@fmi.uni-sofia.bg, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+From: akpm@linux-foundation.org
+Subject: - ext4_ext_put_in_cache-uses-__u32-to-receive-physical.patch removed from -mm tree
+Date: Tue, 31 Jul 2007 16:55:25 -0700
+Message-ID: <200707312355.l6VNtP6g029224@imap1.linux-foundation.org>
+To: cmm@us.ibm.com, linux-ext4@vger.kernel.org, stable@kernel.org,
+	yanzheng@21cn.com, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50857 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762593AbXGaPC7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2007 11:02:59 -0400
-In-Reply-To: <20070731143516.GH5469@schatzie.adilger.int>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:34423 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1761044AbXHAAR2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Jul 2007 20:17:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> Actually, I don't think the official e2fsprogs-1.40 supports extents =
-yet?
 
-Yes, you're right, I've just checked.
-   Val=E9rie
+The patch titled
+     "ext4_ext_put_in_cache" uses __u32 to receive physical block number
+has been removed from the -mm tree.  Its filename was
+     ext4_ext_put_in_cache-uses-__u32-to-receive-physical.patch
+
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+------------------------------------------------------
+Subject: "ext4_ext_put_in_cache" uses __u32 to receive physical block number
+From: Mingming Cao <cmm@us.ibm.com>
+
+Yan Zheng wrote:
+
+> I think I found a bug in ext4/extents.c, "ext4_ext_put_in_cache" uses
+> "__u32" to receive physical block number.  "ext4_ext_put_in_cache" is
+> used in "ext4_ext_get_blocks", it sets ext4 inode's extent cache
+> according most recently tree lookup (higher 16 bits of saved physical
+> block number are always zero). when serving a mapping request,
+> "ext4_ext_get_blocks" first check whether the logical block is in
+> inode's extent cache. if the logical block is in the cache and the
+> cached region isn't a gap, "ext4_ext_get_blocks" gets physical block
+> number by using cached region's physical block number and offset in
+> the cached region.  as described above, "ext4_ext_get_blocks" may
+> return wrong result when there are physical block numbers bigger than
+> 0xffffffff.
+>
+
+You are right.  Thanks for reporting this!
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Cc: Yan Zheng <yanzheng@21cn.com>
+Cc: <stable@kernel.org>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/extents.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -puN fs/ext4/extents.c~ext4_ext_put_in_cache-uses-__u32-to-receive-physical fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4_ext_put_in_cache-uses-__u32-to-receive-physical
++++ a/fs/ext4/extents.c
+@@ -1544,7 +1544,7 @@ int ext4_ext_walk_space(struct inode *in
+ 
+ static void
+ ext4_ext_put_in_cache(struct inode *inode, __u32 block,
+-			__u32 len, __u32 start, int type)
++			__u32 len, ext4_fsblk_t start, int type)
+ {
+ 	struct ext4_ext_cache *cex;
+ 	BUG_ON(len == 0);
+_
+
+Patches currently in -mm which might be from cmm@us.ibm.com are
+
+origin.patch
+convert-ill-defined-log2-to-ilog2.patch
+ext2-reservations.patch
+fix-for-ext2-reservation.patch
+ext2-balloc-use-io_error-label.patch
