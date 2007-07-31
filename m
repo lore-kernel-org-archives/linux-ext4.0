@@ -1,66 +1,43 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 08/25] ext234: have setattr functions call attr_kill_to_mode
-Date: Tue, 24 Jul 2007 12:45:33 -0400
-Message-ID: <200708061317.l76DHxTb001699@dantu.rdu.redhat.com>
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
+Subject: [PATCH 80] fs/ext4/xattr.c: kmalloc + memset conversion to kzalloc
+Date: Wed, 1 Aug 2007 00:18:02 +0200
+Message-ID: <200708010018.02479.m.kozlowski@tuxland.pl>
+References: <200707311845.48807.m.kozlowski@tuxland.pl>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="iso-8859-2"
+Content-Transfer-Encoding: 7bit
+Cc: kernel-janitors@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+In-Reply-To: <200707311845.48807.m.kozlowski@tuxland.pl>
+Content-Disposition: inline
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-.. and only save off ia_valid once it returns
+Signed-off-by: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/ext2/inode.c |    1 +
- fs/ext3/inode.c |    5 ++++-
- fs/ext4/inode.c |    5 ++++-
- 3 files changed, 9 insertions(+), 2 deletions(-)
+ fs/ext4/xattr.c | 42421 -> 42382 (-39 bytes)
+ fs/ext4/xattr.o | 166152 -> 165720 (-432 bytes)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 0079b2c..33dfc48 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1311,6 +1311,7 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
- 	struct inode *inode = dentry->d_inode;
- 	int error;
- 
-+	attr_kill_to_mode(inode, iattr);
- 	error = inode_change_ok(inode, iattr);
- 	if (error)
- 		return error;
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index de4e316..5ca1085 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -2919,7 +2919,10 @@ int ext3_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error, rc = 0;
--	const unsigned int ia_valid = attr->ia_valid;
-+	unsigned int ia_valid;
-+
-+	attr_kill_to_mode(inode, attr);
-+	ia_valid = attr->ia_valid;
- 
- 	error = inode_change_ok(inode, attr);
- 	if (error)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a4848e0..9a51e44 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2935,7 +2935,10 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error, rc = 0;
--	const unsigned int ia_valid = attr->ia_valid;
-+	unsigned int ia_valid;
-+
-+	attr_kill_to_mode(inode, attr);
-+	ia_valid = attr->ia_valid;
- 
- 	error = inode_change_ok(inode, attr);
- 	if (error)
--- 
-1.5.2.2
+ fs/ext4/xattr.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
+--- linux-2.6.23-rc1-mm1-a/fs/ext4/xattr.c	2007-07-26 13:07:46.000000000 +0200
++++ linux-2.6.23-rc1-mm1-b/fs/ext4/xattr.c	2007-07-29 23:55:37.000000000 +0200
+@@ -750,12 +750,11 @@ ext4_xattr_block_set(handle_t *handle, s
+ 		}
+ 	} else {
+ 		/* Allocate a buffer where we construct the new block. */
+-		s->base = kmalloc(sb->s_blocksize, GFP_KERNEL);
++		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
+ 		/* assert(header == s->base) */
+ 		error = -ENOMEM;
+ 		if (s->base == NULL)
+ 			goto cleanup;
+-		memset(s->base, 0, sb->s_blocksize);
+ 		header(s->base)->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
+ 		header(s->base)->h_blocks = cpu_to_le32(1);
+ 		header(s->base)->h_refcount = cpu_to_le32(1);
