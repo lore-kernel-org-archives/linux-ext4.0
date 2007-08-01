@@ -1,46 +1,48 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: e2fsprogs patches
-Date: Wed, 1 Aug 2007 17:05:13 -0600
-Message-ID: <20070801230513.GD5692@schatzie.adilger.int>
-References: <11859824513552-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] e2fsck/e2fsprogs: answer yes/no to a group of questions
+Date: Wed, 1 Aug 2007 16:28:56 -0600
+Message-ID: <20070801222856.GA5692@schatzie.adilger.int>
+References: <f8pvvg$3uo$1@sea.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Bernd Schubert <bschubert@q-leap.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:60600 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:60601 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751026AbXHBPJx (ORCPT
+	with ESMTP id S1755593AbXHBPJx (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2007 11:09:53 -0400
 Content-Disposition: inline
-In-Reply-To: <11859824513552-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <f8pvvg$3uo$1@sea.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 01, 2007  21:04 +0530, Aneesh Kumar K.V wrote:
-> Regarding the naming of tdb file i decided to go with
-> mke2fs-<device_name> instead of mke2fs-<device_name>-<time-stamp>.
-> I guess having multiple version of this file in the tdb_dir will confuse
-> the user.
+On Aug 01, 2007  14:57 +0200, Bernd Schubert wrote:
+> saying yes or no to all e2fsck questions can be rather annoying (yes I
+> know -p and -y), so here's a patch to answer yes or no to a group of
+> questions.
 
-I thought about this also - it might make sense to allow multiple undo
-files if e.g. e2fsck is run several times in a row, and the user doesn't
-like the outcome.  I think this also means that we should call the files
-"undoe2fs-*" as having undo files for e2fsck is probably desirable.
+I've wanted something like this for quite a while already.
 
-I guess that also suggests we should save the s_lastcheck (last e2fsck)
-time into the tdb, so we can be sure to undo them in the right order.
+What would be more useful, however, is having the yes-to-all or no-to-all
+apply to a particular problem instead of being generic.  Otherwise it
+isn't really different from using -y or -n.  The reason that is useful
+is that often there is a particular problem that should all be fixed or
+skipped, but you want to be prompted how to fix a different problem type.
 
-As for putting them into /var/lib/e2fsprogs, it might make sense to put
-them into /var/tmp/e2fsprogs instead, because the files will be obsolete
-as soon as the filesystem is mounted...  Alternately, e2fsprogs should
-install something like /etc/cron.daily/e2fsprogs to clean up
-/var/lib/e2fsprogs in a timely manner, like:
+I haven't investigated, but maybe this could be implemented in the
+same way as a latch for every problem?
 
-	tmpwatch -m 128 -d /var/lib/e2fsprogs
+> +	if (ptr->flags & PR_YES_TO_ALL) {
+> +		printf("%s: yes\n", _(prompt[(int) ptr->prompt]));
+> +		return YES;
+> +	} else if (ptr->flags & PR_NO_TO_ALL) {
+> +		printf("%s: no\n", _(prompt[(int) ptr->prompt]));
+> +		return NO;
+> +	}
 
-I also looked at logrotate, but it uses a fixed filename instead of
-a regexp.
+The "yes" and "no" here should be "_("yes")" and "_("no")" like in
+ask() so they are translated.
 
 Cheers, Andreas
 --
