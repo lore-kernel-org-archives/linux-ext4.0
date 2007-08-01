@@ -1,646 +1,598 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 4/4] e2fsprogs: Support for large inode migration.
-Date: Wed,  1 Aug 2007 07:34:09 +0530
-Message-ID: <11859338651941-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <11859338491592-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11859338581413-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11859338623488-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 1/4] e2fsprogs: Add undo I/O manager
+Date: Wed,  1 Aug 2007 07:34:06 +0530
+Message-ID: <11859338491592-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:59659 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753289AbXHACEg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2007 22:04:36 -0400
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:53915 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753449AbXHACFh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2007 22:05:37 -0400
 Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.18.232])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l7126grO3223590
-	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:06:42 +1000
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id l7128K6V279602
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:08:20 +1000
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7123jtM154422
-	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:03:45 +1000
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7123WXI241864
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:03:32 +1000
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7124Vd0008850
-	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:04:31 +1000
-In-Reply-To: <11859338623488-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Message-Id: <83d2fbbea6a099e38b1358e6cbc0f59c4883ddef.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7124ISQ008535
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 12:04:18 +1000
+Message-Id: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+This I/O manager saves the contents of the location being overwritten
+to a tdb database. This helps in undoing the changes done to the
+file system.
 
-Add new option -I <inode_size> to tune2fs.
-This is used to change the inode size. The size
-need to be multiple of 2 and we don't allow to
-decrease the inode size.
+The call sequence involve
 
-As a part of increasing the inode size we increase the
-inode table size. We also move the used data blocks around
-and update the respective inodes to point to the new block
-
-
-tune2fs use undo I/O manager when migrating to large
-inode. This helps in reverting the changes if end results
-are not correct.The environment variable TUNE2FS_SCRATCH_DIR
-is used to indicate the  directory within which the tdb
-file need to be created. The file will be named tune2fs-XXXXXX
-If TUNE2FS_SCRATCH_DIR is not set /var/lib/e2fsprogs is used
+set_undo_io_backing_manager(unix_io_manager);
+set_undo_io_backup_file("/tmp/test.tdb");
+retval = ext2fs_open2(dev_name, 0, flags,
+		superblock, block_size, undo_io_manager,
+		&current_fs);
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- misc/tune2fs.c |  525 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 522 insertions(+), 3 deletions(-)
+ lib/ext2fs/Makefile.in |    7 +-
+ lib/ext2fs/ext2_io.h   |    5 +
+ lib/ext2fs/undo_io.c   |  500 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 510 insertions(+), 2 deletions(-)
+ create mode 100644 lib/ext2fs/undo_io.c
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 833b994..8cfb05a 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -61,6 +61,7 @@ char * new_label, *new_last_mounted, *new_UUID;
- char * io_options;
- static int c_flag, C_flag, e_flag, f_flag, g_flag, i_flag, l_flag, L_flag;
- static int m_flag, M_flag, r_flag, s_flag = -1, u_flag, U_flag, T_flag;
-+static int I_flag;
- static time_t last_check_time;
- static int print_label;
- static int max_mount_count, mount_count, mount_flags;
-@@ -71,10 +72,20 @@ static unsigned short errors;
- static int open_flag;
- static char *features_cmd;
- static char *mntopts_cmd;
-+static unsigned long int new_inode_size;
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 70e18e7..7afd5eb 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -66,7 +66,8 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	unix_io.o \
+ 	unlink.o \
+ 	valid_blk.o \
+-	version.o
++	version.o \
++	undo_io.o
  
- int journal_size, journal_flags;
- char *journal_device;
+ SRCS= ext2_err.c \
+ 	$(srcdir)/alloc.c \
+@@ -132,7 +133,8 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/tst_bitops.c \
+ 	$(srcdir)/tst_byteswap.c \
+ 	$(srcdir)/tst_getsize.c \
+-	$(srcdir)/tst_iscan.c
++	$(srcdir)/tst_iscan.c \
++	$(srcdir)/undo_io.c
  
-+static struct list_head blk_move_list;
+ HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
+ 	tdb.h
+@@ -573,3 +575,4 @@ tst_iscan.o: $(srcdir)/tst_iscan.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++undo_io.o: $(srcdir)/undo_io.c $(srcdir)/ext2_fs.h $(srcdir)/ext2fs.h
+diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
+index eada278..476eb4d 100644
+--- a/lib/ext2fs/ext2_io.h
++++ b/lib/ext2fs/ext2_io.h
+@@ -96,6 +96,11 @@ extern errcode_t io_channel_write_byte(io_channel channel,
+ /* unix_io.c */
+ extern io_manager unix_io_manager;
+ 
++/* undo_io.c */
++extern io_manager undo_io_manager;
++extern errcode_t set_undo_io_backing_manager(io_manager manager);
++extern errcode_t set_undo_io_backup_file(char *file_name);
 +
-+struct blk_move {
-+	struct list_head list;
-+	blk_t old_loc;
-+	blk_t new_loc;
+ /* test_io.c */
+ extern io_manager test_io_manager, test_io_backing_manager;
+ extern void (*test_io_cb_read_blk)
+diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
+new file mode 100644
+index 0000000..320428c
+--- /dev/null
++++ b/lib/ext2fs/undo_io.c
+@@ -0,0 +1,500 @@
++/*
++ * undo_io.c --- This is the undo io manager that copies the old data that
++ * copies the old data being overwritten into a tdb database
++ *
++ * Copyright IBM Corporation, 2007
++ * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++
++#define _LARGEFILE_SOURCE
++#define _LARGEFILE64_SOURCE
++
++#include <stdio.h>
++#include <string.h>
++#if HAVE_UNISTD_H
++#include <unistd.h>
++#endif
++#if HAVE_ERRNO_H
++#include <errno.h>
++#endif
++#include <fcntl.h>
++#include <time.h>
++#ifdef __linux__
++#include <sys/utsname.h>
++#endif
++#if HAVE_SYS_STAT_H
++#include <sys/stat.h>
++#endif
++#if HAVE_SYS_TYPES_H
++#include <sys/types.h>
++#endif
++#if HAVE_SYS_RESOURCE_H
++#include <sys/resource.h>
++#endif
++
++#include "tdb.h"
++
++#include "ext2_fs.h"
++#include "ext2fs.h"
++
++/*
++ * For checking structure magic numbers...
++ */
++
++#define EXT2_CHECK_MAGIC(struct, code) \
++	  if ((struct)->magic != (code)) return (code)
++
++
++
++struct undo_private_data {
++	int	magic;
++	TDB_CONTEXT *tdb;
++	char *tdb_file;
++
++	/* The backing io channel */
++	io_channel real;
++
++	/* to support offset in unix I/O manager */
++	ext2_loff_t offset;
 +};
 +
++static errcode_t undo_open(const char *name, int flags, io_channel *channel);
++static errcode_t undo_close(io_channel channel);
++static errcode_t undo_set_blksize(io_channel channel, int blksize);
++static errcode_t undo_read_blk(io_channel channel, unsigned long block,
++			       int count, void *data);
++static errcode_t undo_write_blk(io_channel channel, unsigned long block,
++				int count, const void *data);
++static errcode_t undo_flush(io_channel channel);
++static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
++				int size, const void *data);
++static errcode_t undo_set_option(io_channel channel, const char *option,
++				 const char *arg);
 +
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
- 
- void do_findfs(int argc, char **argv);
-@@ -89,7 +100,8 @@ static void usage(void)
- 		  "\t[-o [^]mount_options[,...]] [-r reserved_blocks_count]\n"
- 		  "\t[-u user] [-C mount_count] [-L volume_label] "
- 		  "[-M last_mounted_dir]\n"
--		  "\t[-O [^]feature[,...]] [-T last_check_time] [-U UUID]"
-+		  "\t[-O [^]feature[,...]] [-T last_check_time] [-U UUID]\n"
-+		  "\t[ -I new_inode_size ]"
- 		  " device\n"), program_name);
- 	exit (1);
- }
-@@ -505,7 +517,7 @@ static void parse_tune2fs_options(int argc, char **argv)
- 	struct passwd * pw;
- 
- 	printf("tune2fs %s (%s)\n", E2FSPROGS_VERSION, E2FSPROGS_DATE);
--	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:J:L:M:O:T:U:")) != EOF)
-+	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:J:L:M:O:T:U:I:")) != EOF)
- 		switch (c)
- 		{
- 			case 'c':
-@@ -702,6 +714,25 @@ static void parse_tune2fs_options(int argc, char **argv)
- 				open_flag = EXT2_FLAG_RW |
- 					EXT2_FLAG_JOURNAL_DEV_OK;
- 				break;
-+			case 'I':
-+				new_inode_size = strtoul (optarg, &tmp, 0);
-+				if (*tmp) {
-+					com_err (program_name, 0,
-+						_("bad Inode size - %s"),
-+							optarg);
-+					usage();
-+				}
-+				if (!((new_inode_size &
-+						(new_inode_size - 1)) == 0)) {
-+					com_err (program_name, 0,
-+						_("Inode size must be a "
-+						"power of two- %s"),
-+							optarg);
-+					usage();
-+				}
-+				open_flag = EXT2_FLAG_RW;
-+				I_flag = 1;
-+				break;
- 			default:
- 				usage();
- 		}
-@@ -739,6 +770,460 @@ void do_findfs(int argc, char **argv)
- 	exit(0);
- }
- 
-+static int get_move_bitmap(ext2_filsys fs, int new_ino_blks_per_grp,
-+					ext2fs_block_bitmap bmap)
++static struct struct_io_manager struct_undo_manager = {
++	EXT2_ET_MAGIC_IO_MANAGER,
++	"Undo I/O Manager",
++	undo_open,
++	undo_close,
++	undo_set_blksize,
++	undo_read_blk,
++	undo_write_blk,
++	undo_flush,
++	undo_write_byte,
++	undo_set_option
++};
++
++io_manager undo_io_manager = &struct_undo_manager;
++static io_manager undo_io_backing_manager ;
++static  char *tdb_file ;
++static int tdb_data_size = 0;
++
++errcode_t set_undo_io_backing_manager(io_manager manager)
 +{
-+	dgrp_t i;
-+	blk_t j, needed_blocks = 0;
-+	blk_t start_blk, end_blk;
++	/*
++	 * We may want to do some validation later
++	 */
++	undo_io_backing_manager = manager;
++	return 0;
++}
 +
-+	for (i = 0; i < fs->group_desc_count; i++) {
++errcode_t set_undo_io_backup_file(char *file_name)
++{
++	tdb_file = strdup(file_name);
 +
-+		start_blk = fs->group_desc[i].bg_inode_table +
-+					fs->inode_blocks_per_group;
-+
-+		end_blk = fs->group_desc[i].bg_inode_table +
-+					new_ino_blks_per_grp;
-+
-+		for (j = start_blk; j < end_blk; j++) {
-+
-+			if (ext2fs_test_block_bitmap(fs->block_map, j)) {
-+				/* FIXME!!
-+				 * What happens if the block is marked
-+				 * as a bad block
-+				 */
-+				ext2fs_mark_block_bitmap(bmap, j);
-+				needed_blocks++;
-+			} else {
-+				/*
-+				 * We are going to use this block for
-+				 * inode table. So mark them used.
-+				 */
-+				ext2fs_mark_block_bitmap(fs->block_map, j);
-+			}
-+		}
-+	}
-+
-+	if (needed_blocks > fs->super->s_free_blocks_count ) {
-+		return ENOSPC;
++	if (tdb_file == NULL) {
++		return EXT2_ET_NO_MEMORY;
 +	}
 +
 +	return 0;
 +}
 +
-+static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
++
++static errcode_t undo_write_tdb(io_channel channel,
++					unsigned long block, int count)
++
 +{
-+	char *buf;
-+	errcode_t retval;
-+	blk_t blk, new_blk;
-+	struct blk_move *bmv;
-+
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &buf);
-+	if (retval)
-+		return retval;
-+
-+	for (blk = fs->super->s_first_data_block;
-+			blk < fs->super->s_blocks_count; blk++) {
-+
-+		if (!ext2fs_test_block_bitmap(bmap, blk))
-+			continue;
-+
-+		retval = ext2fs_new_block(fs, blk, NULL, &new_blk);
-+		if (retval)
-+			goto err_out;
-+
-+		/* Mark this block as allocated */
-+		ext2fs_mark_block_bitmap(fs->block_map, new_blk);
-+
-+		/* Add it to block move list */
-+		retval = ext2fs_get_mem(sizeof(struct blk_move), &bmv);
-+		if (retval)
-+			goto err_out;
-+
-+		bmv->old_loc = blk;
-+		bmv->new_loc = new_blk;
-+
-+		list_add(&(bmv->list), &blk_move_list);
-+
-+		retval = io_channel_read_blk(fs->io, blk, 1, buf);
-+		if (retval)
-+			goto err_out;
-+
-+		retval = io_channel_write_blk(fs->io, new_blk, 1, buf);
-+		if (retval)
-+			goto err_out;
-+	}
-+
-+err_out:
-+	ext2fs_free_mem(&buf);
-+	return retval;
-+}
-+static blk_t transalate_block(blk_t blk)
-+{
-+	struct list_head *entry;
-+	struct blk_move *bmv;
-+
-+	list_for_each(entry, &blk_move_list) {
-+
-+		bmv = list_entry(entry, struct blk_move, list);
-+		if (bmv->old_loc == blk)
-+			return bmv->new_loc;
-+	}
-+
-+	return 0;
-+}
-+
-+static int process_block(ext2_filsys fs, blk_t	*block_nr,
-+			 e2_blkcnt_t blockcnt,
-+			 blk_t ref_block EXT2FS_ATTR((unused)),
-+			 int ref_offset EXT2FS_ATTR((unused)),
-+			 void *priv_data EXT2FS_ATTR((unused)))
-+{
-+	int ret = 0;
-+	blk_t new_blk;
-+
-+
-+	new_blk = transalate_block(*block_nr);
-+	if (new_blk) {
-+		*block_nr = new_blk;
-+		/*
-+		 * This will force the ext2fs_write_inode in the iterator
-+		 */
-+		ret |= BLOCK_CHANGED;
-+	}
-+
-+	return ret;
-+}
-+
-+static int inode_scan_and_fix(ext2_filsys fs)
-+{
++	int size, loop_count = 0, i;
++	unsigned long block_num, backing_blk_num;
 +	errcode_t retval = 0;
-+	ext2_ino_t ino;
-+	blk_t blk;
-+	char *block_buf = 0;
-+	struct ext2_inode inode;
-+	ext2_inode_scan	scan = NULL;
++	ext2_loff_t offset;
++	struct undo_private_data *data;
++	TDB_DATA tdb_key, tdb_data;
++	char *read_ptr;
 +
-+	retval = ext2fs_get_mem(fs->blocksize * 3, &block_buf);
-+	if (retval)
-+		return retval;
++	data = (struct undo_private_data *) channel->private_data;
 +
-+	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-+	if (retval)
-+		goto err_out;
 +
-+	while (1) {
-+
-+		retval = ext2fs_get_next_inode(scan, &ino, &inode);
-+		if (retval)
-+			goto err_out;
-+
-+		if (!ino)
-+			break;
-+
-+		if (inode.i_links_count == 0)
-+			continue; /* inode not in use */
-+
-+		/* FIXME!!
-+		 * If we end up modifying the journal inode
-+		 * the sb->s_jnl_blocks will differ. But a
-+		 * subsequent e2fsck fixes that.
-+		 * Do we need to fix this ??
++	if (data->tdb == NULL) {
++		/*
++		 * Transaction database not initialized
 +		 */
++		return 0;
++	}
 +
-+		if (inode.i_file_acl) {
++	/*
++	 * Set the block size used to read for tdb
++	 */
++	if (!tdb_data_size)
++		tdb_data_size = channel->block_size;
 +
-+			blk = transalate_block(inode.i_file_acl);
-+			if (!blk)
-+				continue;
++	if (count == 1)
++		size = channel->block_size;
++	else {
++		if (count < 0)
++			size = -count;
++		else
++			size = count * channel->block_size;
++	}
 +
-+			inode.i_file_acl = blk;
++	/*
++	 * Data is stored in tdb database as blocks of tdb_data_size size
++	 * This helps in efficient lookup further.
++	 *
++	 * We divide the disk to blocks of tdb_data_size.
++	 */
 +
-+			/*
-+			 * Write the inode to disk so that inode table
-+			 * resizing can work
-+			 */
-+			retval = ext2fs_write_inode(fs, ino, &inode);
-+			if (retval)
-+				goto err_out;
-+		}
++	block_num = ((block*channel->block_size)+data->offset)/tdb_data_size;
 +
-+		if (!ext2fs_inode_has_valid_blocks(&inode))
++
++	loop_count = (size + tdb_data_size -1)/tdb_data_size;
++
++	tdb_transaction_start(data->tdb);
++	for (i = 0; i < loop_count; i++) {
++
++		tdb_key.dptr = (unsigned char *)&block_num;
++		tdb_key.dsize = sizeof(block_num);
++
++		/*
++		 * Check if we have the record already
++		 */
++		if (tdb_exists(data->tdb, tdb_key)) {
++
++			/* Try the next block */
++			block_num++;
 +			continue;
-+
-+		retval = ext2fs_block_iterate2(fs, ino, 0,
-+						block_buf, process_block,
-+						0);
-+		if (retval)
-+			goto err_out;
-+
-+	}
-+
-+err_out:
-+	ext2fs_free_mem(&block_buf);
-+
-+	return retval;
-+
-+}
-+
-+
-+static int expand_inode_table(ext2_filsys fs, unsigned long int new_inode_size)
-+{
-+	dgrp_t i;
-+	blk_t blk;
-+	errcode_t retval;
-+	int new_ino_blks_per_grp, j;
-+	char *old_itable = NULL, *new_itable = NULL;
-+	char *tmp_old_itable = NULL, *tmp_new_itable = NULL;
-+	unsigned long int old_inode_size;
-+	int old_itable_size, new_itable_size;
-+
-+	old_itable_size = fs->inode_blocks_per_group * fs->blocksize;
-+	old_inode_size = EXT2_INODE_SIZE(fs->super);
-+
-+	new_ino_blks_per_grp = ext2fs_div_ceil(
-+					EXT2_INODES_PER_GROUP(fs->super) *
-+					new_inode_size,
-+					fs->blocksize);
-+
-+	new_itable_size = new_ino_blks_per_grp * fs->blocksize;
-+
-+	retval = ext2fs_get_mem(old_itable_size, &old_itable);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_get_mem(new_itable_size, &new_itable);
-+	if (retval)
-+		goto err_out;
-+
-+	tmp_old_itable = old_itable;
-+	tmp_new_itable = new_itable;
-+
-+	for (i = 0; i < fs->group_desc_count; i++) {
-+
-+		blk = fs->group_desc[i].bg_inode_table;
-+		retval = io_channel_read_blk(fs->io, blk,
-+				fs->inode_blocks_per_group, old_itable);
-+		if (retval)
-+			goto err_out;
-+
-+		for (j = 0; j < EXT2_INODES_PER_GROUP(fs->super); j++) {
-+
-+			memcpy(new_itable, old_itable, old_inode_size);
-+
-+			memset(new_itable+old_inode_size, 0,
-+					new_inode_size - old_inode_size);
-+
-+			new_itable +=  new_inode_size;
-+			old_itable += old_inode_size;
 +		}
 +
-+		/* reset the pointer */
-+		old_itable = tmp_old_itable;
-+		new_itable = tmp_new_itable;
++		/*
++		 * Read one block using the backing I/O manager
++		 * The backing I/O manager block size may be
++		 * different from the tdb_data_size.
++		 * Also we need to recalcuate the block number with respect
++		 * to the backing I/O manager.
++		 */
 +
-+		retval = io_channel_write_blk(fs->io, blk,
-+					new_ino_blks_per_grp, new_itable);
-+		if (retval)
-+			goto err_out;
-+	}
++		offset = block_num * tdb_data_size;
++		backing_blk_num = (offset - data->offset) / channel->block_size;
 +
-+	/* Update the meta data */
-+	fs->inode_blocks_per_group = new_ino_blks_per_grp;
-+	fs->super->s_inode_size = new_inode_size;
++		count = tdb_data_size +
++				((offset - data->offset) % channel->block_size);
 +
-+err_out:
-+	if (old_itable)
-+		ext2fs_free_mem(&old_itable);
-+
-+	if (new_itable)
-+		ext2fs_free_mem(&new_itable);
-+
-+	return retval;
-+
-+}
-+
-+static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
-+{
-+	blk_t		blk;
-+	ext2_ino_t	ino;
-+	unsigned int	group = 0;
-+	unsigned int	count = 0;
-+	int		total_free = 0;
-+	int		group_free = 0;
-+
-+	/*
-+	 * First calculate the block statistics
-+	 */
-+	for (blk = fs->super->s_first_data_block;
-+	     blk < fs->super->s_blocks_count; blk++) {
-+		if (!ext2fs_fast_test_block_bitmap(fs->block_map, blk)) {
-+			group_free++;
-+			total_free++;
++		retval = ext2fs_get_mem(count, &read_ptr);
++		if (retval) {
++			tdb_transaction_cancel(data->tdb);
++			return retval;
 +		}
-+		count++;
-+		if ((count == fs->super->s_blocks_per_group) ||
-+		    (blk == fs->super->s_blocks_count-1)) {
-+			fs->group_desc[group++].bg_free_blocks_count =
-+				group_free;
-+			count = 0;
-+			group_free = 0;
++
++		memset(read_ptr, 0, count);
++
++		retval = io_channel_read_blk(data->real,
++						backing_blk_num,
++						-count, read_ptr);
++		if (retval) {
++			free(read_ptr);
++			tdb_transaction_cancel(data->tdb);
++			return retval;
 +		}
-+	}
-+	fs->super->s_free_blocks_count = total_free;
-+	
-+	/*
-+	 * Next, calculate the inode statistics
-+	 */
-+	group_free = 0;
-+	total_free = 0;
-+	count = 0;
-+	group = 0;
-+
-+	/* Protect loop from wrap-around if s_inodes_count maxed */
-+	for (ino = 1; ino <= fs->super->s_inodes_count && ino > 0; ino++) {
-+		if (!ext2fs_fast_test_inode_bitmap(fs->inode_map, ino)) {
-+			group_free++;
-+			total_free++;
-+		}
-+		count++;
-+		if ((count == fs->super->s_inodes_per_group) ||
-+		    (ino == fs->super->s_inodes_count)) {
-+			fs->group_desc[group++].bg_free_inodes_count =
-+				group_free;
-+			count = 0;
-+			group_free = 0;
-+		}
-+	}
-+	fs->super->s_free_inodes_count = total_free;
-+	ext2fs_mark_super_dirty(fs);
-+	return 0;
-+}
-+
-+#define list_for_each_safe(pos, pnext, head) \
-+	for (pos = (head)->next, pnext = pos->next; pos != (head); \
-+	     pos = pnext, pnext = pos->next)
-+
-+static void free_blk_move_list()
-+{
-+	struct list_head *entry, *tmp;
-+	struct blk_move *bmv;
-+
-+	list_for_each_safe(entry, tmp, &blk_move_list) {
-+
-+		bmv = list_entry(entry, struct blk_move, list);
-+		list_del(entry);
-+		ext2fs_free_mem(&bmv);
-+	}
-+
-+	return ;
-+}
-+static int resize_inode(ext2_filsys fs, unsigned long int new_inode_size)
-+{
-+	errcode_t retval;
-+	int new_ino_blks_per_grp;
-+	ext2fs_block_bitmap bmap;
-+
-+	if (new_inode_size <= EXT2_INODE_SIZE(fs->super)) {
-+		fprintf(stderr, _("New Inode size too small\n"));
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	}
-+
-+	ext2fs_read_inode_bitmap(fs);
-+	ext2fs_read_block_bitmap(fs);
-+	INIT_LIST_HEAD(&blk_move_list);
 +
 +
-+	new_ino_blks_per_grp = ext2fs_div_ceil(
-+					EXT2_INODES_PER_GROUP(fs->super)*
-+					new_inode_size,
-+					fs->blocksize);
++		tdb_data.dptr = read_ptr +
++				((offset - data->offset) % channel->block_size);
 +
-+	/* We may change the file system.
-+	 * Mark the file system as invalid so that
-+	 * the user is prompted to run fsck.
-+	 */
-+	fs->super->s_state &= ~EXT2_VALID_FS;
++		tdb_data.dsize = tdb_data_size;
 +
-+	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
-+						&bmap);
-+	if (retval)
-+		return retval;
-+
-+	retval = get_move_bitmap(fs, new_ino_blks_per_grp, bmap);
-+	if (retval)
-+		goto err_out;
-+
-+	retval = move_block(fs, bmap);
-+	if (retval)
-+		goto err_out;
-+
-+	retval = inode_scan_and_fix(fs);
-+	if (retval)
-+		goto err_out;
-+
-+	retval = expand_inode_table(fs, new_inode_size);
-+	if (retval)
-+		goto err_out;
-+
-+	ext2fs_calculate_summary_stats(fs);
-+
-+	fs->super->s_state |= EXT2_VALID_FS;
-+	/* mark super block and block bitmap as dirty */
-+	ext2fs_mark_super_dirty(fs);
-+	ext2fs_mark_bb_dirty(fs);
-+
-+err_out:
-+	free_blk_move_list();
-+	ext2fs_free_block_bitmap(bmap);
-+
-+	return retval;
-+}
-+
-+static int setup_tdb(const char *name)
-+{
-+	char *tdb_dir, tdb_file[PATH_MAX];
-+#if 0 /* FIXME!! */
-+	/*
-+	 * Configuration via a conf file would be
-+	 * nice
-+	 */
-+	profile_get_string(profile, "scratch_files",
-+					"directory", 0, 0,
-+					&tdb_dir);
++#ifdef DEBUG
++		printf("Printing with key %ld data %x and size %d\n",
++						block_num,
++						tdb_data.dptr, tdb_data_size);
 +#endif
-+	tdb_dir = getenv("TUNE2FS_SCRATCH_DIR");
-+	if (!tdb_dir) {
-+		com_err(__FUNCTION__, 0,
-+			_("TUNE2FS_SCRATCH_DIR not configured\n"));
-+		printf(_("Using /var/lib/e2fsprogs\n"));
-+		tdb_dir="/var/lib/e2fsprogs";
 +
-+	}
-+	if (access(tdb_dir, W_OK)) {
-+		fprintf(stderr,
-+			_("Cannot create file under %s\n"),
-+			tdb_dir);
-+		return EXT2_ET_INVALID_ARGUMENT;
++		retval = tdb_store(data->tdb, tdb_key, tdb_data, TDB_INSERT);
++		if (retval == -1) {
++			/*
++			 * TDB_ERR_EXISTS cannot happen because we
++			 * have already verified it doesn't exist
++			 */
++			tdb_transaction_cancel(data->tdb);
++			retval = EXT2_ET_TDB_ERR_IO;
++			free(read_ptr);
++			return retval;
 +
-+	}
-+
-+	sprintf(tdb_file, "%s/tune2fs-XXXXXX", tdb_dir);
-+
-+	if (!access(tdb_file, F_OK)) {
-+		fprintf(stderr,
-+			_("File exist %s\n"), tdb_file);
-+		return EXT2_ET_INVALID_ARGUMENT;
++		}
++		free(read_ptr);
++		/* Next block */
++		block_num++;
 +	}
 +
-+	set_undo_io_backup_file(tdb_file);
-+	printf(_("To undo the tune2fs operations please run "
-+		 "the command\nundoe2fs %s  %s\n\n"),
-+		 tdb_file, name);
++	tdb_transaction_commit(data->tdb);
 +
-+	return 0;
++
++	return retval;
 +}
- 
- int main (int argc, char ** argv)
- {
-@@ -768,7 +1253,19 @@ int main (int argc, char ** argv)
- 	io_ptr = test_io_manager;
- 	test_io_backing_manager = unix_io_manager;
- #else
--	io_ptr = unix_io_manager;
-+	if (I_flag) {
-+		/*
-+		 * If inode resize is requested use the
-+		 * Undo I/O manager
-+		 */
-+		io_ptr = undo_io_manager;
-+		set_undo_io_backing_manager(unix_io_manager);
-+		retval = setup_tdb(device_name);
-+		if (retval)
-+			exit(1);
-+	} else {
-+		io_ptr = unix_io_manager;
-+	}
- #endif
- 	retval = ext2fs_open2(device_name, io_options, open_flag, 
- 			      0, 0, io_ptr, &fs);
-@@ -919,6 +1416,28 @@ int main (int argc, char ** argv)
- 		}
- 		ext2fs_mark_super_dirty(fs);
- 	}
-+	if (I_flag) {
-+		if (mount_flags & EXT2_MF_MOUNTED) {
-+			fputs(_("The Inode size may only be "
-+				"changed when the filesystem is "
-+				"unmounted.\n"), stderr);
-+			exit(1);
-+		}
-+		/*
-+		 * We want to update group descriptor also
-+		 * with the new free inode count
-+		 */
-+		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-+		if (resize_inode(fs, new_inode_size)) {
 +
-+			fputs(_("Error in resizing the Inode.\n"
-+				"Run undoe2fs to undo the "
-+				"file system changes. \n"), stderr);
-+		} else {
-+			printf (_("Setting Inode size  %d\n"),
-+							new_inode_size);
-+		}
++static TDB_CONTEXT *undo_setup_tdb(char *tdb_file,
++				struct undo_private_data *data)
++{
++	errcode_t	retval;
++
++	data->tdb = tdb_open(tdb_file, 0, TDB_CLEAR_IF_FIRST,
++			   O_RDWR | O_CREAT | O_TRUNC | O_EXCL, 0600);
++	return data->tdb;
++
++}
++static errcode_t undo_open(const char *name, int flags, io_channel *channel)
++{
++	io_channel	io = NULL;
++	struct undo_private_data *data = NULL;
++	errcode_t	retval;
++	int		open_flags;
++	struct stat	st;
++
++	if (name == 0)
++		return EXT2_ET_BAD_DEVICE_NAME;
++	retval = ext2fs_get_mem(sizeof(struct struct_io_channel), &io);
++	if (retval)
++		return retval;
++	memset(io, 0, sizeof(struct struct_io_channel));
++	io->magic = EXT2_ET_MAGIC_IO_CHANNEL;
++	retval = ext2fs_get_mem(sizeof(struct undo_private_data), &data);
++	if (retval)
++		goto cleanup;
++
++	io->manager = undo_io_manager;
++	retval = ext2fs_get_mem(strlen(name)+1, &io->name);
++	if (retval)
++		goto cleanup;
++
++	strcpy(io->name, name);
++	io->private_data = data;
++	io->block_size = 1024;
++	io->read_error = 0;
++	io->write_error = 0;
++	io->refcount = 1;
++
++	memset(data, 0, sizeof(struct undo_private_data));
++	data->magic = EXT2_ET_MAGIC_UNIX_IO_CHANNEL;
++
++	if (undo_io_backing_manager) {
++		retval = undo_io_backing_manager->open(name, flags,
++						       &data->real);
++		if (retval)
++			goto cleanup;
++	} else {
++		data->real = 0;
 +	}
- 
- 	if (l_flag)
- 		list_super (sb);
++
++	/* setup the tdb file */
++	if (undo_setup_tdb(tdb_file, data) == NULL ) {
++		/*
++		 * This retval results in the below
++		 * string in com_err
++		 * "TDB: Record exists". This helps
++		 * in finding out that the error is
++		 * with respect to TDB
++		 */
++		retval = EXT2_ET_TDB_ERR_EXISTS;
++		goto cleanup;
++	}
++
++	*channel = io;
++	return 0;
++
++cleanup:
++	if (data->real)
++		io_channel_close(data->real);
++
++	if (data)
++		ext2fs_free_mem(&data);
++
++	if (io)
++		ext2fs_free_mem(&io);
++
++	return retval;
++}
++
++static errcode_t undo_close(io_channel channel)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	if (--channel->refcount > 0)
++		return 0;
++
++	if (data->real)
++		retval = io_channel_close(data->real);
++
++	if (data->tdb)
++		tdb_close(data->tdb);
++
++	ext2fs_free_mem(&channel->private_data);
++	if (channel->name)
++		ext2fs_free_mem(&channel->name);
++	ext2fs_free_mem(&channel);
++
++	return retval;
++}
++
++static errcode_t undo_set_blksize(io_channel channel, int blksize)
++{
++	struct undo_private_data *data;
++	errcode_t		retval;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	if (data->real)
++		retval = io_channel_set_blksize(data->real, blksize);
++
++	channel->block_size = blksize;
++	return retval;
++}
++
++
++static errcode_t undo_read_blk(io_channel channel, unsigned long block,
++			       int count, void *buf)
++{
++	errcode_t	retval;
++	struct undo_private_data *data;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	if (data->real)
++		retval = io_channel_read_blk(data->real, block, count, buf);
++
++	return retval;
++}
++
++static errcode_t undo_write_blk(io_channel channel, unsigned long block,
++				int count, const void *buf)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	/*
++	 * First write the existing content into database
++	 */
++	retval = undo_write_tdb(channel, block, count);
++	if (retval)
++		 return retval;
++
++
++	if (data->real)
++		retval = io_channel_write_blk(data->real, block, count, buf);
++
++	return retval;
++
++}
++
++static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
++				 int size, const void *buf)
++{
++	struct undo_private_data *data;
++	errcode_t	retval = 0;
++	ssize_t		actual;
++	ext2_loff_t	location;
++	unsigned long blk_num, count;;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	location = offset + data->offset;
++	blk_num = location/channel->block_size;
++	/*
++	 * the size specified may spread across multiple blocks
++	 * also make sure we account for the fact that block start
++	 * offset for tdb is different from the backing I/O manager
++	 * due to possible different block size
++	 */
++	count = (size + (location % channel->block_size) +
++			channel->block_size  -1)/channel->block_size;
++
++	retval = undo_write_tdb(channel, blk_num, count);
++	if (retval)
++		return retval;
++
++	if (data->real && data->real->manager->write_byte)
++		retval = io_channel_write_byte(data->real, offset, size, buf);
++
++	return retval;
++}
++
++/*
++ * Flush data buffers to disk.
++ */
++static errcode_t undo_flush(io_channel channel)
++{
++	errcode_t	retval = 0;
++	struct undo_private_data *data;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	if (data->real)
++		retval = io_channel_flush(data->real);
++
++	return retval;
++}
++
++static errcode_t undo_set_option(io_channel channel, const char *option,
++				 const char *arg)
++{
++	errcode_t	retval = 0;
++	struct undo_private_data *data;
++	unsigned long tmp;
++	char *end;
++
++	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
++	data = (struct undo_private_data *) channel->private_data;
++	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
++
++	/*
++	 * Need to support offset option to work with
++	 * Unix I/O manager
++	 */
++	if (data->real && data->real->manager->set_option) {
++
++		retval = data->real->manager->set_option(data->real,
++							option, arg);
++	}
++
++	if (!retval && !strcmp(option, "offset")) {
++		if (!arg)
++			return EXT2_ET_INVALID_ARGUMENT;
++
++		tmp = strtoul(arg, &end, 0);
++		if (*end)
++			return EXT2_ET_INVALID_ARGUMENT;
++		data->offset = tmp;
++	}
++
++	return retval;
++}
 -- 
 1.5.3.rc2.22.g69a9b-dirty
