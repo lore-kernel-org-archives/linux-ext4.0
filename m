@@ -1,38 +1,49 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 3/4] e2fsprogs: Make mke2fs use undo I/O manager.
-Date: Wed, 1 Aug 2007 01:04:39 -0500
-Message-ID: <20070801060439.GP5469@schatzie.adilger.int>
-References: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com> <70b3f394cda275d59094d52f60d1ee76492033fc.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/4] e2fsprogs: Add undoe2fs
+Date: Wed, 01 Aug 2007 11:46:25 +0530
+Message-ID: <46B02539.5020505@linux.vnet.ibm.com>
+References: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com> <47f96570519d76b8d59f92b729a0a48c4a1b68d8.1185933778.git.aneesh.kumar@linux.vnet.ibm.com> <20070801060211.GO5469@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:50167 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756042AbXHAGFE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Aug 2007 02:05:04 -0400
-Content-Disposition: inline
-In-Reply-To: <70b3f394cda275d59094d52f60d1ee76492033fc.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:59846 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754304AbXHAGSW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Aug 2007 02:18:22 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.18.232])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l716KmCe5406872
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 16:20:48 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.250.237])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l716Fkfb210978
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 16:15:46 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l716GXvh030618
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Aug 2007 16:16:33 +1000
+In-Reply-To: <20070801060211.GO5469@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 01, 2007  07:34 +0530, Aneesh Kumar K.V wrote:
-> When running mke2fs, if a file system is detected
-> on the device, we use Undo I/O manager as the io manager.
-> This helps in reverting the changes made to the filesystem
-> in case we wrongly selected the device.
+
+
+Andreas Dilger wrote:
+> On Aug 01, 2007  07:34 +0530, Aneesh Kumar K.V wrote:
+>> undoe2fs can be used to replay the transaction saved
+>> in the transaction file using undo I/O Manager
 > 
-> The environment variable MKE2FS_SCRATCH_DIR
-> is used to indicate the  directory within which the tdb
-> file need to be created. The file will be named mke2fs-XXXXXX
-
-It might be more useful to have "mke2fs-{dev}-{timestamp}" as
-the filename, so that it is clear where the image came from.
+> This should save the mtime of the superblock, and only do the undo
+> step if the filesystem hasn't changed.  Otherwise it could seriously
+> corrupt the filesystem.
 
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+I am not sure i understand this. The Undo I/O manager tracks all the write
+happening to the file system and copy the original content of the blocks to
+the tdb file. Undoe2fs simply copies these blocks back to the file system. So
+That way if you look at undoe2fs it doesn't have any knowledge of the file
+system at all.
+
+Can you let me know a use case where this will fail.
+
+-aneesh 
