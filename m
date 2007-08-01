@@ -1,43 +1,32 @@
-From: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
-Subject: [PATCH 80] fs/ext4/xattr.c: kmalloc + memset conversion to kzalloc
-Date: Wed, 1 Aug 2007 00:18:02 +0200
-Message-ID: <200708010018.02479.m.kozlowski@tuxland.pl>
-References: <200707311845.48807.m.kozlowski@tuxland.pl>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH 2/4] e2fsprogs: Add undoe2fs
+Date: Wed, 1 Aug 2007 01:02:11 -0500
+Message-ID: <20070801060211.GO5469@schatzie.adilger.int>
+References: <bee58d48110eee4d5cd133167245b99644148d96.1185933778.git.aneesh.kumar@linux.vnet.ibm.com> <47f96570519d76b8d59f92b729a0a48c4a1b68d8.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-2"
-Content-Transfer-Encoding: 7bit
-Cc: kernel-janitors@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-In-Reply-To: <200707311845.48807.m.kozlowski@tuxland.pl>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([74.0.229.162]:54481 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755707AbXHAGCz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Aug 2007 02:02:55 -0400
 Content-Disposition: inline
-Sender: kernel-janitors-owner@vger.kernel.org
+In-Reply-To: <47f96570519d76b8d59f92b729a0a48c4a1b68d8.1185933778.git.aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
+On Aug 01, 2007  07:34 +0530, Aneesh Kumar K.V wrote:
+> undoe2fs can be used to replay the transaction saved
+> in the transaction file using undo I/O Manager
 
- fs/ext4/xattr.c | 42421 -> 42382 (-39 bytes)
- fs/ext4/xattr.o | 166152 -> 165720 (-432 bytes)
+This should save the mtime of the superblock, and only do the undo
+step if the filesystem hasn't changed.  Otherwise it could seriously
+corrupt the filesystem.
 
- fs/ext4/xattr.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
---- linux-2.6.23-rc1-mm1-a/fs/ext4/xattr.c	2007-07-26 13:07:46.000000000 +0200
-+++ linux-2.6.23-rc1-mm1-b/fs/ext4/xattr.c	2007-07-29 23:55:37.000000000 +0200
-@@ -750,12 +750,11 @@ ext4_xattr_block_set(handle_t *handle, s
- 		}
- 	} else {
- 		/* Allocate a buffer where we construct the new block. */
--		s->base = kmalloc(sb->s_blocksize, GFP_KERNEL);
-+		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
- 		/* assert(header == s->base) */
- 		error = -ENOMEM;
- 		if (s->base == NULL)
- 			goto cleanup;
--		memset(s->base, 0, sb->s_blocksize);
- 		header(s->base)->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
- 		header(s->base)->h_blocks = cpu_to_le32(1);
- 		header(s->base)->h_refcount = cpu_to_le32(1);
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
