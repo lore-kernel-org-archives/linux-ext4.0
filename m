@@ -1,45 +1,46 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 1/4] e2fsprogs: Add undo I/O manager
-Date: Wed, 1 Aug 2007 16:52:47 -0600
-Message-ID: <20070801225247.GC5692@schatzie.adilger.int>
-References: <11859824513552-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <f2c3823cb66c7a30436b1f2163cbe3bba791a115.1185981319.git.aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: e2fsprogs patches
+Date: Wed, 1 Aug 2007 17:05:13 -0600
+Message-ID: <20070801230513.GD5692@schatzie.adilger.int>
+References: <11859824513552-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:60606 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:60600 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751031AbXHBPJy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2007 11:09:54 -0400
+	with ESMTP id S1751026AbXHBPJx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2007 11:09:53 -0400
 Content-Disposition: inline
-In-Reply-To: <f2c3823cb66c7a30436b1f2163cbe3bba791a115.1185981319.git.aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <11859824513552-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Aug 01, 2007  21:04 +0530, Aneesh Kumar K.V wrote:
-> +static errcode_t write_file_system_identity(io_channel undo_channel,
-> +							TDB_CONTEXT *tdb)
-> +{
-> +	/* Write to tdb file in the file system byte order */
-> +	tdb_key.dptr = "filesystem MTIME";
-> +	tdb_key.dsize = sizeof("filesystem MTIME");
-> +	tdb_data.dptr = (unsigned char *) &(super.s_mtime);
-> +	tdb_data.dsize = sizeof(super.s_mtime);
-> +
-> +	tdb_key.dptr = "filesystem UUID";
-> +	tdb_key.dsize = sizeof("filesystem UUID");
-> +	tdb_data.dptr = (unsigned char *)&(super.s_uuid);
-> +	tdb_data.dsize = sizeof(super.s_uuid);
+> Regarding the naming of tdb file i decided to go with
+> mke2fs-<device_name> instead of mke2fs-<device_name>-<time-stamp>.
+> I guess having multiple version of this file in the tdb_dir will confuse
+> the user.
 
-Is this the mtime and UUID of the new filesystem or the old one?  It
-should be the UUID and mtime of the new filesystem, so that the
-undo file can be verified against the current superblock.  This poses
-a bit of a problem, because that information isn't saved until after
-the mke2fs run is finished.
+I thought about this also - it might make sense to allow multiple undo
+files if e.g. e2fsck is run several times in a row, and the user doesn't
+like the outcome.  I think this also means that we should call the files
+"undoe2fs-*" as having undo files for e2fsck is probably desirable.
 
-One possibility is to overwrite this information at the end of mke2fs
-after the new UUID and mtime are written?
+I guess that also suggests we should save the s_lastcheck (last e2fsck)
+time into the tdb, so we can be sure to undo them in the right order.
+
+As for putting them into /var/lib/e2fsprogs, it might make sense to put
+them into /var/tmp/e2fsprogs instead, because the files will be obsolete
+as soon as the filesystem is mounted...  Alternately, e2fsprogs should
+install something like /etc/cron.daily/e2fsprogs to clean up
+/var/lib/e2fsprogs in a timely manner, like:
+
+	tmpwatch -m 128 -d /var/lib/e2fsprogs
+
+I also looked at logrotate, but it uses a fixed filename instead of
+a regexp.
 
 Cheers, Andreas
 --
