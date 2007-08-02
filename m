@@ -1,27 +1,42 @@
-From: Anton Andreev <fn30762@fmi.uni-sofia.bg>
-Subject: ext4 stable?
-Date: Thu, 02 Aug 2007 00:11:39 +0300
-Message-ID: <46B0F70B.4030403@fmi.uni-sofia.bg>
-Reply-To: anton.andreev@fmi.uni-sofia.bg
+From: Coly Li <colyli@gmail.com>
+Subject: What is fragment in ext3/4 ?
+Date: Thu, 02 Aug 2007 17:55:05 +0800
+Message-ID: <46B1A9F9.3050901@gmail.com>
+Reply-To: colyli@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.fmi.uni-sofia.bg ([62.44.101.3]:3378 "EHLO
-	smtp.fmi.uni-sofia.bg" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752206AbXHAVM0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Aug 2007 17:12:26 -0400
-Received: from [127.0.0.1] ([62.44.101.106])
-	by smtp.fmi.uni-sofia.bg (Kerio MailServer 6.4.1)
-	for linux-ext4@vger.kernel.org;
-	Thu, 2 Aug 2007 00:11:26 +0300
+Received: from fk-out-0910.google.com ([209.85.128.190]:36226 "EHLO
+	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752782AbXHBKAg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2007 06:00:36 -0400
+Received: by fk-out-0910.google.com with SMTP id z23so391173fkz
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Aug 2007 03:00:34 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-When can we expect a stable release of ext4?
+These days, when I read the source code of mke2fs, I found an option -f
+to set the fragment size.
 
-Cheers,
-Anton
+But I can not find any explaining for ext3/4 framgment from google,
+excepting someone saying ext2/3 does not support this feature.
+
+Can anyone tell me what is the function or purpose of fragment of ext
+file system ?
+
+Thanks in advance :-)
+
+Coly
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
+Comment: Using GnuPG with SUSE - http://enigmail.mozdev.org
+
+iD8DBQFGsan5uTp8cyZ5lTERAvNJAJ0RVII/NFrq8V37AB+tNZ7r291hggCgltef
+PC9UiC9elgGZGAMdbHKAz9s=
+=pgty
+-----END PGP SIGNATURE-----
