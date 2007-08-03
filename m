@@ -1,34 +1,44 @@
-From: "Yan Zheng" <yanzheng@21cn.com>
-Subject: How to insure ext4_alloc_blocks always returns blocks below 0xffffffff when using indirect index.
-Date: Fri, 3 Aug 2007 10:22:31 +0800
-Message-ID: <3d0408630708021922h7f382cdfk1d67f5f25029c2d1@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH 0/4][e2fsprogs] Enable FLEX_BG support
+Date: Thu, 02 Aug 2007 23:00:41 -0500
+Message-ID: <20070803040041.29456.31454.stgit@gara>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fk-out-0910.google.com ([209.85.128.190]:61838 "EHLO
-	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751778AbXHCCWd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2007 22:22:33 -0400
-Received: by fk-out-0910.google.com with SMTP id z23so573191fkz
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Aug 2007 19:22:31 -0700 (PDT)
-Content-Disposition: inline
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:38527 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750808AbXHCEDQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Aug 2007 00:03:16 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7343FM8030421
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 00:03:15 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7343FeC538934
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 00:03:15 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7343E0s000431
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 00:03:15 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l73436DN000360
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 00:03:06 -0400
+Received: from [127.0.1.1] (sig-9-65-28-26.mts.ibm.com [9.65.28.26])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l73433RT062350
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Aug 2007 23:03:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all.
 
-Druing reading the source codes of indirect index,  there is a doubt
-in my mind. When using indirect index, physical block number must not
-exceed 0xffffffff, but I cann' t find any clue  about how
-ext4_alloc_blocks insure that.  Codes that check 64bit_feature is only
-in ext4_fill_super and they do nothing affects block allocation
-algorithm.  Maybe ext4_alloc_blocks should  check whether inode has
-EXT4_EXTENTS_FL flags and only search block groups that have blocks
-below 0xffffffff when not.
+The following series of patches add support creating and checking
+filesystems with the FLEX_BG feature.  This feature currently groups
+meta-data from a series of groups at the beginning of a flex group in
+order to improve performance during heavy meta-data operations.
 
-The source codes I read is 2.6.22.
+Some light testing on meta-data filesystem and fsck times already show
+some improvements.
 
-Thanks in advance.
-YZ
+This is still very experimental code I meant mostly as a prototype, but
+comments are welcome.
+
+
+-JRS
