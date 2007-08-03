@@ -1,39 +1,95 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: What is fragment in ext3/4 ?
-Date: Fri, 3 Aug 2007 16:28:59 -0600
-Message-ID: <20070803222859.GX6142@schatzie.adilger.int>
-References: <46B1A9F9.3050901@gmail.com> <20070803000228.GO6142@schatzie.adilger.int> <46B35260.9000900@redhat.com> <46B355D6.8000007@gmail.com>
+From: Avantika Mathur <mathur@linux.vnet.ibm.com>
+Subject: Ext4 devel interlock meeting minutes (July 30, 2007)
+Date: Fri, 03 Aug 2007 15:56:37 -0700
+Message-ID: <46B3B2A5.9000307@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Coly Li <colyli@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:42200 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760235AbXHCW3D (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 18:29:03 -0400
-Content-Disposition: inline
-In-Reply-To: <46B355D6.8000007@gmail.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:57238 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759486AbXHCW4C (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 18:56:02 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l73Mu1bY027089
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 18:56:01 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l73Mu1CQ240802
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l73Mu1Ob024288
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
+Received: from [9.47.16.161] (dyn9047016161.beaverton.ibm.com [9.47.16.161])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l73Mu03U024268
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 04, 2007  00:20 +0800, Coly Li wrote:
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Eric Sandeen wrote:
-> > There's a fair amount of code around this never-implemented concept;
-> > should it be removed?  :)
-> 
-> I agree with this idea. It seems we will never implement it in future,
-> once "fragment" packed into inode.
+Ext4 Developer Interlock Call: July 30, 2007 Meeting Minutes
 
-Yes, this should all be removed.  In fact, the "fragment" fields are
-being reassigned in the upstream e2fsprogs, so there is no chance to
-implement it in the future either.  If we ever want to have fragments
-like this, the plan was to add them as EAs in the inode (no point to
-make an external EA block to hold a block of data).
+Minutes can be accessed at:=20
+http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Cal=
+l
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Attendees: Mingming Cao, Andreas Dilger, Jean-Pierre Dion, Jean-Noel=20
+Cordenner, Val=E9rie Clement, Aneesh Veetil, Dave Kleikamp, Jose Santos=
+,=20
+Ted T'so, Avantika Mathur
+
+PATCH STATUS
+
+Delalloc:
+- Alex posted his vfs delayed allocation patches.
+- Comments are that there is not sufficient generic support for XFS. =20
+The code that Christoph Hellwig had posted which does support XFS is=20
+very complex.
+- Christoph would be ok to take most of Alex's patch as an ext4 patch. =
+=20
+In the short term we can put the delalloc support in ext4 and then late=
+r=20
+work on generic vfs support.
+- Mingming will respond to the thread asking what Andrew Morton's=20
+preference is.
+
+Multiple Block Allocation:
+- Aneesh has been hitting a bug when creating a filesystem with=20
+different number of blocks/block group then default.  the problem=20
+occurred during online migration with mballoc enabled.
+- A possible temporary solution to this problem is to disable mballoc i=
+f=20
+the filesystem created with not the default blocks/block group ratio.
+- Aneesh will write-up the problem he is seeing and send an e-mail to A=
+lex.
+- Aneesh will split mballoc into more patches, to be added to the=20
+ext4-patch-queue.  This will make it easier to review.
+
+Inode Version:
+- Jean-Noel sent the mount option patch to linux-ext4.  We had discusse=
+d=20
+adding a flag to the superblock indicating that i_version is enabled,=20
+but there are no bits available in f_flags.
+- Mingming will reply to the post saying the overwrite case needs to be=
+=20
+addressed first
+
+Uninitialized Block Groups:
+- Avantika will look into why the checksum is not consistent - and why=20
+the check fails even when the feature is not enabled.
+
+=46lexible Block Groups:
+- Jose is trying to see why fsck is not working.  once this is resolved=
+,=20
+the feature will be complete. =20
+- He has seen a problem with fsck when meta_bg feature is enabled. =20
+Andreas saw a similar problem, and the uninitialized block groups patch=
+=20
+fixes the issue.  Jose will look back at the fix which is in the series=
+=20
+of e2fsprogs patches sent by Girish last week.
+
+- Mingming asked about exporting JBD stat info to debugfs; as well as=20
+procfs.  The consensus had been to just export to procfs as not everyon=
+e=20
+uses debugfs.
