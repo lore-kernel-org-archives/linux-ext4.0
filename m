@@ -1,94 +1,105 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH 3/4][e2fsprogs] Relax group descriptor checking.
-Date: Fri, 3 Aug 2007 07:17:09 -0500
-Message-ID: <20070803071709.11d0de76@gara>
+Subject: Re: [PATCH 4/4][e2fsprogs] New bitmap and inode table allocation
+ for FLEX_BG
+Date: Fri, 3 Aug 2007 07:27:23 -0500
+Message-ID: <20070803072723.3c8f2047@gara>
 References: <20070803040041.29456.31454.stgit@gara>
-	<20070803040059.29456.55756.stgit@gara>
-	<46B2BBF4.7010408@linux.vnet.ibm.com>
+	<20070803040105.29456.1467.stgit@gara>
+	<46B2CBB8.8070007@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:53607 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752322AbXHCMTf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 08:19:35 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l73CJZTt008345
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 08:19:35 -0400
+Received: from e36.co.us.ibm.com ([32.97.110.154]:57821 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758153AbXHCM3w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 08:29:52 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l73CTnOR012397
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 08:29:49 -0400
 Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l73CJZvL209408
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:19:35 -0600
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l73CTnYN216994
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:29:49 -0600
 Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l73CJZ9t026890
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:19:35 -0600
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l73CTmfI017127
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:29:48 -0600
 Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l73CJYhM026878
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:19:34 -0600
-In-Reply-To: <46B2BBF4.7010408@linux.vnet.ibm.com>
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l73CTm46017090
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 06:29:48 -0600
+In-Reply-To: <46B2CBB8.8070007@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 03 Aug 2007 10:54:04 +0530
+On Fri, 03 Aug 2007 12:01:20 +0530
 "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+
+> 
+> 
 > Jose R. Santos wrote:
 > > From: Jose R. Santos <jrs@us.ibm.com>
 > > 
-> >
-> >  e2fsck/super.c          |   10 ++++++++--
-> >  lib/ext2fs/check_desc.c |   10 ++++++++--
-> >  2 files changed, 16 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/e2fsck/super.c b/e2fsck/super.c
-> > index 00a131c..8e58e5c 100644
-> > --- a/e2fsck/super.c
-> > +++ b/e2fsck/super.c
-> > @@ -578,8 +578,14 @@ void check_super_block(e2fsck_t ctx)
-> >  	for (i = 0, gd=fs->group_desc; i < fs->group_desc_count; i++, gd++) {
-> >  		pctx.group = i;
-> > 
-> > -		first_block = ext2fs_group_first_block(fs, i);
-> > -		last_block = ext2fs_group_last_block(fs, i);
-> > +		if (EXT2_HAS_INCOMPAT_FEATURE (fs->super,
-> > +			EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-> > +			first_block = fs->super->s_first_data_block;
-> > +			last_block = fs->super->s_blocks_count;
+> > Ne
+> > +	case ALLOC_INODE_TABLES:
+> > +		for (i=0, blk=new_blk; i < count; i++, blk++) {
 > 
+> I guess you can drop the blk update in the for() loop above. 
+
+This was from the remains of the very first attempt at inode table
+allocation.  Thanks for catching.
+
 > 
-> I guess this should be fs->super->s_blocks_count - 1 ;
-
-Updated.
-
-> > +		} else {
-> > +			first_block = ext2fs_group_first_block(fs, i);
-> > +			last_block = ext2fs_group_last_block(fs, i);
+> > +			retval = ext2fs_get_free_blocks(fs, start_blk, last_blk,
+> > +							fs->inode_blocks_per_group,
+> > +							bmap, &new_blk);
+> > +			if (retval)
+> > +				return retval;
+> > +			for (j=0, blk = new_blk;
+> > +			     j < fs->inode_blocks_per_group; j++, blk++)
+> > +				ext2fs_mark_block_bitmap(bmap, blk);
+> > +			fs->group_desc[group+i].bg_inode_table = new_blk;
 > > +		}
-> > 
-> >  		if ((gd->bg_block_bitmap < first_block) ||
-> >  		    (gd->bg_block_bitmap > last_block)) {
-> > diff --git a/lib/ext2fs/check_desc.c b/lib/ext2fs/check_desc.c
-> > index 146f9e5..bb65c06 100644
-> > --- a/lib/ext2fs/check_desc.c
-> > +++ b/lib/ext2fs/check_desc.c
-> > @@ -38,8 +38,14 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
-> >  	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-> > 
-> >  	for (i = 0; i < fs->group_desc_count; i++) {
-> > -		first_block = ext2fs_group_first_block(fs, i);
-> > -		last_block = ext2fs_group_last_block(fs, i);
-> > +		if (EXT2_HAS_INCOMPAT_FEATURE (fs->super, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-> > +			first_block = fs->super->s_first_data_block;
-> > +			last_block = fs->super->s_blocks_count;
-> > +		
+> > +		break;
+> > +
+> > +	}
+> > +	return 0;
+> > +}
+> > +
+> > +
+> > +
+> > +errcode_t ext2fs_allocate_flex_groups(ext2_filsys fs)
+> > +{
+> > +	errcode_t	retval;
+> > +	blk_t		start, last, j, blocks;
+> > +	dgrp_t		i, k;
+> > +	int		gpm;
+> > +
+> > +	gpm = GROUPS_PER_FLEXBG;
+> > +	blocks = 0;
+> > +
+> > +	for (i = 0; i < fs->group_desc_count; i=i+gpm) {
+> > +		if (i == 0 )
+> > +			start = ext2fs_group_first_block(fs,
+> > +							 FIRST_METADATA_GROUP);
+> > +		else
+> > +			start = ext2fs_group_first_block(fs, i);
+> > +
+> > +		if (i+gpm-1 > fs->group_desc_count) {
+> 		
 > 
-> I guess this should be fs->super->s_blocks_count - 1 ;
+> 		if (i+gpm >= fs->group_desc_count) 
 
-Updated.
+Update.
+
+> 
+> > +			last = ext2fs_group_last_block(fs, fs->group_desc_count);
+> > +			gpm = fs->group_desc_count - i;
+> > +		}
+> 
+> 
+> -aneesh
 
 Thanks
- 
-> -aneesh
 
 -JRS
