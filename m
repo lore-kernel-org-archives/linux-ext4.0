@@ -1,40 +1,33 @@
 From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: How to insure ext4_alloc_blocks always returns blocks below 0xffffffff when using indirect index.
-Date: Fri, 3 Aug 2007 12:09:16 -0600
-Message-ID: <20070803180916.GT6142@schatzie.adilger.int>
-References: <3d0408630708021922h7f382cdfk1d67f5f25029c2d1@mail.gmail.com>
+Subject: Re: [PATCH 3/4][e2fsprogs] Relax group descriptor checking.
+Date: Fri, 3 Aug 2007 12:22:17 -0600
+Message-ID: <20070803182217.GV6142@schatzie.adilger.int>
+References: <20070803040041.29456.31454.stgit@gara> <20070803040059.29456.55756.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Yan Zheng <yanzheng@21cn.com>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:40051 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:40164 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759044AbXHCSJR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 14:09:17 -0400
+	with ESMTP id S1750898AbXHCSWS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 14:22:18 -0400
 Content-Disposition: inline
-In-Reply-To: <3d0408630708021922h7f382cdfk1d67f5f25029c2d1@mail.gmail.com>
+In-Reply-To: <20070803040059.29456.55756.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 03, 2007  10:22 +0800, Yan Zheng wrote:
-> Druing reading the source codes of indirect index,  there is a doubt
-> in my mind. When using indirect index, physical block number must not
-> exceed 0xffffffff, but I cann' t find any clue  about how
-> ext4_alloc_blocks insure that.  Codes that check 64bit_feature is only
-> in ext4_fill_super and they do nothing affects block allocation
-> algorithm.  Maybe ext4_alloc_blocks should  check whether inode has
-> EXT4_EXTENTS_FL flags and only search block groups that have blocks
-> below 0xffffffff when not.
-> 
-> The source codes I read is 2.6.22.
-
-Good question.  It is intended that extents be used for filesystems
-larger than 2^32 blocks, but there is no guarantee that existing
-block-mapped files will not still exist.
-
-I think the check you propose makes sense.  The code should return
-EFBIG or maybe EOVERFLOW in this case (not ENOSPC I think).
+On Aug 02, 2007  23:00 -0500, Jose R. Santos wrote:
+> Eventually, a more thorough check would restrict bitmaps and inode
+> tables to be located at the beginning of a flex block group range.
+> Since the super block does not currently know about the number of
+> groups per flex group, this will do for now.
+ 
+As with regular block groups, it would probably be better to limit the
+bitmaps and inode tables to anywhere inside the flexbg instead of the
+start.  That would allow, for example, INCOMPAT_FLEXBG to be enabled
+on an existing filesystem and the metadata could be moved together as
+space becomes available.
 
 Cheers, Andreas
 --
