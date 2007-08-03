@@ -1,77 +1,65 @@
-From: Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [PATCH] ext2/ext3/ext4: Add block bitmap validation
-Date: Fri, 03 Aug 2007 13:14:11 +0530
-Message-ID: <1186127051.3866.12.camel@garfield>
-References: <11861250501999-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Coly Li <colyli@gmail.com>
+Subject: Re: What is fragment in ext3/4 ?
+Date: Fri, 03 Aug 2007 17:15:52 +0800
+Message-ID: <46B2F248.2040101@gmail.com>
+References: <46B1A9F9.3050901@gmail.com> <20070803000228.GO6142@schatzie.adilger.int>
+Reply-To: colyli@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@clusterfs.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:55717 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751701AbXHCHmi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 03:42:38 -0400
-In-Reply-To: <11861250501999-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from fk-out-0910.google.com ([209.85.128.187]:32764 "EHLO
+	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756805AbXHCJV3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 05:21:29 -0400
+Received: by fk-out-0910.google.com with SMTP id z23so648349fkz
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Aug 2007 02:21:28 -0700 (PDT)
+In-Reply-To: <20070803000228.GO6142@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2007-08-03 at 12:40 +0530, Aneesh Kumar K.V wrote:
->  	desc = ext2_get_group_desc (sb, block_group, NULL);
->  	if (!desc)
-> -		goto error_out;
-> -	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
-> +		return NULL;
-> +	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
-> +	bh = sb_bread(sb, bitmap_blk);
->  	if (!bh)
-> -		ext2_error (sb, "read_block_bitmap",
-> +		ext2_error (sb, __FUNCTION__,
->  			    "Cannot read block bitmap - "
->  			    "block_group = %d, block_bitmap = %u",
->  			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-bitmap_blk should be used here instead of
-le32_to_cpu(desc->bg_block_bitmap). It reduces one endianness
-conversion.
+I read from manual and source code, it seems fragment size should be
+same to filesystem block size. Therefore, can I say current ext3/4
+filesystem still do not support fragment ?
 
-> -error_out:
-> +
-> +	/* check whether block bitmap block number is set */
-> +	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-> +		/* bad block bitmap */
-> +		goto error_out;
-> +	}
-> +	/* check whether the inode bitmap block number is set */
-> +	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
-> +	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-> +		/* bad block bitmap */
-> +		goto error_out;
-> +	}
-> +	/* check whether the inode table block number is set */
-> +	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
-> +	for (i = 0; i < EXT2_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
-> +		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-> +			/* bad block bitmap */
-> +			goto error_out;
-> +		}
-> +	}
+Thanks.
 
-Why not reduce a lot of this code by having:
-int block_range_in_use(ext4_fsblk_t start_blk, ext4_fsblk_t num_blks,
-struct super_block *sb, unsigned char *map)?
+Coly
 
-It will also help to do away with a lot of repetitive calculations in
-block_in_use().
 
-> +	ext3_error(sb, __FUNCTION__,
-> +			"Invalid block bitmap - "
-> +			"block_group = %d, block = %lu",
-> +			block_group, bitmap_blk);
+Andreas Dilger wrote:
+> On Aug 02, 2007  17:55 +0800, Coly Li wrote:
+>> These days, when I read the source code of mke2fs, I found an option -f
+>> to set the fragment size.
+>>
+>> But I can not find any explaining for ext3/4 framgment from google,
+>> excepting someone saying ext2/3 does not support this feature.
+>>
+>> Can anyone tell me what is the function or purpose of fragment of ext
+>> file system ?
+> 
+> This is an obsolete concept from BSD that was never used by ext[234].
+> Consider a "fragment" in this context to be the same as a "tail" for
+> reiserfs.  A very small file, or the end of a file that is less than
+> a block.
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
 
-Please align this according to kernel coding style.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
+Comment: Using GnuPG with SUSE - http://enigmail.mozdev.org
 
-Thanks,
-Kalpak.
+iD8DBQFGsvJIuTp8cyZ5lTERAltpAJ9BhpdjoKQUx001KSQP2oR8HNaXsQCZAbyJ
+ASnxX0wXDEaU8q5Syvp83yk=
+=IYRx
+-----END PGP SIGNATURE-----
