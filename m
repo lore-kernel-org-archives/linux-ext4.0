@@ -1,95 +1,212 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: Ext4 devel interlock meeting minutes (July 30, 2007)
-Date: Fri, 03 Aug 2007 15:56:37 -0700
-Message-ID: <46B3B2A5.9000307@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: [PATCH] (unfinished) don't alloc/free in system zones
+Date: Fri, 3 Aug 2007 17:50:13 -0600
+Message-ID: <20070803235013.GA6142@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:57238 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759486AbXHCW4C (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 18:56:02 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l73Mu1bY027089
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 18:56:01 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l73Mu1CQ240802
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l73Mu1Ob024288
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
-Received: from [9.47.16.161] (dyn9047016161.beaverton.ibm.com [9.47.16.161])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l73Mu03U024268
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Aug 2007 16:56:01 -0600
+Received: from mail.clusterfs.com ([74.0.229.162]:42721 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758807AbXHCXuQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2007 19:50:16 -0400
+Received: from localhost.adilger.int (S01060004e23cfc51.ek.shawcable.net [24.66.76.119])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.clusterfs.com (Postfix) with ESMTP id C35284E4567
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Aug 2007 17:50:14 -0600 (MDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 Developer Interlock Call: July 30, 2007 Meeting Minutes
+It seems there is a long-standing defect in ext2/ext3/ext4 in the 2.6
+kernels that hasn't been fixed, even though I thought it was.
 
-Minutes can be accessed at:=20
-http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Cal=
-l
+There are checks in ext[234]_{new,free}_blocks() to see if the block(s)
+being allocated or freed overlap with the bitmaps or inode tables, but
+if the filesystem is mounted with "errors=continue" (the default), then
+even though an error is printed the allocation or free will succeed and
+this will lead to filesystem corruption.
 
-Attendees: Mingming Cao, Andreas Dilger, Jean-Pierre Dion, Jean-Noel=20
-Cordenner, Val=E9rie Clement, Aneesh Veetil, Dave Kleikamp, Jose Santos=
-,=20
-Ted T'so, Avantika Mathur
+There was a patch posted in
+http://marc.info/?l=linux-ext4&m=116360109620982&w=2
+that should be added to the ext[234] patch queue that fixes this problem.
 
-PATCH STATUS
+We might also consider making "errors=remount-ro" the default for ext4,
+this has long been the default for Debian users of ext[23].
 
-Delalloc:
-- Alex posted his vfs delayed allocation patches.
-- Comments are that there is not sufficient generic support for XFS. =20
-The code that Christoph Hellwig had posted which does support XFS is=20
-very complex.
-- Christoph would be ok to take most of Alex's patch as an ext4 patch. =
-=20
-In the short term we can put the delalloc support in ext4 and then late=
-r=20
-work on generic vfs support.
-- Mingming will respond to the thread asking what Andrew Morton's=20
-preference is.
 
-Multiple Block Allocation:
-- Aneesh has been hitting a bug when creating a filesystem with=20
-different number of blocks/block group then default.  the problem=20
-occurred during online migration with mballoc enabled.
-- A possible temporary solution to this problem is to disable mballoc i=
-f=20
-the filesystem created with not the default blocks/block group ratio.
-- Aneesh will write-up the problem he is seeing and send an e-mail to A=
-lex.
-- Aneesh will split mballoc into more patches, to be added to the=20
-ext4-patch-queue.  This will make it easier to review.
+Signed-Off-By: Andreas Dilger <adilger@clusterfs.com>
+Signed-Off-By: Andre Noll <maan@systemlinux.org>
+---
+ fs/ext3/balloc.c |  102 +++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 75 insertions(+), 27 deletions(-)
 
-Inode Version:
-- Jean-Noel sent the mount option patch to linux-ext4.  We had discusse=
-d=20
-adding a flag to the superblock indicating that i_version is enabled,=20
-but there are no bits available in f_flags.
-- Mingming will reply to the post saying the overwrite case needs to be=
-=20
-addressed first
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 063d994..763b7a0 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -359,17 +359,6 @@ do_more:
+ 	if (!desc)
+ 		goto error_return;
+ 
+-	if (in_range (le32_to_cpu(desc->bg_block_bitmap), block, count) ||
+-	    in_range (le32_to_cpu(desc->bg_inode_bitmap), block, count) ||
+-	    in_range (block, le32_to_cpu(desc->bg_inode_table),
+-		      sbi->s_itb_per_group) ||
+-	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
+-		      sbi->s_itb_per_group))
+-		ext3_error (sb, "ext3_free_blocks",
+-			    "Freeing blocks in system zones - "
+-			    "Block = "E3FSBLK", count = %lu",
+-			    block, count);
+-
+ 	/*
+ 	 * We are about to start releasing blocks in the bitmap,
+ 	 * so we need undo access.
+@@ -392,7 +381,17 @@ do_more:
+ 
+ 	jbd_lock_bh_state(bitmap_bh);
+ 
+-	for (i = 0, group_freed = 0; i < count; i++) {
++	for (i = 0, group_freed = 0; i < count; i++, block++) {
++		struct ext3_group_desc *gdp = ext3_get_group_desc(sb, i, NULL);
++		if (block == le32_to_cpu(gdp->bg_block_bitmap) ||
++			block == le32_to_cpu(gdp->bg_inode_bitmap) ||
++			in_range(block, le32_to_cpu(gdp->bg_inode_table),
++				EXT3_SB(sb)->s_itb_per_group)) {
++			ext3_error(sb, __FUNCTION__,
++				"Freeing block in system zone - block = %lu",
++				block);
++			continue;
++		}
+ 		/*
+ 		 * An HJ special.  This is expensive...
+ 		 */
+@@ -400,7 +399,7 @@ do_more:
+ 		jbd_unlock_bh_state(bitmap_bh);
+ 		{
+ 			struct buffer_head *debug_bh;
+-			debug_bh = sb_find_get_block(sb, block + i);
++			debug_bh = sb_find_get_block(sb, block);
+ 			if (debug_bh) {
+ 				BUFFER_TRACE(debug_bh, "Deleted!");
+ 				if (!bh2jh(bitmap_bh)->b_committed_data)
+@@ -452,7 +451,7 @@ do_more:
+ 			jbd_unlock_bh_state(bitmap_bh);
+ 			ext3_error(sb, __FUNCTION__,
+ 				"bit already cleared for block "E3FSBLK,
+-				 block + i);
++				block);
+ 			jbd_lock_bh_state(bitmap_bh);
+ 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
+ 		} else {
+@@ -479,7 +478,6 @@ do_more:
+ 	*pdquot_freed_blocks += group_freed;
+ 
+ 	if (overflow && !err) {
+-		block += count;
+ 		count = overflow;
+ 		goto do_more;
+ 	}
+@@ -1192,6 +1190,63 @@ int ext3_should_retry_alloc(struct super
+ }
+ 
+ /*
++ * Check if given blocks are metadata blocks.
++ *
++ * We should also check the backup group descriptors and the superblock,
++ * but it is too expensive to do so for each allocated/freed block. So,
++ * let's defer that check until we have per-group data structs.
++ */
++static inline int ext3_blocks_are_metadata(ext3_fsblk_t block,
++		unsigned long num,
++		struct ext3_group_desc *gdp,
++		struct super_block *sb)
++{
++	if (in_range(le32_to_cpu(gdp->bg_block_bitmap), block, num))
++		return 1;
++	if (in_range(le32_to_cpu(gdp->bg_inode_bitmap), block, num))
++		return 1;
++	if (in_range(block, le32_to_cpu(gdp->bg_inode_table),
++			EXT3_SB(sb)->s_itb_per_group))
++		return 1;
++	if (in_range(block + num - 1, le32_to_cpu(gdp->bg_inode_table),
++			EXT3_SB(sb)->s_itb_per_group))
++		return 1;
++	return 0;
++}
++
++/*
++ *
++ * set the bits for all of the metadata blocks in the group
++ *
++ * Note: This will potentially use up some of the handle's buffer credits.
++ * Normally we have way too many credits, so that is OK. In _very_ rare cases it
++ * might not be OK.  We will trigger an assertion if we run out of credits, and we
++ * will have to do a full fsck of the filesystem - better than randomly corrupting
++ * filesystem metadata.
++ */
++static void fix_group(int group, struct super_block *sb)
++{
++	int i;
++	ext3_fsblk_t bit;
++	unsigned long gdblocks;
++	struct buffer_head *gdp_bh;
++	struct ext3_group_desc *gdp = ext3_get_group_desc(sb, group, &gdp_bh);
++
++	if (ext3_bg_has_super(sb, group))
++		ext3_set_bit(0, gdp_bh->b_data);
++	gdblocks = ext3_bg_num_gdb(sb, group);
++	for (i = 0, bit = 1; i < gdblocks; i++, bit++)
++		ext3_set_bit(i, gdp_bh->b_data);
++	ext3_set_bit(gdp->bg_inode_bitmap % EXT3_BLOCKS_PER_GROUP(sb),
++		gdp_bh->b_data);
++	ext3_set_bit(gdp->bg_block_bitmap % EXT3_BLOCKS_PER_GROUP(sb),
++		gdp_bh->b_data);
++	for (i = 0, bit = gdp->bg_inode_table % EXT3_BLOCKS_PER_GROUP(sb);
++			i < EXT3_SB(sb)->s_itb_per_group; i++, bit++)
++		ext3_set_bit(i, gdp_bh->b_data);
++}
++
++/*
+  * ext3_new_block uses a goal block to assist allocation.  If the goal is
+  * free, or there is a free block within 32 blocks of the goal, that block
+  * is allocated.  Otherwise a forward search is made for a free block; within 
+@@ -1260,7 +1315,7 @@ ext3_fsblk_t ext3_new_blocks(handle_t *h
+ 		*errp = -ENOSPC;
+ 		goto out;
+ 	}
+-
++repeat:
+ 	/*
+ 	 * First, test whether the goal block is free.
+ 	 */
+@@ -1367,17 +1422,10 @@ allocated:
+ 
+ 	ret_block = grp_alloc_blk + ext3_group_first_block_no(sb, group_no);
+ 
+-	if (in_range(le32_to_cpu(gdp->bg_block_bitmap), ret_block, num) ||
+-	    in_range(le32_to_cpu(gdp->bg_inode_bitmap), ret_block, num) ||
+-	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
+-		      EXT3_SB(sb)->s_itb_per_group) ||
+-	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
+-		      EXT3_SB(sb)->s_itb_per_group))
+-		ext3_error(sb, "ext3_new_block",
+-			    "Allocating block in system zone - "
+-			    "blocks from "E3FSBLK", length %lu",
+-			     ret_block, num);
+-
++	if (ext3_blocks_are_metadata(ret_block, num, gdp, sb)) {
++		fix_group(group_no, sb);
++		goto repeat;
++	}
+ 	performed_allocation = 1;
+ 
+ #ifdef CONFIG_JBD_DEBUG
 
-Uninitialized Block Groups:
-- Avantika will look into why the checksum is not consistent - and why=20
-the check fails even when the feature is not enabled.
-
-=46lexible Block Groups:
-- Jose is trying to see why fsck is not working.  once this is resolved=
-,=20
-the feature will be complete. =20
-- He has seen a problem with fsck when meta_bg feature is enabled. =20
-Andreas saw a similar problem, and the uninitialized block groups patch=
-=20
-fixes the issue.  Jose will look back at the fix which is in the series=
-=20
-of e2fsprogs patches sent by Girish last week.
-
-- Mingming asked about exporting JBD stat info to debugfs; as well as=20
-procfs.  The consensus had been to just export to procfs as not everyon=
-e=20
-uses debugfs.
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
