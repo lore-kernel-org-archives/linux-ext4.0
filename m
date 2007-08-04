@@ -1,40 +1,26 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck/e2fsprogs: use sscanf() instead of atoi() in the option parser
-Date: Fri, 3 Aug 2007 22:19:12 -0400
-Message-ID: <20070804021912.GG7449@thunk.org>
-References: <f8q6is$tg3$1@sea.gmane.org>
+Subject: Re: [Patch 2/13] Miscellaneous Cleanups
+Date: Fri, 3 Aug 2007 20:11:00 -0400
+Message-ID: <20070804001100.GD7449@thunk.org>
+References: <1185275081.3789.67.camel@dhcp4.linsyssoft.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bernd Schubert <bschubert@q-leap.de>
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@clusterfs.com>
+To: Girish Shilamkar <girish@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35359 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35370 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753187AbXHDGCW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Aug 2007 02:02:22 -0400
+	id S1751151AbXHDGCa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Aug 2007 02:02:30 -0400
 Content-Disposition: inline
-In-Reply-To: <f8q6is$tg3$1@sea.gmane.org>
+In-Reply-To: <1185275081.3789.67.camel@dhcp4.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 01, 2007 at 04:50:04PM +0200, Bernd Schubert wrote:
-> [resent since the first mail doesn't seem to make it to this list]
-> 
-> using atoi() should be avoided in the option parser since it doesn't check
-> for errors. I almost destroyed an important filesystem since I
-> specified "e2fsck -C -n" and -n was parsed as option to -C
+On Tue, Jul 24, 2007 at 04:34:41PM +0530, Girish Shilamkar wrote:
+> Miscellaneous cleanups.
 
-Hi Bernd,
-
-Can you please include a DCO.  i.e.,
-
-Signed-off-by: Bernd Schubert <bschubert@q-leap.de>
-
-In your patch submissions.  See the SUBMITTING-PATCHES file in the
-top-level directory of e2fsprogs source tree for the significance of
-the Signed-off-by line.  For this patch, can you indicate whether you
-are willing to add a Signed-off-by: DCO?
-
-Thanks, regards,
+Thanks, applied.
 
 						- Ted
