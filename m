@@ -1,62 +1,95 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [2.6.22.2 review 59/84] jbd2 commit: fix transaction dropping
-Date: Tue, 7 Aug 2007 13:48:01 -0700
-Message-ID: <20070807204801.GI23028@kroah.com>
-References: <20070807204034.882009319@mini.kroah.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	dev@openvz.org, jack@suse.cz, linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	torvalds@linux-foundation.org
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH][e2fsprogs] Move ext2fs_struct_generic_bitmap back into ext2fs.h
+Date: Tue, 07 Aug 2007 16:16:39 -0500
+Message-ID: <20070807211639.22127.99361.stgit@rx8>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:59726 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935348AbXHGUzO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Aug 2007 16:55:14 -0400
-Content-Disposition: inline; filename="jbd2-commit-fix-transaction-dropping.patch"
-In-Reply-To: <20070807204157.GA23028@kroah.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:49836 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965979AbXHGVWI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Aug 2007 17:22:08 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l77LM78m018047
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 17:22:07 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l77LM7Ww141696
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 15:22:07 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l77LM7et021378
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 15:22:07 -0600
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l77LM6ji021364
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 15:22:07 -0600
+Received: from [127.0.1.1] (rx8.austin.ibm.com [9.41.41.30])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l77LM6xH043946
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 16:22:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+From: Jose R. Santos <jrs@us.ibm.com>
 
-From: Jan Kara <jack@suse.cz>
+Move ext2fs_struct_generic_bitmap back into ext2fs.h
 
-We have to check that also the second checkpoint list is non-empty before
-dropping the transaction.
+In Commit: f1f115a78f5ea599fc5f8815a741d43fedd5840d
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: Chuck Ebbert <cebbert@redhat.com>
-Cc: Kirill Korotaev <dev@openvz.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+The ext2fs_struct_generic_bitmap structure is remove from ext2fs.h and
+put into gen_bitmap.c.  This breaks big endian compiles since swapfs.c
+uses this structure as well if EXT2_BIG_ENDIAN_BITMAPS is defined.
 
----
- fs/jbd2/commit.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Since we have multiple users, this patch move
+ext2fs_struct_generic_bitmap back into ext2fs.h in order to compile on
+PowerPC or other big endian archs.
 
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -896,7 +896,8 @@ restart_loop:
- 	journal->j_committing_transaction = NULL;
- 	spin_unlock(&journal->j_state_lock);
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+--
+
+ lib/ext2fs/ext2fs.h     |   11 +++++++++++
+ lib/ext2fs/gen_bitmap.c |   11 -----------
+ 2 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d1cda2f..f34d2f9 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -100,6 +100,17 @@ typedef __u32		ext2_dirhash_t;
  
--	if (commit_transaction->t_checkpoint_list == NULL) {
-+	if (commit_transaction->t_checkpoint_list == NULL &&
-+	    commit_transaction->t_checkpoint_io_list == NULL) {
- 		__jbd2_journal_drop_transaction(journal, commit_transaction);
- 	} else {
- 		if (journal->j_checkpoint_transactions == NULL) {
-
--- 
+ typedef struct struct_ext2_filsys *ext2_filsys;
+ 
++struct ext2fs_struct_generic_bitmap {
++	errcode_t	magic;
++	ext2_filsys 	fs;
++	__u32		start, end;
++	__u32		real_end;
++	char	*	description;
++	char	*	bitmap;
++	errcode_t	base_error_code;
++	__u32		reserved[7];
++};
++
+ #define EXT2FS_MARK_ERROR 	0
+ #define EXT2FS_UNMARK_ERROR 	1
+ #define EXT2FS_TEST_ERROR	2
+diff --git a/lib/ext2fs/gen_bitmap.c b/lib/ext2fs/gen_bitmap.c
+index 66172e5..3d01149 100644
+--- a/lib/ext2fs/gen_bitmap.c
++++ b/lib/ext2fs/gen_bitmap.c
+@@ -27,17 +27,6 @@
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+ 
+-struct ext2fs_struct_generic_bitmap {
+-	errcode_t	magic;
+-	ext2_filsys 	fs;
+-	__u32		start, end;
+-	__u32		real_end;
+-	char	*	description;
+-	char	*	bitmap;
+-	errcode_t	base_error_code;
+-	__u32		reserved[7];
+-};
+-
+ /* 
+  * Used by previously inlined function, so we have to export this and
+  * not change the function signature
