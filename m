@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [2.6.22.2 review 43/84] "ext4_ext_put_in_cache" uses __u32 to
-	receive physical block number
-Date: Tue, 7 Aug 2007 13:47:01 -0700
-Message-ID: <20070807204701.GS23028@kroah.com>
+Subject: [2.6.22.2 review 58/84] jbd commit: fix transaction dropping
+Date: Tue, 7 Aug 2007 13:47:58 -0700
+Message-ID: <20070807204758.GH23028@kroah.com>
 References: <20070807204034.882009319@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -17,60 +16,47 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Chuck Ebbert <cebbert@redhat.com>,
 	Domenico Andreoli <cavokz@gmail.com>,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	linux-ext4@vger.kernel.org, cmm@us.ibm.com, yanzheng@21cn.com
+	dev@openvz.org, jack@suse.cz, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org,
 	torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:59476 "EHLO
+Received: from pentafluge.infradead.org ([213.146.154.40]:59712 "EHLO
 	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935699AbXHGUx3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Aug 2007 16:53:29 -0400
-Content-Disposition: inline; filename="ext4_ext_put_in_cache-uses-__u32-to-receive-physical-block-number.patch"
+	with ESMTP id S935201AbXHGUzJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Aug 2007 16:55:09 -0400
+Content-Disposition: inline; filename="jbd-commit-fix-transaction-dropping.patch"
 In-Reply-To: <20070807204157.GA23028@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-From: Mingming Cao <cmm@us.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-Yan Zheng wrote:
+We have to check that also the second checkpoint list is non-empty before
+dropping the transaction.
 
-> I think I found a bug in ext4/extents.c, "ext4_ext_put_in_cache" uses
-> "__u32" to receive physical block number.  "ext4_ext_put_in_cache" is
-> used in "ext4_ext_get_blocks", it sets ext4 inode's extent cache
-> according most recently tree lookup (higher 16 bits of saved physical
-> block number are always zero). when serving a mapping request,
-> "ext4_ext_get_blocks" first check whether the logical block is in
-> inode's extent cache. if the logical block is in the cache and the
-> cached region isn't a gap, "ext4_ext_get_blocks" gets physical block
-> number by using cached region's physical block number and offset in
-> the cached region.  as described above, "ext4_ext_get_blocks" may
-> return wrong result when there are physical block numbers bigger than
-> 0xffffffff.
->
-
-You are right.  Thanks for reporting this!
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: Yan Zheng <yanzheng@21cn.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: Chuck Ebbert <cebbert@redhat.com>
+Cc: Kirill Korotaev <dev@openvz.org>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/extents.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/jbd/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1445,7 +1445,7 @@ int ext4_ext_walk_space(struct inode *in
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -887,7 +887,8 @@ restart_loop:
+ 	journal->j_committing_transaction = NULL;
+ 	spin_unlock(&journal->j_state_lock);
  
- static void
- ext4_ext_put_in_cache(struct inode *inode, __u32 block,
--			__u32 len, __u32 start, int type)
-+			__u32 len, ext4_fsblk_t start, int type)
- {
- 	struct ext4_ext_cache *cex;
- 	BUG_ON(len == 0);
+-	if (commit_transaction->t_checkpoint_list == NULL) {
++	if (commit_transaction->t_checkpoint_list == NULL &&
++	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__journal_drop_transaction(journal, commit_transaction);
+ 	} else {
+ 		if (journal->j_checkpoint_transactions == NULL) {
 
 -- 
