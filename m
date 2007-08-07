@@ -1,9 +1,9 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
-	from VFS into individual setattr functions (RESEND)
-Date: Tue, 7 Aug 2007 21:49:09 +0100
-Message-ID: <20070807204909.GA30159@infradead.org>
-References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+Subject: Re: [PATCH 01/25] VFS: move attr_kill logic from
+	notify_change into helper function
+Date: Tue, 7 Aug 2007 21:51:49 +0100
+Message-ID: <20070807205145.GB30159@infradead.org>
+References: <200708061354.l76Ds6sq002260@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
@@ -19,7 +19,7 @@ Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+In-Reply-To: <200708061354.l76Ds6sq002260@dantu.rdu.redhat.com>
 List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -31,12 +31,12 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-First thanks a lot for doing this work, it's been long needed.
+> +void attr_kill_to_mode(struct inode *inode, struct iattr *attr)
 
-Second please don't send out that many patches.  We encourage people
-to split things into small patches when the changes are logially
-separated.  Which these are not - it's a flag day change (which btw
-is fine despite the rants soe people spewed in reply to this), so it
-should be one single patch. (Or one for all mainline filesystems +
-one per fs only in -mm to make Andrew's life a little easier if you
-really care.)
+This function badly needs a kerneldoc description.  Also I can't say
+I like the name a lot, but without a clearly better idea I should
+probably not complain :)
+
+We should at least add a generic_ prefix to indicate it's a generic
+helper valid for most filesystem (and the kerneldoc comment can explain
+the details)
