@@ -1,74 +1,42 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: E2fsprogs git tree
-Date: Tue, 7 Aug 2007 12:39:56 -0500
-Message-ID: <20070807123956.45a36bfa@rx8>
-References: <E1I7ukw-0001ht-T0@candygram.thunk.org>
-	<46B89C92.5060302@bull.net>
-	<20070807172814.GA21522@thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
+	from VFS into individual setattr functions (RESEND)
+Date: Tue, 7 Aug 2007 21:49:09 +0100
+Message-ID: <20070807204909.GA30159@infradead.org>
+References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Valerie Clement <valerie.clement@bull.net>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:49445 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762259AbXHGRpZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Aug 2007 13:45:25 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l77HjOYU011457
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 13:45:24 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l77HjO3c256394
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 11:45:24 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l77HjNXE002045
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Aug 2007 11:45:24 -0600
-In-Reply-To: <20070807172814.GA21522@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
+	jfs-discussion@lists.sourceforge.net,
+	mikulas@artax.karlin.mff.cuni.cz, reiserfs-devel@vger.kernel.org,
+	zippel@linux-m68k.org, xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+	wli@holomorphy.com, joel.becker@oracle.com, dhowells@redhat.com,
+	fuse-devel@lists.sourceforge.net, jffs-dev@axis.com,
+	user-mode-linux-user@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, linux-cifs-client@lists.samba.org,
+	ocfs2-devel@oss.oracle.com, bfennema@falcon.csc.calpoly.edu
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 7 Aug 2007 13:28:14 -0400
-Theodore Tso <tytso@mit.edu> wrote:
+First thanks a lot for doing this work, it's been long needed.
 
-> On Tue, Aug 07, 2007 at 06:23:46PM +0200, Valerie Clement wrote:
-> > Hi Ted,
-> > 
-> > I tried to clone the source tree but it failed.
-> > 
-> > The command "git-clone 
-> > http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git" failed with : 
-> > "error: Could not interpret tags/APPLE_UUID_SNAP_1 as something to
-> > pull"
-> > 
-> > The command "git-clone http://repo.or.cz/r/e2fsprogs.git" failed
-> > with: "error: Can't lock ref"
-> 
-> What version of git are you using?  Make sure you are using something
-> which is at least git 1.5.x.
-
-I get the same error as Valerie when using version 1.4.4.2.  The same
-version worked a couple of weeks ago when using the http URL.
-
-> 
-> BTW, the better URL's to use are:
-> 
-> git clone git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-> 
-> or
-> 
-> git clone git://repo.or.cz/e2fsprogs.git
-
-This seems to works fine using my older version of git.
- 
-> The http walkers are *much* more inefficient.  I did try out git-clone
-> using the http URL's, and it works, but it's slow.  The other
-> possibility is that you have some kind of nasty http transparent proxy
-> which is corrupting the http protocol stream.  This is why the git
-> transport is seriously the much, much, MUCH better alternative.   
-> 
-> 
-> 					- Ted
-
--JRS
+Second please don't send out that many patches.  We encourage people
+to split things into small patches when the changes are logially
+separated.  Which these are not - it's a flag day change (which btw
+is fine despite the rants soe people spewed in reply to this), so it
+should be one single patch. (Or one for all mainline filesystems +
+one per fs only in -mm to make Andrew's life a little easier if you
+really care.)
