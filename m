@@ -1,12 +1,13 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Andrew Morton <akpm@linux-foundation.org>
 Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
-	from VFS into individual setattr functions (RESEND)
-Date: Tue, 07 Aug 2007 20:45:34 -0400
-Message-ID: <1186533934.6625.91.camel@heimdal.trondhjem.org>
+ from VFS into individual setattr functions (RESEND)
+Date: Tue, 7 Aug 2007 17:54:02 -0700
+Message-ID: <20070807175402.03ceb0b7.akpm@linux-foundation.org>
 References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
 	<20070807171501.e31c4a97.akpm@linux-foundation.org>
+	<1186533934.6625.91.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
 	jfs-discussion@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
@@ -18,9 +19,9 @@ Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
 	linux-fsdevel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
 	linux-ext4@vger.kernel.org, linux-cifs-client@lists.samba.org,
 	ocfs2-devel@oss.oracle.com, bfennema@falcon.csc.calpoly.edu
-To: Andrew Morton <akpm@linux-foundation.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20070807171501.e31c4a97.akpm@linux-foundation.org>
+In-Reply-To: <1186533934.6625.91.camel@heimdal.trondhjem.org>
 List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -32,29 +33,22 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-08-07 at 17:15 -0700, Andrew Morton wrote:
+On Tue, 07 Aug 2007 20:45:34 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-> Is there any way in which we can prevent these problems?  Say
-
-The problem here is that we occasionally DO need to add new flags, and
-yes, they MAY be security related. The whole reason why we're now having
-to change the semantics of setattr is because somebody tried to hack
-their way around the write+suid issue.
-
-I suspect we will see the exact same thing will happen again in a couple
-of years with Serge's ATTR_KILL_PRIV flag.
-
-> - rename something so that unconverted filesystems will reliably fail to
->   compile?
+> > - rename something so that unconverted filesystems will reliably fail to
+> >   compile?
+> > 
+> > - leave existing filesystems alone, but add a new
+> >   inode_operations.setattr_jeff, which the networked filesytems can
+> >   implement, and teach core vfs to call setattr_jeff in preference to
+> >   setattr?
 > 
-> - leave existing filesystems alone, but add a new
->   inode_operations.setattr_jeff, which the networked filesytems can
->   implement, and teach core vfs to call setattr_jeff in preference to
->   setattr?
+> If you really need to know that the filesystem is handling the flags,
+> then how about instead having ->setattr() return something which
+> indicates which flags it actually handled? That is likely to be a far
+> more intrusive change, but it is one which is future-proof.
 
-If you really need to know that the filesystem is handling the flags,
-then how about instead having ->setattr() return something which
-indicates which flags it actually handled? That is likely to be a far
-more intrusive change, but it is one which is future-proof.
-
-Trond
+If we change ->setattr so that it will return a positive, non-zero value
+which the caller can then check and reliably do printk("that filesystem
+needs updating") then that addresses my concern, sure.
