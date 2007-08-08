@@ -1,15 +1,16 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
- from VFS into individual setattr functions (RESEND)
-Date: Tue, 7 Aug 2007 17:15:01 -0700
-Message-ID: <20070807171501.e31c4a97.akpm@linux-foundation.org>
+	from VFS into individual setattr functions (RESEND)
+Date: Tue, 07 Aug 2007 20:45:34 -0400
+Message-ID: <1186533934.6625.91.camel@heimdal.trondhjem.org>
 References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+	<20070807171501.e31c4a97.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
-	jfs-discussion@lists.sourceforge.net,
-	mikulas@artax.karlin.mff.cuni.cz, reiserfs-devel@vger.kernel.org,
+	jfs-discussion@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+	mikulas@artax.karlin.mff.cuni.cz, Jeff Layton <jlayton@redhat.com>,
 	zippel@linux-m68k.org, xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
 	wli@holomorphy.com, joel.becker@oracle.com, dhowells@redhat.com,
 	fuse-devel@lists.sourceforge.net, jffs-dev@axis.com,
@@ -17,9 +18,9 @@ Cc: codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
 	linux-fsdevel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
 	linux-ext4@vger.kernel.org, linux-cifs-client@lists.samba.org,
 	ocfs2-devel@oss.oracle.com, bfennema@falcon.csc.calpoly.edu
-To: Jeff Layton <jlayton@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+In-Reply-To: <20070807171501.e31c4a97.akpm@linux-foundation.org>
 List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -31,70 +32,29 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 6 Aug 2007 09:54:03 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Tue, 2007-08-07 at 17:15 -0700, Andrew Morton wrote:
 
-> Apologies for the resend, but the original sending had the date in the
-> email header and it caused some of these to bounce...
-> 
-> ( Please consider trimming the Cc list if discussing some aspect of this
-> that doesn't concern everyone.)
-> 
-> When an unprivileged process attempts to modify a file that has the
-> setuid or setgid bits set, the VFS will attempt to clear these bits. The
-> VFS will set the ATTR_KILL_SUID or ATTR_KILL_SGID bits in the ia_valid
-> mask, and then call notify_change to clear these bits and set the mode
-> accordingly.
-> 
-> With a networked filesystem (NFS in particular but most likely others),
-> the client machine may not have credentials that allow for the clearing
-> of these bits. In some situations, this can lead to file corruption, or
-> to an operation failing outright because the setattr fails.
-> 
-> In this situation, we'd like to just leave the handling of this to
-> the server and ignore these bits. The problem is that by the time
-> nfs_setattr is called, the VFS has already reinterpreted the ATTR_KILL_*
-> bits into a mode change. We can't fix this in the filesystems where
-> this is a problem, as doing so would leave us having to second-guess
-> what the VFS wants us to do. So we need to change it so that filesystems
-> have more flexibility in how to interpret the ATTR_KILL_* bits.
-> 
-> The first patch in the following patchset moves this logic into a helper
-> function, and then only calls this helper function for inodes that do
-> not have a setattr operation defined. The subsequent patches fix up
-> individual filesystem setattr functions to call this helper function.
-> 
-> The upshot of this is that with this change, filesystems that define
-> a setattr inode operation are now responsible for handling the ATTR_KILL
-> bits as well. They can trivially do so by calling the helper, but they
-> must do so.
-> 
-> Some of the follow-on patches may not be strictly necessary, but I
-> decided that it was better to take the conservative approach and call
-> the helper when I wasn't sure. I've tried to CC the maintainers
-> for the individual filesystems as well where I could find them,
-> please let me know if there are others who should be informed.
-> 
-> Comments and suggestions appreciated...
-> 
+> Is there any way in which we can prevent these problems?  Say
 
->From a purely practical standpoint: it's a concern that all filesytems need
-patching to continue to correctly function after this change.  There might
-be filesystems which you missed, and there are out-of-tree filesystems
-which won't be updated.
+The problem here is that we occasionally DO need to add new flags, and
+yes, they MAY be security related. The whole reason why we're now having
+to change the semantics of setattr is because somebody tried to hack
+their way around the write+suid issue.
 
-And I think the impact upon the out-of-tree filesystems would be fairly
-severe: they quietly and subtly get their secutiry guarantees broken (I
-think?)
+I suspect we will see the exact same thing will happen again in a couple
+of years with Serge's ATTR_KILL_PRIV flag.
 
-Is there any way in which we can prevent these problems?  Say
+> - rename something so that unconverted filesystems will reliably fail to
+>   compile?
+> 
+> - leave existing filesystems alone, but add a new
+>   inode_operations.setattr_jeff, which the networked filesytems can
+>   implement, and teach core vfs to call setattr_jeff in preference to
+>   setattr?
 
-- rename something so that unconverted filesystems will reliably fail to
-  compile?
+If you really need to know that the filesystem is handling the flags,
+then how about instead having ->setattr() return something which
+indicates which flags it actually handled? That is likely to be a far
+more intrusive change, but it is one which is future-proof.
 
-- leave existing filesystems alone, but add a new
-  inode_operations.setattr_jeff, which the networked filesytems can
-  implement, and teach core vfs to call setattr_jeff in preference to
-  setattr?
-
-Something else?
+Trond
