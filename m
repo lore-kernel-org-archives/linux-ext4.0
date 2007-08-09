@@ -1,87 +1,43 @@
-From: Coly Li <coyli@suse.de>
-Subject: Re: [PATCH] e2fsprogs: remove fragment support which will never be
- implemented [modified format]
-Date: Fri, 10 Aug 2007 21:19:44 +0800
-Message-ID: <46BC65F0.5070107@suse.de>
-References: <46BBDD5C.6020600@suse.de> <20070810092829.GN6689@schatzie.adilger.int>
-Reply-To: coyli@suse.de
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH][e2fsprogs] Move ext2fs_struct_generic_bitmap back into ext2fs.h
+Date: Thu, 9 Aug 2007 17:42:54 -0400
+Message-ID: <20070809214254.GB5438@thunk.org>
+References: <20070807211639.22127.99361.stgit@rx8>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:49565 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936234AbXHJNTD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 09:19:03 -0400
-In-Reply-To: <20070810092829.GN6689@schatzie.adilger.int>
+Received: from THUNK.ORG ([69.25.196.29]:44755 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760306AbXHJNaH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2007 09:30:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20070807211639.22127.99361.stgit@rx8>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-Andreas Dilger wrote:
-> On Aug 10, 2007  11:37 +0800, Coly Li wrote:
->> - --- a/e2fsck/problem.h
->> +++ b/e2fsck/problem.h
->> @@ -558,8 +558,8 @@ struct problem_context {
->> +/* Duplicate directory entry found */
->> +#define PR_2_REPORT_DUP_DIRENT	0x02000D
->>
->> - -/* i_frag should be zero */
->> - -#define PR_2_FRAG_ZERO		0x020010
->> +/* Non-unique filename found */
->> +#define PR_2_NON_UNIQUE_FILE	0x020010
->>
->> - -/* i_fsize should be zero */
->> - -#define PR_2_FSIZE_ZERO		0x020011
->> +/* i_blocks_hi should be zero */
->> +#define PR_2_BLOCKS_HI_ZERO	0x020011
+On Tue, Aug 07, 2007 at 04:16:39PM -0500, Jose R. Santos wrote:
+> From: Jose R. Santos <jrs@us.ibm.com>
 > 
-> Please don't do this.  This makes other patches fail to apply, and I don't
-> think we need to have sequential error numbers?
-Yes, I should only remove the obsoleted macro. BTW, why not use enum type to declare the error number ?
-
-
-
->>  		struct {
->> - -			__u8	m_i_frag;	/* Fragment number */
->> - -			__u8	m_i_fsize;	/* Fragment size */
->> - -			__u16	m_pad1;
->> - -			__u32	m_i_reserved2[2];
->> +			__u32	m_i_reserved2[3];
+> Move ext2fs_struct_generic_bitmap back into ext2fs.h
 > 
-> It is a bad idea to declare on-disk fields "reserved[{num}]", because
-> if some code is ever using e.g. "reserved[0]" for something and then
-> one of the fields is "unreserved" then the other code will silently
-> continue to work, but it will be using some other field on disk...
+> In Commit: f1f115a78f5ea599fc5f8815a741d43fedd5840d
 > 
-> That said, while we are removing junk you could also remove the "masix"
-> parts of the code, because I don't think they have been used for 10 years.
+> The ext2fs_struct_generic_bitmap structure is remove from ext2fs.h and
+> put into gen_bitmap.c.  This breaks big endian compiles since swapfs.c
+> uses this structure as well if EXT2_BIG_ENDIAN_BITMAPS is defined.
 
-Sure, it seems that it will be better to remove all this structure. Isn't it ?
+Actually, it's rw_bitmaps.c, and I don't want to do this because this
+is part of the cleanups where I am trying to localize code that knows
+about the in-memory encoding of bitmaps.
 
-> 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Principal Software Engineer
-> Cluster File Systems, Inc.
-> 
+It turns out the need for this was only in the very first ports of
+Linux to the Powerpc, and there haven't been kernels that would mount
+big-endian superblocks since, oh, 1998 or so (in the 2.0 days).
 
-Andreas, thanks for your comments.
+So probably the better fix is one where we don't allow big-endian
+filesystems any more.  On all modern systems, we use little-endian
+encoding of the superblock, and the bitmaps don't need byte-swapping.
 
-
-- --
-Coly Li
-SuSE PRC Labs
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2 (GNU/Linux)
-Comment: Using GnuPG with SUSE - http://enigmail.mozdev.org
-
-iD8DBQFGvGXwuTp8cyZ5lTERAqu9AJwIkWMO/2OjxD2teOh76d6wQ3M6nACeN1rU
-sy8hm6ugCJTB4z+D/0foTsU=
-=/ZXl
------END PGP SIGNATURE-----
+							- Ted
