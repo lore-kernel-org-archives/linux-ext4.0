@@ -1,48 +1,67 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] dir_index: error out instead of BUG on corrupt hash dir limit
-Date: Fri, 10 Aug 2007 12:51:00 -0600
-Message-ID: <20070810185100.GV6689@schatzie.adilger.int>
-References: <46BB8830.3060009@redhat.com> <46BB9826.6040904@redhat.com> <20070810082904.GL6689@schatzie.adilger.int> <46BC8D61.9080400@redhat.com> <20070810181901.GT6689@schatzie.adilger.int> <46BCB0F5.5060701@redhat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
+ from VFS into individual setattr functions (RESEND)
+Date: Fri, 10 Aug 2007 16:47:52 -0400
+Message-ID: <20070810164752.23117e0e.jlayton@redhat.com>
+References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+	<20070807171501.e31c4a97.akpm@linux-foundation.org>
+	<1186533934.6625.91.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:45942 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760425AbXHJSu6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 14:50:58 -0400
-Content-Disposition: inline
-In-Reply-To: <46BCB0F5.5060701@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, zippel@linux-m68k.org,
+	wli@holomorphy.com, dhowells@redhat.com,
+	mikulas@artax.karlin.mff.cuni.cz, Jeff Layton <jlayton@redhat.com>,
+	joel.becker@oracle.com, cluster-devel@redhat.com,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	linux-cifs-client@lists.samba.org, fuse-devel@lists.sourceforge.net,
+	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+	user-mode-linux-user@lists.sourceforge.net,
+	codalist@TELEMANN.coda.cs.cmu.edu, linux-kernel@vger.kernel.org,
+	bfennema@falcon.csc.calpoly.edu, jffs-dev@axis.com,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>, ocfs2-devel@oss.oracle.com
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <1186533934.6625.91.camel@heimdal.trondhjem.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 10, 2007  13:39 -0500, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > It would be interesting to check if mounting a dir_index filesystem on
-> > linux with ext2 has the same problem.  It _should_ have been that 
-> > if rec_len % 4 == 0 (i.e. any valid dirent) we would fail the hash_version
-> > check, but we left in the DX_HASH_LEGACY (0) and that check is blown.
-> 
-> Hmmm...
-> 
-> > The unused_flags & 1 is only hit for a dirent with DT_FIFO (no good).
-> > The remaining check is indirect_levels > 1, which should be hit for
-> > any dirent with name_len > 1 (i.e. most, but not all).
+On Tue, 07 Aug 2007 20:45:34 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > - rename something so that unconverted filesystems will reliably fail to
+> >   compile?
 > > 
-> > So, I think you could reproduce this in linux by making an indexed directory
-> > in ext3/4, mounting it as ext2, and then creating a 1-character filename
-> > in the directory, or any length filename and then deleting it.
+> > - leave existing filesystems alone, but add a new
+> >   inode_operations.setattr_jeff, which the networked filesytems can
+> >   implement, and teach core vfs to call setattr_jeff in preference to
+> >   setattr?
 > 
-> With those quick tests I don't see any problems... you may be giving the
-> windows driver too much credit here.  :)
+> If you really need to know that the filesystem is handling the flags,
+> then how about instead having ->setattr() return something which
+> indicates which flags it actually handled? That is likely to be a far
+> more intrusive change, but it is one which is future-proof.
+> 
 
-Ah, true - I forgot about the "EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;"
-line that has existed since time immemorial in ext2.  Isn't foresight
-a wonderful thing.
+One thing that we could do here is have notify_change check
+attr->ia_valid after the setattr operation returns. If either ATTR_KILL_*
+bit is set then BUG(). The helper function already clears those bits
+so anything using it should automatically be ok. We'd have to fix
+up NFS and a few others that don't implement suid/sgid.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+This is not as certain as changing the name of the inode operation. It
+would only pop when someone is attempting to change a setuid/setgid
+file on these filesystems. Still, it should conceivably catch most if
+not all offenders. Would that be sufficient to take care of everyone's
+concerns?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
