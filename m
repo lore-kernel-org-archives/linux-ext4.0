@@ -1,59 +1,107 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] e2fsprogs: remove fragment support which will never be implemented [modified format]
-Date: Fri, 10 Aug 2007 03:28:29 -0600
-Message-ID: <20070810092829.GN6689@schatzie.adilger.int>
-References: <46BBDD5C.6020600@suse.de>
+From: "Kosta Kliakhandler" <kostak@gmail.com>
+Subject: fsck 1.39 segfaults while fixing a corrupt inode
+Date: Fri, 10 Aug 2007 15:34:08 +0300
+Message-ID: <a73860e00708100534x312291et77e39b4f7ebe32b4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Coly Li <coyli@suse.de>
+Content-Type: multipart/mixed;
+	boundary="----=_Part_144002_4046655.1186749248821"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:55935 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934080AbXHJJ21 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 05:28:27 -0400
-Content-Disposition: inline
-In-Reply-To: <46BBDD5C.6020600@suse.de>
+Received: from wa-out-1112.google.com ([209.85.146.182]:51484 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756262AbXHJMeK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 08:34:10 -0400
+Received: by wa-out-1112.google.com with SMTP id v27so892048wah
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2007 05:34:09 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 10, 2007  11:37 +0800, Coly Li wrote:
-> - --- a/e2fsck/problem.h
-> +++ b/e2fsck/problem.h
-> @@ -558,8 +558,8 @@ struct problem_context {
-> +/* Duplicate directory entry found */
-> +#define PR_2_REPORT_DUP_DIRENT	0x02000D
-> 
-> - -/* i_frag should be zero */
-> - -#define PR_2_FRAG_ZERO		0x020010
-> +/* Non-unique filename found */
-> +#define PR_2_NON_UNIQUE_FILE	0x020010
-> 
-> - -/* i_fsize should be zero */
-> - -#define PR_2_FSIZE_ZERO		0x020011
-> +/* i_blocks_hi should be zero */
-> +#define PR_2_BLOCKS_HI_ZERO	0x020011
+------=_Part_144002_4046655.1186749248821
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Please don't do this.  This makes other patches fail to apply, and I don't
-think we need to have sequential error numbers?
+Hi!
 
->  		struct {
-> - -			__u8	m_i_frag;	/* Fragment number */
-> - -			__u8	m_i_fsize;	/* Fragment size */
-> - -			__u16	m_pad1;
-> - -			__u32	m_i_reserved2[2];
-> +			__u32	m_i_reserved2[3];
+I have a severe problem - I was a fool and made / (root) ext4 (at
+least not /home, thank god) and somehow some corruption occured.
+While running fsck, it keeps segfaulting, complaining about fast
+memory corruption (segfaults always at the same inode, always when I
+tell it to fix it). I *think* the issue was addressed in
+e2fsprogs-1.40.2 (from what I understood in the changelog) - but I
+can't find a patchset for it...
+I tried to do the 1.39 patch on the 1.40.2 source but there were more
+then a few mismatches and it didn't build. with enough work, I might
+be able to build it, but I strongly prefer a ready patch/tarball which
+I know will work and I haven't found any on the net.
 
-It is a bad idea to declare on-disk fields "reserved[{num}]", because
-if some code is ever using e.g. "reserved[0]" for something and then
-one of the fields is "unreserved" then the other code will silently
-continue to work, but it will be using some other field on disk...
+Can anyone please point me to one or send one to me, or advise on a
+different solution?
 
-That said, while we are removing junk you could also remove the "masix"
-parts of the code, because I don't think they have been used for 10 years.
+Thanks in advance,
+Kosta.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+-- 
+Kosta.tk
+
+------=_Part_144002_4046655.1186749248821
+Content-Type: text/plain; name="error.out"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="error.out"
+X-Attachment-Id: file0
+
+I2ZzY2sgLWEgL2Rldi9zZGEzCgovIGNvbnRhaW5zIGEgZmlsZSBzeXN0ZW0gd2l0aCBlcnJvcnMs
+IGNoZWNrIGZvcmNlZC4KLzogSW5vZGUgNzQxMzY2MyBoYXMgaGlnaCAxNiBiaXRzIG9mIGV4dGVu
+dC9pbmRleCBibG9jayBzZXQKQ0xFQVJFRC4KLzogSGlnaCAxNiBiaXRzIG9mIGV4dGVudC9pbmRl
+eCBibG9jayBzZXQKQ0xFQVJFRC4KLzogSW5vZGUgNzQxMzY2MyBoYXMgY29ycnVwdCBleHRlbnQg
+aW5kZXggYXQgYmxvY2sgMTc2OTIzNTc4OSAobG9naWNhbCA3Nzg0MDA2MjcpIGVudHJ5IDAKQ0xF
+QVJFRC4KLzogCgoqKiogZ2xpYmMgZGV0ZWN0ZWQgKioqIGZzY2suZXh0NDogbWFsbG9jKCk6IG1l
+bW9yeSBjb3JydXB0aW9uIChmYXN0KTogMHgwODA5Yjg3OCAqKioKPT09PT09PSBCYWNrdHJhY2U6
+ID09PT09PT09PQovbGliL2xpYmMuc28uNlsweGI3ZTQzNTEwXQovbGliL2xpYmMuc28uNlsweGI3
+ZTQ1YzE3XQovbGliL2xpYmMuc28uNihtYWxsb2MrMHg3ZSlbMHhiN2U0NmUyZV0KL2xpYi9saWJj
+LnNvLjZbMHhiN2UwNDBmMF0KL2xpYi9saWJjLnNvLjZbMHhiN2UwMjUxMV0KL2xpYi9saWJjLnNv
+LjZbMHhiN2UwMWU5Y10KL2xpYi9saWJjLnNvLjYoX19kY2dldHRleHQrMHgzZClbMHhiN2UwMGZi
+ZF0KZnNjay5leHQ0WzB4ODA1ZGRlYV0KZnNjay5leHQ0WzB4ODA1MDRkY10KZnNjay5leHQ0WzB4
+ODA1MTg2Zl0KL2xpYi9saWJleHQyZnMuc28uMihibG9ja19pdGVyYXRlX2V4dGVudHMrMHgzMTAp
+WzB4YjdmMjhhZDddCi9saWIvbGliZXh0MmZzLnNvLjIoZXh0MmZzX2Jsb2NrX2l0ZXJhdGUyKzB4
+MWM4KVsweGI3ZjI1NmY1XQpmc2NrLmV4dDRbMHg4MDUwZTFiXQpmc2NrLmV4dDRbMHg4MDUxYjRj
+XQpmc2NrLmV4dDRbMHg4MDUxYmM3XQovbGliL2xpYmV4dDJmcy5zby4yKGV4dDJmc19nZXRfbmV4
+dF9pbm9kZV9mdWxsKzB4NDUpWzB4YjdmMmMxNmVdCmZzY2suZXh0NFsweDgwNTMwYmNdCmZzY2su
+ZXh0NFsweDgwNGUwMDRdCmZzY2suZXh0NFsweDgwNGRjY2VdCi9saWIvbGliYy5zby42KF9fbGli
+Y19zdGFydF9tYWluKzB4ZGMpWzB4YjdkZjM5YmNdCmZzY2suZXh0NFsweDgwNGI4ODFdCj09PT09
+PT0gTWVtb3J5IG1hcDogPT09PT09PT0KMDgwNDgwMDAtMDgwNjgwMDAgci14cCAwMDAwMDAwMCAw
+ODowMyAyNzg1MzE3ICAgIC9zYmluL2UyZnNjawowODA2ODAwMC0wODA2YTAwMCBydy1wIDAwMDIw
+MDAwIDA4OjAzIDI3ODUzMTcgICAgL3NiaW4vZTJmc2NrCjA4MDZhMDAwLTA4MGUzMDAwIHJ3LXAg
+MDgwNmEwMDAgMDA6MDAgMCAgICAgICAgICBbaGVhcF0KYjZmMDAwMDAtYjZmMjEwMDAgcnctcCBi
+NmYwMDAwMCAwMDowMCAwCmI2ZjIxMDAwLWI3MDAwMDAwIC0tLXAgYjZmMjEwMDAgMDA6MDAgMApi
+NzA5OTAwMC1iNzBhMzAwMCByLXhwIDAwMDAwMDAwIDA4OjAzIDYzOTA2NzQgICAgL3Vzci9saWIv
+Z2NjL2k1ODYtcGMtbGludXgtZ251LzQuMS4yL2xpYmdjY19zLnNvLjEKYjcwYTMwMDAtYjcwYTQw
+MDAgcnctcCAwMDAwOTAwMCAwODowMyA2MzkwNjc0ICAgIC91c3IvbGliL2djYy9pNTg2LXBjLWxp
+bnV4LWdudS80LjEuMi9saWJnY2Nfcy5zby4xCmI3MGNkMDAwLWI3ZDllMDAwIHJ3LXAgYjcwY2Qw
+MDAgMDA6MDAgMApiN2Q5ZTAwMC1iN2RkZDAwMCByLS1wIDAwMDAwMDAwIDA4OjAzIDc2Njg2NTQg
+ICAgL3Vzci9saWIvbG9jYWxlL2VuX1VTLnV0ZjgvTENfQ1RZUEUKYjdkZGQwMDAtYjdkZGUwMDAg
+cnctcCBiN2RkZDAwMCAwMDowMCAwCmI3ZGRlMDAwLWI3ZjA4MDAwIHIteHAgMDAwMDAwMDAgMDg6
+MDMgMzAxODExOSAgICAvbGliL2xpYmMtMi42LnNvCmI3ZjA4MDAwLWI3ZjBhMDAwIHItLXAgMDAx
+MjkwMDAgMDg6MDMgMzAxODExOSAgICAvbGliL2xpYmMtMi42LnNvCmI3ZjBhMDAwLWI3ZjBiMDAw
+IHJ3LXAgMDAxMmIwMDAgMDg6MDMgMzAxODExOSAgICAvbGliL2xpYmMtMi42LnNvCmI3ZjBiMDAw
+LWI3ZjBlMDAwIHJ3LXAgYjdmMGIwMDAgMDA6MDAgMApiN2YwZTAwMC1iN2YxMDAwMCByLXhwIDAw
+MDAwMDAwIDA4OjAzIDU1NzA5NjMgICAgL2xpYi9saWJ1dWlkLnNvLjEuMgpiN2YxMDAwMC1iN2Yx
+MTAwMCBydy1wIDAwMDAxMDAwIDA4OjAzIDU1NzA5NjMgICAgL2xpYi9saWJ1dWlkLnNvLjEuMgpi
+N2YxMTAwMC1iN2YxNzAwMCByLXhwIDAwMDAwMDAwIDA4OjAzIDU1NzA4MjcgICAgL2xpYi9saWJi
+bGtpZC5zby4xLjAKYjdmMTcwMDAtYjdmMTgwMDAgcnctcCAwMDAwNjAwMCAwODowMyA1NTcwODI3
+ICAgIC9saWIvbGliYmxraWQuc28uMS4wCmI3ZjE4MDAwLWI3ZjFhMDAwIHIteHAgMDAwMDAwMDAg
+MDg6MDMgMjQ5Mjk5OSAgICAvbGliL2xpYmNvbV9lcnIuc28uMi4xCmI3ZjFhMDAwLWI3ZjFiMDAw
+IHJ3LXAgMDAwMDEwMDAgMDg6MDMgMjQ5Mjk5OSAgICAvbGliL2xpYmNvbV9lcnIuc28uMi4xCmI3
+ZjFiMDAwLWI3ZjM0MDAwIHIteHAgMDAwMDAwMDAgMDg6MDMgNTU3MDg2MyAgICAvbGliL2xpYmV4
+dDJmcy5zby4yLjQKYjdmMzQwMDAtYjdmMzUwMDAgcnctcCAwMDAxOTAwMCAwODowMyA1NTcwODYz
+ICAgIC9saWIvbGliZXh0MmZzLnNvLjIuNApiN2YzNTAwMC1iN2YzNjAwMCBydy1wIGI3ZjM1MDAw
+IDAwOjAwIDAKYjdmNTcwMDAtYjdmNWUwMDAgci0tcyAwMDAwMDAwMCAwODowMyA2NTU3NDQzICAg
+IC91c3IvbGliL2djb252L2djb252LW1vZHVsZXMuY2FjaGUKYjdmNWUwMDAtYjdmNWYwMDAgci0t
+cCAwMDAwMDAwMCAwODowMyA3NjY4NzE1ICAgIC91c3IvbGliL2xvY2FsZS9lbl9VUy51dGY4L0xD
+X01FU1NBR0VTL1NZU19MQ19NRVNTQUdFUwpiN2Y1ZjAwMC1iN2Y2MDAwMCByLXhwIGI3ZjVmMDAw
+IDAwOjAwIDAgICAgICAgICAgW3Zkc29dCmI3ZjYwMDAwLWI3ZjdhMDAwIHIteHAgMDAwMDAwMDAg
+MDg6MDMgMzAxODExNyAgICAvbGliL2xkLTIuNi5zbwpiN2Y3YTAwMC1iN2Y3YjAwMCByLS1wIDAw
+MDE5MDAwIDA4OjAzIDMwMTgxMTcgICAgL2xpYi9sZC0yLjYuc28KYjdmN2IwMDAtYjdmN2MwMDAg
+cnctcCAwMDAxYTAwMCAwODowMyAzMDE4MTE3ICAgIC9saWIvbGQtMi42LnNvCmJmYzRlMDAwLWJm
+YzY0MDAwIHJ3LXAgYmZjNGUwMDAgMDA6MDAgMCAgICAgICAgICBbc3RhY2tdCg==
+------=_Part_144002_4046655.1186749248821--
