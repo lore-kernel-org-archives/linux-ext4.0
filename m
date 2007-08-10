@@ -1,42 +1,87 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: fsck 1.39 segfaults while fixing a corrupt inode
-Date: Fri, 10 Aug 2007 06:52:32 -0600
-Message-ID: <20070810125232.GQ6689@schatzie.adilger.int>
-References: <a73860e00708100534x312291et77e39b4f7ebe32b4@mail.gmail.com>
+From: Coly Li <coyli@suse.de>
+Subject: Re: [PATCH] e2fsprogs: remove fragment support which will never be
+ implemented [modified format]
+Date: Fri, 10 Aug 2007 21:19:44 +0800
+Message-ID: <46BC65F0.5070107@suse.de>
+References: <46BBDD5C.6020600@suse.de> <20070810092829.GN6689@schatzie.adilger.int>
+Reply-To: coyli@suse.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Kosta Kliakhandler <kostak@gmail.com>
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:58696 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755588AbXHJMwb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 08:52:31 -0400
-Content-Disposition: inline
-In-Reply-To: <a73860e00708100534x312291et77e39b4f7ebe32b4@mail.gmail.com>
+Received: from victor.provo.novell.com ([137.65.250.26]:49565 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S936234AbXHJNTD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 09:19:03 -0400
+In-Reply-To: <20070810092829.GN6689@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 10, 2007  15:34 +0300, Kosta Kliakhandler wrote:
-> I have a severe problem - I was a fool and made / (root) ext4 (at
-> least not /home, thank god) and somehow some corruption occured.
-> While running fsck, it keeps segfaulting, complaining about fast
-> memory corruption (segfaults always at the same inode, always when I
-> tell it to fix it). I *think* the issue was addressed in
-> e2fsprogs-1.40.2 (from what I understood in the changelog) - but I
-> can't find a patchset for it...
-> I tried to do the 1.39 patch on the 1.40.2 source but there were more
-> then a few mismatches and it didn't build. with enough work, I might
-> be able to build it, but I strongly prefer a ready patch/tarball which
-> I know will work and I haven't found any on the net.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Andreas Dilger wrote:
+> On Aug 10, 2007  11:37 +0800, Coly Li wrote:
+>> - --- a/e2fsck/problem.h
+>> +++ b/e2fsck/problem.h
+>> @@ -558,8 +558,8 @@ struct problem_context {
+>> +/* Duplicate directory entry found */
+>> +#define PR_2_REPORT_DUP_DIRENT	0x02000D
+>>
+>> - -/* i_frag should be zero */
+>> - -#define PR_2_FRAG_ZERO		0x020010
+>> +/* Non-unique filename found */
+>> +#define PR_2_NON_UNIQUE_FILE	0x020010
+>>
+>> - -/* i_fsize should be zero */
+>> - -#define PR_2_FSIZE_ZERO		0x020011
+>> +/* i_blocks_hi should be zero */
+>> +#define PR_2_BLOCKS_HI_ZERO	0x020011
 > 
-> Can anyone please point me to one or send one to me, or advise on a
-> different solution?
+> Please don't do this.  This makes other patches fail to apply, and I don't
+> think we need to have sequential error numbers?
+Yes, I should only remove the obsoleted macro. BTW, why not use enum type to declare the error number ?
 
-Try ftp://ftp.lustre.org/pub/lustre/other/e2fsprogs/
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+
+>>  		struct {
+>> - -			__u8	m_i_frag;	/* Fragment number */
+>> - -			__u8	m_i_fsize;	/* Fragment size */
+>> - -			__u16	m_pad1;
+>> - -			__u32	m_i_reserved2[2];
+>> +			__u32	m_i_reserved2[3];
+> 
+> It is a bad idea to declare on-disk fields "reserved[{num}]", because
+> if some code is ever using e.g. "reserved[0]" for something and then
+> one of the fields is "unreserved" then the other code will silently
+> continue to work, but it will be using some other field on disk...
+> 
+> That said, while we are removing junk you could also remove the "masix"
+> parts of the code, because I don't think they have been used for 10 years.
+
+Sure, it seems that it will be better to remove all this structure. Isn't it ?
+
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Principal Software Engineer
+> Cluster File Systems, Inc.
+> 
+
+Andreas, thanks for your comments.
+
+
+- --
+Coly Li
+SuSE PRC Labs
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2 (GNU/Linux)
+Comment: Using GnuPG with SUSE - http://enigmail.mozdev.org
+
+iD8DBQFGvGXwuTp8cyZ5lTERAqu9AJwIkWMO/2OjxD2teOh76d6wQ3M6nACeN1rU
+sy8hm6ugCJTB4z+D/0foTsU=
+=/ZXl
+-----END PGP SIGNATURE-----
