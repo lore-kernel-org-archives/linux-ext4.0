@@ -1,22 +1,22 @@
 From: "Kosta Kliakhandler" <kostak@gmail.com>
 Subject: fsck 1.39 segfaults while fixing a corrupt inode
-Date: Fri, 10 Aug 2007 15:34:08 +0300
-Message-ID: <a73860e00708100534x312291et77e39b4f7ebe32b4@mail.gmail.com>
+Date: Fri, 10 Aug 2007 15:41:32 +0300
+Message-ID: <a73860e00708100541v59628f6dn491327b6d3097e5b@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
-	boundary="----=_Part_144002_4046655.1186749248821"
+	boundary="----=_Part_144074_25195834.1186749692241"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.182]:51484 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756262AbXHJMeK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 08:34:10 -0400
-Received: by wa-out-1112.google.com with SMTP id v27so892048wah
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2007 05:34:09 -0700 (PDT)
+Received: from rv-out-0910.google.com ([209.85.198.189]:16321 "EHLO
+	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752181AbXHJMlc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 08:41:32 -0400
+Received: by rv-out-0910.google.com with SMTP id k20so671305rvb
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2007 05:41:32 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-------=_Part_144002_4046655.1186749248821
+------=_Part_144074_25195834.1186749692241
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
@@ -31,12 +31,14 @@ tell it to fix it). I *think* the issue was addressed in
 e2fsprogs-1.40.2 (from what I understood in the changelog) - but I
 can't find a patchset for it...
 I tried to do the 1.39 patch on the 1.40.2 source but there were more
-then a few mismatches and it didn't build. with enough work, I might
+then a few mismatches and it didn't build. With enough work, I might
 be able to build it, but I strongly prefer a ready patch/tarball which
-I know will work and I haven't found any on the net.
+I would know works, but I haven't found any on the net.
 
 Can anyone please point me to one or send one to me, or advise on a
 different solution?
+
+Attached is the error log.
 
 Thanks in advance,
 Kosta.
@@ -44,11 +46,11 @@ Kosta.
 -- 
 Kosta.tk
 
-------=_Part_144002_4046655.1186749248821
-Content-Type: text/plain; name="error.out"
+------=_Part_144074_25195834.1186749692241
+Content-Type: text/plain; name=error.out; charset=ANSI_X3.4-1968
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="error.out"
 X-Attachment-Id: file0
+Content-Disposition: attachment; filename="error.out"
 
 I2ZzY2sgLWEgL2Rldi9zZGEzCgovIGNvbnRhaW5zIGEgZmlsZSBzeXN0ZW0gd2l0aCBlcnJvcnMs
 IGNoZWNrIGZvcmNlZC4KLzogSW5vZGUgNzQxMzY2MyBoYXMgaGlnaCAxNiBiaXRzIG9mIGV4dGVu
@@ -104,4 +106,4 @@ MDg6MDMgMzAxODExNyAgICAvbGliL2xkLTIuNi5zbwpiN2Y3YTAwMC1iN2Y3YjAwMCByLS1wIDAw
 MDE5MDAwIDA4OjAzIDMwMTgxMTcgICAgL2xpYi9sZC0yLjYuc28KYjdmN2IwMDAtYjdmN2MwMDAg
 cnctcCAwMDAxYTAwMCAwODowMyAzMDE4MTE3ICAgIC9saWIvbGQtMi42LnNvCmJmYzRlMDAwLWJm
 YzY0MDAwIHJ3LXAgYmZjNGUwMDAgMDA6MDAgMCAgICAgICAgICBbc3RhY2tdCg==
-------=_Part_144002_4046655.1186749248821--
+------=_Part_144074_25195834.1186749692241--
