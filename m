@@ -1,67 +1,66 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
- from VFS into individual setattr functions (RESEND)
-Date: Fri, 10 Aug 2007 16:47:52 -0400
-Message-ID: <20070810164752.23117e0e.jlayton@redhat.com>
-References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
-	<20070807171501.e31c4a97.akpm@linux-foundation.org>
-	<1186533934.6625.91.camel@heimdal.trondhjem.org>
+From: "Kosta Kliakhandler" <kostak@gmail.com>
+Subject: Re: fsck 1.39 segfaults while fixing a corrupt inode
+Date: Sat, 11 Aug 2007 02:52:15 +0300
+Message-ID: <a73860e00708101652s2d4a72fgcb51a35df66863f@mail.gmail.com>
+References: <a73860e00708100534x312291et77e39b4f7ebe32b4@mail.gmail.com>
+	 <20070810125232.GQ6689@schatzie.adilger.int>
+	 <a73860e00708101648h502ae025pc02f113100316a0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, zippel@linux-m68k.org,
-	wli@holomorphy.com, dhowells@redhat.com,
-	mikulas@artax.karlin.mff.cuni.cz, Jeff Layton <jlayton@redhat.com>,
-	joel.becker@oracle.com, cluster-devel@redhat.com,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	linux-cifs-client@lists.samba.org, fuse-devel@lists.sourceforge.net,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	user-mode-linux-user@lists.sourceforge.net,
-	codalist@TELEMANN.coda.cs.cmu.edu, linux-kernel@vger.kernel.org,
-	bfennema@falcon.csc.calpoly.edu, jffs-dev@axis.com,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, ocfs2-devel@oss.oracle.com
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <1186533934.6625.91.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+To: "Andreas Dilger" <adilger@clusterfs.com>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wa-out-1112.google.com ([209.85.146.178]:45969 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752807AbXHJXwR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 19:52:17 -0400
+Received: by wa-out-1112.google.com with SMTP id v27so1054594wah
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2007 16:52:16 -0700 (PDT)
+In-Reply-To: <a73860e00708101648h502ae025pc02f113100316a0@mail.gmail.com>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 07 Aug 2007 20:45:34 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > - rename something so that unconverted filesystems will reliably fail to
-> >   compile?
-> > 
-> > - leave existing filesystems alone, but add a new
-> >   inode_operations.setattr_jeff, which the networked filesytems can
-> >   implement, and teach core vfs to call setattr_jeff in preference to
-> >   setattr?
-> 
-> If you really need to know that the filesystem is handling the flags,
-> then how about instead having ->setattr() return something which
-> indicates which flags it actually handled? That is likely to be a far
-> more intrusive change, but it is one which is future-proof.
-> 
+Thanks man!
 
-One thing that we could do here is have notify_change check
-attr->ia_valid after the setattr operation returns. If either ATTR_KILL_*
-bit is set then BUG(). The helper function already clears those bits
-so anything using it should automatically be ok. We'd have to fix
-up NFS and a few others that don't implement suid/sgid.
+I'm now finally writing this from firefox and not from links :)
 
-This is not as certain as changing the name of the inode operation. It
-would only pop when someone is attempting to change a setuid/setgid
-file on these filesystems. Still, it should conceivably catch most if
-not all offenders. Would that be sufficient to take care of everyone's
-concerns?
+If you care to know, I found the 1.40.1 patches in the testing dir,
+and applied only the extents patch to 1.40.2, and then build it and
+ran e2fsck, which worked fine and found and fixed lots of
+corruption...
 
--- 
-Jeff Layton <jlayton@redhat.com>
+as for the block that was giving problems last time, it now said that
+it's position is in -1 instead of 0, so I guess this is what caused
+problems..
+
+Best regards,
+Kosta.
+
+
+
+>  On 8/10/07, Andreas Dilger <adilger@clusterfs.com> wrote:
+> >  On Aug 10, 2007  15:34 +0300, Kosta Kliakhandler wrote:
+> > > I have a severe problem - I was a fool and made / (root) ext4 (at
+> > > least not /home, thank god) and somehow some corruption occured.
+> > > While running fsck, it keeps segfaulting, complaining about fast
+> > > memory corruption (segfaults always at the same inode, always when I
+> > > tell it to fix it). I *think* the issue was addressed in
+> > > e2fsprogs-1.40.2 (from what I understood in the changelog) - but I
+> >  > can't find a patchset for it...
+> > > I tried to do the 1.39 patch on the 1.40.2 source but there were more
+> > > then a few mismatches and it didn't build. with enough work, I might
+> > > be able to build it, but I strongly prefer a ready patch/tarball which
+> > > I know will work and I haven't found any on the net.
+> > >
+> > > Can anyone please point me to one or send one to me, or advise on a
+> > > different solution?
+> >
+> > Try  ftp://ftp.lustre.org/pub/lustre/other/e2fsprogs/
+> >
+> > Cheers, Andreas
+> > --
+> > Andreas Dilger
+> > Principal Software Engineer
+> > Cluster File Systems, Inc.
