@@ -1,71 +1,57 @@
-From: "Kosta Kliakhandler" <kostak@gmail.com>
-Subject: Re: fsck 1.39 segfaults while fixing a corrupt inode
-Date: Sat, 11 Aug 2007 03:02:54 +0300
-Message-ID: <a73860e00708101702v409fd357kd0ffd8179d116a8@mail.gmail.com>
-References: <a73860e00708100541v59628f6dn491327b6d3097e5b@mail.gmail.com>
-	 <20070810140341.GA1093@thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
+	from VFS into individual setattr functions (RESEND)
+Date: Sat, 11 Aug 2007 03:57:39 +0100
+Message-ID: <20070811025739.GA21244@infradead.org>
+References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
+	<20070807171501.e31c4a97.akpm@linux-foundation.org>
+	<1186533934.6625.91.camel@heimdal.trondhjem.org>
+	<20070810164752.23117e0e.jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.177]:60086 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755672AbXHKACz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2007 20:02:55 -0400
-Received: by wa-out-1112.google.com with SMTP id v27so1056670wah
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2007 17:02:54 -0700 (PDT)
-In-Reply-To: <20070810140341.GA1093@thunk.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: jfs-discussion@lists.sourceforge.net, zippel@linux-m68k.org,
+	wli@holomorphy.com, dhowells@redhat.com,
+	mikulas@artax.karlin.mff.cuni.cz, joel.becker@oracle.com,
+	cluster-devel@redhat.com, v9fs-developer@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, linux-cifs-client@lists.samba.org,
+	fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, user-mode-linux-user@lists.sourceforge.net,
+	codalist@TELEMANN.coda.cs.cmu.edu, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	bfennema@falcon.csc.calpoly.edu, jffs-dev@axis.com,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>, ocfs2-devel@oss.oracle.com
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20070810164752.23117e0e.jlayton@redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 8/10/07, Theodore Tso <tytso@mit.edu> wrote:
-> On Fri, Aug 10, 2007 at 03:41:32PM +0300, Kosta Kliakhandler wrote:
-> >
-> > I have a severe problem - I was a fool and made / (root) ext4 (at
-> > least not /home, thank god) and somehow some corruption occured.
-> > While running fsck, it keeps segfaulting, complaining about fast
-> > memory corruption (segfaults always at the same inode, always when I
-> > tell it to fix it). I *think* the issue was addressed in
-> > e2fsprogs-1.40.2 (from what I understood in the changelog)
->
-> What, you mean this one?
->
->    A recent change to e2fsck_add_dir_info() to use tdb files to check
->    filesystems with a very large number of filesystems had a typo which
->    caused us to resize the wrong data structure.  This would cause a
->    array overrun leading to malloc pointer corruptions and segfaults.
->    Since we normally can very accurately predict how big the the dirinfo
->    array needs to be, this bug only got triggered on very badly corrupted
->    filesystems.
->
-> If so, it couldn't be, since the tdb support was only added in
-> e2fsprogs 1.40, and you're using the 1.39 patchset, right?  So it has
-> to be some other problem, and probably a bug which gets triggered when
-> it runs across a corrupted extent entry.
->
-> How big is your root filesystem image?  Unfortunately e2image hasn't
-> been updated support extents yet (there's a reason I keep telling
-> people ext4 isn't quite ready for prime time yet...), so we can't use
-> a compressed e2image file.
->
->                                                         - Ted
->
+On Fri, Aug 10, 2007 at 04:47:52PM -0400, Jeff Layton wrote:
+> attr->ia_valid after the setattr operation returns. If either ATTR_KILL_*
+> bit is set then BUG(). The helper function already clears those bits
+> so anything using it should automatically be ok. We'd have to fix
+> up NFS and a few others that don't implement suid/sgid.
+> 
+> This is not as certain as changing the name of the inode operation. It
+> would only pop when someone is attempting to change a setuid/setgid
+> file on these filesystems. Still, it should conceivably catch most if
+> not all offenders. Would that be sufficient to take care of everyone's
+> concerns?
 
-Yes, this was what I thought about... Well, maybe it wasn't that bug,
-but what happened to me certainly seemed similar - especially since
-after applying the extents patch which andreas supplied, it worked
-well.
-
-When I ran the new one, it reported that the problematic inode is in
-position -1 and not 0, so I guess this is what caused the problems in
-1.39.
-
-Anyway, thanks for the help.
-
-Regards,
-Kosta.
-
--- 
-Kosta.tk
+I like the idea of checking ia_valid after return a lot.  But instead of
+going BUG() it should just do the default action, that we can avoid
+touching all the filesystem and only need to change those that need
+special care.  I also have plans to add some new AT_ flags for implementing
+some filesystem ioctl in generic code that would benefit greatly from
+the ia_valid checkin after return to return ENOTTY fr filesystems not
+implementing those ioctls.
