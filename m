@@ -1,55 +1,57 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] [188/2many] MAINTAINERS - EXT4 FILE SYSTEM
-Date: Mon, 13 Aug 2007 03:01:28 -0600
-Message-ID: <20070813090128.GJ6689@schatzie.adilger.int>
-References: <46bff9cc.cxIrFM29roaPmcfV%joe@perches.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext3: fix ext34_fill_super group description initialization
+Date: Mon, 13 Aug 2007 13:09:54 +0400
+Message-ID: <20070813090954.GA25226@dnb.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: torvalds@linux-foundation.org, sct@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, Eric Sandeen <esandeen@redhat.com>,
-	Mingming Cao <cmm@us.ibm.com>
-To: joe@perches.com
+Cc: linux-ext4@vger.kernel.org, devel@openvz.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:40518 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S970905AbXHMJB0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2007 05:01:26 -0400
+Received: from mailhub.sw.ru ([195.214.233.200]:4119 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S971129AbXHMJJU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Aug 2007 05:09:20 -0400
 Content-Disposition: inline
-In-Reply-To: <46bff9cc.cxIrFM29roaPmcfV%joe@perches.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 12, 2007  23:27 -0700, joe@perches.com wrote:
-> Signed-off-by: Joe Perches <joe@perches.com>
-> 
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 814168d..992a314 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -1808,10 +1808,16 @@ F:	fs/ext3/
->  F:	include/linux/ext3*
->  
->  EXT4 FILE SYSTEM
-> -P:	Stephen Tweedie, Andrew Morton
-> -M:	sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
-> +P:	Stephen Tweedie
-> +M:	sct@redhat.com
-> +P:	Andrew Morton
-> +M:	akpm@linux-foundation.org
-> +P:	Andreas Dilger
-> +M:	adilger@clusterfs.com
->  L:	linux-ext4@vger.kernel.org
->  S:	Maintained
-> +F:	fs/ext4/
-> +F:	include/linux/ext4*
+->s_group_desc have to be zero filled because if sb_read() failed
+we jump to following error path.
+failed_mount2:
+	for (i = 0; i < db_count; i++)
+		brelse(sbi->s_group_desc[i]);<< Bad things may happen here
 
-To be honest, Stephen and Andrew haven't been directly involved in
-the ext4 development.  It probably makes more sense to have e.g.
-Eric Sandeen, Ted Ts'o, and MingMing Cao in their place.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext3/super.c |    2 +-
+ fs/ext4/super.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index f8ac18f..208738e 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1718,7 +1718,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 				       / EXT3_BLOCKS_PER_GROUP(sb)) + 1;
+ 	db_count = (sbi->s_groups_count + EXT3_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT3_DESC_PER_BLOCK(sb);
+-	sbi->s_group_desc = kmalloc(db_count * sizeof (struct buffer_head *),
++	sbi->s_group_desc = kzalloc(db_count * sizeof (struct buffer_head *),
+ 				    GFP_KERNEL);
+ 	if (sbi->s_group_desc == NULL) {
+ 		printk (KERN_ERR "EXT3-fs: not enough memory\n");
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8f1d2f6..fefffc0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1830,7 +1830,7 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+ 	sbi->s_groups_count = blocks_count;
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+-	sbi->s_group_desc = kmalloc(db_count * sizeof (struct buffer_head *),
++	sbi->s_group_desc = kzalloc(db_count * sizeof (struct buffer_head *),
+ 				    GFP_KERNEL);
+ 	if (sbi->s_group_desc == NULL) {
+ 		printk (KERN_ERR "EXT4-fs: not enough memory\n");
+-- 
+1.5.2.2
