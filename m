@@ -1,230 +1,62 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 00/25] move handling of setuid/gid bits
- from VFS into individual setattr functions (RESEND)
-Date: Mon, 13 Aug 2007 08:36:16 -0400
-Message-ID: <20070813083616.642c7f27.jlayton@redhat.com>
-References: <200708061354.l76Ds3mU002255@dantu.rdu.redhat.com>
-	<20070807171501.e31c4a97.akpm@linux-foundation.org>
-	<1186533934.6625.91.camel@heimdal.trondhjem.org>
-	<20070810164752.23117e0e.jlayton@redhat.com>
-	<20070811025739.GA21244@infradead.org>
-	<20070813080134.f770814b.jlayton@redhat.com>
+From: vignesh babu <vignesh.babu@wipro.com>
+Subject: [kj] is_power_of_2 in ext
+Date: Mon, 13 Aug 2007 18:27:02 +0530
+Message-ID: <1187009822.7273.11.camel@merlin.linuxcoe.com>
+Reply-To: vigneshbabu@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, zippel@linux-m68k.org,
-	wli@holomorphy.com, dhowells@redhat.com,
-	mikulas@artax.karlin.mff.cuni.cz,
-	Christoph Hellwig <hch@infradead.org>, joel.becker@oracle.com,
-	cluster-devel@redhat.com, v9fs-developer@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, linux-cifs-client@lists.samba.org,
-	fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, user-mode-linux-user@lists.sourceforge.net,
-	codalist@TELEMANN.coda.cs.cmu.edu, linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	bfennema@falcon.csc.calpoly.edu, jffs-dev@axis.com,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, ocfs2-devel@oss.oracle.com
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20070813080134.f770814b.jlayton@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Cc: linux-ext4@vger.kernel.org,
+	Kernel Janitors List <kernel-janitors@lists.osdl.org>
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wip-cdc-wd.wipro.com ([203.91.201.26]:58697 "EHLO
+	wip-cdc-wd.wipro.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030784AbXHMM5j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2007 08:57:39 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 13 Aug 2007 08:01:34 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+Replacing n & (n - 1) for power of 2 check by is_power_of_2(n)
 
-> On Sat, 11 Aug 2007 03:57:39 +0100
-> Christoph Hellwig <hch@infradead.org> wrote:
-> > 
-> > I like the idea of checking ia_valid after return a lot.  But instead of
-> > going BUG() it should just do the default action, that we can avoid
-> > touching all the filesystem and only need to change those that need
-> > special care.  I also have plans to add some new AT_ flags for implementing
-> > some filesystem ioctl in generic code that would benefit greatly from
-> > the ia_valid checkin after return to return ENOTTY fr filesystems not
-> > implementing those ioctls.
-> 
-> That sounds good (if I follow your meaning correctly). How about
-> something like the patch below? If either ATTR_KILL bit is set after
-> the setattr, try to handle them in the "standard" way with a second
-> setattr call. It also does a printk in this situation to alert
-> filesystem developers that they should convert to the "new" scheme,
-> so they can avoid this second setattr call.
-> 
-> If this idea seems sound then I'll start the grunt work to fix up the
-> in-tree filesystems so that they don't need the second setattr call.
-> 
+Signed-off-by: vignesh babu <vignesh.babu@wipro.com>
+---
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 639a32c..f932c60 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -30,6 +30,7 @@
+ #include <linux/vfs.h>
+ #include <linux/seq_file.h>
+ #include <linux/mount.h>
++#include <linux/log2.h>
+ #include <asm/uaccess.h>
+ #include "ext2.h"
+ #include "xattr.h"
+@@ -804,7 +805,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
+ 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
+ 		if ((sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
+-		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
++		    !is_power_of_2(sbi->s_inode_size) ||
+ 		    (sbi->s_inode_size > blocksize)) {
+ 			printk ("EXT2-fs: unsupported inode size: %d\n",
+ 				sbi->s_inode_size);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4550b83..0bfb88e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1667,7 +1667,7 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT)) {
+ 		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
+ 		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
+-		    sbi->s_desc_size & (sbi->s_desc_size - 1)) {
++		    !is_power_of_2(sbi->s_desc_size)) {
+ 			printk(KERN_ERR
+ 			       "EXT4-fs: unsupported descriptor size %lu\n",
+ 			       sbi->s_desc_size);
 
-The earlier patch has a misplaced comma and won't build. This one
-builds. This should be considered an RFC, as I've not yet done any
-real testing of this patch:
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
-commit ad00450c4532da32718efe39e27d99060f04e396
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Mon Aug 13 08:33:10 2007 -0400
-
-    VFS: move ATTR_KILL handling from notify_change into helper function
-    
-    Separate the handling of the local ia_valid bitmask from the one in
-    attr->ia_valid. This allows us to hand off the actual handling of the
-    ATTR_KILL_* flags to the .setattr i_op when one is defined.
-    
-    notify_change still needs to process those flags for the local ia_valid
-    variable, since it uses that to decide whether to return early, and to pass
-    a (hopefully) appropriate bitmask to fsnotify_change.
-    
-    Also, check the ia_valid after the setattr op returns and see if either
-    ATTR_KILL_* bit is set. If so, then throw a warning and try to clear the
-    bits in the "standard" way. This should help us to catch filesystems that
-    don't handle these bits correctly without breaking them outright.
-
-diff --git a/fs/attr.c b/fs/attr.c
-index f8dfc22..9585e45 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -100,15 +100,53 @@ int inode_setattr(struct inode * inode, struct iattr * attr)
- }
- EXPORT_SYMBOL(inode_setattr);
- 
-+/**
-+ * generic_attrkill - helper to convert ATTR_KILL_* bits into mode change
-+ * @mode: current mode of inode
-+ * @attr: inode attribute changes requested by VFS
-+ * Context: anywhere
-+ *
-+ * This is a helper function to convert ATTR_KILL_SUID and ATTR_KILL_SGID
-+ * into a mode change. Filesystems should call this from their setattr
-+ * inode op when they want "conventional" setuid-clearing behavior.
-+ *
-+ * Filesystems that declare a setattr inode operation are now expected to
-+ * handle the ATTR_KILL_SUID and ATTR_KILL_SGID bits appropriately. The VFS
-+ * no longer automatically converts these bits to a mode change for
-+ * inodes that have their own setattr operation.
-+ **/
-+void generic_attrkill(mode_t mode, struct iattr *attr)
-+{
-+	if (attr->ia_valid & ATTR_KILL_SUID) {
-+		attr->ia_valid &= ~ATTR_KILL_SUID;
-+		if (mode & S_ISUID) {
-+			if (!(attr->ia_valid & ATTR_MODE)) {
-+				attr->ia_valid |= ATTR_MODE;
-+				attr->ia_mode = mode;
-+			}
-+			attr->ia_mode &= ~S_ISUID;
-+		}
-+	}
-+	if (attr->ia_valid & ATTR_KILL_SGID) {
-+		attr->ia_valid &= ~ATTR_KILL_SGID;
-+		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
-+			if (!(attr->ia_valid & ATTR_MODE)) {
-+				attr->ia_valid |= ATTR_MODE;
-+				attr->ia_mode = mode;
-+			}
-+			attr->ia_mode &= ~S_ISGID;
-+		}
-+	}
-+}
-+EXPORT_SYMBOL(generic_attrkill);
-+
- int notify_change(struct dentry * dentry, struct iattr * attr)
- {
- 	struct inode *inode = dentry->d_inode;
--	mode_t mode;
--	int error;
-+	int error, once = 0;
- 	struct timespec now;
- 	unsigned int ia_valid = attr->ia_valid;
- 
--	mode = inode->i_mode;
- 	now = current_fs_time(inode->i_sb);
- 
- 	attr->ia_ctime = now;
-@@ -117,36 +155,48 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 	if (!(ia_valid & ATTR_MTIME_SET))
- 		attr->ia_mtime = now;
- 	if (ia_valid & ATTR_KILL_SUID) {
--		attr->ia_valid &= ~ATTR_KILL_SUID;
--		if (mode & S_ISUID) {
--			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
--			}
--			attr->ia_mode &= ~S_ISUID;
--		}
-+		ia_valid &= ~ATTR_KILL_SUID;
-+		if (inode->i_mode & S_ISUID)
-+			ia_valid |= ATTR_MODE;
- 	}
- 	if (ia_valid & ATTR_KILL_SGID) {
--		attr->ia_valid &= ~ ATTR_KILL_SGID;
--		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
--			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
--			}
--			attr->ia_mode &= ~S_ISGID;
--		}
-+		ia_valid &= ~ATTR_KILL_SGID;
-+		if ((inode->i_mode & (S_ISGID | S_IXGRP)) ==
-+		    (S_ISGID | S_IXGRP))
-+			ia_valid |= ATTR_MODE;
- 	}
--	if (!attr->ia_valid)
-+	if (!ia_valid)
- 		return 0;
- 
- 	if (ia_valid & ATTR_SIZE)
- 		down_write(&dentry->d_inode->i_alloc_sem);
- 
- 	if (inode->i_op && inode->i_op->setattr) {
-+try_again:
- 		error = security_inode_setattr(dentry, attr);
- 		if (!error)
- 			error = inode->i_op->setattr(dentry, attr);
-+		/*
-+		 * if ATTR_KILL_SUID or ATTR_KILL_SGID is still set, then
-+		 * assume that the setattr inode op didn't handle them
-+		 * correctly. Try to clear these bits the standard way
-+		 * and throw a warning.
-+		 */
-+		if (!error && !once && unlikely(attr->ia_valid &
-+					(ATTR_KILL_SUID|ATTR_KILL_SGID))) {
-+			attr->ia_valid &=
-+				(ATTR_MODE|ATTR_KILL_SUID|ATTR_KILL_SGID);
-+			generic_attrkill(inode->i_mode, attr);
-+			once = 1;
-+			if (printk_ratelimit())
-+				printk(KERN_ERR "%s: %s doesn't seem to "
-+					"handle setuid/setgid bit clearing "
-+					"correctly.\n", __func__,
-+					inode->i_sb->s_type->name);
-+			goto try_again;
-+		}
- 	} else {
-+		generic_attrkill(inode->i_mode, attr);
- 		error = inode_change_ok(inode, attr);
- 		if (!error)
- 			error = security_inode_setattr(dentry, attr);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6bf1395..daac0e5 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1561,6 +1561,7 @@ extern int do_remount_sb(struct super_block *sb, int flags,
- #ifdef CONFIG_BLOCK
- extern sector_t bmap(struct inode *, sector_t);
- #endif
-+extern void generic_attrkill(mode_t mode, struct iattr *attr);
- extern int notify_change(struct dentry *, struct iattr *);
- extern int permission(struct inode *, int, struct nameidata *);
- extern int generic_permission(struct inode *, int,
+-- 
+Vignesh Babu BM 
+_____________________________________________________________ 
+"Why is it that every time I'm with you, makes me believe in magic?"
