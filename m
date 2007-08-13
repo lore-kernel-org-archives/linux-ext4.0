@@ -1,72 +1,76 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Future of ext2 support in the Hurd?
-Date: Mon, 13 Aug 2007 12:21:35 -0400
-Message-ID: <20070813162135.GC28130@thunk.org>
-References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
-	<878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
+Date: Mon, 13 Aug 2007 12:34:44 -0400
+Message-ID: <20070813163444.GD28130@thunk.org>
+References: <E1IKLAG-0002yi-8Z@candygram.thunk.org> <20070813031336.76A051C0C8@topped-with-meat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, bug-hurd@gnu.org
-To: Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
-Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
+Cc: bug-hurd@gnu.org, linux-ext4@vger.kernel.org
+To: Roland McGrath <roland@frob.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:58043 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031242AbXHMQes (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Aug 2007 12:34:48 -0400
 Content-Disposition: inline
-In-Reply-To: <878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
-List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
-List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
-List-Post: <mailto:bug-hurd@gnu.org>
-List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
-List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
-Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
-Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+In-Reply-To: <20070813031336.76A051C0C8@topped-with-meat.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 13, 2007 at 02:02:11AM +0200, Marcus Brinkmann wrote:
-> In fact, I just searched for your name, and it pops up in the network
-> stack, but not in the ext2fs translator (the above files are copyright
-> Remy Card and Linus Torvald).
+On Sun, Aug 12, 2007 at 08:13:36PM -0700, Roland McGrath wrote:
+> Indeed some people do use the Hurd and they all do rely on the EXT2_OS_HURD
+> format support in e2fsprogs.  It's the intended plan to migrate away from
+> EXT2_OS_HURD format and use a strict subset of the ext2 format features
+> used natively by Linux ext2fs (in theory eventually that whole set).  The
+> Hurd-specific data now stored in inode fields in EXT2_OS_HURD format would
+> instead be stored in ext2 xattr format.  The extent of cooperation then
+> required between ext2 format authorities and Hurd developers is assigning
+> an EXT2_XATTR_INDEX_* number to correspond to the "gnu." prefix.  The
+> conventions for formats and semantics of attributes with this prefix will
+> be maintained by the GNU Project.
 
-I only did a quick look, but I recognized some Linux code in balloc.c,
-at least.  The code I think was probably written originally by Stephen
-Tweedie.  We weren't very careful about maintaining authorship
-attribution until after we moved to the BitKeeper (and later git) for
-source code management.  I probably only have minimal kernel ownership
-in terms of lines of code, with the exception being the directory
-indexing changes and extended attribute code, which got reworked by me
-before they were merged into mainline.  Most of my code ownership from
-a copyright standpoint is in e2fsprogs.
+Good plan.  :-)  Especially if you end up using a larger inode, and
+supporting the EA-in-inode feature, I think you will find a huge speed
+boost to files that use translators.  Out of curiosity, do you view
+this as something which will be a common case, or an usual one (i.e.,
+files using passive translators which are specified in the filesystem)?
 
-> This matches my best understanding of the issues involved.  Beyond
-> that, I can not say anything that applies particularly to the Hurd or
-> its RPC interfaces.
+Even if you don't, if a large number of files are always using the
+same translator, there will probably be some significant disk space
+savings with storing that information in an extended attribute.
 
-It will be especially interesting since some RPC interfaces (mediated
-by libc) will be used by GPLv2 userspace programs (such as e2fsck :-),
-and some of those exact same interfaces will be used by Hurd
-translators, and it will be interesting to see the legal
-interpretations/contortions necessary to justify making some of these
-distinctions.  :-)
+> If it is important to you and you would like to state a quasi-formal
+> schedule to deprecate EXT2_OS_HURD format (not instantaneously), we can
+> work with that.  We'd hope for a decent interval of backward compatibility
+> support in e2fsck.  (The Hurd code will probably continue to support the
+> old format indefinitely.)  Hurd developers can make a small push to get our
+> ext2fs code supporting the xattr format encoding of Hurd-specific metadata.
+> If you're feeling especially charitable, you could provide format
+> conversion support in e2fsprogs.
 
-> That is an important question, but for now the Hurd is GPLv2, for
-> exactly that reason.  There are other significant parts of the Hurd
-> taken from Linux, so we can't do a complete switch at this time.  To
-> make a partial switch, we would have to address the issues you raised.
-> 
-> Beside the FSF' position, your position (and Remy Cards', Linus
-> Torvalds' etc) matters as well, of course.
+We don't need to give an explicit schedule, no.  I don't want to force
+this to happen fast if the Hurd doesn't have volunteers lined up to do
+the work.  As I mentioned earlier, the union is annoying, but it's
+hardly a major obstacle to code maintainability.
 
-Well, the general consensus of the ext2/3/4 developers at this point
-is to keep things at GPLv2.  My personal opinion matches with Linus
-which is while I think that "Tivoization" in many cases will be a bad
-choice from a marketing point of view (see how well Circuit City's
-Divx venture fared), but it's not something that should be legislated
-via the licenses.  If someone wants to use ext3 inside a locked down
-device, that's fine with me, as long as I can get any improvements to
-the source code back; I don't feel that it's worth it for the license
-the mandate that I MUST be able to replace the running binaries inside
-any embedded device.  So I don't see the Linux kernel going GPLv3 at
-any time in the near future, and probably not ever.
+I am certainly open to including format conversion in e2fprogs, if
+someone sends me patches.  I doubt I will have the bandwidth to write
+the patches myself in the near future; I have many other todo's on my
+plate at the moment.  Working with you to assign a number for the name
+index is something that I can help you do.  In fact, I think 7 is
+available; why don't I reserve it and then get back to you once it's
+been formally merged.
+
+One thing that *would* be useful if you could provide some text (that
+would go into the ext2/3/4 wiki) describe exactly what subset of the
+ext2 filesystem is currently supported by the Hurd, and what the rough
+roadmap you have for supporting additional features.  For example, do
+you currently support sparse_superblocks, etc.  BTW, it may be that
+you would want to supply a different /etc/mke2fs.conf file in the
+e2fsprogs patches so that filesystems created by mke2fs don't include
+features that might potentially give the Hurd ext2fs driver heartburn
+--- I get the distinct feeling that it hasn't supported many of the
+more recent innovations that are in the Linux implementation.
 
 Regards,
 
