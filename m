@@ -1,43 +1,73 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] [188/2many] MAINTAINERS - EXT4 FILE SYSTEM
-Date: Mon, 13 Aug 2007 09:14:01 -0700
-Message-ID: <1187021641.10249.90.camel@localhost>
-References: <46bff9cc.cxIrFM29roaPmcfV%joe@perches.com>
-	 <20070813090128.GJ6689@schatzie.adilger.int>
-	 <20070813151917.GA28130@thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Future of ext2 support in the Hurd?
+Date: Mon, 13 Aug 2007 12:21:35 -0400
+Message-ID: <20070813162135.GC28130@thunk.org>
+References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
+	<878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: torvalds@linux-foundation.org, sct@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, Eric Sandeen <esandeen@redhat.com>,
-	Mingming Cao <cmm@us.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DSL022.labridge.com ([206.117.136.22]:3099 "EHLO perches.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S938075AbXHMQOi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Aug 2007 12:14:38 -0400
-In-Reply-To: <20070813151917.GA28130@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, bug-hurd@gnu.org
+To: Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
+Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
+Content-Disposition: inline
+In-Reply-To: <878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
+List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
+List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
+List-Post: <mailto:bug-hurd@gnu.org>
+List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
+Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-08-13 at 11:19 -0400, Theodore Tso wrote:
-> Yep, agreed.
+On Mon, Aug 13, 2007 at 02:02:11AM +0200, Marcus Brinkmann wrote:
+> In fact, I just searched for your name, and it pops up in the network
+> stack, but not in the ext2fs translator (the above files are copyright
+> Remy Card and Linus Torvald).
 
-OK. saved in my tree as
+I only did a quick look, but I recognized some Linux code in balloc.c,
+at least.  The code I think was probably written originally by Stephen
+Tweedie.  We weren't very careful about maintaining authorship
+attribution until after we moved to the BitKeeper (and later git) for
+source code management.  I probably only have minimal kernel ownership
+in terms of lines of code, with the exception being the directory
+indexing changes and extended attribute code, which got reworked by me
+before they were merged into mainline.  Most of my code ownership from
+a copyright standpoint is in e2fsprogs.
 
-EXT4 FILE SYSTEM
-P:      Ted Ts'o
-M:	tytso@mit.edu
-P:	Eric Sandeen
-M:	sandeen@sgi.com
-P:	Mingming Cao
-M:	cmm@us.ibm.com
-L:	linux-ext4@vger.kernel.org
-S:	Maintained
-F:	fs/ext4/
-F:	include/linux/ext4*
+> This matches my best understanding of the issues involved.  Beyond
+> that, I can not say anything that applies particularly to the Hurd or
+> its RPC interfaces.
 
-Separate question.  Is it right that the L: entries
-for ext2/3/4 are all linux-ext4@vger.kernel.org?
+It will be especially interesting since some RPC interfaces (mediated
+by libc) will be used by GPLv2 userspace programs (such as e2fsck :-),
+and some of those exact same interfaces will be used by Hurd
+translators, and it will be interesting to see the legal
+interpretations/contortions necessary to justify making some of these
+distinctions.  :-)
+
+> That is an important question, but for now the Hurd is GPLv2, for
+> exactly that reason.  There are other significant parts of the Hurd
+> taken from Linux, so we can't do a complete switch at this time.  To
+> make a partial switch, we would have to address the issues you raised.
+> 
+> Beside the FSF' position, your position (and Remy Cards', Linus
+> Torvalds' etc) matters as well, of course.
+
+Well, the general consensus of the ext2/3/4 developers at this point
+is to keep things at GPLv2.  My personal opinion matches with Linus
+which is while I think that "Tivoization" in many cases will be a bad
+choice from a marketing point of view (see how well Circuit City's
+Divx venture fared), but it's not something that should be legislated
+via the licenses.  If someone wants to use ext3 inside a locked down
+device, that's fine with me, as long as I can get any improvements to
+the source code back; I don't feel that it's worth it for the license
+the mandate that I MUST be able to replace the running binaries inside
+any embedded device.  So I don't see the Linux kernel going GPLv3 at
+any time in the near future, and probably not ever.
+
+Regards,
+
+						- Ted
