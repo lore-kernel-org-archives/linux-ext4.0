@@ -1,46 +1,43 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] [188/2many] MAINTAINERS - EXT4 FILE SYSTEM
-Date: Mon, 13 Aug 2007 11:16:53 -0700
-Message-ID: <1187029013.10249.222.camel@localhost>
-References: <46bff9cc.cxIrFM29roaPmcfV%joe@perches.com>
-	 <20070813090128.GJ6689@schatzie.adilger.int>
-	 <20070813151917.GA28130@thunk.org> <1187021641.10249.90.camel@localhost>
-	 <46C08941.20609@redhat.com>  <1187024133.10249.113.camel@localhost>
-	 <1187025579.3876.4.camel@localhost.localdomain>
+From: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Subject: Re: Future of ext2 support in the Hurd?
+Date: Mon, 13 Aug 2007 23:02:39 +0200
+Message-ID: <20070813210239.GE3694@interface.famille.thibault.fr>
+References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
+	<87absw5o6x.wl%marcus.brinkmann@ruhr-uni-bochum.de>
+	<20070813161146.GB28130@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	torvalds@linux-foundation.org, sct@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org
-To: cmm@us.ibm.com, Dave Kleikamp <shaggy@austin.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DSL022.labridge.com ([206.117.136.22]:3471 "EHLO perches.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S948190AbXHMS05 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Aug 2007 14:26:57 -0400
-In-Reply-To: <1187025579.3876.4.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: bug-hurd@gnu.org, linux-ext4@vger.kernel.org,
+	Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
+Content-Disposition: inline
+In-Reply-To: <20070813161146.GB28130@thunk.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
+List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
+List-Post: <mailto:bug-hurd@gnu.org>
+List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
+Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-08-13 at 10:19 -0700, Mingming Cao wrote:
-> Probably should add Shaggy (Dave Kleikamp <shaggy@austin.ibm.com>) here
-> too. He helped push ext4 fs into mainline and actively performing ext4
-> patch queue maintainence. 
+Hi,
 
-EXT4 FILE SYSTEM
-P:	Ted Ts'o
-M:	tytso@mit.edu
-P:	Mingming Cao
-M:	cmm@us.ibm.com
-P:	Andreas Dilger
-M:	adilger@clusterfs.com
-P:	Dave Kleikamp
-M:	shaggy@austin.ibm.com
-P:	Eric Sandeen
-M:	sandeen@redhat.com
-L:	linux-ext4@vger.kernel.org
-S:	Maintained
-F:	fs/ext4/
-F:	include/linux/ext4*
+Theodore Tso, le Mon 13 Aug 2007 12:11:46 -0400, a =E9crit :
+> the latest Debian version of e2fsprogs is 1.40.2, and I assume
+> (although I don't know for sure) that the Debian GNU/Hurd port is
+> tracking Debian unstable,
+
+Yes.
+
+> so if there were anything embarassing, I would have gotten a
+> complaint.
+
+I've just sent one on the bts :)
+(just disabling devmapper, SElinux and online resizing support)
+
+Samuel
