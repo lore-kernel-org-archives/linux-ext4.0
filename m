@@ -1,55 +1,180 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 5/6] e2fsprogs: Fix the resize inode test case
-Date: Mon, 13 Aug 2007 15:56:25 +0530
-Message-ID: <11870008042147-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 3/6] e2fsprogs: Make mke2fs use undo I/O manager.
+Date: Mon, 13 Aug 2007 15:56:23 +0530
+Message-ID: <11870007962358-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <11870007861341-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <11870007892653-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <11870007931987-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11870007962358-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11870007992253-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp05.au.ibm.com ([202.81.18.154]:57148 "EHLO
-	ausmtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S942212AbXHMLWS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2007 07:22:18 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp05.au.ibm.com (8.13.8/8.13.8) with ESMTP id l7DBOFGH3825692
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 21:24:18 +1000
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:64765 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S943291AbXHMLoa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2007 07:44:30 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l7DBk5G62904076
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 21:46:58 +1000
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7DAULE1045730
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 20:30:22 +1000
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l7DAQdKY4730894
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 20:26:39 +1000
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7DBQmrZ007196
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 21:26:48 +1000
-In-Reply-To: <11870007992253-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7DBQcQZ006881
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 21:26:39 +1000
+In-Reply-To: <11870007931987-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-With the new mke2fs changes the output of the
-command differs if we run mke2fs on a device that
-already have the file system. So erase the file system
-before running mke2fs so that output remain as expected.
+When running mke2fs, if a file system is detected
+on the device, we use Undo I/O manager as the io manager.
+This helps in reverting the changes made to the filesystem
+in case we wrongly selected the device.
+
+The environment variable MKE2FS_SCRATCH_DIR
+is used to indicate the  directory within which the tdb
+file need to be created. The file will be named mke2fs-<device-name>
+If MKE2FS_SCRATCH_DIR is not set /var/lib/e2fsprogs is used
+
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- tests/r_resize_inode/script |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ misc/mke2fs.c |  109 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 108 insertions(+), 1 deletions(-)
 
-diff --git a/tests/r_resize_inode/script b/tests/r_resize_inode/script
-index 5422d3b..c54fdf9 100644
---- a/tests/r_resize_inode/script
-+++ b/tests/r_resize_inode/script
-@@ -39,6 +39,8 @@ $DUMPE2FS $TMPFILE 2>&1 | sed -f $cmd_dir/filter_dumpe2fs >> $OUT
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 0c6d4f3..3ff4b90 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -44,6 +44,7 @@ extern int optind;
+ #endif
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
++#include <libgen.h>
  
- echo "--------------------------------" >> $OUT
+ #include "ext2fs/ext2_fs.h"
+ #include "et/com_err.h"
+@@ -1521,6 +1522,102 @@ static void PRS(int argc, char *argv[])
+ 						fs_param.s_blocks_count);
+ }
  
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
++static int filesystem_exist(const char *name)
++{
++	errcode_t retval;
++	io_channel channel;
++	__u16	s_magic;
++	struct ext2_super_block super;
++	io_manager manager = unix_io_manager;
 +
- echo mke2fs -q -F -O resize_inode -o Linux -b 1024 -g 1024 test.img 65536 >> $OUT
- $MKE2FS -q -F -O resize_inode -o Linux -b 1024 -g 1024 $TMPFILE 65536 2>&1 \
- 	| sed -e '1d' | grep -v "automatically checked" | 
++	retval = manager->open(name, IO_FLAG_EXCLUSIVE,  &channel);
++	if (retval) {
++		/*
++		 * We don't handle error cases instead we
++		 * declare that the file system doesn't exist
++		 * and let the rest of mke2fs take care of
++		 * error
++		 */
++		retval = 0;
++		goto open_err_out;
++	}
++
++	io_channel_set_blksize(channel, SUPERBLOCK_OFFSET);
++	retval = io_channel_read_blk(channel, 1, -SUPERBLOCK_SIZE, &super);
++	if (retval) {
++		retval = 0;
++		goto err_out;
++	}
++
++#if defined(WORDS_BIGENDIAN)
++	s_magic = ext2fs_swab16(super.s_magic);
++#else
++	s_magic = super.s_magic;
++#endif
++
++	if (s_magic == EXT2_SUPER_MAGIC)
++		retval = 1;
++
++err_out:
++	io_channel_close(channel);
++
++open_err_out:
++
++	return retval;
++}
++
++static int mke2fs_setup_tdb(const char *name)
++{
++	errcode_t retval = 0;
++	char *tdb_dir, tdb_file[PATH_MAX];
++	char *device_name, *tmp_name;
++
++#if 0 /* FIXME!! */
++	/*
++	 * Configuration via a conf file would be
++	 * nice
++	 */
++	profile_get_string(profile, "scratch_files",
++			"directory", 0, 0,
++			&tdb_dir);
++#endif
++	tmp_name = strdup(name);
++	device_name = basename(tmp_name);
++
++	tdb_dir = getenv("MKE2FS_SCRATCH_DIR");
++	if (!tdb_dir) {
++		printf(_("MKE2FS_SCRATCH_DIR not configured\n"));
++		printf(_("Using /var/lib/e2fsprogs\n"));
++		tdb_dir="/var/lib/e2fsprogs";
++	}
++	if (access(tdb_dir, W_OK)) {
++		fprintf(stderr,
++			_("Cannot create file under %s\n"),
++			tdb_dir);
++		retval = EXT2_ET_INVALID_ARGUMENT;
++		goto err_out;
++
++	}
++
++	sprintf(tdb_file, "%s/mke2fs-%s", tdb_dir, device_name);
++
++	if (!access(tdb_file, F_OK)) {
++		fprintf(stderr,
++			_("File exist %s\n"), tdb_file);
++		retval = EXT2_ET_INVALID_ARGUMENT;
++		goto err_out;
++	}
++
++	set_undo_io_backup_file(tdb_file);
++	printf(_("previous filesystem detected; to undo "
++		"the mke2fs operation, please run the "
++		"command \n'undoe2fs %s %s' in order to recover\n\n"),
++		tdb_file, name);
++err_out:
++	free(tmp_name);
++	return retval;
++}
++
+ int main (int argc, char *argv[])
+ {
+ 	errcode_t	retval = 0;
+@@ -1543,7 +1640,17 @@ int main (int argc, char *argv[])
+ 	io_ptr = test_io_manager;
+ 	test_io_backing_manager = unix_io_manager;
+ #else
+-	io_ptr = unix_io_manager;
++	if (filesystem_exist(device_name)) {
++
++		io_ptr = undo_io_manager;
++		set_undo_io_backing_manager(unix_io_manager);
++		retval = mke2fs_setup_tdb(device_name);
++		if (retval)
++			exit(1);
++
++	} else {
++		io_ptr = unix_io_manager;
++	}
+ #endif
+ 
+ 	/*
 -- 
 1.5.3.rc4.67.gf9286-dirty
