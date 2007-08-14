@@ -1,53 +1,79 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] fs/jbd2/journal.c: kmalloc + memset conversion to kzalloc
-Date: Tue, 14 Aug 2007 12:41:13 -0700
-Message-ID: <200708141941.l7EJfDKN017721@imap1.linux-foundation.org>
-Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	m.kozlowski@tuxland.pl
-To: tytso@mit.edu
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [-mm patch] remove fs/ext2/balloc.c:reserve_blocks()
+Date: Tue, 14 Aug 2007 23:25:56 +0200
+Message-ID: <20070814212556.GV18945@stusta.de>
+References: <20070809224254.11f42716.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	"Martin J. Bligh" <mbligh@mbligh.org>,
+	Valerie Henson <val_henson@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:56351 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S935088AbXHNTlv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2007 15:41:51 -0400
+Received: from emailhub.stusta.mhn.de ([141.84.69.5]:45837 "EHLO
+	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758108AbXHNV0M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Aug 2007 17:26:12 -0400
+Content-Disposition: inline
+In-Reply-To: <20070809224254.11f42716.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
+reserve_blocks() is no longer used.
 
- fs/jbd2/journal.c | 66771 -> 66719 (-52 bytes)
- fs/jbd2/journal.o | 199193 -> 199049 (-144 bytes)
+Spotted by the GNU C compiler.
 
-Signed-off-by: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
+
 ---
 
- fs/jbd2/journal.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
+ fs/ext2/balloc.c |   35 -----------------------------------
+ 1 file changed, 35 deletions(-)
 
-diff -puN fs/jbd2/journal.c~fs-jbd2-journalc-kmalloc-memset-conversion-to-kzalloc fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~fs-jbd2-journalc-kmalloc-memset-conversion-to-kzalloc
-+++ a/fs/jbd2/journal.c
-@@ -929,17 +929,16 @@ static void journal_init_stats(journal_t
- {
- 	int size;
- 
--	if (proc_jbd2_stats == NULL)
-+	if (!proc_jbd2_stats)
- 		return;
- 
- 	journal->j_history_max = 100;
- 	size = sizeof(struct transaction_stats_s) * journal->j_history_max;
--	journal->j_history = kmalloc(size, GFP_KERNEL);
--	if (journal->j_history == NULL) {
-+	journal->j_history = kzalloc(size, GFP_KERNEL);
-+	if (!journal->j_history) {
- 		journal->j_history_max = 0;
- 		return;
- 	}
--	memset(journal->j_history, 0, size);
- 	spin_lock_init(&journal->j_history_lock);
+4b64502ecee91af41888261d7392688c9283792f 
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 1c57a3f..b63f6a4 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -133,41 +133,6 @@ error_out:
+ 	return NULL;
  }
  
-_
+-/*
+- * Set sb->s_dirt here because the superblock was "logically" altered.  We
+- * need to recalculate its free blocks count and flush it out.
+- */
+-static int reserve_blocks(struct super_block *sb, int count)
+-{
+-	struct ext2_sb_info *sbi = EXT2_SB(sb);
+-	struct ext2_super_block *es = sbi->s_es;
+-	unsigned free_blocks;
+-	unsigned root_blocks;
+-
+-	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
+-	root_blocks = le32_to_cpu(es->s_r_blocks_count);
+-
+-	if (free_blocks < count)
+-		count = free_blocks;
+-
+-	if (free_blocks < root_blocks + count && !capable(CAP_SYS_RESOURCE) &&
+-	    sbi->s_resuid != current->fsuid &&
+-	    (sbi->s_resgid == 0 || !in_group_p (sbi->s_resgid))) {
+-		/*
+-		 * We are too close to reserve and we are not privileged.
+-		 * Can we allocate anything at all?
+-		 */
+-		if (free_blocks > root_blocks)
+-			count = free_blocks - root_blocks;
+-		else
+-			return 0;
+-	}
+-
+-	percpu_counter_mod(&sbi->s_freeblocks_counter, -count);
+-	sb->s_dirt = 1;
+-	return count;
+-}
+-
+ static void release_blocks(struct super_block *sb, int count)
+ {
+ 	if (count) {
