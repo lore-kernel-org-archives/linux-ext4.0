@@ -1,43 +1,49 @@
-From: Samuel Thibault <samuel.thibault@ens-lyon.org>
-Subject: Re: Future of ext2 support in the Hurd?
-Date: Mon, 13 Aug 2007 23:02:39 +0200
-Message-ID: <20070813210239.GE3694@interface.famille.thibault.fr>
-References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
-	<87absw5o6x.wl%marcus.brinkmann@ruhr-uni-bochum.de>
-	<20070813161146.GB28130@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: bug-hurd@gnu.org, linux-ext4@vger.kernel.org,
-	Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
-Content-Disposition: inline
-In-Reply-To: <20070813161146.GB28130@thunk.org>
-List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
-List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
-List-Post: <mailto:bug-hurd@gnu.org>
-List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
-List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
-Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
-Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH 0/4][e2fsprogs] Enable FLEX_BG support
+Date: Mon, 13 Aug 2007 23:32:45 -0500
+Message-ID: <20070814043245.32206.34785.stgit@gara>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:44814 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755597AbXHNEcz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2007 00:32:55 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7E4YDaE023828
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 00:34:13 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7E4WsGq534760
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 00:32:54 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7E4WstF018858
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 00:32:54 -0400
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l7E4WrSu018848
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 00:32:54 -0400
+Received: from [127.0.1.1] (sig-9-65-58-9.mts.ibm.com [9.65.58.9])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l7E4WrnL040298
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2007 23:32:53 -0500
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
 
-Theodore Tso, le Mon 13 Aug 2007 12:11:46 -0400, a =E9crit :
-> the latest Debian version of e2fsprogs is 1.40.2, and I assume
-> (although I don't know for sure) that the Debian GNU/Hurd port is
-> tracking Debian unstable,
+The following series of patches add support creating and checking
+filesystems with the FLEX_BG feature.  This feature currently groups
+meta-data from a series of groups at the beginning of a flex group in
+order to improve performance during heavy meta-data operations.
 
-Yes.
+Changes from last time:
+- When making a filesystem with FLEX_BG also enable META_BG feature.
+- Allocate meta data within the META_BG group range.  
+- Descriptor checking ensures bitmaps and inode tables are in the META 
+  group.
 
-> so if there were anything embarassing, I would have gotten a
-> complaint.
+Problems and TODOs:
+- Fsck has some failures using FLEX_BG and resize_inode features at the
+  same time.  Still investigating.
+- Need to define how unallocated inode tables will look like.
+- Need to create test case
 
-I've just sent one on the bts :)
-(just disabling devmapper, SElinux and online resizing support)
-
-Samuel
+-JRS
