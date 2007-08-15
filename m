@@ -1,32 +1,38 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: ext4 patch queue Rebased to 2.6.23-rc3
-Date: Tue, 14 Aug 2007 17:50:03 -0700
-Message-ID: <1187139003.3892.2.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fix panic in jbd by adding locks
+Date: Wed, 15 Aug 2007 13:37:37 +0200
+Message-ID: <20070815113737.GC7642@atrey.karlin.mff.cuni.cz>
+References: <20070814152255.GB24127@dhcp-243-37.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, alex@clusterfs.com, tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:33621 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752993AbXHOAt7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2007 20:49:59 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7F0nw77007878
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7F0nw01408492
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7F0nvsM002908
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:60463 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751005AbXHOMD7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Aug 2007 08:03:59 -0400
+Content-Disposition: inline
+In-Reply-To: <20070814152255.GB24127@dhcp-243-37.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Rebased to 2.6.23-rc3 kernel. Only changes is added Alex's new delayed
-allocation patch to the queue.
+  Hello,
 
+> It is possible to panic the box by a race condition that exists in the
+> journalling code where we do not take the j_revoke_lock when traversing the
+> journal's revoked record list.  This patch has been tested and we haven't seen
+> the issue yet, its a rather straightforward and correct (at least I think so :)
+> fix.  Thank you,
+  In principle, the patch looks fine. The only thing I'm wondering about
+is how that panic can happen... Journal write_revoke_records() is called
+from journal_commit_transaction() when revoke table for the committing
+transaction shouldn't see any further changes. So maybe the patch is
+masking a different problem.
+  Do you have a way of reproducing the problem? Any stack trace
+available?
 
-Cheers,
-Mingming
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
