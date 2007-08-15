@@ -1,79 +1,39 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [-mm patch] remove fs/ext2/balloc.c:reserve_blocks()
-Date: Tue, 14 Aug 2007 23:25:56 +0200
-Message-ID: <20070814212556.GV18945@stusta.de>
-References: <20070809224254.11f42716.akpm@linux-foundation.org>
+From: Thomas Bushnell BSG <tb@becket.net>
+Subject: Re: Future of ext2 support in the Hurd?
+Date: Tue, 14 Aug 2007 20:41:20 -0400
+Message-ID: <1187138480.9413.35.camel@localhost>
+References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
+	<878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
+	<20070813162135.GC28130@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>,
-	"Martin J. Bligh" <mbligh@mbligh.org>,
-	Valerie Henson <val_henson@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from emailhub.stusta.mhn.de ([141.84.69.5]:45837 "EHLO
-	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758108AbXHNV0M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Aug 2007 17:26:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20070809224254.11f42716.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: bug-hurd@gnu.org, linux-ext4@vger.kernel.org,
+	Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
+In-Reply-To: <20070813162135.GC28130@thunk.org>
+List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
+List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
+List-Post: <mailto:bug-hurd@gnu.org>
+List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
+List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
+	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
+Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
 List-Id: linux-ext4.vger.kernel.org
 
-reserve_blocks() is no longer used.
+Currently the plan (approved by RMS) is to keep the Hurd libraries at
+"GPLv2 or any later version" so that they can be linked with
+Linux-derived code such as ext2fs stuff, and more importantly,
+networking stuff.  The Hurd programs themselves (rather than just the
+libraries) will be GPLv3, though the transition has not yet happened.
 
-Spotted by the GNU C compiler.
+The particular programs that actually use GPLv2-only stuff (ext2fs,
+pfinet) will remain as they are.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+So thanks for the concern Ted!  It's an important issue, and one that we
+think we have worked out correctly.
 
----
-
- fs/ext2/balloc.c |   35 -----------------------------------
- 1 file changed, 35 deletions(-)
-
-4b64502ecee91af41888261d7392688c9283792f 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 1c57a3f..b63f6a4 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -133,41 +133,6 @@ error_out:
- 	return NULL;
- }
- 
--/*
-- * Set sb->s_dirt here because the superblock was "logically" altered.  We
-- * need to recalculate its free blocks count and flush it out.
-- */
--static int reserve_blocks(struct super_block *sb, int count)
--{
--	struct ext2_sb_info *sbi = EXT2_SB(sb);
--	struct ext2_super_block *es = sbi->s_es;
--	unsigned free_blocks;
--	unsigned root_blocks;
--
--	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
--	root_blocks = le32_to_cpu(es->s_r_blocks_count);
--
--	if (free_blocks < count)
--		count = free_blocks;
--
--	if (free_blocks < root_blocks + count && !capable(CAP_SYS_RESOURCE) &&
--	    sbi->s_resuid != current->fsuid &&
--	    (sbi->s_resgid == 0 || !in_group_p (sbi->s_resgid))) {
--		/*
--		 * We are too close to reserve and we are not privileged.
--		 * Can we allocate anything at all?
--		 */
--		if (free_blocks > root_blocks)
--			count = free_blocks - root_blocks;
--		else
--			return 0;
--	}
--
--	percpu_counter_mod(&sbi->s_freeblocks_counter, -count);
--	sb->s_dirt = 1;
--	return count;
--}
--
- static void release_blocks(struct super_block *sb, int count)
- {
- 	if (count) {
+Thomas
