@@ -1,39 +1,32 @@
-From: Thomas Bushnell BSG <tb@becket.net>
-Subject: Re: Future of ext2 support in the Hurd?
-Date: Tue, 14 Aug 2007 20:41:20 -0400
-Message-ID: <1187138480.9413.35.camel@localhost>
-References: <E1IKLAG-0002yi-8Z@candygram.thunk.org>
-	<878x8g5mkc.wl%marcus.brinkmann@ruhr-uni-bochum.de>
-	<20070813162135.GC28130@thunk.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 patch queue Rebased to 2.6.23-rc3
+Date: Tue, 14 Aug 2007 17:50:03 -0700
+Message-ID: <1187139003.3892.2.camel@localhost.localdomain>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: bug-hurd@gnu.org, linux-ext4@vger.kernel.org,
-	Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org>
-In-Reply-To: <20070813162135.GC28130@thunk.org>
-List-Unsubscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=unsubscribe>
-List-Archive: <http://lists.gnu.org/pipermail/bug-hurd>
-List-Post: <mailto:bug-hurd@gnu.org>
-List-Help: <mailto:bug-hurd-request@gnu.org?subject=help>
-List-Subscribe: <http://lists.gnu.org/mailman/listinfo/bug-hurd>,
-	<mailto:bug-hurd-request@gnu.org?subject=subscribe>
-Sender: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
-Errors-To: bug-hurd-bounces+gnu-bug-hurd=m.gmane.org@gnu.org
+To: linux-ext4@vger.kernel.org, alex@clusterfs.com, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:33621 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752993AbXHOAt7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2007 20:49:59 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7F0nw77007878
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7F0nw01408492
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7F0nvsM002908
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2007 20:49:58 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently the plan (approved by RMS) is to keep the Hurd libraries at
-"GPLv2 or any later version" so that they can be linked with
-Linux-derived code such as ext2fs stuff, and more importantly,
-networking stuff.  The Hurd programs themselves (rather than just the
-libraries) will be GPLv3, though the transition has not yet happened.
+Rebased to 2.6.23-rc3 kernel. Only changes is added Alex's new delayed
+allocation patch to the queue.
 
-The particular programs that actually use GPLv2-only stuff (ext2fs,
-pfinet) will remain as they are.
 
-So thanks for the concern Ted!  It's an important issue, and one that we
-think we have worked out correctly.
-
-Thomas
+Cheers,
+Mingming
