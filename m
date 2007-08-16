@@ -1,79 +1,64 @@
-From: akpm@linux-foundation.org
-Subject: + ext2-4-use-is_power_of_2.patch added to -mm tree
-Date: Wed, 15 Aug 2007 16:24:41 -0700
-Message-ID: <200708152324.l7FNOfgL020445@imap1.linux-foundation.org>
-Cc: vignesh.babu@wipro.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Patches for patch queue
+Date: Thu, 16 Aug 2007 12:48:05 +0530
+Message-ID: <46C3FA2D.9050200@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>,
+	Avantika Mathur <mathur@linux.vnet.ibm.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55008 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755355AbXHOXaW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Aug 2007 19:30:22 -0400
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:38248 "EHLO
+	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753364AbXHPHSV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2007 03:18:21 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id l7G7KmAM3039446
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 17:20:48 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id l7G7LgR0209866
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 17:21:42 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7G7I8dJ003058
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 17:18:08 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi,
 
-The patch titled
-     ext2/4: use is_power_of_2()
-has been added to the -mm tree.  Its filename is
-     ext2-4-use-is_power_of_2.patch
+Can we get the below patches in patch queue.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+http://www.radian.org/~kvaneesh/ext4/patch-series/ext-truncate-mutex.patch
+http://www.radian.org/~kvaneesh/ext4/patch-series/ext3-4-migrate.patch
+http://www.radian.org/~kvaneesh/ext4/patch-series/new-extent-function.patch
+http://www.radian.org/~kvaneesh/ext4/patch-series/mballoc-core.patch
+http://www.radian.org/~kvaneesh/ext4/patch-series/mballoc-fixup.patch
 
-------------------------------------------------------
-Subject: ext2/4: use is_power_of_2()
-From: vignesh babu <vignesh.babu@wipro.com>
 
-Replace n & (n - 1) with is_power_of_2(n)
 
-Signed-off-by: vignesh babu <vignesh.babu@wipro.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+# This series applies on GIT commit 39d3520c92cf7a28c07229ca00cc35a1e8026c77
+ext4-journal_chksum-2.6.20.patch
+ext4-journal-chksum-review-fix.patch
+64-bit-i_version.patch
+i_version_hi.patch
+ext4_i_version_hi_2.patch
+i_version_update_ext4.patch
+jbd-stats-through-procfs
+jbd-stats-through-procfs_fix.patch
+delalloc-vfs.patch
+delalloc-ext4.patch
+ext-truncate-mutex.patch
+ext3-4-migrate.patch
+new-extent-function.patch
+mballoc-core.patch
+mballoc-fixup.patch
 
- fs/ext2/super.c |    3 ++-
- fs/ext4/super.c |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext2/super.c~ext2-4-use-is_power_of_2 fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-4-use-is_power_of_2
-+++ a/fs/ext2/super.c
-@@ -30,6 +30,7 @@
- #include <linux/vfs.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
-+#include <linux/log2.h>
- #include <asm/uaccess.h>
- #include "ext2.h"
- #include "xattr.h"
-@@ -804,7 +805,7 @@ static int ext2_fill_super(struct super_
- 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
- 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
- 		if ((sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
--		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
-+		    !is_power_of_2(sbi->s_inode_size) ||
- 		    (sbi->s_inode_size > blocksize)) {
- 			printk ("EXT2-fs: unsupported inode size: %d\n",
- 				sbi->s_inode_size);
-diff -puN fs/ext4/super.c~ext2-4-use-is_power_of_2 fs/ext4/super.c
---- a/fs/ext4/super.c~ext2-4-use-is_power_of_2
-+++ a/fs/ext4/super.c
-@@ -1667,7 +1667,7 @@ static int ext4_fill_super (struct super
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT)) {
- 		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
- 		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
--		    sbi->s_desc_size & (sbi->s_desc_size - 1)) {
-+		    !is_power_of_2(sbi->s_desc_size)) {
- 			printk(KERN_ERR
- 			       "EXT4-fs: unsupported descriptor size %lu\n",
- 			       sbi->s_desc_size);
-_
+I have added then towards the end of the series based on the comment from Alex
+that mballoc need further cleanup and he likes to finish with delayed allocation first.
 
-Patches currently in -mm which might be from vignesh.babu@wipro.com are
 
-git-xfs.patch
-ext2-4-use-is_power_of_2.patch
+-aneesh 
