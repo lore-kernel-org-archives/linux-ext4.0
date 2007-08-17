@@ -1,43 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] provide missing mode for open-create in check_mntent_file
-Date: Thu, 16 Aug 2007 17:37:02 -0500
-Message-ID: <46C4D18E.3080509@redhat.com>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when
+ FS is under heavy write load (massive starvation)
+Date: Fri, 17 Aug 2007 06:24:47 +0400
+Message-ID: <46C506EF.5010408@clusterfs.com>
+References: <1177660767.6567.41.camel@Homer.simpson.net>	<20070427013350.d0d7ac38.akpm@linux-foundation.org>	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>	<20070427193130.GD5967@schatzie.adilger.int>	<20070427151837.f1439639.akpm@linux-foundation.org>	<463A1E02.8020506@clusterfs.com>	<20070503165428.855eb7d7.akpm@linux-foundation.org>	<463AD024.6060208@clusterfs.com>	<20070503233804.9dace4a7.akpm@linux-foundation.org>	<463AD948.9090103@clusterfs.com>	<20070504001802.0e86e9dd.akpm@linux-foundation.org>	<463AE32A.5000902@clusterfs.com>	<20070504010212.ce6eca53.akpm@linux-foundation.org>	<46C49556.4000409@clusterfs.com> <20070816114605.5a233c7e.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48274 "EHLO mx1.redhat.com"
+Received: from mail.rialcom.ru ([80.71.244.250]:48196 "EHLO mail.rialcom.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761918AbXHPWjo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2007 18:39:44 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7GMdixI000487
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 18:39:44 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7GMdhc9028489
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 18:39:43 -0400
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id l7GMdhTR024680
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 18:39:43 -0400
+	id S1757481AbXHQCZP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Aug 2007 22:25:15 -0400
+In-Reply-To: <20070816114605.5a233c7e.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-F8 is catching opens with O_CREAT flags and no mode now, and refusing
-to build them... 
+Andrew Morton wrote:
+> On Thu, 16 Aug 2007 22:20:06 +0400
+> Alex Tomas <alex@clusterfs.com> wrote:
+> 
+>> Andrew Morton wrote:
+>>>>> But under this proposal, t_sync_datalist just gets removed: the new
+>>>>> ordered-data mode _only_ need to do the sb->inode->page walk.  So if I'm
+>>>>> understanding you, the way in which we'd handle any such race is to make
+>>>>> kjournald's writeback of the dirty pages block in lock_page().  Once it
+>>>>> gets the page lock it can look to see if some other thread has mapped the
+>>>>> page to disk.
+>>>> if I'm right holding number of pages locked, then they won't be locked, but
+>>>> writeback. of course kjournald can block on writeback as well, but how does
+>>>> it find pages with *newly allocated* blocks only?
+>>> I don't think we'd want kjournald to do that.  Even if a page was dirtied
+>>> by an overwrite, we'd want to write it back during commit, just from a
+>>> quality-of-implementation point of view.  If we were to leave these pages
+>>> unwritten during commit then a post-recovery file could have a mix of
+>>> up-to-five-second-old data and up-to-30-seconds-old data.
+>> trying to implement this I've got to think that there is one significant
+>> difference between t_sync_datalist and sb->inode->page walk: t_sync_datalist
+>> is per-transaction. IOW, it doesn't change once transaction is closed. in
+>> contrast, nothing (currently) would prevent others to modify pages while
+>> commit is in progress.
+> 
+> That can happen at present - there's nothing to stop a process from modifying
+> a page which is undergoing ordered-data commit-time writeout.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+I tend to think it's still a bit different: set of pages doesn't change with
+t_sync_datalist. with sb->inode->page approach even silly dd will be able to
+*add* a bunch of new pages while we're syncing first ones. why shouldn't we
+fix this?
 
-Index: e2fsprogs-git/lib/ext2fs/ismounted.c
-===================================================================
---- e2fsprogs-git.orig/lib/ext2fs/ismounted.c
-+++ e2fsprogs-git/lib/ext2fs/ismounted.c
-@@ -147,7 +147,7 @@ static errcode_t check_mntent_file(const
- is_root:
- #define TEST_FILE "/.ismount-test-file"		
- 		*mount_flags |= EXT2_MF_ISROOT;
--		fd = open(TEST_FILE, O_RDWR|O_CREAT);
-+		fd = open(TEST_FILE, O_RDWR|O_CREAT, 0644);
- 		if (fd < 0) {
- 			if (errno == EROFS)
- 				*mount_flags |= EXT2_MF_READONLY;
+thanks, Alex
