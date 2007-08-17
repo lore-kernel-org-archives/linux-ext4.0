@@ -1,150 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] rename ->open and ->close ops in struct_io_manager
-Date: Thu, 16 Aug 2007 22:48:46 -0500
-Message-ID: <46C51A9E.3030001@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [ext3][kernels >= 2.6.20.7 at least] KDE going comatose when FS
+ is under heavy write load (massive starvation)
+Date: Thu, 16 Aug 2007 23:52:50 -0700
+Message-ID: <20070816235250.d1e39b79.akpm@linux-foundation.org>
+References: <1177660767.6567.41.camel@Homer.simpson.net>
+	<20070427013350.d0d7ac38.akpm@linux-foundation.org>
+	<698310e10704270459t7663d39dp977cf055b8db9d2a@mail.gmail.com>
+	<alpine.LFD.0.98.0704270819500.9964@woody.linux-foundation.org>
+	<20070427193130.GD5967@schatzie.adilger.int>
+	<20070427151837.f1439639.akpm@linux-foundation.org>
+	<463A1E02.8020506@clusterfs.com>
+	<20070503165428.855eb7d7.akpm@linux-foundation.org>
+	<463AD024.6060208@clusterfs.com>
+	<20070503233804.9dace4a7.akpm@linux-foundation.org>
+	<463AD948.9090103@clusterfs.com>
+	<20070504001802.0e86e9dd.akpm@linux-foundation.org>
+	<463AE32A.5000902@clusterfs.com>
+	<20070504010212.ce6eca53.akpm@linux-foundation.org>
+	<46C49556.4000409@clusterfs.com>
+	<20070816114605.5a233c7e.akpm@linux-foundation.org>
+	<46C506EF.5010408@clusterfs.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:51725 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753255AbXHQDsm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2007 23:48:42 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7H3met1013724
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 23:48:40 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7H3meId017312
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 23:48:40 -0400
-Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7H3md1X007003
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2007 23:48:40 -0400
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47221 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752819AbXHQGxD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Aug 2007 02:53:03 -0400
+In-Reply-To: <46C506EF.5010408@clusterfs.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-glibc recently added for -D_FORTIFY_SOURCE=2 error checking
-open/open64/openat/openat64 macros that verify proper use, including
-checking that a mode is supplied with O_CREAT.
+On Fri, 17 Aug 2007 06:24:47 +0400 Alex Tomas <alex@clusterfs.com> wrote:
 
-These macros re-#define "open," which does not play nice
-when that name is used elsewhere.
+> Andrew Morton wrote:
+> > On Thu, 16 Aug 2007 22:20:06 +0400
+> > Alex Tomas <alex@clusterfs.com> wrote:
+> > 
+> >> Andrew Morton wrote:
+> >>>>> But under this proposal, t_sync_datalist just gets removed: the new
+> >>>>> ordered-data mode _only_ need to do the sb->inode->page walk.  So if I'm
+> >>>>> understanding you, the way in which we'd handle any such race is to make
+> >>>>> kjournald's writeback of the dirty pages block in lock_page().  Once it
+> >>>>> gets the page lock it can look to see if some other thread has mapped the
+> >>>>> page to disk.
+> >>>> if I'm right holding number of pages locked, then they won't be locked, but
+> >>>> writeback. of course kjournald can block on writeback as well, but how does
+> >>>> it find pages with *newly allocated* blocks only?
+> >>> I don't think we'd want kjournald to do that.  Even if a page was dirtied
+> >>> by an overwrite, we'd want to write it back during commit, just from a
+> >>> quality-of-implementation point of view.  If we were to leave these pages
+> >>> unwritten during commit then a post-recovery file could have a mix of
+> >>> up-to-five-second-old data and up-to-30-seconds-old data.
+> >> trying to implement this I've got to think that there is one significant
+> >> difference between t_sync_datalist and sb->inode->page walk: t_sync_datalist
+> >> is per-transaction. IOW, it doesn't change once transaction is closed. in
+> >> contrast, nothing (currently) would prevent others to modify pages while
+> >> commit is in progress.
+> > 
+> > That can happen at present - there's nothing to stop a process from modifying
+> > a page which is undergoing ordered-data commit-time writeout.
+> 
+> I tend to think it's still a bit different: set of pages doesn't change with
+> t_sync_datalist. with sb->inode->page approach even silly dd will be able to
+> *add* a bunch of new pages while we're syncing first ones. why shouldn't we
+> fix this?
+> 
 
-Renaming open (and for symmetry, close) in struct_io_manager
-seems like one way to go.  On the one hand I hate to have to
-change code for this, but on the other hand it may not be worth
-fighting.  Any thoughts?
-
-Thanks,
--Eric
-
-----
-
-rename struct_io_manager's ->open and ->close members so that
-recent glibc's redefined "open" for -D_FORTIFY_SOURCE=2 does
-not clash with it.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
-Index: e2fsprogs-git/debugfs/debugfs.c
-===================================================================
---- e2fsprogs-git.orig/debugfs/debugfs.c
-+++ e2fsprogs-git/debugfs/debugfs.c
-@@ -62,7 +62,7 @@ static void open_filesystem(char *device
- 			current_fs = NULL;
- 			return;
- 		}
--		retval = unix_io_manager->open(data_filename, 0, &data_io);
-+		retval = unix_io_manager->io_open(data_filename, 0, &data_io);
- 		if (retval) {
- 			com_err(data_filename, 0, "while opening data source");
- 			current_fs = NULL;
-Index: e2fsprogs-git/e2fsck/journal.c
-===================================================================
---- e2fsprogs-git.orig/e2fsck/journal.c
-+++ e2fsprogs-git/e2fsck/journal.c
-@@ -362,7 +362,7 @@ static errcode_t e2fsck_get_journal(e2fs
- #ifndef USE_INODE_IO
- 	if (ext_journal)
- #endif
--		retval = io_ptr->open(journal_name, IO_FLAG_RW,
-+		retval = io_ptr->io_open(journal_name, IO_FLAG_RW,
- 				      &ctx->journal_io);
- 	if (retval)
- 		goto errout;
-Index: e2fsprogs-git/lib/ext2fs/ext2_io.h
-===================================================================
---- e2fsprogs-git.orig/lib/ext2fs/ext2_io.h
-+++ e2fsprogs-git/lib/ext2fs/ext2_io.h
-@@ -66,8 +66,8 @@ struct struct_io_stats {
- struct struct_io_manager {
- 	errcode_t magic;
- 	const char *name;
--	errcode_t (*open)(const char *name, int flags, io_channel *channel);
--	errcode_t (*close)(io_channel channel);
-+	errcode_t (*io_open)(const char *name, int flags, io_channel *channel);
-+	errcode_t (*io_close)(io_channel channel);
- 	errcode_t (*set_blksize)(io_channel channel, int blksize);
- 	errcode_t (*read_blk)(io_channel channel, unsigned long block,
- 			      int count, void *data);
-@@ -88,7 +88,7 @@ struct struct_io_manager {
- /*
-  * Convenience functions....
-  */
--#define io_channel_close(c) 		((c)->manager->close((c)))
-+#define io_channel_close(c) 		((c)->manager->io_close((c)))
- #define io_channel_set_blksize(c,s)	((c)->manager->set_blksize((c),s))
- #define io_channel_read_blk(c,b,n,d)	((c)->manager->read_blk((c),b,n,d))
- #define io_channel_write_blk(c,b,n,d)	((c)->manager->write_blk((c),b,n,d))
-Index: e2fsprogs-git/lib/ext2fs/initialize.c
-===================================================================
---- e2fsprogs-git.orig/lib/ext2fs/initialize.c
-+++ e2fsprogs-git/lib/ext2fs/initialize.c
-@@ -124,7 +124,7 @@ errcode_t ext2fs_initialize(const char *
- 	io_flags = IO_FLAG_RW;
- 	if (flags & EXT2_FLAG_EXCLUSIVE)
- 		io_flags |= IO_FLAG_EXCLUSIVE;
--	retval = manager->open(name, io_flags, &fs->io);
-+	retval = manager->io_open(name, io_flags, &fs->io);
- 	if (retval)
- 		goto cleanup;
- 	fs->image_io = fs->io;
-Index: e2fsprogs-git/lib/ext2fs/openfs.c
-===================================================================
---- e2fsprogs-git.orig/lib/ext2fs/openfs.c
-+++ e2fsprogs-git/lib/ext2fs/openfs.c
-@@ -119,7 +119,7 @@ errcode_t ext2fs_open2(const char *name,
- 		io_flags |= IO_FLAG_RW;
- 	if (flags & EXT2_FLAG_EXCLUSIVE)
- 		io_flags |= IO_FLAG_EXCLUSIVE;
--	retval = manager->open(fs->device_name, io_flags, &fs->io);
-+	retval = manager->io_open(fs->device_name, io_flags, &fs->io);
- 	if (retval)
- 		goto cleanup;
- 	if (io_options && 
-Index: e2fsprogs-git/lib/ext2fs/test_io.c
-===================================================================
---- e2fsprogs-git.orig/lib/ext2fs/test_io.c
-+++ e2fsprogs-git/lib/ext2fs/test_io.c
-@@ -198,7 +198,7 @@ static errcode_t test_open(const char *n
- 	memset(data, 0, sizeof(struct test_private_data));
- 	data->magic = EXT2_ET_MAGIC_TEST_IO_CHANNEL;
- 	if (test_io_backing_manager) {
--		retval = test_io_backing_manager->open(name, flags,
-+		retval = test_io_backing_manager->io_open(name, flags,
- 						       &data->real);
- 		if (retval)
- 			goto cleanup;
-Index: e2fsprogs-git/misc/e2image.c
-===================================================================
---- e2fsprogs-git.orig/misc/e2image.c
-+++ e2fsprogs-git/misc/e2image.c
-@@ -582,7 +582,7 @@ static void install_image(char *device, 
- 		exit(1);
- 	}
- 
--	retval = io_ptr->open(device, IO_FLAG_RW, &io); 
-+	retval = io_ptr->io_open(device, IO_FLAG_RW, &io); 
- 	if (retval) {
- 		com_err(device, 0, "while opening device file");
- 		exit(1);
+Sort-of.  But the per-superpblock, per-inode writeback code is pretty
+careful to avoid livelocks.  The per-inode writeback is a strict single
+linear sweep across the file.  It'll basically write out anything which was
+dirty when it was called.  The per-superblock inode walk isn't as accurate
+as that, becuase of the difficulties of juggling list_heads.  But we're
+slowly working on that, and I suspect it'll be ggod enough for ext3
+purposes already.
