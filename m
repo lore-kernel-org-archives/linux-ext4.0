@@ -1,68 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC] mballoc patches
-Date: Tue, 21 Aug 2007 16:00:43 -0500
-Message-ID: <46CB527B.5090300@redhat.com>
-References: <1187000545401-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <46C08902.7020709@linux.vnet.ibm.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Adding META_BG/FLEX_BG awareness to inode allocator.
+Date: Tue, 21 Aug 2007 16:44:06 -0500
+Message-ID: <20070821164406.2eec74db@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@clusterfs.com>,
+	Theodore Tso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46655 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753625AbXHUVHQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Aug 2007 17:07:16 -0400
-In-Reply-To: <46C08902.7020709@linux.vnet.ibm.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:52736 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754034AbXHUVoi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Aug 2007 17:44:38 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7LLiaXK007012
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Aug 2007 17:44:36 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l7LLiZxl218320
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Aug 2007 15:44:35 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7LLiZF4014301
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Aug 2007 15:44:35 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Aneesh Kumar K.V wrote:
-> 
-> 
-> I am attaching below the PATCH 2/4 in .gz format. The uncompressed one
-> got dropped by the list.
-> 
-> -aneesh
+Hi Andreas, Ted,
 
-hmm makes it hard to comment in-line though :)  So basing this on the
-patch currently in the git repo.
+I've been looking at the uninitialized block group patches to see how
+they overlap with the uninitialized inode tables that I was looking
+into for FLEX_BG and I think I can achieve the same thing using those
+patches.  One of the things I wanted to achieve with uninitialized
+inode tables was to pack inode for the same META/FLEX_BG and allocate
+new inode tables as we ran out a pre-initialized inodes.  This is
+something that applies to FLEX_BG since the layout of the meta-data has
+changed.
 
-+/*
-+ * default stripe size = 1MB
-+ */
-+#define MB_DEFAULT_STRIPE              256
+It seams that the only thing that would prevent the uninitialized block
+group patches from doing this is ialloc.c unawareness of
+META_BG/FLEX_BG.  It seems like this is a good excuse to make inode and
+block allocation algorithms aware of the new meta-data layout.
 
-Units?  Doesn't seem to matter anyway as it's never referenced.
+I could add META_BG/FLEX_BG awareness and see how the
+allocation/initialization of inode changes and also see what sort of
+performance impacts we see by these changes. 
 
-+       /* tunables */
-+       unsigned long s_mb_factor;
-+       unsigned long s_stripe;
-+       unsigned long s_mb_small_req;
-+       unsigned long s_mb_large_req;
-+       unsigned long s_mb_max_to_scan;
-+       unsigned long s_mb_min_to_scan;
+Thoughts?
 
-could we get some comments here as to what these are, and what units?
-
-Same is true many places... for example
-
-+static int mb_find_extent(struct ext4_buddy *e3b, int order, int block,
-+                               int needed, struct ext4_free_extent *ex)
-
-how many "what" are needed?
-
-And perhaps an addition of the new mount options to
-Documentation/fs/ext4.txt would be good.
-
-+#define EXT4_MB_BITMAP(e3b)    ((e3b)->bd_bitmap)
-+#define EXT4_MB_BUDDY(e3b)     ((e3b)->bd_buddy)
-
-For the sake of consistency should these (and others) be e4b?
-
-Also there are a *lot* of BUGs and BUG_ONs added in this patch... are
-none of these recoverable?
-
-Thanks,
-
--Eric
+-JRS
