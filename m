@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [RFC 1/4] Large Blocksize support for Ext2/3/4
-Date: Wed, 29 Aug 2007 17:47:37 -0700
-Message-ID: <1188434857.3799.76.camel@localhost.localdomain>
+Subject: [RFC 2/4]ext2: fix rec_len overflow with 64KB block size
+Date: Wed, 29 Aug 2007 17:47:53 -0700
+Message-ID: <1188434873.3799.78.camel@localhost.localdomain>
 References: <20070828190551.415127746@sgi.com>
 	 <20070828190735.292638294@sgi.com>
 	 <1188432669.3799.35.camel@localhost.localdomain>
@@ -9,152 +9,207 @@ Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: adilger@clusterfs.com, sho@tnes.nec.co.jp,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, adilger@clusterfs.com,
+	sho@tnes.nec.co.jp, ext4 development <linux-ext4@vger.kernel.org>
 To: clameter@sgi.com, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1188432669.3799.35.camel@localhost.localdomain>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The next 4 patches support large block size (up to PAGESIZE, max 64KB)
-for ext2/3/4, originally from Takashi Sato.
-http://marc.info/?l=linux-ext4&m=115768873518400&w=2
-
-
-It's quite simple to support large block size in ext2/3/4, mostly just
-enlarge the block size limit.  But it is NOT possible to have 64kB
-blocksize on ext2/3/4 without some changes to the directory handling
-code.  The reason is that an empty 64kB directory block would have a
-rec_len == (__u16)2^16 == 0, and this would cause an error to be hit in
-the filesystem.  The proposed solution is to put 2 empty records in such
-a directory, or to special-case an impossible value like rec_len =
-0xffff to handle this. 
-
-
-The Patch-set consists of the following 4 patches.
-  [1/4]  ext2/3/4: enlarge blocksize
-         - Allow blocksize up to pagesize
-
-  [2/4]  ext2: fix rec_len overflow
+[2/4]  ext2: fix rec_len overflow
          - prevent rec_len from overflow with 64KB blocksize
-
-  [3/4]  ext3: fix rec_len overflow
-         - prevent rec_len from overflow with 64KB blocksize
-
-  [4/4]  ext4: fix rec_len overflow
-         - prevent rec_len from overflow with 64KB blocksize
-
-Just rebase to 2.6.23-rc4 and against the ext4 patch queue. Compile tested only. 
-
-Next steps:
-Need a e2fsprogs changes to able test this feature. As mkfs needs to be
-educated not assuming rec_len to be blocksize all the time.
-Will try it with Christoph Lameter's large block patch next.
 
 
 Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
----
- fs/ext2/super.c         |    2 +-
- fs/ext3/super.c         |    5 ++++-
- fs/ext4/super.c         |    5 +++++
- include/linux/ext2_fs.h |    4 ++--
- include/linux/ext3_fs.h |    4 ++--
- include/linux/ext4_fs.h |    4 ++--
- 6 files changed, 16 insertions(+), 8 deletions(-)
 
-Index: linux-2.6.23-rc3/fs/ext2/super.c
+---
+ fs/ext2/dir.c           |   46 ++++++++++++++++++++++++++++++++++++----------
+ include/linux/ext2_fs.h |   13 +++++++++++++
+ 2 files changed, 49 insertions(+), 10 deletions(-)
+
+Index: linux-2.6.23-rc3/fs/ext2/dir.c
 ===================================================================
---- linux-2.6.23-rc3.orig/fs/ext2/super.c	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/fs/ext2/super.c	2007-08-29 15:22:29.000000000 -0700
-@@ -775,7 +775,7 @@ static int ext2_fill_super(struct super_
- 		brelse(bh);
- 
- 		if (!sb_set_blocksize(sb, blocksize)) {
--			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
-+			printk(KERN_ERR "EXT2-fs: bad blocksize %d.\n", blocksize);
- 			goto failed_sbi;
- 		}
- 
-Index: linux-2.6.23-rc3/fs/ext3/super.c
-===================================================================
---- linux-2.6.23-rc3.orig/fs/ext3/super.c	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/fs/ext3/super.c	2007-08-29 15:22:29.000000000 -0700
-@@ -1549,7 +1549,10 @@ static int ext3_fill_super (struct super
- 		}
- 
- 		brelse (bh);
--		sb_set_blocksize(sb, blocksize);
-+		if (!sb_set_blocksize(sb, blocksize)) {
-+			printk(KERN_ERR "EXT3-fs: bad blocksize %d.\n", blocksize);
-+			goto out_fail;
-+		}
- 		logic_sb_block = (sb_block * EXT3_MIN_BLOCK_SIZE) / blocksize;
- 		offset = (sb_block * EXT3_MIN_BLOCK_SIZE) % blocksize;
- 		bh = sb_bread(sb, logic_sb_block);
-Index: linux-2.6.23-rc3/fs/ext4/super.c
-===================================================================
---- linux-2.6.23-rc3.orig/fs/ext4/super.c	2007-08-28 11:09:40.000000000 -0700
-+++ linux-2.6.23-rc3/fs/ext4/super.c	2007-08-29 15:24:08.000000000 -0700
-@@ -1626,6 +1626,11 @@ static int ext4_fill_super (struct super
- 		goto out_fail;
+--- linux-2.6.23-rc3.orig/fs/ext2/dir.c	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext2/dir.c	2007-08-29 15:29:51.000000000 -0700
+@@ -94,9 +94,9 @@ static void ext2_check_page(struct page 
+ 			goto out;
  	}
+ 	for (offs = 0; offs <= limit - EXT2_DIR_REC_LEN(1); offs += rec_len) {
++		offs = EXT2_DIR_ADJUST_TAIL_OFFS(offs, chunk_size);
+ 		p = (ext2_dirent *)(kaddr + offs);
+ 		rec_len = le16_to_cpu(p->rec_len);
+-
+ 		if (rec_len < EXT2_DIR_REC_LEN(1))
+ 			goto Eshort;
+ 		if (rec_len & 3)
+@@ -108,6 +108,7 @@ static void ext2_check_page(struct page 
+ 		if (le32_to_cpu(p->inode) > max_inumber)
+ 			goto Einumber;
+ 	}
++	offs = EXT2_DIR_ADJUST_TAIL_OFFS(offs, chunk_size);
+ 	if (offs != limit)
+ 		goto Eend;
+ out:
+@@ -283,6 +284,7 @@ ext2_readdir (struct file * filp, void *
+ 		de = (ext2_dirent *)(kaddr+offset);
+ 		limit = kaddr + ext2_last_byte(inode, n) - EXT2_DIR_REC_LEN(1);
+ 		for ( ;(char*)de <= limit; de = ext2_next_entry(de)) {
++			de = EXT2_DIR_ADJUST_TAIL_ADDR(kaddr, de, sb->s_blocksize);
+ 			if (de->rec_len == 0) {
+ 				ext2_error(sb, __FUNCTION__,
+ 					"zero-length directory entry");
+@@ -305,8 +307,10 @@ ext2_readdir (struct file * filp, void *
+ 					return 0;
+ 				}
+ 			}
++			filp->f_pos = EXT2_DIR_ADJUST_TAIL_OFFS(filp->f_pos, sb->s_blocksize);
+ 			filp->f_pos += le16_to_cpu(de->rec_len);
+ 		}
++		filp->f_pos = EXT2_DIR_ADJUST_TAIL_OFFS(filp->f_pos, sb->s_blocksize);
+ 		ext2_put_page(page);
+ 	}
+ 	return 0;
+@@ -343,13 +347,14 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 		start = 0;
+ 	n = start;
+ 	do {
+-		char *kaddr;
++		char *kaddr, *page_start;
+ 		page = ext2_get_page(dir, n);
+ 		if (!IS_ERR(page)) {
+-			kaddr = page_address(page);
++			kaddr = page_start = page_address(page);
+ 			de = (ext2_dirent *) kaddr;
+ 			kaddr += ext2_last_byte(dir, n) - reclen;
+ 			while ((char *) de <= kaddr) {
++				de = EXT2_DIR_ADJUST_TAIL_ADDR(page_start, de, dir->i_sb->s_blocksize);
+ 				if (de->rec_len == 0) {
+ 					ext2_error(dir->i_sb, __FUNCTION__,
+ 						"zero-length directory entry");
+@@ -416,6 +421,7 @@ void ext2_set_link(struct inode *dir, st
+ 	unsigned to = from + le16_to_cpu(de->rec_len);
+ 	int err;
  
-+	if (!sb_set_blocksize(sb, blocksize)) {
-+		printk(KERN_ERR "EXT4-fs: bad blocksize %d.\n", blocksize);
-+		goto out_fail;
-+	}
-+
++	to = EXT2_DIR_ADJUST_TAIL_OFFS(to, inode->i_sb->s_blocksize);
+ 	lock_page(page);
+ 	err = page->mapping->a_ops->prepare_write(NULL, page, from, to);
+ 	BUG_ON(err);
+@@ -446,6 +452,7 @@ int ext2_add_link (struct dentry *dentry
+ 	char *kaddr;
+ 	unsigned from, to;
+ 	int err;
++	char *page_start = NULL;
+ 
  	/*
- 	 * The ext4 superblock will not be buffer aligned for other than 1kB
- 	 * block sizes.  We need to calculate the offset from buffer start.
+ 	 * We take care of directory expansion in the same loop.
+@@ -460,16 +467,28 @@ int ext2_add_link (struct dentry *dentry
+ 		if (IS_ERR(page))
+ 			goto out;
+ 		lock_page(page);
+-		kaddr = page_address(page);
++		kaddr = page_start = page_address(page);
+ 		dir_end = kaddr + ext2_last_byte(dir, n);
+ 		de = (ext2_dirent *)kaddr;
+-		kaddr += PAGE_CACHE_SIZE - reclen;
++		if (chunk_size < EXT2_DIR_MAX_REC_LEN) {
++			kaddr += PAGE_CACHE_SIZE - reclen;
++		} else {
++			kaddr += PAGE_CACHE_SIZE - 
++				(chunk_size - EXT2_DIR_MAX_REC_LEN) - reclen;
++		}
+ 		while ((char *)de <= kaddr) {
++			de = EXT2_DIR_ADJUST_TAIL_ADDR(page_start, de, chunk_size);	
+ 			if ((char *)de == dir_end) {
+ 				/* We hit i_size */
+ 				name_len = 0;
+-				rec_len = chunk_size;
+-				de->rec_len = cpu_to_le16(chunk_size);
++				if (chunk_size  < EXT2_DIR_MAX_REC_LEN) {
++					rec_len = chunk_size;
++					de->rec_len = cpu_to_le16(chunk_size);
++				} else {
++					rec_len = EXT2_DIR_MAX_REC_LEN;
++					de->rec_len =
++					cpu_to_le16(EXT2_DIR_MAX_REC_LEN);
++				}
+ 				de->inode = 0;
+ 				goto got_it;
+ 			}
+@@ -499,6 +518,7 @@ int ext2_add_link (struct dentry *dentry
+ got_it:
+ 	from = (char*)de - (char*)page_address(page);
+ 	to = from + rec_len;
++	to = EXT2_DIR_ADJUST_TAIL_OFFS(to, chunk_size);
+ 	err = page->mapping->a_ops->prepare_write(NULL, page, from, to);
+ 	if (err)
+ 		goto out_unlock;
+@@ -541,6 +561,7 @@ int ext2_delete_entry (struct ext2_dir_e
+ 	ext2_dirent * de = (ext2_dirent *) (kaddr + from);
+ 	int err;
+ 
++	to = EXT2_DIR_ADJUST_TAIL_OFFS(to, inode->i_sb->s_blocksize);
+ 	while ((char*)de < (char*)dir) {
+ 		if (de->rec_len == 0) {
+ 			ext2_error(inode->i_sb, __FUNCTION__,
+@@ -598,7 +619,11 @@ int ext2_make_empty(struct inode *inode,
+ 
+ 	de = (struct ext2_dir_entry_2 *)(kaddr + EXT2_DIR_REC_LEN(1));
+ 	de->name_len = 2;
+-	de->rec_len = cpu_to_le16(chunk_size - EXT2_DIR_REC_LEN(1));
++	if (chunk_size < EXT2_DIR_MAX_REC_LEN) {
++		de->rec_len = cpu_to_le16(chunk_size - EXT2_DIR_REC_LEN(1));
++	} else {
++		de->rec_len = cpu_to_le16(EXT2_DIR_MAX_REC_LEN - EXT2_DIR_REC_LEN(1));
++	}
+ 	de->inode = cpu_to_le32(parent->i_ino);
+ 	memcpy (de->name, "..\0", 4);
+ 	ext2_set_de_type (de, inode);
+@@ -618,18 +643,19 @@ int ext2_empty_dir (struct inode * inode
+ 	unsigned long i, npages = dir_pages(inode);
+ 
+ 	for (i = 0; i < npages; i++) {
+-		char *kaddr;
++		char *kaddr, *page_start;
+ 		ext2_dirent * de;
+ 		page = ext2_get_page(inode, i);
+ 
+ 		if (IS_ERR(page))
+ 			continue;
+ 
+-		kaddr = page_address(page);
++		kaddr = page_start = page_address(page);
+ 		de = (ext2_dirent *)kaddr;
+ 		kaddr += ext2_last_byte(inode, i) - EXT2_DIR_REC_LEN(1);
+ 
+ 		while ((char *)de <= kaddr) {
++			de = EXT2_DIR_ADJUST_TAIL_ADDR(page_start, de, inode->i_sb->s_blocksize);
+ 			if (de->rec_len == 0) {
+ 				ext2_error(inode->i_sb, __FUNCTION__,
+ 					"zero-length directory entry");
 Index: linux-2.6.23-rc3/include/linux/ext2_fs.h
 ===================================================================
---- linux-2.6.23-rc3.orig/include/linux/ext2_fs.h	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/include/linux/ext2_fs.h	2007-08-29 15:22:29.000000000 -0700
-@@ -86,8 +86,8 @@ static inline struct ext2_sb_info *EXT2_
-  * Macro-instructions used to manage several block sizes
-  */
- #define EXT2_MIN_BLOCK_SIZE		1024
--#define	EXT2_MAX_BLOCK_SIZE		4096
--#define EXT2_MIN_BLOCK_LOG_SIZE		  10
-+#define EXT2_MAX_BLOCK_SIZE		65536
-+#define EXT2_MIN_BLOCK_LOG_SIZE		10
- #ifdef __KERNEL__
- # define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
- #else
-Index: linux-2.6.23-rc3/include/linux/ext3_fs.h
-===================================================================
---- linux-2.6.23-rc3.orig/include/linux/ext3_fs.h	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/include/linux/ext3_fs.h	2007-08-29 15:22:29.000000000 -0700
-@@ -76,8 +76,8 @@
-  * Macro-instructions used to manage several block sizes
-  */
- #define EXT3_MIN_BLOCK_SIZE		1024
--#define	EXT3_MAX_BLOCK_SIZE		4096
--#define EXT3_MIN_BLOCK_LOG_SIZE		  10
-+#define	EXT3_MAX_BLOCK_SIZE		65536
-+#define EXT3_MIN_BLOCK_LOG_SIZE		10
- #ifdef __KERNEL__
- # define EXT3_BLOCK_SIZE(s)		((s)->s_blocksize)
- #else
-Index: linux-2.6.23-rc3/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.23-rc3.orig/include/linux/ext4_fs.h	2007-08-28 11:09:40.000000000 -0700
-+++ linux-2.6.23-rc3/include/linux/ext4_fs.h	2007-08-29 15:22:29.000000000 -0700
-@@ -104,8 +104,8 @@ struct ext4_allocation_request {
-  * Macro-instructions used to manage several block sizes
-  */
- #define EXT4_MIN_BLOCK_SIZE		1024
--#define	EXT4_MAX_BLOCK_SIZE		4096
--#define EXT4_MIN_BLOCK_LOG_SIZE		  10
-+#define	EXT4_MAX_BLOCK_SIZE		65536
-+#define EXT4_MIN_BLOCK_LOG_SIZE		10
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
- #else
+--- linux-2.6.23-rc3.orig/include/linux/ext2_fs.h	2007-08-29 15:22:29.000000000 -0700
++++ linux-2.6.23-rc3/include/linux/ext2_fs.h	2007-08-29 15:29:51.000000000 -0700
+@@ -557,5 +557,18 @@ enum {
+ #define EXT2_DIR_ROUND 			(EXT2_DIR_PAD - 1)
+ #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
+ 					 ~EXT2_DIR_ROUND)
++#define	EXT2_DIR_MAX_REC_LEN		65532
++
++/*
++ * Align a tail offset(address) to the end of a directory block
++ */
++#define EXT2_DIR_ADJUST_TAIL_OFFS(offs, bsize) \
++	((((offs) & ((bsize) -1)) == EXT2_DIR_MAX_REC_LEN) ? \
++	((offs) + (bsize) - EXT2_DIR_MAX_REC_LEN):(offs))
++
++#define EXT2_DIR_ADJUST_TAIL_ADDR(page, de, bsize) \
++	(((((char*)(de) - (page)) & ((bsize) - 1)) == EXT2_DIR_MAX_REC_LEN) ? \
++	((ext2_dirent*)((char*)(de) + (bsize) - EXT2_DIR_MAX_REC_LEN)):(de))
+ 
+ #endif	/* _LINUX_EXT2_FS_H */
++
 
 
