@@ -1,7 +1,8 @@
 From: Valerie Clement <valerie.clement@bull.net>
-Subject: [PATCH 8/8][e2fsprogs] change access to the free blocks counter
-Date: Thu, 30 Aug 2007 17:43:26 +0200
-Message-ID: <1188488606.15770.61.camel@ext1.frec.bull.fr>
+Subject: [PATCH 5/8][e2fsprogs] add new inline functions to get blocks
+	counters
+Date: Thu, 30 Aug 2007 17:39:30 +0200
+Message-ID: <1188488370.15770.52.camel@ext1.frec.bull.fr>
 References: <1188487715.15770.35.camel@ext1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -9,10 +10,10 @@ Content-Transfer-Encoding: 7bit
 To: linux-ext4 <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43872 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43824 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755760AbXH3N04 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 09:26:56 -0400
+	with ESMTP id S1755586AbXH3N0t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 09:26:49 -0400
 In-Reply-To: <1188487715.15770.35.camel@ext1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -20,226 +21,116 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Valerie Clement <valerie.clement@bull.net>
 
-This patch replaces all references to super->s_free_blocks_count by
-ext2_free_blocks_count(super) in preparation for 64-bit support.
+In preparation for 64-bit support, this patch introduces new inline functions
+to get block counts in the on-disk superblock.
+
+If the EXT4_FEATURE_INCOMPAT_64BIT flag is not set, the functions return the
+low 32 bits of block counters.
+
+Changes from the previous version:
+Replace macros definition by inline functions because some previous macros
+evaluate their argument more than once.
 
 Signed-off-by: Valerie Clement <valerie.clement@bull.net>
 ---
 
- e2fsck/pass5.c           |    6 +++---
- e2fsck/super.c           |    6 +++---
- e2fsck/unix.c            |    4 ++--
- lib/ext2fs/alloc_stats.c |    3 ++-
- lib/ext2fs/initialize.c  |    5 +++--
- misc/mke2fs.c            |    6 ++++--
- misc/tune2fs.c           |    3 ++-
- misc/util.c              |    3 ++-
- resize/resize2fs.c       |   19 +++++++++++--------
- 9 files changed, 32 insertions(+), 23 deletions(-)
+ lib/ext2fs/ext2fs.h |   72 +++++++++++++++++++++++++++++++++++++++++++--------
+ 1 files changed, 61 insertions(+), 11 deletions(-)
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 7e3f5ee..40612e2 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -291,13 +291,13 @@ redo_counts:
- 				ext2fs_unmark_valid(fs);
- 		}
- 	}
--	if (free_blocks != fs->super->s_free_blocks_count) {
-+	if (free_blocks != ext2_free_blocks_count(fs->super)) {
- 		pctx.group = 0;
--		pctx.blk = fs->super->s_free_blocks_count;
-+		pctx.blk = ext2_free_blocks_count(fs->super);
- 		pctx.blk2 = free_blocks;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 3aa9c8f..b60318c 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1011,6 +1011,13 @@ extern blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group);
+ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+ 				      struct ext2_inode *inode);
+ extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
++extern blk_t ext2_blocks_count(struct ext2_super_block *super);
++extern blk_t ext2_r_blocks_count(struct ext2_super_block *super);
++extern blk_t ext2_free_blocks_count(struct ext2_super_block *super);
++extern void ext2_blocks_count_set(struct ext2_super_block *super, blk_t blk);
++extern void ext2_r_blocks_count_set(struct ext2_super_block *super, blk_t blk);
++extern void ext2_free_blocks_count_set(struct ext2_super_block *super,
++					blk_t blk);
  
- 		if (fix_problem(ctx, PR_5_FREE_BLOCK_COUNT, &pctx)) {
--			fs->super->s_free_blocks_count = free_blocks;
-+			ext2_free_blocks_count_set(fs->super, free_blocks);
- 			ext2fs_mark_super_dirty(fs);
- 		} else
- 			ext2fs_unmark_valid(fs);
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index f7e4e89..5501ba9 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -630,18 +630,18 @@ void check_super_block(e2fsck_t ctx)
- 	 * inodes; if the filesystem is not unmounted cleanly, the
- 	 * global counts may not be accurate.
- 	 */
--	if ((free_blocks != sb->s_free_blocks_count) ||
-+	if ((free_blocks != ext2_free_blocks_count(sb)) ||
- 	    (free_inodes != sb->s_free_inodes_count)) {
- 		if (ctx->options & E2F_OPT_READONLY)
- 			ext2fs_unmark_valid(fs);
- 		else {
--			sb->s_free_blocks_count = free_blocks;
-+			ext2_free_blocks_count_set(sb, free_blocks);
- 			sb->s_free_inodes_count = free_inodes;
- 			ext2fs_mark_super_dirty(fs);
- 		}
- 	}
- 	
--	if ((sb->s_free_blocks_count > ext2_blocks_count(sb)) ||
-+	if ((ext2_free_blocks_count(sb) > ext2_blocks_count(sb)) ||
- 	    (sb->s_free_inodes_count > sb->s_inodes_count))
- 		ext2fs_unmark_valid(fs);
- 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 610712f..42037a4 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -112,7 +112,7 @@ static void show_stats(e2fsck_t	ctx)
- 		       fs->super->s_free_inodes_count);
- 	blocks = ext2_blocks_count(fs->super);
- 	blocks_used = (ext2_blocks_count(fs->super) -
--		       fs->super->s_free_blocks_count);
-+		       ext2_free_blocks_count(fs->super));
- 
- 	frag_percent = (10000 * ctx->fs_fragmented) / inodes_used;
- 	frag_percent = (frag_percent + 5) / 10;
-@@ -302,7 +302,7 @@ static void check_if_skip(e2fsck_t ctx)
- 	printf(_("%s: clean, %u/%u files, %u/%u blocks"), ctx->device_name,
- 	       fs->super->s_inodes_count - fs->super->s_free_inodes_count,
- 	       fs->super->s_inodes_count,
--	       ext2_blocks_count(fs->super) - fs->super->s_free_blocks_count,
-+	       ext2_blocks_count(fs->super) - ext2_free_blocks_count(fs->super),
- 	       ext2_blocks_count(fs->super));
- 	next_check = 100000;
- 	if (fs->super->s_max_mnt_count > 0) {
-diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
-index 4088f7b..8b0b964 100644
---- a/lib/ext2fs/alloc_stats.c
-+++ b/lib/ext2fs/alloc_stats.c
-@@ -46,7 +46,8 @@ void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse)
- 	else
- 		ext2fs_unmark_block_bitmap(fs->block_map, blk);
- 	fs->group_desc[group].bg_free_blocks_count -= inuse;
--	fs->super->s_free_blocks_count -= inuse;
-+	ext2_free_blocks_count_set(fs->super,
-+			ext2_free_blocks_count(fs->super) - inuse);
- 	ext2fs_mark_super_dirty(fs);
- 	ext2fs_mark_bb_dirty(fs);
- }
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 6969745..19fbaa9 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -366,11 +366,12 @@ ipg_retry:
- 	 * inode table have not been allocated (and in fact won't be
- 	 * by this routine), they are accounted for nevertheless.
- 	 */
--	super->s_free_blocks_count = 0;
-+	ext2_free_blocks_count_set(super, 0ULL);
- 	for (i = 0; i < fs->group_desc_count; i++) {
- 		numblocks = ext2fs_reserve_super_and_bgd(fs, i, fs->block_map);
- 
--		super->s_free_blocks_count += numblocks;
-+		ext2_free_blocks_count_set(super,
-+				ext2_free_blocks_count(super) + numblocks);
- 		fs->group_desc[i].bg_free_blocks_count = numblocks;
- 		fs->group_desc[i].bg_free_inodes_count =
- 			fs->super->s_inodes_per_group;
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 074c985..a4ee998 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -263,7 +263,8 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
- 				group_bad++;
- 				group = ext2fs_group_of_blk(fs, group_block+j);
- 				fs->group_desc[group].bg_free_blocks_count++;
--				fs->super->s_free_blocks_count++;
-+				ext2_free_blocks_count_set(fs->super,
-+					ext2_free_blocks_count(fs->super) + 1);
- 			}
- 		}
- 		group_block += fs->super->s_blocks_per_group;
-@@ -468,7 +469,8 @@ static void setup_lazy_bg(ext2_filsys fs)
- 			if (bg->bg_free_blocks_count == blks) {
- 				bg->bg_free_blocks_count = 0;
- 				bg->bg_flags |= EXT2_BG_BLOCK_UNINIT;
--				sb->s_free_blocks_count -= blks;
-+				ext2_free_blocks_count_set(sb,
-+					ext2_free_blocks_count(sb) - blks);
- 			}
- 		}
- 	}
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 2d3e3c0..a65129f 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -213,7 +213,8 @@ static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
- 	ext2fs_unmark_block_bitmap(fs->block_map,block);
- 	group = ext2fs_group_of_blk(fs, block);
- 	fs->group_desc[group].bg_free_blocks_count++;
--	fs->super->s_free_blocks_count++;
-+	ext2_free_blocks_count_set(fs->super,
-+			ext2_free_blocks_count(fs->super) + 1);
- 	return 0;
+ /*
+  * The actual inlined functions definitions themselves...
+@@ -1184,17 +1191,6 @@ _INLINE_ blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group)
+ 		(group * fs->super->s_blocks_per_group);
  }
  
-diff --git a/misc/util.c b/misc/util.c
-index 8fe505a..435396b 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -269,7 +269,8 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
- 				j_blocks);
- 			exit(1);
- 		}
--		if ((unsigned) j_blocks > fs->super->s_free_blocks_count / 2) {
-+		if ((unsigned) j_blocks > ext2_free_blocks_count(fs->super) / 2)
-+		{
- 			fputs(_("\nJournal size too big for filesystem.\n"),
- 			      stderr);
- 			exit(1);
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 6c37f77..ebd66d2 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -109,8 +109,8 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
- #ifdef RESIZE2FS_DEBUG
- 	if (rfs->flags & RESIZE_DEBUG_BMOVE)
- 		printf("Number of free blocks: %u/%u, Needed: %d\n",
--		       rfs->old_fs->super->s_free_blocks_count,
--		       rfs->new_fs->super->s_free_blocks_count,
-+		       ext2_free_blocks_count(rfs->old_fs->super),
-+		       ext2_free_blocks_count(rfs->new_fs->super),
- 		       rfs->needed_blocks);
+-/*
+- * Return the last block (inclusive) in a group
+- */
+-_INLINE_ blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group)
+-{
+-	return (group == fs->group_desc_count - 1 ?
+-		fs->super->s_blocks_count - 1 :
+-		ext2fs_group_first_block(fs, group) +
+-			(fs->super->s_blocks_per_group - 1));
+-}
+-
+ _INLINE_ blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+ 					struct ext2_inode *inode)
+ {
+@@ -1211,6 +1207,60 @@ _INLINE_ unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b)
+ 		return 0;
+ 	return ((a - 1) / b) + 1;
+ }
++
++_INLINE_ blk_t ext2_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_blocks_count +
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64)super->s_blocks_count_hi << 32 : 0);
++}
++
++_INLINE_ blk_t ext2_r_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_r_blocks_count +
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64)super->s_r_blocks_count_hi << 32 : 0);
++}
++
++_INLINE_ blk_t ext2_free_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_free_blocks_count +
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64)super->s_free_blocks_hi << 32 : 0);
++}
++
++_INLINE_ void ext2_blocks_count_set(struct ext2_super_block *super, blk_t blk)
++{
++	super->s_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_blocks_count_hi = (__u64) blk >> 32;
++}
++
++_INLINE_ void ext2_r_blocks_count_set(struct ext2_super_block *super, blk_t blk)
++{
++	super->s_r_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_r_blocks_count_hi = (__u64) blk >> 32;
++}
++
++_INLINE_ void ext2_free_blocks_count_set(struct ext2_super_block *super,
++					 blk_t blk)
++{
++	super->s_free_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_free_blocks_hi = (__u64) blk >> 32;
++}
++
++/*
++ * Return the last block (inclusive) in a group
++ */
++_INLINE_ blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group)
++{
++	return (group == fs->group_desc_count - 1 ?
++		fs->super->s_blocks_count - 1 :
++		ext2fs_group_first_block(fs, group) +
++			(fs->super->s_blocks_per_group - 1));
++}
+ #undef _INLINE_
  #endif
- 	
-@@ -242,11 +242,13 @@ retry:
- 	 */
- 	blk = ext2_blocks_count(old_fs->super);
- 	if (blk > ext2_blocks_count(fs->super))
--		fs->super->s_free_blocks_count -=
--			(blk - ext2_blocks_count(fs->super));
-+		ext2_free_blocks_count_set(fs->super,
-+			ext2_free_blocks_count(fs->super) -
-+			(blk - ext2_blocks_count(fs->super)));
- 	else
--		fs->super->s_free_blocks_count +=
--			(ext2_blocks_count(fs->super) - blk);
-+		ext2_free_blocks_count_set(fs->super,
-+			ext2_free_blocks_count(fs->super) +
-+			(ext2_blocks_count(fs->super) - blk));
  
- 	/*
- 	 * Adjust the number of reserved blocks
-@@ -407,7 +409,8 @@ retry:
- 		adjblocks += 2 + fs->inode_blocks_per_group;
- 		
- 		numblocks -= adjblocks;
--		fs->super->s_free_blocks_count -= adjblocks;
-+		ext2_free_blocks_count_set(fs->super,
-+				ext2_free_blocks_count(fs->super) - adjblocks);
- 		fs->super->s_free_inodes_count +=
- 			fs->super->s_inodes_per_group;
- 		fs->group_desc[i].bg_free_blocks_count = numblocks;
-@@ -1580,7 +1583,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
- 			group_free = 0;
- 		}
- 	}
--	fs->super->s_free_blocks_count = total_free;
-+	ext2_free_blocks_count_set(fs->super, total_free);
- 	
- 	/*
- 	 * Next, calculate the inode statistics
