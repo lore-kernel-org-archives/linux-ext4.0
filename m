@@ -1,7 +1,7 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [RFC 3/4] ext3: fix rec_len overflow with 64KB block size
-Date: Wed, 29 Aug 2007 17:48:10 -0700
-Message-ID: <1188434890.3799.79.camel@localhost.localdomain>
+Subject: [RFC 4/4]ext4: fix rec_len overflow with 64KB block size
+Date: Wed, 29 Aug 2007 17:48:19 -0700
+Message-ID: <1188434899.3799.80.camel@localhost.localdomain>
 References: <20070828190551.415127746@sgi.com>
 	 <20070828190735.292638294@sgi.com>
 	 <1188432669.3799.35.camel@localhost.localdomain>
@@ -12,79 +12,75 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-kernel@vger.kernel.org, adilger@clusterfs.com,
 	sho@tnes.nec.co.jp, ext4 development <linux-ext4@vger.kernel.org>
 To: clameter@sgi.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:55508 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761938AbXH3Ar4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Aug 2007 20:47:56 -0400
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762143AbXH3Asr@vger.kernel.org>
 In-Reply-To: <1188432669.3799.35.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-[3/4]  ext3: fix rec_len overflow
+[4/4]  ext4: fix rec_len overflow
          - prevent rec_len from overflow with 64KB blocksize
+
 
 Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
 ---
- fs/ext3/dir.c           |   13 ++++---
- fs/ext3/namei.c         |   88 +++++++++++++++++++++++++++++++++++++++---------
- include/linux/ext3_fs.h |    9 ++++
- 3 files changed, 91 insertions(+), 19 deletions(-)
+ fs/ext4/dir.c           |   11 ++++--
+ fs/ext4/namei.c         |   88 +++++++++++++++++++++++++++++++++++++++---------
+ include/linux/ext4_fs.h |    9 ++++
+ 3 files changed, 90 insertions(+), 18 deletions(-)
 
-Index: linux-2.6.23-rc3/fs/ext3/dir.c
+Index: linux-2.6.23-rc3/fs/ext4/dir.c
 ===================================================================
---- linux-2.6.23-rc3.orig/fs/ext3/dir.c	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/fs/ext3/dir.c	2007-08-29 15:40:06.000000000 -0700
-@@ -100,10 +100,11 @@ static int ext3_readdir(struct file * fi
+--- linux-2.6.23-rc3.orig/fs/ext4/dir.c	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext4/dir.c	2007-08-29 15:33:19.000000000 -0700
+@@ -100,10 +100,11 @@ static int ext4_readdir(struct file * fi
  	unsigned long offset;
  	int i, stored;
- 	struct ext3_dir_entry_2 *de;
+ 	struct ext4_dir_entry_2 *de;
 -	struct super_block *sb;
  	int err;
  	struct inode *inode = filp->f_path.dentry->d_inode;
- 	int ret = 0;
 +	struct super_block *sb = inode->i_sb;
+ 	int ret = 0;
 +	unsigned tail = sb->s_blocksize;
  
  	sb = inode->i_sb;
  
-@@ -167,8 +168,11 @@ revalidate:
+@@ -166,8 +167,11 @@ revalidate:
  		 * readdir(2), then we might be pointing to an invalid
  		 * dirent right now.  Scan from the start of the block
  		 * to make sure. */
--		if (filp->f_version != inode->i_version) {
--			for (i = 0; i < sb->s_blocksize && i < offset; ) {
-+		if (tail >  EXT3_DIR_MAX_REC_LEN) {
-+			tail = EXT3_DIR_MAX_REC_LEN;
++		if (tail >  EXT4_DIR_MAX_REC_LEN) {
++			tail = EXT4_DIR_MAX_REC_LEN;
 +		}
-+                if (filp->f_version != inode->i_version) {
+ 		if (filp->f_version != inode->i_version) {
+-			for (i = 0; i < sb->s_blocksize && i < offset; ) {
 +			for (i = 0; i < tail && i < offset; ) {
- 				de = (struct ext3_dir_entry_2 *)
+ 				de = (struct ext4_dir_entry_2 *)
  					(bh->b_data + i);
  				/* It's too expensive to do a full
-@@ -189,7 +193,7 @@ revalidate:
+@@ -188,7 +192,7 @@ revalidate:
  		}
  
  		while (!error && filp->f_pos < inode->i_size
 -		       && offset < sb->s_blocksize) {
 +		       && offset < tail) {
- 			de = (struct ext3_dir_entry_2 *) (bh->b_data + offset);
- 			if (!ext3_check_dir_entry ("ext3_readdir", inode, de,
+ 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
+ 			if (!ext4_check_dir_entry ("ext4_readdir", inode, de,
  						   bh, offset)) {
 @@ -225,6 +229,7 @@ revalidate:
  			}
  			filp->f_pos += le16_to_cpu(de->rec_len);
  		}
-+		filp->f_pos = EXT3_DIR_ADJUST_TAIL_OFFS(filp->f_pos, sb->s_blocksize);
++		filp->f_pos = EXT4_DIR_ADJUST_TAIL_OFFS(filp->f_pos, sb->s_blocksize);
  		offset = 0;
  		brelse (bh);
  	}
-Index: linux-2.6.23-rc3/fs/ext3/namei.c
+Index: linux-2.6.23-rc3/fs/ext4/namei.c
 ===================================================================
---- linux-2.6.23-rc3.orig/fs/ext3/namei.c	2007-08-12 21:25:24.000000000 -0700
-+++ linux-2.6.23-rc3/fs/ext3/namei.c	2007-08-29 15:30:10.000000000 -0700
+--- linux-2.6.23-rc3.orig/fs/ext4/namei.c	2007-08-28 11:08:48.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext4/namei.c	2007-08-29 15:30:22.000000000 -0700
 @@ -262,9 +262,13 @@ static struct stats dx_show_leaf(struct 
  	unsigned names = 0, space = 0;
  	char *base = (char *) de;
@@ -93,192 +89,192 @@ Index: linux-2.6.23-rc3/fs/ext3/namei.c
  
  	printk("names: ");
 -	while ((char *) de < base + size)
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
 +	while ((char *) de < base + tail)
  	{
  		if (de->inode)
  		{
-@@ -677,8 +681,12 @@ static int dx_make_map (struct ext3_dir_
+@@ -677,8 +681,12 @@ static int dx_make_map (struct ext4_dir_
  	int count = 0;
  	char *base = (char *) de;
  	struct dx_hash_info h = *hinfo;
 +	unsigned tail = size;
  
 -	while ((char *) de < base + size)
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
 +	while ((char *) de < base + tail)
  	{
  		if (de->name_len && de->inode) {
- 			ext3fs_dirhash(de->name, de->name_len, &h);
-@@ -775,9 +783,13 @@ static inline int search_dirblock(struct
+ 			ext4fs_dirhash(de->name, de->name_len, &h);
+@@ -773,9 +781,13 @@ static inline int search_dirblock(struct
  	int de_len;
  	const char *name = dentry->d_name.name;
  	int namelen = dentry->d_name.len;
 +	unsigned tail = dir->i_sb->s_blocksize;
  
- 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
 -	dlimit = bh->b_data + dir->i_sb->s_blocksize;
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
 +	dlimit = bh->b_data + tail;
  	while ((char *) de < dlimit) {
  		/* this code is executed quadratically often */
  		/* do minimal checking `by hand' */
-@@ -1115,6 +1127,9 @@ static struct ext3_dir_entry_2* dx_pack_
+@@ -1113,6 +1125,9 @@ static struct ext4_dir_entry_2* dx_pack_
  	unsigned rec_len = 0;
  
  	prev = to = de;
-+	if (size > EXT3_DIR_MAX_REC_LEN) {
-+		size = EXT3_DIR_MAX_REC_LEN;
++	if (size > EXT4_DIR_MAX_REC_LEN) {
++		size = EXT4_DIR_MAX_REC_LEN;
 +	}
  	while ((char*)de < base + size) {
- 		next = (struct ext3_dir_entry_2 *) ((char *) de +
+ 		next = (struct ext4_dir_entry_2 *) ((char *) de +
  						    le16_to_cpu(de->rec_len));
-@@ -1180,8 +1195,15 @@ static struct ext3_dir_entry_2 *do_split
+@@ -1178,8 +1193,15 @@ static struct ext4_dir_entry_2 *do_split
  	/* Fancy dance to stay within two buffers */
  	de2 = dx_move_dirents(data1, data2, map + split, count - split);
  	de = dx_pack_dirents(data1,blocksize);
 -	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
 -	de2->rec_len = cpu_to_le16(data2 + blocksize - (char *) de2);
-+	if (blocksize < EXT3_DIR_MAX_REC_LEN) {
++	if (blocksize < EXT4_DIR_MAX_REC_LEN) {
 +		de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
 +		de2->rec_len = cpu_to_le16(data2 + blocksize - (char *) de2);
 +	} else {
-+		de->rec_len = cpu_to_le16(data1 + EXT3_DIR_MAX_REC_LEN -
++		de->rec_len = cpu_to_le16(data1 + EXT4_DIR_MAX_REC_LEN -
 +							(char *) de);
-+		de2->rec_len = cpu_to_le16(data2 + EXT3_DIR_MAX_REC_LEN -
++		de2->rec_len = cpu_to_le16(data2 + EXT4_DIR_MAX_REC_LEN -
 +							(char *) de2);
 +	}
- 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data1, blocksize, 1));
- 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data2, blocksize, 1));
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data1, blocksize, 1));
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data2, blocksize, 1));
  
-@@ -1236,11 +1258,15 @@ static int add_dirent_to_buf(handle_t *h
+@@ -1234,11 +1256,15 @@ static int add_dirent_to_buf(handle_t *h
  	unsigned short	reclen;
  	int		nlen, rlen, err;
  	char		*top;
-+	unsigned	tail = dir->i_sb->s_blocksize;
++	unsigned        tail = dir->i_sb->s_blocksize;
  
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
- 	reclen = EXT3_DIR_REC_LEN(namelen);
+ 	reclen = EXT4_DIR_REC_LEN(namelen);
  	if (!de) {
- 		de = (struct ext3_dir_entry_2 *)bh->b_data;
+ 		de = (struct ext4_dir_entry_2 *)bh->b_data;
 -		top = bh->b_data + dir->i_sb->s_blocksize - reclen;
 +		top = bh->b_data + tail - reclen;
  		while ((char *) de <= top) {
- 			if (!ext3_check_dir_entry("ext3_add_entry", dir, de,
+ 			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
  						  bh, offset)) {
-@@ -1354,13 +1380,21 @@ static int make_indexed_dir(handle_t *ha
+@@ -1351,13 +1377,21 @@ static int make_indexed_dir(handle_t *ha
  	/* The 0th block becomes the root, move the dirents out */
  	fde = &root->dotdot;
- 	de = (struct ext3_dir_entry_2 *)((char *)fde + le16_to_cpu(fde->rec_len));
+ 	de = (struct ext4_dir_entry_2 *)((char *)fde + le16_to_cpu(fde->rec_len));
 -	len = ((char *) root) + blocksize - (char *) de;
-+	if (blocksize < EXT3_DIR_MAX_REC_LEN) {
++	if (blocksize < EXT4_DIR_MAX_REC_LEN) {
 +		len = ((char *) root) + blocksize - (char *) de;
 +	} else {
-+		len = ((char *) root) + EXT3_DIR_MAX_REC_LEN - (char *) de;
++		len = ((char *) root) + EXT4_DIR_MAX_REC_LEN - (char *) de;
 +	}
  	memcpy (data1, de, len);
- 	de = (struct ext3_dir_entry_2 *) data1;
+ 	de = (struct ext4_dir_entry_2 *) data1;
  	top = data1 + len;
  	while ((char *)(de2=(void*)de+le16_to_cpu(de->rec_len)) < top)
  		de = de2;
 -	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
-+	if (blocksize < EXT3_DIR_MAX_REC_LEN) {
++	if (blocksize < EXT4_DIR_MAX_REC_LEN) {
 +		de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
 +	} else {
-+		de->rec_len = cpu_to_le16(data1 + EXT3_DIR_MAX_REC_LEN - (char *) de);
++		de->rec_len = cpu_to_le16(data1 + EXT4_DIR_MAX_REC_LEN - (char *) de);
 +	}
  	/* Initialize the root; the dot dirents already exist */
- 	de = (struct ext3_dir_entry_2 *) (&root->dotdot);
- 	de->rec_len = cpu_to_le16(blocksize - EXT3_DIR_REC_LEN(2));
-@@ -1450,7 +1484,11 @@ static int ext3_add_entry (handle_t *han
+ 	de = (struct ext4_dir_entry_2 *) (&root->dotdot);
+ 	de->rec_len = cpu_to_le16(blocksize - EXT4_DIR_REC_LEN(2));
+@@ -1447,7 +1481,11 @@ static int ext4_add_entry (handle_t *han
  		return retval;
- 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
  	de->inode = 0;
 -	de->rec_len = cpu_to_le16(blocksize);
-+	if (blocksize < EXT3_DIR_MAX_REC_LEN) {
++	if (blocksize < EXT4_DIR_MAX_REC_LEN) {
 +		de->rec_len = cpu_to_le16(blocksize);
 +	} else {
-+		de->rec_len = cpu_to_le16(EXT3_DIR_MAX_REC_LEN);
++		de->rec_len = cpu_to_le16(EXT4_DIR_MAX_REC_LEN);
 +	}
  	return add_dirent_to_buf(handle, dentry, inode, de, bh);
  }
  
-@@ -1514,7 +1552,12 @@ static int ext3_dx_add_entry(handle_t *h
+@@ -1511,7 +1549,12 @@ static int ext4_dx_add_entry(handle_t *h
  			goto cleanup;
  		node2 = (struct dx_node *)(bh2->b_data);
  		entries2 = node2->entries;
 -		node2->fake.rec_len = cpu_to_le16(sb->s_blocksize);
-+		if (sb->s_blocksize < EXT3_DIR_MAX_REC_LEN) {
++		if (sb->s_blocksize < EXT4_DIR_MAX_REC_LEN) {
 +			node2->fake.rec_len = cpu_to_le16(sb->s_blocksize);
 +		} else {
 +			node2->fake.rec_len =
-+				cpu_to_le16(EXT3_DIR_MAX_REC_LEN);
++				cpu_to_le16(EXT4_DIR_MAX_REC_LEN);
 +		}
  		node2->fake.inode = 0;
  		BUFFER_TRACE(frame->bh, "get_write_access");
- 		err = ext3_journal_get_write_access(handle, frame->bh);
-@@ -1602,11 +1645,15 @@ static int ext3_delete_entry (handle_t *
+ 		err = ext4_journal_get_write_access(handle, frame->bh);
+@@ -1599,11 +1642,15 @@ static int ext4_delete_entry (handle_t *
  {
- 	struct ext3_dir_entry_2 * de, * pde;
+ 	struct ext4_dir_entry_2 * de, * pde;
  	int i;
 +	unsigned tail = bh->b_size;
  
  	i = 0;
  	pde = NULL;
- 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
 -	while (i < bh->b_size) {
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
 +	while (i < tail) {
- 		if (!ext3_check_dir_entry("ext3_delete_entry", dir, de, bh, i))
+ 		if (!ext4_check_dir_entry("ext4_delete_entry", dir, de, bh, i))
  			return -EIO;
  		if (de == de_del)  {
-@@ -1766,7 +1813,11 @@ retry:
- 	de = (struct ext3_dir_entry_2 *)
+@@ -1791,7 +1838,11 @@ retry:
+ 	de = (struct ext4_dir_entry_2 *)
  			((char *) de + le16_to_cpu(de->rec_len));
  	de->inode = cpu_to_le32(dir->i_ino);
--	de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
-+	if (inode->i_sb->s_blocksize < EXT3_DIR_MAX_REC_LEN) {
-+		de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
-+	} else {
-+		de->rec_len = cpu_to_le16(EXT3_DIR_MAX_REC_LEN-EXT3_DIR_REC_LEN(1));
+-	de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT4_DIR_REC_LEN(1));
++	if (inode->i_sb->s_blocksize < EXT4_DIR_MAX_REC_LEN) {
++		de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT4_DIR_REC_LEN(1));
++	} else  {   
++		de->rec_len = cpu_to_le16(EXT4_DIR_MAX_REC_LEN-EXT4_DIR_REC_LEN(1));
 +	}
  	de->name_len = 2;
  	strcpy (de->name, "..");
- 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
-@@ -1801,10 +1852,10 @@ static int empty_dir (struct inode * ino
+ 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
+@@ -1826,10 +1877,10 @@ static int empty_dir (struct inode * ino
  	unsigned long offset;
  	struct buffer_head * bh;
- 	struct ext3_dir_entry_2 * de, * de1;
+ 	struct ext4_dir_entry_2 * de, * de1;
 -	struct super_block * sb;
 +	struct super_block * sb = inode->i_sb;
  	int err = 0;
 +	unsigned tail = sb->s_blocksize;
  
 -	sb = inode->i_sb;
- 	if (inode->i_size < EXT3_DIR_REC_LEN(1) + EXT3_DIR_REC_LEN(2) ||
- 	    !(bh = ext3_bread (NULL, inode, 0, 0, &err))) {
+ 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
+ 	    !(bh = ext4_bread (NULL, inode, 0, 0, &err))) {
  		if (err)
-@@ -1831,11 +1882,17 @@ static int empty_dir (struct inode * ino
+@@ -1856,11 +1907,17 @@ static int empty_dir (struct inode * ino
  		return 1;
  	}
  	offset = le16_to_cpu(de->rec_len) + le16_to_cpu(de1->rec_len);
-+	if (offset == EXT3_DIR_MAX_REC_LEN) {
-+		offset += sb->s_blocksize - EXT3_DIR_MAX_REC_LEN;
++	if (offset == EXT4_DIR_MAX_REC_LEN) {
++		offset += sb->s_blocksize - EXT4_DIR_MAX_REC_LEN;
 +	}
- 	de = (struct ext3_dir_entry_2 *)
+ 	de = (struct ext4_dir_entry_2 *)
  			((char *) de1 + le16_to_cpu(de1->rec_len));
-+	if (tail > EXT3_DIR_MAX_REC_LEN) {
-+		tail = EXT3_DIR_MAX_REC_LEN;
++	if (tail > EXT4_DIR_MAX_REC_LEN) {
++		tail = EXT4_DIR_MAX_REC_LEN;
 +	}
  	while (offset < inode->i_size ) {
  		if (!bh ||
@@ -286,31 +282,31 @@ Index: linux-2.6.23-rc3/fs/ext3/namei.c
 +			(void *) de >= (void *) (bh->b_data + tail)) {
  			err = 0;
  			brelse (bh);
- 			bh = ext3_bread (NULL, inode,
-@@ -1862,6 +1919,7 @@ static int empty_dir (struct inode * ino
+ 			bh = ext4_bread (NULL, inode,
+@@ -1887,6 +1944,7 @@ static int empty_dir (struct inode * ino
  			return 0;
  		}
  		offset += le16_to_cpu(de->rec_len);
-+		offset = EXT3_DIR_ADJUST_TAIL_OFFS(offset, sb->s_blocksize);
- 		de = (struct ext3_dir_entry_2 *)
++		offset = EXT4_DIR_ADJUST_TAIL_OFFS(offset, sb->s_blocksize);
+ 		de = (struct ext4_dir_entry_2 *)
  				((char *) de + le16_to_cpu(de->rec_len));
  	}
-Index: linux-2.6.23-rc3/include/linux/ext3_fs.h
+Index: linux-2.6.23-rc3/include/linux/ext4_fs.h
 ===================================================================
---- linux-2.6.23-rc3.orig/include/linux/ext3_fs.h	2007-08-29 15:22:29.000000000 -0700
-+++ linux-2.6.23-rc3/include/linux/ext3_fs.h	2007-08-29 15:30:10.000000000 -0700
-@@ -660,6 +660,15 @@ struct ext3_dir_entry_2 {
- #define EXT3_DIR_ROUND			(EXT3_DIR_PAD - 1)
- #define EXT3_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT3_DIR_ROUND) & \
- 					 ~EXT3_DIR_ROUND)
-+#define EXT3_DIR_MAX_REC_LEN		65532
+--- linux-2.6.23-rc3.orig/include/linux/ext4_fs.h	2007-08-29 15:22:29.000000000 -0700
++++ linux-2.6.23-rc3/include/linux/ext4_fs.h	2007-08-29 15:30:22.000000000 -0700
+@@ -834,6 +834,15 @@ struct ext4_dir_entry_2 {
+ #define EXT4_DIR_ROUND			(EXT4_DIR_PAD - 1)
+ #define EXT4_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT4_DIR_ROUND) & \
+ 					 ~EXT4_DIR_ROUND)
++#define	EXT4_DIR_MAX_REC_LEN		65532
 +
 +/*
 + * Align a tail offset to the end of a directory block
 + */
-+#define EXT3_DIR_ADJUST_TAIL_OFFS(offs, bsize) \
-+	((((offs) & ((bsize) -1)) == EXT3_DIR_MAX_REC_LEN) ? \
-+	((offs) + (bsize) - EXT3_DIR_MAX_REC_LEN):(offs))
++#define EXT4_DIR_ADJUST_TAIL_OFFS(offs, bsize) \
++	((((offs) & ((bsize) -1)) == EXT4_DIR_MAX_REC_LEN) ? \
++	((offs) + (bsize) - EXT4_DIR_MAX_REC_LEN):(offs))
 +
  /*
   * Hash Tree Directory indexing
