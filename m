@@ -1,35 +1,27 @@
-From: "Cyril Plisko" <cyril.plisko@mountall.com>
-Subject: Re: ZFS, XFS, and EXT4 compared
-Date: Thu, 30 Aug 2007 09:25:04 +0300
-Message-ID: <c7dddeaa0708292325l4006775aq827b80117048638@mail.gmail.com>
+From: mike <mike503@gmail.com>
+Subject: Re: [zfs-discuss] ZFS, XFS, and EXT4 compared
+Date: Wed, 29 Aug 2007 23:27:58 -0700
+Message-ID: <bd9320b30708292327u26f30c75j8e34b9fa1584371f@mail.gmail.com>
 References: <1188454611.23311.13.camel@toonses.gghcwest.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: zfs-discuss@opensolaris.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+Cc: zfs-discuss@opensolaris.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
 To: "Jeffrey W. Baker" <jwbaker@acm.org>
-Return-path: <zfs-discuss-bounces@opensolaris.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from nz-out-0506.google.com ([64.233.162.235]:35922 "EHLO
+	nz-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751559AbXH3G2A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 02:28:00 -0400
+Received: by nz-out-0506.google.com with SMTP id s18so343124nze
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2007 23:27:59 -0700 (PDT)
 In-Reply-To: <1188454611.23311.13.camel@toonses.gghcwest.com>
 Content-Disposition: inline
-List-Unsubscribe: <http://mail.opensolaris.org/mailman/listinfo/zfs-discuss>,
-	<mailto:zfs-discuss-request@opensolaris.org?subject=unsubscribe>
-List-Archive: <http://mail.opensolaris.org/pipermail/zfs-discuss>
-List-Post: <mailto:zfs-discuss@opensolaris.org>
-List-Help: <mailto:zfs-discuss-request@opensolaris.org?subject=help>
-List-Subscribe: <http://mail.opensolaris.org/mailman/listinfo/zfs-discuss>,
-	<mailto:zfs-discuss-request@opensolaris.org?subject=subscribe>
-Sender: zfs-discuss-bounces@opensolaris.org
-Errors-To: zfs-discuss-bounces@opensolaris.org
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jeffrey,
-
-it would be interesting to see your zpool layout info as well.
-It can significantly influence the results obtained in the benchmarks.
-
-
-
-On 8/30/07, Jeffrey W. Baker <jwbaker@acm.org> wrote:
+On 8/29/07, Jeffrey W. Baker <jwbaker@acm.org> wrote:
 > I have a lot of people whispering "zfs" in my virtual ear these days,
 > and at the same time I have an irrational attachment to xfs based
 > entirely on its lack of the 32000 subdirectory limit.  I'm not afraid of
@@ -45,20 +37,12 @@ On 8/30/07, Jeffrey W. Baker <jwbaker@acm.org> wrote:
 >
 > It would be nice if mke2fs would copy xfs's code for optimal layout on a
 > software raid.  The mkfs defaults and the mdadm defaults interact badly.
->
-> Postmark is somewhat bogus benchmark with some obvious quantization
-> problems.
->
-> Regards,
-> jwb
->
-> _______________________________________________
-> zfs-discuss mailing list
-> zfs-discuss@opensolaris.org
-> http://mail.opensolaris.org/mailman/listinfo/zfs-discuss
->
 
+this is cool to see. however, performance wouldn't be my reason for
+moving to zfs. the inline checksumming and all that is what i want. if
+someone could get nearly incorruptable filesystems (or just a linux
+version of zfs... btrfs looks promising) this would be even better.
 
--- 
-Regards,
-        Cyril
+sadly ext4+swraid isn't as good, i might have tried that since waiting
+the right hardware support for zfs for me seems to be unknown at this
+point.
