@@ -1,45 +1,59 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 3/8][e2fsprogs] add new -D <desc-size> option to mkfs
-Date: Thu, 30 Aug 2007 14:51:45 -0600
-Message-ID: <20070830205145.GK5377@schatzie.adilger.int>
-References: <1188487715.15770.35.camel@ext1.frec.bull.fr> <1188488221.15770.46.camel@ext1.frec.bull.fr> <1188501151.6594.32.camel@localhost.localdomain>
+From: Nathan Scott <nscott@aconex.com>
+Subject: Re: ZFS, XFS, and EXT4 compared
+Date: Fri, 31 Aug 2007 08:42:31 +1000
+Message-ID: <1188513751.24970.109.camel@edge.yarra.acx>
+References: <1188454611.23311.13.camel@toonses.gghcwest.com>
+	 <1188457666.24970.94.camel@edge.yarra.acx>
+	 <20070830132002.GA4086@infradead.org>
+Reply-To: nscott@aconex.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Valerie Clement <valerie.clement@bull.net>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: "Jeffrey W. Baker" <jwbaker@acm.org>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:53839 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751030AbXH3UvW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 16:51:22 -0400
-Content-Disposition: inline
-In-Reply-To: <1188501151.6594.32.camel@localhost.localdomain>
+Received: from mail.app.aconex.com ([203.89.192.138]:43589 "EHLO
+	postoffice.aconex.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757230AbXH3WlU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 18:41:20 -0400
+In-Reply-To: <20070830132002.GA4086@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Aug 30, 2007  12:12 -0700, Mingming Cao wrote:
-> On Thu, 2007-08-30 at 17:37 +0200, Valerie Clement wrote:
-> > This patch adds a new option -D <descriptor-size> to mkfs to allow creating
-> > ext4 filesystems with larger group descriptor size.
-> > 
-> > By default, the group descriptor size is 32 bytes.
-> > To support 64-bit physical block numbers and thus to be able to use filesystems
-> >  > 16TB, the group descriptor size must be increased to 64 bytes.
+[culled zfs-discuss from CC, since its subscriber-only]
+
+On Thu, 2007-08-30 at 14:20 +0100, Christoph Hellwig wrote:
 > 
-> Could you explain a bit more why we need this option? It seems to me we
-> could make the block group descriptor size to 64bytes whenever creating
-> a ext4 filesystem by default. Is there any case we need to create ext4
-> with old 32 bytes block group descriptors?
+> On Thu, Aug 30, 2007 at 05:07:46PM +1000, Nathan Scott wrote:
+> > To improve metadata performance, you have many options with XFS
+> (which
+> > ones are useful depends on the type of metadata workload) - you can
+> try
+> > a v2 format log, and mount with "-o logbsize=256k", try increasing
+> the
+> > directory block size (e.g. mkfs.xfs -nsize=16k, etc), and also the
+> log
+> > size (mkfs.xfs -lsize=XXXXXXb).
+> 
+> Okay, these suggestions are one too often now.  v2 log and large
+> logs/log
+> buffers are the almost universal suggestions, and we really need to
+> make
+> these defaults.
 
-Because we will only have a single tool "mke2fs", and it should be able
-to format filesystems for all kernels.  Also, it may be desirable to
-make the descriptor larger for whatever reason (e.g. testing some new
-feature).
+Possibly.  Far more importantly for XFS, there really needs to be some
+way for RAID drivers to say "even though I support write barriers, its
+not a good idea for filesystems to enable write barriers by default on
+me".  Enabling write barriers everywhere, by default, seems to have a
+far worse impact than any mkfs/mount option tweaking.
 
-Cheers, Andreas
+>   XFS is already the laughing stock of the Linux community
+> due to it's absurdely bad default settings.
+
+Oh, _thats_ what everyone's laughing at?
+
+cheers.
+
 --
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+Nathan
