@@ -1,35 +1,42 @@
-From: Christoph Lameter <clameter@sgi.com>
-Subject: Re: [RFC 1/4] Large Blocksize support for Ext2/3/4
-Date: Wed, 29 Aug 2007 17:59:58 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0708291758520.4670@schroedinger.engr.sgi.com>
-References: <20070828190551.415127746@sgi.com>  <20070828190735.292638294@sgi.com>
-  <1188432669.3799.35.camel@localhost.localdomain> <1188434857.3799.76.camel@localhost.localdomain>
+From: "Jeffrey W. Baker" <jwbaker@acm.org>
+Subject: ZFS, XFS, and EXT4 compared
+Date: Wed, 29 Aug 2007 23:16:51 -0700
+Message-ID: <1188454611.23311.13.camel@toonses.gghcwest.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, adilger@clusterfs.com,
-	sho@tnes.nec.co.jp, ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:51223 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757804AbXH3A77 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Aug 2007 20:59:59 -0400
-In-Reply-To: <1188434857.3799.76.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: zfs-discuss@opensolaris.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+Return-path: <zfs-discuss-bounces@opensolaris.org>
+List-Unsubscribe: <http://mail.opensolaris.org/mailman/listinfo/zfs-discuss>,
+	<mailto:zfs-discuss-request@opensolaris.org?subject=unsubscribe>
+List-Archive: <http://mail.opensolaris.org/pipermail/zfs-discuss>
+List-Post: <mailto:zfs-discuss@opensolaris.org>
+List-Help: <mailto:zfs-discuss-request@opensolaris.org?subject=help>
+List-Subscribe: <http://mail.opensolaris.org/mailman/listinfo/zfs-discuss>,
+	<mailto:zfs-discuss-request@opensolaris.org?subject=subscribe>
+Sender: zfs-discuss-bounces@opensolaris.org
+Errors-To: zfs-discuss-bounces@opensolaris.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 29 Aug 2007, Mingming Cao wrote:
+I have a lot of people whispering "zfs" in my virtual ear these days,
+and at the same time I have an irrational attachment to xfs based
+entirely on its lack of the 32000 subdirectory limit.  I'm not afraid of
+ext4's newness, since really a lot of that stuff has been in Lustre for
+years.  So a-benchmarking I went.  Results at the bottom:
 
-> It's quite simple to support large block size in ext2/3/4, mostly just
-> enlarge the block size limit.  But it is NOT possible to have 64kB
-> blocksize on ext2/3/4 without some changes to the directory handling
-> code.  The reason is that an empty 64kB directory block would have a
-> rec_len == (__u16)2^16 == 0, and this would cause an error to be hit in
-> the filesystem.  The proposed solution is to put 2 empty records in such
-> a directory, or to special-case an impossible value like rec_len =
-> 0xffff to handle this. 
+http://tastic.brillig.org/~jwb/zfs-xfs-ext4.html
 
-Ahh. Good.
+Short version: ext4 is awesome.  zfs has absurdly fast metadata
+operations but falls apart on sequential transfer.  xfs has great
+sequential transfer but really bad metadata ops, like 3 minutes to tar
+up the kernel.
 
-I could add the path to the large blocksize patchset?
+It would be nice if mke2fs would copy xfs's code for optimal layout on a
+software raid.  The mkfs defaults and the mdadm defaults interact badly.
+
+Postmark is somewhat bogus benchmark with some obvious quantization
+problems.
+
+Regards,
+jwb
