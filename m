@@ -1,123 +1,61 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: ZFS, XFS, and EXT4 compared
-Date: Thu, 30 Aug 2007 08:37:47 -0500
-Message-ID: <20070830083747.018cfe8a@gara>
-References: <1188454611.23311.13.camel@toonses.gghcwest.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: [PATCH 1/8][e2fsprogs] use existing function
+	ext2fs_group_first_block()
+Date: Thu, 30 Aug 2007 18:20:50 +0200
+Message-ID: <1188490850.15770.63.camel@ext1.frec.bull.fr>
+References: <1188487715.15770.35.camel@ext1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: zfs-discuss@opensolaris.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
-To: "Jeffrey W. Baker" <jwbaker@acm.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:43196 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753772AbXH3Nhp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 09:37:45 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7UDbhBF027014
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2007 09:37:43 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l7UDbhlO449684
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2007 07:37:43 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7UDbg8j004253
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2007 07:37:42 -0600
-In-Reply-To: <1188454611.23311.13.camel@toonses.gghcwest.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57609 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759946AbXH3OCX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2007 10:02:23 -0400
+In-Reply-To: <1188487715.15770.35.camel@ext1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 29 Aug 2007 23:16:51 -0700
-"Jeffrey W. Baker" <jwbaker@acm.org> wrote:
 
-Nice comparisons.
+From: Valerie Clement <valerie.clement@bull.net>
 
-> I have a lot of people whispering "zfs" in my virtual ear these days,
-> and at the same time I have an irrational attachment to xfs based
-> entirely on its lack of the 32000 subdirectory limit.  I'm not afraid of
+Replace piece of code by call to the existing function,
+i.e. ext2fs_group_first_block().
 
-The 32000 subdir limit should be fixed on the latest rc kernels.
+Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+---
 
-> ext4's newness, since really a lot of that stuff has been in Lustre for
-> years.  So a-benchmarking I went.  Results at the bottom:
-> 
-> http://tastic.brillig.org/~jwb/zfs-xfs-ext4.html
+ lib/ext2fs/closefs.c |    3 +--
+ lib/ext2fs/openfs.c  |    3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-FFSB:
-Could you send the patch to fix FFSB Solaris build?  I should probably
-update the Sourceforge version so that it built out of the box.
-
-I'm also curious about your choices in the FFSB profiles you created.
-Specifically, the very short run time and doing fsync after every file
-close.  When using FFSB, I usually run with a large run time (usually
-600 seconds) to make sure that we do enough IO to get a stable
-result.  Running longer means that we also use more of the disk
-storage and our results are not base on doing IO to just the beginning
-of the disk.  When running for that long period of time, the fsync flag
-is not required since we do enough reads and writes to cause memory
-pressure and guarantee IO going to disk.  Nothing wrong in what you
-did, but I wonder how it would affect the results of these runs.
-
-The agefs options you use are also interesting since you only utilize a
-very small percentage of your filesystem.  Also note that since create
-and append weight are very heavy compare to deletes, the desired
-utilization would be reach very quickly and without that much
-fragmentation.  Again, nothing wrong here, just very interested in your
-perspective in selecting these setting for your profile.
-
-Postmark:
-
-I've been looking at the postmark results and I'm becoming more convince
-that the meta-data results in ZFS may be artificially high due to the
-nature of the workload.  For one thing,  I find it very interesting
-(e.i. odd) that 9050KB/s reads and 28360KB/s writes shows up multiple
-times even across filesystems.  The data set on postmark is also very
-limited in size and the run times are small enough that it is difficult
-to get an idea of sustained meta-data performance on any of the
-filesystems.  Base on the ZFS numbers, it seems that there is hardly
-any IO being done on the ZFS case given the random nature of the
-workload and the high numbers it's achieving.
-
-In short, I don't think postmark is a very good workload to sustain ZFS
-claim as the meta-data king.  It may very well be the case, but I would
-like to see that proven with another workload.  One that actually show
-sustained meta-data performance across a fairly large fileset would be
-preferred.  FFSB could be use simulate a meta-data intensive workload
-as well and it has better control over the fileset size and run time to
-make the results more interesting. 
-
-Don't mean to invalidate the Postmark results, just merely pointing out
-a possible error in the assessment of the meta-data performance of ZFS.
-I say possible since it's still unknown if another workload will be
-able to validate these results.
-
-General:
-Did you gathered CPU statistics when running these benchmarks?  For
-some environments, having the ratio filesystem performance vs CPU
-utilization would be good information to have since some workloads are
-CPU sensitive and being 20% faster while consuming 50% more CPU may not
-necessarily be a good thing.  While this may be less of an issue in the
-future since CPU performance seems to be increasing at a much faster
-pace than IO and disk performance, it would still be another
-interesting data point.
-
-> 
-> Short version: ext4 is awesome.  zfs has absurdly fast metadata
-> operations but falls apart on sequential transfer.  xfs has great
-> sequential transfer but really bad metadata ops, like 3 minutes to tar
-> up the kernel.
-> 
-> It would be nice if mke2fs would copy xfs's code for optimal layout on a
-> software raid.  The mkfs defaults and the mdadm defaults interact badly.
->
-> Postmark is somewhat bogus benchmark with some obvious quantization
-> problems.
-
-Ah...  Guess you agree with me about the postmark results validity. ;)
-
-> Regards,
-> jwb
-> 
-
-
--JRS
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 474e00e..f780e80 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -57,8 +57,7 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
+ 	int	numblocks, has_super;
+ 	int	old_desc_blocks;
+ 
+-	group_block = fs->super->s_first_data_block +
+-		(group * fs->super->s_blocks_per_group);
++	group_block = ext2fs_group_first_block(fs, group);
+ 
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+ 		old_desc_blocks = fs->super->s_first_meta_bg;
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 55cc077..8a369c3 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -42,8 +42,7 @@ blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
+ 	bg = (fs->blocksize / sizeof (struct ext2_group_desc)) * i;
+ 	if (ext2fs_bg_has_super(fs, bg))
+ 		has_super = 1;
+-	ret_blk = (fs->super->s_first_data_block + has_super + 
+-		   (bg * fs->super->s_blocks_per_group));
++	ret_blk = ext2fs_group_first_block(fs, bg) + has_super;
+ 	/*
+ 	 * If group_block is not the normal value, we're trying to use
+ 	 * the backup group descriptors and superblock --- so use the
