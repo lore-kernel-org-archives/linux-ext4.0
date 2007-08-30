@@ -1,88 +1,160 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH V2] fix mballoc oopses on mkdir
-Date: Wed, 29 Aug 2007 14:01:47 -0700
-Message-ID: <1188421307.3799.32.camel@localhost.localdomain>
-References: <46D39776.2090103@redhat.com> <46D3A390.5000202@redhat.com>
-	 <46D3B1AE.40408@redhat.com>
+Subject: [RFC 1/4] Large Blocksize support for Ext2/3/4
+Date: Wed, 29 Aug 2007 17:47:37 -0700
+Message-ID: <1188434857.3799.76.camel@localhost.localdomain>
+References: <20070828190551.415127746@sgi.com>
+	 <20070828190735.292638294@sgi.com>
+	 <1188432669.3799.35.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>, alex@clusterfs.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:36896 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754649AbXH2VBj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Aug 2007 17:01:39 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7TL2usC018198
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2007 17:02:56 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l7TL1Xxu568690
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2007 17:01:33 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l7TL1WKO003262
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2007 17:01:33 -0400
-In-Reply-To: <46D3B1AE.40408@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: adilger@clusterfs.com, sho@tnes.nec.co.jp,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: clameter@sgi.com, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1188432669.3799.35.camel@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-08-28 at 00:25 -0500, Eric Sandeen wrote:
-> Ugh. brain clearly not fully engaged... here we go:
-> 
-> ------------------
-> 
-> Tried out Ted's git tree + all pending patches today, and 
-> immediately oopsed on a mkdir thanks to this in 
-> ext4_mb_new_group_pa()
-> 
-> 	BUG_ON(!S_ISREG(ac->ac_inode->i_mode));
-> 
-> (there are 54 BUGs and BUG_ONs in this file...!)
-> 
-> I think something like this patch is needed?
-> 
-
-Thanks for catching this and the fix.  I saw the same kernel oops today
-when rum mballoc on fsstress (mkdir). I just added this fix to the patch
-queue with some comments.
-
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> 
-> Index: ext4.git/fs/ext4/extents.c
-> ===================================================================
-> --- ext4.git.orig/fs/ext4/extents.c
-> +++ ext4.git/fs/ext4/extents.c
-> @@ -2535,7 +2535,10 @@ int ext4_ext_get_blocks(handle_t *handle
->  	ar.goal = ext4_ext_find_goal(inode, path, iblock);
->  	ar.logical = iblock;
->  	ar.len = allocated;
-> -	ar.flags = EXT4_MB_HINT_DATA;
-> +	if (S_ISREG(inode->i_mode))
-> +		ar.flags = EXT4_MB_HINT_DATA;
-> +	else
-> +		ar.flags = 0;
-
-I see. We set the flags to zero here to avoid doing in-core
-preallocation for directory files later. 
-
-Well, I am not sure whether it's worth the effort to support in-core
-preallocation for directory files. But I don't see hard reason we cannot
-do this. My understanding is: this is the new in-core preallocation
-which does a should not depend on extents or any on-disk format changes.
-
-Alex, any comments?
+The next 4 patches support large block size (up to PAGESIZE, max 64KB)
+for ext2/3/4, originally from Takashi Sato.
+http://marc.info/?l=linux-ext4&m=115768873518400&w=2
 
 
-Mingming
+It's quite simple to support large block size in ext2/3/4, mostly just
+enlarge the block size limit.  But it is NOT possible to have 64kB
+blocksize on ext2/3/4 without some changes to the directory handling
+code.  The reason is that an empty 64kB directory block would have a
+rec_len == (__u16)2^16 == 0, and this would cause an error to be hit in
+the filesystem.  The proposed solution is to put 2 empty records in such
+a directory, or to special-case an impossible value like rec_len =
+0xffff to handle this. 
 
->  	newblock = ext4_mb_new_blocks(handle, &ar, &err);
->  	if (!newblock)
->  		goto out2;
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+The Patch-set consists of the following 4 patches.
+  [1/4]  ext2/3/4: enlarge blocksize
+         - Allow blocksize up to pagesize
+
+  [2/4]  ext2: fix rec_len overflow
+         - prevent rec_len from overflow with 64KB blocksize
+
+  [3/4]  ext3: fix rec_len overflow
+         - prevent rec_len from overflow with 64KB blocksize
+
+  [4/4]  ext4: fix rec_len overflow
+         - prevent rec_len from overflow with 64KB blocksize
+
+Just rebase to 2.6.23-rc4 and against the ext4 patch queue. Compile tested only. 
+
+Next steps:
+Need a e2fsprogs changes to able test this feature. As mkfs needs to be
+educated not assuming rec_len to be blocksize all the time.
+Will try it with Christoph Lameter's large block patch next.
+
+
+Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+---
+ fs/ext2/super.c         |    2 +-
+ fs/ext3/super.c         |    5 ++++-
+ fs/ext4/super.c         |    5 +++++
+ include/linux/ext2_fs.h |    4 ++--
+ include/linux/ext3_fs.h |    4 ++--
+ include/linux/ext4_fs.h |    4 ++--
+ 6 files changed, 16 insertions(+), 8 deletions(-)
+
+Index: linux-2.6.23-rc3/fs/ext2/super.c
+===================================================================
+--- linux-2.6.23-rc3.orig/fs/ext2/super.c	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext2/super.c	2007-08-29 15:22:29.000000000 -0700
+@@ -775,7 +775,7 @@ static int ext2_fill_super(struct super_
+ 		brelse(bh);
+ 
+ 		if (!sb_set_blocksize(sb, blocksize)) {
+-			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
++			printk(KERN_ERR "EXT2-fs: bad blocksize %d.\n", blocksize);
+ 			goto failed_sbi;
+ 		}
+ 
+Index: linux-2.6.23-rc3/fs/ext3/super.c
+===================================================================
+--- linux-2.6.23-rc3.orig/fs/ext3/super.c	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext3/super.c	2007-08-29 15:22:29.000000000 -0700
+@@ -1549,7 +1549,10 @@ static int ext3_fill_super (struct super
+ 		}
+ 
+ 		brelse (bh);
+-		sb_set_blocksize(sb, blocksize);
++		if (!sb_set_blocksize(sb, blocksize)) {
++			printk(KERN_ERR "EXT3-fs: bad blocksize %d.\n", blocksize);
++			goto out_fail;
++		}
+ 		logic_sb_block = (sb_block * EXT3_MIN_BLOCK_SIZE) / blocksize;
+ 		offset = (sb_block * EXT3_MIN_BLOCK_SIZE) % blocksize;
+ 		bh = sb_bread(sb, logic_sb_block);
+Index: linux-2.6.23-rc3/fs/ext4/super.c
+===================================================================
+--- linux-2.6.23-rc3.orig/fs/ext4/super.c	2007-08-28 11:09:40.000000000 -0700
++++ linux-2.6.23-rc3/fs/ext4/super.c	2007-08-29 15:24:08.000000000 -0700
+@@ -1626,6 +1626,11 @@ static int ext4_fill_super (struct super
+ 		goto out_fail;
+ 	}
+ 
++	if (!sb_set_blocksize(sb, blocksize)) {
++		printk(KERN_ERR "EXT4-fs: bad blocksize %d.\n", blocksize);
++		goto out_fail;
++	}
++
+ 	/*
+ 	 * The ext4 superblock will not be buffer aligned for other than 1kB
+ 	 * block sizes.  We need to calculate the offset from buffer start.
+Index: linux-2.6.23-rc3/include/linux/ext2_fs.h
+===================================================================
+--- linux-2.6.23-rc3.orig/include/linux/ext2_fs.h	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/include/linux/ext2_fs.h	2007-08-29 15:22:29.000000000 -0700
+@@ -86,8 +86,8 @@ static inline struct ext2_sb_info *EXT2_
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT2_MIN_BLOCK_SIZE		1024
+-#define	EXT2_MAX_BLOCK_SIZE		4096
+-#define EXT2_MIN_BLOCK_LOG_SIZE		  10
++#define EXT2_MAX_BLOCK_SIZE		65536
++#define EXT2_MIN_BLOCK_LOG_SIZE		10
+ #ifdef __KERNEL__
+ # define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
+Index: linux-2.6.23-rc3/include/linux/ext3_fs.h
+===================================================================
+--- linux-2.6.23-rc3.orig/include/linux/ext3_fs.h	2007-08-12 21:25:24.000000000 -0700
++++ linux-2.6.23-rc3/include/linux/ext3_fs.h	2007-08-29 15:22:29.000000000 -0700
+@@ -76,8 +76,8 @@
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT3_MIN_BLOCK_SIZE		1024
+-#define	EXT3_MAX_BLOCK_SIZE		4096
+-#define EXT3_MIN_BLOCK_LOG_SIZE		  10
++#define	EXT3_MAX_BLOCK_SIZE		65536
++#define EXT3_MIN_BLOCK_LOG_SIZE		10
+ #ifdef __KERNEL__
+ # define EXT3_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
+Index: linux-2.6.23-rc3/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.23-rc3.orig/include/linux/ext4_fs.h	2007-08-28 11:09:40.000000000 -0700
++++ linux-2.6.23-rc3/include/linux/ext4_fs.h	2007-08-29 15:22:29.000000000 -0700
+@@ -104,8 +104,8 @@ struct ext4_allocation_request {
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT4_MIN_BLOCK_SIZE		1024
+-#define	EXT4_MAX_BLOCK_SIZE		4096
+-#define EXT4_MIN_BLOCK_LOG_SIZE		  10
++#define	EXT4_MAX_BLOCK_SIZE		65536
++#define EXT4_MIN_BLOCK_LOG_SIZE		10
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
+
+
