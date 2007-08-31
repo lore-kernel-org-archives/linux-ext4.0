@@ -1,106 +1,80 @@
-From: FNST-Wang Chen <wangchen@cn.fujitsu.com>
-Subject: Re: [PATCH] ext3: Fix not initialized hash info in ext3_dx_find_entry()
-Date: Fri, 31 Aug 2007 09:34:39 +0800
-Message-ID: <46D7702F.6000607@cn.fujitsu.com>
-References: <00ee01c7eb14$051e3ed0$0201a8c0@pinkpig> <20070830152949.GE10160@thunk.org>
+From: Girish Shilamkar <girish@clusterfs.com>
+Subject: Re: jbd2_journal_commit_transaction oops
+Date: Fri, 31 Aug 2007 14:51:06 +0530
+Message-ID: <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
+References: <46D7097F.4020501@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Wang Chen <ellre923@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Avantika Mathur <mathur@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [222.73.24.84] ([222.73.24.84]:58193 "EHLO song.cn.fujitsu.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752346AbXHaBet (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Aug 2007 21:34:49 -0400
-In-Reply-To: <20070830152949.GE10160@thunk.org>
+Received: from mail.clusterfs.com ([74.0.229.162]:34400 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757178AbXHaJTB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Aug 2007 05:19:01 -0400
+In-Reply-To: <46D7097F.4020501@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Agree, thanks.
+Hi Avantika,
+	From initial code review I think oops in crc32_be is caused as
+bh->b_data passed to the function is NULL. Most probably something might
+have gone wrong in jbd2_journal_write_metadata_buffer() making bh->data
+= 0.
+Does the error go away, when run without journal_checksum patch/option ?
 
-Theodore Tso said the following on 2007-8-30 23:29:
-> On Thu, Aug 30, 2007 at 10:42:33PM +0800, Wang Chen wrote:
->  =20
->> +               if (dentry){
->> +                       ext3fs_dirhash(dentry->d_name.name,=20
->> dentry->d_name.len,
->> +                                      &hinfo);
->> +               } else {
->> +                       return NULL;
->> +               }
->>    =20
->
-> It's really not necessary to call ext3fs_dirhash(), since we don't
-> need the hash value for the '.' and '..' case.  So here's a better
-> patch....
->
->      	      	    	    	- Ted
->
-> >From c2ff518e6f529f1d8b627f0e8be5d6f8af32747f Mon Sep 17 00:00:00 20=
-01
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Thu, 30 Aug 2007 11:26:24 -0400
-> Subject: [PATCH] ext3: Fix use of uninitialized variable in ext3_dx_f=
-ind_entry()
->
-> In the case where we are looking up '.' and '..', those files are
-> always in the first directory block, so we don't need worry about the
-> hash value.  This avoids a lint warning message, as a minor cleanup.
->
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext3/namei.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index 1586807..c278fc7 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -932,7 +932,7 @@ static struct buffer_head * ext3_dx_find_entry(st=
-ruct dentry *dentry,
->  {
->  	struct super_block * sb;
->  	struct dx_hash_info	hinfo;
-> -	u32 hash;
-> +	u32 hash =3D 0;
->  	struct dx_frame frames[2], *frame;
->  	struct ext3_dir_entry_2 *de, *top;
->  	struct buffer_head *bh;
-> @@ -947,13 +947,13 @@ static struct buffer_head * ext3_dx_find_entry(=
-struct dentry *dentry,
->  	if (namelen > 2 || name[0] !=3D '.'||(name[1] !=3D '.' && name[1] !=
-=3D '\0')){
->  		if (!(frame =3D dx_probe(dentry, NULL, &hinfo, frames, err)))
->  			return NULL;
-> +		hash =3D hinfo.hash;
->  	} else {
->  		frame =3D frames;
->  		frame->bh =3D NULL;			/* for dx_release() */
->  		frame->at =3D (struct dx_entry *)frames;	/* hack for zero entry*/
->  		dx_set_block(frame->at, 0);		/* dx_root block is 0 */
->  	}
-> -	hash =3D hinfo.hash;
->  	do {
->  		block =3D dx_get_block(frame->at);
->  		if (!(bh =3D ext3_bread (NULL,dir, block, 0, err)))
->  =20
+Regards,
+Girish.
 
-
---=20
-Best Regards,
-A new email address of FJWAN is launched from Apr.1 2007.
-The updated address is: wangchen@cn.fujitsu.com
---------------------------------------------------
-Wang Chen
-Development Dept.I
-Nanjing Fujitsu Nanda Software Tech. Co., Ltd.(FNST)
-8/F., Civil Defense Building, No.189 Guangzhou Road,
-Nanjing, 210029, China
-TEL=EF=BC=9A+86+25-86630566-850
-=46UJITSU INTERNAL=EF=BC=9A79955-850
-=46AX=EF=BC=9A+86+25-83317685
-MAIL=EF=BC=9Awangchen@cn.fujitsu.com
---------------------------------------------------
+On Thu, 2007-08-30 at 11:16 -0700, Avantika Mathur wrote:
+> Hi Girish,
+> 
+> When running fsstress on an x86 machine, I hit the kernel oops below.  The ext4-patch-queue is being tested including the journal checksum patches
+> I have mounted with -o delalloc,mballoc,data=writeback,journal_checksum
+> 
+> I did not get a chance to look in detail; but it looks like a journal issue.  Do you know what the issue might be?
+> 
+> 
+> BUG: unable to handle kernel NULL pointer dereference at virtual address 00000000
+>  printing eip:
+> c118ba5d
+> *pdpt = 000000002560a001
+> *pde = 0000000000000000
+> Oops: 0000 [#1]
+> SMP 
+> Modules linked in:
+> CPU:    1
+> EIP:    0060:[<c118ba5d>]    Not tainted VLI
+> EFLAGS: 00010257   (2.6.23-rc4-autokern1 #1)
+> EIP is at crc32_be+0x3d/0x9c
+> eax: 7e78a276   ebx: 76a2787e   ecx: 00000400   edx: 00000000
+> esi: 00000000   edi: 00000000   ebp: f56e5200   esp: e61f9e90
+> ds: 007b   es: 007b   fs: 00d8  gs: 0000  ss: 0068
+> Process kjournald2 (pid: 5388, ti=e61f8000 task=e3efc000 task.ti=e61f8000)
+> Stack: ef5fffc0 00000016 c10c762d 0000055e 00000000 00000000 00001000 00000000 
+>        f50e3e80 7e78a276 00000008 00000000 00000544 eb46aab4 eb46aabc 00000155 
+>        f585f800 e1e1c968 00000000 eb059428 0000055e 00000000 00000000 e3efc000 
+> Call Trace:
+>  [<c10c762d>] jbd2_journal_commit_transaction+0x92a/0x128d
+>  [<c1029e51>] autoremove_wake_function+0x0/0x33
+>  [<c1029e51>] autoremove_wake_function+0x0/0x33
+>  [<c10214f4>] try_to_del_timer_sync+0x42/0x48
+>  [<c10ca4fd>] kjournald2+0x130/0x307
+>  [<c1029e51>] autoremove_wake_function+0x0/0x33
+>  [<c129171c>] __sched_text_start+0x364/0x3ff
+>  [<c1029e51>] autoremove_wake_function+0x0/0x33
+>  [<c10ca3cd>] kjournald2+0x0/0x307
+>  [<c1029a27>] kthread+0x34/0x55
+>  [<c10299f3>] kthread+0x0/0x55
+>  [<c1003173>] kernel_thread_helper+0x7/0x10
+>  =======================
+> Code: 42 30 d8 0f b6 c0 c1 eb 08 33 1c 85 e0 ae 2a c1 49 74 05 f6 c2 03 75 e5 83 f9 03 76 4c 89 ce 83 ea 04 83 e6 03 c1 e9 02 83 c2 04 <33> 1a 0f b6 c3 c1 eb 08 33 1c 85 e0 ae 2a c1 0f b6 c3 c1 eb 08 
+> EIP: [<c118ba5d>] crc32_be+0x3d/0x9c SS:ESP 0068:e61f9e90
+> -- 0:conmux-control -- time-stamp -- Aug/30/07  0:36:46 --
+> -- 0:conmux-control -- time-stamp -- Aug/30/07  5:56:32 --
+> (bot:conmon-payload) disconnected
+> 
+> 
+> thanks,
+> Avantika
