@@ -1,65 +1,66 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [RFC 2/2] JBD: blocks reservation fix for large block support
-Date: Fri, 31 Aug 2007 17:12:21 -0700
-Message-ID: <1188605541.3837.53.camel@localhost.localdomain>
-References: <20070828190551.415127746@sgi.com>
-	 <20070828190735.292638294@sgi.com>
-	 <1188432669.3799.35.camel@localhost.localdomain>
-	 <1188434857.3799.76.camel@localhost.localdomain>
+Subject: Re: [PATCH 3/8][e2fsprogs] add new -D <desc-size> option to mkfs
+Date: Fri, 31 Aug 2007 17:25:00 -0700
+Message-ID: <1188606300.15123.9.camel@localhost.localdomain>
+References: <1188487715.15770.35.camel@ext1.frec.bull.fr>
+	 <1188488221.15770.46.camel@ext1.frec.bull.fr>
+	 <1188501151.6594.32.camel@localhost.localdomain>
+	 <20070830205145.GK5377@schatzie.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: adilger@clusterfs.com, sho@tnes.nec.co.jp,
-	linux-kernel@vger.kernel.org, clameter@sgi.com,
-	linux-fsdevel@vger.kernel.org
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752794AbXIAAMl@vger.kernel.org>
-In-Reply-To: <1188434857.3799.76.camel@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:60459 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751143AbXIAAYr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 Aug 2007 20:24:47 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l810Oj78027759
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Aug 2007 20:24:46 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l810OjT1617272
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Aug 2007 20:24:45 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l810Oj4A008889
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Aug 2007 20:24:45 -0400
+In-Reply-To: <20070830205145.GK5377@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The blocks per page could be less or quals to 1 with the large block support in VM.
-The patch fixed the way to calculate the number of blocks to reserve in journal in the
-case blocksize > pagesize.
+On Thu, 2007-08-30 at 14:51 -0600, Andreas Dilger wrote:
+> On Aug 30, 2007  12:12 -0700, Mingming Cao wrote:
+> > On Thu, 2007-08-30 at 17:37 +0200, Valerie Clement wrote:
+> > > This patch adds a new option -D <descriptor-size> to mkfs to allow creating
+> > > ext4 filesystems with larger group descriptor size.
+> > > 
+> > > By default, the group descriptor size is 32 bytes.
+> > > To support 64-bit physical block numbers and thus to be able to use filesystems
+> > >  > 16TB, the group descriptor size must be increased to 64 bytes.
+> > 
+> > Could you explain a bit more why we need this option? It seems to me we
+> > could make the block group descriptor size to 64bytes whenever creating
+> > a ext4 filesystem by default. Is there any case we need to create ext4
+> > with old 32 bytes block group descriptors?
+> 
+> Because we will only have a single tool "mke2fs", and it should be able
+> to format filesystems for all kernels.
 
+I agree. I was wondering why not make the 64bytes block group descriptor
+for ext4 as default. So by default we don't need to specify the size
+when creating ext4 fs.
 
+> Also, it may be desirable to
+> make the descriptor larger for whatever reason (e.g. testing some new
+> feature).
+> 
+Okay, that could be useful for ext4. Don't feel ext2/3 needs that
+option.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Regards,
 
-Index: my2.6/fs/jbd/journal.c
-===================================================================
---- my2.6.orig/fs/jbd/journal.c	2007-08-31 13:27:16.000000000 -0700
-+++ my2.6/fs/jbd/journal.c	2007-08-31 13:28:18.000000000 -0700
-@@ -1611,7 +1611,12 @@ void journal_ack_err(journal_t *journal)
- 
- int journal_blocks_per_page(struct inode *inode)
- {
--	return 1 << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
-+	int bits = PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits;
-+
-+	if (bits > 0)
-+		return 1 << bits;
-+	else
-+		return 1;
- }
- 
- /*
-Index: my2.6/fs/jbd2/journal.c
-===================================================================
---- my2.6.orig/fs/jbd2/journal.c	2007-08-31 13:32:21.000000000 -0700
-+++ my2.6/fs/jbd2/journal.c	2007-08-31 13:32:30.000000000 -0700
-@@ -1612,7 +1612,12 @@ void jbd2_journal_ack_err(journal_t *jou
- 
- int jbd2_journal_blocks_per_page(struct inode *inode)
- {
--	return 1 << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
-+	int bits = PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits;
-+
-+	if (bits > 0)
-+		return 1 << bits;
-+	else
-+		return 1;
- }
- 
- /*
+Mingming
