@@ -1,85 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [RFC] System calls for online defrag
-Date: Mon, 3 Sep 2007 20:03:29 +0200
-Message-ID: <20070903180329.GK7524@duck.suse.cz>
+From: Christoph Lameter <clameter@sgi.com>
+Subject: Re: [RFC 1/2] JBD: slab management support for large block(>8k)
+Date: Mon, 3 Sep 2007 12:31:49 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0709031230190.2131@schroedinger.engr.sgi.com>
+References: <20070828190551.415127746@sgi.com> <20070828190735.292638294@sgi.com>
+ <1188432669.3799.35.camel@localhost.localdomain> <1188434857.3799.76.camel@localhost.localdomain>
+ <1188605538.3837.51.camel@localhost.localdomain> <20070901183922.GA12907@infradead.org>
+ <Pine.LNX.4.64.0709020438490.28046@schroedinger.engr.sgi.com>
+ <20070902152801.GA19962@infradead.org> <Pine.LNX.4.64.0709030051370.31366@schroedinger.engr.sgi.com>
+ <20070903134043.GB28962@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: linux-fsdevel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Mingming Cao <cmm@us.ibm.com>, linux-fsdevel@vger.kernel.org,
+	adilger@clusterfs.com, sho@tnes.nec.co.jp,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:39308 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755153AbXICRn6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Sep 2007 13:43:58 -0400
-Content-Disposition: inline
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:50536 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751844AbXICTbu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Sep 2007 15:31:50 -0400
+In-Reply-To: <20070903134043.GB28962@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+On Mon, 3 Sep 2007, Christoph Hellwig wrote:
 
-  I've finally got to writing up some proposal how could look system calls
-allowing for online filesystem defragmentation and generally moving file
-blocks around for improving performance. Comments are welcome.
+> > How about getting rid of the slabs there and use kmalloc? Kmalloc in mm 
+> > (and therfore hopefully 2.6.24) will convert kmallocs > PAGE_SIZE to page 
+> > allocator calls. Not sure what to do about the 1k and 2k requests though.
+> 
+> The problem is that we must never use kmalloc pages, so we always need
+> to request a page or more for these.  Better to use get_free_page directly,
+> that's how I fixed it in XFS a while ago.
 
-								Honza
+So you'd be fine with replacing the allocs with
 
-int sys_movedata(int datafd, int spacefd, loff_t from, size_t len)
-   The call takes blocks used to carry data starting at offset @from of length
-@len in @spacefd and places them instead of corresponding blocks in @datafd.
-Data is copied from @datafd to newly spliced data blocks. If @spacefd contains
-a hole in the specified interval, a hole is created also in @datafd in the
-corresponding place. A data block from @spacefd and also replace a hole in
-@datafd - zeros are copied to such data block. @from and @len should be
-multiples of filesystem block size (otherwise EINVAL is returned). Data blocks
-from @datafd in the interval are released, a hole is created in @spacefd. The
-call returns either 0 (success) or an error code.
-  Another possibility would be to just replace data blocks without any copying
-of data (that would have to be done by the caller to before calling
-sys_movedata()). The problem here is how to avoid data loss if someone writes
-to the file after userspace has copied the data and before sys_movedata() is
-called.
-
-
-
-ssize_t sys_allocate(int fd, int mode, loff_t goal, ssize_t len)
-  Allocate new space to file @fd at offset defined by file position.  Both file
-offset and @len should be a multiple of filesystem block size. The whole
-interval must not contain any allocated blocks. If the interval extends past
-EOF, the file size is changed accordingly.  @mode defines a way the filesystem
-will search for blocks. @mode is a bitwise OR of the following flags:
-  ALLOC_FIXED_START - allocation must start at @goal; if not specified, @goal
-is just a hint where to start an allocation
-  ALLOC_FIXED_LEN - allocate exactly space for @len; if not specified, upto
-@len bytes may be allocated.
-  ALLOC_CONTINGUOUS - allocation must be one continguous run of blocks
-
-  If the allocation succeeds, number of allocated bytes is returned. Otherwise
-an error code is returned.
-
-
-
-The following syscall may be also useful - although I'm not completely
-convinced this is the right way to go. But on the other hand, disk optimizer
-should have a way to find out about free space so that he can decide what and
-where is beneficial to move.
-
-int sys_get_free_blocks(const char *fs, loff_t start, loff_t end, int count,
-  struct alloc_extent *space)
-
-  Get a description of free space on a filesystem between @start and @end (in
-bytes, should be blocksize aligned). @fs is a path where the filesystem is
-mounted (I guess it's better than dev_t, isn't it?). @space is a pointer to an
-array of 'struct alloc_extent'. In each struct alloc_extent is stored
-description of one extent of free space. Upto @count extents are stored.
-
-struct alloc_extent {
-  loff_t start;
-  size_t len;
-};
-  Function returns a number of extents stored. Note that the result of the
-function is unreliable as the space can be already allocated by the time system
-call returns.
-
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+get_free_pages(GFP_xxx, get_order(size)) ?
