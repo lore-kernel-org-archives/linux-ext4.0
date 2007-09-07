@@ -1,79 +1,65 @@
-From: Eric <erpo41@gmail.com>
-Subject: Re: [RFC] System calls for online defrag
-Date: Wed, 05 Sep 2007 14:31:47 -0700
-Message-ID: <1189027907.13189.3.camel@eric-laptop>
-References: <20070903180329.GK7524@duck.suse.cz>
-	 <20070904180153.GF5377@schatzie.adilger.int>
-	 <20070905142438.GB24462@duck.suse.cz>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Bad performance results with the latest git patches
+Date: Fri, 07 Sep 2007 14:24:47 +0200
+Message-ID: <46E1430F.3050702@bull.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-3/4e5YMjuKNgMeiUnxkC"
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0910.google.com ([209.85.198.187]:22364 "EHLO
-	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752574AbXIEVbx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2007 17:31:53 -0400
-Received: by rv-out-0910.google.com with SMTP id k20so1558313rvb
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Sep 2007 14:31:53 -0700 (PDT)
-In-Reply-To: <20070905142438.GB24462@duck.suse.cz>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50030 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965296AbXIGMYi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Sep 2007 08:24:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi Alex,
 
---=-3/4e5YMjuKNgMeiUnxkC
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+running ffsb tests (large files creation) on my system with the latest=20
+ext4 git patches against a 2.6.23-rc4 kernel, I've got very bad=20
+performance results: the I/O throughput measured on an ext4 filesystem=20
+is ten times lower than those measured on an XFS filesystem on the same=
+=20
+machine.
+I have mounted the ext4 filesytem with mballoc, delalloc and=20
+data=3Dwriteback options.
 
-On Wed, 2007-09-05 at 16:24 +0200, Jan Kara wrote:
-> On Tue 04-09-07 12:01:53, Andreas Dilger wrote:
-> > On Sep 03, 2007  20:03 +0200, Jan Kara wrote:
-> > >   I've finally got to writing up some proposal how could look system =
-calls
-> > > allowing for online filesystem defragmentation and generally moving f=
-ile
-> > > blocks around for improving performance. Comments are welcome.
-> > >=20
-> > > int sys_movedata(int datafd, int spacefd, loff_t from, size_t len)
-> > >    The call takes blocks used to carry data starting at offset @from =
-of length
-> > > @len in @spacefd and places them instead of corresponding blocks in @=
-datafd.
-> >=20
-> > Calling these "@spacefd" and "@datafd" is a bit confusing.  How about "=
-@srcfd"
-> > and "@tgtfd" instead?  For defragmentation, are you planning to have @d=
-atafd
-> > be the "real" inode and "@spacefd" be the temporary inode with defragge=
-d data,
-> > or the reverse?  It isn't really clear.
->   The idea behind the names was that you move data from @datafd into bloc=
-ks
-> provided by @spacefd. Calling it @srcfd and @tgtfd has the problem whethe=
-r
-> you mean source of data or source of blocks...
+dmesg output shows plenty of error messages like this:
 
-FWIW, I think @srcfd and @tgtfd are clearer.
+EXT4-fs error (device sdc): ext4_ext_search_right: bad header in inode=20
+#3745797: unexpected eh_depth - magic f30a, entries 81, max 84(0), dept=
+h=20
+0(1)
+EXT4-fs error (device sdc): ext4_ext_search_right: bad header in inode=20
+#3745797: unexpected eh_depth - magic f30a, entries 81, max 84(0), dept=
+h=20
+0(1)
+EXT4-fs error (device sdc): ext4_ext_search_right: bad header in inode=20
+#3745797: unexpected eh_depth - magic f30a, entries 81, max 84(0), dept=
+h=20
+0(1)
+EXT4-fs error (device sdc): ext4_ext_search_right: bad header in inode=20
+#3745797: unexpected eh_depth - magic f30a, entries 81, max 84(0), dept=
+h=20
+0(1)
 
-When I think about changing the block on the disk that's associated with
-a block's worth of data in a file, I think about scooping the file data
-out of the source block and setting it down in the destination block. I
-do not think about pulling the on-disk block out from under the data and
-replacing it with a different on-disk block.
 
-Cheers,
+If I removed the second call to ext4_ext_check_header() in the=20
+ext4_ext_search_right() function, the problem disappears, no more error=
+=20
+messages and better throughput values close to those measured on the XF=
+S=20
+filesystem.
+It seems that the depth value passed in argument is buggy.
 
-Eric
+In a previous line,
+   while (++depth < path->p_depth) {
+the depth value is incremented even if we don't enter the loop. Is it=20
+the problem ?
 
---=-3/4e5YMjuKNgMeiUnxkC
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQBG3yBBe2L37HVup3ARAhBiAJsFAthP97yK1br0SnB1kiiTar0HQACfaxz8
-me8FzU+TXemlzXiFMjzGUY0=
-=8LII
------END PGP SIGNATURE-----
-
---=-3/4e5YMjuKNgMeiUnxkC--
+Could you check this?
+Thanks,
+   Val=E9rie
