@@ -1,46 +1,72 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: Bad performance results with the latest git patches
-Date: Mon, 10 Sep 2007 13:39:40 +0200
-Message-ID: <46E52CFC.7080900@bull.net>
-References: <46E1430F.3050702@bull.net> <20070907213716.GH5377@schatzie.adilger.int>
+From: Alex Tomas <alex@clusterfs.com>
+Subject: Re: [RFC] mballoc patches
+Date: Mon, 10 Sep 2007 16:29:52 +0400
+Message-ID: <46E538C0.7090205@clusterfs.com>
+References: <1187000545401-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <46C08902.7020709@linux.vnet.ibm.com> <46CB527B.5090300@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@clusterfs.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:53145 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932207AbXIJLj3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2007 07:39:29 -0400
-In-Reply-To: <20070907213716.GH5377@schatzie.adilger.int>
+Received: from mail.rialcom.ru ([80.71.244.250]:46943 "EHLO mail.rialcom.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757829AbXIJMaj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Sep 2007 08:30:39 -0400
+In-Reply-To: <46CB527B.5090300@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> The problem was in the recently-added "extent sanity checks", and has
-> also been fixed:
->=20
-> Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-> Signed-off-by: Alex Tomas <alex@clusterfs.com>
-> Signed-off-by: Johann Lombardi <johann@clusterfs.com>
->=20
-> diff -u linux-2.6.18.8/fs/ext3/extents.c linux-2.6.18.8/fs/ext3/exten=
-ts.c
-> --- linux-2.6.18.8/fs/ext3/extents.c	2007-06-20 18:54:00.000000000 +0=
-200
-> +++ linux-2.6.18.8/fs/ext3/extents.c	2007-06-20 18:54:00.000000000 +0=
-200
-> @@ -1069,7 +1069,7 @@ ext3_ext_search_right(struct inode *inode,
->  		if (bh =3D=3D NULL)
->  			return -EIO;
->  		eh =3D ext_block_hdr(bh);
-> -		if (ext3_ext_check_header(inode, eh, depth)) {
-> +		if (ext3_ext_check_header(inode, eh, path->p_depth - depth)) {
->  			brelse(bh);
->  			return -EIO;
->  		}
->=20
-Thanks Andreas, I confirm this patch fixes the problem.
-   Val=E9rie
+Eric Sandeen wrote:
+> +/*
+> + * default stripe size = 1MB
+> + */
+> +#define MB_DEFAULT_STRIPE              256
+
+agree, though seems we'd better make it blocksize-insensitive
+
+> 
+> Units?  Doesn't seem to matter anyway as it's never referenced.
+> 
+> +       /* tunables */
+> +       unsigned long s_mb_factor;
+> +       unsigned long s_stripe;
+> +       unsigned long s_mb_small_req;
+> +       unsigned long s_mb_large_req;
+> +       unsigned long s_mb_max_to_scan;
+> +       unsigned long s_mb_min_to_scan;
+> 
+> could we get some comments here as to what these are, and what units?
+
+OK, I'll do as well as policy (and tunning) description.
+
+> 
+> Same is true many places... for example
+> 
+> +static int mb_find_extent(struct ext4_buddy *e3b, int order, int block,
+> +                               int needed, struct ext4_free_extent *ex)
+> 
+> how many "what" are needed?
+
+well, blocks :)
+
+> And perhaps an addition of the new mount options to
+> Documentation/fs/ext4.txt would be good.
+> 
+> +#define EXT4_MB_BITMAP(e3b)    ((e3b)->bd_bitmap)
+> +#define EXT4_MB_BUDDY(e3b)     ((e3b)->bd_buddy)
+> 
+> For the sake of consistency should these (and others) be e4b?
+
+OK
+
+> 
+> Also there are a *lot* of BUGs and BUG_ONs added in this patch... are
+> none of these recoverable?
+
+well, I'll review the code in this regard again, but most of them are not.
+not that I like kernel panics, but BUG_ON() are very helpful to maintain
+code, especially in long-term.
+
+thanks, Alex
