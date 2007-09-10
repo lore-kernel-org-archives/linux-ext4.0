@@ -1,150 +1,80 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: [RESEND][PATCH] dir_index: error out instead of BUG on corrupt
-	hash dir limit
-Date: Sun, 9 Sep 2007 14:19:33 +0100
-Message-ID: <20070909131933.GA15229@dastardly.plus.com>
-References: <46D8D30B.6090703@redhat.com>
+From: KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+Subject: [PATCH] add page->mapping handling interface [12/35] changes in
+ EXT3
+Date: Mon, 10 Sep 2007 18:59:07 +0900
+Message-ID: <20070910185907.36ac6079.kamezawa.hiroyu@jp.fujitsu.com>
+References: <20070910184048.286dfc6e.kamezawa.hiroyu@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+	"nickpiggin@yahoo.com.au" <nickpiggin@yahoo.com.au>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>
+To: KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:3868 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754790AbXIIN0R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 9 Sep 2007 09:26:17 -0400
-Content-Disposition: inline
-In-Reply-To: <46D8D30B.6090703@redhat.com>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:57865 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755234AbXIJJ5v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2007 05:57:51 -0400
+In-Reply-To: <20070910184048.286dfc6e.kamezawa.hiroyu@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Eric,
+Change page->mapping handling in EXT3
 
-On Fri, Aug 31, 2007 at 09:48:43PM -0500, Eric Sandeen wrote:
-> (resend, this one got lost?  Got an acked-by from Andreas
-> last go-round)
+Signed-off-by:	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
 
-Sorry I missed this first time around. I came up with a very similar
-fix recently, following a gentoo bug report.  However there are a few
-more asserts later that you aren't currently handling. Below is an
-incremental patch on top of yours that converts them too. Note that one
-of them is in an if (0) block and maybe should be left alone -- what do
-you think?
+---
+ fs/ext3/inode.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-I tested all the changed code paths, except the if (0) one, using a
-utility that appropriately corrupts ext3 images. The source code is
-attached to the gentoo bug report here:
-
-http://bugs.gentoo.org/show_bug.cgi?id=183207
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-
-Index: linux-2.6-git/fs/ext3/namei.c
+Index: test-2.6.23-rc4-mm1/fs/ext3/inode.c
 ===================================================================
---- linux-2.6-git.orig/fs/ext3/namei.c
-+++ linux-2.6-git/fs/ext3/namei.c
-@@ -393,7 +393,15 @@ dx_probe(struct dentry *dentry, struct i
- 	while (1)
- 	{
- 		count = dx_get_count(entries);
--		assert (count && count <= dx_get_limit(entries));
-+		if (!count || count > dx_get_limit(entries)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "Corrupt limit in dir inode %ld\n",
-+				     dir->i_ino);
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
-+
- 		p = entries + 1;
- 		q = entries + count - 1;
- 		while (p <= q)
-@@ -419,7 +427,11 @@ dx_probe(struct dentry *dentry, struct i
- 					break;
- 				}
- 			}
--			assert (at == p - 1);
-+			if (at != p - 1) {
-+				brelse(bh);
-+				*err = ERR_BAD_DX_DIR;
-+				goto fail2;
-+			}
- 		}
+--- test-2.6.23-rc4-mm1.orig/fs/ext3/inode.c
++++ test-2.6.23-rc4-mm1/fs/ext3/inode.c
+@@ -1484,7 +1484,7 @@ static int journal_dirty_data_fn(handle_
+ static int ext3_ordered_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = page_inode(page);
+ 	struct buffer_head *page_bufs;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+@@ -1550,7 +1550,7 @@ out_fail:
+ static int ext3_writeback_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = page_inode(page);
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
+@@ -1583,7 +1583,7 @@ out_fail:
+ static int ext3_journalled_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
++	struct inode *inode = page_inode(page);
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
+@@ -1653,7 +1653,7 @@ ext3_readpages(struct file *file, struct
  
- 		at = p - 1;
-@@ -431,8 +443,16 @@ dx_probe(struct dentry *dentry, struct i
- 		if (!(bh = ext3_bread (NULL,dir, dx_get_block(at), 0, err)))
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
--		assert (dx_get_limit(entries) == dx_node_limit (dir));
-+		if (dx_get_limit(entries) != dx_node_limit (dir)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "Corrupt limit in dir inode %ld\n",
-+				     dir->i_ino);
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
- 		frame++;
-+		frame->bh = NULL;
- 	}
- fail2:
- 	while (frame >= frame_in) {
-Index: linux-2.6-git/fs/ext4/namei.c
-===================================================================
---- linux-2.6-git.orig/fs/ext4/namei.c
-+++ linux-2.6-git/fs/ext4/namei.c
-@@ -393,7 +393,15 @@ dx_probe(struct dentry *dentry, struct i
- 	while (1)
- 	{
- 		count = dx_get_count(entries);
--		assert (count && count <= dx_get_limit(entries));
-+		if (!count || count > dx_get_limit(entries)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "Corrupt limit in dir inode %ld\n",
-+				     dir->i_ino);
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
-+
- 		p = entries + 1;
- 		q = entries + count - 1;
- 		while (p <= q)
-@@ -419,7 +427,11 @@ dx_probe(struct dentry *dentry, struct i
- 					break;
- 				}
- 			}
--			assert (at == p - 1);
-+			if (at != p - 1) {
-+				brelse(bh);
-+				*err = ERR_BAD_DX_DIR;
-+				goto fail2;
-+			}
- 		}
+ static void ext3_invalidatepage(struct page *page, unsigned long offset)
+ {
+-	journal_t *journal = EXT3_JOURNAL(page->mapping->host);
++	journal_t *journal = EXT3_JOURNAL(page_inode(page));
  
- 		at = p - 1;
-@@ -431,8 +443,16 @@ dx_probe(struct dentry *dentry, struct i
- 		if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err)))
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
--		assert (dx_get_limit(entries) == dx_node_limit (dir));
-+		if (dx_get_limit(entries) != dx_node_limit (dir)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "Corrupt limit in dir inode %ld\n",
-+				     dir->i_ino);
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
- 		frame++;
-+		frame->bh = NULL;
- 	}
- fail2:
- 	while (frame >= frame_in) {
-
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+ 	/*
+ 	 * If it's a full truncate we just forget about the pending dirtying
+@@ -1666,7 +1666,7 @@ static void ext3_invalidatepage(struct p
+ 
+ static int ext3_releasepage(struct page *page, gfp_t wait)
+ {
+-	journal_t *journal = EXT3_JOURNAL(page->mapping->host);
++	journal_t *journal = EXT3_JOURNAL(page_inode(page));
+ 
+ 	WARN_ON(PageChecked(page));
+ 	if (!page_has_buffers(page))
