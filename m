@@ -1,190 +1,406 @@
-From: KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
-Subject: [PATCH] add page->mapping handling interface [13/35] changes in
- EXT4
-Date: Mon, 10 Sep 2007 19:00:06 +0900
-Message-ID: <20070910190006.e2970b76.kamezawa.hiroyu@jp.fujitsu.com>
-References: <20070910184048.286dfc6e.kamezawa.hiroyu@jp.fujitsu.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: mballoc review
+Date: Mon, 10 Sep 2007 15:33:23 +0530
+Message-ID: <46E5166B.4040904@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"nickpiggin@yahoo.com.au" <nickpiggin@yahoo.com.au>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>
-To: KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Alex Tomas <alex@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:57925 "EHLO
-	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750866AbXIJJ6v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2007 05:58:51 -0400
-In-Reply-To: <20070910184048.286dfc6e.kamezawa.hiroyu@jp.fujitsu.com>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:49158 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754002AbXIJKEA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2007 06:04:00 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8AA3a0i031928
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2007 20:03:36 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8AA3bER4874320
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2007 20:03:37 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8AB3aTt002531
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2007 21:03:36 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Changes page->mapping handling in EXT4
+Hi Alex,
 
-Signed-off-by: KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+Attaching below is some of the questions and comments i had while looking at
+mballoc code. Can you take a look at this. I will try to push a new patch which 
+contain
 
----
- fs/ext4/inode.c     |   10 +++++-----
- fs/ext4/writeback.c |   24 ++++++++++++------------
- 2 files changed, 17 insertions(+), 17 deletions(-)
+a) comments from the below review
+b) uninitialzed group changes assuming the uninitialized group patches will go before
+   mballoc
+c) checkpatch.pl error fixes.
+d) mkdir oops fix
 
-Index: test-2.6.23-rc4-mm1/fs/ext4/inode.c
-===================================================================
---- test-2.6.23-rc4-mm1.orig/fs/ext4/inode.c
-+++ test-2.6.23-rc4-mm1/fs/ext4/inode.c
-@@ -1482,7 +1482,7 @@ static int jbd2_journal_dirty_data_fn(ha
- static int ext4_ordered_writepage(struct page *page,
- 				struct writeback_control *wbc)
+NOTE: I am not sure whether we need the little endian  ext2_find_next_le_bit. I have marked
+it in the below diff
+
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a28ba0c..bdc83a8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -846,20 +846,27 @@ ext4_mb_generate_buddy(struct super_block *sb, void *buddy, void *bitmap,
+ 	unsigned free = 0, fragments = 0;
+ 	unsigned long long period = get_cycles();
+ 
+ 	/* initialize buddy from bitmap which is aggregation
+ 	 * of on-disk bitmap and preallocations */
+ 	i = mb_find_next_zero_bit(bitmap, max, 0);
+ 	grp->bb_first_free = i;
+ 	while (i < max) {
+ 		fragments++;
+ 		first = i;
++		/*
++		 * We need to explain what is the endianess dependency
++		 * here
++		 * Right now it looks at the bitmap read from the
++		 * disk and AFAIU the bitmap are stored in an endian
++		 * neutral way. I guess we can switch this to find_next_bit
++		 */
+ 		i = ext2_find_next_le_bit(bitmap, max, i);
+ 		len = i - first;
+ 		free += len;
+ 		if (len > 1)
+ 			ext4_mb_mark_free_simple(sb, buddy, first, len, grp);
+ 		else
+ 			grp->bb_counters[0]++;
+ 		if (i < max)
+ 			i = mb_find_next_zero_bit(bitmap, max, i);
+ 	}
+@@ -873,20 +880,40 @@ ext4_mb_generate_buddy(struct super_block *sb, void *buddy, void *bitmap,
+ 
+ 	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &grp->bb_state);
+ 
+ 	period = get_cycles() - period;
+ 	spin_lock(&EXT4_SB(sb)->s_bal_lock);
+ 	EXT4_SB(sb)->s_mb_buddies_generated++;
+ 	EXT4_SB(sb)->s_mb_generation_time += period;
+ 	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
+ }
+ 
++/* Need description of how the buddy cache inode maps to
++ * different groups and block
++ */
++/* The buddy information is attached the buddy cache inode
++ * for convenience. The information regarding each group
++ * is loaded via ext4_mb_load_buddy. The information involve
++ * block bitmap and buddy information. The information are
++ * stored in the inode as
++ *
++ * {                        page                        }
++ * [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
++ *
++ *
++ * one block each for bitmap and buddy information.
++ * So for each group we take up 2 blocks. A page can
++ * contain blocks_per_page (PAGE_CACHE_SIZE / blocksize)  blocks.
++ * So it can have information regarding groups_per_page which
++ * is blocks_per_page/2
++ */
++
+ static int ext4_mb_init_cache(struct page *page, char *incore)
  {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	struct buffer_head *page_bufs;
- 	handle_t *handle = NULL;
- 	int ret = 0;
-@@ -1548,7 +1548,7 @@ out_fail:
- static int ext4_writeback_writepage(struct page *page,
- 				struct writeback_control *wbc)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	handle_t *handle = NULL;
- 	int ret = 0;
- 	int err;
-@@ -1581,7 +1581,7 @@ out_fail:
- static int ext4_journalled_writepage(struct page *page,
- 				struct writeback_control *wbc)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	handle_t *handle = NULL;
- 	int ret = 0;
- 	int err;
-@@ -1651,7 +1651,7 @@ ext4_readpages(struct file *file, struct
+ 	int blocksize, blocks_per_page, groups_per_page;
+ 	int err = 0, i, first_group, first_block;
+ 	struct super_block *sb;
+ 	struct buffer_head *bhs;
+ 	struct buffer_head **bh;
+ 	struct inode *inode;
+ 	char *data, *bitmap;
  
- static void ext4_invalidatepage(struct page *page, unsigned long offset)
- {
--	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
-+	journal_t *journal = EXT4_JOURNAL(page_inode(page));
+@@ -920,20 +947,21 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
  
- 	/*
- 	 * If it's a full truncate we just forget about the pending dirtying
-@@ -1664,7 +1664,7 @@ static void ext4_invalidatepage(struct p
+ 		if (first_group + i >= EXT4_SB(sb)->s_groups_count)
+ 			break;
  
- static int ext4_releasepage(struct page *page, gfp_t wait)
- {
--	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
-+	journal_t *journal = EXT4_JOURNAL(page_inode(page));
+ 		err = -EIO;
+ 		desc = ext4_get_group_desc(sb, first_group + i, NULL);
+ 		if (desc == NULL)
+ 			goto out;
  
- 	WARN_ON(PageChecked(page));
- 	if (!page_has_buffers(page))
-Index: test-2.6.23-rc4-mm1/fs/ext4/writeback.c
-===================================================================
---- test-2.6.23-rc4-mm1.orig/fs/ext4/writeback.c
-+++ test-2.6.23-rc4-mm1/fs/ext4/writeback.c
-@@ -175,7 +175,7 @@ static struct bio *ext4_wb_bio_submit(st
+ 		err = -ENOMEM;
++		/* ext4_block_bitmap */
+ 		bh[i] = sb_getblk(sb, le32_to_cpu(desc->bg_block_bitmap));
+ 		if (bh[i] == NULL)
+ 			goto out;
  
- int inline ext4_wb_reserve_space_page(struct page *page, int blocks)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	int total, mdb, err;
+ 		if (buffer_uptodate(bh[i]))
+ 			continue;
  
- 	wb_debug("reserve %d blocks for page %lu from inode %lu\n",
-@@ -263,7 +263,7 @@ static inline int ext4_wb_drop_page_rese
- 	 * reserved blocks. we could release reserved blocks right
- 	 * now, but I'd prefer to make this once per several blocks */
- 	wb_debug("drop reservation from page %lu from inode %lu\n",
--			page->index, page->mapping->host->i_ino);
-+			page->index, page_inode(page)->i_ino);
- 	BUG_ON(!PageBooked(page));
- 	ClearPageBooked(page);
- 	return 0;
-@@ -711,7 +711,7 @@ int ext4_wb_writepages(struct address_sp
- 			if (wbc->sync_mode != WB_SYNC_NONE)
- 				wait_on_page_writeback(page);
+ 		lock_buffer(bh[i]);
+ 		if (buffer_uptodate(bh[i])) {
+ 			unlock_buffer(bh[i]);
+@@ -956,48 +984,64 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			goto out;
  
--			if (page->mapping != mapping) {
-+			if (pagecache_consistent(page, mapping)) {
- 				unlock_page(page);
- 				continue;
+ 	first_block = page->index * blocks_per_page;
+ 	for (i = 0; i < blocks_per_page; i++) {
+ 		int group;
+ 
+ 		group = (first_block + i) >> 1;
+ 		if (group >= EXT4_SB(sb)->s_groups_count)
+ 			break;
+ 
++		/*
++		 * data carry information regarding this
++		 * particular group in the format specified
++		 * above
++		 *
++		 */
+ 		data = page_address(page) + (i * blocksize);
+ 		bitmap = bh[group - first_group]->b_data;
+ 
++		/*
++		 * We place the buddy block and bitmap block
++		 * close together
++		 */
+ 		if ((first_block + i) & 1) {
+ 			/* this is block of buddy */
+ 			BUG_ON(incore == NULL);
+ 			mb_debug("put buddy for group %u in page %lu/%x\n",
+ 				group, page->index, i * blocksize);
+ 			memset(data, 0xff, blocksize);
+ 			EXT4_GROUP_INFO(sb, group)->bb_fragments = 0;
+ 			memset(EXT4_GROUP_INFO(sb, group)->bb_counters, 0,
+ 			       sizeof(unsigned short)*(sb->s_blocksize_bits+2));
++			/*
++			 * incore got set to the group block bitmap below
++			 */
+ 			ext4_mb_generate_buddy(sb, data, incore, group);
+ 			incore = NULL;
+ 		} else {
+ 			/* this is block of bitmap */
+ 			BUG_ON(incore != NULL);
+ 			mb_debug("put bitmap for group %u in page %lu/%x\n",
+ 				group, page->index, i * blocksize);
+ 
+ 			/* see comments in ext4_mb_put_pa() */
+ 			ext4_lock_group(sb, group);
+ 			memcpy(data, bitmap, blocksize);
+ 
+ 			/* mark all preallocated blocks used in in-core bitmap */
+ 			ext4_mb_generate_from_pa(sb, data, group);
+ 			ext4_unlock_group(sb, group);
+ 
++			/* set incore so that the buddy information can be
++			 * generated using this
++			 */
+ 			incore = data;
+ 		}
+ 	}
+ 	SetPageUptodate(page);
+ 
+ out:
+ 	if (bh) {
+ 		for (i = 0; i < groups_per_page && bh[i]; i++)
+ 			brelse(bh[i]);
+ 		if (bh != &bhs)
+@@ -1018,20 +1062,25 @@ static int ext4_mb_load_buddy(struct super_block *sb, int group,
+ 
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+ 
+ 	e3b->bd_blkbits = sb->s_blocksize_bits;
+ 	e3b->bd_info = EXT4_GROUP_INFO(sb, group);
+ 	e3b->bd_sb = sb;
+ 	e3b->bd_group = group;
+ 	e3b->bd_buddy_page = NULL;
+ 	e3b->bd_bitmap_page = NULL;
+ 
++	/*
++	 * the buddy cache inode stores the block bitmap
++	 * and buddy information in consecutive blocks.
++	 * So for each group we need two blocks.
++	 */
+ 	block = group * 2;
+ 	pnum = block / blocks_per_page;
+ 	poff = block % blocks_per_page;
+ 
+ 	/* we could use find_or_create_page(), but it locks page
+ 	 * what we'd like to avoid in fast path ... */
+ 	page = find_get_page(inode->i_mapping, pnum);
+ 	if (page == NULL || !PageUptodate(page)) {
+ 		if (page)
+ 			page_cache_release(page);
+@@ -1758,42 +1807,49 @@ int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	/* first, try the goal */
+ 	err = ext4_mb_find_by_goal(ac, &e3b);
+ 	if (err || ac->ac_status == AC_STATUS_FOUND)
+ 		goto out;
+ 
+ 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
+ 		goto out;
+ 
+ 	i = ffs(ac->ac_g_ex.fe_len);
+ 	ac->ac_2order = 0;
++	/* What happens if it  i is still greater than s_mb_order2_reqs */
+ 	if (i >= sbi->s_mb_order2_reqs) {
+ 		i--;
+ 		if ((ac->ac_g_ex.fe_len & (~(1 << i))) == 0)
+ 			ac->ac_2order = i;
+ 	}
+ 
+ 	/* if stream allocation is enabled, use global goal */
++	/* Need more explanation on what it is and how stream
++	 * allocation is represented by the below conditional */
+ 	if ((ac->ac_g_ex.fe_len < sbi->s_mb_large_req) &&
+ 			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
+ 		/* TBD: may be hot point */
+ 		spin_lock(&sbi->s_md_lock);
+ 		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
+ 		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
+ 		spin_unlock(&sbi->s_md_lock);
+ 	}
+ 
+ 	group = ac->ac_g_ex.fe_group;
+ 
+ 	/* Let's just scan groups to find more-less suitable blocks */
+ 	cr = ac->ac_2order ? 0 : 1;
+ repeat:
+ 	for (; cr < 4 && ac->ac_status == AC_STATUS_CONTINUE; cr++) {
++		/* We need to explain what criteria is and also
++		 * need to define the number 0 to 4 for criteria
++		 * What they actually means.
++		 */
+ 		ac->ac_criteria = cr;
+ 		for (i = 0; i < EXT4_SB(sb)->s_groups_count; group++, i++) {
+ 			struct ext4_group_info *grp;
+ 
+ 			if (group == EXT4_SB(sb)->s_groups_count)
+ 				group = 0;
+ 
+ 			/* quick check to skip empty groups */
+ 			grp = EXT4_GROUP_INFO(ac->ac_sb, group);
+ 			if (grp->bb_free == 0)
+@@ -1805,20 +1861,22 @@ repeat:
+ 				err = ext4_mb_load_buddy(sb, group, &e3b);
+ 				if (err)
+ 					goto out;
+ 				ext4_mb_release_desc(&e3b);
  			}
-@@ -853,12 +853,12 @@ static void ext4_wb_clear_page(struct pa
- int ext4_wb_prepare_write(struct file *file, struct page *page,
- 			      unsigned from, unsigned to)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	struct buffer_head bh, *bhw = &bh;
- 	int err = 0;
  
- 	wb_debug("prepare page %lu (%u-%u) for inode %lu\n",
--			page->index, from, to, page->mapping->host->i_ino);
-+			page->index, from, to, page_inode(page)->i_ino);
+ 			/* check is group good for our criteries */
+ 			if (!ext4_mb_good_group(ac, group, cr))
+ 				continue;
  
- 	/* if page is uptodate this means that ->prepare_write() has
- 	 * been called on page before and page is mapped to disk or
-@@ -912,7 +912,7 @@ int ext4_wb_commit_write(struct file *fi
- 			     unsigned from, unsigned to)
- {
- 	loff_t pos = ((loff_t)page->index << PAGE_CACHE_SHIFT) + to;
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	int err = 0;
++			/* here also we are loading the buddy. so what difference
++			 * does EXT4_MB_GRP_NEED_INIT actually make */
+ 			err = ext4_mb_load_buddy(sb, group, &e3b);
+ 			if (err)
+ 				goto out;
  
- 	wb_debug("commit page %lu (%u-%u) for inode %lu\n",
-@@ -952,7 +952,7 @@ int ext4_wb_commit_write(struct file *fi
- int ext4_wb_write_single_page(struct page *page,
- 					struct writeback_control *wbc)
- {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	struct ext4_wb_control wc;
- 	int err;
+ 			ext4_lock_group(sb, group);
+ 			if (!ext4_mb_good_group(ac, group, cr)) {
+ 				/* someone did allocation from this group */
+ 				ext4_unlock_group(sb, group);
+ 				ext4_mb_release_desc(&e3b);
+ 				continue;
+@@ -2848,20 +2906,21 @@ int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac, handle_t *ha
+ 		goto out_err;
  
-@@ -964,7 +964,7 @@ int ext4_wb_write_single_page(struct pag
- 		atomic_inc(&EXT4_SB(inode->i_sb)->s_wb_collisions_sp);
+ 	err = ext4_journal_get_write_access(handle, gdp_bh);
+ 	if (err)
+ 		goto out_err;
+ 
+ 	block = ac->ac_b_ex.fe_group * EXT4_BLOCKS_PER_GROUP(sb)
+ 		+ ac->ac_b_ex.fe_start
+ 		+ le32_to_cpu(es->s_first_data_block);
+ 
++		/* ext4_block_bitmap  ext4_inode_bitmap ext4_inode_table*/
+ 	if (block == le32_to_cpu(gdp->bg_block_bitmap) ||
+ 			block == le32_to_cpu(gdp->bg_inode_bitmap) ||
+ 			in_range(block, le32_to_cpu(gdp->bg_inode_table),
+ 				EXT4_SB(sb)->s_itb_per_group))
+ 		ext4_error(sb, __FUNCTION__,
+ 			   "Allocating block in system zone - block = %lu",
+ 			   (unsigned long) block);
+ #ifdef AGGRESSIVE_CHECK
+ 	{
+ 		int i;
+@@ -3813,32 +3872,36 @@ void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ 
+ 		if (grp->bb_free == 0)
+ 			continue;
+ 		printk("%d: %d/%d ", i, grp->bb_free, grp->bb_fragments);
+ 	}
+ 	printk("\n");
+ 	//dump_stack();
  #endif
+ }
  
--	ext4_wb_init_control(&wc, page->mapping);
-+	ext4_wb_init_control(&wc, page_mapping_cache(page));
- 
- 	BUG_ON(PageWriteback(page));
- 	set_page_writeback(page);
-@@ -988,7 +988,7 @@ int ext4_wb_write_single_page(struct pag
- 
- int ext4_wb_writepage(struct page *page, struct writeback_control *wbc)
++/* Need comment explaining when we look at locality group
++ * based allocation */
++
+ void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
  {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	loff_t i_size = i_size_read(inode);
- 	pgoff_t end_index = i_size >> PAGE_CACHE_SHIFT;
- 	unsigned offset;
-@@ -1002,7 +1002,7 @@ int ext4_wb_writepage(struct page *page,
- 	 * hasn't space on a disk yet, leave it for that thread
- 	 */
- #if 1
--	if (atomic_read(&EXT4_I(page->mapping->host)->i_wb_writers)
-+	if (atomic_read(&EXT4_I(page_inode(page))->i_wb_writers)
- 			&& !PageMappedToDisk(page)) {
- 		__set_page_dirty_nobuffers(page);
- 		unlock_page(page);
-@@ -1054,7 +1054,7 @@ int ext4_wb_releasepage(struct page *pag
- 	wb_debug("release %sM%sR page %lu from inode %lu (wait %d)\n",
- 			PageMappedToDisk(page) ? "" : "!",
- 			PageBooked(page) ? "" : "!",
--			page->index, page->mapping->host->i_ino, wait);
-+			page->index, page_inode(page)->i_ino, wait);
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
  
- 	if (PageWriteback(page))
- 		return 0;
-@@ -1066,7 +1066,7 @@ int ext4_wb_releasepage(struct page *pag
+ 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
+ 		return;
  
- void ext4_wb_invalidatepage(struct page *page, unsigned long offset)
+ 	/* request is so large that we don't care about
+ 	 * streaming - it overweights any possible seek */
+ 	if (ac->ac_o_ex.fe_len >= sbi->s_mb_large_req)
+ 		return;
+ 
++	/*is this  >=  considering the above ?*/
+ 	if (ac->ac_o_ex.fe_len >= sbi->s_mb_small_req)
+ 		return;
+ 
+ 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
+ 		return;
+ 
+ 	BUG_ON(ac->ac_lg != NULL);
+ 	ac->ac_lg = &sbi->s_locality_groups[smp_processor_id()];
+ 
+ 	/* we're going to use group allocation */
+@@ -3852,20 +3915,21 @@ int ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 				struct ext4_allocation_request *ar)
  {
--	struct inode *inode = page->mapping->host;
-+	struct inode *inode = page_inode(page);
- 	int ret = 0;
+ 	struct super_block *sb = ar->inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	unsigned long group, len, goal;
+ 	ext4_grpblk_t block;
  
- 	/* ->invalidatepage() is called when page is marked Private.
+ 	/* we can't allocate > group size */
+ 	len = ar->len;
++	/* What is  10 here ? */
+ 	if (len >= EXT4_BLOCKS_PER_GROUP(sb) - 10)
+ 		len = EXT4_BLOCKS_PER_GROUP(sb) - 10;
+ 
+ 	/* start searching from the goal */
+ 	goal = ar->goal;
+ 	if (goal < le32_to_cpu(es->s_first_data_block) ||
+ 			goal >= le32_to_cpu(es->s_blocks_count))
+ 		goal = le32_to_cpu(es->s_first_data_block);
+ 	ext4_get_group_no_and_offset(sb, goal, &group, &block);
+ 
+@@ -4187,20 +4251,21 @@ do_more:
+ 		count -= overflow;
+ 	}
+ 	brelse(bitmap_bh);
+ 	bitmap_bh = read_block_bitmap(sb, block_group);
+ 	if (!bitmap_bh)
+ 		goto error_return;
+ 	gdp = ext4_get_group_desc (sb, block_group, &gd_bh);
+ 	if (!gdp)
+ 		goto error_return;
+ 
++		/* ext4_block_bitmap  ext4_inode_bitmap ext4_inode_table*/
+ 	if (in_range (le32_to_cpu(gdp->bg_block_bitmap), block, count) ||
+ 	    in_range (le32_to_cpu(gdp->bg_inode_bitmap), block, count) ||
+ 	    in_range (block, le32_to_cpu(gdp->bg_inode_table),
+ 		      EXT4_SB(sb)->s_itb_per_group) ||
+ 	    in_range (block + count - 1, le32_to_cpu(gdp->bg_inode_table),
+ 		      EXT4_SB(sb)->s_itb_per_group))
+ 		ext4_error(sb, __FUNCTION__,
+ 			   "Freeing blocks in system zone - "
+ 			   "Block = %lu, count = %lu", block, count);
+ 
