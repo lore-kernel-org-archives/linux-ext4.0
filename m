@@ -1,53 +1,75 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH] FLEX_BG Kernel support.
-Date: Tue, 11 Sep 2007 07:27:17 -0500
-Message-ID: <20070911072717.1b5fc7a8@gara>
-References: <20070910212224.13310.54532.stgit@toolssf2>
-	<2aa04ba80709102304i1b054fbbo1d0d4081a86c1580@mail.gmail.com>
+From: Andy Whitcroft <apw@shadowen.org>
+Subject: 2.6.23-rc6: hanging ext3 dbench tests
+Date: Tue, 11 Sep 2007 13:42:02 +0100
+Message-ID: <20070911124202.GI9556@shadowen.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "ext4 development" <linux-ext4@vger.kernel.org>
-To: "Andreas Dilger" <adilger@clusterfs.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>, mel@csn.ul.ie
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:43113 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932553AbXIKM1O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Sep 2007 08:27:14 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l8BCRDBL010707
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2007 08:27:13 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8BCRDc9425692
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2007 06:27:13 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8BCRDNx021827
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2007 06:27:13 -0600
-In-Reply-To: <2aa04ba80709102304i1b054fbbo1d0d4081a86c1580@mail.gmail.com>
+Received: from hellhawk.shadowen.org ([80.68.90.175]:4103 "EHLO
+	hellhawk.shadowen.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762602AbXIKMmp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Sep 2007 08:42:45 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 11 Sep 2007 00:04:43 -0600
-"Andreas Dilger" <adilger@clusterfs.com> wrote:
+I have a couple of failed test runs against 2.6.23-rc6 where the
+job timed out while running dbench over ext3.  Both on powerpc,
+though both significantly different hardware setups.  A failed
+run like this implies that the machine was still responsive to
+other processes but the dbench was making no progress.  There is
+no console diagnostics during the failure.
 
-> On 9/10/07, Jose R. Santos <jrs@us.ibm.com> wrote:
-> > @@ -1254,7 +1254,8 @@ static int ext4_check_descriptors (struct super_block * sb)
-> >
-> >         for (i = 0; i < sbi->s_groups_count; i++)
-> >         {
-> > -               if (i == sbi->s_groups_count - 1)
-> > +               if (i == sbi->s_groups_count - 1 || EXT4_HAS_INCOMPAT_FEATURE(sb,
-> > +                                       EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> >                         last_block = ext4_blocks_count(sbi->s_es) - 1;
-> 
-> No need to check this featyre for every  group, once at the beginning
-> of the function is enough.
-> 
+beavis was lost during a plain ext3 dbench run, having just
+successfully run a complete ext2 run.  elm3b19 was lost during an
+ext3 "data=writeback" dbench run, having already completed an plain
+ext2, and ext3 runs.
 
-Do you mean something like the original patch?
-http://lists.openwall.net/linux-ext4/2007/07/12/20
+A quick poke at the dbench logs on the second machine shows this
+for the working ext3 dbench run:
 
-Wouldn't we need to check all the descriptor for corruption if checksum
-is not enable on the filesystem?
+  4 clients started
+  4     35288  814.49 MB/sec
+  0     62477  822.99 MB/sec
+  Throughput 822.954 MB/sec 4 procs
 
--JRS
+Whereas the hanging run shows the following continuing until the
+machine is reset, which confirms that the machine as a whole was
+still with us:
+
+  4 clients started
+  4     36479  824.92 MB/sec
+  1     46857  519.98 MB/sec
+  1     46857  346.65 MB/sec
+  1     46857  259.99 MB/sec
+  1     46857  207.99 MB/sec
+  1     46857  173.32 MB/sec
+  1     46857  148.56 MB/sec
+  1     46857  129.99 MB/sec
+  1     46857  115.55 MB/sec
+  1     46857  103.99 MB/sec
+  1     46857  94.54 MB/sec
+  1     46857  86.66 MB/sec
+  1     46857  80.00 MB/sec
+  [...]
+
+The first machine is very similar:
+
+  4 clients started
+  4     18468  445.29 MB/sec
+  4     41945  469.36 MB/sec
+  1     46857  346.68 MB/sec
+  1     46857  260.00 MB/sec
+  1     46857  208.00 MB/sec
+  [...]
+
+Not sure if there is any significance to the 46857.  Though it feels
+like we may be at the end of the run when it fails.
+
+I will try and reproduce this on one of the machines and see if I
+can get any further info.
+
+-apw
