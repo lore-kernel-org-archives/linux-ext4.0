@@ -1,167 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V3] dir_index: error out instead of BUG on corrupt dx dirs
-Date: Mon, 10 Sep 2007 20:42:30 -0500
-Message-ID: <46E5F286.3040205@redhat.com>
-References: <46D8D30B.6090703@redhat.com>	 <20070909131933.GA15229@dastardly.plus.com>	 <46E55BD0.30500@redhat.com>	 <e9e943910709101506p555c6c0co8ce4529f90e814e8@mail.gmail.com>	 <46E5C82C.907@redhat.com> <e9e943910709101835t413753d3j3c4b3cf2fa769d72@mail.gmail.com>
+From: "Andreas Dilger" <adilger@clusterfs.com>
+Subject: Re: [PATCH] FLEX_BG Kernel support.
+Date: Tue, 11 Sep 2007 00:04:43 -0600
+Message-ID: <2aa04ba80709102304i1b054fbbo1d0d4081a86c1580@mail.gmail.com>
+References: <20070910212224.13310.54532.stgit@toolssf2>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Duane Griffin <duaneg@dghda.com>
+Cc: "ext4 development" <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34367 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760614AbXIKBmh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Sep 2007 21:42:37 -0400
-In-Reply-To: <e9e943910709101835t413753d3j3c4b3cf2fa769d72@mail.gmail.com>
+Received: from mail.clusterfs.com ([74.0.229.162]:43778 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762303AbXIKGEp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Sep 2007 02:04:45 -0400
+Received: from rv-out-0910.google.com (rv-out-0910.google.com [209.85.198.186])
+	by mail.clusterfs.com (Postfix) with ESMTP id D70CB4E4699
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2007 00:04:44 -0600 (MDT)
+Received: by rv-out-0910.google.com with SMTP id k15so1166529rvb
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2007 23:04:44 -0700 (PDT)
+In-Reply-To: <20070910212224.13310.54532.stgit@toolssf2>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Duane Griffin wrote:
+On 9/10/07, Jose R. Santos <jrs@us.ibm.com> wrote:
+> @@ -1254,7 +1254,8 @@ static int ext4_check_descriptors (struct super_block * sb)
+>
+>         for (i = 0; i < sbi->s_groups_count; i++)
+>         {
+> -               if (i == sbi->s_groups_count - 1)
+> +               if (i == sbi->s_groups_count - 1 || EXT4_HAS_INCOMPAT_FEATURE(sb,
+> +                                       EXT4_FEATURE_INCOMPAT_FLEX_BG))
+>                         last_block = ext4_blocks_count(sbi->s_es) - 1;
 
-> The warnings shouldn't include explicit newlines
-Urgh, right you are.  Once more, with feeling!  Thanks for running it through
-your utility.
-
--Eric
-
----------------------
-
-Convert asserts (BUGs) in dx_probe from bad on-disk data to recoverable 
-errors with helpful warnings.  With help catching other asserts
-from Duane Griffin <duaneg@dghda.com>
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Duane Griffin <duaneg@dghda.com>
-
-
-Index: linux-2.6.22-rc4/fs/ext3/namei.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext3/namei.c
-+++ linux-2.6.22-rc4/fs/ext3/namei.c
-@@ -379,13 +379,28 @@ dx_probe(struct dentry *dentry, struct i
- 
- 	entries = (struct dx_entry *) (((char *)&root->info) +
- 				       root->info.info_length);
--	assert(dx_get_limit(entries) == dx_root_limit(dir,
--						      root->info.info_length));
-+
-+	if (dx_get_limit(entries) != dx_root_limit(dir,
-+						   root->info.info_length)) {
-+		ext3_warning(dir->i_sb, __FUNCTION__,
-+			     "dx entry: limit != root limit");
-+		brelse(bh);
-+		*err = ERR_BAD_DX_DIR;
-+		goto fail;
-+	}
-+
- 	dxtrace (printk("Look up %x", hash));
- 	while (1)
- 	{
- 		count = dx_get_count(entries);
--		assert (count && count <= dx_get_limit(entries));
-+		if (!count || count > dx_get_limit(entries)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "dx entry: no count or count > limit");
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
-+
- 		p = entries + 1;
- 		q = entries + count - 1;
- 		while (p <= q)
-@@ -423,8 +438,15 @@ dx_probe(struct dentry *dentry, struct i
- 		if (!(bh = ext3_bread (NULL,dir, dx_get_block(at), 0, err)))
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
--		assert (dx_get_limit(entries) == dx_node_limit (dir));
-+		if (dx_get_limit(entries) != dx_node_limit (dir)) {
-+			ext3_warning(dir->i_sb, __FUNCTION__,
-+				     "dx entry: limit != node limit");
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
- 		frame++;
-+		frame->bh = NULL;
- 	}
- fail2:
- 	while (frame >= frame_in) {
-@@ -432,6 +454,10 @@ fail2:
- 		frame--;
- 	}
- fail:
-+	if (*err == ERR_BAD_DX_DIR)
-+		ext3_warning(dir->i_sb, __FUNCTION__,
-+			     "Corrupt dir inode %ld, running e2fsck is "
-+			     "recommended.", dir->i_ino);
- 	return NULL;
- }
- 
-Index: linux-2.6.22-rc4/fs/ext4/namei.c
-===================================================================
---- linux-2.6.22-rc4.orig/fs/ext4/namei.c
-+++ linux-2.6.22-rc4/fs/ext4/namei.c
-@@ -379,13 +379,28 @@ dx_probe(struct dentry *dentry, struct i
- 
- 	entries = (struct dx_entry *) (((char *)&root->info) +
- 				       root->info.info_length);
--	assert(dx_get_limit(entries) == dx_root_limit(dir,
--						      root->info.info_length));
-+
-+	if (dx_get_limit(entries) != dx_root_limit(dir,
-+						   root->info.info_length)) {
-+		ext4_warning(dir->i_sb, __FUNCTION__,
-+			     "dx entry: limit != root limit");
-+		brelse(bh);
-+		*err = ERR_BAD_DX_DIR;
-+		goto fail;
-+	}
-+
- 	dxtrace (printk("Look up %x", hash));
- 	while (1)
- 	{
- 		count = dx_get_count(entries);
--		assert (count && count <= dx_get_limit(entries));
-+		if (!count || count > dx_get_limit(entries)) {
-+			ext4_warning(dir->i_sb, __FUNCTION__,
-+				     "dx entry: no count or count > limit");
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
-+
- 		p = entries + 1;
- 		q = entries + count - 1;
- 		while (p <= q)
-@@ -423,8 +438,15 @@ dx_probe(struct dentry *dentry, struct i
- 		if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err)))
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
--		assert (dx_get_limit(entries) == dx_node_limit (dir));
-+		if (dx_get_limit(entries) != dx_node_limit (dir)) {
-+			ext4_warning(dir->i_sb, __FUNCTION__,
-+				     "dx entry: limit != node limit");
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail2;
-+		}
- 		frame++;
-+		frame->bh = NULL;
- 	}
- fail2:
- 	while (frame >= frame_in) {
-@@ -432,6 +454,10 @@ fail2:
- 		frame--;
- 	}
- fail:
-+	if (*err == ERR_BAD_DX_DIR)
-+		ext4_warning(dir->i_sb, __FUNCTION__,
-+			     "Corrupt dir inode %ld, running e2fsck is "
-+			     "recommended.", dir->i_ino);
- 	return NULL;
- }
- 
+No need to check this featyre for every  group, once at the beginning
+of the function is enough.
