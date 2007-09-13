@@ -1,113 +1,109 @@
-From: "Girish Shilamkar" <girish@clusterfs.com>
-Subject: Re: jbd2_journal_commit_transaction oops
-Date: Thu, 13 Sep 2007 15:19:46 +0530
-Message-ID: <2bb7cd480709130249w761cab00y5444a6bcdce22418@mail.gmail.com>
-References: <46D7097F.4020501@linux.vnet.ibm.com>
-	 <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
-	 <46D888FC.6000405@linux.vnet.ibm.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: ext4 patch queue updated(2.6.23-rc5)
+Date: Thu, 13 Sep 2007 16:58:25 +0200
+Message-ID: <46E95011.7040309@bull.net>
+References: <1189643439.4935.30.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Avantika Mathur" <mathur@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, tytso@mit.edu
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:60763 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759699AbXIMJts (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Sep 2007 05:49:48 -0400
-Received: from nz-out-0506.google.com (nz-out-0506.google.com [64.233.162.226])
-	by mail.clusterfs.com (Postfix) with ESMTP id 74FAE4E46A6
-	for <linux-ext4@vger.kernel.org>; Thu, 13 Sep 2007 03:49:47 -0600 (MDT)
-Received: by nz-out-0506.google.com with SMTP id z6so323025nzd
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Sep 2007 02:49:47 -0700 (PDT)
-In-Reply-To: <46D888FC.6000405@linux.vnet.ibm.com>
-Content-Disposition: inline
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43922 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755388AbXIMO6R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Sep 2007 10:58:17 -0400
+In-Reply-To: <1189643439.4935.30.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-              Avantika and I had been working on this and we found
-that this problem is only seen on numaq machines. Avantika plans to
-run few more tests on numaq machines to gather more information.
+Mingming Cao wrote:
+> Rebased the patches to 2.6.23-rc5,  I reordered the series file to mo=
+ve
+> cleanups/fixes to the beginning of the series file. Added a patch to
+> cleanup slab useage in jbd/jbd2, and fixed some checkpatch.pl warning=
+s.
+> Added large block patch and Jose's FLEX_BG patch.
 
-Regards,
-Girish.
+With those new patches, I've got a segmentation fault when unmounting=20
+the ext4 filesystem:
 
-On 9/1/07, Avantika Mathur <mathur@linux.vnet.ibm.com> wrote:
-> Girish Shilamkar wrote:
-> > Hi Avantika,
-> >       From initial code review I think oops in crc32_be is caused as
-> > bh->b_data passed to the function is NULL. Most probably something might
-> > have gone wrong in jbd2_journal_write_metadata_buffer() making bh->data
-> > = 0.
-> > Does the error go away, when run without journal_checksum patch/option ?
-> >
-> >
-> >
-> I tried running fsstress without the journal_checksum option set and
-> didn't see any errors.  But I got the oops again when I mounted with
-> journal_checksum.
-> thank you for looking into this.
->
-> Avantika
-> > On Thu, 2007-08-30 at 11:16 -0700, Avantika Mathur wrote:
-> >
-> >> Hi Girish,
-> >>
-> >> When running fsstress on an x86 machine, I hit the kernel oops below.  The ext4-patch-queue is being tested including the journal checksum patches
-> >> I have mounted with -o delalloc,mballoc,data=writeback,journal_checksum
-> >>
-> >> I did not get a chance to look in detail; but it looks like a journal issue.  Do you know what the issue might be?
-> >>
-> >>
-> >> BUG: unable to handle kernel NULL pointer dereference at virtual address 00000000
-> >>  printing eip:
-> >> c118ba5d
-> >> *pdpt = 000000002560a001
-> >> *pde = 0000000000000000
-> >> Oops: 0000 [#1]
-> >> SMP
-> >> Modules linked in:
-> >> CPU:    1
-> >> EIP:    0060:[<c118ba5d>]    Not tainted VLI
-> >> EFLAGS: 00010257   (2.6.23-rc4-autokern1 #1)
-> >> EIP is at crc32_be+0x3d/0x9c
-> >> eax: 7e78a276   ebx: 76a2787e   ecx: 00000400   edx: 00000000
-> >> esi: 00000000   edi: 00000000   ebp: f56e5200   esp: e61f9e90
-> >> ds: 007b   es: 007b   fs: 00d8  gs: 0000  ss: 0068
-> >> Process kjournald2 (pid: 5388, ti=e61f8000 task=e3efc000 task.ti=e61f8000)
-> >> Stack: ef5fffc0 00000016 c10c762d 0000055e 00000000 00000000 00001000 00000000
-> >>        f50e3e80 7e78a276 00000008 00000000 00000544 eb46aab4 eb46aabc 00000155
-> >>        f585f800 e1e1c968 00000000 eb059428 0000055e 00000000 00000000 e3efc000
-> >> Call Trace:
-> >>  [<c10c762d>] jbd2_journal_commit_transaction+0x92a/0x128d
-> >>  [<c1029e51>] autoremove_wake_function+0x0/0x33
-> >>  [<c1029e51>] autoremove_wake_function+0x0/0x33
-> >>  [<c10214f4>] try_to_del_timer_sync+0x42/0x48
-> >>  [<c10ca4fd>] kjournald2+0x130/0x307
-> >>  [<c1029e51>] autoremove_wake_function+0x0/0x33
-> >>  [<c129171c>] __sched_text_start+0x364/0x3ff
-> >>  [<c1029e51>] autoremove_wake_function+0x0/0x33
-> >>  [<c10ca3cd>] kjournald2+0x0/0x307
-> >>  [<c1029a27>] kthread+0x34/0x55
-> >>  [<c10299f3>] kthread+0x0/0x55
-> >>  [<c1003173>] kernel_thread_helper+0x7/0x10
-> >>  =======================
-> >> Code: 42 30 d8 0f b6 c0 c1 eb 08 33 1c 85 e0 ae 2a c1 49 74 05 f6 c2 03 75 e5 83 f9 03 76 4c 89 ce 83 ea 04 83 e6 03 c1 e9 02 83 c2 04 <33> 1a 0f b6 c3 c1 eb 08 33 1c 85 e0 ae 2a c1 0f b6 c3 c1 eb 08
-> >> EIP: [<c118ba5d>] crc32_be+0x3d/0x9c SS:ESP 0068:e61f9e90
-> >> -- 0:conmux-control -- time-stamp -- Aug/30/07  0:36:46 --
-> >> -- 0:conmux-control -- time-stamp -- Aug/30/07  5:56:32 --
-> >> (bot:conmon-payload) disconnected
-> >>
-> >>
-> >> thanks,
-> >> Avantika
-> >>
-> >
-> > -
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
->
->
+------------[ cut here ]------------
+kernel BUG at /home/src/linux-2.6.23-rc5/mm/slab.c:592!
+invalid opcode: 0000 [1] SMP
+CPU 3
+Modules linked in: qla2xxx
+Pid: 4163, comm: umount Not tainted 2.6.23-rc5 #1
+RIP: 0010:[<ffffffff80276fe8>]  [<ffffffff80276fe8>] kfree+0x5f/0x1a0
+RSP: 0018:ffff810022143d88  EFLAGS: 00010046
+RAX: 0000000000000000 RBX: ffff81002889e154 RCX: 000000000000003f
+RDX: ffff81007ec4f290 RSI: ffffffff80245947 RDI: 000000000002889e
+RBP: ffff81002889e000 R08: 0000000000000001 R09: ffff81007c556400
+R10: ffff810022143d48 R11: ffffffff802fd50d R12: ffff81007c556400
+R13: ffff81002889e000 R14: 0000000000000286 R15: 0000000000513150
+=46S:  00002b2fc8bafe20(0000) GS:ffff81007e0b5d40(0000) knlGS:000000000=
+0000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00000000005b2b50 CR3: 000000007621e000 CR4: 00000000000006e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process umount (pid: 4163, threadinfo ffff810022142000, task=20
+ffff81007e0d8180)
+Stack:  ffff81007c556400 ffff81002889e024 ffff81002889e154 ffff81002889=
+e000
+  ffff81007c556400 ffff81002889e024 00000000005130c0 ffffffff8031ac12
+  0000000000656473 ffff81007e0d8180 ffffffff80245a06 ffff810022143de0
+Call Trace:
+  [<ffffffff8031ac12>] jbd2_journal_destroy+0x257/0x262
+  [<ffffffff80245a06>] autoremove_wake_function+0x0/0x2e
+  [<ffffffff802ac42c>] mb_cache_shrink+0x1e/0x95
+  [<ffffffff802fda67>] ext4_put_super+0x39/0x1d8
+  [<ffffffff8027cf07>] generic_shutdown_super+0x60/0xf1
+  [<ffffffff8027cfa5>] kill_block_super+0xd/0x1e
+  [<ffffffff8027d04d>] deactivate_super+0x47/0x5f
+  [<ffffffff8028f37f>] sys_umount+0x1f7/0x22a
+  [<ffffffff8027e3c9>] sys_newstat+0x19/0x31
+  [<ffffffff8020b3ae>] system_call+0x7e/0x83
+
+Code: 0f 0b eb fe 65 8b 04 25 24 00 00 00 83 3d c1 9e 55 00 00 4c
+RIP  [<ffffffff80276fe8>] kfree+0x5f/0x1a0
+  RSP <ffff810022143d88>
+WARNING: at /home/src/linux-2.6.23-rc5/kernel/exit.c:901 do_exit()
+
+Call Trace:
+  [<ffffffff80236ff3>] do_exit+0x4f/0x7ac
+  [<ffffffff8020cb6d>] kernel_math_error+0x0/0x71
+  [<ffffffff8020cf94>] do_invalid_op+0x85/0x8f
+  [<ffffffff80276fe8>] kfree+0x5f/0x1a0
+  [<ffffffff80245947>] bit_waitqueue+0x1c/0x8c
+  [<ffffffff802459f5>] wake_up_bit+0x11/0x22
+  [<ffffffff80295178>] __writeback_single_inode+0x395/0x3a7
+  [<ffffffff805daa5d>] error_exit+0x0/0x84
+  [<ffffffff802fd50d>] ext4_destroy_inode+0x0/0x77
+  [<ffffffff80245947>] bit_waitqueue+0x1c/0x8c
+  [<ffffffff80276fe8>] kfree+0x5f/0x1a0
+  [<ffffffff80276fb7>] kfree+0x2e/0x1a0
+  [<ffffffff8031ac12>] jbd2_journal_destroy+0x257/0x262
+  [<ffffffff80245a06>] autoremove_wake_function+0x0/0x2e
+  [<ffffffff802ac42c>] mb_cache_shrink+0x1e/0x95
+  [<ffffffff802fda67>] ext4_put_super+0x39/0x1d8
+  [<ffffffff8027cf07>] generic_shutdown_super+0x60/0xf1
+  [<ffffffff8027cfa5>] kill_block_super+0xd/0x1e
+  [<ffffffff8027d04d>] deactivate_super+0x47/0x5f
+  [<ffffffff8028f37f>] sys_umount+0x1f7/0x22a
+  [<ffffffff8027e3c9>] sys_newstat+0x19/0x31
+  [<ffffffff8020b3ae>] system_call+0x7e/0x83
+
+
+Replacing  kfree(journal)  by jbd2_free(journal, sizeof(*journal)) in=20
+fs/jbd2/journal.c fixes the problem.
+
+Who could check this?
+
+
+Another thing: JBD-blocks-reservation-fix-for-large-blk.patch is in the=
+=20
+series file but not present in the ext4 patch queue.
+
+   Val=E9rie
