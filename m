@@ -1,11 +1,10 @@
-From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [2/4] 2.6.23-rc6: known regressions
-Date: Fri, 14 Sep 2007 22:21:52 +0530
-Message-ID: <46EABC28.9000704@linux.vnet.ibm.com>
+Date: Fri, 14 Sep 2007 13:21:25 -0400
+Message-ID: <20070914172124.GA2419@fieldses.org>
 References: <46E8187E.9000006@googlemail.com> <46E81ACE.6030305@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	LKML <linux-kernel@vger.kernel.org>,
@@ -18,85 +17,16 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
 	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
 	linux-acpi@vger.kernel.org, Len Brown <lenb@kernel.org>,
-	Chuck Ebbert <cebbert@redhat.com>, dth <dth@dth.net>
+	Chuck Ebbert <cebbert@redhat.com>, dth <dth@dth.net>,
+	Neil Brown <neilb@suse.de>
 To: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755690AbXINRWB@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <46E81ACE.6030305@googlemail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Michal Piotrowski wrote:
-> Hi all,
->
-> Here is a list of some known regressions in 2.6.23-rc6.
->
-> Feel free to add new regressions/remove fixed etc.
-> http://kernelnewbies.org/known_regressions
->
-> List of Aces
->
-> Name                    Regressions fixed since 21-Jun-2007
-> Adrian Bunk                            10
-> Linus Torvalds                         6
-> Alan Stern                             5
-> Andi Kleen                             5
-> Hugh Dickins                           5
-> Trond Myklebust                        5
-> Andrew Morton                          4
-> Al Viro                                3
-> Alexey Starikovskiy                    3
-> Cornelia Huck                          3
-> David S. Miller                        3
-> Jens Axboe                             3
-> Stephen Hemminger                      3
-> Tejun Heo                              3
->
->
->
-> ACPI
->
-> Subject         : 2.6.23-rc5 hangs on boot, apparently when initializing the EC
-> References      : http://lkml.org/lkml/2007/9/11/369
-> Last known good : ?
-> Submitter       : Chuck Ebbert <cebbert@redhat.com>
-> Caused-By       : ?
-> Handled-By      : ?
-> Status          : unknown
->
->
->
-> CPUFREQ
->
-> Subject         : ide problems: 2.6.22-git17 working, 2.6.23-rc1* is not
-> References      : http://lkml.org/lkml/2007/7/27/298
->                   http://lkml.org/lkml/2007/7/29/371
-> Last known good : ?
-> Submitter       : dth <dth@dth.net>
-> Caused-By       : Len Brown <lenb@kernel.org>
->                   commit f79e3185dd0f8650022518d7624c876d8929061b
-> Handled-By      : Len Brown <lenb@kernel.org>
-> Status          : problem is being debugged
->
->
->
-> FS
->
-> Subject         : hanging ext3 dbench tests
-> References      : http://lkml.org/lkml/2007/9/11/176
-> Last known good : ?
-> Submitter       : Andy Whitcroft <apw@shadowen.org>
-> Caused-By       : ?
-> Handled-By      : ?
-> Status          : unknown
->
-> Subject         : umount triggers a warning in jfs and takes almost a minute
-> References      : http://lkml.org/lkml/2007/9/4/73
-> Last known good : ?
-> Submitter       : Oliver Neukum <oliver@neukum.org>
-> Caused-By       : ?
-> Handled-By      : ?
-> Status          : unknown
->
+On Wed, Sep 12, 2007 at 06:58:54PM +0200, Michal Piotrowski wrote:
 > Subject         : [NFSv4] 2.6.23-rc4 oops in nfs4_cb_recall
 > References      : http://lkml.org/lkml/2007/9/4/53
 >                   http://bugzilla.kernel.org/show_bug.cgi?id=9003
@@ -106,7 +36,10 @@ Michal Piotrowski wrote:
 > Handled-By      : ?
 > Workaround      : http://bugzilla.kernel.org/attachment.cgi?id=12797
 > Status          : unknown
->
+
+I have patches which fix this, which we're testing.  (See bugzilla.)
+It's a long-standing bug, not a regression.
+
 > Subject         : [NFSD OOPS] 2.6.23-rc1-git10
 > References      : http://lkml.org/lkml/2007/8/2/462
 > Last known good : ?
@@ -114,30 +47,7 @@ Michal Piotrowski wrote:
 > Caused-By       : ?
 > Handled-By      : ?
 > Status          : unknown
->
->
->
-> Regards,
-> Michal
->
-> --
-> LOG
-> http://www.stardust.webpages.pl/log/
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->   
-Hi Michal,
 
-The NFSV4 [BUG] 2.6.23-rc5 kernel BUG at fs/nfs/nfs4xdr.c:945, is again
-seen in 2.6.23-rc6. Can this bug be added as known regression for
-2.6.23-rc6. References http://lkml.org/lkml/2007/9/7/27.
+Neil's working on this.  Also not a regression.
 
--- 
-Thanks & Regards,
-Kamalesh Babulal,
-Linux Technology Center,
-IBM, ISTL.
-
+--b.
