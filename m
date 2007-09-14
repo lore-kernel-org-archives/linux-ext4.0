@@ -1,53 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [2/4] 2.6.23-rc6: known regressions
-Date: Fri, 14 Sep 2007 13:21:25 -0400
-Message-ID: <20070914172124.GA2419@fieldses.org>
-References: <46E8187E.9000006@googlemail.com> <46E81ACE.6030305@googlemail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Fw: ext3 dir_index causes an error
+Date: Fri, 14 Sep 2007 12:14:12 -0500
+Message-ID: <46EAC164.6000900@redhat.com>
+References: <20070531211546.86fc9db8.akpm@linux-foundation.org> <46E840A0.4030504@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Andrew Clayton <andrew@digital-domain.net>,
-	Daniel J Blueman <daniel.blueman@gmail.com>,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
-	jfs-discussion@lists.sourceforge.net,
-	Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
-	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
-	linux-acpi@vger.kernel.org, Len Brown <lenb@kernel.org>,
-	Chuck Ebbert <cebbert@redhat.com>, dth <dth@dth.net>,
-	Neil Brown <neilb@suse.de>
-To: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755690AbXINRWB@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <46E81ACE.6030305@googlemail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, hooanon05@yahoo.co.jp,
+	sct@redhat.com, adilger@clusterfs.com,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:58663 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751992AbXINROU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Sep 2007 13:14:20 -0400
+In-Reply-To: <46E840A0.4030504@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 12, 2007 at 06:58:54PM +0200, Michal Piotrowski wrote:
-> Subject         : [NFSv4] 2.6.23-rc4 oops in nfs4_cb_recall
-> References      : http://lkml.org/lkml/2007/9/4/53
->                   http://bugzilla.kernel.org/show_bug.cgi?id=9003
-> Last known good : ?
-> Submitter       : Daniel J Blueman <daniel.blueman@gmail.com>
-> Caused-By       : ?
-> Handled-By      : ?
-> Workaround      : http://bugzilla.kernel.org/attachment.cgi?id=12797
-> Status          : unknown
+Eric Sandeen wrote:
+> Andrew Morton wrote:
 
-I have patches which fix this, which we're testing.  (See bugzilla.)
-It's a long-standing bug, not a regression.
+>> Ted is dir_index maintainer ;)
 
-> Subject         : [NFSD OOPS] 2.6.23-rc1-git10
-> References      : http://lkml.org/lkml/2007/8/2/462
-> Last known good : ?
-> Submitter       : Andrew Clayton <andrew@digital-domain.net>
-> Caused-By       : ?
-> Handled-By      : ?
-> Status          : unknown
+...
 
-Neil's working on this.  Also not a regression.
+>> [1.] One line summary of the problem:
+>> ext3 dir_index causes an error
+> 
+> I'm looking at this now, FWIW... pretty easy to reproduce on ppc64,
+> though I've not yet hit it on x86.
 
---b.
+The issue here is that do_split() splits a leaf node at the entry with
+the median hash value, after sorting by hash... but it pays no attention
+to the resulting size of the records in the old & new blocks.
+
+If you're unlucky, and your split is lopsided size-wise, you may not
+have space in the block chosen for the new entry.  This is not checked,
+however, and things go bad quickly.
+
+Talked with Andreas a little about this, looking into the best way to
+fix it up.
+
+-Eric
