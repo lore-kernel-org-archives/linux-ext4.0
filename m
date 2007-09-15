@@ -1,42 +1,43 @@
 From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
 Subject: Re: [2/3] 2.6.23-rc6: known regressions v2
 Date: Sat, 15 Sep 2007 04:29:05 +0200
-Message-ID: <46EB4371.307__15701.0819217705$1189823386$gmane$org@googlemail.com>
+Message-ID: <46EB4371.307__44532.1089508527$1189823389$gmane$org@googlemail.com>
 References: <46EB3E94.7080704@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
-Cc: jfs-discussion@lists.sourceforge.net,
-	Oliver Neukum <oliver@neukum.org>, Florian Lohoff <flo@rfc822.org>,
-	linux-usb-devel@lists.sourceforge.net, Shish <shish@shishnet.org>,
-	sct@redhat.com, Karl Meyer <adhocrocker@gmail.com>,
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
 	LKML <linux-kernel@vger.kernel.org>,
-	Francois Romieu <romieu@fr.zoreil.com>, netdev@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
 	Dave Kleikamp <shaggy@austin.ibm.com>,
-	Andy Whitcroft <apw@shadowen.org>, linux-fsdevel@vger.kernel.org,
+	jfs-discussion@lists.sourceforge.net,
+	Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
+	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
+	netdev@vger.kernel.org, Shish <shish@shishnet.org>,
+	Karl Meyer <adhocrocker@gmail.com>,
+	Francois Romieu <romieu@fr.zoreil.com>,
 	Daniel Drake <dsd@gentoo.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, adilger@clusterfs.com,
+	Oliver Neukum <oliver@neukum.org>,
+	linux-usb-devel@lists.sourceforge.net,
+	Florian Lohoff <flo@rfc822.org>,
 	=?ISO-8859-2?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>
 To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ug-out-1314.google.com ([66.249.92.170]:20223 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759972AbXIOC3Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2007 22:29:25 -0400
+Received: by ug-out-1314.google.com with SMTP id z38so589480ugc
+        for <linux-ext4@vger.kernel.org>; Fri, 14 Sep 2007 19:29:24 -0700 (PDT)
 In-Reply-To: <46EB3E94.7080704@googlemail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
-List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
-List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
-Sender: jfs-discussion-bounces@lists.sourceforge.net
-Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 Hi all,
 
 Here is a list of some known regressions in 2.6.23-rc6.
 
-Feel free to add new regressions/remove fixed etc.
+=46eel free to add new regressions/remove fixed etc.
 http://kernelnewbies.org/known_regressions
 
 List of Aces
@@ -59,7 +60,7 @@ Tejun Heo                              3
 
 
 
-FS
+=46S
 
 Subject         : hanging ext3 dbench tests
 References      : http://lkml.org/lkml/2007/9/11/176
@@ -69,7 +70,8 @@ Caused-By       : ?
 Handled-By      : ?
 Status          : under test -- unreproducible at present
 
-Subject         : umount triggers a warning in jfs and takes almost a minute
+Subject         : umount triggers a warning in jfs and takes almost a m=
+inute
 References      : http://lkml.org/lkml/2007/9/4/73
 Last known good : ?
 Submitter       : Oliver Neukum <oliver@neukum.org>
@@ -81,8 +83,8 @@ Status          : unknown
 
 Networking
 
-Subject         : build #301 failed for 2.6.23-rc6-g0d4cbb5 in linux/driver=
-s/net/wireless/libertas/
+Subject         : build #301 failed for 2.6.23-rc6-g0d4cbb5 in linux/dr=
+ivers/net/wireless/libertas/
 References      : http://lkml.org/lkml/2007/9/11/150
 Last known good : ?
 Submitter       : Toralf F=F6rster <toralf.foerster@gmx.de>
@@ -91,8 +93,8 @@ Handled-By      : ?
 Status          : unknown
 
 Subject         : zd1211rw regression, device does not enumerate
-References      : http://marc.info/?l=3Dlinux-usb-devel&m=3D118854967709322=
-&w=3D2
+References      : http://marc.info/?l=3Dlinux-usb-devel&m=3D11885496770=
+9322&w=3D2
                   http://bugzilla.kernel.org/show_bug.cgi?id=3D8972
 Last known good : ?
 Submitter       : Oliver Neukum <oliver@neukum.org>
@@ -119,14 +121,9 @@ Status          : unknown
 
 
 
-Farewell!
+=46arewell!
 Michal
 
 --
 LOGOUT
 http://www.stardust.webpages.pl/
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
