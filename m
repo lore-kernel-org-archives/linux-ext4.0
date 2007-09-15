@@ -1,129 +1,72 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: Re: [2/3] 2.6.23-rc6: known regressions v2
-Date: Sat, 15 Sep 2007 04:29:05 +0200
-Message-ID: <46EB4371.307__44532.1089508527$1189823389$gmane$org@googlemail.com>
-References: <46EB3E94.7080704@googlemail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Fw: ext3 dir_index causes an error
+Date: Fri, 14 Sep 2007 22:24:24 -0500
+Message-ID: <46EB5068.3040605@redhat.com>
+References: <20070531211546.86fc9db8.akpm@linux-foundation.org>	<46E840A0.4030504@redhat.com> <46EAC164.6000900@redhat.com> <87y7f8lrvx.fsf@informatik.uni-tuebingen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
-	jfs-discussion@lists.sourceforge.net,
-	Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
-	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
-	netdev@vger.kernel.org, Shish <shish@shishnet.org>,
-	Karl Meyer <adhocrocker@gmail.com>,
-	Francois Romieu <romieu@fr.zoreil.com>,
-	Daniel Drake <dsd@gentoo.org>,
-	Oliver Neukum <oliver@neukum.org>,
-	linux-usb-devel@lists.sourceforge.net,
-	Florian Lohoff <flo@rfc822.org>,
-	=?ISO-8859-2?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+	"Theodore Ts'o" <tytso@mit.edu>, hooanon05@yahoo.co.jp,
+	sct@redhat.com, adilger@clusterfs.com,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.170]:20223 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759972AbXIOC3Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2007 22:29:25 -0400
-Received: by ug-out-1314.google.com with SMTP id z38so589480ugc
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Sep 2007 19:29:24 -0700 (PDT)
-In-Reply-To: <46EB3E94.7080704@googlemail.com>
+Received: from mx1.redhat.com ([66.187.233.31]:38356 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751508AbXIODYf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Sep 2007 23:24:35 -0400
+In-Reply-To: <87y7f8lrvx.fsf@informatik.uni-tuebingen.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+Goswin von Brederlow wrote:
+> Eric Sandeen <sandeen@redhat.com> writes:
+> 
+>> Eric Sandeen wrote:
+>>> Andrew Morton wrote:
+>>>> Ted is dir_index maintainer ;)
+>> ...
+>>
+>>>> [1.] One line summary of the problem:
+>>>> ext3 dir_index causes an error
+>>> I'm looking at this now, FWIW... pretty easy to reproduce on ppc64,
+>>> though I've not yet hit it on x86.
+>> The issue here is that do_split() splits a leaf node at the entry with
+>> the median hash value, after sorting by hash... but it pays no attention
+>> to the resulting size of the records in the old & new blocks.
+> 
+> http://en.wikipedia.org/wiki/Median
+> 
+> | At most half the population have values less than the median and at
+> | most half have values greater than the median. If both groups
+> | contain less than half the population, then some of the population
+> | is exactly equal to the median.
+> 
+> That would mean that both records will be the same size and to have an
+> overflow both would have to overflow. They should both be half full
+> +-1.
 
-Here is a list of some known regressions in 2.6.23-rc6.
+No, it means that both blocks will have +/-1 the same *number* of
+entries.  It says nothing about how much space is used in each.
 
-=46eel free to add new regressions/remove fixed etc.
-http://kernelnewbies.org/known_regressions
+>> If you're unlucky, and your split is lopsided size-wise, you may not
+>> have space in the block chosen for the new entry.  This is not checked,
+>> however, and things go bad quickly.
+> 
+> Maybe you did not mean median although it would be the logical choice.
 
-List of Aces
+Semantics aside, we don't want the median hash value, the middle hash
+value, or the average hash value... as far as I can see, we don't care
+about the hash value when we make this decision.  We care about the
+sizes of the objects, not their hashes, and not where they fall in an
+ordered list of hashes.
 
-Name                    Regressions fixed since 21-Jun-2007
-Adrian Bunk                            10
-Andi Kleen                             7
-Linus Torvalds                         6
-Alan Stern                             5
-Hugh Dickins                           5
-Trond Myklebust                        5
-Andrew Morton                          4
-David S. Miller                        4
-Al Viro                                3
-Alexey Starikovskiy                    3
-Cornelia Huck                          3
-Jens Axboe                             3
-Stephen Hemminger                      3
-Tejun Heo                              3
+When deciding how many entries to move, we have to pay attention to how
+much space they're taking up, not just how many of them there are.  If
+we only move the tiny entries, even if they accounts for half of the
+entries in the dir, that may not create enough room for the big entry
+we're trying to fit.   Moving exactly half the entries may create a very
+lopsided size distribution.
 
-
-
-=46S
-
-Subject         : hanging ext3 dbench tests
-References      : http://lkml.org/lkml/2007/9/11/176
-Last known good : ?
-Submitter       : Andy Whitcroft <apw@shadowen.org>
-Caused-By       : ?
-Handled-By      : ?
-Status          : under test -- unreproducible at present
-
-Subject         : umount triggers a warning in jfs and takes almost a m=
-inute
-References      : http://lkml.org/lkml/2007/9/4/73
-Last known good : ?
-Submitter       : Oliver Neukum <oliver@neukum.org>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-
-
-Networking
-
-Subject         : build #301 failed for 2.6.23-rc6-g0d4cbb5 in linux/dr=
-ivers/net/wireless/libertas/
-References      : http://lkml.org/lkml/2007/9/11/150
-Last known good : ?
-Submitter       : Toralf F=F6rster <toralf.foerster@gmx.de>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-Subject         : zd1211rw regression, device does not enumerate
-References      : http://marc.info/?l=3Dlinux-usb-devel&m=3D11885496770=
-9322&w=3D2
-                  http://bugzilla.kernel.org/show_bug.cgi?id=3D8972
-Last known good : ?
-Submitter       : Oliver Neukum <oliver@neukum.org>
-Caused-By       : Daniel Drake <dsd@gentoo.org>
-                  commit 74553aedd46b3a2cae986f909cf2a3f99369decc
-Handled-By      : ?
-Status          : unknown
-
-Subject         : NETDEV WATCHDOG: eth0: transmit timed out
-References      : http://lkml.org/lkml/2007/8/13/737
-Last known good : ?
-Submitter       : Karl Meyer <adhocrocker@gmail.com>
-Caused-By       : ?
-Handled-By      : Francois Romieu <romieu@fr.zoreil.com>
-Status          : problem is being debugged
-
-Subject         : Weird network problems with 2.6.23-rc2
-References      : http://lkml.org/lkml/2007/8/11/40
-Last known good : ?
-Submitter       : Shish <shish@shishnet.org>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-
-
-=46arewell!
-Michal
-
---
-LOGOUT
-http://www.stardust.webpages.pl/
+-Eric
