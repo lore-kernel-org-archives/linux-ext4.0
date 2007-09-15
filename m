@@ -1,58 +1,67 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: Ext4 patch queue updated(2.6.23-rc6)
-Date: Fri, 14 Sep 2007 16:54:38 -0600
-Message-ID: <20070914225438.GK5377@schatzie.adilger.int>
-References: <1189643439.4935.30.camel@localhost.localdomain> <46E95011.7040309@bull.net> <1189717301.3751.11.camel@localhost.localdomain> <1189796613.3841.14.camel@localhost.localdomain>
+From: Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
+Subject: Re: Fw: ext3 dir_index causes an error
+Date: Sat, 15 Sep 2007 02:00:18 +0200
+Message-ID: <87y7f8lrvx.fsf@informatik.uni-tuebingen.de>
+References: <20070531211546.86fc9db8.akpm@linux-foundation.org>
+	<46E840A0.4030504@redhat.com> <46EAC164.6000900@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Valerie Clement <valerie.clement@bull.net>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, tytso@mit.edu
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, hooanon05@yahoo.co.jp,
+	sct@redhat.com, adilger@clusterfs.com,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:39026 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756777AbXINWyO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2007 18:54:14 -0400
-Content-Disposition: inline
-In-Reply-To: <1189796613.3841.14.camel@localhost.localdomain>
+Received: from mx1.Informatik.Uni-Tuebingen.De ([134.2.12.5]:33878 "EHLO
+	mx1.informatik.uni-tuebingen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759525AbXIOAce (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Sep 2007 20:32:34 -0400
+In-Reply-To: <46EAC164.6000900@redhat.com> (Eric Sandeen's message of "Fri, 14
+	Sep 2007 12:14:12 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 14, 2007  12:03 -0700, Mingming Cao wrote:
-> Ted, could you please update the ext4 git tree with the patches before
-> the "unstable" mark, so we could get more air time in mm tree for
-> testing?
-> 
-> Thanks,
-> Mingming
-> 
-> current patch series
-> 
-> # Rebased the patches to 2.6.23-rc6
-> jbd_slab_cleanup.patch
-> sparse-fix.patch
-> 
-> # Add journal checksums
-> ext4-journal_chksum-2.6.20.patch
-> ext4-journal-chksum-review-fix.patch
+Eric Sandeen <sandeen@redhat.com> writes:
 
-Actually, the journal checksum patches should probably be moved into
-the "unstable" part of the series, given the number of problems reported
-on them (also in more heavy testing at CFS).  These are also not in use
-in production anywhere, unlike e.g. uninit_groups which have 6 months *
-50 servers of testing or more.
+> Eric Sandeen wrote:
+>> Andrew Morton wrote:
+>
+>>> Ted is dir_index maintainer ;)
+>
+> ...
+>
+>>> [1.] One line summary of the problem:
+>>> ext3 dir_index causes an error
+>> 
+>> I'm looking at this now, FWIW... pretty easy to reproduce on ppc64,
+>> though I've not yet hit it on x86.
+>
+> The issue here is that do_split() splits a leaf node at the entry with
+> the median hash value, after sorting by hash... but it pays no attention
+> to the resulting size of the records in the old & new blocks.
 
-> #########
-> #FLEX_BG
-> ########
-> flex_bg_kernel.patch
+http://en.wikipedia.org/wiki/Median
 
-This should probably go into the "stable" part of the patches - it
-is a conceptually simple patch, and the sooner INCOMPAT_FLEX_BG gets
-upstream the better.
+| At most half the population have values less than the median and at
+| most half have values greater than the median. If both groups
+| contain less than half the population, then some of the population
+| is exactly equal to the median.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+That would mean that both records will be the same size and to have an
+overflow both would have to overflow. They should both be half full
++-1.
+
+> If you're unlucky, and your split is lopsided size-wise, you may not
+> have space in the block chosen for the new entry.  This is not checked,
+> however, and things go bad quickly.
+
+Maybe you did not mean median although it would be the logical choice.
+
+> Talked with Andreas a little about this, looking into the best way to
+> fix it up.
+>
+> -Eric
+
+MfG
+        Goswin
