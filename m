@@ -1,34 +1,98 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Potential pitfall in the clusterfs extent patches for e2fsprogs
-Date: Sat, 15 Sep 2007 21:22:40 -0400
-Message-ID: <E1IWiqO-0002zY-0p@candygram.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [RFC][PATCH] ensure do_split leaves enough free space in both blocks
+Date: Sat, 15 Sep 2007 22:46:36 -0500
+Message-ID: <46ECA71C.9020100@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: hooanon05@yahoo.co.jp
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42856 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([66.187.233.31]:58063 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751240AbXIPBWn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Sep 2007 21:22:43 -0400
+	id S1752717AbXIPDql (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Sep 2007 23:46:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I've been busy working on extents support in e2fsck, and so as part of
-that I was looking at the clusterfs extent patches (mostly for
-inspiration to see how they work).  One of the things which I noticed is
-the patches seem to check the inode direct blocks, and if they look like
-the extent header, but the EXTENTS_FL flag isn't set, it flags this as
-an error.  
+For me, this fixes the problem reported by 
+hooanon05@yahoo.co.jp, "ext3 dir_index causes an error"
 
-The problem with this is that it's fragile; you could potentially have
-an inode that happens to have as its first block something which looks
-like the extent magic number, and if the second block passes the extent
-validity checks, e2fsck will flag an error --- and if e2fsck is run in
-preen mode, it will just set the extent flag without prompting the user
-or aborting the boot process.
+The issue is that the do_split() function sorts the entries in the old 
+block by hash value, then moves half the entries to the new block 
+without accounting for how much space this actually moves.  (IOW,
+it moves half of the entry *count* not half of the entry *space*)
 
-Not a problem for people who are using it for testing, but if anyone is
-using these patches in production (such as Gentoo, cough, who is
-shipping the patches), I thought I should give a warning --- these
-patches are not ready for prime-time, and anyone who wants to use it
-production will probably want to take out that particular check.
+The patch below stores size as well when calculating the dx_map,
+and then walks the hash-sorted dx_map, calculating how
+many entries must be moved to more evenly split the existing
+entries between the old block and the new block, guaranteeing
+enough space for the new entry.
 
-						- Ted
+Enhancements that could be made, though I'm not sure it's worth it:
+* pack the old dir block before calculating nr of entries to move,
+
+-or-
+
+* calculate the minimum rec_len when generating the map, vs.
+  just storing the current rec_len.
+
+I'm not sure it's worth the extra calculations, I think this code
+below works just fine from a correctness perspective.
+
+How's this look, any comments?
+
+Thanks,
+
+-Eric
+
+Index: linux/fs/ext3/namei.c
+===================================================================
+--- linux.orig/fs/ext3/namei.c
++++ linux/fs/ext3/namei.c
+@@ -141,6 +141,7 @@ struct dx_map_entry
+ {
+ 	u32 hash;
+ 	u32 offs;
++	u32 size;
+ };
+ 
+ #ifdef CONFIG_EXT3_INDEX
+@@ -685,6 +687,7 @@ static int dx_make_map (struct ext3_dir_
+ 			map_tail--;
+ 			map_tail->hash = h.hash;
+ 			map_tail->offs = (u32) ((char *) de - base);
++			map_tail->size = le16_to_cpu(de->rec_len);
+ 			count++;
+ 			cond_resched();
+ 		}
+@@ -1142,7 +1159,7 @@ static struct ext3_dir_entry_2 *do_split
+ 	u32 hash2;
+ 	struct dx_map_entry *map;
+ 	char *data1 = (*bh)->b_data, *data2;
+-	unsigned split;
++	unsigned split, move, size, i;
+ 	struct ext3_dir_entry_2 *de = NULL, *de2;
+ 	int	err = 0;
+ 
+@@ -1170,8 +1187,19 @@ static struct ext3_dir_entry_2 *do_split
+ 	count = dx_make_map ((struct ext3_dir_entry_2 *) data1,
+ 			     blocksize, hinfo, map);
+ 	map -= count;
+-	split = count/2; // need to adjust to actual middle
+ 	dx_sort_map (map, count);
++	/* Split the existing block in the middle, size-wise */
++	size = 0;
++	move = 0;
++	for (i = count-1; i >= 0; i--) {
++		/* is more than half of this entry in last half of the block? */
++		if (size + map[i].size/2 > blocksize/2)
++			break;
++		size += map[i].size;
++		move++;
++	}
++	/* map index at which we will split */
++	split = count - move;
+ 	hash2 = map[split].hash;
+ 	continued = hash2 == map[split - 1].hash;
+ 	dxtrace(printk("Split block %i at %x, %i/%i\n",
