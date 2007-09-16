@@ -1,72 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Fw: ext3 dir_index causes an error
-Date: Fri, 14 Sep 2007 22:24:24 -0500
-Message-ID: <46EB5068.3040605@redhat.com>
-References: <20070531211546.86fc9db8.akpm@linux-foundation.org>	<46E840A0.4030504@redhat.com> <46EAC164.6000900@redhat.com> <87y7f8lrvx.fsf@informatik.uni-tuebingen.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, hooanon05@yahoo.co.jp,
-	sct@redhat.com, adilger@clusterfs.com,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Potential pitfall in the clusterfs extent patches for e2fsprogs
+Date: Sat, 15 Sep 2007 21:22:40 -0400
+Message-ID: <E1IWiqO-0002zY-0p@candygram.thunk.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38356 "EHLO mx1.redhat.com"
+Received: from thunk.org ([69.25.196.29]:42856 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751508AbXIODYf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Sep 2007 23:24:35 -0400
-In-Reply-To: <87y7f8lrvx.fsf@informatik.uni-tuebingen.de>
+	id S1751240AbXIPBWn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Sep 2007 21:22:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Goswin von Brederlow wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
-> 
->> Eric Sandeen wrote:
->>> Andrew Morton wrote:
->>>> Ted is dir_index maintainer ;)
->> ...
->>
->>>> [1.] One line summary of the problem:
->>>> ext3 dir_index causes an error
->>> I'm looking at this now, FWIW... pretty easy to reproduce on ppc64,
->>> though I've not yet hit it on x86.
->> The issue here is that do_split() splits a leaf node at the entry with
->> the median hash value, after sorting by hash... but it pays no attention
->> to the resulting size of the records in the old & new blocks.
-> 
-> http://en.wikipedia.org/wiki/Median
-> 
-> | At most half the population have values less than the median and at
-> | most half have values greater than the median. If both groups
-> | contain less than half the population, then some of the population
-> | is exactly equal to the median.
-> 
-> That would mean that both records will be the same size and to have an
-> overflow both would have to overflow. They should both be half full
-> +-1.
+I've been busy working on extents support in e2fsck, and so as part of
+that I was looking at the clusterfs extent patches (mostly for
+inspiration to see how they work).  One of the things which I noticed is
+the patches seem to check the inode direct blocks, and if they look like
+the extent header, but the EXTENTS_FL flag isn't set, it flags this as
+an error.  
 
-No, it means that both blocks will have +/-1 the same *number* of
-entries.  It says nothing about how much space is used in each.
+The problem with this is that it's fragile; you could potentially have
+an inode that happens to have as its first block something which looks
+like the extent magic number, and if the second block passes the extent
+validity checks, e2fsck will flag an error --- and if e2fsck is run in
+preen mode, it will just set the extent flag without prompting the user
+or aborting the boot process.
 
->> If you're unlucky, and your split is lopsided size-wise, you may not
->> have space in the block chosen for the new entry.  This is not checked,
->> however, and things go bad quickly.
-> 
-> Maybe you did not mean median although it would be the logical choice.
+Not a problem for people who are using it for testing, but if anyone is
+using these patches in production (such as Gentoo, cough, who is
+shipping the patches), I thought I should give a warning --- these
+patches are not ready for prime-time, and anyone who wants to use it
+production will probably want to take out that particular check.
 
-Semantics aside, we don't want the median hash value, the middle hash
-value, or the average hash value... as far as I can see, we don't care
-about the hash value when we make this decision.  We care about the
-sizes of the objects, not their hashes, and not where they fall in an
-ordered list of hashes.
-
-When deciding how many entries to move, we have to pay attention to how
-much space they're taking up, not just how many of them there are.  If
-we only move the tiny entries, even if they accounts for half of the
-entries in the dir, that may not create enough room for the big entry
-we're trying to fit.   Moving exactly half the entries may create a very
-lopsided size distribution.
-
--Eric
+						- Ted
