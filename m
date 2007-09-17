@@ -1,101 +1,228 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,RFC 1/4] Allow debugfs to be extended for use by test programs
-Date: Sun, 16 Sep 2007 22:57:38 -0400
-Message-ID: <11899978613069-git-send-email-tytso@mit.edu>
+Subject: [PATCH,RFC 3/4] e2fsck: factor out code to clear an inode into e2fsck_clear_inode()
+Date: Sun, 16 Sep 2007 22:57:40 -0400
+Message-ID: <11899978613124-git-send-email-tytso@mit.edu>
 References: <1189997861181-git-send-email-tytso@mit.edu>
+ <11899978613069-git-send-email-tytso@mit.edu>
+ <11899978612166-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33737 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33742 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751734AbXIQC5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751560AbXIQC5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 16 Sep 2007 22:57:48 -0400
-In-Reply-To: <1189997861181-git-send-email-tytso@mit.edu>
-Message-Id: <5db31092e4fe5c89eb093da1aff6fda8c100647d.1189997130.git.tytso@mit.edu>
+In-Reply-To: <11899978612166-git-send-email-tytso@mit.edu>
+Message-Id: <a9a80d79bfa5e48273459a8a6a4d42d23aa791ad.1189997130.git.tytso@mit.edu>
+In-Reply-To: <5db31092e4fe5c89eb093da1aff6fda8c100647d.1189997130.git.tytso@mit.edu>
+References: <5db31092e4fe5c89eb093da1aff6fda8c100647d.1189997130.git.tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This change allows debugfs to be reused as the base for e2fsprogs
-internal test programs, by linking debugfs object files with
-additional object file(s) that define additional commands.  The test
-program's object file(s) should define their own comand table, and
-define the symbol extra_cmds to be a pointer to the ss_request_table.
-In addition, the symbol debug_prog_name can be used to override the
-name of the program printed in the version banner and in the ss
-prompt.
+Factor out code to clear a bogus inode and update e2fsck's internal
+data structures accordingly into a common routine,
+e2fsck_clear_inode().  This saves about 200 bytes in the compiled x86
+e2fsck executable, and makes the code more maintainable in the
+long-term.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- debugfs/debugfs.c |   21 ++++++++++++++++-----
- 1 files changed, 16 insertions(+), 5 deletions(-)
+ e2fsck/e2fsck.h |    3 ++
+ e2fsck/pass1.c  |   61 ++++++++++++++++++++++++++++--------------------------
+ e2fsck/pass1b.c |    6 +----
+ e2fsck/pass2.c  |    9 +-------
+ e2fsck/pass4.c  |    7 +-----
+ 5 files changed, 38 insertions(+), 48 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 190c4b7..76542d8 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -38,6 +38,8 @@ extern char *optarg;
- #include "../version.h"
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 99c0ae5..d8e85ad 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -430,6 +430,9 @@ extern int e2fsck_pass1_check_device_inode(ext2_filsys fs,
+ 					   struct ext2_inode *inode);
+ extern int e2fsck_pass1_check_symlink(ext2_filsys fs,
+ 				      struct ext2_inode *inode, char *buf);
++extern void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino, 
++			       struct ext2_inode *inode, int restart_flag,
++			       const char *source);
  
- extern ss_request_table debug_cmds;
-+ss_request_table *extra_cmds;
-+char *debug_prog_name;
+ /* pass2.c */
+ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ceb9c7f..7fba823 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -696,14 +696,9 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			 */
+ 			if (!LINUX_S_ISDIR(inode->i_mode)) {
+ 				if (fix_problem(ctx, PR_1_ROOT_NO_DIR, &pctx)) {
+-					inode->i_dtime = ctx->now;
+-					inode->i_links_count = 0;
+-					ext2fs_icount_store(ctx->inode_link_info,
+-							    ino, 0);
+-					e2fsck_write_inode(ctx, ino, inode,
+-							   "pass1");
++					e2fsck_clear_inode(ctx, ino, inode,
++							   0, "pass1");
+ 				}
+-
+ 			}
+ 			/*
+ 			 * If dtime is set, offer to clear it.  mke2fs
+@@ -1468,6 +1463,31 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
+ 	return 0;
+ }
  
- ext2_filsys	current_fs = NULL;
- ext2_ino_t	root, cwd;
-@@ -1802,7 +1804,7 @@ int main(int argc, char **argv)
- {
- 	int		retval;
- 	int		sci_idx;
--	const char	*usage = "Usage: debugfs [-b blocksize] [-s superblock] [-f cmd_file] [-R request] [-V] [[-w] [-c] device]";
-+	const char	*usage = "Usage: %s [-b blocksize] [-s superblock] [-f cmd_file] [-R request] [-V] [[-w] [-c] device]";
- 	int		c;
- 	int		open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
- 	char		*request = 0;
-@@ -1813,9 +1815,12 @@ int main(int argc, char **argv)
- 	int		catastrophic = 0;
- 	char		*data_filename = 0;
- 	
-+	if (debug_prog_name == 0)
-+		debug_prog_name = "debugfs";
++void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino, 
++			struct ext2_inode *inode, int restart_flag,
++			const char *source)
++{
 +
- 	add_error_table(&et_ext2_error_table);
--	fprintf (stderr, "debugfs %s (%s)\n", E2FSPROGS_VERSION,
--		 E2FSPROGS_DATE);
-+	fprintf (stderr, "%s %s (%s)\n", debug_prog_name, 
-+		 E2FSPROGS_VERSION, E2FSPROGS_DATE);
++	inode->i_links_count = 0;
++	ext2fs_icount_store(ctx->inode_link_info, ino, 0);
++	inode->i_dtime = ctx->now;
++
++	ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
++	ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
++	if (ctx->inode_reg_map)
++		ext2fs_unmark_inode_bitmap(ctx->inode_reg_map, ino);
++	if (ctx->inode_bad_map)
++		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
++
++	/*
++	 * If the inode was partially accounted for before processing
++	 * was aborted, we need to restart the pass 1 scan.
++	 */
++	ctx->flags |= restart_flag;
++
++	e2fsck_write_inode(ctx, ino, inode, source);
++}
++
+ /*
+  * This subroutine is called on each inode to account for all of the
+  * blocks used by that inode.
+@@ -1530,20 +1550,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		ctx->fs_fragmented++;
  
- 	while ((c = getopt (argc, argv, "iwcR:f:b:s:Vd:")) != EOF) {
- 		switch (c) {
-@@ -1851,7 +1856,7 @@ int main(int argc, char **argv)
- 				error_message(EXT2_ET_BASE));
- 			exit(0);
- 		default:
--			com_err(argv[0], 0, usage);
-+			com_err(argv[0], 0, usage, debug_prog_name);
- 			return 1;
+ 	if (pb.clear) {
+-		inode->i_links_count = 0;
+-		ext2fs_icount_store(ctx->inode_link_info, ino, 0);
+-		inode->i_dtime = ctx->now;
+-		dirty_inode++;
+-		ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
+-		ext2fs_unmark_inode_bitmap(ctx->inode_reg_map, ino);
+-		ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
+-		/*
+-		 * The inode was probably partially accounted for
+-		 * before processing was aborted, so we need to
+-		 * restart the pass 1 scan.
+-		 */
+-		ctx->flags |= E2F_FLAG_RESTART;
+-		goto out;
++		e2fsck_clear_inode(ctx, ino, inode, E2F_FLAG_RESTART, 
++				   "check_blocks");
++		return;
+ 	}
+ 	
+ 	if (inode->i_flags & EXT2_INDEX_FL) {
+@@ -1563,15 +1572,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		
+ 	if (!pb.num_blocks && pb.is_dir) {
+ 		if (fix_problem(ctx, PR_1_ZERO_LENGTH_DIR, pctx)) {
+-			inode->i_links_count = 0;
+-			ext2fs_icount_store(ctx->inode_link_info, ino, 0);
+-			inode->i_dtime = ctx->now;
+-			dirty_inode++;
+-			ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
+-			ext2fs_unmark_inode_bitmap(ctx->inode_reg_map, ino);
+-			ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
++			e2fsck_clear_inode(ctx, ino, inode, 0, "check_blocks");
+ 			ctx->fs_directory_count--;
+-			goto out;
++			return;
  		}
  	}
-@@ -1860,7 +1865,7 @@ int main(int argc, char **argv)
- 				superblock, blocksize, catastrophic,
- 				data_filename);
- 	
--	sci_idx = ss_create_invocation("debugfs", "0.0", (char *) NULL,
-+	sci_idx = ss_create_invocation(debug_prog_name, "0.0", (char *) NULL,
- 				       &debug_cmds, &retval);
- 	if (retval) {
- 		ss_perror(sci_idx, retval, "creating invocation");
-@@ -1873,6 +1878,12 @@ int main(int argc, char **argv)
- 		ss_perror(sci_idx, retval, "adding standard requests");
- 		exit (1);
+ 
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 118f956..5d062ca 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -594,16 +594,13 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ 						     delete_file_block, &pb);
+ 	if (pctx.errcode)
+ 		fix_problem(ctx, PR_1B_BLOCK_ITERATE, &pctx);
+-	ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
+-	ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
+ 	if (ctx->inode_bad_map)
+ 		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
+ 	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
+ 
+ 	/* Inode may have changed by block_iterate, so reread it */
+ 	e2fsck_read_inode(ctx, ino, &inode, "delete_file");
+-	inode.i_links_count = 0;
+-	inode.i_dtime = ctx->now;
++	e2fsck_clear_inode(ctx, ino, &inode, 0, "delete_file");
+ 	if (inode.i_file_acl &&
+ 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
+ 		count = 1;
+@@ -629,7 +626,6 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ 			delete_file_block(fs, &inode.i_file_acl,
+ 					  BLOCK_COUNT_EXTATTR, 0, 0, &pb);
  	}
-+	if (extra_cmds)
-+		ss_add_request_table (sci_idx, extra_cmds, 1, &retval);
-+	if (retval) {
-+		ss_perror(sci_idx, retval, "adding extra requests");
-+		exit (1);
-+	}
- 	if (request) {
- 		retval = 0;
- 		retval = ss_execute_line(sci_idx, request);
+-	e2fsck_write_inode(ctx, ino, &inode, "delete_file");
+ }
+ 
+ struct clone_struct {
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 7f7635f..8e651c7 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1109,11 +1109,8 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	struct problem_context	pctx;
+ 	__u32			count;
+ 	
+-	ext2fs_icount_store(ctx->inode_link_info, ino, 0);
+ 	e2fsck_read_inode(ctx, ino, &inode, "deallocate_inode");
+-	inode.i_links_count = 0;
+-	inode.i_dtime = ctx->now;
+-	e2fsck_write_inode(ctx, ino, &inode, "deallocate_inode");
++	e2fsck_clear_inode(ctx, ino, &inode, 0, "deallocate_inode");
+ 	clear_problem_context(&pctx);
+ 	pctx.ino = ino;
+ 
+@@ -1121,10 +1118,6 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	 * Fix up the bitmaps...
+ 	 */
+ 	e2fsck_read_bitmaps(ctx);
+-	ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
+-	ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
+-	if (ctx->inode_bad_map)
+-		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
+ 	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
+ 
+ 	if (inode.i_file_acl &&
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 0fb8ee7..3eca1c2 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -43,17 +43,12 @@ static int disconnect_inode(e2fsck_t ctx, ext2_ino_t i)
+ 	if (!inode.i_blocks && (LINUX_S_ISREG(inode.i_mode) ||
+ 				LINUX_S_ISDIR(inode.i_mode))) {
+ 		if (fix_problem(ctx, PR_4_ZERO_LEN_INODE, &pctx)) {
+-			ext2fs_icount_store(ctx->inode_link_info, i, 0);
+-			inode.i_links_count = 0;
+-			inode.i_dtime = ctx->now;
+-			e2fsck_write_inode(ctx, i, &inode,
++			e2fsck_clear_inode(ctx, i, &inode, 0, 
+ 					   "disconnect_inode");
+ 			/*
+ 			 * Fix up the bitmaps...
+ 			 */
+ 			e2fsck_read_bitmaps(ctx);
+-			ext2fs_unmark_inode_bitmap(ctx->inode_used_map, i);
+-			ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, i);
+ 			ext2fs_inode_alloc_stats2(fs, i, -1,
+ 						  LINUX_S_ISDIR(inode.i_mode));
+ 			return 0;
 -- 
 1.5.3.1.19.gb5ef6
