@@ -1,27 +1,56 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] JBD slab cleanups
-Date: Tue, 18 Sep 2007 10:04:08 +0100
-Message-ID: <20070918090407.GA671@infradead.org>
-References: <Pine.LNX.4.64.0709020438490.28046@schroedinger.engr.sgi.com> <20070902152801.GA19962@infradead.org> <Pine.LNX.4.64.0709030051370.31366@schroedinger.engr.sgi.com> <20070903134043.GB28962@infradead.org> <Pine.LNX.4.64.0709031230190.2131@schroedinger.engr.sgi.com> <20070903193308.GA7771@infradead.org> <1189796027.3841.6.camel@localhost.localdomain> <1190057391.3845.22.camel@localhost.localdomain> <1190066466.31220.5.camel@dyn9047017100.beaverton.ibm.com> <1190069851.6725.6.camel@localhost.localdomain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [2/3] 2.6.23-rc6: known regressions v2
+Date: Tue, 18 Sep 2007 16:24:43 +0200
+Message-ID: <20070918142443.GA13304@atrey.karlin.mff.cuni.cz>
+References: <46EB3E94.7080704@googlemail.com> <46EB4371.307@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Badari Pulavarty <pbadari@us.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Christoph Lameter <clameter@sgi.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org,
+	Dave Kleikamp <shaggy@austin.ibm.com>,
+	jfs-discussion@lists.sourceforge.net,
+	Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
+	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
+	netdev@vger.kernel.org, Shish <shish@shishnet.org>,
+	Karl Meyer <adhocrocker@gmail.com>,
+	Francois Romieu <romieu@fr.zoreil.com>,
+	Daniel Drake <dsd@gentoo.org>,
+	Oliver Neukum <oliver@neukum.org>,
+	linux-usb-devel@lists.sourceforge.net,
+	Florian Lohoff <flo@rfc822.org>,
+	Toralf F?rster <toralf.foerster@gmx.de>
+To: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1190069851.6725.6.camel@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <46EB4371.307@googlemail.com>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 17, 2007 at 03:57:31PM -0700, Mingming Cao wrote:
-> Here is the incremental small cleanup patch. 
+> FS
 > 
-> Remove kamlloc usages in jbd/jbd2 and consistently use jbd_kmalloc/jbd2_malloc.
+> Subject         : hanging ext3 dbench tests
+> References      : http://lkml.org/lkml/2007/9/11/176
+> Last known good : ?
+> Submitter       : Andy Whitcroft <apw@shadowen.org>
+> Caused-By       : ?
+> Handled-By      : ?
+> Status          : under test -- unreproducible at present
+  Yep... Hard to do anything until Andy is able to reproduce it at least
+once more to gather needed info.
 
-Shouldn't we kill jbd_kmalloc instead?
+> Subject         : umount triggers a warning in jfs and takes almost a minute
+> References      : http://lkml.org/lkml/2007/9/4/73
+> Last known good : ?
+> Submitter       : Oliver Neukum <oliver@neukum.org>
+> Caused-By       : ?
+> Handled-By      : ?
+> Status          : unknown
+  I thought Shaggy asked Oliver about some details (and he did not
+answer so far) so I'd assume Shaggy is handling this.
 
+										Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
