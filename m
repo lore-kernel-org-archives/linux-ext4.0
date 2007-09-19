@@ -1,44 +1,61 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] JBD slab cleanups
-Date: Wed, 19 Sep 2007 13:48:13 -0600
-Message-ID: <20070919194813.GT32520@schatzie.adilger.int>
-References: <1189796027.3841.6.camel@localhost.localdomain> <1190057391.3845.22.camel@localhost.localdomain> <1190066466.31220.5.camel@dyn9047017100.beaverton.ibm.com> <1190069851.6725.6.camel@localhost.localdomain> <20070918090407.GA671@infradead.org> <1190133347.3819.6.camel@localhost.localdomain> <1190138690.6528.23.camel@norville.austin.ibm.com> <1190163601.3819.15.camel@localhost.localdomain> <20070918191920.a2130a3c.akpm@linux-foundation.org> <1190229352.4318.12.camel@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH e2fsprogs] - ignore bind mounts in fsck
+Date: Wed, 19 Sep 2007 15:20:14 -0500
+Message-ID: <46F1847E.6080400@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Badari Pulavarty <pbadari@us.ibm.com>,
-	Christoph Lameter <clameter@sgi.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>,
-	"Stephen C. Tweedie" <sct@redhat.com>
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:43385 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750952AbXISTrs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Sep 2007 15:47:48 -0400
-Content-Disposition: inline
-In-Reply-To: <1190229352.4318.12.camel@localhost.localdomain>
+Received: from mx1.redhat.com ([66.187.233.31]:52670 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750965AbXISUUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Sep 2007 16:20:17 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l8JKKGi7006575
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 16:20:16 -0400
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l8JKKF3v029872
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 16:20:15 -0400
+Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id l8JKKF8W018543
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 16:20:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 19, 2007  12:15 -0700, Mingming Cao wrote:
-> @@ -96,8 +96,7 @@ static int start_this_handle(journal_t *
->  
->  alloc_transaction:
->  	if (!journal->j_running_transaction) {
-> -		new_transaction = kmalloc(sizeof(*new_transaction),
-> -						GFP_NOFS|__GFP_NOFAIL);
-> +		new_transaction = kmalloc(sizeof(*new_transaction), GFP_NOFS);
+An entry like this in /etc/fstab:
 
-This should probably be a __GFP_NOFAIL if we are trying to start a new
-handle in truncate, as there is no way to propagate an error to the caller.
+/foo	/bar	ext3	bind,defaults	1 3
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+will stop boot, as fsck.ext3 tries to check it and fails:
+
+e2fsck 1.40.2 (12-Jul-2007)
+fsck.ext3: Is a directory while trying to open /foo
+
+The superblock could not be read or does not describe a correct ext2
+filesystem. ...
+
+Granted, asking for fsck of a bind mount in the fstab is a bit odd, 
+but it doesn't seem like it should stop the boot process if you make
+this mistake.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: e2fsprogs-1.40.2/misc/fsck.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/misc/fsck.c
++++ e2fsprogs-1.40.2/misc/fsck.c
+@@ -867,6 +867,12 @@ static int ignore(struct fs_info *fs)
+ 	if (fs->passno == 0)
+ 		return 1;
+ 
++	/*
++	 * If this is a bind mount, ignore it.
++	 */
++	if (opt_in_list("bind", fs->opts))
++		return 1;
++
+ 	interpret_type(fs);
+ 
+ 	/*
