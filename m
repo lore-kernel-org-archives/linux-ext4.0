@@ -1,131 +1,92 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] JBD slab cleanups
-Date: Wed, 19 Sep 2007 12:15:52 -0700
-Message-ID: <1190229352.4318.12.camel@localhost.localdomain>
-References: <Pine.LNX.4.64.0709020438490.28046@schroedinger.engr.sgi.com>
-	 <20070902152801.GA19962@infradead.org>
-	 <Pine.LNX.4.64.0709030051370.31366@schroedinger.engr.sgi.com>
-	 <20070903134043.GB28962@infradead.org>
-	 <Pine.LNX.4.64.0709031230190.2131@schroedinger.engr.sgi.com>
-	 <20070903193308.GA7771@infradead.org>
-	 <1189796027.3841.6.camel@localhost.localdomain>
-	 <1190057391.3845.22.camel@localhost.localdomain>
-	 <1190066466.31220.5.camel@dyn9047017100.beaverton.ibm.com>
-	 <1190069851.6725.6.camel@localhost.localdomain>
-	 <20070918090407.GA671@infradead.org>
-	 <1190133347.3819.6.camel@localhost.localdomain>
-	 <1190138690.6528.23.camel@norville.austin.ibm.com>
-	 <1190163601.3819.15.camel@localhost.localdomain>
-	 <20070918191920.a2130a3c.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: Avantika Mathur <mathur@linux.vnet.ibm.com>
+Subject: Re: [PATCH] Ext4: Uninitialized Block Groups
+Date: Wed, 19 Sep 2007 12:19:22 -0700
+Message-ID: <46F1763A.1040807@linux.vnet.ibm.com>
+References: <46F06C7B.20308@linux.vnet.ibm.com> <1190203577.14472.25.camel@ext1.frec.bull.fr> <20070919164220.GJ32520@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Badari Pulavarty <pbadari@us.ibm.com>,
-	Christoph Lameter <clameter@sgi.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070918191920.a2130a3c.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	linux-ext4@vger.kernel.org, cmm@us.ibm.com, kalpak@clusterfs.com,
+	girish@clusterfs.com
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:39400 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750786AbXISTS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Sep 2007 15:18:28 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l8JJIPF8005780
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 15:18:25 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8JJIPsf529084
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 15:18:25 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8JJIP35009898
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2007 15:18:25 -0400
+In-Reply-To: <20070919164220.GJ32520@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-09-18 at 19:19 -0700, Andrew Morton wrote:
-> On Tue, 18 Sep 2007 18:00:01 -0700 Mingming Cao <cmm@us.ibm.com> wrote:
-> 
-> > JBD: Replace slab allocations with page cache allocations
-> > 
-> > JBD allocate memory for committed_data and frozen_data from slab. However
-> > JBD should not pass slab pages down to the block layer. Use page allocator pages instead. This will also prepare JBD for the large blocksize patchset.
-> > 
-> > 
-> > Also this patch cleans up jbd_kmalloc and replace it with kmalloc directly
-> 
-> __GFP_NOFAIL should only be used when we have no way of recovering
-> from failure.  The allocation in journal_init_common() (at least)
-> _can_ recover and hence really shouldn't be using __GFP_NOFAIL.
-> 
-> (Actually, nothing in the kernel should be using __GFP_NOFAIL.  It is 
-> there as a marker which says "we really shouldn't be doing this but
-> we don't know how to fix it").
-> 
-> So sometime it'd be good if you could review all the __GFP_NOFAILs in
-> there and see if we can remove some, thanks.
+Andreas Dilger wrote:
+> On Sep 19, 2007  14:06 +0200, Valerie Clement wrote:
+>   
+>> I ran some tests with the uninit_groups feature enabled and got error messages
+>> when running e2fsck on my ext4 partition. e2fsck complains of an "invalid 
+>> unused inodes count" in some group descriptors.
+>> These errors occur when checking groups which have only one inode in use. The 
+>> "free inodes" count has been decremented by one in these groups but not the 
+>> "unused inodes" count.
+>>
+>> Index: linux-2.6.23-rc6/fs/ext4/ialloc.c
+>> ===================================================================
+>> --- linux-2.6.23-rc6.orig/fs/ext4/ialloc.c	2007-09-19 11:31:01.000000000 +0200
+>> +++ linux-2.6.23-rc6/fs/ext4/ialloc.c	2007-09-19 11:31:41.000000000 +0200
+>> @@ -633,13 +633,10 @@ got:
+>>  	/* If we didn't allocate from within the initialized part of the inode
+>>  	 * table then we need to initialize up to this inode. */
+>>  	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+>> -		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+>> +		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT))
+>>  			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+>> -			free = EXT4_INODES_PER_GROUP(sb);
+>> -		} else {
+>> -			free = EXT4_INODES_PER_GROUP(sb) -
+>> +		free = EXT4_INODES_PER_GROUP(sb) -
+>>  				le16_to_cpu(gdp->bg_itable_unused);
+>> -		}
+>>     
+>
+> Hmm, this is indeed incorrect, but I'm not sure solution is the right one.
+> I guess in our testing we ran it for a long time and must have created
+> more than a single inode per group...
+>
+> What about the following instead?  I think the assumption in the original
+> code is that "it's a new group, all the inodes are free", but that is not
+> correct - we want to make NONE of the inodes free initially so that
+> bt_itable_unused is recalculated below:
+>
+> 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+>  			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+> -			free = EXT4_INODES_PER_GROUP(sb);
+> +			free = 0;
+> 		} else {
+> 			free = EXT4_INODES_PER_GROUP(sb) -
+>  				le16_to_cpu(gdp->bg_itable_unused);
+> 		}
+>
+> 		 if (ino > free)
+>                        gdp->bg_itable_unused =
+>                                 cpu_to_le16(EXT3_INODES_PER_GROUP(sb) - ino);
+>
+> Still a bit uneasy about off-by-one errors here though.  Is "ino" 0 or
+> 1 for the first inode in the group.  We might need to have a -1 in the
+> bg_itable_unused calculation still.
+>   
+ino is incremented right before this code, so the first inode in the 
+group is represented by 1, not 0. So this fix looks good.
+Aneesh has incorporated this fix and also removed the local crc16 code, 
+I will be reposting his new patch to lkml.
 
-Here is the patch to clean up __GFP_NOFAIL flag in jbd/jbd2. In all
-cases except one handles memory allocation failure so I get rid of those
-GFP_NOFAIL flags.
-
-Also, shouldn't we use GFP_KERNEL instead of GFP_NOFS flag for kmalloc
-in jbd/jbd2? I will send a separate patch to cleanup that.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/jbd/journal.c      |    2 +-
- fs/jbd/transaction.c  |    3 +--
- fs/jbd2/journal.c     |    2 +-
- fs/jbd2/transaction.c |    3 +--
- 4 files changed, 4 insertions(+), 6 deletions(-)
-
-Index: linux-2.6.23-rc6/fs/jbd/journal.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd/journal.c	2007-09-19 11:47:58.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd/journal.c	2007-09-19 11:48:40.000000000 -0700
-@@ -653,7 +653,7 @@ static journal_t * journal_init_common (
- 	journal_t *journal;
- 	int err;
- 
--	journal = kmalloc(sizeof(*journal), GFP_KERNEL|__GFP_NOFAIL);
-+	journal = kmalloc(sizeof(*journal), GFP_KERNEL);
- 	if (!journal)
- 		goto fail;
- 	memset(journal, 0, sizeof(*journal));
-Index: linux-2.6.23-rc6/fs/jbd/transaction.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd/transaction.c	2007-09-19 11:48:05.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd/transaction.c	2007-09-19 11:49:10.000000000 -0700
-@@ -96,8 +96,7 @@ static int start_this_handle(journal_t *
- 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
--		new_transaction = kmalloc(sizeof(*new_transaction),
--						GFP_NOFS|__GFP_NOFAIL);
-+		new_transaction = kmalloc(sizeof(*new_transaction), GFP_NOFS);
- 		if (!new_transaction) {
- 			ret = -ENOMEM;
- 			goto out;
-Index: linux-2.6.23-rc6/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/journal.c	2007-09-19 11:48:14.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/journal.c	2007-09-19 11:49:46.000000000 -0700
-@@ -654,7 +654,7 @@ static journal_t * journal_init_common (
- 	journal_t *journal;
- 	int err;
- 
--	journal = kmalloc(sizeof(*journal), GFP_KERNEL|__GFP_NOFAIL);
-+	journal = kmalloc(sizeof(*journal), GFP_KERNEL);
- 	if (!journal)
- 		goto fail;
- 	memset(journal, 0, sizeof(*journal));
-Index: linux-2.6.23-rc6/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/transaction.c	2007-09-19 11:48:08.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/transaction.c	2007-09-19 11:50:12.000000000 -0700
-@@ -96,8 +96,7 @@ static int start_this_handle(journal_t *
- 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
--		new_transaction = kmalloc(sizeof(*new_transaction),
--						GFP_NOFS|__GFP_NOFAIL);
-+		new_transaction = kmalloc(sizeof(*new_transaction), GFP_NOFS);
- 		if (!new_transaction) {
- 			ret = -ENOMEM;
- 			goto out;
-
-
-
-
+thanks
+Avantika
