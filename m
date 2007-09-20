@@ -1,351 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Avoid rec_len overflow with 64KB block size
-Date: Thu, 20 Sep 2007 18:17:22 +0200
-Message-ID: <20070920161722.GE1986@atrey.karlin.mff.cuni.cz>
-References: <20070920143214.GC1986@atrey.karlin.mff.cuni.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Enabling h-trees too early?
+Date: Thu, 20 Sep 2007 13:02:50 -0400
+Message-ID: <20070920170250.GF30221@thunk.org>
+References: <20070919150715.GH9232@duck.suse.cz> <20070919182450.GF25497@thunk.org> <20070920133350.GH2689@duck.suse.cz> <20070920142800.GC30221@thunk.org> <20070920145839.GD1986@atrey.karlin.mff.cuni.cz> <20070920151440.GE30221@thunk.org> <20070920161903.GJ2689@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="82I3+IH0IqGh5yIs"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:42083 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756335AbXITQRY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Sep 2007 12:17:24 -0400
+Received: from THUNK.ORG ([69.25.196.29]:53466 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751839AbXITRCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Sep 2007 13:02:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20070920143214.GC1986@atrey.karlin.mff.cuni.cz>
+In-Reply-To: <20070920161903.GJ2689@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Thu, Sep 20, 2007 at 06:19:04PM +0200, Jan Kara wrote:
+> if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+>     ((EXT4_I(inode)->i_flags & EXT4_INDEX_FL) ||
+>      ((inode->i_size >> sb->s_blocksize_bits) == 1))) {
+>         error = ext4_dx_readdir(filp, dirent, filldir);
+>         if (error != ERR_BAD_DX_DIR) {
+>                 ret = error;
+>                 goto out;
+>         }
+>         /*
+>          * We don't set the inode dirty flag since it's not
+>          * critical that it get flushed back to the disk.
+>          */
+>         EXT4_I(filp->f_path.dentry->d_inode)->i_flags &= ~EXT4_INDEX_FL;
+> }
+>   It calls ext4_dx_readdir() for *every* directory with 1 block (we have
+> 1326 of them in the kernel tree). Now ext4_dx_readdir() calls
+> ext4_htree_fill_tree() which finds out the directory is not h-tree and
+> and calls htree_dirblock_to_tree(). So even for 4KB directories we end up
+> deleting inodes in hash order! And as a bonus we burn some cycles building
+> trees etc. What is the point of this?
 
---82I3+IH0IqGh5yIs
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+That was added so we wouldn't get screwed when a directory that was
+previously non htree became an htree directory while the directory fd
+is open.  So the failure case is one where you do opendir(), readdir()
+on 25% of the directory, sleep for 2 hours, and in the meantime, 200
+files are added to the directory and it gets converted into a htree
+index, causing all of the previously returned readdir() results in
+directory order to be completely screwed up now that the directory has
+been converted into an htree.  (All of the readdir/telldir/seekdir 
+POSIX requirements cause filesystem designers to tear their hair out.)
 
->   when converting ext4 directories to pagecache I just came over
-> Takashi's patch preventing overflowing of rec_len. Looking over the
-> patch - can't we do it more elegantly by using say 0xffff instead of 64K
-> and perform conversion (using some helper) at the moment we read / store
-> rec_len? That would be IMHO more transparent than current approach (at
-> least it took me some time to understand what's going on with the
-> current patch when I was looking at the code)...
-  Attached is a patch that does this for ext4. If you like this
-approach, I can cook up a similar patch for ext2 / ext3.
+What we would need to do to avoid needing this is to read in the
+entire directory leaf page into the rbtree, sorted by inode number,
+and then to keep that rbtree for the entire life of the open directory
+file descriptor.  We would also have to change telldir/seekdir to use
+something else as a telldir cookie, and readdir would have to be set
+up to *only* use the rbtree, and never look at the on-disk directory.
+This would also mean that all of the files created or deleted after
+the initial opendir() would never be reflected in results returned by
+readdir(), but that's allowed by POSIX.  And if we do this for a
+single block 4k directory, we might as well do it for a 32k or 64k
+HTREE directory as well.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Does that make sense?
 
---82I3+IH0IqGh5yIs
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="ext4-2.6.23-rc6-ext4_64k_blocksize.diff"
-
-With 64KB blocksize, a directory entry can have size 64KB which does not fit
-into 16 bits we have for entry lenght. So we store 0xffff instead and convert
-value when read from / written to disk. The patch also converts some places
-to use ext4_next_entry() when we are changing them anyway.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/ext4/dir.c linux-2.6.23-rc6-1-ext4_64k_blocksize/fs/ext4/dir.c
---- linux-2.6.23-rc6/fs/ext4/dir.c	2007-09-18 19:22:28.000000000 +0200
-+++ linux-2.6.23-rc6-1-ext4_64k_blocksize/fs/ext4/dir.c	2007-09-20 18:08:02.000000000 +0200
-@@ -69,7 +69,7 @@ int ext4_check_dir_entry (const char * f
- 			  unsigned long offset)
- {
- 	const char * error_msg = NULL;
--	const int rlen = le16_to_cpu(de->rec_len);
-+	const int rlen = ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 
- 	if (rlen < EXT4_DIR_REC_LEN(1))
- 		error_msg = "rec_len is smaller than minimal";
-@@ -176,10 +176,10 @@ revalidate:
- 				 * least that it is non-zero.  A
- 				 * failure will be detected in the
- 				 * dirent test below. */
--				if (le16_to_cpu(de->rec_len) <
--						EXT4_DIR_REC_LEN(1))
-+				if (ext4_get_rec_len(le16_to_cpu(de->rec_len))
-+						< EXT4_DIR_REC_LEN(1))
- 					break;
--				i += le16_to_cpu(de->rec_len);
-+				i += ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 			}
- 			offset = i;
- 			filp->f_pos = (filp->f_pos & ~(sb->s_blocksize - 1))
-@@ -201,7 +201,7 @@ revalidate:
- 				ret = stored;
- 				goto out;
- 			}
--			offset += le16_to_cpu(de->rec_len);
-+			offset += ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 			if (le32_to_cpu(de->inode)) {
- 				/* We might block in the next section
- 				 * if the data destination is
-@@ -223,7 +223,7 @@ revalidate:
- 					goto revalidate;
- 				stored ++;
- 			}
--			filp->f_pos += le16_to_cpu(de->rec_len);
-+			filp->f_pos += ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 		}
- 		offset = 0;
- 		brelse (bh);
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/ext4/namei.c linux-2.6.23-rc6-1-ext4_64k_blocksize/fs/ext4/namei.c
---- linux-2.6.23-rc6/fs/ext4/namei.c	2007-09-18 19:22:28.000000000 +0200
-+++ linux-2.6.23-rc6-1-ext4_64k_blocksize/fs/ext4/namei.c	2007-09-20 18:29:29.000000000 +0200
-@@ -280,7 +280,7 @@ static struct stats dx_show_leaf(struct 
- 			space += EXT4_DIR_REC_LEN(de->name_len);
- 			names++;
- 		}
--		de = (struct ext4_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
-+		de = ext4_next_entry(de);
- 	}
- 	printk("(%i)\n", names);
- 	return (struct stats) { names, space, 1 };
-@@ -525,7 +525,8 @@ static int ext4_htree_next_block(struct 
-  */
- static inline struct ext4_dir_entry_2 *ext4_next_entry(struct ext4_dir_entry_2 *p)
- {
--	return (struct ext4_dir_entry_2 *)((char*)p + le16_to_cpu(p->rec_len));
-+	return (struct ext4_dir_entry_2 *)((char*)p +
-+		ext4_get_rec_len(le16_to_cpu(p->rec_len)));
- }
- 
- /*
-@@ -689,7 +690,7 @@ static int dx_make_map (struct ext4_dir_
- 			cond_resched();
- 		}
- 		/* XXX: do we need to check rec_len == 0 case? -Chris */
--		de = (struct ext4_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
-+		de = ext4_next_entry(de);
- 	}
- 	return count;
- }
-@@ -790,7 +791,7 @@ static inline int search_dirblock(struct
- 			return 1;
- 		}
- 		/* prevent looping on a bad block */
--		de_len = le16_to_cpu(de->rec_len);
-+		de_len = ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 		if (de_len <= 0)
- 			return -1;
- 		offset += de_len;
-@@ -1099,7 +1100,7 @@ dx_move_dirents(char *from, char *to, st
- 		rec_len = EXT4_DIR_REC_LEN(de->name_len);
- 		memcpy (to, de, rec_len);
- 		((struct ext4_dir_entry_2 *) to)->rec_len =
--				cpu_to_le16(rec_len);
-+				cpu_to_le16(ext4_store_rec_len(rec_len));
- 		de->inode = 0;
- 		map++;
- 		to += rec_len;
-@@ -1114,13 +1115,12 @@ static struct ext4_dir_entry_2* dx_pack_
- 
- 	prev = to = de;
- 	while ((char*)de < base + size) {
--		next = (struct ext4_dir_entry_2 *) ((char *) de +
--						    le16_to_cpu(de->rec_len));
-+		next = ext4_next_entry(de);
- 		if (de->inode && de->name_len) {
- 			rec_len = EXT4_DIR_REC_LEN(de->name_len);
- 			if (de > to)
- 				memmove(to, de, rec_len);
--			to->rec_len = cpu_to_le16(rec_len);
-+			to->rec_len = cpu_to_le16(ext4_store_rec_len(rec_len));
- 			prev = to;
- 			to = (struct ext4_dir_entry_2 *) (((char *) to) + rec_len);
- 		}
-@@ -1178,8 +1178,8 @@ static struct ext4_dir_entry_2 *do_split
- 	/* Fancy dance to stay within two buffers */
- 	de2 = dx_move_dirents(data1, data2, map + split, count - split);
- 	de = dx_pack_dirents(data1,blocksize);
--	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
--	de2->rec_len = cpu_to_le16(data2 + blocksize - (char *) de2);
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(data1 + blocksize - (char *) de));
-+	de2->rec_len = cpu_to_le16(ext4_store_rec_len(data2 + blocksize - (char *) de2));
- 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data1, blocksize, 1));
- 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data2, blocksize, 1));
- 
-@@ -1250,7 +1250,7 @@ static int add_dirent_to_buf(handle_t *h
- 				return -EEXIST;
- 			}
- 			nlen = EXT4_DIR_REC_LEN(de->name_len);
--			rlen = le16_to_cpu(de->rec_len);
-+			rlen = ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 			if ((de->inode? rlen - nlen: rlen) >= reclen)
- 				break;
- 			de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-@@ -1269,11 +1269,11 @@ static int add_dirent_to_buf(handle_t *h
- 
- 	/* By now the buffer is marked for journaling */
- 	nlen = EXT4_DIR_REC_LEN(de->name_len);
--	rlen = le16_to_cpu(de->rec_len);
-+	rlen = ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 	if (de->inode) {
- 		struct ext4_dir_entry_2 *de1 = (struct ext4_dir_entry_2 *)((char *)de + nlen);
--		de1->rec_len = cpu_to_le16(rlen - nlen);
--		de->rec_len = cpu_to_le16(nlen);
-+		de1->rec_len = cpu_to_le16(ext4_store_rec_len(rlen - nlen));
-+		de->rec_len = cpu_to_le16(ext4_store_rec_len(nlen));
- 		de = de1;
- 	}
- 	de->file_type = EXT4_FT_UNKNOWN;
-@@ -1351,17 +1351,18 @@ static int make_indexed_dir(handle_t *ha
- 
- 	/* The 0th block becomes the root, move the dirents out */
- 	fde = &root->dotdot;
--	de = (struct ext4_dir_entry_2 *)((char *)fde + le16_to_cpu(fde->rec_len));
-+	de = (struct ext4_dir_entry_2 *)((char *)fde +
-+		ext4_get_rec_len(le16_to_cpu(fde->rec_len)));
- 	len = ((char *) root) + blocksize - (char *) de;
- 	memcpy (data1, de, len);
- 	de = (struct ext4_dir_entry_2 *) data1;
- 	top = data1 + len;
--	while ((char *)(de2=(void*)de+le16_to_cpu(de->rec_len)) < top)
-+	while ((char *)(de2 = ext4_next_entry(de)) < top)
- 		de = de2;
--	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(data1 + blocksize - (char *) de));
- 	/* Initialize the root; the dot dirents already exist */
- 	de = (struct ext4_dir_entry_2 *) (&root->dotdot);
--	de->rec_len = cpu_to_le16(blocksize - EXT4_DIR_REC_LEN(2));
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(blocksize - EXT4_DIR_REC_LEN(2)));
- 	memset (&root->info, 0, sizeof(root->info));
- 	root->info.info_length = sizeof(root->info);
- 	root->info.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
-@@ -1448,7 +1449,7 @@ static int ext4_add_entry (handle_t *han
- 		return retval;
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	de->inode = 0;
--	de->rec_len = cpu_to_le16(blocksize);
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(blocksize));
- 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
- }
- 
-@@ -1512,7 +1513,7 @@ static int ext4_dx_add_entry(handle_t *h
- 			goto cleanup;
- 		node2 = (struct dx_node *)(bh2->b_data);
- 		entries2 = node2->entries;
--		node2->fake.rec_len = cpu_to_le16(sb->s_blocksize);
-+		node2->fake.rec_len = cpu_to_le16(ext4_store_rec_len(sb->s_blocksize));
- 		node2->fake.inode = 0;
- 		BUFFER_TRACE(frame->bh, "get_write_access");
- 		err = ext4_journal_get_write_access(handle, frame->bh);
-@@ -1612,8 +1613,9 @@ static int ext4_delete_entry (handle_t *
- 			ext4_journal_get_write_access(handle, bh);
- 			if (pde)
- 				pde->rec_len =
--					cpu_to_le16(le16_to_cpu(pde->rec_len) +
--						    le16_to_cpu(de->rec_len));
-+					cpu_to_le16(ext4_store_rec_len(
-+						le16_to_cpu(pde->rec_len) +
-+						le16_to_cpu(de->rec_len)));
- 			else
- 				de->inode = 0;
- 			dir->i_version++;
-@@ -1621,10 +1623,9 @@ static int ext4_delete_entry (handle_t *
- 			ext4_journal_dirty_metadata(handle, bh);
- 			return 0;
- 		}
--		i += le16_to_cpu(de->rec_len);
-+		i += ext4_get_rec_len(le16_to_cpu(de->rec_len));
- 		pde = de;
--		de = (struct ext4_dir_entry_2 *)
--			((char *) de + le16_to_cpu(de->rec_len));
-+		de = ext4_next_entry(de);
- 	}
- 	return -ENOENT;
- }
-@@ -1787,13 +1788,12 @@ retry:
- 	de = (struct ext4_dir_entry_2 *) dir_block->b_data;
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
--	de->rec_len = cpu_to_le16(EXT4_DIR_REC_LEN(de->name_len));
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(EXT4_DIR_REC_LEN(de->name_len)));
- 	strcpy (de->name, ".");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
--	de = (struct ext4_dir_entry_2 *)
--			((char *) de + le16_to_cpu(de->rec_len));
-+	de = ext4_next_entry(de);
- 	de->inode = cpu_to_le32(dir->i_ino);
--	de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT4_DIR_REC_LEN(1));
-+	de->rec_len = cpu_to_le16(ext4_store_rec_len(inode->i_sb->s_blocksize-EXT4_DIR_REC_LEN(1)));
- 	de->name_len = 2;
- 	strcpy (de->name, "..");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
-@@ -1845,8 +1845,7 @@ static int empty_dir (struct inode * ino
- 		return 1;
- 	}
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
--	de1 = (struct ext4_dir_entry_2 *)
--			((char *) de + le16_to_cpu(de->rec_len));
-+	de1 = ext4_next_entry(de);
- 	if (le32_to_cpu(de->inode) != inode->i_ino ||
- 			!le32_to_cpu(de1->inode) ||
- 			strcmp (".", de->name) ||
-@@ -1857,9 +1856,9 @@ static int empty_dir (struct inode * ino
- 		brelse (bh);
- 		return 1;
- 	}
--	offset = le16_to_cpu(de->rec_len) + le16_to_cpu(de1->rec_len);
--	de = (struct ext4_dir_entry_2 *)
--			((char *) de1 + le16_to_cpu(de1->rec_len));
-+	offset = ext4_get_rec_len(le16_to_cpu(de->rec_len)) +
-+		 ext4_get_rec_len(le16_to_cpu(de1->rec_len));
-+	de = ext4_next_entry(de1);
- 	while (offset < inode->i_size ) {
- 		if (!bh ||
- 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
-@@ -1888,9 +1887,8 @@ static int empty_dir (struct inode * ino
- 			brelse (bh);
- 			return 0;
- 		}
--		offset += le16_to_cpu(de->rec_len);
--		de = (struct ext4_dir_entry_2 *)
--				((char *) de + le16_to_cpu(de->rec_len));
-+		offset += ext4_get_rec_len(le16_to_cpu(de->rec_len));
-+		de = ext4_next_entry(de);
- 	}
- 	brelse (bh);
- 	return 1;
-@@ -2245,8 +2243,7 @@ retry:
- }
- 
- #define PARENT_INO(buffer) \
--	((struct ext4_dir_entry_2 *) ((char *) buffer + \
--	le16_to_cpu(((struct ext4_dir_entry_2 *) buffer)->rec_len)))->inode
-+	(ext4_next_entry((struct ext4_dir_entry_2 *)(buffer))->inode)
- 
- /*
-  * Anybody can rename anything with this: the permission checks are left to the
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/include/linux/ext4_fs.h linux-2.6.23-rc6-1-ext4_64k_blocksize/include/linux/ext4_fs.h
---- linux-2.6.23-rc6/include/linux/ext4_fs.h	2007-09-18 19:22:32.000000000 +0200
-+++ linux-2.6.23-rc6-1-ext4_64k_blocksize/include/linux/ext4_fs.h	2007-09-20 18:25:11.000000000 +0200
-@@ -784,6 +784,24 @@ struct ext4_dir_entry_2 {
- #define EXT4_DIR_ROUND			(EXT4_DIR_PAD - 1)
- #define EXT4_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT4_DIR_ROUND) & \
- 					 ~EXT4_DIR_ROUND)
-+#define EXT4_MAX_REC_LEN		0xffff
-+
-+static inline unsigned ext4_get_rec_len(unsigned len)
-+{
-+	if (len == EXT4_MAX_REC_LEN)
-+		return 1 << 16;
-+	return len;
-+}
-+
-+static inline unsigned ext4_store_rec_len(unsigned len)
-+{
-+	if (len == 0x10000)
-+		return EXT4_MAX_REC_LEN;
-+	else if (len > 0x10000)
-+		BUG();
-+	return len;
-+}
-+
- /*
-  * Hash Tree Directory indexing
-  * (c) Daniel Phillips, 2001
-
---82I3+IH0IqGh5yIs--
+						- Ted
