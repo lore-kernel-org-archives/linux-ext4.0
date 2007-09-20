@@ -1,65 +1,47 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH e2fsprogs] - ignore bind mounts in fsck
-Date: Thu, 20 Sep 2007 15:08:01 -0400
-Message-ID: <20070920190801.GI30221@thunk.org>
-References: <46F1847E.6080400@redhat.com> <20070919204249.GH25497@thunk.org> <46F2845C.2010000@redhat.com> <20070920144245.GD30221@thunk.org> <46F28DDA.9050203@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
+Date: Thu, 20 Sep 2007 15:22:16 -0500
+Message-ID: <46F2D678.4060203@redhat.com>
+References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49488 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([66.187.233.31]:34053 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750717AbXITTII (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Sep 2007 15:08:08 -0400
-Content-Disposition: inline
-In-Reply-To: <46F28DDA.9050203@redhat.com>
+	id S1751806AbXITUWZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Sep 2007 16:22:25 -0400
+In-Reply-To: <20070920050923.GX32520@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is what I actually committed into e2fsprogs git, in the maint
-branch.  Note the one-line summary at the beginning of the patch
-description, and the Addresses-Red-Hat-Bugzilla line before the
-Signed-off-by lines.
+Andreas Dilger wrote:
+> On Sep 19, 2007  20:41 -0500, Eric Sandeen wrote:
+>> Andreas Dilger wrote:
+>>> It isn't possible to build an e2fsprogs via "make rpm" on SuSE and have it
+>>> install cleanly, because they split out some of the libraries into separate
+>>> packages.
+>>>
+>>> We've got the current patch to the .spec file, but I'm open to discussion
+>>> if it is more desirable to change the .spec to continue to build separate
+>>> RPMs (though that is more of a distribution hassle and might need major
+>>> changes in the .spec file).
+>> FWIW, I also have an RFE assigned to me for RHEL/Fedora to split up our
+>> e2fsprogs packages for libcom_err and libuuid... since many
+>> non-filesystem things now require them.   So, this is sort of going in
+>> the opposite direction.  :)
+>>
+>> Any idea how many distros already split it out?
+> 
+> I know Debian-based distros have done this for ages...
+> 
+> I'd also welcome someone with rpm-fu split it into separate packages.
 
-						- Ted
+I'd do this, my rpm-fu is still reasonably strong, though - I'm curious,
+is there a compelling reason to split out just libcom-err?  what about
+libuuid?  libblkid?  e2fsprogs is a bit of a grab bag of things.  What's
+the rationale for the split?
 
-commit ed773a263829493e4e4bf612dbec2380cf09349f
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Sep 20 15:06:35 2007 -0400
-
-    fsck: Ignore /etc/fstab entries for bind mounts
-    
-    If a user specifies a bind mount with a non-zero fsck pass number, for
-    example:
-    
-    /foo    /bar    ext3    bind,defaults   1 3
-    
-    print a warning and ignore the fstab entry.
-    
-    Addresses-Red-Hat-Bugzilla: #151533
-    
-    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/misc/fsck.c b/misc/fsck.c
-index 1dcac25..108adf6 100644
---- a/misc/fsck.c
-+++ b/misc/fsck.c
-@@ -867,6 +867,16 @@ static int ignore(struct fs_info *fs)
- 	if (fs->passno == 0)
- 		return 1;
- 
-+	/*
-+	 * If this is a bind mount, ignore it.
-+	 */
-+	if (opt_in_list("bind", fs->opts)) {
-+		fprintf(stderr,
-+			_("%s: skipping bad line in /etc/fstab: bind mount with nonzero fsck pass number\n"),
-+			fs->mountpt);
-+		return 1;
-+	}
-+
- 	interpret_type(fs);
- 
- 	/*
+-Eric
