@@ -1,32 +1,32 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Avoid rec_len overflow with 64KB block size
-Date: Thu, 20 Sep 2007 16:32:14 +0200
-Message-ID: <20070920143214.GC1986@atrey.karlin.mff.cuni.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH e2fsprogs] - ignore bind mounts in fsck
+Date: Thu, 20 Sep 2007 10:42:45 -0400
+Message-ID: <20070920144245.GD30221@thunk.org>
+References: <46F1847E.6080400@redhat.com> <20070919204249.GH25497@thunk.org> <46F2845C.2010000@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Takashi Sato <sho@tnes.nec.co.jp>
-To: linux-ext4@vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:34029 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755367AbXITOcQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Sep 2007 10:32:16 -0400
+Received: from THUNK.ORG ([69.25.196.29]:58621 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752265AbXITOmq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Sep 2007 10:42:46 -0400
 Content-Disposition: inline
+In-Reply-To: <46F2845C.2010000@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-   Hello,
+On Thu, Sep 20, 2007 at 09:31:56AM -0500, Eric Sandeen wrote:
+> Agreed.  If you think fsck shouldn't silently cope with this mistake,
+> and instead punish the user for it (it is what they asked for, after
+> all), I'm ok with that too.  I'm willing to close my end as NOTABUG if
+> you don't want to take this patch.  :)
 
-  when converting ext4 directories to pagecache I just came over
-Takashi's patch preventing overflowing of rec_len. Looking over the
-patch - can't we do it more elegantly by using say 0xffff instead of 64K
-and perform conversion (using some helper) at the moment we read / store
-rec_len? That would be IMHO more transparent than current approach (at
-least it took me some time to understand what's going on with the
-current patch when I was looking at the code)...
+I'm willing to take the patch, although I am thinking that it might be
+appropriate for fsck to print a warning message --- "Bind mount with
+non-zero fsck pass, skipping", or some such.
 
-								Honza
+What do you think?
 
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+							- Ted
