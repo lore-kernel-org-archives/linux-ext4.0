@@ -1,46 +1,39 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
-Date: Wed, 19 Sep 2007 23:09:23 -0600
-Message-ID: <20070920050923.GX32520@schatzie.adilger.int>
-References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Ext3 not marking filesystems as with errors
+Date: Thu, 20 Sep 2007 14:50:35 +0200
+Message-ID: <20070920125035.GG2689@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:41376 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752408AbXITFI5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Sep 2007 01:08:57 -0400
+Received: from styx.suse.cz ([82.119.242.94]:55881 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751540AbXITM3n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Sep 2007 08:29:43 -0400
 Content-Disposition: inline
-In-Reply-To: <46F1CFC0.3070801@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 19, 2007  20:41 -0500, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > It isn't possible to build an e2fsprogs via "make rpm" on SuSE and have it
-> > install cleanly, because they split out some of the libraries into separate
-> > packages.
-> > 
-> > We've got the current patch to the .spec file, but I'm open to discussion
-> > if it is more desirable to change the .spec to continue to build separate
-> > RPMs (though that is more of a distribution hassle and might need major
-> > changes in the .spec file).
-> 
-> FWIW, I also have an RFE assigned to me for RHEL/Fedora to split up our
-> e2fsprogs packages for libcom_err and libuuid... since many
-> non-filesystem things now require them.   So, this is sort of going in
-> the opposite direction.  :)
-> 
-> Any idea how many distros already split it out?
+  Hi,
 
-I know Debian-based distros have done this for ages...
+  one friend has just pointed me to a following misbehaviour of ext3. If we
+stumble on some error in JBD (e.g. in commit code), we call
+__journal_abort_hard(). It just marks the journal as aborted but does
+nothing else. Later ext3 comes, finds journal aborted, calls ext3_abort()
+which remounts fs read-only and stops (it does not mark filesystem as
+having errors). It calls journal_abort(.., -EIO) but that does nothing
+because the journal is already aborted. If you then unmount the filesystem
+and mount it again, everything goes on happily as if there was no error -
+no suggestion for running fsck, nothing.
+  I guess this is a bug but please correct me if you don't think so. There
+are two possibilities how to fix it - either we mark the filesystem as with
+errors in ext3_abort() or we could call some less lowlevel function from
+JBD to abort journal (as soon as j_errno is set, we are safe). Any feeling
+what is less hacky?
 
-I'd also welcome someone with rpm-fu split it into separate packages.
+									Honza
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
