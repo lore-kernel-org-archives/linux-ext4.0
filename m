@@ -1,45 +1,44 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Patch format in ext4 patch queue.
-Date: Fri, 21 Sep 2007 16:54:01 +0530
-Message-ID: <46F3A9D1.2000001@linux.vnet.ibm.com>
-References: <46F39DF6.30402@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Enabling h-trees too early?
+Date: Fri, 21 Sep 2007 07:45:04 -0400
+Message-ID: <20070921114504.GM30221@thunk.org>
+References: <20070919150715.GH9232@duck.suse.cz> <20070919182450.GF25497@thunk.org> <p738x709yrh.fsf@bingen.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:45107 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752771AbXIULYq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2007 07:24:46 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8LBOVxn026413
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 21:24:31 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8LBOW6b4870282
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 21:24:32 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8LBN29p016564
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 21:23:02 +1000
-Received: from [9.124.216.249] ([9.124.216.249])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l8LBN1Fj016300
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 21:23:02 +1000
-In-Reply-To: <46F39DF6.30402@linux.vnet.ibm.com>
+Received: from thunk.org ([69.25.196.29]:34670 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755860AbXIULpK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Sep 2007 07:45:10 -0400
+Content-Disposition: inline
+In-Reply-To: <p738x709yrh.fsf@bingen.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-Aneesh Kumar K.V wrote:
-> Hi all,
+On Fri, Sep 21, 2007 at 11:02:58AM +0200, Andi Kleen wrote:
+> I assume you mean sort by inode, because sort by htree key would
+> be as bad as htrees.
 > 
-> I was looking at the patch queue and see patches with different formats. 
-> If we can standardize on what rest of the linux kernel follows it would
-> be nice.
->
+> But wouldn't that break parallel readdir for a directory that just grows
+> from <32/64K to over it?  e.g. if the sort moves already read 
+> entries to after the  cursor readdir would return some entries twice.
 
-I found this 
+No, it wouldn't break it because after snapshotting the tree, we would
+only use the snapshot and not refer to the on-disk format until the
+directory file handle is closed or there is an explicit lseek to 0.
+To quote from the spec:
 
-http://www.zip.com.au/~akpm/linux/patches/stuff/tpp.txt
+  If a file is removed from or added to the directory after the most recent
+  call to the opendir() or rewinddir() function, whether a subsequent call to
+  the readdir() function returns an entry for that file is unspecified.
 
--aneesh
+So, if some program does the stupid thing and opens a directory,
+doesn't use it for five hours, and in the meantime 2,000 files are
+created, it's OK if we only return the set of files that were in
+existence when the opendir() was originally called.  This makes us OK
+in terms of spec conformance, and given that real life programs don't
+do stuff this stupid, we should be fine.
+
+					- Ted
