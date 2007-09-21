@@ -1,24 +1,24 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-uninitialized-block-groups.patch added to -mm tree
-Date: Thu, 20 Sep 2007 16:22:27 -0700
-Message-ID: <200709202322.l8KNMRm9007964@imap1.linux-foundation.org>
-Cc: adilger@clusterfs.com, aneesh.kumar@linux.vnet.ibm.com,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org, mathur@us.ibm.com
+Subject: + ext3-new-export-ops.patch added to -mm tree
+Date: Thu, 20 Sep 2007 17:13:09 -0700
+Message-ID: <200709210013.l8L0D9KZ009755@imap1.linux-foundation.org>
+Cc: hch@lst.de, bfields@fieldses.org, linux-ext4@vger.kernel.org,
+	neilb@suse.de
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:33964 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:49428 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751447AbXITX2E (ORCPT
+	by vger.kernel.org with ESMTP id S1751364AbXIUAOH (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Sep 2007 19:28:04 -0400
+	Thu, 20 Sep 2007 20:14:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     Ext4: Uninitialized Block Groups
+     ext3: new export ops
 has been added to the -mm tree.  Its filename is
-     ext4-uninitialized-block-groups.patch
+     ext3-new-export-ops.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -26,653 +26,131 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: Ext4: Uninitialized Block Groups
-From: Andreas Dilger <adilger@clusterfs.com>
+Subject: ext3: new export ops
+From: Christoph Hellwig <hch@lst.de>
 
-In pass1 of e2fsck, every inode table in the fileystem is scanned and
-checked, regardless of whether it is in use.  This is this the most time
-consuming part of the filesystem check.  The unintialized block group
-feature can greatly reduce e2fsck time by eliminating checking of
-uninitialized inodes.
+Trivial switch over to the new generic helpers.
 
-With this feature, there is a a high water mark of used inodes for each
-block group.  Block and inode bitmaps can be uninitialized on disk via a
-flag in the group descriptor to avoid reading or scanning them at e2fsck
-time.  A checksum of each group descriptor is used to ensure that
-corruption in the group descriptor's bit flags does not cause incorrect
-operation.
-
-The feature is enabled through a mkfs option
-
-	mke2fs /dev/ -O uninit_groups
-
-A patch adding support for uninitialized block groups to e2fsprogs tools has
-been posted to the linux-ext4 mailing list.
-
-The patches have been stress tested with fsstress and fsx.  In performance
-tests testing e2fsck time, we have seen that e2fsck time on ext3 grows
-linearly with the total number of inodes in the filesytem.  In ext4 with
-the uninitialized block groups feature, the e2fsck time is constant, based
-solely on the number of used inodes rather than the total inode count. 
-Since typical ext4 filesystems only use 1-10% of their inodes, this feature
-can greatly reduce e2fsck time for users.  With performance improvement of
-2-20 times, depending on how full the filesystem is.
-
-The attached graph shows the major improvements in e2fsck times in filesystems
-with a large total inode count, but few inodes in use.
-
-In each group descriptor if we have
-
-EXT4_BG_INODE_UNINIT set in bg_flags:
-        Inode table is not initialized/used in this group. So we can skip
-        the consistency check during fsck.
-EXT4_BG_BLOCK_UNINIT set in bg_flags:
-        No block in the group is used. So we can skip the block bitmap
-        verification for this group.
-
-We also add two new fields to group descriptor as a part of
-uninitialized group patch.
-
-        __le16  bg_itable_unused;       /* Unused inodes count */
-        __le16  bg_checksum;            /* crc16(sb_uuid+group+desc) */
-
-bg_itable_unused:
-
-If we have EXT4_BG_INODE_UNINIT not set in bg_flags
-then bg_itable_unused will give the offset within
-the inode table till the inodes are used. This can be
-used by fsck to skip list of inodes that are marked unused.
-
-bg_checksum:
-Now that we depend on bg_flags and bg_itable_unused to determine
-the block and inode usage, we need to make sure group descriptor
-is not corrupt. We add checksum to group descriptor to
-detect corruption. If the descriptor is found to be corrupt, we
-mark all the blocks and inodes in the group used.
-
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c        |   92 +++++++++++++++++++++++++-
- fs/ext4/group.h         |   29 ++++++++
- fs/ext4/ialloc.c        |  132 +++++++++++++++++++++++++++++++++++---
- fs/ext4/resize.c        |    2 
- fs/ext4/super.c         |   96 +++++++++++++++++++++++++++
- include/linux/ext4_fs.h |   16 +++-
- 6 files changed, 351 insertions(+), 16 deletions(-)
+ fs/ext3/super.c |   35 ++++++++++++++++++++---------------
+ 1 files changed, 20 insertions(+), 15 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-uninitialized-block-groups fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-uninitialized-block-groups
-+++ a/fs/ext4/balloc.c
-@@ -20,6 +20,7 @@
- #include <linux/quotaops.h>
- #include <linux/buffer_head.h>
- 
-+#include "group.h"
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-  */
-@@ -42,6 +43,74 @@ void ext4_get_group_no_and_offset(struct
- 
+diff -puN fs/ext3/super.c~ext3-new-export-ops fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-new-export-ops
++++ a/fs/ext3/super.c
+@@ -631,13 +631,10 @@ static int ext3_show_options(struct seq_
  }
  
-+/* Initializes an uninitialized block bitmap if given, and returns the
-+ * number of blocks free in the group. */
-+unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
-+				int block_group, struct ext4_group_desc *gdp)
-+{
-+	unsigned long start;
-+	int bit, bit_max;
-+	unsigned free_blocks;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	if (bh) {
-+		J_ASSERT_BH(bh, buffer_locked(bh));
-+
-+		/* If checksum is bad mark all blocks used to prevent allocation
-+		 * essentially implementing a per-group read-only flag. */
-+		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
-+			ext4_error(sb, __FUNCTION__,
-+				   "Checksum bad for group %u\n", block_group);
-+			gdp->bg_free_blocks_count = 0;
-+			gdp->bg_free_inodes_count = 0;
-+			gdp->bg_itable_unused = 0;
-+			memset(bh->b_data, 0xff, sb->s_blocksize);
-+			return 0;
-+		}
-+		memset(bh->b_data, 0, sb->s_blocksize);
-+	}
-+
-+	/* Check for superblock and gdt backups in this group */
-+	bit_max = ext4_bg_has_super(sb, block_group);
-+
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
-+	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
-+			  sbi->s_desc_per_block) {
-+		if (bit_max) {
-+			bit_max += ext4_bg_num_gdb(sb, block_group);
-+			bit_max +=
-+				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
-+		}
-+	} else { /* For META_BG_BLOCK_GROUPS */
-+		int group_rel = (block_group -
-+				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
-+				EXT4_DESC_PER_BLOCK(sb);
-+		if (group_rel == 0 || group_rel == 1 ||
-+		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
-+			bit_max += 1;
-+	}
-+
-+	/* Last and first groups are always initialized */
-+	free_blocks = EXT4_BLOCKS_PER_GROUP(sb) - bit_max;
-+
-+	if (bh) {
-+		for (bit = 0; bit < bit_max; bit++)
-+			ext4_set_bit(bit, bh->b_data);
-+
-+		start = block_group * EXT4_BLOCKS_PER_GROUP(sb) +
-+			le32_to_cpu(sbi->s_es->s_first_data_block);
-+
-+		/* Set bits for block and inode bitmaps, and inode table */
-+		ext4_set_bit(ext4_block_bitmap(sb, gdp) - start, bh->b_data);
-+		ext4_set_bit(ext4_inode_bitmap(sb, gdp) - start, bh->b_data);
-+		for (bit = le32_to_cpu(gdp->bg_inode_table) - start,
-+		     bit_max = bit + sbi->s_itb_per_group; bit < bit_max; bit++)
-+			ext4_set_bit(bit, bh->b_data);
-+	}
-+
-+	return free_blocks - sbi->s_itb_per_group - 2;
-+}
-+
- /*
-  * The free blocks are managed by bitmaps.  A file system contains several
-  * blocks groups.  Each group contains 1 bitmap block for blocks, 1 bitmap
-@@ -119,7 +188,7 @@ block_in_use(ext4_fsblk_t block, struct 
-  *
-  * Return buffer_head on success or NULL in case of failure.
-  */
--static struct buffer_head *
-+struct buffer_head *
- read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ 
+-static struct dentry *ext3_get_dentry(struct super_block *sb, void *vobjp)
++static struct inode *ext3_nfs_get_inode(struct super_block *sb,
++		u64 ino, u32 generation)
  {
- 	int i;
-@@ -127,11 +196,24 @@ read_block_bitmap(struct super_block *sb
- 	struct buffer_head * bh = NULL;
- 	ext4_fsblk_t bitmap_blk;
+-	__u32 *objp = vobjp;
+-	unsigned long ino = objp[0];
+-	__u32 generation = objp[1];
+ 	struct inode *inode;
+-	struct dentry *result;
  
--	desc = ext4_get_group_desc (sb, block_group, NULL);
-+	desc = ext4_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
- 		return NULL;
- 	bitmap_blk = ext4_block_bitmap(sb, desc);
--	bh = sb_bread(sb, bitmap_blk);
-+	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+		bh = sb_getblk(sb, bitmap_blk);
-+		if (!buffer_uptodate(bh)) {
-+			lock_buffer(bh);
-+			if (!buffer_uptodate(bh)) {
-+				ext4_init_block_bitmap(sb, bh, block_group,
-+						       desc);
-+				set_buffer_uptodate(bh);
-+			}
-+			unlock_buffer(bh);
-+		}
-+	} else {
-+		bh = sb_bread(sb, bitmap_blk);
-+	}
- 	if (!bh)
- 		ext4_error (sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
-@@ -627,6 +709,7 @@ do_more:
- 	desc->bg_free_blocks_count =
- 		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
- 			group_freed);
-+	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
- 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
- 
-@@ -1694,8 +1777,11 @@ allocated:
- 			ret_block, goal_hits, goal_attempts);
- 
- 	spin_lock(sb_bgl_lock(sbi, group_no));
-+	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))
-+		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 	gdp->bg_free_blocks_count =
- 			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)-num);
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
- 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
- 
-diff -puN /dev/null fs/ext4/group.h
---- /dev/null
-+++ a/fs/ext4/group.h
-@@ -0,0 +1,29 @@
-+/*
-+ *  linux/fs/ext4/group.h
-+ *
-+ * Copyright (C) 2007 Cluster File Systems, Inc
-+ *
-+ * Author: Andreas Dilger <adilger@clusterfs.com>
-+ */
+ 	if (ino < EXT3_FIRST_INO(sb) && ino != EXT3_ROOT_INO)
+ 		return ERR_PTR(-ESTALE);
+@@ -660,15 +657,22 @@ static struct dentry *ext3_get_dentry(st
+ 		iput(inode);
+ 		return ERR_PTR(-ESTALE);
+ 	}
+-	/* now to find a dentry.
+-	 * If possible, get a well-connected one
+-	 */
+-	result = d_alloc_anon(inode);
+-	if (!result) {
+-		iput(inode);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-	return result;
 +
-+#ifndef _LINUX_EXT4_GROUP_H
-+#define _LINUX_EXT4_GROUP_H
-+#if defined(CONFIG_CRC16)
-+#include <linux/crc16.h>
-+#endif
-+
-+extern __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 group,
-+				   struct ext4_group_desc *gdp);
-+extern int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 group,
-+				       struct ext4_group_desc *gdp);
-+struct buffer_head *read_block_bitmap(struct super_block *sb,
-+				      unsigned int block_group);
-+extern unsigned ext4_init_block_bitmap(struct super_block *sb,
-+				       struct buffer_head *bh, int group,
-+				       struct ext4_group_desc *desc);
-+#define ext4_free_blocks_after_init(sb, group, desc)			\
-+		ext4_init_block_bitmap(sb, NULL, group, desc)
-+extern unsigned ext4_init_inode_bitmap(struct super_block *sb,
-+				       struct buffer_head *bh, int group,
-+				       struct ext4_group_desc *desc);
-+#endif /* _LINUX_EXT4_GROUP_H */
-diff -puN fs/ext4/ialloc.c~ext4-uninitialized-block-groups fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-uninitialized-block-groups
-+++ a/fs/ext4/ialloc.c
-@@ -28,6 +28,7 @@
- 
- #include "xattr.h"
- #include "acl.h"
-+#include "group.h"
- 
- /*
-  * ialloc.c contains the inodes allocation and deallocation routines
-@@ -43,6 +44,52 @@
-  * the free blocks count in the block.
-  */
- 
-+/*
-+ * To avoid calling the atomic setbit hundreds or thousands of times, we only
-+ * need to use it within a single byte (to ensure we get endianness right).
-+ * We can use memset for the rest of the bitmap as there are no other users.
-+ */
-+static void mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
-+{
-+	int i;
-+
-+	if (start_bit >= end_bit)
-+		return;
-+
-+	ext4_debug("mark end bits +%d through +%d used\n", start_bit, end_bit);
-+	for (i = start_bit; i < ((start_bit + 7) & ~7UL); i++)
-+		ext4_set_bit(i, bitmap);
-+	if (i < end_bit)
-+		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
++	return inode;
 +}
 +
-+/* Initializes an uninitialized inode bitmap */
-+unsigned ext4_init_inode_bitmap(struct super_block *sb,
-+				struct buffer_head *bh, int block_group,
-+				struct ext4_group_desc *gdp)
++static struct dentry *ext3_fh_to_dentry(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	J_ASSERT_BH(bh, buffer_locked(bh));
-+
-+	/* If checksum is bad mark all blocks and inodes use to prevent
-+	 * allocation, essentially implementing a per-group read-only flag. */
-+	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
-+		ext4_error(sb, __FUNCTION__, "Checksum bad for group %u\n",
-+			   block_group);
-+		gdp->bg_free_blocks_count = 0;
-+		gdp->bg_free_inodes_count = 0;
-+		gdp->bg_itable_unused = 0;
-+		memset(bh->b_data, 0xff, sb->s_blocksize);
-+		return 0;
-+	}
-+
-+	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
-+	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), EXT4_BLOCKS_PER_GROUP(sb),
-+			bh->b_data);
-+
-+	return EXT4_INODES_PER_GROUP(sb);
++	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
++				    ext3_nfs_get_inode);
 +}
- 
- /*
-  * Read the inode allocation bitmap for a given block_group, reading
-@@ -59,8 +106,20 @@ read_inode_bitmap(struct super_block * s
- 	desc = ext4_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
- 		goto error_out;
--
--	bh = sb_bread(sb, ext4_inode_bitmap(sb, desc));
-+	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
-+		bh = sb_getblk(sb, ext4_inode_bitmap(sb, desc));
-+		if (!buffer_uptodate(bh)) {
-+			lock_buffer(bh);
-+			if (!buffer_uptodate(bh)) {
-+				ext4_init_inode_bitmap(sb, bh, block_group,
-+						       desc);
-+				set_buffer_uptodate(bh);
-+			}
-+			unlock_buffer(bh);
-+		}
-+	} else {
-+		bh = sb_bread(sb, ext4_inode_bitmap(sb, desc));
-+	}
- 	if (!bh)
- 		ext4_error(sb, "read_inode_bitmap",
- 			    "Cannot read inode bitmap - "
-@@ -169,6 +228,8 @@ void ext4_free_inode (handle_t *handle, 
- 			if (is_directory)
- 				gdp->bg_used_dirs_count = cpu_to_le16(
- 				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
-+			gdp->bg_checksum = ext4_group_desc_csum(sbi,
-+							block_group, gdp);
- 			spin_unlock(sb_bgl_lock(sbi, block_group));
- 			percpu_counter_inc(&sbi->s_freeinodes_counter);
- 			if (is_directory)
-@@ -435,7 +496,7 @@ struct inode *ext4_new_inode(handle_t *h
- 	struct ext4_sb_info *sbi;
- 	int err = 0;
- 	struct inode *ret;
--	int i;
-+	int i, free = 0;
- 
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -517,11 +578,13 @@ repeat_in_this_group:
- 	goto out;
- 
- got:
--	ino += group * EXT4_INODES_PER_GROUP(sb) + 1;
--	if (ino < EXT4_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
--		ext4_error (sb, "ext4_new_inode",
--			    "reserved inode or inode > inodes count - "
--			    "block_group = %d, inode=%lu", group, ino);
-+	ino++;
-+	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
-+	    ino > EXT4_INODES_PER_GROUP(sb)) {
-+		ext4_error(sb, __FUNCTION__,
-+			   "reserved inode or inode > inodes count - "
-+			   "block_group = %d, inode=%lu", group,
-+			   ino + group * EXT4_INODES_PER_GROUP(sb));
- 		err = -EIO;
- 		goto fail;
- 	}
-@@ -529,13 +592,64 @@ got:
- 	BUFFER_TRACE(bh2, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh2);
- 	if (err) goto fail;
 +
-+	/* We may have to initialize the block bitmap if it isn't already */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-+	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+		struct buffer_head *block_bh = read_block_bitmap(sb, group);
-+
-+		BUFFER_TRACE(block_bh, "get block bitmap access");
-+		err = ext4_journal_get_write_access(handle, block_bh);
-+		if (err) {
-+			brelse(block_bh);
-+			goto fail;
-+		}
-+
-+		free = 0;
-+		spin_lock(sb_bgl_lock(sbi, group));
-+		/* recheck and clear flag under lock if we still need to */
-+		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
-+			free = ext4_free_blocks_after_init(sb, group, gdp);
-+			gdp->bg_free_blocks_count = cpu_to_le16(free);
-+		}
-+		spin_unlock(sb_bgl_lock(sbi, group));
-+
-+		/* Don't need to dirty bitmap block if we didn't change it */
-+		if (free) {
-+			BUFFER_TRACE(block_bh, "dirty block bitmap");
-+			err = ext4_journal_dirty_metadata(handle, block_bh);
-+		}
-+
-+		brelse(block_bh);
-+		if (err)
-+			goto fail;
-+	}
-+
- 	spin_lock(sb_bgl_lock(sbi, group));
-+	/* If we didn't allocate from within the initialized part of the inode
-+	 * table then we need to initialize up to this inode. */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
-+		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
-+			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
-+			free = EXT4_INODES_PER_GROUP(sb);
-+		} else {
-+			free = EXT4_INODES_PER_GROUP(sb) -
-+				le16_to_cpu(gdp->bg_itable_unused);
-+		}
-+
-+		if (ino > free)
-+			gdp->bg_itable_unused =
-+				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
-+	}
-+
- 	gdp->bg_free_inodes_count =
- 		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
- 	if (S_ISDIR(mode)) {
- 		gdp->bg_used_dirs_count =
- 			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
- 	}
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
- 	spin_unlock(sb_bgl_lock(sbi, group));
- 	BUFFER_TRACE(bh2, "call ext4_journal_dirty_metadata");
- 	err = ext4_journal_dirty_metadata(handle, bh2);
-@@ -557,7 +671,7 @@ got:
- 		inode->i_gid = current->fsgid;
- 	inode->i_mode = mode;
- 
--	inode->i_ino = ino;
-+	inode->i_ino = ino + group * EXT4_INODES_PER_GROUP(sb);
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
- 	inode->i_mtime = inode->i_atime = inode->i_ctime = ei->i_crtime =
-diff -puN fs/ext4/resize.c~ext4-uninitialized-block-groups fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-uninitialized-block-groups
-+++ a/fs/ext4/resize.c
-@@ -16,6 +16,7 @@
- #include <linux/errno.h>
- #include <linux/slab.h>
- 
-+#include "group.h"
- 
- #define outside(b, first, last)	((b) < (first) || (b) >= (last))
- #define inside(b, first, last)	((b) >= (first) && (b) < (last))
-@@ -842,6 +843,7 @@ int ext4_group_add(struct super_block *s
- 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
- 	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
- 	gdp->bg_free_inodes_count = cpu_to_le16(EXT4_INODES_PER_GROUP(sb));
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
- 
- 	/*
- 	 * Make the new blocks and inodes valid next.  We do this before
-diff -puN fs/ext4/super.c~ext4-uninitialized-block-groups fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-uninitialized-block-groups
-+++ a/fs/ext4/super.c
-@@ -43,6 +43,7 @@
- #include "xattr.h"
- #include "acl.h"
- #include "namei.h"
-+#include "group.h"
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
-@@ -1336,6 +1337,93 @@ static int ext4_setup_super(struct super
- 	return res;
++static struct dentry *ext3_fh_to_parent(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
++{
++	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
++				    ext3_nfs_get_inode);
  }
  
-+#if !defined(CONFIG_CRC16)
-+/** CRC table for the CRC-16. The poly is 0x8005 (x16 + x15 + x2 + 1) */
-+__u16 const crc16_table[256] = {
-+	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
-+	0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
-+	0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
-+	0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
-+	0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
-+	0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
-+	0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
-+	0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
-+	0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
-+	0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
-+	0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
-+	0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
-+	0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
-+	0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
-+	0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
-+	0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
-+	0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
-+	0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
-+	0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
-+	0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
-+	0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
-+	0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
-+	0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
-+	0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
-+	0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
-+	0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
-+	0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
-+	0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
-+	0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
-+	0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
-+	0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
-+	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
-+};
-+
-+static inline __u16 crc16_byte(__u16 crc, const __u8 data)
-+{
-+	return (crc >> 8) ^ crc16_table[(crc ^ data) & 0xff];
-+}
-+
-+__u16 crc16(__u16 crc, __u8 const *buffer, size_t len)
-+{
-+	while (len--)
-+		crc = crc16_byte(crc, *buffer++);
-+	return crc;
-+}
-+#endif
-+
-+__le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
-+			    struct ext4_group_desc *gdp)
-+{
-+	__u16 crc = 0;
-+
-+	if (sbi->s_es->s_feature_ro_compat &
-+	    cpu_to_le32(EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
-+		int offset = offsetof(struct ext4_group_desc, bg_checksum);
-+		__le32 le_group = cpu_to_le32(block_group);
-+
-+		crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
-+		crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
-+		crc = crc16(crc, (__u8 *)gdp, offset);
-+		offset += sizeof(gdp->bg_checksum); /* skip checksum */
-+		/* for checksum of struct ext4_group_desc do the rest...*/
-+		if ((sbi->s_es->s_feature_incompat &
-+		     cpu_to_le32(EXT4_FEATURE_INCOMPAT_64BIT)) &&
-+		    offset < le16_to_cpu(sbi->s_es->s_desc_size))
-+			crc = crc16(crc, (__u8 *)gdp + offset,
-+				    le16_to_cpu(sbi->s_es->s_desc_size) -
-+					offset);
-+	}
-+
-+	return cpu_to_le16(crc);
-+}
-+
-+int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 block_group,
-+				struct ext4_group_desc *gdp)
-+{
-+	if ((sbi->s_es->s_feature_ro_compat &
-+	     cpu_to_le32(EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) &&
-+	    (gdp->bg_checksum != ext4_group_desc_csum(sbi, block_group, gdp)))
-+		return 0;
-+
-+	return 1;
-+}
-+
- /* Called at mount-time, super-block is locked */
- static int ext4_check_descriptors (struct super_block * sb)
- {
-@@ -1390,6 +1478,14 @@ static int ext4_check_descriptors (struc
- 				    i, inode_table);
- 			return 0;
- 		}
-+		if (!ext4_group_desc_csum_verify(sbi, i, gdp)) {
-+			ext4_error(sb, __FUNCTION__,
-+				   "Checksum for group %d failed (%u!=%u)\n", i,
-+				   le16_to_cpu(ext4_group_desc_csum(sbi, i,
-+								    gdp)),
-+				   le16_to_cpu(gdp->bg_checksum));
-+			return 0;
-+		}
- 		first_block += EXT4_BLOCKS_PER_GROUP(sb);
- 		gdp = (struct ext4_group_desc *)
- 			((__u8 *)gdp + EXT4_DESC_SIZE(sb));
-diff -puN include/linux/ext4_fs.h~ext4-uninitialized-block-groups include/linux/ext4_fs.h
---- a/include/linux/ext4_fs.h~ext4-uninitialized-block-groups
-+++ a/include/linux/ext4_fs.h
-@@ -109,19 +109,25 @@
-  */
- struct ext4_group_desc
- {
--	__le32	bg_block_bitmap;		/* Blocks bitmap block */
--	__le32	bg_inode_bitmap;		/* Inodes bitmap block */
-+	__le32	bg_block_bitmap;	/* Blocks bitmap block */
-+	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
- 	__le32	bg_inode_table;		/* Inodes table block */
- 	__le16	bg_free_blocks_count;	/* Free blocks count */
- 	__le16	bg_free_inodes_count;	/* Free inodes count */
- 	__le16	bg_used_dirs_count;	/* Directories count */
--	__u16	bg_flags;
--	__u32	bg_reserved[3];
-+	__u16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
-+	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
-+	__le16  bg_itable_unused;	/* Unused inodes count */
-+	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
- 	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
- 	__le32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
- 	__le32	bg_inode_table_hi;	/* Inodes table block MSB */
+ #ifdef CONFIG_QUOTA
+@@ -738,8 +742,9 @@ static const struct super_operations ext
  };
  
-+#define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
-+#define EXT4_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
-+#define EXT4_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
-+
- #ifdef __KERNEL__
- #include <linux/ext4_fs_i.h>
- #include <linux/ext4_fs_sb.h>
-@@ -676,6 +682,7 @@ static inline int ext4_valid_inum(struct
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
- #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
-+#define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ static struct export_operations ext3_export_ops = {
++	.fh_to_dentry = ext3_fh_to_dentry,
++	.fh_to_parent = ext3_fh_to_parent,
+ 	.get_parent = ext3_get_parent,
+-	.get_dentry = ext3_get_dentry,
+ };
  
-@@ -695,6 +702,7 @@ static inline int ext4_valid_inum(struct
- 					 EXT4_FEATURE_INCOMPAT_64BIT)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
+ enum {
 _
 
-Patches currently in -mm which might be from adilger@clusterfs.com are
+Patches currently in -mm which might be from hch@lst.de are
 
-ext2-statfs-improvement-for-block-and-inode-free-count.patch
-ext2-ext3-ext4-add-block-bitmap-validation.patch
-ext2-ext3-ext4-add-block-bitmap-validation-fix.patch
-ext4-remove-obsolete-fragments.patch
-ext4-uninitialized-block-groups.patch
+git-nfs.patch
+git-nfsd.patch
+partially-fix-up-the-lookup_one_noperm-mess.patch
+optimize-x86-page-faults-like-all-other-achitectures-and-kill-notifier-cruft.patch
+optimize-x86-page-faults-like-all-other-achitectures-and-kill-notifier-cruft-fix.patch
+git-xfs.patch
+sysv-convert-to-new-aops.patch
+alpha-convert-to-generic-sys_ptrace.patch
+kill-declare_mutex_locked.patch
+remove-unneded-lock_kernel-in-driver-block-loopc.patch
+ufs-move-non-layout-parts-of-ufs_fsh-to-fs-ufs.patch
+fix-execute-checking-in-permission.patch
+exec-remove-unnecessary-check-for-mnt_noexec.patch
+fix-f_version-type-should-be-u64-instead-of-unsigned-long.patch
+unprivileged-mounts-add-user-mounts-to-the-kernel.patch
+unprivileged-mounts-allow-unprivileged-umount.patch
+unprivileged-mounts-account-user-mounts.patch
+unprivileged-mounts-propagate-error-values-from-clone_mnt.patch
+unprivileged-mounts-allow-unprivileged-bind-mounts.patch
+unprivileged-mounts-put-declaration-of-put_filesystem-in-fsh.patch
+unprivileged-mounts-allow-unprivileged-mounts.patch
+unprivileged-mounts-allow-unprivileged-fuse-mounts.patch
+unprivileged-mounts-propagation-inherit-owner-from-parent.patch
+unprivileged-mounts-add-no-submounts-flag.patch
+revoke-special-mmap-handling.patch
+revoke-core-code.patch
+revoke-support-for-ext2-and-ext3.patch
+revoke-add-documentation.patch
+revoke-wire-up-i386-system-calls.patch
+exportfs-add-fid-type.patch
+exportfs-add-new-methods.patch
+ext2-new-export-ops.patch
+ext3-new-export-ops.patch
+ext4-new-export-ops.patch
+efs-new-export-ops.patch
+jfs-new-export-ops.patch
+ntfs-new-export-ops.patch
+xfs-new-export-ops.patch
+fat-new-export-ops.patch
+isofs-new-export-ops.patch
+shmem-new-export-ops.patch
+reiserfs-new-export-ops.patch
+gfs2-new-export-ops.patch
+ocfs2-new-export-ops.patch
+exportfs-remove-old-methods.patch
+exportfs-make-struct-export_operations-const.patch
+exportfs-update-documentation.patch
