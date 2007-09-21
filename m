@@ -1,41 +1,167 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Introduce ext4_find_next_bit
-Date: Fri, 21 Sep 2007 14:38:33 +0530
-Message-ID: <46F38A11.5040803@linux.vnet.ibm.com>
-References: <11903523063349-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <46F36801.3070908@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: balbir@linux.vnet.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:44839 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751105AbXIUJJP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2007 05:09:15 -0400
-In-Reply-To: <46F36801.3070908@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + introduce-ext4_find_next_bit.patch added to -mm tree
+Date: Fri, 21 Sep 2007 03:21:47 -0700
+Message-ID: <200709211021.l8LALlhi030722@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+The patch titled
+     Introduce ext4_find_next_bit
+has been added to the -mm tree.  Its filename is
+     introduce-ext4_find_next_bit.patch
 
-Balbir Singh wrote:
-> Aneesh Kumar K.V wrote:
->> Also add generic_find_next_le_bit
->>
->> This gets used by the ext4 multi block allocator patches.
->>
-> 
-> Looks like it's a straight forward on Little Endian Architectures.
-> I see something for powerpc, what about other architectures?
-> 
->
-All include/asm-<arch>/bitops.h except powerpc have 
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-#include <asm-generic/bitops/ext2-non-atomic.h>
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-and ext2-non-atomic.h have #include <asm-generic/bitops/le.h>
+------------------------------------------------------
+Subject: Introduce ext4_find_next_bit
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
+Also add generic_find_next_le_bit
 
--aneesh
+This gets used by the ext4 multi block allocator patches.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ include/asm-generic/bitops/ext2-non-atomic.h |    2 
+ include/asm-generic/bitops/le.h              |    4 +
+ include/asm-powerpc/bitops.h                 |    4 +
+ include/linux/ext4_fs.h                      |    1 
+ lib/find_next_bit.c                          |   44 +++++++++++++++++
+ 5 files changed, 55 insertions(+)
+
+diff -puN include/asm-generic/bitops/ext2-non-atomic.h~introduce-ext4_find_next_bit include/asm-generic/bitops/ext2-non-atomic.h
+--- a/include/asm-generic/bitops/ext2-non-atomic.h~introduce-ext4_find_next_bit
++++ a/include/asm-generic/bitops/ext2-non-atomic.h
+@@ -14,5 +14,7 @@
+ 	generic_find_first_zero_le_bit((unsigned long *)(addr), (size))
+ #define ext2_find_next_zero_bit(addr, size, off) \
+ 	generic_find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
++#define ext2_find_next_bit(addr, size, off) \
++	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
+ 
+ #endif /* _ASM_GENERIC_BITOPS_EXT2_NON_ATOMIC_H_ */
+diff -puN include/asm-generic/bitops/le.h~introduce-ext4_find_next_bit include/asm-generic/bitops/le.h
+--- a/include/asm-generic/bitops/le.h~introduce-ext4_find_next_bit
++++ a/include/asm-generic/bitops/le.h
+@@ -20,6 +20,8 @@
+ #define generic___test_and_clear_le_bit(nr, addr) __test_and_clear_bit(nr, addr)
+ 
+ #define generic_find_next_zero_le_bit(addr, size, offset) find_next_zero_bit(addr, size, offset)
++#define generic_find_next_le_bit(addr, size, offset) \
++			find_next_bit(addr, size, offset)
+ 
+ #elif defined(__BIG_ENDIAN)
+ 
+@@ -42,6 +44,8 @@
+ 
+ extern unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
+ 		unsigned long size, unsigned long offset);
++extern unsigned long generic_find_next_le_bit(const unsigned long *addr,
++		unsigned long size, unsigned long offset);
+ 
+ #else
+ #error "Please fix <asm/byteorder.h>"
+diff -puN include/asm-powerpc/bitops.h~introduce-ext4_find_next_bit include/asm-powerpc/bitops.h
+--- a/include/asm-powerpc/bitops.h~introduce-ext4_find_next_bit
++++ a/include/asm-powerpc/bitops.h
+@@ -310,6 +310,8 @@ static __inline__ int test_le_bit(unsign
+ unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
+ 				    unsigned long size, unsigned long offset);
+ 
++unsigned long generic_find_next_le_bit(const unsigned long *addr,
++				    unsigned long size, unsigned long offset);
+ /* Bitmap functions for the ext2 filesystem */
+ 
+ #define ext2_set_bit(nr,addr) \
+@@ -329,6 +331,8 @@ unsigned long generic_find_next_zero_le_
+ #define ext2_find_next_zero_bit(addr, size, off) \
+ 	generic_find_next_zero_le_bit((unsigned long*)addr, size, off)
+ 
++#define ext2_find_next_bit(addr, size, off) \
++	generic_find_next_le_bit((unsigned long *)addr, size, off)
+ /* Bitmap functions for the minix filesystem.  */
+ 
+ #define minix_test_and_set_bit(nr,addr) \
+diff -puN include/linux/ext4_fs.h~introduce-ext4_find_next_bit include/linux/ext4_fs.h
+--- a/include/linux/ext4_fs.h~introduce-ext4_find_next_bit
++++ a/include/linux/ext4_fs.h
+@@ -492,6 +492,7 @@ do {									       \
+ #define ext4_test_bit			ext2_test_bit
+ #define ext4_find_first_zero_bit	ext2_find_first_zero_bit
+ #define ext4_find_next_zero_bit		ext2_find_next_zero_bit
++#define ext4_find_next_bit		ext2_find_next_bit
+ 
+ /*
+  * Maximal mount counts between two filesystem checks
+diff -puN lib/find_next_bit.c~introduce-ext4_find_next_bit lib/find_next_bit.c
+--- a/lib/find_next_bit.c~introduce-ext4_find_next_bit
++++ a/lib/find_next_bit.c
+@@ -178,4 +178,48 @@ found_middle_swap:
+ 
+ EXPORT_SYMBOL(generic_find_next_zero_le_bit);
+ 
++unsigned long generic_find_next_le_bit(const unsigned long *addr, unsigned
++		long size, unsigned long offset)
++{
++	const unsigned long *p = addr + BITOP_WORD(offset);
++	unsigned long result = offset & ~(BITS_PER_LONG - 1);
++	unsigned long tmp;
++
++	if (offset >= size)
++		return size;
++	size -= result;
++	offset &= (BITS_PER_LONG - 1UL);
++	if (offset) {
++		tmp = ext2_swabp(p++);
++		tmp &= (~0UL << offset);
++		if (size < BITS_PER_LONG)
++			goto found_first;
++		if (tmp)
++			goto found_middle;
++		size -= BITS_PER_LONG;
++		result += BITS_PER_LONG;
++	}
++
++	while (size & ~(BITS_PER_LONG - 1)) {
++		tmp = *(p++);
++		if (tmp)
++			goto found_middle_swap;
++		result += BITS_PER_LONG;
++		size -= BITS_PER_LONG;
++	}
++	if (!size)
++		return result;
++	tmp = ext2_swabp(p);
++found_first:
++	tmp &= (~0UL >> (BITS_PER_LONG - size));
++	if (tmp == 0UL)		/* Are any bits set? */
++		return result + size; /* Nope. */
++found_middle:
++	return result + __ffs(tmp);
++
++found_middle_swap:
++	return result + __ffs(ext2_swab(tmp));
++}
++EXPORT_SYMBOL(generic_find_next_le_bit);
++
+ #endif /* __BIG_ENDIAN */
+_
+
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+ext2-ext3-ext4-add-block-bitmap-validation.patch
+ext2-ext3-ext4-add-block-bitmap-validation-fix.patch
+ext4-uninitialized-block-groups.patch
+ext4-uninitialized-block-groups-fix.patch
+introduce-ext4_find_next_bit.patch
