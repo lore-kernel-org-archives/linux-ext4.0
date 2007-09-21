@@ -1,44 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Enabling h-trees too early?
-Date: Fri, 21 Sep 2007 07:45:04 -0400
-Message-ID: <20070921114504.GM30221@thunk.org>
-References: <20070919150715.GH9232@duck.suse.cz> <20070919182450.GF25497@thunk.org> <p738x709yrh.fsf@bingen.suse.de>
+Subject: Re: Patch format in ext4 patch queue.
+Date: Fri, 21 Sep 2007 07:46:36 -0400
+Message-ID: <20070921114636.GN30221@thunk.org>
+References: <46F39DF6.30402@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:34670 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:34688 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755860AbXIULpK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Sep 2007 07:45:10 -0400
+	id S1756410AbXIULql (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Sep 2007 07:46:41 -0400
 Content-Disposition: inline
-In-Reply-To: <p738x709yrh.fsf@bingen.suse.de>
+In-Reply-To: <46F39DF6.30402@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 21, 2007 at 11:02:58AM +0200, Andi Kleen wrote:
-> I assume you mean sort by inode, because sort by htree key would
-> be as bad as htrees.
+On Fri, Sep 21, 2007 at 04:03:26PM +0530, Aneesh Kumar K.V wrote:
 > 
-> But wouldn't that break parallel readdir for a directory that just grows
-> from <32/64K to over it?  e.g. if the sort moves already read 
-> entries to after the  cursor readdir would return some entries twice.
+> I was looking at the patch queue and see patches with different formats. 
+> If we can standardize on what rest of the linux kernel follows it would
+> be nice.
+> 
+> First line should be
+> <subsystem_name>: A single line description of the patch.
+> This appear in the subject line of the mail that results from different
+> commit list....
 
-No, it wouldn't break it because after snapshotting the tree, we would
-only use the snapshot and not refer to the on-disk format until the
-directory file handle is closed or there is an explicit lseek to 0.
-To quote from the spec:
+Yes, please!!!  Otherwise I end up having to fix up the patch tree
+before I can suck it into git.
 
-  If a file is removed from or added to the directory after the most recent
-  call to the opendir() or rewinddir() function, whether a subsequent call to
-  the readdir() function returns an entry for that file is unspecified.
-
-So, if some program does the stupid thing and opens a directory,
-doesn't use it for five hours, and in the meantime 2,000 files are
-created, it's OK if we only return the set of files that were in
-existence when the opendir() was originally called.  This makes us OK
-in terms of spec conformance, and given that real life programs don't
-do stuff this stupid, we should be fine.
-
-					- Ted
+						- Ted
