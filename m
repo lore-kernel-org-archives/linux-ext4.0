@@ -1,167 +1,95 @@
-From: akpm@linux-foundation.org
-Subject: + introduce-ext4_find_next_bit.patch added to -mm tree
-Date: Fri, 21 Sep 2007 03:21:47 -0700
-Message-ID: <200709211021.l8LALlhi030722@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Patch format in ext4 patch queue.
+Date: Fri, 21 Sep 2007 16:03:26 +0530
+Message-ID: <46F39DF6.30402@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:59185 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755963AbXIUKfa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2007 06:35:30 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8LAZ89r010449
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 20:35:08 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8LAbRhP178260
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 20:37:27 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8LAWN1Y032022
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 20:32:23 +1000
+Received: from [9.124.216.249] ([9.124.216.249])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l8LAWMeU031739
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2007 20:32:22 +1000
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi all,
 
-The patch titled
-     Introduce ext4_find_next_bit
-has been added to the -mm tree.  Its filename is
-     introduce-ext4_find_next_bit.patch
+I was looking at the patch queue and see patches with different formats. 
+If we can standardize on what rest of the linux kernel follows it would
+be nice.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+First line should be
+<subsystem_name>: A single line description of the patch.
+This appear in the subject line of the mail that results from different
+commit list. 
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+eg: ext4: Uninitialized block group support
 
-------------------------------------------------------
-Subject: Introduce ext4_find_next_bit
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Also add generic_find_next_le_bit
+From: <Author of the patch>
+This should be a valid email id. For example stgit checks for the 
+author to be a valid email id. 
 
-This gets used by the ext4 multi block allocator patches.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+<Description of the fix>
 
- include/asm-generic/bitops/ext2-non-atomic.h |    2 
- include/asm-generic/bitops/le.h              |    4 +
- include/asm-powerpc/bitops.h                 |    4 +
- include/linux/ext4_fs.h                      |    1 
- lib/find_next_bit.c                          |   44 +++++++++++++++++
- 5 files changed, 55 insertions(+)
+Signed-off-by:
+Reviewed-by:
 
-diff -puN include/asm-generic/bitops/ext2-non-atomic.h~introduce-ext4_find_next_bit include/asm-generic/bitops/ext2-non-atomic.h
---- a/include/asm-generic/bitops/ext2-non-atomic.h~introduce-ext4_find_next_bit
-+++ a/include/asm-generic/bitops/ext2-non-atomic.h
-@@ -14,5 +14,7 @@
- 	generic_find_first_zero_le_bit((unsigned long *)(addr), (size))
- #define ext2_find_next_zero_bit(addr, size, off) \
- 	generic_find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
- 
- #endif /* _ASM_GENERIC_BITOPS_EXT2_NON_ATOMIC_H_ */
-diff -puN include/asm-generic/bitops/le.h~introduce-ext4_find_next_bit include/asm-generic/bitops/le.h
---- a/include/asm-generic/bitops/le.h~introduce-ext4_find_next_bit
-+++ a/include/asm-generic/bitops/le.h
-@@ -20,6 +20,8 @@
- #define generic___test_and_clear_le_bit(nr, addr) __test_and_clear_bit(nr, addr)
- 
- #define generic_find_next_zero_le_bit(addr, size, offset) find_next_zero_bit(addr, size, offset)
-+#define generic_find_next_le_bit(addr, size, offset) \
-+			find_next_bit(addr, size, offset)
- 
- #elif defined(__BIG_ENDIAN)
- 
-@@ -42,6 +44,8 @@
- 
- extern unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
- 		unsigned long size, unsigned long offset);
-+extern unsigned long generic_find_next_le_bit(const unsigned long *addr,
-+		unsigned long size, unsigned long offset);
- 
- #else
- #error "Please fix <asm/byteorder.h>"
-diff -puN include/asm-powerpc/bitops.h~introduce-ext4_find_next_bit include/asm-powerpc/bitops.h
---- a/include/asm-powerpc/bitops.h~introduce-ext4_find_next_bit
-+++ a/include/asm-powerpc/bitops.h
-@@ -310,6 +310,8 @@ static __inline__ int test_le_bit(unsign
- unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
- 				    unsigned long size, unsigned long offset);
- 
-+unsigned long generic_find_next_le_bit(const unsigned long *addr,
-+				    unsigned long size, unsigned long offset);
- /* Bitmap functions for the ext2 filesystem */
- 
- #define ext2_set_bit(nr,addr) \
-@@ -329,6 +331,8 @@ unsigned long generic_find_next_zero_le_
- #define ext2_find_next_zero_bit(addr, size, off) \
- 	generic_find_next_zero_le_bit((unsigned long*)addr, size, off)
- 
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)addr, size, off)
- /* Bitmap functions for the minix filesystem.  */
- 
- #define minix_test_and_set_bit(nr,addr) \
-diff -puN include/linux/ext4_fs.h~introduce-ext4_find_next_bit include/linux/ext4_fs.h
---- a/include/linux/ext4_fs.h~introduce-ext4_find_next_bit
-+++ a/include/linux/ext4_fs.h
-@@ -492,6 +492,7 @@ do {									       \
- #define ext4_test_bit			ext2_test_bit
- #define ext4_find_first_zero_bit	ext2_find_first_zero_bit
- #define ext4_find_next_zero_bit		ext2_find_next_zero_bit
-+#define ext4_find_next_bit		ext2_find_next_bit
- 
- /*
-  * Maximal mount counts between two filesystem checks
-diff -puN lib/find_next_bit.c~introduce-ext4_find_next_bit lib/find_next_bit.c
---- a/lib/find_next_bit.c~introduce-ext4_find_next_bit
-+++ a/lib/find_next_bit.c
-@@ -178,4 +178,48 @@ found_middle_swap:
- 
- EXPORT_SYMBOL(generic_find_next_zero_le_bit);
- 
-+unsigned long generic_find_next_le_bit(const unsigned long *addr, unsigned
-+		long size, unsigned long offset)
-+{
-+	const unsigned long *p = addr + BITOP_WORD(offset);
-+	unsigned long result = offset & ~(BITS_PER_LONG - 1);
-+	unsigned long tmp;
-+
-+	if (offset >= size)
-+		return size;
-+	size -= result;
-+	offset &= (BITS_PER_LONG - 1UL);
-+	if (offset) {
-+		tmp = ext2_swabp(p++);
-+		tmp &= (~0UL << offset);
-+		if (size < BITS_PER_LONG)
-+			goto found_first;
-+		if (tmp)
-+			goto found_middle;
-+		size -= BITS_PER_LONG;
-+		result += BITS_PER_LONG;
-+	}
-+
-+	while (size & ~(BITS_PER_LONG - 1)) {
-+		tmp = *(p++);
-+		if (tmp)
-+			goto found_middle_swap;
-+		result += BITS_PER_LONG;
-+		size -= BITS_PER_LONG;
-+	}
-+	if (!size)
-+		return result;
-+	tmp = ext2_swabp(p);
-+found_first:
-+	tmp &= (~0UL >> (BITS_PER_LONG - size));
-+	if (tmp == 0UL)		/* Are any bits set? */
-+		return result + size; /* Nope. */
-+found_middle:
-+	return result + __ffs(tmp);
-+
-+found_middle_swap:
-+	return result + __ffs(ext2_swab(tmp));
-+}
-+EXPORT_SYMBOL(generic_find_next_le_bit);
-+
- #endif /* __BIG_ENDIAN */
-_
+What is missing in the patch queue is the First line for most of the patch.
 
-Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+Below is the steps i follow to manage patch queue.
 
-ext2-ext3-ext4-add-block-bitmap-validation.patch
-ext2-ext3-ext4-add-block-bitmap-validation-fix.patch
-ext4-uninitialized-block-groups.patch
-ext4-uninitialized-block-groups-fix.patch
-introduce-ext4_find_next_bit.patch
+One linux kernel repository:
+
+
+[master@linux-review-ext4]$ git checkout -b review v2.6.23-rc6
+Switched to a new branch "review"
+[review@linux-review-ext4]$ stg init 
+[review@linux-review-ext4]$ stg import --series /home/opensource/patches/ext4-patch-queue/series 
+
+Now we should verify patches and make sure they look the way we wanted them in Linus tree by git log 
+
+After:
+stg pop -> similar to quilt pop
+stg push -> similar to quilt push
+
+To edit the commit message
+stg edit 
+
+To add sign-off or ack
+
+stg edit --sign 
+stg edit --ack
+
+To change the author name
+stg edit --author
+
+
+Now once we are sure all are fine
+
+stg export -d /home/new-patch-queue-set/
+
+This should get a patch set with quilt series
+
+
+To find stgit:
+
+http://procode.org/stgit/
+
+
+-aneesh 
