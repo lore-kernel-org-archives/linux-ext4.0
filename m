@@ -1,264 +1,45 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH] JBD2/ext4 naming cleanup
-Date: Fri, 21 Sep 2007 16:32:17 -0700
-Message-ID: <1190417538.11349.18.camel@localhost.localdomain>
-References: <1189796027.3841.6.camel@localhost.localdomain>
-	 <1190057391.3845.22.camel@localhost.localdomain>
-	 <1190066466.31220.5.camel@dyn9047017100.beaverton.ibm.com>
-	 <1190069851.6725.6.camel@localhost.localdomain>
-	 <20070918090407.GA671@infradead.org>
-	 <1190133347.3819.6.camel@localhost.localdomain>
-	 <1190138690.6528.23.camel@norville.austin.ibm.com>
-	 <1190163601.3819.15.camel@localhost.localdomain>
-	 <20070918191920.a2130a3c.akpm@linux-foundation.org>
-	 <1190229352.4318.12.camel@localhost.localdomain>
-	 <20070919194813.GT32520@schatzie.adilger.int>
-	 <1190239431.4318.34.camel@localhost.localdomain>
-	 <1190416436.11349.13.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: Potential pitfall in the clusterfs extent patches for e2fsprogs
+Date: Fri, 21 Sep 2007 18:12:19 -0600
+Message-ID: <20070922001219.GW32520@schatzie.adilger.int>
+References: <E1IWiqO-0002zY-0p@candygram.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761115AbXIUXcb@vger.kernel.org>
-In-Reply-To: <1190416436.11349.13.camel@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([74.0.229.162]:34802 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751407AbXIVALy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2007 20:11:54 -0400
+Content-Disposition: inline
+In-Reply-To: <E1IWiqO-0002zY-0p@candygram.thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-JBD2 naming cleanup
+On Sep 15, 2007  21:22 -0400, Theodore Ts'o wrote:
+> The problem with this is that it's fragile; you could potentially have
+> an inode that happens to have as its first block something which looks
+> like the extent magic number, and if the second block passes the extent
+> validity checks, e2fsck will flag an error --- and if e2fsck is run in
+> preen mode, it will just set the extent flag without prompting the user
+> or aborting the boot process.
 
-From: Mingming Cao <cmm@us.ibm.com>
+Well, I agree it's possible, but given that it is checking 8 bytes for
+validity (though only a 2-byte magic) it seems reasonably safe.  There
+are only 5 blocks in the filesystem that could correctly match in this
+case (though I grant they are low-valued blocks due to little-endian
+placement of the 16-bit magic).  They would have to be allocated as the
+first block in the file (0x0000f30a, 0x0001f30a, ..., 0x0004f30a) and
+3 always-invalid blocks that would have to be allocated as the second
+block (0x000N0002, 0x000N0003, 0x000N0004).  The latter are used as
+group descriptor and/or bitmap/inode table blocks, so the inode would
+likely be corrupt as a non-extent inode as well.
 
-change micros name from JBD_XXX to JBD2_XXX in JBD2/Ext4
+I'm not terribly worried about it.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/extents.c         |    2 +-
- fs/ext4/super.c           |    2 +-
- fs/jbd2/commit.c          |    2 +-
- fs/jbd2/journal.c         |    8 ++++----
- fs/jbd2/recovery.c        |    2 +-
- fs/jbd2/revoke.c          |    4 ++--
- include/linux/ext4_jbd2.h |    6 +++---
- include/linux/jbd2.h      |   30 +++++++++++++++---------------
- 8 files changed, 28 insertions(+), 28 deletions(-)
-
-Index: linux-2.6.23-rc6/fs/ext4/super.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/ext4/super.c	2007-09-21 16:27:31.000000000 -0700
-+++ linux-2.6.23-rc6/fs/ext4/super.c	2007-09-21 16:27:46.000000000 -0700
-@@ -966,7 +966,7 @@ static int parse_options (char *options,
- 			if (option < 0)
- 				return 0;
- 			if (option == 0)
--				option = JBD_DEFAULT_MAX_COMMIT_AGE;
-+				option = JBD2_DEFAULT_MAX_COMMIT_AGE;
- 			sbi->s_commit_interval = HZ * option;
- 			break;
- 		case Opt_data_journal:
-Index: linux-2.6.23-rc6/include/linux/ext4_jbd2.h
-===================================================================
---- linux-2.6.23-rc6.orig/include/linux/ext4_jbd2.h	2007-09-10 19:50:29.000000000 -0700
-+++ linux-2.6.23-rc6/include/linux/ext4_jbd2.h	2007-09-21 16:27:46.000000000 -0700
-@@ -12,8 +12,8 @@
-  * Ext4-specific journaling extensions.
-  */
- 
--#ifndef _LINUX_EXT4_JBD_H
--#define _LINUX_EXT4_JBD_H
-+#ifndef _LINUX_EXT4_JBD2_H
-+#define _LINUX_EXT4_JBD2_H
- 
- #include <linux/fs.h>
- #include <linux/jbd2.h>
-@@ -228,4 +228,4 @@ static inline int ext4_should_writeback_
- 	return 0;
- }
- 
--#endif	/* _LINUX_EXT4_JBD_H */
-+#endif	/* _LINUX_EXT4_JBD2_H */
-Index: linux-2.6.23-rc6/include/linux/jbd2.h
-===================================================================
---- linux-2.6.23-rc6.orig/include/linux/jbd2.h	2007-09-21 09:07:09.000000000 -0700
-+++ linux-2.6.23-rc6/include/linux/jbd2.h	2007-09-21 16:27:46.000000000 -0700
-@@ -13,8 +13,8 @@
-  * filesystem journaling support.
-  */
- 
--#ifndef _LINUX_JBD_H
--#define _LINUX_JBD_H
-+#ifndef _LINUX_JBD2_H
-+#define _LINUX_JBD2_H
- 
- /* Allow this file to be included directly into e2fsprogs */
- #ifndef __KERNEL__
-@@ -37,26 +37,26 @@
- #define journal_oom_retry 1
- 
- /*
-- * Define JBD_PARANIOD_IOFAIL to cause a kernel BUG() if ext3 finds
-+ * Define JBD2_PARANIOD_IOFAIL to cause a kernel BUG() if ext4 finds
-  * certain classes of error which can occur due to failed IOs.  Under
-- * normal use we want ext3 to continue after such errors, because
-+ * normal use we want ext4 to continue after such errors, because
-  * hardware _can_ fail, but for debugging purposes when running tests on
-  * known-good hardware we may want to trap these errors.
-  */
--#undef JBD_PARANOID_IOFAIL
-+#undef JBD2_PARANOID_IOFAIL
- 
- /*
-  * The default maximum commit age, in seconds.
-  */
--#define JBD_DEFAULT_MAX_COMMIT_AGE 5
-+#define JBD2_DEFAULT_MAX_COMMIT_AGE 5
- 
- #ifdef CONFIG_JBD2_DEBUG
- /*
-- * Define JBD_EXPENSIVE_CHECKING to enable more expensive internal
-+ * Define JBD2_EXPENSIVE_CHECKING to enable more expensive internal
-  * consistency checks.  By default we don't do this unless
-  * CONFIG_JBD2_DEBUG is on.
-  */
--#define JBD_EXPENSIVE_CHECKING
-+#define JBD2_EXPENSIVE_CHECKING
- extern u8 jbd2_journal_enable_debug;
- 
- #define jbd_debug(n, f, a...)						\
-@@ -163,8 +163,8 @@ typedef struct journal_block_tag_s
- 	__be32		t_blocknr_high; /* most-significant high 32bits. */
- } journal_block_tag_t;
- 
--#define JBD_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
--#define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
-+#define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
-+#define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
- 
- /*
-  * The revoke descriptor: used on disk to describe a series of blocks to
-@@ -256,8 +256,8 @@ typedef struct journal_superblock_s
- #include <linux/fs.h>
- #include <linux/sched.h>
- 
--#define JBD_ASSERTIONS
--#ifdef JBD_ASSERTIONS
-+#define JBD2_ASSERTIONS
-+#ifdef JBD2_ASSERTIONS
- #define J_ASSERT(assert)						\
- do {									\
- 	if (!(assert)) {						\
-@@ -284,9 +284,9 @@ void buffer_assertion_failure(struct buf
- 
- #else
- #define J_ASSERT(assert)	do { } while (0)
--#endif		/* JBD_ASSERTIONS */
-+#endif		/* JBD2_ASSERTIONS */
- 
--#if defined(JBD_PARANOID_IOFAIL)
-+#if defined(JBD2_PARANOID_IOFAIL)
- #define J_EXPECT(expr, why...)		J_ASSERT(expr)
- #define J_EXPECT_BH(bh, expr, why...)	J_ASSERT_BH(bh, expr)
- #define J_EXPECT_JH(jh, expr, why...)	J_ASSERT_JH(jh, expr)
-@@ -1104,4 +1104,4 @@ extern int jbd_blocks_per_page(struct in
- 
- #endif	/* __KERNEL__ */
- 
--#endif	/* _LINUX_JBD_H */
-+#endif	/* _LINUX_JBD2_H */
-Index: linux-2.6.23-rc6/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/commit.c	2007-09-21 09:07:09.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/commit.c	2007-09-21 16:27:46.000000000 -0700
-@@ -278,7 +278,7 @@ static inline void write_tag_block(int t
- 				   unsigned long long block)
- {
- 	tag->t_blocknr = cpu_to_be32(block & (u32)~0);
--	if (tag_bytes > JBD_TAG_SIZE32)
-+	if (tag_bytes > JBD2_TAG_SIZE32)
- 		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
- }
- 
-Index: linux-2.6.23-rc6/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/journal.c	2007-09-21 16:25:46.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/journal.c	2007-09-21 16:27:46.000000000 -0700
-@@ -670,7 +670,7 @@ static journal_t * journal_init_common (
- 	spin_lock_init(&journal->j_list_lock);
- 	spin_lock_init(&journal->j_state_lock);
- 
--	journal->j_commit_interval = (HZ * JBD_DEFAULT_MAX_COMMIT_AGE);
-+	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
- 
- 	/* The journal is marked for error until we succeed with recovery! */
- 	journal->j_flags = JBD2_ABORT;
-@@ -1612,9 +1612,9 @@ int jbd2_journal_blocks_per_page(struct 
- size_t journal_tag_bytes(journal_t *journal)
- {
- 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
--		return JBD_TAG_SIZE64;
-+		return JBD2_TAG_SIZE64;
- 	else
--		return JBD_TAG_SIZE32;
-+		return JBD2_TAG_SIZE32;
- }
- 
- /*
-@@ -1681,7 +1681,7 @@ static void journal_free_journal_head(st
- {
- #ifdef CONFIG_JBD2_DEBUG
- 	atomic_dec(&nr_journal_heads);
--	memset(jh, JBD_POISON_FREE, sizeof(*jh));
-+	memset(jh, JBD2_POISON_FREE, sizeof(*jh));
- #endif
- 	kmem_cache_free(jbd2_journal_head_cache, jh);
- }
-Index: linux-2.6.23-rc6/fs/jbd2/recovery.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/recovery.c	2007-09-21 09:07:05.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/recovery.c	2007-09-21 16:27:46.000000000 -0700
-@@ -311,7 +311,7 @@ int jbd2_journal_skip_recovery(journal_t
- static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag_t *tag)
- {
- 	unsigned long long block = be32_to_cpu(tag->t_blocknr);
--	if (tag_bytes > JBD_TAG_SIZE32)
-+	if (tag_bytes > JBD2_TAG_SIZE32)
- 		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
- 	return block;
- }
-Index: linux-2.6.23-rc6/fs/jbd2/revoke.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/jbd2/revoke.c	2007-09-19 14:23:45.000000000 -0700
-+++ linux-2.6.23-rc6/fs/jbd2/revoke.c	2007-09-21 16:27:46.000000000 -0700
-@@ -352,7 +352,7 @@ int jbd2_journal_revoke(handle_t *handle
- 		if (bh)
- 			BUFFER_TRACE(bh, "found on hash");
- 	}
--#ifdef JBD_EXPENSIVE_CHECKING
-+#ifdef JBD2_EXPENSIVE_CHECKING
- 	else {
- 		struct buffer_head *bh2;
- 
-@@ -453,7 +453,7 @@ int jbd2_journal_cancel_revoke(handle_t 
- 		}
- 	}
- 
--#ifdef JBD_EXPENSIVE_CHECKING
-+#ifdef JBD2_EXPENSIVE_CHECKING
- 	/* There better not be one left behind by now! */
- 	record = find_revoke_record(journal, bh->b_blocknr);
- 	J_ASSERT_JH(jh, record == NULL);
-Index: linux-2.6.23-rc6/fs/ext4/extents.c
-===================================================================
---- linux-2.6.23-rc6.orig/fs/ext4/extents.c	2007-09-21 09:07:04.000000000 -0700
-+++ linux-2.6.23-rc6/fs/ext4/extents.c	2007-09-21 16:27:46.000000000 -0700
-@@ -33,7 +33,7 @@
- #include <linux/fs.h>
- #include <linux/time.h>
- #include <linux/ext4_jbd2.h>
--#include <linux/jbd.h>
-+#include <linux/jbd2.h>
- #include <linux/highuid.h>
- #include <linux/pagemap.h>
- #include <linux/quotaops.h>
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
