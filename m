@@ -1,41 +1,262 @@
-From: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
-Date: Mon, 24 Sep 2007 08:16:41 -0500
-Message-ID: <46F7B8B9.4040707@redhat.com>
-References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int> <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org> <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	List util-linux-ng <util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	xfs-oss <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>
-To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20070924124035.GA4209-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: JBD2 naming cleanups patch
+Date: Mon, 24 Sep 2007 09:30:55 -0400
+Message-ID: <E1IZo1X-0001qb-NN@tinytim.thunk.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:50501 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751000AbXIXNa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Sep 2007 09:30:59 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Mon, Sep 24, 2007 at 11:25:39AM +0200, Karel Zak wrote:
->>> Nope, there isn't much rationale unless we also split out fsck, so
->>  util-linux-ng is open for fsck :-)
-> 
-> It's something I'm considering, but at the moment I've got some higher
-> priority (ext4) work that I'm focusing on.  
-> 
-> What would you think about moving libblkid and the libdisk from
-> xfsprogs into util-linux-ng?  That's things that I've been batting
-> around doing, although that means we end up moving more libraries that
-> distros would probably want separated into different packages into
-> util-linux-ng....
 
-Heh, sounds a little like a prisoner exchange... "we'll give up libblkid
-& libcom_err if you give up libdisk" :)
+The jbd_to_jbd2_naming_cleanups.patch blew up if compiled with
+CONFIG_JBD2_DEBUG, because JBD2_POISON_FREE wasn't defined in poison.h.  
+So I fixed up this patch as follows.
 
-Seriously, though, that all sounds like a pretty good idea to me,
-especially since e2fsprogs has been making noise about utilizing some of
-the functionality in xfsprogs (stripe discovery etc).
 
--Eric
+        	      				- Ted
+
+
+jbd2: JBD_XXX to JBD2_XXX naming cleanup
+
+From: Mingming Cao <cmm@us.ibm.com>
+
+change JBD_XXX macros to JBD2_XXX in JBD2/Ext4
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 78beb09..2be404f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -33,7 +33,7 @@
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/ext4_jbd2.h>
+-#include <linux/jbd.h>
++#include <linux/jbd2.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+ #include <linux/quotaops.h>
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3c1397f..42cbdb5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -966,7 +966,7 @@ static int parse_options (char *options, struct super_block *sb,
+ 			if (option < 0)
+ 				return 0;
+ 			if (option == 0)
+-				option = JBD_DEFAULT_MAX_COMMIT_AGE;
++				option = JBD2_DEFAULT_MAX_COMMIT_AGE;
+ 			sbi->s_commit_interval = HZ * option;
+ 			break;
+ 		case Opt_data_journal:
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 2cac34a..b898ee4 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -278,7 +278,7 @@ static inline void write_tag_block(int tag_bytes, journal_block_tag_t *tag,
+ 				   unsigned long long block)
+ {
+ 	tag->t_blocknr = cpu_to_be32(block & (u32)~0);
+-	if (tag_bytes > JBD_TAG_SIZE32)
++	if (tag_bytes > JBD2_TAG_SIZE32)
+ 		tag->t_blocknr_high = cpu_to_be32((block >> 31) >> 1);
+ }
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index f12c65b..ff07bff 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -670,7 +670,7 @@ static journal_t * journal_init_common (void)
+ 	spin_lock_init(&journal->j_list_lock);
+ 	spin_lock_init(&journal->j_state_lock);
+ 
+-	journal->j_commit_interval = (HZ * JBD_DEFAULT_MAX_COMMIT_AGE);
++	journal->j_commit_interval = (HZ * JBD2_DEFAULT_MAX_COMMIT_AGE);
+ 
+ 	/* The journal is marked for error until we succeed with recovery! */
+ 	journal->j_flags = JBD2_ABORT;
+@@ -1612,9 +1612,9 @@ int jbd2_journal_blocks_per_page(struct inode *inode)
+ size_t journal_tag_bytes(journal_t *journal)
+ {
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+-		return JBD_TAG_SIZE64;
++		return JBD2_TAG_SIZE64;
+ 	else
+-		return JBD_TAG_SIZE32;
++		return JBD2_TAG_SIZE32;
+ }
+ 
+ /*
+@@ -1681,7 +1681,7 @@ static void journal_free_journal_head(struct journal_head *jh)
+ {
+ #ifdef CONFIG_JBD2_DEBUG
+ 	atomic_dec(&nr_journal_heads);
+-	memset(jh, JBD_POISON_FREE, sizeof(*jh));
++	memset(jh, JBD2_POISON_FREE, sizeof(*jh));
+ #endif
+ 	kmem_cache_free(jbd2_journal_head_cache, jh);
+ }
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index b50be8a..d0ce627 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -311,7 +311,7 @@ int jbd2_journal_skip_recovery(journal_t *journal)
+ static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag_t *tag)
+ {
+ 	unsigned long long block = be32_to_cpu(tag->t_blocknr);
+-	if (tag_bytes > JBD_TAG_SIZE32)
++	if (tag_bytes > JBD2_TAG_SIZE32)
+ 		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+ 	return block;
+ }
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 01d8897..3595fd4 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -352,7 +352,7 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 		if (bh)
+ 			BUFFER_TRACE(bh, "found on hash");
+ 	}
+-#ifdef JBD_EXPENSIVE_CHECKING
++#ifdef JBD2_EXPENSIVE_CHECKING
+ 	else {
+ 		struct buffer_head *bh2;
+ 
+@@ -453,7 +453,7 @@ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 		}
+ 	}
+ 
+-#ifdef JBD_EXPENSIVE_CHECKING
++#ifdef JBD2_EXPENSIVE_CHECKING
+ 	/* There better not be one left behind by now! */
+ 	record = find_revoke_record(journal, bh->b_blocknr);
+ 	J_ASSERT_JH(jh, record == NULL);
+diff --git a/include/linux/ext4_jbd2.h b/include/linux/ext4_jbd2.h
+index d716e63..38c71d3 100644
+--- a/include/linux/ext4_jbd2.h
++++ b/include/linux/ext4_jbd2.h
+@@ -12,8 +12,8 @@
+  * Ext4-specific journaling extensions.
+  */
+ 
+-#ifndef _LINUX_EXT4_JBD_H
+-#define _LINUX_EXT4_JBD_H
++#ifndef _LINUX_EXT4_JBD2_H
++#define _LINUX_EXT4_JBD2_H
+ 
+ #include <linux/fs.h>
+ #include <linux/jbd2.h>
+@@ -228,4 +228,4 @@ static inline int ext4_should_writeback_data(struct inode *inode)
+ 	return 0;
+ }
+ 
+-#endif	/* _LINUX_EXT4_JBD_H */
++#endif	/* _LINUX_EXT4_JBD2_H */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 5f8b876..06ef114 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -13,8 +13,8 @@
+  * filesystem journaling support.
+  */
+ 
+-#ifndef _LINUX_JBD_H
+-#define _LINUX_JBD_H
++#ifndef _LINUX_JBD2_H
++#define _LINUX_JBD2_H
+ 
+ /* Allow this file to be included directly into e2fsprogs */
+ #ifndef __KERNEL__
+@@ -37,26 +37,26 @@
+ #define journal_oom_retry 1
+ 
+ /*
+- * Define JBD_PARANIOD_IOFAIL to cause a kernel BUG() if ext3 finds
++ * Define JBD2_PARANIOD_IOFAIL to cause a kernel BUG() if ext4 finds
+  * certain classes of error which can occur due to failed IOs.  Under
+- * normal use we want ext3 to continue after such errors, because
++ * normal use we want ext4 to continue after such errors, because
+  * hardware _can_ fail, but for debugging purposes when running tests on
+  * known-good hardware we may want to trap these errors.
+  */
+-#undef JBD_PARANOID_IOFAIL
++#undef JBD2_PARANOID_IOFAIL
+ 
+ /*
+  * The default maximum commit age, in seconds.
+  */
+-#define JBD_DEFAULT_MAX_COMMIT_AGE 5
++#define JBD2_DEFAULT_MAX_COMMIT_AGE 5
+ 
+ #ifdef CONFIG_JBD2_DEBUG
+ /*
+- * Define JBD_EXPENSIVE_CHECKING to enable more expensive internal
++ * Define JBD2_EXPENSIVE_CHECKING to enable more expensive internal
+  * consistency checks.  By default we don't do this unless
+  * CONFIG_JBD2_DEBUG is on.
+  */
+-#define JBD_EXPENSIVE_CHECKING
++#define JBD2_EXPENSIVE_CHECKING
+ extern u8 jbd2_journal_enable_debug;
+ 
+ #define jbd_debug(n, f, a...)						\
+@@ -163,8 +163,8 @@ typedef struct journal_block_tag_s
+ 	__be32		t_blocknr_high; /* most-significant high 32bits. */
+ } journal_block_tag_t;
+ 
+-#define JBD_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
+-#define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
++#define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
++#define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
+ 
+ /*
+  * The revoke descriptor: used on disk to describe a series of blocks to
+@@ -256,8 +256,8 @@ typedef struct journal_superblock_s
+ #include <linux/fs.h>
+ #include <linux/sched.h>
+ 
+-#define JBD_ASSERTIONS
+-#ifdef JBD_ASSERTIONS
++#define JBD2_ASSERTIONS
++#ifdef JBD2_ASSERTIONS
+ #define J_ASSERT(assert)						\
+ do {									\
+ 	if (!(assert)) {						\
+@@ -284,9 +284,9 @@ void buffer_assertion_failure(struct buffer_head *bh);
+ 
+ #else
+ #define J_ASSERT(assert)	do { } while (0)
+-#endif		/* JBD_ASSERTIONS */
++#endif		/* JBD2_ASSERTIONS */
+ 
+-#if defined(JBD_PARANOID_IOFAIL)
++#if defined(JBD2_PARANOID_IOFAIL)
+ #define J_EXPECT(expr, why...)		J_ASSERT(expr)
+ #define J_EXPECT_BH(bh, expr, why...)	J_ASSERT_BH(bh, expr)
+ #define J_EXPECT_JH(jh, expr, why...)	J_ASSERT_JH(jh, expr)
+@@ -1104,4 +1104,4 @@ extern int jbd_blocks_per_page(struct inode *inode);
+ 
+ #endif	/* __KERNEL__ */
+ 
+-#endif	/* _LINUX_JBD_H */
++#endif	/* _LINUX_JBD2_H */
+diff --git a/include/linux/poison.h b/include/linux/poison.h
+index d93c300..a9c31be 100644
+--- a/include/linux/poison.h
++++ b/include/linux/poison.h
+@@ -36,7 +36,8 @@
+  */
+ 
+ /********** fs/jbd/journal.c **********/
+-#define JBD_POISON_FREE	0x5b
++#define JBD_POISON_FREE		0x5b
++#define JBD2_POISON_FREE	0x5c
+ 
+ /********** drivers/base/dmapool.c **********/
+ #define	POOL_POISON_FREED	0xa7	/* !inuse */
