@@ -1,110 +1,105 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 5/7] ext4: Convert ext4_extent.ee_start to ext4_extent.ee_start_lo
-Date: Tue, 25 Sep 2007 23:50:07 +0530
-Message-ID: <11907444242123-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 4/7] ext4: Convert s_r_blocks_count and s_free_blocks_count
+Date: Tue, 25 Sep 2007 23:50:06 +0530
+Message-ID: <11907444233981-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <11907444091038-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <11907444192997-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <11907444213671-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11907444233981-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: adilger@clusterfs.com, cmm@us.ibm.com,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:40821 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753114AbXIYSUo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 14:20:44 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8PIKiKt027278
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:44 +1000
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:50443 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753061AbXIYSUl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 14:20:41 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8PIKe4B021328
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:40 +1000
 Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8PIOGZh273836
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:24:16 +1000
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8PIKeum3580012
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:40 +1000
 Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8PIKQ1M026639
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:26 +1000
-In-Reply-To: <11907444233981-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8PIKNgi026599
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:24 +1000
+In-Reply-To: <11907444213671-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Convert ext4_extent.ee_start to ext4_extent.ee_start_lo
+Convert s_r_blocks_count and s_free_blocks_count to
+s_r_blocks_count_lo and s_free_blocks_count_lo
+
 This helps in finding BUGs due to direct partial access of
-these split 48 bit values
+these split 64 bit values
 
 Also fix direct partial access in ext4 code
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/extents.c               |    8 +++-----
- fs/ext4/migrate.c               |    2 +-
- include/linux/ext4_fs_extents.h |    2 +-
- 3 files changed, 5 insertions(+), 7 deletions(-)
+ fs/ext4/super.c         |    2 +-
+ include/linux/ext4_fs.h |   12 ++++++------
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9ccdb85..e852c2c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -52,7 +52,7 @@ static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0f38bd1..3c7446d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2695,7 +2695,7 @@ static int ext4_statfs (struct dentry * dentry, struct kstatfs * buf)
+ 	buf->f_bsize = sb->s_blocksize;
+ 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
+ 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
+-	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
++	ext4_free_blocks_count_set(es, buf->f_bfree);
+ 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
+ 	if (buf->f_bfree < ext4_r_blocks_count(es))
+ 		buf->f_bavail = 0;
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 7846558..74cf8a8 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -564,8 +564,8 @@ do {									       \
+ struct ext4_super_block {
+ /*00*/	__le32	s_inodes_count;		/* Inodes count */
+ 	__le32	s_blocks_count_lo;	/* Blocks count */
+-	__le32	s_r_blocks_count;	/* Reserved blocks count */
+-	__le32	s_free_blocks_count;	/* Free blocks count */
++	__le32	s_r_blocks_count_lo;	/* Reserved blocks count */
++	__le32	s_free_blocks_count_lo;	/* Free blocks count */
+ /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
+ 	__le32	s_first_data_block;	/* First Data Block */
+ 	__le32	s_log_block_size;	/* Block size */
+@@ -1073,13 +1073,13 @@ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
+ static inline ext4_fsblk_t ext4_r_blocks_count(struct ext4_super_block *es)
  {
- 	ext4_fsblk_t block;
- 
--	block = le32_to_cpu(ex->ee_start);
-+	block = le32_to_cpu(ex->ee_start_lo);
- 	block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
- 	return block;
- }
-@@ -77,7 +77,7 @@ static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
-  */
- static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
- {
--	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
-+	ex->ee_start_lo = cpu_to_le32((unsigned long) (pb & 0xffffffff));
- 	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
- }
- 
-@@ -1551,8 +1551,7 @@ has_space:
- 	eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)+1);
- 	nearex = path[depth].p_ext;
- 	nearex->ee_block = newext->ee_block;
--	nearex->ee_start = newext->ee_start;
--	nearex->ee_start_hi = newext->ee_start_hi;
-+	ext4_ext_store_pblock(nearex, ext_pblock(newext));
- 	nearex->ee_len = newext->ee_len;
- 
- merge:
-@@ -2321,7 +2320,6 @@ int ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
- 	}
- 	/* ex2: iblock to iblock + maxblocks-1 : initialised */
- 	ex2->ee_block = cpu_to_le32(iblock);
--	ex2->ee_start = cpu_to_le32(newblock);
- 	ext4_ext_store_pblock(ex2, newblock);
- 	ex2->ee_len = cpu_to_le16(allocated);
- 	if (ex2 != ex)
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 5efcdd0..3a597b5 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -24,7 +24,7 @@ struct list_blocks_struct {
- /* will go away */
- static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
- {
--	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
-+	ex->ee_start_lo = cpu_to_le32((unsigned long) (pb & 0xffffffff));
- 	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+ 	return ((ext4_fsblk_t)le32_to_cpu(es->s_r_blocks_count_hi) << 32) |
+-		le32_to_cpu(es->s_r_blocks_count);
++		le32_to_cpu(es->s_r_blocks_count_lo);
  }
  
-diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
-index 5ed0891..016977b 100644
---- a/include/linux/ext4_fs_extents.h
-+++ b/include/linux/ext4_fs_extents.h
-@@ -74,7 +74,7 @@ struct ext4_extent {
- 	__le32	ee_block;	/* first logical block extent covers */
- 	__le16	ee_len;		/* number of blocks covered by extent */
- 	__le16	ee_start_hi;	/* high 16 bits of physical block */
--	__le32	ee_start;	/* low 32 bits of physical block */
-+	__le32	ee_start_lo;	/* low 32 bits of physical block */
- };
+ static inline ext4_fsblk_t ext4_free_blocks_count(struct ext4_super_block *es)
+ {
+ 	return ((ext4_fsblk_t)le32_to_cpu(es->s_free_blocks_count_hi) << 32) |
+-		le32_to_cpu(es->s_free_blocks_count);
++		le32_to_cpu(es->s_free_blocks_count_lo);
+ }
  
- /*
+ static inline void ext4_blocks_count_set(struct ext4_super_block *es,
+@@ -1092,14 +1092,14 @@ static inline void ext4_blocks_count_set(struct ext4_super_block *es,
+ static inline void ext4_free_blocks_count_set(struct ext4_super_block *es,
+ 					      ext4_fsblk_t blk)
+ {
+-	es->s_free_blocks_count = cpu_to_le32((u32)blk);
++	es->s_free_blocks_count_lo = cpu_to_le32((u32)blk);
+ 	es->s_free_blocks_count_hi = cpu_to_le32(blk >> 32);
+ }
+ 
+ static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
+ 					   ext4_fsblk_t blk)
+ {
+-	es->s_r_blocks_count = cpu_to_le32((u32)blk);
++	es->s_r_blocks_count_lo = cpu_to_le32((u32)blk);
+ 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
+ }
+ 
 -- 
 1.5.3.1.91.gd3392-dirty
