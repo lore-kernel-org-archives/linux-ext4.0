@@ -1,106 +1,118 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 1/7] ext4: Introduce le32_t and le16_t
-Date: Tue, 25 Sep 2007 14:33:46 +0530
-Message-ID: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 5/7] ext4: Convert ext4_extent.ee_start and ee_start_hi to le32_t and le16_t
+Date: Tue, 25 Sep 2007 14:33:50 +0530
+Message-ID: <11907111031099-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <11907110501570-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <11907110613446-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <11907110772723-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: adilger@clusterfs.com, cmm@us.ibm.com,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:46398 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750756AbXIYJEn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 05:04:43 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8P94BQP032723
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:04:11 +1000
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:41398 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751097AbXIYJFp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 05:05:45 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8P95Vpt021288
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:05:31 +1000
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8P97iSm129718
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:07:44 +1000
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8P95TAi3973366
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:05:29 +1000
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8P94AJ6014830
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:04:10 +1000
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8P95SvB017180
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:05:29 +1000
+In-Reply-To: <11907110772723-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4 file system layout contain different split members
-like bg_block_bitmap  and bg_block_bitmap_hi. Introduce
-data type le32_t and le16_t to be used as the type of
-these split members. This prevents these members frome
-being accessed directly. Accesing them directly gives
-a compiler warning. This helps in catching some BUGS
-due to direct partial access of these split fields.
+Convert ext4_extent.ee_start and ee_start_hi to le32_t and le16_t
+This helps in finding BUGs due to direct partial access of
+these split 48 bit values
+
+Also fix direct partial access in ext4 code
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/super.c           |    8 ++++----
- include/linux/ext4_fs.h   |    4 ++--
- include/linux/ext4_fs_i.h |    4 ++++
- 3 files changed, 10 insertions(+), 6 deletions(-)
+ fs/ext4/extents.c               |   12 +++++-------
+ fs/ext4/migrate.c               |    4 ++--
+ include/linux/ext4_fs_extents.h |    4 ++--
+ 3 files changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d035653..c8f8e4d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -70,9 +70,9 @@ static void ext4_write_super_lockfs(struct super_block *sb);
- ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
- 			       struct ext4_group_desc *bg)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9ccdb85..a7e70d8 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -52,8 +52,8 @@ static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
  {
--	return le32_to_cpu(bg->bg_block_bitmap) |
-+	return le32_to_cpu(bg->bg_block_bitmap.value) |
- 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
--		 (ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi) << 32 : 0);
-+		 (ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi.value) << 32 : 0);
+ 	ext4_fsblk_t block;
+ 
+-	block = le32_to_cpu(ex->ee_start);
+-	block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
++	block = le32_to_cpu(ex->ee_start.value);
++	block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi.value) << 31) << 1;
+ 	return block;
  }
  
- ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
-@@ -94,9 +94,9 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- void ext4_block_bitmap_set(struct super_block *sb,
- 			   struct ext4_group_desc *bg, ext4_fsblk_t blk)
- {
--	bg->bg_block_bitmap = cpu_to_le32((u32)blk);
-+	bg->bg_block_bitmap.value = cpu_to_le32((u32)blk);
- 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
--		bg->bg_block_bitmap_hi = cpu_to_le32(blk >> 32);
-+		bg->bg_block_bitmap_hi.value = cpu_to_le32(blk >> 32);
- }
- 
- void ext4_inode_bitmap_set(struct super_block *sb,
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 046a6a7..4494f8e 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -150,7 +150,7 @@ struct ext4_allocation_request {
+@@ -77,8 +77,8 @@ static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
   */
- struct ext4_group_desc
+ static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
  {
--	__le32	bg_block_bitmap;	/* Blocks bitmap block */
-+	le32_t	bg_block_bitmap;	/* Blocks bitmap block */
- 	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
- 	__le32	bg_inode_table;		/* Inodes table block */
- 	__le16	bg_free_blocks_count;	/* Free blocks count */
-@@ -160,7 +160,7 @@ struct ext4_group_desc
- 	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
- 	__le16  bg_itable_unused;	/* Unused inodes count */
- 	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
--	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
-+	le32_t	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
- 	__le32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
- 	__le32	bg_inode_table_hi;	/* Inodes table block MSB */
- };
-diff --git a/include/linux/ext4_fs_i.h b/include/linux/ext4_fs_i.h
-index 22ba80e..d7eb271 100644
---- a/include/linux/ext4_fs_i.h
-+++ b/include/linux/ext4_fs_i.h
-@@ -27,6 +27,10 @@ typedef int ext4_grpblk_t;
- /* data type for filesystem-wide blocks number */
- typedef unsigned long long ext4_fsblk_t;
+-	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+-	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
++	ex->ee_start.value = cpu_to_le32((unsigned long) (pb & 0xffffffff));
++	ex->ee_start_hi.value = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+ }
  
-+/* data type to carry split 64 and 48 bits */
-+typedef struct { __le16 value; } le16_t;
-+typedef struct { __le32 value; } le32_t;
-+
- struct ext4_reserve_window {
- 	ext4_fsblk_t	_rsv_start;	/* First byte reserved */
- 	ext4_fsblk_t	_rsv_end;	/* Last byte reserved or 0 */
+ /*
+@@ -1551,8 +1551,7 @@ has_space:
+ 	eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)+1);
+ 	nearex = path[depth].p_ext;
+ 	nearex->ee_block = newext->ee_block;
+-	nearex->ee_start = newext->ee_start;
+-	nearex->ee_start_hi = newext->ee_start_hi;
++	ext4_ext_store_pblock(nearex, ext_pblock(newext));
+ 	nearex->ee_len = newext->ee_len;
+ 
+ merge:
+@@ -2321,7 +2320,6 @@ int ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+ 	}
+ 	/* ex2: iblock to iblock + maxblocks-1 : initialised */
+ 	ex2->ee_block = cpu_to_le32(iblock);
+-	ex2->ee_start = cpu_to_le32(newblock);
+ 	ext4_ext_store_pblock(ex2, newblock);
+ 	ex2->ee_len = cpu_to_le16(allocated);
+ 	if (ex2 != ex)
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 5efcdd0..2e9a807 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -24,8 +24,8 @@ struct list_blocks_struct {
+ /* will go away */
+ static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
+ {
+-	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+-	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
++	ex->ee_start.value = cpu_to_le32((unsigned long) (pb & 0xffffffff));
++	ex->ee_start_hi.value = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+ }
+ 
+ static int finish_range(handle_t *handle, struct inode *inode,
+diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
+index 5ed0891..112926e 100644
+--- a/include/linux/ext4_fs_extents.h
++++ b/include/linux/ext4_fs_extents.h
+@@ -73,8 +73,8 @@
+ struct ext4_extent {
+ 	__le32	ee_block;	/* first logical block extent covers */
+ 	__le16	ee_len;		/* number of blocks covered by extent */
+-	__le16	ee_start_hi;	/* high 16 bits of physical block */
+-	__le32	ee_start;	/* low 32 bits of physical block */
++	le16_t	ee_start_hi;	/* high 16 bits of physical block */
++	le32_t	ee_start;	/* low 32 bits of physical block */
+ };
+ 
+ /*
 -- 
 1.5.3.1.91.gd3392-dirty
