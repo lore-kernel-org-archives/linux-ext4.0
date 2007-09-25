@@ -1,161 +1,73 @@
-From: Jan Kara <jack@ucw.cz>
-Subject: Re: jbd : config_jbd_debug cannot create /proc entry
-Date: Tue, 25 Sep 2007 13:50:46 +0200
-Message-ID: <20070925115046.GA15394@atrey.karlin.mff.cuni.cz>
-References: <1190713240.3154.20.camel@castor.rsk.org> <20070925105112.GB8126@atrey.karlin.mff.cuni.cz> <46F8EB26.2090104@linux.vnet.ibm.com>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
+Date: Tue, 25 Sep 2007 14:34:54 +0200
+Message-ID: <20070925123454.GE2806@petra.dvoda.cz>
+References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int> <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org> <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org> <20070925091400.GA2806@petra.dvoda.cz> <1190715083.3373.79.camel@lov.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: richard kennedy <richard@rsk.demon.co.uk>, sct@redhat.com,
-	akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	linux-ext4@vger.kernel.org,
+	List util-linux-ng <util-linux-ng@vger.kernel.org>
+To: Kay Sievers <kay.sievers@vrfy.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:57343 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752432AbXIYLur (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 07:50:47 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:56927 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752531AbXIYMe6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2007 08:34:58 -0400
 Content-Disposition: inline
-In-Reply-To: <46F8EB26.2090104@linux.vnet.ibm.com>
+In-Reply-To: <1190715083.3373.79.camel@lov.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Sep 25, 2007 at 12:11:23PM +0200, Kay Sievers wrote:
+> On Tue, 2007-09-25 at 11:14 +0200, Karel Zak wrote:
+> >  Now we duplicate a lot of FS probe code in libblkid, libvolume_id and
+> >  libdisk.
+> > 
+> >  Yes, it's long-term task, but it's good direction (IMHO).
 > 
+> It is, and we are not providing a real value to the users by providing
+> both of these libs at the same time. :)
 > 
-> Jan Kara wrote:
-> >>
-> >-#define create_jbd_proc_entry() do {} while (0)
-> >-#define remove_jbd_proc_entry() do {} while (0)
-> >+static ctl_table fs_table[] = {
-> >+	{
-> >+                .ctl_name       = -1,	/* Don't want it */
-> 
-> 
-> 
-> shouldn't this be CTL_UNNUMBERED ?
-  Oh, it should be. I didn't notice we have this :) Thanks for notifying
-me. Attached is a fixed version.
+> But udev has a very different requirement for probing filesystems.
+> Unlike non-udev systems, we can't accept any hidden policy inside a
+> library. We just want to pass a byte stream to the lib, and get back
+> what exactly is in _this_ byte stream. There must be no chaching, no
+> devmapper logic, no stat()'ing in /dev, no reading of /proc/partitions,
+> no ioctl()'s, no hidden decisions, nothing. None of these actions is
+> acceptable to be done by the library itself, if udev is used. We need
+> pure mechanics, no policy. We also need an API that allows to specify
+> the size of the stream and the probing offset. And we don't want to
+> iterate over tags, need the filesystem version information, the raid
+> metadata probing, and the classification volume_id provides.
 
-> 
-> >+                .procname       = "jbd-debug",
-> >+                .data           = &journal_enable_debug,
-> >+                .maxlen         = sizeof(int),
-> >+                .mode           = 0644,
-> >+                .proc_handler   = &proc_dointvec,
-> >+        },
-> >+        { .ctl_name = 0 },
-> >+};
-> >
+ Technical details :-)
 
---------
+> That means that we could replace the "low-level" part of libblkid with
+> volume_id code, and keep the current API of blkid, but offer some of the
+> low-level functionality for udev. Or we would implement the relevant
+> parts and probers in blkid, and add a new API to access the low-level
+> part directly.
 
-JBD debug code used old way of creating proc entries for jbd-debug file.
-Change it to use sysctl instead.
+ I don't see a problem to provide low-level and high-level interface in
+ same library. The low-level stuff (fsprobe code) is still same.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+ Things like a cache are discussable -- for example resolve LABEL/UUID
+ on system with udev is faster by /dev/disk/by-*. I think a good
+ library has to be smart enough to found the fastest way how translate
+ LABEL/UUID to device name.
 
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/jbd/journal.c linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c
---- linux-2.6.23-rc6/fs/jbd/journal.c	2007-09-25 12:39:53.000000000 +0200
-+++ linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c	2007-09-25 14:09:11.000000000 +0200
-@@ -1944,58 +1944,29 @@ void journal_put_journal_head(struct jou
- #if defined(CONFIG_JBD_DEBUG)
- int journal_enable_debug;
- EXPORT_SYMBOL(journal_enable_debug);
--#endif
--
--#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
--
--static struct proc_dir_entry *proc_jbd_debug;
--
--static int read_jbd_debug(char *page, char **start, off_t off,
--			  int count, int *eof, void *data)
--{
--	int ret;
--
--	ret = sprintf(page + off, "%d\n", journal_enable_debug);
--	*eof = 1;
--	return ret;
--}
--
--static int write_jbd_debug(struct file *file, const char __user *buffer,
--			   unsigned long count, void *data)
--{
--	char buf[32];
--
--	if (count > ARRAY_SIZE(buf) - 1)
--		count = ARRAY_SIZE(buf) - 1;
--	if (copy_from_user(buf, buffer, count))
--		return -EFAULT;
--	buf[ARRAY_SIZE(buf) - 1] = '\0';
--	journal_enable_debug = simple_strtoul(buf, NULL, 10);
--	return count;
--}
-+static struct ctl_table_header *jbd_debug_table;
- 
--#define JBD_PROC_NAME "sys/fs/jbd-debug"
--
--static void __init create_jbd_proc_entry(void)
--{
--	proc_jbd_debug = create_proc_entry(JBD_PROC_NAME, 0644, NULL);
--	if (proc_jbd_debug) {
--		/* Why is this so hard? */
--		proc_jbd_debug->read_proc = read_jbd_debug;
--		proc_jbd_debug->write_proc = write_jbd_debug;
--	}
--}
--
--static void __exit remove_jbd_proc_entry(void)
--{
--	if (proc_jbd_debug)
--		remove_proc_entry(JBD_PROC_NAME, NULL);
--}
--
--#else
--
--#define create_jbd_proc_entry() do {} while (0)
--#define remove_jbd_proc_entry() do {} while (0)
-+static ctl_table fs_table[] = {
-+	{
-+                .ctl_name       = CTL_UNNUMBERED,
-+                .procname       = "jbd-debug",
-+                .data           = &journal_enable_debug,
-+                .maxlen         = sizeof(int),
-+                .mode           = 0644,
-+                .proc_handler   = &proc_dointvec,
-+        },
-+        { .ctl_name = 0 },
-+};
-+
-+static ctl_table sys_table[] = {
-+        {
-+                .ctl_name       = CTL_FS,
-+                .procname       = "fs",
-+                .mode           = 0555,
-+                .child          = fs_table,
-+        },
-+        { .ctl_name = 0 },
-+};
- 
- #endif
- 
-@@ -2054,7 +2025,10 @@ static int __init journal_init(void)
- 	ret = journal_init_caches();
- 	if (ret != 0)
- 		journal_destroy_caches();
--	create_jbd_proc_entry();
-+
-+#ifdef CONFIG_JBD_DEBUG
-+	jbd_debug_table = register_sysctl_table(sys_table);
-+#endif
- 	return ret;
- }
- 
-@@ -2064,8 +2038,8 @@ static void __exit journal_exit(void)
- 	int n = atomic_read(&nr_journal_heads);
- 	if (n)
- 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
-+	unregister_sysctl_table(jbd_debug_table);
- #endif
--	remove_jbd_proc_entry();
- 	journal_destroy_caches();
- }
- 
+ But, it's too early to talk about details.
+
+> Let me know what you think how go ahead with this, I'm all for doing
+> this sooner than later.
+
+ Cool. I'd like to create libfsprobe as an independent project. Or is
+ there any advantage to merge everything to util-linux-ng? I don't
+ think so.
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
