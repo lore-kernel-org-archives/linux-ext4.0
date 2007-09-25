@@ -1,136 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: jbd : config_jbd_debug cannot create /proc entry
-Date: Tue, 25 Sep 2007 12:51:12 +0200
-Message-ID: <20070925105112.GB8126@atrey.karlin.mff.cuni.cz>
-References: <1190713240.3154.20.camel@castor.rsk.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/7] ext4: Introduce le32_t and le16_t
+Date: Tue, 25 Sep 2007 16:21:29 +0530
+Message-ID: <46F8E831.1060305@linux.vnet.ibm.com>
+References: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <46F8D0DA.7090500@linux.vnet.ibm.com> <20070925100101.GC6143@schatzie.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sct@redhat.com, akpm@linux-foundation.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: richard kennedy <richard@rsk.demon.co.uk>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753044AbXIYKvZ@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1190713240.3154.20.camel@castor.rsk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
+To: Andreas Dilger <adilger@clusterfs.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:52470 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751528AbXIYKw1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 06:52:27 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8PAq4P6022521
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 20:52:04 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8PAtZVD257524
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 20:55:36 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8PAoVU2026769
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 20:50:31 +1000
+In-Reply-To: <20070925100101.GC6143@schatzie.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> I enabled config_jbd_debug in the hope that it may help track down the
-> lockup I'm seeing, but unfortunately the /proc entry does not get
-> created.
+
+
+Andreas Dilger wrote:
+> On Sep 25, 2007  14:41 +0530, Aneesh Kumar K.V wrote:
+>> The patches are on top of patch queue. I haven't touched
+>> the uid and gid of ext4_inode. Do you think i should
+>> change that too ?
 > 
-> any ideas how to fix this ?
-  Attached is a patch that should fix it. Andrew, would you queue it up?
+> You can add a Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+> to those patches.  As I suspected there were a number of bugs hiding
+> in there.  I would also change the uid and gid fields, even if we
+> don't suspect any problems now.
+> 
 
-									Honza
+the primary reason for me not looking at uid gid and file_acl fields are
 
-JBD debug code used old way of creating proc entries for jbd-debug file.
-Change it to use sysctl instead.
+a) we can mount with option nouid32 and that will look at only the low 16 
+   bits
+b) same is true with the gid fields
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+c) Also i_file_acl. If the creater os is HURD we look at only the low 32 bits.
 
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/jbd/journal.c linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c
---- linux-2.6.23-rc6/fs/jbd/journal.c	2007-09-25 12:39:53.000000000 +0200
-+++ linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c	2007-09-25 13:05:05.000000000 +0200
-@@ -1944,58 +1944,29 @@ void journal_put_journal_head(struct jou
- #if defined(CONFIG_JBD_DEBUG)
- int journal_enable_debug;
- EXPORT_SYMBOL(journal_enable_debug);
--#endif
--
--#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
--
--static struct proc_dir_entry *proc_jbd_debug;
--
--static int read_jbd_debug(char *page, char **start, off_t off,
--			  int count, int *eof, void *data)
--{
--	int ret;
--
--	ret = sprintf(page + off, "%d\n", journal_enable_debug);
--	*eof = 1;
--	return ret;
--}
--
--static int write_jbd_debug(struct file *file, const char __user *buffer,
--			   unsigned long count, void *data)
--{
--	char buf[32];
--
--	if (count > ARRAY_SIZE(buf) - 1)
--		count = ARRAY_SIZE(buf) - 1;
--	if (copy_from_user(buf, buffer, count))
--		return -EFAULT;
--	buf[ARRAY_SIZE(buf) - 1] = '\0';
--	journal_enable_debug = simple_strtoul(buf, NULL, 10);
--	return count;
--}
-+static struct ctl_table_header *jbd_debug_table;
- 
--#define JBD_PROC_NAME "sys/fs/jbd-debug"
--
--static void __init create_jbd_proc_entry(void)
--{
--	proc_jbd_debug = create_proc_entry(JBD_PROC_NAME, 0644, NULL);
--	if (proc_jbd_debug) {
--		/* Why is this so hard? */
--		proc_jbd_debug->read_proc = read_jbd_debug;
--		proc_jbd_debug->write_proc = write_jbd_debug;
--	}
--}
--
--static void __exit remove_jbd_proc_entry(void)
--{
--	if (proc_jbd_debug)
--		remove_proc_entry(JBD_PROC_NAME, NULL);
--}
--
--#else
--
--#define create_jbd_proc_entry() do {} while (0)
--#define remove_jbd_proc_entry() do {} while (0)
-+static ctl_table fs_table[] = {
-+	{
-+                .ctl_name       = -1,	/* Don't want it */
-+                .procname       = "jbd-debug",
-+                .data           = &journal_enable_debug,
-+                .maxlen         = sizeof(int),
-+                .mode           = 0644,
-+                .proc_handler   = &proc_dointvec,
-+        },
-+        { .ctl_name = 0 },
-+};
-+
-+static ctl_table sys_table[] = {
-+        {
-+                .ctl_name       = CTL_FS,
-+                .procname       = "fs",
-+                .mode           = 0555,
-+                .child          = fs_table,
-+        },
-+        { .ctl_name = 0 },
-+};
- 
- #endif
- 
-@@ -2054,7 +2025,10 @@ static int __init journal_init(void)
- 	ret = journal_init_caches();
- 	if (ret != 0)
- 		journal_destroy_caches();
--	create_jbd_proc_entry();
-+
-+#ifdef CONFIG_JBD_DEBUG
-+	jbd_debug_table = register_sysctl_table(sys_table);
-+#endif
- 	return ret;
- }
- 
-@@ -2064,8 +2038,8 @@ static void __exit journal_exit(void)
- 	int n = atomic_read(&nr_journal_heads);
- 	if (n)
- 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
-+	unregister_sysctl_table(jbd_debug_table);
- #endif
--	remove_jbd_proc_entry();
- 	journal_destroy_caches();
- }
- 
+
+That means all the pace where we access these fields we have conditional access
+That makes it less error prone. 
+
+with the changes the code will some what as below 
+
+         if(!(test_opt (inode->i_sb, NO_UID32))) {
+-               inode->i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
+-               inode->i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
++               inode->i_uid = ext4_get_i_uid(raw_inode);
++               inode->i_gid = ext4_get_i_gid(raw_inode);
++       } else {
++               inode->i_uid = ext4_get_i_uid_low(raw_inode);
++               inode->i_gid = ext4_get_i_gid_low(raw_inode);
+        }
+
+
+-aneesh
