@@ -1,107 +1,135 @@
-From: Badari Pulavarty <pbadari@gmail.com>
-Subject: Re: 2.6.23-rc6: hanging ext3 dbench tests
-Date: Mon, 24 Sep 2007 17:28:46 -0700
-Message-ID: <1190680126.13955.17.camel@dyn9047017100.beaverton.ibm.com>
-References: <20070911124202.GI9556@shadowen.org>
-	 <alpine.LFD.0.999.0709110949250.16478@woody.linux-foundation.org>
-	 <20070911173049.GA10499@shadowen.org> <20070914094905.GA32670@shadowen.org>
-	 <20070919181546.GA4343@shadowen.org>
-	 <1190656918.13955.7.camel@dyn9047017100.beaverton.ibm.com>
-	 <alpine.LFD.0.999.0709241243530.3579@woody.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andy Whitcroft <apw@shadowen.org>, sct@redhat.com,
-	Andrew Morton <akpm@linux-foundation.org>,
-	adilger@clusterfs.com, ext4 <linux-ext4@vger.kernel.org>,
-	lkml <linux-kernel@vger.kernel.org>, mel@csn.ul.ie
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 2/7] ext4: Convert bg_inode_bitmap and bg_inode_table to new type
+Date: Tue, 25 Sep 2007 14:33:47 +0530
+Message-ID: <11907110501570-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: adilger@clusterfs.com, cmm@us.ibm.com,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:55392 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757156AbXIYAZz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2007 20:25:55 -0400
-In-Reply-To: <alpine.LFD.0.999.0709241243530.3579@woody.linux-foundation.org>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:56439 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750758AbXIYJEh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 05:04:37 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8P94Lkn013793
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:04:21 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8P94LPL4694148
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:04:21 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8P94L9f015228
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:04:21 +1000
+In-Reply-To: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-09-24 at 13:04 -0700, Linus Torvalds wrote:
-> 
-> On Mon, 24 Sep 2007, Badari Pulavarty wrote:
-> > 
-> > Whats happening on my machine is ..
-> > 
-> > dbench forks of 4 children and sends them a signal to start the work.
-> > 3 out of 4 children gets the signal and does the work. One of the child
-> > never gets the signal so, it waits forever in pause(). So, parent waits
-> > for a longtime to kill it.
-> 
-> Since this *seems* to have nothing to do with the filesystem, and since it 
-> *seems* to have been introduced between -rc3 and -rc4, I did
-> 
-> 	gitk v2.6.23-rc3..v2.6.23-rc4 -- kernel/
-> 
-> to see what has changed. One of the commits was signal-related, and that 
-> one doesn't look like it could possibly matter.
-> 
-> The rest were scheduler-related, which doesn't surprise me. In fact, even 
-> before I looked, my reaction to your bug report was "That sounds like an 
-> application race condition".
-> 
-> Applications shouldn't use "pause()" for waiting for a signal. It's a 
-> fundamentally racy interface - the signal could have happened just 
-> *before* calling pause. So it's almost always a bug to use pause(), and 
-> any users should be fixed to use "sigsuspend()" instead, which can 
-> atomically (and correctly) pause for a signal while the process has masked 
-> it outside of the system call.
-> 
-> Now, I took a look at the dbench sources, and I have to say that the race 
-> looks *very* unlikely (there's quite a small window in which it does
-> 
-> 	children[i].status = getpid();
-> 	** race window here **
-> 	pause();
-> 
-> and it would require *just* the right timing so that the parent doesn't 
-> end up doing the "sleep(1)" (which would make the window even less likely 
-> to be hit), but there does seem to be a race condition there. And it 
-> *could* be that you just happen to hit it on your hw setup.
-> 
-> So before you do anything else, does this patch (TOTALLY UNTESTED! DONE 
-> ENTIRELY LOOKING AT THE SOURCE! IT MAY RAPE ALL YOUR PETS, AND CALL YOU 
-> BAD NAMES!) make any difference?
-> 
-> (patch against unmodified dbench-2.0)
-> 
-> 		Linus
-> 
-> ---
-> diff --git a/dbench.c b/dbench.c
-> index ccf5624..4be5712 100644
-> --- a/dbench.c
-> +++ b/dbench.c
-> @@ -91,10 +91,15 @@ static double create_procs(int nprocs, void (*fn)(struct child_struct * ))
->  
->  	for (i=0;i<nprocs;i++) {
->  		if (fork() == 0) {
-> +			sigset_t old, blocked;
-> +
-> +			sigemptyset(&blocked);
-> +			sigaddset(&blocked, SIGCONT);
-> +			sigprocmask(SIG_BLOCK, &blocked, &old);
->  			setbuffer(stdout, NULL, 0);
->  			nb_setup(&children[i]);
->  			children[i].status = getpid();
-> -			pause();
-> +			sigsuspend(&old);
->  			fn(&children[i]);
->  			_exit(0);
->  		}
+Convert bg_inode_bitmap and bg_inode_table to le32_t
+This helps in finding BUGs due to direct partial access of
+these split 64 bit values
 
-With the modified dbench, I couldn't reproduce the problem so far.
-I will let it run through the night (just to be sure). 
+Also fix one direct partial access
 
-For now, we can treat it as a tool/App issue :)
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/balloc.c        |    2 +-
+ fs/ext4/super.c         |   18 +++++++++---------
+ include/linux/ext4_fs.h |    8 ++++----
+ 3 files changed, 14 insertions(+), 14 deletions(-)
 
-Thanks,
-Badari
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 2a37635..b717a37 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -103,7 +103,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		/* Set bits for block and inode bitmaps, and inode table */
+ 		ext4_set_bit(ext4_block_bitmap(sb, gdp) - start, bh->b_data);
+ 		ext4_set_bit(ext4_inode_bitmap(sb, gdp) - start, bh->b_data);
+-		for (bit = le32_to_cpu(gdp->bg_inode_table) - start,
++		for (bit = (ext4_inode_table(sb, gdp) - start),
+ 		     bit_max = bit + sbi->s_itb_per_group; bit < bit_max; bit++)
+ 			ext4_set_bit(bit, bh->b_data);
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c8f8e4d..b9dda19 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -72,23 +72,23 @@ ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+ {
+ 	return le32_to_cpu(bg->bg_block_bitmap.value) |
+ 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
+-		 (ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi.value) << 32 : 0);
++	 (ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi.value) << 32 : 0);
+ }
+ 
+ ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
+ 			       struct ext4_group_desc *bg)
+ {
+-	return le32_to_cpu(bg->bg_inode_bitmap) |
++	return le32_to_cpu(bg->bg_inode_bitmap.value) |
+ 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
+-		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_bitmap_hi) << 32 : 0);
++	 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_bitmap_hi.value) << 32 : 0);
+ }
+ 
+ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 			      struct ext4_group_desc *bg)
+ {
+-	return le32_to_cpu(bg->bg_inode_table) |
++	return le32_to_cpu(bg->bg_inode_table.value) |
+ 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
+-		 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi) << 32 : 0);
++	 (ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi.value) << 32 : 0);
+ }
+ 
+ void ext4_block_bitmap_set(struct super_block *sb,
+@@ -102,17 +102,17 @@ void ext4_block_bitmap_set(struct super_block *sb,
+ void ext4_inode_bitmap_set(struct super_block *sb,
+ 			   struct ext4_group_desc *bg, ext4_fsblk_t blk)
+ {
+-	bg->bg_inode_bitmap  = cpu_to_le32((u32)blk);
++	bg->bg_inode_bitmap.value  = cpu_to_le32((u32)blk);
+ 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
+-		bg->bg_inode_bitmap_hi = cpu_to_le32(blk >> 32);
++		bg->bg_inode_bitmap_hi.value = cpu_to_le32(blk >> 32);
+ }
+ 
+ void ext4_inode_table_set(struct super_block *sb,
+ 			  struct ext4_group_desc *bg, ext4_fsblk_t blk)
+ {
+-	bg->bg_inode_table = cpu_to_le32((u32)blk);
++	bg->bg_inode_table.value = cpu_to_le32((u32)blk);
+ 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
+-		bg->bg_inode_table_hi = cpu_to_le32(blk >> 32);
++		bg->bg_inode_table_hi.value = cpu_to_le32(blk >> 32);
+ }
+ 
+ /*
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 4494f8e..84ef557 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -151,8 +151,8 @@ struct ext4_allocation_request {
+ struct ext4_group_desc
+ {
+ 	le32_t	bg_block_bitmap;	/* Blocks bitmap block */
+-	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
+-	__le32	bg_inode_table;		/* Inodes table block */
++	le32_t	bg_inode_bitmap;	/* Inodes bitmap block */
++	le32_t	bg_inode_table;		/* Inodes table block */
+ 	__le16	bg_free_blocks_count;	/* Free blocks count */
+ 	__le16	bg_free_inodes_count;	/* Free inodes count */
+ 	__le16	bg_used_dirs_count;	/* Directories count */
+@@ -161,8 +161,8 @@ struct ext4_group_desc
+ 	__le16  bg_itable_unused;	/* Unused inodes count */
+ 	__le16  bg_checksum;		/* crc16(sb_uuid+group+desc) */
+ 	le32_t	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
+-	__le32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
+-	__le32	bg_inode_table_hi;	/* Inodes table block MSB */
++	le32_t	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
++	le32_t	bg_inode_table_hi;	/* Inodes table block MSB */
+ };
+ 
+ #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
+-- 
+1.5.3.1.91.gd3392-dirty
