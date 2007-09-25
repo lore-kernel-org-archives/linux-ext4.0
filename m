@@ -1,47 +1,77 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: jbd : config_jbd_debug cannot create /proc entry
-Date: Tue, 25 Sep 2007 07:49:38 -0500
-Message-ID: <20070925074938.2321bc15@gara>
-References: <1190713240.3154.20.camel@castor.rsk.org>
-	<20070925105112.GB8126@atrey.karlin.mff.cuni.cz>
-	<46F8EB26.2090104@linux.vnet.ibm.com>
-	<20070925115046.GA15394@atrey.karlin.mff.cuni.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Fix commit code to properly abort journal
+Date: Tue, 25 Sep 2007 16:01:13 +0200
+Message-ID: <20070925140113.GE412@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	richard kennedy <richard@rsk.demon.co.uk>, sct@redhat.com,
-	akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@ucw.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:56577 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750887AbXIYMti (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 08:49:38 -0400
-In-Reply-To: <20070925115046.GA15394@atrey.karlin.mff.cuni.cz>
+Received: from styx.suse.cz ([82.119.242.94]:42602 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751615AbXIYNj5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2007 09:39:57 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 25 Sep 2007 13:50:46 +0200
-Jan Kara <jack@ucw.cz> wrote:
-> > Jan Kara wrote:
-> > >>
-> > >-#define create_jbd_proc_entry() do {} while (0)
-> > >-#define remove_jbd_proc_entry() do {} while (0)
-> > >+static ctl_table fs_table[] = {
-> > >+	{
-> > >+                .ctl_name       = -1,	/* Don't want it */
-> > 
-> > 
-> > 
-> > shouldn't this be CTL_UNNUMBERED ?
->   Oh, it should be. I didn't notice we have this :) Thanks for notifying
-> me. Attached is a fixed version.
+  Hi,
 
-This was fixed in JBD2 by moving the jbd-debug file to debugfs:
-http://lkml.org/lkml/2007/7/11/334
+  attached patch changes JBD commit code to properly record reason for
+aborted journal (j_errno) and not just mark the journal as aborted. Andrew,
+could you please queue the patch? Thanks.
 
-Since this code is already in the kernel, we should keep it consistent. 
+									Honza
 
--JRS
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+-----
+
+We should really call journal_abort() and not __journal_abort_hard() in case
+of errors. The latter call does not record the error in the journal superblock and
+thus filesystem won't be marked as with errors later (and user could happily mount
+it without any warning).
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/jbd/commit.c linux-2.6.23-rc6-1-jbd_abort_fix/fs/jbd/commit.c
+--- linux-2.6.23-rc6/fs/jbd/commit.c	2007-09-18 19:22:28.000000000 +0200
++++ linux-2.6.23-rc6-1-jbd_abort_fix/fs/jbd/commit.c	2007-09-25 15:02:49.000000000 +0200
+@@ -466,7 +466,7 @@ void journal_commit_transaction(journal_
+ 	spin_unlock(&journal->j_list_lock);
+ 
+ 	if (err)
+-		__journal_abort_hard(journal);
++		journal_abort(journal, err);
+ 
+ 	journal_write_revoke_records(journal, commit_transaction);
+ 
+@@ -524,7 +524,7 @@ void journal_commit_transaction(journal_
+ 
+ 			descriptor = journal_get_descriptor_buffer(journal);
+ 			if (!descriptor) {
+-				__journal_abort_hard(journal);
++				journal_abort(journal, -EIO);
+ 				continue;
+ 			}
+ 
+@@ -557,7 +557,7 @@ void journal_commit_transaction(journal_
+ 		   and repeat this loop: we'll fall into the
+ 		   refile-on-abort condition above. */
+ 		if (err) {
+-			__journal_abort_hard(journal);
++			journal_abort(journal, err);
+ 			continue;
+ 		}
+ 
+@@ -748,7 +748,7 @@ wait_for_iobuf:
+ 		err = -EIO;
+ 
+ 	if (err)
+-		__journal_abort_hard(journal);
++		journal_abort(journal, err);
+ 
+ 	/* End of a transaction!  Finally, we can do checkpoint
+            processing: any buffers committed as a result of this
