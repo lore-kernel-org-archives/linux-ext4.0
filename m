@@ -1,154 +1,198 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] Support for 64KB blocksize in e2fsprogs
-Date: Tue, 25 Sep 2007 18:48:04 +0200
-Message-ID: <20070925164804.GJ412@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH] JBD: Export jbd-debug via debugfs
+Date: Tue, 25 Sep 2007 11:33:10 -0500
+Message-ID: <20070925163310.10823.88275.stgit@toolssf2>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jack@suse.cz
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:42479 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751418AbXIYQ0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Sep 2007 12:26:48 -0400
-Content-Disposition: inline
+Received: from e31.co.us.ibm.com ([32.97.110.149]:50415 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751335AbXIYQgj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 12:36:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+From: Jose R. Santos <jrs@us.ibm.com>
 
-  attached patch implements support for 64KB blocksize in directories in
-e2fsprogs. This patch complements the kernel patches for ext2-4 I've sent
-yesterday. Ted, does the patch look fine?
-								Honza
+JBD: Export jbd-debug via debugfs
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The jbd-debug file used to be located in /proc/sys/fs/jbd-debug, but
+create_proc_entry() does not do lookups on file names that are more that one
+directory deep.  This causes the entry creation to fail and hence, no proc
+file is created.
 
------
+Instead of fixing this on procfs might as well move the jbd2-debug file to
+debugfs which would be the preferred location for this kind of tunable.  The
+new location is now /sys/kernel/debug/jbd/jbd-debug.
 
-Subject: Support for 64KB blocksize in ext2-4 directories.
 
-When block size is 64KB, we have to take care that rec_len does not overflow.
-Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
-conversion when reading from / writing to disk.
-
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
+--
 
-diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
-index fb20fa0..628bf93 100644
---- a/lib/ext2fs/dirblock.c
-+++ b/lib/ext2fs/dirblock.c
-@@ -38,9 +38,9 @@ errcode_t ext2fs_read_dir_block2(ext2_fi
- 		dirent = (struct ext2_dir_entry *) p;
- #ifdef WORDS_BIGENDIAN
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
- 		dirent->name_len = ext2fs_swab16(dirent->name_len);
- #endif
-+		dirent->rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- 		name_len = dirent->name_len;
- #ifdef WORDS_BIGENDIAN
- 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-@@ -68,12 +68,15 @@ errcode_t ext2fs_read_dir_block(ext2_fil
- errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
- 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
- {
--#ifdef WORDS_BIGENDIAN
- 	errcode_t	retval;
- 	char		*p, *end;
- 	char		*buf = 0;
- 	struct ext2_dir_entry *dirent;
+ fs/Kconfig          |   10 ++++----
+ fs/jbd/journal.c    |   65 ++++++++++++++++++++-------------------------------
+ include/linux/jbd.h |    2 +-
+ 3 files changed, 31 insertions(+), 46 deletions(-)
+
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 58a0650..a8937a6 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -219,7 +219,7 @@ config JBD
  
-+#ifndef WORDS_BIGENDIAN
-+	if (fs->blocksize < EXT2_MAX_REC_LEN)
-+		goto just_write;
-+#endif
- 	retval = ext2fs_get_mem(fs->blocksize, &buf);
- 	if (retval)
- 		return retval;
-@@ -89,7 +92,7 @@ errcode_t ext2fs_write_dir_block2(ext2_f
- 		}
- 		p += dirent->rec_len;
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
-+		dirent->rec_len = ext2fs_rec_len_to_disk(dirent->rec_len);
- 		dirent->name_len = ext2fs_swab16(dirent->name_len);
+ config JBD_DEBUG
+ 	bool "JBD (ext3) debugging support"
+-	depends on JBD
++	depends on JBD && DEBUG_FS
+ 	help
+ 	  If you are using the ext3 journaled file system (or potentially any
+ 	  other file system/device using JBD), this option allows you to
+@@ -228,10 +228,10 @@ config JBD_DEBUG
+ 	  debugging output will be turned off.
  
- 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-@@ -98,9 +101,8 @@ errcode_t ext2fs_write_dir_block2(ext2_f
-  	retval = io_channel_write_blk(fs->io, block, 1, buf);
- 	ext2fs_free_mem(&buf);
- 	return retval;
--#else
-+just_write:
-  	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
--#endif
+ 	  If you select Y here, then you will be able to turn on debugging
+-	  with "echo N > /proc/sys/fs/jbd-debug", where N is a number between
+-	  1 and 5, the higher the number, the more debugging output is
+-	  generated.  To turn debugging off again, do
+-	  "echo 0 > /proc/sys/fs/jbd-debug".
++	  with "echo N > /sys/kernel/debug/jbd/jbd-debug", where N is a 
++	  number between 1 and 5, the higher the number, the more debugging 
++	  output is generated.  To turn debugging off again, do
++	  "echo 0 > /sys/kernel/debug/jbd/jbd-debug".
+ 
+ config JBD2
+ 	tristate
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 06ab3c1..1fb59fa 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -35,6 +35,7 @@
+ #include <linux/kthread.h>
+ #include <linux/poison.h>
+ #include <linux/proc_fs.h>
++#include <linux/debugfs.h>
+ 
+ #include <asm/uaccess.h>
+ #include <asm/page.h>
+@@ -1939,64 +1940,48 @@ void journal_put_journal_head(struct journal_head *jh)
  }
  
- 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index a316665..2041f0f 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -717,6 +717,32 @@ struct ext2_dir_entry_2 {
- #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
- #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
- 					 ~EXT2_DIR_ROUND)
-+#define EXT2_MAX_REC_LEN		((1<<16)-1)
-+
-+static inline unsigned ext2fs_rec_len_from_disk(unsigned len)
-+{
-+#ifdef WORDS_BIGENDIAN
-+	len = ext2fs_swab16(dlen);
-+#endif
-+	if (len == EXT2_MAX_REC_LEN)
-+		return 1 << 16;
-+	return len;
-+}
-+
-+static inline unsigned ext2fs_rec_len_to_disk(unsigned len)
-+{
-+	if (len == (1 << 16))
-+#ifdef WORDS_BIGENDIAN
-+		return ext2fs_swab16(EXT2_MAX_REC_LEN);
-+#else
-+		return EXT2_MAX_REC_LEN;
-+#endif
-+#ifdef WORDS_BIGENDIAN
-+	return ext2fs_swab_16(len);
-+#else
-+	return len;
-+#endif
-+}
- 
  /*
-  * This structure will be used for multiple mount protection. It will be
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 1fbb267..4e2c9fb 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -345,10 +345,7 @@ static void scramble_dir_block(ext2_fils
- 	end = buf + fs->blocksize;
- 	for (p = buf; p < end-8; p += rec_len) {
- 		dirent = (struct ext2_dir_entry_2 *) p;
--		rec_len = dirent->rec_len;
--#ifdef WORDS_BIGENDIAN
--		rec_len = ext2fs_swab16(rec_len);
--#endif
-+		rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- #if 0
- 		printf("rec_len = %d, name_len = %d\n", rec_len, dirent->name_len);
+- * /proc tunables
++ * debugfs tunables
+  */
+ #if defined(CONFIG_JBD_DEBUG)
+-int journal_enable_debug;
++u8 journal_enable_debug;
+ EXPORT_SYMBOL(journal_enable_debug);
  #endif
-@@ -358,9 +355,7 @@ static void scramble_dir_block(ext2_fils
- 			       "bad rec_len (%d)\n", (unsigned long) blk, 
- 			       rec_len);
- 			rec_len = end - p;
--#ifdef WORDS_BIGENDIAN
--				dirent->rec_len = ext2fs_swab16(rec_len);
--#endif
-+			dirent->rec_len = ext2fs_rec_len_to_disk(rec_len);
- 			continue;
- 		}
- 		if (dirent->name_len + 8 > rec_len) {
+ 
+-#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
++#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_DEBUG_FS)
+ 
+-static struct proc_dir_entry *proc_jbd_debug;
++struct dentry  *jbd_debugfs_dir, *jbd_debug;
+ 
+-static int read_jbd_debug(char *page, char **start, off_t off,
+-			  int count, int *eof, void *data)
++static void __init create_jbd_debugfs_entry(void)
+ {
+-	int ret;
+-
+-	ret = sprintf(page + off, "%d\n", journal_enable_debug);
+-	*eof = 1;
+-	return ret;
++	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
++	if (jbd_debugfs_dir)
++		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO,
++					       jbd_debugfs_dir,
++					       &journal_enable_debug);
+ }
+ 
+-static int write_jbd_debug(struct file *file, const char __user *buffer,
+-			   unsigned long count, void *data)
++static void __exit remove_jbd_debugfs_entry(void)
+ {
+-	char buf[32];
+-
+-	if (count > ARRAY_SIZE(buf) - 1)
+-		count = ARRAY_SIZE(buf) - 1;
+-	if (copy_from_user(buf, buffer, count))
+-		return -EFAULT;
+-	buf[ARRAY_SIZE(buf) - 1] = '\0';
+-	journal_enable_debug = simple_strtoul(buf, NULL, 10);
+-	return count;
++	if (jbd_debug)
++		debugfs_remove(jbd_debug);
++	if (jbd_debugfs_dir)
++		debugfs_remove(jbd_debugfs_dir);
+ }
+ 
+-#define JBD_PROC_NAME "sys/fs/jbd-debug"
++#else
+ 
+-static void __init create_jbd_proc_entry(void)
++static void __init create_jbd_debugfs_entry(void)
+ {
+-	proc_jbd_debug = create_proc_entry(JBD_PROC_NAME, 0644, NULL);
+-	if (proc_jbd_debug) {
+-		/* Why is this so hard? */
+-		proc_jbd_debug->read_proc = read_jbd_debug;
+-		proc_jbd_debug->write_proc = write_jbd_debug;
+-	}
++	do {
++	} while (0);
+ }
+ 
+-static void __exit remove_jbd_proc_entry(void)
++static void __exit remove_jbd_debugfs_entry(void)
+ {
+-	if (proc_jbd_debug)
+-		remove_proc_entry(JBD_PROC_NAME, NULL);
++	do {
++	} while (0);
+ }
+ 
+-#else
+-
+-#define create_jbd_proc_entry() do {} while (0)
+-#define remove_jbd_proc_entry() do {} while (0)
+-
+ #endif
+ 
+ struct kmem_cache *jbd_handle_cache;
+@@ -2054,7 +2039,7 @@ static int __init journal_init(void)
+ 	ret = journal_init_caches();
+ 	if (ret != 0)
+ 		journal_destroy_caches();
+-	create_jbd_proc_entry();
++	create_jbd_debugfs_entry();
+ 	return ret;
+ }
+ 
+@@ -2065,7 +2050,7 @@ static void __exit journal_exit(void)
+ 	if (n)
+ 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+ #endif
+-	remove_jbd_proc_entry();
++	remove_jbd_debugfs_entry();
+ 	journal_destroy_caches();
+ }
+ 
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index 4527375..526548d 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -57,7 +57,7 @@
+  * CONFIG_JBD_DEBUG is on.
+  */
+ #define JBD_EXPENSIVE_CHECKING
+-extern int journal_enable_debug;
++extern u8 journal_enable_debug;
+ 
+ #define jbd_debug(n, f, a...)						\
+ 	do {								\
