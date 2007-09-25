@@ -1,52 +1,71 @@
-From: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+From: Matthias Koenig <mkoenig@suse.de>
 Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
-Date: Tue, 25 Sep 2007 11:14:00 +0200
-Message-ID: <20070925091400.GA2806@petra.dvoda.cz>
-References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int> <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org> <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org>
+Date: Tue, 25 Sep 2007 11:27:30 +0200
+Message-ID: <n7xmyvbccxp.fsf@sor.suse.de>
+References: <20070919061404.GA1628@schatzie.adilger.int>
+	<46F1CFC0.3070801@redhat.com>
+	<20070920050923.GX32520@schatzie.adilger.int>
+	<46F2D678.4060203@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	List util-linux-ng <util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
-To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20070924124035.GA4209-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35663 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750786AbXIYJX4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2007 05:23:56 -0400
+In-Reply-To: <46F2D678.4060203@redhat.com> (Eric Sandeen's message of "Thu\, 20
+	Sep 2007 15\:22\:16 -0500")
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 24, 2007 at 08:40:36AM -0400, Theodore Tso wrote:
-> On Mon, Sep 24, 2007 at 11:25:39AM +0200, Karel Zak wrote:
-> > > 
-> > > Nope, there isn't much rationale unless we also split out fsck, so
-> > 
-> >  util-linux-ng is open for fsck :-)
-> 
-> It's something I'm considering, but at the moment I've got some higher
-> priority (ext4) work that I'm focusing on.  
+Eric Sandeen <sandeen@redhat.com> writes:
 
- That's nothing urgent. This migration shouldn't be so difficult -- I
- think we should provide at least one release when the util is in both
- packages -- defaultly disabled in e2fsprogs and enabled in
- util-linux-ng. It's probably better that trying to synchronize
- releases of both packages.
+> Andreas Dilger wrote:
+>> On Sep 19, 2007  20:41 -0500, Eric Sandeen wrote:
+>>> Andreas Dilger wrote:
+>>>> It isn't possible to build an e2fsprogs via "make rpm" on SuSE and have it
+>>>> install cleanly, because they split out some of the libraries into separate
+>>>> packages.
+>>>>
+>>>> We've got the current patch to the .spec file, but I'm open to discussion
+>>>> if it is more desirable to change the .spec to continue to build separate
+>>>> RPMs (though that is more of a distribution hassle and might need major
+>>>> changes in the .spec file).
+>>> FWIW, I also have an RFE assigned to me for RHEL/Fedora to split up our
+>>> e2fsprogs packages for libcom_err and libuuid... since many
+>>> non-filesystem things now require them.   So, this is sort of going in
+>>> the opposite direction.  :)
+>>>
+>>> Any idea how many distros already split it out?
+>> 
+>> I know Debian-based distros have done this for ages...
+>> 
+>> I'd also welcome someone with rpm-fu split it into separate packages.
+>
+> I'd do this, my rpm-fu is still reasonably strong, though - I'm curious,
+> is there a compelling reason to split out just libcom-err?  what about
+> libuuid?  libblkid?  e2fsprogs is a bit of a grab bag of things.  What's
+> the rationale for the split?
 
-> What would you think about moving libblkid and the libdisk from
-> xfsprogs into util-linux-ng?  That's things that I've been batting
+The Suse split out of library packages has been enforced by our new library
+packaging policy[1]. I think debian has a similar policy [2].
+In openSUSE the splitted out library packages are
+libblkid1
+libcom_err2
+libext2fs2
+libuuid1
+with the corresponding development packages named with the -devel
+postfix but without the soname version appendix. There is currently also
+a dummy e2fsprogs-devel package for backwards compatibility.
 
- I have no problem with this idea, but I'd like to invite Kay Sievers
- (udev) to this discussion. I think the best step will be merge
- libblkid and libvolume_id to the one independent project. There is
- few technical problems with this idea, but nothing insolvable.
+I am not sure how other RPM based distributions will handle this and
+if it is worth the effort to keep track of all this in one specfile.
+If needed I could take care for the Suse specific stuff.
 
- Now we duplicate a lot of FS probe code in libblkid, libvolume_id and
- libdisk.
+Matthias 
 
- Yes, it's long-term task, but it's good direction (IMHO).
-
-    Karel
-
--- 
- Karel Zak  <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+[1] http://en.opensuse.org/Shared_Library_Packaging_Policy
+[2] http://www.netfort.gr.jp/~dancer/column/libpkg-guide/libpkg-guide.html
