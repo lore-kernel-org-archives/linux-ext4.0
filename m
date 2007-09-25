@@ -1,38 +1,52 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/7] ext4: Introduce le32_t and le16_t
-Date: Tue, 25 Sep 2007 14:41:54 +0530
-Message-ID: <46F8D0DA.7090500@linux.vnet.ibm.com>
-References: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
+Date: Tue, 25 Sep 2007 11:14:00 +0200
+Message-ID: <20070925091400.GA2806@petra.dvoda.cz>
+References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int> <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org> <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: adilger@clusterfs.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:50133 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750899AbXIYJMt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 05:12:49 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8P9CWhG006493
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:12:32 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8P9CVTj1249310
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:12:31 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8P9CAS9030516
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 19:12:15 +1000
-In-Reply-To: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	List util-linux-ng <util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
+To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20070924124035.GA4209-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas,
+On Mon, Sep 24, 2007 at 08:40:36AM -0400, Theodore Tso wrote:
+> On Mon, Sep 24, 2007 at 11:25:39AM +0200, Karel Zak wrote:
+> > > 
+> > > Nope, there isn't much rationale unless we also split out fsck, so
+> > 
+> >  util-linux-ng is open for fsck :-)
+> 
+> It's something I'm considering, but at the moment I've got some higher
+> priority (ext4) work that I'm focusing on.  
 
-The patches are on top of patch queue. I haven't touched
-the uid and gid of ext4_inode. Do you think i should
-change that too ?
+ That's nothing urgent. This migration shouldn't be so difficult -- I
+ think we should provide at least one release when the util is in both
+ packages -- defaultly disabled in e2fsprogs and enabled in
+ util-linux-ng. It's probably better that trying to synchronize
+ releases of both packages.
 
-7/7 is not the part of the series. But it is important.
-Should i send it as a separate patch for the 2.6.24 ?
+> What would you think about moving libblkid and the libdisk from
+> xfsprogs into util-linux-ng?  That's things that I've been batting
 
--aneesh
+ I have no problem with this idea, but I'd like to invite Kay Sievers
+ (udev) to this discussion. I think the best step will be merge
+ libblkid and libvolume_id to the one independent project. There is
+ few technical problems with this idea, but nothing insolvable.
+
+ Now we duplicate a lot of FS probe code in libblkid, libvolume_id and
+ libdisk.
+
+ Yes, it's long-term task, but it's good direction (IMHO).
+
+    Karel
+
+-- 
+ Karel Zak  <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
