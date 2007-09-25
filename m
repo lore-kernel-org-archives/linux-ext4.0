@@ -1,73 +1,154 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/7] ext4: Introduce le32_t and le16_t
-Date: Tue, 25 Sep 2007 16:02:23 +0000
-Message-ID: <1190736143.6433.13.camel@norville.austin.ibm.com>
-References: <11907110323296-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1190728569.28492.3.camel@norville.austin.ibm.com>
-	 <46F92D2B.60205@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Support for 64KB blocksize in e2fsprogs
+Date: Tue, 25 Sep 2007 18:48:04 +0200
+Message-ID: <20070925164804.GJ412@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger@clusterfs.com, cmm@us.ibm.com
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:41782 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751554AbXIYQC1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Sep 2007 12:02:27 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l8PG2RkH010203
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 12:02:27 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8PG2Qbx565618
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 12:02:26 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8PG2Q65029330
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2007 12:02:26 -0400
-In-Reply-To: <46F92D2B.60205@linux.vnet.ibm.com>
+Received: from styx.suse.cz ([82.119.242.94]:42479 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751418AbXIYQ0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2007 12:26:48 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-09-25 at 21:15 +0530, Aneesh Kumar K.V wrote:
-> 
-> Dave Kleikamp wrote:
-> > On Tue, 2007-09-25 at 14:33 +0530, Aneesh Kumar K.V wrote:
-> >> ext4 file system layout contain different split members
-> >> like bg_block_bitmap  and bg_block_bitmap_hi. Introduce
-> >> data type le32_t and le16_t to be used as the type of
-> >> these split members. This prevents these members frome
-> >> being accessed directly. Accesing them directly gives
-> >> a compiler warning. This helps in catching some BUGS
-> >> due to direct partial access of these split fields.
-> > 
-> > Ugh.  I don't like this typedef at all. It just makes the data type more
-> > confusing.
-> 
-> 
-> Confusing enough to make people look at them more carefully.
-> 
-> 
-> 
-> > 
-> > Why not just change the name of bg_block_bitmap to something like
-> > bg_block_bitmap_lo or _bg_block_bitmap?  It should be clear from the
-> > name that it shouldn't be used without careful consideration.
-> > 
-> 
-> even if we rename the variables, I guess we would like to have helper functions
-> for accessing these values. That would mean the code is finally going to look more
-> or less the same except the typedef.
+  Hi,
 
-I see that as a good thing.  The typedef is the part I don't like.
+  attached patch implements support for 64KB blocksize in directories in
+e2fsprogs. This patch complements the kernel patches for ext2-4 I've sent
+yesterday. Ted, does the patch look fine?
+								Honza
 
-> But the typedef actually save us from serious
-> misuse of these variables.
-
-You could just as easily write code that misuses bg_block_bitmap->value,
-as you could bg_block_bitmap_lo.  I actually think using a name that
-describes that it's only half-a-value is more clear.
-
-Shaggy
 -- 
-David Kleikamp
-IBM Linux Technology Center
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+-----
+
+Subject: Support for 64KB blocksize in ext2-4 directories.
+
+When block size is 64KB, we have to take care that rec_len does not overflow.
+Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
+conversion when reading from / writing to disk.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index fb20fa0..628bf93 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -38,9 +38,9 @@ errcode_t ext2fs_read_dir_block2(ext2_fi
+ 		dirent = (struct ext2_dir_entry *) p;
+ #ifdef WORDS_BIGENDIAN
+ 		dirent->inode = ext2fs_swab32(dirent->inode);
+-		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
+ 		dirent->name_len = ext2fs_swab16(dirent->name_len);
+ #endif
++		dirent->rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
+ 		name_len = dirent->name_len;
+ #ifdef WORDS_BIGENDIAN
+ 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
+@@ -68,12 +68,15 @@ errcode_t ext2fs_read_dir_block(ext2_fil
+ errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
+ 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
+ {
+-#ifdef WORDS_BIGENDIAN
+ 	errcode_t	retval;
+ 	char		*p, *end;
+ 	char		*buf = 0;
+ 	struct ext2_dir_entry *dirent;
+ 
++#ifndef WORDS_BIGENDIAN
++	if (fs->blocksize < EXT2_MAX_REC_LEN)
++		goto just_write;
++#endif
+ 	retval = ext2fs_get_mem(fs->blocksize, &buf);
+ 	if (retval)
+ 		return retval;
+@@ -89,7 +92,7 @@ errcode_t ext2fs_write_dir_block2(ext2_f
+ 		}
+ 		p += dirent->rec_len;
+ 		dirent->inode = ext2fs_swab32(dirent->inode);
+-		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
++		dirent->rec_len = ext2fs_rec_len_to_disk(dirent->rec_len);
+ 		dirent->name_len = ext2fs_swab16(dirent->name_len);
+ 
+ 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
+@@ -98,9 +101,8 @@ errcode_t ext2fs_write_dir_block2(ext2_f
+  	retval = io_channel_write_blk(fs->io, block, 1, buf);
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+-#else
++just_write:
+  	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
+-#endif
+ }
+ 
+ 
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index a316665..2041f0f 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -717,6 +717,32 @@ struct ext2_dir_entry_2 {
+ #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
+ #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
+ 					 ~EXT2_DIR_ROUND)
++#define EXT2_MAX_REC_LEN		((1<<16)-1)
++
++static inline unsigned ext2fs_rec_len_from_disk(unsigned len)
++{
++#ifdef WORDS_BIGENDIAN
++	len = ext2fs_swab16(dlen);
++#endif
++	if (len == EXT2_MAX_REC_LEN)
++		return 1 << 16;
++	return len;
++}
++
++static inline unsigned ext2fs_rec_len_to_disk(unsigned len)
++{
++	if (len == (1 << 16))
++#ifdef WORDS_BIGENDIAN
++		return ext2fs_swab16(EXT2_MAX_REC_LEN);
++#else
++		return EXT2_MAX_REC_LEN;
++#endif
++#ifdef WORDS_BIGENDIAN
++	return ext2fs_swab_16(len);
++#else
++	return len;
++#endif
++}
+ 
+ /*
+  * This structure will be used for multiple mount protection. It will be
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 1fbb267..4e2c9fb 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -345,10 +345,7 @@ static void scramble_dir_block(ext2_fils
+ 	end = buf + fs->blocksize;
+ 	for (p = buf; p < end-8; p += rec_len) {
+ 		dirent = (struct ext2_dir_entry_2 *) p;
+-		rec_len = dirent->rec_len;
+-#ifdef WORDS_BIGENDIAN
+-		rec_len = ext2fs_swab16(rec_len);
+-#endif
++		rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
+ #if 0
+ 		printf("rec_len = %d, name_len = %d\n", rec_len, dirent->name_len);
+ #endif
+@@ -358,9 +355,7 @@ static void scramble_dir_block(ext2_fils
+ 			       "bad rec_len (%d)\n", (unsigned long) blk, 
+ 			       rec_len);
+ 			rec_len = end - p;
+-#ifdef WORDS_BIGENDIAN
+-				dirent->rec_len = ext2fs_swab16(rec_len);
+-#endif
++			dirent->rec_len = ext2fs_rec_len_to_disk(rec_len);
+ 			continue;
+ 		}
+ 		if (dirent->name_len + 8 > rec_len) {
