@@ -1,105 +1,66 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 4/7] ext4: Convert s_r_blocks_count and s_free_blocks_count
-Date: Tue, 25 Sep 2007 23:50:06 +0530
-Message-ID: <11907444233981-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <11907444091038-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11907444192997-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <11907444213671-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: adilger@clusterfs.com, cmm@us.ibm.com,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
+Date: Tue, 25 Sep 2007 11:20:32 -0400
+Message-ID: <20070925152032.GB2807@thunk.org>
+References: <20070919061404.GA1628@schatzie.adilger.int> <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int> <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org> <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org> <20070925091400.GA2806@petra.dvoda.cz> <1190715083.3373.79.camel@lov.localdomain> <20070925123454.GE2806@petra.dvoda.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Kay Sievers <kay.sievers@vrfy.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	linux-ext4@vger.kernel.org,
+	List util-linux-ng <util-linux-ng@vger.kernel.org>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:50443 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753061AbXIYSUl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 14:20:41 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8PIKe4B021328
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:40 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8PIKeum3580012
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:40 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8PIKNgi026599
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Sep 2007 04:20:24 +1000
-In-Reply-To: <11907444213671-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from THUNK.ORG ([69.25.196.29]:55610 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750851AbXIYUVO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2007 16:21:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20070925123454.GE2806@petra.dvoda.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Convert s_r_blocks_count and s_free_blocks_count to
-s_r_blocks_count_lo and s_free_blocks_count_lo
+On Tue, Sep 25, 2007 at 02:34:54PM +0200, Karel Zak wrote:
+> > That means that we could replace the "low-level" part of libblkid with
+> > volume_id code, and keep the current API of blkid, but offer some of the
+> > low-level functionality for udev. Or we would implement the relevant
+> > parts and probers in blkid, and add a new API to access the low-level
+> > part directly.
+> 
+>  I don't see a problem to provide low-level and high-level interface in
+>  same library. The low-level stuff (fsprobe code) is still same.
 
-This helps in finding BUGs due to direct partial access of
-these split 64 bit values
+Agreed, one interface and one code base for determining "what is this
+filesystem is a good thing".
 
-Also fix direct partial access in ext4 code
+>  Things like a cache are discussable -- for example resolve LABEL/UUID
+>  on system with udev is faster by /dev/disk/by-*. I think a good
+>  library has to be smart enough to found the fastest way how translate
+>  LABEL/UUID to device name.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/super.c         |    2 +-
- include/linux/ext4_fs.h |   12 ++++++------
- 2 files changed, 7 insertions(+), 7 deletions(-)
+It depends on what you're doing, actually.  If you want to resolve
+multiple UUID's, it will be faster to use the cache, since it's in
+memory.  And the blkid cache will allow you to do things like find all
+devices with a particular filesystem type, etc.  And although blkid
+doesn't do this now, it's a more flexible model for handling things
+like "to find the ext3 journal with UUID=XXXX-...-XXXX", use this
+iSCSI device at this IP address.  Assuming that you can always probe
+all 30,000 devices and populate /dev/disk/by-* at boot time is not
+necessarily something that I would consider scalable; if you have
+hundreds of thousands of LUN's connected to a storage array that
+aren't mounted at boot time, and only mounted on demand when a
+particular LUN is needed, I think the udev model doesn't fit all that
+well.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0f38bd1..3c7446d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2695,7 +2695,7 @@ static int ext4_statfs (struct dentry * dentry, struct kstatfs * buf)
- 	buf->f_bsize = sb->s_blocksize;
- 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
- 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
--	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
-+	ext4_free_blocks_count_set(es, buf->f_bfree);
- 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
- 	if (buf->f_bfree < ext4_r_blocks_count(es))
- 		buf->f_bavail = 0;
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 7846558..74cf8a8 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -564,8 +564,8 @@ do {									       \
- struct ext4_super_block {
- /*00*/	__le32	s_inodes_count;		/* Inodes count */
- 	__le32	s_blocks_count_lo;	/* Blocks count */
--	__le32	s_r_blocks_count;	/* Reserved blocks count */
--	__le32	s_free_blocks_count;	/* Free blocks count */
-+	__le32	s_r_blocks_count_lo;	/* Reserved blocks count */
-+	__le32	s_free_blocks_count_lo;	/* Free blocks count */
- /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
- 	__le32	s_first_data_block;	/* First Data Block */
- 	__le32	s_log_block_size;	/* Block size */
-@@ -1073,13 +1073,13 @@ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
- static inline ext4_fsblk_t ext4_r_blocks_count(struct ext4_super_block *es)
- {
- 	return ((ext4_fsblk_t)le32_to_cpu(es->s_r_blocks_count_hi) << 32) |
--		le32_to_cpu(es->s_r_blocks_count);
-+		le32_to_cpu(es->s_r_blocks_count_lo);
- }
- 
- static inline ext4_fsblk_t ext4_free_blocks_count(struct ext4_super_block *es)
- {
- 	return ((ext4_fsblk_t)le32_to_cpu(es->s_free_blocks_count_hi) << 32) |
--		le32_to_cpu(es->s_free_blocks_count);
-+		le32_to_cpu(es->s_free_blocks_count_lo);
- }
- 
- static inline void ext4_blocks_count_set(struct ext4_super_block *es,
-@@ -1092,14 +1092,14 @@ static inline void ext4_blocks_count_set(struct ext4_super_block *es,
- static inline void ext4_free_blocks_count_set(struct ext4_super_block *es,
- 					      ext4_fsblk_t blk)
- {
--	es->s_free_blocks_count = cpu_to_le32((u32)blk);
-+	es->s_free_blocks_count_lo = cpu_to_le32((u32)blk);
- 	es->s_free_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
- static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
- 					   ext4_fsblk_t blk)
- {
--	es->s_r_blocks_count = cpu_to_le32((u32)blk);
-+	es->s_r_blocks_count_lo = cpu_to_le32((u32)blk);
- 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
--- 
-1.5.3.1.91.gd3392-dirty
+>  Cool. I'd like to create libfsprobe as an independent project. Or is
+>  there any advantage to merge everything to util-linux-ng? I don't
+>  think so.
+
+My main concern is avoiding what the "GNOME library problem".  Huge
+numbers of independent projects makes build dependencies incredibly
+painful.  And of course, any time we do this kind of factoring we need
+to keep the interfaces stable.  In userspace, with published, stable
+API's are not nonsense, but an absolute and unconditional requirement.
+
+     	      		       		    		  - Ted
