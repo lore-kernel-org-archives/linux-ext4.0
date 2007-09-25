@@ -1,99 +1,136 @@
-From: Kay Sievers <kay.sievers@vrfy.org>
-Subject: Re: [PATCH] obsolete libcom-err for SuSE e2fsprogs
-Date: Tue, 25 Sep 2007 12:11:23 +0200
-Message-ID: <1190715083.3373.79.camel@lov.localdomain>
-References: <20070919061404.GA1628@schatzie.adilger.int>
-	 <46F1CFC0.3070801@redhat.com> <20070920050923.GX32520@schatzie.adilger.int>
-	 <46F2D678.4060203@redhat.com> <20070920215427.GL30221@thunk.org>
-	 <20070924092539.GC2819@petra.dvoda.cz> <20070924124035.GA4209@thunk.org>
-	 <20070925091400.GA2806@petra.dvoda.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: jbd : config_jbd_debug cannot create /proc entry
+Date: Tue, 25 Sep 2007 12:51:12 +0200
+Message-ID: <20070925105112.GB8126@atrey.karlin.mff.cuni.cz>
+References: <1190713240.3154.20.camel@castor.rsk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	linux-ext4@vger.kernel.org,
-	List util-linux-ng <util-linux-ng@vger.kernel.org>
-To: Karel Zak <kzak@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from charybdis-ext.suse.de ([195.135.221.2]:45332 "EHLO
-	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751557AbXIYKL3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2007 06:11:29 -0400
-In-Reply-To: <20070925091400.GA2806@petra.dvoda.cz>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: sct@redhat.com, akpm@linux-foundation.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: richard kennedy <richard@rsk.demon.co.uk>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753044AbXIYKvZ@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1190713240.3154.20.camel@castor.rsk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2007-09-25 at 11:14 +0200, Karel Zak wrote:
-> On Mon, Sep 24, 2007 at 08:40:36AM -0400, Theodore Tso wrote:
-> > On Mon, Sep 24, 2007 at 11:25:39AM +0200, Karel Zak wrote:
-> > > > 
-> > > > Nope, there isn't much rationale unless we also split out fsck, so
-> > > 
-> > >  util-linux-ng is open for fsck :-)
-> > 
-> > It's something I'm considering, but at the moment I've got some higher
-> > priority (ext4) work that I'm focusing on.  
+> I enabled config_jbd_debug in the hope that it may help track down the
+> lockup I'm seeing, but unfortunately the /proc entry does not get
+> created.
 > 
->  That's nothing urgent. This migration shouldn't be so difficult -- I
->  think we should provide at least one release when the util is in both
->  packages -- defaultly disabled in e2fsprogs and enabled in
->  util-linux-ng. It's probably better that trying to synchronize
->  releases of both packages.
-> 
-> > What would you think about moving libblkid and the libdisk from
-> > xfsprogs into util-linux-ng?  That's things that I've been batting
-> 
->  I have no problem with this idea, but I'd like to invite Kay Sievers
->  (udev) to this discussion. I think the best step will be merge
->  libblkid and libvolume_id to the one independent project.
+> any ideas how to fix this ?
+  Attached is a patch that should fix it. Andrew, would you queue it up?
 
-Oh, I would be fine with putting that in util-linux. Mount is the most
-critical user, so it has it's place there from my point of view. And
-having mount and fsck in util-linux, sharing the fsprobing code and
-fstab-parsing code sounds great to me.
+									Honza
 
-> There is
->  few technical problems with this idea, but nothing insolvable.
+JBD debug code used old way of creating proc entries for jbd-debug file.
+Change it to use sysctl instead.
 
-I'm all for doing this, and don't see any real problem with that. I
-talked to Ted a few weeks ago when we met in person about this already.
+Signed-off-by: Jan Kara <jack@suse.cz>
 
->  Now we duplicate a lot of FS probe code in libblkid, libvolume_id and
->  libdisk.
-> 
->  Yes, it's long-term task, but it's good direction (IMHO).
-
-It is, and we are not providing a real value to the users by providing
-both of these libs at the same time. :)
-
-But udev has a very different requirement for probing filesystems.
-Unlike non-udev systems, we can't accept any hidden policy inside a
-library. We just want to pass a byte stream to the lib, and get back
-what exactly is in _this_ byte stream. There must be no chaching, no
-devmapper logic, no stat()'ing in /dev, no reading of /proc/partitions,
-no ioctl()'s, no hidden decisions, nothing. None of these actions is
-acceptable to be done by the library itself, if udev is used. We need
-pure mechanics, no policy. We also need an API that allows to specify
-the size of the stream and the probing offset. And we don't want to
-iterate over tags, need the filesystem version information, the raid
-metadata probing, and the classification volume_id provides.
-
-That means that we could replace the "low-level" part of libblkid with
-volume_id code, and keep the current API of blkid, but offer some of the
-low-level functionality for udev. Or we would implement the relevant
-parts and probers in blkid, and add a new API to access the low-level
-part directly.
-
-Note, that even with only one fsprobing library, util-linux would still
-need to behave differently on a udev system, because we can't afford to
-maintain a cache file, or search for anything else at event time, on
-systems with 20.000 hard disks connected. But systems without udev will
-obviously need the "search all devices" functionality of blkid to find
-labels and uuid's.
-
-Let me know what you think how go ahead with this, I'm all for doing
-this sooner than later.
-
-Cheers,
-Kay
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-rc6/fs/jbd/journal.c linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c
+--- linux-2.6.23-rc6/fs/jbd/journal.c	2007-09-25 12:39:53.000000000 +0200
++++ linux-2.6.23-rc6-1-jbddebug_fix/fs/jbd/journal.c	2007-09-25 13:05:05.000000000 +0200
+@@ -1944,58 +1944,29 @@ void journal_put_journal_head(struct jou
+ #if defined(CONFIG_JBD_DEBUG)
+ int journal_enable_debug;
+ EXPORT_SYMBOL(journal_enable_debug);
+-#endif
+-
+-#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
+-
+-static struct proc_dir_entry *proc_jbd_debug;
+-
+-static int read_jbd_debug(char *page, char **start, off_t off,
+-			  int count, int *eof, void *data)
+-{
+-	int ret;
+-
+-	ret = sprintf(page + off, "%d\n", journal_enable_debug);
+-	*eof = 1;
+-	return ret;
+-}
+-
+-static int write_jbd_debug(struct file *file, const char __user *buffer,
+-			   unsigned long count, void *data)
+-{
+-	char buf[32];
+-
+-	if (count > ARRAY_SIZE(buf) - 1)
+-		count = ARRAY_SIZE(buf) - 1;
+-	if (copy_from_user(buf, buffer, count))
+-		return -EFAULT;
+-	buf[ARRAY_SIZE(buf) - 1] = '\0';
+-	journal_enable_debug = simple_strtoul(buf, NULL, 10);
+-	return count;
+-}
++static struct ctl_table_header *jbd_debug_table;
+ 
+-#define JBD_PROC_NAME "sys/fs/jbd-debug"
+-
+-static void __init create_jbd_proc_entry(void)
+-{
+-	proc_jbd_debug = create_proc_entry(JBD_PROC_NAME, 0644, NULL);
+-	if (proc_jbd_debug) {
+-		/* Why is this so hard? */
+-		proc_jbd_debug->read_proc = read_jbd_debug;
+-		proc_jbd_debug->write_proc = write_jbd_debug;
+-	}
+-}
+-
+-static void __exit remove_jbd_proc_entry(void)
+-{
+-	if (proc_jbd_debug)
+-		remove_proc_entry(JBD_PROC_NAME, NULL);
+-}
+-
+-#else
+-
+-#define create_jbd_proc_entry() do {} while (0)
+-#define remove_jbd_proc_entry() do {} while (0)
++static ctl_table fs_table[] = {
++	{
++                .ctl_name       = -1,	/* Don't want it */
++                .procname       = "jbd-debug",
++                .data           = &journal_enable_debug,
++                .maxlen         = sizeof(int),
++                .mode           = 0644,
++                .proc_handler   = &proc_dointvec,
++        },
++        { .ctl_name = 0 },
++};
++
++static ctl_table sys_table[] = {
++        {
++                .ctl_name       = CTL_FS,
++                .procname       = "fs",
++                .mode           = 0555,
++                .child          = fs_table,
++        },
++        { .ctl_name = 0 },
++};
+ 
+ #endif
+ 
+@@ -2054,7 +2025,10 @@ static int __init journal_init(void)
+ 	ret = journal_init_caches();
+ 	if (ret != 0)
+ 		journal_destroy_caches();
+-	create_jbd_proc_entry();
++
++#ifdef CONFIG_JBD_DEBUG
++	jbd_debug_table = register_sysctl_table(sys_table);
++#endif
+ 	return ret;
+ }
+ 
+@@ -2064,8 +2038,8 @@ static void __exit journal_exit(void)
+ 	int n = atomic_read(&nr_journal_heads);
+ 	if (n)
+ 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
++	unregister_sysctl_table(jbd_debug_table);
+ #endif
+-	remove_jbd_proc_entry();
+ 	journal_destroy_caches();
+ }
+ 
