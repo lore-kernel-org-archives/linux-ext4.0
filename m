@@ -1,175 +1,198 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: jbd : config_jbd_debug cannot create /proc entry
-Date: Wed, 26 Sep 2007 14:35:39 -0700
-Message-ID: <20070926143539.b01bc0bc.akpm@linux-foundation.org>
-References: <1190713240.3154.20.camel@castor.rsk.org>
-	<20070925105112.GB8126@atrey.karlin.mff.cuni.cz>
-	<46F8EB26.2090104@linux.vnet.ibm.com>
-	<20070925115046.GA15394@atrey.karlin.mff.cuni.cz>
-	<20070925074938.2321bc15@gara>
-	<20070925084153.36ab65a5@gara>
-	<20070925143608.GB18758@atrey.karlin.mff.cuni.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: jrs@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
-	richard@rsk.demon.co.uk, sct@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:58282 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754106AbXIZVhE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2007 17:37:04 -0400
-In-Reply-To: <20070925143608.GB18758@atrey.karlin.mff.cuni.cz>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + jbd-config_jbd_debug-cannot-create-proc-entry.patch added to -mm tree
+Date: Wed, 26 Sep 2007 14:35:46 -0700
+Message-ID: <200709262135.l8QLZkhg005069@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jrs@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 25 Sep 2007 16:36:08 +0200
-Jan Kara <jack@suse.cz> wrote:
 
-> > On Tue, 25 Sep 2007 07:49:38 -0500
-> > "Jose R. Santos" <jrs@us.ibm.com> wrote:
-> > 
-> > > On Tue, 25 Sep 2007 13:50:46 +0200
-> > > Jan Kara <jack@ucw.cz> wrote:
-> > > > > Jan Kara wrote:
-> > > > > >>
-> > > > > >-#define create_jbd_proc_entry() do {} while (0)
-> > > > > >-#define remove_jbd_proc_entry() do {} while (0)
-> > > > > >+static ctl_table fs_table[] = {
-> > > > > >+	{
-> > > > > >+                .ctl_name       = -1,	/* Don't want it */
-> > > > > 
-> > > > > 
-> > > > > 
-> > > > > shouldn't this be CTL_UNNUMBERED ?
-> > > >   Oh, it should be. I didn't notice we have this :) Thanks for notifying
-> > > > me. Attached is a fixed version.
-> > > 
-> > > This was fixed in JBD2 by moving the jbd-debug file to debugfs:
-> > > http://lkml.org/lkml/2007/7/11/334
-> > > 
-> > > Since this code is already in the kernel, we should keep it consistent. 
-> > > 
-> > 
-> > OK.  Here's a quick patch to fix this.  Adapted from the JBD2 patch.
-> > Let me know what you think.
->   Looks fine - exactly what I've just done here :).
+The patch titled
+     jbd: config_jbd_debug cannot create /proc entry
+has been added to the -mm tree.  Its filename is
+     jbd-config_jbd_debug-cannot-create-proc-entry.patch
 
-hm.  I found rather a lot of issues.  If this patch is derived from the
-JBD2 patch then perhaps the JBD2 patch needs some looking at.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-> >     Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
->   You can add Signed-off-by: Jan Kara <jack@suse.cz>
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-I suspect you might be getting your signed-off-bys and acked-bys mixed up. 
-(If not this patch, then the previous one).  Please see
-Documentation/SubmittingPatches section 13 for the difference.
+------------------------------------------------------
+Subject: jbd: config_jbd_debug cannot create /proc entry
+From: "Jose R. Santos" <jrs@us.ibm.com>
 
-Jose, please review and if possible runtime test these proposed changes?
+The jbd-debug file used to be located in /proc/sys/fs/jbd-debug, but
+create_proc_entry() does not do lookups on file names that are more that
+one directory deep.  This causes the entry creation to fail and hence, no
+proc file is created.
 
+Instead of fixing this on procfs might as well move the jbd2-debug file to
+debugfs which would be the preferred location for this kind of tunable. 
+The new location is now /sys/kernel/debug/jbd/jbd-debug.
 
-
-From: Andrew Morton <akpm@linux-foundation.org>
-
-- use `#ifdef foo' instead of `#if defined(foo)'
-
-- CONFIG_JBD_DEBUG depends on CONFIG_DEBUG_FS so we don't need to duplicate
-  that logic in the .c file ifdefs
-
-- Make journal_enable_debug __read_mostly just for the heck of it
-
-- Make jbd_debugfs_dir and jbd_debug static
-
-- debugfs_remove(NULL) is legal: remove unneeded tests
-
-- jbd_create_debugfs_entry is a better name than create_jbd_debugfs_entry
-
-- ditto remove_jbd_debugfs_entry
-
-- C functions are preferred over macros
-
-Cc: "Jose R. Santos" <jrs@us.ibm.com>
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Acked-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jose R. Santos <jrs@us.ibm.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
 
-diff -puN fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry-fix fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry-fix
+diff -puN fs/Kconfig~jbd-config_jbd_debug-cannot-create-proc-entry fs/Kconfig
+--- a/fs/Kconfig~jbd-config_jbd_debug-cannot-create-proc-entry
++++ a/fs/Kconfig
+@@ -219,7 +219,7 @@ config JBD
+ 
+ config JBD_DEBUG
+ 	bool "JBD (ext3) debugging support"
+-	depends on JBD
++	depends on JBD && DEBUG_FS
+ 	help
+ 	  If you are using the ext3 journaled file system (or potentially any
+ 	  other file system/device using JBD), this option allows you to
+@@ -228,10 +228,10 @@ config JBD_DEBUG
+ 	  debugging output will be turned off.
+ 
+ 	  If you select Y here, then you will be able to turn on debugging
+-	  with "echo N > /proc/sys/fs/jbd-debug", where N is a number between
+-	  1 and 5, the higher the number, the more debugging output is
+-	  generated.  To turn debugging off again, do
+-	  "echo 0 > /proc/sys/fs/jbd-debug".
++	  with "echo N > /sys/kernel/debug/jbd/jbd-debug", where N is a
++	  number between 1 and 5, the higher the number, the more debugging
++	  output is generated.  To turn debugging off again, do
++	  "echo 0 > /sys/kernel/debug/jbd/jbd-debug".
+ 
+ config JBD2
+ 	tristate
+diff -puN fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry
 +++ a/fs/jbd/journal.c
-@@ -1853,16 +1853,15 @@ void journal_put_journal_head(struct jou
- /*
-  * debugfs tunables
-  */
--#if defined(CONFIG_JBD_DEBUG)
--u8 journal_enable_debug;
--EXPORT_SYMBOL(journal_enable_debug);
--#endif
-+#ifdef CONFIG_JBD_DEBUG
+@@ -35,6 +35,7 @@
+ #include <linux/kthread.h>
+ #include <linux/poison.h>
+ #include <linux/proc_fs.h>
++#include <linux/debugfs.h>
  
--#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_DEBUG_FS)
-+u8 journal_enable_debug __read_mostly;
-+EXPORT_SYMBOL(journal_enable_debug);
- 
--struct dentry  *jbd_debugfs_dir, *jbd_debug;
-+static struct dentry *jbd_debugfs_dir;
-+static struct dentry *jbd_debug;
- 
--static void __init create_jbd_debugfs_entry(void)
-+static void __init jbd_create_debugfs_entry(void)
- {
- 	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
- 	if (jbd_debugfs_dir)
-@@ -1871,18 +1870,21 @@ static void __init create_jbd_debugfs_en
- 					       &journal_enable_debug);
+ #include <asm/uaccess.h>
+ #include <asm/page.h>
+@@ -1850,63 +1851,38 @@ void journal_put_journal_head(struct jou
  }
  
--static void __exit remove_jbd_debugfs_entry(void)
-+static void __exit jbd_remove_debugfs_entry(void)
+ /*
+- * /proc tunables
++ * debugfs tunables
+  */
+ #if defined(CONFIG_JBD_DEBUG)
+-int journal_enable_debug;
++u8 journal_enable_debug;
+ EXPORT_SYMBOL(journal_enable_debug);
+ #endif
+ 
+-#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_PROC_FS)
++#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_DEBUG_FS)
+ 
+-static struct proc_dir_entry *proc_jbd_debug;
++struct dentry  *jbd_debugfs_dir, *jbd_debug;
+ 
+-static int read_jbd_debug(char *page, char **start, off_t off,
+-			  int count, int *eof, void *data)
++static void __init create_jbd_debugfs_entry(void)
  {
--	if (jbd_debug)
--		debugfs_remove(jbd_debug);
--	if (jbd_debugfs_dir)
--		debugfs_remove(jbd_debugfs_dir);
-+	debugfs_remove(jbd_debug);
-+	debugfs_remove(jbd_debugfs_dir);
+-	int ret;
+-
+-	ret = sprintf(page + off, "%d\n", journal_enable_debug);
+-	*eof = 1;
+-	return ret;
+-}
+-
+-static int write_jbd_debug(struct file *file, const char __user *buffer,
+-			   unsigned long count, void *data)
+-{
+-	char buf[32];
+-
+-	if (count > ARRAY_SIZE(buf) - 1)
+-		count = ARRAY_SIZE(buf) - 1;
+-	if (copy_from_user(buf, buffer, count))
+-		return -EFAULT;
+-	buf[ARRAY_SIZE(buf) - 1] = '\0';
+-	journal_enable_debug = simple_strtoul(buf, NULL, 10);
+-	return count;
+-}
+-
+-#define JBD_PROC_NAME "sys/fs/jbd-debug"
+-
+-static void __init create_jbd_proc_entry(void)
+-{
+-	proc_jbd_debug = create_proc_entry(JBD_PROC_NAME, 0644, NULL);
+-	if (proc_jbd_debug) {
+-		/* Why is this so hard? */
+-		proc_jbd_debug->read_proc = read_jbd_debug;
+-		proc_jbd_debug->write_proc = write_jbd_debug;
+-	}
++	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
++	if (jbd_debugfs_dir)
++		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO,
++					       jbd_debugfs_dir,
++					       &journal_enable_debug);
+ }
+ 
+-static void __exit remove_jbd_proc_entry(void)
++static void __exit remove_jbd_debugfs_entry(void)
+ {
+-	if (proc_jbd_debug)
+-		remove_proc_entry(JBD_PROC_NAME, NULL);
++	if (jbd_debug)
++		debugfs_remove(jbd_debug);
++	if (jbd_debugfs_dir)
++		debugfs_remove(jbd_debugfs_dir);
  }
  
  #else
  
--#define create_jbd_debugfs_entry() do {} while (0)
--#define remove_jbd_debugfs_entry() do {} while (0)
-+static inline void jbd_create_debugfs_entry(void)
-+{
-+}
-+
-+static inline void jbd_remove_debugfs_entry(void)
-+{
-+}
+-#define create_jbd_proc_entry() do {} while (0)
+-#define remove_jbd_proc_entry() do {} while (0)
++#define create_jbd_debugfs_entry() do {} while (0)
++#define remove_jbd_debugfs_entry() do {} while (0)
  
  #endif
  
-@@ -1940,7 +1942,7 @@ static int __init journal_init(void)
+@@ -1964,7 +1940,7 @@ static int __init journal_init(void)
  	ret = journal_init_caches();
  	if (ret != 0)
  		journal_destroy_caches();
--	create_jbd_debugfs_entry();
-+	jbd_create_debugfs_entry();
+-	create_jbd_proc_entry();
++	create_jbd_debugfs_entry();
  	return ret;
  }
  
-@@ -1951,7 +1953,7 @@ static void __exit journal_exit(void)
+@@ -1975,7 +1951,7 @@ static void __exit journal_exit(void)
  	if (n)
  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
  #endif
--	remove_jbd_debugfs_entry();
-+	jbd_remove_debugfs_entry();
+-	remove_jbd_proc_entry();
++	remove_jbd_debugfs_entry();
  	journal_destroy_caches();
  }
  
+diff -puN include/linux/jbd.h~jbd-config_jbd_debug-cannot-create-proc-entry include/linux/jbd.h
+--- a/include/linux/jbd.h~jbd-config_jbd_debug-cannot-create-proc-entry
++++ a/include/linux/jbd.h
+@@ -57,7 +57,7 @@
+  * CONFIG_JBD_DEBUG is on.
+  */
+ #define JBD_EXPENSIVE_CHECKING
+-extern int journal_enable_debug;
++extern u8 journal_enable_debug;
+ 
+ #define jbd_debug(n, f, a...)						\
+ 	do {								\
 _
+
+Patches currently in -mm which might be from jrs@us.ibm.com are
+
+jbd-config_jbd_debug-cannot-create-proc-entry.patch
+jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
+ext4-flex_bg-kernel-support-v2.patch
