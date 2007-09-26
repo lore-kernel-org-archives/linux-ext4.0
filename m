@@ -1,23 +1,19 @@
 From: akpm@linux-foundation.org
-Subject: + jbd2-fix-commit-code-to-properly-abort-journal.patch added to -mm tree
-Date: Wed, 26 Sep 2007 15:22:42 -0700
-Message-ID: <200709262222.l8QMMgmG006947@imap1.linux-foundation.org>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+Subject: + jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch added to -mm tree
+Date: Wed, 26 Sep 2007 15:26:04 -0700
+Message-ID: <200709262226.l8QMQ4N1007105@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jrs@us.ibm.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:39897 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755592AbXIZWXI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2007 18:23:08 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd2: fix commit code to properly abort journal
+     JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
 has been added to the -mm tree.  Its filename is
-     jbd2-fix-commit-code-to-properly-abort-journal.patch
+     jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -25,69 +21,80 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: jbd2: fix commit code to properly abort journal
-From: Jan Kara <jack@suse.cz>
+Subject: JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
+From: Jose R. Santos <jrs@us.ibm.com>
 
-We should really call journal_abort() and not __journal_abort_hard() in
-case of errors.  The latter call does not record the error in the journal
-superblock and thus filesystem won't be marked as with errors later (and
-user could happily mount it without any warning).
+Note from Mingming's JBD2 fix:
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Noticed all warnings are occurs when the debug level is 0.  Then found the
+"jbd2: Move jbd2-debug file to debugfs" patch
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=0f49d5d019afa4e94253bfc92f0daca3badb990b
+
+changed the jbd2_journal_enable_debug from int type to u8, makes the
+jbd_debug comparision is always true when the debugging level is 0.  Thus
+the compile warning occurs.
+
+Thought about changing the jbd2_journal_enable_debug data type back to int,
+but can't, because the jbd2-debug is moved to debug fs, where calling
+debugfs_create_u8() to create the debugfs entry needs the value to be u8
+type.
+
+Even if we changed the data type back to int, the code is still buggy,
+kernel should not print jbd2 debug message if the jbd2_journal_enable_debug
+is set to 0.  But this is not the case.
+
+The fix is change the level of debugging to 1.  The same should fixed in
+ext3/JBD, but currently ext3 jbd-debug via /proc fs is broken, so we
+probably should fix it all together.
+
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
 
-diff -puN fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal fs/jbd2/commit.c
---- a/fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal
-+++ a/fs/jbd2/commit.c
-@@ -541,7 +541,7 @@ void jbd2_journal_commit_transaction(jou
- 	spin_unlock(&journal->j_list_lock);
+diff -puN fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/ext3/inode.c
+--- a/fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
++++ a/fs/ext3/inode.c
+@@ -2954,7 +2954,7 @@ int ext3_write_inode(struct inode *inode
+ 		return 0;
  
- 	if (err)
--		__jbd2_journal_abort_hard(journal);
-+		jbd2_journal_abort(journal, err);
+ 	if (ext3_journal_current_handle()) {
+-		jbd_debug(0, "called recursively, non-PF_MEMALLOC!\n");
++		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
+ 		dump_stack();
+ 		return -EIO;
+ 	}
+diff -puN fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/jbd/recovery.c
+--- a/fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
++++ a/fs/jbd/recovery.c
+@@ -250,10 +250,10 @@ int journal_recover(journal_t *journal)
+ 	if (!err)
+ 		err = do_one_pass(journal, &info, PASS_REPLAY);
  
- 	jbd2_journal_write_revoke_records(journal, commit_transaction);
+-	jbd_debug(0, "JBD: recovery, exit status %d, "
++	jbd_debug(1, "JBD: recovery, exit status %d, "
+ 		  "recovered transactions %u to %u\n",
+ 		  err, info.start_transaction, info.end_transaction);
+-	jbd_debug(0, "JBD: Replayed %d and revoked %d/%d blocks\n",
++	jbd_debug(1, "JBD: Replayed %d and revoked %d/%d blocks\n",
+ 		  info.nr_replays, info.nr_revoke_hits, info.nr_revokes);
  
-@@ -604,7 +604,7 @@ void jbd2_journal_commit_transaction(jou
- 
- 			descriptor = jbd2_journal_get_descriptor_buffer(journal);
- 			if (!descriptor) {
--				__jbd2_journal_abort_hard(journal);
-+				jbd2_journal_abort(journal, -EIO);
- 				continue;
- 			}
- 
-@@ -637,7 +637,7 @@ void jbd2_journal_commit_transaction(jou
- 		   and repeat this loop: we'll fall into the
- 		   refile-on-abort condition above. */
- 		if (err) {
--			__jbd2_journal_abort_hard(journal);
-+			jbd2_journal_abort(journal, err);
- 			continue;
- 		}
- 
-@@ -862,7 +862,7 @@ wait_for_iobuf:
- 	err = journal_wait_on_commit_record(cbh);
- 
- 	if (err)
--		__jbd2_journal_abort_hard(journal);
-+		jbd2_journal_abort(journal, err);
- 
- 	/* End of a transaction!  Finally, we can do checkpoint
-            processing: any buffers committed as a result of this
+ 	/* Restart the log at the next transaction ID, thus invalidating
+@@ -297,7 +297,7 @@ int journal_skip_recovery(journal_t *jou
+ #ifdef CONFIG_JBD_DEBUG
+ 		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
+ #endif
+-		jbd_debug(0,
++		jbd_debug(1,
+ 			  "JBD: ignoring %d transaction%s from the journal.\n",
+ 			  dropped, (dropped == 1) ? "" : "s");
+ 		journal->j_transaction_sequence = ++info.end_transaction;
 _
 
-Patches currently in -mm which might be from jack@suse.cz are
+Patches currently in -mm which might be from jrs@us.ibm.com are
 
-send-quota-messages-via-netlink.patch
-send-quota-messages-via-netlink-fix.patch
-send-quota-messages-via-netlink-fix-fix.patch
-udf-code-style-fixup-v3.patch
-lockdep-give-each-filesystem-its-own-inode-lock-class.patch
 jbd-config_jbd_debug-cannot-create-proc-entry.patch
 jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
-jbd-fix-commit-code-to-properly-abort-journal.patch
-jbd2-fix-commit-code-to-properly-abort-journal.patch
+jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
+ext4-flex_bg-kernel-support-v2.patch
