@@ -1,100 +1,41 @@
-From: akpm@linux-foundation.org
-Subject: + jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch added to -mm tree
-Date: Wed, 26 Sep 2007 15:26:04 -0700
-Message-ID: <200709262226.l8QMQ4N1007105@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: jrs@us.ibm.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Andreas Dilger <adilger-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>
+Subject: Re: [PATCH, RFC] add fsck to util-linux
+Date: Wed, 26 Sep 2007 16:54:31 -0600
+Message-ID: <20070926225431.GY32520@schatzie.adilger.int>
+References: <20070925153735.GA26693@infradead.org> <20070926105946.GB429@thunk.org> <20070926120533.GA15894@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>, util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20070926120533.GA15894-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Sep 26, 2007  13:05 +0100, Christoph Hellwig wrote:
+> On Wed, Sep 26, 2007 at 06:59:46AM -0400, Theodore Tso wrote:
+> > BTW, I don't like this syntax in the fstab file AT ALL, but it is in
+> > use in the wild by at least some Fedora users, and it's not documented
+> > in the fstab man page.  I'd suggest using a filesystem type of bind,
+> > rather than ext3, as the officially "blessed" way of specifying it in
+> > fstab, but it badly needs to be documented in the fstab and/or mount
+> > man pages.  The above patch should probably get included, though, and
+> > backwards compatibility for allowing "bind" to be specified in the
+> > mount options, and with a warning message that the specifying "bind"
+> > in the options field has been deprecated.
+> 
+> The syntax is indeed horrible.  Is it supported by upstream util-linux?
 
-The patch titled
-     JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
-has been added to the -mm tree.  Its filename is
-     jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
+I think the issue is that if a filesystem is put into /etc/fstab with
+type = "bind" then it will show up in /etc/mtab as "bind" and if the
+original filesystem is unmounted the "mount" output will not show the
+correct type anymore (I tested this with "bind" and "reiserfs" on an
+ext3 filesystem).
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-------------------------------------------------------
-Subject: JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
-From: Jose R. Santos <jrs@us.ibm.com>
-
-Note from Mingming's JBD2 fix:
-
-Noticed all warnings are occurs when the debug level is 0.  Then found the
-"jbd2: Move jbd2-debug file to debugfs" patch
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=0f49d5d019afa4e94253bfc92f0daca3badb990b
-
-changed the jbd2_journal_enable_debug from int type to u8, makes the
-jbd_debug comparision is always true when the debugging level is 0.  Thus
-the compile warning occurs.
-
-Thought about changing the jbd2_journal_enable_debug data type back to int,
-but can't, because the jbd2-debug is moved to debug fs, where calling
-debugfs_create_u8() to create the debugfs entry needs the value to be u8
-type.
-
-Even if we changed the data type back to int, the code is still buggy,
-kernel should not print jbd2 debug message if the jbd2_journal_enable_debug
-is set to 0.  But this is not the case.
-
-The fix is change the level of debugging to 1.  The same should fixed in
-ext3/JBD, but currently ext3 jbd-debug via /proc fs is broken, so we
-probably should fix it all together.
-
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
-
-diff -puN fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/ext3/inode.c
---- a/fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
-+++ a/fs/ext3/inode.c
-@@ -2954,7 +2954,7 @@ int ext3_write_inode(struct inode *inode
- 		return 0;
- 
- 	if (ext3_journal_current_handle()) {
--		jbd_debug(0, "called recursively, non-PF_MEMALLOC!\n");
-+		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
- 		dump_stack();
- 		return -EIO;
- 	}
-diff -puN fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/jbd/recovery.c
---- a/fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
-+++ a/fs/jbd/recovery.c
-@@ -250,10 +250,10 @@ int journal_recover(journal_t *journal)
- 	if (!err)
- 		err = do_one_pass(journal, &info, PASS_REPLAY);
- 
--	jbd_debug(0, "JBD: recovery, exit status %d, "
-+	jbd_debug(1, "JBD: recovery, exit status %d, "
- 		  "recovered transactions %u to %u\n",
- 		  err, info.start_transaction, info.end_transaction);
--	jbd_debug(0, "JBD: Replayed %d and revoked %d/%d blocks\n",
-+	jbd_debug(1, "JBD: Replayed %d and revoked %d/%d blocks\n",
- 		  info.nr_replays, info.nr_revoke_hits, info.nr_revokes);
- 
- 	/* Restart the log at the next transaction ID, thus invalidating
-@@ -297,7 +297,7 @@ int journal_skip_recovery(journal_t *jou
- #ifdef CONFIG_JBD_DEBUG
- 		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
- #endif
--		jbd_debug(0,
-+		jbd_debug(1,
- 			  "JBD: ignoring %d transaction%s from the journal.\n",
- 			  dropped, (dropped == 1) ? "" : "s");
- 		journal->j_transaction_sequence = ++info.end_transaction;
-_
-
-Patches currently in -mm which might be from jrs@us.ibm.com are
-
-jbd-config_jbd_debug-cannot-create-proc-entry.patch
-jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
-jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
-ext4-flex_bg-kernel-support-v2.patch
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
