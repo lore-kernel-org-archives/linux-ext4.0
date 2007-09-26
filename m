@@ -1,23 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + jbd-fix-commit-code-to-properly-abort-journal.patch added to -mm tree
-Date: Wed, 26 Sep 2007 15:21:52 -0700
-Message-ID: <200709262221.l8QMLqkX006922@imap1.linux-foundation.org>
+Subject: + jbd2-fix-commit-code-to-properly-abort-journal.patch added to -mm tree
+Date: Wed, 26 Sep 2007 15:22:42 -0700
+Message-ID: <200709262222.l8QMMgmG006947@imap1.linux-foundation.org>
 Cc: jack@suse.cz, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:52367 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:39897 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758978AbXIZWWf (ORCPT
+	by vger.kernel.org with ESMTP id S1755592AbXIZWXI (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2007 18:22:35 -0400
+	Wed, 26 Sep 2007 18:23:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd: fix commit code to properly abort journal
+     jbd2: fix commit code to properly abort journal
 has been added to the -mm tree.  Its filename is
-     jbd-fix-commit-code-to-properly-abort-journal.patch
+     jbd2-fix-commit-code-to-properly-abort-journal.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -25,7 +25,7 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: jbd: fix commit code to properly abort journal
+Subject: jbd2: fix commit code to properly abort journal
 From: Jan Kara <jack@suse.cz>
 
 We should really call journal_abort() and not __journal_abort_hard() in
@@ -39,42 +39,42 @@ Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
 
-diff -puN fs/jbd/commit.c~jbd-fix-commit-code-to-properly-abort-journal fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-fix-commit-code-to-properly-abort-journal
-+++ a/fs/jbd/commit.c
-@@ -466,7 +466,7 @@ void journal_commit_transaction(journal_
+diff -puN fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal fs/jbd2/commit.c
+--- a/fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal
++++ a/fs/jbd2/commit.c
+@@ -541,7 +541,7 @@ void jbd2_journal_commit_transaction(jou
  	spin_unlock(&journal->j_list_lock);
  
  	if (err)
--		__journal_abort_hard(journal);
-+		journal_abort(journal, err);
+-		__jbd2_journal_abort_hard(journal);
++		jbd2_journal_abort(journal, err);
  
- 	journal_write_revoke_records(journal, commit_transaction);
+ 	jbd2_journal_write_revoke_records(journal, commit_transaction);
  
-@@ -524,7 +524,7 @@ void journal_commit_transaction(journal_
+@@ -604,7 +604,7 @@ void jbd2_journal_commit_transaction(jou
  
- 			descriptor = journal_get_descriptor_buffer(journal);
+ 			descriptor = jbd2_journal_get_descriptor_buffer(journal);
  			if (!descriptor) {
--				__journal_abort_hard(journal);
-+				journal_abort(journal, -EIO);
+-				__jbd2_journal_abort_hard(journal);
++				jbd2_journal_abort(journal, -EIO);
  				continue;
  			}
  
-@@ -557,7 +557,7 @@ void journal_commit_transaction(journal_
+@@ -637,7 +637,7 @@ void jbd2_journal_commit_transaction(jou
  		   and repeat this loop: we'll fall into the
  		   refile-on-abort condition above. */
  		if (err) {
--			__journal_abort_hard(journal);
-+			journal_abort(journal, err);
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
  			continue;
  		}
  
-@@ -748,7 +748,7 @@ wait_for_iobuf:
- 		err = -EIO;
+@@ -862,7 +862,7 @@ wait_for_iobuf:
+ 	err = journal_wait_on_commit_record(cbh);
  
  	if (err)
--		__journal_abort_hard(journal);
-+		journal_abort(journal, err);
+-		__jbd2_journal_abort_hard(journal);
++		jbd2_journal_abort(journal, err);
  
  	/* End of a transaction!  Finally, we can do checkpoint
             processing: any buffers committed as a result of this
@@ -90,3 +90,4 @@ lockdep-give-each-filesystem-its-own-inode-lock-class.patch
 jbd-config_jbd_debug-cannot-create-proc-entry.patch
 jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
 jbd-fix-commit-code-to-properly-abort-journal.patch
+jbd2-fix-commit-code-to-properly-abort-journal.patch
