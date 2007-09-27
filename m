@@ -1,71 +1,244 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Review of mballoc-core.patch
-Date: Thu, 27 Sep 2007 21:34:14 +0530
-Message-ID: <46FBD47E.2060205@linux.vnet.ibm.com>
-References: <E1Iauxj-0001fp-F4@candygram.thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: remove #ifdef CONFIG_EXT4_INDEX
+Date: Thu, 27 Sep 2007 12:15:04 -0500
+Message-ID: <46FBE518.5080407@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Alex Tomas <alex@clusterfs.com>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:43266 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753585AbXI0QEf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Sep 2007 12:04:35 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l8RG4JLr013969
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2007 02:04:19 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l8RG4HBL2965658
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2007 02:04:17 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l8RG4GsJ010616
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2007 02:04:17 +1000
-In-Reply-To: <E1Iauxj-0001fp-F4@candygram.thunk.org>
+Received: from mx1.redhat.com ([66.187.233.31]:54993 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756164AbXI0RPH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Sep 2007 13:15:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+CONFIG_EXT4_INDEX is not an exposed config option in the kernel,
+and it is unconditionally defined in ext4_fs.h.  tune2fs is already
+able to turn off dir indexing, so at this point it's just cluttering
+up the code.  Remove it.
 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Theodore Ts'o wrote:
-> Here's an initial code review of the mballoc-core.patch.  As far as I
-> can tell, the patch sent by Aneesh doesn't address any of these.
-> Aneesh, assuming that you'll be fixing these, could you please combine
-> your last set of fixes with fixes to address these, and send out an
-> updated mballoc-core.patch?   
-
-Will do that
-
->Patches on top of patches are useful for
-> seeing what has changed, but for the patch queue I'd like to get the
-> patches folded into a single patch, since that's what we'd want to have
-> placed into the git tree.
-> 
-
-That is what i did with my last update. The diff of the source was sent to
-the mailing list and and updated mballoc-core.patch was put at www.radian.org
-so that we can use the same to update the patch queue. The diff against mballoc.c
-helps in reviewing the changes made.
-
-
-> Thanks!!
-> 
-> 							- Ted
-> 
-[.. snip...]
-> 
-> 
-> There are a bunch of FIXME's in this which I assume will get addressed
-> before we consider this ready to push to mainline?
-> 
-
-
-I have updated the code with  your suggestion. I haven't resolved all the
-questions. The rest are marked with FIXME in the source. The idea is this 
-will help Alex to find easily the portion of the code that needs his immediate
-attention.
-
--aneesh
+ Index: ext4.git/fs/ext4/dir.c
+===================================================================
+--- ext4.git.orig/fs/ext4/dir.c
++++ ext4.git/fs/ext4/dir.c
+@@ -47,9 +47,7 @@ const struct file_operations ext4_dir_op
+ 	.compat_ioctl	= ext4_compat_ioctl,
+ #endif
+ 	.fsync		= ext4_sync_file,	/* BKL held */
+-#ifdef CONFIG_EXT4_INDEX
+ 	.release	= ext4_release_dir,
+-#endif
+ };
+ 
+ 
+@@ -107,7 +105,6 @@ static int ext4_readdir(struct file * fi
+ 
+ 	sb = inode->i_sb;
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+ 				    EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+ 	    ((EXT4_I(inode)->i_flags & EXT4_INDEX_FL) ||
+@@ -123,7 +120,6 @@ static int ext4_readdir(struct file * fi
+ 		 */
+ 		EXT4_I(filp->f_path.dentry->d_inode)->i_flags &= ~EXT4_INDEX_FL;
+ 	}
+-#endif
+ 	stored = 0;
+ 	offset = filp->f_pos & (sb->s_blocksize - 1);
+ 
+@@ -232,7 +228,6 @@ out:
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+  * value.
+@@ -518,5 +513,3 @@ static int ext4_release_dir (struct inod
+ 
+ 	return 0;
+ }
+-
+-#endif
+Index: ext4.git/fs/ext4/namei.c
+===================================================================
+--- ext4.git.orig/fs/ext4/namei.c
++++ ext4.git/fs/ext4/namei.c
+@@ -144,7 +144,6 @@ struct dx_map_entry
+ 	u16 size;
+ };
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ static inline unsigned dx_get_block (struct dx_entry *entry);
+ static void dx_set_block (struct dx_entry *entry, unsigned value);
+ static inline unsigned dx_get_hash (struct dx_entry *entry);
+@@ -766,8 +765,6 @@ static void dx_insert_block(struct dx_fr
+ 	dx_set_block(new, block);
+ 	dx_set_count(entries, count + 1);
+ }
+-#endif
+-
+ 
+ static void ext4_update_dx_flag(struct inode *inode)
+ {
+@@ -869,7 +866,6 @@ static struct buffer_head * ext4_find_en
+ 	name = dentry->d_name.name;
+ 	if (namelen > EXT4_NAME_LEN)
+ 		return NULL;
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (is_dx(dir)) {
+ 		bh = ext4_dx_find_entry(dentry, res_dir, &err);
+ 		/*
+@@ -881,7 +877,6 @@ static struct buffer_head * ext4_find_en
+ 			return bh;
+ 		dxtrace(printk("ext4_find_entry: dx failed, falling back\n"));
+ 	}
+-#endif
+ 	nblocks = dir->i_size >> EXT4_BLOCK_SIZE_BITS(sb);
+ 	start = EXT4_I(dir)->i_dir_start_lookup;
+ 	if (start >= nblocks)
+@@ -957,7 +952,6 @@ cleanup_and_exit:
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
+ 		       struct ext4_dir_entry_2 **res_dir, int *err)
+ {
+@@ -1025,7 +1019,6 @@ errout:
+ 	dx_release (frames);
+ 	return NULL;
+ }
+-#endif
+ 
+ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
+ {
+@@ -1121,7 +1114,6 @@ static inline void ext4_set_de_type(stru
+ 		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * Move count entries from end of map between two memory locations.
+  * Returns pointer to last entry moved.
+@@ -1266,8 +1258,6 @@ errout:
+ 	*error = err;
+ 	return NULL;
+ }
+-#endif
+-
+ 
+ /*
+  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
+@@ -1364,7 +1354,6 @@ static int add_dirent_to_buf(handle_t *h
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * This converts a one block unindexed directory to a 3 block indexed
+  * directory, and adds the dentry to the indexed directory.
+@@ -1443,7 +1432,6 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+-#endif
+ 
+ /*
+  *	ext4_add_entry()
+@@ -1464,9 +1452,7 @@ static int ext4_add_entry (handle_t *han
+ 	struct ext4_dir_entry_2 *de;
+ 	struct super_block * sb;
+ 	int	retval;
+-#ifdef CONFIG_EXT4_INDEX
+ 	int	dx_fallback=0;
+-#endif
+ 	unsigned blocksize;
+ 	u32 block, blocks;
+ 
+@@ -1474,7 +1460,6 @@ static int ext4_add_entry (handle_t *han
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (is_dx(dir)) {
+ 		retval = ext4_dx_add_entry(handle, dentry, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+@@ -1483,7 +1468,6 @@ static int ext4_add_entry (handle_t *han
+ 		dx_fallback++;
+ 		ext4_mark_inode_dirty(handle, dir);
+ 	}
+-#endif
+ 	blocks = dir->i_size >> sb->s_blocksize_bits;
+ 	for (block = 0, offset = 0; block < blocks; block++) {
+ 		bh = ext4_bread(handle, dir, block, 0, &retval);
+@@ -1493,11 +1477,9 @@ static int ext4_add_entry (handle_t *han
+ 		if (retval != -ENOSPC)
+ 			return retval;
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ 		if (blocks == 1 && !dx_fallback &&
+ 		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
+ 			return make_indexed_dir(handle, dentry, inode, bh);
+-#endif
+ 		brelse(bh);
+ 	}
+ 	bh = ext4_append(handle, dir, &block, &retval);
+@@ -1509,7 +1491,6 @@ static int ext4_add_entry (handle_t *han
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * Returns 0 for success, or a negative error value
+  */
+@@ -1644,7 +1625,6 @@ cleanup:
+ 	dx_release(frames);
+ 	return err;
+ }
+-#endif
+ 
+ /*
+  * ext4_delete_entry deletes a directory entry by merging it with the
+Index: ext4.git/include/linux/ext4_fs.h
+===================================================================
+--- ext4.git.orig/include/linux/ext4_fs.h
++++ ext4.git/include/linux/ext4_fs.h
+@@ -36,10 +36,6 @@
+ /*max window size: 1024(direct blocks) + 3([t,d]indirect blocks) */
+ #define EXT4_MAX_RESERVE_BLOCKS		1027
+ #define EXT4_RESERVE_WINDOW_NOT_ALLOCATED 0
+-/*
+- * Always enable hashed directories
+- */
+-#define CONFIG_EXT4_INDEX
+ 
+ /*
+  * Debug code
+@@ -789,17 +785,11 @@ struct ext4_dir_entry_2 {
+  * (c) Daniel Phillips, 2001
+  */
+ 
+-#ifdef CONFIG_EXT4_INDEX
+-  #define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, \
+-					      EXT4_FEATURE_COMPAT_DIR_INDEX) && \
++#define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, \
++				      EXT4_FEATURE_COMPAT_DIR_INDEX) && \
+ 		      (EXT4_I(dir)->i_flags & EXT4_INDEX_FL))
+ #define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
+ #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+-#else
+-  #define is_dx(dir) 0
+-#define EXT4_DIR_LINK_MAX(dir) ((dir)->i_nlink >= EXT4_LINK_MAX)
+-#define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2)
+-#endif
+ 
+ /* Legal values for the dx_root hash_version field: */
+ 
