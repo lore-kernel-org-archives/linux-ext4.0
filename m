@@ -1,159 +1,96 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC] ext3: lighten up resize transaction requirements
-Date: Thu, 27 Sep 2007 16:07:09 -0500
-Message-ID: <46FC1B7D.2000601@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: kernel Oops in ext3 code
+Date: Thu, 27 Sep 2007 14:18:23 -0700
+Message-ID: <1190927903.3872.12.camel@localhost.localdomain>
+References: <20070927103122.GB27783@gamma.logic.tuwien.ac.at>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: preining@debian.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46379 "EHLO mx1.redhat.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:59374 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755290AbXI0VHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Sep 2007 17:07:14 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l8RL7AWG022970
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Sep 2007 17:07:12 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l8RL7APi019101
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Sep 2007 17:07:10 -0400
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id l8RL79sV013974
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Sep 2007 17:07:10 -0400
+	id S1756606AbXI0VSX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Sep 2007 17:18:23 -0400
+In-Reply-To: <20070927103122.GB27783@gamma.logic.tuwien.ac.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I've got a fedora bug, which has been fairly widely reported around the
-net it seems, where attempting to do an online resize "requires too many
-credits".  This usually leaves the person trying to do the resize fairly
-befuddled.  There is a workaround to resize the journal to something larger,
-but then this must be done offline, so what's the point really? :)
-
-The patch below resizes & restarts the transaction as necessary while
-setting up the new group, and should work with even the smallest journal.
-
-Tested with something like:
-
-[root@newbox ~]# dd if=/dev/zero of=fsfile bs=1024 count=32768
-[root@newbox ~]# mkfs.ext3 -b 1024 fsfile 16384
-[root@newbox ~]# mount -o loop fsfile mnt/
-[root@newbox ~]# resize2fs /dev/loop0 
-resize2fs 1.40.2 (12-Jul-2007)
-Filesystem at /dev/loop0 is mounted on /root/mnt; on-line resizing required
-old desc_blocks = 1, new_desc_blocks = 1
-Performing an on-line resize of /dev/loop0 to 32768 (1k) blocks.
-resize2fs: No space left on device While trying to add group #2
-[root@newbox ~]# dmesg | tail -n 1
-JBD: resize2fs wants too many credits (258 > 256)
-[root@newbox ~]# 
-
-but with the change below:
-
-[root@newbox ~]# mount -o loop fsfile mnt/
-[root@newbox ~]# resize2fs /dev/loop0
-resize2fs 1.40.2 (12-Jul-2007)
-Filesystem at /dev/loop0 is mounted on /root/mnt; on-line resizing required
-old desc_blocks = 1, new_desc_blocks = 1
-Performing an on-line resize of /dev/loop0 to 32768 (1k) blocks.
-The filesystem on /dev/loop0 is now 32768 blocks long.
-
-Any comments?
+Hi,
+Could you please sent the objdump of the ext4_discard_reservation
+function? It doesn't match what I see here.
 
 Thanks,
+Mingming
 
--Eric
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
-Index: linux-2.6.23-rc7/fs/ext3/resize.c
-===================================================================
---- linux-2.6.23-rc7.orig/fs/ext3/resize.c
-+++ linux-2.6.23-rc7/fs/ext3/resize.c
-@@ -154,6 +154,32 @@ static void mark_bitmap_end(int start_bi
- }
- 
- /*
-+ * If we have fewer than "thresh" credits, extend by EXT3_MAX_TRANS_DATA.
-+ * If that fails, restart the transaction & regain write access for the
-+ * buffer head which is being used for block_bitmap modifications.
-+ */
-+static int extend_or_restart_transaction(handle_t *handle, int thresh,
-+					 struct buffer_head *bh)
-+{
-+	int err;
-+
-+	if (handle->h_buffer_credits >= thresh)
-+		return 0;
-+
-+	err = ext3_journal_extend(handle, EXT3_MAX_TRANS_DATA);
-+	if (err < 0)
-+		return err;
-+	if (err) {
-+		if ((err = ext3_journal_restart(handle, EXT3_MAX_TRANS_DATA)))
-+			return err;
-+	        if ((err = ext3_journal_get_write_access(handle, bh)))
-+			return err;
-+        }
-+
-+	return 0;
-+}
-+
-+/*
-  * Set up the block and inode bitmaps, and the inode table for the new group.
-  * This doesn't need to be part of the main transaction, since we are only
-  * changing blocks outside the actual filesystem.  We still do journaling to
-@@ -175,8 +201,9 @@ static int setup_new_group_blocks(struct
- 	int i;
- 	int err = 0, err2;
- 
--	handle = ext3_journal_start_sb(sb, reserved_gdb + gdblocks +
--				       2 + sbi->s_itb_per_group);
-+	/* This transaction may be extended/restarted along the way */
-+	handle = ext3_journal_start_sb(sb, EXT3_MAX_TRANS_DATA);
-+
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -203,6 +230,9 @@ static int setup_new_group_blocks(struct
- 
- 		ext3_debug("update backup group %#04lx (+%d)\n", block, bit);
- 
-+		if ((err = extend_or_restart_transaction(handle, 1, bh)))
-+			goto exit_bh;
-+
- 		gdb = sb_getblk(sb, block);
- 		if (!gdb) {
- 			err = -EIO;
-@@ -228,6 +258,9 @@ static int setup_new_group_blocks(struct
- 
- 		ext3_debug("clear reserved block %#04lx (+%d)\n", block, bit);
- 
-+		if ((err = extend_or_restart_transaction(handle, 1, bh)))
-+			goto exit_bh;
-+
- 		if (IS_ERR(gdb = bclean(handle, sb, block))) {
- 			err = PTR_ERR(bh);
- 			goto exit_bh;
-@@ -249,6 +282,10 @@ static int setup_new_group_blocks(struct
- 		struct buffer_head *it;
- 
- 		ext3_debug("clear inode block %#04lx (+%d)\n", block, bit);
-+
-+		if ((err = extend_or_restart_transaction(handle, 1, bh)))
-+			goto exit_bh;
-+
- 		if (IS_ERR(it = bclean(handle, sb, block))) {
- 			err = PTR_ERR(it);
- 			goto exit_bh;
-@@ -257,6 +294,10 @@ static int setup_new_group_blocks(struct
- 		brelse(it);
- 		ext3_set_bit(bit, bh->b_data);
- 	}
-+
-+	if ((err = extend_or_restart_transaction(handle, 2, bh)))
-+		goto exit_bh;
-+
- 	mark_bitmap_end(input->blocks_count, EXT3_BLOCKS_PER_GROUP(sb),
- 			bh->b_data);
- 	ext3_journal_dirty_metadata(handle, bh);
+On Thu, 2007-09-27 at 12:31 +0200, linux-ext4-owner@vger.kernel.org
+wrote:
+> Hi all!
+> 
+> (Please Cc)
+> 
+> kernel 2.6.23-rc6
+> Debian/sid
+> 
+> kernel ooops:
+> 
+> BUG: unable to handle kernel paging request at virtual address 1000004b
+>  printing eip:
+>  c0195bd3
+>  *pde = 00000000
+>  Oops: 0000 [#1]
+>  PREEMPT SMP 
+>  Modules linked in: vboxdrv binfmt_misc fuse coretemp hwmon gspca videodev v4l2_common v4l1_compat iwl3945 mac80211 tifm_7xx1 tifm_core joydev irda crc_ccitt 8250_pnp 8250 serial_core firewire_ohci firewire_core crc_itu_t
+>  CPU:    0
+>  EIP:    0060:[<c0195bd3>]    Not tainted VLI
+>  EFLAGS: 00010206   (2.6.23-rc6 #1)
+>  EIP is at ext3_discard_reservation+0x18/0x4d
+>  eax: dff23800   ebx: 10000033   ecx: dfc15ec0   edx: ffffffff
+>  esi: c0007c44   edi: 10000033   ebp: dfc2bef4   esp: dfc2beac
+>  ds: 007b   es: 007b   fs: 00d8  gs: 0000  ss: 0068
+>  Process kswapd0 (pid: 261, ti=dfc2a000 task=dfcac570 task.ti=dfc2a000)
+>  Stack: c0007ba4 c0007c44 10000033 c019ec51 c0007c44 c0007d8c 0000002c c0171b1b 
+>         0000002c c0007c44 c0007c4c c0171da2 c050880c 00000000 00000080 00000080 
+>         c0171fb8 00000080 c0007e48 df9e3910 00007404 c03f5634 00000080 000000d0 
+>  Call Trace:
+>   [<c019ec51>] ext3_clear_inode+0x5d/0x76
+>   [<c0171b1b>] clear_inode+0x6b/0xb9
+>   [<c0171da2>] dispose_list+0x48/0xc9
+>   [<c0171fb8>] shrink_icache_memory+0x195/0x1bd
+>   [<c014f5ec>] shrink_slab+0xe2/0x159
+>   [<c014f9a0>] kswapd+0x2d3/0x431
+>   [<c0132520>] autoremove_wake_function+0x0/0x33
+>   [<c014f6cd>] kswapd+0x0/0x431
+>   [<c0132453>] kthread+0x38/0x5d
+>   [<c013241b>] kthread+0x0/0x5d
+>   [<c0104b73>] kernel_thread_helper+0x7/0x10
+>   =======================
+>  Code: 83 f8 01 19 c0 f7 d0 83 e0 08 89 42 0c 89 56 b4 5b 5e c3 57 56 89 c6 53 8b 58 b4 8b 80 a4 00 00 00 85 db 8b 80 78 01 00 00 74 30 <83> 7b 18 00 74 2a 8d b8 00 03 00 00 89 f8 e8 b8 ca 1a 00 83 7b 
+>  EIP: [<c0195bd3>] ext3_discard_reservation+0x18/0x4d SS:ESP 0068:dfc2beac
+> 
+> 
+> Sysrq did work, so the oops was saved. Good.
+> 
+> Any ideas?
+> 
+> Best wishes
+> 
+> Norbert
+> 
+> -------------------------------------------------------------------------------
+> Dr. Norbert Preining <preining@logic.at>        Vienna University of Technology
+> Debian Developer <preining@debian.org>                         Debian TeX Group
+> gpg DSA: 0x09C5B094      fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
+> -------------------------------------------------------------------------------
+> As he came into the light they could see his black and
+> gold uniform on which the buttons were so highly polished
+> that they shone with an intensity that would have made an
+> approaching motorist flash his lights in annoyance.
+>                  --- Douglas Adams, The Hitchhikers Guide to the Galaxy
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
