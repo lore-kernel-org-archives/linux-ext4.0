@@ -1,39 +1,106 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH, RFC] ext3: lighten up resize transaction requirements
-Date: Thu, 27 Sep 2007 17:15:06 -0600
-Message-ID: <20070927231506.GQ32520@schatzie.adilger.int>
-References: <46FC1B7D.2000601@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:60547 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758492AbXI0XPJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Sep 2007 19:15:09 -0400
-Content-Disposition: inline
-In-Reply-To: <46FC1B7D.2000601@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + jbd2-debug-code-cleanup.patch added to -mm tree
+Date: Thu, 27 Sep 2007 16:33:27 -0700
+Message-ID: <200709272333.l8RNXRWh000861@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jrs@us.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sep 27, 2007  16:07 -0500, Eric Sandeen wrote:
-> I've got a fedora bug, which has been fairly widely reported around the
-> net it seems, where attempting to do an online resize "requires too many
-> credits".  This usually leaves the person trying to do the resize fairly
-> befuddled.  There is a workaround to resize the journal to something larger,
-> but then this must be done offline, so what's the point really? :)
-> 
-> The patch below resizes & restarts the transaction as necessary while
-> setting up the new group, and should work with even the smallest journal.
 
-Patch looks good to me, you can add:
-Acked-by: Andreas Dilger <adilger@clusterfs.com>
+The patch titled
+     JBD2: debug code cleanup
+has been added to the -mm tree.  Its filename is
+     jbd2-debug-code-cleanup.patch
 
-(or Signed-off-by: ?, I'm not sure)  Thanks for fixing my broken code.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+------------------------------------------------------
+Subject: JBD2: debug code cleanup
+From: Jose R. Santos <jrs@us.ibm.com>
+
+JBD2: debug code cleanup.
+
+Mostly stolen from akpm's JBD cleanup patch.
+
+- use `#ifdef foo' instead of `#if defined(foo)'
+
+- Make journal_enable_debug __read_mostly just for the heck of it
+
+- Make jbd_debugfs_dir and jbd_debug static
+
+- debugfs_remove(NULL) is legal: remove unneeded tests
+
+- remove unnecessary empty loops
+
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+
+diff -puN fs/jbd2/journal.c~jbd2-debug-code-cleanup fs/jbd2/journal.c
+--- a/fs/jbd2/journal.c~jbd2-debug-code-cleanup
++++ a/fs/jbd2/journal.c
+@@ -2199,16 +2199,14 @@ void jbd2_journal_put_journal_head(struc
+ /*
+  * debugfs tunables
+  */
+-#if defined(CONFIG_JBD2_DEBUG)
+-u8 jbd2_journal_enable_debug;
++#ifdef CONFIG_JBD2_DEBUG
++u8 jbd2_journal_enable_debug __read_mostly;
+ EXPORT_SYMBOL(jbd2_journal_enable_debug);
+-#endif
+-
+-#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+ 
+ #define JBD2_DEBUG_NAME "jbd2-debug"
+ 
+-struct dentry *jbd2_debugfs_dir, *jbd2_debug;
++static struct dentry *jbd2_debugfs_dir;
++static struct dentry *jbd2_debug;
+ 
+ static void __init jbd2_create_debugfs_entry(void)
+ {
+@@ -2221,24 +2219,18 @@ static void __init jbd2_create_debugfs_e
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
+ {
+-	if (jbd2_debug)
+-		debugfs_remove(jbd2_debug);
+-	if (jbd2_debugfs_dir)
+-		debugfs_remove(jbd2_debugfs_dir);
++	debugfs_remove(jbd2_debug);
++	debugfs_remove(jbd2_debugfs_dir);
+ }
+ 
+ #else
+ 
+ static void __init jbd2_create_debugfs_entry(void)
+ {
+-	do {
+-	} while (0);
+ }
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
+ {
+-	do {
+-	} while (0);
+ }
+ 
+ #endif
+_
+
+Patches currently in -mm which might be from jrs@us.ibm.com are
+
+jbd-config_jbd_debug-cannot-create-proc-entry.patch
+jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
+jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
+ext4-flex_bg-kernel-support-v2.patch
+jbd2-debug-code-cleanup.patch
