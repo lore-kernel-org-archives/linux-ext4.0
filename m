@@ -1,98 +1,88 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: Ext4 devel interlock meeting minutes (October 1, 2007)
-Date: Mon, 01 Oct 2007 15:10:27 -0700
-Message-ID: <47017053.9060005@linux.vnet.ibm.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH 1/2] ext4: Support large blocksize up to PAGESIZE
+Date: Mon, 01 Oct 2007 17:34:58 -0700
+Message-ID: <1191285298.11737.53.camel@localhost.localdomain>
+References: <20070828190551.415127746@sgi.com>
+	 <20070828190735.292638294@sgi.com>
+	 <1188432669.3799.35.camel@localhost.localdomain>
+	 <1188434857.3799.76.camel@localhost.localdomain>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: sho@tnes.nec.co.jp, Jan Kara <jack@suse.cz>, clameter@sgi.com,
+	tytso@mit.edu
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:52452 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757873AbXJAWJd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2007 18:09:33 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l91M9Q32011945
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Oct 2007 18:09:26 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l91M9Qee399970
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Oct 2007 16:09:26 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l91M9QRt022924
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Oct 2007 16:09:26 -0600
-Received: from [9.47.16.62] (dyn9047016062.beaverton.ibm.com [9.47.16.62])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l91M9PL0022898
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Oct 2007 16:09:26 -0600
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:46408 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751423AbXJBAfC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2007 20:35:02 -0400
+In-Reply-To: <1188434857.3799.76.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 Developer Interlock Call:  10/1/07 Meeting Minutes
+Support large blocksize up to PAGESIZE (max 64KB) for ext4. 
 
-Attendees: Mingming Cao, Aneesh Veetil, Dave Kleikamp, Akira Fujita, Ted 
-Ts'o, Jose Santos, Avantika Mathur, Jean-Pierre Dion
+From: Takashi Sato <sho@tnes.nec.co.jp>
 
-Minutes can be accessed at: 
-http://ext4.wiki.kernel.org/index.php/Ext4_Developer%27s_Conference_Call
+This patch set supports large block size(>4k, <=64k) in ext4,
+just enlarging the block size limit. But it is NOT possible to have 64kB
+blocksize on ext4 without some changes to the directory handling
+code.  The reason is that an empty 64kB directory block would have a
+rec_len == (__u16)2^16 == 0, and this would cause an error to be hit in
+the filesystem.  The proposed solution is treat 64k rec_len
+with a an impossible value like rec_len = 0xffff to handle this.
 
-EXT4 PATCH QUEUE
+The Patch-set consists of the following 2 patches.
+  [1/2]  ext4: enlarge blocksize
+         - Allow blocksize up to pagesize
 
-Multiple Block Allocation:
-- Main outstanding issue is still need for better documentation of the code.
-- Aneesh has marked the places that need explanation with fixme, and 
-Alex will be adding the needed comments.  If this gets done quickly, we 
-can try to push this feature to 2.6.24
-- Aneesh has asked for recommendations for a benchmark to run which will 
-test the mballoc allocator.  Mingming suggested using dd and dbench, as 
-was done in the past for basic mballoc patches.  To test the in-core 
-preallocation, kernel untar tests.  Look at the file fragmentation after 
-running the test.
+  [2/2]  ext4: fix rec_len overflow
+         - prevent rec_len from overflow with 64KB blocksize
 
-Large Block Patches:
-- Mingming will post these patches to lkml for review
+Now on 64k page ppc64 box runs with this patch set we could create a 64k
+block size ext4dev, and able to handle empty directory block.
+Patch consider to be merge to 2.6.24-rc1.
 
-Uninitialized block groups:
-- the uninitialized block group patches were posted to lkml and are in 
-the -mm tree.
+Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
 
-JBD-stats through procfs patches:
-- Ted will look at these patches and see if they are ready to push upstream
+ fs/ext4/super.c         |    5 +++++
+ include/linux/ext4_fs.h |    4 ++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-generic-find-next-le-bit:
-- This function is only used in multiple block allocation  patches. It 
-would not be a good idea to post this before mballoc, since the function 
-would be unused and may be cleaned up later.
 
-Delayed Allocation:
-- There has been an lkml thread about these patches.
-- We have and approach that works for ext4, implemented at the vfs 
-level, but unless we can prove it can work for other filesystems, it 
-will not be accepted.  
-- Christoph Hellwig has commented that these patches will not work for 
-XFS.  
-- Mingming will try the patches with ext2/3, and Shaggy will try to find 
-time to test with JFS.  
-- If this approach works for other filesystems, we can try to push to 
-mainline as a placeholder.
-
-truncate mutex patch:
-- There is a performance concern with these patches. Mingming suggested 
-doing some testing to see what the actual performance regression is.
-- Ted suggests breaking into two patches:
--- Patch 1 - Change the name of the mutex to block_mapped_mutex and 
-update comments to reflect the usage of the mutex
--- Patch 2 - Change to a read/write mutex
-
-GENERAL
-- Those patches we would still like to see in 2.6.24 need to be pushed 
-very quickly
-- We should avoid having ext2/3 patches in the ext4-patch-queue and git 
-tree.
-- Some of the patches that we just send to lkml for review end up being 
-pulled into the -mm tree, then Ted pulls them to the ext4-git tree, and 
-Andrew must remove from -mm.  When we post for comments, we should use 
-[PATCH,RFC] to avoid this.
-- Mingming suggested having a patch queue for the ext4-git tree for 
-easier review. Ted is also considering having a pu branch for the git 
-tree.  Ted will think about what will work best.
-- In the ext4-patch qDescription of patch include which version of -mm 
-the patch is in
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 619db84..d8bb279 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1548,6 +1548,11 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+ 		goto out_fail;
+ 	}
+ 
++	if (!sb_set_blocksize(sb, blocksize)) {
++		printk(KERN_ERR "EXT4-fs: bad blocksize %d.\n", blocksize);
++		goto out_fail;
++	}
++
+ 	/*
+ 	 * The ext4 superblock will not be buffer aligned for other than 1kB
+ 	 * block sizes.  We need to calculate the offset from buffer start.
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index f9881b6..d15a15e 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -77,8 +77,8 @@
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT4_MIN_BLOCK_SIZE		1024
+-#define	EXT4_MAX_BLOCK_SIZE		4096
+-#define EXT4_MIN_BLOCK_LOG_SIZE		  10
++#define	EXT4_MAX_BLOCK_SIZE		65536
++#define EXT4_MIN_BLOCK_LOG_SIZE		10
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
