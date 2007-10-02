@@ -1,62 +1,85 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Ext4 devel interlock meeting minutes (October 1, 2007)
-Date: Tue, 02 Oct 2007 17:06:48 +0530
-Message-ID: <47022D50.2040908@linux.vnet.ibm.com>
-References: <47017053.9060005@linux.vnet.ibm.com> <47020E59.1070609@bull.net>
+From: Ric Wheeler <ric@emc.com>
+Subject: batching support for transactions
+Date: Tue, 02 Oct 2007 08:57:53 -0400
+Message-ID: <47024051.2030303@emc.com>
+Reply-To: ric@emc.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:38397 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751996AbXJBLhS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Oct 2007 07:37:18 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id l92BbFXZ020823
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2007 21:37:15 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l92BbF6e3465406
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2007 21:37:15 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l92BaxUW009694
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2007 21:37:00 +1000
-In-Reply-To: <47020E59.1070609@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
+Cc: "Feld, Andy" <Feld_Andy@emc.com>,
+	Jens Axboe <jens.axboe@oracle.com>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+After several years of helping tune file systems for normal (ATA/S-ATA) 
+drives, we have been doing some performance work on ext3 & reiserfs on 
+disk arrays.
 
-Valerie Clement wrote:
-> Avantika Mathur wrote:
->> Multiple Block Allocation:
->> - Main outstanding issue is still need for better documentation of the 
->> code.
->> - Aneesh has marked the places that need explanation with fixme, and 
->> Alex will be adding the needed comments.  If this gets done quickly, 
->> we can try to push this feature to 2.6.24
->> - Aneesh has asked for recommendations for a benchmark to run which 
->> will test the mballoc allocator.  Mingming suggested using dd and 
->> dbench, as was done in the past for basic mballoc patches.  To test 
->> the in-core preallocation, kernel untar tests.  Look at the file 
->> fragmentation after running the test.
-> 
-> Currently, the mballoc feature is not compatible with the uninit_groups 
-> feature. I have just tried a simple test which failed. Isn't this a 
-> problem?
-> 
-> Another point that is not clear for me, is mballoc compatible with 
-> delalloc now, or is there still a restriction?
-> 
+One thing that jumps out is that the way we currently batch synchronous 
+work loads into transactions does really horrible things to performance 
+for storage devices which have really low latency.
 
-I thought i had merged the patch from Andreas.
+For example, one a mid-range clariion box, we can use a single thread to 
+write around 750 (10240 byte) files/sec to a single directory in ext3. 
+That gives us an average time around 1.3ms per file.
 
-http://marc.info/?l=linux-ext4&m=118833298930860&w=2
+With 2 threads writing to the same directory, we instantly drop down to 
+234 files/sec.
 
-But i don't see it in  mballoc-core.patch
+The culprit seems to be the assumptions in journal_stop() which throw in 
+a call to schedule_timeout_uninterruptible(1):
 
-Will update the mballoc patch 
+         /*
+          * Implement synchronous transaction batching.  If the handle
+          * was synchronous, don't force a commit immediately.  Let's
+          * yield and let another thread piggyback onto this transaction.
+          * Keep doing that while new threads continue to arrive.
+          * It doesn't cost much - we're about to run a commit and sleep
+          * on IO anyway.  Speeds up many-threaded, many-dir operations
+          * by 30x or more...
+          *
+          * But don't do this if this process was the most recent one to
+          * perform a synchronous write.  We do this to detect the case 
+where a
+          * single process is doing a stream of sync writes.  No point 
+in waiting
+          * for joiners in that case.
+          */
+         pid = current->pid;
+         if (handle->h_sync && journal->j_last_sync_writer != pid) {
+                 journal->j_last_sync_writer = pid;
+                 do {
+                         old_handle_count = transaction->t_handle_count;
+                         schedule_timeout_uninterruptible(1);
+                 } while (old_handle_count != transaction->t_handle_count);
+         }
 
--aneesh
+
+reiserfs and ext4 have similar if not exactly the same logic.
+
+What seems to be needed here is either a static per file system/storage 
+device tunable to allow us to change this timeout (maybe with "0" 
+defaulting back to the old reiserfs trick of simply doing a yield()?) or 
+a more dynamic, per device way to keep track of the average time it 
+takes to commit a transaction to disk. Based on that rate, we could 
+dynamically adjust our logic to account for lower latency devices.
+
+A couple of last thoughts. One, if for some reason you don't have a low 
+latency storage array handy and want to test this for yourselves, you 
+can test the worst case by using a ram disk.
+
+The test we used was fs_mark with 10240 bytes files, writing to one 
+shared directory with varying the numbers of threads from 1 up to 40. In 
+the ext3 case, it takes 8 concurrent threads to catch up to the single 
+thread writing case.
+
+We are continuing to play with the code and try out some ideas, but I 
+wanted to bounce this off the broader list to see if this makes sense...
+
+ric
+
+
