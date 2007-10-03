@@ -1,105 +1,79 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: update uninitialized-block-groups.patch and mballoc-core.patch
-Date: Thu, 04 Oct 2007 00:34:16 +0530
-Message-ID: <4703E7B0.7060900@linux.vnet.ibm.com>
-References: <47036832.7030107@linux.vnet.ibm.com> <20071003183718.GM5578@schatzie.adilger.int> <4703E5B1.7090903@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: batching support for transactions
+Date: Wed, 3 Oct 2007 15:02:56 -0600
+Message-ID: <20071003210256.GO5578@schatzie.adilger.int>
+References: <47024051.2030303@emc.com> <20071003071653.GE5578@schatzie.adilger.int> <4703721B.9050600@emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:58574 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755594AbXJCTEV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2007 15:04:21 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l93J4LYO001569
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Oct 2007 05:04:21 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l93J7rKv202472
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Oct 2007 05:07:53 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l93J4Jkh012418
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Oct 2007 05:04:19 +1000
-In-Reply-To: <4703E5B1.7090903@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org, "Feld, Andy" <Feld_Andy@emc.com>,
+	Jens Axboe <jens.axboe@oracle.com>
+To: Ric Wheeler <ric@emc.com>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4703721B.9050600@emc.com>
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-Aneesh Kumar K.V wrote:
+On Oct 03, 2007  06:42 -0400, Ric Wheeler wrote:
+> >>With 2 threads writing to the same directory, we instantly drop down to 
+> >>234 files/sec.
+> >
+> >Is this with HZ=250?
 > 
+> Yes - I assume that with HZ=1000 the batching would start to work again 
+> since the penalty for batching would only be 1ms which would add a 0.3ms 
+> overhead while waiting for some other thread to join.
+
+This is probably the easiest solution, but at the same time using HZ=1000
+adds overhead to the server because of extra interrupts, etc.
+
+> >It would seem one of the problems is that we shouldn't really be
+> >scheduling for a fixed 1 jiffie timeout, but rather only until the
+> >other threads have a chance to run and join the existing transaction.
 > 
-> Andreas Dilger wrote:
->> On Oct 03, 2007  15:30 +0530, Aneesh Kumar K.V wrote:
->>> +    if (block_group == sbi->s_gdb_count - 1) {
->>> +        /*
->>> +         * Even though mke2fs always initialize first and last group
->>> +         * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
->>> +         * to make sure we calculate the right free blocks
->>> +         */
->>> +        free_blocks = ext4_blocks_count(sbi->s_es) -
->>> +                le32_to_cpu(sbi->s_es->s_first_data_block) -
->>> +                (EXT4_BLOCKS_PER_GROUP(sb) * sbi->s_groups_count) -
->>> +                bit_max;
->>
->> Did you verify that subtracting s_first_data_block is indeed the right
->> thing to do.  I _think_ yes, but I didn't look at it very closely when
->> I wrote it late last night.
->>
+> This is really very similar to the domain of the IO schedulers - when do 
+> you hold off an IO and/or try to combine it.
+
+I was thinking the same.
+
+> >my guess would be that yield() doesn't block the first thread long enough
+> >for the second one to get into the transaction (e.g. on an 2-CPU system
+> >with 2 threads, yield() will likely do nothing).
 > 
-> yes s_first_data_block is always decremented to find total number of 
-> blocks occupied by the reset of the group. But now looking at it again i 
-> guess i need to have
+> Andy tried playing with yield() and it did not do well. Note this this 
+> server is a dual CPU box, so your intuition is most likely correct.
 
+How many threads did you try?
 
+> >It makes sense to track not only the time to commit a single synchronous
+> >transaction, but also the time between sync transactions to decide if
+> >the initial transaction should be held to allow later ones.
+> 
+> Yes, that is what I was trying to suggest with the rate. Even if we are 
+> relatively slow, if the IO's are being synched at a low rate, we are 
+> effectively adding a potentially nasty latency for each IO.
+> 
+> That would give us two measurements to track per IO device - average 
+> commit time and this average IO's/sec rate. That seems very doable.
 
+Agreed.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 8613914..34b1e11 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -50,7 +50,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- {
- 	unsigned long start;
- 	int bit, bit_max;
--	unsigned free_blocks;
-+	unsigned free_blocks, group_blocks;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (bh) {
-@@ -96,14 +96,15 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 * if some other tool enabled the EXT4_BG_BLOCK_UNINIT we need
- 		 * to make sure we calculate the right free blocks
- 		 */
--		free_blocks = ext4_blocks_count(sbi->s_es) -
--				le32_to_cpu(sbi->s_es->s_first_data_block) -
--				(EXT4_BLOCKS_PER_GROUP(sb) * sbi->s_groups_count) -
--				bit_max;
-+		group_blocks = ext4_blocks_count(sbi->s_es) -
-+			le32_to_cpu(sbi->s_es->s_first_data_block) -
-+			(EXT4_BLOCKS_PER_GROUP(sb) * (sbi->s_groups_count -1));
- 	} else {
--		free_blocks = EXT4_BLOCKS_PER_GROUP(sb) - bit_max;
-+		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
- 	}
- 
-+	free_blocks = group_blocks - bit_max;
-+
- 	if (bh) {
- 		for (bit = 0; bit < bit_max; bit++)
- 			ext4_set_bit(bit, bh->b_data);
-@@ -123,8 +124,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 * blocksize * 8 ( which is the size of bitmap ), set rest of the
- 		 * block bitmap to 1
- 		 */
--		mark_bitmap_end(EXT4_BLOCKS_PER_GROUP(sb),
--					sb->s_blocksize * 8, bh->b_data);
-+		mark_bitmap_end(group_blocks, sb->s_blocksize * 8, bh->b_data);
- 	}
- 
- 	return free_blocks - sbi->s_itb_per_group - 2;
+> >Alternately, it might be possible to check if a new thread is trying to
+> >start a sync handle when the previous one was also synchronous and had
+> >only a single handle in it, then automatically enable the delay in that 
+> >case.
+> 
+> I am not sure that this avoids the problem with the current defaults at 
+> 250HZ where each wait is sufficient to do 3 fully independent 
+> transactions ;-)
+
+I was trying to think if there was some way to non-busy-wait that is
+less than 1 jiffie.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
+
