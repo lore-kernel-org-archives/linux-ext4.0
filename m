@@ -1,76 +1,56 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: batching support for transactions
-Date: Wed, 3 Oct 2007 01:16:53 -0600
-Message-ID: <20071003071653.GE5578@schatzie.adilger.int>
-References: <47024051.2030303@emc.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Delayed alloc bug
+Date: Wed, 03 Oct 2007 12:46:35 +0530
+Message-ID: <470341D3.7020409@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, "Feld, Andy" <Feld_Andy@emc.com>,
-	Jens Axboe <jens.axboe@oracle.com>
-To: Ric Wheeler <ric@emc.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <47024051.2030303@emc.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Alex Tomas <alex@clusterfs.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:47356 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751412AbXJCHRD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2007 03:17:03 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id l937H263014614
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Oct 2007 17:17:02 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l937KZXf249226
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Oct 2007 17:20:35 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l937Gj7D009346
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Oct 2007 17:16:45 +1000
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 02, 2007  08:57 -0400, Ric Wheeler wrote:
-> One thing that jumps out is that the way we currently batch synchronous 
-> work loads into transactions does really horrible things to performance 
-> for storage devices which have really low latency.
-> 
-> For example, one a mid-range clariion box, we can use a single thread to 
-> write around 750 (10240 byte) files/sec to a single directory in ext3. 
-> That gives us an average time around 1.3ms per file.
-> 
-> With 2 threads writing to the same directory, we instantly drop down to 
-> 234 files/sec.
+We should actually get this error 
 
-Is this with HZ=250?
+dd: writing to `myfile5': No space left on device
 
-> The culprit seems to be the assumptions in journal_stop() which throw in 
-> a call to schedule_timeout_uninterruptible(1):
-> 
->         pid = current->pid;
->         if (handle->h_sync && journal->j_last_sync_writer != pid) {
->                 journal->j_last_sync_writer = pid;
->                 do {
->                         old_handle_count = transaction->t_handle_count;
->                         schedule_timeout_uninterruptible(1);
->                 } while (old_handle_count != transaction->t_handle_count);
->         }
 
-It would seem one of the problems is that we shouldn't really be
-scheduling for a fixed 1 jiffie timeout, but rather only until the
-other threads have a chance to run and join the existing transaction.
 
-> What seems to be needed here is either a static per file system/storage 
-> device tunable to allow us to change this timeout (maybe with "0" 
-> defaulting back to the old reiserfs trick of simply doing a yield()?)
+root@x300-qemu-image:~# mount /dev/hdc -t ext4dev -o delalloc,data=writeback /ext4
+root@x300-qemu-image:/ext4# df -h . 
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/hdc               49M   46M   94K 100% /ext4
+root@x300-qemu-image:/ext4# 
+root@x300-qemu-image:/ext4# 
+root@x300-qemu-image:/ext4# 
+root@x300-qemu-image:/ext4# dd if=/dev/zero of=myfile 
+34188+0 records in
+34187+0 records out
+17503744 bytes (18 MB) copied, 11.2724 seconds, 1.6 MB/s
 
-Tunables are to be avoided if possible, since they will usually not be
-set except by the .00001% of people who actually understand them.  Using
-yield() seems like the right thing, but Andrew Morton added this code and
-my guess would be that yield() doesn't block the first thread long enough
-for the second one to get into the transaction (e.g. on an 2-CPU system
-with 2 threads, yield() will likely do nothing).
+root@x300-qemu-image:/ext4# df -h . 
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/hdc               49M   49M     0 100% /ext4
+root@x300-qemu-image:/ext4# dd if=/dev/zero of=myfile5
+49777+0 records in
+49777+0 records out
+25485824 bytes (25 MB) copied, 19.7667 seconds, 1.3 MB/s
 
-> or a more dynamic, per device way to keep track of the average time it 
-> takes to commit a transaction to disk. Based on that rate, we could 
-> dynamically adjust our logic to account for lower latency devices.
-
-It makes sense to track not only the time to commit a single synchronous
-transaction, but also the time between sync transactions to decide if
-the initial transaction should be held to allow later ones.
-
-Alternately, it might be possible to check if a new thread is trying to
-start a sync handle when the previous one was also synchronous and had
-only a single handle in it, then automatically enable the delay in that case.
-
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
-
+root@x300-qemu-image:/ext4# df -h . 
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/hdc               49M   49M     0 100% /ext4
+root@x300-qemu-image:/ext4# 
