@@ -1,45 +1,82 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 2/2] ext2: Avoid rec_len overflow with 64KB block size
-Date: Thu, 4 Oct 2007 16:40:44 -0600
-Message-ID: <20071004224044.GH5628@schatzie.adilger.int>
-References: <20070828190551.415127746@sgi.com> <20070828190735.292638294@sgi.com> <1188432669.3799.35.camel@localhost.localdomain> <1188434857.3799.76.camel@localhost.localdomain> <1191285346.11737.58.camel@localhost.localdomain> <20071004131207.65406a7b.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, sho@tnes.nec.co.jp, jack@suse.cz,
-	clameter@sgi.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:51021 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760348AbXJDWkq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Oct 2007 18:40:46 -0400
-Content-Disposition: inline
-In-Reply-To: <20071004131207.65406a7b.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: - ext2-support-large-blocksize-up-to-pagesize.patch removed from -mm tree
+Date: Thu, 04 Oct 2007 16:10:30 -0700
+Message-ID: <200710042310.l94NAVcD000652@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: sho@tnes.nec.co.jp, clameter@sgi.com, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 04, 2007  13:12 -0700, Andrew Morton wrote:
-> On Mon, 01 Oct 2007 17:35:46 -0700
-> > ext2: Avoid rec_len overflow with 64KB block size
-> > 
-> > into 16 bits we have for entry lenght. So we store 0xffff instead and
-> > convert value when read from / written to disk.
-> 
-> This patch clashes in non-trivial ways with
-> ext2-convert-to-new-aops-fix.patch and perhaps other things which are
-> already queued for 2.6.24 inclusion, so I'll need to ask for an updated
-> patch, please.
 
-If the rel_len overflow patch isn't going to make it, then we also need
-to revert the EXT*_MAX_BLOCK_SIZE change to 65536.  It would be possible
-to allow this to be up to 32768 w/o the rec_len overflow fix however.
+The patch titled
+     ext2: support large blocksize up to PAGESIZE
+has been removed from the -mm tree.  Its filename was
+     ext2-support-large-blocksize-up-to-pagesize.patch
 
-Yes, this does imply that those patches were in the wrong order in the
-patch series, and I apologize for that, even if it isn't my fault.
+This patch was dropped because an updated version will be merged
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+------------------------------------------------------
+Subject: ext2: support large blocksize up to PAGESIZE
+From: Takashi Sato <sho@tnes.nec.co.jp>
+
+This patch set supports large block size(>4k, <=64k) in ext2, just
+enlarging the block size limit.  But it is NOT possible to have 64kB
+blocksize on ext2 without some changes to the directory handling code.  The
+reason is that an empty 64kB directory block would have a rec_len ==
+(__u16)2^16 == 0, and this would cause an error to be hit in the
+filesystem.  The proposed solution is treat 64k rec_len with a an
+impossible value like rec_len = 0xffff to handle this.
+
+The Patch-set consists of the following 2 patches.
+  [1/2]  ext2: enlarge blocksize
+         - Allow blocksize up to pagesize
+
+  [2/2]  ext2: fix rec_len overflow
+         - prevent rec_len from overflow with 64KB blocksize
+
+Now on 64k page ppc64 box runs with this patch set we could create a 64k
+block size ext2, and able to handle empty directory block.
+
+Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Acked-by: Christoph Lameter <clameter@sgi.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+
+diff -puN fs/ext2/super.c~ext2-support-large-blocksize-up-to-pagesize fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-support-large-blocksize-up-to-pagesize
++++ a/fs/ext2/super.c
+@@ -852,7 +852,8 @@ static int ext2_fill_super(struct super_
+ 		brelse(bh);
+ 
+ 		if (!sb_set_blocksize(sb, blocksize)) {
+-			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
++			printk(KERN_ERR "EXT2-fs: bad blocksize %d.\n",
++				blocksize);
+ 			goto failed_sbi;
+ 		}
+ 
+diff -puN include/linux/ext2_fs.h~ext2-support-large-blocksize-up-to-pagesize include/linux/ext2_fs.h
+--- a/include/linux/ext2_fs.h~ext2-support-large-blocksize-up-to-pagesize
++++ a/include/linux/ext2_fs.h
+@@ -87,8 +87,8 @@ static inline struct ext2_sb_info *EXT2_
+  * Macro-instructions used to manage several block sizes
+  */
+ #define EXT2_MIN_BLOCK_SIZE		1024
+-#define	EXT2_MAX_BLOCK_SIZE		4096
+-#define EXT2_MIN_BLOCK_LOG_SIZE		  10
++#define EXT2_MAX_BLOCK_SIZE		65536
++#define EXT2_MIN_BLOCK_LOG_SIZE		10
+ #ifdef __KERNEL__
+ # define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
+_
+
+Patches currently in -mm which might be from sho@tnes.nec.co.jp are
+
+ext3-support-large-blocksize-up-to-pagesize.patch
+ext2-support-large-blocksize-up-to-pagesize.patch
