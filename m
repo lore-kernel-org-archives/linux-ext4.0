@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Convert s_r_blocks_count and s_free_blocks_count
-Date: Thu,  4 Oct 2007 01:50:56 -0400
-Message-ID: <1191477059-5357-22-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Convert ext4_extent_idx.ei_leaf to ext4_extent_idx.ei_leaf_lo
+Date: Thu,  4 Oct 2007 01:50:58 -0400
+Message-ID: <1191477059-5357-24-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
@@ -23,94 +23,66 @@ References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-19-git-send-email-tytso@mit.edu>
  <1191477059-5357-20-git-send-email-tytso@mit.edu>
  <1191477059-5357-21-git-send-email-tytso@mit.edu>
+ <1191477059-5357-22-git-send-email-tytso@mit.edu>
+ <1191477059-5357-23-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44816 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44805 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753264AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Oct 2007 01:51:10 -0400
-In-Reply-To: <1191477059-5357-21-git-send-email-tytso@mit.edu>
+	id S1752840AbXJDFvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Oct 2007 01:51:09 -0400
+In-Reply-To: <1191477059-5357-23-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Convert s_r_blocks_count and s_free_blocks_count to
-s_r_blocks_count_lo and s_free_blocks_count_lo
-
+Convert ext4_extent_idx.ei_leaf  ext4_extent_idx.ei_leaf_lo
 This helps in finding BUGs due to direct partial access of
-these split 64 bit values
-
-Also fix direct partial access in ext4 code
+these split 48 bit values.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/super.c         |    2 +-
- include/linux/ext4_fs.h |   12 ++++++------
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ fs/ext4/extents.c               |    4 ++--
+ include/linux/ext4_fs_extents.h |    2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dc7fe4c..dbd114c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2635,7 +2635,7 @@ static int ext4_statfs (struct dentry * dentry, struct kstatfs * buf)
- 	buf->f_bsize = sb->s_blocksize;
- 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
- 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
--	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
-+	ext4_free_blocks_count_set(es, buf->f_bfree);
- 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
- 	if (buf->f_bfree < ext4_r_blocks_count(es))
- 		buf->f_bavail = 0;
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 339412d..fb31c1a 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -502,8 +502,8 @@ do {									       \
- struct ext4_super_block {
- /*00*/	__le32	s_inodes_count;		/* Inodes count */
- 	__le32	s_blocks_count_lo;	/* Blocks count */
--	__le32	s_r_blocks_count;	/* Reserved blocks count */
--	__le32	s_free_blocks_count;	/* Free blocks count */
-+	__le32	s_r_blocks_count_lo;	/* Reserved blocks count */
-+	__le32	s_free_blocks_count_lo;	/* Free blocks count */
- /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
- 	__le32	s_first_data_block;	/* First Data Block */
- 	__le32	s_log_block_size;	/* Block size */
-@@ -1007,13 +1007,13 @@ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
- static inline ext4_fsblk_t ext4_r_blocks_count(struct ext4_super_block *es)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c03056a..8528774 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -65,7 +65,7 @@ static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
  {
- 	return ((ext4_fsblk_t)le32_to_cpu(es->s_r_blocks_count_hi) << 32) |
--		le32_to_cpu(es->s_r_blocks_count);
-+		le32_to_cpu(es->s_r_blocks_count_lo);
+ 	ext4_fsblk_t block;
+ 
+-	block = le32_to_cpu(ix->ei_leaf);
++	block = le32_to_cpu(ix->ei_leaf_lo);
+ 	block |= ((ext4_fsblk_t) le16_to_cpu(ix->ei_leaf_hi) << 31) << 1;
+ 	return block;
+ }
+@@ -88,7 +88,7 @@ static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
+  */
+ static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
+ {
+-	ix->ei_leaf = cpu_to_le32((unsigned long) (pb & 0xffffffff));
++	ix->ei_leaf_lo = cpu_to_le32((unsigned long) (pb & 0xffffffff));
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
  }
  
- static inline ext4_fsblk_t ext4_free_blocks_count(struct ext4_super_block *es)
- {
- 	return ((ext4_fsblk_t)le32_to_cpu(es->s_free_blocks_count_hi) << 32) |
--		le32_to_cpu(es->s_free_blocks_count);
-+		le32_to_cpu(es->s_free_blocks_count_lo);
- }
- 
- static inline void ext4_blocks_count_set(struct ext4_super_block *es,
-@@ -1026,14 +1026,14 @@ static inline void ext4_blocks_count_set(struct ext4_super_block *es,
- static inline void ext4_free_blocks_count_set(struct ext4_super_block *es,
- 					      ext4_fsblk_t blk)
- {
--	es->s_free_blocks_count = cpu_to_le32((u32)blk);
-+	es->s_free_blocks_count_lo = cpu_to_le32((u32)blk);
- 	es->s_free_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
- static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
- 					   ext4_fsblk_t blk)
- {
--	es->s_r_blocks_count = cpu_to_le32((u32)blk);
-+	es->s_r_blocks_count_lo = cpu_to_le32((u32)blk);
- 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
+diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
+index cb2dfbb..d2045a2 100644
+--- a/include/linux/ext4_fs_extents.h
++++ b/include/linux/ext4_fs_extents.h
+@@ -83,7 +83,7 @@ struct ext4_extent {
+  */
+ struct ext4_extent_idx {
+ 	__le32	ei_block;	/* index covers logical blocks from 'block' */
+-	__le32	ei_leaf;	/* pointer to the physical block of the next *
++	__le32	ei_leaf_lo;	/* pointer to the physical block of the next *
+ 				 * level. leaf or next index could be there */
+ 	__le16	ei_leaf_hi;	/* high 16 bits of physical block */
+ 	__u16	ei_unused;
 -- 
 1.5.3.2.81.g17ed
