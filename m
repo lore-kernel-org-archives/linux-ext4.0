@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Convert ext4_extent.ee_start to ext4_extent.ee_start_lo
-Date: Thu,  4 Oct 2007 01:50:57 -0400
-Message-ID: <1191477059-5357-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: sparse fixes
+Date: Thu,  4 Oct 2007 01:50:59 -0400
+Message-ID: <1191477059-5357-25-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
@@ -24,84 +24,76 @@ References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-20-git-send-email-tytso@mit.edu>
  <1191477059-5357-21-git-send-email-tytso@mit.edu>
  <1191477059-5357-22-git-send-email-tytso@mit.edu>
+ <1191477059-5357-23-git-send-email-tytso@mit.edu>
+ <1191477059-5357-24-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44825 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44823 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753327AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753312AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 4 Oct 2007 01:51:10 -0400
-In-Reply-To: <1191477059-5357-22-git-send-email-tytso@mit.edu>
+In-Reply-To: <1191477059-5357-24-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Convert ext4_extent.ee_start to ext4_extent.ee_start_lo
-This helps in finding BUGs due to direct partial access of
-these split 48 bit values
-
-Also fix direct partial access in ext4 code
-
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/extents.c               |    8 +++-----
- include/linux/ext4_fs_extents.h |    2 +-
- 2 files changed, 4 insertions(+), 6 deletions(-)
+ fs/ext4/fsync.c |    2 +-
+ fs/ext4/inode.c |    2 +-
+ fs/ext4/xattr.c |    4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2be404f..c03056a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -52,7 +52,7 @@ static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
- {
- 	ext4_fsblk_t block;
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 2a167d7..8d50879 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -47,7 +47,7 @@ int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 	struct inode *inode = dentry->d_inode;
+ 	int ret = 0;
  
--	block = le32_to_cpu(ex->ee_start);
-+	block = le32_to_cpu(ex->ee_start_lo);
- 	block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
- 	return block;
- }
-@@ -77,7 +77,7 @@ static ext4_fsblk_t idx_pblock(struct ext4_extent_idx *ix)
-  */
- static void ext4_ext_store_pblock(struct ext4_extent *ex, ext4_fsblk_t pb)
- {
--	ex->ee_start = cpu_to_le32((unsigned long) (pb & 0xffffffff));
-+	ex->ee_start_lo = cpu_to_le32((unsigned long) (pb & 0xffffffff));
- 	ex->ee_start_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
- }
+-	J_ASSERT(ext4_journal_current_handle() == 0);
++	J_ASSERT(ext4_journal_current_handle() == NULL);
  
-@@ -1409,8 +1409,7 @@ has_space:
- 	eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)+1);
- 	nearex = path[depth].p_ext;
- 	nearex->ee_block = newext->ee_block;
--	nearex->ee_start = newext->ee_start;
--	nearex->ee_start_hi = newext->ee_start_hi;
-+	ext4_ext_store_pblock(nearex, ext_pblock(newext));
- 	nearex->ee_len = newext->ee_len;
+ 	/*
+ 	 * data=writeback:
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a2e1ea4..07afd4a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1027,7 +1027,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 		}
+ 		if (buffer_new(&dummy)) {
+ 			J_ASSERT(create != 0);
+-			J_ASSERT(handle != 0);
++			J_ASSERT(handle != NULL);
  
- merge:
-@@ -2177,7 +2176,6 @@ int ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
- 	}
- 	/* ex2: iblock to iblock + maxblocks-1 : initialised */
- 	ex2->ee_block = cpu_to_le32(iblock);
--	ex2->ee_start = cpu_to_le32(newblock);
- 	ext4_ext_store_pblock(ex2, newblock);
- 	ex2->ee_len = cpu_to_le16(allocated);
- 	if (ex2 != ex)
-diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
-index 81406f3..cb2dfbb 100644
---- a/include/linux/ext4_fs_extents.h
-+++ b/include/linux/ext4_fs_extents.h
-@@ -74,7 +74,7 @@ struct ext4_extent {
- 	__le32	ee_block;	/* first logical block extent covers */
- 	__le16	ee_len;		/* number of blocks covered by extent */
- 	__le16	ee_start_hi;	/* high 16 bits of physical block */
--	__le32	ee_start;	/* low 32 bits of physical block */
-+	__le32	ee_start_lo;	/* low 32 bits of physical block */
- };
+ 			/*
+ 			 * Now that we do not always journal data, we should
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 12c7d65..8638730 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1120,7 +1120,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 	int total_ino, total_blk;
+ 	void *base, *start, *end;
+ 	int extra_isize = 0, error = 0, tried_min_extra_isize = 0;
+-	int s_min_extra_isize = EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize;
++	int s_min_extra_isize = le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
  
- /*
+ 	down_write(&EXT4_I(inode)->xattr_sem);
+ retry:
+@@ -1292,7 +1292,7 @@ retry:
+ 
+ 		i.name = b_entry_name;
+ 		i.value = buffer;
+-		i.value_len = cpu_to_le32(size);
++		i.value_len = size;
+ 		error = ext4_xattr_block_find(inode, &i, bs);
+ 		if (error)
+ 			goto cleanup;
 -- 
 1.5.3.2.81.g17ed
