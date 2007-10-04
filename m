@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] Once ext4 will not implement fragment, it is believed it will never be
-Date: Thu,  4 Oct 2007 01:50:42 -0400
-Message-ID: <1191477059-5357-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: remove #ifdef CONFIG_EXT4_INDEX
+Date: Thu,  4 Oct 2007 01:50:43 -0400
+Message-ID: <1191477059-5357-9-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
@@ -9,249 +9,255 @@ References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-5-git-send-email-tytso@mit.edu>
  <1191477059-5357-6-git-send-email-tytso@mit.edu>
  <1191477059-5357-7-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Coly Li <coyli@suse.de>,
+ <1191477059-5357-8-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Andrew Morton <akpm@linux-foundation.org>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44851 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44844 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753408AbXJDFvL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753345AbXJDFvL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 4 Oct 2007 01:51:11 -0400
-In-Reply-To: <1191477059-5357-7-git-send-email-tytso@mit.edu>
+In-Reply-To: <1191477059-5357-8-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Coly Li <coyli@suse.de>
+From: Eric Sandeen <sandeen@redhat.com>
 
-implement in future.  Therefore fragment related source code in ext4 should
-be obsoleted -- no one will use it.
+CONFIG_EXT4_INDEX is not an exposed config option in the kernel, and it is
+unconditionally defined in ext4_fs.h.  tune2fs is already able to turn off
+dir indexing, so at this point it's just cluttering up the code.  Remove
+it.
 
-This patch obsolete fragment from ext4.  Another patch posted on linux-ext4
-removing fragment supporting from e2fsprogs.
-
-Signed-off-by: Coly Li <coyli@suse.de>
-Acked-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- fs/ext4/ialloc.c           |    5 -----
- fs/ext4/inode.c            |   10 ----------
- fs/ext4/super.c            |   15 ---------------
- include/linux/ext4_fs.h    |   35 ++++++-----------------------------
- include/linux/ext4_fs_i.h  |    5 -----
- include/linux/ext4_fs_sb.h |    3 ---
- 6 files changed, 6 insertions(+), 67 deletions(-)
+ fs/ext4/dir.c           |    7 -------
+ fs/ext4/namei.c         |   20 --------------------
+ include/linux/ext4_fs.h |   14 ++------------
+ 3 files changed, 2 insertions(+), 39 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 427f830..b8b538d 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -576,11 +576,6 @@ got:
- 	/* dirsync only applies to directories */
- 	if (!S_ISDIR(mode))
- 		ei->i_flags &= ~EXT4_DIRSYNC_FL;
--#ifdef EXT4_FRAGMENTS
--	ei->i_faddr = 0;
--	ei->i_frag_no = 0;
--	ei->i_frag_size = 0;
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 3ab01c0..2ba49ff 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -47,9 +47,7 @@ const struct file_operations ext4_dir_operations = {
+ 	.compat_ioctl	= ext4_compat_ioctl,
+ #endif
+ 	.fsync		= ext4_sync_file,	/* BKL held */
+-#ifdef CONFIG_EXT4_INDEX
+ 	.release	= ext4_release_dir,
 -#endif
- 	ei->i_file_acl = 0;
- 	ei->i_dir_acl = 0;
- 	ei->i_dtime = 0;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a4848e0..f283522 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2645,11 +2645,6 @@ void ext4_read_inode(struct inode * inode)
- 	}
- 	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
- 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
--#ifdef EXT4_FRAGMENTS
--	ei->i_faddr = le32_to_cpu(raw_inode->i_faddr);
--	ei->i_frag_no = raw_inode->i_frag;
--	ei->i_frag_size = raw_inode->i_fsize;
--#endif
- 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl);
- 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
- 	    cpu_to_le32(EXT4_OS_HURD))
-@@ -2794,11 +2789,6 @@ static int ext4_do_update_inode(handle_t *handle,
- 	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
--#ifdef EXT4_FRAGMENTS
--	raw_inode->i_faddr = cpu_to_le32(ei->i_faddr);
--	raw_inode->i_frag = ei->i_frag_no;
--	raw_inode->i_fsize = ei->i_frag_size;
--#endif
- 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
- 	    cpu_to_le32(EXT4_OS_HURD))
- 		raw_inode->i_file_acl_high =
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 42cbdb5..420d39d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1655,14 +1655,6 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 		if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE)
- 			sb->s_time_gran = 1 << (EXT4_EPOCH_BITS - 2);
- 	}
--	sbi->s_frag_size = EXT4_MIN_FRAG_SIZE <<
--				   le32_to_cpu(es->s_log_frag_size);
--	if (blocksize != sbi->s_frag_size) {
--		printk(KERN_ERR
--		       "EXT4-fs: fragsize %lu != blocksize %u (unsupported)\n",
--		       sbi->s_frag_size, blocksize);
--		goto failed_mount;
--	}
- 	sbi->s_desc_size = le16_to_cpu(es->s_desc_size);
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT)) {
- 		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
-@@ -1676,7 +1668,6 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 	} else
- 		sbi->s_desc_size = EXT4_MIN_DESC_SIZE;
- 	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
--	sbi->s_frags_per_group = le32_to_cpu(es->s_frags_per_group);
- 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
- 	if (EXT4_INODE_SIZE(sb) == 0)
- 		goto cantfind_ext4;
-@@ -1700,12 +1691,6 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 			sbi->s_blocks_per_group);
- 		goto failed_mount;
- 	}
--	if (sbi->s_frags_per_group > blocksize * 8) {
--		printk (KERN_ERR
--			"EXT4-fs: #fragments per group too big: %lu\n",
--			sbi->s_frags_per_group);
--		goto failed_mount;
--	}
- 	if (sbi->s_inodes_per_group > blocksize * 8) {
- 		printk (KERN_ERR
- 			"EXT4-fs: #inodes per group too big: %lu\n",
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index cdee7aa..3baeb99 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -105,20 +105,6 @@
- #define EXT4_BLOCK_ALIGN(size, blkbits)		ALIGN((size), (1 << (blkbits)))
+ };
  
+ 
+@@ -107,7 +105,6 @@ static int ext4_readdir(struct file * filp,
+ 
+ 	sb = inode->i_sb;
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+ 				    EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+ 	    ((EXT4_I(inode)->i_flags & EXT4_INDEX_FL) ||
+@@ -123,7 +120,6 @@ static int ext4_readdir(struct file * filp,
+ 		 */
+ 		EXT4_I(filp->f_path.dentry->d_inode)->i_flags &= ~EXT4_INDEX_FL;
+ 	}
+-#endif
+ 	stored = 0;
+ 	offset = filp->f_pos & (sb->s_blocksize - 1);
+ 
+@@ -232,7 +228,6 @@ out:
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
  /*
-- * Macro-instructions used to manage fragments
-- */
--#define EXT4_MIN_FRAG_SIZE		1024
--#define	EXT4_MAX_FRAG_SIZE		4096
--#define EXT4_MIN_FRAG_LOG_SIZE		  10
--#ifdef __KERNEL__
--# define EXT4_FRAG_SIZE(s)		(EXT4_SB(s)->s_frag_size)
--# define EXT4_FRAGS_PER_BLOCK(s)	(EXT4_SB(s)->s_frags_per_block)
--#else
--# define EXT4_FRAG_SIZE(s)		(EXT4_MIN_FRAG_SIZE << (s)->s_log_frag_size)
--# define EXT4_FRAGS_PER_BLOCK(s)	(EXT4_BLOCK_SIZE(s) / EXT4_FRAG_SIZE(s))
+  * These functions convert from the major/minor hash to an f_pos
+  * value.
+@@ -518,5 +513,3 @@ static int ext4_release_dir (struct inode * inode, struct file * filp)
+ 
+ 	return 0;
+ }
+-
+-#endif
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5fdb862..94ee6f3 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -144,7 +144,6 @@ struct dx_map_entry
+ 	u16 size;
+ };
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ static inline unsigned dx_get_block (struct dx_entry *entry);
+ static void dx_set_block (struct dx_entry *entry, unsigned value);
+ static inline unsigned dx_get_hash (struct dx_entry *entry);
+@@ -766,8 +765,6 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, u32 block)
+ 	dx_set_block(new, block);
+ 	dx_set_count(entries, count + 1);
+ }
 -#endif
 -
--/*
-  * Structure of a blocks group descriptor
-  */
- struct ext4_group_desc
-@@ -311,27 +297,24 @@ struct ext4_inode {
- 	__le32	i_generation;	/* File version (for NFS) */
- 	__le32	i_file_acl;	/* File ACL */
- 	__le32	i_dir_acl;	/* Directory ACL */
--	__le32	i_faddr;	/* Fragment address */
-+	__le32	i_obso_faddr;	/* Obsoleted fragment address */
- 	union {
- 		struct {
--			__u8	l_i_frag;	/* Fragment number */
--			__u8	l_i_fsize;	/* Fragment size */
-+			__le16	l_i_reserved1;	/* Obsoleted fragment number/size which are removed in ext4 */
- 			__le16	l_i_file_acl_high;
- 			__le16	l_i_uid_high;	/* these 2 fields */
- 			__le16	l_i_gid_high;	/* were reserved2[0] */
- 			__u32	l_i_reserved2;
- 		} linux2;
- 		struct {
--			__u8	h_i_frag;	/* Fragment number */
--			__u8	h_i_fsize;	/* Fragment size */
-+			__le16	h_i_reserved1;	/* Obsoleted fragment number/size which are removed in ext4 */
- 			__u16	h_i_mode_high;
- 			__u16	h_i_uid_high;
- 			__u16	h_i_gid_high;
- 			__u32	h_i_author;
- 		} hurd2;
- 		struct {
--			__u8	m_i_frag;	/* Fragment number */
--			__u8	m_i_fsize;	/* Fragment size */
-+			__le16	h_i_reserved1;	/* Obsoleted fragment number/size which are removed in ext4 */
- 			__le16	m_i_file_acl_high;
- 			__u32	m_i_reserved2[2];
- 		} masix2;
-@@ -419,8 +402,6 @@ do {									       \
  
- #if defined(__KERNEL__) || defined(__linux__)
- #define i_reserved1	osd1.linux1.l_i_reserved1
--#define i_frag		osd2.linux2.l_i_frag
--#define i_fsize		osd2.linux2.l_i_fsize
- #define i_file_acl_high	osd2.linux2.l_i_file_acl_high
- #define i_uid_low	i_uid
- #define i_gid_low	i_gid
-@@ -431,8 +412,6 @@ do {									       \
- #elif defined(__GNU__)
- 
- #define i_translator	osd1.hurd1.h_i_translator
--#define i_frag		osd2.hurd2.h_i_frag;
--#define i_fsize		osd2.hurd2.h_i_fsize;
- #define i_uid_high	osd2.hurd2.h_i_uid_high
- #define i_gid_high	osd2.hurd2.h_i_gid_high
- #define i_author	osd2.hurd2.h_i_author
-@@ -440,8 +419,6 @@ do {									       \
- #elif defined(__masix__)
- 
- #define i_reserved1	osd1.masix1.m_i_reserved1
--#define i_frag		osd2.masix2.m_i_frag
--#define i_fsize		osd2.masix2.m_i_fsize
- #define i_file_acl_high	osd2.masix2.m_i_file_acl_high
- #define i_reserved2	osd2.masix2.m_i_reserved2
- 
-@@ -528,9 +505,9 @@ struct ext4_super_block {
- /*10*/	__le32	s_free_inodes_count;	/* Free inodes count */
- 	__le32	s_first_data_block;	/* First Data Block */
- 	__le32	s_log_block_size;	/* Block size */
--	__le32	s_log_frag_size;	/* Fragment size */
-+	__le32	s_obso_log_frag_size;	/* Obsoleted fragment size */
- /*20*/	__le32	s_blocks_per_group;	/* # Blocks per group */
--	__le32	s_frags_per_group;	/* # Fragments per group */
-+	__le32	s_obso_frags_per_group;	/* Obsoleted fragments per group */
- 	__le32	s_inodes_per_group;	/* # Inodes per group */
- 	__le32	s_mtime;		/* Mount time */
- /*30*/	__le32	s_wtime;		/* Write time */
-diff --git a/include/linux/ext4_fs_i.h b/include/linux/ext4_fs_i.h
-index 1a511e9..86ddfe2 100644
---- a/include/linux/ext4_fs_i.h
-+++ b/include/linux/ext4_fs_i.h
-@@ -78,11 +78,6 @@ struct ext4_ext_cache {
- struct ext4_inode_info {
- 	__le32	i_data[15];	/* unconverted */
- 	__u32	i_flags;
--#ifdef EXT4_FRAGMENTS
--	__u32	i_faddr;
--	__u8	i_frag_no;
--	__u8	i_frag_size;
+ static void ext4_update_dx_flag(struct inode *inode)
+ {
+@@ -869,7 +866,6 @@ static struct buffer_head * ext4_find_entry (struct dentry *dentry,
+ 	name = dentry->d_name.name;
+ 	if (namelen > EXT4_NAME_LEN)
+ 		return NULL;
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (is_dx(dir)) {
+ 		bh = ext4_dx_find_entry(dentry, res_dir, &err);
+ 		/*
+@@ -881,7 +877,6 @@ static struct buffer_head * ext4_find_entry (struct dentry *dentry,
+ 			return bh;
+ 		dxtrace(printk("ext4_find_entry: dx failed, falling back\n"));
+ 	}
 -#endif
- 	ext4_fsblk_t	i_file_acl;
- 	__u32	i_dir_acl;
- 	__u32	i_dtime;
-diff --git a/include/linux/ext4_fs_sb.h b/include/linux/ext4_fs_sb.h
-index 1b2ffee..a978fba 100644
---- a/include/linux/ext4_fs_sb.h
-+++ b/include/linux/ext4_fs_sb.h
-@@ -28,11 +28,8 @@
-  * third extended-fs super-block data in memory
+ 	nblocks = dir->i_size >> EXT4_BLOCK_SIZE_BITS(sb);
+ 	start = EXT4_I(dir)->i_dir_start_lookup;
+ 	if (start >= nblocks)
+@@ -957,7 +952,6 @@ cleanup_and_exit:
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
+ 		       struct ext4_dir_entry_2 **res_dir, int *err)
+ {
+@@ -1025,7 +1019,6 @@ errout:
+ 	dx_release (frames);
+ 	return NULL;
+ }
+-#endif
+ 
+ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
+ {
+@@ -1121,7 +1114,6 @@ static inline void ext4_set_de_type(struct super_block *sb,
+ 		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * Move count entries from end of map between two memory locations.
+  * Returns pointer to last entry moved.
+@@ -1266,8 +1258,6 @@ errout:
+ 	*error = err;
+ 	return NULL;
+ }
+-#endif
+-
+ 
+ /*
+  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
+@@ -1364,7 +1354,6 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * This converts a one block unindexed directory to a 3 block indexed
+  * directory, and adds the dentry to the indexed directory.
+@@ -1443,7 +1432,6 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+-#endif
+ 
+ /*
+  *	ext4_add_entry()
+@@ -1464,9 +1452,7 @@ static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
+ 	struct ext4_dir_entry_2 *de;
+ 	struct super_block * sb;
+ 	int	retval;
+-#ifdef CONFIG_EXT4_INDEX
+ 	int	dx_fallback=0;
+-#endif
+ 	unsigned blocksize;
+ 	u32 block, blocks;
+ 
+@@ -1474,7 +1460,6 @@ static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
+-#ifdef CONFIG_EXT4_INDEX
+ 	if (is_dx(dir)) {
+ 		retval = ext4_dx_add_entry(handle, dentry, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+@@ -1483,7 +1468,6 @@ static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
+ 		dx_fallback++;
+ 		ext4_mark_inode_dirty(handle, dir);
+ 	}
+-#endif
+ 	blocks = dir->i_size >> sb->s_blocksize_bits;
+ 	for (block = 0, offset = 0; block < blocks; block++) {
+ 		bh = ext4_bread(handle, dir, block, 0, &retval);
+@@ -1493,11 +1477,9 @@ static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
+ 		if (retval != -ENOSPC)
+ 			return retval;
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ 		if (blocks == 1 && !dx_fallback &&
+ 		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
+ 			return make_indexed_dir(handle, dentry, inode, bh);
+-#endif
+ 		brelse(bh);
+ 	}
+ 	bh = ext4_append(handle, dir, &block, &retval);
+@@ -1509,7 +1491,6 @@ static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+ 
+-#ifdef CONFIG_EXT4_INDEX
+ /*
+  * Returns 0 for success, or a negative error value
   */
- struct ext4_sb_info {
--	unsigned long s_frag_size;	/* Size of a fragment in bytes */
- 	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
--	unsigned long s_frags_per_block;/* Number of fragments per block */
- 	unsigned long s_inodes_per_block;/* Number of inodes per block */
--	unsigned long s_frags_per_group;/* Number of fragments in a group */
- 	unsigned long s_blocks_per_group;/* Number of blocks in a group */
- 	unsigned long s_inodes_per_group;/* Number of inodes in a group */
- 	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+@@ -1644,7 +1625,6 @@ cleanup:
+ 	dx_release(frames);
+ 	return err;
+ }
+-#endif
+ 
+ /*
+  * ext4_delete_entry deletes a directory entry by merging it with the
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 3baeb99..151738a 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -36,10 +36,6 @@
+ /*max window size: 1024(direct blocks) + 3([t,d]indirect blocks) */
+ #define EXT4_MAX_RESERVE_BLOCKS		1027
+ #define EXT4_RESERVE_WINDOW_NOT_ALLOCATED 0
+-/*
+- * Always enable hashed directories
+- */
+-#define CONFIG_EXT4_INDEX
+ 
+ /*
+  * Debug code
+@@ -766,17 +762,11 @@ struct ext4_dir_entry_2 {
+  * (c) Daniel Phillips, 2001
+  */
+ 
+-#ifdef CONFIG_EXT4_INDEX
+-  #define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, \
+-					      EXT4_FEATURE_COMPAT_DIR_INDEX) && \
++#define is_dx(dir) (EXT4_HAS_COMPAT_FEATURE(dir->i_sb, \
++				      EXT4_FEATURE_COMPAT_DIR_INDEX) && \
+ 		      (EXT4_I(dir)->i_flags & EXT4_INDEX_FL))
+ #define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
+ #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+-#else
+-  #define is_dx(dir) 0
+-#define EXT4_DIR_LINK_MAX(dir) ((dir)->i_nlink >= EXT4_LINK_MAX)
+-#define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2)
+-#endif
+ 
+ /* Legal values for the dx_root hash_version field: */
+ 
 -- 
 1.5.3.2.81.g17ed
