@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] Support large blocksize up to PAGESIZE (max 64KB) for ext2
-Date: Thu,  4 Oct 2007 01:50:49 -0400
-Message-ID: <1191477059-5357-15-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext2: Avoid rec_len overflow with 64KB block size
+Date: Thu,  4 Oct 2007 01:50:51 -0400
+Message-ID: <1191477059-5357-17-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
@@ -16,73 +16,173 @@ References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-12-git-send-email-tytso@mit.edu>
  <1191477059-5357-13-git-send-email-tytso@mit.edu>
  <1191477059-5357-14-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Takashi Sato <sho@tnes.nec.co.jp>,
+ <1191477059-5357-15-git-send-email-tytso@mit.edu>
+ <1191477059-5357-16-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
 	Mingming Cao <cmm@us.ibm.com>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44842 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44837 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752807AbXJDFvL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752029AbXJDFvL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 4 Oct 2007 01:51:11 -0400
-In-Reply-To: <1191477059-5357-14-git-send-email-tytso@mit.edu>
+In-Reply-To: <1191477059-5357-16-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Takashi Sato <sho@tnes.nec.co.jp>
+From: Jan Kara <jack@suse.cz>
 
-This patch set supports large block size(>4k, <=64k) in ext2,
-just enlarging the block size limit. But it is NOT possible to have 64kB
-blocksize on ext2 without some changes to the directory handling
-code.  The reason is that an empty 64kB directory block would have a
-rec_len == (__u16)2^16 == 0, and this would cause an error to be hit in
-the filesystem.  The proposed solution is treat 64k rec_len
-with a an impossible value like rec_len = 0xffff to handle this.
+With 64KB blocksize, a directory entry can have size 64KB which does not fit
+into 16 bits we have for entry lenght. So we store 0xffff instead and convert
+value when read from / written to disk.
 
-The Patch-set consists of the following 2 patches.
-  [1/2]  ext2: enlarge blocksize
-         - Allow blocksize up to pagesize
-
-  [2/2]  ext2: fix rec_len overflow
-         - prevent rec_len from overflow with 64KB blocksize
-
-Now on 64k page ppc64 box runs with this patch set we could create a 64k
-block size ext2, and able to handle empty directory block.
-
-Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext2/super.c         |    3 ++-
- include/linux/ext2_fs.h |    4 ++--
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ fs/ext2/dir.c           |   43 +++++++++++++++++++++++++++++++------------
+ include/linux/ext2_fs.h |    1 +
+ 2 files changed, 32 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 639a32c..765c805 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -775,7 +775,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		brelse(bh);
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 2bf49d7..1329bdb 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -26,6 +26,24 @@
  
- 		if (!sb_set_blocksize(sb, blocksize)) {
--			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
-+			printk(KERN_ERR "EXT2-fs: bad blocksize %d.\n",
-+				blocksize);
- 			goto failed_sbi;
+ typedef struct ext2_dir_entry_2 ext2_dirent;
+ 
++static inline unsigned ext2_rec_len_from_disk(__le16 dlen)
++{
++	unsigned len = le16_to_cpu(dlen);
++
++	if (len == EXT2_MAX_REC_LEN)
++		return 1 << 16;
++	return len;
++}
++
++static inline __le16 ext2_rec_len_to_disk(unsigned len)
++{
++	if (len == (1 << 16))
++		return cpu_to_le16(EXT2_MAX_REC_LEN);
++	else if (len > (1 << 16))
++		BUG();
++	return cpu_to_le16(len);
++}
++
+ /*
+  * ext2 uses block-sized chunks. Arguably, sector-sized ones would be
+  * more robust, but we have what we have
+@@ -95,7 +113,7 @@ static void ext2_check_page(struct page *page)
+ 	}
+ 	for (offs = 0; offs <= limit - EXT2_DIR_REC_LEN(1); offs += rec_len) {
+ 		p = (ext2_dirent *)(kaddr + offs);
+-		rec_len = le16_to_cpu(p->rec_len);
++		rec_len = ext2_rec_len_from_disk(p->rec_len);
+ 
+ 		if (rec_len < EXT2_DIR_REC_LEN(1))
+ 			goto Eshort;
+@@ -193,7 +211,8 @@ static inline int ext2_match (int len, const char * const name,
+  */
+ static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
+ {
+-	return (ext2_dirent *)((char*)p + le16_to_cpu(p->rec_len));
++	return (ext2_dirent *)((char*)p +
++			ext2_rec_len_from_disk(p->rec_len));
+ }
+ 
+ static inline unsigned 
+@@ -305,7 +324,7 @@ ext2_readdir (struct file * filp, void * dirent, filldir_t filldir)
+ 					return 0;
+ 				}
+ 			}
+-			filp->f_pos += le16_to_cpu(de->rec_len);
++			filp->f_pos += ext2_rec_len_from_disk(de->rec_len);
  		}
+ 		ext2_put_page(page);
+ 	}
+@@ -413,7 +432,7 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+ 			struct page *page, struct inode *inode)
+ {
+ 	unsigned from = (char *) de - (char *) page_address(page);
+-	unsigned to = from + le16_to_cpu(de->rec_len);
++	unsigned to = from + ext2_rec_len_from_disk(de->rec_len);
+ 	int err;
  
+ 	lock_page(page);
+@@ -469,7 +488,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 				/* We hit i_size */
+ 				name_len = 0;
+ 				rec_len = chunk_size;
+-				de->rec_len = cpu_to_le16(chunk_size);
++				de->rec_len = ext2_rec_len_to_disk(chunk_size);
+ 				de->inode = 0;
+ 				goto got_it;
+ 			}
+@@ -483,7 +502,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 			if (ext2_match (namelen, name, de))
+ 				goto out_unlock;
+ 			name_len = EXT2_DIR_REC_LEN(de->name_len);
+-			rec_len = le16_to_cpu(de->rec_len);
++			rec_len = ext2_rec_len_from_disk(de->rec_len);
+ 			if (!de->inode && rec_len >= reclen)
+ 				goto got_it;
+ 			if (rec_len >= name_len + reclen)
+@@ -504,8 +523,8 @@ got_it:
+ 		goto out_unlock;
+ 	if (de->inode) {
+ 		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
+-		de1->rec_len = cpu_to_le16(rec_len - name_len);
+-		de->rec_len = cpu_to_le16(name_len);
++		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
++		de->rec_len = ext2_rec_len_to_disk(name_len);
+ 		de = de1;
+ 	}
+ 	de->name_len = namelen;
+@@ -536,7 +555,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
+ 	struct inode *inode = mapping->host;
+ 	char *kaddr = page_address(page);
+ 	unsigned from = ((char*)dir - kaddr) & ~(ext2_chunk_size(inode)-1);
+-	unsigned to = ((char*)dir - kaddr) + le16_to_cpu(dir->rec_len);
++	unsigned to = ((char*)dir - kaddr) + ext2_rec_len_from_disk(dir->rec_len);
+ 	ext2_dirent * pde = NULL;
+ 	ext2_dirent * de = (ext2_dirent *) (kaddr + from);
+ 	int err;
+@@ -557,7 +576,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
+ 	err = mapping->a_ops->prepare_write(NULL, page, from, to);
+ 	BUG_ON(err);
+ 	if (pde)
+-		pde->rec_len = cpu_to_le16(to-from);
++		pde->rec_len = ext2_rec_len_to_disk(to-from);
+ 	dir->inode = 0;
+ 	err = ext2_commit_chunk(page, from, to);
+ 	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
+@@ -591,14 +610,14 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
+ 	memset(kaddr, 0, chunk_size);
+ 	de = (struct ext2_dir_entry_2 *)kaddr;
+ 	de->name_len = 1;
+-	de->rec_len = cpu_to_le16(EXT2_DIR_REC_LEN(1));
++	de->rec_len = ext2_rec_len_to_disk(EXT2_DIR_REC_LEN(1));
+ 	memcpy (de->name, ".\0\0", 4);
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	ext2_set_de_type (de, inode);
+ 
+ 	de = (struct ext2_dir_entry_2 *)(kaddr + EXT2_DIR_REC_LEN(1));
+ 	de->name_len = 2;
+-	de->rec_len = cpu_to_le16(chunk_size - EXT2_DIR_REC_LEN(1));
++	de->rec_len = ext2_rec_len_to_disk(chunk_size - EXT2_DIR_REC_LEN(1));
+ 	de->inode = cpu_to_le32(parent->i_ino);
+ 	memcpy (de->name, "..\0", 4);
+ 	ext2_set_de_type (de, inode);
 diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
-index 153d755..910a705 100644
+index 910a705..41063d5 100644
 --- a/include/linux/ext2_fs.h
 +++ b/include/linux/ext2_fs.h
-@@ -86,8 +86,8 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
-  * Macro-instructions used to manage several block sizes
-  */
- #define EXT2_MIN_BLOCK_SIZE		1024
--#define	EXT2_MAX_BLOCK_SIZE		4096
--#define EXT2_MIN_BLOCK_LOG_SIZE		  10
-+#define EXT2_MAX_BLOCK_SIZE		65536
-+#define EXT2_MIN_BLOCK_LOG_SIZE		10
- #ifdef __KERNEL__
- # define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
- #else
+@@ -557,5 +557,6 @@ enum {
+ #define EXT2_DIR_ROUND 			(EXT2_DIR_PAD - 1)
+ #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
+ 					 ~EXT2_DIR_ROUND)
++#define EXT2_MAX_REC_LEN		((1<<16)-1)
+ 
+ #endif	/* _LINUX_EXT2_FS_H */
 -- 
 1.5.3.2.81.g17ed
