@@ -1,31 +1,158 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] jbd/jbd2: JBD memory allocation cleanups
-Date: Thu, 4 Oct 2007 07:52:04 +0100
-Message-ID: <20071004065204.GA21481@infradead.org>
-References: <1191477059-5357-1-git-send-email-tytso@mit.edu> <1191477059-5357-2-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Mingming Cao <cmm@us.ibm.com>,
-	Christoph Lameter <clameter@sgi.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:39167 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753265AbXJDGwJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Oct 2007 02:52:09 -0400
-Content-Disposition: inline
-In-Reply-To: <1191477059-5357-2-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-lighten-up-resize-transaction-requirements.patch added to -mm tree
+Date: Thu, 04 Oct 2007 12:24:12 -0700
+Message-ID: <200710041924.l94JOCPq024950@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: sandeen@redhat.com, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Oct 04, 2007 at 01:50:36AM -0400, Theodore Ts'o wrote:
-> From: Mingming Cao <cmm@us.ibm.com>
-> 
-> JBD: Replace slab allocations with page cache allocations
 
-It's page allocations, not page cache allocations.
+The patch titled
+     ext3: lighten up resize transaction requirements
+has been added to the -mm tree.  Its filename is
+     ext3-lighten-up-resize-transaction-requirements.patch
 
-> Also this patch cleans up jbd_kmalloc and replace it with kmalloc directly
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-That sounds like it should be a different patch..
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+------------------------------------------------------
+Subject: ext3: lighten up resize transaction requirements
+From: Eric Sandeen <sandeen@redhat.com>
+
+When resizing online, setup_new_group_blocks attempts to reserve a
+potentially very large transaction, depending on the current filesystem
+geometry.  For some journal sizes, there may not be enough room for this
+transaction, and the online resize will fail.
+
+The patch below resizes & restarts the transaction as necessary while
+setting up the new group, and should work with even the smallest journal.
+
+Tested with something like:
+
+[root@newbox ~]# dd if=/dev/zero of=fsfile bs=1024 count=32768
+[root@newbox ~]# mkfs.ext3 -b 1024 fsfile 16384
+[root@newbox ~]# mount -o loop fsfile mnt/
+[root@newbox ~]# resize2fs /dev/loop0
+resize2fs 1.40.2 (12-Jul-2007)
+Filesystem at /dev/loop0 is mounted on /root/mnt; on-line resizing required
+old desc_blocks = 1, new_desc_blocks = 1
+Performing an on-line resize of /dev/loop0 to 32768 (1k) blocks.
+resize2fs: No space left on device While trying to add group #2
+[root@newbox ~]# dmesg | tail -n 1
+JBD: resize2fs wants too many credits (258 > 256)
+[root@newbox ~]#
+
+With the below change, it works.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Acked-by: Andreas Dilger <adilger@clusterfs.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+
+diff -puN fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements fs/ext3/resize.c
+--- a/fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements
++++ a/fs/ext3/resize.c
+@@ -154,6 +154,32 @@ static void mark_bitmap_end(int start_bi
+ }
+ 
+ /*
++ * If we have fewer than thresh credits, extend by EXT3_MAX_TRANS_DATA.
++ * If that fails, restart the transaction & regain write access for the
++ * buffer head which is used for block_bitmap modifications.
++ */
++static int extend_or_restart_transaction(handle_t *handle, int thresh,
++					 struct buffer_head *bh)
++{
++	int err;
++
++	if (handle->h_buffer_credits >= thresh)
++		return 0;
++
++	err = ext3_journal_extend(handle, EXT3_MAX_TRANS_DATA);
++	if (err < 0)
++		return err;
++	if (err) {
++		if ((err = ext3_journal_restart(handle, EXT3_MAX_TRANS_DATA)))
++			return err;
++	        if ((err = ext3_journal_get_write_access(handle, bh)))
++			return err;
++        }
++
++	return 0;
++}
++
++/*
+  * Set up the block and inode bitmaps, and the inode table for the new group.
+  * This doesn't need to be part of the main transaction, since we are only
+  * changing blocks outside the actual filesystem.  We still do journaling to
+@@ -175,8 +201,9 @@ static int setup_new_group_blocks(struct
+ 	int i;
+ 	int err = 0, err2;
+ 
+-	handle = ext3_journal_start_sb(sb, reserved_gdb + gdblocks +
+-				       2 + sbi->s_itb_per_group);
++	/* This transaction may be extended/restarted along the way */
++	handle = ext3_journal_start_sb(sb, EXT3_MAX_TRANS_DATA);
++
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -203,6 +230,9 @@ static int setup_new_group_blocks(struct
+ 
+ 		ext3_debug("update backup group %#04lx (+%d)\n", block, bit);
+ 
++		if ((err = extend_or_restart_transaction(handle, 1, bh)))
++			goto exit_bh;
++
+ 		gdb = sb_getblk(sb, block);
+ 		if (!gdb) {
+ 			err = -EIO;
+@@ -228,6 +258,9 @@ static int setup_new_group_blocks(struct
+ 
+ 		ext3_debug("clear reserved block %#04lx (+%d)\n", block, bit);
+ 
++		if ((err = extend_or_restart_transaction(handle, 1, bh)))
++			goto exit_bh;
++
+ 		if (IS_ERR(gdb = bclean(handle, sb, block))) {
+ 			err = PTR_ERR(bh);
+ 			goto exit_bh;
+@@ -249,6 +282,10 @@ static int setup_new_group_blocks(struct
+ 		struct buffer_head *it;
+ 
+ 		ext3_debug("clear inode block %#04lx (+%d)\n", block, bit);
++
++		if ((err = extend_or_restart_transaction(handle, 1, bh)))
++			goto exit_bh;
++
+ 		if (IS_ERR(it = bclean(handle, sb, block))) {
+ 			err = PTR_ERR(it);
+ 			goto exit_bh;
+@@ -257,6 +294,10 @@ static int setup_new_group_blocks(struct
+ 		brelse(it);
+ 		ext3_set_bit(bit, bh->b_data);
+ 	}
++
++	if ((err = extend_or_restart_transaction(handle, 2, bh)))
++		goto exit_bh;
++
+ 	mark_bitmap_end(input->blocks_count, EXT3_BLOCKS_PER_GROUP(sb),
+ 			bh->b_data);
+ 	ext3_journal_dirty_metadata(handle, bh);
+_
+
+Patches currently in -mm which might be from sandeen@redhat.com are
+
+remove-unused-bh-in-calls-to-ext234_get_group_desc.patch
+limit-minixfs-printks-on-corrupted-dir-i_size.patch
+ext3-remove-ifdef-config_ext3_index.patch
+ext3-lighten-up-resize-transaction-requirements.patch
+ext4-remove-ifdef-config_ext4_index.patch
