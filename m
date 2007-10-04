@@ -1,84 +1,84 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] JBD2/Ext4: Convert kmalloc to kzalloc in jbd2/ext4
-Date: Thu,  4 Oct 2007 01:50:38 -0400
-Message-ID: <1191477059-5357-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Fix sparse warnings
+Date: Thu,  4 Oct 2007 01:50:45 -0400
+Message-ID: <1191477059-5357-11-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
+ <1191477059-5357-4-git-send-email-tytso@mit.edu>
+ <1191477059-5357-5-git-send-email-tytso@mit.edu>
+ <1191477059-5357-6-git-send-email-tytso@mit.edu>
+ <1191477059-5357-7-git-send-email-tytso@mit.edu>
+ <1191477059-5357-8-git-send-email-tytso@mit.edu>
+ <1191477059-5357-9-git-send-email-tytso@mit.edu>
+ <1191477059-5357-10-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44791 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44810 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752319AbXJDFvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Oct 2007 01:51:09 -0400
-In-Reply-To: <1191477059-5357-3-git-send-email-tytso@mit.edu>
+	id S1753139AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Oct 2007 01:51:10 -0400
+In-Reply-To: <1191477059-5357-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Mingming Cao <cmm@us.ibm.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Convert kmalloc to kzalloc() and get rid of the memset().
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- fs/ext4/xattr.c       |    3 +--
- fs/jbd2/journal.c     |    3 +--
- fs/jbd2/transaction.c |    3 +--
- 3 files changed, 3 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c         |    6 ++++--
+ include/linux/ext4_fs.h |   14 +++++++-------
+ 2 files changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index b10d68f..12c7d65 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -750,12 +750,11 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f283522..a2e1ea4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3167,12 +3167,14 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
+ 						      iloc, handle);
+ 			if (ret) {
+ 				EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
+-				if (mnt_count != sbi->s_es->s_mnt_count) {
++				if (mnt_count !=
++					le16_to_cpu(sbi->s_es->s_mnt_count)) {
+ 					ext4_warning(inode->i_sb, __FUNCTION__,
+ 					"Unable to expand inode %lu. Delete"
+ 					" some EAs or run e2fsck.",
+ 					inode->i_ino);
+-					mnt_count = sbi->s_es->s_mnt_count;
++					mnt_count =
++					  le16_to_cpu(sbi->s_es->s_mnt_count);
+ 				}
+ 			}
  		}
- 	} else {
- 		/* Allocate a buffer where we construct the new block. */
--		s->base = kmalloc(sb->s_blocksize, GFP_KERNEL);
-+		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
- 		/* assert(header == s->base) */
- 		error = -ENOMEM;
- 		if (s->base == NULL)
- 			goto cleanup;
--		memset(s->base, 0, sb->s_blocksize);
- 		header(s->base)->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
- 		header(s->base)->h_blocks = cpu_to_le32(1);
- 		header(s->base)->h_refcount = cpu_to_le32(1);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 0e329a3..f12c65b 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -654,10 +654,9 @@ static journal_t * journal_init_common (void)
- 	journal_t *journal;
- 	int err;
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index b77b59f..722d4ef 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -574,13 +574,13 @@ struct ext4_super_block {
+ /*150*/	__le32	s_blocks_count_hi;	/* Blocks count */
+ 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
+ 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
+-	__u16	s_min_extra_isize;	/* All inodes have at least # bytes */
+-	__u16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
+-	__u32	s_flags;		/* Miscellaneous flags */
+-	__u16   s_raid_stride;		/* RAID stride */
+-	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
+-	__u64   s_mmp_block;            /* Block for multi-mount protection */
+-	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
++	__le16	s_min_extra_isize;	/* All inodes have at least # bytes */
++	__le16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
++	__le32	s_flags;		/* Miscellaneous flags */
++	__le16  s_raid_stride;		/* RAID stride */
++	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
++	__le64  s_mmp_block;            /* Block for multi-mount protection */
++	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+ 	__u32   s_reserved[163];        /* Padding to the end of the block */
+ };
  
--	journal = kmalloc(sizeof(*journal), GFP_KERNEL);
-+	journal = kzalloc(sizeof(*journal), GFP_KERNEL|__GFP_NOFAIL);
- 	if (!journal)
- 		goto fail;
--	memset(journal, 0, sizeof(*journal));
- 
- 	init_waitqueue_head(&journal->j_wait_transaction_locked);
- 	init_waitqueue_head(&journal->j_wait_logspace);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a5fb70f..b1fcf2b 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -96,13 +96,12 @@ static int start_this_handle(journal_t *journal, handle_t *handle)
- 
- alloc_transaction:
- 	if (!journal->j_running_transaction) {
--		new_transaction = kmalloc(sizeof(*new_transaction),
-+		new_transaction = kzalloc(sizeof(*new_transaction),
- 						GFP_NOFS|__GFP_NOFAIL);
- 		if (!new_transaction) {
- 			ret = -ENOMEM;
- 			goto out;
- 		}
--		memset(new_transaction, 0, sizeof(*new_transaction));
- 	}
- 
- 	jbd_debug(3, "New handle %p going live.\n", handle);
 -- 
 1.5.3.2.81.g17ed
