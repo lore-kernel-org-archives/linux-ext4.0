@@ -1,86 +1,97 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Convert bg_block_bitmap to bg_block_bitmap_lo
-Date: Thu,  4 Oct 2007 01:50:53 -0400
-Message-ID: <1191477059-5357-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH] JBD2: debug code cleanup.
+Date: Thu,  4 Oct 2007 01:50:41 -0400
+Message-ID: <1191477059-5357-7-git-send-email-tytso@mit.edu>
 References: <1191477059-5357-1-git-send-email-tytso@mit.edu>
  <1191477059-5357-2-git-send-email-tytso@mit.edu>
  <1191477059-5357-3-git-send-email-tytso@mit.edu>
  <1191477059-5357-4-git-send-email-tytso@mit.edu>
  <1191477059-5357-5-git-send-email-tytso@mit.edu>
  <1191477059-5357-6-git-send-email-tytso@mit.edu>
- <1191477059-5357-7-git-send-email-tytso@mit.edu>
- <1191477059-5357-8-git-send-email-tytso@mit.edu>
- <1191477059-5357-9-git-send-email-tytso@mit.edu>
- <1191477059-5357-10-git-send-email-tytso@mit.edu>
- <1191477059-5357-11-git-send-email-tytso@mit.edu>
- <1191477059-5357-12-git-send-email-tytso@mit.edu>
- <1191477059-5357-13-git-send-email-tytso@mit.edu>
- <1191477059-5357-14-git-send-email-tytso@mit.edu>
- <1191477059-5357-15-git-send-email-tytso@mit.edu>
- <1191477059-5357-16-git-send-email-tytso@mit.edu>
- <1191477059-5357-17-git-send-email-tytso@mit.edu>
- <1191477059-5357-18-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44814 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44812 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753228AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753159AbXJDFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 4 Oct 2007 01:51:10 -0400
-In-Reply-To: <1191477059-5357-18-git-send-email-tytso@mit.edu>
+In-Reply-To: <1191477059-5357-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Jose R. Santos <jrs@us.ibm.com>
 
-Convert bg_block_bitmap to bg_block_bitmap_lo
-This helps in catching some BUGS due to direct
-partial access of these split fields.
+Mostly stolen from akpm's JBD cleanup patch.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+- use `#ifdef foo' instead of `#if defined(foo)'
+
+- Make journal_enable_debug __read_mostly just for the heck of it
+
+- Make jbd_debugfs_dir and jbd_debug static
+
+- debugfs_remove(NULL) is legal: remove unneeded tests
+
+- remove unnecessary empty loops
+
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- fs/ext4/super.c         |    6 +++---
- include/linux/ext4_fs.h |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/jbd2/journal.c |   20 ++++++--------------
+ 1 files changed, 6 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d8bb279..02a2418 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -70,9 +70,9 @@ static void ext4_write_super_lockfs(struct super_block *sb);
- ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
- 			       struct ext4_group_desc *bg)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index ff07bff..6ddc553 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1864,16 +1864,14 @@ void jbd2_journal_put_journal_head(struct journal_head *jh)
+ /*
+  * debugfs tunables
+  */
+-#if defined(CONFIG_JBD2_DEBUG)
+-u8 jbd2_journal_enable_debug;
++#ifdef CONFIG_JBD2_DEBUG
++u8 jbd2_journal_enable_debug __read_mostly;
+ EXPORT_SYMBOL(jbd2_journal_enable_debug);
+-#endif
+-
+-#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+ 
+ #define JBD2_DEBUG_NAME "jbd2-debug"
+ 
+-struct dentry *jbd2_debugfs_dir, *jbd2_debug;
++static struct dentry *jbd2_debugfs_dir;
++static struct dentry *jbd2_debug;
+ 
+ static void __init jbd2_create_debugfs_entry(void)
  {
--	return le32_to_cpu(bg->bg_block_bitmap) |
-+	return le32_to_cpu(bg->bg_block_bitmap_lo) |
- 		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
--		 (ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi) << 32 : 0);
-+		(ext4_fsblk_t)le32_to_cpu(bg->bg_block_bitmap_hi) << 32 : 0);
+@@ -1886,24 +1884,18 @@ static void __init jbd2_create_debugfs_entry(void)
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
+ {
+-	if (jbd2_debug)
+-		debugfs_remove(jbd2_debug);
+-	if (jbd2_debugfs_dir)
+-		debugfs_remove(jbd2_debugfs_dir);
++	debugfs_remove(jbd2_debug);
++	debugfs_remove(jbd2_debugfs_dir);
  }
  
- ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
-@@ -94,7 +94,7 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- void ext4_block_bitmap_set(struct super_block *sb,
- 			   struct ext4_group_desc *bg, ext4_fsblk_t blk)
+ #else
+ 
+ static void __init jbd2_create_debugfs_entry(void)
  {
--	bg->bg_block_bitmap = cpu_to_le32((u32)blk);
-+	bg->bg_block_bitmap_lo = cpu_to_le32((u32)blk);
- 	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
- 		bg->bg_block_bitmap_hi = cpu_to_le32(blk >> 32);
+-	do {
+-	} while (0);
  }
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index ab608e8..c26e30e 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -105,7 +105,7 @@
-  */
- struct ext4_group_desc
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
  {
--	__le32	bg_block_bitmap;	/* Blocks bitmap block */
-+	__le32	bg_block_bitmap_lo;	/* Blocks bitmap block */
- 	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
- 	__le32	bg_inode_table;		/* Inodes table block */
- 	__le16	bg_free_blocks_count;	/* Free blocks count */
+-	do {
+-	} while (0);
+ }
+ 
+ #endif
 -- 
 1.5.3.2.81.g17ed
