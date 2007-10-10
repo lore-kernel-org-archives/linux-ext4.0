@@ -1,53 +1,61 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [patch 1/2] add init_ext4_proc() stub for when CONFIG_PROC_FS is not set
-Date: Wed, 10 Oct 2007 15:00:35 -0400
-Message-ID: <20071010190035.GR31713@thunk.org>
-References: <20071009055033.145153755@au1.ibm.com> <20071009061101.666614585@au1.ibm.com> <1191947487.12131.33.camel@dyn9047017100.beaverton.ibm.com> <1191949386.3793.16.camel@localhost.localdomain> <20071009174012.GJ31713@thunk.org> <20071010002203.GL31713@thunk.org> <1192030210.12131.61.camel@dyn9047017100.beaverton.ibm.com>
+From: Jan Kara <jack@ucw.cz>
+Subject: Re: max file size for ext3
+Date: Thu, 11 Oct 2007 00:17:44 +0200
+Message-ID: <20071010221743.GA15035@atrey.karlin.mff.cuni.cz>
+References: <470C64BF.509@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, markn@au1.ibm.com,
-	ext4 <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Badari Pulavarty <pbadari@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43097 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754644AbXJJTAv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Oct 2007 15:00:51 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:36006 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753868AbXJJWRp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Oct 2007 18:17:45 -0400
 Content-Disposition: inline
-In-Reply-To: <1192030210.12131.61.camel@dyn9047017100.beaverton.ibm.com>
+In-Reply-To: <470C64BF.509@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 10, 2007 at 08:30:10AM -0700, Badari Pulavarty wrote:
-> Its a good start. I think there are lots of proc handling routines that
-> can be move into #ifdef CONFIG_PROC_FS also.
+  Hello,
+
+> I am looking at ext4_max_size and was confused how the
+> number upper_limit = 0x1ff7fffd000LL is arrived. 
+> The comment says the value is arrived looking at 4K.
+> So i tried the below program. 
 > 
-> All the code around ext4_mb_read_prealloc_table(),
-> ext4_mb_write_prealloc_table(), MB_PROC_VALUE_READ(stats),
-> MB_PROC_VALUE_WRITE(stats), .. can be ifdefed out.
+> main()
+> {
+> 	unsigned long long upper_limit, meta_blocks;
+> 	int bits = 12;
+> 
+> 	/* total blocks in 512 bytes */
+> 	upper_limit = (1LL << 32) - 1;
+> 	/* total blocks in file system block size */
+> 	upper_limit >>= (bits - 9);
+> 
+> 
+> 	meta_blocks = 1;
+> 	/* double indirect blocks */
+> 	meta_blocks += 1 + 1LL << (bits-2);
+> 	/* tripple indirect blocks */
+> 	meta_blocks += 1 + 1LL << (bits-2) + 1LL << (2*(bits-2));
+> 
+> 	upper_limit -= meta_blocks;
+> 	upper_limit <<= bits;
+> 
+> 	printf("%x\n", upper_limit);
+> }
+> 
+> Can somebody help me to find out what is missing in the above ?
+  You actually overestimate the number of triply indirect blocks in your
+program above (you count all possible but since the limit is around 2TB
+only roughly half of them is really needed).
 
-There's no need to ifdef them out; in include/proc_fs.h there are the
-following convenience #define's if CONFIG_PROC_FS is not defined:
+> I also think hardcoding 4k block size is not correct. I have the below
+> patch pending with large file size.
+  It is incorrect for blocksize larger than 4096, that's right. Your
+patch looks fine - we loose a bit of filesize limit but I don't think it
+really matters.
 
-#define remove_proc_entry(name, parent) do {} while (0)
-static inline struct proc_dir_entry *proc_symlink(const char *name,
-		struct proc_dir_entry *parent,const char *dest) {return NULL;}
-static inline struct proc_dir_entry *proc_mkdir(const char *name,
-	struct proc_dir_entry *parent) {return NULL;}
-
-static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
-	mode_t mode, struct proc_dir_entry *base, 
-	read_proc_t *read_proc, void * data) { return NULL; }
-static inline struct proc_dir_entry *create_proc_info_entry(const char *name,
-	mode_t mode, struct proc_dir_entry *base, get_info_t *get_info)
-	{ return NULL; }
-
-Adding the #ifdef's just makes the code look ugly, and for no purpose,
-since the compiler will take care of removing the code for us.
-
-Regards,
-
-      	  	   	     	     - Ted
+								Honza
