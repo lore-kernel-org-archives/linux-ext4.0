@@ -1,52 +1,59 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: uninit block group/mballoc and fsstress
-Date: Thu, 11 Oct 2007 01:45:04 -0600
-Message-ID: <20071011074504.GN8122@schatzie.adilger.int>
-References: <470CFFE3.7080101@linux.vnet.ibm.com> <20071011044641.GD8122@schatzie.adilger.int> <470DC928.7000609@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: ext4_inode difference between e2fsprogs and ext4
+Date: Thu, 11 Oct 2007 14:30:48 +0530
+Message-ID: <470DE640.3040101@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Avantika Mathur <mathur@linux.vnet.ibm.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	Mingming Cao <cmm@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:46558 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755483AbXJKHpH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 03:45:07 -0400
-Content-Disposition: inline
-In-Reply-To: <470DC928.7000609@linux.vnet.ibm.com>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:57970 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754588AbXJKJBk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 05:01:40 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9B91Pss013263
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 19:01:25 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9B94vhf244044
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 19:04:57 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9B916sA009441
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 19:01:07 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 11, 2007  12:26 +0530, Aneesh Kumar K.V wrote:
-> Andreas Dilger wrote:
-> >On Oct 10, 2007  22:07 +0530, Aneesh Kumar K.V wrote:
-> >>I am hitting this with  the below config
-> >>
-> >>mke2fs -j -I 256 -O lazy_bg $dev
-> >
-> >Note that "-O lazy_bg" has nothing really to do with the uninit_groups
-> >feature.  Also, if you don't have the CFS e2fsprogs patches for
-> >uninit_groups then mke2fs creates an invalid filesystem if the journal is
-> >large (this was an unrelated bug we fixed while testing uninit_groups).
-> >Try running e2fsck right after the above mke2fs and you will likely
-> >see errors.
-> >
-> 
-> e2fsprogs found at  
-> 
-> ftp://ftp.clusterfs.com/pub/lustre/other/e2fsprogs
-> 
-> sets unint with -O lazy_bg. Is there any other option that i can use to set
-> the uninit block group feature ?
+in e2fsprogs we have
 
-Yes, "-O uninit_groups".  Note that while "-O lazy_bg" does set the UNINIT
-flags on the groups (this is a COMPAT feature that marks all of the groups
-full in the group descriptors), it does NOT handle the inode high watermark
-or in-kernel initialization of the bitmaps.
+union { 
+                struct {
+                        __u16   l_i_blocks_hi;
+                        __u16   i_pad1;
+                        __u16   l_i_uid_high;   /* these 2 fields    */
+                        __u16   l_i_gid_high;   /* were reserved2[0] */
+                        __u32   l_i_reserved2;
+                } linux2;
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+
+
+In ext4 we have
+
+  union { 
+                struct {
+                        __le16  l_i_reserved1;  /* Obsoleted fragment number/size which are removed in ext4 */
+                        __le16  l_i_file_acl_high;
+                        __le16  l_i_uid_high;   /* these 2 fields */
+                        __le16  l_i_gid_high;   /* were reserved2[0] */
+                        __u32   l_i_reserved2;
+                } linux2;
+
+
+Last week we were discussing about taking that l_i_reserved1 and using that for making file_acl 64 bit and using the
+lower l_i_reserved2 for 64 bit dir_acl. 
+
+Now where will i put l_i_blocks_hi ?
+
+-aneesh
