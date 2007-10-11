@@ -1,144 +1,227 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 11/13][e2fsprogs] Fix test cases.
-Date: Thu, 11 Oct 2007 14:17:06 -0500
-Message-ID: <20071011191706.4599.4215.stgit@gara>
+Subject: [PATCH 13/13][e2fsprogs] Add m_uninit test case.
+Date: Thu, 11 Oct 2007 14:17:19 -0500
+Message-ID: <20071011191719.4599.72320.stgit@gara>
 References: <20071011191559.4599.69332.stgit@gara>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:46648 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755784AbXJKTQy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 15:16:54 -0400
+Received: from e36.co.us.ibm.com ([32.97.110.154]:34392 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754454AbXJKTRG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 15:17:06 -0400
 Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJGrXZ012578
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:53 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJGrHX456826
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJGrh5025217
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJH52m031707
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:17:05 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJH5JZ496504
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:17:05 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJH5Sj020208
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:17:05 -0600
 Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJGqfX025199
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJH5MK020196
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:17:05 -0600
 Received: from [127.0.1.1] (wecm-9-67-39-149.wecm.ibm.com [9.67.39.149])
-	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJGqaX037932
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:16:52 -0500
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJH4CY046170
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:17:04 -0500
 In-Reply-To: <20071011191559.4599.69332.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Fix test cases.
+Add m_uninit test case.
 
-Some of the tools outputs have changed, so this patch fixes what to expect
-from the outputs of the f_dupfsblks and m_raid_opt test cases.
+Add test case to test for uninit block groups.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- tests/f_dupfsblks/expect.1 |    3 ++-
- tests/m_raid_opt/expect.1  |   33 ++++++++++++++++++++++-----------
- 2 files changed, 24 insertions(+), 12 deletions(-)
+ tests/m_uninit/expect.1 |  166 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/m_uninit/script   |    4 +
+ 2 files changed, 170 insertions(+), 0 deletions(-)
 
-diff --git a/tests/f_dupfsblks/expect.1 b/tests/f_dupfsblks/expect.1
-index 661e164..32ce89b 100644
---- a/tests/f_dupfsblks/expect.1
-+++ b/tests/f_dupfsblks/expect.1
-@@ -44,7 +44,8 @@ Salvage? yes
- Directory inode 12, block 3, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (12) has deleted/unused inode 32.  Clear? yes
-+Entry '' in ??? (12) has a zero-length name.
-+Clear? yes
- 
- Directory inode 12, block 4, offset 100: directory corrupted
- Salvage? yes
-diff --git a/tests/m_raid_opt/expect.1 b/tests/m_raid_opt/expect.1
-index 44c5b46..f5abc37 100644
---- a/tests/m_raid_opt/expect.1
-+++ b/tests/m_raid_opt/expect.1
-@@ -46,57 +46,68 @@ Setting filetype for entry '..' in ??? (11) to 2.
- Directory inode 11, block 1, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1063.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 2, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1064.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 3, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1065.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 4, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1066.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 5, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1067.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 6, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1068.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 7, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1069.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 8, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1070.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 9, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1071.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 10, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1072.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 11, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1073.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Pass 3: Checking directory connectivity
- '..' in / (2) is <The NULL inode> (0), should be / (2).
+diff --git a/tests/m_uninit/expect.1 b/tests/m_uninit/expect.1
+new file mode 100644
+index 0000000..4167ff5
+--- /dev/null
++++ b/tests/m_uninit/expect.1
+@@ -0,0 +1,166 @@
++Filesystem label=
++OS type: Linux
++Block size=1024 (log=0)
++Fragment size=1024 (log=0)
++32768 inodes, 131072 blocks
++6553 blocks (5.00%) reserved for the super user
++First data block=1
++Maximum filesystem blocks=67371008
++16 block groups
++8192 blocks per group, 8192 fragments per group
++2048 inodes per group
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729
++
++Writing inode tables: done                            
++Writing superblocks and filesystem accounting information: done
++
++Filesystem features: resize_inode dir_index filetype sparse_super uninit_groups
++ 
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/32768 files (9.1% non-contiguous), 5691/131072 blocks
++Exit status is 0
++
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      resize_inode dir_index filetype sparse_super uninit_groups
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              32768
++Block count:              131072
++Reserved block count:     6553
++Free blocks:              125381
++Free inodes:              32757
++First block:              1
++Block size:               1024
++Fragment size:            1024
++Reserved GDT blocks:      256
++Blocks per group:         8192
++Fragments per group:      8192
++Inodes per group:         2048
++Inode blocks per group:   256
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              11
++Inode size:		  128
++Default directory hash:   tea
++
++
++Group 0: (Blocks 1-8192)
++  Primary superblock at 1, Group descriptors at 2-2
++  Reserved GDT blocks at 3-258
++  Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
++  Inode table at 261-516 (+260)
++  7662 free blocks, 2037 free inodes, 2 directories, 2037 unused inodes
++  Free blocks: 531-8192
++  Free inodes: 12-2048
++Group 1: (Blocks 8193-16384) [Inode not init]
++  Backup superblock at 8193, Group descriptors at 8194-8194
++  Reserved GDT blocks at 8195-8450
++  Block bitmap at 8451 (+258), Inode bitmap at 8452 (+259)
++  Inode table at 8453-8708 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 8709-16384
++  Free inodes: 
++Group 2: (Blocks 16385-24576) [Inode not init, Block not init]
++  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
++  Inode table at 16387-16642 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 3: (Blocks 24577-32768) [Inode not init]
++  Backup superblock at 24577, Group descriptors at 24578-24578
++  Reserved GDT blocks at 24579-24834
++  Block bitmap at 24835 (+258), Inode bitmap at 24836 (+259)
++  Inode table at 24837-25092 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 25093-32768
++  Free inodes: 
++Group 4: (Blocks 32769-40960) [Inode not init, Block not init]
++  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
++  Inode table at 32771-33026 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 5: (Blocks 40961-49152) [Inode not init]
++  Backup superblock at 40961, Group descriptors at 40962-40962
++  Reserved GDT blocks at 40963-41218
++  Block bitmap at 41219 (+258), Inode bitmap at 41220 (+259)
++  Inode table at 41221-41476 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 41477-49152
++  Free inodes: 
++Group 6: (Blocks 49153-57344) [Inode not init, Block not init]
++  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
++  Inode table at 49155-49410 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 7: (Blocks 57345-65536) [Inode not init]
++  Backup superblock at 57345, Group descriptors at 57346-57346
++  Reserved GDT blocks at 57347-57602
++  Block bitmap at 57603 (+258), Inode bitmap at 57604 (+259)
++  Inode table at 57605-57860 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 57861-65536
++  Free inodes: 
++Group 8: (Blocks 65537-73728) [Inode not init, Block not init]
++  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
++  Inode table at 65539-65794 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 9: (Blocks 73729-81920) [Inode not init]
++  Backup superblock at 73729, Group descriptors at 73730-73730
++  Reserved GDT blocks at 73731-73986
++  Block bitmap at 73987 (+258), Inode bitmap at 73988 (+259)
++  Inode table at 73989-74244 (+260)
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 74245-81920
++  Free inodes: 
++Group 10: (Blocks 81921-90112) [Inode not init, Block not init]
++  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
++  Inode table at 81923-82178 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 11: (Blocks 90113-98304) [Inode not init, Block not init]
++  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
++  Inode table at 90115-90370 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 12: (Blocks 98305-106496) [Inode not init, Block not init]
++  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
++  Inode table at 98307-98562 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 13: (Blocks 106497-114688) [Inode not init, Block not init]
++  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
++  Inode table at 106499-106754 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 14: (Blocks 114689-122880) [Inode not init, Block not init]
++  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
++  Inode table at 114691-114946 (+2)
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
++Group 15: (Blocks 122881-131071) [Inode not init, Block not init]
++  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
++  Inode table at 122883-123138 (+2)
++  7933 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
+diff --git a/tests/m_uninit/script b/tests/m_uninit/script
+new file mode 100644
+index 0000000..0de2699
+--- /dev/null
++++ b/tests/m_uninit/script
+@@ -0,0 +1,4 @@
++DESCRIPTION="uninitialized group feature"
++FS_SIZE=131072
++MKE2FS_OPTS="-O uninit_groups"
++. $cmd_dir/run_mke2fs
