@@ -1,139 +1,135 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 07/13][e2fsprogs] Make resize2fs uninit block group aware.
-Date: Thu, 11 Oct 2007 14:16:41 -0500
-Message-ID: <20071011191641.4599.51500.stgit@gara>
+Subject: [PATCH 04/13][e2fsprogs] Add support for creating filesystems using uninit block group.
+Date: Thu, 11 Oct 2007 14:16:23 -0500
+Message-ID: <20071011191623.4599.6644.stgit@gara>
 References: <20071011191559.4599.69332.stgit@gara>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:42425 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754662AbXJKTQa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 15:16:30 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJGTOR011421
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:29 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJGSSW490636
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:28 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJGSh6007265
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:28 -0600
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:39237 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755263AbXJKTQb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Oct 2007 15:16:31 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJGUCq024263
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:30 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJGUhq075164
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:30 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJGK3G019366
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:20 -0400
 Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJGSck007243
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:28 -0600
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJGKf4018788
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:20 -0400
 Received: from [127.0.1.1] (wecm-9-67-39-149.wecm.ibm.com [9.67.39.149])
-	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJGRH8040730
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:16:27 -0500
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJG93w040724
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:16:09 -0500
 In-Reply-To: <20071011191559.4599.69332.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Make resize2fs uninit block group aware.
+Add support for creating filesystems using uninit block group.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- resize/main.c      |    7 +++++++
- resize/resize2fs.c |   29 ++++++++++++++++++++++++-----
- 2 files changed, 31 insertions(+), 5 deletions(-)
+ misc/mke2fs.c |   44 ++++++++++++++++++++++++++++++++------------
+ 1 files changed, 32 insertions(+), 12 deletions(-)
 
-diff --git a/resize/main.c b/resize/main.c
-index 7db4ebc..7c1d0c1 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -298,6 +298,13 @@ int main (int argc, char ** argv)
- 		printf (_("Couldn't find valid filesystem superblock.\n"));
- 		exit (1);
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 4a6cace..8360c51 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -432,6 +432,8 @@ static void write_inode_tables(ext2_filsys fs)
+ 					num, blk, error_message(retval));
+ 				exit(1);
+ 			}
++			/* The kernel doesn't need to zero the itable blocks */
++			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
+ 		}
+ 		if (sync_kludge) {
+ 			if (sync_kludge == 1)
+@@ -447,34 +449,49 @@ static void write_inode_tables(ext2_filsys fs)
+ static void setup_lazy_bg(ext2_filsys fs)
+ {
+ 	dgrp_t i;
+-	int blks;
++	int blks, csum_flag;
+ 	struct ext2_super_block *sb = fs->super;
+ 	struct ext2_group_desc *bg = fs->group_desc;
+ 
+-	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
+-				    EXT2_FEATURE_COMPAT_LAZY_BG)) {
++	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	if (EXT2_HAS_COMPAT_FEATURE(fs->super, EXT2_FEATURE_COMPAT_LAZY_BG) ||
++	    csum_flag) {
+ 		for (i = 0; i < fs->group_desc_count; i++, bg++) {
+ 			if ((i == 0) ||
+-			    (i == fs->group_desc_count-1))
++			    (i == fs->group_desc_count - 1 && !csum_flag))
+ 				continue;
+ 			if (bg->bg_free_inodes_count ==
+ 			    sb->s_inodes_per_group) {
+-				bg->bg_free_inodes_count = 0;
+ 				bg->bg_flags |= EXT2_BG_INODE_UNINIT;
+-				sb->s_free_inodes_count -= 
+-					sb->s_inodes_per_group;
++				if (!csum_flag) {
++					bg->bg_free_inodes_count = 0;
++					sb->s_free_inodes_count -=
++						sb->s_inodes_per_group;
++				}
+ 			}
++
++			/* Skip groups with GDT backups because the resize
++			 * inode has blocks allocated in them, and the last
++			 * group because it needs block bitmap padding. */
++			if ((ext2fs_bg_has_super(fs, i) &&
++			     sb->s_reserved_gdt_blocks) ||
++			    i == fs->group_desc_count - 1)
++				continue;
++
+ 			blks = ext2fs_super_and_bgd_loc(fs, i, 0, 0, 0, 0);
+-			if (bg->bg_free_blocks_count == blks) {
+-				bg->bg_free_blocks_count = 0;
++			if (bg->bg_free_blocks_count == blks &&
++			    bg->bg_flags & EXT2_BG_INODE_UNINIT) {
+ 				bg->bg_flags |= EXT2_BG_BLOCK_UNINIT;
+-				sb->s_free_blocks_count -= blks;
++				if (!csum_flag) {
++					bg->bg_free_blocks_count = 0;
++					sb->s_free_blocks_count -= blks;
++				}
+ 			}
+ 		}
  	}
-+
-+	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
-+		com_err(program_name, EXT2_ET_RO_UNSUPP_FEATURE,
-+			":- uninit_groups");
-+		exit(1);
-+	}
-+
- 	/*
- 	 * Check for compatibility with the feature sets.  We need to
- 	 * be more stringent than ext2fs_open().
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 0d6a082..ce0111c 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -339,7 +339,9 @@ retry:
- 		numblocks = fs->super->s_blocks_per_group;
- 	i = old_fs->group_desc_count - 1;
- 	fs->group_desc[i].bg_free_blocks_count += (numblocks-old_numblocks);
--		
-+	fs->group_desc[i].bg_checksum =
-+		ext2fs_group_desc_csum(fs->super, i, &fs->group_desc[i]);
-+
- 	/*
- 	 * If the number of block groups is staying the same, we're
- 	 * done and can exit now.  (If the number block groups is
-@@ -415,6 +417,8 @@ retry:
- 		fs->group_desc[i].bg_free_inodes_count =
- 			fs->super->s_inodes_per_group;
- 		fs->group_desc[i].bg_used_dirs_count = 0;
-+		fs->group_desc[i].bg_checksum =
-+			ext2fs_group_desc_csum(fs->super, i,&fs->group_desc[i]);
+ }
  
- 		retval = ext2fs_allocate_group_table(fs, i, 0);
- 		if (retval) goto errout;
-@@ -1223,9 +1227,13 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
- 		if (retval) goto errout;
+-
+ static void create_root_dir(ext2_filsys fs)
+ {
+ 	errcode_t		retval;
+@@ -874,7 +891,8 @@ static __u32 ok_features[3] = {
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE|		/* Incompat */
+ 		EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|
+ 		EXT2_FEATURE_INCOMPAT_META_BG,
+-	EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	/* R/O compat */
++	EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|	/* R/O compat */
++		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
+ };
  
- 		group = (new_inode-1) / EXT2_INODES_PER_GROUP(rfs->new_fs->super);
--		if (LINUX_S_ISDIR(inode.i_mode))
-+		if (LINUX_S_ISDIR(inode.i_mode)) {
- 			rfs->new_fs->group_desc[group].bg_used_dirs_count++;
--		
-+			rfs->new_fs->group_desc[group].bg_checksum =
-+				ext2fs_group_desc_csum(rfs->new_fs->super,group,
-+					       &rfs->new_fs->group_desc[group]);
-+		}
-+
- #ifdef RESIZE2FS_DEBUG
- 		if (rfs->flags & RESIZE_DEBUG_INODEMAP)
- 			printf("Inode moved %u->%u\n", ino, new_inode);
-@@ -1478,6 +1486,9 @@ static errcode_t move_itables(ext2_resize_t rfs)
- 			ext2fs_unmark_block_bitmap(fs->block_map, blk);
  
- 		rfs->old_fs->group_desc[i].bg_inode_table = new_blk;
-+		rfs->old_fs->group_desc[i].bg_checksum =
-+			ext2fs_group_desc_csum(rfs->old_fs->super, i,
-+					       &rfs->old_fs->group_desc[i]);
- 		ext2fs_mark_super_dirty(rfs->old_fs);
- 		ext2fs_flush(rfs->old_fs);
+@@ -1750,6 +1768,8 @@ int main (int argc, char *argv[])
+ 	}
+ no_journal:
  
-@@ -1575,8 +1586,12 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
- 		count++;
- 		if ((count == fs->super->s_blocks_per_group) ||
- 		    (blk == fs->super->s_blocks_count-1)) {
--			fs->group_desc[group++].bg_free_blocks_count =
-+			fs->group_desc[group].bg_free_blocks_count =
- 				group_free;
-+			fs->group_desc[group].bg_checksum =
-+				ext2fs_group_desc_csum(fs->super, group,
-+						       &fs->group_desc[group]);
-+			group++;
- 			count = 0;
- 			group_free = 0;
- 		}
-@@ -1600,8 +1615,12 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
- 		count++;
- 		if ((count == fs->super->s_inodes_per_group) ||
- 		    (ino == fs->super->s_inodes_count)) {
--			fs->group_desc[group++].bg_free_inodes_count =
-+			fs->group_desc[group].bg_free_inodes_count =
- 				group_free;
-+			fs->group_desc[group].bg_checksum =
-+				ext2fs_group_desc_csum(fs->super, group,
-+						       &fs->group_desc[group]);
-+			group++;
- 			count = 0;
- 			group_free = 0;
- 		}
++	if (!super_only)
++		ext2fs_set_gdt_csum(fs);
+ 	if (!quiet)
+ 		printf(_("Writing superblocks and "
+ 		       "filesystem accounting information: "));
