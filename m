@@ -1,410 +1,513 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] Make ext3 use bit operations to manipulate i_flags
-Date: Thu, 11 Oct 2007 20:01:11 +0200
-Message-ID: <20071011180111.GG7125@duck.suse.cz>
-References: <20071011175618.GF7125@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH 01/13][e2fsprogs] Add initial checksum support.
+Date: Thu, 11 Oct 2007 14:16:05 -0500
+Message-ID: <20071011191605.4599.34407.stgit@gara>
+References: <20071011191559.4599.69332.stgit@gara>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:49271 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754403AbXJKRiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Oct 2007 13:38:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20071011175618.GF7125@duck.suse.cz>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:41994 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751632AbXJKTP4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 15:15:56 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJFqWT010832
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:15:52 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJFqif478860
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:15:52 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJFqwj015937
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:15:52 -0600
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJFpgW015916
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:15:51 -0600
+Received: from [127.0.1.1] (wecm-9-67-39-149.wecm.ibm.com [9.67.39.149])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJFolR040718
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:15:51 -0500
+In-Reply-To: <20071011191559.4599.69332.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+From: Jose R. Santos <jrs@us.ibm.com>
 
-  attached patch implements recursive mtime feature for ext3. Things like
-rsync or updatedb can be much faster with it... More detailed description
-is in the patch.
-  BTW: Hardlinks are currently unsolved - change is propagated to just the
-first parent. Currently it's upto userspace to handle this - if you have
-some idea how to make hardlinked files easier for userspace, please speak
-up :).
-  Any comments welcome.
+Add initial checksum support.
 
-								Honza
+- Add support for computing CRC-16 value.
+- Add call to check/verify/set csum on block_groups.
+- Add a test program to verify csum operations. 
 
---------
-Implement recursive mtime (rtime) feature for ext3. The feature works as
-follows: In each inode we keep a flag EXT3_RTIME_FL (modifiable by user)
-whether rtime should be updated. In case the inode is modified and when
-the flag is set, inode's rtime is updated, the flag is cleared, and we
-move to the parent. If the flag is set there, we clear it, update rtime
-and continue upwards upto the root of the filesystem. Because the flag
-is always cleared after updating rtime, we have constant amortized
-complexity of rtime updates.
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+--
 
-Intended use case is that application which wants to watch any modification
-in a subtree scans the subtree and sets flags for all inodes there. Next time,
-it just needs to recurse in directories having rtime newer than the start
-of the previous scan. There it can handle modifications and set the flag
-again.
+ lib/ext2fs/Makefile.in |   23 ++++++-
+ lib/ext2fs/crc16.c     |   60 +++++++++++++++++++
+ lib/ext2fs/crc16.h     |   29 +++++++++
+ lib/ext2fs/csum.c      |  149 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2fs.h    |    7 ++
+ lib/ext2fs/tst_csum.c  |  113 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 378 insertions(+), 3 deletions(-)
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/fs/ext3/ialloc.c linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/ialloc.c
---- linux-2.6.23-1-ext3_iflags_locking/fs/ext3/ialloc.c	2007-10-11 18:05:48.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/ialloc.c	2007-10-11 18:14:03.000000000 +0200
-@@ -580,6 +580,7 @@ got:
- 	ei->i_file_acl = 0;
- 	ei->i_dir_acl = 0;
- 	ei->i_dtime = 0;
-+	ei->i_rtime = inode->i_mtime.tv_sec;
- 	ei->i_block_alloc_info = NULL;
- 	ei->i_block_group = group;
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 03ce131..847fe23 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -66,7 +66,9 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	unix_io.o \
+ 	unlink.o \
+ 	valid_blk.o \
+-	version.o
++	version.o \
++	crc16.o \
++	csum.o
  
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/fs/ext3/inode.c linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/inode.c
---- linux-2.6.23-1-ext3_iflags_locking/fs/ext3/inode.c	2007-10-11 18:13:04.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/inode.c	2007-10-11 18:57:50.000000000 +0200
-@@ -1232,6 +1232,8 @@ static int ext3_ordered_commit_write(str
- 	ret2 = ext3_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
-+	if (!ret)
-+		ext3_update_rtimes(inode);
- 	return ret;
- }
+ SRCS= ext2_err.c \
+ 	$(srcdir)/alloc.c \
+@@ -132,7 +134,10 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/tst_bitops.c \
+ 	$(srcdir)/tst_byteswap.c \
+ 	$(srcdir)/tst_getsize.c \
+-	$(srcdir)/tst_iscan.c
++	$(srcdir)/tst_iscan.c \
++	$(srcdir)/tst_csum.c \
++	$(srcdir)/crc16.c \
++	$(srcdir)/csum.c
  
-@@ -1255,6 +1257,8 @@ static int ext3_writeback_commit_write(s
- 	ret2 = ext3_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
-+	if (!ret)
-+		ext3_update_rtimes(inode);
- 	return ret;
- }
+ HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
+ 	tdb.h
+@@ -239,17 +244,23 @@ ext2_tdbtool: tdbtool.o
+ 	@echo "	LD $@"
+ 	@$(CC) -o ext2_tdbtool tdbtool.o tdb.o
  
-@@ -1288,6 +1292,8 @@ static int ext3_journalled_commit_write(
- 	ret2 = ext3_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
-+	if (!ret)
-+		ext3_update_rtimes(inode);
- 	return ret;
- }
- 
-@@ -2386,6 +2392,10 @@ out_stop:
- 		ext3_orphan_del(handle, inode);
- 
- 	ext3_journal_stop(handle);
-+	/* We update time only for linked inodes. Unlinked ones already
-+	 * notified parent during unlink... */
-+	if (inode->i_nlink)
-+		ext3_update_rtimes(inode);
- }
- 
- static ext3_fsblk_t ext3_get_inode_block(struct super_block *sb,
-@@ -2628,6 +2638,8 @@ void ext3_read_inode(struct inode * inod
- 	inode->i_ctime.tv_sec = (signed)le32_to_cpu(raw_inode->i_ctime);
- 	inode->i_mtime.tv_sec = (signed)le32_to_cpu(raw_inode->i_mtime);
- 	inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
-+	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb, EXT3_FEATURE_COMPAT_RTIME))
-+		ei->i_rtime = le32_to_cpu(raw_inode->i_rtime);
- 
- 	ei->i_state = 0;
- 	ei->i_dir_start_lookup = 0;
-@@ -2785,6 +2797,8 @@ static int ext3_do_update_inode(handle_t
- 	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
- 	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
- 	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
-+	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb, EXT3_FEATURE_COMPAT_RTIME))
-+		raw_inode->i_rtime = cpu_to_le32(ei->i_rtime);
- 	raw_inode->i_blocks = cpu_to_le32(inode->i_blocks);
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
-@@ -3137,6 +3151,7 @@ void ext3_dirty_inode(struct inode *inod
- 	handle_t *current_handle = ext3_journal_current_handle();
- 	handle_t *handle;
- 
-+	/* Reserve 2 blocks for inode and superblock */
- 	handle = ext3_journal_start(inode, 2);
- 	if (IS_ERR(handle))
- 		goto out;
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/fs/ext3/ioctl.c linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/ioctl.c
---- linux-2.6.23-1-ext3_iflags_locking/fs/ext3/ioctl.c	2007-10-11 16:54:03.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/ioctl.c	2007-10-11 18:14:03.000000000 +0200
-@@ -23,10 +23,18 @@ int ext3_ioctl (struct inode * inode, st
- 	struct ext3_inode_info *ei = EXT3_I(inode);
- 	unsigned int flags;
- 	unsigned short rsv_window_size;
-+	unsigned int rtime;
- 
- 	ext3_debug ("cmd = %u, arg = %lu\n", cmd, arg);
- 
- 	switch (cmd) {
-+	case EXT3_IOC_GETRTIME:
-+		if (!test_opt(inode->i_sb, RTIME))
-+			return -ENOTSUPP;
-+		spin_lock(&inode->i_lock);
-+		rtime = ei->i_rtime;
-+		spin_unlock(&inode->i_lock);
-+		return put_user(rtime, (unsigned int __user *) arg);
- 	case EXT3_IOC_GETFLAGS:
- 		ext3_get_inode_flags(ei);
- 		flags = ei->i_flags & EXT3_FL_USER_VISIBLE;
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/fs/ext3/namei.c linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/namei.c
---- linux-2.6.23-1-ext3_iflags_locking/fs/ext3/namei.c	2007-10-11 18:09:11.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/namei.c	2007-10-11 18:57:09.000000000 +0200
-@@ -65,6 +65,55 @@ static struct buffer_head *ext3_append(h
- 	return bh;
- }
- 
-+/* We don't want to get new handle for every inode updated. Thus we batch
-+ * updates of this many inodes into one transaction */
-+#define RTIME_UPDATES_PER_TRANS 16
++tst_csum: tst_csum.o csum.o crc16.o $(STATIC_LIBEXT2FS)
++	@echo " LD $@"
++	@$(CC) -o tst_csum csum.o tst_csum.o crc16.o $(STATIC_LIBEXT2FS) \
++		$(LIBCOM_ERR)
 +
-+/* Walk up the directory tree and modify rtimes.
-+ * We journal i_rtime updates into a separate transaction - we don't guarantee
-+ * consistency between other inode times and rtime. Only consistency between
-+ * i_flags and i_rtime. */
-+int __ext3_update_rtimes(struct inode *inode)
+ mkjournal: mkjournal.c $(STATIC_LIBEXT2FS)
+ 	@echo "	LD $@"
+ 	@$(CC) -o mkjournal $(srcdir)/mkjournal.c -DDEBUG $(STATIC_LIBEXT2FS) $(LIBCOM_ERR) $(ALL_CFLAGS)
+ 
+-check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount tst_super_size
++check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount tst_super_size tst_types tst_csum
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_bitops
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_badblocks
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_iscan
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_types
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_icount
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_super_size
++	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_csum
+ 
+ installdirs::
+ 	@echo "	MKINSTALLDIRS $(libdir) $(includedir)/ext2fs"
+@@ -357,6 +368,10 @@ closefs.o: $(srcdir)/closefs.c $(srcdir)/ext2_fs.h \
+  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
+  $(top_srcdir)/lib/et/com_err.h $(srcdir)/ext2_io.h \
+  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++crc16.o: $(srcdir)/crc16.c $(srcdir)/ext2_fs.h $(srcdir)/crc16.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
++csum.o: $(srcdir)/csum.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
+ dblist.o: $(srcdir)/dblist.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fsP.h \
+  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
+@@ -571,3 +586,5 @@ tst_iscan.o: $(srcdir)/tst_iscan.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++tst_csum.o: $(srcdir)/tst_csum.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h
+diff --git a/lib/ext2fs/crc16.c b/lib/ext2fs/crc16.c
+new file mode 100644
+index 0000000..c3d07e1
+--- /dev/null
++++ b/lib/ext2fs/crc16.c
+@@ -0,0 +1,60 @@
++/*
++ *      crc16.c
++ *
++ * This source code is licensed under the GNU General Public License,
++ * Version 2. See the file COPYING for more details.
++ */
++
++#include <linux/types.h>
++#include "crc16.h"
++
++/** CRC table for the CRC-16. The poly is 0x8005 (x16 + x15 + x2 + 1) */
++uint16_t const crc16_table[256] = {
++	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
++	0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
++	0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
++	0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
++	0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
++	0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
++	0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
++	0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
++	0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
++	0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
++	0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
++	0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
++	0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
++	0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
++	0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
++	0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
++	0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
++	0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
++	0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
++	0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
++	0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
++	0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
++	0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
++	0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
++	0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
++	0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
++	0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
++	0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
++	0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
++	0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
++	0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
++	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
++};
++
++/**
++ * Compute the CRC-16 for the data buffer
++ *
++ * @param crc     previous CRC value
++ * @param buffer  data pointer
++ * @param len     number of bytes in the buffer
++ * @return        the updated CRC value
++ */
++uint16_t crc16(uint16_t crc, unsigned char const *buffer, size_t len)
 +{
-+	struct dentry *dentry = list_entry(inode->i_dentry.next, struct dentry,
-+					d_alias);
-+	handle_t *handle;
-+	int updates = 0;
-+	int err = 0;
++	while (len--)
++		crc = crc16_byte(crc, *buffer++);
++	return crc;
++}
+diff --git a/lib/ext2fs/crc16.h b/lib/ext2fs/crc16.h
+new file mode 100644
+index 0000000..7f6913e
+--- /dev/null
++++ b/lib/ext2fs/crc16.h
+@@ -0,0 +1,29 @@
++/*
++ *	crc16.h - CRC-16 routine
++ *
++ * Implements the standard CRC-16:
++ *   Width 16
++ *   Poly  0x8005 (x16 + x15 + x2 + 1)
++ *   Init  0
++ *
++ * Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>
++ *
++ * This source code is licensed under the GNU General Public License,
++ * Version 2. See the file COPYING for more details.
++ */
 +
-+	/* We should not have any transaction started - noone knows how many
-+	 * inode updates will be needed */
-+	WARN_ON(ext3_journal_current_handle() != NULL);
-+	while (test_bit(EXT3_RTIME_FL, &EXT3_I(inode)->i_flags)) {
-+		if (!updates) {
-+			/* For inode updates + superblock */
-+			handle = ext3_journal_start(inode, RTIME_UPDATES_PER_TRANS + 1);
-+			if (IS_ERR(handle))
-+				return PTR_ERR(handle);
-+			updates = RTIME_UPDATES_PER_TRANS;
-+		}
++#ifndef __CRC16_H
++#define __CRC16_H
 +
-+		spin_lock(&inode->i_lock);
-+		EXT3_I(inode)->i_rtime = get_seconds();
-+		spin_unlock(&inode->i_lock);
-+		clear_bit(EXT3_RTIME_FL, &EXT3_I(inode)->i_flags);
-+		ext3_mark_inode_dirty(handle, inode);
-+		if (!--updates) {
-+			err = ext3_journal_stop(handle);
-+			if (err)
-+				return err;
-+		}
-+		
-+		if (dentry == inode->i_sb->s_root)
-+			break;
-+		dentry = dentry->d_parent;
-+		inode = dentry->d_inode;
-+	}
-+	if (updates)
-+		err = ext3_journal_stop(handle);
-+	return err;
++#include <linux/types.h>
++
++extern uint16_t const crc16_table[256];
++
++extern uint16_t crc16(uint16_t crc, const unsigned char *buffer, size_t len);
++
++static inline uint16_t crc16_byte(uint16_t crc, const unsigned char data)
++{
++	return (crc >> 8) ^ crc16_table[(crc ^ data) & 0xff];
 +}
 +
- #ifndef assert
- #define assert(test) J_ASSERT(test)
- #endif
-@@ -775,7 +824,7 @@ static void ext3_update_dx_flag(struct i
- {
- 	if (!EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
- 				     EXT3_FEATURE_COMPAT_DIR_INDEX))
--		clear_bit(&EXT3_I(inode)->i_flags, EXT3_INDEX_FL);
-+		EXT3_I(inode)->i_flags &= ~EXT3_INDEX_FL;
- }
- 
- /*
-@@ -1405,7 +1454,7 @@ static int make_indexed_dir(handle_t *ha
- 		brelse(bh);
- 		return retval;
- 	}
--	set_bit(&EXT3_I(dir)->i_flags, EXT3_INDEX_FL);
-+	EXT3_I(dir)->i_flags |= EXT3_INDEX_FL;
- 	data1 = bh2->b_data;
- 
- 	/* The 0th block becomes the root, move the dirents out */
-@@ -1738,6 +1787,8 @@ retry:
- 	ext3_journal_stop(handle);
- 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
-+	if (!err)
-+		ext3_update_rtimes(dir);
- 	return err;
- }
- 
-@@ -1773,6 +1824,8 @@ retry:
- 	ext3_journal_stop(handle);
- 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
-+	if (!err)
-+		ext3_update_rtimes(dir);
- 	return err;
- }
- 
-@@ -1847,6 +1900,8 @@ out_stop:
- 	ext3_journal_stop(handle);
- 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
-+	if (!err)
-+		ext3_update_rtimes(dir);
- 	return err;
- }
- 
-@@ -2123,6 +2178,8 @@ static int ext3_rmdir (struct inode * di
- 
- end_rmdir:
- 	ext3_journal_stop(handle);
-+	if (!retval)
-+		ext3_update_rtimes(dir);
- 	brelse (bh);
- 	return retval;
- }
-@@ -2177,6 +2234,8 @@ static int ext3_unlink(struct inode * di
- 
- end_unlink:
- 	ext3_journal_stop(handle);
-+	if (!retval)
-+		ext3_update_rtimes(dir);
- 	brelse (bh);
- 	return retval;
- }
-@@ -2234,6 +2293,8 @@ out_stop:
- 	ext3_journal_stop(handle);
- 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
-+	if (!err)
-+		ext3_update_rtimes(dir);
- 	return err;
- }
- 
-@@ -2270,6 +2331,8 @@ retry:
- 	ext3_journal_stop(handle);
- 	if (err == -ENOSPC && ext3_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
-+	if (!err)
-+		ext3_update_rtimes(dir);
- 	return err;
- }
- 
-@@ -2429,6 +2492,10 @@ end_rename:
- 	brelse (old_bh);
- 	brelse (new_bh);
- 	ext3_journal_stop(handle);
-+	if (!retval) {
-+		ext3_update_rtimes(old_dir);
-+		ext3_update_rtimes(new_dir);
-+	}
- 	return retval;
- }
- 
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/fs/ext3/super.c linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/super.c
---- linux-2.6.23-1-ext3_iflags_locking/fs/ext3/super.c	2007-10-11 12:01:23.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/fs/ext3/super.c	2007-10-11 18:14:03.000000000 +0200
-@@ -684,7 +684,7 @@ enum {
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
--	Opt_grpquota
-+	Opt_grpquota, Opt_rtime
- };
- 
- static match_table_t tokens = {
-@@ -734,6 +734,7 @@ static match_table_t tokens = {
- 	{Opt_quota, "quota"},
- 	{Opt_usrquota, "usrquota"},
- 	{Opt_barrier, "barrier=%u"},
-+	{Opt_rtime, "rtime"},
- 	{Opt_err, NULL},
- 	{Opt_resize, "resize"},
- };
-@@ -1066,6 +1067,14 @@ clear_qf_name:
- 		case Opt_bh:
- 			clear_opt(sbi->s_mount_opt, NOBH);
- 			break;
-+		case Opt_rtime:
-+			if (!EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_RTIME)) {
-+				printk("EXT3-fs: rtime option available only "
-+					"if superblock has RTIME feature.\n");
-+				return 0;
-+			}
-+			set_opt(sbi->s_mount_opt, RTIME);
-+			break;
- 		default:
- 			printk (KERN_ERR
- 				"EXT3-fs: Unrecognized mount option \"%s\" "
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/include/linux/ext3_fs.h linux-2.6.23-2-ext3_recursive_mtime/include/linux/ext3_fs.h
---- linux-2.6.23-1-ext3_iflags_locking/include/linux/ext3_fs.h	2007-10-11 17:01:28.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/include/linux/ext3_fs.h	2007-10-11 18:57:06.000000000 +0200
-@@ -177,10 +177,11 @@ struct ext3_group_desc
- #define EXT3_NOTAIL_FL			15 /* file tail should not be merged */
- #define EXT3_DIRSYNC_FL			16 /* dirsync behaviour (directories only) */
- #define EXT3_TOPDIR_FL			17 /* Top of directory hierarchies*/
-+#define EXT3_RTIME_FL			18 /* Update recursive mtime */
- #define EXT3_RESERVED_FL		31 /* reserved for ext3 lib */
- 
--#define EXT3_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
--#define EXT3_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
-+#define EXT3_FL_USER_VISIBLE		0x0007DFFF /* User visible flags */
-+#define EXT3_FL_USER_MODIFIABLE		0x000780FF /* User modifiable flags */
- 
- /*
-  * Inode dynamic state flags
-@@ -229,6 +230,7 @@ struct ext3_new_group_data {
- #endif
- #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
- #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
-+#define EXT3_IOC_GETRTIME		_IOR('f', 9, unsigned int)
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -318,6 +320,7 @@ struct ext3_inode {
- 	} osd2;				/* OS dependent 2 */
- 	__le16	i_extra_isize;
- 	__le16	i_pad1;
-+	__le32	i_rtime;	/* Recursive Modification Time */
- };
- 
- #define i_size_high	i_dir_acl
-@@ -384,6 +387,7 @@ struct ext3_inode {
- #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
- #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
- #define EXT3_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
-+#define EXT3_MOUNT_RTIME		0x400000 /* Update rtime */
- 
- /* Compatibility, for having both ext2_fs.h and ext3_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
-@@ -572,6 +576,7 @@ static inline int ext3_valid_inum(struct
- #define EXT3_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT3_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT3_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT3_FEATURE_COMPAT_RTIME		0x0040
- 
- #define EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT3_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-@@ -837,6 +842,14 @@ extern int ext3_orphan_add(handle_t *, s
- extern int ext3_orphan_del(handle_t *, struct inode *);
- extern int ext3_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 				__u32 start_minor_hash, __u32 *next_hash);
-+extern int __ext3_update_rtimes(struct inode *inode);
-+static inline int ext3_update_rtimes(struct inode *inode)
++#endif /* __CRC16_H */
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+new file mode 100644
+index 0000000..cba320c
+--- /dev/null
++++ b/lib/ext2fs/csum.c
+@@ -0,0 +1,149 @@
++/*
++ * csum.c --- checksumming of ext3 structures
++ *
++ * Copyright (C) 2006 Cluster File Systems, Inc.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++
++#include "ext2_fs.h"
++#include "ext2fs.h"
++#include <assert.h>
++
++#ifndef offsetof
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++__u16 ext2fs_group_desc_csum(struct ext2_super_block *sb, __u32 group,
++			     struct ext2_group_desc *desc)
 +{
-+	if (test_opt(inode->i_sb, RTIME) &&
-+	    test_bit(EXT3_RTIME_FL, &EXT3_I(inode)->i_flags))
-+		return __ext3_update_rtimes(inode);
++	__u16 crc = 0;
++
++	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
++		int offset = offsetof(struct ext2_group_desc, bg_checksum);
++
++#ifdef WORDS_BIGENDIAN
++		struct ext2_group_desc swabdesc = *desc;
++
++		/* Have to swab back to little-endian to do the checksum */
++		ext2fs_swab_group_desc(swabdesc);
++		desc = &swabdesc;
++
++		group = ext2fs_swab32(group);
++#endif
++		crc = crc16(~0, sb->s_uuid, sizeof(sb->s_uuid));
++		crc = crc16(crc, &group, sizeof(group));
++		crc = crc16(crc, desc, offset);
++		offset += sizeof(desc->bg_checksum); /* skip checksum */
++		assert(offset == sizeof(*desc)); /* XXX handle s_desc_size */
++		/* for checksum of struct ext4_group_desc do the rest...*/
++		if (offset < sb->s_desc_size) {
++			crc = crc16(crc, (char *)desc + offset,
++				    sb->s_desc_size - offset);
++		}	
++	}
++
++	return crc;
++}
++
++int ext2fs_group_desc_csum_verify(struct ext2_super_block *sb, __u32 group,
++				  struct ext2_group_desc *desc)
++{
++	if (desc->bg_checksum != ext2fs_group_desc_csum(sb, group, desc))
++		return 0;
++
++	return 1;
++}
++
++static __u32 find_last_inode_ingrp(ext2fs_inode_bitmap bitmap,
++				   __u32 inodes_per_grp, dgrp_t grp_no)
++{
++	ext2_ino_t i, start_ino, end_ino;
++
++	start_ino = grp_no * inodes_per_grp + 1;
++	end_ino = start_ino + inodes_per_grp - 1;
++
++	for (i = end_ino; i >= start_ino; i--) {
++		if (ext2fs_fast_test_inode_bitmap(bitmap, i))
++			return i - start_ino + 1;
++	}
++	return inodes_per_grp;
++}
++
++/* update the bitmap flags, set the itable high watermark, and calculate
++ * checksums for the group descriptors */
++void ext2fs_set_gdt_csum(ext2_filsys fs)
++{
++	struct ext2_super_block *sb = fs->super;
++	struct ext2_group_desc *bg = fs->group_desc;
++	int blks, lazy_flag, csum_flag, dirty = 0;
++	dgrp_t i;
++
++	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
++				     EXT2_FEATURE_COMPAT_LAZY_BG) && !csum_flag)
++		return;
++
++	for (i = 0; i < fs->group_desc_count; i++, bg++) {
++		int old_csum = bg->bg_checksum;
++
++		/* Even if it wasn't zeroed, by the time this function is
++		 * called by e2fsck we have already scanned and corrected
++		 * the whole inode table so we may as well not overwrite it.
++		 * This is just a hint to the kernel that it could do lazy
++		 * zeroing of the inode table if mke2fs didn't do it, to help
++		 * out if we need to do a full itable scan sometime later. */
++		if (!(bg->bg_flags & (EXT2_BG_INODE_UNINIT |
++				      EXT2_BG_INODE_ZEROED))) {
++			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
++			dirty = 1;
++		}
++
++		if (bg->bg_free_inodes_count == sb->s_inodes_per_group &&
++		    i > 0 && (i < fs->group_desc_count - 1 || csum_flag)) {
++			if (!(bg->bg_flags & EXT2_BG_INODE_UNINIT)) {
++				bg->bg_flags |= EXT2_BG_INODE_UNINIT;
++				dirty = 1;
++			}
++			if (csum_flag) {
++				int old_unused = bg->bg_itable_unused;
++				bg->bg_itable_unused = sb->s_inodes_per_group;
++				if (old_unused != bg->bg_itable_unused)
++					dirty = 1;
++			}
++		} else if (csum_flag) {
++			int old_unused = bg->bg_itable_unused;
++			bg->bg_flags &= ~EXT2_BG_INODE_UNINIT;
++			bg->bg_itable_unused = sb->s_inodes_per_group -
++				find_last_inode_ingrp(fs->inode_map,
++						      sb->s_inodes_per_group,i);
++			if (old_unused != bg->bg_itable_unused)
++				dirty = 1;
++		}
++
++		/* skip first and last groups, or groups with GDT backups
++		 * because the resize inode has blocks allocated in them. */
++		if (i == 0 || (i == fs->group_desc_count - 1 && !csum_flag) ||
++		    (ext2fs_bg_has_super(fs, i) && sb->s_reserved_gdt_blocks))
++			goto checksum;
++
++		blks = ext2fs_super_and_bgd_loc(fs, i, 0, 0, 0, 0);
++		if (bg->bg_free_blocks_count == blks &&
++		    bg->bg_flags & EXT2_BG_INODE_UNINIT &&
++		    !(bg->bg_flags & EXT2_BG_BLOCK_UNINIT)) {
++			bg->bg_flags |= EXT2_BG_BLOCK_UNINIT;
++			dirty = 1;
++		}
++checksum:
++		bg->bg_checksum =
++			ext2fs_group_desc_csum(fs->super, i, bg);
++		if (old_csum != bg->bg_checksum)
++			dirty = 1;
++	}
++	if (dirty)
++		ext2fs_mark_super_dirty(fs);
++}
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 83a9091..1267ee8 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -627,6 +627,13 @@ extern int ext2fs_super_and_bgd_loc(ext2_filsys fs,
+ 				    int *ret_meta_bg);
+ extern void ext2fs_update_dynamic_rev(ext2_filsys fs);
+ 
++/* csum.c */
++extern __u16 ext2fs_group_desc_csum(struct ext2_super_block *sb, __u32 group,
++				    struct ext2_group_desc *desc);
++extern int ext2fs_group_desc_csum_verify(struct ext2_super_block *sb,
++				     __u32 group, struct ext2_group_desc *desc);
++extern void ext2fs_set_gdt_csum(ext2_filsys fs);
++
+ /* dblist.c */
+ 
+ extern errcode_t ext2fs_get_num_dirs(ext2_filsys fs, ext2_ino_t *ret_num_dirs);
+diff --git a/lib/ext2fs/tst_csum.c b/lib/ext2fs/tst_csum.c
+new file mode 100644
+index 0000000..6a6d99d
+--- /dev/null
++++ b/lib/ext2fs/tst_csum.c
+@@ -0,0 +1,113 @@
++/*
++ * This testing program verifies checksumming operations
++ *
++ * Copyright (C) 2006, 2007 by Andreas Dilger <adilger@clusterfs.com>
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++
++#include "ext2fs/ext2_fs.h"
++#include "ext2fs/ext2fs.h"
++
++#ifndef offsetof
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++void print_csum(const char *msg, struct ext2_super_block *sb,
++		__u32 group, struct ext2_group_desc *desc)
++{
++	__u16 crc1, crc2, crc3;
++	__u32 swabgroup;
++
++#ifdef WORDS_BIGENDIAN
++	struct ext2_group_desc swabdesc = *desc;
++
++	/* Have to swab back to little-endian to do the checksum */
++	ext2fs_swab_group_desc(swabdesc);
++	desc = &swabdesc;
++
++	swabgroup = ext2fs_swab32(group);
++#else
++	swabgroup = group;
++#endif
++
++	crc1 = crc16(~0, sb->s_uuid, sizeof(sb->s_uuid));
++	crc2 = crc16(crc1, &swabgroup, sizeof(swabgroup));
++	crc3 = crc16(crc2, desc, offsetof(struct ext2_group_desc, bg_checksum));
++	printf("%s: UUID %016Lx%016Lx(%04x), grp %u(%04x): %04x=%04x\n",
++	       msg, *(long long *)&sb->s_uuid, *(long long *)&sb->s_uuid[8],
++	       crc1, group, crc2, crc3, ext2fs_group_desc_csum(sb, group,desc));
++}
++
++main(int argc, char **argv)
++{
++	struct ext2_group_desc desc = { .bg_block_bitmap = 124,
++					.bg_inode_bitmap = 125,
++					.bg_inode_table = 126,
++					.bg_free_blocks_count = 31119,
++					.bg_free_inodes_count = 15701,
++					.bg_used_dirs_count = 2,
++					.bg_flags = 0,
++					};
++	struct ext2_super_block sb = {  .s_feature_ro_compat =
++					EXT4_FEATURE_RO_COMPAT_GDT_CSUM,
++					.s_uuid = { 0x4f, 0x25, 0xe8, 0xcf,
++						    0xe7, 0x97, 0x48, 0x23,
++						    0xbe, 0xfa, 0xa7, 0x88,
++						    0x4b, 0xae, 0xec, 0xdb } };
++	__u16 csum1, csum2, csum_known = 0xd3a4;
++
++	csum1 = ext2fs_group_desc_csum(&sb, 0, &desc);
++	print_csum("csum0000", &sb, 0, &desc);
++
++#ifdef WORDS_BIGENDIAN
++	csum_known = ext2fs_swab16(known);
++#endif
++	if (csum1 != csum_known) {
++		printf("checksum for group 0 should be %04x\n", csum_known);
++		exit(1);
++	}
++	csum2 = ext2fs_group_desc_csum(&sb, 1, &desc);
++	print_csum("csum0001", &sb, 1, &desc);
++	if (csum1 == csum2) {
++		printf("checksums for different groups shouldn't match\n");
++		exit(1);
++	}
++	csum2 = ext2fs_group_desc_csum(&sb, 0xffff, &desc);
++	print_csum("csumffff", &sb, 0xffff, &desc);
++	if (csum1 == csum2) {
++		printf("checksums for different groups shouldn't match\n");
++		exit(1);
++	}
++	desc.bg_checksum = csum1;
++	csum2 = ext2fs_group_desc_csum(&sb, 0, &desc);
++	print_csum("csum_set", &sb, 0, &desc);
++	if (csum1 != csum2) {
++		printf("checksums should not depend on checksum field\n");
++		exit(1);
++	}
++	if (!ext2fs_group_desc_csum_verify(&sb, 0, &desc)) {
++		printf("checksums should verify against gd_checksum\n");
++		exit(1);
++	}
++	memset(sb.s_uuid, 0x30, sizeof(sb.s_uuid));
++	print_csum("new_uuid", &sb, 0, &desc);
++	if (ext2fs_group_desc_csum_verify(&sb, 0, &desc) != 0) {
++		printf("checksums for different filesystems shouldn't match\n");
++		exit(1);
++	}
++	csum1 = desc.bg_checksum = ext2fs_group_desc_csum(&sb, 0, &desc);
++	print_csum("csum_new", &sb, 0, &desc);
++	desc.bg_free_blocks_count = 1;
++	csum2 = ext2fs_group_desc_csum(&sb, 0, &desc);
++	print_csum("csum_blk", &sb, 0, &desc);
++	if (csum1 == csum2) {
++		printf("checksums for different data shouldn't match\n");
++		exit(1);
++	}
++
 +	return 0;
 +}
- 
- /* resize.c */
- extern int ext3_group_add(struct super_block *sb,
-diff -rupX /home/jack/.kerndiffexclude linux-2.6.23-1-ext3_iflags_locking/include/linux/ext3_fs_i.h linux-2.6.23-2-ext3_recursive_mtime/include/linux/ext3_fs_i.h
---- linux-2.6.23-1-ext3_iflags_locking/include/linux/ext3_fs_i.h	2007-07-16 17:47:28.000000000 +0200
-+++ linux-2.6.23-2-ext3_recursive_mtime/include/linux/ext3_fs_i.h	2007-10-11 18:14:03.000000000 +0200
-@@ -78,6 +78,7 @@ struct ext3_inode_info {
- 	ext3_fsblk_t	i_file_acl;
- 	__u32	i_dir_acl;
- 	__u32	i_dtime;
-+	__u32	i_rtime;
- 
- 	/*
- 	 * i_block_group is the number of the block group which contains
