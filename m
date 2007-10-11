@@ -1,75 +1,144 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 06/13][e2fsprogs] Make dumpe2fs uninit block group aware.
-Date: Thu, 11 Oct 2007 14:16:35 -0500
-Message-ID: <20071011191635.4599.76640.stgit@gara>
+Subject: [PATCH 11/13][e2fsprogs] Fix test cases.
+Date: Thu, 11 Oct 2007 14:17:06 -0500
+Message-ID: <20071011191706.4599.4215.stgit@gara>
 References: <20071011191559.4599.69332.stgit@gara>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:49118 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754047AbXJKTQn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Oct 2007 15:16:43 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJIDKn008067
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:18:13 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJGgsl119576
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:42 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJGWMx020108
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:32 -0400
+Received: from e35.co.us.ibm.com ([32.97.110.153]:46648 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755784AbXJKTQy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 15:16:54 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9BJGrXZ012578
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:53 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9BJGrHX456826
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9BJGrh5025217
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
 Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJGWMu019449
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 15:16:32 -0400
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9BJGqfX025199
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 13:16:53 -0600
 Received: from [127.0.1.1] (wecm-9-67-39-149.wecm.ibm.com [9.67.39.149])
-	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJGLrT040728
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:16:21 -0500
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id l9BJGqaX037932
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2007 14:16:52 -0500
 In-Reply-To: <20071011191559.4599.69332.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Make dumpe2fs uninit block group aware.
+Fix test cases.
+
+Some of the tools outputs have changed, so this patch fixes what to expect
+from the outputs of the f_dupfsblks and m_raid_opt test cases.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- misc/dumpe2fs.c |   13 +++++++++----
- 1 files changed, 9 insertions(+), 4 deletions(-)
+ tests/f_dupfsblks/expect.1 |    3 ++-
+ tests/m_raid_opt/expect.1  |   33 ++++++++++++++++++++++-----------
+ 2 files changed, 24 insertions(+), 12 deletions(-)
 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index d4d95bb..c08528a 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -112,7 +112,8 @@ static void print_bg_opts(ext2_filsys fs, dgrp_t i)
- {
- 	int first = 1, bg_flags;
+diff --git a/tests/f_dupfsblks/expect.1 b/tests/f_dupfsblks/expect.1
+index 661e164..32ce89b 100644
+--- a/tests/f_dupfsblks/expect.1
++++ b/tests/f_dupfsblks/expect.1
+@@ -44,7 +44,8 @@ Salvage? yes
+ Directory inode 12, block 3, offset 0: directory corrupted
+ Salvage? yes
  
--	if (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_LAZY_BG)
-+	if (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_LAZY_BG ||
-+	    fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
- 		bg_flags = fs->group_desc[i].bg_flags;
- 	else
- 		bg_flags = 0;
-@@ -210,11 +211,15 @@ static void list_desc (ext2_filsys fs)
- 		diff = fs->group_desc[i].bg_inode_table - first_block;
- 		if (diff > 0)
- 			printf(" (+%ld)", diff);
--		printf (_("\n  %d free blocks, %d free inodes, "
--			  "%d directories\n"),
-+		printf (_("\n  %u free blocks, %u free inodes, "
-+			  "%u directories%s"),
- 			fs->group_desc[i].bg_free_blocks_count,
- 			fs->group_desc[i].bg_free_inodes_count,
--			fs->group_desc[i].bg_used_dirs_count);
-+			fs->group_desc[i].bg_used_dirs_count,
-+			fs->group_desc[i].bg_itable_unused ? "" : "\n");
-+		if (fs->group_desc[i].bg_itable_unused)
-+			printf (_(", %u unused inodes\n"),
-+				fs->group_desc[i].bg_itable_unused);
- 		if (block_bitmap) {
- 			fputs(_("  Free blocks: "), stdout);
- 			ext2fs_get_block_bitmap_range(fs->block_map, 
+-Entry '' in ??? (12) has deleted/unused inode 32.  Clear? yes
++Entry '' in ??? (12) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 12, block 4, offset 100: directory corrupted
+ Salvage? yes
+diff --git a/tests/m_raid_opt/expect.1 b/tests/m_raid_opt/expect.1
+index 44c5b46..f5abc37 100644
+--- a/tests/m_raid_opt/expect.1
++++ b/tests/m_raid_opt/expect.1
+@@ -46,57 +46,68 @@ Setting filetype for entry '..' in ??? (11) to 2.
+ Directory inode 11, block 1, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1063.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 2, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1064.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 3, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1065.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 4, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1066.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 5, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1067.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 6, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1068.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 7, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1069.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 8, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1070.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 9, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1071.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 10, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1072.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Directory inode 11, block 11, offset 0: directory corrupted
+ Salvage? yes
+ 
+-Entry '' in ??? (11) has deleted/unused inode 1073.  Clear? yes
++Entry '' in ??? (11) has a zero-length name.
++Clear? yes
+ 
+ Pass 3: Checking directory connectivity
+ '..' in / (2) is <The NULL inode> (0), should be / (2).
