@@ -1,48 +1,106 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 1/2] Make ext3 use bit operations to manipulate i_flags
-Date: Thu, 11 Oct 2007 14:08:32 -0600
-Message-ID: <20071011200832.GU8122@schatzie.adilger.int>
-References: <20071011175618.GF7125@duck.suse.cz> <20071011180111.GG7125@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: akpm@linux-foundation.org
+Subject: - jbd2-debug-code-cleanup.patch removed from -mm tree
+Date: Thu, 11 Oct 2007 20:00:41 -0700
+Message-ID: <200710120300.l9C30fjB028971@imap1.linux-foundation.org>
+To: jrs@us.ibm.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:44944 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754379AbXJKUIe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2007 16:08:34 -0400
-Content-Disposition: inline
-In-Reply-To: <20071011180111.GG7125@duck.suse.cz>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47285 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754736AbXJLDA7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Oct 2007 23:00:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 11, 2007  20:01 +0200, Jan Kara wrote:
->  #define EXT3_TOPDIR_FL			17 /* Top of directory hierarchies*/
-> +#define EXT3_RTIME_FL			18 /* Update recursive mtime */
 
-Could you please use "20" (0x100000) for this flag, as there were patches to
-use 18 (0x40000) for EXT4_HUGE_FILE_FL, and 19 (0x80000) is definitely
-reserved for EXT4_EXTENTS_FL.
+The patch titled
+     JBD2: debug code cleanup
+has been removed from the -mm tree.  Its filename was
+     jbd2-debug-code-cleanup.patch
 
-I'd suggest emailing Ted to reserve a flag for this, and also adding the
-other reserved flags to ext2 and ext3 so there is no risk of conflicts.
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-> @@ -572,6 +576,7 @@ static inline int ext3_valid_inum(struct
->  #define EXT3_FEATURE_COMPAT_EXT_ATTR		0x0008
->  #define EXT3_FEATURE_COMPAT_RESIZE_INODE	0x0010
->  #define EXT3_FEATURE_COMPAT_DIR_INDEX		0x0020
-> +#define EXT3_FEATURE_COMPAT_RTIME		0x0040
+------------------------------------------------------
+Subject: JBD2: debug code cleanup
+From: Jose R. Santos <jrs@us.ibm.com>
 
-Similarly, there is already
-#define EXT2_FEATURE_COMPAT_LAZY_BG             0x0040
+JBD2: debug code cleanup.
 
-in e2fsprogs so you need to use 0x0080 for your feature.  Please update
-all of the ext*_fs.h files to have the most recent flags from e2fsprogs
-so that we can avoid such dangers in the future.
+Mostly stolen from akpm's JBD cleanup patch.
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+- use `#ifdef foo' instead of `#if defined(foo)'
+
+- Make journal_enable_debug __read_mostly just for the heck of it
+
+- Make jbd_debugfs_dir and jbd_debug static
+
+- debugfs_remove(NULL) is legal: remove unneeded tests
+
+- remove unnecessary empty loops
+
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+
+diff -puN fs/jbd2/journal.c~jbd2-debug-code-cleanup fs/jbd2/journal.c
+--- a/fs/jbd2/journal.c~jbd2-debug-code-cleanup
++++ a/fs/jbd2/journal.c
+@@ -2199,16 +2199,14 @@ void jbd2_journal_put_journal_head(struc
+ /*
+  * debugfs tunables
+  */
+-#if defined(CONFIG_JBD2_DEBUG)
+-u8 jbd2_journal_enable_debug;
++#ifdef CONFIG_JBD2_DEBUG
++u8 jbd2_journal_enable_debug __read_mostly;
+ EXPORT_SYMBOL(jbd2_journal_enable_debug);
+-#endif
+-
+-#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+ 
+ #define JBD2_DEBUG_NAME "jbd2-debug"
+ 
+-struct dentry *jbd2_debugfs_dir, *jbd2_debug;
++static struct dentry *jbd2_debugfs_dir;
++static struct dentry *jbd2_debug;
+ 
+ static void __init jbd2_create_debugfs_entry(void)
+ {
+@@ -2221,24 +2219,18 @@ static void __init jbd2_create_debugfs_e
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
+ {
+-	if (jbd2_debug)
+-		debugfs_remove(jbd2_debug);
+-	if (jbd2_debugfs_dir)
+-		debugfs_remove(jbd2_debugfs_dir);
++	debugfs_remove(jbd2_debug);
++	debugfs_remove(jbd2_debugfs_dir);
+ }
+ 
+ #else
+ 
+ static void __init jbd2_create_debugfs_entry(void)
+ {
+-	do {
+-	} while (0);
+ }
+ 
+ static void __exit jbd2_remove_debugfs_entry(void)
+ {
+-	do {
+-	} while (0);
+ }
+ 
+ #endif
+_
+
+Patches currently in -mm which might be from jrs@us.ibm.com are
+
+ext4-flex_bg-kernel-support-v2.patch
+jbd-config_jbd_debug-cannot-create-proc-entry.patch
+jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
+jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
