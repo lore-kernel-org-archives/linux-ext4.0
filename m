@@ -1,91 +1,52 @@
-From: akpm@linux-foundation.org
-Subject: - jbd2-fix-commit-code-to-properly-abort-journal.patch removed from -mm tree
-Date: Thu, 11 Oct 2007 20:00:38 -0700
-Message-ID: <200710120300.l9C30cbW028968@imap1.linux-foundation.org>
-To: jack@suse.cz, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext2: Fix the max file size for ext2 file system.
+Date: Fri, 12 Oct 2007 09:46:47 +0530
+Message-ID: <470EF52F.6060004@linux.vnet.ibm.com>
+References: <1192114207-8168-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20071011195449.GT8122@schatzie.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:47454 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754714AbXJLDAr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Oct 2007 23:00:47 -0400
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:60714 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751865AbXJLERT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Oct 2007 00:17:19 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9C4HFV0019704
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Oct 2007 14:17:15 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9C4HFMw4677800
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Oct 2007 14:17:15 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9C4EMJL031372
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Oct 2007 14:14:22 +1000
+In-Reply-To: <20071011195449.GT8122@schatzie.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-The patch titled
-     jbd2: fix commit code to properly abort journal
-has been removed from the -mm tree.  Its filename was
-     jbd2-fix-commit-code-to-properly-abort-journal.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Andreas Dilger wrote:
+> On Oct 11, 2007  20:20 +0530, Aneesh Kumar K.V wrote:
+>> +	/* indirect blocks */
+>> +	meta_blocks = 1;
+>> +	/* double indirect blocks */
+>> +	meta_blocks += 1 + (1LL << (bits-2));
+>> +	/* tripple indirect blocks */
+>> +	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
+> 
+> It may be worthwhile calculating how many indirect blocks there actually
+> are in a file that size.  
 
-------------------------------------------------------
-Subject: jbd2: fix commit code to properly abort journal
-From: Jan Kara <jack@suse.cz>
+The math become more confusing for that right ?. I am not sure we need to be that specific.
 
-We should really call journal_abort() and not __journal_abort_hard() in
-case of errors.  The latter call does not record the error in the journal
-superblock and thus filesystem won't be marked as with errors later (and
-user could happily mount it without any warning).
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+>Also note that your comments are backward -
+> there is at most a single triple indirect block per file.
 
- fs/jbd2/commit.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+What i meant by those comment was, the count of meta data blocks taken for
+different type of indirect blocks.
 
-diff -puN fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal fs/jbd2/commit.c
---- a/fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal
-+++ a/fs/jbd2/commit.c
-@@ -539,7 +539,7 @@ void jbd2_journal_commit_transaction(jou
- 	spin_unlock(&journal->j_list_lock);
- 
- 	if (err)
--		__jbd2_journal_abort_hard(journal);
-+		jbd2_journal_abort(journal, err);
- 
- 	jbd2_journal_write_revoke_records(journal, commit_transaction);
- 
-@@ -602,7 +602,7 @@ void jbd2_journal_commit_transaction(jou
- 
- 			descriptor = jbd2_journal_get_descriptor_buffer(journal);
- 			if (!descriptor) {
--				__jbd2_journal_abort_hard(journal);
-+				jbd2_journal_abort(journal, -EIO);
- 				continue;
- 			}
- 
-@@ -635,7 +635,7 @@ void jbd2_journal_commit_transaction(jou
- 		   and repeat this loop: we'll fall into the
- 		   refile-on-abort condition above. */
- 		if (err) {
--			__jbd2_journal_abort_hard(journal);
-+			jbd2_journal_abort(journal, err);
- 			continue;
- 		}
- 
-@@ -860,7 +860,7 @@ wait_for_iobuf:
- 	err = journal_wait_on_commit_record(cbh);
- 
- 	if (err)
--		__jbd2_journal_abort_hard(journal);
-+		jbd2_journal_abort(journal, err);
- 
- 	/* End of a transaction!  Finally, we can do checkpoint
-            processing: any buffers committed as a result of this
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-send-quota-messages-via-netlink.patch
-send-quota-messages-via-netlink-fix.patch
-send-quota-messages-via-netlink-fix-fix.patch
-udf-code-style-fixup-v3.patch
-lockdep-give-each-filesystem-its-own-inode-lock-class.patch
-jbd-config_jbd_debug-cannot-create-proc-entry.patch
-jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
-jbd-fix-commit-code-to-properly-abort-journal.patch
+-aneesh
