@@ -1,106 +1,91 @@
 From: akpm@linux-foundation.org
-Subject: - jbd2-debug-code-cleanup.patch removed from -mm tree
-Date: Thu, 11 Oct 2007 20:00:41 -0700
-Message-ID: <200710120300.l9C30fjB028971@imap1.linux-foundation.org>
-To: jrs@us.ibm.com, linux-ext4@vger.kernel.org,
+Subject: - jbd2-fix-commit-code-to-properly-abort-journal.patch removed from -mm tree
+Date: Thu, 11 Oct 2007 20:00:38 -0700
+Message-ID: <200710120300.l9C30cbW028968@imap1.linux-foundation.org>
+To: jack@suse.cz, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:47285 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47454 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754736AbXJLDA7 (ORCPT
+	by vger.kernel.org with ESMTP id S1754714AbXJLDAr (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Oct 2007 23:00:59 -0400
+	Thu, 11 Oct 2007 23:00:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     JBD2: debug code cleanup
+     jbd2: fix commit code to properly abort journal
 has been removed from the -mm tree.  Its filename was
-     jbd2-debug-code-cleanup.patch
+     jbd2-fix-commit-code-to-properly-abort-journal.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: JBD2: debug code cleanup
-From: Jose R. Santos <jrs@us.ibm.com>
+Subject: jbd2: fix commit code to properly abort journal
+From: Jan Kara <jack@suse.cz>
 
-JBD2: debug code cleanup.
+We should really call journal_abort() and not __journal_abort_hard() in
+case of errors.  The latter call does not record the error in the journal
+superblock and thus filesystem won't be marked as with errors later (and
+user could happily mount it without any warning).
 
-Mostly stolen from akpm's JBD cleanup patch.
-
-- use `#ifdef foo' instead of `#if defined(foo)'
-
-- Make journal_enable_debug __read_mostly just for the heck of it
-
-- Make jbd_debugfs_dir and jbd_debug static
-
-- debugfs_remove(NULL) is legal: remove unneeded tests
-
-- remove unnecessary empty loops
-
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
+ fs/jbd2/commit.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff -puN fs/jbd2/journal.c~jbd2-debug-code-cleanup fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd2-debug-code-cleanup
-+++ a/fs/jbd2/journal.c
-@@ -2199,16 +2199,14 @@ void jbd2_journal_put_journal_head(struc
- /*
-  * debugfs tunables
-  */
--#if defined(CONFIG_JBD2_DEBUG)
--u8 jbd2_journal_enable_debug;
-+#ifdef CONFIG_JBD2_DEBUG
-+u8 jbd2_journal_enable_debug __read_mostly;
- EXPORT_SYMBOL(jbd2_journal_enable_debug);
--#endif
--
--#if defined(CONFIG_JBD2_DEBUG) && defined(CONFIG_DEBUG_FS)
+diff -puN fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal fs/jbd2/commit.c
+--- a/fs/jbd2/commit.c~jbd2-fix-commit-code-to-properly-abort-journal
++++ a/fs/jbd2/commit.c
+@@ -539,7 +539,7 @@ void jbd2_journal_commit_transaction(jou
+ 	spin_unlock(&journal->j_list_lock);
  
- #define JBD2_DEBUG_NAME "jbd2-debug"
+ 	if (err)
+-		__jbd2_journal_abort_hard(journal);
++		jbd2_journal_abort(journal, err);
  
--struct dentry *jbd2_debugfs_dir, *jbd2_debug;
-+static struct dentry *jbd2_debugfs_dir;
-+static struct dentry *jbd2_debug;
+ 	jbd2_journal_write_revoke_records(journal, commit_transaction);
  
- static void __init jbd2_create_debugfs_entry(void)
- {
-@@ -2221,24 +2219,18 @@ static void __init jbd2_create_debugfs_e
+@@ -602,7 +602,7 @@ void jbd2_journal_commit_transaction(jou
  
- static void __exit jbd2_remove_debugfs_entry(void)
- {
--	if (jbd2_debug)
--		debugfs_remove(jbd2_debug);
--	if (jbd2_debugfs_dir)
--		debugfs_remove(jbd2_debugfs_dir);
-+	debugfs_remove(jbd2_debug);
-+	debugfs_remove(jbd2_debugfs_dir);
- }
+ 			descriptor = jbd2_journal_get_descriptor_buffer(journal);
+ 			if (!descriptor) {
+-				__jbd2_journal_abort_hard(journal);
++				jbd2_journal_abort(journal, -EIO);
+ 				continue;
+ 			}
  
- #else
+@@ -635,7 +635,7 @@ void jbd2_journal_commit_transaction(jou
+ 		   and repeat this loop: we'll fall into the
+ 		   refile-on-abort condition above. */
+ 		if (err) {
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
+ 			continue;
+ 		}
  
- static void __init jbd2_create_debugfs_entry(void)
- {
--	do {
--	} while (0);
- }
+@@ -860,7 +860,7 @@ wait_for_iobuf:
+ 	err = journal_wait_on_commit_record(cbh);
  
- static void __exit jbd2_remove_debugfs_entry(void)
- {
--	do {
--	} while (0);
- }
+ 	if (err)
+-		__jbd2_journal_abort_hard(journal);
++		jbd2_journal_abort(journal, err);
  
- #endif
+ 	/* End of a transaction!  Finally, we can do checkpoint
+            processing: any buffers committed as a result of this
 _
 
-Patches currently in -mm which might be from jrs@us.ibm.com are
+Patches currently in -mm which might be from jack@suse.cz are
 
-ext4-flex_bg-kernel-support-v2.patch
+send-quota-messages-via-netlink.patch
+send-quota-messages-via-netlink-fix.patch
+send-quota-messages-via-netlink-fix-fix.patch
+udf-code-style-fixup-v3.patch
+lockdep-give-each-filesystem-its-own-inode-lock-class.patch
 jbd-config_jbd_debug-cannot-create-proc-entry.patch
 jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
-jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
+jbd-fix-commit-code-to-properly-abort-journal.patch
