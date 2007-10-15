@@ -1,152 +1,252 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 3/5] ext4: Support large files
-Date: Mon, 15 Oct 2007 16:25:36 +0530
-Message-ID: <1192445738-17591-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 1/5] ext4: Code cleanup
+Date: Mon, 15 Oct 2007 16:25:34 +0530
+Message-ID: <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1192445738-17591-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1192445738-17591-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:43702 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758940AbXJOK4O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 06:56:14 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9FAuM0g014613
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:22 +1000
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:47046 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758500AbXJOK4J (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 06:56:09 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9FAu7L0017498
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:07 +1000
 Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9FAxkSP190114
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:59:46 +1000
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9FAu7R8991360
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:07 +1000
 Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9FAtuFG020880
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:55:56 +1000
-In-Reply-To: <1192445738-17591-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9FAtpwQ020770
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:55:52 +1000
+In-Reply-To: <1192445738-17591-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch converts ext4_inode i_blocks to represent total
-blocks occupied by the inode in file system block size.
-Earlier the variable used to represent this in 512 byte
-block size. This actually limited the total size of the file.
-
-The feature is enabled transparently when we write an inode
-whose i_blocks cannot be represnted as 512 byte units in a
-48 bit variable.
-
-inode flag  EXT4_HUGE_FILE_FL
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+a) Introduce ext4_update_*_feature(sb,
+b) rename i_file_acl to i_file_acl_lo
+c) convert some function to static
+d) Fix sparse warnings
 ---
- fs/ext4/inode.c         |   34 ++++++++++++++++++++++++++--------
- fs/ext4/super.c         |    9 ++++++---
- include/linux/ext4_fs.h |    3 ++-
- 3 files changed, 34 insertions(+), 12 deletions(-)
+ fs/ext4/extents.c       |    6 ++--
+ fs/ext4/ialloc.c        |   13 +++++------
+ fs/ext4/inode.c         |   18 +++++++++-------
+ fs/ext4/super.c         |   52 ++++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/ext4_fs.h |   10 ++++++++-
+ 5 files changed, 79 insertions(+), 20 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 392b76e..ce58d45 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1230,7 +1230,7 @@ static ext4_lblk_t ext4_ext_next_leaf_block(struct inode *inode,
+  * then we have to correct all indexes above.
+  * TODO: do we need to correct tree in all cases?
+  */
+-int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
++static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
+ 				struct ext4_ext_path *path)
+ {
+ 	struct ext4_extent_header *eh;
+@@ -1677,7 +1677,7 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+  * It's used in truncate case only, thus all requests are for
+  * last index in the block only.
+  */
+-int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
++static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+ 			struct ext4_ext_path *path)
+ {
+ 	struct buffer_head *bh;
+@@ -1947,7 +1947,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ 	return 1;
+ }
+ 
+-int ext4_ext_remove_space(struct inode *inode, unsigned long start)
++static int ext4_ext_remove_space(struct inode *inode, unsigned long start)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index cf0dd31..2612736 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -750,13 +750,12 @@ got:
+ 	if (test_opt(sb, EXTENTS)) {
+ 		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+ 		ext4_ext_tree_init(handle, inode);
+-		if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+-			err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+-			if (err) goto fail;
+-			EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS);
+-			BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "call ext4_journal_dirty_metadata");
+-			err = ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+-		}
++		err = ext4_update_incompat_feature(handle, sb,
++						EXT4_FEATURE_INCOMPAT_EXTENTS);
++		if (err)
++			goto fail;
++
++		BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "call ext4_update_feautre");
+ 	}
+ 
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d2cc3b6..c9a4755 100644
+index 218eec9..f5f64ff 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2712,14 +2712,20 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
- 					struct ext4_inode_info *ei)
- {
- 	blkcnt_t i_blocks ;
--	struct super_block *sb = ei->vfs_inode.i_sb;
-+	struct inode *inode = &(ei->vfs_inode);
-+	struct super_block *sb = inode->i_sb;
+@@ -2093,11 +2093,11 @@ static void ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 	for (p = first; p < last; p++) {
+ 		u32 nr = le32_to_cpu(*p);
+ 		if (nr) {
+-			struct buffer_head *bh;
++			struct buffer_head *tbh;
  
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 				EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
- 		/* we are using combined 48 bit field */
- 		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
- 						le32_to_cpu(raw_inode->i_blocks_lo);
--		return i_blocks;
-+		if (ei->i_flags & EXT4_HUGE_FILE_FL) {
-+			/* i_blocks represent file system block size */
-+			return i_blocks  << (inode->i_blkbits - 9);
-+		} else {
-+			return i_blocks;
-+		}
+ 			*p = 0;
+-			bh = sb_find_get_block(inode->i_sb, nr);
+-			ext4_forget(handle, 0, inode, bh, nr);
++			tbh = sb_find_get_block(inode->i_sb, nr);
++			ext4_forget(handle, 0, inode, tbh, nr);
+ 		}
+ 	}
+ 
+@@ -2365,8 +2365,10 @@ void ext4_truncate(struct inode *inode)
+ 			return;
+ 	}
+ 
+-	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
+-		return ext4_ext_truncate(inode, page);
++	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
++		ext4_ext_truncate(inode, page);
++		return;
++	}
+ 
+ 	handle = start_transaction(inode);
+ 	if (IS_ERR(handle)) {
+@@ -2757,7 +2759,7 @@ void ext4_read_inode(struct inode * inode)
+ 	}
+ 	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
+ 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+-	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl);
++	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
+ 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+ 	    cpu_to_le32(EXT4_OS_HURD))
+ 		ei->i_file_acl |=
+@@ -2912,7 +2914,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	    cpu_to_le32(EXT4_OS_HURD))
+ 		raw_inode->i_file_acl_high =
+ 			cpu_to_le16(ei->i_file_acl >> 32);
+-	raw_inode->i_file_acl = cpu_to_le32(ei->i_file_acl);
++	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
+ 	if (!S_ISREG(inode->i_mode)) {
+ 		raw_inode->i_dir_acl = cpu_to_le32(ei->i_dir_acl);
  	} else {
- 		return le32_to_cpu(raw_inode->i_blocks_lo);
- 	}
-@@ -2882,8 +2888,9 @@ static int ext4_inode_blocks_set(handle_t *handle,
- 		 * i_blocks can be represnted in a 32 bit variable
- 		 * as multiple of 512 bytes
- 		 */
--		raw_inode->i_blocks_lo   = cpu_to_le32((u32)i_blocks);
-+		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
- 		raw_inode->i_blocks_high = 0;
-+		ei->i_flags &= ~EXT4_HUGE_FILE_FL;
- 	} else if (i_blocks <= 0xffffffffffffULL) {
- 		/*
- 		 * i_blocks can be represented in a 48 bit variable
-@@ -2894,12 +2901,23 @@ static int ext4_inode_blocks_set(handle_t *handle,
- 		if (err)
- 			goto  err_out;
- 		/* i_block is stored in the split  48 bit fields */
--		raw_inode->i_blocks_lo   = cpu_to_le32((u32)i_blocks);
-+		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
-+		raw_inode->i_blocks_high = cpu_to_le16(i_blocks >> 32);
-+		ei->i_flags &= ~EXT4_HUGE_FILE_FL;
-+	} else {
-+		/*
-+		 * i_blocks should be represented in a 48 bit variable
-+		 * as multiple of  file system block size
-+		 */
-+		err = ext4_update_rocompat_feature(handle, sb,
-+					    EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
-+		if (err)
-+			goto  err_out;
-+		ei->i_flags |= EXT4_HUGE_FILE_FL;
-+		/* i_block is stored in file system block size */
-+		i_blocks = i_blocks >> (inode->i_blkbits - 9);
-+		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
- 		raw_inode->i_blocks_high = cpu_to_le16(i_blocks >> 32);
--	}else {
--		ext4_error(sb, __FUNCTION__,
--				"Wrong inode i_blocks count  %llu\n",
--				(unsigned long long)inode->i_blocks);
- 	}
- err_out:
- 	return err;
+@@ -3217,7 +3219,7 @@ ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
+  * Expand an inode by new_extra_isize bytes.
+  * Returns 0 on success or negative error number on failure.
+  */
+-int ext4_expand_extra_isize(struct inode *inode, unsigned int new_extra_isize,
++static int ext4_expand_extra_isize(struct inode *inode, unsigned int new_extra_isize,
+ 			struct ext4_iloc iloc, handle_t *handle)
+ {
+ 	struct ext4_inode *raw_inode;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c50755a..b9207bf 100644
+index 9dc37ba..c12a357 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -1581,11 +1581,14 @@ static loff_t ext4_max_size(int bits)
- 		upper_limit >>= (bits - 9);
- 
- 	} else {
--		/* We use 48 bit ext4_inode i_blocks */
-+		/*
-+		 * We use 48 bit ext4_inode i_blocks
-+		 * With EXT4_HUGE_FILE_FL set the i_blocks
-+		 * represent total number of blocks in
-+		 * file system block size
-+		 */
- 		upper_limit = (1LL << 48) - 1;
- 
--		/* total blocks in file system block size */
--		upper_limit >>= (bits - 9);
- 	}
- 
- 	/* indirect blocks */
+@@ -372,7 +372,57 @@ void ext4_update_dynamic_rev(struct super_block *sb)
+ 	 * can leave it up to e2fsck to clean up any inconsistencies there.
+ 	 */
+ }
+-
++int ext4_update_compat_feature(handle_t *handle,
++					struct super_block *sb, __u32 compat)
++{
++	int err = 0;
++	if (!EXT4_HAS_COMPAT_FEATURE(sb, compat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_COMPAT_FEATURE(sb, compat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
++int ext4_update_rocompat_feature(handle_t *handle,
++					struct super_block *sb, __u32 rocompat)
++{
++	int err = 0;
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, rocompat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_RO_COMPAT_FEATURE(sb, rocompat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
++int ext4_update_incompat_feature(handle_t *handle,
++					struct super_block *sb, __u32 incompat)
++{
++	int err = 0;
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, incompat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_INCOMPAT_FEATURE(sb, incompat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
+ /*
+  * Open the external journal device
+  */
 diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 7d38429..f58aa34 100644
+index 4a81271..d7f15a4 100644
 --- a/include/linux/ext4_fs.h
 +++ b/include/linux/ext4_fs.h
-@@ -205,8 +205,9 @@ struct ext4_group_desc
- #define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
- #define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
- #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
--#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
-+#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
-+#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
+@@ -325,7 +325,7 @@ struct ext4_inode {
+ 	} osd1;				/* OS dependent 1 */
+ 	__le32	i_block[EXT4_N_BLOCKS];/* Pointers to blocks */
+ 	__le32	i_generation;	/* File version (for NFS) */
+-	__le32	i_file_acl;	/* File ACL */
++	__le32	i_file_acl_lo;	/* File ACL */
+ 	__le32	i_dir_acl;	/* Directory ACL */
+ 	__le32	i_obso_faddr;	/* Obsoleted fragment address */
+ 	union {
+@@ -908,6 +908,8 @@ extern ext4_fsblk_t ext4_new_block (handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, int *errp);
+ extern ext4_fsblk_t ext4_new_blocks (handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
++extern ext4_fsblk_t ext4_new_blocks_old (handle_t *handle, struct inode *inode,
++			ext4_fsblk_t goal, unsigned long *count, int *errp);
+ extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t block, unsigned long count, int metadata);
+ extern void ext4_free_blocks_sb (handle_t *handle, struct super_block *sb,
+@@ -1019,6 +1021,12 @@ extern void ext4_abort (struct super_block *, const char *, const char *, ...)
+ extern void ext4_warning (struct super_block *, const char *, const char *, ...)
+ 	__attribute__ ((format (printf, 3, 4)));
+ extern void ext4_update_dynamic_rev (struct super_block *sb);
++extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
++					__u32 compat);
++extern int ext4_update_rocompat_feature(handle_t *handle, struct super_block *sb,
++					__u32 rocompat);
++extern int ext4_update_incompat_feature(handle_t *handle, struct super_block *sb,
++					__u32 incompat);
+ extern ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
 -- 
 1.5.3.4.206.g58ba4-dirty
