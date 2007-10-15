@@ -1,49 +1,61 @@
-From: Coly Li <coyli@suse.de>
-Subject: [PATCH] ext4: add bg_itable_unused_hi to group descriptor
-Date: Mon, 15 Oct 2007 23:18:01 +0800
-Message-ID: <471384A9.9010203@suse.de>
-Reply-To: coyli@suse.de
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH e2fsprogs] libblkid: detect squashfs
+Date: Mon, 15 Oct 2007 12:48:44 -0500
+Message-ID: <4713A7FC.3080507@redhat.com>
+References: <46F93F3A.7080406@redhat.com> <20071014141242.GA6724@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:47879 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757729AbXJOPPw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 11:15:52 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:41764 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757572AbXJORtq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Oct 2007 13:49:46 -0400
+In-Reply-To: <20071014141242.GA6724@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch extends bg_itable_unused of ext4 group descriptor from 16bit into 32bit. In order to add
-bg_itable_unused_hi into struct ext4_group_desc, some extra fields which are already introduced into
-e2fsprogs are also added in for consistency.
+Theodore Tso wrote:
 
-Signed-off-by: Coly Li <coyli@suse.de>
-Cc: Andreas Dilger <adilger@clusterfs.com>
-Cc: Mingming Cao <cmm@us.ibm.com>
----
- include/linux/ext4_fs.h |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+> On Tue, Sep 25, 2007 at 12:02:50PM -0500, Eric Sandeen wrote:
+>   
+>> libblkid: recognize squashfs filesystems
+>>
+>> squashfs has no uuid or labels, so all we need is the magic.
+>>
+>> Addresses-Red-Hat-Bugzilla: #305151
+>>     
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>>     
+>
+> Thanks, applied to the maint branch.
+>
+> 				- Ted
+>   
+Thanks... and now for the big endian version.  :(  Sorry about that!
 
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 783c6f3..6acf418 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -145,6 +145,11 @@ struct ext4_group_desc
- 	__le32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
- 	__le32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
- 	__le32	bg_inode_table_hi;	/* Inodes table block MSB */
-+	__le16	bg_free_blocks_count_hi;/* Free blocks count MSB */
-+	__le16	bg_free_inodes_count_hi;/* Free inodes count MSB */
-+	__le16	bg_used_dirs_count_hi;	/* Directories count MSB */
-+	__le16	bg_itable_unused_hi;	/* Unused inodes count MSB */
-+	__u32	bg_reserved2[3];
+===================
+
+libblkid: recognize squashfs filesystems on BE systems.
+
+squashfs has no uuid or labels, so all we need is the magic
+(for big-endian too!)
+
+Addresses-Red-Hat-Bugzilla: #305151
+    
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: e2fsprogs-1.40.2/lib/blkid/probe.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/lib/blkid/probe.c
++++ e2fsprogs-1.40.2/lib/blkid/probe.c
+@@ -898,6 +898,7 @@ static struct blkid_magic type_array[] =
+   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
+   { "crypt_LUKS", 0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
++  { "squashfs",	 0,	 0,  4,	"sqsh",			0 },
+   { "squashfs",	 0,	 0,  4,	"hsqs",			0 },
+   {   NULL,	 0,	 0,  0, NULL,			NULL }
  };
-
- #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
-
-
--- 
-Coly Li
-SuSE PRC Labs
