@@ -1,42 +1,34 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 01/13][e2fsprogs] Add initial checksum support.
-Date: Sun, 14 Oct 2007 22:46:05 -0400
-Message-ID: <20071015024605.GA21216@thunk.org>
-References: <20071011191559.4599.69332.stgit@gara> <20071011191605.4599.34407.stgit@gara>
+From: Coly Li <coyli@suse.de>
+Subject: question about patch queue and ext4-git
+Date: Mon, 15 Oct 2007 13:36:05 +0800
+Message-ID: <4712FC45.8080401@suse.de>
+Reply-To: coyli@suse.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49620 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754178AbXJOCqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Oct 2007 22:46:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20071011191605.4599.34407.stgit@gara>
+Received: from victor.provo.novell.com ([137.65.250.26]:37991 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751436AbXJOFdj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 01:33:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In crc16.h, this patch assumes that linux/types.h defines uint16_t. =20
+Now in my mind there are several words for ext4 patches, most frequently one are "patch queue".
 
-There are a couple of problems with this. =20
+I see the patches in patch queue from
+http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/LATEST/broken-out/ .
+Also I confirm some of the patches are in ext4 git tree now, but I am not sure for two questions:
+1) Whether all the patches are in ext4 git tree ?
+2) This patch queue is only used to push ext4 patch into upstream ?
 
-#1) linux/types.h is non-portable, not only does it not exist on
- non-Linux systems, apparently on Ubuntu it's not always defining
- uint16_t.  On my Ubuntu gutsy system, it doesn't always get defined.
+Also there is a patch-queue git at http://repo.or.cz/w/ext4-patch-queue.git , is it same to the
+patches in http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/ ?
 
-        CC ../../../lib/ext2fs/crc16.c
-In file included from ../../../lib/ext2fs/crc16.c:10:
-=2E./../../lib/ext2fs/crc16.h:20: error: expected =E2=80=98=3D=E2=80=99=
-, =E2=80=98,=E2=80=99, =E2=80=98;=E2=80=99, =E2=80=98asm=E2=80=99 or =E2=
-=80=98__attribute__=E2=80=99 before =E2=80=98const=E2=80=99
-=2E./../../lib/ext2fs/crc16.h:22: error: expected =E2=80=98=3D=E2=80=99=
-, =E2=80=98,=E2=80=99, =E2=80=98;=E2=80=99, =E2=80=98asm=E2=80=99 or =E2=
-=80=98__attribute__=E2=80=99 before =E2=80=98crc16=E2=80=99
+Thanks for clarifying :-)
 
 
-The right thing to do is to use ext2fs/ext2_types.h like everything
-else in e2fsprogs, and use __u16 instead of uint16_t.
-
-     		       	   	 	    - Ted
+-- 
+Coly Li
+SuSE PRC Labs
