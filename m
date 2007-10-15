@@ -1,33 +1,35 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: [PATCH 2/5] ext4: Add support for 48 bit inode i_blocks.
-Date: Mon, 15 Oct 2007 12:12:25 -0600
-Message-ID: <20071015181225.GV8122@schatzie.adilger.int>
-References: <1192445738-17591-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1192445738-17591-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 01/13][e2fsprogs] Add initial checksum support.
+Date: Mon, 15 Oct 2007 16:53:44 -0400
+Message-ID: <20071015205344.GA18006@thunk.org>
+References: <20071011191559.4599.69332.stgit@gara> <20071011191605.4599.34407.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:57098 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1765687AbXJOSM1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 14:12:27 -0400
+Received: from thunk.org ([69.25.196.29]:40101 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751296AbXJOUy1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Oct 2007 16:54:27 -0400
 Content-Disposition: inline
-In-Reply-To: <1192445738-17591-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20071011191605.4599.34407.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 15, 2007  16:25 +0530, Aneesh Kumar K.V wrote:
->  		ei->i_flags |= EXT4_DIRSYNC_FL;
->  }
-> +static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-> +					struct ext4_inode_info *ei)
-> +{
+On Thu, Oct 11, 2007 at 02:16:05PM -0500, Jose R. Santos wrote:
+> @@ -66,7 +66,9 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+>  	unix_io.o \
+>  	unlink.o \
+>  	valid_blk.o \
+> -	version.o
+> +	version.o \
+> +	crc16.o \
+> +	csum.o
 
-Please put an empty line between functions.
+Please keep the order of files in $(OBJS) and $(SRCS) in alphabetical
+order.  There are two reasons for this; first of all, it makes it
+easier to find files.  Secondly, it makes it less likely for there to
+be merge collisions between two patches.  Thanks!!
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+						- Ted
