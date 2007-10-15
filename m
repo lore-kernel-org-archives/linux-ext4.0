@@ -1,34 +1,42 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 4/8][e2fsprogs] add new macro to get descriptor number
-Date: Sun, 14 Oct 2007 22:09:11 -0400
-Message-ID: <20071015020910.GH9715@thunk.org>
-References: <1188487715.15770.35.camel@ext1.frec.bull.fr> <1188488293.15770.49.camel@ext1.frec.bull.fr>
+Subject: Re: [PATCH 01/13][e2fsprogs] Add initial checksum support.
+Date: Sun, 14 Oct 2007 22:46:05 -0400
+Message-ID: <20071015024605.GA21216@thunk.org>
+References: <20071011191559.4599.69332.stgit@gara> <20071011191605.4599.34407.stgit@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:37994 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:49620 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754178AbXJOCJk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Oct 2007 22:09:40 -0400
+	id S1754178AbXJOCqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Oct 2007 22:46:35 -0400
 Content-Disposition: inline
-In-Reply-To: <1188488293.15770.49.camel@ext1.frec.bull.fr>
+In-Reply-To: <20071011191605.4599.34407.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 30, 2007 at 05:38:13PM +0200, Valerie Clement wrote:
-> 
-> From: Valerie Clement <valerie.clement@bull.net>
-> 
-> This patch introduces a new macro EXT2_DESC_PER_BLOCK to calculate the number
-> of group descriptors per block as two different structures are now defined,
-> ext4_group_desc structure for ext4 filesystems and ext2_group_desc structure
-> for older filesystems.
-> 
-> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+In crc16.h, this patch assumes that linux/types.h defines uint16_t. =20
 
-Applied with minor changes take into account that I haven't applied
-patch 3/8 yet.
+There are a couple of problems with this. =20
 
-						- Ted
+#1) linux/types.h is non-portable, not only does it not exist on
+ non-Linux systems, apparently on Ubuntu it's not always defining
+ uint16_t.  On my Ubuntu gutsy system, it doesn't always get defined.
+
+        CC ../../../lib/ext2fs/crc16.c
+In file included from ../../../lib/ext2fs/crc16.c:10:
+=2E./../../lib/ext2fs/crc16.h:20: error: expected =E2=80=98=3D=E2=80=99=
+, =E2=80=98,=E2=80=99, =E2=80=98;=E2=80=99, =E2=80=98asm=E2=80=99 or =E2=
+=80=98__attribute__=E2=80=99 before =E2=80=98const=E2=80=99
+=2E./../../lib/ext2fs/crc16.h:22: error: expected =E2=80=98=3D=E2=80=99=
+, =E2=80=98,=E2=80=99, =E2=80=98;=E2=80=99, =E2=80=98asm=E2=80=99 or =E2=
+=80=98__attribute__=E2=80=99 before =E2=80=98crc16=E2=80=99
+
+
+The right thing to do is to use ext2fs/ext2_types.h like everything
+else in e2fsprogs, and use __u16 instead of uint16_t.
+
+     		       	   	 	    - Ted
