@@ -1,35 +1,32 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 01/13][e2fsprogs] Add initial checksum support.
-Date: Mon, 15 Oct 2007 16:53:44 -0400
-Message-ID: <20071015205344.GA18006@thunk.org>
-References: <20071011191559.4599.69332.stgit@gara> <20071011191605.4599.34407.stgit@gara>
+Subject: Re: [PATCH][e2fsprogs] add -E option to mke2fs usage information
+Date: Mon, 15 Oct 2007 17:00:49 -0400
+Message-ID: <20071015210049.GB18006@thunk.org>
+References: <471376DF.5010705@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+To: Coly Li <coyli@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40101 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:34922 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751296AbXJOUy1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Oct 2007 16:54:27 -0400
+	id S1756919AbXJOVB1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Oct 2007 17:01:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20071011191605.4599.34407.stgit@gara>
+In-Reply-To: <471376DF.5010705@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Oct 11, 2007 at 02:16:05PM -0500, Jose R. Santos wrote:
-> @@ -66,7 +66,9 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
->  	unix_io.o \
->  	unlink.o \
->  	valid_blk.o \
-> -	version.o
-> +	version.o \
-> +	crc16.o \
-> +	csum.o
+On Mon, Oct 15, 2007 at 10:19:11PM +0800, Coly Li wrote:
+> -E option is missed from usage information of mke2fs. This patch adds -E option to usage
+> information, and names -E|-R as extended-option.
+> Now the usage information can be consistent with mke2fs.8.in.
 
-Please keep the order of files in $(OBJS) and $(SRCS) in alphabetical
-order.  There are two reasons for this; first of all, it makes it
-easier to find files.  Secondly, it makes it less likely for there to
-be merge collisions between two patches.  Thanks!!
+Please fill comments to 80 columns; thanks!!
 
-						- Ted
+I checked this into the maint branch, but I just changed the message
+to use -E only.  The use of -R is deprecated, but supported for
+backwards compatibility; so there's no point putting it in the usage
+message.
+
+							- Ted
