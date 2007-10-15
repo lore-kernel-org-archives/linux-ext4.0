@@ -1,60 +1,92 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: question about patch queue and ext4-git
-Date: Mon, 15 Oct 2007 05:10:05 -0500
-Message-ID: <20071015051005.0865b2a7@gara>
-References: <4712FC45.8080401@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: coyli@suse.de
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 5/5] ext3: Fix the max file size for ext3 file system.
+Date: Mon, 15 Oct 2007 16:25:38 +0530
+Message-ID: <1192445738-17591-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1192445738-17591-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192445738-17591-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192445738-17591-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192445738-17591-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:54988 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756427AbXJOKJ5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 06:09:57 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9FA9uCn026475
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 06:09:56 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9FA9u9v429836
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 04:09:56 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9FA9uIR018647
-	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 04:09:56 -0600
-In-Reply-To: <4712FC45.8080401@suse.de>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:54341 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757932AbXJOK4R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 06:56:17 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9FAuGvZ004986
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:16 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9FAuGRC946208
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:16 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9FAu0tx020950
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2007 20:56:00 +1000
+In-Reply-To: <1192445738-17591-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 15 Oct 2007 13:36:05 +0800
-Coly Li <coyli@suse.de> wrote:
+The max file size for ext3 file system is now calculated
+with hardcoded 4K block size. The patch fixes it to be
+calculated with the right block size.
 
-> Now in my mind there are several words for ext4 patches, most frequently one are "patch queue".
-> 
-> I see the patches in patch queue from
-> http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/LATEST/broken-out/ .
-> Also I confirm some of the patches are in ext4 git tree now, but I am not sure for two questions:
-> 1) Whether all the patches are in ext4 git tree ?
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext3/super.c |   32 ++++++++++++++++++++++++++++----
+ 1 files changed, 28 insertions(+), 4 deletions(-)
 
-Yes, all these patches should be in ext4 git tree.
-
-> 2) This patch queue is only used to push ext4 patch into upstream ?
-
-The patch queue series is divided into stable and unstable patches.
-The stable patches are the one usually the ones used to push back
-upstream, while the unstable section has the patches for development
-purposes only and are not ready for pushing upstream (and some may
-never make it in).
-
-> Also there is a patch-queue git at http://repo.or.cz/w/ext4-patch-queue.git , is it same to the
-> patches in http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/ ?
-
-Same thing bug in git format.  I believe Ted updates his patch queue
-from the patches in the git tree repo, so  if you want latest/greatest
-the git tree is what you want.
-
-> Thanks for clarifying :-)
-> 
-> 
-
--JRS
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 9537316..4f0de11 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1362,11 +1362,31 @@ static void ext3_orphan_cleanup (struct super_block * sb,
+ static loff_t ext3_max_size(int bits)
+ {
+ 	loff_t res = EXT3_NDIR_BLOCKS;
+-	/* This constant is calculated to be the largest file size for a
+-	 * dense, 4k-blocksize file such that the total number of
++	int meta_blocks;
++	loff_t upper_limit;
++
++	/* This is calculated to be the largest file size for a
++	 * dense, file such that the total number of
+ 	 * sectors in the file, including data and all indirect blocks,
+-	 * does not exceed 2^32. */
+-	const loff_t upper_limit = 0x1ff7fffd000LL;
++	 * does not exceed 2^32 -1
++	 * __u32 i_blocks representing the total number of
++	 * 512 bytes blocks of the file
++	 */
++	upper_limit = (1LL << 32) - 1;
++
++	/* total blocks in file system block size */
++	upper_limit >>= (bits - 9);
++
++
++	/* indirect blocks */
++	meta_blocks = 1;
++	/* double indirect blocks */
++	meta_blocks += 1 + (1LL << (bits-2));
++	/* tripple indirect blocks */
++	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
++
++	upper_limit -= meta_blocks;
++	upper_limit <<= bits;
+ 
+ 	res += 1LL << (bits-2);
+ 	res += 1LL << (2*(bits-2));
+@@ -1374,6 +1394,10 @@ static loff_t ext3_max_size(int bits)
+ 	res <<= bits;
+ 	if (res > upper_limit)
+ 		res = upper_limit;
++
++	if (res > MAX_LFS_FILESIZE)
++		res = MAX_LFS_FILESIZE;
++
+ 	return res;
+ }
+ 
+-- 
+1.5.3.4.206.g58ba4-dirty
