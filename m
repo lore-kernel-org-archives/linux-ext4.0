@@ -1,61 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] libblkid: detect squashfs
-Date: Mon, 15 Oct 2007 12:48:44 -0500
-Message-ID: <4713A7FC.3080507@redhat.com>
-References: <46F93F3A.7080406@redhat.com> <20071014141242.GA6724@thunk.org>
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH 1/5] ext4: Code cleanup
+Date: Mon, 15 Oct 2007 12:10:39 -0600
+Message-ID: <20071015181039.GU8122@schatzie.adilger.int>
+References: <1192445738-17591-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:41764 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757572AbXJORtq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Oct 2007 13:49:46 -0400
-In-Reply-To: <20071014141242.GA6724@thunk.org>
+Received: from mail.clusterfs.com ([74.0.229.162]:54539 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757708AbXJOSKl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2007 14:10:41 -0400
+Content-Disposition: inline
+In-Reply-To: <1192445738-17591-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
+On Oct 15, 2007  16:25 +0530, Aneesh Kumar K.V wrote:
+> -		if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+> -			err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+> -			if (err) goto fail;
+> -			EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS);
+> -			BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "call ext4_journal_dirty_metadata");
+> -			err = ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+> -		}
+> +		err = ext4_update_incompat_feature(handle, sb,
+> +						EXT4_FEATURE_INCOMPAT_EXTENTS);
+> +		if (err)
+> +			goto fail;
+> +
+> +		BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "call ext4_update_feautre");
 
-> On Tue, Sep 25, 2007 at 12:02:50PM -0500, Eric Sandeen wrote:
->   
->> libblkid: recognize squashfs filesystems
->>
->> squashfs has no uuid or labels, so all we need is the magic.
->>
->> Addresses-Red-Hat-Bugzilla: #305151
->>     
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->>     
->
-> Thanks, applied to the maint branch.
->
-> 				- Ted
->   
-Thanks... and now for the big endian version.  :(  Sorry about that!
+You may as well put the BUFFER_TRACE() all into
+ext4_update_incompat_feature().
 
-===================
-
-libblkid: recognize squashfs filesystems on BE systems.
-
-squashfs has no uuid or labels, so all we need is the magic
-(for big-endian too!)
-
-Addresses-Red-Hat-Bugzilla: #305151
-    
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
-Index: e2fsprogs-1.40.2/lib/blkid/probe.c
-===================================================================
---- e2fsprogs-1.40.2.orig/lib/blkid/probe.c
-+++ e2fsprogs-1.40.2/lib/blkid/probe.c
-@@ -898,6 +898,7 @@ static struct blkid_magic type_array[] =
-   { "ocfs2",	 4,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "ocfs2",	 8,	 0,  6,	"OCFSV2",		probe_ocfs2 },
-   { "crypt_LUKS", 0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
-+  { "squashfs",	 0,	 0,  4,	"sqsh",			0 },
-   { "squashfs",	 0,	 0,  4,	"hsqs",			0 },
-   {   NULL,	 0,	 0,  0, NULL,			NULL }
- };
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
