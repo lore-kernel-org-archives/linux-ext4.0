@@ -1,54 +1,64 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: What's cooking in e2fsprogs.git (topics)
-Date: Tue, 16 Oct 2007 11:41:24 -0500
-Message-ID: <20071016114124.1536e8e6@gara>
-References: <E1IheLt-0001TN-65@candygram.thunk.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
+Date: Tue, 16 Oct 2007 15:00:33 -0700
+Message-ID: <20071016150033.677efd09.akpm@linux-foundation.org>
+References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: adilger@clusterfs.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Badari Pulavarty <pbadari@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:50888 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753227AbXJPQld (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2007 12:41:33 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9GGfRBL020326
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Oct 2007 12:41:27 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9GGfM2N296578
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Oct 2007 10:41:23 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9GGfMXr008164
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Oct 2007 10:41:22 -0600
-In-Reply-To: <E1IheLt-0001TN-65@candygram.thunk.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:38489 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1761926AbXJPWA6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Oct 2007 18:00:58 -0400
+In-Reply-To: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 16 Oct 2007 00:48:21 -0400
-"Theodore Ts'o" <tytso@mit.edu> wrote:
+On Fri, 13 Jul 2007 18:36:54 -0700
+Badari Pulavarty <pbadari@us.ibm.com> wrote:
 
-> * js/flex-bg (Mon Aug 13 23:33:14 2007 -0500) 7 commits
->  - New bitmap and inode table allocation for FLEX_BG
-
-This one was more of an RFC to let folks play with different meta data
-layouts.  Should probably stay outside the tree for now.  The other
-three patches are whats needed to get e2fsprog in sync with the kernel.
-
->  - Relax group descriptor checking.
-
-This one needs updating to be more in line with what we define FLEX_BG
-to be in the kernel.  I thing I also encounter conflicts when pulling
-from the git tree a while back, so the one in the mailing list will not
-apply cleanly.
- 
->  - Allow FLEX_BG to be use as a feature option at mke2fs time.
->  - Reserve the INCOMPAT feature number for FLEX_BG.
 > 
-> Relatively straight forward, so we should be able to merge this soon.
+> More statfs() improvements for ext2. ext2 already maintains
+> percpu counters for free blocks and inodes. Derive free
+> block count and inode count by summing up percpu counters,
+> instead of counting up all the groups in the filesystem
+> each time.
+> 
+> 
+> Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
+> Acked-by: Andreas Dilger <adilger@clusterfs.com>
+> 
+>  fs/ext2/super.c |    4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> Index: linux-2.6.22/fs/ext2/super.c
+> ===================================================================
+> --- linux-2.6.22.orig/fs/ext2/super.c	2007-07-13 20:06:38.000000000 -0700
+> +++ linux-2.6.22/fs/ext2/super.c	2007-07-13 20:06:51.000000000 -0700
+> @@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
+>  	buf->f_type = EXT2_SUPER_MAGIC;
+>  	buf->f_bsize = sb->s_blocksize;
+>  	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
+> -	buf->f_bfree = ext2_count_free_blocks(sb);
+> + 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
+>  	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+>  	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+>  		buf->f_bavail = 0;
+>  	buf->f_files = le32_to_cpu(es->s_inodes_count);
+> -	buf->f_ffree = ext2_count_free_inodes(sb);
+> + 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
+>  	buf->f_namelen = EXT2_NAME_LEN;
+>  	fsid = le64_to_cpup((void *)es->s_uuid) ^
+>  	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+> 
 
-The last two are fine but its still missing documentation.  Skip this
-series for now.  I will update and resend.
+Guys, I have this patch in a stalled state pending some convincing
+demonstration/argument that it's actually a worthwhile change.
 
--JRS
+How much hurt will it cause on large-numa, and how much benefit do we get
+for that hurt? 
