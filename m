@@ -1,249 +1,353 @@
 From: akpm@linux-foundation.org
-Subject: [patch 230/327] ext3: remove #ifdef CONFIG_EXT3_INDEX
-Date: Tue, 16 Oct 2007 23:30:23 -0700
-Message-ID: <200710170630.l9H6UNsH007410@imap1.linux-foundation.org>
+Subject: [patch 081/327] remove unused bh in calls to ext234_get_group_desc
+Date: Tue, 16 Oct 2007 23:26:30 -0700
+Message-ID: <200710170626.l9H6QUFZ006624@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, sandeen@redhat.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:40720 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:49699 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754898AbXJQGlF (ORCPT
+	by vger.kernel.org with ESMTP id S1755715AbXJQGlG (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 02:41:05 -0400
+	Wed, 17 Oct 2007 02:41:06 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Sandeen <sandeen@redhat.com>
 
-CONFIG_EXT3_INDEX is not an exposed config option in the kernel, and it is
-unconditionally defined in ext3_fs.h.  tune2fs is already able to turn off
-dir indexing, so at this point it's just cluttering up the code.  Remove
-it.
+ext[234]_get_group_desc never tests the bh argument, and only sets it if it
+is passed in; it is perfectly happy with a NULL bh argument.  But, many
+callers send one in and never use it.  May as well call with NULL like
+other callers who don't use the bh.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/dir.c           |    7 -------
- fs/ext3/namei.c         |   19 -------------------
- include/linux/ext3_fs.h |   14 ++------------
- 3 files changed, 2 insertions(+), 38 deletions(-)
+ fs/ext2/ialloc.c |   24 ++++++++----------------
+ fs/ext2/inode.c  |    2 +-
+ fs/ext3/ialloc.c |   17 +++++++----------
+ fs/ext4/ialloc.c |   17 +++++++----------
+ 4 files changed, 23 insertions(+), 37 deletions(-)
 
-diff -puN fs/ext3/dir.c~ext3-remove-ifdef-config_ext3_index fs/ext3/dir.c
---- a/fs/ext3/dir.c~ext3-remove-ifdef-config_ext3_index
-+++ a/fs/ext3/dir.c
-@@ -47,9 +47,7 @@ const struct file_operations ext3_dir_op
- 	.compat_ioctl	= ext3_compat_ioctl,
- #endif
- 	.fsync		= ext3_sync_file,	/* BKL held */
--#ifdef CONFIG_EXT3_INDEX
- 	.release	= ext3_release_dir,
--#endif
- };
+diff -puN fs/ext2/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext2/ialloc.c
+--- a/fs/ext2/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
++++ a/fs/ext2/ialloc.c
+@@ -177,7 +177,6 @@ static void ext2_preread_inode(struct in
+ 	unsigned long block_group;
+ 	unsigned long offset;
+ 	unsigned long block;
+-	struct buffer_head *bh;
+ 	struct ext2_group_desc * gdp;
+ 	struct backing_dev_info *bdi;
  
+@@ -188,7 +187,7 @@ static void ext2_preread_inode(struct in
+ 		return;
  
-@@ -107,7 +105,6 @@ static int ext3_readdir(struct file * fi
+ 	block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
+-	gdp = ext2_get_group_desc(inode->i_sb, block_group, &bh);
++	gdp = ext2_get_group_desc(inode->i_sb, block_group, NULL);
+ 	if (gdp == NULL)
+ 		return;
  
- 	sb = inode->i_sb;
+@@ -217,11 +216,10 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT2_SB(sb)->s_groups_count;
+ 	int avefreei = ext2_count_free_inodes(sb) / ngroups;
+ 	struct ext2_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh, *best_bh = NULL;
+ 	int group, best_group = -1;
  
--#ifdef CONFIG_EXT3_INDEX
- 	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
- 				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
- 	    ((EXT3_I(inode)->i_flags & EXT3_INDEX_FL) ||
-@@ -123,7 +120,6 @@ static int ext3_readdir(struct file * fi
- 		 */
- 		EXT3_I(filp->f_path.dentry->d_inode)->i_flags &= ~EXT3_INDEX_FL;
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -231,7 +229,6 @@ static int find_group_dir(struct super_b
+ 		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
+ 			best_group = group;
+ 			best_desc = desc;
+-			best_bh = bh;
+ 		}
  	}
--#endif
- 	stored = 0;
- 	offset = filp->f_pos & (sb->s_blocksize - 1);
+ 	if (!best_desc)
+@@ -284,7 +281,6 @@ static int find_group_orlov(struct super
+ 	int max_debt, max_dirs, min_blocks, min_inodes;
+ 	int group = -1, i;
+ 	struct ext2_group_desc *desc;
+-	struct buffer_head *bh;
  
-@@ -232,7 +228,6 @@ out:
- 	return ret;
- }
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -295,7 +291,6 @@ static int find_group_orlov(struct super
+ 	if ((parent == sb->s_root->d_inode) ||
+ 	    (EXT2_I(parent)->i_flags & EXT2_TOPDIR_FL)) {
+ 		struct ext2_group_desc *best_desc = NULL;
+-		struct buffer_head *best_bh = NULL;
+ 		int best_ndir = inodes_per_group;
+ 		int best_group = -1;
  
--#ifdef CONFIG_EXT3_INDEX
- /*
-  * These functions convert from the major/minor hash to an f_pos
-  * value.
-@@ -518,5 +513,3 @@ static int ext3_release_dir (struct inod
+@@ -303,7 +298,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext2_get_group_desc (sb, group, &bh);
++			desc = ext2_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -315,11 +310,9 @@ static int find_group_orlov(struct super
+ 			best_group = group;
+ 			best_ndir = le16_to_cpu(desc->bg_used_dirs_count);
+ 			best_desc = desc;
+-			best_bh = bh;
+ 		}
+ 		if (best_group >= 0) {
+ 			desc = best_desc;
+-			bh = best_bh;
+ 			group = best_group;
+ 			goto found;
+ 		}
+@@ -345,7 +338,7 @@ static int find_group_orlov(struct super
  
- 	return 0;
- }
--
--#endif
-diff -puN fs/ext3/namei.c~ext3-remove-ifdef-config_ext3_index fs/ext3/namei.c
---- a/fs/ext3/namei.c~ext3-remove-ifdef-config_ext3_index
-+++ a/fs/ext3/namei.c
-@@ -144,7 +144,6 @@ struct dx_map_entry
- 	u16 size;
- };
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (sbi->s_debts[group] >= max_debt)
+@@ -362,7 +355,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -389,14 +382,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT2_I(parent)->i_block_group;
+ 	int ngroups = EXT2_SB(sb)->s_groups_count;
+ 	struct ext2_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
  
--#ifdef CONFIG_EXT3_INDEX
- static inline unsigned dx_get_block (struct dx_entry *entry);
- static void dx_set_block (struct dx_entry *entry, unsigned value);
- static inline unsigned dx_get_hash (struct dx_entry *entry);
-@@ -768,8 +767,6 @@ static void dx_insert_block(struct dx_fr
- 	dx_set_block(new, block);
- 	dx_set_count(entries, count + 1);
- }
--#endif
--
- 
- static void ext3_update_dx_flag(struct inode *inode)
- {
-@@ -871,7 +868,6 @@ static struct buffer_head * ext3_find_en
- 	name = dentry->d_name.name;
- 	if (namelen > EXT3_NAME_LEN)
- 		return NULL;
--#ifdef CONFIG_EXT3_INDEX
- 	if (is_dx(dir)) {
- 		bh = ext3_dx_find_entry(dentry, res_dir, &err);
- 		/*
-@@ -883,7 +879,6 @@ static struct buffer_head * ext3_find_en
- 			return bh;
- 		dxtrace(printk("ext3_find_entry: dx failed, falling back\n"));
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext2_get_group_desc (sb, group, &bh);
++	desc = ext2_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		goto found;
+@@ -420,7 +412,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			goto found;
+@@ -434,7 +426,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext2_get_group_desc (sb, group, &bh);
++		desc = ext2_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			goto found;
  	}
--#endif
- 	nblocks = dir->i_size >> EXT3_BLOCK_SIZE_BITS(sb);
- 	start = EXT3_I(dir)->i_dir_start_lookup;
- 	if (start >= nblocks)
-@@ -959,7 +954,6 @@ cleanup_and_exit:
- 	return ret;
- }
+diff -puN fs/ext2/inode.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext2/inode.c
+--- a/fs/ext2/inode.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
++++ a/fs/ext2/inode.c
+@@ -1028,7 +1028,7 @@ static struct ext2_inode *ext2_get_inode
+ 		goto Einval;
  
--#ifdef CONFIG_EXT3_INDEX
- static struct buffer_head * ext3_dx_find_entry(struct dentry *dentry,
- 		       struct ext3_dir_entry_2 **res_dir, int *err)
- {
-@@ -1027,7 +1021,6 @@ errout:
- 	dx_release (frames);
- 	return NULL;
- }
--#endif
+ 	block_group = (ino - 1) / EXT2_INODES_PER_GROUP(sb);
+-	gdp = ext2_get_group_desc(sb, block_group, &bh);
++	gdp = ext2_get_group_desc(sb, block_group, NULL);
+ 	if (!gdp)
+ 		goto Egdp;
+ 	/*
+diff -puN fs/ext3/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
++++ a/fs/ext3/ialloc.c
+@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT3_SB(sb)->s_groups_count;
+ 	unsigned int freei, avefreei;
+ 	struct ext3_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh;
+ 	int group, best_group = -1;
  
- static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
- {
-@@ -1123,7 +1116,6 @@ static inline void ext3_set_de_type(stru
- 		de->file_type = ext3_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
- }
+ 	freei = percpu_counter_read_positive(&EXT3_SB(sb)->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
  
--#ifdef CONFIG_EXT3_INDEX
- /*
-  * Move count entries from end of map between two memory locations.
-  * Returns pointer to last entry moved.
-@@ -1268,7 +1260,6 @@ errout:
- 	*error = err;
- 	return NULL;
- }
--#endif
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
+ 	ext3_grpblk_t min_blocks;
+ 	int group = -1, i;
+ 	struct ext3_group_desc *desc;
+-	struct buffer_head *bh;
  
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -286,7 +284,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext3_get_group_desc (sb, group, &bh);
++			desc = ext3_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -319,7 +317,7 @@ static int find_group_orlov(struct super
  
- /*
-@@ -1366,7 +1357,6 @@ static int add_dirent_to_buf(handle_t *h
- 	return 0;
- }
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
+@@ -334,7 +332,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -358,14 +356,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT3_I(parent)->i_block_group;
+ 	int ngroups = EXT3_SB(sb)->s_groups_count;
+ 	struct ext3_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
  
--#ifdef CONFIG_EXT3_INDEX
- /*
-  * This converts a one block unindexed directory to a 3 block indexed
-  * directory, and adds the dentry to the indexed directory.
-@@ -1445,7 +1435,6 @@ static int make_indexed_dir(handle_t *ha
- 
- 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
- }
--#endif
- 
- /*
-  *	ext3_add_entry()
-@@ -1466,9 +1455,7 @@ static int ext3_add_entry (handle_t *han
- 	struct ext3_dir_entry_2 *de;
- 	struct super_block * sb;
- 	int	retval;
--#ifdef CONFIG_EXT3_INDEX
- 	int	dx_fallback=0;
--#endif
- 	unsigned blocksize;
- 	u32 block, blocks;
- 
-@@ -1476,7 +1463,6 @@ static int ext3_add_entry (handle_t *han
- 	blocksize = sb->s_blocksize;
- 	if (!dentry->d_name.len)
- 		return -EINVAL;
--#ifdef CONFIG_EXT3_INDEX
- 	if (is_dx(dir)) {
- 		retval = ext3_dx_add_entry(handle, dentry, inode);
- 		if (!retval || (retval != ERR_BAD_DX_DIR))
-@@ -1485,7 +1471,6 @@ static int ext3_add_entry (handle_t *han
- 		dx_fallback++;
- 		ext3_mark_inode_dirty(handle, dir);
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext3_get_group_desc (sb, group, &bh);
++	desc = ext3_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		return group;
+@@ -389,7 +386,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			return group;
+@@ -403,7 +400,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext3_get_group_desc (sb, group, &bh);
++		desc = ext3_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			return group;
  	}
--#endif
- 	blocks = dir->i_size >> sb->s_blocksize_bits;
- 	for (block = 0, offset = 0; block < blocks; block++) {
- 		bh = ext3_bread(handle, dir, block, 0, &retval);
-@@ -1495,11 +1480,9 @@ static int ext3_add_entry (handle_t *han
- 		if (retval != -ENOSPC)
- 			return retval;
+diff -puN fs/ext4/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
++++ a/fs/ext4/ialloc.c
+@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
+ 	int ngroups = EXT4_SB(sb)->s_groups_count;
+ 	unsigned int freei, avefreei;
+ 	struct ext4_group_desc *desc, *best_desc = NULL;
+-	struct buffer_head *bh;
+ 	int group, best_group = -1;
  
--#ifdef CONFIG_EXT3_INDEX
- 		if (blocks == 1 && !dx_fallback &&
- 		    EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_DIR_INDEX))
- 			return make_indexed_dir(handle, dentry, inode, bh);
--#endif
- 		brelse(bh);
+ 	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+ 
+ 	for (group = 0; group < ngroups; group++) {
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
+ 	ext4_grpblk_t min_blocks;
+ 	int group = -1, i;
+ 	struct ext4_group_desc *desc;
+-	struct buffer_head *bh;
+ 
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -287,7 +285,7 @@ static int find_group_orlov(struct super
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+-			desc = ext4_get_group_desc (sb, group, &bh);
++			desc = ext4_get_group_desc (sb, group, NULL);
+ 			if (!desc || !desc->bg_free_inodes_count)
+ 				continue;
+ 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+@@ -322,7 +320,7 @@ static int find_group_orlov(struct super
+ 
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
+@@ -337,7 +335,7 @@ static int find_group_orlov(struct super
+ fallback:
+ 	for (i = 0; i < ngroups; i++) {
+ 		group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (!desc || !desc->bg_free_inodes_count)
+ 			continue;
+ 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
+@@ -361,14 +359,13 @@ static int find_group_other(struct super
+ 	int parent_group = EXT4_I(parent)->i_block_group;
+ 	int ngroups = EXT4_SB(sb)->s_groups_count;
+ 	struct ext4_group_desc *desc;
+-	struct buffer_head *bh;
+ 	int group, i;
+ 
+ 	/*
+ 	 * Try to place the inode in its parent directory
+ 	 */
+ 	group = parent_group;
+-	desc = ext4_get_group_desc (sb, group, &bh);
++	desc = ext4_get_group_desc (sb, group, NULL);
+ 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 			le16_to_cpu(desc->bg_free_blocks_count))
+ 		return group;
+@@ -392,7 +389,7 @@ static int find_group_other(struct super
+ 		group += i;
+ 		if (group >= ngroups)
+ 			group -= ngroups;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+ 				le16_to_cpu(desc->bg_free_blocks_count))
+ 			return group;
+@@ -406,7 +403,7 @@ static int find_group_other(struct super
+ 	for (i = 0; i < ngroups; i++) {
+ 		if (++group >= ngroups)
+ 			group = 0;
+-		desc = ext4_get_group_desc (sb, group, &bh);
++		desc = ext4_get_group_desc (sb, group, NULL);
+ 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
+ 			return group;
  	}
- 	bh = ext3_append(handle, dir, &block, &retval);
-@@ -1511,7 +1494,6 @@ static int ext3_add_entry (handle_t *han
- 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
- }
- 
--#ifdef CONFIG_EXT3_INDEX
- /*
-  * Returns 0 for success, or a negative error value
-  */
-@@ -1646,7 +1628,6 @@ cleanup:
- 	dx_release(frames);
- 	return err;
- }
--#endif
- 
- /*
-  * ext3_delete_entry deletes a directory entry by merging it with the
-diff -puN include/linux/ext3_fs.h~ext3-remove-ifdef-config_ext3_index include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-remove-ifdef-config_ext3_index
-+++ a/include/linux/ext3_fs.h
-@@ -35,10 +35,6 @@
- /*max window size: 1024(direct blocks) + 3([t,d]indirect blocks) */
- #define EXT3_MAX_RESERVE_BLOCKS         1027
- #define EXT3_RESERVE_WINDOW_NOT_ALLOCATED 0
--/*
-- * Always enable hashed directories
-- */
--#define CONFIG_EXT3_INDEX
- 
- /*
-  * Debug code
-@@ -665,17 +661,11 @@ struct ext3_dir_entry_2 {
-  * (c) Daniel Phillips, 2001
-  */
- 
--#ifdef CONFIG_EXT3_INDEX
--  #define is_dx(dir) (EXT3_HAS_COMPAT_FEATURE(dir->i_sb, \
--					      EXT3_FEATURE_COMPAT_DIR_INDEX) && \
-+#define is_dx(dir) (EXT3_HAS_COMPAT_FEATURE(dir->i_sb, \
-+				      EXT3_FEATURE_COMPAT_DIR_INDEX) && \
- 		      (EXT3_I(dir)->i_flags & EXT3_INDEX_FL))
- #define EXT3_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT3_LINK_MAX)
- #define EXT3_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
--#else
--  #define is_dx(dir) 0
--#define EXT3_DIR_LINK_MAX(dir) ((dir)->i_nlink >= EXT3_LINK_MAX)
--#define EXT3_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2)
--#endif
- 
- /* Legal values for the dx_root hash_version field: */
- 
 _
