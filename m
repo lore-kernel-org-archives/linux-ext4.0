@@ -1,172 +1,186 @@
 From: akpm@linux-foundation.org
-Subject: [patch 073/327] convert ill defined log2() to ilog2()
-Date: Tue, 16 Oct 2007 23:26:25 -0700
-Message-ID: <200710170626.l9H6QPDS006592@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, fengguang.wu@gmail.com,
-	airlied@linux.ie, bjorn.helgaas@hp.com,
-	christopher.j.ahna@intel.com, cmm@us.ibm.com,
-	davej@codemonkey.org.uk, davidm@hpl.hp.com, kyle@parisc-linux.org,
-	linux-ext4@vger.kernel.org, wfg@mail.ustc.edu.cn
+Subject: [patch 144/327] Fix f_version type: should be u64 instead of unsigned long
+Date: Tue, 16 Oct 2007 23:27:21 -0700
+Message-ID: <200710170627.l9H6RLfh006916@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, mathieu.desnoyers@polymtl.ca,
+	bfields@fieldses.org, hch@lst.de, linux-ext4@vger.kernel.org,
+	mark.fasheh@oracle.com, mbligh@google.com, rdunlap@xenotime.net,
+	trond.myklebust@fys.uio.no, viro@ftp.linux.org.uk
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from smtp2.linux-foundation.org ([207.189.120.14]:55621 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753089AbXJQHHk (ORCPT
+	by vger.kernel.org with ESMTP id S1751932AbXJQHHj (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 03:07:40 -0400
+	Wed, 17 Oct 2007 03:07:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Fengguang Wu <fengguang.wu@gmail.com>
+From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 
-It's *wrong* to have
-			#define log2(n) ffz(~(n))
-It should be *reversed*:
-			#define log2(n) flz(~(n))
-or
-			#define log2(n) fls(n)
-or just use
-			ilog2(n) defined in linux/log2.h.
+Fix f_version type: should be u64 instead of long
 
-This patch follows the last solution, recommended by Andrew Morton.
+There is a type inconsistency between struct inode i_version and struct file
+f_version.
 
+fs.h:
+
+struct inode
+  u64                     i_version;
+
+and
+
+struct file
+  unsigned long           f_version;
+
+Users do:
+
+fs/ext3/dir.c:
+
+if (filp->f_version != inode->i_version) {
+
+So why isn't f_version a u64 ? It becomes a problem if versions gets
+higher than 2^32 and we are on an architecture where longs are 32 bits.
+
+This patch changes the f_version type to u64, and updates the users accordingly.
+
+It applies to 2.6.23-rc2-mm2.
+
+Signed-off-by: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+Cc: Martin Bligh <mbligh@google.com>
+Cc: "Randy.Dunlap" <rdunlap@xenotime.net>
+Cc: Al Viro <viro@ftp.linux.org.uk>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: Bjorn Helgaas <bjorn.helgaas@hp.com>
-Cc: Chris Ahna <christopher.j.ahna@intel.com>
-Cc: David Mosberger-Tang <davidm@hpl.hp.com>
-Cc: Kyle McMartin <kyle@parisc-linux.org>
-Cc: Dave Airlie <airlied@linux.ie>
-Cc: Dave Jones <davej@codemonkey.org.uk>
-Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
+Cc: Mark Fasheh <mark.fasheh@oracle.com>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- drivers/char/agp/hp-agp.c     |    9 +++------
- drivers/char/agp/i460-agp.c   |    5 ++---
- drivers/char/agp/parisc-agp.c |    7 ++-----
- fs/ext4/super.c               |    6 ++----
- 4 files changed, 9 insertions(+), 18 deletions(-)
+ fs/ext3/dir.c            |    2 +-
+ fs/ext4/dir.c            |    2 +-
+ fs/ocfs2/dir.c           |   10 +++++-----
+ fs/proc/base.c           |    4 ++--
+ include/linux/fs.h       |    2 +-
+ include/linux/seq_file.h |    2 +-
+ 6 files changed, 11 insertions(+), 11 deletions(-)
 
-diff -puN drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/hp-agp.c
---- a/drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2
-+++ a/drivers/char/agp/hp-agp.c
-@@ -14,15 +14,12 @@
- #include <linux/pci.h>
- #include <linux/init.h>
- #include <linux/agp_backend.h>
-+#include <linux/log2.h>
+diff -puN fs/ext3/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long fs/ext3/dir.c
+--- a/fs/ext3/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/fs/ext3/dir.c
+@@ -210,7 +210,7 @@ revalidate:
+ 				 * not the directory has been modified
+ 				 * during the copy operation.
+ 				 */
+-				unsigned long version = filp->f_version;
++				u64 version = filp->f_version;
  
- #include <asm/acpi-ext.h>
+ 				error = filldir(dirent, de->name,
+ 						de->name_len,
+diff -puN fs/ext4/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long fs/ext4/dir.c
+--- a/fs/ext4/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/fs/ext4/dir.c
+@@ -210,7 +210,7 @@ revalidate:
+ 				 * not the directory has been modified
+ 				 * during the copy operation.
+ 				 */
+-				unsigned long version = filp->f_version;
++				u64 version = filp->f_version;
  
- #include "agp.h"
+ 				error = filldir(dirent, de->name,
+ 						de->name_len,
+diff -puN fs/ocfs2/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long fs/ocfs2/dir.c
+--- a/fs/ocfs2/dir.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/fs/ocfs2/dir.c
+@@ -586,7 +586,7 @@ bail:
+ }
  
--#ifndef log2
--#define log2(x)		ffz(~(x))
--#endif
--
- #define HP_ZX1_IOC_OFFSET	0x1000  /* ACPI reports SBA, we want IOC */
- 
- /* HP ZX1 IOC registers */
-@@ -257,7 +254,7 @@ hp_zx1_configure (void)
- 		readl(hp->ioc_regs+HP_ZX1_IMASK);
- 		writel(hp->iova_base|1, hp->ioc_regs+HP_ZX1_IBASE);
- 		readl(hp->ioc_regs+HP_ZX1_IBASE);
--		writel(hp->iova_base|log2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
-+		writel(hp->iova_base|ilog2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
- 		readl(hp->ioc_regs+HP_ZX1_PCOM);
- 	}
- 
-@@ -285,7 +282,7 @@ hp_zx1_tlbflush (struct agp_memory *mem)
+ static int ocfs2_dir_foreach_blk_id(struct inode *inode,
+-				    unsigned long *f_version,
++				    u64 *f_version,
+ 				    loff_t *f_pos, void *priv,
+ 				    filldir_t filldir, int *filldir_err)
  {
- 	struct _hp_private *hp = &hp_private;
+@@ -648,7 +648,7 @@ revalidate:
+ 			 * not the directory has been modified
+ 			 * during the copy operation.
+ 			 */
+-			unsigned long version = *f_version;
++			u64 version = *f_version;
+ 			unsigned char d_type = DT_UNKNOWN;
  
--	writeq(hp->gart_base | log2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
-+	writeq(hp->gart_base | ilog2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
- 	readq(hp->ioc_regs+HP_ZX1_PCOM);
+ 			if (de->file_type < OCFS2_FT_MAX)
+@@ -677,7 +677,7 @@ out:
  }
  
-diff -puN drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/i460-agp.c
---- a/drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2
-+++ a/drivers/char/agp/i460-agp.c
-@@ -13,6 +13,7 @@
- #include <linux/string.h>
- #include <linux/slab.h>
- #include <linux/agp_backend.h>
-+#include <linux/log2.h>
- 
- #include "agp.h"
- 
-@@ -59,8 +60,6 @@
-  */
- #define WR_FLUSH_GATT(index)	RD_GATT(index)
- 
--#define log2(x)			ffz(~(x))
--
- static struct {
- 	void *gatt;				/* ioremap'd GATT area */
- 
-@@ -148,7 +147,7 @@ static int i460_fetch_size (void)
- 		 * values[i].size.
- 		 */
- 		values[i].num_entries = (values[i].size << 8) >> (I460_IO_PAGE_SHIFT - 12);
--		values[i].page_order = log2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
-+		values[i].page_order = ilog2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
- 	}
- 
- 	for (i = 0; i < agp_bridge->driver->num_aperture_sizes; i++) {
-diff -puN drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/parisc-agp.c
---- a/drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2
-+++ a/drivers/char/agp/parisc-agp.c
-@@ -18,6 +18,7 @@
- #include <linux/init.h>
- #include <linux/klist.h>
- #include <linux/agp_backend.h>
-+#include <linux/log2.h>
- 
- #include <asm-parisc/parisc-device.h>
- #include <asm-parisc/ropes.h>
-@@ -27,10 +28,6 @@
- #define DRVNAME	"quicksilver"
- #define DRVPFX	DRVNAME ": "
- 
--#ifndef log2
--#define log2(x)		ffz(~(x))
--#endif
--
- #define AGP8X_MODE_BIT		3
- #define AGP8X_MODE		(1 << AGP8X_MODE_BIT)
- 
-@@ -92,7 +89,7 @@ parisc_agp_tlbflush(struct agp_memory *m
+ static int ocfs2_dir_foreach_blk_el(struct inode *inode,
+-				    unsigned long *f_version,
++				    u64 *f_version,
+ 				    loff_t *f_pos, void *priv,
+ 				    filldir_t filldir, int *filldir_err)
  {
- 	struct _parisc_agp_info *info = &parisc_agp_info;
- 
--	writeq(info->gart_base | log2(info->gart_size), info->ioc_regs+IOC_PCOM);
-+	writeq(info->gart_base | ilog2(info->gart_size), info->ioc_regs+IOC_PCOM);
- 	readq(info->ioc_regs+IOC_PCOM);	/* flush */
+@@ -798,7 +798,7 @@ out:
+ 	return stored;
  }
  
-diff -puN fs/ext4/super.c~convert-ill-defined-log2-to-ilog2 fs/ext4/super.c
---- a/fs/ext4/super.c~convert-ill-defined-log2-to-ilog2
-+++ a/fs/ext4/super.c
-@@ -1415,8 +1415,6 @@ static void ext4_orphan_cleanup (struct 
- 	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
- }
+-static int ocfs2_dir_foreach_blk(struct inode *inode, unsigned long *f_version,
++static int ocfs2_dir_foreach_blk(struct inode *inode, u64 *f_version,
+ 				 loff_t *f_pos, void *priv, filldir_t filldir,
+ 				 int *filldir_err)
+ {
+@@ -818,7 +818,7 @@ int ocfs2_dir_foreach(struct inode *inod
+ 		      filldir_t filldir)
+ {
+ 	int ret = 0, filldir_err = 0;
+-	unsigned long version = inode->i_version;
++	u64 version = inode->i_version;
  
--#define log2(n) ffz(~(n))
--
- /*
-  * Maximal file size.  There is a direct, and {,double-,triple-}indirect
-  * block limit, and also a limit of (2^32 - 1) 512-byte sectors in i_blocks.
-@@ -1689,8 +1687,8 @@ static int ext4_fill_super (struct super
- 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
- 	sbi->s_sbh = bh;
- 	sbi->s_mount_state = le16_to_cpu(es->s_state);
--	sbi->s_addr_per_block_bits = log2(EXT4_ADDR_PER_BLOCK(sb));
--	sbi->s_desc_per_block_bits = log2(EXT4_DESC_PER_BLOCK(sb));
-+	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
-+	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
- 	for (i=0; i < 4; i++)
- 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
- 	sbi->s_def_hash_version = es->s_def_hash_version;
+ 	while (*f_pos < i_size_read(inode)) {
+ 		ret = ocfs2_dir_foreach_blk(inode, &version, f_pos, priv,
+diff -puN fs/proc/base.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long fs/proc/base.c
+--- a/fs/proc/base.c~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/fs/proc/base.c
+@@ -2586,7 +2586,7 @@ static int proc_task_readdir(struct file
+ 	/* f_version caches the tgid value that the last readdir call couldn't
+ 	 * return. lseek aka telldir automagically resets f_version to 0.
+ 	 */
+-	tid = filp->f_version;
++	tid = (int)filp->f_version;
+ 	filp->f_version = 0;
+ 	for (task = first_tid(leader, tid, pos - 2);
+ 	     task;
+@@ -2595,7 +2595,7 @@ static int proc_task_readdir(struct file
+ 		if (proc_task_fill_cache(filp, dirent, filldir, task, tid) < 0) {
+ 			/* returning this tgid failed, save it as the first
+ 			 * pid for the next readir call */
+-			filp->f_version = tid;
++			filp->f_version = (u64)tid;
+ 			put_task_struct(task);
+ 			break;
+ 		}
+diff -puN include/linux/fs.h~fix-f_version-type-should-be-u64-instead-of-unsigned-long include/linux/fs.h
+--- a/include/linux/fs.h~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/include/linux/fs.h
+@@ -792,7 +792,7 @@ struct file {
+ 	unsigned int		f_uid, f_gid;
+ 	struct file_ra_state	f_ra;
+ 
+-	unsigned long		f_version;
++	u64			f_version;
+ #ifdef CONFIG_SECURITY
+ 	void			*f_security;
+ #endif
+diff -puN include/linux/seq_file.h~fix-f_version-type-should-be-u64-instead-of-unsigned-long include/linux/seq_file.h
+--- a/include/linux/seq_file.h~fix-f_version-type-should-be-u64-instead-of-unsigned-long
++++ a/include/linux/seq_file.h
+@@ -18,7 +18,7 @@ struct seq_file {
+ 	size_t from;
+ 	size_t count;
+ 	loff_t index;
+-	loff_t version;
++	u64 version;
+ 	struct mutex lock;
+ 	const struct seq_operations *op;
+ 	void *private;
 _
