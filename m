@@ -1,353 +1,172 @@
 From: akpm@linux-foundation.org
-Subject: [patch 081/327] remove unused bh in calls to ext234_get_group_desc
-Date: Tue, 16 Oct 2007 23:19:19 -0700
-Message-ID: <200710170619.l9H6JJDB005708@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
+Subject: [patch 073/327] convert ill defined log2() to ilog2()
+Date: Tue, 16 Oct 2007 23:19:10 -0700
+Message-ID: <200710170619.l9H6JA0G005672@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, fengguang.wu@gmail.com,
+	airlied@linux.ie, bjorn.helgaas@hp.com,
+	christopher.j.ahna@intel.com, cmm@us.ibm.com,
+	davej@codemonkey.org.uk, davidm@hpl.hp.com, kyle@parisc-linux.org,
+	linux-ext4@vger.kernel.org, wfg@mail.ustc.edu.cn
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:37774 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55001 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752947AbXJQG2x (ORCPT
+	by vger.kernel.org with ESMTP id S1753309AbXJQGdx (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 02:28:53 -0400
+	Wed, 17 Oct 2007 02:33:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Fengguang Wu <fengguang.wu@gmail.com>
 
-ext[234]_get_group_desc never tests the bh argument, and only sets it if it
-is passed in; it is perfectly happy with a NULL bh argument.  But, many
-callers send one in and never use it.  May as well call with NULL like
-other callers who don't use the bh.
+It's *wrong* to have
+			#define log2(n) ffz(~(n))
+It should be *reversed*:
+			#define log2(n) flz(~(n))
+or
+			#define log2(n) fls(n)
+or just use
+			ilog2(n) defined in linux/log2.h.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+This patch follows the last solution, recommended by Andrew Morton.
+
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Mingming Cao <cmm@us.ibm.com>
+Cc: Bjorn Helgaas <bjorn.helgaas@hp.com>
+Cc: Chris Ahna <christopher.j.ahna@intel.com>
+Cc: David Mosberger-Tang <davidm@hpl.hp.com>
+Cc: Kyle McMartin <kyle@parisc-linux.org>
+Cc: Dave Airlie <airlied@linux.ie>
+Cc: Dave Jones <davej@codemonkey.org.uk>
+Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/ialloc.c |   24 ++++++++----------------
- fs/ext2/inode.c  |    2 +-
- fs/ext3/ialloc.c |   17 +++++++----------
- fs/ext4/ialloc.c |   17 +++++++----------
- 4 files changed, 23 insertions(+), 37 deletions(-)
+ drivers/char/agp/hp-agp.c     |    9 +++------
+ drivers/char/agp/i460-agp.c   |    5 ++---
+ drivers/char/agp/parisc-agp.c |    7 ++-----
+ fs/ext4/super.c               |    6 ++----
+ 4 files changed, 9 insertions(+), 18 deletions(-)
 
-diff -puN fs/ext2/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext2/ialloc.c
---- a/fs/ext2/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
-+++ a/fs/ext2/ialloc.c
-@@ -177,7 +177,6 @@ static void ext2_preread_inode(struct in
- 	unsigned long block_group;
- 	unsigned long offset;
- 	unsigned long block;
--	struct buffer_head *bh;
- 	struct ext2_group_desc * gdp;
- 	struct backing_dev_info *bdi;
+diff -puN drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/hp-agp.c
+--- a/drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/hp-agp.c
+@@ -14,15 +14,12 @@
+ #include <linux/pci.h>
+ #include <linux/init.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
  
-@@ -188,7 +187,7 @@ static void ext2_preread_inode(struct in
- 		return;
+ #include <asm/acpi-ext.h>
  
- 	block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
--	gdp = ext2_get_group_desc(inode->i_sb, block_group, &bh);
-+	gdp = ext2_get_group_desc(inode->i_sb, block_group, NULL);
- 	if (gdp == NULL)
- 		return;
+ #include "agp.h"
  
-@@ -217,11 +216,10 @@ static int find_group_dir(struct super_b
- 	int ngroups = EXT2_SB(sb)->s_groups_count;
- 	int avefreei = ext2_count_free_inodes(sb) / ngroups;
- 	struct ext2_group_desc *desc, *best_desc = NULL;
--	struct buffer_head *bh, *best_bh = NULL;
- 	int group, best_group = -1;
+-#ifndef log2
+-#define log2(x)		ffz(~(x))
+-#endif
+-
+ #define HP_ZX1_IOC_OFFSET	0x1000  /* ACPI reports SBA, we want IOC */
  
- 	for (group = 0; group < ngroups; group++) {
--		desc = ext2_get_group_desc (sb, group, &bh);
-+		desc = ext2_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
-@@ -231,7 +229,6 @@ static int find_group_dir(struct super_b
- 		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
- 			best_group = group;
- 			best_desc = desc;
--			best_bh = bh;
- 		}
+ /* HP ZX1 IOC registers */
+@@ -257,7 +254,7 @@ hp_zx1_configure (void)
+ 		readl(hp->ioc_regs+HP_ZX1_IMASK);
+ 		writel(hp->iova_base|1, hp->ioc_regs+HP_ZX1_IBASE);
+ 		readl(hp->ioc_regs+HP_ZX1_IBASE);
+-		writel(hp->iova_base|log2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
++		writel(hp->iova_base|ilog2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
+ 		readl(hp->ioc_regs+HP_ZX1_PCOM);
  	}
- 	if (!best_desc)
-@@ -284,7 +281,6 @@ static int find_group_orlov(struct super
- 	int max_debt, max_dirs, min_blocks, min_inodes;
- 	int group = -1, i;
- 	struct ext2_group_desc *desc;
--	struct buffer_head *bh;
  
- 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
-@@ -295,7 +291,6 @@ static int find_group_orlov(struct super
- 	if ((parent == sb->s_root->d_inode) ||
- 	    (EXT2_I(parent)->i_flags & EXT2_TOPDIR_FL)) {
- 		struct ext2_group_desc *best_desc = NULL;
--		struct buffer_head *best_bh = NULL;
- 		int best_ndir = inodes_per_group;
- 		int best_group = -1;
+@@ -285,7 +282,7 @@ hp_zx1_tlbflush (struct agp_memory *mem)
+ {
+ 	struct _hp_private *hp = &hp_private;
  
-@@ -303,7 +298,7 @@ static int find_group_orlov(struct super
- 		parent_group = (unsigned)group % ngroups;
- 		for (i = 0; i < ngroups; i++) {
- 			group = (parent_group + i) % ngroups;
--			desc = ext2_get_group_desc (sb, group, &bh);
-+			desc = ext2_get_group_desc (sb, group, NULL);
- 			if (!desc || !desc->bg_free_inodes_count)
- 				continue;
- 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
-@@ -315,11 +310,9 @@ static int find_group_orlov(struct super
- 			best_group = group;
- 			best_ndir = le16_to_cpu(desc->bg_used_dirs_count);
- 			best_desc = desc;
--			best_bh = bh;
- 		}
- 		if (best_group >= 0) {
- 			desc = best_desc;
--			bh = best_bh;
- 			group = best_group;
- 			goto found;
- 		}
-@@ -345,7 +338,7 @@ static int find_group_orlov(struct super
+-	writeq(hp->gart_base | log2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
++	writeq(hp->gart_base | ilog2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
+ 	readq(hp->ioc_regs+HP_ZX1_PCOM);
+ }
  
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext2_get_group_desc (sb, group, &bh);
-+		desc = ext2_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (sbi->s_debts[group] >= max_debt)
-@@ -362,7 +355,7 @@ static int find_group_orlov(struct super
- fallback:
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext2_get_group_desc (sb, group, &bh);
-+		desc = ext2_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
-@@ -389,14 +382,13 @@ static int find_group_other(struct super
- 	int parent_group = EXT2_I(parent)->i_block_group;
- 	int ngroups = EXT2_SB(sb)->s_groups_count;
- 	struct ext2_group_desc *desc;
--	struct buffer_head *bh;
- 	int group, i;
+diff -puN drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/i460-agp.c
+--- a/drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/i460-agp.c
+@@ -13,6 +13,7 @@
+ #include <linux/string.h>
+ #include <linux/slab.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
  
- 	/*
- 	 * Try to place the inode in its parent directory
- 	 */
- 	group = parent_group;
--	desc = ext2_get_group_desc (sb, group, &bh);
-+	desc = ext2_get_group_desc (sb, group, NULL);
- 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 			le16_to_cpu(desc->bg_free_blocks_count))
- 		goto found;
-@@ -420,7 +412,7 @@ static int find_group_other(struct super
- 		group += i;
- 		if (group >= ngroups)
- 			group -= ngroups;
--		desc = ext2_get_group_desc (sb, group, &bh);
-+		desc = ext2_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 				le16_to_cpu(desc->bg_free_blocks_count))
- 			goto found;
-@@ -434,7 +426,7 @@ static int find_group_other(struct super
- 	for (i = 0; i < ngroups; i++) {
- 		if (++group >= ngroups)
- 			group = 0;
--		desc = ext2_get_group_desc (sb, group, &bh);
-+		desc = ext2_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
- 			goto found;
+ #include "agp.h"
+ 
+@@ -59,8 +60,6 @@
+  */
+ #define WR_FLUSH_GATT(index)	RD_GATT(index)
+ 
+-#define log2(x)			ffz(~(x))
+-
+ static struct {
+ 	void *gatt;				/* ioremap'd GATT area */
+ 
+@@ -148,7 +147,7 @@ static int i460_fetch_size (void)
+ 		 * values[i].size.
+ 		 */
+ 		values[i].num_entries = (values[i].size << 8) >> (I460_IO_PAGE_SHIFT - 12);
+-		values[i].page_order = log2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
++		values[i].page_order = ilog2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
  	}
-diff -puN fs/ext2/inode.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext2/inode.c
---- a/fs/ext2/inode.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
-+++ a/fs/ext2/inode.c
-@@ -1028,7 +1028,7 @@ static struct ext2_inode *ext2_get_inode
- 		goto Einval;
  
- 	block_group = (ino - 1) / EXT2_INODES_PER_GROUP(sb);
--	gdp = ext2_get_group_desc(sb, block_group, &bh);
-+	gdp = ext2_get_group_desc(sb, block_group, NULL);
- 	if (!gdp)
- 		goto Egdp;
- 	/*
-diff -puN fs/ext3/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
-+++ a/fs/ext3/ialloc.c
-@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
- 	int ngroups = EXT3_SB(sb)->s_groups_count;
- 	unsigned int freei, avefreei;
- 	struct ext3_group_desc *desc, *best_desc = NULL;
--	struct buffer_head *bh;
- 	int group, best_group = -1;
+ 	for (i = 0; i < agp_bridge->driver->num_aperture_sizes; i++) {
+diff -puN drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/parisc-agp.c
+--- a/drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/parisc-agp.c
+@@ -18,6 +18,7 @@
+ #include <linux/init.h>
+ #include <linux/klist.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
  
- 	freei = percpu_counter_read_positive(&EXT3_SB(sb)->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
+ #include <asm-parisc/parisc-device.h>
+ #include <asm-parisc/ropes.h>
+@@ -27,10 +28,6 @@
+ #define DRVNAME	"quicksilver"
+ #define DRVPFX	DRVNAME ": "
  
- 	for (group = 0; group < ngroups; group++) {
--		desc = ext3_get_group_desc (sb, group, &bh);
-+		desc = ext3_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
-@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
- 	ext3_grpblk_t min_blocks;
- 	int group = -1, i;
- 	struct ext3_group_desc *desc;
--	struct buffer_head *bh;
+-#ifndef log2
+-#define log2(x)		ffz(~(x))
+-#endif
+-
+ #define AGP8X_MODE_BIT		3
+ #define AGP8X_MODE		(1 << AGP8X_MODE_BIT)
  
- 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
-@@ -286,7 +284,7 @@ static int find_group_orlov(struct super
- 		parent_group = (unsigned)group % ngroups;
- 		for (i = 0; i < ngroups; i++) {
- 			group = (parent_group + i) % ngroups;
--			desc = ext3_get_group_desc (sb, group, &bh);
-+			desc = ext3_get_group_desc (sb, group, NULL);
- 			if (!desc || !desc->bg_free_inodes_count)
- 				continue;
- 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
-@@ -319,7 +317,7 @@ static int find_group_orlov(struct super
+@@ -92,7 +89,7 @@ parisc_agp_tlbflush(struct agp_memory *m
+ {
+ 	struct _parisc_agp_info *info = &parisc_agp_info;
  
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext3_get_group_desc (sb, group, &bh);
-+		desc = ext3_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
-@@ -334,7 +332,7 @@ static int find_group_orlov(struct super
- fallback:
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext3_get_group_desc (sb, group, &bh);
-+		desc = ext3_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
-@@ -358,14 +356,13 @@ static int find_group_other(struct super
- 	int parent_group = EXT3_I(parent)->i_block_group;
- 	int ngroups = EXT3_SB(sb)->s_groups_count;
- 	struct ext3_group_desc *desc;
--	struct buffer_head *bh;
- 	int group, i;
+-	writeq(info->gart_base | log2(info->gart_size), info->ioc_regs+IOC_PCOM);
++	writeq(info->gart_base | ilog2(info->gart_size), info->ioc_regs+IOC_PCOM);
+ 	readq(info->ioc_regs+IOC_PCOM);	/* flush */
+ }
  
- 	/*
- 	 * Try to place the inode in its parent directory
- 	 */
- 	group = parent_group;
--	desc = ext3_get_group_desc (sb, group, &bh);
-+	desc = ext3_get_group_desc (sb, group, NULL);
- 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 			le16_to_cpu(desc->bg_free_blocks_count))
- 		return group;
-@@ -389,7 +386,7 @@ static int find_group_other(struct super
- 		group += i;
- 		if (group >= ngroups)
- 			group -= ngroups;
--		desc = ext3_get_group_desc (sb, group, &bh);
-+		desc = ext3_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 				le16_to_cpu(desc->bg_free_blocks_count))
- 			return group;
-@@ -403,7 +400,7 @@ static int find_group_other(struct super
- 	for (i = 0; i < ngroups; i++) {
- 		if (++group >= ngroups)
- 			group = 0;
--		desc = ext3_get_group_desc (sb, group, &bh);
-+		desc = ext3_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
- 			return group;
- 	}
-diff -puN fs/ext4/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~remove-unused-bh-in-calls-to-ext234_get_group_desc
-+++ a/fs/ext4/ialloc.c
-@@ -204,14 +204,13 @@ static int find_group_dir(struct super_b
- 	int ngroups = EXT4_SB(sb)->s_groups_count;
- 	unsigned int freei, avefreei;
- 	struct ext4_group_desc *desc, *best_desc = NULL;
--	struct buffer_head *bh;
- 	int group, best_group = -1;
+diff -puN fs/ext4/super.c~convert-ill-defined-log2-to-ilog2 fs/ext4/super.c
+--- a/fs/ext4/super.c~convert-ill-defined-log2-to-ilog2
++++ a/fs/ext4/super.c
+@@ -1415,8 +1415,6 @@ static void ext4_orphan_cleanup (struct 
+ 	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
+ }
  
- 	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
- 
- 	for (group = 0; group < ngroups; group++) {
--		desc = ext4_get_group_desc (sb, group, &bh);
-+		desc = ext4_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
-@@ -269,7 +268,6 @@ static int find_group_orlov(struct super
- 	ext4_grpblk_t min_blocks;
- 	int group = -1, i;
- 	struct ext4_group_desc *desc;
--	struct buffer_head *bh;
- 
- 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
-@@ -287,7 +285,7 @@ static int find_group_orlov(struct super
- 		parent_group = (unsigned)group % ngroups;
- 		for (i = 0; i < ngroups; i++) {
- 			group = (parent_group + i) % ngroups;
--			desc = ext4_get_group_desc (sb, group, &bh);
-+			desc = ext4_get_group_desc (sb, group, NULL);
- 			if (!desc || !desc->bg_free_inodes_count)
- 				continue;
- 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
-@@ -322,7 +320,7 @@ static int find_group_orlov(struct super
- 
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext4_get_group_desc (sb, group, &bh);
-+		desc = ext4_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
-@@ -337,7 +335,7 @@ static int find_group_orlov(struct super
- fallback:
- 	for (i = 0; i < ngroups; i++) {
- 		group = (parent_group + i) % ngroups;
--		desc = ext4_get_group_desc (sb, group, &bh);
-+		desc = ext4_get_group_desc (sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
-@@ -361,14 +359,13 @@ static int find_group_other(struct super
- 	int parent_group = EXT4_I(parent)->i_block_group;
- 	int ngroups = EXT4_SB(sb)->s_groups_count;
- 	struct ext4_group_desc *desc;
--	struct buffer_head *bh;
- 	int group, i;
- 
- 	/*
- 	 * Try to place the inode in its parent directory
- 	 */
- 	group = parent_group;
--	desc = ext4_get_group_desc (sb, group, &bh);
-+	desc = ext4_get_group_desc (sb, group, NULL);
- 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 			le16_to_cpu(desc->bg_free_blocks_count))
- 		return group;
-@@ -392,7 +389,7 @@ static int find_group_other(struct super
- 		group += i;
- 		if (group >= ngroups)
- 			group -= ngroups;
--		desc = ext4_get_group_desc (sb, group, &bh);
-+		desc = ext4_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 				le16_to_cpu(desc->bg_free_blocks_count))
- 			return group;
-@@ -406,7 +403,7 @@ static int find_group_other(struct super
- 	for (i = 0; i < ngroups; i++) {
- 		if (++group >= ngroups)
- 			group = 0;
--		desc = ext4_get_group_desc (sb, group, &bh);
-+		desc = ext4_get_group_desc (sb, group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
- 			return group;
- 	}
+-#define log2(n) ffz(~(n))
+-
+ /*
+  * Maximal file size.  There is a direct, and {,double-,triple-}indirect
+  * block limit, and also a limit of (2^32 - 1) 512-byte sectors in i_blocks.
+@@ -1689,8 +1687,8 @@ static int ext4_fill_super (struct super
+ 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
+ 	sbi->s_sbh = bh;
+ 	sbi->s_mount_state = le16_to_cpu(es->s_state);
+-	sbi->s_addr_per_block_bits = log2(EXT4_ADDR_PER_BLOCK(sb));
+-	sbi->s_desc_per_block_bits = log2(EXT4_DESC_PER_BLOCK(sb));
++	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
++	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
+ 	for (i=0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
 _
