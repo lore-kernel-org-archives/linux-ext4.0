@@ -1,150 +1,172 @@
 From: akpm@linux-foundation.org
-Subject: [patch 237/327] ext3: lighten up resize transaction requirements
-Date: Tue, 16 Oct 2007 23:30:28 -0700
-Message-ID: <200710170630.l9H6USA8007441@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, sandeen@redhat.com,
-	adilger@clusterfs.com, linux-ext4@vger.kernel.org
+Subject: [patch 073/327] convert ill defined log2() to ilog2()
+Date: Tue, 16 Oct 2007 23:26:25 -0700
+Message-ID: <200710170626.l9H6QPDS006592@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, fengguang.wu@gmail.com,
+	airlied@linux.ie, bjorn.helgaas@hp.com,
+	christopher.j.ahna@intel.com, cmm@us.ibm.com,
+	davej@codemonkey.org.uk, davidm@hpl.hp.com, kyle@parisc-linux.org,
+	linux-ext4@vger.kernel.org, wfg@mail.ustc.edu.cn
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:47344 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55621 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753870AbXJQGlh (ORCPT
+	by vger.kernel.org with ESMTP id S1753089AbXJQHHk (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 02:41:37 -0400
+	Wed, 17 Oct 2007 03:07:40 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Fengguang Wu <fengguang.wu@gmail.com>
 
-When resizing online, setup_new_group_blocks attempts to reserve a
-potentially very large transaction, depending on the current filesystem
-geometry.  For some journal sizes, there may not be enough room for this
-transaction, and the online resize will fail.
+It's *wrong* to have
+			#define log2(n) ffz(~(n))
+It should be *reversed*:
+			#define log2(n) flz(~(n))
+or
+			#define log2(n) fls(n)
+or just use
+			ilog2(n) defined in linux/log2.h.
 
-The patch below resizes & restarts the transaction as necessary while
-setting up the new group, and should work with even the smallest journal.
+This patch follows the last solution, recommended by Andrew Morton.
 
-Tested with something like:
-
-[root@newbox ~]# dd if=/dev/zero of=fsfile bs=1024 count=32768
-[root@newbox ~]# mkfs.ext3 -b 1024 fsfile 16384
-[root@newbox ~]# mount -o loop fsfile mnt/
-[root@newbox ~]# resize2fs /dev/loop0
-resize2fs 1.40.2 (12-Jul-2007)
-Filesystem at /dev/loop0 is mounted on /root/mnt; on-line resizing required
-old desc_blocks = 1, new_desc_blocks = 1
-Performing an on-line resize of /dev/loop0 to 32768 (1k) blocks.
-resize2fs: No space left on device While trying to add group #2
-[root@newbox ~]# dmesg | tail -n 1
-JBD: resize2fs wants too many credits (258 > 256)
-[root@newbox ~]#
-
-With the below change, it works.
-
-[akpm@linux-foundation.org: coding-style fixes]
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Andreas Dilger <adilger@clusterfs.com>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Mingming Cao <cmm@us.ibm.com>
+Cc: Bjorn Helgaas <bjorn.helgaas@hp.com>
+Cc: Chris Ahna <christopher.j.ahna@intel.com>
+Cc: David Mosberger-Tang <davidm@hpl.hp.com>
+Cc: Kyle McMartin <kyle@parisc-linux.org>
+Cc: Dave Airlie <airlied@linux.ie>
+Cc: Dave Jones <davej@codemonkey.org.uk>
+Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/resize.c |   51 +++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 49 insertions(+), 2 deletions(-)
+ drivers/char/agp/hp-agp.c     |    9 +++------
+ drivers/char/agp/i460-agp.c   |    5 ++---
+ drivers/char/agp/parisc-agp.c |    7 ++-----
+ fs/ext4/super.c               |    6 ++----
+ 4 files changed, 9 insertions(+), 18 deletions(-)
 
-diff -puN fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements
-+++ a/fs/ext3/resize.c
-@@ -154,6 +154,34 @@ static void mark_bitmap_end(int start_bi
+diff -puN drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/hp-agp.c
+--- a/drivers/char/agp/hp-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/hp-agp.c
+@@ -14,15 +14,12 @@
+ #include <linux/pci.h>
+ #include <linux/init.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
+ 
+ #include <asm/acpi-ext.h>
+ 
+ #include "agp.h"
+ 
+-#ifndef log2
+-#define log2(x)		ffz(~(x))
+-#endif
+-
+ #define HP_ZX1_IOC_OFFSET	0x1000  /* ACPI reports SBA, we want IOC */
+ 
+ /* HP ZX1 IOC registers */
+@@ -257,7 +254,7 @@ hp_zx1_configure (void)
+ 		readl(hp->ioc_regs+HP_ZX1_IMASK);
+ 		writel(hp->iova_base|1, hp->ioc_regs+HP_ZX1_IBASE);
+ 		readl(hp->ioc_regs+HP_ZX1_IBASE);
+-		writel(hp->iova_base|log2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
++		writel(hp->iova_base|ilog2(HP_ZX1_IOVA_SIZE), hp->ioc_regs+HP_ZX1_PCOM);
+ 		readl(hp->ioc_regs+HP_ZX1_PCOM);
+ 	}
+ 
+@@ -285,7 +282,7 @@ hp_zx1_tlbflush (struct agp_memory *mem)
+ {
+ 	struct _hp_private *hp = &hp_private;
+ 
+-	writeq(hp->gart_base | log2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
++	writeq(hp->gart_base | ilog2(hp->gart_size), hp->ioc_regs+HP_ZX1_PCOM);
+ 	readq(hp->ioc_regs+HP_ZX1_PCOM);
  }
  
- /*
-+ * If we have fewer than thresh credits, extend by EXT3_MAX_TRANS_DATA.
-+ * If that fails, restart the transaction & regain write access for the
-+ * buffer head which is used for block_bitmap modifications.
-+ */
-+static int extend_or_restart_transaction(handle_t *handle, int thresh,
-+					 struct buffer_head *bh)
-+{
-+	int err;
-+
-+	if (handle->h_buffer_credits >= thresh)
-+		return 0;
-+
-+	err = ext3_journal_extend(handle, EXT3_MAX_TRANS_DATA);
-+	if (err < 0)
-+		return err;
-+	if (err) {
-+		err = ext3_journal_restart(handle, EXT3_MAX_TRANS_DATA);
-+		if (err)
-+			return err;
-+		err = ext3_journal_get_write_access(handle, bh);
-+		if (err)
-+			return err;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-  * Set up the block and inode bitmaps, and the inode table for the new group.
-  * This doesn't need to be part of the main transaction, since we are only
-  * changing blocks outside the actual filesystem.  We still do journaling to
-@@ -175,8 +203,9 @@ static int setup_new_group_blocks(struct
- 	int i;
- 	int err = 0, err2;
+diff -puN drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/i460-agp.c
+--- a/drivers/char/agp/i460-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/i460-agp.c
+@@ -13,6 +13,7 @@
+ #include <linux/string.h>
+ #include <linux/slab.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
  
--	handle = ext3_journal_start_sb(sb, reserved_gdb + gdblocks +
--				       2 + sbi->s_itb_per_group);
-+	/* This transaction may be extended/restarted along the way */
-+	handle = ext3_journal_start_sb(sb, EXT3_MAX_TRANS_DATA);
-+
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
+ #include "agp.h"
  
-@@ -203,6 +232,10 @@ static int setup_new_group_blocks(struct
+@@ -59,8 +60,6 @@
+  */
+ #define WR_FLUSH_GATT(index)	RD_GATT(index)
  
- 		ext3_debug("update backup group %#04lx (+%d)\n", block, bit);
+-#define log2(x)			ffz(~(x))
+-
+ static struct {
+ 	void *gatt;				/* ioremap'd GATT area */
  
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
-+
- 		gdb = sb_getblk(sb, block);
- 		if (!gdb) {
- 			err = -EIO;
-@@ -228,6 +261,10 @@ static int setup_new_group_blocks(struct
- 
- 		ext3_debug("clear reserved block %#04lx (+%d)\n", block, bit);
- 
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
-+
- 		if (IS_ERR(gdb = bclean(handle, sb, block))) {
- 			err = PTR_ERR(bh);
- 			goto exit_bh;
-@@ -249,6 +286,11 @@ static int setup_new_group_blocks(struct
- 		struct buffer_head *it;
- 
- 		ext3_debug("clear inode block %#04lx (+%d)\n", block, bit);
-+
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
-+
- 		if (IS_ERR(it = bclean(handle, sb, block))) {
- 			err = PTR_ERR(it);
- 			goto exit_bh;
-@@ -257,6 +299,11 @@ static int setup_new_group_blocks(struct
- 		brelse(it);
- 		ext3_set_bit(bit, bh->b_data);
+@@ -148,7 +147,7 @@ static int i460_fetch_size (void)
+ 		 * values[i].size.
+ 		 */
+ 		values[i].num_entries = (values[i].size << 8) >> (I460_IO_PAGE_SHIFT - 12);
+-		values[i].page_order = log2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
++		values[i].page_order = ilog2((sizeof(u32)*values[i].num_entries) >> PAGE_SHIFT);
  	}
-+
-+	err = extend_or_restart_transaction(handle, 2, bh);
-+	if (err)
-+		goto exit_bh;
-+
- 	mark_bitmap_end(input->blocks_count, EXT3_BLOCKS_PER_GROUP(sb),
- 			bh->b_data);
- 	ext3_journal_dirty_metadata(handle, bh);
+ 
+ 	for (i = 0; i < agp_bridge->driver->num_aperture_sizes; i++) {
+diff -puN drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2 drivers/char/agp/parisc-agp.c
+--- a/drivers/char/agp/parisc-agp.c~convert-ill-defined-log2-to-ilog2
++++ a/drivers/char/agp/parisc-agp.c
+@@ -18,6 +18,7 @@
+ #include <linux/init.h>
+ #include <linux/klist.h>
+ #include <linux/agp_backend.h>
++#include <linux/log2.h>
+ 
+ #include <asm-parisc/parisc-device.h>
+ #include <asm-parisc/ropes.h>
+@@ -27,10 +28,6 @@
+ #define DRVNAME	"quicksilver"
+ #define DRVPFX	DRVNAME ": "
+ 
+-#ifndef log2
+-#define log2(x)		ffz(~(x))
+-#endif
+-
+ #define AGP8X_MODE_BIT		3
+ #define AGP8X_MODE		(1 << AGP8X_MODE_BIT)
+ 
+@@ -92,7 +89,7 @@ parisc_agp_tlbflush(struct agp_memory *m
+ {
+ 	struct _parisc_agp_info *info = &parisc_agp_info;
+ 
+-	writeq(info->gart_base | log2(info->gart_size), info->ioc_regs+IOC_PCOM);
++	writeq(info->gart_base | ilog2(info->gart_size), info->ioc_regs+IOC_PCOM);
+ 	readq(info->ioc_regs+IOC_PCOM);	/* flush */
+ }
+ 
+diff -puN fs/ext4/super.c~convert-ill-defined-log2-to-ilog2 fs/ext4/super.c
+--- a/fs/ext4/super.c~convert-ill-defined-log2-to-ilog2
++++ a/fs/ext4/super.c
+@@ -1415,8 +1415,6 @@ static void ext4_orphan_cleanup (struct 
+ 	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
+ }
+ 
+-#define log2(n) ffz(~(n))
+-
+ /*
+  * Maximal file size.  There is a direct, and {,double-,triple-}indirect
+  * block limit, and also a limit of (2^32 - 1) 512-byte sectors in i_blocks.
+@@ -1689,8 +1687,8 @@ static int ext4_fill_super (struct super
+ 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
+ 	sbi->s_sbh = bh;
+ 	sbi->s_mount_state = le16_to_cpu(es->s_state);
+-	sbi->s_addr_per_block_bits = log2(EXT4_ADDR_PER_BLOCK(sb));
+-	sbi->s_desc_per_block_bits = log2(EXT4_DESC_PER_BLOCK(sb));
++	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
++	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
+ 	for (i=0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
 _
