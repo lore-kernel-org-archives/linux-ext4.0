@@ -1,135 +1,249 @@
 From: akpm@linux-foundation.org
-Subject: [patch 074/327] ext2: show all mount options
-Date: Tue, 16 Oct 2007 23:26:26 -0700
-Message-ID: <200710170626.l9H6QQGg006596@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, mszeredi@suse.cz,
+Subject: [patch 230/327] ext3: remove #ifdef CONFIG_EXT3_INDEX
+Date: Tue, 16 Oct 2007 23:30:23 -0700
+Message-ID: <200710170630.l9H6UNsH007410@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, sandeen@redhat.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:56502 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:40720 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754394AbXJQGks (ORCPT
+	by vger.kernel.org with ESMTP id S1754898AbXJQGlF (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 02:40:48 -0400
+	Wed, 17 Oct 2007 02:41:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Miklos Szeredi <mszeredi@suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
 
-Using mtab is problematic for various reasons, one of them is that
-unprivileged mounts won't turn up in there.  So we want to get rid of it, and
-use /proc/mounts instead.
+CONFIG_EXT3_INDEX is not an exposed config option in the kernel, and it is
+unconditionally defined in ext3_fs.h.  tune2fs is already able to turn off
+dir indexing, so at this point it's just cluttering up the code.  Remove
+it.
 
-But most filesystems are lazy, and are not showing all mount options.  Which
-means, that without mtab, the user won't be able to see some or all of the
-options.
-
-It would be nice if the generic code could remember the mount options, and
-show them without the need to add extra code to filesystems.  But this is not
-easy, because different filesystems handle mount options given options, and
-not tough the rest.  This is not taken into account by mount(8) either, so
-/etc/mtab will be broken in this case.
-
-This series fixes up ->show_options() in ext[234].
-
-Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/super.c            |   61 +++++++++++++++++++++++++++++++++--
- include/linux/ext2_fs_sb.h |    1 
- 2 files changed, 60 insertions(+), 2 deletions(-)
+ fs/ext3/dir.c           |    7 -------
+ fs/ext3/namei.c         |   19 -------------------
+ include/linux/ext3_fs.h |   14 ++------------
+ 3 files changed, 2 insertions(+), 38 deletions(-)
 
-diff -puN fs/ext2/super.c~ext2-show-all-mount-options fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-show-all-mount-options
-+++ a/fs/ext2/super.c
-@@ -203,10 +203,66 @@ static void ext2_clear_inode(struct inod
+diff -puN fs/ext3/dir.c~ext3-remove-ifdef-config_ext3_index fs/ext3/dir.c
+--- a/fs/ext3/dir.c~ext3-remove-ifdef-config_ext3_index
++++ a/fs/ext3/dir.c
+@@ -47,9 +47,7 @@ const struct file_operations ext3_dir_op
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+ 	.fsync		= ext3_sync_file,	/* BKL held */
+-#ifdef CONFIG_EXT3_INDEX
+ 	.release	= ext3_release_dir,
+-#endif
+ };
  
- static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 
+@@ -107,7 +105,6 @@ static int ext3_readdir(struct file * fi
+ 
+ 	sb = inode->i_sb;
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ 	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
+ 				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
+ 	    ((EXT3_I(inode)->i_flags & EXT3_INDEX_FL) ||
+@@ -123,7 +120,6 @@ static int ext3_readdir(struct file * fi
+ 		 */
+ 		EXT3_I(filp->f_path.dentry->d_inode)->i_flags &= ~EXT3_INDEX_FL;
+ 	}
+-#endif
+ 	stored = 0;
+ 	offset = filp->f_pos & (sb->s_blocksize - 1);
+ 
+@@ -232,7 +228,6 @@ out:
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+  * value.
+@@ -518,5 +513,3 @@ static int ext3_release_dir (struct inod
+ 
+ 	return 0;
+ }
+-
+-#endif
+diff -puN fs/ext3/namei.c~ext3-remove-ifdef-config_ext3_index fs/ext3/namei.c
+--- a/fs/ext3/namei.c~ext3-remove-ifdef-config_ext3_index
++++ a/fs/ext3/namei.c
+@@ -144,7 +144,6 @@ struct dx_map_entry
+ 	u16 size;
+ };
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ static inline unsigned dx_get_block (struct dx_entry *entry);
+ static void dx_set_block (struct dx_entry *entry, unsigned value);
+ static inline unsigned dx_get_hash (struct dx_entry *entry);
+@@ -768,8 +767,6 @@ static void dx_insert_block(struct dx_fr
+ 	dx_set_block(new, block);
+ 	dx_set_count(entries, count + 1);
+ }
+-#endif
+-
+ 
+ static void ext3_update_dx_flag(struct inode *inode)
  {
--	struct ext2_sb_info *sbi = EXT2_SB(vfs->mnt_sb);
-+	struct super_block *sb = vfs->mnt_sb;
-+	struct ext2_sb_info *sbi = EXT2_SB(sb);
-+	struct ext2_super_block *es = sbi->s_es;
-+	unsigned long def_mount_opts;
-+
-+	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+@@ -871,7 +868,6 @@ static struct buffer_head * ext3_find_en
+ 	name = dentry->d_name.name;
+ 	if (namelen > EXT3_NAME_LEN)
+ 		return NULL;
+-#ifdef CONFIG_EXT3_INDEX
+ 	if (is_dx(dir)) {
+ 		bh = ext3_dx_find_entry(dentry, res_dir, &err);
+ 		/*
+@@ -883,7 +879,6 @@ static struct buffer_head * ext3_find_en
+ 			return bh;
+ 		dxtrace(printk("ext3_find_entry: dx failed, falling back\n"));
+ 	}
+-#endif
+ 	nblocks = dir->i_size >> EXT3_BLOCK_SIZE_BITS(sb);
+ 	start = EXT3_I(dir)->i_dir_start_lookup;
+ 	if (start >= nblocks)
+@@ -959,7 +954,6 @@ cleanup_and_exit:
+ 	return ret;
+ }
  
--	if (sbi->s_mount_opt & EXT2_MOUNT_GRPID)
-+	if (sbi->s_sb_block != 1)
-+		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
-+	if (test_opt(sb, MINIX_DF))
-+		seq_puts(seq, ",minixdf");
-+	if (test_opt(sb, GRPID))
- 		seq_puts(seq, ",grpid");
-+	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT2_DEFM_BSDGROUPS))
-+		seq_puts(seq, ",nogrpid");
-+	if (sbi->s_resuid != EXT2_DEF_RESUID ||
-+	    le16_to_cpu(es->s_def_resuid) != EXT2_DEF_RESUID) {
-+		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
-+	}
-+	if (sbi->s_resgid != EXT2_DEF_RESGID ||
-+	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
-+		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
-+	}
-+	if (test_opt(sb, ERRORS_CONT)) {
-+		int def_errors = le16_to_cpu(es->s_errors);
-+
-+		if (def_errors == EXT2_ERRORS_PANIC ||
-+		    def_errors == EXT2_ERRORS_RO) {
-+			seq_puts(seq, ",errors=continue");
-+		}
-+	}
-+	if (test_opt(sb, ERRORS_RO))
-+		seq_puts(seq, ",errors=remount-ro");
-+	if (test_opt(sb, ERRORS_PANIC))
-+		seq_puts(seq, ",errors=panic");
-+	if (test_opt(sb, NO_UID32))
-+		seq_puts(seq, ",nouid32");
-+	if (test_opt(sb, DEBUG))
-+		seq_puts(seq, ",debug");
-+	if (test_opt(sb, OLDALLOC))
-+		seq_puts(seq, ",oldalloc");
-+
-+#ifdef CONFIG_EXT2_FS_XATTR
-+	if (test_opt(sb, XATTR_USER))
-+		seq_puts(seq, ",user_xattr");
-+	if (!test_opt(sb, XATTR_USER) &&
-+	    (def_mount_opts & EXT2_DEFM_XATTR_USER)) {
-+		seq_puts(seq, ",nouser_xattr");
-+	}
-+#endif
-+
-+#ifdef CONFIG_EXT2_FS_POSIX_ACL
-+	if (test_opt(sb, POSIX_ACL))
-+		seq_puts(seq, ",acl");
-+	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT2_DEFM_ACL))
-+		seq_puts(seq, ",noacl");
-+#endif
-+
-+	if (test_opt(sb, NOBH))
-+		seq_puts(seq, ",nobh");
+-#ifdef CONFIG_EXT3_INDEX
+ static struct buffer_head * ext3_dx_find_entry(struct dentry *dentry,
+ 		       struct ext3_dir_entry_2 **res_dir, int *err)
+ {
+@@ -1027,7 +1021,6 @@ errout:
+ 	dx_release (frames);
+ 	return NULL;
+ }
+-#endif
  
- #if defined(CONFIG_QUOTA)
- 	if (sbi->s_mount_opt & EXT2_MOUNT_USRQUOTA)
-@@ -659,6 +715,7 @@ static int ext2_fill_super(struct super_
- 	if (!sbi)
- 		return -ENOMEM;
- 	sb->s_fs_info = sbi;
-+	sbi->s_sb_block = sb_block;
+ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
+ {
+@@ -1123,7 +1116,6 @@ static inline void ext3_set_de_type(stru
+ 		de->file_type = ext3_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+ }
  
- 	/*
- 	 * See what the current blocksize for the device is, and
-diff -puN include/linux/ext2_fs_sb.h~ext2-show-all-mount-options include/linux/ext2_fs_sb.h
---- a/include/linux/ext2_fs_sb.h~ext2-show-all-mount-options
-+++ a/include/linux/ext2_fs_sb.h
-@@ -39,6 +39,7 @@ struct ext2_sb_info {
- 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
- 	struct buffer_head ** s_group_desc;
- 	unsigned long  s_mount_opt;
-+	unsigned long s_sb_block;
- 	uid_t s_resuid;
- 	gid_t s_resgid;
- 	unsigned short s_mount_state;
+-#ifdef CONFIG_EXT3_INDEX
+ /*
+  * Move count entries from end of map between two memory locations.
+  * Returns pointer to last entry moved.
+@@ -1268,7 +1260,6 @@ errout:
+ 	*error = err;
+ 	return NULL;
+ }
+-#endif
+ 
+ 
+ /*
+@@ -1366,7 +1357,6 @@ static int add_dirent_to_buf(handle_t *h
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ /*
+  * This converts a one block unindexed directory to a 3 block indexed
+  * directory, and adds the dentry to the indexed directory.
+@@ -1445,7 +1435,6 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+-#endif
+ 
+ /*
+  *	ext3_add_entry()
+@@ -1466,9 +1455,7 @@ static int ext3_add_entry (handle_t *han
+ 	struct ext3_dir_entry_2 *de;
+ 	struct super_block * sb;
+ 	int	retval;
+-#ifdef CONFIG_EXT3_INDEX
+ 	int	dx_fallback=0;
+-#endif
+ 	unsigned blocksize;
+ 	u32 block, blocks;
+ 
+@@ -1476,7 +1463,6 @@ static int ext3_add_entry (handle_t *han
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
+-#ifdef CONFIG_EXT3_INDEX
+ 	if (is_dx(dir)) {
+ 		retval = ext3_dx_add_entry(handle, dentry, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+@@ -1485,7 +1471,6 @@ static int ext3_add_entry (handle_t *han
+ 		dx_fallback++;
+ 		ext3_mark_inode_dirty(handle, dir);
+ 	}
+-#endif
+ 	blocks = dir->i_size >> sb->s_blocksize_bits;
+ 	for (block = 0, offset = 0; block < blocks; block++) {
+ 		bh = ext3_bread(handle, dir, block, 0, &retval);
+@@ -1495,11 +1480,9 @@ static int ext3_add_entry (handle_t *han
+ 		if (retval != -ENOSPC)
+ 			return retval;
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ 		if (blocks == 1 && !dx_fallback &&
+ 		    EXT3_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_DIR_INDEX))
+ 			return make_indexed_dir(handle, dentry, inode, bh);
+-#endif
+ 		brelse(bh);
+ 	}
+ 	bh = ext3_append(handle, dir, &block, &retval);
+@@ -1511,7 +1494,6 @@ static int ext3_add_entry (handle_t *han
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
+ }
+ 
+-#ifdef CONFIG_EXT3_INDEX
+ /*
+  * Returns 0 for success, or a negative error value
+  */
+@@ -1646,7 +1628,6 @@ cleanup:
+ 	dx_release(frames);
+ 	return err;
+ }
+-#endif
+ 
+ /*
+  * ext3_delete_entry deletes a directory entry by merging it with the
+diff -puN include/linux/ext3_fs.h~ext3-remove-ifdef-config_ext3_index include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-remove-ifdef-config_ext3_index
++++ a/include/linux/ext3_fs.h
+@@ -35,10 +35,6 @@
+ /*max window size: 1024(direct blocks) + 3([t,d]indirect blocks) */
+ #define EXT3_MAX_RESERVE_BLOCKS         1027
+ #define EXT3_RESERVE_WINDOW_NOT_ALLOCATED 0
+-/*
+- * Always enable hashed directories
+- */
+-#define CONFIG_EXT3_INDEX
+ 
+ /*
+  * Debug code
+@@ -665,17 +661,11 @@ struct ext3_dir_entry_2 {
+  * (c) Daniel Phillips, 2001
+  */
+ 
+-#ifdef CONFIG_EXT3_INDEX
+-  #define is_dx(dir) (EXT3_HAS_COMPAT_FEATURE(dir->i_sb, \
+-					      EXT3_FEATURE_COMPAT_DIR_INDEX) && \
++#define is_dx(dir) (EXT3_HAS_COMPAT_FEATURE(dir->i_sb, \
++				      EXT3_FEATURE_COMPAT_DIR_INDEX) && \
+ 		      (EXT3_I(dir)->i_flags & EXT3_INDEX_FL))
+ #define EXT3_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT3_LINK_MAX)
+ #define EXT3_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+-#else
+-  #define is_dx(dir) 0
+-#define EXT3_DIR_LINK_MAX(dir) ((dir)->i_nlink >= EXT3_LINK_MAX)
+-#define EXT3_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2)
+-#endif
+ 
+ /* Legal values for the dx_root hash_version field: */
+ 
 _
