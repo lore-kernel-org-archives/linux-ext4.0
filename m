@@ -1,62 +1,129 @@
 From: akpm@linux-foundation.org
-Subject: [patch 135/327] ext2/4: use is_power_of_2()
-Date: Tue, 16 Oct 2007 23:20:07 -0700
-Message-ID: <200710170620.l9H6K7k0006054@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, vignesh.babu@wipro.com,
+Subject: [patch 075/327] ext3: show all mount options
+Date: Tue, 16 Oct 2007 23:19:13 -0700
+Message-ID: <200710170619.l9H6JDPa005680@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, mszeredi@suse.cz,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:45189 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:56306 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750769AbXJQG2b (ORCPT
+	by vger.kernel.org with ESMTP id S1751774AbXJQG2h (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 02:28:31 -0400
+	Wed, 17 Oct 2007 02:28:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: vignesh babu <vignesh.babu@wipro.com>
+From: Miklos Szeredi <mszeredi@suse.cz>
 
-Replace n & (n - 1) with is_power_of_2(n)
-
-Signed-off-by: vignesh babu <vignesh.babu@wipro.com>
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/super.c |    3 ++-
- fs/ext4/super.c |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/ext3/super.c            |   70 +++++++++++++++++++++++++++++++++++
+ include/linux/ext3_fs_sb.h |    1 
+ 2 files changed, 71 insertions(+)
 
-diff -puN fs/ext2/super.c~ext2-4-use-is_power_of_2 fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-4-use-is_power_of_2
-+++ a/fs/ext2/super.c
-@@ -30,6 +30,7 @@
- #include <linux/vfs.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
-+#include <linux/log2.h>
- #include <asm/uaccess.h>
- #include "ext2.h"
- #include "xattr.h"
-@@ -862,7 +863,7 @@ static int ext2_fill_super(struct super_
- 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
- 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
- 		if ((sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
--		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
-+		    !is_power_of_2(sbi->s_inode_size) ||
- 		    (sbi->s_inode_size > blocksize)) {
- 			printk ("EXT2-fs: unsupported inode size: %d\n",
- 				sbi->s_inode_size);
-diff -puN fs/ext4/super.c~ext2-4-use-is_power_of_2 fs/ext4/super.c
---- a/fs/ext4/super.c~ext2-4-use-is_power_of_2
-+++ a/fs/ext4/super.c
-@@ -1738,7 +1738,7 @@ static int ext4_fill_super (struct super
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT)) {
- 		if (sbi->s_desc_size < EXT4_MIN_DESC_SIZE_64BIT ||
- 		    sbi->s_desc_size > EXT4_MAX_DESC_SIZE ||
--		    sbi->s_desc_size & (sbi->s_desc_size - 1)) {
-+		    !is_power_of_2(sbi->s_desc_size)) {
- 			printk(KERN_ERR
- 			       "EXT4-fs: unsupported descriptor size %lu\n",
- 			       sbi->s_desc_size);
+diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-show-all-mount-options
++++ a/fs/ext3/super.c
+@@ -545,9 +545,78 @@ static inline void ext3_show_quota_optio
+ #endif
+ }
+ 
++/*
++ * Show an option if
++ *  - it's set to a non-default value OR
++ *  - if the per-sb default is different from the global default
++ */
+ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ {
+ 	struct super_block *sb = vfs->mnt_sb;
++	struct ext3_sb_info *sbi = EXT3_SB(sb);
++	struct ext3_super_block *es = sbi->s_es;
++	unsigned long def_mount_opts;
++
++	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
++
++	if (sbi->s_sb_block != 1)
++		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
++	if (test_opt(sb, MINIX_DF))
++		seq_puts(seq, ",minixdf");
++	if (test_opt(sb, GRPID))
++		seq_puts(seq, ",grpid");
++	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT3_DEFM_BSDGROUPS))
++		seq_puts(seq, ",nogrpid");
++	if (sbi->s_resuid != EXT3_DEF_RESUID ||
++	    le16_to_cpu(es->s_def_resuid) != EXT3_DEF_RESUID) {
++		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
++	}
++	if (sbi->s_resgid != EXT3_DEF_RESGID ||
++	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
++		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
++	}
++	if (test_opt(sb, ERRORS_CONT)) {
++		int def_errors = le16_to_cpu(es->s_errors);
++
++		if (def_errors == EXT3_ERRORS_PANIC ||
++		    def_errors == EXT3_ERRORS_RO) {
++			seq_puts(seq, ",errors=continue");
++		}
++	}
++	if (test_opt(sb, ERRORS_RO))
++		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_PANIC))
++		seq_puts(seq, ",errors=panic");
++	if (test_opt(sb, NO_UID32))
++		seq_puts(seq, ",nouid32");
++	if (test_opt(sb, DEBUG))
++		seq_puts(seq, ",debug");
++	if (test_opt(sb, OLDALLOC))
++		seq_puts(seq, ",oldalloc");
++#ifdef CONFIG_EXT3_FS_XATTR
++	if (test_opt(sb, XATTR_USER))
++		seq_puts(seq, ",user_xattr");
++	if (!test_opt(sb, XATTR_USER) &&
++	    (def_mount_opts & EXT3_DEFM_XATTR_USER)) {
++		seq_puts(seq, ",nouser_xattr");
++	}
++#endif
++#ifdef CONFIG_EXT3_FS_POSIX_ACL
++	if (test_opt(sb, POSIX_ACL))
++		seq_puts(seq, ",acl");
++	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT3_DEFM_ACL))
++		seq_puts(seq, ",noacl");
++#endif
++	if (!test_opt(sb, RESERVATION))
++		seq_puts(seq, ",noreservation");
++	if (sbi->s_commit_interval) {
++		seq_printf(seq, ",commit=%u",
++			   (unsigned) (sbi->s_commit_interval / HZ));
++	}
++	if (test_opt(sb, BARRIER))
++		seq_puts(seq, ",barrier=1");
++	if (test_opt(sb, NOBH))
++		seq_puts(seq, ",nobh");
+ 
+ 	if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA)
+ 		seq_puts(seq, ",data=journal");
+@@ -1425,6 +1494,7 @@ static int ext3_fill_super (struct super
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT3_DEF_RESUID;
+ 	sbi->s_resgid = EXT3_DEF_RESGID;
++	sbi->s_sb_block = sb_block;
+ 
+ 	unlock_kernel();
+ 
+diff -puN include/linux/ext3_fs_sb.h~ext3-show-all-mount-options include/linux/ext3_fs_sb.h
+--- a/include/linux/ext3_fs_sb.h~ext3-show-all-mount-options
++++ a/include/linux/ext3_fs_sb.h
+@@ -44,6 +44,7 @@ struct ext3_sb_info {
+ 	struct ext3_super_block * s_es;	/* Pointer to the super block in the buffer */
+ 	struct buffer_head ** s_group_desc;
+ 	unsigned long  s_mount_opt;
++	ext3_fsblk_t s_sb_block;
+ 	uid_t s_resuid;
+ 	gid_t s_resgid;
+ 	unsigned short s_mount_state;
 _
