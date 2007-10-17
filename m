@@ -1,69 +1,104 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-fix-setup_new_group_blocks-locking.patch added to -mm tree
-Date: Wed, 17 Oct 2007 16:07:29 -0700
-Message-ID: <200710172307.l9HN7TE7012954@imap1.linux-foundation.org>
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Andreas Dilger <adilger@clusterfs.com>
+Subject: Re: [PATCH] ext2 statfs improvement for block and inode free count
+Date: Wed, 17 Oct 2007 17:15:01 -0600
+Message-ID: <20071017231501.GL8122@schatzie.adilger.int>
+References: <1184377014.15968.14.camel@dyn9047017100.beaverton.ibm.com> <20071016150033.677efd09.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Badari Pulavarty <pbadari@us.ibm.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:36267 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759155AbXJQXHn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2007 19:07:43 -0400
+Received: from mail.clusterfs.com ([74.0.229.162]:46172 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757023AbXJQXPE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Oct 2007 19:15:04 -0400
+Content-Disposition: inline
+In-Reply-To: <20071016150033.677efd09.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Oct 16, 2007  15:00 -0700, Andrew Morton wrote:
+> On Fri, 13 Jul 2007 18:36:54 -0700
+> Badari Pulavarty <pbadari@us.ibm.com> wrote:
+> > @@ -1136,12 +1136,12 @@ static int ext2_statfs (struct dentry * 
+> >  	buf->f_type = EXT2_SUPER_MAGIC;
+> >  	buf->f_bsize = sb->s_blocksize;
+> >  	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - overhead;
+> > -	buf->f_bfree = ext2_count_free_blocks(sb);
+> > + 	buf->f_bfree = percpu_counter_sum(&sbi->s_freeblocks_counter);
+> >  	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+> >  	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+> >  		buf->f_bavail = 0;
+> >  	buf->f_files = le32_to_cpu(es->s_inodes_count);
+> > -	buf->f_ffree = ext2_count_free_inodes(sb);
+> > + 	buf->f_ffree = percpu_counter_sum(&sbi->s_freeinodes_counter);
+> >  	buf->f_namelen = EXT2_NAME_LEN;
+> >  	fsid = le64_to_cpup((void *)es->s_uuid) ^
+> >  	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
+> > 
+> 
+> Guys, I have this patch in a stalled state pending some convincing
+> demonstration/argument that it's actually a worthwhile change.
 
-The patch titled
-     ext3: fix setup_new_group_blocks locking
-has been added to the -mm tree.  Its filename is
-     ext3-fix-setup_new_group_blocks-locking.patch
+Is it just this part of the change, or the whole "overhead" calculation?
+It looks like this is also missing the "overhead_last" part of the change?
+The filesystem overhead is static outside of fs resize and there is no
+point in recalculating it.  In fact there was a cond_resched() added in
+there expressly because it was causing hiccups in the low-latency tests,
+so it is a non-trivial CPU user.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+> How much hurt will it cause on large-numa, and how much benefit do we get
+> for that hurt? 
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+To be honest, I suspect the tradeoff depends on the size of the filesystem
+and the number of CPUs.  It might not make sense for ext2, but it likely
+does for ext4.  If you consider that ext2_count_free_*() will walk all
+of the block group descriptors (1 per 128MB on a 4kB filesystem, 1 per
+8MB on a 1kB filesystem) and look at average filesystem sizes these days
+(80GB let's say for small ones, 8TB for big ones) that means 640 loops
+for an average fs, 64k loops for a big fs.
 
-------------------------------------------------------
-Subject: ext3: fix setup_new_group_blocks locking
-From: Eric Sandeen <sandeen@redhat.com>
+We might also consider using percpu_counter_read() and ensure the value
+is >= 0, since these values do not have to be exact.  We can't use
+percpu_counter_read_positive() since it will return 1 block free if the
+percpu value is negative.
 
-setup_new_group_blocks() manipulates the group descriptor block bh under
-the block_bitmap bh's lock.  It shouldn't matter since nobody but resize
-should be touching these blocks, but it's worth fixing up.
+Using just percpu_counter_read() means we are inaccurate by at most
+(+/-)NR_CPUS * num_online_cpus * 2 blocks, but on average this will be
+0 blocks.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-C: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+What's also missing from these patches somehow (was in the original patch
+I sent) is the update of the superblock fields.
 
- fs/ext3/resize.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ 	buf->f_bsize = sb->s_blocksize;
+ 	buf->f_blocks = le32_to_cpu(es->s_blocks_count) - sbi->s_overhead_last;
+ 	buf->f_bfree = ext3_count_free_blocks (sb);
++	es->s_free_blocks_count = cpu_to_le32(buf->f_bfree);
+ 	buf->f_bavail = buf->f_bfree - le32_to_cpu(es->s_r_blocks_count);
+ 	if (buf->f_bfree < le32_to_cpu(es->s_r_blocks_count))
+ 		buf->f_bavail = 0;
+ 	buf->f_files = le32_to_cpu(es->s_inodes_count);
+ 	buf->f_ffree = ext3_count_free_inodes (sb);
++	es->s_free_inodes_count = cpu_to_le32(buf->f_ffree);
+ 	buf->f_namelen = EXT3_NAME_LEN;
+ 	return 0;
 
-diff -puN fs/ext3/resize.c~ext3-fix-setup_new_group_blocks-locking fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-fix-setup_new_group_blocks-locking
-+++ a/fs/ext3/resize.c
-@@ -245,10 +245,10 @@ static int setup_new_group_blocks(struct
- 			brelse(gdb);
- 			goto exit_bh;
- 		}
--		lock_buffer(bh);
--		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, bh->b_size);
-+		lock_buffer(gdb);
-+		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
- 		set_buffer_uptodate(gdb);
--		unlock_buffer(bh);
-+		unlock_buffer(gdb);
- 		ext3_journal_dirty_metadata(handle, gdb);
- 		ext3_set_bit(bit, bh->b_data);
- 		brelse(gdb);
-_
+Without this, e2fsck will report spurious when doing a read-only check,
+even if the fs is idle:
 
-Patches currently in -mm which might be from sandeen@redhat.com are
+	Pass 5: Checking group summary information
+	Free blocks count wrong (83302, counted=83276).
+	Fix? no
 
-remove-unused-bh-in-calls-to-ext234_get_group_desc.patch
-limit-minixfs-printks-on-corrupted-dir-i_size.patch
-ext3-remove-ifdef-config_ext3_index.patch
-ext3-lighten-up-resize-transaction-requirements.patch
-ext4-remove-ifdef-config_ext4_index.patch
-ext3-fix-setup_new_group_blocks-locking.patch
+	Free inodes count wrong (99987, counted=99972).
+
+Yes, I know you aren't guaranteed consistency on a read-only e2fsck, but
+we should at least allow the problem to be addressed if it is easy.
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Principal Software Engineer
+Cluster File Systems, Inc.
