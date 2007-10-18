@@ -1,56 +1,44 @@
-From: Martin Habets <errandir_news@mph.eclipse.co.uk>
-Subject: Re: ext3 warnings from LTP rename14
-Date: Thu, 18 Oct 2007 01:09:02 +0100
-Message-ID: <20071018000901.GA5657@palantir8>
-References: <20071017002009.GA2966@palantir8> <4715637B.1090503@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 2/2] ext2: Avoid rec_len overflow with 64KB block size
+Date: Wed, 17 Oct 2007 21:07:08 -0700
+Message-ID: <20071017210708.75011e02.akpm@linux-foundation.org>
+References: <20070828190551.415127746@sgi.com>
+	<20070828190735.292638294@sgi.com>
+	<1188432669.3799.35.camel@localhost.localdomain>
+	<1188434857.3799.76.camel@localhost.localdomain>
+	<1191285346.11737.58.camel@localhost.localdomain>
+	<20071004131207.65406a7b.akpm@linux-foundation.org>
+	<20071011111849.GC7125@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, sho@tnes.nec.co.jp, clameter@sgi.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from venus.karoo.kcom.com ([212.50.160.60]:15551 "EHLO
-	venus.eclipse.kcom.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1761944AbXJRAJG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Oct 2007 20:09:06 -0400
-Content-Disposition: inline
-In-Reply-To: <4715637B.1090503@redhat.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:37634 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751680AbXJREHZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Oct 2007 00:07:25 -0400
+In-Reply-To: <20071011111849.GC7125@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Thu, 11 Oct 2007 13:18:49 +0200 Jan Kara <jack@suse.cz> wrote:
 
-On Tue, Oct 16, 2007 at 08:20:59PM -0500, Eric Sandeen wrote:
-> Martin Habets wrote:
-> > Hello,
-> > 
-> > I ran the ltp-full-20070930 tests on 2.6.23-rc9-mph4 (sparc32 SMP), and am
-> > seeing the following warnings:
-> 
-> This makes me a little nervous about my change
-> ef2b02d3e617cb0400eedf2668f86215e1b0e6af
-> (ext34: ensure do_split leaves enough free space in both blocks)
-> 
-> Do you know when this first showed up?  Could you test -rc6?
+> +static inline __le16 ext2_rec_len_to_disk(unsigned len)
+> +{
+> +	if (len == (1 << 16))
+> +		return cpu_to_le16(EXT2_MAX_REC_LEN);
+> +	else if (len > (1 << 16))
+> +		BUG();
+> +	return cpu_to_le16(len);
+> +}
 
-Thanks for the input.
-Tried this on -rc6, it behaves worse. Besides the earlier warnings
-  EXT3-fs warning (device sdb4): ext3_rename: Deleting old file (268753), 2, error=-2
-I also get a lot of these
-  EXT3-fs error (device sdb4): ext3_add_entry: bad entry in directory #268753: rec_len is smaller than minimal - offset=56, inode=8026488, rec_len=0, name_len=0
-and these at the end of the test:
-  EXT3-fs warning (device sdb4): ext3_unlink: Deleting nonexistent file (268761), 0
-  EXT3-fs error (device sdb4): ext3_readdir: bad entry in directory #268753: rec_len is smaller than minimal - offset=56, inode=8026488, rec_len=0, name_len=0
-  EXT3-fs error (device sdb4): empty_dir: bad entry in directory #268753: rec_len is smaller than minimal - offset=56, inode=8026488, rec_len=0, name_len=0
+Of course, ext2 shouldn't be trying to write a bad record length into a
+directory entry.  But are we sure that there is no way in which this
+situation could occur is the on-disk data was _already_ bad?
 
-The FS is still mounted rw.
-
-> You say you can reproduce it; have you checked (fsck'd) the filesystem
-> in between, and is it in good shape?
-
-Like you, I rerun rename14 stand-alone at the moment.
-I didnt do an explicit fschk between all runs, but I also did 2 reboots
-which did check the FS.
-
-I'll try to bisect the original ext3_rename warning further.
--- 
-Martin
+Because it is very bad for a fileysstem to go BUG in response to unexpected
+data on the disk.
