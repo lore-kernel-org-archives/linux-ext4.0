@@ -1,51 +1,147 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: patch queue updates
-Date: Thu, 18 Oct 2007 15:53:21 +0530
-Message-ID: <47173419.7060000@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Subject: [RFC][PATCH 1/6] ext4: Code cleanup
+Date: Thu, 18 Oct 2007 15:59:31 +0530
+Message-ID: <1192703376-20594-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:51038 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756241AbXJRKZT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 06:25:19 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9IAP9XB005923
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:25:09 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9IANtYV970988
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:23:55 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9IANcQ9017850
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:23:39 +1000
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:35117 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760834AbXJRK3u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 06:29:50 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9IATeK1011022
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:29:40 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9IAXF5N112588
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:33:15 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9IATeNY003527
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:29:40 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Mingming,
-
-The patch queue updated on top of d85714d81cc0408daddb68c10f7fd69eafe7c213
-
-The commit d85714d81cc0408daddb68c10f7fd69eafe7c213  contain changes that
-Andrew pushed to linus which had conflicts with patches in the patch queue.
-The update fixes them. 
-
-Changes
-a) ext4_grpnum_t.patch got updated to take care of conflicts.
-b) The ext4-cleanup.patch is split into 4 small patches.
-  ext4-cleanup.patch
-  ext4-cleanup-2.patch
-  ext4-cleanup-3.patch
-  ext4-cleanup-4.patch
-
-c) mballoc-core.patch updated to fix compile error. 
-
-The series can be found at
-
-http://www.radian.org/~kvaneesh/ext4/oct-18-2007/
-http://www.radian.org/~kvaneesh/ext4/oct-18-2007/patch-series.tar
+Introduce ext4_update_*_feature and use them instead
+of opencoding.
 
 
--aneesh
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/ialloc.c        |   11 +++-----
+ fs/ext4/super.c         |   60 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/ext4_fs.h |    6 ++++
+ 3 files changed, 70 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 1777d9d..de40401 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -747,13 +747,10 @@ got:
+ 	if (test_opt(sb, EXTENTS)) {
+ 		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+ 		ext4_ext_tree_init(handle, inode);
+-		if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+-			err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+-			if (err) goto fail;
+-			EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS);
+-			BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "call ext4_journal_dirty_metadata");
+-			err = ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+-		}
++		err = ext4_update_incompat_feature(handle, sb,
++						EXT4_FEATURE_INCOMPAT_EXTENTS);
++		if (err)
++			goto fail;
+ 	}
+ 
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6b4695c..e2bed20 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -373,6 +373,66 @@ void ext4_update_dynamic_rev(struct super_block *sb)
+ 	 */
+ }
+ 
++int ext4_update_compat_feature(handle_t *handle,
++					struct super_block *sb, __u32 compat)
++{
++	int err = 0;
++	if (!EXT4_HAS_COMPAT_FEATURE(sb, compat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_COMPAT_FEATURE(sb, compat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		BUFFER_TRACE(EXT4_SB(sb)->s_sbh,
++					"call ext4_journal_dirty_met adata");
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
++
++int ext4_update_rocompat_feature(handle_t *handle,
++					struct super_block *sb, __u32 rocompat)
++{
++	int err = 0;
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, rocompat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_RO_COMPAT_FEATURE(sb, rocompat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		BUFFER_TRACE(EXT4_SB(sb)->s_sbh,
++					"call ext4_journal_dirty_met adata");
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
++
++int ext4_update_incompat_feature(handle_t *handle,
++					struct super_block *sb, __u32 incompat)
++{
++	int err = 0;
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, incompat)) {
++		err = ext4_journal_get_write_access(handle,
++				EXT4_SB(sb)->s_sbh);
++		if (err)
++			return err;
++		EXT4_SET_INCOMPAT_FEATURE(sb, incompat);
++		sb->s_dirt = 1;
++		handle->h_sync = 1;
++		BUFFER_TRACE(EXT4_SB(sb)->s_sbh,
++					"call ext4_journal_dirty_met adata");
++		err = ext4_journal_dirty_metadata(handle,
++				EXT4_SB(sb)->s_sbh);
++	}
++	return err;
++}
++
+ /*
+  * Open the external journal device
+  */
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 9c99090..f6d4b4c 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -1039,6 +1039,12 @@ extern void ext4_abort (struct super_block *, const char *, const char *, ...)
+ extern void ext4_warning (struct super_block *, const char *, const char *, ...)
+ 	__attribute__ ((format (printf, 3, 4)));
+ extern void ext4_update_dynamic_rev (struct super_block *sb);
++extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
++					__u32 compat);
++extern int ext4_update_rocompat_feature(handle_t *handle, struct super_block *sb,
++					__u32 rocompat);
++extern int ext4_update_incompat_feature(handle_t *handle, struct super_block *sb,
++					__u32 incompat);
+ extern ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
+-- 
+1.5.3.4.206.g58ba4-dirty
