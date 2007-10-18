@@ -1,204 +1,154 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC][PATCH 4/6] ext4: code cleanup
-Date: Thu, 18 Oct 2007 15:59:34 +0530
-Message-ID: <1192703376-20594-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][PATCH 6/6] ext4: Support large files
+Date: Thu, 18 Oct 2007 15:59:36 +0530
+Message-ID: <1192703376-20594-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1192703376-20594-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1192703376-20594-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1192703376-20594-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192703376-20594-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1192703376-20594-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:51803 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761294AbXJRKaD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 06:30:03 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9IAU3mN007783
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:30:03 +1000
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:35295 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761692AbXJRKaU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 06:30:20 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9IAUBLT011349
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:30:11 +1000
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9IAXRSK114744
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:33:27 +1000
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9IAUCFS1024012
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:30:12 +1000
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9IATqNN003852
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:29:52 +1000
-In-Reply-To: <1192703376-20594-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9IAUBZU004537
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2007 20:30:12 +1000
+In-Reply-To: <1192703376-20594-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-rename ext4_inode.i_dir_acl to i_size_high
-drop ext4_inode_info.i_dir_acl as it is not used
+This patch converts ext4_inode i_blocks to represent total
+blocks occupied by the inode in file system block size.
+Earlier the variable used to represent this in 512 byte
+block size. This actually limited the total size of the file.
+
+The feature is enabled transparently when we write an inode
+whose i_blocks cannot be represnted as 512 byte units in a
+48 bit variable.
+
+inode flag  EXT4_HUGE_FILE_FL
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/ialloc.c          |    1 -
- fs/ext4/inode.c           |   55 ++++++++++++++++++---------------------------
- include/linux/ext4_fs.h   |   15 +++++++++--
- include/linux/ext4_fs_i.h |    1 -
- 4 files changed, 34 insertions(+), 38 deletions(-)
+ fs/ext4/inode.c         |   34 ++++++++++++++++++++++++++--------
+ fs/ext4/super.c         |    9 ++++++---
+ include/linux/ext4_fs.h |    3 ++-
+ 3 files changed, 34 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index de40401..d775170 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -708,7 +708,6 @@ got:
- 	if (!S_ISDIR(mode))
- 		ei->i_flags &= ~EXT4_DIRSYNC_FL;
- 	ei->i_file_acl = 0;
--	ei->i_dir_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_alloc_info = NULL;
- 	ei->i_block_group = group;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ef073df..39859cf 100644
+index 98dbcb7..479d9b1 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2801,7 +2801,6 @@ void ext4_read_inode(struct inode * inode)
- 		inode->i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
- 	}
- 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
--	inode->i_size = le32_to_cpu(raw_inode->i_size);
+@@ -2778,14 +2778,20 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+ 					struct ext4_inode_info *ei)
+ {
+ 	blkcnt_t i_blocks ;
+-	struct super_block *sb = ei->vfs_inode.i_sb;
++	struct inode *inode = &(ei->vfs_inode);
++	struct super_block *sb = inode->i_sb;
  
- 	ei->i_state = 0;
- 	ei->i_dir_start_lookup = 0;
-@@ -2827,15 +2826,11 @@ void ext4_read_inode(struct inode * inode)
- 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
- 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
- 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD))
-+	    cpu_to_le32(EXT4_OS_HURD)) {
- 		ei->i_file_acl |=
- 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
--	if (!S_ISREG(inode->i_mode)) {
--		ei->i_dir_acl = le32_to_cpu(raw_inode->i_dir_acl);
--	} else {
--		inode->i_size |=
--			((__u64)le32_to_cpu(raw_inode->i_size_high)) << 32;
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 				EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
+ 		/* we are using combined 48 bit field */
+ 		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
+ 						le32_to_cpu(raw_inode->i_blocks_lo);
+-		return i_blocks;
++		if (ei->i_flags & EXT4_HUGE_FILE_FL) {
++			/* i_blocks represent file system block size */
++			return i_blocks  << (inode->i_blkbits - 9);
++		} else {
++			return i_blocks;
++		}
+ 	} else {
+ 		return le32_to_cpu(raw_inode->i_blocks_lo);
  	}
-+	inode->i_size = ext4_isize(raw_inode);
- 	ei->i_disksize = inode->i_size;
- 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
- 	ei->i_block_group = iloc.block_group;
-@@ -2966,7 +2961,6 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_gid_high = 0;
+@@ -2943,8 +2949,9 @@ static int ext4_inode_blocks_set(handle_t *handle,
+ 		 * i_blocks can be represnted in a 32 bit variable
+ 		 * as multiple of 512 bytes
+ 		 */
+-		raw_inode->i_blocks_lo   = cpu_to_le32((u32)i_blocks);
++		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
+ 		raw_inode->i_blocks_high = 0;
++		ei->i_flags &= ~EXT4_HUGE_FILE_FL;
+ 	} else if (i_blocks <= 0xffffffffffffULL) {
+ 		/*
+ 		 * i_blocks can be represented in a 48 bit variable
+@@ -2955,12 +2962,23 @@ static int ext4_inode_blocks_set(handle_t *handle,
+ 		if (err)
+ 			goto  err_out;
+ 		/* i_block is stored in the split  48 bit fields */
+-		raw_inode->i_blocks_lo   = cpu_to_le32((u32)i_blocks);
++		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
++		raw_inode->i_blocks_high = cpu_to_le16(i_blocks >> 32);
++		ei->i_flags &= ~EXT4_HUGE_FILE_FL;
++	} else {
++		/*
++		 * i_blocks should be represented in a 48 bit variable
++		 * as multiple of  file system block size
++		 */
++		err = ext4_update_rocompat_feature(handle, sb,
++					    EXT4_FEATURE_RO_COMPAT_HUGE_FILE);
++		if (err)
++			goto  err_out;
++		ei->i_flags |= EXT4_HUGE_FILE_FL;
++		/* i_block is stored in file system block size */
++		i_blocks = i_blocks >> (inode->i_blkbits - 9);
++		raw_inode->i_blocks_lo   = cpu_to_le32(i_blocks);
+ 		raw_inode->i_blocks_high = cpu_to_le16(i_blocks >> 32);
+-	}else {
+-		ext4_error(sb, __FUNCTION__,
+-				"Wrong inode i_blocks count  %llu\n",
+-				(unsigned long long)inode->i_blocks);
  	}
- 	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
--	raw_inode->i_size = cpu_to_le32(ei->i_disksize);
+ err_out:
+ 	return err;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index fee3bd7..801c499 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1660,11 +1660,14 @@ static loff_t ext4_max_size(int bits)
+ 		upper_limit >>= (bits - 9);
  
- 	EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
- 	EXT4_INODE_SET_XTIME(i_mtime, inode, raw_inode);
-@@ -2981,32 +2975,27 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
--	if (!S_ISREG(inode->i_mode)) {
--		raw_inode->i_dir_acl = cpu_to_le32(ei->i_dir_acl);
--	} else {
--		raw_inode->i_size_high =
--			cpu_to_le32(ei->i_disksize >> 32);
--		if (ei->i_disksize > 0x7fffffffULL) {
--			struct super_block *sb = inode->i_sb;
--			if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
--					EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ||
--			    EXT4_SB(sb)->s_es->s_rev_level ==
--					cpu_to_le32(EXT4_GOOD_OLD_REV)) {
--			       /* If this is the first large file
--				* created, add a flag to the superblock.
--				*/
--				err = ext4_journal_get_write_access(handle,
--						EXT4_SB(sb)->s_sbh);
--				if (err)
--					goto out_brelse;
--				ext4_update_dynamic_rev(sb);
--				EXT4_SET_RO_COMPAT_FEATURE(sb,
-+	ext4_isize_set(raw_inode, ei->i_disksize);
-+	if (ei->i_disksize > 0x7fffffffULL) {
-+		struct super_block *sb = inode->i_sb;
-+		if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ||
-+				EXT4_SB(sb)->s_es->s_rev_level ==
-+				cpu_to_le32(EXT4_GOOD_OLD_REV)) {
-+			/* If this is the first large file
-+			 * created, add a flag to the superblock.
-+			 */
-+			err = ext4_journal_get_write_access(handle,
-+					EXT4_SB(sb)->s_sbh);
-+			if (err)
-+				goto out_brelse;
-+			ext4_update_dynamic_rev(sb);
-+			EXT4_SET_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
--				sb->s_dirt = 1;
--				handle->h_sync = 1;
--				err = ext4_journal_dirty_metadata(handle,
--						EXT4_SB(sb)->s_sbh);
--			}
-+			sb->s_dirt = 1;
-+			handle->h_sync = 1;
-+			err = ext4_journal_dirty_metadata(handle,
-+					EXT4_SB(sb)->s_sbh);
- 		}
+ 	} else {
+-		/* We use 48 bit ext4_inode i_blocks */
++		/*
++		 * We use 48 bit ext4_inode i_blocks
++		 * With EXT4_HUGE_FILE_FL set the i_blocks
++		 * represent total number of blocks in
++		 * file system block size
++		 */
+ 		upper_limit = (1LL << 48) - 1;
+ 
+-		/* total blocks in file system block size */
+-		upper_limit >>= (bits - 9);
  	}
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+ 
+ 	/* indirect blocks */
 diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 6464ff9..5e972ba 100644
+index 8d55c16..71f0569 100644
 --- a/include/linux/ext4_fs.h
 +++ b/include/linux/ext4_fs.h
-@@ -303,7 +303,7 @@ struct ext4_mount_options {
- struct ext4_inode {
- 	__le16	i_mode;		/* File mode */
- 	__le16	i_uid;		/* Low 16 bits of Owner Uid */
--	__le32	i_size;		/* Size in bytes */
-+	__le32	i_size_lo;	/* Size in bytes */
- 	__le32	i_atime;	/* Access time */
- 	__le32	i_ctime;	/* Inode Change time */
- 	__le32	i_mtime;	/* Modification time */
-@@ -326,7 +326,7 @@ struct ext4_inode {
- 	__le32	i_block[EXT4_N_BLOCKS];/* Pointers to blocks */
- 	__le32	i_generation;	/* File version (for NFS) */
- 	__le32	i_file_acl_lo;	/* File ACL */
--	__le32	i_dir_acl;	/* Directory ACL */
-+	__le32	i_size_high;
- 	__le32	i_obso_faddr;	/* Obsoleted fragment address */
- 	union {
- 		struct {
-@@ -359,7 +359,6 @@ struct ext4_inode {
- 	__le32	i_version_hi;	/* high 32 bits for 64-bit version */
- };
+@@ -205,8 +205,9 @@ struct ext4_group_desc
+ #define EXT4_NOTAIL_FL			0x00008000 /* file tail should not be merged */
+ #define EXT4_DIRSYNC_FL			0x00010000 /* dirsync behaviour (directories only) */
+ #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+-#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
++#define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
++#define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
  
--#define i_size_high	i_dir_acl
- 
- #define EXT4_EPOCH_BITS 2
- #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-@@ -1099,7 +1098,17 @@ static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
- 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
-+static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
-+{
-+	return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
-+		le32_to_cpu(raw_inode->i_size_lo);
-+}
- 
-+static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
-+{
-+	raw_inode->i_size_lo = cpu_to_le32(i_size);
-+	raw_inode->i_size_high = cpu_to_le32(i_size >> 32);
-+}
- 
- #define ext4_std_error(sb, errno)				\
- do {								\
-diff --git a/include/linux/ext4_fs_i.h b/include/linux/ext4_fs_i.h
-index 94baea0..16249b9 100644
---- a/include/linux/ext4_fs_i.h
-+++ b/include/linux/ext4_fs_i.h
-@@ -85,7 +85,6 @@ struct ext4_inode_info {
- 	__le32	i_data[15];	/* unconverted */
- 	__u32	i_flags;
- 	ext4_fsblk_t	i_file_acl;
--	__u32	i_dir_acl;
- 	__u32	i_dtime;
- 
- 	/*
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
 -- 
 1.5.3.4.206.g58ba4-dirty
