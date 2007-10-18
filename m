@@ -1,62 +1,39 @@
-From: Andreas Dilger <adilger@clusterfs.com>
-Subject: Re: ext3 warnings from LTP rename14
-Date: Thu, 18 Oct 2007 00:08:50 -0600
-Message-ID: <20071018060850.GN8122@schatzie.adilger.int>
-References: <20071017002009.GA2966@palantir8> <4715637B.1090503@redhat.com> <471570CB.3030709@redhat.com>
+From: Vasily Averin <vvs@sw.ru>
+Subject: How Inactive may be much greather than cached?
+Date: Thu, 18 Oct 2007 10:24:04 +0400
+Message-ID: <4716FC04.6070107@sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=KOI8-R
+Content-Transfer-Encoding: 7bit
+Cc: devel@openvz.org
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:48786 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752407AbXJRGI6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 02:08:58 -0400
-Content-Disposition: inline
-In-Reply-To: <471570CB.3030709@redhat.com>
+Received: from mailhub.sw.ru ([195.214.233.200]:20310 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753612AbXJRGYM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Oct 2007 02:24:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Oct 16, 2007  21:17 -0500, Eric Sandeen wrote:
-> Eric Sandeen wrote:
-> > Martin Habets wrote:
-> >> I ran the ltp-full-20070930 tests on 2.6.23-rc9-mph4 (sparc32 SMP), and am
-> >> seeing the following warnings:
-> > 
-> > This makes me a little nervous about my change
-> > ef2b02d3e617cb0400eedf2668f86215e1b0e6af
-> > (ext34: ensure do_split leaves enough free space in both blocks)
-> > 
-> > Do you know when this first showed up?  Could you test -rc6?
-> > 
-> > You say you can reproduce it; have you checked (fsck'd) the filesystem
-> > in between, and is it in good shape?
-> > 
-> > -Eric
-> 
-> FWIW, I ran rename14 "standalone" a few times on 2.6.23.1 with no
-> problems...
-> 
-> [root@bear-05 ltp-full-20070930]#
-> ./testcases/kernel/syscalls/rename/rename14
-> rename14    1  PASS  :  Test Passed
-> [root@bear-05 ltp-full-20070930]#
-> ./testcases/kernel/syscalls/rename/rename14
-> rename14    1  PASS  :  Test Passed
-> [root@bear-05 ltp-full-20070930]#
-> ./testcases/kernel/syscalls/rename/rename14
-> rename14    1  PASS  :  Test Passed
-> [root@bear-05 ~]# uname -a
-> Linux bear-05.lab.msp.redhat.com 2.6.23.1 #1 SMP Mon Oct 15 15:28:08 CDT
-> 2007 i686 athlon i386 GNU/Linux
+Hi all,
 
-It is probably significant that the original machine is a sparc32 (big
-endian).  I'd suspect you can reproduce this on a PPC system also.  You
-might also consider running sparse on it ext3/ext4 in case you missed an
-le32_to_cpu() or something.
+could anybody explain how "inactive" may be much greater than "cached"?
+stress test (http://weather.ou.edu/~apw/projects/stress/) that writes into
+removed files in cycle puts the node to the following state:
 
-Cheers, Andreas
---
-Andreas Dilger
-Principal Software Engineer
-Cluster File Systems, Inc.
+MemTotal: 16401648 kB
+MemFree: 636644 kB
+Buffers: 1122556 kB
+Cached: 362880 kB
+SwapCached: 700 kB
+Active: 1604180 kB
+Inactive: 13609828 kB
+
+At the first glance memory should be freed on file closing, nobody refers to
+file and ext3_delete_inode() truncates inode. We can see that memory is go away
+from "cached", however could somebody explain why it become "invalid" instead be
+freed? Who holds the references to these pages?
+
+thank you,
+	Vasily Averin
