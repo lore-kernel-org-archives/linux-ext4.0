@@ -1,161 +1,167 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-lighten-up-resize-transaction-requirements.patch removed from -mm tree
-Date: Thu, 18 Oct 2007 00:01:55 -0700
-Message-ID: <200710180701.l9I71tFd031215@imap1.linux-foundation.org>
+Subject: - ext3-show-all-mount-options.patch removed from -mm tree
+Date: Wed, 17 Oct 2007 23:53:55 -0700
+Message-ID: <200710180653.l9I6rtA3030480@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-To: sandeen@redhat.com, adilger@clusterfs.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+To: mszeredi@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: lighten up resize transaction requirements
+     ext3: show all mount options
 has been removed from the -mm tree.  Its filename was
-     ext3-lighten-up-resize-transaction-requirements.patch
+     ext3-show-all-mount-options.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext3: lighten up resize transaction requirements
-From: Eric Sandeen <sandeen@redhat.com>
+Subject: ext3: show all mount options
+From: Miklos Szeredi <mszeredi@suse.cz>
 
-When resizing online, setup_new_group_blocks attempts to reserve a
-potentially very large transaction, depending on the current filesystem
-geometry.  For some journal sizes, there may not be enough room for this
-transaction, and the online resize will fail.
-
-The patch below resizes & restarts the transaction as necessary while
-setting up the new group, and should work with even the smallest journal.
-
-Tested with something like:
-
-[root@newbox ~]# dd if=/dev/zero of=fsfile bs=1024 count=32768
-[root@newbox ~]# mkfs.ext3 -b 1024 fsfile 16384
-[root@newbox ~]# mount -o loop fsfile mnt/
-[root@newbox ~]# resize2fs /dev/loop0
-resize2fs 1.40.2 (12-Jul-2007)
-Filesystem at /dev/loop0 is mounted on /root/mnt; on-line resizing required
-old desc_blocks = 1, new_desc_blocks = 1
-Performing an on-line resize of /dev/loop0 to 32768 (1k) blocks.
-resize2fs: No space left on device While trying to add group #2
-[root@newbox ~]# dmesg | tail -n 1
-JBD: resize2fs wants too many credits (258 > 256)
-[root@newbox ~]#
-
-With the below change, it works.
-
-[akpm@linux-foundation.org: coding-style fixes]
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/resize.c |   51 +++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 49 insertions(+), 2 deletions(-)
+ fs/ext3/super.c            |   70 +++++++++++++++++++++++++++++++++++
+ include/linux/ext3_fs_sb.h |    1 
+ 2 files changed, 71 insertions(+)
 
-diff -puN fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-lighten-up-resize-transaction-requirements
-+++ a/fs/ext3/resize.c
-@@ -154,6 +154,34 @@ static void mark_bitmap_end(int start_bi
+diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-show-all-mount-options
++++ a/fs/ext3/super.c
+@@ -545,9 +545,78 @@ static inline void ext3_show_quota_optio
+ #endif
  }
  
- /*
-+ * If we have fewer than thresh credits, extend by EXT3_MAX_TRANS_DATA.
-+ * If that fails, restart the transaction & regain write access for the
-+ * buffer head which is used for block_bitmap modifications.
-+ */
-+static int extend_or_restart_transaction(handle_t *handle, int thresh,
-+					 struct buffer_head *bh)
-+{
-+	int err;
-+
-+	if (handle->h_buffer_credits >= thresh)
-+		return 0;
-+
-+	err = ext3_journal_extend(handle, EXT3_MAX_TRANS_DATA);
-+	if (err < 0)
-+		return err;
-+	if (err) {
-+		err = ext3_journal_restart(handle, EXT3_MAX_TRANS_DATA);
-+		if (err)
-+			return err;
-+		err = ext3_journal_get_write_access(handle, bh);
-+		if (err)
-+			return err;
-+	}
-+
-+	return 0;
-+}
-+
 +/*
-  * Set up the block and inode bitmaps, and the inode table for the new group.
-  * This doesn't need to be part of the main transaction, since we are only
-  * changing blocks outside the actual filesystem.  We still do journaling to
-@@ -175,8 +203,9 @@ static int setup_new_group_blocks(struct
- 	int i;
- 	int err = 0, err2;
- 
--	handle = ext3_journal_start_sb(sb, reserved_gdb + gdblocks +
--				       2 + sbi->s_itb_per_group);
-+	/* This transaction may be extended/restarted along the way */
-+	handle = ext3_journal_start_sb(sb, EXT3_MAX_TRANS_DATA);
++ * Show an option if
++ *  - it's set to a non-default value OR
++ *  - if the per-sb default is different from the global default
++ */
+ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ {
+ 	struct super_block *sb = vfs->mnt_sb;
++	struct ext3_sb_info *sbi = EXT3_SB(sb);
++	struct ext3_super_block *es = sbi->s_es;
++	unsigned long def_mount_opts;
 +
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -203,6 +232,10 @@ static int setup_new_group_blocks(struct
- 
- 		ext3_debug("update backup group %#04lx (+%d)\n", block, bit);
- 
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
++	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
 +
- 		gdb = sb_getblk(sb, block);
- 		if (!gdb) {
- 			err = -EIO;
-@@ -228,6 +261,10 @@ static int setup_new_group_blocks(struct
++	if (sbi->s_sb_block != 1)
++		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
++	if (test_opt(sb, MINIX_DF))
++		seq_puts(seq, ",minixdf");
++	if (test_opt(sb, GRPID))
++		seq_puts(seq, ",grpid");
++	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT3_DEFM_BSDGROUPS))
++		seq_puts(seq, ",nogrpid");
++	if (sbi->s_resuid != EXT3_DEF_RESUID ||
++	    le16_to_cpu(es->s_def_resuid) != EXT3_DEF_RESUID) {
++		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
++	}
++	if (sbi->s_resgid != EXT3_DEF_RESGID ||
++	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
++		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
++	}
++	if (test_opt(sb, ERRORS_CONT)) {
++		int def_errors = le16_to_cpu(es->s_errors);
++
++		if (def_errors == EXT3_ERRORS_PANIC ||
++		    def_errors == EXT3_ERRORS_RO) {
++			seq_puts(seq, ",errors=continue");
++		}
++	}
++	if (test_opt(sb, ERRORS_RO))
++		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_PANIC))
++		seq_puts(seq, ",errors=panic");
++	if (test_opt(sb, NO_UID32))
++		seq_puts(seq, ",nouid32");
++	if (test_opt(sb, DEBUG))
++		seq_puts(seq, ",debug");
++	if (test_opt(sb, OLDALLOC))
++		seq_puts(seq, ",oldalloc");
++#ifdef CONFIG_EXT3_FS_XATTR
++	if (test_opt(sb, XATTR_USER))
++		seq_puts(seq, ",user_xattr");
++	if (!test_opt(sb, XATTR_USER) &&
++	    (def_mount_opts & EXT3_DEFM_XATTR_USER)) {
++		seq_puts(seq, ",nouser_xattr");
++	}
++#endif
++#ifdef CONFIG_EXT3_FS_POSIX_ACL
++	if (test_opt(sb, POSIX_ACL))
++		seq_puts(seq, ",acl");
++	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT3_DEFM_ACL))
++		seq_puts(seq, ",noacl");
++#endif
++	if (!test_opt(sb, RESERVATION))
++		seq_puts(seq, ",noreservation");
++	if (sbi->s_commit_interval) {
++		seq_printf(seq, ",commit=%u",
++			   (unsigned) (sbi->s_commit_interval / HZ));
++	}
++	if (test_opt(sb, BARRIER))
++		seq_puts(seq, ",barrier=1");
++	if (test_opt(sb, NOBH))
++		seq_puts(seq, ",nobh");
  
- 		ext3_debug("clear reserved block %#04lx (+%d)\n", block, bit);
+ 	if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA)
+ 		seq_puts(seq, ",data=journal");
+@@ -1425,6 +1494,7 @@ static int ext3_fill_super (struct super
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT3_DEF_RESUID;
+ 	sbi->s_resgid = EXT3_DEF_RESGID;
++	sbi->s_sb_block = sb_block;
  
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
-+
- 		if (IS_ERR(gdb = bclean(handle, sb, block))) {
- 			err = PTR_ERR(bh);
- 			goto exit_bh;
-@@ -249,6 +286,11 @@ static int setup_new_group_blocks(struct
- 		struct buffer_head *it;
+ 	unlock_kernel();
  
- 		ext3_debug("clear inode block %#04lx (+%d)\n", block, bit);
-+
-+		err = extend_or_restart_transaction(handle, 1, bh);
-+		if (err)
-+			goto exit_bh;
-+
- 		if (IS_ERR(it = bclean(handle, sb, block))) {
- 			err = PTR_ERR(it);
- 			goto exit_bh;
-@@ -257,6 +299,11 @@ static int setup_new_group_blocks(struct
- 		brelse(it);
- 		ext3_set_bit(bit, bh->b_data);
- 	}
-+
-+	err = extend_or_restart_transaction(handle, 2, bh);
-+	if (err)
-+		goto exit_bh;
-+
- 	mark_bitmap_end(input->blocks_count, EXT3_BLOCKS_PER_GROUP(sb),
- 			bh->b_data);
- 	ext3_journal_dirty_metadata(handle, bh);
+diff -puN include/linux/ext3_fs_sb.h~ext3-show-all-mount-options include/linux/ext3_fs_sb.h
+--- a/include/linux/ext3_fs_sb.h~ext3-show-all-mount-options
++++ a/include/linux/ext3_fs_sb.h
+@@ -44,6 +44,7 @@ struct ext3_sb_info {
+ 	struct ext3_super_block * s_es;	/* Pointer to the super block in the buffer */
+ 	struct buffer_head ** s_group_desc;
+ 	unsigned long  s_mount_opt;
++	ext3_fsblk_t s_sb_block;
+ 	uid_t s_resuid;
+ 	gid_t s_resgid;
+ 	unsigned short s_mount_state;
 _
 
-Patches currently in -mm which might be from sandeen@redhat.com are
+Patches currently in -mm which might be from mszeredi@suse.cz are
 
 origin.patch
-ext4-remove-ifdef-config_ext4_index.patch
-ext3-fix-setup_new_group_blocks-locking.patch
+unprivileged-mounts-add-user-mounts-to-the-kernel.patch
+unprivileged-mounts-allow-unprivileged-umount.patch
+unprivileged-mounts-account-user-mounts.patch
+unprivileged-mounts-propagate-error-values-from-clone_mnt.patch
+unprivileged-mounts-allow-unprivileged-bind-mounts.patch
+unprivileged-mounts-put-declaration-of-put_filesystem-in-fsh.patch
+unprivileged-mounts-allow-unprivileged-mounts.patch
+unprivileged-mounts-allow-unprivileged-mounts-fix-subtype-handling.patch
+unprivileged-mounts-allow-unprivileged-fuse-mounts.patch
+unprivileged-mounts-propagation-inherit-owner-from-parent.patch
+unprivileged-mounts-propagation-inherit-owner-from-parent-fix-for-git-audit.patch
+unprivileged-mounts-add-no-submounts-flag.patch
+r-o-bind-mounts-sys_mknodat-elevate-write-count-for-vfs_mknod-create-fix.patch
+slab-api-remove-useless-ctor-parameter-and-reorder-parameters-vs-revoke.patch
+fs-introduce-write_begin-write_end-and-perform_write-aops-revoke-fix.patch
+fuse-fix-allowing-operations.patch
+fuse-fix-race-between-getattr-and-write.patch
+fuse-fix-race-between-getattr-and-write-checkpatch-fixes.patch
+fuse-add-file-handle-to-getattr-operation.patch
+fuse-add-file-handle-to-getattr-operation-checkpatch-fixes.patch
+fuse-clean-up-open-file-passing-in-setattr.patch
+vfs-allow-filesystems-to-implement-atomic-opentruncate.patch
+fuse-improve-utimes-support.patch
+fuse-add-atomic-opentruncate-support.patch
+fuse-support-bsd-locking-semantics.patch
+fuse-add-list-of-writable-files-to-fuse_inode.patch
+fuse-add-helper-for-asynchronous-writes.patch
+fuse-add-support-for-mandatory-locking.patch
+fuse-add-blksize-field-to-fuse_attr.patch
