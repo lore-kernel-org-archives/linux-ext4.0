@@ -1,81 +1,92 @@
 From: akpm@linux-foundation.org
-Subject: - ext4-show-all-mount-options.patch removed from -mm tree
-Date: Wed, 17 Oct 2007 23:53:57 -0700
-Message-ID: <200710180653.l9I6rvv6030483@imap1.linux-foundation.org>
+Subject: - ext2-show-all-mount-options.patch removed from -mm tree
+Date: Wed, 17 Oct 2007 23:53:53 -0700
+Message-ID: <200710180653.l9I6rrPi030477@imap1.linux-foundation.org>
 To: mszeredi@suse.cz, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41563 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:33749 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1761302AbXJRHl2 (ORCPT
+	by vger.kernel.org with ESMTP id S932707AbXJRHlq (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Oct 2007 03:41:28 -0400
+	Thu, 18 Oct 2007 03:41:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: show all mount options
+     ext2: show all mount options
 has been removed from the -mm tree.  Its filename was
-     ext4-show-all-mount-options.patch
+     ext2-show-all-mount-options.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext4: show all mount options
+Subject: ext2: show all mount options
 From: Miklos Szeredi <mszeredi@suse.cz>
+
+Using mtab is problematic for various reasons, one of them is that
+unprivileged mounts won't turn up in there.  So we want to get rid of it, and
+use /proc/mounts instead.
+
+But most filesystems are lazy, and are not showing all mount options.  Which
+means, that without mtab, the user won't be able to see some or all of the
+options.
+
+It would be nice if the generic code could remember the mount options, and
+show them without the need to add extra code to filesystems.  But this is not
+easy, because different filesystems handle mount options given options, and
+not tough the rest.  This is not taken into account by mount(8) either, so
+/etc/mtab will be broken in this case.
+
+This series fixes up ->show_options() in ext[234].
 
 Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/super.c            |   72 +++++++++++++++++++++++++++++++++++
- include/linux/ext4_fs_sb.h |    1 
- 2 files changed, 73 insertions(+)
+ fs/ext2/super.c            |   61 +++++++++++++++++++++++++++++++++--
+ include/linux/ext2_fs_sb.h |    1 
+ 2 files changed, 60 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext4/super.c~ext4-show-all-mount-options fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-show-all-mount-options
-+++ a/fs/ext4/super.c
-@@ -596,9 +596,80 @@ static inline void ext4_show_quota_optio
- #endif
- }
+diff -puN fs/ext2/super.c~ext2-show-all-mount-options fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-show-all-mount-options
++++ a/fs/ext2/super.c
+@@ -203,10 +203,66 @@ static void ext2_clear_inode(struct inod
  
-+/*
-+ * Show an option if
-+ *  - it's set to a non-default value OR
-+ *  - if the per-sb default is different from the global default
-+ */
- static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ static int ext2_show_options(struct seq_file *seq, struct vfsmount *vfs)
  {
- 	struct super_block *sb = vfs->mnt_sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
+-	struct ext2_sb_info *sbi = EXT2_SB(vfs->mnt_sb);
++	struct super_block *sb = vfs->mnt_sb;
++	struct ext2_sb_info *sbi = EXT2_SB(sb);
++	struct ext2_super_block *es = sbi->s_es;
 +	unsigned long def_mount_opts;
 +
 +	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
-+
+ 
+-	if (sbi->s_mount_opt & EXT2_MOUNT_GRPID)
 +	if (sbi->s_sb_block != 1)
-+		seq_printf(seq, ",sb=%llu", sbi->s_sb_block);
++		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
 +	if (test_opt(sb, MINIX_DF))
 +		seq_puts(seq, ",minixdf");
 +	if (test_opt(sb, GRPID))
-+		seq_puts(seq, ",grpid");
-+	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT4_DEFM_BSDGROUPS))
+ 		seq_puts(seq, ",grpid");
++	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT2_DEFM_BSDGROUPS))
 +		seq_puts(seq, ",nogrpid");
-+	if (sbi->s_resuid != EXT4_DEF_RESUID ||
-+	    le16_to_cpu(es->s_def_resuid) != EXT4_DEF_RESUID) {
++	if (sbi->s_resuid != EXT2_DEF_RESUID ||
++	    le16_to_cpu(es->s_def_resuid) != EXT2_DEF_RESUID) {
 +		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
 +	}
-+	if (sbi->s_resgid != EXT4_DEF_RESGID ||
-+	    le16_to_cpu(es->s_def_resgid) != EXT4_DEF_RESGID) {
++	if (sbi->s_resgid != EXT2_DEF_RESGID ||
++	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
 +		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
 +	}
 +	if (test_opt(sb, ERRORS_CONT)) {
 +		int def_errors = le16_to_cpu(es->s_errors);
 +
-+		if (def_errors == EXT4_ERRORS_PANIC ||
-+		    def_errors == EXT4_ERRORS_RO) {
++		if (def_errors == EXT2_ERRORS_PANIC ||
++		    def_errors == EXT2_ERRORS_RO) {
 +			seq_puts(seq, ",errors=continue");
 +		}
 +	}
@@ -89,51 +100,44 @@ diff -puN fs/ext4/super.c~ext4-show-all-mount-options fs/ext4/super.c
 +		seq_puts(seq, ",debug");
 +	if (test_opt(sb, OLDALLOC))
 +		seq_puts(seq, ",oldalloc");
-+#ifdef CONFIG_EXT4_FS_XATTR
++
++#ifdef CONFIG_EXT2_FS_XATTR
 +	if (test_opt(sb, XATTR_USER))
 +		seq_puts(seq, ",user_xattr");
 +	if (!test_opt(sb, XATTR_USER) &&
-+	    (def_mount_opts & EXT4_DEFM_XATTR_USER)) {
++	    (def_mount_opts & EXT2_DEFM_XATTR_USER)) {
 +		seq_puts(seq, ",nouser_xattr");
 +	}
 +#endif
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
++
++#ifdef CONFIG_EXT2_FS_POSIX_ACL
 +	if (test_opt(sb, POSIX_ACL))
 +		seq_puts(seq, ",acl");
-+	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
++	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT2_DEFM_ACL))
 +		seq_puts(seq, ",noacl");
 +#endif
-+	if (!test_opt(sb, RESERVATION))
-+		seq_puts(seq, ",noreservation");
-+	if (sbi->s_commit_interval) {
-+		seq_printf(seq, ",commit=%u",
-+			   (unsigned) (sbi->s_commit_interval / HZ));
-+	}
-+	if (test_opt(sb, BARRIER))
-+		seq_puts(seq, ",barrier=1");
++
 +	if (test_opt(sb, NOBH))
 +		seq_puts(seq, ",nobh");
-+	if (!test_opt(sb, EXTENTS))
-+		seq_puts(seq, ",noextents");
  
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
- 		seq_puts(seq, ",data=journal");
-@@ -1486,6 +1557,7 @@ static int ext4_fill_super (struct super
- 	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT4_DEF_RESUID;
- 	sbi->s_resgid = EXT4_DEF_RESGID;
+ #if defined(CONFIG_QUOTA)
+ 	if (sbi->s_mount_opt & EXT2_MOUNT_USRQUOTA)
+@@ -659,6 +715,7 @@ static int ext2_fill_super(struct super_
+ 	if (!sbi)
+ 		return -ENOMEM;
+ 	sb->s_fs_info = sbi;
 +	sbi->s_sb_block = sb_block;
  
- 	unlock_kernel();
- 
-diff -puN include/linux/ext4_fs_sb.h~ext4-show-all-mount-options include/linux/ext4_fs_sb.h
---- a/include/linux/ext4_fs_sb.h~ext4-show-all-mount-options
-+++ a/include/linux/ext4_fs_sb.h
-@@ -45,6 +45,7 @@ struct ext4_sb_info {
- 	struct ext4_super_block * s_es;	/* Pointer to the super block in the buffer */
+ 	/*
+ 	 * See what the current blocksize for the device is, and
+diff -puN include/linux/ext2_fs_sb.h~ext2-show-all-mount-options include/linux/ext2_fs_sb.h
+--- a/include/linux/ext2_fs_sb.h~ext2-show-all-mount-options
++++ a/include/linux/ext2_fs_sb.h
+@@ -39,6 +39,7 @@ struct ext2_sb_info {
+ 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
  	struct buffer_head ** s_group_desc;
  	unsigned long  s_mount_opt;
-+	ext4_fsblk_t s_sb_block;
++	unsigned long s_sb_block;
  	uid_t s_resuid;
  	gid_t s_resgid;
  	unsigned short s_mount_state;
