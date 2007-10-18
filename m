@@ -1,24 +1,28 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-show-all-mount-options.patch removed from -mm tree
-Date: Wed, 17 Oct 2007 23:53:55 -0700
-Message-ID: <200710180653.l9I6rtA3030480@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: - ext4-show-all-mount-options.patch removed from -mm tree
+Date: Wed, 17 Oct 2007 23:53:57 -0700
+Message-ID: <200710180653.l9I6rvv6030483@imap1.linux-foundation.org>
 To: mszeredi@suse.cz, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41563 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1761302AbXJRHl2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Oct 2007 03:41:28 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: show all mount options
+     ext4: show all mount options
 has been removed from the -mm tree.  Its filename was
-     ext3-show-all-mount-options.patch
+     ext4-show-all-mount-options.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext3: show all mount options
+Subject: ext4: show all mount options
 From: Miklos Szeredi <mszeredi@suse.cz>
 
 Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
@@ -26,14 +30,14 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c            |   70 +++++++++++++++++++++++++++++++++++
- include/linux/ext3_fs_sb.h |    1 
- 2 files changed, 71 insertions(+)
+ fs/ext4/super.c            |   72 +++++++++++++++++++++++++++++++++++
+ include/linux/ext4_fs_sb.h |    1 
+ 2 files changed, 73 insertions(+)
 
-diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-show-all-mount-options
-+++ a/fs/ext3/super.c
-@@ -545,9 +545,78 @@ static inline void ext3_show_quota_optio
+diff -puN fs/ext4/super.c~ext4-show-all-mount-options fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-show-all-mount-options
++++ a/fs/ext4/super.c
+@@ -596,9 +596,80 @@ static inline void ext4_show_quota_optio
  #endif
  }
  
@@ -42,36 +46,36 @@ diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
 + *  - it's set to a non-default value OR
 + *  - if the per-sb default is different from the global default
 + */
- static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
  {
  	struct super_block *sb = vfs->mnt_sb;
-+	struct ext3_sb_info *sbi = EXT3_SB(sb);
-+	struct ext3_super_block *es = sbi->s_es;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_super_block *es = sbi->s_es;
 +	unsigned long def_mount_opts;
 +
 +	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
 +
 +	if (sbi->s_sb_block != 1)
-+		seq_printf(seq, ",sb=%lu", sbi->s_sb_block);
++		seq_printf(seq, ",sb=%llu", sbi->s_sb_block);
 +	if (test_opt(sb, MINIX_DF))
 +		seq_puts(seq, ",minixdf");
 +	if (test_opt(sb, GRPID))
 +		seq_puts(seq, ",grpid");
-+	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT3_DEFM_BSDGROUPS))
++	if (!test_opt(sb, GRPID) && (def_mount_opts & EXT4_DEFM_BSDGROUPS))
 +		seq_puts(seq, ",nogrpid");
-+	if (sbi->s_resuid != EXT3_DEF_RESUID ||
-+	    le16_to_cpu(es->s_def_resuid) != EXT3_DEF_RESUID) {
++	if (sbi->s_resuid != EXT4_DEF_RESUID ||
++	    le16_to_cpu(es->s_def_resuid) != EXT4_DEF_RESUID) {
 +		seq_printf(seq, ",resuid=%u", sbi->s_resuid);
 +	}
-+	if (sbi->s_resgid != EXT3_DEF_RESGID ||
-+	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
++	if (sbi->s_resgid != EXT4_DEF_RESGID ||
++	    le16_to_cpu(es->s_def_resgid) != EXT4_DEF_RESGID) {
 +		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
 +	}
 +	if (test_opt(sb, ERRORS_CONT)) {
 +		int def_errors = le16_to_cpu(es->s_errors);
 +
-+		if (def_errors == EXT3_ERRORS_PANIC ||
-+		    def_errors == EXT3_ERRORS_RO) {
++		if (def_errors == EXT4_ERRORS_PANIC ||
++		    def_errors == EXT4_ERRORS_RO) {
 +			seq_puts(seq, ",errors=continue");
 +		}
 +	}
@@ -85,18 +89,18 @@ diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
 +		seq_puts(seq, ",debug");
 +	if (test_opt(sb, OLDALLOC))
 +		seq_puts(seq, ",oldalloc");
-+#ifdef CONFIG_EXT3_FS_XATTR
++#ifdef CONFIG_EXT4_FS_XATTR
 +	if (test_opt(sb, XATTR_USER))
 +		seq_puts(seq, ",user_xattr");
 +	if (!test_opt(sb, XATTR_USER) &&
-+	    (def_mount_opts & EXT3_DEFM_XATTR_USER)) {
++	    (def_mount_opts & EXT4_DEFM_XATTR_USER)) {
 +		seq_puts(seq, ",nouser_xattr");
 +	}
 +#endif
-+#ifdef CONFIG_EXT3_FS_POSIX_ACL
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
 +	if (test_opt(sb, POSIX_ACL))
 +		seq_puts(seq, ",acl");
-+	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT3_DEFM_ACL))
++	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
 +		seq_puts(seq, ",noacl");
 +#endif
 +	if (!test_opt(sb, RESERVATION))
@@ -109,25 +113,27 @@ diff -puN fs/ext3/super.c~ext3-show-all-mount-options fs/ext3/super.c
 +		seq_puts(seq, ",barrier=1");
 +	if (test_opt(sb, NOBH))
 +		seq_puts(seq, ",nobh");
++	if (!test_opt(sb, EXTENTS))
++		seq_puts(seq, ",noextents");
  
- 	if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA)
+ 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
  		seq_puts(seq, ",data=journal");
-@@ -1425,6 +1494,7 @@ static int ext3_fill_super (struct super
+@@ -1486,6 +1557,7 @@ static int ext4_fill_super (struct super
  	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT3_DEF_RESUID;
- 	sbi->s_resgid = EXT3_DEF_RESGID;
+ 	sbi->s_resuid = EXT4_DEF_RESUID;
+ 	sbi->s_resgid = EXT4_DEF_RESGID;
 +	sbi->s_sb_block = sb_block;
  
  	unlock_kernel();
  
-diff -puN include/linux/ext3_fs_sb.h~ext3-show-all-mount-options include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~ext3-show-all-mount-options
-+++ a/include/linux/ext3_fs_sb.h
-@@ -44,6 +44,7 @@ struct ext3_sb_info {
- 	struct ext3_super_block * s_es;	/* Pointer to the super block in the buffer */
+diff -puN include/linux/ext4_fs_sb.h~ext4-show-all-mount-options include/linux/ext4_fs_sb.h
+--- a/include/linux/ext4_fs_sb.h~ext4-show-all-mount-options
++++ a/include/linux/ext4_fs_sb.h
+@@ -45,6 +45,7 @@ struct ext4_sb_info {
+ 	struct ext4_super_block * s_es;	/* Pointer to the super block in the buffer */
  	struct buffer_head ** s_group_desc;
  	unsigned long  s_mount_opt;
-+	ext3_fsblk_t s_sb_block;
++	ext4_fsblk_t s_sb_block;
  	uid_t s_resuid;
  	gid_t s_resgid;
  	unsigned short s_mount_state;
