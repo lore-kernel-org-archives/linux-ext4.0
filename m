@@ -1,34 +1,31 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext3 warnings from LTP rename14
-Date: Thu, 18 Oct 2007 09:43:34 -0500
-Message-ID: <47177116.5070705@redhat.com>
-References: <20071017002009.GA2966@palantir8> <4715637B.1090503@redhat.com> <471570CB.3030709@redhat.com> <20071018060850.GN8122@schatzie.adilger.int>
+From: Coly Li <coyli@suse.de>
+Subject: can not find some patches from patch queue on ext4 git tree
+Date: Fri, 19 Oct 2007 01:41:00 +0800
+Message-ID: <47179AAC.1030402@suse.de>
+Reply-To: coyli@suse.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@clusterfs.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34843 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758272AbXJROni (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Oct 2007 10:43:38 -0400
-In-Reply-To: <20071018060850.GN8122@schatzie.adilger.int>
+Received: from victor.provo.novell.com ([137.65.250.26]:45974 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757206AbXJRRiZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2007 13:38:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
+Hi, my local ext4 git tree is from git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git,
+with commit commit d85714d81cc0408daddb68c10f7fd69eafe7c213.
 
-> It is probably significant that the original machine is a sparc32 (big
-> endian).  
+It seems some of patchese of patch queue are not in current tree, which were there 1 - 2 days ago.
+Is it because we are merging ext4 tree to 2.6.23 ? and after the merge, the patches will in pached
+in the tree again ?
+Should I generate my patch based on current version, or wait for some day ? Indeed, I try to add my
+patch to current version, but some patches missing from ext4 tree.
 
-Oh, true.
+Thanks for information :-)
 
-> I'd suspect you can reproduce this on a PPC system also.  You
-> might also consider running sparse on it ext3/ext4 in case you missed an
-> le32_to_cpu() or something.
-
-sparse checks out ok... and, -rc6 which did not have that change showed
-the same behavior....
-
--Eric
+-- 
+Coly Li
+SuSE PRC Labs
