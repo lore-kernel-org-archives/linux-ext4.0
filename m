@@ -1,91 +1,168 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-support-large-blocksize-up-to-pagesize.patch removed from -mm tree
-Date: Thu, 18 Oct 2007 20:45:37 -0700
-Message-ID: <200710190345.l9J3jbPG013236@imap1.linux-foundation.org>
-To: sho@tnes.nec.co.jp, clameter@sgi.com, cmm@us.ibm.com,
+Subject: - jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch removed from -mm tree
+Date: Thu, 18 Oct 2007 21:08:44 -0700
+Message-ID: <200710190408.l9J48iMu014237@imap1.linux-foundation.org>
+To: akpm@linux-foundation.org, jack@suse.cz, jrs@us.ibm.com,
 	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55215 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:37953 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S966134AbXJSDzp (ORCPT
+	by vger.kernel.org with ESMTP id S1750904AbXJSEJD (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Oct 2007 23:55:45 -0400
+	Fri, 19 Oct 2007 00:09:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: support large blocksize up to PAGESIZE
+     jbd-config_jbd_debug-cannot-create-proc-entry-fix
 has been removed from the -mm tree.  Its filename was
-     ext3-support-large-blocksize-up-to-pagesize.patch
+     jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+This patch was dropped because it was folded into jbd-config_jbd_debug-cannot-create-proc-entry.patch
 
 ------------------------------------------------------
-Subject: ext3: support large blocksize up to PAGESIZE
-From: Takashi Sato <sho@tnes.nec.co.jp>
+Subject: jbd-config_jbd_debug-cannot-create-proc-entry-fix
+From: Andrew Morton <akpm@linux-foundation.org>
 
-This patch set supports large block size(>4k, <=64k) in ext3 just enlarging
-the block size limit.  But it is NOT possible to have 64kB blocksize on
-ext3 without some changes to the directory handling code.  The reason is
-that an empty 64kB directory block would have a rec_len == (__u16)2^16 ==
-0, and this would cause an error to be hit in the filesystem.  The proposed
-solution is treat 64k rec_len with a an impossible value like rec_len =
-0xffff to handle this.
+- use `#ifdef foo' instead of `#if defined(foo)'
 
-The Patch-set consists of the following 2 patches.
-  [1/2]  ext3: enlarge blocksize
-         - Allow blocksize up to pagesize
+- CONFIG_JBD_DEBUG depends on CONFIG_DEBUG_FS so we don't need to duplicate
+  that logic in the .c file ifdefs
 
-  [2/2]  ext3: fix rec_len overflow
-         - prevent rec_len from overflow with 64KB blocksize
+- Make journal_enable_debug __read_mostly just for the heck of it
 
-Now on 64k page ppc64 box runs with this patch set we could create a 64k
-block size ext3, and able to handle empty directory block.
+- Make jbd_debugfs_dir and jbd_debug static
 
-Signed-off-by: Takashi Sato <sho@tnes.nec.co.jp>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+- debugfs_remove(NULL) is legal: remove unneeded tests
+
+- jbd_create_debugfs_entry is a better name than create_jbd_debugfs_entry
+
+- ditto remove_jbd_debugfs_entry
+
+- C functions are preferred over macros
+
+- Avoid declaring multiple variables in a single line.
+
+Cc: "Jose R. Santos" <jrs@us.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
-Acked-by: Christoph Lameter <clameter@sgi.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Jose R. Santos <jrs@us.ibm.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c         |    6 +++++-
- include/linux/ext3_fs.h |    4 ++--
- 2 files changed, 7 insertions(+), 3 deletions(-)
+ fs/jbd/journal.c |   34 ++++++++++++++++++----------------
+ 1 file changed, 18 insertions(+), 16 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-support-large-blocksize-up-to-pagesize fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-support-large-blocksize-up-to-pagesize
-+++ a/fs/ext3/super.c
-@@ -1620,7 +1620,11 @@ static int ext3_fill_super (struct super
- 		}
- 
- 		brelse (bh);
--		sb_set_blocksize(sb, blocksize);
-+		if (!sb_set_blocksize(sb, blocksize)) {
-+			printk(KERN_ERR "EXT3-fs: bad blocksize %d.\n",
-+				blocksize);
-+			goto out_fail;
-+		}
- 		logic_sb_block = (sb_block * EXT3_MIN_BLOCK_SIZE) / blocksize;
- 		offset = (sb_block * EXT3_MIN_BLOCK_SIZE) % blocksize;
- 		bh = sb_bread(sb, logic_sb_block);
-diff -puN include/linux/ext3_fs.h~ext3-support-large-blocksize-up-to-pagesize include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-support-large-blocksize-up-to-pagesize
-+++ a/include/linux/ext3_fs.h
-@@ -72,8 +72,8 @@
-  * Macro-instructions used to manage several block sizes
+diff -puN fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry-fix fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-config_jbd_debug-cannot-create-proc-entry-fix
++++ a/fs/jbd/journal.c
+@@ -1858,16 +1858,15 @@ void journal_put_journal_head(struct jou
+ /*
+  * debugfs tunables
   */
- #define EXT3_MIN_BLOCK_SIZE		1024
--#define	EXT3_MAX_BLOCK_SIZE		4096
--#define EXT3_MIN_BLOCK_LOG_SIZE		  10
-+#define	EXT3_MAX_BLOCK_SIZE		65536
-+#define EXT3_MIN_BLOCK_LOG_SIZE		10
- #ifdef __KERNEL__
- # define EXT3_BLOCK_SIZE(s)		((s)->s_blocksize)
+-#if defined(CONFIG_JBD_DEBUG)
+-u8 journal_enable_debug;
+-EXPORT_SYMBOL(journal_enable_debug);
+-#endif
++#ifdef CONFIG_JBD_DEBUG
+ 
+-#if defined(CONFIG_JBD_DEBUG) && defined(CONFIG_DEBUG_FS)
++u8 journal_enable_debug __read_mostly;
++EXPORT_SYMBOL(journal_enable_debug);
+ 
+-struct dentry  *jbd_debugfs_dir, *jbd_debug;
++static struct dentry *jbd_debugfs_dir;
++static struct dentry *jbd_debug;
+ 
+-static void __init create_jbd_debugfs_entry(void)
++static void __init jbd_create_debugfs_entry(void)
+ {
+ 	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
+ 	if (jbd_debugfs_dir)
+@@ -1876,18 +1875,21 @@ static void __init create_jbd_debugfs_en
+ 					       &journal_enable_debug);
+ }
+ 
+-static void __exit remove_jbd_debugfs_entry(void)
++static void __exit jbd_remove_debugfs_entry(void)
+ {
+-	if (jbd_debug)
+-		debugfs_remove(jbd_debug);
+-	if (jbd_debugfs_dir)
+-		debugfs_remove(jbd_debugfs_dir);
++	debugfs_remove(jbd_debug);
++	debugfs_remove(jbd_debugfs_dir);
+ }
+ 
  #else
+ 
+-#define create_jbd_debugfs_entry() do {} while (0)
+-#define remove_jbd_debugfs_entry() do {} while (0)
++static inline void jbd_create_debugfs_entry(void)
++{
++}
++
++static inline void jbd_remove_debugfs_entry(void)
++{
++}
+ 
+ #endif
+ 
+@@ -1945,7 +1947,7 @@ static int __init journal_init(void)
+ 	ret = journal_init_caches();
+ 	if (ret != 0)
+ 		journal_destroy_caches();
+-	create_jbd_debugfs_entry();
++	jbd_create_debugfs_entry();
+ 	return ret;
+ }
+ 
+@@ -1956,7 +1958,7 @@ static void __exit journal_exit(void)
+ 	if (n)
+ 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+ #endif
+-	remove_jbd_debugfs_entry();
++	jbd_remove_debugfs_entry();
+ 	journal_destroy_caches();
+ }
+ 
 _
 
-Patches currently in -mm which might be from sho@tnes.nec.co.jp are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
 origin.patch
+console-keyboard-events-and-accessibility.patch
+add-kernel-notifierc.patch
+console-events-and-accessibility.patch
+fix-random-hard-freeze-with-avm-cards-using-b1dma.patch
+jbd-config_jbd_debug-cannot-create-proc-entry.patch
+jbd-config_jbd_debug-cannot-create-proc-entry-fix.patch
+task-containersv11-basic-task-container-framework-fix.patch
+task-containersv11-shared-container-subsystem-group-arrays-simplify-proc-cgroups-fix.patch
+task-containersv11-shared-container-subsystem-group-arrays-include-fix.patch
+add-containerstats-v3-fix.patch
+pid-namespaces-dynamic-kmem-cache-allocator-for-pid-namespaces-fix.patch
+pid-namespaces-define-is_global_init-and-is_container_init-fix.patch
+pid-namespaces-define-is_global_init-and-is_container_init-versus-x86_64-mm-i386-show-unhandled-signals-v3.patch
+lockdep-fix-mismatched-lockdep_depth-curr_chain_hash-checkpatch-fixes.patch
+fs-superc-use-list_for_each_entry-instead-of-list_for_each-fix.patch
+pid-namespaces-helpers-to-find-the-task-by-its-numerical-ids-fix.patch
+pid-namespaces-changes-to-show-virtual-ids-to-user-use-find_task_by_pid_ns-in-places-that-operate-with-virtual-fix.patch
+pid-namespaces-changes-to-show-virtual-ids-to-user-use-find_task_by_pid_ns-in-places-that-operate-with-virtual-fix-2.patch
+pid-namespaces-changes-to-show-virtual-ids-to-user-use-find_task_by_pid_ns-in-places-that-operate-with-virtual-fix-3.patch
+pid-namespaces-changes-to-show-virtual-ids-to-user-fix.patch
+cpuset-sched_load_balance-flag-fix.patch
+cpusets-decrustify-cpuset-mask-update-code-checkpatch-fixes.patch
+fix-cpusets-update_cpumask-checkpatch-fixes.patch
+remove-bits_to_type-macro-fix.patch
+use-helpers-to-obtain-task-pid-in-printks-drm-fix.patch
+hotplug-cpu-migrate-a-task-within-its-cpuset-fix.patch
+cpu-hotplug-avoid-hotadd-when-proper-possible_map-isnt-specified-checkpatch-fixes.patch
+ipc-integrate-ipc_checkid-into-ipc_lock-fix.patch
+ipc-integrate-ipc_checkid-into-ipc_lock-fix-2.patch
+use-extended-crashkernel-command-line-on-i386.patch
+hook-up-group-scheduler-with-control-groups-fix.patch
+linux-kernel-markers-checkpatch-fixes.patch
+linux-kernel-markers-samples-checkpatch-fixes.patch
+uninline-forkc-exitc-checkpatch-fixes.patch
