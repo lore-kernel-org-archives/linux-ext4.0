@@ -1,57 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] provide missing mode for open-create in check_mntent_file
-Date: Fri, 19 Oct 2007 15:15:36 -0500
-Message-ID: <47191068.2010609@redhat.com>
-References: <46C4D18E.3080509@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - jbd-fix-commit-code-to-properly-abort-journal.patch removed from -mm tree
+Date: Fri, 19 Oct 2007 15:49:39 -0700
+Message-ID: <200710192249.l9JMndNP023985@imap1.linux-foundation.org>
+To: jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43572 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759329AbXJSUPj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Oct 2007 16:15:39 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id l9JKFb3L009561
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Oct 2007 16:15:37 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9JKFbCP006121
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Oct 2007 16:15:37 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9JKFa7N006464
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Oct 2007 16:15:36 -0400
-In-Reply-To: <46C4D18E.3080509@redhat.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:53854 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757216AbXJSWto (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Oct 2007 18:49:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> F8 is catching opens with O_CREAT flags and no mode now, and refusing
-> to build them... 
 
-Ping?  I don't see this in git yet.
+The patch titled
+     jbd: fix commit code to properly abort journal
+has been removed from the -mm tree.  Its filename was
+     jbd-fix-commit-code-to-properly-abort-journal.patch
 
-Thanks,
--Eric
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> Index: e2fsprogs-git/lib/ext2fs/ismounted.c
-> ===================================================================
-> --- e2fsprogs-git.orig/lib/ext2fs/ismounted.c
-> +++ e2fsprogs-git/lib/ext2fs/ismounted.c
-> @@ -147,7 +147,7 @@ static errcode_t check_mntent_file(const
->  is_root:
->  #define TEST_FILE "/.ismount-test-file"		
->  		*mount_flags |= EXT2_MF_ISROOT;
-> -		fd = open(TEST_FILE, O_RDWR|O_CREAT);
-> +		fd = open(TEST_FILE, O_RDWR|O_CREAT, 0644);
->  		if (fd < 0) {
->  			if (errno == EROFS)
->  				*mount_flags |= EXT2_MF_READONLY;
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+------------------------------------------------------
+Subject: jbd: fix commit code to properly abort journal
+From: Jan Kara <jack@suse.cz>
+
+We should really call journal_abort() and not __journal_abort_hard() in
+case of errors.  The latter call does not record the error in the journal
+superblock and thus filesystem won't be marked as with errors later (and
+user could happily mount it without any warning).
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/commit.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff -puN fs/jbd/commit.c~jbd-fix-commit-code-to-properly-abort-journal fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-fix-commit-code-to-properly-abort-journal
++++ a/fs/jbd/commit.c
+@@ -466,7 +466,7 @@ void journal_commit_transaction(journal_
+ 	spin_unlock(&journal->j_list_lock);
+ 
+ 	if (err)
+-		__journal_abort_hard(journal);
++		journal_abort(journal, err);
+ 
+ 	journal_write_revoke_records(journal, commit_transaction);
+ 
+@@ -524,7 +524,7 @@ void journal_commit_transaction(journal_
+ 
+ 			descriptor = journal_get_descriptor_buffer(journal);
+ 			if (!descriptor) {
+-				__journal_abort_hard(journal);
++				journal_abort(journal, -EIO);
+ 				continue;
+ 			}
+ 
+@@ -557,7 +557,7 @@ void journal_commit_transaction(journal_
+ 		   and repeat this loop: we'll fall into the
+ 		   refile-on-abort condition above. */
+ 		if (err) {
+-			__journal_abort_hard(journal);
++			journal_abort(journal, err);
+ 			continue;
+ 		}
+ 
+@@ -748,7 +748,7 @@ wait_for_iobuf:
+ 		err = -EIO;
+ 
+ 	if (err)
+-		__journal_abort_hard(journal);
++		journal_abort(journal, err);
+ 
+ 	/* End of a transaction!  Finally, we can do checkpoint
+            processing: any buffers committed as a result of this
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+origin.patch
+ext2-avoid-rec_len-overflow-with-64kb-block-size.patch
+ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes.patch
