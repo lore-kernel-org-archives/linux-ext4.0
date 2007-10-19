@@ -1,101 +1,108 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch removed from -mm tree
-Date: Fri, 19 Oct 2007 15:49:41 -0700
-Message-ID: <200710192249.l9JMnfLM023988@imap1.linux-foundation.org>
-To: jrs@us.ibm.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:51400 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S966981AbXJSXFb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Oct 2007 19:05:31 -0400
-Sender: linux-ext4-owner@vger.kernel.org
+Subject: - ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes.patch removed from -mm tree
+Date: Fri, 19 Oct 2007 16:29:12 -0700
+Message-ID: <200710192329.l9JNTCXi025800@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: akpm@linux-foundation.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
+     ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes
 has been removed from the -mm tree.  Its filename was
-     jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug.patch
+     ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+This patch was dropped because it was folded into ext2-avoid-rec_len-overflow-with-64kb-block-size.patch
 
 ------------------------------------------------------
-Subject: JBD: Fix JBD warnings when compiling with CONFIG_JBD_DEBUG
-From: Jose R. Santos <jrs@us.ibm.com>
+Subject: ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes
+From: Andrew Morton <akpm@linux-foundation.org>
 
-Note from Mingming's JBD2 fix:
+ERROR: "(foo*)" should be "(foo *)"
+#58: FILE: fs/ext2/dir.c:225:
++       return (ext2_dirent *)((char*)p +
 
-Noticed all warnings are occurs when the debug level is 0.  Then found the
-"jbd2: Move jbd2-debug file to debugfs" patch
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=0f49d5d019afa4e94253bfc92f0daca3badb990b
+ERROR: "(foo*)" should be "(foo *)"
+#115: FILE: fs/ext2/dir.c:572:
++       unsigned to = ((char*)dir - kaddr) +
 
-changed the jbd2_journal_enable_debug from int type to u8, makes the
-jbd_debug comparision is always true when the debugging level is 0.  Thus
-the compile warning occurs.
+total: 2 errors, 0 warnings, 123 lines checked
+Your patch has style problems, please review.  If any of these errors
+are false positives report them to the maintainer, see
+CHECKPATCH in MAINTAINERS.
 
-Thought about changing the jbd2_journal_enable_debug data type back to int,
-but can't, because the jbd2-debug is moved to debug fs, where calling
-debugfs_create_u8() to create the debugfs entry needs the value to be u8
-type.
-
-Even if we changed the data type back to int, the code is still buggy,
-kernel should not print jbd2 debug message if the jbd2_journal_enable_debug
-is set to 0.  But this is not the case.
-
-The fix is change the level of debugging to 1.  The same should fixed in
-ext3/JBD, but currently ext3 jbd-debug via /proc fs is broken, so we
-probably should fix it all together.
-
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c   |    2 +-
- fs/jbd/recovery.c |    6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/ext2/dir.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/ext3/inode.c
---- a/fs/ext3/inode.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
-+++ a/fs/ext3/inode.c
-@@ -2954,7 +2954,7 @@ int ext3_write_inode(struct inode *inode
- 		return 0;
+diff -puN fs/ext2/dir.c~ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes fs/ext2/dir.c
+--- a/fs/ext2/dir.c~ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes
++++ a/fs/ext2/dir.c
+@@ -222,7 +222,7 @@ static inline int ext2_match (int len, c
+  */
+ static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
+ {
+-	return (ext2_dirent *)((char*)p +
++	return (ext2_dirent *)((char *)p +
+ 			ext2_rec_len_from_disk(p->rec_len));
+ }
  
- 	if (ext3_journal_current_handle()) {
--		jbd_debug(0, "called recursively, non-PF_MEMALLOC!\n");
-+		jbd_debug(1, "called recursively, non-PF_MEMALLOC!\n");
- 		dump_stack();
- 		return -EIO;
- 	}
-diff -puN fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug fs/jbd/recovery.c
---- a/fs/jbd/recovery.c~jbd-fix-jbd-warnings-when-compiling-with-config_jbd_debug
-+++ a/fs/jbd/recovery.c
-@@ -250,10 +250,10 @@ int journal_recover(journal_t *journal)
- 	if (!err)
- 		err = do_one_pass(journal, &info, PASS_REPLAY);
- 
--	jbd_debug(0, "JBD: recovery, exit status %d, "
-+	jbd_debug(1, "JBD: recovery, exit status %d, "
- 		  "recovered transactions %u to %u\n",
- 		  err, info.start_transaction, info.end_transaction);
--	jbd_debug(0, "JBD: Replayed %d and revoked %d/%d blocks\n",
-+	jbd_debug(1, "JBD: Replayed %d and revoked %d/%d blocks\n",
- 		  info.nr_replays, info.nr_revoke_hits, info.nr_revokes);
- 
- 	/* Restart the log at the next transaction ID, thus invalidating
-@@ -297,7 +297,7 @@ int journal_skip_recovery(journal_t *jou
- #ifdef CONFIG_JBD_DEBUG
- 		int dropped = info.end_transaction - be32_to_cpu(sb->s_sequence);
- #endif
--		jbd_debug(0,
-+		jbd_debug(1,
- 			  "JBD: ignoring %d transaction%s from the journal.\n",
- 			  dropped, (dropped == 1) ? "" : "s");
- 		journal->j_transaction_sequence = ++info.end_transaction;
+@@ -569,7 +569,7 @@ int ext2_delete_entry (struct ext2_dir_e
+ 	struct inode *inode = mapping->host;
+ 	char *kaddr = page_address(page);
+ 	unsigned from = ((char*)dir - kaddr) & ~(ext2_chunk_size(inode)-1);
+-	unsigned to = ((char*)dir - kaddr) +
++	unsigned to = ((char *)dir - kaddr) +
+ 				ext2_rec_len_from_disk(dir->rec_len);
+ 	loff_t pos;
+ 	ext2_dirent * pde = NULL;
 _
 
-Patches currently in -mm which might be from jrs@us.ibm.com are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
 origin.patch
+memory-hotplug-make-kmem_cache_node-for-slub-on-memory-online-avoid-panic.patch
+capabilities-clean-up-file-capability-reading.patch
+ext2-avoid-rec_len-overflow-with-64kb-block-size.patch
+ext2-avoid-rec_len-overflow-with-64kb-block-size-checkpatch-fixes.patch
+sync_sb_inodes-propagate-errors.patch
+intel-iommu-pci-generic-helper-function.patch
+intel-iommu-iova-allocation-and-management-routines.patch
+intel-iommu-intel-iommu-driver.patch
+intel-iommu-iommu-floppy-workaround.patch
+peterz-vs-ext4-mballoc-core.patch
+64-bit-i_version-afs-fixes.patch
+r-o-bind-mounts-elevate-write-count-during-entire-ncp_ioctl-fix.patch
+slab-api-remove-useless-ctor-parameter-and-reorder-parameters-vs-revoke.patch
+revoke-wire-up-i386-system-calls.patch
+revoke-vs-git-block.patch
+memory-controller-memory-accounting-v7-fix.patch
+memory-controller-add-per-container-lru-and-reclaim-v7-fix.patch
+memory-controller-oom-handling-v7-vs-oom-killer-stuff.patch
+memory-controller-add-switch-to-control-what-type-of-pages-to-limit-v7-fix-2.patch
+memcontrol-move-oom-task-exclusion-to-tasklist-fix.patch
+kexec-add-bss-to-resource-tree-checkpatch-fixes.patch
+kexec-introduce-bootmem_exclusive-checkpatch-fixes.patch
+ftd_sio-clean-ups-and-updates-for-new-termios-work-checkpatch-fixes.patch
+drivers-edac-add-marvell-mv64x60-driver-fix.patch
+make-copy_from_user_inatomic-not-zero-the-tail-on-i386-vs-reiser4.patch
+reiser4.patch
+git-block-vs-reiser4.patch
+git-nfsd-broke-reiser4.patch
+slab-api-remove-useless-ctor-parameter-and-reorder-parameters-vs-reiser4.patch
+page-owner-tracking-leak-detector.patch
+nr_blockdev_pages-in_interrupt-warning.patch
+slab-leaks3-default-y.patch
+profile-likely-unlikely-macros-fix.patch
+put_bh-debug.patch
+kmap_atomic-debugging.patch
+shrink_slab-handle-bad-shrinkers.patch
+getblk-handle-2tb-devices.patch
+w1-build-fix.patch
