@@ -1,50 +1,50 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 13/14] Add new mm_lazy test case.
-Date: Sun, 21 Oct 2007 21:04:19 -0500
-Message-ID: <20071022020419.23849.87899.stgit@toolssf2>
+Subject: [PATCH 14/14] Add m_uninit test case.
+Date: Sun, 21 Oct 2007 21:04:24 -0500
+Message-ID: <20071022020424.23849.21498.stgit@toolssf2>
 References: <20071022020308.23849.98773.stgit@toolssf2>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:59075 "EHLO
+Received: from e36.co.us.ibm.com ([32.97.110.154]:59157 "EHLO
 	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751508AbXJVCHp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Oct 2007 22:07:45 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9M27ilc009955
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 22:07:44 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9M27irY083672
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:44 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9M27iS2009293
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:44 -0600
+	with ESMTP id S1751482AbXJVCHu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Oct 2007 22:07:50 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9M27oXP010148
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 22:07:50 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9M27oMM116890
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:50 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9M27nhF032687
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:49 -0600
 Received: from [127.0.0.1] (toolssf2.ltc.austin.ibm.com [9.3.190.66])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9M27i5Z009279
-	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:44 -0600
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id l9M27nIT032674
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Oct 2007 20:07:49 -0600
 In-Reply-To: <20071022020308.23849.98773.stgit@toolssf2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-Add new mm_lazy test case.
+Add m_uninit test case.
 
-Add test case for lazy bg feature.
+Add test case to test for uninit block groups.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Signed-Off-By: Andreas Dilger <adilger@clusterfs.com>
 --
 
- tests/m_lazy/expect.1 |  166 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/m_lazy/script   |    4 +
+ tests/m_uninit/expect.1 |  166 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/m_uninit/script   |    4 +
  2 files changed, 170 insertions(+), 0 deletions(-)
 
-diff --git a/tests/m_lazy/expect.1 b/tests/m_lazy/expect.1
+diff --git a/tests/m_uninit/expect.1 b/tests/m_uninit/expect.1
 new file mode 100644
-index 0000000..32ca764
+index 0000000..4167ff5
 --- /dev/null
-+++ b/tests/m_lazy/expect.1
++++ b/tests/m_uninit/expect.1
 @@ -0,0 +1,166 @@
 +Filesystem label=
 +OS type: Linux
@@ -63,21 +63,21 @@ index 0000000..32ca764
 +Writing inode tables: done                            
 +Writing superblocks and filesystem accounting information: done
 +
-+Filesystem features: resize_inode dir_index lazy_bg filetype sparse_super
++Filesystem features: resize_inode dir_index filetype sparse_super uninit_groups
 + 
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+test_filesys: 28683/32768 files (0.0% non-contiguous), 77097/131072 blocks
++test_filesys: 11/32768 files (9.1% non-contiguous), 5691/131072 blocks
 +Exit status is 0
 +
 +Filesystem volume name:   <none>
 +Last mounted on:          <not available>
 +Filesystem magic number:  0xEF53
 +Filesystem revision #:    1 (dynamic)
-+Filesystem features:      resize_inode dir_index lazy_bg filetype sparse_super
++Filesystem features:      resize_inode dir_index filetype sparse_super uninit_groups
 +Default mount options:    (none)
 +Filesystem state:         clean
 +Errors behavior:          Continue
@@ -85,8 +85,8 @@ index 0000000..32ca764
 +Inode count:              32768
 +Block count:              131072
 +Reserved block count:     6553
-+Free blocks:              53975
-+Free inodes:              4085
++Free blocks:              125381
++Free inodes:              32757
 +First block:              1
 +Block size:               1024
 +Fragment size:            1024
@@ -109,7 +109,7 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 3-258
 +  Block bitmap at 259 (+258), Inode bitmap at 260 (+259)
 +  Inode table at 261-516 (+260)
-+  7662 free blocks, 2037 free inodes, 2 directories
++  7662 free blocks, 2037 free inodes, 2 directories, 2037 unused inodes
 +  Free blocks: 531-8192
 +  Free inodes: 12-2048
 +Group 1: (Blocks 8193-16384) [Inode not init]
@@ -117,13 +117,13 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 8195-8450
 +  Block bitmap at 8451 (+258), Inode bitmap at 8452 (+259)
 +  Inode table at 8453-8708 (+260)
-+  7676 free blocks, 0 free inodes, 0 directories
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 8709-16384
 +  Free inodes: 
 +Group 2: (Blocks 16385-24576) [Inode not init, Block not init]
 +  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
 +  Inode table at 16387-16642 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 3: (Blocks 24577-32768) [Inode not init]
@@ -131,13 +131,13 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 24579-24834
 +  Block bitmap at 24835 (+258), Inode bitmap at 24836 (+259)
 +  Inode table at 24837-25092 (+260)
-+  7676 free blocks, 0 free inodes, 0 directories
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 25093-32768
 +  Free inodes: 
 +Group 4: (Blocks 32769-40960) [Inode not init, Block not init]
 +  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
 +  Inode table at 32771-33026 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 5: (Blocks 40961-49152) [Inode not init]
@@ -145,13 +145,13 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 40963-41218
 +  Block bitmap at 41219 (+258), Inode bitmap at 41220 (+259)
 +  Inode table at 41221-41476 (+260)
-+  7676 free blocks, 0 free inodes, 0 directories
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 41477-49152
 +  Free inodes: 
 +Group 6: (Blocks 49153-57344) [Inode not init, Block not init]
 +  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
 +  Inode table at 49155-49410 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 7: (Blocks 57345-65536) [Inode not init]
@@ -159,13 +159,13 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 57347-57602
 +  Block bitmap at 57603 (+258), Inode bitmap at 57604 (+259)
 +  Inode table at 57605-57860 (+260)
-+  7676 free blocks, 0 free inodes, 0 directories
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 57861-65536
 +  Free inodes: 
 +Group 8: (Blocks 65537-73728) [Inode not init, Block not init]
 +  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
 +  Inode table at 65539-65794 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 9: (Blocks 73729-81920) [Inode not init]
@@ -173,52 +173,52 @@ index 0000000..32ca764
 +  Reserved GDT blocks at 73731-73986
 +  Block bitmap at 73987 (+258), Inode bitmap at 73988 (+259)
 +  Inode table at 73989-74244 (+260)
-+  7676 free blocks, 0 free inodes, 0 directories
++  7676 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 74245-81920
 +  Free inodes: 
 +Group 10: (Blocks 81921-90112) [Inode not init, Block not init]
 +  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
 +  Inode table at 81923-82178 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 11: (Blocks 90113-98304) [Inode not init, Block not init]
 +  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
 +  Inode table at 90115-90370 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 12: (Blocks 98305-106496) [Inode not init, Block not init]
 +  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
 +  Inode table at 98307-98562 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 13: (Blocks 106497-114688) [Inode not init, Block not init]
 +  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
 +  Inode table at 106499-106754 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
 +Group 14: (Blocks 114689-122880) [Inode not init, Block not init]
 +  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
 +  Inode table at 114691-114946 (+2)
-+  0 free blocks, 0 free inodes, 0 directories
++  7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
 +  Free blocks: 
 +  Free inodes: 
-+Group 15: (Blocks 122881-131071)
++Group 15: (Blocks 122881-131071) [Inode not init, Block not init]
 +  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
 +  Inode table at 122883-123138 (+2)
-+  7933 free blocks, 2048 free inodes, 0 directories
-+  Free blocks: 123139-131071
-+  Free inodes: 30721-32768
-diff --git a/tests/m_lazy/script b/tests/m_lazy/script
++  7933 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
++  Free blocks: 
++  Free inodes: 
+diff --git a/tests/m_uninit/script b/tests/m_uninit/script
 new file mode 100644
-index 0000000..35be0c8
+index 0000000..0de2699
 --- /dev/null
-+++ b/tests/m_lazy/script
++++ b/tests/m_uninit/script
 @@ -0,0 +1,4 @@
-+DESCRIPTION="lazy group feature"
++DESCRIPTION="uninitialized group feature"
 +FS_SIZE=131072
-+MKE2FS_OPTS="-O lazy_bg"
++MKE2FS_OPTS="-O uninit_groups"
 +. $cmd_dir/run_mke2fs
