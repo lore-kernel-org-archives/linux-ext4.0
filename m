@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-new-export-ops.patch removed from -mm tree
-Date: Mon, 22 Oct 2007 23:47:28 -0700
-Message-ID: <200710230647.l9N6lSeB004284@imap1.linux-foundation.org>
+Subject: - ext4-new-export-ops.patch removed from -mm tree
+Date: Mon, 22 Oct 2007 23:47:30 -0700
+Message-ID: <200710230647.l9N6lURT004287@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 To: hch@lst.de, bfields@fieldses.org, linux-ext4@vger.kernel.org,
 	neilb@suse.de, mm-commits@vger.kernel.org
@@ -11,14 +11,14 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: new export ops
+     ext4: new export ops
 has been removed from the -mm tree.  Its filename was
-     ext3-new-export-ops.patch
+     ext4-new-export-ops.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: ext3: new export ops
+Subject: ext4: new export ops
 From: Christoph Hellwig <hch@lst.de>
 
 Trivial switch over to the new generic helpers.
@@ -30,18 +30,18 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |   35 ++++++++++++++++++++---------------
+ fs/ext4/super.c |   35 ++++++++++++++++++++---------------
  1 file changed, 20 insertions(+), 15 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-new-export-ops fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-new-export-ops
-+++ a/fs/ext3/super.c
-@@ -631,13 +631,10 @@ static int ext3_show_options(struct seq_
+diff -puN fs/ext4/super.c~ext4-new-export-ops fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-new-export-ops
++++ a/fs/ext4/super.c
+@@ -686,13 +686,10 @@ static int ext4_show_options(struct seq_
  }
  
  
--static struct dentry *ext3_get_dentry(struct super_block *sb, void *vobjp)
-+static struct inode *ext3_nfs_get_inode(struct super_block *sb,
+-static struct dentry *ext4_get_dentry(struct super_block *sb, void *vobjp)
++static struct inode *ext4_nfs_get_inode(struct super_block *sb,
 +		u64 ino, u32 generation)
  {
 -	__u32 *objp = vobjp;
@@ -50,9 +50,9 @@ diff -puN fs/ext3/super.c~ext3-new-export-ops fs/ext3/super.c
  	struct inode *inode;
 -	struct dentry *result;
  
- 	if (ino < EXT3_FIRST_INO(sb) && ino != EXT3_ROOT_INO)
+ 	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
  		return ERR_PTR(-ESTALE);
-@@ -660,15 +657,22 @@ static struct dentry *ext3_get_dentry(st
+@@ -715,15 +712,22 @@ static struct dentry *ext4_get_dentry(st
  		iput(inode);
  		return ERR_PTR(-ESTALE);
  	}
@@ -69,29 +69,29 @@ diff -puN fs/ext3/super.c~ext3-new-export-ops fs/ext3/super.c
 +	return inode;
 +}
 +
-+static struct dentry *ext3_fh_to_dentry(struct super_block *sb, struct fid *fid,
++static struct dentry *ext4_fh_to_dentry(struct super_block *sb, struct fid *fid,
 +		int fh_len, int fh_type)
 +{
 +	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
-+				    ext3_nfs_get_inode);
++				    ext4_nfs_get_inode);
 +}
 +
-+static struct dentry *ext3_fh_to_parent(struct super_block *sb, struct fid *fid,
++static struct dentry *ext4_fh_to_parent(struct super_block *sb, struct fid *fid,
 +		int fh_len, int fh_type)
 +{
 +	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
-+				    ext3_nfs_get_inode);
++				    ext4_nfs_get_inode);
  }
  
  #ifdef CONFIG_QUOTA
-@@ -738,8 +742,9 @@ static const struct super_operations ext
+@@ -793,8 +797,9 @@ static const struct super_operations ext
  };
  
- static struct export_operations ext3_export_ops = {
-+	.fh_to_dentry = ext3_fh_to_dentry,
-+	.fh_to_parent = ext3_fh_to_parent,
- 	.get_parent = ext3_get_parent,
--	.get_dentry = ext3_get_dentry,
+ static struct export_operations ext4_export_ops = {
++	.fh_to_dentry = ext4_fh_to_dentry,
++	.fh_to_parent = ext4_fh_to_parent,
+ 	.get_parent = ext4_get_parent,
+-	.get_dentry = ext4_get_dentry,
  };
  
  enum {
