@@ -1,35 +1,33 @@
 From: akpm@linux-foundation.org
-Subject: - exportfs-add-new-methods.patch removed from -mm tree
-Date: Mon, 22 Oct 2007 23:47:23 -0700
-Message-ID: <200710230647.l9N6lNLM004278@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: - exportfs-make-struct-export_operations-const.patch removed from -mm tree
+Date: Mon, 22 Oct 2007 23:47:58 -0700
+Message-ID: <200710230647.l9N6lww4004326@imap1.linux-foundation.org>
 To: hch@lst.de, aia21@cantab.net, bfields@fieldses.org, dgc@sgi.com,
 	hirofumi@mail.parknet.co.jp, hugh@veritas.com, jeffm@suse.com,
 	linux-ext4@vger.kernel.org, mark.fasheh@oracle.com, maso
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:51851 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752284AbXJWHD4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Oct 2007 03:03:56 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     exportfs: add new methods
+     exportfs: make struct export_operations const
 has been removed from the -mm tree.  Its filename was
-     exportfs-add-new-methods.patch
+     exportfs-make-struct-export_operations-const.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 ------------------------------------------------------
-Subject: exportfs: add new methods
+Subject: exportfs: make struct export_operations const
 From: Christoph Hellwig <hch@lst.de>
 
-Add the guts for the new filesystem API to exportfs.
-
-There's now a fh_to_dentry method that returns a dentry for the object looked
-for given a filehandle fragment, and a fh_to_parent operation that returns the
-dentry for the encoded parent directory in case the file handle contains it.
-
-There are default implementations for these methods that only take a callback
-for an nfs-enhanced iget variant and implement the rest of the semantics.
+Now that nfsd has stopped writing to the find_exported_dentry member we an
+mark the export_operations const
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Cc: Neil Brown <neilb@suse.de>
@@ -49,326 +47,316 @@ Cc: Mark Fasheh <mark.fasheh@oracle.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/exportfs/expfs.c      |  136 +++++++++++++++++++++++++++++++++++--
- fs/libfs.c               |   88 +++++++++++++++++++++++
- include/linux/exportfs.h |   30 ++++++++
- 3 files changed, 248 insertions(+), 6 deletions(-)
+ fs/cifs/cifsfs.h              |    2 +-
+ fs/cifs/export.c              |    2 +-
+ fs/efs/super.c                |    2 +-
+ fs/exportfs/expfs.c           |    6 +++---
+ fs/ext2/super.c               |    2 +-
+ fs/ext3/super.c               |    2 +-
+ fs/ext4/super.c               |    2 +-
+ fs/fat/inode.c                |    2 +-
+ fs/gfs2/ops_export.c          |    2 +-
+ fs/gfs2/ops_fstype.h          |    2 +-
+ fs/isofs/export.c             |    2 +-
+ fs/isofs/isofs.h              |    2 +-
+ fs/jfs/super.c                |    4 ++--
+ fs/ntfs/namei.c               |    2 +-
+ fs/ntfs/ntfs.h                |    2 +-
+ fs/ocfs2/export.c             |    2 +-
+ fs/ocfs2/export.h             |    2 +-
+ fs/reiserfs/super.c           |    2 +-
+ fs/xfs/linux-2.6/xfs_export.c |    2 +-
+ fs/xfs/linux-2.6/xfs_super.h  |    2 +-
+ include/linux/fs.h            |    2 +-
+ mm/shmem.c                    |    2 +-
+ 22 files changed, 25 insertions(+), 25 deletions(-)
 
-diff -puN fs/exportfs/expfs.c~exportfs-add-new-methods fs/exportfs/expfs.c
---- a/fs/exportfs/expfs.c~exportfs-add-new-methods
+diff -puN fs/cifs/cifsfs.h~exportfs-make-struct-export_operations-const fs/cifs/cifsfs.h
+--- a/fs/cifs/cifsfs.h~exportfs-make-struct-export_operations-const
++++ a/fs/cifs/cifsfs.h
+@@ -103,7 +103,7 @@ extern int cifs_ioctl(struct inode *inod
+ 		       unsigned int command, unsigned long arg);
+ 
+ #ifdef CONFIG_CIFS_EXPERIMENTAL
+-extern struct export_operations cifs_export_ops;
++extern const struct export_operations cifs_export_ops;
+ #endif /* EXPERIMENTAL */
+ 
+ #define CIFS_VERSION   "1.51"
+diff -puN fs/cifs/export.c~exportfs-make-struct-export_operations-const fs/cifs/export.c
+--- a/fs/cifs/export.c~exportfs-make-struct-export_operations-const
++++ a/fs/cifs/export.c
+@@ -53,7 +53,7 @@ static struct dentry *cifs_get_parent(st
+ 	return ERR_PTR(-EACCES);
+ }
+ 
+-struct export_operations cifs_export_ops = {
++const struct export_operations cifs_export_ops = {
+ 	.get_parent = cifs_get_parent,
+ /*	Following five export operations are unneeded so far and can default:
+ 	.get_dentry =
+diff -puN fs/efs/super.c~exportfs-make-struct-export_operations-const fs/efs/super.c
+--- a/fs/efs/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/efs/super.c
+@@ -113,7 +113,7 @@ static const struct super_operations efs
+ 	.remount_fs	= efs_remount,
+ };
+ 
+-static struct export_operations efs_export_ops = {
++static const struct export_operations efs_export_ops = {
+ 	.fh_to_dentry	= efs_fh_to_dentry,
+ 	.fh_to_parent	= efs_fh_to_parent,
+ 	.get_parent	= efs_get_parent,
+diff -puN fs/exportfs/expfs.c~exportfs-make-struct-export_operations-const fs/exportfs/expfs.c
+--- a/fs/exportfs/expfs.c~exportfs-make-struct-export_operations-const
 +++ a/fs/exportfs/expfs.c
-@@ -514,17 +514,141 @@ struct dentry *exportfs_decode_fh(struct
+@@ -16,7 +16,7 @@ static int get_name(struct dentry *dentr
+ static int exportfs_get_name(struct dentry *dir, char *name,
+ 		struct dentry *child)
+ {
+-	struct export_operations *nop = dir->d_sb->s_export_op;
++	const struct export_operations *nop = dir->d_sb->s_export_op;
+ 
+ 	if (nop->get_name)
+ 		return nop->get_name(dir, name, child);
+@@ -333,7 +333,7 @@ static int export_encode_fh(struct dentr
+ int exportfs_encode_fh(struct dentry *dentry, struct fid *fid, int *max_len,
+ 		int connectable)
+ {
+- 	struct export_operations *nop = dentry->d_sb->s_export_op;
++	const struct export_operations *nop = dentry->d_sb->s_export_op;
+ 	int error;
+ 
+ 	if (nop->encode_fh)
+@@ -349,7 +349,7 @@ struct dentry *exportfs_decode_fh(struct
+ 		int fh_len, int fileid_type,
  		int (*acceptable)(void *, struct dentry *), void *context)
  {
- 	struct export_operations *nop = mnt->mnt_sb->s_export_op;
--	struct dentry *result;
-+	struct dentry *result, *alias;
-+	int err;
+-	struct export_operations *nop = mnt->mnt_sb->s_export_op;
++	const struct export_operations *nop = mnt->mnt_sb->s_export_op;
+ 	struct dentry *result, *alias;
+ 	int err;
  
--	if (nop->decode_fh) {
--		result = nop->decode_fh(mnt->mnt_sb, fid->raw, fh_len,
-+	/*
-+	 * Old way of doing things.  Will go away soon.
-+	 */
-+	if (!nop->fh_to_dentry) {
-+		if (nop->decode_fh) {
-+			return nop->decode_fh(mnt->mnt_sb, fid->raw, fh_len,
- 					fileid_type, acceptable, context);
-+		} else {
-+			return export_decode_fh(mnt->mnt_sb, fid->raw, fh_len,
-+					fileid_type, acceptable, context);
-+		}
-+	}
-+
-+	/*
-+	 * Try to get any dentry for the given file handle from the filesystem.
-+	 */
-+	result = nop->fh_to_dentry(mnt->mnt_sb, fid, fh_len, fileid_type);
-+	if (!result)
-+		result = ERR_PTR(-ESTALE);
-+	if (IS_ERR(result))
-+		return result;
-+
-+	if (S_ISDIR(result->d_inode->i_mode)) {
-+		/*
-+		 * This request is for a directory.
-+		 *
-+		 * On the positive side there is only one dentry for each
-+		 * directory inode.  On the negative side this implies that we
-+		 * to ensure our dentry is connected all the way up to the
-+		 * filesystem root.
-+		 */
-+		if (result->d_flags & DCACHE_DISCONNECTED) {
-+			err = reconnect_path(mnt->mnt_sb, result);
-+			if (err)
-+				goto err_result;
-+		}
-+
-+		if (!acceptable(context, result)) {
-+			err = -EACCES;
-+			goto err_result;
-+		}
-+
-+		return result;
- 	} else {
--		result = export_decode_fh(mnt->mnt_sb, fid->raw, fh_len,
--					  fileid_type, acceptable, context);
-+		/*
-+		 * It's not a directory.  Life is a little more complicated.
-+		 */
-+		struct dentry *target_dir, *nresult;
-+		char nbuf[NAME_MAX+1];
-+
-+		/*
-+		 * See if either the dentry we just got from the filesystem
-+		 * or any alias for it is acceptable.  This is always true
-+		 * if this filesystem is exported without the subtreecheck
-+		 * option.  If the filesystem is exported with the subtree
-+		 * check option there's a fair chance we need to look at
-+		 * the parent directory in the file handle and make sure
-+		 * it's connected to the filesystem root.
-+		 */
-+		alias = find_acceptable_alias(result, acceptable, context);
-+		if (alias)
-+			return alias;
-+
-+		/*
-+		 * Try to extract a dentry for the parent directory from the
-+		 * file handle.  If this fails we'll have to give up.
-+		 */
-+		err = -ESTALE;
-+		if (!nop->fh_to_parent)
-+			goto err_result;
-+
-+		target_dir = nop->fh_to_parent(mnt->mnt_sb, fid,
-+				fh_len, fileid_type);
-+		if (!target_dir)
-+			goto err_result;
-+		err = PTR_ERR(target_dir);
-+		if (IS_ERR(target_dir))
-+			goto err_result;
-+
-+		/*
-+		 * And as usual we need to make sure the parent directory is
-+		 * connected to the filesystem root.  The VFS really doesn't
-+		 * like disconnected directories..
-+		 */
-+		err = reconnect_path(mnt->mnt_sb, target_dir);
-+		if (err) {
-+			dput(target_dir);
-+			goto err_result;
-+		}
-+
-+		/*
-+		 * Now that we've got both a well-connected parent and a
-+		 * dentry for the inode we're after, make sure that our
-+		 * inode is actually connected to the parent.
-+		 */
-+		err = exportfs_get_name(target_dir, nbuf, result);
-+		if (!err) {
-+			mutex_lock(&target_dir->d_inode->i_mutex);
-+			nresult = lookup_one_len(nbuf, target_dir,
-+						 strlen(nbuf));
-+			mutex_unlock(&target_dir->d_inode->i_mutex);
-+			if (!IS_ERR(nresult)) {
-+				if (nresult->d_inode) {
-+					dput(result);
-+					result = nresult;
-+				} else
-+					dput(nresult);
-+			}
-+		}
-+
-+		/*
-+		 * At this point we are done with the parent, but it's pinned
-+		 * by the child dentry anyway.
-+		 */
-+		dput(target_dir);
-+
-+		/*
-+		 * And finally make sure the dentry is actually acceptable
-+		 * to NFSD.
-+		 */
-+		alias = find_acceptable_alias(result, acceptable, context);
-+		if (!alias) {
-+			err = -EACCES;
-+			goto err_result;
-+		}
-+
-+		return alias;
+diff -puN fs/ext2/super.c~exportfs-make-struct-export_operations-const fs/ext2/super.c
+--- a/fs/ext2/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/ext2/super.c
+@@ -357,7 +357,7 @@ static struct dentry *ext2_fh_to_parent(
+  * systems, but can be improved upon.
+  * Currently only get_parent is required.
+  */
+-static struct export_operations ext2_export_ops = {
++static const struct export_operations ext2_export_ops = {
+ 	.fh_to_dentry = ext2_fh_to_dentry,
+ 	.fh_to_parent = ext2_fh_to_parent,
+ 	.get_parent = ext2_get_parent,
+diff -puN fs/ext3/super.c~exportfs-make-struct-export_operations-const fs/ext3/super.c
+--- a/fs/ext3/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/ext3/super.c
+@@ -741,7 +741,7 @@ static const struct super_operations ext
+ #endif
+ };
+ 
+-static struct export_operations ext3_export_ops = {
++static const struct export_operations ext3_export_ops = {
+ 	.fh_to_dentry = ext3_fh_to_dentry,
+ 	.fh_to_parent = ext3_fh_to_parent,
+ 	.get_parent = ext3_get_parent,
+diff -puN fs/ext4/super.c~exportfs-make-struct-export_operations-const fs/ext4/super.c
+--- a/fs/ext4/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/ext4/super.c
+@@ -796,7 +796,7 @@ static const struct super_operations ext
+ #endif
+ };
+ 
+-static struct export_operations ext4_export_ops = {
++static const struct export_operations ext4_export_ops = {
+ 	.fh_to_dentry = ext4_fh_to_dentry,
+ 	.fh_to_parent = ext4_fh_to_parent,
+ 	.get_parent = ext4_get_parent,
+diff -puN fs/fat/inode.c~exportfs-make-struct-export_operations-const fs/fat/inode.c
+--- a/fs/fat/inode.c~exportfs-make-struct-export_operations-const
++++ a/fs/fat/inode.c
+@@ -774,7 +774,7 @@ out:
+ 	return parent;
+ }
+ 
+-static struct export_operations fat_export_ops = {
++static const struct export_operations fat_export_ops = {
+ 	.encode_fh	= fat_encode_fh,
+ 	.fh_to_dentry	= fat_fh_to_dentry,
+ 	.get_parent	= fat_get_parent,
+diff -puN fs/gfs2/ops_export.c~exportfs-make-struct-export_operations-const fs/gfs2/ops_export.c
+--- a/fs/gfs2/ops_export.c~exportfs-make-struct-export_operations-const
++++ a/fs/gfs2/ops_export.c
+@@ -294,7 +294,7 @@ static struct dentry *gfs2_fh_to_parent(
  	}
- 
--	return result;
-+ err_result:
-+	dput(result);
-+	return ERR_PTR(err);
- }
- EXPORT_SYMBOL_GPL(exportfs_decode_fh);
- 
-diff -puN fs/libfs.c~exportfs-add-new-methods fs/libfs.c
---- a/fs/libfs.c~exportfs-add-new-methods
-+++ a/fs/libfs.c
-@@ -8,6 +8,7 @@
- #include <linux/mount.h>
- #include <linux/vfs.h>
- #include <linux/mutex.h>
-+#include <linux/exportfs.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -678,6 +679,93 @@ out:
- 	return ret;
  }
  
-+/*
-+ * This is what d_alloc_anon should have been.  Once the exportfs
-+ * argument transition has been finished I will update d_alloc_anon
-+ * to this prototype and this wrapper will go away.   --hch
-+ */
-+static struct dentry *exportfs_d_alloc(struct inode *inode)
-+{
-+	struct dentry *dentry;
-+
-+	if (!inode)
-+		return NULL;
-+	if (IS_ERR(inode))
-+		return ERR_PTR(PTR_ERR(inode));
-+
-+	dentry = d_alloc_anon(inode);
-+	if (!dentry) {
-+		iput(inode);
-+		dentry = ERR_PTR(-ENOMEM);
-+	}
-+	return dentry;
-+}
-+
-+/**
-+ * generic_fh_to_dentry - generic helper for the fh_to_dentry export operation
-+ * @sb:		filesystem to do the file handle conversion on
-+ * @fid:	file handle to convert
-+ * @fh_len:	length of the file handle in bytes
-+ * @fh_type:	type of file handle
-+ * @get_inode:	filesystem callback to retrieve inode
-+ *
-+ * This function decodes @fid as long as it has one of the well-known
-+ * Linux filehandle types and calls @get_inode on it to retrieve the
-+ * inode for the object specified in the file handle.
-+ */
-+struct dentry *generic_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type, struct inode *(*get_inode)
-+			(struct super_block *sb, u64 ino, u32 gen))
-+{
-+	struct inode *inode = NULL;
-+
-+	if (fh_len < 2)
-+		return NULL;
-+
-+	switch (fh_type) {
-+	case FILEID_INO32_GEN:
-+	case FILEID_INO32_GEN_PARENT:
-+		inode = get_inode(sb, fid->i32.ino, fid->i32.gen);
-+		break;
-+	}
-+
-+	return exportfs_d_alloc(inode);
-+}
-+EXPORT_SYMBOL_GPL(generic_fh_to_dentry);
-+
-+/**
-+ * generic_fh_to_dentry - generic helper for the fh_to_parent export operation
-+ * @sb:		filesystem to do the file handle conversion on
-+ * @fid:	file handle to convert
-+ * @fh_len:	length of the file handle in bytes
-+ * @fh_type:	type of file handle
-+ * @get_inode:	filesystem callback to retrieve inode
-+ *
-+ * This function decodes @fid as long as it has one of the well-known
-+ * Linux filehandle types and calls @get_inode on it to retrieve the
-+ * inode for the _parent_ object specified in the file handle if it
-+ * is specified in the file handle, or NULL otherwise.
-+ */
-+struct dentry *generic_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type, struct inode *(*get_inode)
-+			(struct super_block *sb, u64 ino, u32 gen))
-+{
-+	struct inode *inode = NULL;
-+
-+	if (fh_len <= 2)
-+		return NULL;
-+
-+	switch (fh_type) {
-+	case FILEID_INO32_GEN_PARENT:
-+		inode = get_inode(sb, fid->i32.parent_ino,
-+				  (fh_len > 3 ? fid->i32.parent_gen : 0));
-+		break;
-+	}
-+
-+	return exportfs_d_alloc(inode);
-+}
-+EXPORT_SYMBOL_GPL(generic_fh_to_parent);
-+
- EXPORT_SYMBOL(dcache_dir_close);
- EXPORT_SYMBOL(dcache_dir_lseek);
- EXPORT_SYMBOL(dcache_dir_open);
-diff -puN include/linux/exportfs.h~exportfs-add-new-methods include/linux/exportfs.h
---- a/include/linux/exportfs.h~exportfs-add-new-methods
-+++ a/include/linux/exportfs.h
-@@ -4,6 +4,7 @@
- #include <linux/types.h>
+-struct export_operations gfs2_export_ops = {
++const struct export_operations gfs2_export_ops = {
+ 	.encode_fh = gfs2_encode_fh,
+ 	.fh_to_dentry = gfs2_fh_to_dentry,
+ 	.fh_to_parent = gfs2_fh_to_parent,
+diff -puN fs/gfs2/ops_fstype.h~exportfs-make-struct-export_operations-const fs/gfs2/ops_fstype.h
+--- a/fs/gfs2/ops_fstype.h~exportfs-make-struct-export_operations-const
++++ a/fs/gfs2/ops_fstype.h
+@@ -14,6 +14,6 @@
  
- struct dentry;
-+struct inode;
- struct super_block;
- struct vfsmount;
+ extern struct file_system_type gfs2_fs_type;
+ extern struct file_system_type gfs2meta_fs_type;
+-extern struct export_operations gfs2_export_ops;
++extern const struct export_operations gfs2_export_ops;
  
-@@ -101,6 +102,21 @@ struct fid {
-  *    the filehandle fragment.  encode_fh() should return the number of bytes
-  *    stored or a negative error code such as %-ENOSPC
-  *
-+ * fh_to_dentry:
-+ *    @fh_to_dentry is given a &struct super_block (@sb) and a file handle
-+ *    fragment (@fh, @fh_len). It should return a &struct dentry which refers
-+ *    to the same file that the file handle fragment refers to.  If it cannot,
-+ *    it should return a %NULL pointer if the file was found but no acceptable
-+ *    &dentries were available, or an %ERR_PTR error code indicating why it
-+ *    couldn't be found (e.g. %ENOENT or %ENOMEM).  Any suitable dentry can be
-+ *    returned including, if necessary, a new dentry created with d_alloc_root.
-+ *    The caller can then find any other extant dentries by following the
-+ *    d_alias links.
-+ *
-+ * fh_to_parent:
-+ *    Same as @fh_to_dentry, except that it returns a pointer to the parent
-+ *    dentry if it was encoded into the filehandle fragment by @encode_fh.
-+ *
-  * get_name:
-  *    @get_name should find a name for the given @child in the given @parent
-  *    directory.  The name should be stored in the @name (with the
-@@ -139,6 +155,10 @@ struct export_operations {
- 			void *context);
- 	int (*encode_fh)(struct dentry *de, __u32 *fh, int *max_len,
- 			int connectable);
-+	struct dentry * (*fh_to_dentry)(struct super_block *sb, struct fid *fid,
-+			int fh_len, int fh_type);
-+	struct dentry * (*fh_to_parent)(struct super_block *sb, struct fid *fid,
-+			int fh_len, int fh_type);
- 	int (*get_name)(struct dentry *parent, char *name,
- 			struct dentry *child);
- 	struct dentry * (*get_parent)(struct dentry *child);
-@@ -161,4 +181,14 @@ extern struct dentry *exportfs_decode_fh
- 	int fh_len, int fileid_type, int (*acceptable)(void *, struct dentry *),
- 	void *context);
+ #endif /* __OPS_FSTYPE_DOT_H__ */
+diff -puN fs/isofs/export.c~exportfs-make-struct-export_operations-const fs/isofs/export.c
+--- a/fs/isofs/export.c~exportfs-make-struct-export_operations-const
++++ a/fs/isofs/export.c
+@@ -207,7 +207,7 @@ static struct dentry *isofs_fh_to_parent
+ 			fh_len > 4 ? ifid->parent_generation : 0);
+ }
  
-+/*
-+ * Generic helpers for filesystems.
-+ */
-+extern struct dentry *generic_fh_to_dentry(struct super_block *sb,
-+	struct fid *fid, int fh_len, int fh_type,
-+	struct inode *(*get_inode) (struct super_block *sb, u64 ino, u32 gen));
-+extern struct dentry *generic_fh_to_parent(struct super_block *sb,
-+	struct fid *fid, int fh_len, int fh_type,
-+	struct inode *(*get_inode) (struct super_block *sb, u64 ino, u32 gen));
-+
- #endif /* LINUX_EXPORTFS_H */
+-struct export_operations isofs_export_ops = {
++const struct export_operations isofs_export_ops = {
+ 	.encode_fh	= isofs_export_encode_fh,
+ 	.fh_to_dentry	= isofs_fh_to_dentry,
+ 	.fh_to_parent	= isofs_fh_to_parent,
+diff -puN fs/isofs/isofs.h~exportfs-make-struct-export_operations-const fs/isofs/isofs.h
+--- a/fs/isofs/isofs.h~exportfs-make-struct-export_operations-const
++++ a/fs/isofs/isofs.h
+@@ -178,4 +178,4 @@ isofs_normalize_block_and_offset(struct 
+ extern const struct inode_operations isofs_dir_inode_operations;
+ extern const struct file_operations isofs_dir_operations;
+ extern const struct address_space_operations isofs_symlink_aops;
+-extern struct export_operations isofs_export_ops;
++extern const struct export_operations isofs_export_ops;
+diff -puN fs/jfs/super.c~exportfs-make-struct-export_operations-const fs/jfs/super.c
+--- a/fs/jfs/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/jfs/super.c
+@@ -48,7 +48,7 @@ MODULE_LICENSE("GPL");
+ static struct kmem_cache * jfs_inode_cachep;
+ 
+ static const struct super_operations jfs_super_operations;
+-static struct export_operations jfs_export_operations;
++static const struct export_operations jfs_export_operations;
+ static struct file_system_type jfs_fs_type;
+ 
+ #define MAX_COMMIT_THREADS 64
+@@ -737,7 +737,7 @@ static const struct super_operations jfs
+ #endif
+ };
+ 
+-static struct export_operations jfs_export_operations = {
++static const struct export_operations jfs_export_operations = {
+ 	.fh_to_dentry	= jfs_fh_to_dentry,
+ 	.fh_to_parent	= jfs_fh_to_parent,
+ 	.get_parent	= jfs_get_parent,
+diff -puN fs/ntfs/namei.c~exportfs-make-struct-export_operations-const fs/ntfs/namei.c
+--- a/fs/ntfs/namei.c~exportfs-make-struct-export_operations-const
++++ a/fs/ntfs/namei.c
+@@ -499,7 +499,7 @@ static struct dentry *ntfs_fh_to_parent(
+  * allowing the inode number 0 which is used in NTFS for the system file $MFT
+  * and due to using iget() whereas NTFS needs ntfs_iget().
+  */
+-struct export_operations ntfs_export_ops = {
++const struct export_operations ntfs_export_ops = {
+ 	.get_parent	= ntfs_get_parent,	/* Find the parent of a given
+ 						   directory. */
+ 	.fh_to_dentry	= ntfs_fh_to_dentry,
+diff -puN fs/ntfs/ntfs.h~exportfs-make-struct-export_operations-const fs/ntfs/ntfs.h
+--- a/fs/ntfs/ntfs.h~exportfs-make-struct-export_operations-const
++++ a/fs/ntfs/ntfs.h
+@@ -69,7 +69,7 @@ extern const struct inode_operations ntf
+ extern const struct  file_operations ntfs_empty_file_ops;
+ extern const struct inode_operations ntfs_empty_inode_ops;
+ 
+-extern struct export_operations ntfs_export_ops;
++extern const struct export_operations ntfs_export_ops;
+ 
+ /**
+  * NTFS_SB - return the ntfs volume given a vfs super block
+diff -puN fs/ocfs2/export.c~exportfs-make-struct-export_operations-const fs/ocfs2/export.c
+--- a/fs/ocfs2/export.c~exportfs-make-struct-export_operations-const
++++ a/fs/ocfs2/export.c
+@@ -222,7 +222,7 @@ static struct dentry *ocfs2_fh_to_parent
+ 	return ocfs2_get_dentry(sb, &parent);
+ }
+ 
+-struct export_operations ocfs2_export_ops = {
++const struct export_operations ocfs2_export_ops = {
+ 	.encode_fh	= ocfs2_encode_fh,
+ 	.fh_to_dentry	= ocfs2_fh_to_dentry,
+ 	.fh_to_parent	= ocfs2_fh_to_parent,
+diff -puN fs/ocfs2/export.h~exportfs-make-struct-export_operations-const fs/ocfs2/export.h
+--- a/fs/ocfs2/export.h~exportfs-make-struct-export_operations-const
++++ a/fs/ocfs2/export.h
+@@ -28,6 +28,6 @@
+ 
+ #include <linux/exportfs.h>
+ 
+-extern struct export_operations ocfs2_export_ops;
++extern const struct export_operations ocfs2_export_ops;
+ 
+ #endif /* OCFS2_EXPORT_H */
+diff -puN fs/reiserfs/super.c~exportfs-make-struct-export_operations-const fs/reiserfs/super.c
+--- a/fs/reiserfs/super.c~exportfs-make-struct-export_operations-const
++++ a/fs/reiserfs/super.c
+@@ -661,7 +661,7 @@ static struct quotactl_ops reiserfs_qctl
+ };
+ #endif
+ 
+-static struct export_operations reiserfs_export_ops = {
++static const struct export_operations reiserfs_export_ops = {
+ 	.encode_fh = reiserfs_encode_fh,
+ 	.fh_to_dentry = reiserfs_fh_to_dentry,
+ 	.fh_to_parent = reiserfs_fh_to_parent,
+diff -puN fs/xfs/linux-2.6/xfs_export.c~exportfs-make-struct-export_operations-const fs/xfs/linux-2.6/xfs_export.c
+--- a/fs/xfs/linux-2.6/xfs_export.c~exportfs-make-struct-export_operations-const
++++ a/fs/xfs/linux-2.6/xfs_export.c
+@@ -220,7 +220,7 @@ xfs_fs_get_parent(
+ 	return parent;
+ }
+ 
+-struct export_operations xfs_export_operations = {
++const struct export_operations xfs_export_operations = {
+ 	.encode_fh		= xfs_fs_encode_fh,
+ 	.fh_to_dentry		= xfs_fs_fh_to_dentry,
+ 	.fh_to_parent		= xfs_fs_fh_to_parent,
+diff -puN fs/xfs/linux-2.6/xfs_super.h~exportfs-make-struct-export_operations-const fs/xfs/linux-2.6/xfs_super.h
+--- a/fs/xfs/linux-2.6/xfs_super.h~exportfs-make-struct-export_operations-const
++++ a/fs/xfs/linux-2.6/xfs_super.h
+@@ -118,7 +118,7 @@ extern int  xfs_blkdev_get(struct xfs_mo
+ extern void xfs_blkdev_put(struct block_device *);
+ extern void xfs_blkdev_issue_flush(struct xfs_buftarg *);
+ 
+-extern struct export_operations xfs_export_operations;
++extern const struct export_operations xfs_export_operations;
+ 
+ #define XFS_M(sb)		((struct xfs_mount *)((sb)->s_fs_info))
+ 
+diff -puN include/linux/fs.h~exportfs-make-struct-export_operations-const include/linux/fs.h
+--- a/include/linux/fs.h~exportfs-make-struct-export_operations-const
++++ a/include/linux/fs.h
+@@ -987,7 +987,7 @@ struct super_block {
+ 	const struct super_operations	*s_op;
+ 	struct dquot_operations	*dq_op;
+  	struct quotactl_ops	*s_qcop;
+-	struct export_operations *s_export_op;
++	const struct export_operations *s_export_op;
+ 	unsigned long		s_flags;
+ 	unsigned long		s_magic;
+ 	struct dentry		*s_root;
+diff -puN mm/shmem.c~exportfs-make-struct-export_operations-const mm/shmem.c
+--- a/mm/shmem.c~exportfs-make-struct-export_operations-const
++++ a/mm/shmem.c
+@@ -2071,7 +2071,7 @@ static int shmem_encode_fh(struct dentry
+ 	return 1;
+ }
+ 
+-static struct export_operations shmem_export_ops = {
++static const struct export_operations shmem_export_ops = {
+ 	.get_parent     = shmem_get_parent,
+ 	.encode_fh      = shmem_encode_fh,
+ 	.fh_to_dentry	= shmem_fh_to_dentry,
 _
 
 Patches currently in -mm which might be from hch@lst.de are
