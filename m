@@ -1,94 +1,40 @@
-From: akpm@linux-foundation.org
-Subject: + ext2-fix-the-max-file-size-for-ext2-file-system.patch added to -mm tree
-Date: Wed, 24 Oct 2007 15:24:20 -0700
-Message-ID: <200710242224.l9OMOKut015648@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: Enable delalloc and mballoc by default.
+Date: Wed, 24 Oct 2007 16:59:35 -0600
+Message-ID: <20071024225935.GI26078@webber.adilger.int>
+References: <1193244441-10149-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <471F7F41.6080800@redhat.com> <20071024210639.GC26078@webber.adilger.int> <471FB5F8.1090805@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.clusterfs.com ([74.0.229.162]:59743 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755459AbXJXW7h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2007 18:59:37 -0400
+Content-Disposition: inline
+In-Reply-To: <471FB5F8.1090805@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Oct 24, 2007  16:15 -0500, Eric Sandeen wrote:
+> Andreas Dilger wrote:
+> > It is useful to be able to mount w/o extents/delalloc/mballoc for perf
+> > testing and functional testing of the block-mapped file path in ext4.
+> > Also, some users might want the ability to use features of ext4 w/o
+> > the incompatibility of extents.
+> 
+> Right, I understand the reason for noextents, nodelalloc, nomballoc.
+> Above, I ask what is the point of having the *defaults* (extents,
+> delalloc, mballoc) as mount options?
 
-The patch titled
-     ext2: fix the max file size for ext2 file system
-has been added to the -mm tree.  Its filename is
-     ext2-fix-the-max-file-size-for-ext2-file-system.patch
+Partly for symmetry, and also to be able to override any "no*" options
+that might have been specified previously (e.g. in some script that the
+user doesn't directly control, but can pass additional options to).
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-------------------------------------------------------
-Subject: ext2: fix the max file size for ext2 file system
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-
-The max file size for ext2 file system is now calculated with hardcoded 4K
-block size.  The patch fixes it to be calculated with the right block size.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/super.c |   32 ++++++++++++++++++++++++++++----
- 1 file changed, 28 insertions(+), 4 deletions(-)
-
-diff -puN fs/ext2/super.c~ext2-fix-the-max-file-size-for-ext2-file-system fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-fix-the-max-file-size-for-ext2-file-system
-+++ a/fs/ext2/super.c
-@@ -680,11 +680,31 @@ static int ext2_check_descriptors (struc
- static loff_t ext2_max_size(int bits)
- {
- 	loff_t res = EXT2_NDIR_BLOCKS;
--	/* This constant is calculated to be the largest file size for a
--	 * dense, 4k-blocksize file such that the total number of
-+	int meta_blocks;
-+	loff_t upper_limit;
-+
-+	/* This is calculated to be the largest file size for a
-+	 * dense, file such that the total number of
- 	 * sectors in the file, including data and all indirect blocks,
--	 * does not exceed 2^32. */
--	const loff_t upper_limit = 0x1ff7fffd000LL;
-+	 * does not exceed 2^32 -1
-+	 * __u32 i_blocks representing the total number of
-+	 * 512 bytes blocks of the file
-+	 */
-+	upper_limit = (1LL << 32) - 1;
-+
-+	/* total blocks in file system block size */
-+	upper_limit >>= (bits - 9);
-+
-+
-+	/* indirect blocks */
-+	meta_blocks = 1;
-+	/* double indirect blocks */
-+	meta_blocks += 1 + (1LL << (bits-2));
-+	/* tripple indirect blocks */
-+	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
-+
-+	upper_limit -= meta_blocks;
-+	upper_limit <<= bits;
- 
- 	res += 1LL << (bits-2);
- 	res += 1LL << (2*(bits-2));
-@@ -692,6 +712,10 @@ static loff_t ext2_max_size(int bits)
- 	res <<= bits;
- 	if (res > upper_limit)
- 		res = upper_limit;
-+
-+	if (res > MAX_LFS_FILESIZE)
-+		res = MAX_LFS_FILESIZE;
-+
- 	return res;
- }
- 
-_
-
-Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
-
-ext2-fix-the-max-file-size-for-ext2-file-system.patch
-ext3-fix-the-max-file-size-for-ext3-file-system.patch
-ext4-return-after-ext4_error-in-case-of-failures.patch
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
