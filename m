@@ -1,24 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-return-after-ext4_error-in-case-of-failures.patch added to -mm tree
-Date: Wed, 24 Oct 2007 15:24:25 -0700
-Message-ID: <200710242224.l9OMOPSZ015656@imap1.linux-foundation.org>
-Cc: aneesh.kumar@linux.vnet.ibm.com, bunk@kernel.org,
-	linux-ext4@vger.kernel.org
+Subject: + ext3-fix-the-max-file-size-for-ext3-file-system.patch added to -mm tree
+Date: Wed, 24 Oct 2007 15:24:23 -0700
+Message-ID: <200710242224.l9OMONgM015651@imap1.linux-foundation.org>
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41040 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47503 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757304AbXJXWZO (ORCPT
+	by vger.kernel.org with ESMTP id S1757304AbXJXWZC (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Oct 2007 18:25:14 -0400
+	Wed, 24 Oct 2007 18:25:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: return after ext4_error in case of failures
+     ext3: fix the max file size for ext3 file system
 has been added to the -mm tree.  Its filename is
-     ext4-return-after-ext4_error-in-case-of-failures.patch
+     ext3-fix-the-max-file-size-for-ext3-file-system.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -26,69 +25,69 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4: return after ext4_error in case of failures
+Subject: ext3: fix the max file size for ext3 file system
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-This fix some instances where we were continuing after calling ext4_error. 
-ext4_error call panic only if errors=panic mount option is set.  So we need to
-make sure we return correctly after ext4_error call
+The max file size for ext3 file system is now calculated with hardcoded 4K
+block size.  The patch fixes it to be calculated with the right block size.
 
-Reported-by: Adrian Bunk <bunk@kernel.org>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c |   12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/ext3/super.c |   32 ++++++++++++++++++++++++++++----
+ 1 file changed, 28 insertions(+), 4 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-return-after-ext4_error-in-case-of-failures fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-return-after-ext4_error-in-case-of-failures
-+++ a/fs/ext4/balloc.c
-@@ -234,11 +234,13 @@ read_block_bitmap(struct super_block *sb
- 	} else {
- 		bh = sb_bread(sb, bitmap_blk);
- 	}
--	if (!bh)
-+	if (!bh) {
- 		ext4_error (sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %llu",
- 			    block_group, bitmap_blk);
-+		return NULL;
-+	}
+diff -puN fs/ext3/super.c~ext3-fix-the-max-file-size-for-ext3-file-system fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-fix-the-max-file-size-for-ext3-file-system
++++ a/fs/ext3/super.c
+@@ -1436,11 +1436,31 @@ static void ext3_orphan_cleanup (struct 
+ static loff_t ext3_max_size(int bits)
+ {
+ 	loff_t res = EXT3_NDIR_BLOCKS;
+-	/* This constant is calculated to be the largest file size for a
+-	 * dense, 4k-blocksize file such that the total number of
++	int meta_blocks;
++	loff_t upper_limit;
++
++	/* This is calculated to be the largest file size for a
++	 * dense, file such that the total number of
+ 	 * sectors in the file, including data and all indirect blocks,
+-	 * does not exceed 2^32. */
+-	const loff_t upper_limit = 0x1ff7fffd000LL;
++	 * does not exceed 2^32 -1
++	 * __u32 i_blocks representing the total number of
++	 * 512 bytes blocks of the file
++	 */
++	upper_limit = (1LL << 32) - 1;
++
++	/* total blocks in file system block size */
++	upper_limit >>= (bits - 9);
++
++
++	/* indirect blocks */
++	meta_blocks = 1;
++	/* double indirect blocks */
++	meta_blocks += 1 + (1LL << (bits-2));
++	/* tripple indirect blocks */
++	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
++
++	upper_limit -= meta_blocks;
++	upper_limit <<= bits;
  
- 	/* check whether block bitmap block number is set */
- 	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-@@ -630,11 +632,13 @@ do_more:
- 	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
- 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
- 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
--		     sbi->s_itb_per_group))
-+		     sbi->s_itb_per_group)) {
- 		ext4_error (sb, "ext4_free_blocks",
- 			    "Freeing blocks in system zones - "
- 			    "Block = %llu, count = %lu",
- 			    block, count);
-+		goto error_return;
-+	}
- 
- 	/*
- 	 * We are about to start releasing blocks in the bitmap,
-@@ -1745,11 +1749,13 @@ allocated:
- 	    in_range(ret_block, ext4_inode_table(sb, gdp),
- 		     EXT4_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, ext4_inode_table(sb, gdp),
--		     EXT4_SB(sb)->s_itb_per_group))
-+		     EXT4_SB(sb)->s_itb_per_group)) {
- 		ext4_error(sb, "ext4_new_block",
- 			    "Allocating block in system zone - "
- 			    "blocks from %llu, length %lu",
- 			     ret_block, num);
-+		goto out;
-+	}
- 
- 	performed_allocation = 1;
+ 	res += 1LL << (bits-2);
+ 	res += 1LL << (2*(bits-2));
+@@ -1448,6 +1468,10 @@ static loff_t ext3_max_size(int bits)
+ 	res <<= bits;
+ 	if (res > upper_limit)
+ 		res = upper_limit;
++
++	if (res > MAX_LFS_FILESIZE)
++		res = MAX_LFS_FILESIZE;
++
+ 	return res;
+ }
  
 _
 
