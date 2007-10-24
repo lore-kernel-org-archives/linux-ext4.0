@@ -1,43 +1,99 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Enable delalloc and mballoc by default.
-Date: Wed, 24 Oct 2007 16:15:36 -0500
-Message-ID: <471FB5F8.1090805@redhat.com>
-References: <1193244441-10149-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <471F7F41.6080800@redhat.com> <20071024210639.GC26078@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+From: akpm@linux-foundation.org
+Subject: + ext4-return-after-ext4_error-in-case-of-failures.patch added to -mm tree
+Date: Wed, 24 Oct 2007 15:24:25 -0700
+Message-ID: <200710242224.l9OMOPSZ015656@imap1.linux-foundation.org>
+Cc: aneesh.kumar@linux.vnet.ibm.com, bunk@kernel.org,
 	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39270 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755260AbXJXVQD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Oct 2007 17:16:03 -0400
-In-Reply-To: <20071024210639.GC26078@webber.adilger.int>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41040 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757304AbXJXWZO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Oct 2007 18:25:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Oct 24, 2007  12:22 -0500, Eric Sandeen wrote:
->> Aneesh Kumar K.V wrote:
->>> @@ -1279,6 +1280,9 @@ clear_qf_name:
->>>  		case Opt_delalloc:
->>>  			set_opt (sbi->s_mount_opt, DELALLOC);
->>>  			break;
->> If delalloc, mballoc, extents are the new defaults, is there a reason to
->> keep them as options?  When would you need to specify -o extents, now,
->> for example?  (though my brain is fuzzy today, maybe I'm missing
->> something)  If this were not a filesystem ending in "dev" I could see
->> keeping it for compatibility with existing fstabs....
-> 
-> It is useful to be able to mount w/o extents/delalloc/mballoc for perf
-> testing and functional testing of the block-mapped file path in ext4.
-> Also, some users might want the ability to use features of ext4 w/o
-> the incompatibility of extents.
 
-Right, I understand the reason for noextents, nodelalloc, nomballoc.
-Above, I ask what is the point of having the *defaults* (extents,
-delalloc, mballoc) as mount options?
+The patch titled
+     ext4: return after ext4_error in case of failures
+has been added to the -mm tree.  Its filename is
+     ext4-return-after-ext4_error-in-case-of-failures.patch
 
--Eric
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+------------------------------------------------------
+Subject: ext4: return after ext4_error in case of failures
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+
+This fix some instances where we were continuing after calling ext4_error. 
+ext4_error call panic only if errors=panic mount option is set.  So we need to
+make sure we return correctly after ext4_error call
+
+Reported-by: Adrian Bunk <bunk@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/balloc.c |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff -puN fs/ext4/balloc.c~ext4-return-after-ext4_error-in-case-of-failures fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-return-after-ext4_error-in-case-of-failures
++++ a/fs/ext4/balloc.c
+@@ -234,11 +234,13 @@ read_block_bitmap(struct super_block *sb
+ 	} else {
+ 		bh = sb_bread(sb, bitmap_blk);
+ 	}
+-	if (!bh)
++	if (!bh) {
+ 		ext4_error (sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %llu",
+ 			    block_group, bitmap_blk);
++		return NULL;
++	}
+ 
+ 	/* check whether block bitmap block number is set */
+ 	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
+@@ -630,11 +632,13 @@ do_more:
+ 	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
+ 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
+ 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
+-		     sbi->s_itb_per_group))
++		     sbi->s_itb_per_group)) {
+ 		ext4_error (sb, "ext4_free_blocks",
+ 			    "Freeing blocks in system zones - "
+ 			    "Block = %llu, count = %lu",
+ 			    block, count);
++		goto error_return;
++	}
+ 
+ 	/*
+ 	 * We are about to start releasing blocks in the bitmap,
+@@ -1745,11 +1749,13 @@ allocated:
+ 	    in_range(ret_block, ext4_inode_table(sb, gdp),
+ 		     EXT4_SB(sb)->s_itb_per_group) ||
+ 	    in_range(ret_block + num - 1, ext4_inode_table(sb, gdp),
+-		     EXT4_SB(sb)->s_itb_per_group))
++		     EXT4_SB(sb)->s_itb_per_group)) {
+ 		ext4_error(sb, "ext4_new_block",
+ 			    "Allocating block in system zone - "
+ 			    "blocks from %llu, length %lu",
+ 			     ret_block, num);
++		goto out;
++	}
+ 
+ 	performed_allocation = 1;
+ 
+_
+
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+ext2-fix-the-max-file-size-for-ext2-file-system.patch
+ext3-fix-the-max-file-size-for-ext3-file-system.patch
+ext4-return-after-ext4_error-in-case-of-failures.patch
