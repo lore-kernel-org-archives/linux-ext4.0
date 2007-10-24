@@ -1,54 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Show mballoc and delalloc options
-Date: Wed, 24 Oct 2007 12:24:46 -0500
-Message-ID: <471F7FDE.80004@redhat.com>
-References: <1193244441-10149-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1193244441-10149-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Ext4 devel interlock meeting minutes (October 22, 2007)
+Date: Wed, 24 Oct 2007 19:55:49 +0200
+Message-ID: <20071024175549.GA13406@atrey.karlin.mff.cuni.cz>
+References: <471E6279.2000603@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Avantika Mathur <mathur@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:52511 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754988AbXJXRcF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Oct 2007 13:32:05 -0400
-In-Reply-To: <1193244441-10149-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:50476 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753480AbXJXRzu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2007 13:55:50 -0400
+Content-Disposition: inline
+In-Reply-To: <471E6279.2000603@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Aneesh Kumar K.V wrote:
-> Both these options are enabled by default.
-> So if they are are not set in mount options
-> that means the user explicity disabled them
-> using nomablloc and nodelalloc option. Show
-> the same in ext4_show_options
+  Hello,
 
-Looks good,
+  Sorry for not taking part in the call but I was just on my way from NY
+to Prague...
 
-Acked-By: Eric Sandeen <sandeen@redhat.com>
-
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/super.c |    6 ++++++
->  1 files changed, 6 insertions(+), 0 deletions(-)
+> Ext4 Developer Interlock Call
+> October 22, 2007: Meeting Minutes
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 0c32dc8..f1f70ce 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -733,8 +733,14 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
->  		seq_puts(seq, ",barrier=1");
->  	if (test_opt(sb, NOBH))
->  		seq_puts(seq, ",nobh");
-> +
-> +	/* extents,mballoc and delalloc are enabled by default */
->  	if (!test_opt(sb, EXTENTS))
->  		seq_puts(seq, ",noextents");
-> +	if (!test_opt(sb, MBALLOC))
-> +		seq_puts(seq, ",nomballoc");
-> +	if (!test_opt(sb, DELALLOC))
-> +		seq_puts(seq, ",nodelalloc");
->  
->  	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
->  		seq_puts(seq, ",data=journal");
+> Attendees: Mingming Cao, Andreas Dilger, Eric Sandeen, Dave Kleikamp, 
+> Jose Santos, Aneesh Veetil, Valerie Clement, Avantika Mathur
+> 
+> - There has been discussion on linux-ext4 about overflow in ext2 with 64 
+> KB block size.  Discussed adding an incompat flag to this feature and 
+> concluded that it is too late to do this; it will be treated as a bug fix.
+  Hmm, why adding an incompat flag? Obviously there's no harm in doing
+that but the large block size itself should be enough to protect old
+kernels/utils touching it, shouldn't it?
+
+> E2fsprogs
+> - Ted has added new branches the the e2fsprogs git tree
+>    - master: current stable version
+>    - next: patches expected to go into the next stable version
+>    - pu: proposed update; patches that are in preliminary review and 
+> 	test phase
+> - E2fsprogs patches should probably be submitted against the 'next' 
+> branch of the git tree.
+  BTW: We still don't have appropriate patches for large block size in
+e2fsprogs. I guess I should ping Ted about merging the patch once more.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
