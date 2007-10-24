@@ -1,54 +1,62 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make jbd/journal.c:__journal_abort_hard() static
-Date: Wed, 24 Oct 2007 18:23:25 +0200
-Message-ID: <20071024162325.GO30533@stusta.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, sct@redhat.com, akpm@linux-foundation.org,
-	adilger@clusterfs.com
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix mballoc BUG when running compilebench
+Date: Wed, 24 Oct 2007 22:17:18 +0530
+Message-ID: <1193244441-10149-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1193244441-10149-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1193244441-10149-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1193244441-10149-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1193244441-10149-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from emailhub.stusta.mhn.de ([141.84.69.5]:33316 "EHLO
-	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757208AbXJXQW4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2007 12:22:56 -0400
-Content-Disposition: inline
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:45945 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764699AbXJXQs2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2007 12:48:28 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9OGloh1012744
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 02:47:50 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9OGpQag265132
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 02:51:26 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9OGlZ3Y025703
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 02:47:35 +1000
+In-Reply-To: <1193244441-10149-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-__journal_abort_hard() can now become static.
+This fix the mballoc bug when running compile bench.
+Instead of using direct division even though the arguments
+are 32 bits we retain do_div. This would be needed if we
+move to 64 bit logical block number.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/ext4/mballoc.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
- fs/jbd/journal.c    |    2 +-
- include/linux/jbd.h |    1 -
- 2 files changed, 1 insertion(+), 2 deletions(-)
-
-ce452fbc5ebf8a4751183cfb731496c595b4ef6f 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 5d14243..3943a89 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1457,7 +1457,7 @@ static const char *journal_dev_name(journal_t *journal, char *buffer)
-  * Aborts hard --- we mark the abort as occurred, but do _nothing_ else,
-  * and don't attempt to make any other journal updates.
-  */
--void __journal_abort_hard(journal_t *journal)
-+static void __journal_abort_hard(journal_t *journal)
- {
- 	transaction_t *transaction;
- 	char b[BDEVNAME_SIZE];
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 16e7ed8..a9961cb 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -922,7 +922,6 @@ extern int	   journal_recover    (journal_t *journal);
- extern int	   journal_wipe       (journal_t *, int);
- extern int	   journal_skip_recovery	(journal_t *);
- extern void	   journal_update_superblock	(journal_t *, int);
--extern void	   __journal_abort_hard	(journal_t *);
- extern void	   journal_abort      (journal_t *, int);
- extern int	   journal_errno      (journal_t *);
- extern void	   journal_ack_err    (journal_t *);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index fe7cf9e..8467b3d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3089,13 +3089,14 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 		}
+ 	}
+ 	if (wind == 0) {
++		__u64 tstart;
+ 		/* file is quite large, we now preallocate with
+ 		 * the biggest configured window with regart to
+ 		 * logical offset */
+ 		wind = sbi->s_mb_prealloc_table[i - 1];
+-		start = ac->ac_o_ex.fe_logical;
+-		do_div(start, wind);
+-		start = start * wind;
++		tstart = ac->ac_o_ex.fe_logical;
++		do_div(tstart, wind);
++		start = tstart * wind;
+ 	}
+ 	size = wind;
+ 	orig_size = size;
+-- 
+1.5.3.4.319.gdd817-dirty
