@@ -1,86 +1,81 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext3: Return after ext3_error in case of failures
-Date: Thu, 25 Oct 2007 10:23:47 +0530
-Message-ID: <1193288030-7775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext3: Change the default behaviour on error
+Date: Thu, 25 Oct 2007 10:23:49 +0530
+Message-ID: <1193288030-7775-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1193288030-7775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1193288030-7775-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:37573 "EHLO
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:37593 "EHLO
 	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751631AbXJYEx5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2007 00:53:57 -0400
+	with ESMTP id S1752003AbXJYEyB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2007 00:54:01 -0400
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9P4sCBn010349
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:54:12 +1000
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id l9P4sGFf010431
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:54:16 +1000
 Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9P4vTcl215150
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:57:29 +1000
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9P4vYYm211384
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:57:34 +1000
 Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9P4rsSq003352
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:53:54 +1000
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9P4rxhC003526
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:53:59 +1000
+In-Reply-To: <1193288030-7775-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This fix some instances where we were continuing
-after calling ext3_error. ext3_error calls panic
-only if errors=panic mount option is set. So
-we need to make sure we return correctly after
-ext3_error call
+ext3 file system was by default ignoring errors
+and continuing. This is not a good default as
+continuing on error could lead to file system
+corruption. Change the default to mark the file
+system readonly. Debian and ubuntu already does
+this as the default in their fstab.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext3/balloc.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
+ fs/ext3/super.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 7a87d15..4cc1091 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -111,11 +111,13 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
- 		return NULL;
- 	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
- 	bh = sb_bread(sb, bitmap_blk);
--	if (!bh)
-+	if (!bh) {
- 		ext3_error (sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %u",
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
-+		return NULL;
-+	}
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 0bfd3dc..6cfdd06 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -575,16 +575,16 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
+ 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
+ 	}
+-	if (test_opt(sb, ERRORS_CONT)) {
++	if (test_opt(sb, ERRORS_RO)) {
+ 		int def_errors = le16_to_cpu(es->s_errors);
  
- 	/* check whether block bitmap block number is set */
- 	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-@@ -507,11 +509,13 @@ do_more:
- 	    in_range (block, le32_to_cpu(desc->bg_inode_table),
- 		      sbi->s_itb_per_group) ||
- 	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group))
-+		      sbi->s_itb_per_group)) {
- 		ext3_error (sb, "ext3_free_blocks",
- 			    "Freeing blocks in system zones - "
- 			    "Block = "E3FSBLK", count = %lu",
- 			    block, count);
-+		goto error_return;
-+	}
+ 		if (def_errors == EXT3_ERRORS_PANIC ||
+-		    def_errors == EXT3_ERRORS_RO) {
+-			seq_puts(seq, ",errors=continue");
++		    def_errors == EXT3_ERRORS_CONTINUE) {
++			seq_puts(seq, ",errors=remount-ro");
+ 		}
+ 	}
+-	if (test_opt(sb, ERRORS_RO))
+-		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_CONT))
++		seq_puts(seq, ",errors=continue");
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		seq_puts(seq, ",errors=panic");
+ 	if (test_opt(sb, NO_UID32))
+@@ -1578,10 +1578,10 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
  
- 	/*
- 	 * We are about to start releasing blocks in the bitmap,
-@@ -1614,11 +1618,13 @@ allocated:
- 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
- 		      EXT3_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
--		      EXT3_SB(sb)->s_itb_per_group))
-+		      EXT3_SB(sb)->s_itb_per_group)) {
- 		ext3_error(sb, "ext3_new_block",
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
-+		goto out;
-+	}
+ 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_PANIC)
+ 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+-	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
+-		set_opt(sbi->s_mount_opt, ERRORS_RO);
+-	else
++	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_CONTINUE)
+ 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
++	else
++		set_opt(sbi->s_mount_opt, ERRORS_RO);
  
- 	performed_allocation = 1;
- 
+ 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
 -- 
 1.5.3.4.319.gdd817-dirty
