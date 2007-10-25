@@ -1,19 +1,25 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-return-after-ext3_error-in-case-of-failures.patch added to -mm tree
-Date: Thu, 25 Oct 2007 14:29:15 -0700
-Message-ID: <200710252129.l9PLTIjB024917@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+Subject: + ext3-change-the-default-behaviour-on-error.patch added to -mm tree
+Date: Thu, 25 Oct 2007 14:33:28 -0700
+Message-ID: <200710252133.l9PLXSVq025088@imap1.linux-foundation.org>
+Cc: aneesh.kumar@linux.vnet.ibm.com, cebbert@redhat.com,
+	davej@codemonkey.org.uk, jack@ucw.cz, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com
 To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:40038 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753467AbXJYVeJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2007 17:34:09 -0400
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: return after ext3_error in case of failures
+     ext3: change the default behaviour on error
 has been added to the -mm tree.  Its filename is
-     ext3-return-after-ext3_error-in-case-of-failures.patch
+     ext3-change-the-default-behaviour-on-error.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -21,74 +27,73 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext3: return after ext3_error in case of failures
+Subject: ext3: change the default behaviour on error
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-This fixes some instances where we were continuing after calling
-ext3_error.  ext3_error calls panic only if errors=panic mount option is
-set.  So we need to make sure we return correctly after ext3_error call
+ext3 file system was by default ignoring errors and continuing.  This is
+not a good default as continuing on error could lead to file system
+corruption.  Change the default to mark the file system readonly.  Debian
+and ubuntu already does this as the default in their fstab.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: Dave Jones <davej@codemonkey.org.uk>
+Cc: Chuck Ebbert <cebbert@redhat.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/balloc.c |   12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/ext3/super.c |   16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures
-+++ a/fs/ext3/balloc.c
-@@ -111,11 +111,13 @@ read_block_bitmap(struct super_block *sb
- 		return NULL;
- 	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
- 	bh = sb_bread(sb, bitmap_blk);
--	if (!bh)
-+	if (!bh) {
- 		ext3_error (sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %u",
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
-+		return NULL;
-+	}
+diff -puN fs/ext3/super.c~ext3-change-the-default-behaviour-on-error fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-change-the-default-behaviour-on-error
++++ a/fs/ext3/super.c
+@@ -575,16 +575,16 @@ static int ext3_show_options(struct seq_
+ 	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
+ 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
+ 	}
+-	if (test_opt(sb, ERRORS_CONT)) {
++	if (test_opt(sb, ERRORS_RO)) {
+ 		int def_errors = le16_to_cpu(es->s_errors);
  
- 	/* check whether block bitmap block number is set */
- 	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-@@ -507,11 +509,13 @@ do_more:
- 	    in_range (block, le32_to_cpu(desc->bg_inode_table),
- 		      sbi->s_itb_per_group) ||
- 	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group))
-+		      sbi->s_itb_per_group)) {
- 		ext3_error (sb, "ext3_free_blocks",
- 			    "Freeing blocks in system zones - "
- 			    "Block = "E3FSBLK", count = %lu",
- 			    block, count);
-+		goto error_return;
-+	}
+ 		if (def_errors == EXT3_ERRORS_PANIC ||
+-		    def_errors == EXT3_ERRORS_RO) {
+-			seq_puts(seq, ",errors=continue");
++		    def_errors == EXT3_ERRORS_CONTINUE) {
++			seq_puts(seq, ",errors=remount-ro");
+ 		}
+ 	}
+-	if (test_opt(sb, ERRORS_RO))
+-		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_CONT))
++		seq_puts(seq, ",errors=continue");
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		seq_puts(seq, ",errors=panic");
+ 	if (test_opt(sb, NO_UID32))
+@@ -1559,10 +1559,10 @@ static int ext3_fill_super (struct super
  
- 	/*
- 	 * We are about to start releasing blocks in the bitmap,
-@@ -1614,11 +1618,13 @@ allocated:
- 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
- 		      EXT3_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
--		      EXT3_SB(sb)->s_itb_per_group))
-+		      EXT3_SB(sb)->s_itb_per_group)) {
- 		ext3_error(sb, "ext3_new_block",
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
-+		goto out;
-+	}
+ 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_PANIC)
+ 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+-	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
+-		set_opt(sbi->s_mount_opt, ERRORS_RO);
+-	else
++	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_CONTINUE)
+ 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
++	else
++		set_opt(sbi->s_mount_opt, ERRORS_RO);
  
- 	performed_allocation = 1;
- 
+ 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
 _
 
 Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
 
+ext2-return-after-ext2_error-in-case-of-failures.patch
+ext2-change-the-default-behaviour-on-error.patch
 ext4-return-after-ext4_error-in-case-of-failures.patch
 ext3-return-after-ext3_error-in-case-of-failures.patch
+ext3-change-the-default-behaviour-on-error.patch
 ext2-fix-the-max-file-size-for-ext2-file-system.patch
 ext3-fix-the-max-file-size-for-ext3-file-system.patch
