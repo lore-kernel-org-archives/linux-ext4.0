@@ -1,25 +1,25 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-change-the-default-behaviour-on-error.patch added to -mm tree
-Date: Thu, 25 Oct 2007 14:33:28 -0700
-Message-ID: <200710252133.l9PLXSVq025088@imap1.linux-foundation.org>
+Subject: + ext2-change-the-default-behaviour-on-error.patch added to -mm tree
+Date: Thu, 25 Oct 2007 14:33:48 -0700
+Message-ID: <200710252133.l9PLXmUK025091@imap1.linux-foundation.org>
 Cc: aneesh.kumar@linux.vnet.ibm.com, cebbert@redhat.com,
 	davej@codemonkey.org.uk, jack@ucw.cz, linux-ext4@vger.kernel.org,
 	sandeen@redhat.com
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:40038 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:57046 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753467AbXJYVeJ (ORCPT
+	by vger.kernel.org with ESMTP id S1753331AbXJYVeP (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2007 17:34:09 -0400
+	Thu, 25 Oct 2007 17:34:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: change the default behaviour on error
+     ext2: change the default behaviour on error
 has been added to the -mm tree.  Its filename is
-     ext3-change-the-default-behaviour-on-error.patch
+     ext2-change-the-default-behaviour-on-error.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -27,10 +27,10 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext3: change the default behaviour on error
+Subject: ext2: change the default behaviour on error
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-ext3 file system was by default ignoring errors and continuing.  This is
+ext2 file system was by default ignoring errors and continuing.  This is
 not a good default as continuing on error could lead to file system
 corruption.  Change the default to mark the file system readonly.  Debian
 and ubuntu already does this as the default in their fstab.
@@ -44,24 +44,24 @@ Cc: Chuck Ebbert <cebbert@redhat.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |   16 ++++++++--------
+ fs/ext2/super.c |   16 ++++++++--------
  1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-change-the-default-behaviour-on-error fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-change-the-default-behaviour-on-error
-+++ a/fs/ext3/super.c
-@@ -575,16 +575,16 @@ static int ext3_show_options(struct seq_
- 	    le16_to_cpu(es->s_def_resgid) != EXT3_DEF_RESGID) {
+diff -puN fs/ext2/super.c~ext2-change-the-default-behaviour-on-error fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-change-the-default-behaviour-on-error
++++ a/fs/ext2/super.c
+@@ -234,16 +234,16 @@ static int ext2_show_options(struct seq_
+ 	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
  		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
  	}
 -	if (test_opt(sb, ERRORS_CONT)) {
 +	if (test_opt(sb, ERRORS_RO)) {
  		int def_errors = le16_to_cpu(es->s_errors);
  
- 		if (def_errors == EXT3_ERRORS_PANIC ||
--		    def_errors == EXT3_ERRORS_RO) {
+ 		if (def_errors == EXT2_ERRORS_PANIC ||
+-		    def_errors == EXT2_ERRORS_RO) {
 -			seq_puts(seq, ",errors=continue");
-+		    def_errors == EXT3_ERRORS_CONTINUE) {
++		    def_errors == EXT2_ERRORS_CONTINUE) {
 +			seq_puts(seq, ",errors=remount-ro");
  		}
  	}
@@ -72,14 +72,14 @@ diff -puN fs/ext3/super.c~ext3-change-the-default-behaviour-on-error fs/ext3/sup
  	if (test_opt(sb, ERRORS_PANIC))
  		seq_puts(seq, ",errors=panic");
  	if (test_opt(sb, NO_UID32))
-@@ -1559,10 +1559,10 @@ static int ext3_fill_super (struct super
- 
- 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_PANIC)
+@@ -796,10 +796,10 @@ static int ext2_fill_super(struct super_
+ 	
+ 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
  		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
--	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_RO)
+-	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_RO)
 -		set_opt(sbi->s_mount_opt, ERRORS_RO);
 -	else
-+	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT3_ERRORS_CONTINUE)
++	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_CONTINUE)
  		set_opt(sbi->s_mount_opt, ERRORS_CONT);
 +	else
 +		set_opt(sbi->s_mount_opt, ERRORS_RO);
