@@ -1,8 +1,8 @@
 From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: Re: [PATCH 1/2]  i_version update - vfs part
-Date: Thu, 25 Oct 2007 19:04:30 +0200
-Message-ID: <1193331870.5487.31.camel@frecb002711.frec.bull.fr>
-References: <1191598088.24615.45.camel@frecb002711.frec.bull.fr>
+Subject: Re: [PATCH 2/2]  i_version update - ext4 part
+Date: Thu, 25 Oct 2007 19:04:35 +0200
+Message-ID: <1193331875.5487.33.camel@frecb002711.frec.bull.fr>
+References: <1191598093.24615.46.camel@frecb002711.frec.bull.fr>
 Reply-To: jean-noel.cordenner@bull.net
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -10,119 +10,160 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-kernel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50203 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50209 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753207AbXJYRJM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2007 13:09:12 -0400
-In-Reply-To: <1191598088.24615.45.camel@frecb002711.frec.bull.fr>
+	with ESMTP id S1753467AbXJYRJP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2007 13:09:15 -0400
+In-Reply-To: <1191598093.24615.46.camel@frecb002711.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-
-This is an update of the previous patches on the ext4 git tree, the 2
-coming patches applies at the end of the current ext4-patch-queue, and
-replaces the inode-version related patches:
-64-bit-i_version.patch
-i_version_hi.patch
-ext4_i_version_hi_2.patch
-i_version_update_ext4.patch
-
-The first part deals with the vfs part. 
-The i_version field of the inode is changed to be a 64-bit counter that
-is set on every inode creation and that is incremented every time the
-inode data is modified (similarly to the "ctime" time-stamp). 
-The aim is to fulfill a NFSv4 requirement for rfc3530.
-This first part concerns the vfs, it converts the 32-bit i_version in
-the generic inode to a 64-bit, a flag is added in the super block in
-order to check if the feature is enabled and the i_version is
-incremented in the vfs.
+This patch adds 64-bit inode version support to ext4. The lower 32 bits
+are stored in the osd1.linux1.l_i_version field while the high 32 bits
+are stored in the i_version_hi field newly created in the ext4_inode.
+This field is incremented in case the ext4_inode is large enough. A
+i_version mount option has been added to enable the feature.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
 Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jean Noel Cordenner <jean-noel.cordenner@bull.net>
 ---
- fs/inode.c         |   22 ++++++++++++++++++++++
- include/linux/fs.h |    5 ++++-
- 2 files changed, 26 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c         |   18 +++++++++++++++++-
+ fs/ext4/super.c         |    8 ++++++--
+ include/linux/ext4_fs.h |    6 +++++-
+ 3 files changed, 28 insertions(+), 4 deletions(-)
 
-Index: linux-2.6.23-ext4-1/include/linux/fs.h
+Index: linux-2.6.23-ext4-1/fs/ext4/inode.c
 ===================================================================
---- linux-2.6.23-ext4-1.orig/include/linux/fs.h	2007-10-25
-16:25:23.000000000 +0200
-+++ linux-2.6.23-ext4-1/include/linux/fs.h	2007-10-25 16:25:53.000000000
+--- linux-2.6.23-ext4-1.orig/fs/ext4/inode.c	2007-10-25
+18:49:24.000000000 +0200
++++ linux-2.6.23-ext4-1/fs/ext4/inode.c	2007-10-25 18:57:35.000000000
 +0200
-@@ -123,6 +123,7 @@
- #define MS_SLAVE	(1<<19)	/* change to slave */
- #define MS_SHARED	(1<<20)	/* change to shared */
- #define MS_RELATIME	(1<<21)	/* Update atime relative to mtime/ctime. */
-+#define MS_I_VERSION	(1<<22)	/* Update inode I_version field */
- #define MS_ACTIVE	(1<<30)
- #define MS_NOUSER	(1<<31)
+@@ -2806,6 +2806,13 @@
+ 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
+ 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
  
-@@ -172,6 +173,7 @@
- 					((inode)->i_flags & (S_SYNC|S_DIRSYNC)))
- #define IS_MANDLOCK(inode)	__IS_FLG(inode, MS_MANDLOCK)
- #define IS_NOATIME(inode)   __IS_FLG(inode, MS_RDONLY|MS_NOATIME)
-+#define IS_I_VERSION(inode)   __IS_FLG(inode, MS_I_VERSION)
- 
- #define IS_NOQUOTA(inode)	((inode)->i_flags & S_NOQUOTA)
- #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
-@@ -541,7 +543,7 @@
- 	uid_t			i_uid;
- 	gid_t			i_gid;
- 	dev_t			i_rdev;
--	unsigned long		i_version;
-+	u64			i_version;
- 	loff_t			i_size;
- #ifdef __NEED_I_SIZE_ORDERED
- 	seqcount_t		i_size_seqcount;
-@@ -1284,6 +1286,7 @@
- 	mark_inode_dirty(inode);
- }
- 
-+extern void inode_inc_iversion(struct inode *inode);
- extern void touch_atime(struct vfsmount *mnt, struct dentry *dentry);
- static inline void file_accessed(struct file *file)
- {
-Index: linux-2.6.23-ext4-1/fs/inode.c
-===================================================================
---- linux-2.6.23-ext4-1.orig/fs/inode.c	2007-10-25 16:15:52.000000000
-+0200
-+++ linux-2.6.23-ext4-1/fs/inode.c	2007-10-25 16:25:53.000000000 +0200
-@@ -1216,6 +1216,24 @@
- EXPORT_SYMBOL(touch_atime);
- 
- /**
-+ *     inode_inc_iversion      -       increments i_version
-+ *     @inode: inode that need to be updated
-+ *
-+ *     Every time the inode is modified, the i_version field
-+ *     will be incremented.
-+ *     The filesystem has to be mounted with i_version flag
-+ *
-+ */
-+
-+void inode_inc_iversion(struct inode *inode)
-+{
-+	spin_lock(&inode->i_lock);
-+	inode->i_version++;
-+	spin_unlock(&inode->i_lock);
-+}
-+
-+/**
-  *	file_update_time	-	update mtime and ctime time
-  *	@file: file accessed
-  *
-@@ -1249,6 +1267,11 @@
- 		sync_it = 1;
- 	}
- 
-+	if (IS_I_VERSION(inode)) {
-+		inode_inc_iversion(inode);
-+		sync_it = 1;
++	inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
++	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
++		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
++			inode->i_version |=
++			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
 +	}
 +
- 	if (sync_it)
- 		mark_inode_dirty_sync(inode);
- }
+ 	if (S_ISREG(inode->i_mode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+@@ -2944,8 +2951,14 @@
+ 	} else for (block = 0; block < EXT4_N_BLOCKS; block++)
+ 		raw_inode->i_block[block] = ei->i_data[block];
+ 
+-	if (ei->i_extra_isize)
++	raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
++	if (ei->i_extra_isize) {
++		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
++			raw_inode->i_version_hi =
++			cpu_to_le32(inode->i_version >> 32);
+ 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
++	}
++
+ 
+ 	BUFFER_TRACE(bh, "call ext4_journal_dirty_metadata");
+ 	rc = ext4_journal_dirty_metadata(handle, bh);
+@@ -3161,6 +3174,9 @@
+ {
+ 	int err = 0;
+ 
++	if (test_opt(inode->i_sb, I_VERSION))
++		inode_inc_iversion(inode);
++
+ 	/* the do_update_inode consumes one bh->b_count */
+ 	get_bh(iloc->bh);
+ 
+Index: linux-2.6.23-ext4-1/fs/ext4/super.c
+===================================================================
+--- linux-2.6.23-ext4-1.orig/fs/ext4/super.c	2007-10-25
+18:49:24.000000000 +0200
++++ linux-2.6.23-ext4-1/fs/ext4/super.c	2007-10-25 18:57:35.000000000
++0200
+@@ -742,7 +742,7 @@
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+ 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+ 	Opt_grpquota, Opt_extents, Opt_noextents, Opt_delalloc,
+-	Opt_mballoc, Opt_nomballoc, Opt_stripe,
++	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_i_version,
+ };
+ 
+ static match_table_t tokens = {
+@@ -800,6 +800,7 @@
+ 	{Opt_mballoc, "mballoc"},
+ 	{Opt_nomballoc, "nomballoc"},
+ 	{Opt_stripe, "stripe=%u"},
++	{Opt_i_version, "i_version"},
+ 	{Opt_err, NULL},
+ 	{Opt_resize, "resize"},
+ };
+@@ -1161,6 +1162,10 @@
+ 				return 0;
+ 			sbi->s_stripe = option;
+ 			break;
++		case Opt_i_version:
++			set_opt (sbi->s_mount_opt, I_VERSION);
++			sb->s_flags |= MS_I_VERSION;
++			break;
+ 		default:
+ 			printk (KERN_ERR
+ 				"EXT4-fs: Unrecognized mount option \"%s\" "
+@@ -2968,7 +2973,6 @@
+ 		i_size_write(inode, off+len-towrite);
+ 		EXT4_I(inode)->i_disksize = inode->i_size;
+ 	}
+-	inode->i_version++;
+ 	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+ 	ext4_mark_inode_dirty(handle, inode);
+ 	mutex_unlock(&inode->i_mutex);
+Index: linux-2.6.23-ext4-1/include/linux/ext4_fs.h
+===================================================================
+--- linux-2.6.23-ext4-1.orig/include/linux/ext4_fs.h	2007-10-25
+18:49:24.000000000 +0200
++++ linux-2.6.23-ext4-1/include/linux/ext4_fs.h	2007-10-25
+18:57:55.000000000 +0200
+@@ -314,7 +314,7 @@
+ 	__le32	i_flags;	/* File flags */
+ 	union {
+ 		struct {
+-			__u32  l_i_reserved1;
++			__le32  l_i_version;
+ 		} linux1;
+ 		struct {
+ 			__u32  h_i_translator;
+@@ -356,6 +356,7 @@
+ 	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch)
+*/
+ 	__le32  i_crtime;       /* File Creation time */
+ 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch)
+*/
++	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
+ };
+ 
+ #define i_size_high	i_dir_acl
+@@ -430,6 +431,8 @@
+ 				       raw_inode->xtime ## _extra);	       \
+ } while (0)
+ 
++#define i_disk_version osd1.linux1.l_i_version
++
+ #if defined(__KERNEL__) || defined(__linux__)
+ #define i_reserved1	osd1.linux1.l_i_reserved1
+ #define i_file_acl_high	osd2.linux2.l_i_file_acl_high
+@@ -493,6 +496,7 @@
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async
+Commit */
+ #define EXT4_MOUNT_DELALLOC		0x2000000 /* Delalloc support */
+ #define EXT4_MOUNT_MBALLOC		0x4000000 /* Buddy allocation support */
++#define EXT4_MOUNT_I_VERSION		0x8000000 /* i_version support */
+ /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at
+once */
+ #ifndef _LINUX_EXT2_FS_H
+ #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
