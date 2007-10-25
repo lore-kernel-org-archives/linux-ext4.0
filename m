@@ -1,7 +1,7 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
 Subject: Re: compilebench numbers for ext4
-Date: Thu, 25 Oct 2007 10:34:49 -0500
-Message-ID: <20071025103449.2e358220@gara>
+Date: Thu, 25 Oct 2007 10:54:29 -0500
+Message-ID: <20071025105429.68626981@gara>
 References: <20071022193104.0beafeca@think.oraclecorp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
@@ -9,19 +9,19 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:42299 "EHLO e4.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:42340 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751574AbXJYSBQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2007 14:01:16 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9PI1FGv007406
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:15 -0400
+	id S1752240AbXJYSBT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2007 14:01:19 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9PI1JAl007583
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:19 -0400
 Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9PI1FJI129362
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:15 -0400
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9PI1Ja0139362
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:19 -0400
 Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9PI1Evv012772
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:15 -0400
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9PI1Hxk013339
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 14:01:18 -0400
 In-Reply-To: <20071022193104.0beafeca@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
@@ -150,9 +150,17 @@ More details please....
 3. Disk info (partition size, disk rpms, interface, internal cache size)
 4. Benchmark cmdline parameters.
 
-All good info when trying to explain and reproduce results since some of the components of the workload are very sensitive to the hw configuration.
+All good info when trying to explain and reproduce results since some
+of the components of the workload are very sensitive to the hw
+configuration.  For example with the algorithms for flex_bg grouping
+of meta-data, the speed improvement on is about 10 time greater than
+with the standard allocation in ext4.  This is cause by the fact that
+Im running on a SCSI subsystem which has write caching disable on the
+disk (like in most servers).  Testing on a desktop sata drive with
+write caching enable would probably yeild much different results, so I
+find the detail of the system under test important when looking at the
+performance characteristics of different solutions.
 
 > -chris
-
 
 -JRS
