@@ -1,72 +1,51 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: compilebench numbers for ext4
-Date: Thu, 25 Oct 2007 19:45:44 -0400
-Message-ID: <20071025194544.25c6dd7f@think.oraclecorp.com>
-References: <20071022193104.0beafeca@think.oraclecorp.com>
-	<20071025103449.2e358220@gara>
-	<20071025144355.583a8f88@think.oraclecorp.com>
-	<20071025174025.1c042424@gara>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 update
+Date: Thu, 25 Oct 2007 16:53:58 -0700
+Message-ID: <20071025165358.c408314d.akpm@linux-foundation.org>
+References: <E1Ii0UI-0007TW-IM@closure.thunk.org>
+	<alpine.LFD.0.999.0710170857490.26902@woody.linux-foundation.org>
+	<20071025163113.491a4461.akpm@linux-foundation.org>
+	<alpine.LFD.0.999.0710251643120.30120@woody.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:13826 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751940AbXJYXrW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2007 19:47:22 -0400
-In-Reply-To: <20071025174025.1c042424@gara>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55106 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754818AbXJYXyB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2007 19:54:01 -0400
+In-Reply-To: <alpine.LFD.0.999.0710251643120.30120@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 25 Oct 2007 17:40:25 -0500
-"Jose R. Santos" <jrs@us.ibm.com> wrote:
+On Thu, 25 Oct 2007 16:44:21 -0700 (PDT)
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-> > > 
-> > > I really want to use seekwatcher to test some of the stuff that
-> > > I'm doing for flex_bg feature but it barfs on me in my test
-> > > machine.
-> > > 
-> > > running :sleep 10:
-> > > done running sleep 10
-> > > Device: /dev/sdh
-> > >   Total:                     0 events (dropped 0),     1368 KiB
-> > > data blktrace done
-> > > Traceback (most recent call last):
-> > >   File "/usr/bin/seekwatcher", line 534, in ?
-> > >     add_range(hist, step, start, size)
-> > >   File "/usr/bin/seekwatcher", line 522, in add_range
-> > >     val = hist[slot]
-> > > IndexError: list index out of range
+> 
+> 
+> On Thu, 25 Oct 2007, Andrew Morton wrote:
 > > 
-> > I don't think you have any events in the trace.  Try this instead:
-> > 
-> > echo 3 > /proc/sys/vm/drop_caches
-> > seekwatcher -t find-trace -d /dev/xxxx -p 'find /usr/local -type f'
+> > There shouldn't have been conflicts here - if there were I wouldn't have
+> > sent those patches.  Unless there were things in the ext4 pull which
+> > weren't present in the ext4 quilt tree which I included in 2.6.23-mm1?
 > 
-> Nope, get the same error.  There does seem to be data recorded in the
-> trace files and iostat does show activity on the disk.
-
-Hmmm, could you please send me your trace files.  There will be one for
-each cpu, starting with find-trace-blktrace
-
-> > I wanted to benchmark flexbg too, but couldn't quite figure out the
-> > correct patch combination ;)
+> Well, you merge your patch-series by patching.
 > 
-> Ill attach e2progfs and Kernel patches but do realize that these are
-> experimental patches that Im using to test what layout would work
-> best.  Don't take them too seriously as it is largely incomplete.
-
-Thanks, I'll try this out.
-
+> You should have noticed by now that GNU patch in particular will happily 
+> apply a patch whether it conflicts or not. So it's entirely possible that 
+> it didn't conflict for you, but applied cleanly and sanely.
 > 
-> Currently trying to come up with workloads to test this and other
-> changes with.  Im am warming up to yours :)
 
-At least for the write phases of compilebench, it should benefit from
-data and metadata separation.  It made a very big difference in btrfs,
-(from 20MB/s up to 32MB/s on create).  However it did make the read
-phases slower.
+hrm, could be.  It would be strange for that to happen quietly with fuzz=1
+and to still produce a compileable result.
 
--chris
+But there weren't any patches in this git-merge which weren't in 2.6.23-mm1
+so maybe something like that happened.  Or maybe that fact that this pull
+only contained _some_ of the ext4 patches which were in -mm somehow affected
+things.
+
+Oh well, I should have sent the ext4 changes via Ted anyway.
