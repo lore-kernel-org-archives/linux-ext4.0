@@ -1,101 +1,94 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/2]  i_version update - vfs part
-Date: Thu, 25 Oct 2007 14:05:51 -0700
-Message-ID: <1193346351.4288.16.camel@localhost.localdomain>
-References: <1191598088.24615.45.camel@frecb002711.frec.bull.fr>
-	 <1193331870.5487.31.camel@frecb002711.frec.bull.fr>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: jean-noel.cordenner@bull.net
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:51734 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751293AbXJYVFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2007 17:05:49 -0400
-In-Reply-To: <1193331870.5487.31.camel@frecb002711.frec.bull.fr>
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-return-after-ext3_error-in-case-of-failures.patch added to -mm tree
+Date: Thu, 25 Oct 2007 14:29:15 -0700
+Message-ID: <200710252129.l9PLTIjB024917@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-10-25 at 19:04 +0200, Cordenner jean noel wrote:
-> Hi,
-> 
-> This is an update of the previous patches on the ext4 git tree, the 2
-> coming patches applies at the end of the current ext4-patch-queue, and
-> replaces the inode-version related patches:
-> 64-bit-i_version.patch
-> i_version_hi.patch
-> ext4_i_version_hi_2.patch
-> i_version_update_ext4.patch
-> 
-> The first part deals with the vfs part. 
-> The i_version field of the inode is changed to be a 64-bit counter that
-> is set on every inode creation and that is incremented every time the
-> inode data is modified (similarly to the "ctime" time-stamp). 
-> The aim is to fulfill a NFSv4 requirement for rfc3530.
-> This first part concerns the vfs, it converts the 32-bit i_version in
-> the generic inode to a 64-bit, a flag is added in the super block in
-> order to check if the feature is enabled and the i_version is
-> incremented in the vfs.
-> 
-Thanks for reposting it.
 
-> Index: linux-2.6.23-ext4-1/fs/inode.c
-> ===================================================================
-> --- linux-2.6.23-ext4-1.orig/fs/inode.c	2007-10-25 16:15:52.000000000
-> +0200
-> +++ linux-2.6.23-ext4-1/fs/inode.c	2007-10-25 16:25:53.000000000 +0200
-> @@ -1216,6 +1216,24 @@
->  EXPORT_SYMBOL(touch_atime);
-> 
->  /**
-> + *     inode_inc_iversion      -       increments i_version
-> + *     @inode: inode that need to be updated
-> + *
-> + *     Every time the inode is modified, the i_version field
-> + *     will be incremented.
-> + *     The filesystem has to be mounted with i_version flag
-> + *
-> + */
-> +
-> +void inode_inc_iversion(struct inode *inode)
-> +{
-> +	spin_lock(&inode->i_lock);
-> +	inode->i_version++;
-> +	spin_unlock(&inode->i_lock);
-> +}
+The patch titled
+     ext3: return after ext3_error in case of failures
+has been added to the -mm tree.  Its filename is
+     ext3-return-after-ext3_error-in-case-of-failures.patch
 
-I wonder do we really need i_lock here for inode versioning update?
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Understand this is a 64 bit counter, but file_update_time() and
-ext4_mark_inode_dirty() (where the inode version is updated) is called
-on the file write path so i_mutex should be hold all the time. As long
-as the read patch holding i_mutex everything should be fine, isn't it?
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Have you get a chance to check the performance impact to ext4?
+------------------------------------------------------
+Subject: ext3: return after ext3_error in case of failures
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-> +
-> +/**
->   *	file_update_time	-	update mtime and ctime time
->   *	@file: file accessed
->   *
-> @@ -1249,6 +1267,11 @@
->  		sync_it = 1;
->  	}
-> 
-> +	if (IS_I_VERSION(inode)) {
-> +		inode_inc_iversion(inode);
-> +		sync_it = 1;
-> +	}
-> +
->  	if (sync_it)
->  		mark_inode_dirty_sync(inode);
->  }
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This fixes some instances where we were continuing after calling
+ext3_error.  ext3_error calls panic only if errors=panic mount option is
+set.  So we need to make sure we return correctly after ext3_error call
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/balloc.c |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff -puN fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures
++++ a/fs/ext3/balloc.c
+@@ -111,11 +111,13 @@ read_block_bitmap(struct super_block *sb
+ 		return NULL;
+ 	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
+ 	bh = sb_bread(sb, bitmap_blk);
+-	if (!bh)
++	if (!bh) {
+ 		ext3_error (sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %u",
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
++		return NULL;
++	}
+ 
+ 	/* check whether block bitmap block number is set */
+ 	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
+@@ -507,11 +509,13 @@ do_more:
+ 	    in_range (block, le32_to_cpu(desc->bg_inode_table),
+ 		      sbi->s_itb_per_group) ||
+ 	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
+-		      sbi->s_itb_per_group))
++		      sbi->s_itb_per_group)) {
+ 		ext3_error (sb, "ext3_free_blocks",
+ 			    "Freeing blocks in system zones - "
+ 			    "Block = "E3FSBLK", count = %lu",
+ 			    block, count);
++		goto error_return;
++	}
+ 
+ 	/*
+ 	 * We are about to start releasing blocks in the bitmap,
+@@ -1614,11 +1618,13 @@ allocated:
+ 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
+ 		      EXT3_SB(sb)->s_itb_per_group) ||
+ 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
+-		      EXT3_SB(sb)->s_itb_per_group))
++		      EXT3_SB(sb)->s_itb_per_group)) {
+ 		ext3_error(sb, "ext3_new_block",
+ 			    "Allocating block in system zone - "
+ 			    "blocks from "E3FSBLK", length %lu",
+ 			     ret_block, num);
++		goto out;
++	}
+ 
+ 	performed_allocation = 1;
+ 
+_
+
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+ext4-return-after-ext4_error-in-case-of-failures.patch
+ext3-return-after-ext3_error-in-case-of-failures.patch
+ext2-fix-the-max-file-size-for-ext2-file-system.patch
+ext3-fix-the-max-file-size-for-ext3-file-system.patch
