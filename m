@@ -1,96 +1,67 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-fix-the-max-file-size-for-ext3-file-system.patch removed from -mm tree
-Date: Fri, 26 Oct 2007 11:48:53 -0700
-Message-ID: <200710261848.l9QImrVp009177@imap1.linux-foundation.org>
-To: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: delalloc fragmenting files?
+Date: Fri, 26 Oct 2007 16:24:46 -0500
+Message-ID: <47225B1E.2060708@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:58403 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751936AbXJZSzN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Oct 2007 14:55:13 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:46356 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762581AbXJZVYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Oct 2007 17:24:48 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id l9QLOlOe004234
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:47 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9QLOl1s028695
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:47 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9QLOkAW019587
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+I was doing a little seekwatchering today, and found something...
+interesting.
 
-The patch titled
-     ext3: fix the max file size for ext3 file system
-has been removed from the -mm tree.  Its filename was
-     ext3-fix-the-max-file-size-for-ext3-file-system.patch
+I was doing an 8G buffered write via dd, on a machine that reports 3G of
+memory, in 1M chunks like so:
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+dd if=/dev/zero of=/mnt/test/foobar bs=1024k count=8192
 
-------------------------------------------------------
-Subject: ext3: fix the max file size for ext3 file system
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+on a fairly decent hardware raid, ~90G filesystem.
 
-The max file size for ext3 file system is now calculated with hardcoded 4K
-block size.  The patch fixes it to be calculated with the right block size.
+Kernel is 2.6.24-rc1, with all the git patches from a day or so ago applied.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+I made the ext4 fs with lustre's e2fsprogs, with -I 256, and mounted with:
 
- fs/ext3/super.c |   32 ++++++++++++++++++++++++++++----
- 1 file changed, 28 insertions(+), 4 deletions(-)
+mount -t ext4dev -o data=writeback,delalloc,extents,mballoc /dev/sdb7
+/mnt/test
 
-diff -puN fs/ext3/super.c~ext3-fix-the-max-file-size-for-ext3-file-system fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-fix-the-max-file-size-for-ext3-file-system
-+++ a/fs/ext3/super.c
-@@ -1436,11 +1436,31 @@ static void ext3_orphan_cleanup (struct 
- static loff_t ext3_max_size(int bits)
- {
- 	loff_t res = EXT3_NDIR_BLOCKS;
--	/* This constant is calculated to be the largest file size for a
--	 * dense, 4k-blocksize file such that the total number of
-+	int meta_blocks;
-+	loff_t upper_limit;
-+
-+	/* This is calculated to be the largest file size for a
-+	 * dense, file such that the total number of
- 	 * sectors in the file, including data and all indirect blocks,
--	 * does not exceed 2^32. */
--	const loff_t upper_limit = 0x1ff7fffd000LL;
-+	 * does not exceed 2^32 -1
-+	 * __u32 i_blocks representing the total number of
-+	 * 512 bytes blocks of the file
-+	 */
-+	upper_limit = (1LL << 32) - 1;
-+
-+	/* total blocks in file system block size */
-+	upper_limit >>= (bits - 9);
-+
-+
-+	/* indirect blocks */
-+	meta_blocks = 1;
-+	/* double indirect blocks */
-+	meta_blocks += 1 + (1LL << (bits-2));
-+	/* tripple indirect blocks */
-+	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
-+
-+	upper_limit -= meta_blocks;
-+	upper_limit <<= bits;
- 
- 	res += 1LL << (bits-2);
- 	res += 1LL << (2*(bits-2));
-@@ -1448,6 +1468,10 @@ static loff_t ext3_max_size(int bits)
- 	res <<= bits;
- 	if (res > upper_limit)
- 		res = upper_limit;
-+
-+	if (res > MAX_LFS_FILESIZE)
-+		res = MAX_LFS_FILESIZE;
-+
- 	return res;
- }
- 
-_
+The resulting file had over 4k extents.
+[root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
+File is stored in extents format
+/mnt/test/foobar: 4075 extents found
 
-Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write.png
 
-ext2-return-after-ext2_error-in-case-of-failures.patch
-ext2-change-the-default-behaviour-on-error.patch
-ext3-return-after-ext3_error-in-case-of-failures.patch
-ext3-change-the-default-behaviour-on-error.patch
+if I don't mount with delalloc:
+
+mount -t ext4dev -o data=writeback,extents,mballoc /dev/sdb7 /mnt/test
+
+and run the same dd, I get 229 extents:
+
+[root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
+File is stored in extents format
+/mnt/test/foobar: 229 extents found
+
+http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write-nodelalloc.png
+
+It looks like delalloc is dribbling all over the disk....
+
+(note: times & rates look wrong to me, something is up with blktrace I
+think, but FIBMAP shouldn't lie about allocation)
+
+-Eric
