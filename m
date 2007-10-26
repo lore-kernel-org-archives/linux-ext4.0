@@ -1,50 +1,59 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: One request for people editing the patch queue....
-Date: Thu, 25 Oct 2007 17:43:01 -0700
-Message-ID: <1193359381.6480.2.camel@localhost.localdomain>
-References: <E1Il8hS-000397-E5@closure.thunk.org>
-Reply-To: cmm@us.ibm.com
+From: "LIOU Payphone" <lioupayphone@gmail.com>
+Subject: a potential deadlock?
+Date: Fri, 26 Oct 2007 14:52:29 +0800
+Message-ID: <002701c8179c$cc3a02b0$64ae0810$@com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+	charset="gb2312"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:59392 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752808AbXJZAm7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2007 20:42:59 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9Q0gxYt008707
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 20:42:59 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id l9Q0gxCt130610
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 20:42:59 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id l9Q0gwLB014572
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 20:42:58 -0400
-In-Reply-To: <E1Il8hS-000397-E5@closure.thunk.org>
+Received: from rv-out-0910.google.com ([209.85.198.189]:49251 "EHLO
+	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752028AbXJZGwu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2007 02:52:50 -0400
+Received: by rv-out-0910.google.com with SMTP id k20so705385rvb
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2007 23:52:48 -0700 (PDT)
+Content-Language: zh-cn
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-10-25 at 15:49 -0400, Theodore Ts'o wrote:
-> Could people please use more descriptive names for patch names?  Names
-> like: 
-> 
-> ext4-cleanup-2.patch
-> ext4-cleanup-3.patch
-> ext4-cleanup-4.patch
-> 
-> aren't very useful when browsing through the series file.
-> 
-> Thanks,
-> 
+Hi All
 
-Hi Ted,
+Here is a question to be confirmed.
 
-I was me being lazy, I just took an updated tar ball from Aneesh without
-carefully rename them to a proper names.
+In ext3_ioctl() with "cmd == EXT3_IOC_SETFLAGS", we firstly lock
+"inode->i_mutex", start a handle with 1 journal-block by calling
+ext3_journal_start(). In ext3_new_blocks(), say QUOTA was enabled with vfsv0
+format, we will call the function "DQUOT_ALLOC_BLOCK()". The handle in
+ext3_new_blocks()  was started by high-level functions, and
+DQUOT_ALLOC_BLOCK() will finally calles ext3_quota_write() in which it try
+to lock the "i_mutex" of the inode of a quota-file. 
 
-Updated ext4-patch-queue patches with meaningful names now.
+At it happens, when we want to modify the inodes of quota-files via
+ext3_ioctl(cmd = EXT3_IOC_SETFLAGS) (say process-A), another guy try to
+execute ext3_quota_write() by calling DQUOT_ALLOC_BLOCK() (say process-B). I
+guess a potential deadlock between process-A and process-B would happen in
+such a executing sequence:
 
-Mingming
+(1) process-B got many journal-blocks, then came into ext3_new_blocks(),
+hung up
+(2) process-A locked i_mutex of the inode of a quota-file, then try to
+starts a handle. Unfortunately, there are no enough journal-blocks left for
+process-A.
+(3) process-B awakened, and came into DQUOT_ALLOC_BLOCK(), finally came into
+the function ext3_quota_write() who also wants to lock the i_mutex of the
+inode of a quota-file. But the i_mutex was locked by process-A. so process-B
+has no choice but to wait.
+(4) if the ext3-filesystem was  too busy to release jounal-blocks for
+process-A, or a unexpected incident happened. Both  the two situations would
+result in no journal-blocks for any other processes. Apparently, process-A
+have to wait for available journal-blocks. so process-A was hung-up with
+i_mutex of the inode of a quota-file locked.
+(5) process-B was blocked by the "inode->i_mutex" subsequently.
+
+a deadlock happened?
+
+is such a suppose reasonable?
+
+Payphone
