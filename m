@@ -1,67 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: delalloc fragmenting files?
-Date: Fri, 26 Oct 2007 16:24:46 -0500
-Message-ID: <47225B1E.2060708@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: delalloc fragmenting files?
+Date: Fri, 26 Oct 2007 16:19:38 -0600
+Message-ID: <20071026221938.GV3042@webber.adilger.int>
+References: <47225B1E.2060708@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Alex Tomas <alex.tomas@sun.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46356 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762581AbXJZVYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Oct 2007 17:24:48 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id l9QLOlOe004234
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:47 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9QLOl1s028695
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:47 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9QLOkAW019587
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2007 17:24:46 -0400
+Received: from mail.clusterfs.com ([74.0.229.162]:53138 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752186AbXJZWTk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2007 18:19:40 -0400
+Content-Disposition: inline
+In-Reply-To: <47225B1E.2060708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I was doing a little seekwatchering today, and found something...
-interesting.
+On Oct 26, 2007  16:24 -0500, Eric Sandeen wrote:
+> The resulting file had over 4k extents.
+> [root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
+> File is stored in extents format
+> /mnt/test/foobar: 4075 extents found
 
-I was doing an 8G buffered write via dd, on a machine that reports 3G of
-memory, in 1M chunks like so:
+On a related note - we're just putting the finishing touches on the
+FIEMAP patches for ext4 + e2fsprogs, so that we can get decent looking
+output from filefrag, and much more efficiently than FIBMAP.
 
-dd if=/dev/zero of=/mnt/test/foobar bs=1024k count=8192
+> if I don't mount with delalloc:
+> 
+> mount -t ext4dev -o data=writeback,extents,mballoc /dev/sdb7 /mnt/test
+> 
+> and run the same dd, I get 229 extents:
+> 
+> [root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
+> File is stored in extents format
+> /mnt/test/foobar: 229 extents found
 
-on a fairly decent hardware raid, ~90G filesystem.
+One of the issues is that w/o delalloc the mballoc code only gets 
+single-block allocations, so there might be a problem with the interface
+to mballoc.  That might be caused by the fact the patches were changed
+at one point from delalloc-atop-mballoc to mballoc-atop-delalloc, and
+something was missed in that conversion.
 
-Kernel is 2.6.24-rc1, with all the git patches from a day or so ago applied.
+Have you tried O_DIRECT?  That is another way to access mballoc w/o
+using delalloc.
 
-I made the ext4 fs with lustre's e2fsprogs, with -I 256, and mounted with:
-
-mount -t ext4dev -o data=writeback,delalloc,extents,mballoc /dev/sdb7
-/mnt/test
-
-The resulting file had over 4k extents.
-[root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
-File is stored in extents format
-/mnt/test/foobar: 4075 extents found
-
-http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write.png
-
-if I don't mount with delalloc:
-
-mount -t ext4dev -o data=writeback,extents,mballoc /dev/sdb7 /mnt/test
-
-and run the same dd, I get 229 extents:
-
-[root@bear-05 ~]# filefrag -v /mnt/test/foobar  | grep -i extents
-File is stored in extents format
-/mnt/test/foobar: 229 extents found
-
-http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write-nodelalloc.png
-
-It looks like delalloc is dribbling all over the disk....
-
-(note: times & rates look wrong to me, something is up with blktrace I
-think, but FIBMAP shouldn't lie about allocation)
-
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
