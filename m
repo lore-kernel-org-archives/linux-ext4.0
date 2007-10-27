@@ -1,10 +1,10 @@
 From: akpm@linux-foundation.org
-Subject: + iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch added to -mm tree
-Date: Sat, 27 Oct 2007 00:46:01 -0700
-Message-ID: <200710270746.l9R7k1cP003349@imap1.linux-foundation.org>
+Subject: + iget-stop-ext4-from-using-iget-and-read_inode-try.patch added to -mm tree
+Date: Sat, 27 Oct 2007 00:46:03 -0700
+Message-ID: <200710270746.l9R7k3Ei003358@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-Cc: akpm@linux-foundation.org, dhowells@redhat.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: dhowells@redhat.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
 To: mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
@@ -12,9 +12,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
+     iget: stop EXT4 from using iget() and read_inode()
 has been added to the -mm tree.  Its filename is
-     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+     iget-stop-ext4-from-using-iget-and-read_inode-try.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -22,123 +22,408 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
-From: Andrew Morton <akpm@linux-foundation.org>
+Subject: iget: stop EXT4 from using iget() and read_inode()
+From: David Howells <dhowells@redhat.com>
 
-WARNING: no space between function name and open parenthesis '('
-#370: FILE: include/linux/ext3_fs.h:806:
-+extern struct inode *ext3_iget (struct super_block *, unsigned long);
+Stop the EXT4 filesystem from using iget() and read_inode().  Replace
+ext4_read_inode() with ext4_iget(), and call that instead of iget(). 
+ext4_iget() then uses iget_locked() directly and returns a proper error code
+instead of an inode in the event of an error.
 
-total: 0 errors, 1 warnings, 312 lines checked
-Your patch has style problems, please review.  If any of these errors
-are false positives report them to the maintainer, see
-CHECKPATCH in MAINTAINERS.
+ext4_fill_super() returns any error incurred when getting the root inode
+instead of EINVAL.
 
-Please run checkpatch prior to sending patches
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: David Howells <dhowells@redhat.com>
-Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- include/linux/ext3_fs.h |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/ialloc.c        |   58 ++++++++++++++++++++++----------------
+ fs/ext4/inode.c         |   25 ++++++++++++----
+ fs/ext4/namei.c         |   29 +++++--------------
+ fs/ext4/resize.c        |    7 +---
+ fs/ext4/super.c         |   36 +++++++++++++----------
+ include/linux/ext4_fs.h |    2 -
+ 6 files changed, 87 insertions(+), 70 deletions(-)
 
-diff -puN include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
-+++ a/include/linux/ext3_fs.h
-@@ -803,7 +803,7 @@ int ext3_get_blocks_handle(handle_t *han
- 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
+diff -puN fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/ialloc.c
+@@ -781,14 +781,15 @@ struct inode *ext4_orphan_get(struct sup
+ 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
+ 	ext4_grpnum_t block_group;
+ 	int bit;
+-	struct buffer_head *bitmap_bh = NULL;
++	struct buffer_head *bitmap_bh;
+ 	struct inode *inode = NULL;
++	long err = -EIO;
+ 
+ 	/* Error cases - e2fsck has already cleaned up for us */
+ 	if (ino > max_ino) {
+ 		ext4_warning(sb, __FUNCTION__,
+ 			     "bad orphan ino %lu!  e2fsck was run?", ino);
+-		goto out;
++		goto error;
+ 	}
+ 
+ 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
+@@ -797,38 +798,49 @@ struct inode *ext4_orphan_get(struct sup
+ 	if (!bitmap_bh) {
+ 		ext4_warning(sb, __FUNCTION__,
+ 			     "inode bitmap error for orphan %lu", ino);
+-		goto out;
++		goto error;
+ 	}
+ 
+ 	/* Having the inode bit set should be a 100% indicator that this
+ 	 * is a valid orphan (no e2fsck run on fs).  Orphans also include
+ 	 * inodes that were being truncated, so we can't check i_nlink==0.
+ 	 */
+-	if (!ext4_test_bit(bit, bitmap_bh->b_data) ||
+-			!(inode = iget(sb, ino)) || is_bad_inode(inode) ||
+-			NEXT_ORPHAN(inode) > max_ino) {
+-		ext4_warning(sb, __FUNCTION__,
+-			     "bad orphan inode %lu!  e2fsck was run?", ino);
+-		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
+-		       bit, (unsigned long long)bitmap_bh->b_blocknr,
+-		       ext4_test_bit(bit, bitmap_bh->b_data));
+-		printk(KERN_NOTICE "inode=%p\n", inode);
+-		if (inode) {
+-			printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
+-			       is_bad_inode(inode));
+-			printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
+-			       NEXT_ORPHAN(inode));
+-			printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
+-		}
++	if (!ext4_test_bit(bit, bitmap_bh->b_data))
++		goto bad_orphan;
++
++	inode = ext4_iget(sb, ino);
++	if (IS_ERR(inode))
++		goto iget_failed;
++
++	if (NEXT_ORPHAN(inode) > max_ino)
++		goto bad_orphan;
++	brelse(bitmap_bh);
++	return inode;
++
++iget_failed:
++	err = PTR_ERR(inode);
++	inode = NULL;
++bad_orphan:
++	ext4_warning(sb, __FUNCTION__,
++		     "bad orphan inode %lu!  e2fsck was run?", ino);
++	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
++	       bit, (unsigned long long)bitmap_bh->b_blocknr,
++	       ext4_test_bit(bit, bitmap_bh->b_data));
++	printk(KERN_NOTICE "inode=%p\n", inode);
++	if (inode) {
++		printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
++		       is_bad_inode(inode));
++		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
++		       NEXT_ORPHAN(inode));
++		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
+ 		/* Avoid freeing blocks if we got a bad deleted inode */
+-		if (inode && inode->i_nlink == 0)
++		if (inode->i_nlink == 0)
+ 			inode->i_blocks = 0;
+ 		iput(inode);
+-		inode = NULL;
+ 	}
+-out:
+ 	brelse(bitmap_bh);
+-	return inode;
++error:
++	return ERR_PTR(err);
+ }
+ 
+ unsigned long ext4_count_free_inodes (struct super_block * sb)
+diff -puN fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/inode.c
+--- a/fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/inode.c
+@@ -2797,21 +2797,31 @@ static blkcnt_t ext4_inode_blocks(struct
+ 	}
+ }
+ 
+-void ext4_read_inode(struct inode * inode)
++struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ {
+ 	struct ext4_iloc iloc;
+ 	struct ext4_inode *raw_inode;
+-	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_inode_info *ei;
+ 	struct buffer_head *bh;
++	struct inode *inode;
++	long ret;
+ 	int block;
+ 
++	inode = iget_locked(sb, ino);
++	if (!inode)
++		return ERR_PTR(-ENOMEM);
++	if (!(inode->i_state & I_NEW))
++		return inode;
++
++	ei = EXT4_I(inode);
+ #ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
+ 	ei->i_acl = EXT4_ACL_NOT_CACHED;
+ 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
+ #endif
+ 	ei->i_block_alloc_info = NULL;
+ 
+-	if (__ext4_get_inode_loc(inode, &iloc, 0))
++	ret = __ext4_get_inode_loc(inode, &iloc, 0);
++	if (ret < 0)
+ 		goto bad_inode;
+ 	bh = iloc.bh;
+ 	raw_inode = ext4_raw_inode(&iloc);
+@@ -2837,6 +2847,7 @@ void ext4_read_inode(struct inode * inod
+ 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
+ 			/* this inode is deleted */
+ 			brelse (bh);
++			ret = -ESTALE;
+ 			goto bad_inode;
+ 		}
+ 		/* The only unlinked inodes we let through here have
+@@ -2875,6 +2886,7 @@ void ext4_read_inode(struct inode * inod
+ 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
+ 		    EXT4_INODE_SIZE(inode->i_sb)) {
+ 			brelse (bh);
++			ret = -EIO;
+ 			goto bad_inode;
+ 		}
+ 		if (ei->i_extra_isize == 0) {
+@@ -2928,11 +2940,12 @@ void ext4_read_inode(struct inode * inod
+ 	}
+ 	brelse (iloc.bh);
+ 	ext4_set_inode_flags(inode);
+-	return;
++	unlock_new_inode(inode);
++	return inode;
+ 
+ bad_inode:
+-	make_bad_inode(inode);
+-	return;
++	iget_failed(inode);
++	return ERR_PTR(ret);
+ }
+ 
+ static int ext4_inode_blocks_set(handle_t *handle,
+diff -puN fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/namei.c
+--- a/fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/namei.c
+@@ -1042,17 +1042,11 @@ static struct dentry *ext4_lookup(struct
+ 		if (!ext4_valid_inum(dir->i_sb, ino)) {
+ 			ext4_error(dir->i_sb, "ext4_lookup",
+ 				   "bad inode number: %lu", ino);
+-			inode = NULL;
+-		} else
+-			inode = iget(dir->i_sb, ino);
+-
+-		if (!inode)
+-			return ERR_PTR(-EACCES);
+-
+-		if (is_bad_inode(inode)) {
+-			iput(inode);
+-			return ERR_PTR(-ENOENT);
++			return ERR_PTR(-EIO);
+ 		}
++		inode = ext4_iget(dir->i_sb, ino);
++		if (IS_ERR(inode))
++			return ERR_CAST(inode);
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+@@ -1081,18 +1075,13 @@ struct dentry *ext4_get_parent(struct de
+ 	if (!ext4_valid_inum(child->d_inode->i_sb, ino)) {
+ 		ext4_error(child->d_inode->i_sb, "ext4_get_parent",
+ 			   "bad inode number: %lu", ino);
+-		inode = NULL;
+-	} else
+-		inode = iget(child->d_inode->i_sb, ino);
+-
+-	if (!inode)
+-		return ERR_PTR(-EACCES);
+-
+-	if (is_bad_inode(inode)) {
+-		iput(inode);
+-		return ERR_PTR(-ENOENT);
++		return ERR_PTR(-EIO);
+ 	}
+ 
++	inode = ext4_iget(child->d_inode->i_sb, ino);
++	if (IS_ERR(inode))
++		return ERR_CAST(inode);
++
+ 	parent = d_alloc_anon(inode);
+ 	if (!parent) {
+ 		iput(inode);
+diff -puN fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/resize.c
+--- a/fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/resize.c
+@@ -779,12 +779,11 @@ int ext4_group_add(struct super_block *s
+ 				     "No reserved GDT blocks, can't resize");
+ 			return -EPERM;
+ 		}
+-		inode = iget(sb, EXT4_RESIZE_INO);
+-		if (!inode || is_bad_inode(inode)) {
++		inode = ext4_iget(sb, EXT4_RESIZE_INO);
++		if (IS_ERR(inode)) {
+ 			ext4_warning(sb, __FUNCTION__,
+ 				     "Error opening resize inode");
+-			iput(inode);
+-			return -ENOENT;
++			return PTR_ERR(inode);
+ 		}
+ 	}
+ 
+diff -puN fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/super.c
+--- a/fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/super.c
+@@ -767,11 +767,10 @@ static struct inode *ext4_nfs_get_inode(
+ 	 * Currently we don't know the generation for parent directory, so
+ 	 * a generation of 0 means "accept any"
+ 	 */
+-	inode = iget(sb, ino);
+-	if (inode == NULL)
+-		return ERR_PTR(-ENOMEM);
+-	if (is_bad_inode(inode) ||
+-	    (generation && inode->i_generation != generation)) {
++	inode = ext4_iget(sb, ino);
++	if (IS_ERR(inode))
++		return ERR_CAST(inode);
++	if (generation && inode->i_generation != generation) {
+ 		iput(inode);
+ 		return ERR_PTR(-ESTALE);
+ 	}
+@@ -840,7 +839,6 @@ static struct quotactl_ops ext4_qctl_ope
+ static const struct super_operations ext4_sops = {
+ 	.alloc_inode	= ext4_alloc_inode,
+ 	.destroy_inode	= ext4_destroy_inode,
+-	.read_inode	= ext4_read_inode,
+ 	.write_inode	= ext4_write_inode,
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.delete_inode	= ext4_delete_inode,
+@@ -1733,6 +1731,7 @@ static int ext4_fill_super (struct super
+ 	unsigned long journal_devnum = 0;
+ 	unsigned long def_mount_opts;
+ 	struct inode *root;
++	int ret = -EINVAL;
+ 	int blocksize;
+ 	int hblock;
+ 	int db_count;
+@@ -2151,19 +2150,24 @@ static int ext4_fill_super (struct super
+ 	 * so we can safely mount the rest of the filesystem now.
+ 	 */
+ 
+-	root = iget(sb, EXT4_ROOT_INO);
+-	sb->s_root = d_alloc_root(root);
+-	if (!sb->s_root) {
++	root = ext4_iget(sb, EXT4_ROOT_INO);
++	if (IS_ERR(root)) {
+ 		printk(KERN_ERR "EXT4-fs: get root inode failed\n");
+-		iput(root);
++		ret = PTR_ERR(root);
+ 		goto failed_mount4;
+ 	}
+ 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+-		dput(sb->s_root);
+-		sb->s_root = NULL;
++		iput(root);
+ 		printk(KERN_ERR "EXT4-fs: corrupt root inode, run e2fsck\n");
+ 		goto failed_mount4;
+ 	}
++	sb->s_root = d_alloc_root(root);
++	if (!sb->s_root) {
++		printk(KERN_ERR "EXT4-fs: get root dentry failed\n");
++		iput(root);
++		ret = -ENOMEM;
++		goto failed_mount4;
++	}
+ 
+ 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+ 
+@@ -2244,7 +2248,7 @@ out_fail:
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi);
+ 	lock_kernel();
+-	return -EINVAL;
++	return ret;
+ }
+ 
+ /*
+@@ -2280,8 +2284,8 @@ static journal_t *ext4_get_journal(struc
+ 	 * things happen if we iget() an unused inode, as the subsequent
+ 	 * iput() will try to delete it. */
+ 
+-	journal_inode = iget(sb, journal_inum);
+-	if (!journal_inode) {
++	journal_inode = ext4_iget(sb, journal_inum);
++	if (IS_ERR(journal_inode)) {
+ 		printk(KERN_ERR "EXT4-fs: no journal found.\n");
+ 		return NULL;
+ 	}
+@@ -2294,7 +2298,7 @@ static journal_t *ext4_get_journal(struc
+ 
+ 	jbd_debug(2, "Journal inode found at %p: %Ld bytes\n",
+ 		  journal_inode, journal_inode->i_size);
+-	if (is_bad_inode(journal_inode) || !S_ISREG(journal_inode->i_mode)) {
++	if (!S_ISREG(journal_inode->i_mode)) {
+ 		printk(KERN_ERR "EXT4-fs: invalid journal inode.\n");
+ 		iput(journal_inode);
+ 		return NULL;
+diff -puN include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try include/linux/ext4_fs.h
+--- a/include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/include/linux/ext4_fs.h
+@@ -1003,7 +1003,7 @@ int ext4_get_blocks_handle(handle_t *han
+ 	ext4_lblk_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
  	int create, int extend_disksize);
  
--extern struct inode *ext3_iget (struct super_block *, unsigned long);
-+extern struct inode *ext3_iget(struct super_block *, unsigned long);
- extern int  ext3_write_inode (struct inode *, int);
- extern int  ext3_setattr (struct dentry *, struct iattr *);
- extern void ext3_delete_inode (struct inode *);
+-extern void ext4_read_inode (struct inode *);
++extern struct inode *ext4_iget(struct super_block *, unsigned long);
+ extern int  ext4_write_inode (struct inode *, int);
+ extern int  ext4_setattr (struct dentry *, struct iattr *);
+ extern void ext4_delete_inode (struct inode *);
 _
 
-Patches currently in -mm which might be from akpm@linux-foundation.org are
+Patches currently in -mm which might be from dhowells@redhat.com are
 
 origin.patch
-sunrpc-fix-rpc-debugging-checkpatch-fixes.patch
-acpi-add-reboot-mechanism.patch
-git-alsa.patch
-working-3d-dri-intel-agpko-resume-for-i815-chip.patch
-git-arm.patch
-revert-gregkh-driver-block-device.patch
-git-hwmon.patch
-ia64-slim-down-__clear_bit_unlock-checkpatch-fixes.patch
-first-stab-at-elantech-touchpad-driver-for-26226-testers.patch
-fix-appletouch-geyser-1-breakage-checkpatch-fixes.patch
-git-kvm.patch
-git-libata-all.patch
-drivers-ata-libata-ehc-fix-printk-warning.patch
-libata-pata_it821x-improve-handling-of-poorly-compatible-emulations-checkpatch-fixes.patch
-ide-arm-hack.patch
-drivers-ide-pci-sc1200c-remove-pointless-hwif-lookup-loop-checkpatch-fixes.patch
-nf_ct_alloc_hashtable-use-__gfp_nowarn.patch
-ucc_geth-fix-build-break-introduced-by-commit-09f75cd7bf13720738e6a196cc0107ce9a5bd5a0-checkpatch-fixes.patch
-update-smc91x-driver-with-arm-versatile-board-info.patch
-git-nfsd-fixup.patch
-fix-build-breakage-if-sysfs-fix.patch
-ips-trim-trailing-whitespace-checkpatch-fixes.patch
-git-unionfs.patch
-git-watchdog.patch
-watchdog-add-nano-7240-driver-checkpatch-fixes.patch
-git-wireless.patch
-jiffies_round-jiffies_round_relative-conversion-rt2x00-checkpatch-fixes.patch
-git-x86.patch
-git-x86-fixup.patch
-oprofile-op_model_athalonc-support-for-amd-family10h-barcelona-performance-counters-checkpatch-fixes.patch
-x86-fix-config_smp-warning-in-processorc-fix.patch
-i386-and-x86_64-randomize-brk-fix.patch
-git-perfmon-fill-in-i386-syscall-table.patch
-i386-resolve-dependency-of-asm-i386-pgtableh-on-highmemh-checkpatch-fixes.patch
-slub-fix-coding-style-violations-checkpatch-fixes.patch
-bufferhead-revert-constructor-removal-checkpatch-fixes.patch
-vmscan-give-referenced-active-and-unmapped-pages-a-second-trip-around-the-lru.patch
-vm-dont-run-touch_buffer-during-buffercache-lookups.patch
-pm-qos-infrastructure-and-interface.patch
-pm-qos-infrastructure-and-interface-static-initialization-with-blocking-notifiers.patch
-deprecate-smbfs-in-favour-of-cifs.patch
-procfs-detect-duplicate-names.patch
-kernel-printkc-concerns-about-the-console-handover.patch
-fix-versus-precedence-in-various-places-checkpatch-fixes.patch
-pie-executable-randomization.patch
-pie-executable-randomization-checkpatch-fixes.patch
-riscom8-fix-smp-brokenness-fix.patch
-use-macros-instead-of-task_-flags-checkpatch-fixes.patch
-sound-oss-pss-set_io_base-always-returns-success-mark-it-void-checkpatch-fixes.patch
-remove-warnings-for-longstanding-conditions-fix.patch
-remove-warnings-for-longstanding-conditions-checkpatch-fixes.patch
-sync_sb_inodes-propagate-errors.patch
 64-bit-i_version-afs-fixes.patch
-r-o-bind-mounts-elevate-write-count-during-entire-ncp_ioctl-fix.patch
-slab-api-remove-useless-ctor-parameter-and-reorder-parameters-vs-revoke.patch
-revoke-wire-up-i386-system-calls.patch
-revoke-vs-git-block.patch
-memory-controller-memory-accounting-v7.patch
-memory-controller-add-per-container-lru-and-reclaim-v7.patch
-memory-controller-oom-handling-v7.patch
-memory-controller-add-switch-to-control-what-type-of-pages-to-limit-v7.patch
-memcontrol-move-oom-task-exclusion-to-tasklist.patch
-drivers-edac-add-marvell-mv64x60-driver-fix.patch
-introduce-flags-for-reserve_bootmem-checkpatch-fixes.patch
+add-an-err_cast-function-to-complement-err_ptr-and-co.patch
+convert-err_ptrptr_errp-instances-to-err_castp.patch
+iget-introduce-a-function-to-register-iget-failure.patch
+iget-use-iget_failed-in-afs.patch
+iget-use-iget_failed-in-gfs2.patch
+iget-stop-affs-from-using-iget-and-read_inode-try.patch
 iget-stop-affs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-autofs-from-using-iget-and-read_inode.patch
+iget-stop-befs-from-using-iget-and-read_inode-try.patch
+iget-stop-bfs-from-using-iget-and-read_inode-try.patch
+iget-stop-cifs-from-using-iget-and-read_inode-try.patch
+iget-stop-efs-from-using-iget-and-read_inode-try.patch
 iget-stop-efs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext2-from-using-iget-and-read_inode-try.patch
 iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try.patch
 iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
-make-copy_from_user_inatomic-not-zero-the-tail-on-i386-vs-reiser4.patch
-reiser4.patch
-page-owner-tracking-leak-detector.patch
-nr_blockdev_pages-in_interrupt-warning.patch
-slab-leaks3-default-y.patch
-profile-likely-unlikely-macros-fix.patch
-put_bh-debug.patch
-kmap_atomic-debugging.patch
-shrink_slab-handle-bad-shrinkers.patch
-getblk-handle-2tb-devices.patch
-w1-build-fix.patch
+iget-stop-ext4-from-using-iget-and-read_inode-try.patch
+iget-stop-fat-from-using-iget-and-read_inode-try.patch
+iget-stop-freevxfs-from-using-iget-and-read_inode.patch
+iget-stop-fuse-from-using-iget-and-read_inode-try.patch
+iget-stop-hfsplus-from-using-iget-and-read_inode.patch
+iget-stop-isofs-from-using-read_inode.patch
+iget-stop-jffs2-from-using-iget-and-read_inode.patch
+iget-stop-jfs-from-using-iget-and-read_inode-try.patch
+iget-stop-the-minix-filesystem-from-using-iget-and.patch
+iget-stop-procfs-from-using-iget-and-read_inode.patch
+iget-stop-qnx4-from-using-iget-and-read_inode-try.patch
+iget-stop-romfs-from-using-iget-and-read_inode.patch
+iget-stop-the-sysv-filesystem-from-using-iget-and.patch
+iget-stop-ufs-from-using-iget-and-read_inode-try.patch
+iget-stop-openpromfs-from-using-iget-and.patch
+iget-stop-hostfs-from-using-iget-and-read_inode.patch
+iget-stop-hppfs-from-using-iget-and-read_inode.patch
+iget-remove-iget-and-the-read_inode-super-op-as.patch
+mutex-subsystem-synchro-test-module.patch
