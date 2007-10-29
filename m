@@ -1,42 +1,43 @@
-From: Coly Li <coyli@suse.de>
-Subject: [PATCH] e2fsprogs: add directory inode reservation option to mke2fs.8
-Date: Tue, 30 Oct 2007 01:05:36 +0800
-Message-ID: <472612E0.9080204@suse.de>
-Reply-To: coyli@suse.de
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: delalloc fragmenting files?
+Date: Mon, 29 Oct 2007 14:13:27 -0500
+Message-ID: <472630D7.4020606@redhat.com>
+References: <47225B1E.2060708@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:34206 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754839AbXJ2REk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Oct 2007 13:04:40 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:55303 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752808AbXJ2TN3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2007 15:13:29 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id l9TJDSYU018677
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2007 15:13:28 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9TJDSP2030719
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2007 15:13:28 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l9TJDR9i005858
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2007 15:13:27 -0400
+In-Reply-To: <47225B1E.2060708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds explaining for directory inode reservation option to mke2fs.8. Ask for review.
+Eric Sandeen wrote:
 
-Signed-off-by: Coly Li <coyli@suse.de>
----
- misc/mke2fs.8.in |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+> (note: times & rates look wrong to me, something is up with blktrace I
+> think, but FIBMAP shouldn't lie about allocation)
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index a3dc4a1..9379cd4 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -187,6 +187,9 @@ filesystem blocks per stripe.
- .BI resize= max-online-resize
- Reserve enough space so that the block group descriptor table can grow
- to support a filesystem that has max-online-resize blocks.
-+.TP
-+.BI dir_ireserve
-+Reserve inodes for directories during creating the file system.
- .RE
- .TP
- .BI \-f " fragment-size"
+CONFIG_NO_HZ was causing this... here are better graphs:
 
--- 
-Coly Li
-SuSE PRC Labs
+http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write.png
+http://people.redhat.com/esandeen/seekwatcher/xfs-dd-write.png
+http://people.redhat.com/esandeen/seekwatcher/ext4-xfs-dd-write.png
+
+http://people.redhat.com/esandeen/seekwatcher/ext4-dd-write-odirect.png
+http://people.redhat.com/esandeen/seekwatcher/xfs-dd-write-odirect.png
+http://people.redhat.com/esandeen/seekwatcher/ext4-xfs-dd-write-odirect.png
+
+-Eric
