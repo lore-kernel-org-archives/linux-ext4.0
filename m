@@ -1,65 +1,134 @@
-From: Mark Fasheh <mark.fasheh@oracle.com>
-Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file
-	allocation
-Date: Mon, 29 Oct 2007 15:40:11 -0700
-Message-ID: <20071029224011.GC28607@ca-server1.us.oracle.com>
-References: <20070419015426.GM48531920@melbourne.sgi.com>
-	<20070430224401.GX5967@schatzie.adilger.int>
-	<20070501042254.GD77450368@melbourne.sgi.com>
-	<1FA8E92B-954D-4624-A089-80D4AA7399FD@cam.ac.uk>
-	<20070502000654.GK77450368@melbourne.sgi.com>
-	<8464EA47-03AC-4162-A2D0-683517568640@cam.ac.uk>
-	<20071029194507.GA8578@webber.adilger.int>
-	<20071029205744.GB28607@ca-server1.us.oracle.com>
-	<20071029221302.GD3042@webber.adilger.int>
-	<20071029222907.GF3042@webber.adilger.int>
-Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: directory inode reservation (V1) to mke2fs
+Date: Mon, 29 Oct 2007 18:44:07 -0400
+Message-ID: <20071029224407.GI21133@thunk.org>
+References: <4726126A.3060303@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-fsdevel@vger.kernel.org, David Chinner <dgc@sgi.com>,
-        linux-ext4@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-        Anton Altaparmakov <aia21@cam.ac.uk>,
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Cc: linux-ext4@vger.kernel.org
+To: Coly Li <coyli@suse.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:39361 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752162AbXJ2Wom (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2007 18:44:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20071029222907.GF3042@webber.adilger.int>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
+In-Reply-To: <4726126A.3060303@suse.de>
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 29, 2007 at 04:29:07PM -0600, Andreas Dilger wrote:
-> On Oct 29, 2007  16:13 -0600, Andreas Dilger wrote:
-> > On Oct 29, 2007  13:57 -0700, Mark Fasheh wrote:
-> > > I'm a little bit confused by fe_offset. Is it a physical offset, or a
-> > > logical offset? The reason I ask is that your description above says "FIEMAP
-> > > ioctl will return the logical to physical mapping for the extent that
-> > > contains the specified logical byte address." Which seems to imply physical,
-> > > but your math to get to the next logical start in a very fragmented file,
-> > > implies that fe_offset is a logical offset:
-> > > 
-> > >        fm_start = fm_extents[fm_extent_count - 1].fe_offset +
-> > >                          fm_extents[fm_extent_count - 1].fe_length + 1; 
-> > 
-> > Note the distinction between "fe_offset" (which is a physical offset for
-> > a single extent) and "fm_offset" (which is a logical offset for that file).
-> 
-> Actually, that is completely bunk.  What it should say is something like:
-> "filefrag can easily call the FIEMAP ioctls repeatedly using the returned
-> fm_start and fm_length as the start offset for the next ioctl:
-> 
->         fiemap.fm_start = fiemap.fm_start + fiemap.fm_length + 1;
+On Tue, Oct 30, 2007 at 01:03:38AM +0800, Coly Li wrote:
+> This patch adds directory inode reservation supporting to mke2fs. Ask for review.
 
-Yeah - that's where I was going with my question. This is much more clear
-now, thanks.
-	--Mark
+So I had completely erased this from my memory, and had to do some
+google searching and some mail archive searching before I found this:
 
---
-Mark Fasheh
-Senior Software Developer, Oracle
-mark.fasheh@oracle.com
+http://lkml.org/lkml/2007/3/26/180
+
+... and some initial kernel patches which no one ever really looked at
+because your mailer had converted all tab characters into a single
+space, making the patch compltely unreadable and unusuable to use as a
+patch.
+
+>  /*
+> + * Macro-instructions used to reserve inodes for directories
+> + */
+> +#define EXT4_DIR_IRESERVE_LOW		16
+> +#define EXT4_DIR_IRESERVE_NORMAL	64
+> +#define EXT4_DIR_IRESERVE_HIGH		128
+
+Macro-instructions?  These are constants.  And exactly what do they
+signify, anyway.  I'll note that this patch only uses
+EEXT4_DIR_IRESERVE_NORMAL, and not IRESERVE_LOW or IRESERVE_HIGH.
+
+> +/*
+>   * ACL structures
+>   */
+>  struct ext2_acl_header	/* Header of Access Control Lists */
+> @@ -167,7 +174,7 @@ struct ext4_group_desc
+>  	__u16	bg_free_blocks_count_hi;/* Free blocks count MSB */
+>  	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
+>  	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
+> -	__u16   bg_pad;
+> +	__u16	bg_itable_unused_hi;	/* Unused inodes count MSB */
+>  	__u32	bg_reserved2[3];
+>  };
+
+This patch hunk has nothing to do with your patch.... 
+
+Note that for 4k block filesystems, the maximum number of inodes we
+can have is 32768, so it would be highly unsusual and unreasonable for
+us to need more than 64k inodes per block group.  It only might make
+come up in real life for filesystems that are using, say, 64k block
+filesystems, and which needed a huge number of inodes.
+
+If we are triggering this, then mayne we should fix the ununitialized
+block group patches so that instead of enumerating the number of
+inodes, that it is denotes the number of unused inode table *blocks*.
+After all, if we are going to be initializing a new inode table block,
+it only makes sense to initialize all of the inodes in that block at
+once.
+
+> @@ -100,7 +101,8 @@ static void usage(void)
+>  	"\t[-N number-of-inodes] [-m reserved-blocks-percentage] "
+>  	"[-o creator-os]\n\t[-g blocks-per-group] [-L volume-label] "
+>  	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+> -	"[-r fs-revision] [-R options] [-qvSV]\n\tdevice [blocks-count]\n"),
+> +	"[-r fs-revision] [-E extended-option[,...]] [-qvSV]\n"
+> +	"\tdevice [blocks-count]\n"),
+>  		program_name);
+>  	exit(1);
+>  }
+
+This patch has nothing to do with your patch, and in fact is already
+in e2fsprogs.  How are you generating your patch?
+
+
+> @@ -575,6 +577,16 @@ static void reserve_inodes(ext2_filsys fs)
+>  	ext2fs_mark_ib_dirty(fs);
+>  }
+> 
+> +static void setup_itable_unused(ext2_filsys fs)
+> +{
+> +	dgrp_t	i;
+> +	int inodes_pgroup = fs->super->s_inodes_per_group;
+> +	fs->group_desc[0].bg_itable_unused =
+> +		inodes_pgroup - EXT4_DIR_IRESERVE_NORMAL;
+> +	for (i = 1; i < fs->group_desc_count; i++)
+> +		fs->group_desc[i].bg_itable_unused = inodes_pgroup;
+> +}
+> +
+>  #define BSD_DISKMAGIC   (0x82564557UL)  /* The disk magic number */
+>  #define BSD_MAGICDISK   (0x57455682UL)  /* The disk magic number reversed */
+>  #define BSD_LABEL_OFFSET        64
+
+Ok, so this is bad in many, many ways.  First of all, this shouldn't
+be in mke2fs.c, but in lib/ext2fs/initialize.c
+
+Secondly, we really need to talk about the on-disk format.  This needs
+to be integrated with the uninit blockgroup patch, and even there,
+there needs to be some filesytem feature flag marker so we know we're
+doing this wierd thing.  Why it makes sense to set the bg_table_unused
+field to the number of block groups minus 64 makes no sense to me (you
+need to explain the on-disk format very clearly, and the only
+explanation I've seen back in March never talked about using
+bg_itable_unused).  
+
+More importantly, it's doing this unconditionally without any feature
+flag indicating whether or not the uninit blockgroup feature is even
+enabled, and if it is enabled, that EXT4_DIR_IRESERVE_NORMAL blocks
+have been initialized.  What the heck is going on here?
+
+> @@ -761,7 +773,7 @@ static void parse_extended_opts(struct ext2_super_block *param,
+>  	int	r_usage = 0;
+> 
+>  	len = strlen(opts);
+> -	buf = malloc(len+1);
+> +	buf = (char *)malloc(len+1);
+>  	if (!buf) {
+>  		fprintf(stderr,
+>  			_("Couldn't allocate memory to parse options!\n"));
+
+Unnecessary cast.  Why did you add it?
+
+						- Ted
