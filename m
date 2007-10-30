@@ -1,134 +1,111 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: directory inode reservation (V1) to mke2fs
-Date: Mon, 29 Oct 2007 18:44:07 -0400
-Message-ID: <20071029224407.GI21133@thunk.org>
-References: <4726126A.3060303@suse.de>
+From: Mark Fasheh <mark.fasheh@oracle.com>
+Subject: Re: [RFC] add FIEMAP ioctl to efficiently map file
+	allocation
+Date: Mon, 29 Oct 2007 17:11:26 -0700
+Message-ID: <20071030001126.GD28607@ca-server1.us.oracle.com>
+References: <20070419002139.GK5967@schatzie.adilger.int>
+	<20070419015426.GM48531920@melbourne.sgi.com>
+	<20070430224401.GX5967@schatzie.adilger.int>
+	<20070501042254.GD77450368@melbourne.sgi.com>
+	<1FA8E92B-954D-4624-A089-80D4AA7399FD@cam.ac.uk>
+	<20070502000654.GK77450368@melbourne.sgi.com>
+	<8464EA47-03AC-4162-A2D0-683517568640@cam.ac.uk>
+	<20071029194507.GA8578@webber.adilger.int>
+	<20071029205744.GB28607@ca-server1.us.oracle.com>
+	<20071029221302.GD3042@webber.adilger.int>
+Reply-To: Mark Fasheh <mark.fasheh@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Coly Li <coyli@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39361 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752162AbXJ2Wom (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Oct 2007 18:44:42 -0400
+To: linux-fsdevel@vger.kernel.org, David Chinner <dgc@sgi.com>,
+        linux-ext4@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+        Anton Altaparmakov <aia21@cam.ac.uk>,
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
 Content-Disposition: inline
-In-Reply-To: <4726126A.3060303@suse.de>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <20071029221302.GD3042@webber.adilger.int>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 30, 2007 at 01:03:38AM +0800, Coly Li wrote:
-> This patch adds directory inode reservation supporting to mke2fs. Ask for review.
-
-So I had completely erased this from my memory, and had to do some
-google searching and some mail archive searching before I found this:
-
-http://lkml.org/lkml/2007/3/26/180
-
-... and some initial kernel patches which no one ever really looked at
-because your mailer had converted all tab characters into a single
-space, making the patch compltely unreadable and unusuable to use as a
-patch.
-
->  /*
-> + * Macro-instructions used to reserve inodes for directories
-> + */
-> +#define EXT4_DIR_IRESERVE_LOW		16
-> +#define EXT4_DIR_IRESERVE_NORMAL	64
-> +#define EXT4_DIR_IRESERVE_HIGH		128
-
-Macro-instructions?  These are constants.  And exactly what do they
-signify, anyway.  I'll note that this patch only uses
-EEXT4_DIR_IRESERVE_NORMAL, and not IRESERVE_LOW or IRESERVE_HIGH.
-
-> +/*
->   * ACL structures
->   */
->  struct ext2_acl_header	/* Header of Access Control Lists */
-> @@ -167,7 +174,7 @@ struct ext4_group_desc
->  	__u16	bg_free_blocks_count_hi;/* Free blocks count MSB */
->  	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
->  	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
-> -	__u16   bg_pad;
-> +	__u16	bg_itable_unused_hi;	/* Unused inodes count MSB */
->  	__u32	bg_reserved2[3];
->  };
-
-This patch hunk has nothing to do with your patch.... 
-
-Note that for 4k block filesystems, the maximum number of inodes we
-can have is 32768, so it would be highly unsusual and unreasonable for
-us to need more than 64k inodes per block group.  It only might make
-come up in real life for filesystems that are using, say, 64k block
-filesystems, and which needed a huge number of inodes.
-
-If we are triggering this, then mayne we should fix the ununitialized
-block group patches so that instead of enumerating the number of
-inodes, that it is denotes the number of unused inode table *blocks*.
-After all, if we are going to be initializing a new inode table block,
-it only makes sense to initialize all of the inodes in that block at
-once.
-
-> @@ -100,7 +101,8 @@ static void usage(void)
->  	"\t[-N number-of-inodes] [-m reserved-blocks-percentage] "
->  	"[-o creator-os]\n\t[-g blocks-per-group] [-L volume-label] "
->  	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
-> -	"[-r fs-revision] [-R options] [-qvSV]\n\tdevice [blocks-count]\n"),
-> +	"[-r fs-revision] [-E extended-option[,...]] [-qvSV]\n"
-> +	"\tdevice [blocks-count]\n"),
->  		program_name);
->  	exit(1);
->  }
-
-This patch has nothing to do with your patch, and in fact is already
-in e2fsprogs.  How are you generating your patch?
-
-
-> @@ -575,6 +577,16 @@ static void reserve_inodes(ext2_filsys fs)
->  	ext2fs_mark_ib_dirty(fs);
->  }
+On Mon, Oct 29, 2007 at 04:13:02PM -0600, Andreas Dilger wrote:
+> On Oct 29, 2007  13:57 -0700, Mark Fasheh wrote:
+> > 	Thanks for posting this. I believe that an interface such as FIEMAP
+> > would be very useful to Ocfs2 as well. (I added ocfs2-devel to the e-mail)
 > 
-> +static void setup_itable_unused(ext2_filsys fs)
-> +{
-> +	dgrp_t	i;
-> +	int inodes_pgroup = fs->super->s_inodes_per_group;
-> +	fs->group_desc[0].bg_itable_unused =
-> +		inodes_pgroup - EXT4_DIR_IRESERVE_NORMAL;
-> +	for (i = 1; i < fs->group_desc_count; i++)
-> +		fs->group_desc[i].bg_itable_unused = inodes_pgroup;
-> +}
-> +
->  #define BSD_DISKMAGIC   (0x82564557UL)  /* The disk magic number */
->  #define BSD_MAGICDISK   (0x57455682UL)  /* The disk magic number reversed */
->  #define BSD_LABEL_OFFSET        64
+> I tried to make it as Lustre-agnostic as possible...
 
-Ok, so this is bad in many, many ways.  First of all, this shouldn't
-be in mke2fs.c, but in lib/ext2fs/initialize.c
+IMHO, your description succeeded at that. I'm hoping that the final patch
+can have mostly generic code, like FIBMAP does today.
 
-Secondly, we really need to talk about the on-disk format.  This needs
-to be integrated with the uninit blockgroup patch, and even there,
-there needs to be some filesytem feature flag marker so we know we're
-doing this wierd thing.  Why it makes sense to set the bg_table_unused
-field to the number of block groups minus 64 makes no sense to me (you
-need to explain the on-disk format very clearly, and the only
-explanation I've seen back in March never talked about using
-bg_itable_unused).  
 
-More importantly, it's doing this unconditionally without any feature
-flag indicating whether or not the uninit blockgroup feature is even
-enabled, and if it is enabled, that EXT4_DIR_IRESERVE_NORMAL blocks
-have been initialized.  What the heck is going on here?
-
-> @@ -761,7 +773,7 @@ static void parse_extended_opts(struct ext2_super_block *param,
->  	int	r_usage = 0;
+> > > #define FIEMAP_EXTENT_LAST      0x00000020 /* last extent in the file */
+> > > #define FIEMAP_EXTENT_EOF       0x00000100 /* fm_start + fm_len beyond EOF*/
+> > 
+> > Is "EOF" here considering "beyond i_size" or "beyond allocation"?
 > 
->  	len = strlen(opts);
-> -	buf = malloc(len+1);
-> +	buf = (char *)malloc(len+1);
->  	if (!buf) {
->  		fprintf(stderr,
->  			_("Couldn't allocate memory to parse options!\n"));
+> _EOF == beyond i_size.
+> _LAST == last extent in the file.
+> 
+> In most cases FIEMAP_EXTENT_EOF will be set at the same time as
+> FIEMAP_EXTENT_LAST, but in case of e.g. prealloc beyond i_size the 
+> EOF flag may be set on one or more earlier extents.
 
-Unnecessary cast.  Why did you add it?
+Oh, ok great - I was primarily looking for a way to say "there's allocation
+past i_size" and it looks like we have it.
 
-						- Ted
+
+> > > FIEMAP_EXTENT_NO_DIRECT means data cannot be directly accessed (maybe
+> > > encrypted, compressed, etc.)
+> > 
+> > Would it be valid to use FIEMAP_EXTENT_NO_DIRECT for marking in-inode data?
+> > Btrfs, Ocfs2, and Gfs2 pack small amounts of user data directly in inode
+> > blocks.
+> 
+> Hmm, but part of the issue would be how to request the extra data, and
+> what offset it would be given?  One could, for example, use negative
+> offsets to represent metadata or something, or add a FIEMAP_EXTENT_META
+> or similar, I hadn't given that much thought.
+
+Well, fe_offset and fe_length are already expressed in bytes, so we could
+just put the byte offset to where the inline data starts in there. fe_length
+is just used as the length allocated for inline-data.
+
+If fe_offset is required to be block aligned, then we could add a field to
+express an offset within the block where data would be found - say
+'fe_data_start_offset'. In the non-inline case, we could guarantee that
+fe_data_start_offset is zero. That way software which doesn't want to care
+whether something is inline-data (for example, a backup program) or not
+could just blidly add it to fe_offset before looking at the data.
+
+Regardless, I think we also want to explicitely flag this:
+
+#define FIEMAP_EXTENT_DATA_IN_INODE 0x00000400 /* extent data is stored in inode block */
+
+
+I'm going to pretend that I completely understand reiserfs tail-packing and
+say that my approaches above looks like they could work for that case too.
+We'd want to add a seperate flag for tail packed data though.
+
+
+> The other issue is that I'd like to get the basics of the API in place
+> before it gets too complex. We can always add functionality with more
+> FIEMAP_FLAG_* (whether in the INCOMPAT range or not, depending on what is
+> being done).
+
+Sure, but I think whatever goes upstream should be able to handle this case
+- there's file systems in use _today_ which put data in inode blocks and
+pack file tails.
+
+Thanks,
+	--Mark
+
+--
+Mark Fasheh
+Senior Software Developer, Oracle
+mark.fasheh@oracle.com
