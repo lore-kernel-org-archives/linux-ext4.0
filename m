@@ -1,287 +1,379 @@
 From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: [PATCH 2/3] ext4_group_t: Fix negative groups
-Date: Tue, 30 Oct 2007 17:52:29 -0700
-Message-ID: <4727D1CD.9040802@linux.vnet.ibm.com>
+Subject: [PATCH 3/3] ext4_group_t: mballoc changes
+Date: Tue, 30 Oct 2007 17:52:35 -0700
+Message-ID: <4727D1D3.7060208@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------080706040507050007080300"
+ boundary="------------030305070201080706080909"
 To: linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:50365 "EHLO e5.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:58094 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754520AbXJaAvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Oct 2007 20:51:19 -0400
+	id S1756153AbXJaAvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2007 20:51:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 This is a multi-part message in MIME format.
---------------080706040507050007080300
+--------------030305070201080706080909
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
---------------080706040507050007080300
+--------------030305070201080706080909
 Content-Type: text/x-patch;
- name="ext4_grpnum_t_int_fix.patch"
+ name="ext4_grpnumt-mballoc-fix.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="ext4_grpnum_t_int_fix.patch"
+ filename="ext4_grpnumt-mballoc-fix.patch"
 
-Ext4: fixes block group number being set to a negative value
+Ext4: change groups to ext4_group_t in mballoc.c
 
 From: Avantika Mathur <mathur@us.ibm.com>
-
-This patch fixes various places where the group number is set to a negative
-value.
 
 Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
 ---
 
- fs/ext4/ialloc.c |  101 ++++++++++++++++++++++++++++---------------------------
- 1 file changed, 53 insertions(+), 48 deletions(-)
+ fs/ext4/mballoc.c |   84 ++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 45 insertions(+), 39 deletions(-)
 
 
-Index: linux-2.6.24-rc1/fs/ext4/ialloc.c
+Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
 ===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/ialloc.c	2007-10-30 10:47:50.000000000 -0700
-+++ linux-2.6.24-rc1/fs/ext4/ialloc.c	2007-10-30 10:58:16.000000000 -0700
-@@ -260,12 +260,14 @@
-  * For other inodes, search forward from the parent directory\'s block
-  * group to find a free inode.
-  */
--static ext4_group_t find_group_dir(struct super_block *sb, struct inode *parent)
-+static int find_group_dir(struct super_block *sb, struct inode *parent,
-+				ext4_group_t *best_group)
- {
- 	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
- 	unsigned int freei, avefreei;
- 	struct ext4_group_desc *desc, *best_desc = NULL;
--	ext4_group_t group, best_group = -1;
+--- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-10-30 11:11:53.000000000 -0700
++++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-10-30 11:19:59.000000000 -0700
+@@ -311,7 +311,7 @@
+ #define EXT4_BB_MAX_BLOCKS	30
+ 
+ struct ext4_free_metadata {
+-	unsigned short group;
 +	ext4_group_t group;
-+	int ret = -1;
+ 	unsigned short num;
+ 	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
+ 	struct list_head list;
+@@ -362,7 +362,7 @@
+ struct ext4_free_extent {
+ 	ext4_lblk_t fe_logical;
+ 	ext4_grpblk_t fe_start;
+-	unsigned long fe_group;
++	ext4_group_t fe_group;
+ 	unsigned long fe_len;
+ };
  
- 	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
- 	avefreei = freei / ngroups;
-@@ -279,11 +281,12 @@
- 		if (!best_desc ||
- 		    (le16_to_cpu(desc->bg_free_blocks_count) >
- 		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
--			best_group = group;
-+			*best_group = group;
- 			best_desc = desc;
-+			ret = 0;
- 		}
- 	}
--	return best_group;
-+	return ret;
+@@ -441,7 +441,7 @@
+ 	struct ext4_group_info *bd_info;
+ 	struct super_block *bd_sb;
+ 	__u16 bd_blkbits;
+-	__u16 bd_group;
++	ext4_group_t bd_group;
+ };
+ #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+ #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+@@ -455,11 +455,12 @@
+ #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
+ 
+ static struct proc_dir_entry *proc_root_ext4;
+-struct buffer_head *read_block_bitmap(struct super_block *, unsigned int);
++struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
+ ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
+ 
+-static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap, int group);
++static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
++					ext4_group_t group);
+ static void ext4_mb_poll_new_transaction(struct super_block *, handle_t *);
+ static void ext4_mb_free_committed_blocks(struct super_block *);
+ static void ext4_mb_return_to_preallocation(struct inode *inode,
+@@ -472,19 +473,21 @@
+ static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
+ 
+ 
+-static inline void ext4_lock_group(struct super_block *sb, int group)
++static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+ {
+ 	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT,
+ 		      &EXT4_GROUP_INFO(sb, group)->bb_state);
  }
  
- /*
-@@ -314,8 +317,8 @@
- #define INODE_COST 64
- #define BLOCK_COST 256
- 
--static ext4_group_t find_group_orlov(struct super_block *sb,
--				      struct inode *parent)
-+static int find_group_orlov(struct super_block *sb, struct inode *parent,
-+				ext4_group_t *group)
+-static inline void ext4_unlock_group(struct super_block *sb, int group)
++static inline void ext4_unlock_group(struct super_block *sb,
++					ext4_group_t group)
  {
- 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -328,7 +331,7 @@
- 	unsigned int ndirs;
- 	int max_debt, max_dirs, min_inodes;
- 	ext4_grpblk_t min_blocks;
--	ext4_group_t group = -1, i;
-+	ext4_group_t i;
- 	struct ext4_group_desc *desc;
- 
- 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
-@@ -341,13 +344,14 @@
- 	if ((parent == sb->s_root->d_inode) ||
- 	    (EXT4_I(parent)->i_flags & EXT4_TOPDIR_FL)) {
- 		int best_ndir = inodes_per_group;
--		ext4_group_t best_group = -1;
-+		ext4_group_t grp;
-+		int ret = -1;
- 
--		get_random_bytes(&group, sizeof(group));
--		parent_group = (unsigned)group % ngroups;
-+		get_random_bytes(&grp, sizeof(grp));
-+		parent_group = (unsigned)grp % ngroups;
- 		for (i = 0; i < ngroups; i++) {
--			group = (parent_group + i) % ngroups;
--			desc = ext4_get_group_desc (sb, group, NULL);
-+			grp = (parent_group + i) % ngroups;
-+			desc = ext4_get_group_desc(sb, grp, NULL);
- 			if (!desc || !desc->bg_free_inodes_count)
- 				continue;
- 			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
-@@ -356,11 +360,12 @@
- 				continue;
- 			if (le16_to_cpu(desc->bg_free_blocks_count) < avefreeb)
- 				continue;
--			best_group = group;
-+			*group = grp;
-+			ret = 0;
- 			best_ndir = le16_to_cpu(desc->bg_used_dirs_count);
- 		}
--		if (best_group >= 0)
--			return best_group;
-+		if (ret == 0)
-+			return ret;
- 		goto fallback;
- 	}
- 
-@@ -381,8 +386,8 @@
- 		max_debt = 1;
- 
- 	for (i = 0; i < ngroups; i++) {
--		group = (parent_group + i) % ngroups;
--		desc = ext4_get_group_desc (sb, group, NULL);
-+		*group = (parent_group + i) % ngroups;
-+		desc = ext4_get_group_desc(sb, *group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
-@@ -391,17 +396,16 @@
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_blocks_count) < min_blocks)
- 			continue;
--		return group;
-+		return 0;
- 	}
- 
- fallback:
- 	for (i = 0; i < ngroups; i++) {
--		group = (parent_group + i) % ngroups;
--		desc = ext4_get_group_desc (sb, group, NULL);
--		if (!desc || !desc->bg_free_inodes_count)
--			continue;
--		if (le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
--			return group;
-+		*group = (parent_group + i) % ngroups;
-+		desc = ext4_get_group_desc(sb, *group, NULL);
-+		if (desc && desc->bg_free_inodes_count &&
-+			le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
-+			return 0;
- 	}
- 
- 	if (avefreei) {
-@@ -416,22 +420,22 @@
- 	return -1;
+ 	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT,
+ 			&EXT4_GROUP_INFO(sb, group)->bb_state);
  }
  
--static ext4_group_t find_group_other(struct super_block *sb, 
--					struct inode *parent)
-+static int find_group_other(struct super_block *sb, struct inode *parent,
-+				ext4_group_t *group)
+-static inline int ext4_is_group_locked(struct super_block *sb, int group)
++static inline int ext4_is_group_locked(struct super_block *sb,
++					ext4_group_t group)
  {
- 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
- 	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
- 	struct ext4_group_desc *desc;
--	ext4_group_t group, i;
-+	ext4_group_t i;
+ 	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
+ 					&EXT4_GROUP_INFO(sb, group)->bb_state);
+@@ -590,7 +593,7 @@
+ 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
  
- 	/*
- 	 * Try to place the inode in its parent directory
- 	 */
--	group = parent_group;
--	desc = ext4_get_group_desc (sb, group, NULL);
-+	*group = parent_group;
-+	desc = ext4_get_group_desc(sb, *group, NULL);
- 	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 			le16_to_cpu(desc->bg_free_blocks_count))
--		return group;
-+		return 0;
+ 			ext4_error(sb, __FUNCTION__, "double-free of inode"
+-				   " %lu's block %lu(bit %u in group %u)\n",
++				   " %lu's block %lu(bit %u in group %lu)\n",
+ 				   inode ? inode->i_ino : 0, blocknr,
+ 				   first + i, e4b->bd_group);
+ 		}
+@@ -620,8 +623,8 @@
+ 		b2 = (unsigned char *) bitmap;
+ 		for (i = 0; i < e4b->bd_sb->s_blocksize; i++) {
+ 			if (b1[i] != b2[i]) {
+-				printk("corruption in group %u at byte %u(%u): "
+-				       "%x in copy != %x on disk/prealloc\n",
++				printk("corruption in group %lu at byte %u(%u):"
++				       " %x in copy != %x on disk/prealloc\n",
+ 					e4b->bd_group, i, i * 8, b1[i], b2[i]);
+ 				BUG();
+ 			}
+@@ -738,7 +741,7 @@
+ 	grp = EXT4_GROUP_INFO(sb, e4b->bd_group);
+ 	buddy = mb_find_buddy(e4b, 0, &max);
+ 	list_for_each(cur, &grp->bb_prealloc_list) {
+-		unsigned long groupnr;
++		ext4_group_t groupnr;
+ 		struct ext4_prealloc_space *pa;
+ 		pa = list_entry(cur, struct ext4_prealloc_space, group_list);
+ 		ext4_get_group_no_and_offset(sb, pa->pstart, &groupnr, &k);
+@@ -812,7 +815,7 @@
+ }
  
- 	/*
- 	 * We're going to place this inode in a different blockgroup from its
-@@ -442,33 +446,33 @@
- 	 *
- 	 * So add our directory's i_ino into the starting point for the hash.
- 	 */
--	group = (group + parent->i_ino) % ngroups;
-+	*group = (*group + parent->i_ino) % ngroups;
+ static void ext4_mb_generate_buddy(struct super_block *sb,
+-				void *buddy, void *bitmap, int group)
++				void *buddy, void *bitmap, ext4_group_t group)
+ {
+ 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
+ 	unsigned short max = EXT4_BLOCKS_PER_GROUP(sb);
+@@ -843,7 +846,8 @@
+ 	grp->bb_fragments = fragments;
  
- 	/*
- 	 * Use a quadratic hash to find a group with a free inode and some free
- 	 * blocks.
- 	 */
- 	for (i = 1; i < ngroups; i <<= 1) {
--		group += i;
--		if (group >= ngroups)
--			group -= ngroups;
--		desc = ext4_get_group_desc (sb, group, NULL);
-+		*group += i;
-+		if (*group >= ngroups)
-+			*group -= ngroups;
-+		desc = ext4_get_group_desc(sb, *group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
- 				le16_to_cpu(desc->bg_free_blocks_count))
--			return group;
-+			return 0;
+ 	if (free != grp->bb_free) {
+-		printk("EXT4-fs: group %u: %u blocks in bitmap, %u in gd\n",
++		printk(KERN_DEBUG
++			"EXT4-fs: group %lu: %u blocks in bitmap, %u in gd\n",
+ 			group, free, grp->bb_free);
+ 		grp->bb_free = free;
  	}
- 
- 	/*
- 	 * That failed: try linear search for a free inode, even if that group
- 	 * has no free blocks.
- 	 */
--	group = parent_group;
-+	*group = parent_group;
- 	for (i = 0; i < ngroups; i++) {
--		if (++group >= ngroups)
--			group = 0;
--		desc = ext4_get_group_desc (sb, group, NULL);
-+		if (++*group >= ngroups)
-+			*group = 0;
-+		desc = ext4_get_group_desc(sb, *group, NULL);
- 		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
--			return group;
-+			return 0;
- 	}
- 
- 	return -1;
-@@ -489,16 +493,17 @@
+@@ -881,7 +885,7 @@
+ 	int groups_per_page;
+ 	int err = 0;
+ 	int i;
+-	int first_group;
++	ext4_group_t first_group;
+ 	int first_block;
  	struct super_block *sb;
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct buffer_head *bh2;
--	ext4_group_t group;
-+	ext4_group_t group = 0;
- 	unsigned long ino = 0;
- 	struct inode * inode;
- 	struct ext4_group_desc * gdp = NULL;
- 	struct ext4_super_block * es;
- 	struct ext4_inode_info *ei;
- 	struct ext4_sb_info *sbi;
--	int err = 0;
-+	int ret2, err = 0;
- 	struct inode *ret;
--	int i, free = 0;
+ 	struct buffer_head *bhs;
+@@ -1029,7 +1033,7 @@
+ 	return err;
+ }
+ 
+-static int ext4_mb_load_buddy(struct super_block *sb, int group,
++static int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 		struct ext4_buddy *e4b)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -1040,7 +1044,7 @@
+ 	int poff;
+ 	struct page *page;
+ 
+-	mb_debug("load group %u\n", group);
++	mb_debug("load group %lu\n", group);
+ 
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+ 
+@@ -1229,7 +1233,7 @@
+ 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+ 
+ 			ext4_error(sb, __FUNCTION__, "double-free of inode"
+-				   " %lu's block %lu(bit %u in group %u)\n",
++				   " %lu's block %lu(bit %u in group %lu)\n",
+ 				   inode ? inode->i_ino : 0, blocknr, block,
+ 				   e4b->bd_group);
+ 		}
+@@ -1559,7 +1563,7 @@
+ 					struct ext4_buddy *e4b)
+ {
+ 	struct ext4_free_extent ex = ac->ac_b_ex;
+-	int group = ex.fe_group;
++	ext4_group_t group = ex.fe_group;
+ 	int max;
+ 	int err;
+ 
+@@ -1585,7 +1589,7 @@
+ static int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 				struct ext4_buddy *e4b)
+ {
+-	int group = ac->ac_g_ex.fe_group;
++	ext4_group_t group = ac->ac_g_ex.fe_group;
+ 	int max;
+ 	int err;
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+@@ -1754,7 +1758,7 @@
+ }
+ 
+ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+-				int group, int cr)
++				ext4_group_t group, int cr)
+ {
+ 	unsigned free, fragments;
+ 	unsigned i, bits;
+@@ -1803,8 +1807,8 @@
+ 
+ static int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ {
+-	int group;
+-	int i;
++	ext4_group_t group;
 +	ext4_group_t i;
-+	int free = 0;
+ 	int cr;
+ 	int err = 0;
+ 	struct ext4_sb_info *sbi;
+@@ -2154,7 +2158,7 @@
+ {
+ 	struct super_block *sb = seq->private;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	long group;
++	ext4_group_t group;
  
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -514,14 +519,14 @@
- 	es = sbi->s_es;
- 	if (S_ISDIR(mode)) {
- 		if (test_opt (sb, OLDALLOC))
--			group = find_group_dir(sb, dir);
-+			ret2 = find_group_dir(sb, dir, &group);
- 		else
--			group = find_group_orlov(sb, dir);
-+			ret2 = find_group_orlov(sb, dir, &group);
- 	} else
--		group = find_group_other(sb, dir);
-+		ret2 = find_group_other(sb, dir, &group);
+ 	if (*pos < 0 || *pos >= sbi->s_groups_count)
+ 		return NULL;
+@@ -2167,7 +2171,7 @@
+ {
+ 	struct super_block *sb = seq->private;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	long group;
++	ext4_group_t group;
  
- 	err = -ENOSPC;
--	if (group == -1)
-+	if (ret2 == -1)
- 		goto out;
+ 	++*pos;
+ 	if (*pos < 0 || *pos >= sbi->s_groups_count)
+@@ -2330,7 +2334,8 @@
  
- 	for (i = 0; i < sbi->s_groups_count; i++) {
+ static int ext4_mb_init_backend(struct super_block *sb)
+ {
+-	int i, j, len, metalen;
++	ext4_group_t i;
++	int j, len, metalen;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int num_meta_group_infos =
+ 		(sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) >>
+@@ -2571,7 +2576,7 @@
+ int ext4_mb_release(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	int i;
++	ext4_group_t i;
+ 	int num_meta_group_infos;
+ 
+ 	if (!test_opt(sb, MBALLOC))
+@@ -3351,12 +3356,13 @@
+  * the function goes through all preallocation in this group and marks them
+  * used in in-core bitmap. buddy must be generated from this bitmap
+  */
+-static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap, int group)
++static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
++					ext4_group_t group)
+ {
+ 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
+ 	struct ext4_prealloc_space *pa;
+ 	struct list_head *cur;
+-	unsigned long groupnr;
++	ext4_group_t groupnr;
+ 	ext4_grpblk_t start;
+ 	int preallocated = 0;
+ 	int count = 0;
+@@ -3382,7 +3388,7 @@
+ 		preallocated += len;
+ 		count++;
+ 	}
+-	mb_debug("prellocated %u for group %u\n", preallocated, group);
++	mb_debug("prellocated %u for group %lu\n", preallocated, group);
+ }
+ 
+ static void ext4_mb_pa_callback(struct rcu_head *head)
+@@ -3615,7 +3621,7 @@
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	unsigned long end;
+ 	unsigned long next;
+-	unsigned long group;
++	ext4_group_t group;
+ 	ext4_grpblk_t bit;
+ 	sector_t start;
+ 	int err = 0;
+@@ -3671,7 +3677,7 @@
+ {
+ 	struct ext4_allocation_context ac;
+ 	struct super_block *sb = e4b->bd_sb;
+-	unsigned long group;
++	ext4_group_t group;
+ 	ext4_grpblk_t bit;
+ 
+ 	ac.ac_op = EXT4_MB_HISTORY_DISCARD;
+@@ -3703,7 +3709,7 @@
+  *   1) how many requested
+  */
+ static int ext4_mb_discard_group_preallocations(struct super_block *sb,
+-						int group, int needed)
++					ext4_group_t group, int needed)
+ {
+ 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -3821,7 +3827,7 @@
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct ext4_prealloc_space *pa, *tmp;
+-	unsigned long group = 0;
++	ext4_group_t group = 0;
+ 	struct list_head list;
+ 	struct ext4_buddy e4b;
+ 	int err;
+@@ -3932,7 +3938,7 @@
+ {
+ #if 0
+ 	struct super_block *sb = ac->ac_sb;
+-	int i;
++	ext4_group_t i;
+ 
+ 	printk(KERN_ERR "EXT4-fs: can't allocate: status %d flags %d\n",
+ 			ac->ac_status, ac->ac_flags);
+@@ -4015,7 +4021,7 @@
+ 	struct super_block *sb = ar->inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+-	unsigned long group;
++	ext4_group_t group;
+ 	unsigned long len;
+ 	unsigned long goal;
+ 	ext4_grpblk_t block;
+@@ -4106,7 +4112,7 @@
+ 
+ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ {
+-	int i;
++	ext4_group_t i;
+ 	int ret;
+ 	int freed = 0;
+ 
+@@ -4242,7 +4248,7 @@
+ }
+ 
+ static int ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+-			  int group, ext4_grpblk_t block, int count)
++			  ext4_group_t group, ext4_grpblk_t block, int count)
+ {
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+@@ -4317,7 +4323,7 @@
+ 	unsigned long overflow;
+ 	ext4_grpblk_t bit;
+ 	struct buffer_head *gd_bh;
+-	unsigned long block_group;
++	ext4_group_t block_group;
+ 	struct ext4_sb_info *sbi;
+ 	struct ext4_buddy e4b;
+ 	int err = 0;
 
---------------080706040507050007080300--
+--------------030305070201080706080909--
