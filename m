@@ -1,51 +1,454 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: delalloc fragmenting files?
-Date: Wed, 31 Oct 2007 16:01:47 -0500
-Message-ID: <4728ED3B.1060407@redhat.com>
-References: <47225B1E.2060708@redhat.com> <20071026221938.GV3042@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: dir inode reservation V2
+Date: Wed, 31 Oct 2007 22:19:59 +0100
+Message-ID: <20071031211959.GF28809@atrey.karlin.mff.cuni.cz>
+References: <47270313.6060301@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Alex Tomas <alex.tomas@sun.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Coly Li <coyli@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33585 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758955AbXJaVBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Oct 2007 17:01:52 -0400
-In-Reply-To: <20071026221938.GV3042@webber.adilger.int>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:50094 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753985AbXJaVUB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2007 17:20:01 -0400
+Content-Disposition: inline
+In-Reply-To: <47270313.6060301@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> One of the issues is that w/o delalloc the mballoc code only gets 
-> single-block allocations, so there might be a problem with the interface
-> to mballoc.  That might be caused by the fact the patches were changed
-> at one point from delalloc-atop-mballoc to mballoc-atop-delalloc, and
-> something was missed in that conversion.
+  Hello,
 
-I've been testing this with a 16x1MB buffered dd to a fresh filesystem;
-it gets 7 extents, and out of order.  :(
+> >From Mingming's feedback, there were a typo which could break compiling in V1 patch.
+> This patch fixed this typo, also fixed errors reported by script/checkpatch.pl.
+> 
+> BTW, it seems some duplicated functions were introduced into fs/ext4/inode.c in commit
+> 92ae2b932ed127edff4354929c477f24112341b0 (maybe my mistake during git-pull). If there is any error
+> reported from fs/ext4/inode.c, please fix it before apply this patch.
+  It would be useful to have some description of the feature - i.e. what
+are you trying to achieve and how do you implement it. It would simplify
+the review.
+  Also do you have some performance numbers?
 
-First block: 37120
-Last block: 63427
-Discontinuity: Block 1024 is at 38400 (was 38143)
-Discontinuity: Block 1036 is at 57344 (was 38411)
-Discontinuity: Block 2048 is at 38412 (was 58355)
-Discontinuity: Block 2072 is at 61440 (was 38435)
-Discontinuity: Block 3072 is at 38436 (was 62439)
-Discontinuity: Block 3108 is at 62440 (was 38471)
-/mnt/test/testfile: 7 extents found
+> Thank Mingming's for the feedback.
+> 
+> Signed-off-by: Coly Li <coyli@suse.de>
+> Cc: Andreas Dilger <adilger@sun.com>
+> Cc: Mingming Cao <cmm@us.ibm.com>
+> ---
+>  fs/ext4/ialloc.c           |  201 ++++++++++++++++++++++++++++++++++++++++++--
+>  fs/ext4/super.c            |   16 ++++
+>  include/linux/ext4_fs.h    |    8 ++
+>  include/linux/ext4_fs_sb.h |    2 +
+>  4 files changed, 218 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index d775170..1c79ca4 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -7,9 +7,11 @@
+>   * Universite Pierre et Marie Curie (Paris VI)
+>   *
+>   *  BSD ufs-inspired inode and directory allocation by
+> - *  Stephen Tweedie (sct@redhat.com), 1993
+> + *        Stephen Tweedie (sct@redhat.com), 1993
+>   *  Big-endian to little-endian byte-swapping/bitmaps by
+>   *        David S. Miller (davem@caip.rutgers.edu), 1995
+> + *  Dir inode reservation support by
+> + *        Coly Li (coyli@suse.de), 2007
+>   */
+> 
+>  #include <linux/time.h>
+> @@ -130,6 +132,41 @@ error_out:
+>  }
+> 
+>  /*
+> + * When calling this function, spin_lock of gdp is hold already.
+  It should rather be: ..., we already hold the spinlock for gdp.
 
-One thing that seems to be happening is that thanks to delalloc, a nice
-big request is coming in (only 1036 blocks of the 4096, not quite sure
-why), but then it gets into ext4_mb_normalize_request(), which finds the
-most blocks it can "preallocate" is 256, and chops down the request to
-256 blocks.  Shouldn't this preallocation be over & above what was asked
-for, vs. reducing the request?
+> + */
+> +static void ext4_update_itable_unused(handle_t *handle, struct inode *inode,
+> +		struct ext4_group_desc *gdp, struct buffer_head *bitmap_bh)
+> +{
+> +	struct super_block *sb;
+> +	int bit, offset;
+> +	int free, group, ires;
+> +
+> +	sb = inode->i_sb;
+> +	ires =  EXT4_SB(sb)->s_dir_ireserve_nr;
+> +	bit = (inode->i_ino - 1) % EXT4_INODES_PER_GROUP(sb);
+> +	if (bit & (ires - 1))
+> +		return;
+> +	free = EXT4_INODES_PER_GROUP(sb) - le16_to_cpu(gdp->bg_itable_unused);
+> +	if (free < ires)
+> +		return;
+> +	group = (inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
+> +	do {
+> +		offset = ext4_find_next_bit(
+> +			bitmap_bh->b_data, free, free - ires);
+  Can't you pass negative offset here? Probably you could make 'free'
+'ires' aligned (at least after the initial check). BTW: doing this check
+in a backward fashion by ires sized bits is going to be slow - caches
+don't like such access pattern - so maybe something better would be
+needed.
 
-Ok, so, we get allocations in 256-block chunks...  Why they don't all
-come out contiguous, I don't know yet...
+> +		if (offset >= free)
+> +			free -= ires;
+> +		else
+> +			break;
+> +	} while (free > 0);
+> +	if (free < 0)
+> +		free = 0;
+> +	if (group == 0 && (free < EXT4_DIR_IRESERVE_NORMAL))
+> +		free = EXT4_DIR_IRESERVE_NORMAL;
+  Why is group 0 special here?
 
--Eric
+> +	gdp->bg_itable_unused = cpu_to_le16(
+> +		EXT4_INODES_PER_GROUP(sb) - free);
+> +}
+> +
+> +/*
+>   * NOTE! When we get the inode, we're the only people
+>   * that have access to it, and as such there are no
+>   * race conditions we have to worry about. The inode
+> @@ -225,9 +262,13 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+>  			spin_lock(sb_bgl_lock(sbi, block_group));
+>  			gdp->bg_free_inodes_count = cpu_to_le16(
+>  				le16_to_cpu(gdp->bg_free_inodes_count) + 1);
+> -			if (is_directory)
+> +			if (is_directory) {
+>  				gdp->bg_used_dirs_count = cpu_to_le16(
+>  				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
+> +				if (test_opt(sb, DIR_IRESERVE))
+> +					ext4_update_itable_unused(
+> +						handle, inode, gdp, bitmap_bh);
+> +			}
+>  			gdp->bg_checksum = ext4_group_desc_csum(sbi,
+>  							block_group, gdp);
+>  			spin_unlock(sb_bgl_lock(sbi, block_group));
+> @@ -264,9 +305,10 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
+>  			  ext4_grpnum_t *best_group)
+>  {
+>  	ext4_grpnum_t ngroups = EXT4_SB(sb)->s_groups_count;
+> +	int ires = EXT4_SB(sb)->s_dir_ireserve_nr;
+>  	unsigned int freei, avefreei;
+> -	struct ext4_group_desc *desc, *best_desc = NULL;
+> -	ext4_grpnum_t group;
+> +	struct ext4_group_desc *desc, *best_desc = NULL, *best_ires_desc = NULL;
+> +	ext4_grpnum_t group, best_ires_group = -1;
+>  	int ret = -1;
+> 
+>  	freei = percpu_counter_read_positive(&EXT4_SB(sb)->s_freeinodes_counter);
+> @@ -285,7 +327,21 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
+>  			best_desc = desc;
+>  			ret = 0;
+>  		}
+> +		if (test_opt(sb, DIR_IRESERVE)) {
+> +			if ((best_ires_desc &&
+> +			   (le16_to_cpu(desc->bg_itable_unused) >
+> +			   le16_to_cpu(best_ires_desc->bg_itable_unused))) ||
+> +			   ((!best_ires_desc) &&
+> +			   (le16_to_cpu(desc->bg_itable_unused) >= ires))) {
+> +				best_ires_group = group;
+> +				best_ires_desc = desc;
+> +				ret = 0;
+> +			}
+> +		}
+>  	}
+> +	if (test_opt(sb, DIR_IRESERVE) && best_ires_desc)
+> +		*best_group = best_ires_group;
+> +
+  I see two issues here:
+  1) What is the logic behind this? The original code decides based on
+amount of free space in the group if we have at least average number of
+free inodes. But you just decide based on bg_itable_unused which seems
+strange to me.
+  2) If the logic is fine, I don't see why do you use special variables
+best_ires_group and best_ires_desc?
+
+>  	return ret;
+>  }
+> 
+> @@ -354,6 +410,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+>  			desc = ext4_get_group_desc(sb, grp, NULL);
+>  			if (!desc || !desc->bg_free_inodes_count)
+>  				continue;
+> +			if (test_opt(sb, DIR_IRESERVE) &&
+> +			    (le16_to_cpu(desc->bg_itable_unused)
+> +					< EXT4_SB(sb)->s_dir_ireserve_nr))
+> +				continue;
+>  			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
+>  				continue;
+>  			if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
+> @@ -390,6 +450,10 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+>  		desc = ext4_get_group_desc(sb, *group, NULL);
+>  		if (!desc || !desc->bg_free_inodes_count)
+>  			continue;
+> +		if (test_opt(sb, DIR_IRESERVE) &&
+> +		    (le16_to_cpu(desc->bg_itable_unused)
+> +					< EXT4_SB(sb)->s_dir_ireserve_nr))
+> +			continue;
+>  		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
+>  			continue;
+>  		if (le16_to_cpu(desc->bg_free_inodes_count) < min_inodes)
+> @@ -478,6 +542,105 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+>  	return -1;
+>  }
+> 
+> +static int ext4_ino_from_ireserve(handle_t *handle, struct inode *dir,
+> +			  int mode, ext4_grpnum_t *group, unsigned long *ino)
+> +{
+> +	struct ext4_group_desc *gdp = NULL;
+> +	struct super_block *sb;
+> +	struct ext4_sb_info *sbi;
+> +	struct buffer_head *gdp_bh = NULL, *bitmap_bh = NULL;
+> +	int free;
+> +	int i;
+> +	int retries;
+> +	unsigned long ires_ino;
+> +	int ires_group = *group;
+> +
+> +	sb = dir->i_sb;
+> +	sbi = EXT4_SB(sb);
+> +
+> +	/* if the inode number is not for directory,
+> +	 * only try to allocate after directory's inode
+> +	 */
+> +	if (!S_ISDIR(mode)) {
+> +		ires_ino = dir->i_ino % EXT4_INODES_PER_GROUP(sb);
+> +		goto find;
+  In find: you just fall through and return ires_ino. So you may as well
+set it here and return or create a new label 'return:' and jump there.
+The code would be easier to read.
+
+> +	}
+> +
+> +	/* reserve inodes for new directory */
+> +	for (i = 0; i < sbi->s_groups_count; i++) {
+> +		gdp = ext4_get_group_desc(sb, ires_group, &gdp_bh);
+> +		if (!gdp)
+> +			goto fail;
+> +		retries = 2;
+> +still_reserve_in_this_group:
+> +		if (le16_to_cpu(gdp->bg_itable_unused) >=
+> +		    sbi->s_dir_ireserve_nr) {
+> +
+> +			brelse(bitmap_bh);
+> +			bitmap_bh = read_inode_bitmap(sb, ires_group);
+> +			if (!bitmap_bh)
+> +				goto fail;
+> +
+> +			BUFFER_TRACE(bitmap_bh, "get_write_access");
+> +			if (ext4_journal_get_write_access(
+> +				handle, bitmap_bh) != 0)
+> +				goto fail;
+> +			free = EXT4_INODES_PER_GROUP(sb) -
+> +				le16_to_cpu(gdp->bg_itable_unused);
+> +			if (!ext4_set_bit_atomic(sb_bgl_lock(sbi, ires_group),
+> +					free, bitmap_bh->b_data)) {
+> +				/* we won it */
+> +				BUFFER_TRACE(bitmap_bh,
+> +					"call ext4_journal_dirty_metadata");
+> +				if (ext4_journal_dirty_metadata(handle,
+> +							bitmap_bh) != 0)
+> +					goto fail;
+> +				ires_ino = free;
+> +				goto find;
+> +			}
+> +			/* we lost it */
+> +			jbd2_journal_release_buffer(handle, bitmap_bh);
+> +			if (-- retries > 0)
+> +				goto still_reserve_in_this_group;
+> +		}
+> +		if (++ires_group == sbi->s_groups_count)
+> +			ires_group = 0;
+> +	}
+> +	goto fail;
+> +find:
+> +	if (S_ISDIR(mode)) {
+> +		free = ires_ino + sbi->s_dir_ireserve_nr;
+> +		if (free > EXT4_INODES_PER_GROUP(sb))
+> +			free = EXT4_INODES_PER_GROUP(sb);
+> +
+> +		spin_lock(sb_bgl_lock(sbi, ires_group));
+> +		if ((EXT4_INODES_PER_GROUP(sb) - free) <
+> +		     le16_to_cpu(gdp->bg_itable_unused)) {
+> +			BUFFER_TRACE(gdp_bh,
+> +				      "call ext4_journal_get_write_access");
+> +			if (ext4_journal_get_write_access(handle, gdp_bh)) {
+> +				spin_unlock(sb_bgl_lock(sbi, ires_group));
+> +				goto fail;
+> +			}
+> +			gdp->bg_itable_unused =
+> +				EXT4_INODES_PER_GROUP(sb) - free;
+> +			spin_unlock(sb_bgl_lock(sbi, ires_group));
+> +			BUFFER_TRACE(bh, "call ext4_journal_dirty_metadata");
+> +			if (ext4_journal_dirty_metadata(handle, gdp_bh) != 0)
+> +				goto fail;
+> +		} else {
+> +			spin_unlock(sb_bgl_lock(sbi, ires_group));
+> +		}
+> +		brelse(bitmap_bh);
+> +		*group = ires_group;
+> +	}
+> +	*ino = ires_ino;
+> +	return 0;
+> +fail:
+> +	brelse(bitmap_bh);
+> +	return -ENOSPC;
+> +}
+> +
+>  /*
+>   * There are two policies for allocating an inode.  If the new inode is
+>   * a directory, then a forward search is made for a block group with both
+> @@ -541,7 +704,12 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+>  			goto fail;
+> 
+>  		ino = 0;
+> -
+> +		if (test_opt(sb, DIR_IRESERVE)) {
+> +			err = ext4_ino_from_ireserve(handle, dir,
+> +						     mode, &group, &ino);
+> +			if ((!err) && S_ISDIR(mode))
+> +				goto got;
+> +		}
+>  repeat_in_this_group:
+>  		ino = ext4_find_next_zero_bit((unsigned long *)
+>  				bitmap_bh->b_data, EXT4_INODES_PER_GROUP(sb), ino);
+> @@ -633,6 +801,20 @@ got:
+>  	}
+> 
+>  	spin_lock(sb_bgl_lock(sbi, group));
+> +
+> +	if (test_opt(sb, DIR_IRESERVE)) {
+> +		free = EXT4_INODES_PER_GROUP(sb) -
+> +			le16_to_cpu(gdp->bg_itable_unused);
+> +		if (ino > free) {
+> +			free += sbi->s_dir_ireserve_nr;
+> +			free = (free + sbi->s_dir_ireserve_nr - 1) &
+> +				~(sbi->s_dir_ireserve_nr - 1);
+> +			if (free > EXT4_INODES_PER_GROUP(sb))
+> +				free = EXT4_INODES_PER_GROUP(sb);
+> +			gdp->bg_itable_unused = cpu_to_le16(
+> +				EXT4_INODES_PER_GROUP(sb) - free);
+> +		}
+> +	}
+>  	/* If we didn't allocate from within the initialized part of the inode
+>  	 * table then we need to initialize up to this inode. */
+>  	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+> @@ -655,12 +837,13 @@ got:
+>  		/*
+>  		 * Check the relative inode number against the last used
+>  		 * relative inode number in this group. if it is greater
+> -		 * we need to  update the bg_itable_unused count
+> -		 *
+> +		 * we need to  update the bg_itable_unused count. If
+> +		 * directory inode reservation is enabled, try to make it
+> +		 * align on a s_dir_ireserve_nr boundary.
+>  		 */
+>  		if (ino > free)
+> -			gdp->bg_itable_unused =
+> -				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
+> +			gdp->bg_itable_unused = cpu_to_le16(
+> +				EXT4_INODES_PER_GROUP(sb) - ino);
+>  	}
+  This seems like just a formatting change without an apparent reason,
+or am I missing something? At least the change in the comment actually
+describes something which already happened up in the code.
+
+> 
+>  	gdp->bg_free_inodes_count =
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 37afc41..a9b87c3 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -874,6 +874,7 @@ enum {
+>  	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
+>  	Opt_journal_checksum, Opt_journal_async_commit,
+>  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+> +	Opt_dir_ireserve_low, Opt_dir_ireserve_normal, Opt_dir_ireserve_high,
+>  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+>  	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+>  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+> @@ -919,6 +920,9 @@ static match_table_t tokens = {
+>  	{Opt_data_journal, "data=journal"},
+>  	{Opt_data_ordered, "data=ordered"},
+>  	{Opt_data_writeback, "data=writeback"},
+> +	{Opt_dir_ireserve_low, "dir_ireserve=low"},
+> +	{Opt_dir_ireserve_normal, "dir_ireserve=normal"},
+> +	{Opt_dir_ireserve_high, "dir_ireserve=high"},
+>  	{Opt_offusrjquota, "usrjquota="},
+>  	{Opt_usrjquota, "usrjquota=%s"},
+>  	{Opt_offgrpjquota, "grpjquota="},
+> @@ -1297,6 +1301,18 @@ clear_qf_name:
+>  				return 0;
+>  			sbi->s_stripe = option;
+>  			break;
+> +		case Opt_dir_ireserve_low:
+> +			set_opt(sbi->s_mount_opt, DIR_IRESERVE);
+> +			sbi->s_dir_ireserve_nr = EXT4_DIR_IRESERVE_LOW;
+> +			break;
+> +		case Opt_dir_ireserve_normal:
+> +			set_opt(sbi->s_mount_opt, DIR_IRESERVE);
+> +			sbi->s_dir_ireserve_nr = EXT4_DIR_IRESERVE_NORMAL;
+> +			break;
+> +		case Opt_dir_ireserve_high:
+> +			set_opt(sbi->s_mount_opt, DIR_IRESERVE);
+> +			sbi->s_dir_ireserve_nr = EXT4_DIR_IRESERVE_HIGH;
+> +			break;
+>  		default:
+>  			printk (KERN_ERR
+>  				"EXT4-fs: Unrecognized mount option \"%s\" "
+  Wouldn't it be better to allow user to set the number of reserved
+inodes by this option? I.e. allowing something like dir_ireserve=64? And
+having some sane default of course when the number is not specified.
+Most users won't touch the option and those who are knowledgable
+enough would like to experiment with the number anyway...
+
+> diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+> index 8d56b86..d9493e3 100644
+> --- a/include/linux/ext4_fs.h
+> +++ b/include/linux/ext4_fs.h
+> @@ -92,6 +92,13 @@ struct ext4_allocation_request {
+>  #define EXT4_GOOD_OLD_FIRST_INO	11
+> 
+>  /*
+> + * Macro-instructions used to reserve inodes for directories
+> + */
+> +#define EXT4_DIR_IRESERVE_LOW		16
+> +#define EXT4_DIR_IRESERVE_NORMAL	64
+> +#define EXT4_DIR_IRESERVE_HIGH		128
+> +
+> +/*
+>   * Maximal count of links to a file
+>   */
+>  #define EXT4_LINK_MAX		65000
+> @@ -502,6 +509,7 @@ do {									       \
+>  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+>  #define EXT4_MOUNT_DELALLOC		0x2000000 /* Delalloc support */
+>  #define EXT4_MOUNT_MBALLOC		0x4000000 /* Buddy allocation support */
+> +#define EXT4_MOUNT_DIR_IRESERVE		0x10000000/* dir inode reservation support */
+>  /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
+>  #ifndef _LINUX_EXT2_FS_H
+>  #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
+> diff --git a/include/linux/ext4_fs_sb.h b/include/linux/ext4_fs_sb.h
+> index 4098d4f..fa5e866 100644
+> --- a/include/linux/ext4_fs_sb.h
+> +++ b/include/linux/ext4_fs_sb.h
+> @@ -147,6 +147,8 @@ struct ext4_sb_info {
+> 
+>  	/* locality groups */
+>  	struct ext4_locality_group *s_locality_groups;
+> +	/* directory inodes reservation number */
+> +	int s_dir_ireserve_nr;
+  Maybe description like "number of inodes we reserve in a directory"
+would be more descriptive...
+
+>  };
+>  #define EXT4_GROUP_INFO(sb, group)					   \
+>  	EXT4_SB(sb)->s_group_info[(group) >> EXT4_DESC_PER_BLOCK_BITS(sb)] \
+
+										Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
