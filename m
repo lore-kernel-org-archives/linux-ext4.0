@@ -1,63 +1,111 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: a potential deadlock?
-Date: Wed, 31 Oct 2007 20:27:16 +0100
-Message-ID: <20071031192716.GE28809@atrey.karlin.mff.cuni.cz>
-References: <002701c8179c$cc3a02b0$64ae0810$@com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: fix MB_DEBUG format warnings
+Date: Wed, 31 Oct 2007 14:45:46 -0500
+Message-ID: <4728DB6A.7020506@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: LIOU Payphone <lioupayphone@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@osdl.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:36539 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752194AbXJaT1S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2007 15:27:18 -0400
-Content-Disposition: inline
-In-Reply-To: <002701c8179c$cc3a02b0$64ae0810$@com>
+Received: from mx1.redhat.com ([66.187.233.31]:33331 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751607AbXJaTpx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Oct 2007 15:45:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+(applies at end of current ext4 patch series)
 
-> Here is a question to be confirmed.
-> 
-> In ext3_ioctl() with "cmd == EXT3_IOC_SETFLAGS", we firstly lock
-> "inode->i_mutex", start a handle with 1 journal-block by calling
-> ext3_journal_start(). In ext3_new_blocks(), say QUOTA was enabled with vfsv0
-> format, we will call the function "DQUOT_ALLOC_BLOCK()". The handle in
-> ext3_new_blocks()  was started by high-level functions, and
-> DQUOT_ALLOC_BLOCK() will finally calles ext3_quota_write() in which it try
-> to lock the "i_mutex" of the inode of a quota-file. 
-> 
-> At it happens, when we want to modify the inodes of quota-files via
-> ext3_ioctl(cmd = EXT3_IOC_SETFLAGS) (say process-A), another guy try to
-> execute ext3_quota_write() by calling DQUOT_ALLOC_BLOCK() (say process-B). I
-> guess a potential deadlock between process-A and process-B would happen in
-> such a executing sequence:
-> 
-> (1) process-B got many journal-blocks, then came into ext3_new_blocks(),
-> hung up
-> (2) process-A locked i_mutex of the inode of a quota-file, then try to
-> starts a handle. Unfortunately, there are no enough journal-blocks left for
-> process-A.
-> (3) process-B awakened, and came into DQUOT_ALLOC_BLOCK(), finally came into
-> the function ext3_quota_write() who also wants to lock the i_mutex of the
-> inode of a quota-file. But the i_mutex was locked by process-A. so process-B
-> has no choice but to wait.
-> (4) if the ext3-filesystem was  too busy to release jounal-blocks for
-> process-A, or a unexpected incident happened. Both  the two situations would
-> result in no journal-blocks for any other processes. Apparently, process-A
-> have to wait for available journal-blocks. so process-A was hung-up with
-> i_mutex of the inode of a quota-file locked.
-> (5) process-B was blocked by the "inode->i_mutex" subsequently.
-  Yes, that is a lock inversion between the journal lock and i_mutex on
-quota files which can indeed lead to a deadlock. Thanks for spotting it.
-Luckily it's not very likely you're going to hit it but we should fix it
-anyway. Currently I don't have much idea how - probably we'd have to get
-rid of the need to use i_mutex on quota files in quota_write but that's
-also non-trivial.
+Fix a slew of compile warnings from mismatched format specifiers
+when MB_DEBUG is turned on.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c
++++ linux-2.6.24-rc1/fs/ext4/mballoc.c
+@@ -954,7 +954,7 @@ static int ext4_mb_init_cache(struct pag
+ 		get_bh(bh[i]);
+ 		bh[i]->b_end_io = end_buffer_read_sync;
+ 		submit_bh(READ, bh[i]);
+-		mb_debug("read bitmap for group %u\n", first_group + i);
++		mb_debug("read bitmap for group %lu\n", first_group + i);
+ 	}
+ 
+ 	/* wait for I/O completion */
+@@ -2670,7 +2670,7 @@ static void ext4_mb_free_committed_block
+ 		if (md == NULL)
+ 			break;
+ 
+-		mb_debug("gonna free %u blocks in group %u (0x%p):",
++		mb_debug("gonna free %u blocks in group %lu (0x%p):",
+ 				md->num, md->group, md);
+ 
+ 		err = ext4_mb_load_buddy(sb, md->group, &e4b);
+@@ -3029,7 +3029,7 @@ static void ext4_mb_normalize_group_requ
+ 
+ 	BUG_ON(lg == NULL);
+ 	ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
+-	mb_debug("#%u: goal %u blocks for locality group\n",
++	mb_debug("#%u: goal %lu blocks for locality group\n",
+ 		current->pid, ac->ac_g_ex.fe_len);
+ }
+ 
+@@ -3255,7 +3255,7 @@ static void ext4_mb_use_inode_pa(struct 
+ 	BUG_ON(pa->pa_free < len);
+ 	pa->pa_free -= len;
+ 
+-	mb_debug("use %lu/%lu from inode pa %p\n", start, len, pa);
++	mb_debug("use %llu/%lu from inode pa %p\n", start, len, pa);
+ }
+ 
+ /*
+@@ -3282,7 +3282,7 @@ static void ext4_mb_use_group_pa(struct 
+ 	 * pa and think that it have enought free blocks if we
+ 	 * don't update pa_free here right ?
+ 	 */
+-	mb_debug("use %lu/%lu from group pa %p\n", pa->pa_lstart-len, len, pa);
++	mb_debug("use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa);
+ }
+ 
+ /*
+@@ -3513,7 +3513,7 @@ static int ext4_mb_new_inode_pa(struct e
+ 	pa->pa_deleted = 0;
+ 	pa->pa_linear = 0;
+ 
+-	mb_debug("new inode pa %p: %lu/%lu for %lu\n", pa,
++	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
+ 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+ 
+ 	ext4_mb_use_inode_pa(ac, pa);
+@@ -3569,7 +3569,7 @@ static int ext4_mb_new_group_pa(struct e
+ 	pa->pa_deleted = 0;
+ 	pa->pa_linear = 1;
+ 
+-	mb_debug("new group pa %p: %lu/%lu for %lu\n", pa,
++	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
+ 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+ 
+ 	ext4_mb_use_group_pa(ac, pa);
+@@ -4072,8 +4072,8 @@ static int ext4_mb_initialize_context(st
+ 	 * locality group. this is a policy, actually */
+ 	ext4_mb_group_or_file(ac);
+ 
+-	mb_debug("init ac: %u blocks @ %llu, goal %llu, flags %x, 2^%d, "
+-			"left: %llu/%llu, right %llu/%llu to %swritable\n",
++	mb_debug("init ac: %u blocks @ %u, goal %u, flags %x, 2^%d, "
++			"left: %u/%u, right %u/%u to %swritable\n",
+ 			(unsigned) ar->len, (unsigned) ar->logical,
+ 			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
+ 			(unsigned) ar->lleft, (unsigned) ar->pleft,
+@@ -4288,7 +4288,7 @@ static int ext4_mb_free_metadata(handle_
+ 				page_cache_get(e4b->bd_bitmap_page);
+ 				db->bb_md_cur = md;
+ 				db->bb_tid = handle->h_transaction->t_tid;
+-				mb_debug("new md 0x%p for group %u\n",
++				mb_debug("new md 0x%p for group %lu\n",
+ 						md, md->group);
+ 			} else {
+ 				kfree(md);
