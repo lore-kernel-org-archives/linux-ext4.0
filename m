@@ -1,379 +1,362 @@
-From: Avantika Mathur <mathur@linux.vnet.ibm.com>
-Subject: [PATCH 3/3] ext4_group_t: mballoc changes
-Date: Tue, 30 Oct 2007 17:52:35 -0700
-Message-ID: <4727D1D3.7060208@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Fix 64KB blocksize in ext3 directories
+Date: Wed, 31 Oct 2007 16:39:57 +0100
+Message-ID: <20071031153957.GB25466@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------030305070201080706080909"
-To: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:58094 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756153AbXJaAvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Oct 2007 20:51:25 -0400
+Received: from styx.suse.cz ([82.119.242.94]:34023 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756060AbXJaPkA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Oct 2007 11:40:00 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------030305070201080706080909
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+  Hi Andrew,
 
+  looking at the commit messages it seems the patch fixing overflow of
+rec_len in ext3 directories when using 64KB blocksize got lost (I'm not
+surprised given the churn of the patches in this area for 2.6.24-rc1 ;).
+Anyway, the patch is attached. It should make it into 2.6.24 (or nasty
+things would happen if somebody actually try 64KB blocksize in ext3).
 
---------------030305070201080706080909
-Content-Type: text/x-patch;
- name="ext4_grpnumt-mballoc-fix.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="ext4_grpnumt-mballoc-fix.patch"
-
-Ext4: change groups to ext4_group_t in mballoc.c
-
-From: Avantika Mathur <mathur@us.ibm.com>
-
-Signed-off-by: Avantika Mathur <mathur@us.ibm.com>
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 ---
 
- fs/ext4/mballoc.c |   84 ++++++++++++++++++++++++++++--------------------------
- 1 file changed, 45 insertions(+), 39 deletions(-)
+With 64KB blocksize, a directory entry can have size 64KB which does not fit
+into 16 bits we have for entry lenght. So we store 0xffff instead and convert
+value when read from / written to disk. The patch also converts some places
+to use ext3_next_entry() when we are changing them anyway.
 
+Signed-off-by: Jan Kara <jack@suse.cz>
 
-Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-10-30 11:11:53.000000000 -0700
-+++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-10-30 11:19:59.000000000 -0700
-@@ -311,7 +311,7 @@
- #define EXT4_BB_MAX_BLOCKS	30
- 
- struct ext4_free_metadata {
--	unsigned short group;
-+	ext4_group_t group;
- 	unsigned short num;
- 	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
- 	struct list_head list;
-@@ -362,7 +362,7 @@
- struct ext4_free_extent {
- 	ext4_lblk_t fe_logical;
- 	ext4_grpblk_t fe_start;
--	unsigned long fe_group;
-+	ext4_group_t fe_group;
- 	unsigned long fe_len;
- };
- 
-@@ -441,7 +441,7 @@
- 	struct ext4_group_info *bd_info;
- 	struct super_block *bd_sb;
- 	__u16 bd_blkbits;
--	__u16 bd_group;
-+	ext4_group_t bd_group;
- };
- #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
- #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
-@@ -455,11 +455,12 @@
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
- static struct proc_dir_entry *proc_root_ext4;
--struct buffer_head *read_block_bitmap(struct super_block *, unsigned int);
-+struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
- ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
- 
--static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap, int group);
-+static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
-+					ext4_group_t group);
- static void ext4_mb_poll_new_transaction(struct super_block *, handle_t *);
- static void ext4_mb_free_committed_blocks(struct super_block *);
- static void ext4_mb_return_to_preallocation(struct inode *inode,
-@@ -472,19 +473,21 @@
- static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
- 
- 
--static inline void ext4_lock_group(struct super_block *sb, int group)
-+static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.24-rc1/fs/ext3/dir.c linux-2.6.24-rc1-1-ext3_64k_blocksize/fs/ext3/dir.c
+--- linux-2.6.24-rc1/fs/ext3/dir.c	2007-10-24 20:43:56.000000000 +0200
++++ linux-2.6.24-rc1-1-ext3_64k_blocksize/fs/ext3/dir.c	2007-10-24 20:45:01.000000000 +0200
+@@ -67,7 +67,7 @@ int ext3_check_dir_entry (const char * f
+ 			  unsigned long offset)
  {
- 	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT,
- 		      &EXT4_GROUP_INFO(sb, group)->bb_state);
- }
+ 	const char * error_msg = NULL;
+-	const int rlen = le16_to_cpu(de->rec_len);
++	const int rlen = ext3_rec_len_from_disk(de->rec_len);
  
--static inline void ext4_unlock_group(struct super_block *sb, int group)
-+static inline void ext4_unlock_group(struct super_block *sb,
-+					ext4_group_t group)
- {
- 	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT,
- 			&EXT4_GROUP_INFO(sb, group)->bb_state);
- }
- 
--static inline int ext4_is_group_locked(struct super_block *sb, int group)
-+static inline int ext4_is_group_locked(struct super_block *sb,
-+					ext4_group_t group)
- {
- 	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
- 					&EXT4_GROUP_INFO(sb, group)->bb_state);
-@@ -590,7 +593,7 @@
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 
- 			ext4_error(sb, __FUNCTION__, "double-free of inode"
--				   " %lu's block %lu(bit %u in group %u)\n",
-+				   " %lu's block %lu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr,
- 				   first + i, e4b->bd_group);
- 		}
-@@ -620,8 +623,8 @@
- 		b2 = (unsigned char *) bitmap;
- 		for (i = 0; i < e4b->bd_sb->s_blocksize; i++) {
- 			if (b1[i] != b2[i]) {
--				printk("corruption in group %u at byte %u(%u): "
--				       "%x in copy != %x on disk/prealloc\n",
-+				printk("corruption in group %lu at byte %u(%u):"
-+				       " %x in copy != %x on disk/prealloc\n",
- 					e4b->bd_group, i, i * 8, b1[i], b2[i]);
- 				BUG();
+ 	if (rlen < EXT3_DIR_REC_LEN(1))
+ 		error_msg = "rec_len is smaller than minimal";
+@@ -173,10 +173,10 @@ revalidate:
+ 				 * least that it is non-zero.  A
+ 				 * failure will be detected in the
+ 				 * dirent test below. */
+-				if (le16_to_cpu(de->rec_len) <
++				if (ext3_rec_len_from_disk(de->rec_len) <
+ 						EXT3_DIR_REC_LEN(1))
+ 					break;
+-				i += le16_to_cpu(de->rec_len);
++				i += ext3_rec_len_from_disk(de->rec_len);
  			}
-@@ -738,7 +741,7 @@
- 	grp = EXT4_GROUP_INFO(sb, e4b->bd_group);
- 	buddy = mb_find_buddy(e4b, 0, &max);
- 	list_for_each(cur, &grp->bb_prealloc_list) {
--		unsigned long groupnr;
-+		ext4_group_t groupnr;
- 		struct ext4_prealloc_space *pa;
- 		pa = list_entry(cur, struct ext4_prealloc_space, group_list);
- 		ext4_get_group_no_and_offset(sb, pa->pstart, &groupnr, &k);
-@@ -812,7 +815,7 @@
- }
- 
- static void ext4_mb_generate_buddy(struct super_block *sb,
--				void *buddy, void *bitmap, int group)
-+				void *buddy, void *bitmap, ext4_group_t group)
- {
- 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
- 	unsigned short max = EXT4_BLOCKS_PER_GROUP(sb);
-@@ -843,7 +846,8 @@
- 	grp->bb_fragments = fragments;
- 
- 	if (free != grp->bb_free) {
--		printk("EXT4-fs: group %u: %u blocks in bitmap, %u in gd\n",
-+		printk(KERN_DEBUG
-+			"EXT4-fs: group %lu: %u blocks in bitmap, %u in gd\n",
- 			group, free, grp->bb_free);
- 		grp->bb_free = free;
- 	}
-@@ -881,7 +885,7 @@
- 	int groups_per_page;
- 	int err = 0;
- 	int i;
--	int first_group;
-+	ext4_group_t first_group;
- 	int first_block;
- 	struct super_block *sb;
- 	struct buffer_head *bhs;
-@@ -1029,7 +1033,7 @@
- 	return err;
- }
- 
--static int ext4_mb_load_buddy(struct super_block *sb, int group,
-+static int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 		struct ext4_buddy *e4b)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -1040,7 +1044,7 @@
- 	int poff;
- 	struct page *page;
- 
--	mb_debug("load group %u\n", group);
-+	mb_debug("load group %lu\n", group);
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
- 
-@@ -1229,7 +1233,7 @@
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 
- 			ext4_error(sb, __FUNCTION__, "double-free of inode"
--				   " %lu's block %lu(bit %u in group %u)\n",
-+				   " %lu's block %lu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr, block,
- 				   e4b->bd_group);
+ 			offset = i;
+ 			filp->f_pos = (filp->f_pos & ~(sb->s_blocksize - 1))
+@@ -197,7 +197,7 @@ revalidate:
+ 				ret = stored;
+ 				goto out;
+ 			}
+-			offset += le16_to_cpu(de->rec_len);
++			offset += ext3_rec_len_from_disk(de->rec_len);
+ 			if (le32_to_cpu(de->inode)) {
+ 				/* We might block in the next section
+ 				 * if the data destination is
+@@ -219,7 +219,7 @@ revalidate:
+ 					goto revalidate;
+ 				stored ++;
+ 			}
+-			filp->f_pos += le16_to_cpu(de->rec_len);
++			filp->f_pos += ext3_rec_len_from_disk(de->rec_len);
  		}
-@@ -1559,7 +1563,7 @@
- 					struct ext4_buddy *e4b)
- {
- 	struct ext4_free_extent ex = ac->ac_b_ex;
--	int group = ex.fe_group;
-+	ext4_group_t group = ex.fe_group;
- 	int max;
- 	int err;
+ 		offset = 0;
+ 		brelse (bh);
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.24-rc1/fs/ext3/namei.c linux-2.6.24-rc1-1-ext3_64k_blocksize/fs/ext3/namei.c
+--- linux-2.6.24-rc1/fs/ext3/namei.c	2007-10-24 20:43:56.000000000 +0200
++++ linux-2.6.24-rc1-1-ext3_64k_blocksize/fs/ext3/namei.c	2007-10-24 20:45:58.000000000 +0200
+@@ -177,6 +177,15 @@ static int ext3_dx_add_entry(handle_t *h
+ 			     struct inode *inode);
  
-@@ -1585,7 +1589,7 @@
- static int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 				struct ext4_buddy *e4b)
- {
--	int group = ac->ac_g_ex.fe_group;
-+	ext4_group_t group = ac->ac_g_ex.fe_group;
- 	int max;
- 	int err;
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
-@@ -1754,7 +1758,7 @@
- }
- 
- static int ext4_mb_good_group(struct ext4_allocation_context *ac,
--				int group, int cr)
-+				ext4_group_t group, int cr)
- {
- 	unsigned free, fragments;
- 	unsigned i, bits;
-@@ -1803,8 +1807,8 @@
- 
- static int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- {
--	int group;
--	int i;
-+	ext4_group_t group;
-+	ext4_group_t i;
- 	int cr;
- 	int err = 0;
- 	struct ext4_sb_info *sbi;
-@@ -2154,7 +2158,7 @@
- {
- 	struct super_block *sb = seq->private;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	long group;
-+	ext4_group_t group;
- 
- 	if (*pos < 0 || *pos >= sbi->s_groups_count)
- 		return NULL;
-@@ -2167,7 +2171,7 @@
- {
- 	struct super_block *sb = seq->private;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	long group;
-+	ext4_group_t group;
- 
- 	++*pos;
- 	if (*pos < 0 || *pos >= sbi->s_groups_count)
-@@ -2330,7 +2334,8 @@
- 
- static int ext4_mb_init_backend(struct super_block *sb)
- {
--	int i, j, len, metalen;
-+	ext4_group_t i;
-+	int j, len, metalen;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	int num_meta_group_infos =
- 		(sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) >>
-@@ -2571,7 +2576,7 @@
- int ext4_mb_release(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	int i;
-+	ext4_group_t i;
- 	int num_meta_group_infos;
- 
- 	if (!test_opt(sb, MBALLOC))
-@@ -3351,12 +3356,13 @@
-  * the function goes through all preallocation in this group and marks them
-  * used in in-core bitmap. buddy must be generated from this bitmap
+ /*
++ * p is at least 6 bytes before the end of page
++ */
++static inline struct ext3_dir_entry_2 *ext3_next_entry(struct ext3_dir_entry_2 *p)
++{
++	return (struct ext3_dir_entry_2 *)((char*)p +
++		ext3_rec_len_from_disk(p->rec_len));
++}
++
++/*
+  * Future: use high four bits of block for coalesce-on-delete flags
+  * Mask them off for now.
   */
--static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap, int group)
-+static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
-+					ext4_group_t group)
- {
- 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
- 	struct ext4_prealloc_space *pa;
- 	struct list_head *cur;
--	unsigned long groupnr;
-+	ext4_group_t groupnr;
- 	ext4_grpblk_t start;
- 	int preallocated = 0;
- 	int count = 0;
-@@ -3382,7 +3388,7 @@
- 		preallocated += len;
- 		count++;
+@@ -280,7 +289,7 @@ static struct stats dx_show_leaf(struct 
+ 			space += EXT3_DIR_REC_LEN(de->name_len);
+ 			names++;
+ 		}
+-		de = (struct ext3_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
  	}
--	mb_debug("prellocated %u for group %u\n", preallocated, group);
-+	mb_debug("prellocated %u for group %lu\n", preallocated, group);
+ 	printk("(%i)\n", names);
+ 	return (struct stats) { names, space, 1 };
+@@ -547,14 +556,6 @@ static int ext3_htree_next_block(struct 
+ 
+ 
+ /*
+- * p is at least 6 bytes before the end of page
+- */
+-static inline struct ext3_dir_entry_2 *ext3_next_entry(struct ext3_dir_entry_2 *p)
+-{
+-	return (struct ext3_dir_entry_2 *)((char*)p + le16_to_cpu(p->rec_len));
+-}
+-
+-/*
+  * This function fills a red-black tree with information from a
+  * directory block.  It returns the number directory entries loaded
+  * into the tree.  If there is an error it is returned in err.
+@@ -720,7 +721,7 @@ static int dx_make_map (struct ext3_dir_
+ 			cond_resched();
+ 		}
+ 		/* XXX: do we need to check rec_len == 0 case? -Chris */
+-		de = (struct ext3_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
+ 	}
+ 	return count;
+ }
+@@ -822,7 +823,7 @@ static inline int search_dirblock(struct
+ 			return 1;
+ 		}
+ 		/* prevent looping on a bad block */
+-		de_len = le16_to_cpu(de->rec_len);
++		de_len = ext3_rec_len_from_disk(de->rec_len);
+ 		if (de_len <= 0)
+ 			return -1;
+ 		offset += de_len;
+@@ -1130,7 +1131,7 @@ dx_move_dirents(char *from, char *to, st
+ 		rec_len = EXT3_DIR_REC_LEN(de->name_len);
+ 		memcpy (to, de, rec_len);
+ 		((struct ext3_dir_entry_2 *) to)->rec_len =
+-				cpu_to_le16(rec_len);
++				ext3_rec_len_to_disk(rec_len);
+ 		de->inode = 0;
+ 		map++;
+ 		to += rec_len;
+@@ -1149,13 +1150,12 @@ static struct ext3_dir_entry_2* dx_pack_
+ 
+ 	prev = to = de;
+ 	while ((char*)de < base + size) {
+-		next = (struct ext3_dir_entry_2 *) ((char *) de +
+-						    le16_to_cpu(de->rec_len));
++		next = ext3_next_entry(de);
+ 		if (de->inode && de->name_len) {
+ 			rec_len = EXT3_DIR_REC_LEN(de->name_len);
+ 			if (de > to)
+ 				memmove(to, de, rec_len);
+-			to->rec_len = cpu_to_le16(rec_len);
++			to->rec_len = ext3_rec_len_to_disk(rec_len);
+ 			prev = to;
+ 			to = (struct ext3_dir_entry_2 *) (((char *) to) + rec_len);
+ 		}
+@@ -1229,8 +1229,8 @@ static struct ext3_dir_entry_2 *do_split
+ 	/* Fancy dance to stay within two buffers */
+ 	de2 = dx_move_dirents(data1, data2, map + split, count - split);
+ 	de = dx_pack_dirents(data1,blocksize);
+-	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
+-	de2->rec_len = cpu_to_le16(data2 + blocksize - (char *) de2);
++	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
++	de2->rec_len = ext3_rec_len_to_disk(data2 + blocksize - (char *) de2);
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data1, blocksize, 1));
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data2, blocksize, 1));
+ 
+@@ -1300,7 +1300,7 @@ static int add_dirent_to_buf(handle_t *h
+ 				return -EEXIST;
+ 			}
+ 			nlen = EXT3_DIR_REC_LEN(de->name_len);
+-			rlen = le16_to_cpu(de->rec_len);
++			rlen = ext3_rec_len_from_disk(de->rec_len);
+ 			if ((de->inode? rlen - nlen: rlen) >= reclen)
+ 				break;
+ 			de = (struct ext3_dir_entry_2 *)((char *)de + rlen);
+@@ -1319,11 +1319,11 @@ static int add_dirent_to_buf(handle_t *h
+ 
+ 	/* By now the buffer is marked for journaling */
+ 	nlen = EXT3_DIR_REC_LEN(de->name_len);
+-	rlen = le16_to_cpu(de->rec_len);
++	rlen = ext3_rec_len_from_disk(de->rec_len);
+ 	if (de->inode) {
+ 		struct ext3_dir_entry_2 *de1 = (struct ext3_dir_entry_2 *)((char *)de + nlen);
+-		de1->rec_len = cpu_to_le16(rlen - nlen);
+-		de->rec_len = cpu_to_le16(nlen);
++		de1->rec_len = ext3_rec_len_to_disk(rlen - nlen);
++		de->rec_len = ext3_rec_len_to_disk(nlen);
+ 		de = de1;
+ 	}
+ 	de->file_type = EXT3_FT_UNKNOWN;
+@@ -1400,17 +1400,18 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	/* The 0th block becomes the root, move the dirents out */
+ 	fde = &root->dotdot;
+-	de = (struct ext3_dir_entry_2 *)((char *)fde + le16_to_cpu(fde->rec_len));
++	de = (struct ext3_dir_entry_2 *)((char *)fde +
++			ext3_rec_len_from_disk(fde->rec_len));
+ 	len = ((char *) root) + blocksize - (char *) de;
+ 	memcpy (data1, de, len);
+ 	de = (struct ext3_dir_entry_2 *) data1;
+ 	top = data1 + len;
+-	while ((char *)(de2=(void*)de+le16_to_cpu(de->rec_len)) < top)
++	while ((char *)(de2 = ext3_next_entry(de)) < top)
+ 		de = de2;
+-	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
++	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
+ 	/* Initialize the root; the dot dirents already exist */
+ 	de = (struct ext3_dir_entry_2 *) (&root->dotdot);
+-	de->rec_len = cpu_to_le16(blocksize - EXT3_DIR_REC_LEN(2));
++	de->rec_len = ext3_rec_len_to_disk(blocksize - EXT3_DIR_REC_LEN(2));
+ 	memset (&root->info, 0, sizeof(root->info));
+ 	root->info.info_length = sizeof(root->info);
+ 	root->info.hash_version = EXT3_SB(dir->i_sb)->s_def_hash_version;
+@@ -1490,7 +1491,7 @@ static int ext3_add_entry (handle_t *han
+ 		return retval;
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	de->inode = 0;
+-	de->rec_len = cpu_to_le16(blocksize);
++	de->rec_len = ext3_rec_len_to_disk(blocksize);
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
  }
  
- static void ext4_mb_pa_callback(struct rcu_head *head)
-@@ -3615,7 +3621,7 @@
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	unsigned long end;
- 	unsigned long next;
--	unsigned long group;
-+	ext4_group_t group;
- 	ext4_grpblk_t bit;
- 	sector_t start;
- 	int err = 0;
-@@ -3671,7 +3677,7 @@
- {
- 	struct ext4_allocation_context ac;
- 	struct super_block *sb = e4b->bd_sb;
--	unsigned long group;
-+	ext4_group_t group;
- 	ext4_grpblk_t bit;
- 
- 	ac.ac_op = EXT4_MB_HISTORY_DISCARD;
-@@ -3703,7 +3709,7 @@
-  *   1) how many requested
-  */
- static int ext4_mb_discard_group_preallocations(struct super_block *sb,
--						int group, int needed)
-+					ext4_group_t group, int needed)
- {
- 	struct ext4_group_info *grp = EXT4_GROUP_INFO(sb, group);
- 	struct buffer_head *bitmap_bh = NULL;
-@@ -3821,7 +3827,7 @@
- 	struct super_block *sb = inode->i_sb;
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct ext4_prealloc_space *pa, *tmp;
--	unsigned long group = 0;
-+	ext4_group_t group = 0;
- 	struct list_head list;
- 	struct ext4_buddy e4b;
- 	int err;
-@@ -3932,7 +3938,7 @@
- {
- #if 0
- 	struct super_block *sb = ac->ac_sb;
--	int i;
-+	ext4_group_t i;
- 
- 	printk(KERN_ERR "EXT4-fs: can't allocate: status %d flags %d\n",
- 			ac->ac_status, ac->ac_flags);
-@@ -4015,7 +4021,7 @@
- 	struct super_block *sb = ar->inode->i_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
--	unsigned long group;
-+	ext4_group_t group;
- 	unsigned long len;
- 	unsigned long goal;
- 	ext4_grpblk_t block;
-@@ -4106,7 +4112,7 @@
- 
- static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
- {
--	int i;
-+	ext4_group_t i;
- 	int ret;
- 	int freed = 0;
- 
-@@ -4242,7 +4248,7 @@
+@@ -1553,7 +1554,7 @@ static int ext3_dx_add_entry(handle_t *h
+ 			goto cleanup;
+ 		node2 = (struct dx_node *)(bh2->b_data);
+ 		entries2 = node2->entries;
+-		node2->fake.rec_len = cpu_to_le16(sb->s_blocksize);
++		node2->fake.rec_len = ext3_rec_len_to_disk(sb->s_blocksize);
+ 		node2->fake.inode = 0;
+ 		BUFFER_TRACE(frame->bh, "get_write_access");
+ 		err = ext3_journal_get_write_access(handle, frame->bh);
+@@ -1651,9 +1652,9 @@ static int ext3_delete_entry (handle_t *
+ 			BUFFER_TRACE(bh, "get_write_access");
+ 			ext3_journal_get_write_access(handle, bh);
+ 			if (pde)
+-				pde->rec_len =
+-					cpu_to_le16(le16_to_cpu(pde->rec_len) +
+-						    le16_to_cpu(de->rec_len));
++				pde->rec_len = ext3_rec_len_to_disk(
++					ext3_rec_len_from_disk(pde->rec_len) +
++					ext3_rec_len_from_disk(de->rec_len));
+ 			else
+ 				de->inode = 0;
+ 			dir->i_version++;
+@@ -1661,10 +1662,9 @@ static int ext3_delete_entry (handle_t *
+ 			ext3_journal_dirty_metadata(handle, bh);
+ 			return 0;
+ 		}
+-		i += le16_to_cpu(de->rec_len);
++		i += ext3_rec_len_from_disk(de->rec_len);
+ 		pde = de;
+-		de = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
+ 	}
+ 	return -ENOENT;
+ }
+@@ -1798,13 +1798,12 @@ retry:
+ 	de = (struct ext3_dir_entry_2 *) dir_block->b_data;
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	de->name_len = 1;
+-	de->rec_len = cpu_to_le16(EXT3_DIR_REC_LEN(de->name_len));
++	de->rec_len = ext3_rec_len_to_disk(EXT3_DIR_REC_LEN(de->name_len));
+ 	strcpy (de->name, ".");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+-	de = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++	de = ext3_next_entry(de);
+ 	de->inode = cpu_to_le32(dir->i_ino);
+-	de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
++	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
+ 	de->name_len = 2;
+ 	strcpy (de->name, "..");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+@@ -1856,8 +1855,7 @@ static int empty_dir (struct inode * ino
+ 		return 1;
+ 	}
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+-	de1 = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++	de1 = ext3_next_entry(de);
+ 	if (le32_to_cpu(de->inode) != inode->i_ino ||
+ 			!le32_to_cpu(de1->inode) ||
+ 			strcmp (".", de->name) ||
+@@ -1868,9 +1866,9 @@ static int empty_dir (struct inode * ino
+ 		brelse (bh);
+ 		return 1;
+ 	}
+-	offset = le16_to_cpu(de->rec_len) + le16_to_cpu(de1->rec_len);
+-	de = (struct ext3_dir_entry_2 *)
+-			((char *) de1 + le16_to_cpu(de1->rec_len));
++	offset = ext3_rec_len_from_disk(de->rec_len) +
++			ext3_rec_len_from_disk(de1->rec_len);
++	de = ext3_next_entry(de1);
+ 	while (offset < inode->i_size ) {
+ 		if (!bh ||
+ 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
+@@ -1899,9 +1897,8 @@ static int empty_dir (struct inode * ino
+ 			brelse (bh);
+ 			return 0;
+ 		}
+-		offset += le16_to_cpu(de->rec_len);
+-		de = (struct ext3_dir_entry_2 *)
+-				((char *) de + le16_to_cpu(de->rec_len));
++		offset += ext3_rec_len_from_disk(de->rec_len);
++		de = ext3_next_entry(de);
+ 	}
+ 	brelse (bh);
+ 	return 1;
+@@ -2255,8 +2252,7 @@ retry:
  }
  
- static int ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
--			  int group, ext4_grpblk_t block, int count)
-+			  ext4_group_t group, ext4_grpblk_t block, int count)
- {
- 	struct ext4_group_info *db = e4b->bd_info;
- 	struct super_block *sb = e4b->bd_sb;
-@@ -4317,7 +4323,7 @@
- 	unsigned long overflow;
- 	ext4_grpblk_t bit;
- 	struct buffer_head *gd_bh;
--	unsigned long block_group;
-+	ext4_group_t block_group;
- 	struct ext4_sb_info *sbi;
- 	struct ext4_buddy e4b;
- 	int err = 0;
-
---------------030305070201080706080909--
+ #define PARENT_INO(buffer) \
+-	((struct ext3_dir_entry_2 *) ((char *) buffer + \
+-	le16_to_cpu(((struct ext3_dir_entry_2 *) buffer)->rec_len)))->inode
++	(ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
+ 
+ /*
+  * Anybody can rename anything with this: the permission checks are left to the
+diff -rupX /home/jack/.kerndiffexclude linux-2.6.24-rc1/include/linux/ext3_fs.h linux-2.6.24-rc1-1-ext3_64k_blocksize/include/linux/ext3_fs.h
+--- linux-2.6.24-rc1/include/linux/ext3_fs.h	2007-10-24 20:44:03.000000000 +0200
++++ linux-2.6.24-rc1-1-ext3_64k_blocksize/include/linux/ext3_fs.h	2007-10-24 20:45:01.000000000 +0200
+@@ -656,6 +656,26 @@ struct ext3_dir_entry_2 {
+ #define EXT3_DIR_ROUND			(EXT3_DIR_PAD - 1)
+ #define EXT3_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT3_DIR_ROUND) & \
+ 					 ~EXT3_DIR_ROUND)
++#define EXT3_MAX_REC_LEN		((1<<16)-1)
++
++static inline unsigned ext3_rec_len_from_disk(__le16 dlen)
++{
++	unsigned len = le16_to_cpu(dlen);
++
++	if (len == EXT3_MAX_REC_LEN)
++		return 1 << 16;
++	return len;
++}
++
++static inline __le16 ext3_rec_len_to_disk(unsigned len)
++{
++	if (len == (1 << 16))
++		return cpu_to_le16(EXT3_MAX_REC_LEN);
++	else if (len > (1 << 16))
++		BUG();
++	return cpu_to_le16(len);
++}
++
+ /*
+  * Hash Tree Directory indexing
+  * (c) Daniel Phillips, 2001
