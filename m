@@ -1,111 +1,155 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: fix MB_DEBUG format warnings
-Date: Wed, 31 Oct 2007 14:45:46 -0500
-Message-ID: <4728DB6A.7020506@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] e2fsprogs: handle rec_len in case of 64KB blocks
+Date: Wed, 31 Oct 2007 20:54:13 +0100
+Message-ID: <20071031195413.GC25466@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@osdl.org>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33331 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751607AbXJaTpx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Oct 2007 15:45:53 -0400
+Received: from styx.suse.cz ([82.119.242.94]:56887 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753837AbXJaTyP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Oct 2007 15:54:15 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-(applies at end of current ext4 patch series)
+  Hi Ted,
 
-Fix a slew of compile warnings from mismatched format specifiers
-when MB_DEBUG is turned on.
+  I haven't got any answer from you regarding this patch implementing
+hadling of rec_len for 64KB block size. Is it still waiting in your queue
+to review or did it just get lost? Since all the kernel changes will be in
+2.6.24, we should have tools for that too...  Please write me if there are
+any problems with the patch.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+---
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c
-+++ linux-2.6.24-rc1/fs/ext4/mballoc.c
-@@ -954,7 +954,7 @@ static int ext4_mb_init_cache(struct pag
- 		get_bh(bh[i]);
- 		bh[i]->b_end_io = end_buffer_read_sync;
- 		submit_bh(READ, bh[i]);
--		mb_debug("read bitmap for group %u\n", first_group + i);
-+		mb_debug("read bitmap for group %lu\n", first_group + i);
- 	}
+Subject: Support for 64KB blocksize in ext2-4 directories.
+
+When block size is 64KB, we have to take care that rec_len does not overflow.
+Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
+conversion when reading from / writing to disk.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index fb20fa0..628bf93 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -38,9 +38,9 @@ errcode_t ext2fs_read_dir_block2(ext2_fi
+ 		dirent = (struct ext2_dir_entry *) p;
+ #ifdef WORDS_BIGENDIAN
+ 		dirent->inode = ext2fs_swab32(dirent->inode);
+-		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
+ 		dirent->name_len = ext2fs_swab16(dirent->name_len);
+ #endif
++		dirent->rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
+ 		name_len = dirent->name_len;
+ #ifdef WORDS_BIGENDIAN
+ 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
+@@ -68,12 +68,15 @@ errcode_t ext2fs_read_dir_block(ext2_fil
+ errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
+ 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
+ {
+-#ifdef WORDS_BIGENDIAN
+ 	errcode_t	retval;
+ 	char		*p, *end;
+ 	char		*buf = 0;
+ 	struct ext2_dir_entry *dirent;
  
- 	/* wait for I/O completion */
-@@ -2670,7 +2670,7 @@ static void ext4_mb_free_committed_block
- 		if (md == NULL)
- 			break;
++#ifndef WORDS_BIGENDIAN
++	if (fs->blocksize < EXT2_MAX_REC_LEN)
++		goto just_write;
++#endif
+ 	retval = ext2fs_get_mem(fs->blocksize, &buf);
+ 	if (retval)
+ 		return retval;
+@@ -89,7 +92,7 @@ errcode_t ext2fs_write_dir_block2(ext2_f
+ 		}
+ 		p += dirent->rec_len;
+ 		dirent->inode = ext2fs_swab32(dirent->inode);
+-		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
++		dirent->rec_len = ext2fs_rec_len_to_disk(dirent->rec_len);
+ 		dirent->name_len = ext2fs_swab16(dirent->name_len);
  
--		mb_debug("gonna free %u blocks in group %u (0x%p):",
-+		mb_debug("gonna free %u blocks in group %lu (0x%p):",
- 				md->num, md->group, md);
- 
- 		err = ext4_mb_load_buddy(sb, md->group, &e4b);
-@@ -3029,7 +3029,7 @@ static void ext4_mb_normalize_group_requ
- 
- 	BUG_ON(lg == NULL);
- 	ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
--	mb_debug("#%u: goal %u blocks for locality group\n",
-+	mb_debug("#%u: goal %lu blocks for locality group\n",
- 		current->pid, ac->ac_g_ex.fe_len);
+ 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
+@@ -98,9 +101,8 @@ errcode_t ext2fs_write_dir_block2(ext2_f
+  	retval = io_channel_write_blk(fs->io, block, 1, buf);
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+-#else
++just_write:
+  	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
+-#endif
  }
  
-@@ -3255,7 +3255,7 @@ static void ext4_mb_use_inode_pa(struct 
- 	BUG_ON(pa->pa_free < len);
- 	pa->pa_free -= len;
  
--	mb_debug("use %lu/%lu from inode pa %p\n", start, len, pa);
-+	mb_debug("use %llu/%lu from inode pa %p\n", start, len, pa);
- }
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index a316665..2041f0f 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -717,6 +717,32 @@ struct ext2_dir_entry_2 {
+ #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
+ #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
+ 					 ~EXT2_DIR_ROUND)
++#define EXT2_MAX_REC_LEN		((1<<16)-1)
++
++static inline unsigned ext2fs_rec_len_from_disk(unsigned len)
++{
++#ifdef WORDS_BIGENDIAN
++	len = ext2fs_swab16(dlen);
++#endif
++	if (len == EXT2_MAX_REC_LEN)
++		return 1 << 16;
++	return len;
++}
++
++static inline unsigned ext2fs_rec_len_to_disk(unsigned len)
++{
++	if (len == (1 << 16))
++#ifdef WORDS_BIGENDIAN
++		return ext2fs_swab16(EXT2_MAX_REC_LEN);
++#else
++		return EXT2_MAX_REC_LEN;
++#endif
++#ifdef WORDS_BIGENDIAN
++	return ext2fs_swab_16(len);
++#else
++	return len;
++#endif
++}
  
  /*
-@@ -3282,7 +3282,7 @@ static void ext4_mb_use_group_pa(struct 
- 	 * pa and think that it have enought free blocks if we
- 	 * don't update pa_free here right ?
- 	 */
--	mb_debug("use %lu/%lu from group pa %p\n", pa->pa_lstart-len, len, pa);
-+	mb_debug("use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa);
- }
- 
- /*
-@@ -3513,7 +3513,7 @@ static int ext4_mb_new_inode_pa(struct e
- 	pa->pa_deleted = 0;
- 	pa->pa_linear = 0;
- 
--	mb_debug("new inode pa %p: %lu/%lu for %lu\n", pa,
-+	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
- 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
- 
- 	ext4_mb_use_inode_pa(ac, pa);
-@@ -3569,7 +3569,7 @@ static int ext4_mb_new_group_pa(struct e
- 	pa->pa_deleted = 0;
- 	pa->pa_linear = 1;
- 
--	mb_debug("new group pa %p: %lu/%lu for %lu\n", pa,
-+	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
- 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
- 
- 	ext4_mb_use_group_pa(ac, pa);
-@@ -4072,8 +4072,8 @@ static int ext4_mb_initialize_context(st
- 	 * locality group. this is a policy, actually */
- 	ext4_mb_group_or_file(ac);
- 
--	mb_debug("init ac: %u blocks @ %llu, goal %llu, flags %x, 2^%d, "
--			"left: %llu/%llu, right %llu/%llu to %swritable\n",
-+	mb_debug("init ac: %u blocks @ %u, goal %u, flags %x, 2^%d, "
-+			"left: %u/%u, right %u/%u to %swritable\n",
- 			(unsigned) ar->len, (unsigned) ar->logical,
- 			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
- 			(unsigned) ar->lleft, (unsigned) ar->pleft,
-@@ -4288,7 +4288,7 @@ static int ext4_mb_free_metadata(handle_
- 				page_cache_get(e4b->bd_bitmap_page);
- 				db->bb_md_cur = md;
- 				db->bb_tid = handle->h_transaction->t_tid;
--				mb_debug("new md 0x%p for group %u\n",
-+				mb_debug("new md 0x%p for group %lu\n",
- 						md, md->group);
- 			} else {
- 				kfree(md);
+  * This structure will be used for multiple mount protection. It will be
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 1fbb267..4e2c9fb 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -345,10 +345,7 @@ static void scramble_dir_block(ext2_fils
+ 	end = buf + fs->blocksize;
+ 	for (p = buf; p < end-8; p += rec_len) {
+ 		dirent = (struct ext2_dir_entry_2 *) p;
+-		rec_len = dirent->rec_len;
+-#ifdef WORDS_BIGENDIAN
+-		rec_len = ext2fs_swab16(rec_len);
+-#endif
++		rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
+ #if 0
+ 		printf("rec_len = %d, name_len = %d\n", rec_len, dirent->name_len);
+ #endif
+@@ -358,9 +355,7 @@ static void scramble_dir_block(ext2_fils
+ 			       "bad rec_len (%d)\n", (unsigned long) blk, 
+ 			       rec_len);
+ 			rec_len = end - p;
+-#ifdef WORDS_BIGENDIAN
+-				dirent->rec_len = ext2fs_swab16(rec_len);
+-#endif
++			dirent->rec_len = ext2fs_rec_len_to_disk(rec_len);
+ 			continue;
+ 		}
+ 		if (dirent->name_len + 8 > rec_len) {
