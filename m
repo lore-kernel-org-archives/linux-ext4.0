@@ -1,127 +1,49 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [vvs@sw.ru: [RFC PATCH ext3/ext4] orphan list corruption due bad
-	inode]
-Date: Thu, 1 Nov 2007 21:08:19 +0800
-Message-ID: <20071101130819.GE3596@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: delalloc fragmenting files?
+Date: Thu, 01 Nov 2007 10:20:18 -0500
+Message-ID: <4729EEB2.9090406@redhat.com>
+References: <47225B1E.2060708@redhat.com> <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com> <47291F62.3000008@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@Sun.COM>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Alex Tomas <bzzz.tomas@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:53327 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753757AbXKAOUs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2007 10:20:48 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:38286 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751159AbXKAPUX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Nov 2007 11:20:23 -0400
+In-Reply-To: <47291F62.3000008@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I just noticed this patch in the old parts of my inbox, but it was never
-landed to ext3 or ext4.
+Alex Tomas wrote:
+> please, try the patch attached.
 
------ Forwarded message from Vasily Averin <vvs@sw.ru> -----
+Looks quite a bit better:
 
-Date: Mon, 04 Jun 2007 09:19:10 +0400
-From: Vasily Averin <vvs@sw.ru>
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>, devel@openvz.org,
-	linux-ext4@vger.kernel.org, Stephen Tweedie <sct@redhat.com>,
-	adilger@clusterfs.com
-Subject: [RFC PATCH ext3/ext4] orphan list corruption due bad inode
+http://people.redhat.com/esandeen/seekwatcher/ext4-alex.png
+http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-dd-write.png
+http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-xfs-dd-write.png
 
-After ext3 orphan list check has been added into ext3_destroy_inode() (please see my previous patch) the following situation has been detected:
- EXT3-fs warning (device sda6): ext3_unlink: Deleting nonexistent file (37901290), 0
- Inode 00000101a15b7840: orphan list check failed!
- 00000773 6f665f00 74616d72 00000573 65725f00 06737270 66000000 616d726f
-...
- Call Trace: [<ffffffff80211ea9>] ext3_destroy_inode+0x79/0x90
-  [<ffffffff801a2b16>] sys_unlink+0x126/0x1a0
-  [<ffffffff80111479>] error_exit+0x0/0x81
-  [<ffffffff80110aba>] system_call+0x7e/0x83
+It is much less fragmented, although still not exactly the nice linear
+allocation I'd expect from a single threaded large write on a fresh fs...
 
-First messages said that unlinked inode has i_nlink=0, then ext3_unlink() adds this inode into orphan list.
+-Eric
 
-Second message means that this inode has not been removed from orphan list. Inode dump has showed that i_fop = &bad_file_ops and it can be set in make_bad_inode() only. Then I've found that ext3_read_inode() can call make_bad_inode() without any error/warning messages, for example in the following case:
-...
-        if (inode->i_nlink == 0) {
-                if (inode->i_mode == 0 ||
-                    !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ORPHAN_FS)) {
-                        /* this inode is deleted */
-                        brelse (bh);
-                        goto bad_inode;
-...
-
-Bad inode can live some time, ext3_unlink can add it to orphan list, but
-ext3_delete_inode() do not deleted this inode from orphan list. As
-result we can have orphan list corruption detected in ext3_destroy_inode().
-
-However it is not clear for me how to fix this issue correctly.
-
-As far as i see is_bad_inode() is called after iget() in all places excluding ext3_lookup() and ext3_get_parent(). I believe it makes sense to add bad inode check to these functions too and call iput if bad inode detected.
-
-Signed-off-by:	Vasily Averin <vvs@sw.ru>
-
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 9bb046d..e3ac8c3 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1019,6 +1019,11 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
- 
- 		if (!inode)
- 			return ERR_PTR(-EACCES);
-+
-+		if (is_bad_inode(inode)) {
-+			iput(inode);
-+			return ERR_PTR(-ENOENT);	
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1054,6 +1059,11 @@ struct dentry *ext3_get_parent(struct dentry *child)
- 	if (!inode)
- 		return ERR_PTR(-EACCES);
- 
-+	if (is_bad_inode(inode)) {
-+		iput(inode);
-+		return ERR_PTR(-ENOENT);	
-+	}
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4ec57be..70db358 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1017,6 +1017,11 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
- 
- 		if (!inode)
- 			return ERR_PTR(-EACCES);
-+
-+		if (is_bad_inode(inode)) {
-+			iput(inode);
-+			return ERR_PTR(-ENOENT);	
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1052,6 +1057,11 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 	if (!inode)
- 		return ERR_PTR(-EACCES);
- 
-+	if (is_bad_inode(inode)) {
-+		iput(inode);
-+		return ERR_PTR(-ENOENT);	
-+	}
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
-
------ End forwarded message -----
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Software Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> thanks, Alex
+> 
+> Eric Sandeen wrote:
+>> One thing that seems to be happening is that thanks to delalloc, a nice
+>> big request is coming in (only 1036 blocks of the 4096, not quite sure
+>> why), but then it gets into ext4_mb_normalize_request(), which finds the
+>> most blocks it can "preallocate" is 256, and chops down the request to
+>> 256 blocks.  Shouldn't this preallocation be over & above what was asked
+>> for, vs. reducing the request?
+>>
+>> Ok, so, we get allocations in 256-block chunks...  Why they don't all
+>> come out contiguous, I don't know yet...
+>>
+>> -Eric
+> 
