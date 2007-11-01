@@ -1,43 +1,127 @@
-From: Coly Li <coyli@suse.de>
-Subject: Re: [PATCH 13/13][e2fsprogs] Add m_uninit test case.
-Date: Thu, 01 Nov 2007 20:11:43 +0800
-Message-ID: <4729C27F.2020805@suse.de>
-References: <20071011191559.4599.69332.stgit@gara>	<20071011191719.4599.72320.stgit@gara>	<4729A101.40709@suse.de>	<4729A352.1000808@suse.de>	<20071101060300.650d9b57@gara> <20071101062601.08ef0dfe@gara>
+From: Andreas Dilger <adilger@sun.com>
+Subject: [vvs@sw.ru: [RFC PATCH ext3/ext4] orphan list corruption due bad
+	inode]
+Date: Thu, 1 Nov 2007 21:08:19 +0800
+Message-ID: <20071101130819.GE3596@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:53056 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754159AbXKAMKg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2007 08:10:36 -0400
-In-Reply-To: <20071101062601.08ef0dfe@gara>
+Received: from mail.clusterfs.com ([74.0.229.162]:53327 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753757AbXKAOUs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2007 10:20:48 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jose R. Santos wrote:
-> On Thu, 1 Nov 2007 06:03:00 -0500
-> "Jose R. Santos" <jrs@us.ibm.com> wrote:
->> It seems like a problem on your end since I got the patches from the
->> mailing list after sending them.  Here are the patches from the
->> archives.
->>
->> [PATCH 01/13] http://lists.openwall.net/linux-ext4/2007/10/11/20
->> [PATCH 11/13] http://lists.openwall.net/linux-ext4/2007/10/11/29
->> [PATCH 12/13] http://lists.openwall.net/linux-ext4/2007/10/11/33
-> 
-> Ops...   There is an slightly updated version of the patch series that
-> has a couple of fixes.  It also has one additional patch.
-> 
-> http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg03803.html
+I just noticed this patch in the old parts of my inbox, but it was never
+landed to ext3 or ext4.
 
-Thanks for the update :-)
-> 
-> -JRS
+----- Forwarded message from Vasily Averin <vvs@sw.ru> -----
 
+Date: Mon, 04 Jun 2007 09:19:10 +0400
+From: Vasily Averin <vvs@sw.ru>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>, devel@openvz.org,
+	linux-ext4@vger.kernel.org, Stephen Tweedie <sct@redhat.com>,
+	adilger@clusterfs.com
+Subject: [RFC PATCH ext3/ext4] orphan list corruption due bad inode
 
--- 
-Coly Li
-SuSE PRC Labs
+After ext3 orphan list check has been added into ext3_destroy_inode() (please see my previous patch) the following situation has been detected:
+ EXT3-fs warning (device sda6): ext3_unlink: Deleting nonexistent file (37901290), 0
+ Inode 00000101a15b7840: orphan list check failed!
+ 00000773 6f665f00 74616d72 00000573 65725f00 06737270 66000000 616d726f
+...
+ Call Trace: [<ffffffff80211ea9>] ext3_destroy_inode+0x79/0x90
+  [<ffffffff801a2b16>] sys_unlink+0x126/0x1a0
+  [<ffffffff80111479>] error_exit+0x0/0x81
+  [<ffffffff80110aba>] system_call+0x7e/0x83
+
+First messages said that unlinked inode has i_nlink=0, then ext3_unlink() adds this inode into orphan list.
+
+Second message means that this inode has not been removed from orphan list. Inode dump has showed that i_fop = &bad_file_ops and it can be set in make_bad_inode() only. Then I've found that ext3_read_inode() can call make_bad_inode() without any error/warning messages, for example in the following case:
+...
+        if (inode->i_nlink == 0) {
+                if (inode->i_mode == 0 ||
+                    !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ORPHAN_FS)) {
+                        /* this inode is deleted */
+                        brelse (bh);
+                        goto bad_inode;
+...
+
+Bad inode can live some time, ext3_unlink can add it to orphan list, but
+ext3_delete_inode() do not deleted this inode from orphan list. As
+result we can have orphan list corruption detected in ext3_destroy_inode().
+
+However it is not clear for me how to fix this issue correctly.
+
+As far as i see is_bad_inode() is called after iget() in all places excluding ext3_lookup() and ext3_get_parent(). I believe it makes sense to add bad inode check to these functions too and call iput if bad inode detected.
+
+Signed-off-by:	Vasily Averin <vvs@sw.ru>
+
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 9bb046d..e3ac8c3 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1019,6 +1019,11 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
+ 
+ 		if (!inode)
+ 			return ERR_PTR(-EACCES);
++
++		if (is_bad_inode(inode)) {
++			iput(inode);
++			return ERR_PTR(-ENOENT);	
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+@@ -1054,6 +1059,11 @@ struct dentry *ext3_get_parent(struct dentry *child)
+ 	if (!inode)
+ 		return ERR_PTR(-EACCES);
+ 
++	if (is_bad_inode(inode)) {
++		iput(inode);
++		return ERR_PTR(-ENOENT);	
++	}
++
+ 	parent = d_alloc_anon(inode);
+ 	if (!parent) {
+ 		iput(inode);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 4ec57be..70db358 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1017,6 +1017,11 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
+ 
+ 		if (!inode)
+ 			return ERR_PTR(-EACCES);
++
++		if (is_bad_inode(inode)) {
++			iput(inode);
++			return ERR_PTR(-ENOENT);	
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+@@ -1052,6 +1057,11 @@ struct dentry *ext4_get_parent(struct dentry *child)
+ 	if (!inode)
+ 		return ERR_PTR(-EACCES);
+ 
++	if (is_bad_inode(inode)) {
++		iput(inode);
++		return ERR_PTR(-ENOENT);	
++	}
++
+ 	parent = d_alloc_anon(inode);
+ 	if (!parent) {
+ 		iput(inode);
+
+----- End forwarded message -----
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
