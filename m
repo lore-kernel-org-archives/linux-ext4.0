@@ -1,70 +1,130 @@
-From: "Bram Neijt" <bneijt@gmail.com>
-Subject: Re: User permissions or UID/GIDs for portable disks?
-Date: Thu, 1 Nov 2007 18:07:36 +0100
-Message-ID: <46c2f4ab0711011007l62437ca2jf789069a6c5cbdb4@mail.gmail.com>
-References: <46c2f4ab0710241110o582dcc27pbd6d2c31474b526b@mail.gmail.com>
-	 <1193279915.25351.18.camel@eric-laptop>
-	 <1193320570.12664.19.camel@norville.austin.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nz-out-0506.google.com ([64.233.162.230]:12654 "EHLO
-	nz-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753331AbXKARHl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2007 13:07:41 -0400
-Received: by nz-out-0506.google.com with SMTP id s18so450134nze
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2007 10:07:40 -0700 (PDT)
-In-Reply-To: <1193320570.12664.19.camel@norville.austin.ibm.com>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + forbid-user-to-change-file-flags-on-quota-files.patch added to -mm tree
+Date: Thu, 01 Nov 2007 10:55:26 -0700
+Message-ID: <200711011755.lA1HtQJ4008301@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org, lioupayphone@gmail.com,
+	reiserfs-dev@namesys.com, shaggy@austin.ibm.com
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Thanks to Dave and Eric for their replies.
 
-I'm moving the feature discussion to a higher level (pmount) and I've
-opened a blueprint on it[1] with more words on why I think it's a
-problem[2].
+The patch titled
+     Forbid user to change file flags on quota files
+has been added to the -mm tree.  Its filename is
+     forbid-user-to-change-file-flags-on-quota-files.patch
 
-This means that I'm leaving this thread and closing it with this mail.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-I would like to thank everybody who replied and read this, for their help.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Greetings,
-  Bram
+------------------------------------------------------
+Subject: Forbid user to change file flags on quota files
+From: Jan Kara <jack@suse.cz>
 
-[1] https://blueprints.launchpad.net/launchpad/+spec/usermount-permission-granting
-[2] http://docs.google.com/Doc?id=dqqr5r6_41w7hfbx
+Forbid user from changing file flags on quota files.  User has no bussiness
+in playing with these flags when quota is on.  Furthermore there is a
+remote possibility of deadlock due to a lock inversion between quota file's
+i_mutex and transaction's start (i_mutex for quota file is locked only when
+trasaction is started in quota operations) in ext3 and ext4.
 
-On 10/25/07, Dave Kleikamp <shaggy@linux.vnet.ibm.com> wrote:
-> On Wed, 2007-10-24 at 19:38 -0700, Eric wrote:
-> > On Wed, 2007-10-24 at 20:10 +0200, Bram Neijt wrote:
-> > > One of the best solutions I can come up with is if the filesystem
-> > > would allow for a switch that would help ignore these permissions as
-> > > part of the filesystem.
-> >
-> > Ignoring file permissions on removable, user-supplied media sounds like
-> > something that ought to be done above the level of individual
-> > filesystems, just like how we ignore device files and suid/sgid files in
-> > certain cases. Maybe this is something that ought to be one level up
-> > from the ext2/3/4 filesystem driver?
->
-> It would be a nice feature to implement at a higher level.  A lot of
-> file systems do something like this.
->
-> > In any case, this raises interesting questions. If we ignore permissions
-> > on removable media, then anyone logged into your work computer (to which
-> > you do not have root access) will be able to muck about with your files.
-> > Is that something you want?
->
-> Mount options should override on-media permissions, but those overriding
-> permissions could still deny access to others:
->
-> mount -o uid=1000,gid=1000,fmask=137,dmask=027 /dev/sdb1 /mnt/usbstick
->
-> --
-> David Kleikamp
-> IBM Linux Technology Center
->
->
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: LIOU Payphone <lioupayphone@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Dave Kleikamp <shaggy@austin.ibm.com>
+Cc: <reiserfs-dev@namesys.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/ioctl.c     |    5 +++++
+ fs/ext3/ioctl.c     |    5 +++++
+ fs/ext4/ioctl.c     |    5 +++++
+ fs/jfs/ioctl.c      |    3 +++
+ fs/reiserfs/ioctl.c |    3 +++
+ 5 files changed, 21 insertions(+)
+
+diff -puN fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext2/ioctl.c
+--- a/fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
++++ a/fs/ext2/ioctl.c
+@@ -47,6 +47,11 @@ int ext2_ioctl (struct inode * inode, st
+ 			flags &= ~EXT2_DIRSYNC_FL;
+ 
+ 		mutex_lock(&inode->i_mutex);
++		/* Is it quota file? Don't allow user mess with it */
++		if (IS_NOQUOTA(inode)) {
++			mutex_unlock(&inode->i_mutex);
++			return -EPERM;
++		}
+ 		oldflags = ei->i_flags;
+ 
+ 		/*
+diff -puN fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext3/ioctl.c
+--- a/fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
++++ a/fs/ext3/ioctl.c
+@@ -51,6 +51,11 @@ int ext3_ioctl (struct inode * inode, st
+ 			flags &= ~EXT3_DIRSYNC_FL;
+ 
+ 		mutex_lock(&inode->i_mutex);
++		/* Is it quota file? Don't allow user mess with it */
++		if (IS_NOQUOTA(inode)) {
++			mutex_unlock(&inode->i_mutex);
++			return -EPERM;
++		}
+ 		oldflags = ei->i_flags;
+ 
+ 		/* The JOURNAL_DATA flag is modifiable only by root */
+diff -puN fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext4/ioctl.c
+--- a/fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
++++ a/fs/ext4/ioctl.c
+@@ -51,6 +51,11 @@ int ext4_ioctl (struct inode * inode, st
+ 			flags &= ~EXT4_DIRSYNC_FL;
+ 
+ 		mutex_lock(&inode->i_mutex);
++		/* Is it quota file? Don't allow user mess with it */
++		if (IS_NOQUOTA(inode)) {
++			mutex_unlock(&inode->i_mutex);
++			return -EPERM;
++		}
+ 		oldflags = ei->i_flags;
+ 
+ 		/* The JOURNAL_DATA flag is modifiable only by root */
+diff -puN fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/jfs/ioctl.c
+--- a/fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
++++ a/fs/jfs/ioctl.c
+@@ -79,6 +79,9 @@ int jfs_ioctl(struct inode * inode, stru
+ 		if (!S_ISDIR(inode->i_mode))
+ 			flags &= ~JFS_DIRSYNC_FL;
+ 
++		/* Is it quota file? Don't allow user mess with it */
++		if (IS_NOQUOTA(inode))
++			return -EPERM;
+ 		jfs_get_inode_flags(jfs_inode);
+ 		oldflags = jfs_inode->mode2;
+ 
+diff -puN fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/reiserfs/ioctl.c
+--- a/fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
++++ a/fs/reiserfs/ioctl.c
+@@ -57,6 +57,9 @@ int reiserfs_ioctl(struct inode *inode, 
+ 			if (get_user(flags, (int __user *)arg))
+ 				return -EFAULT;
+ 
++			/* Is it quota file? Don't allow user mess with it. */
++			if (IS_NOQUOTA(inode))
++				return -EPERM;
+ 			if (((flags ^ REISERFS_I(inode)->
+ 			      i_attrs) & (REISERFS_IMMUTABLE_FL |
+ 					  REISERFS_APPEND_FL))
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+forbid-user-to-change-file-flags-on-quota-files.patch
+git-ocfs2.patch
+fix-64kb-blocksize-in-ext3-directories.patch
+fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext4-from-using-iget-and-read_inode-try.patch
