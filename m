@@ -1,88 +1,57 @@
-From: Alex Tomas <bzzz.tomas@gmail.com>
-Subject: Re: delalloc fragmenting files?
-Date: Thu, 01 Nov 2007 03:35:46 +0300
-Message-ID: <47291F62.3000008@gmail.com>
-References: <47225B1E.2060708@redhat.com>
- <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com>
+From: Coly Li <coyli@suse.de>
+Subject: Re: [PATCH 13/13][e2fsprogs] Add m_uninit test case.
+Date: Thu, 01 Nov 2007 17:48:49 +0800
+Message-ID: <4729A101.40709@suse.de>
+References: <20071011191559.4599.69332.stgit@gara> <20071011191719.4599.72320.stgit@gara>
+Reply-To: coyli@suse.de
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_swMsbyDWKBxcUdKihTV/Ng)"
-Cc: Andreas Dilger <adilger@Sun.COM>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-mail-2.sun.com ([192.18.6.24]:47569 "EHLO
-	gmp-eb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752616AbXKAAgN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2007 20:36:13 -0400
-Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe3.eu.sun.com [192.18.6.12])
-	by gmp-eb-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id lA10a19B014648
-	for <linux-ext4@vger.kernel.org>; Thu, 1 Nov 2007 00:36:11 GMT
-Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JQS00801XHRNQ00@fe-emea-09.sun.com>
- (original mail from bzzz.tomas@gmail.com) for linux-ext4@vger.kernel.org; Thu,
- 01 Nov 2007 00:36:00 +0000 (GMT)
-In-reply-to: <4728ED3B.1060407@redhat.com>
+Received: from victor.provo.novell.com ([137.65.250.26]:48548 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756769AbXKAJrg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2007 05:47:36 -0400
+In-Reply-To: <20071011191719.4599.72320.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
+I plan to do some work based on uninit group patch. When I try to patch the patch into kernel, I
+find the sequence number of patch is not continuous. Here is what I find for e2fsprogs patch,
 
---Boundary_(ID_swMsbyDWKBxcUdKihTV/Ng)
-Content-type: text/plain; format=flowed; charset=ISO-8859-1
-Content-transfer-encoding: 7BIT
+[PATCH 00/13]
+[PATCH 02/13]
+[PATCH 03/13]
+[PATCH 04/13]
+[PATCH 05/13]
+[PATCH 06/13]
+[PATCH 07/13]
+[PATCH 08/13]
+[PATCH 09/13]
+[PATCH 10/13]
+[PATCH 13/13]
 
-please, try the patch attached.
+I can not find 01, 11 and 12. Do I miss them, or where can I find these 3 patch ?
 
-thanks, Alex
+Thanks.
 
-Eric Sandeen wrote:
-> One thing that seems to be happening is that thanks to delalloc, a nice
-> big request is coming in (only 1036 blocks of the 4096, not quite sure
-> why), but then it gets into ext4_mb_normalize_request(), which finds the
-> most blocks it can "preallocate" is 256, and chops down the request to
-> 256 blocks.  Shouldn't this preallocation be over & above what was asked
-> for, vs. reducing the request?
+
+Jose R. Santos wrote:
+> From: Jose R. Santos <jrs@us.ibm.com>
 > 
-> Ok, so, we get allocations in 256-block chunks...  Why they don't all
-> come out contiguous, I don't know yet...
+> Add m_uninit test case.
 > 
-> -Eric
-
-
---Boundary_(ID_swMsbyDWKBxcUdKihTV/Ng)
-Content-type: text/x-patch; name=mballoc-debug.patch
-Content-transfer-encoding: 7BIT
-Content-disposition: inline; filename=mballoc-debug.patch
-
-Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-10-27 10:29:17.000000000 +0400
-+++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-10-27 22:14:54.000000000 +0400
-@@ -3088,8 +3088,10 @@ static void ext4_mb_normalize_request(st
- 			break;
- 		}
- 	}
-+	size = wind;
-+
- 	if (wind == 0) {
--		__u64 tstart;
-+		__u64 tstart, tend;
- 		/* file is quite large, we now preallocate with
- 		 * the biggest configured window with regart to
- 		 * logical offset */
-@@ -3097,8 +3099,11 @@ static void ext4_mb_normalize_request(st
- 		tstart = ac->ac_o_ex.fe_logical;
- 		do_div(tstart, wind);
- 		start = tstart * wind;
-+		tend = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len - 1;
-+		do_div(tend, wind);
-+		tend = tend * wind + wind;
-+		size = tend - start;
- 	}
--	size = wind;
- 	orig_size = size;
- 	orig_start = start;
- 
-
---Boundary_(ID_swMsbyDWKBxcUdKihTV/Ng)--
+> Add test case to test for uninit block groups.
+> 
+> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> --
+> 
+>  tests/m_uninit/expect.1 |  166 +++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/m_uninit/script   |    4 +
+>  2 files changed, 170 insertions(+), 0 deletions(-)
+> 
+-- 
+Coly Li
+SuSE PRC Labs
