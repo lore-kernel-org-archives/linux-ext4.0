@@ -1,54 +1,140 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: delalloc fragmenting files?
-Date: Thu, 01 Nov 2007 14:05:40 -0500
-Message-ID: <472A2384.2010001@redhat.com>
-References: <47225B1E.2060708@redhat.com> <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com> <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com>
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: + forbid-user-to-change-file-flags-on-quota-files.patch added
+	to -mm tree
+Date: Thu, 01 Nov 2007 15:02:25 -0500
+Message-ID: <1193947345.9503.9.camel@norville.austin.ibm.com>
+References: <200711011755.lA1HtQJ4008301@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <bzzz.tomas@gmail.com>,
-	Andreas Dilger <adilger@Sun.COM>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: mm-commits@vger.kernel.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, lioupayphone@gmail.com,
+	reiserfs-dev@namesys.com
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46021 "EHLO mx1.redhat.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:37519 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753678AbXKATFq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Nov 2007 15:05:46 -0400
-In-Reply-To: <4729EEB2.9090406@redhat.com>
+	id S1755744AbXKAUCc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Nov 2007 16:02:32 -0400
+In-Reply-To: <200711011755.lA1HtQJ4008301@imap1.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> Alex Tomas wrote:
->> please, try the patch attached.
+On Thu, 2007-11-01 at 10:55 -0700, akpm@linux-foundation.org wrote:
+> The patch titled
+>      Forbid user to change file flags on quota files
+> has been added to the -mm tree.  Its filename is
+>      forbid-user-to-change-file-flags-on-quota-files.patch
 > 
-> Looks quite a bit better:
+> *** Remember to use Documentation/SubmitChecklist when testing your code ***
 > 
-> http://people.redhat.com/esandeen/seekwatcher/ext4-alex.png
-> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-dd-write.png
-> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-xfs-dd-write.png
+> See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+> out what to do about this
 > 
-> It is much less fragmented, although still not exactly the nice linear
-> allocation I'd expect from a single threaded large write on a fresh fs...
+> ------------------------------------------------------
+> Subject: Forbid user to change file flags on quota files
+> From: Jan Kara <jack@suse.cz>
+> 
+> Forbid user from changing file flags on quota files.  User has no bussiness
+> in playing with these flags when quota is on.  Furthermore there is a
+> remote possibility of deadlock due to a lock inversion between quota file's
+> i_mutex and transaction's start (i_mutex for quota file is locked only when
+> trasaction is started in quota operations) in ext3 and ext4.
 
-Note, we're still getting out-of-order extents, too:
+This looks reasonable.
 
-First block: 122880
-Last block: 2694143
-Discontinuity: Block 7424 is at 101376 (was 130303)
-Discontinuity: Block 28160 is at 133120 (was 122111)
-Discontinuity: Block 58368 is at 188416 (was 163327)
-Discontinuity: Block 66304 is at 180224 (was 196351)
-Discontinuity: Block 73984 is at 172032 (was 187903)
-Discontinuity: Block 81664 is at 167936 (was 179711)
-Discontinuity: Block 84736 is at 221184 (was 171007)
-Discontinuity: Block 92416 is at 212992 (was 228863)
-Discontinuity: Block 100096 is at 204800 (was 220671)
-Discontinuity: Block 107776 is at 198656 (was 212479)
-...
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Cc: LIOU Payphone <lioupayphone@gmail.com>
+> Cc: <linux-ext4@vger.kernel.org>
 
-I'm trying to find time to look into this but other things are knocking
-at my door so no promises...
+Acked-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 
--Eric
+> Cc: <reiserfs-dev@namesys.com>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> ---
+> 
+>  fs/ext2/ioctl.c     |    5 +++++
+>  fs/ext3/ioctl.c     |    5 +++++
+>  fs/ext4/ioctl.c     |    5 +++++
+>  fs/jfs/ioctl.c      |    3 +++
+>  fs/reiserfs/ioctl.c |    3 +++
+>  5 files changed, 21 insertions(+)
+> 
+> diff -puN fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext2/ioctl.c
+> --- a/fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
+> +++ a/fs/ext2/ioctl.c
+> @@ -47,6 +47,11 @@ int ext2_ioctl (struct inode * inode, st
+>  			flags &= ~EXT2_DIRSYNC_FL;
+>  
+>  		mutex_lock(&inode->i_mutex);
+> +		/* Is it quota file? Don't allow user mess with it */
+> +		if (IS_NOQUOTA(inode)) {
+> +			mutex_unlock(&inode->i_mutex);
+> +			return -EPERM;
+> +		}
+>  		oldflags = ei->i_flags;
+>  
+>  		/*
+> diff -puN fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext3/ioctl.c
+> --- a/fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
+> +++ a/fs/ext3/ioctl.c
+> @@ -51,6 +51,11 @@ int ext3_ioctl (struct inode * inode, st
+>  			flags &= ~EXT3_DIRSYNC_FL;
+>  
+>  		mutex_lock(&inode->i_mutex);
+> +		/* Is it quota file? Don't allow user mess with it */
+> +		if (IS_NOQUOTA(inode)) {
+> +			mutex_unlock(&inode->i_mutex);
+> +			return -EPERM;
+> +		}
+>  		oldflags = ei->i_flags;
+>  
+>  		/* The JOURNAL_DATA flag is modifiable only by root */
+> diff -puN fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext4/ioctl.c
+> --- a/fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
+> +++ a/fs/ext4/ioctl.c
+> @@ -51,6 +51,11 @@ int ext4_ioctl (struct inode * inode, st
+>  			flags &= ~EXT4_DIRSYNC_FL;
+>  
+>  		mutex_lock(&inode->i_mutex);
+> +		/* Is it quota file? Don't allow user mess with it */
+> +		if (IS_NOQUOTA(inode)) {
+> +			mutex_unlock(&inode->i_mutex);
+> +			return -EPERM;
+> +		}
+>  		oldflags = ei->i_flags;
+>  
+>  		/* The JOURNAL_DATA flag is modifiable only by root */
+> diff -puN fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/jfs/ioctl.c
+> --- a/fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
+> +++ a/fs/jfs/ioctl.c
+> @@ -79,6 +79,9 @@ int jfs_ioctl(struct inode * inode, stru
+>  		if (!S_ISDIR(inode->i_mode))
+>  			flags &= ~JFS_DIRSYNC_FL;
+>  
+> +		/* Is it quota file? Don't allow user mess with it */
+> +		if (IS_NOQUOTA(inode))
+> +			return -EPERM;
+>  		jfs_get_inode_flags(jfs_inode);
+>  		oldflags = jfs_inode->mode2;
+>  
+> diff -puN fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/reiserfs/ioctl.c
+> --- a/fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
+> +++ a/fs/reiserfs/ioctl.c
+> @@ -57,6 +57,9 @@ int reiserfs_ioctl(struct inode *inode, 
+>  			if (get_user(flags, (int __user *)arg))
+>  				return -EFAULT;
+>  
+> +			/* Is it quota file? Don't allow user mess with it. */
+> +			if (IS_NOQUOTA(inode))
+> +				return -EPERM;
+>  			if (((flags ^ REISERFS_I(inode)->
+>  			      i_attrs) & (REISERFS_IMMUTABLE_FL |
+>  					  REISERFS_APPEND_FL))
+> _
+
+> 
+-- 
+David Kleikamp
+IBM Linux Technology Center
