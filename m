@@ -1,38 +1,71 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
-Date: Fri, 2 Nov 2007 13:20:31 +0800
-Message-ID: <20071102052031.GC18505@webber.adilger.int>
-References: <46D7097F.4020501@linux.vnet.ibm.com> <1188552066.3781.15.camel@dhcp5.linsyssoft.com> <1193964035.4014.23.camel@localhost.localdomain>
+From: Alex Tomas <bzzz.tomas@gmail.com>
+Subject: Re: delalloc fragmenting files?
+Date: Fri, 02 Nov 2007 11:56:36 +0300
+Message-ID: <472AE644.1040102@gmail.com>
+References: <47225B1E.2060708@redhat.com>
+ <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com>
+ <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com>
+ <472A2384.2010001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Girish Shilamkar <girish@clusterfs.com>,
-	Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; format=flowed; charset=ISO-8859-1
+Content-Transfer-Encoding: 7BIT
+Cc: Andreas Dilger <adilger@Sun.COM>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:51622 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694AbXKBFVr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2007 01:21:47 -0400
-Content-Disposition: inline
-In-Reply-To: <1193964035.4014.23.camel@localhost.localdomain>
+Received: from gmp-eb-mail-1.sun.com ([192.18.6.21]:53196 "EHLO
+	gmp-eb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752558AbXKBI5K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2007 04:57:10 -0400
+Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
+	by gmp-eb-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id lA28usEf010119
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 08:57:04 GMT
+Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JQV00A01FB5EM00@fe-emea-09.sun.com>
+ (original mail from bzzz.tomas@gmail.com) for linux-ext4@vger.kernel.org; Fri,
+ 02 Nov 2007 08:56:54 +0000 (GMT)
+In-reply-to: <472A2384.2010001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Nov 01, 2007  17:40 -0700, Mingming Cao wrote:
-> Current journal checksumming patch failed fsstress test on NUMA. The 
-> bh->b_data passed to the crc32_be () function could be NULL pointer, 
-> which caused kernel oops immediately when running fsstress with -o 
-> journal_checksum. It is because the page is part of highmem on NUMA box.
-> We need to kmap the page before access the bh->b_data to calculate
-> the checksums.
+Eric,
 
-I have no objection to the patch, per-se, but I'm surprised that there
-would ever be a buffer head pointing at a page in high memory?  That
-seems contrary to what I would expect...
+would you mind to repeat the run and then grab /proc/fs/ext4/<dev>/mb_history?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Software Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+thanks in advance, Alex
+
+Eric Sandeen wrote:
+> Eric Sandeen wrote:
+>> Alex Tomas wrote:
+>>> please, try the patch attached.
+>> Looks quite a bit better:
+>>
+>> http://people.redhat.com/esandeen/seekwatcher/ext4-alex.png
+>> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-dd-write.png
+>> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-xfs-dd-write.png
+>>
+>> It is much less fragmented, although still not exactly the nice linear
+>> allocation I'd expect from a single threaded large write on a fresh fs...
+> 
+> Note, we're still getting out-of-order extents, too:
+> 
+> First block: 122880
+> Last block: 2694143
+> Discontinuity: Block 7424 is at 101376 (was 130303)
+> Discontinuity: Block 28160 is at 133120 (was 122111)
+> Discontinuity: Block 58368 is at 188416 (was 163327)
+> Discontinuity: Block 66304 is at 180224 (was 196351)
+> Discontinuity: Block 73984 is at 172032 (was 187903)
+> Discontinuity: Block 81664 is at 167936 (was 179711)
+> Discontinuity: Block 84736 is at 221184 (was 171007)
+> Discontinuity: Block 92416 is at 212992 (was 228863)
+> Discontinuity: Block 100096 is at 204800 (was 220671)
+> Discontinuity: Block 107776 is at 198656 (was 212479)
+> ...
+> 
+> I'm trying to find time to look into this but other things are knocking
+> at my door so no promises...
+> 
+> -Eric
+> 
