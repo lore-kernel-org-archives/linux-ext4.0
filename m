@@ -1,71 +1,54 @@
-From: Alex Tomas <bzzz.tomas@gmail.com>
-Subject: Re: delalloc fragmenting files?
-Date: Fri, 02 Nov 2007 11:56:36 +0300
-Message-ID: <472AE644.1040102@gmail.com>
-References: <47225B1E.2060708@redhat.com>
- <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com>
- <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com>
- <472A2384.2010001@redhat.com>
+From: Badari Pulavarty <pbadari@gmail.com>
+Subject: Re: [PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
+Date: Fri, 02 Nov 2007 08:31:48 -0800
+Message-ID: <1194021108.1547.14.camel@dyn9047017100.beaverton.ibm.com>
+References: <46D7097F.4020501@linux.vnet.ibm.com>
+	 <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
+	 <1193964035.4014.23.camel@localhost.localdomain>
+	 <20071102052031.GC18505@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7BIT
-Cc: Andreas Dilger <adilger@Sun.COM>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	Girish Shilamkar <girish@clusterfs.com>,
+	Avantika Mathur <mathur@linux.vnet.ibm.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-mail-1.sun.com ([192.18.6.21]:53196 "EHLO
-	gmp-eb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752558AbXKBI5K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2007 04:57:10 -0400
-Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
-	by gmp-eb-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id lA28usEf010119
-	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 08:57:04 GMT
-Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JQV00A01FB5EM00@fe-emea-09.sun.com>
- (original mail from bzzz.tomas@gmail.com) for linux-ext4@vger.kernel.org; Fri,
- 02 Nov 2007 08:56:54 +0000 (GMT)
-In-reply-to: <472A2384.2010001@redhat.com>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:49874 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755252AbXKBP3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Nov 2007 11:29:41 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lA2FUvtd011841
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 11:30:57 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id lA2FTM8q470430
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 11:29:22 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lA2FTLfP011625
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 11:29:22 -0400
+In-Reply-To: <20071102052031.GC18505@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric,
+On Fri, 2007-11-02 at 13:20 +0800, Andreas Dilger wrote:
+> On Nov 01, 2007  17:40 -0700, Mingming Cao wrote:
+> > Current journal checksumming patch failed fsstress test on NUMA. The 
+> > bh->b_data passed to the crc32_be () function could be NULL pointer, 
+> > which caused kernel oops immediately when running fsstress with -o 
+> > journal_checksum. It is because the page is part of highmem on NUMA box.
+> > We need to kmap the page before access the bh->b_data to calculate
+> > the checksums.
+> 
+> I have no objection to the patch, per-se, but I'm surprised that there
+> would ever be a buffer head pointing at a page in high memory?  That
+> seems contrary to what I would expect...
 
-would you mind to repeat the run and then grab /proc/fs/ext4/<dev>/mb_history?
+I was surprised to see that too while helping Mingming/Avantika track
+this issue. I was under impression that we are checksumming only
+metadata and it should be lowmem. But only "buffer_head"s are in lowmem.
+Pages that point to can be in Highmem.
 
-thanks in advance, Alex
-
-Eric Sandeen wrote:
-> Eric Sandeen wrote:
->> Alex Tomas wrote:
->>> please, try the patch attached.
->> Looks quite a bit better:
->>
->> http://people.redhat.com/esandeen/seekwatcher/ext4-alex.png
->> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-dd-write.png
->> http://people.redhat.com/esandeen/seekwatcher/ext4-alex-ext4-xfs-dd-write.png
->>
->> It is much less fragmented, although still not exactly the nice linear
->> allocation I'd expect from a single threaded large write on a fresh fs...
-> 
-> Note, we're still getting out-of-order extents, too:
-> 
-> First block: 122880
-> Last block: 2694143
-> Discontinuity: Block 7424 is at 101376 (was 130303)
-> Discontinuity: Block 28160 is at 133120 (was 122111)
-> Discontinuity: Block 58368 is at 188416 (was 163327)
-> Discontinuity: Block 66304 is at 180224 (was 196351)
-> Discontinuity: Block 73984 is at 172032 (was 187903)
-> Discontinuity: Block 81664 is at 167936 (was 179711)
-> Discontinuity: Block 84736 is at 221184 (was 171007)
-> Discontinuity: Block 92416 is at 212992 (was 228863)
-> Discontinuity: Block 100096 is at 204800 (was 220671)
-> Discontinuity: Block 107776 is at 198656 (was 212479)
-> ...
-> 
-> I'm trying to find time to look into this but other things are knocking
-> at my door so no promises...
-> 
-> -Eric
-> 
+Thanks,
+Badari
