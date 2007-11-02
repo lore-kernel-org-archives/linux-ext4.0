@@ -1,140 +1,83 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: + forbid-user-to-change-file-flags-on-quota-files.patch added
-	to -mm tree
-Date: Thu, 01 Nov 2007 15:02:25 -0500
-Message-ID: <1193947345.9503.9.camel@norville.austin.ibm.com>
-References: <200711011755.lA1HtQJ4008301@imap1.linux-foundation.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
+Date: Thu, 01 Nov 2007 17:40:35 -0700
+Message-ID: <1193964035.4014.23.camel@localhost.localdomain>
+References: <46D7097F.4020501@linux.vnet.ibm.com>
+	 <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: mm-commits@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, lioupayphone@gmail.com,
-	reiserfs-dev@namesys.com
-To: akpm@linux-foundation.org
+Cc: Avantika Mathur <mathur@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Girish Shilamkar <girish@clusterfs.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:37519 "EHLO e2.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:56666 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755744AbXKAUCc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Nov 2007 16:02:32 -0400
-In-Reply-To: <200711011755.lA1HtQJ4008301@imap1.linux-foundation.org>
+	id S1755146AbXKBAkj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Nov 2007 20:40:39 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lA20eZ4a008906
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Nov 2007 20:40:35 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id lA20eZPG484094
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Nov 2007 20:40:35 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lA20eYU0011508
+	for <linux-ext4@vger.kernel.org>; Thu, 1 Nov 2007 20:40:35 -0400
+In-Reply-To: <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2007-11-01 at 10:55 -0700, akpm@linux-foundation.org wrote:
-> The patch titled
->      Forbid user to change file flags on quota files
-> has been added to the -mm tree.  Its filename is
->      forbid-user-to-change-file-flags-on-quota-files.patch
-> 
-> *** Remember to use Documentation/SubmitChecklist when testing your code ***
-> 
-> See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-> out what to do about this
-> 
-> ------------------------------------------------------
-> Subject: Forbid user to change file flags on quota files
-> From: Jan Kara <jack@suse.cz>
-> 
-> Forbid user from changing file flags on quota files.  User has no bussiness
-> in playing with these flags when quota is on.  Furthermore there is a
-> remote possibility of deadlock due to a lock inversion between quota file's
-> i_mutex and transaction's start (i_mutex for quota file is locked only when
-> trasaction is started in quota operations) in ext3 and ext4.
+JBD2: Fix NULL pointer bh->b_data on NUMA box with journal checksumming.
 
-This looks reasonable.
+Current journal checksumming patch failed fsstress test on NUMA. The 
+bh->b_data passed to the crc32_be () function could be NULL pointer, 
+which caused kernel oops immediately when running fsstress with -o 
+journal_checksum. It is because the page is part of highmem on NUMA box.
+We need to kmap the page before access the bh->b_data to calculate
+the checksums.
+ 
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Cc: LIOU Payphone <lioupayphone@gmail.com>
-> Cc: <linux-ext4@vger.kernel.org>
+---
+ fs/jbd2/commit.c |   19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
 
-Acked-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-
-> Cc: <reiserfs-dev@namesys.com>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
-> 
->  fs/ext2/ioctl.c     |    5 +++++
->  fs/ext3/ioctl.c     |    5 +++++
->  fs/ext4/ioctl.c     |    5 +++++
->  fs/jfs/ioctl.c      |    3 +++
->  fs/reiserfs/ioctl.c |    3 +++
->  5 files changed, 21 insertions(+)
-> 
-> diff -puN fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext2/ioctl.c
-> --- a/fs/ext2/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
-> +++ a/fs/ext2/ioctl.c
-> @@ -47,6 +47,11 @@ int ext2_ioctl (struct inode * inode, st
->  			flags &= ~EXT2_DIRSYNC_FL;
->  
->  		mutex_lock(&inode->i_mutex);
-> +		/* Is it quota file? Don't allow user mess with it */
-> +		if (IS_NOQUOTA(inode)) {
-> +			mutex_unlock(&inode->i_mutex);
-> +			return -EPERM;
-> +		}
->  		oldflags = ei->i_flags;
->  
->  		/*
-> diff -puN fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext3/ioctl.c
-> --- a/fs/ext3/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
-> +++ a/fs/ext3/ioctl.c
-> @@ -51,6 +51,11 @@ int ext3_ioctl (struct inode * inode, st
->  			flags &= ~EXT3_DIRSYNC_FL;
->  
->  		mutex_lock(&inode->i_mutex);
-> +		/* Is it quota file? Don't allow user mess with it */
-> +		if (IS_NOQUOTA(inode)) {
-> +			mutex_unlock(&inode->i_mutex);
-> +			return -EPERM;
-> +		}
->  		oldflags = ei->i_flags;
->  
->  		/* The JOURNAL_DATA flag is modifiable only by root */
-> diff -puN fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/ext4/ioctl.c
-> --- a/fs/ext4/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
-> +++ a/fs/ext4/ioctl.c
-> @@ -51,6 +51,11 @@ int ext4_ioctl (struct inode * inode, st
->  			flags &= ~EXT4_DIRSYNC_FL;
->  
->  		mutex_lock(&inode->i_mutex);
-> +		/* Is it quota file? Don't allow user mess with it */
-> +		if (IS_NOQUOTA(inode)) {
-> +			mutex_unlock(&inode->i_mutex);
-> +			return -EPERM;
-> +		}
->  		oldflags = ei->i_flags;
->  
->  		/* The JOURNAL_DATA flag is modifiable only by root */
-> diff -puN fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/jfs/ioctl.c
-> --- a/fs/jfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
-> +++ a/fs/jfs/ioctl.c
-> @@ -79,6 +79,9 @@ int jfs_ioctl(struct inode * inode, stru
->  		if (!S_ISDIR(inode->i_mode))
->  			flags &= ~JFS_DIRSYNC_FL;
->  
-> +		/* Is it quota file? Don't allow user mess with it */
-> +		if (IS_NOQUOTA(inode))
-> +			return -EPERM;
->  		jfs_get_inode_flags(jfs_inode);
->  		oldflags = jfs_inode->mode2;
->  
-> diff -puN fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files fs/reiserfs/ioctl.c
-> --- a/fs/reiserfs/ioctl.c~forbid-user-to-change-file-flags-on-quota-files
-> +++ a/fs/reiserfs/ioctl.c
-> @@ -57,6 +57,9 @@ int reiserfs_ioctl(struct inode *inode, 
->  			if (get_user(flags, (int __user *)arg))
->  				return -EFAULT;
->  
-> +			/* Is it quota file? Don't allow user mess with it. */
-> +			if (IS_NOQUOTA(inode))
-> +				return -EPERM;
->  			if (((flags ^ REISERFS_I(inode)->
->  			      i_attrs) & (REISERFS_IMMUTABLE_FL |
->  					  REISERFS_APPEND_FL))
-> _
-
-> 
--- 
-David Kleikamp
-IBM Linux Technology Center
+Index: linux-2.6.24-rc1/fs/jbd2/commit.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/jbd2/commit.c	2007-11-01 11:15:08.000000000 -0700
++++ linux-2.6.24-rc1/fs/jbd2/commit.c	2007-11-01 12:27:02.000000000 -0700
+@@ -352,6 +352,20 @@ write_out_data:
+ 	journal_do_submit_data(wbuf, bufs);
+ }
+ 
++static inline __u32 jbd2_checksum_data(__u32 crc32_sum, struct buffer_head *bh)
++{
++	struct page *page = bh->b_page;
++	char *addr;
++	__u32 checksum;
++
++	addr = kmap(page);
++	checksum = crc32_be(crc32_sum,
++		(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
++	kunmap(page);
++
++	return checksum;
++}
++
+ static inline void write_tag_block(int tag_bytes, journal_block_tag_t *tag,
+ 				   unsigned long long block)
+ {
+@@ -715,9 +729,8 @@ start_journal_io:
+ 				 */
+ 				if (JBD2_HAS_COMPAT_FEATURE(journal,
+ 					JBD2_FEATURE_COMPAT_CHECKSUM)) {
+-					crc32_sum = crc32_be(crc32_sum,
+-							(void *)bh->b_data,
+-							bh->b_size);
++					crc32_sum =
++					    jbd2_checksum_data(crc32_sum, bh);
+ 				}
+ 
+ 				lock_buffer(bh);
