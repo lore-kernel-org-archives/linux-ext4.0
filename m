@@ -1,45 +1,45 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][RFC]Ext4: Use get_cpu()/put_cpu() in preemptible
-	context
-Date: Sat, 3 Nov 2007 13:01:37 +0800
-Message-ID: <20071103050137.GE2863@webber.adilger.int>
-References: <E1Inx4A-0002PQ-00@kernel> <1194044898.3966.6.camel@localhost.localdomain> <472BB037.5010606@linux.vnet.ibm.com> <1194050108.3966.18.camel@localhost.localdomain>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 2/4][e2fsprogs] Allow FLEX_BG to be use as a feature
+	option at mke2fs time.
+Date: Sat, 3 Nov 2007 14:18:58 -0400
+Message-ID: <20071103181858.GA18836@thunk.org>
+References: <20070814043245.32206.34785.stgit@gara> <20070814043257.32206.56210.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:48257 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753284AbXKCFCS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Nov 2007 01:02:18 -0400
+Received: from thunk.org ([69.25.196.29]:49288 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756554AbXKDNhb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Nov 2007 08:37:31 -0500
 Content-Disposition: inline
-In-Reply-To: <1194050108.3966.18.camel@localhost.localdomain>
+In-Reply-To: <20070814043257.32206.56210.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Nov 02, 2007  17:35 -0700, Mingming Cao wrote:
-> Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-> ===================================================================
-> --- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-11-02 17:22:18.000000000 -0700
-> +++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-11-02 17:23:02.000000000 -0700
-> @@ -4006,7 +4006,8 @@ static void ext4_mb_group_or_file(struct
->  		return;
->  
->  	BUG_ON(ac->ac_lg != NULL);
-> -	ac->ac_lg = &sbi->s_locality_groups[smp_processor_id()];
-> +	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
-> +	put_cpu();
->  
->  	/* we're going to use group allocation */
->  	ac->ac_flags |= EXT4_MB_HINT_GROUP_ALLOC;
+On Mon, Aug 13, 2007 at 11:32:57PM -0500, Jose R. Santos wrote:
+> From: Jose R. Santos <jrs@us.ibm.com>
+> 
+> Allow FLEX_BG to be use as a feature option at mke2fs time.
+> 
+> @@ -1363,6 +1364,10 @@ static void PRS(int argc, char *argv[])
+>  		fs_param.s_feature_ro_compat = 0;
+>   	}
+>  	
+> +	if (fs_param.s_feature_incompat &
+> +	    EXT4_FEATURE_INCOMPAT_FLEX_BG)
+> +		fs_param.s_feature_incompat |= EXT2_FEATURE_INCOMPAT_META_BG;
+> +
+>  	/* Set first meta blockgroup via an environment variable */
+>  	/* (this is mostly for debugging purposes) */
+>  	if ((fs_param.s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
 
-Shouldn't the put_cpu() be after ac->ac_lg is no longer being used?
-I guess there would otherwise be a danger of other processes using
-the same s_locality_groups[] struct?
+Why is this hunk here?  Just for convenience, right?  Technically
+there's no reason why we can't relax the location of the inode tables
+and bitmap blocks without going to meta_bg.  My inclination is to keep
+the options as orthogonal as possible, and use mke2fs.conf to allow
+the user to conveniently set up filesystems with the appropriate
+configuration parameters.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Software Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+						- Ted
