@@ -1,178 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: delalloc fragmenting files?
-Date: Fri, 02 Nov 2007 10:41:51 -0500
-Message-ID: <472B453F.8010608@redhat.com>
-References: <47225B1E.2060708@redhat.com> <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com> <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com> <472A2384.2010001@redhat.com> <472AE644.1040102@gmail.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH][RFC]Ext4: Use get_cpu()/put_cpu() in preemptible context
+Date: Fri, 02 Nov 2007 17:35:08 -0700
+Message-ID: <1194050108.3966.18.camel@localhost.localdomain>
+References: <E1Inx4A-0002PQ-00@kernel>
+	 <1194044898.3966.6.camel@localhost.localdomain>
+	 <472BB037.5010606@linux.vnet.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------010709040202090808000201"
-Cc: Andreas Dilger <adilger@Sun.COM>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Alex Tomas <bzzz.tomas@gmail.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47713 "EHLO mx1.redhat.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:53207 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759176AbXKBPl7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Nov 2007 11:41:59 -0400
-In-Reply-To: <472AE644.1040102@gmail.com>
+	id S1755971AbXKCAfa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Nov 2007 20:35:30 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lA30ZF8h006964
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 20:35:15 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id lA30Z5NE140814
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 20:35:15 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lA30Z554016268
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 20:35:05 -0400
+Received: from [9.47.17.70] (w-ming-laptop.beaverton.ibm.com [9.47.17.70])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id lA30Z5eM016239
+	for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2007 20:35:05 -0400
+In-Reply-To: <472BB037.5010606@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------010709040202090808000201
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Fix the warning of:
 
-Alex Tomas wrote:
-> Eric,
-> 
-> would you mind to repeat the run and then grab /proc/fs/ext4/<dev>/mb_history?
-> 
-> thanks in advance, Alex
+printk: 369 messages suppressed.
+BUG: using smp_processor_id() in preemptible [00000001] code: fsx-linux/31702
+caller is ext4_mb_new_blocks+0x2aa/0x1319
 
-Sure thing, attached; this is from a 1024x1M run, wound up with 32
-fragments, out of order:
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-First block: 122880
-Last block: 491519
-Discontinuity: Block 7424 is at 114688 (was 130303)
-Discontinuity: Block 15616 is at 106496 (was 122879)
-Discontinuity: Block 23552 is at 102400 (was 114431)
-Discontinuity: Block 26624 is at 155648 (was 105471)
-Discontinuity: Block 33792 is at 147456 (was 162815)
-Discontinuity: Block 41472 is at 162816 (was 155135)
-Discontinuity: Block 42496 is at 188416 (was 163839)
-Discontinuity: Block 50176 is at 180224 (was 196095)
-Discontinuity: Block 58368 is at 172032 (was 188415)
-Discontinuity: Block 66560 is at 167936 (was 180223)
-....
+---
+ fs/ext4/mballoc.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-pid 3695 is pdflush, I assume 7634 was the dd itself.
-
--Eric
-
---------------010709040202090808000201
-Content-Type: application/x-bzip;
- name="mb_history.bz2"
-Content-Transfer-Encoding: base64
-Content-Disposition: inline;
- filename="mb_history.bz2"
-
-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
---------------010709040202090808000201--
+Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-11-02 17:22:18.000000000 -0700
++++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-11-02 17:23:02.000000000 -0700
+@@ -4006,7 +4006,8 @@ static void ext4_mb_group_or_file(struct
+ 		return;
+ 
+ 	BUG_ON(ac->ac_lg != NULL);
+-	ac->ac_lg = &sbi->s_locality_groups[smp_processor_id()];
++	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
++	put_cpu();
+ 
+ 	/* we're going to use group allocation */
+ 	ac->ac_flags |= EXT4_MB_HINT_GROUP_ALLOC;
