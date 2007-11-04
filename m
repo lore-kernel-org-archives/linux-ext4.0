@@ -1,106 +1,152 @@
-From: Alex Tomas <bzzz.tomas@gmail.com>
-Subject: Re: delalloc fragmenting files?
-Date: Sun, 04 Nov 2007 21:36:04 +0300
-Message-ID: <472E1114.7060206@gmail.com>
-References: <47225B1E.2060708@redhat.com>
- <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com>
- <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com>
- <472A2384.2010001@redhat.com> <472AE644.1040102@gmail.com>
- <472B453F.8010608@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_KANwWmJ5KY698fyBXAj8zQ)"
-Cc: Andreas Dilger <adilger@Sun.COM>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: What's cooking in e2fsprogs.git (topics)
+Date: Sun, 04 Nov 2007 17:42:27 -0500
+Message-ID: <E1IooAl-0006SJ-Ki@closure.thunk.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-mail-1.sun.com ([192.18.6.21]:53725 "EHLO
-	gmp-eb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753352AbXKDSif (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Nov 2007 13:38:35 -0500
-Received: from fe-emea-10.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
-	by gmp-eb-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id lA4IcOmu001489
-	for <linux-ext4@vger.kernel.org>; Sun, 4 Nov 2007 18:38:33 GMT
-Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JQZ00M01VDM1A00@fe-emea-10.sun.com>
- (original mail from bzzz.tomas@gmail.com) for linux-ext4@vger.kernel.org; Sun,
- 04 Nov 2007 18:38:24 +0000 (GMT)
-In-reply-to: <472B453F.8010608@redhat.com>
+Received: from thunk.org ([69.25.196.29]:40422 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753473AbXKDWnQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Nov 2007 17:43:16 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
+Here are the topics that have been cooking.  Commits prefixed
+with '-' are only in 'pu' while commits prefixed with '+' are
+in 'next'.  The topics list the commits in reverse chronological
+order.
 
---Boundary_(ID_KANwWmJ5KY698fyBXAj8zQ)
-Content-type: text/plain; format=flowed; charset=ISO-8859-1
-Content-transfer-encoding: 7BIT
+* next (Sun Oct 21 21:03:14 2007 -0500) 6 commits 
+       (plus those commits pulled in from the topics branches, below)
+ + check_ea_in_inode: Cleanup e2fsck_write_inode_full() call
+ + blkid.pc, ss.pc: Move private libs from "Libs:" to "Libs.private:"
+ + texinfo: Fix directory entries
+ + blkid/test_probe.in: Fix temporary files handling
+ + Check fgets(3) return value
+ + e2image: Fix potential off-by-one fs_device_name buffer overflow
+ + Use blk_t type instead of unsigned int or __u32
 
-thanks for the data. the attached patch should fix couple issues:
-broken history output and policy in that smaller usable chunk to
-be used. can you give it a spin, please?
+	I'm using a slightly different system than git, where new
+	minor commits are going into the "next" branch, and where
+	master is always a strict subset of next.  (With git topic
+	branches get pulled into master, and some branches live in
+	next for a long time.  In contrast, for now I'm only pulling
+	branches into 'next' when I'm reasonably certain that they can
+	go into 'master' fairly quickly.)  This is an experiment, but
+	if it's too much trouble to keep 'next' close to 'master', I
+	might move over to the 'git' scheme.
 
-thanks, Alex
+	In any case, everything in 'next' will proably go into
+	'master' fairly quickly.  Pleas test it and let me know if you
+	find any problems!
 
-Eric Sandeen wrote:
-> Alex Tomas wrote:
->> Eric,
->>
->> would you mind to repeat the run and then grab /proc/fs/ext4/<dev>/mb_history?
->>
->> thanks in advance, Alex
-> 
-> Sure thing, attached; this is from a 1024x1M run, wound up with 32
-> fragments, out of order:
-> 
-> First block: 122880
-> Last block: 491519
-> Discontinuity: Block 7424 is at 114688 (was 130303)
-> Discontinuity: Block 15616 is at 106496 (was 122879)
-> Discontinuity: Block 23552 is at 102400 (was 114431)
-> Discontinuity: Block 26624 is at 155648 (was 105471)
-> Discontinuity: Block 33792 is at 147456 (was 162815)
-> Discontinuity: Block 41472 is at 162816 (was 155135)
-> Discontinuity: Block 42496 is at 188416 (was 163839)
-> Discontinuity: Block 50176 is at 180224 (was 196095)
-> Discontinuity: Block 58368 is at 172032 (was 188415)
-> Discontinuity: Block 66560 is at 167936 (was 180223)
-> ....
-> 
-> pid 3695 is pdflush, I assume 7634 was the dd itself.
-> 
-> -Eric
+* tt/badblocks-cleanup (Mon Oct 22 10:19:20 2007 -0400) 3 commits
+ + badblocks: Factor out calls to strtoul to a helper function
+ + badblocks: Change unsigned long to blk_t and unsigned int, as
+   appropriate
+ + badblocks: Use unsigned int instead of unsigned long for test
+   patterns
 
+	This branch has been completely moved into 'next', and is
+	ready to graduate to 'master'.
+	
+* tt/chattr-error-code (Mon Oct 22 08:51:39 2007 -0400) 3 commits
+ + chattr: provide an exit code in case of failure and add -f flag
+ + libe2p: Change iterate_on_dir so that it counts non-zero returns
+ + libe2p: Use lstat() instead of stat() in fsetflags() and
+   fgetflags()
 
---Boundary_(ID_KANwWmJ5KY698fyBXAj8zQ)
-Content-type: text/x-patch; name=mballoc-use-smaller-good-chunk.patch
-Content-transfer-encoding: 7BIT
-Content-disposition: inline; filename=mballoc-use-smaller-good-chunk.patch
+	This branch has been completely moved into 'next', and is
+	ready to graduate to 'master'.
 
-Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-10-27 10:29:17.000000000 +0400
-+++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-11-04 21:30:20.000000000 +0300
-@@ -1553,7 +1553,8 @@ static void ext4_mb_measure_extent(struc
- 		/* if the request is satisfied, then we try to find
- 		 * an extent that still satisfy the request, but is
- 		 * smaller than previous one */
--		*bex = *ex;
-+		if (ex->fe_len < bex->fe_len)
-+			*bex = *ex;
- 	}
- 
- 	ext4_mb_check_limits(ac, e4b, 0);
-@@ -2311,6 +2312,11 @@ static void ext4_mb_store_history(struct
- 	h.orig = ac->ac_o_ex;
- 	h.result = ac->ac_b_ex;
- 	h.flags = ac->ac_flags;
-+	h.found = ac->ac_found;
-+	h.groups = ac->ac_groups_scanned;
-+	h.cr = ac->ac_criteria;
-+	h.tail = ac->ac_tail;
-+	h.buddy = ac->ac_buddy;
- 	h.merged = 0;
- 	if (ac->ac_op == EXT4_MB_HISTORY_ALLOC) {
- 		if (ac->ac_g_ex.fe_start == ac->ac_b_ex.fe_start &&
+* js/uninit (Sun Oct 21 21:04:24 2007 -0500) 14 commits
+ - Add m_uninit test case.
+ - Add new mm_lazy test case.
+ - Fix test cases.
+ - Update uninit block group documetation for some of the utilities.
+ - Make e2fsck uninit block group aware.
+ - Make debugfs uninit block group aware.
+ - Make resize2fs uninit block group aware.
+ - Make dumpe2fs uninit block group aware.
+ - Make tune2fs uninit block group aware.
+ - Add support for creating filesystems using uninit block group.
+ - Rename feature name from gdt_checksum to uninit_groups.
+ - Add uninit block group support on libe2fs.
+ - Add initial checksum support.
+ + Reorder some of the $(SRCS) in alphabetical order.
 
---Boundary_(ID_KANwWmJ5KY698fyBXAj8zQ)--
+	This still doesn't pass "make check" in lib/ext2fs, but I'll
+	take a closer look at this in the near future.
+
+* tt/64bit-bitmaps (Sun Oct 14 22:51:51 2007 -0400) 1 commit
+ - Initial design for 64-bit bitmaps
+
+	I haven't done anything with this yet; hopefully, I'll have
+	more time in the next two weeks.
+
+* cl/remove-masix (Thu Aug 23 15:09:03 2007 +0800) 5 commits
+ + mke2fs: remove masix support
+ + e2fsck: remove masix support
+ + libext2fs: remove masix support
+ + document: remove masix from data structure
+ + debugfs: remove masix support
+
+	This branch has been completely moved into 'next', and is
+	ready to graduate to 'master'.
+
+* tt/extents (Mon Aug 20 21:31:11 2007 -0400) 5 commits
+ - e2fsck: Add support for extents
+ - Add support for extents to libext2fs
+ - e2fsck: factor out code to clear an inode into
+   e2fsck_clear_inode()
+ - Don't byte swap extents information in the inode
+ - Allow debugfs to be extended for use by test programs
+
+	I haven't done anything with this yet; hopefully, I'll have
+	more time in the next two weeks.
+
+* js/flex-bg (Mon Aug 13 23:33:14 2007 -0500) 4 commits
+ - New bitmap and inode table allocation for FLEX_BG
+ + Enable FLEX_BG feature support
+ + Relax group descriptor checking for FLEX_BG
+ + Reserve the INCOMPAT feature number for FLEX_BG.
+
+	The basic flex-bg support has been merged into 'master', but
+	the allocation changes need some more testing, especially for
+	resize2fs.
+
+* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
+ - e2fsprogs: Add test case for undoe2fs
+ - e2fsprogs: Fix the resize inode test case
+ - e2fsprogs: Support for large inode migration.
+ - e2fsprogs: Make mke2fs use undo I/O manager.
+ - e2fsprogs: Add undoe2fs
+ - e2fsprogs: Add undo I/O manager
+
+	I just need to review these changes more.  It's on my queue...
+
+* ad/extents-testcases (Thu Jul 12 11:20:14 2007 -0400) 19 commits
+ . Add extent test: f_extents_shrd_blk
+ . Add extent test: f_extents_unsorted
+ . Add extent test: f_extents_res_blk
+ . Add extent test: f_extents_overlap
+ . Add extent test: f_extents_orphan_blks
+ . Add extent test: f_extents_inrlevel-incons
+ . Add extent test: f_extents_imbalanced_tree
+ . Add extent test: f_extents_ei_leaf
+ . Add extent test: f_extents_ei_block
+ . Add extent test: f_extents_eh_max
+ . Add extent test: f_extents_eh_magic
+ . Add extent test: f_extents_eh_entries
+ . Add extent test: f_extents_eh_depth
+ . Add extent test: f_extents_ee_start
+ . Add extent test: f_extents_ee_len
+ . Add extent test: f_extents_ee_block
+ . Add extent test: f_extents_bad_blk
+ . Add extent test: f_extents
+ . Add extent test: f_bad_disconnected_inode
+
+	These are parked until the extents support is more mature.  As
+	the extents code is better suited, these tests will get pulled
+	into the extents branch.
