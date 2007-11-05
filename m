@@ -1,61 +1,63 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH][RFC]Ext4: Use get_cpu()/put_cpu() in preemptible
-	context
-Date: Mon, 05 Nov 2007 10:40:07 -0800
-Message-ID: <1194288007.20278.6.camel@localhost.localdomain>
-References: <E1Inx4A-0002PQ-00@kernel>
-	 <1194044898.3966.6.camel@localhost.localdomain>
-	 <472BB037.5010606@linux.vnet.ibm.com>
-	 <1194050108.3966.18.camel@localhost.localdomain>
-	 <20071103050137.GE2863@webber.adilger.int>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: delalloc fragmenting files?
+Date: Tue, 6 Nov 2007 02:51:33 +0800
+Message-ID: <20071105185133.GA3900@webber.adilger.int>
+References: <47225B1E.2060708@redhat.com> <20071026221938.GV3042@webber.adilger.int> <4728ED3B.1060407@redhat.com> <47291F62.3000008@gmail.com> <4729EEB2.9090406@redhat.com> <472A2384.2010001@redhat.com> <472AE644.1040102@gmail.com> <472B453F.8010608@redhat.com> <472E1114.7060206@gmail.com> <472F54EE.9030904@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <bzzz.tomas@gmail.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Kalpak Shah <Kalpak.Shah@Sun.COM>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:35313 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752585AbXKESkO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Nov 2007 13:40:14 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lA5Ie90O031186
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 13:40:09 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id lA5Ie9hP479680
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 13:40:09 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lA5Ie99b029938
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 13:40:09 -0500
-In-Reply-To: <20071103050137.GE2863@webber.adilger.int>
+Received: from mail.clusterfs.com ([74.0.229.162]:41271 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750981AbXKESvm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2007 13:51:42 -0500
+Content-Disposition: inline
+In-Reply-To: <472F54EE.9030904@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 2007-11-03 at 13:01 +0800, Andreas Dilger wrote:
-> On Nov 02, 2007  17:35 -0700, Mingming Cao wrote:
-> > Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-> > ===================================================================
-> > --- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c	2007-11-02 17:22:18.000000000 -0700
-> > +++ linux-2.6.24-rc1/fs/ext4/mballoc.c	2007-11-02 17:23:02.000000000 -0700
-> > @@ -4006,7 +4006,8 @@ static void ext4_mb_group_or_file(struct
-> >  		return;
-> >  
-> >  	BUG_ON(ac->ac_lg != NULL);
-> > -	ac->ac_lg = &sbi->s_locality_groups[smp_processor_id()];
-> > +	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
-> > +	put_cpu();
-> >  
-> >  	/* we're going to use group allocation */
-> >  	ac->ac_flags |= EXT4_MB_HINT_GROUP_ALLOC;
+On Nov 05, 2007  11:37 -0600, Eric Sandeen wrote:
+> Alex Tomas wrote:
+> > thanks for the data. the attached patch should fix couple issues:
+> > broken history output and policy in that smaller usable chunk to
+> > be used. can you give it a spin, please?
 > 
-> Shouldn't the put_cpu() be after ac->ac_lg is no longer being used?
-> I guess there would otherwise be a danger of other processes using
-> the same s_locality_groups[] struct?
+> This looks *much* better:
+> 
+> First block: 100355
+> Last block: 2342657
+> Discontinuity: Block 30208 is at 133120 (was 130562)
+> Discontinuity: Block 60928 is at 165891 (was 163839)
+> Discontinuity: Block 90368 is at 197634 (was 195330)
+> Discontinuity: Block 121856 is at 232448 (was 229121)
+> Discontinuity: Block 150528 is at 263170 (was 261119)
+> Discontinuity: Block 181504 is at 296963 (was 294145)
+> Discontinuity: Block 210944 is at 328706 (was 326402)
+> Discontinuity: Block 241664 is at 361474 (was 359425)
+> Discontinuity: Block 272896 is at 395264 (was 392705)
+> Discontinuity: Block 303360 is at 427010 (was 425727)
+> Discontinuity: Block 334080 is at 459778 (was 457729)
+> Discontinuity: Block 365568 is at 493568 (was 491265)
+> Discontinuity: Block 395264 is at 525314 (was 523263)
+> Discontinuity: Block 426240 is at 558082 (was 556289)
+> ....
 
->From the code, the concurrent use of the same s_locality_groups is being
-protected by the ac_lg->lg_sem. The put_cpu() instruction is before the
-lock is taken.
+On a related note - the FIEMAP patches to filefrag also include a new
+output format that is much more useful, IMHO.  The new format is like:
 
+{filename}
+ext: [logical start.. end kB]: phys start..end kB    :           kB:lun: flags
+  0: [         0..     30207]:     401416..    522251:       120828: 0 :
+  1: [     30208..     60927]:     532480..    655359:       122880: 0 :
+  2: [     60928..    121855]:     790536..    916484:       125948: 0 :
 
-Mingming
+Hopefully Kalpak will be able to post the updated patches here soon.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
