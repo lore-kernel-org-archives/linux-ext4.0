@@ -1,90 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: ext4 stack usage
-Date: Mon, 05 Nov 2007 11:50:57 -0600
-Message-ID: <472F5801.6050104@redhat.com>
+From: Badari Pulavarty <pbadari@gmail.com>
+Subject: Re: [PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
+Date: Mon, 05 Nov 2007 10:07:33 -0800
+Message-ID: <1194286053.17333.14.camel@dyn9047017100.beaverton.ibm.com>
+References: <46D7097F.4020501@linux.vnet.ibm.com>
+	 <1188552066.3781.15.camel@dhcp5.linsyssoft.com>
+	 <1193964035.4014.23.camel@localhost.localdomain>
+	 <20071102052031.GC18505@webber.adilger.int>
+	 <1194021108.1547.14.camel@dyn9047017100.beaverton.ibm.com>
+	 <20071103013621.GC2863@webber.adilger.int>
+	 <1194278695.17333.3.camel@dyn9047017100.beaverton.ibm.com>
+	 <20071105161529.GC2892@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	Girish Shilamkar <girish@clusterfs.com>,
+	Avantika Mathur <mathur@linux.vnet.ibm.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33368 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752179AbXKERvF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Nov 2007 12:51:05 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lA5Hp1UO005143
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 12:51:01 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lA5Hp14p010451
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 12:51:01 -0500
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lA5How7j029389
-	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 12:50:59 -0500
+Received: from e31.co.us.ibm.com ([32.97.110.149]:48846 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750802AbXKESGf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2007 13:06:35 -0500
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id lA5I6QY2029511
+	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 13:06:26 -0500
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id lA5I6DBl102602
+	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 11:06:19 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lA5I6BCN026639
+	for <linux-ext4@vger.kernel.org>; Mon, 5 Nov 2007 11:06:13 -0700
+In-Reply-To: <20071105161529.GC2892@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Just FYI; there are some fairly large stack users in ext4dev.  On my
-x86_64 box with gcc 4.1.1, and the git patch series applied:
+On Tue, 2007-11-06 at 00:15 +0800, Andreas Dilger wrote:
+> On Nov 05, 2007  08:04 -0800, Badari Pulavarty wrote:
+> > On Sat, 2007-11-03 at 09:36 +0800, Andreas Dilger wrote:
+> > > But...  this implies that every user of bh->b_data needs to kmap, and I
+> > > don't see that in the code anywhere else.  That makes me think something
+> > > else is going wrong here.
+> > 
+> > Most cases, this is handled in ll_rw_block() code - when we submit the
+> > buffer head for IO. If the page is in highmem, we will end up creating
+> > a bounce bufer for it. 
+> > 
+> > In our case, JBD code is trying to look at the data to do checksum
+> > on it. Thats why we have to kmap() the page before looking.
+> 
+> My point is that there is a LOT of code in ext[234] that dereferences
+> bh->b_data without kmap() (e.g. group descriptors, bitmaps, superblock,
+> inode tables, etc).  Does that imply that something is forcing those
+> bh pages into lowmem, or is the journal bh page in question being
+> allocated in some different way that allows it to be in highmem?
 
-0x00019ac5 ext4_mb_new_blocks [ext4dev]:                424
-0x0001c221 ext4_mb_free_blocks [ext4dev]:               408
-0x00011390 ext4_group_add [ext4dev]:                    392
-0x000050cb ext4_get_blocks_handle [ext4dev]:            328
-0x0001853f ext4_mb_discard_preallocations [ext4dev]:    328
-0x0000a3a2 ext4_find_entry [ext4dev]:                   312
-0x0000b4de ext4_get_parent [ext4dev]:                   264
-0x00013fb3 ext4_ext_get_blocks [ext4dev]:               264
-0x00014969 ext4_fallocate [ext4dev]:                    264
-0x0001b20a ext4_mb_seq_groups_show [ext4dev]:           264
-0x00006543 ext4_truncate [ext4dev]:                     232
-0x00009b3d ext4_add_entry [ext4dev]:                    216
-0x0000d575 ext4_error [ext4dev]:                        216
-0x0000e8f5 ext4_fill_super [ext4dev]:                   216
-0x00017127 ext4_mb_release_inode_pa [ext4dev]:          216
-0x000172cb ext4_mb_init_cache [ext4dev]:                216
-0x0001dcad ext4_xattr_set_handle [ext4dev]:             216
-0x0000d145 ext4_warning [ext4dev]:                      208
-0x0000d794 ext4_abort [ext4dev]:                        208
-0x000022f6 ext4_readdir [ext4dev]:                      200
-0x00003292 ext4_new_inode [ext4dev]:                    200
-0x0001e601 ext4_expand_extra_isize_ea [ext4dev]:        184
-0x0000e07d ext4_quota_on [ext4dev]:                     168
-0x00014dca ext4_ext_truncate [ext4dev]:                 168
-0x00018f6f ext4_mb_write_prealloc_table [ext4dev]:      168
-0x0001935a ext4_mb_seq_history_show [ext4dev]:          160
-0x00005953 ext4_getblk [ext4dev]:                       152
-0x00009283 do_split [ext4dev]:                          152
-0x0000bf3b ext4_rename [ext4dev]:                       152
-0x000132b9 ext4_ext_insert_extent [ext4dev]:            152
-0x000011c9 ext4_new_blocks_old [ext4dev]:               136
-0x0000831e ext4_ioctl [ext4dev]:                        136
-0x00010cc9 add_new_gdb [ext4dev]:                       136
-0x0001b565 ext4_mb_init [ext4dev]:                      136
-0x0000ad20 ext4_htree_fill_tree [ext4dev]:              120
-0x0000e225 ext4_remount [ext4dev]:                      120
-0x00015c5e ext4_ext_migrate [ext4dev]:                  120
-0x000008b3 ext4_try_to_allocate_with_rsv [ext4dev]:     104
-0x00001e14 ext4_new_blocks [ext4dev]:                   104
-0x0000b920 ext4_orphan_del [ext4dev]:                   104
-0x0000c90a parse_options [ext4dev]:                     104
-0x0001bf3f ext4_mb_discard_inode_preallocations [ext4dev]:104
+Yes. You are right. Its been a while since I had to deal with HIGHMEM.
+All the meta-data should be in LOWMEM. I asked Mingming to verify
+what the buffer-head is pointing to when it has HIGHMEM page.
 
-with the push for 4k stacks, some of these might start to be an issue.
-
-struct ext4_allocation_context might be one big hitter, at 168 bytes
-when placed on the stack.
-
-(for comparison, a few of xfs's top stack users are:)
-
-0x0001a1b4 xfs_bmapi [xfs]:                             360
-0x00045a73 _xfs_trans_commit [xfs]:                     312
-0x000384d6 xfs_bulkstat [xfs]:                          296
-0x0004d0b8 xfs_symlink [xfs]:                           296
-0x0003798f xfs_iomap_write_delay [xfs]:                 280
-0x00056254 xfs_cleanup_inode [xfs]:                     264
-<big snip - xfs has many more >100byte functions than ext4>
-
-of course callchain details matter, too, but this is worth keeping an
-eye on.
-
--Eric
+Thanks,
+Badari
