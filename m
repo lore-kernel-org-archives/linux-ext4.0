@@ -1,46 +1,52 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
-Date: Tue, 6 Nov 2007 00:15:29 +0800
-Message-ID: <20071105161529.GC2892@webber.adilger.int>
-References: <46D7097F.4020501@linux.vnet.ibm.com> <1188552066.3781.15.camel@dhcp5.linsyssoft.com> <1193964035.4014.23.camel@localhost.localdomain> <20071102052031.GC18505@webber.adilger.int> <1194021108.1547.14.camel@dyn9047017100.beaverton.ibm.com> <20071103013621.GC2863@webber.adilger.int> <1194278695.17333.3.camel@dyn9047017100.beaverton.ibm.com>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] ext4/super.c: fix #ifdef's
+Date: Mon, 5 Nov 2007 18:07:13 +0100
+Message-ID: <20071105170713.GJ12045@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	Girish Shilamkar <girish@clusterfs.com>,
-	Avantika Mathur <mathur@linux.vnet.ibm.com>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Badari Pulavarty <pbadari@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"Robert P. J. Day" <rpjday@crashcourse.ca>
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:41283 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752024AbXKEQPi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2007 11:15:38 -0500
+Received: from mailout.stusta.mhn.de ([141.84.69.5]:59503 "EHLO
+	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757005AbXKERHh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2007 12:07:37 -0500
 Content-Disposition: inline
-In-Reply-To: <1194278695.17333.3.camel@dyn9047017100.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Nov 05, 2007  08:04 -0800, Badari Pulavarty wrote:
-> On Sat, 2007-11-03 at 09:36 +0800, Andreas Dilger wrote:
-> > But...  this implies that every user of bh->b_data needs to kmap, and I
-> > don't see that in the code anywhere else.  That makes me think something
-> > else is going wrong here.
-> 
-> Most cases, this is handled in ll_rw_block() code - when we submit the
-> buffer head for IO. If the page is in highmem, we will end up creating
-> a bounce bufer for it. 
-> 
-> In our case, JBD code is trying to look at the data to do checksum
-> on it. Thats why we have to kmap() the page before looking.
+This patch fixes the names of two variables in #ifdef's.
 
-My point is that there is a LOT of code in ext[234] that dereferences
-bh->b_data without kmap() (e.g. group descriptors, bitmaps, superblock,
-inode tables, etc).  Does that imply that something is forcing those
-bh pages into lowmem, or is the journal bh page in question being
-allocated in some different way that allows it to be in highmem?
+Based on a report by Robert P. J. Day.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Software Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
+
+---
+
+ fs/ext4/super.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+44e9889e6a3952ea225704b2e494d31e00f34a6b 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8031dc0..6673672 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -646,7 +646,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",debug");
+ 	if (test_opt(sb, OLDALLOC))
+ 		seq_puts(seq, ",oldalloc");
+-#ifdef CONFIG_EXT4_FS_XATTR
++#ifdef CONFIG_EXT4DEV_FS_XATTR
+ 	if (test_opt(sb, XATTR_USER))
+ 		seq_puts(seq, ",user_xattr");
+ 	if (!test_opt(sb, XATTR_USER) &&
+@@ -654,7 +654,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",nouser_xattr");
+ 	}
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
++#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
+ 	if (test_opt(sb, POSIX_ACL))
+ 		seq_puts(seq, ",acl");
+ 	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
