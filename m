@@ -1,167 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize (fwd)
-Date: Tue, 6 Nov 2007 14:38:21 +0100
-Message-ID: <20071106133821.GC23689@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH e2fsprogs] - remove timestamps from .po files
+Date: Tue, 06 Nov 2007 08:33:33 -0600
+Message-ID: <47307B3D.2010708@redhat.com>
+References: <472F8792.6030808@redhat.com> <m2sl3j1xkq.fsf@vador.mandriva.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Thierry Vignaud <tvignaud@mandriva.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:40371 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751000AbXKFNiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Nov 2007 08:38:24 -0500
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:33342 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751847AbXKFOdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Nov 2007 09:33:38 -0500
+In-Reply-To: <m2sl3j1xkq.fsf@vador.mandriva.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Wrote wrong mailing list address so I'm resending it to a correct one.
+Thierry Vignaud wrote:
+> Eric Sandeen <sandeen@redhat.com> writes:
+> 
+>> Another one that's been in RH/Fedora specfiles a while.
+>> Remove timestamps from .po files to avoid multilib conflicts.
+>> It ain't pretty but it works.
+> 
+> Sorry but that's insane.
+> 
+> Pos should not be updated on build.  They should only be updated by
+> upstream developers instead. This enable translators to catch up and
+> prevent such hackery
 
------ Forwarded message from Jan Kara <jack@suse.cz> -----
+Hrm, good point.
 
-From: Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
-Cc: ext4-devel@vger.kernel.org
-Subject: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize
+> Your spec file should not contain "make -C po update-po" in the first
+> place.
+> This is a fedora bug, not an e2fsprogs one IMHO.
+> 
+> You introduced your own multi-lib in the first place...
 
-  Hello Ted,
+Apparently there was some issue with this, once upon a time, which
+resulted in our rpms needing to update the po files... I guess I need to
+do a bit more code archeology / research.  It looks like sct added this
+when the pkg updated to 1.36, though there is no comment about why.
 
-  it seems attached patch still did not get your attention. It makes
-e2fsprogs properly handle filesystems with 64KB block size. Could you put
-it into e2fsprogs git? Thanks.
+I inherited lots of history when I got e2fsprogs, so please forgive me
+as I work through it.  :)
 
-								Honza
+One question though, then - what is the existing timestamp removal
+mechanism for, then?
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
-Subject: Support for 64KB blocksize in ext2-4 directories.
-
-When block size is 64KB, we have to take care that rec_len does not overflow.
-Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
-conversion when reading from / writing to disk.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
-index fb20fa0..628bf93 100644
---- a/lib/ext2fs/dirblock.c
-+++ b/lib/ext2fs/dirblock.c
-@@ -38,9 +38,9 @@ errcode_t ext2fs_read_dir_block2(ext2_fi
- 		dirent = (struct ext2_dir_entry *) p;
- #ifdef WORDS_BIGENDIAN
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
- 		dirent->name_len = ext2fs_swab16(dirent->name_len);
- #endif
-+		dirent->rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- 		name_len = dirent->name_len;
- #ifdef WORDS_BIGENDIAN
- 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-@@ -68,12 +68,15 @@ errcode_t ext2fs_read_dir_block(ext2_fil
- errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
- 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
- {
--#ifdef WORDS_BIGENDIAN
- 	errcode_t	retval;
- 	char		*p, *end;
- 	char		*buf = 0;
- 	struct ext2_dir_entry *dirent;
- 
-+#ifndef WORDS_BIGENDIAN
-+	if (fs->blocksize < EXT2_MAX_REC_LEN)
-+		goto just_write;
-+#endif
- 	retval = ext2fs_get_mem(fs->blocksize, &buf);
- 	if (retval)
- 		return retval;
-@@ -89,7 +92,7 @@ errcode_t ext2fs_write_dir_block2(ext2_f
- 		}
- 		p += dirent->rec_len;
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
-+		dirent->rec_len = ext2fs_rec_len_to_disk(dirent->rec_len);
- 		dirent->name_len = ext2fs_swab16(dirent->name_len);
- 
- 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-@@ -98,9 +101,8 @@ errcode_t ext2fs_write_dir_block2(ext2_f
-  	retval = io_channel_write_blk(fs->io, block, 1, buf);
- 	ext2fs_free_mem(&buf);
- 	return retval;
--#else
-+just_write:
-  	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
--#endif
- }
- 
- 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index a316665..2041f0f 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -717,6 +717,32 @@ struct ext2_dir_entry_2 {
- #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
- #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
- 					 ~EXT2_DIR_ROUND)
-+#define EXT2_MAX_REC_LEN		((1<<16)-1)
-+
-+static inline unsigned ext2fs_rec_len_from_disk(unsigned len)
-+{
-+#ifdef WORDS_BIGENDIAN
-+	len = ext2fs_swab16(dlen);
-+#endif
-+	if (len == EXT2_MAX_REC_LEN)
-+		return 1 << 16;
-+	return len;
-+}
-+
-+static inline unsigned ext2fs_rec_len_to_disk(unsigned len)
-+{
-+	if (len == (1 << 16))
-+#ifdef WORDS_BIGENDIAN
-+		return ext2fs_swab16(EXT2_MAX_REC_LEN);
-+#else
-+		return EXT2_MAX_REC_LEN;
-+#endif
-+#ifdef WORDS_BIGENDIAN
-+	return ext2fs_swab_16(len);
-+#else
-+	return len;
-+#endif
-+}
- 
- /*
-  * This structure will be used for multiple mount protection. It will be
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 1fbb267..4e2c9fb 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -345,10 +345,7 @@ static void scramble_dir_block(ext2_fils
- 	end = buf + fs->blocksize;
- 	for (p = buf; p < end-8; p += rec_len) {
- 		dirent = (struct ext2_dir_entry_2 *) p;
--		rec_len = dirent->rec_len;
--#ifdef WORDS_BIGENDIAN
--		rec_len = ext2fs_swab16(rec_len);
--#endif
-+		rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- #if 0
- 		printf("rec_len = %d, name_len = %d\n", rec_len, dirent->name_len);
- #endif
-@@ -358,9 +355,7 @@ static void scramble_dir_block(ext2_fils
- 			       "bad rec_len (%d)\n", (unsigned long) blk, 
- 			       rec_len);
- 			rec_len = end - p;
--#ifdef WORDS_BIGENDIAN
--				dirent->rec_len = ext2fs_swab16(rec_len);
--#endif
-+			dirent->rec_len = ext2fs_rec_len_to_disk(rec_len);
- 			continue;
- 		}
- 		if (dirent->name_len + 8 > rec_len) {
-
-
------ End forwarded message -----
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+-Eric
