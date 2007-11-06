@@ -1,53 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH e2fsprogs] - remove timestamps from .po files
-Date: Tue, 06 Nov 2007 08:33:33 -0600
-Message-ID: <47307B3D.2010708@redhat.com>
-References: <472F8792.6030808@redhat.com> <m2sl3j1xkq.fsf@vador.mandriva.com>
+Date: Tue, 6 Nov 2007 09:55:20 -0500
+Message-ID: <20071106145520.GB9086@thunk.org>
+References: <472F8792.6030808@redhat.com> <m2sl3j1xkq.fsf@vador.mandriva.com> <47307B3D.2010708@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Thierry Vignaud <tvignaud@mandriva.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
-To: Thierry Vignaud <tvignaud@mandriva.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33342 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:50744 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847AbXKFOdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Nov 2007 09:33:38 -0500
-In-Reply-To: <m2sl3j1xkq.fsf@vador.mandriva.com>
+	id S1751720AbXKFO4T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Nov 2007 09:56:19 -0500
+Content-Disposition: inline
+In-Reply-To: <47307B3D.2010708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Thierry Vignaud wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
-> 
->> Another one that's been in RH/Fedora specfiles a while.
->> Remove timestamps from .po files to avoid multilib conflicts.
->> It ain't pretty but it works.
-> 
-> Sorry but that's insane.
-> 
-> Pos should not be updated on build.  They should only be updated by
-> upstream developers instead. This enable translators to catch up and
-> prevent such hackery
+On Tue, Nov 06, 2007 at 08:33:33AM -0600, Eric Sandeen wrote:
+> Apparently there was some issue with this, once upon a time, which
+> resulted in our rpms needing to update the po files... I guess I need to
+> do a bit more code archeology / research.  It looks like sct added this
+> when the pkg updated to 1.36, though there is no comment about why.
 
-Hrm, good point.
+One potential reason could be that we are using ancient libintl files,
+and there was some compatibility problem --- although I can't think of
+a reason that would require updating the po files.
 
-> Your spec file should not contain "make -C po update-po" in the first
-> place.
-> This is a fedora bug, not an e2fsprogs one IMHO.
-> 
-> You introduced your own multi-lib in the first place...
+I know there is currently an issue on Debian because the po files are
+getting intstalled in the wrong locations and the gettext shared
+libraries are looking for them somewhere else, but I only vaguely
+recall what was going on.  I had only enough time to start doing a
+quick investigation to see why the translation files were getting
+ignored, and didn't have time to try to fix it.
 
-Apparently there was some issue with this, once upon a time, which
-resulted in our rpms needing to update the po files... I guess I need to
-do a bit more code archeology / research.  It looks like sct added this
-when the pkg updated to 1.36, though there is no comment about why.
+If someone would like to update the po directory and the configure.in
+hunks for -po to something less antediluvian, patches would be greatly
+appreciated....
 
-I inherited lots of history when I got e2fsprogs, so please forgive me
-as I work through it.  :)
-
-One question though, then - what is the existing timestamp removal
-mechanism for, then?
-
--Eric
+						- Ted
