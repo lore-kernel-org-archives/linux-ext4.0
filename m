@@ -1,32 +1,47 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] fix oops on corrupted ext4 mount
-Date: Wed, 07 Nov 2007 15:44:51 -0600
-Message-ID: <473231D3.6090400@redhat.com>
-References: <47323040.60509@redhat.com>
+Subject: More testing: 4x parallel 2G writes, sequential reads
+Date: Wed, 07 Nov 2007 16:42:59 -0600
+Message-ID: <47323F73.5080708@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36408 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:39440 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753943AbXKGVox (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Nov 2007 16:44:53 -0500
+	id S1752151AbXKGWnD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Nov 2007 17:43:03 -0500
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lA7LiqG6017998
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 16:44:52 -0500
-In-Reply-To: <47323040.60509@redhat.com>
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lA7Mh1V0001604
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 17:43:01 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lA7Mh1Yr017595
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 17:43:01 -0500
+Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lA7Mgxk2004134
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 17:43:00 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> When mounting an ext4 filesystem with corrupted s_first_data_block, things 
-> can go very wrong and oops.
-> 
-> Because blocks_count in ext4_fill_super is a u64, and we must use do_div, 
-> the calculation of db_count is done differently than on ext4.
+I tried ext4 vs. xfs doing 4 parallel 2G IO writes in 1M units to 4
+different subdirectories of the root of the filesystem:
 
-Urgh... "than on ext3"
+http://people.redhat.com/esandeen/seekwatcher/ext4_4_threads.png
+http://people.redhat.com/esandeen/seekwatcher/xfs_4_threads.png
+http://people.redhat.com/esandeen/seekwatcher/ext4_xfs_4_threads.png
+
+and then read them back sequentially:
+
+http://people.redhat.com/esandeen/seekwatcher/ext4_4_threads_read.png
+http://people.redhat.com/esandeen/seekwatcher/xfs_4_threads_read.png
+http://people.redhat.com/esandeen/seekwatcher/ext4_xfs_4_read_threads.png
+
+At the end of the write, ext4 had on the order of 400 extents/file, xfs
+had on the order of 30 extents/file.  It's clear especially from the
+read graph that ext4 is interleaving the 4 files, in about 5M chunks on
+average.  Throughput seems comparable between ext4 & xfs nonetheless.
+
+Again this was on a decent HW raid so seek penalties are probably not
+too bad.
 
 -Eric
