@@ -1,176 +1,59 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize
-Date: Wed, 7 Nov 2007 17:09:39 +0100
-Message-ID: <20071107160939.GF22214@duck.suse.cz>
-References: <20071106113142.GA23689@duck.suse.cz>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] allow tune2fs to set/clear resize_inode
+Date: Wed, 7 Nov 2007 13:30:48 -0700
+Message-ID: <20071107203048.GF3966@webber.adilger.int>
+References: <472F80F5.3030608@redhat.com> <20071106011255.GB3900@webber.adilger.int> <20071106185151.GA12857@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="lrZ03NoBR/3+SXJZ"
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:55146 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750907AbXKGQJl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Nov 2007 11:09:41 -0500
+Received: from mail.clusterfs.com ([74.0.229.162]:57518 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757089AbXKGUav (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2007 15:30:51 -0500
 Content-Disposition: inline
-In-Reply-To: <20071106113142.GA23689@duck.suse.cz>
+In-Reply-To: <20071106185151.GA12857@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Nov 06, 2007  13:51 -0500, Theodore Tso wrote:
+> On Tue, Nov 06, 2007 at 09:12:55AM +0800, Andreas Dilger wrote:
+> > What is needed is an ext2prepare-like step that involves resize2fs code
+> > to move the file/dir blocks and then the move inode table, as if the
+> > filesystem were going to be resized to the new maximum resize limit,
+> > and then create the resize inode but do not actually add new blocks/groups
+> > at the end of the filesystem.
+> 
+> Yeah, the plan was to eventually add ext2prepare-like code into
+> tune2fs, using the undo I/O manager for safety.  But that's been
+> relatively low priority.
+> 
+> BTW, I've gotten ~2 bug reports from Debian users claiming that
+> ext2prepare had trashed their filesystem.  I don't have any clean
+> evidence about whether it was a userspace error or some kind of bug in
+> ext2prepare, possibly conflicting with some new ext3 feature that
+> we've since added that ext2prepare doesn't properly account for
+> (extended attributes, maybe?).  
+> 
+> I have not had time to look into it, but thought has crossed my mind
+> that a quick hack would be to splice the undo manager into
+> ext2prepare, have it run e2fsck, and if it fails, do a rollback,
+> create an e2image file, and then instruct the user to send in a bug
+> report.  :-)
 
---lrZ03NoBR/3+SXJZ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+I don't think it would be very easy to splice undo manager into ext2prepare.
+I'd rather see time spent to make resize2fs handle the prepare functionality
+and then ext2resize can be entirely obsoleted.
 
-  Hello,
+Aneesh, adding undo manager to resize2fs would be an excellent use of that
+library, and going from resize2fs to "resize2fs --prepare-only" (or whatever)
+would be trivial I think.  Is that something you'd be interested to work on?
 
-  sorry for replying to myself but I've just found out that the patch I've
-sent was and old version of the patch which had some problems. Attached is
-a new version.
-
-On Tue 06-11-07 12:31:42, Jan Kara wrote:
->   it seems attached patch still did not get your attention. It makes
-> e2fsprogs properly handle filesystems with 64KB block size. Could you put
-> it into e2fsprogs git? Thanks.
-
-								Honza
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---lrZ03NoBR/3+SXJZ
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="e2fsprogs-64KB_blocksize.diff"
-
-Subject: Support for 64KB blocksize in ext2-4 directories.
-
-When block size is 64KB, we have to take care that rec_len does not overflow.
-Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
-conversion when reading from / writing to disk.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
-index fb20fa0..db73edd 100644
---- a/lib/ext2fs/dirblock.c
-+++ b/lib/ext2fs/dirblock.c
-@@ -38,9 +38,9 @@ errcode_t ext2fs_read_dir_block2(ext2_fi
- 		dirent = (struct ext2_dir_entry *) p;
- #ifdef WORDS_BIGENDIAN
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
- 		dirent->name_len = ext2fs_swab16(dirent->name_len);
- #endif
-+		dirent->rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- 		name_len = dirent->name_len;
- #ifdef WORDS_BIGENDIAN
- 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-@@ -68,12 +68,15 @@ errcode_t ext2fs_read_dir_block(ext2_fil
- errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
- 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
- {
--#ifdef WORDS_BIGENDIAN
- 	errcode_t	retval;
- 	char		*p, *end;
- 	char		*buf = 0;
- 	struct ext2_dir_entry *dirent;
- 
-+#ifndef WORDS_BIGENDIAN
-+	if (fs->blocksize < EXT2_MAX_REC_LEN)
-+		goto just_write;
-+#endif
- 	retval = ext2fs_get_mem(fs->blocksize, &buf);
- 	if (retval)
- 		return retval;
-@@ -88,19 +91,18 @@ errcode_t ext2fs_write_dir_block2(ext2_f
- 			return (EXT2_ET_DIR_CORRUPTED);
- 		}
- 		p += dirent->rec_len;
-+		dirent->rec_len = ext2fs_rec_len_to_disk(dirent->rec_len);
-+#ifdef WORDS_BIGENDIAN
- 		dirent->inode = ext2fs_swab32(dirent->inode);
--		dirent->rec_len = ext2fs_swab16(dirent->rec_len);
--		dirent->name_len = ext2fs_swab16(dirent->name_len);
--
--		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
-+		if (!(flags & EXT2_DIRBLOCK_V2_STRUCT))
- 			dirent->name_len = ext2fs_swab16(dirent->name_len);
-+#endif
- 	}
-  	retval = io_channel_write_blk(fs->io, block, 1, buf);
- 	ext2fs_free_mem(&buf);
- 	return retval;
--#else
-+just_write:
-  	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
--#endif
- }
- 
- 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index a316665..21747c2 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -717,6 +718,32 @@ struct ext2_dir_entry_2 {
- #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
- #define EXT2_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT2_DIR_ROUND) & \
- 					 ~EXT2_DIR_ROUND)
-+#define EXT2_MAX_REC_LEN		((1<<16)-1)
-+
-+static inline unsigned ext2fs_rec_len_from_disk(unsigned len)
-+{
-+#ifdef WORDS_BIGENDIAN
-+	len = ext2fs_swab16(dlen);
-+#endif
-+	if (len == EXT2_MAX_REC_LEN)
-+		return 1 << 16;
-+	return len;
-+}
-+
-+static inline unsigned ext2fs_rec_len_to_disk(unsigned len)
-+{
-+	if (len == (1 << 16))
-+#ifdef WORDS_BIGENDIAN
-+		return ext2fs_swab16(EXT2_MAX_REC_LEN);
-+#else
-+		return EXT2_MAX_REC_LEN;
-+#endif
-+#ifdef WORDS_BIGENDIAN
-+	return ext2fs_swab_16(len);
-+#else
-+	return len;
-+#endif
-+}
- 
- /*
-  * This structure will be used for multiple mount protection. It will be
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 1fbb267..4e2c9fb 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -345,10 +345,7 @@ static void scramble_dir_block(ext2_fils
- 	end = buf + fs->blocksize;
- 	for (p = buf; p < end-8; p += rec_len) {
- 		dirent = (struct ext2_dir_entry_2 *) p;
--		rec_len = dirent->rec_len;
--#ifdef WORDS_BIGENDIAN
--		rec_len = ext2fs_swab16(rec_len);
--#endif
-+		rec_len = ext2fs_rec_len_from_disk(dirent->rec_len);
- #if 0
- 		printf("rec_len = %d, name_len = %d\n", rec_len, dirent->name_len);
- #endif
-@@ -358,9 +355,7 @@ static void scramble_dir_block(ext2_fils
- 			       "bad rec_len (%d)\n", (unsigned long) blk, 
- 			       rec_len);
- 			rec_len = end - p;
--#ifdef WORDS_BIGENDIAN
--				dirent->rec_len = ext2fs_swab16(rec_len);
--#endif
-+			dirent->rec_len = ext2fs_rec_len_to_disk(rec_len);
- 			continue;
- 		}
- 		if (dirent->name_len + 8 > rec_len) {
-
---lrZ03NoBR/3+SXJZ--
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
