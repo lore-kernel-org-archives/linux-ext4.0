@@ -1,89 +1,32 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] fix oops on corrupted ext4 mount
-Date: Wed, 07 Nov 2007 15:38:08 -0600
-Message-ID: <47323040.60509@redhat.com>
+Subject: Re: [PATCH] fix oops on corrupted ext4 mount
+Date: Wed, 07 Nov 2007 15:44:51 -0600
+Message-ID: <473231D3.6090400@redhat.com>
+References: <47323040.60509@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:51673 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:36408 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753535AbXKGViK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Nov 2007 16:38:10 -0500
+	id S1753943AbXKGVox (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Nov 2007 16:44:53 -0500
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lA7Lc9V8016245
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 16:38:09 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lA7Lc91i018979
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 16:38:09 -0500
-Received: from [10.15.80.10] (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lA7Lc8jq022176
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 16:38:09 -0500
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lA7LiqG6017998
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Nov 2007 16:44:52 -0500
+In-Reply-To: <47323040.60509@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When mounting an ext4 filesystem with corrupted s_first_data_block, things 
-can go very wrong and oops.
+Eric Sandeen wrote:
+> When mounting an ext4 filesystem with corrupted s_first_data_block, things 
+> can go very wrong and oops.
+> 
+> Because blocks_count in ext4_fill_super is a u64, and we must use do_div, 
+> the calculation of db_count is done differently than on ext4.
 
-Because blocks_count in ext4_fill_super is a u64, and we must use do_div, 
-the calculation of db_count is done differently than on ext4.  If 
-first_data_block is corrupted such that it is larger than ext4_blocks_count, 
-for example, then the intermediate blocks_count value may go negative, 
-but sign-extend to a very large value:
+Urgh... "than on ext3"
 
-        blocks_count = (ext4_blocks_count(es) -
-                        le32_to_cpu(es->s_first_data_block) +
-                        EXT4_BLOCKS_PER_GROUP(sb) - 1);
-
-This is then assigned to s_groups_count which is an unsigned long:
-
-        sbi->s_groups_count = blocks_count;
-
-This may result in a value of 0xFFFFFFFF which is then used to compute
-db_count:
-
-        db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
-                   EXT4_DESC_PER_BLOCK(sb);
-
-and in this case db_count will wind up as 0 because the addition overflows
-32 bits.  This in turn causes the kmalloc for group_desc to be of 0 size:
-
-        sbi->s_group_desc = kmalloc(db_count * sizeof (struct buffer_head *),
-                                    GFP_KERNEL);
-
-and eventually in ext4_check_descriptors, dereferencing 
-sbi->s_group_desc[desc_block] will result in a NULL pointer dereference.
-
-The simplest test seems to be to sanity check s_first_data_block, 
-EXT4_BLOCKS_PER_GROUP, and ext4_blocks_count values to be sure 
-their combination won't result in a bad intermediate value for
-blocks_count.  We could just check for db_count == 0, but
-catching it at the root cause seems like it provides more info.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
----
-
-Index: linux-2.6.24-rc1/fs/ext4/super.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/super.c
-+++ linux-2.6.24-rc1/fs/ext4/super.c
-@@ -2047,6 +2047,17 @@ static int ext4_fill_super (struct super
- 
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
-+
-+	/* ensure blocks_count calculation below doesn't sign-extend */
-+	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
-+	    le32_to_cpu(es->s_first_data_block) + 1) {
-+		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
-+		       "first data block %u, blocks per group %lu\n",
-+			ext4_blocks_count(es),
-+			le32_to_cpu(es->s_first_data_block),
-+			EXT4_BLOCKS_PER_GROUP(sb));
-+		goto failed_mount;
-+	}
- 	blocks_count = (ext4_blocks_count(es) -
- 			le32_to_cpu(es->s_first_data_block) +
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+-Eric
