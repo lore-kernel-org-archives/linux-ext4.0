@@ -1,55 +1,85 @@
-From: Alex Tomas <bzzz.tomas@gmail.com>
-Subject: Re: delalloc space accounting problem.
-Date: Thu, 08 Nov 2007 20:53:58 +0300
-Message-ID: <47334D36.9070401@gmail.com>
-References: <47334B44.8080206@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 9329] New: ext4: delalloc space accounting
+ problem drops data
+Date: Thu, 8 Nov 2007 10:09:20 -0800
+Message-ID: <20071108100920.b1c77eb0.akpm@linux-foundation.org>
+References: <bug-9329-10286@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: bugme-daemon@bugzilla.kernel.org, sandeen@redhat.com
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-mail-2.sun.com ([192.18.6.24]:63958 "EHLO
-	gmp-eb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759781AbXKHRyS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2007 12:54:18 -0500
-Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe3.eu.sun.com [192.18.6.12])
-	by gmp-eb-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id lA8HsGi9010972
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Nov 2007 17:54:16 GMT
-Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JR700F016OGS900@fe-emea-09.sun.com>
- (original mail from bzzz.tomas@gmail.com) for linux-ext4@vger.kernel.org; Thu,
- 08 Nov 2007 17:54:16 +0000 (GMT)
-In-reply-to: <47334B44.8080206@redhat.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47298 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759006AbXKHSKD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2007 13:10:03 -0500
+In-Reply-To: <bug-9329-10286@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-because new delalloc patch doesn't have reservation integrated.
-I'm going to implement this after data=order support.
-
-thanks, Alex
-
-Eric Sandeen wrote:
-> It appears that delalloc lets me copy 50M of data onto a 30M filesystem;
-> at least I never get ENOSPC back, although I wind up with several files
-> that have 1M length but 0 blocks.
-> 
-> I've filed a bug in the kernel bug tracker, I think we could use a
-> central place to track issues:
-> 
+> On Thu,  8 Nov 2007 09:42:10 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
 > http://bugzilla.kernel.org/show_bug.cgi?id=9329
 > 
-> I'll try to find time to look into this unless someone knows offhand
-> where the problem is...
+>            Summary: ext4: delalloc space accounting problem drops data
+>            Product: File System
+>            Version: 2.5
+>      KernelVersion: 2.6.24-rc1
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: ext4
+>         AssignedTo: fs_ext4@kernel-bugs.osdl.org
+>         ReportedBy: sandeen@redhat.com
 > 
-> Thanks,
-> -Eric
 > 
-> (p.s. should I get ext[234] bug mail routed to this list, or would that
-> be annoying?)
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 2.6.24-rc1 + ext4 git patch queue from last week or so.
 > 
+> It appears that delalloc does not track used space properly, and fails to
+> return ENOSPC as appropriate:
+> 
+> [root@bear-05 ~]# mkfs.ext3 -I 256 /dev/sdb7 32768
+> [root@bear-05 ~]# mount -t ext4dev -o data=writeback,delalloc,extents,mballoc
+> /dev/sdb7 /mnt/test
+> [root@bear-05 ~]# df -h /mnt/test
+> Filesystem            Size  Used Avail Use% Mounted on
+> /dev/sdb7              30M  4.5M   24M  16% /mnt/test
+> [root@bear-05 ~]# du -h /tmp/1Mfile 
+> 1.1M    /tmp/1Mfile
+> [root@bear-05 ~]# for I in `seq 1 50`; do cp /tmp/1Mfile /mnt/test/1Mfile-$I;
+> done
+> [root@bear-05 ~]# df -h /mnt/test
+> Filesystem            Size  Used Avail Use% Mounted on
+> /dev/sdb7              30M   30M     0 100% /mnt/test
+> 
+> all resulting files are 1M in length:
+> [root@bear-05 ~]# ls -l /mnt/test/1M* | grep -v 1048576
+> [root@bear-05 ~]# ls -l /mnt/test/1M* | grep 1048576 | wc -l
+> 50
+> but many of them have silently dropped data on the floor:
+> [root@bear-05 ~]# du -hc /mnt/test/1Mfile-* | grep -v "1.0M"
+> 596K    /mnt/test/1Mfile-26
+> 0       /mnt/test/1Mfile-27
+> 0       /mnt/test/1Mfile-28
+> 0       /mnt/test/1Mfile-29
+> 0       /mnt/test/1Mfile-30
+> <snip>
+> 
+> When mounted with nodelalloc, I get proper behavior:
+> 
+> [root@bear-05 ~]# for I in `seq 1 50`; do cp /tmp/1Mfile /mnt/test/1Mfile-$I;
+> done
+> cp: writing `/mnt/test/1Mfile-26': No space left on device
+> cp: writing `/mnt/test/1Mfile-27': No space left on device
+> cp: writing `/mnt/test/1Mfile-28': No space left on device
+> cp: writing `/mnt/test/1Mfile-29': No space left on device
+> <snip>
+> 
+> 
+> -- 
+> Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+> ------- You are receiving this mail because: -------
+> You are on the CC list for the bug, or are watching someone who is.
