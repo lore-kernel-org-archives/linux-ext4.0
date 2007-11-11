@@ -1,52 +1,38 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH/RFC e2fsprogs] - replace MKINSTALLDIRS with MKDIR_P for
-	newer autotools
-Date: Sat, 10 Nov 2007 18:25:39 -0500
-Message-ID: <20071110232539.GA12991@thunk.org>
-References: <472F9148.1050405@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize
+Date: Sat, 10 Nov 2007 19:37:03 -0500
+Message-ID: <20071111003703.GA14815@thunk.org>
+References: <20071106113142.GA23689@duck.suse.cz> <20071107160939.GF22214@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>, twoerner@redhat.com
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47007 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:47005 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755719AbXKKAly (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755627AbXKKAly (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 10 Nov 2007 19:41:54 -0500
 Content-Disposition: inline
-In-Reply-To: <472F9148.1050405@redhat.com>
+In-Reply-To: <20071107160939.GF22214@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 05, 2007 at 03:55:20PM -0600, Eric Sandeen wrote:
-> From: Thomas Woerner <twoerner@redhat.com <mailto:twoerner@redhat.com>>
+On Wed, Nov 07, 2007 at 05:09:39PM +0100, Jan Kara wrote:
+
+> Subject: Support for 64KB blocksize in ext2-4 directories.
 > 
-> (Thomas was the original author of this patch)
-> 
-> I do not claim to be an autotools guru, hence the RFC.
-> RH bugzilla #220715 claims that newer autoconf/automake no longer
-> support MKINSTALLDIRS, and the changelog seems to confirm that, as
-> does testing.  :)
+> When block size is 64KB, we have to take care that rec_len does not overflow.
+> Kernel stores 0xffff in case 0x10000 should be stored - perform appropriate
+> conversion when reading from / writing to disk.
 
+NACK.  You can't do the conversion in the reader/writer routines
+because the fundamentally rec_len is only a 16 bit field.  So when you
+read a directory block where the rec_len field is encoded as 0xFFFF,
+and you translate it to 0x10000, when you assign it to
+dirent->rec_len, the 0x10000 gets chopped off and rec_len gets a value
+of zero.  Did you test this patch before submitting it?
 
-MKINSTALLDIRS is defined in aclocal.m4, so we're good.  This patch
-isn't necessary, as far as I can tell.  Have you actually shown that
-with some newer version of autoconf, it produces a configure script
-which doesn't define MKINSTALLDIRS?  As far as I know e2fsprogs builds
-Just Fine, and using autoconf 2.61 isn't a problem.
-
-What version of autoconf are you using that triggers this problem?
-(Note that e2fsprogs does not use automake, since automake is a
-horrible kludge of backwards non-compatibility and ugliness....)
-
-At some point when we go to a newer version of gettext we may need to
-update things, but I'd much rather save that for when we really uplift
-gettext and aclocal.m4 all in one go.
-
-For now, I suspect you could drop this patch without any problems,
-since we don't use automake, and aclocal.m4 has a version of
-AM_MKINSTALLDIRS that will do the right thing.
-
-Regards,
+The only way to do this is to find all of the places that reference
+rec_len, and do the check there.
 
 						- Ted
