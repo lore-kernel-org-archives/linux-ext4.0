@@ -1,284 +1,433 @@
 From: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Subject: [PATCH 2/2] FIEMAP ioctl for ext4
-Date: Tue, 13 Nov 2007 02:30:06 +0530
-Message-ID: <1194901206.12045.18.camel@garfield>
+Subject: [PATCH e2fsprogs] filefrag using FIEMAP
+Date: Tue, 13 Nov 2007 02:38:58 +0530
+Message-ID: <1194901738.12045.25.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7BIT
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andreas Dilger <adilger@Sun.COM>,
-	Eric Sandeen <sandeen@redhat.com>, mark.fasheh@oracle.com,
-	dgc@sgi.com
+Cc: Andreas Dilger <adilger@Sun.COM>, TheodoreTso <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Mark Fasheh <mark.fasheh@oracle.com>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sineb-mail-1.sun.com ([192.18.19.6]:38576 "EHLO
+	sineb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751457AbXKLVIq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Nov 2007 16:08:46 -0500
+Received: from fe-apac-05.sun.com (fe-apac-05.sun.com [192.18.19.176] (may be forged))
+	by sineb-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id lACL8ihf012007
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Nov 2007 21:08:44 GMT
+Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
+ (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+ id <0JRE00001VWPC300@mail-apac.sun.com>
+ (original mail from Kalpak.Shah@Sun.COM) for linux-ext4@vger.kernel.org; Tue,
+ 13 Nov 2007 05:08:43 +0800 (SGT)
+Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Recently there was discussion about an "FIle Extent MAP"(FIEMAP) ioctl for efficiently mapping the extents and holes of a file. This will be many times more efficient than FIBMAP by cutting down the number of ioctls.
+This patch adds FIEMAP support to the filefrag utility. It also changes the output format of filefrag by adding a "-e" option. This would make the output more readable and easy for scripting.
 
-This patch adds the FIEMAP ioctl for ext4. The spec for the FIEMAP ioctl was posted earlier by Andreas Dilger and can be found at:
-http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg03944.html
+For cluster filesystems like Lustre, the extent information will be displayed in lun offset order.
 
 Signed-off-by: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Kalpak Shah <kalpak.shah@sun.com> 
 
-Index: linux-2.6.23.1/fs/ext4/ioctl.c
+Index: e2fsprogs-1.40.2/misc/filefrag.c
 ===================================================================
---- linux-2.6.23.1.orig/fs/ext4/ioctl.c
-+++ linux-2.6.23.1/fs/ext4/ioctl.c
-@@ -16,6 +16,7 @@
- #include <linux/compat.h>
- #include <linux/smp_lock.h>
- #include <asm/uaccess.h>
-+#include <linux/fiemap.h>
+--- e2fsprogs-1.40.2.orig/misc/filefrag.c
++++ e2fsprogs-1.40.2/misc/filefrag.c
+@@ -38,13 +38,24 @@ extern int optind;
+ #include <sys/vfs.h>
+ #include <sys/ioctl.h>
+ #include <linux/fd.h>
++#include <ext2fs/ext2_types.h>
++#include <ext2fs/fiemap.h>
  
- int ext4_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		unsigned long arg)
-@@ -248,6 +249,9 @@ flags_err:
+-int verbose = 0;
++#define LUSTRE_SUPER_MAGIC 0x0BD00BD0
  
- 		return err;
- 	}
-+	case EXT4_IOC_FIEMAP: {
-+		return ext4_fiemap(inode, filp, cmd, arg);
-+	}
- 
- 	default:
- 		return -ENOTTY;
-Index: linux-2.6.23.1/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.23.1.orig/include/linux/ext4_fs.h
-+++ linux-2.6.23.1/include/linux/ext4_fs.h
-@@ -228,15 +228,20 @@ struct ext4_new_group_data {
- #define	EXT4_IOC_SETFLAGS		FS_IOC_SETFLAGS
- #define	EXT4_IOC_GETVERSION		_IOR('f', 3, long)
- #define	EXT4_IOC_SETVERSION		_IOW('f', 4, long)
-+#define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
-+#define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
- #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
-+#define EXT4_IOC_FIEMAP			_IOWR('f', 10, struct fiemap)
- #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
- #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
- #ifdef CONFIG_JBD2_DEBUG
- #define EXT4_IOC_WAIT_FOR_READONLY	_IOR('f', 99, long)
- #endif
--#define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
--#define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+-#define FIBMAP	   _IO(0x00,1)	/* bmap access */
+-#define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
++int verbose = 0;
++int extent_format = 0; /* Print output in extent format */
++int is_lustre = 0; /* Indicates lustre filesystem */
++int lun_offset = 0; /* extents are in lun offset order */
 +
-+/* ext4 only handles a single LUN, ignore LUN_OFFSET flag */
-+#define EXT4_FIEMAP_FLAG_INCOMPAT_UNSUPP (FIEMAP_FLAG_INCOMPAT &	\
++#define FILEFRAG_FIEMAP_INCOMPAT_UNSUPP  (FIEMAP_FLAG_INCOMPAT &	\
 +					  ~(FIEMAP_FLAG_LUN_OFFSET))
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -1067,6 +1072,8 @@ ext4_get_blocks_wrap(handle_t *handle, s
- 	return ext4_get_blocks_handle(handle, inode, block, max_blocks, bh,
- 					create, extend_disksize);
- }
-+extern int ext4_fiemap(struct inode *inode, struct file *filp, unsigned int cmd,
-+		       unsigned long arg);
- 
-
- #endif	/* __KERNEL__ */
-Index: linux-2.6.23.1/include/linux/ext4_fs_extents.h
-===================================================================
---- linux-2.6.23.1.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.23.1/include/linux/ext4_fs_extents.h
-@@ -131,8 +131,8 @@ struct ext4_ext_path {
-  * callback must return valid extent (passed or newly created)
-  */
- typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
--					struct ext4_ext_cache *,
--					void *);
-+				    struct ext4_ext_cache *,
-+				    struct ext4_extent *, void *);
- 
- #define EXT_CONTINUE	0
- #define EXT_BREAK	1
-Index: linux-2.6.23.1/fs/ext4/extents.c
-===================================================================
---- linux-2.6.23.1.orig/fs/ext4/extents.c
-+++ linux-2.6.23.1/fs/ext4/extents.c
-@@ -41,6 +41,7 @@
- #include <linux/slab.h>
- #include <linux/falloc.h>
- #include <linux/ext4_fs_extents.h>
-+#include <linux/fiemap.h>
- #include <asm/uaccess.h>
- 
-
-@@ -1512,7 +1513,7 @@ int ext4_ext_walk_space(struct inode *in
- 		}
- 
- 		BUG_ON(cbex.ec_len == 0);
--		err = func(inode, path, &cbex, cbdata);
-+		err = func(inode, path, &cbex, ex, cbdata);
- 		ext4_ext_drop_refs(path);
- 
- 		if (err < 0)
-@@ -2629,3 +2630,163 @@ retry:
- 
- 	return ret > 0 ? ret2 : ret;
- }
 +
-+struct fiemap_internal {
-+	struct fiemap		*fiemap_s;
-+	struct fiemap_extent	fm_extent;
-+	size_t			tot_mapping_len;
-+	char			*cur_ext_ptr;
-+	int			current_extent;
-+	int			err;
++#define FIBMAP		_IO(0x00, 1)	/* bmap access */
++#define FIGETBSZ	_IO(0x00, 2)	/* get the block size used for bmap */
++#define EXT4_IOC_FIEMAP	_IOWR('f', 10, struct fiemap) /* get file extent info*/
+ 
+-#define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
++#define	EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+ #define	EXT3_IOC_GETFLAGS		_IOR('f', 1, long)
+ 
+ static unsigned int div_ceil(unsigned int a, unsigned int b)
+@@ -54,21 +65,168 @@ static unsigned int div_ceil(unsigned in
+ 	return ((a - 1) / b) + 1;
+ }
+ 
+-static unsigned long get_bmap(int fd, unsigned long block)
++static int get_bmap(int fd, unsigned long block, unsigned long *phy_blk)
+ {
+ 	int	ret;
+ 	unsigned int b;
+ 
+ 	b = block;
+-	ret = ioctl(fd, FIBMAP, &b); /* FIBMAP takes a pointer to an integer */
++	ret = ioctl(fd, FIBMAP, &b); /* FIBMAP takes pointer to integer */
+ 	if (ret < 0) {
+ 		if (errno == EPERM) {
+-			fprintf(stderr, "No permission to use FIBMAP ioctl; must have root privileges\n");
++			fprintf(stderr, "No permission to use FIBMAP ioctl; "
++				"must have root privileges\n");
+ 			exit(1);
+ 		}
+ 		perror("FIBMAP");
+ 	}
+-	return b;
++	*phy_blk = b;
++
++	return ret;
++}
++
++static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
++			      unsigned long long logical_blk, int bs)
++{
++	__u64 phy_blk;
++	unsigned long ext_len;
++	char flags[256] = "";
++
++	phy_blk = fm_extent->fe_offset / bs;
++	ext_len = fm_extent->fe_length / bs;
++
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_HOLE)
++		strcat(flags, "hole,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_EOF)
++		strcat(flags, "eof,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_DELALLOC)
++		strcat(flags, "delalloc,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_UNWRITTEN)
++		strcat(flags, "unwritten,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_UNMAPPED)
++		strcat(flags, "unmapped,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_SECONDARY)
++		strcat(flags, "secondary,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_NO_DIRECT)
++		strcat(flags, "no_direct,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_ERROR)
++		strcat(flags, "mapping_error");
++
++	/* Remove trailing comma, if any */
++	if (strlen(flags))
++		flags[strlen(flags) - 1] = '\0';
++
++	printf("%5d:%10llu..%10llu:%10llu..%10llu:%10lu:%3d:   %s\n",
++	       cur_ex, logical_blk, logical_blk + ext_len - 1,
++	       phy_blk, phy_blk ? phy_blk + ext_len : 0, ext_len,
++	       fm_extent->fe_lun, flags);
++}
++
++int filefrag_fiemap(int fd, int bs, int *num_extents)
++{
++	char buf[4096] = "";
++	struct fiemap *fiemap = (struct fiemap *)buf;
++	int count = (sizeof(buf) - sizeof(*fiemap)) /
++			sizeof(struct fiemap_extent);
++	unsigned long long logical_blk = 0, last_blk = 0;
++	unsigned long flags = 0;
++	int lun_offset_tried = 0;
++	int tot_extents = 0, previous_lun = 0;
++	int last = 0, eof = 0;
++	int i, rc;
++
++	memset(fiemap, 0, sizeof(struct fiemap));
++	fiemap->fm_extent_count = count;
++	fiemap->fm_length = ~0ULL;
++
++	if (lun_offset)
++		flags |= FIEMAP_FLAG_LUN_OFFSET;
++
++	if (!verbose)
++		flags |= FIEMAP_FLAG_NUM_EXTENTS;
++
++	if (extent_format && verbose)
++		printf("  ext:\t    logical: start..end  physical: start..end:  "
++		       "length: lun: flags:\n");
++
++retry_wo_lun_offset:
++	do {
++		fiemap->fm_length = ~0ULL;
++		fiemap->fm_flags = flags;
++		fiemap->fm_extent_count = count = 1;
++		rc = ioctl (fd, EXT4_IOC_FIEMAP, (unsigned long) fiemap);
++		if (rc == -EOPNOTSUPP && (flags & FIEMAP_FLAG_LUN_OFFSET)) {
++			flags &= ~FIEMAP_FLAG_LUN_OFFSET;
++			goto retry_wo_lun_offset;
++		}
++		if (rc)
++			return rc;
++
++		if (!verbose) {
++			*num_extents = fiemap->fm_extent_count;
++			goto out;
++		}
++
++		if (fiemap->fm_flags & FILEFRAG_FIEMAP_INCOMPAT_UNSUPP) {
++			static int fiemap_incompat_printed;
++
++			if (fiemap_incompat_printed == 0) {
++				fprintf(stderr, "\nFIEMAP failed with "
++					"incompatible feature %x\n",
++					fiemap->fm_flags &
++					FILEFRAG_FIEMAP_INCOMPAT_UNSUPP);
++				fiemap_incompat_printed = 1;
++			}
++			return -EOPNOTSUPP;
++		}
++
++
++		/* If 0 extents are returned, then more ioctls are not needed */
++		if (fiemap->fm_extent_count == 0)
++			break;
++
++		for (i = 0; i < fiemap->fm_extent_count; i++) {
++			__u64 phy_blk, phy_start;
++			unsigned long ext_len;
++
++			phy_blk = fiemap->fm_extents[i].fe_offset / bs;
++			ext_len = fiemap->fm_extents[i].fe_length / bs;
++
++			if (previous_lun != fiemap->fm_extents[i].fe_lun) {
++				if (flags & FIEMAP_FLAG_LUN_OFFSET)
++					logical_blk = 0;
++				previous_lun = fiemap->fm_extents[i].fe_lun;
++			}
++
++			if (extent_format) {
++				print_extent_info(&fiemap->fm_extents[i],
++						  tot_extents, logical_blk, bs);
++			} else if (logical_blk && phy_blk != last_blk+1) {
++				printf("Discontinuity: Block %llu is at %llu "
++				       "(was %llu)\n", logical_blk, phy_blk,
++				       last_blk);
++			}
++
++			logical_blk += ext_len;
++			last_blk = phy_blk + ext_len - 1;
++			if (fiemap->fm_extents[i].fe_flags & FIEMAP_EXTENT_LAST)
++				last = 1;
++			tot_extents++;
++		}
++
++		/* For LUN_OFFSET mappings, if EXTENT_LAST is not yet found then
++		 * fm_start needs to be the same as it was for earlier ioctl.
++		 * Else we ask for extents starting from where the last mapping
++		 * ended. */
++		if (flags & FIEMAP_FLAG_LUN_OFFSET)
++			fiemap->fm_start = 0;
++		else
++			fiemap->fm_start += fiemap->fm_length;
++	} while (last == 0);
++
++	*num_extents = tot_extents;
++out:
++	return 0;
+ }
+ 
+ #define EXT2_DIRECT	12
+@@ -86,9 +244,11 @@ static void frag_report(const char *file
+ 	unsigned long	block, last_block = 0, numblocks, i;
+ 	long		bpib;	/* Blocks per indirect block */
+ 	long		cylgroups;
+-	int		discont = 0, expected;
++	int		num_extents = 0, expected;
+ 	int		is_ext2 = 0;
+ 	unsigned int	flags;
++	unsigned long	first_blk, last_blk;
++	int rc;
+ 
+ 	if (statfs(filename, &fsinfo) < 0) {
+ 		perror("statfs");
+@@ -113,6 +273,15 @@ static void frag_report(const char *file
+ 		printf("Filesystem type is: %lx\n", 
+ 		       (unsigned long) fsinfo.f_type);
+ 	}
++
++	/* Check if filesystem is lustre */
++	if (fsinfo.f_type == LUSTRE_SUPER_MAGIC) {
++		is_lustre = 1;
++		/* For lustre fs we will always display in extent format */
++		extent_format++;
++		lun_offset++;
++	}
++
+ 	cylgroups = div_ceil(fsinfo.f_blocks, fsinfo.f_bsize*8);
+ 	if (verbose) {
+ 		printf("Filesystem cylinder groups is approximately %ld\n", 
+@@ -135,7 +304,8 @@ static void frag_report(const char *file
+ 	if (ioctl(fd, EXT3_IOC_GETFLAGS, &flags) < 0)
+ 		flags = 0;
+ 	if (flags & EXT4_EXTENTS_FL) {
+-		printf("File is stored in extents format\n");
++		if (verbose)
++			printf("File is stored in extents format\n");
+ 		is_ext2 = 0;
+ 	}
+ 	if (verbose)
+@@ -143,37 +313,48 @@ static void frag_report(const char *file
+ 	bpib = bs / 4;
+ 	numblocks = (fileinfo.st_size + (bs-1)) / bs;
+ 	if (verbose) {
++		int rc1, rc2;
++
+ 		printf("File size of %s is %lld (%ld blocks)\n", filename, 
+ 		       (long long) fileinfo.st_size, numblocks);
+-		printf("First block: %lu\nLast block: %lu\n",
+-		       get_bmap(fd, 0), get_bmap(fd, numblocks - 1));
++		if (extent_format == 0) {
++			rc1 = get_bmap(fd, 0, &first_blk);
++			rc2 = get_bmap(fd, numblocks - 1, &last_blk);
++			if (rc1 == 0 && rc2 == 0)
++				printf("First block: %lu\nLast block: %lu\n",
++				       first_blk, last_blk);
++		}
+ 	}
+-	for (i=0; i < numblocks; i++) {
+-		if (is_ext2 && last_block) {
+-			if (((i-EXT2_DIRECT) % bpib) == 0)
+-				last_block++;
+-			if (((i-EXT2_DIRECT-bpib) % (bpib*bpib)) == 0)
+-				last_block++;
+-			if (((i-EXT2_DIRECT-bpib-bpib*bpib) % (bpib*bpib*bpib)) == 0)
+-				last_block++;
+-		}
+-		block = get_bmap(fd, i);
+-		if (block == 0)
+-			continue;
+-		if (last_block && (block != last_block +1) ) {
+-			if (verbose)
+-				printf("Discontinuity: Block %ld is at %lu (was %lu)\n",
+-				       i, block, last_block);
+-			discont++;
++	if (is_ext2 || (filefrag_fiemap(fd, bs, &num_extents) != 0)) {
++		for (i = 0; i < numblocks; i++) {
++			if (is_ext2 && last_block) {
++				if (((i-EXT2_DIRECT) % bpib) == 0)
++					last_block++;
++				if (((i-EXT2_DIRECT-bpib) % (bpib*bpib)) == 0)
++					last_block++;
++				if (((i-EXT2_DIRECT-bpib-bpib*bpib) %
++							(bpib*bpib*bpib)) == 0)
++					last_block++;
++			}
++			rc = get_bmap(fd, i, &block);
++			if (block == 0)
++				continue;
++			if (last_block && (block != last_block+1) ) {
++				if (verbose)
++					printf("Discontinuity: Block %ld is at "
++					       "%lu (was %lu)\n",
++					       i, block, last_block+1);
++				num_extents++;
++			}
++			last_block = block;
+ 		}
+-		last_block = block;
+ 	}
+-	if (discont==0)
++	if (num_extents == 1)
+ 		printf("%s: 1 extent found", filename);
+ 	else
+-		printf("%s: %d extents found", filename, discont+1);
++		printf("%s: %d extents found", filename, num_extents);
+ 	expected = (numblocks/((bs*8)-(fsinfo.f_files/8/cylgroups)-3))+1;
+-	if (is_ext2 && expected != discont+1)
++	if (is_ext2 && expected != num_extents)
+ 		printf(", perfection would be %d extent%s\n", expected,
+ 			(expected>1) ? "s" : "");
+ 	else
+@@ -183,7 +364,7 @@ static void frag_report(const char *file
+ 
+ static void usage(const char *progname)
+ {
+-	fprintf(stderr, "Usage: %s [-v] file ...\n", progname);
++	fprintf(stderr, "Usage: %s [-vel] file ...\n", progname);
+ 	exit(1);
+ }
+ 
+@@ -192,11 +373,17 @@ int main(int argc, char**argv)
+ 	char **cpp;
+ 	int c;
+ 
+-	while ((c = getopt(argc, argv, "v")) != EOF)
++	while ((c = getopt(argc, argv, "vel")) != EOF)
+ 		switch (c) {
+ 		case 'v':
+ 			verbose++;
+ 			break;
++		case 'e':
++			extent_format++;
++			break;
++		case 'l':
++			lun_offset++;
++			break;
+ 		default:
+ 			usage(argv[0]);
+ 			break;
+Index: e2fsprogs-1.40.2/lib/ext2fs/fiemap.h
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/fiemap.h
+@@ -0,0 +1,49 @@
++/*
++ * lib/ext2fs/fiemap.h
++ *
++ * Copyright (C) 2007 Cluster File Systems, Inc
++ *
++ * Author: Kalpak Shah <kalpak.shah@sun.com>
++ *	   Andreas Dilger <adilger@sun.com>
++ */
++
++#ifndef _EXT2FS_FIEMAP_H
++#define _EXT2FS_FIEMAP_H
++
++struct fiemap_extent {
++	__u64 fe_offset; /* offset in bytes for the start of the extent */
++	__u64 fe_length; /* length in bytes for the extent */
++	__u32 fe_flags;  /* returned FIEMAP_EXTENT_* flags for the extent */
++	__u32 fe_lun;    /* logical device number for extent (starting at 0) */
 +};
 +
-+/*
-+ * Callback function called for each extent to gather FIEMAP information.
-+ */
-+int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
-+		       void *data)
-+{
-+	struct fiemap_internal *fiemap_i = data;
-+	struct fiemap *fiemap_s = fiemap_i->fiemap_s;
-+	struct fiemap_extent *fm_extent = &fiemap_i->fm_extent;
-+	int current_extent = fiemap_i->current_extent;
-+	unsigned long blksize_bits = inode->i_sb->s_blocksize_bits;
++struct fiemap {
++	__u64 fm_start;	 	/* logical starting byte offset (in/out) */
++	__u64 fm_length;	/* logical length of map (in/out) */
++	__u32 fm_flags;	 	/* FIEMAP_FLAG_* flags for request (in/out) */
++	__u32 fm_extent_count;  /* number of extents in fm_extents (in/out) */
++	__u64 fm_end_offset;	/* logical offset of end of mapping in last ioctl */
++	struct fiemap_extent fm_extents[0];
++};
 +
-+	/*
-+	 * ext4_ext_walk_space returns a hole for extents that have not been
-+	 * allocated yet.
-+	 */
-+	if (((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+	     inode->i_size) && newex->ec_type == EXT4_EXT_CACHE_GAP) {
-+		if (((u64)newex->ec_block << blksize_bits) < inode->i_size)
-+			newex->ec_len = (inode->i_size - ((u64)newex->ec_block<<
-+						blksize_bits)) >> blksize_bits;
-+		else
-+			return EXT_BREAK;
-+	}
++#define	FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
++#define	FIEMAP_FLAG_HSM_READ	0x00000002 /* get data from HSM before map */
++#define	FIEMAP_FLAG_NUM_EXTENTS	0x00000004 /* return only number of extents */
++#define	FIEMAP_FLAG_INCOMPAT	0xff000000 /* error for unknown flags in here */
++#define	FIEMAP_FLAG_LUN_OFFSET	0x01000000 /* use lun offsets, instead of
++					    * logical file offsets */
 +
-+	/*
-+	 * We only need to return number of extents and total length of mapping
-+	 */
-+	if (fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS) {
-+		fiemap_i->tot_mapping_len += ((__u64)newex->ec_len <<
-+						 blksize_bits);
-+		goto count_extents;
-+	}
++#define	FIEMAP_EXTENT_HOLE	0x00000001 /* has no data or space allocation */
++#define	FIEMAP_EXTENT_UNWRITTEN	0x00000002 /* space allocated, but no data */
++#define	FIEMAP_EXTENT_UNMAPPED	0x00000004 /* has data but no space allocation*/
++#define	FIEMAP_EXTENT_ERROR	0x00000008 /* mapping error, errno in fe_start*/
++#define	FIEMAP_EXTENT_NO_DIRECT	0x00000010 /* cannot access data directly */
++#define	FIEMAP_EXTENT_LAST	0x00000020 /* last extent in the file */
++#define	FIEMAP_EXTENT_DELALLOC	0x00000040 /* has data but not yet written,
++					      must have EXTENT_UNKNOWN set */
++#define	FIEMAP_EXTENT_SECONDARY	0x00000080 /* data (also) in secondary storage,
++					      not in primary if EXTENT_UNKNOWN*/
++#define	FIEMAP_EXTENT_EOF	0x00000100 /* if fm_start+fm_len is beyond EOF*/
 +
-+	if (current_extent >= fiemap_s->fm_extent_count)
-+		return EXT_BREAK;
++#endif /* _EXT2FS_FIEMAP_H */
 +
-+	memset(fm_extent, 0, sizeof(*fm_extent));
-+	fm_extent->fe_offset = (__u64)newex->ec_start << blksize_bits;
-+	fm_extent->fe_length = (__u64)newex->ec_len << blksize_bits;
-+	fiemap_i->tot_mapping_len += fm_extent->fe_length;
-+
-+	if (newex->ec_type == EXT4_EXT_CACHE_GAP)
-+		fm_extent->fe_flags |= FIEMAP_EXTENT_HOLE;
-+
-+	if (ex && ext4_ext_is_uninitialized(ex))
-+		fm_extent->fe_flags |= (FIEMAP_EXTENT_DELALLOC |
-+					FIEMAP_EXTENT_UNMAPPED);
-+
-+	/*
-+	 * Mark this fiemap_extent as FIEMAP_EXTENT_EOF if it's past the end
-+	 * of file.
-+	 */
-+	if ((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+								inode->i_size)
-+		fm_extent->fe_flags |= FIEMAP_EXTENT_EOF;
-+
-+	if (!copy_to_user(fiemap_i->cur_ext_ptr, fm_extent,
-+			  sizeof(struct fiemap_extent))) {
-+		fiemap_i->cur_ext_ptr += sizeof(struct fiemap_extent);
-+	} else {
-+		fiemap_i->err = -EFAULT;
-+		return EXT_BREAK;
-+	}
-+
-+count_extents:
-+	/*
-+	 * Don't count holes when only returning number of extents
-+	 */
-+	if (!((fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS) &&
-+	      (newex->ec_type == EXT4_EXT_CACHE_GAP)))
-+		fiemap_i->current_extent++;
-+
-+	/*
-+	 * Stop if we are beyond requested mapping size but return complete last
-+	 * extent.
-+	 */
-+	if ((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+	    fiemap_s->fm_length)
-+		return EXT_BREAK;
-+
-+	return EXT_CONTINUE;
-+}
-+
-+int ext4_fiemap(struct inode *inode, struct file *filp, unsigned int cmd,
-+		unsigned long arg)
-+{
-+	struct fiemap *fiemap_s;
-+	struct fiemap_internal fiemap_i;
-+	struct fiemap_extent *last_extent;
-+	ext4_fsblk_t start_blk;
-+	int fm_extent_size = sizeof(struct fiemap_extent);
-+	int err = 0;
-+
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+		return -EOPNOTSUPP;
-+
-+	fiemap_s = kmalloc(sizeof(*fiemap_s), GFP_KERNEL);
-+	if (fiemap_s == NULL)
-+		return -ENOMEM;
-+	if (copy_from_user(fiemap_s, (struct fiemap __user *)arg,
-+			   sizeof(*fiemap_s)))
-+		return -EFAULT;
-+
-+	if (fiemap_s->fm_flags & EXT4_FIEMAP_FLAG_INCOMPAT_UNSUPP)
-+		return -EOPNOTSUPP;
-+
-+	if (fiemap_s->fm_flags & FIEMAP_FLAG_SYNC)
-+		ext4_sync_file(filp, filp->f_dentry, 1);
-+
-+	start_blk = fiemap_s->fm_start >> inode->i_sb->s_blocksize_bits;
-+	fiemap_i.fiemap_s = fiemap_s;
-+	fiemap_i.tot_mapping_len = 0;
-+	fiemap_i.cur_ext_ptr = (char *)(arg + sizeof(*fiemap_s));
-+	fiemap_i.current_extent = 0;
-+	fiemap_i.err = 0;
-+
-+	/*
-+	 * Walk the extent tree gathering extent information
-+	 */
-+	mutex_lock(&EXT4_I(inode)->truncate_mutex);
-+	err = ext4_ext_walk_space(inode, start_blk , EXT_MAX_BLOCK - start_blk,
-+				  ext4_ext_fiemap_cb, &fiemap_i);
-+	mutex_unlock(&EXT4_I(inode)->truncate_mutex);
-+	if (err)
-+		return err;
-+
-+	fiemap_s->fm_extent_count = fiemap_i.current_extent;
-+	fiemap_s->fm_length = fiemap_i.tot_mapping_len;
-+	/*
-+	 * Mark last extent as EXTENT_LAST and copy the extent to userspace.
-+	 */
-+	if (fiemap_i.current_extent != 0 &&
-+	    fiemap_i.current_extent < fiemap_s->fm_extent_count &&
-+	    !(fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS)) {
-+		char *dest;
-+
-+		last_extent = &fiemap_i.fm_extent;
-+		last_extent->fe_flags |= FIEMAP_EXTENT_LAST;
-+		dest = (char *)arg + sizeof(*fiemap_s) + fm_extent_size *
-+						(fiemap_s->fm_extent_count - 1);
-+		err = copy_to_user(dest, last_extent, fm_extent_size);
-+		if (err)
-+			return err;
-+	}
-+	err = copy_to_user((void *)arg, fiemap_s, sizeof(*fiemap_s));
-+
-+	return err;
-+}
-
-
