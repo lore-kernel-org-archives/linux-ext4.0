@@ -1,100 +1,157 @@
-From: Mark Fasheh <mark.fasheh@ORACLE.COM>
-Subject: Re: [PATCH 1/2] Add FIEMAP header file
-Date: Mon, 12 Nov 2007 15:55:27 -0800
-Message-ID: <20071112235527.GA28607@ca-server1.us.oracle.com>
-References: <1194901202.12045.17.camel@garfield>
-Reply-To: Mark Fasheh <mark.fasheh@ORACLE.COM>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [PATCH 2/2] FIEMAP ioctl for ext4
+Date: Tue, 13 Nov 2007 14:54:30 +1100
+Message-ID: <20071113035430.GI995458@sgi.com>
+References: <1194901206.12045.18.camel@garfield>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@clusterfs.com>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>, David Chinner <dgc@sgi.com>
+	Andreas Dilger <adilger@Sun.COM>,
+	Eric Sandeen <sandeen@redhat.com>, mark.fasheh@oracle.com,
+	dgc@sgi.com
 To: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:50649 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750938AbXKLX4O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Nov 2007 18:56:14 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1194901202.12045.17.camel@garfield>
-Sender: linux-ext4-owner@vger.kernel.org
+In-Reply-To: <1194901206.12045.18.camel@garfield>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 13, 2007 at 02:30:02AM +0530, Kalpak Shah wrote:
-> Recently there was discussion about an "FIle Extent MAP"(FIEMAP) ioctl for
-> efficiently mapping the extents and holes of a file. This will be many
-> times more efficient than FIBMAP by cutting down the number of ioctls.
-
-Thanks for sending this out.
-
-
-> This patch adds the FIEMAP header file in include/linux.
-
-Any problem with defining the IOC_FIEMAP ioctl number in this header too? No
-EXT4 prefix so we keep things generic too, please.
-	--Mark
-
-
-> Signed-off-by: Andreas Dilger <adilger@sun.com>
-> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com> 
+On Tue, Nov 13, 2007 at 02:30:06AM +0530, Kalpak Shah wrote:
+> Recently there was discussion about an "FIle Extent MAP"(FIEMAP) ioctl for efficiently mapping the extents and holes of a file. This will be many times more efficient than FIBMAP by cutting down the number of ioctls.
 > 
-> Index: linux-2.6.23.1/include/linux/fiemap.h
+> This patch adds the FIEMAP ioctl for ext4. The spec for the FIEMAP ioctl was posted earlier by Andreas Dilger and can be found at:
+> http://www.mail-archive.com/linux-ext4@vger.kernel.org/msg03944.html
+....
+>  	}
+> +	case EXT4_IOC_FIEMAP: {
+> +		return ext4_fiemap(inode, filp, cmd, arg);
+> +	}
+>  
+>  	default:
+>  		return -ENOTTY;
+> Index: linux-2.6.23.1/include/linux/ext4_fs.h
 > ===================================================================
-> --- /dev/null
-> +++ linux-2.6.23.1/include/linux/fiemap.h
-> @@ -0,0 +1,49 @@
-> +/*
-> + * include/linux/fiemap.h
-> + *
-> + * Copyright (C) 2007 Sun Microsystems, Inc.
-> + *
-> + * Author: Kalpak Shah <kalpak.shah@sun.com>
-> + *	   Andreas Dilger <adilger@sun.com>
-> + */
+> --- linux-2.6.23.1.orig/include/linux/ext4_fs.h
+> +++ linux-2.6.23.1/include/linux/ext4_fs.h
+> @@ -228,15 +228,20 @@ struct ext4_new_group_data {
+>  #define	EXT4_IOC_SETFLAGS		FS_IOC_SETFLAGS
+>  #define	EXT4_IOC_GETVERSION		_IOR('f', 3, long)
+>  #define	EXT4_IOC_SETVERSION		_IOW('f', 4, long)
+> +#define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
+> +#define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+>  #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
+>  #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
+> +#define EXT4_IOC_FIEMAP			_IOWR('f', 10, struct fiemap)
+
+Please make this common - we dont want a new ioctl for every
+filesystem; we want a single common to all filesystems.
+
+> +int ext4_fiemap(struct inode *inode, struct file *filp, unsigned int cmd,
+> +		unsigned long arg)
+> +{
+
+Most of this function will be common to all IOC_FIEMAP
+implementations.
+
+> +	struct fiemap *fiemap_s;
+> +	struct fiemap_internal fiemap_i;
+> +	struct fiemap_extent *last_extent;
+> +	ext4_fsblk_t start_blk;
+> +	int fm_extent_size = sizeof(struct fiemap_extent);
+> +	int err = 0;
 > +
-> +#ifndef _LINUX_FIEMAP_H
-> +#define _LINUX_FIEMAP_H
+> +	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+> +		return -EOPNOTSUPP;
+
+	struct address_space *mapping = filp->f_mapping;
+
+	if (!mapping->a_ops->fiemap)
+		return -EOPNOTSUPP;
+
 > +
-> +struct fiemap_extent {
-> +	__u64	fe_offset; /* offset in bytes for the start of the extent */
-> +	__u64	fe_length; /* length in bytes for the extent */
-> +	__u32	fe_flags;  /* returned FIEMAP_EXTENT_* flags for the extent */
-> +	__u32	fe_lun;	   /* logical device number for extent (starting at 0)*/
-> +};
+> +	fiemap_s = kmalloc(sizeof(*fiemap_s), GFP_KERNEL);
+> +	if (fiemap_s == NULL)
+> +		return -ENOMEM;
+> +	if (copy_from_user(fiemap_s, (struct fiemap __user *)arg,
+> +			   sizeof(*fiemap_s)))
+> +		return -EFAULT;
+
+This is common
+
 > +
-> +struct fiemap {
-> +	__u64	fm_start;	 /* logical starting byte offset (in/out) */
-> +	__u64	fm_length;	 /* logical length of map (in/out) */
-> +	__u32	fm_flags;	 /* FIEMAP_FLAG_* flags for request (in/out) */
-> +	__u32	fm_extent_count; /* number of extents in fm_extents (in/out) */
-> +	__u64	fm_end_offset;	 /* logical offset of end of mapping in last ioctl */
-> +	struct fiemap_extent	fm_extents[0];
-> +};
+> +	if (fiemap_s->fm_flags & EXT4_FIEMAP_FLAG_INCOMPAT_UNSUPP)
+> +		return -EOPNOTSUPP;
 > +
-> +#define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
-> +#define FIEMAP_FLAG_HSM_READ	0x00000002 /* get data from HSM before map */
-> +#define FIEMAP_FLAG_NUM_EXTENTS	0x00000004 /* return only number of extents */
-> +#define FIEMAP_FLAG_INCOMPAT	0xff000000 /* error for unknown flags in here */
+> +	if (fiemap_s->fm_flags & FIEMAP_FLAG_SYNC)
+> +		ext4_sync_file(filp, filp->f_dentry, 1);
+
+The common form is:
+
+	if (fiemap_s->fm_flags & FIEMAP_FLAG_SYNC)
+		filemap_write_and_wait(mapping);
+
+> +	start_blk = fiemap_s->fm_start >> inode->i_sb->s_blocksize_bits;
+> +	fiemap_i.fiemap_s = fiemap_s;
+> +	fiemap_i.tot_mapping_len = 0;
+> +	fiemap_i.cur_ext_ptr = (char *)(arg + sizeof(*fiemap_s));
+> +	fiemap_i.current_extent = 0;
+> +	fiemap_i.err = 0;
+
+Seems common.
+
 > +
-> +#define FIEMAP_FLAG_LUN_OFFSET	0x01000000 /* use lun offsets, instead of
-> +					    * logical file offsets */
+> +	/*
+> +	 * Walk the extent tree gathering extent information
+> +	 */
+> +	mutex_lock(&EXT4_I(inode)->truncate_mutex);
+> +	err = ext4_ext_walk_space(inode, start_blk , EXT_MAX_BLOCK - start_blk,
+> +				  ext4_ext_fiemap_cb, &fiemap_i);
+> +	mutex_unlock(&EXT4_I(inode)->truncate_mutex);
+
+This becomes:
+
+	error = mapping->a_ops->fiemap(inode, ....);
+
+and the lock, extent walk, etc becomes ext4_fiemap() which is set up
+in the a_ops for the filesystem. Any filesystems specific checks go
+there as well.
+
+> +	if (err)
+> +		return err;
 > +
-> +#define FIEMAP_EXTENT_HOLE	0x00000001 /* has no data or space allocation */
-> +#define FIEMAP_EXTENT_UNWRITTEN	0x00000002 /* space allocated, but no data */
-> +#define FIEMAP_EXTENT_UNMAPPED	0x00000004 /* has data but no space allocation*/
-> +#define FIEMAP_EXTENT_ERROR	0x00000008 /* mapping error, errno in fe_start*/
-> +#define FIEMAP_EXTENT_NO_DIRECT	0x00000010 /* cannot access data directly */
-> +#define FIEMAP_EXTENT_LAST	0x00000020 /* last extent in the file */
-> +#define FIEMAP_EXTENT_DELALLOC	0x00000040 /* has data but not yet written,
-> +					    * must have EXTENT_UNKNOWN set */
-> +#define FIEMAP_EXTENT_SECONDARY	0x00000080 /* data (also) in secondary storage,
-> +					    * not in primary if EXTENT_UNKNOWN*/
-> +#define FIEMAP_EXTENT_EOF	0x00000100 /* if fm_start+fm_len is beyond EOF*/
+> +	fiemap_s->fm_extent_count = fiemap_i.current_extent;
+> +	fiemap_s->fm_length = fiemap_i.tot_mapping_len;
+> +	/*
+> +	 * Mark last extent as EXTENT_LAST and copy the extent to userspace.
+> +	 */
+> +	if (fiemap_i.current_extent != 0 &&
+> +	    fiemap_i.current_extent < fiemap_s->fm_extent_count &&
+> +	    !(fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS)) {
+> +		char *dest;
 > +
-> +#endif /* _LINUX_FIEMAP_H */
-> 
---
-Mark Fasheh
-Senior Software Developer, Oracle
-mark.fasheh@oracle.com
+> +		last_extent = &fiemap_i.fm_extent;
+> +		last_extent->fe_flags |= FIEMAP_EXTENT_LAST;
+> +		dest = (char *)arg + sizeof(*fiemap_s) + fm_extent_size *
+> +						(fiemap_s->fm_extent_count - 1);
+> +		err = copy_to_user(dest, last_extent, fm_extent_size);
+> +		if (err)
+> +			return err;
+> +	}
+> +	err = copy_to_user((void *)arg, fiemap_s, sizeof(*fiemap_s));
+> +
+> +	return err;
+
+That's common, too.
+
+I don't want to see this implemented over and over again with minute
+variations and bugs. The common implementation should be called from
+in do_file_ioctl() like FIBMAP....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
