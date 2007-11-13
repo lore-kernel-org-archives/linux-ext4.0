@@ -1,48 +1,61 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] Introduce ext4_find_next_bit
-Date: Mon, 12 Nov 2007 23:59:10 -0800
-Message-ID: <20071112235910.35a635e4.akpm@linux-foundation.org>
-References: <11903523063349-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [RFC: 2.6.16 patch] return ENOENT from ext3_link when racing with
+	unlink
+Date: Tue, 13 Nov 2007 11:05:25 +0100
+Message-ID: <20071113100525.GA4250@stusta.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:46875 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750837AbXKMH7T (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Nov 2007 02:59:19 -0500
-In-Reply-To: <11903523063349-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mailout.stusta.mhn.de ([141.84.69.5]:54095 "EHLO
+	mailhub.stusta.mhn.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751376AbXKMKFs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2007 05:05:48 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 21 Sep 2007 10:55:05 +0530 "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+It seems the commit below (I've removed the ext4 part that doesn't 
+apply) should also be included in the 2.6.16 branch, or do I miss 
+anything?
 
-> Also add generic_find_next_le_bit
-> 
-> This gets used by the ext4 multi block allocator patches.
-> 
+TIA
+Adrian
 
-arm allmodconfig:
 
-fs/ext4/mballoc.c: In function `ext4_mb_generate_buddy':
-fs/ext4/mballoc.c:836: error: implicit declaration of function `ext2_find_next_bit'
+commit 2988a7740dc0dd9a0cb56576e8fe1d777dff0db3
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Sat Feb 10 01:46:16 2007 -0800
 
-This patch makes my head spin.
+    [PATCH] return ENOENT from ext3_link when racing with unlink
+    
+    Return -ENOENT from ext[34]_link if we've raced with unlink and i_nlink is
+    0.  Doing otherwise has the potential to corrupt the orphan inode list,
+    because we'd wind up with an inode with a non-zero link count on the list,
+    and it will never get properly cleaned up & removed from the orphan list
+    before it is freed.
+    
+    [akpm@osdl.org: build fix]
+    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+    Cc: <linux-ext4@vger.kernel.org>
+    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 
-Why did we declare generic_find_next_le_bit() in
-include/asm-powerpc/bitops.h (wrong) as well as in
-include/asm-generic/bitops/le.h (presumably correct)?
-
-Why is it touching a powerpc file and no any other architectures? 
-Something screwed up in powerpc land?
-
-And why did arm break?
-
-Shudder.  Anyway, please fix, and if that fix requires that various
-braindamaged be repaired, please repair the braindamage rather than going
-along with it.
-
-Thanks.
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 4df39c4..57402b5 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -2191,6 +2191,12 @@ static int ext3_link (struct dentry * old_dentry,
+ 
+ 	if (inode->i_nlink >= EXT3_LINK_MAX)
+ 		return -EMLINK;
++	/*
++	 * Return -ENOENT if we've raced with unlink and i_nlink is 0.  Doing
++	 * otherwise has the potential to corrupt the orphan inode list.
++	 */
++	if (inode->i_nlink == 0)
++		return -ENOENT;
+ 
+ retry:
+ 	handle = ext3_journal_start(dir, EXT3_DATA_TRANS_BLOCKS(dir->i_sb) +
