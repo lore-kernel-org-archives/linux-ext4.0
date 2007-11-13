@@ -1,35 +1,70 @@
-From: Alex Tomas <bzzz.tomas@gmail.com>
-Subject: Re: [PATCH] ext4: dir inode reservation V3
-Date: Tue, 13 Nov 2007 17:09:46 +0300
-Message-ID: <4739B02A.2000209@gmail.com>
-References: <4739B0C0.3060907@suse.de>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize
+Date: Tue, 13 Nov 2007 08:08:36 -0700
+Message-ID: <20071113150836.GM3966@webber.adilger.int>
+References: <20071106113142.GA23689@duck.suse.cz> <20071107160939.GF22214@duck.suse.cz> <20071111003703.GA14815@thunk.org> <20071112095245.GA1465@duck.suse.cz> <20071112145823.GB17462@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=UTF-8
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: coyli@suse.de
+Content-Type: multipart/mixed; boundary="FL5UXtIhxfXey3p5"
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-mail-2.sun.com ([192.18.6.24]:46776 "EHLO
-	gmp-eb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752973AbXKMOKK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2007 09:10:10 -0500
-In-reply-to: <4739B0C0.3060907@suse.de>
+Received: from mail.clusterfs.com ([74.0.229.162]:41622 "EHLO
+	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753179AbXKMPIk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2007 10:08:40 -0500
+Content-Disposition: inline
+In-Reply-To: <20071112145823.GB17462@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-hmm. so you trade 265% degradation of creation for 40% improvement of unlink?
 
-thanks, Alex
+--FL5UXtIhxfXey3p5
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Coly Li wrote:
-> 			normal ext4			ext4 with dir inode reservation
-> 	mount options:	-o data=writeback		-o data=writeback,dir_ireserve=low
-> 	Create dirs:	real    0m49.101s		real    2m59.703s
-> 	Create files:	real    24m17.962s		real    21m8.161s
-> 	Unlink all:	real    24m43.788s		real    17m29.862s
-> Creating dirs with dir inode reservation is slower than normal ext4 as predicted, because allocating
-> directory inodes in non-linear order will cause extra hard disk seeking and block I/O. Creating
-> files with dir inode reservation is 13% faster than normal ext4. Unlink all the directories and
-> files is 29.2% faster as expected.
-> When number of directories is increased, the performance improvement will be more considerable. More
-> benchmark result will be posted here if necessary, because I need more time to run more test cases.
+On Nov 12, 2007  09:58 -0500, Theodore Tso wrote:
+> On Mon, Nov 12, 2007 at 10:52:45AM +0100, Jan Kara wrote:
+> > > Did you test this patch before submitting it?
+> >
+> >   Argh, stupid me. I've just tested that I didn't break anything for normal
+> > block size and thought that I cannot make mistake in such a simple thing
+> > ;).
+> 
+> Could I ask you to perhaps include some 64k blocksize test cases that
+> would exercise the new codepaths?
+
+One thing I had done to verify that 64kB rec_len was broken was to always
+create lost+found with at least 2 disk blocks, since the second block in
+lost+found will not have any dirents in it and will tickle this bug.
+
+Patch attached.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Software Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
+
+--FL5UXtIhxfXey3p5
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="e2fsprogs-large_lpf.patch"
+
+Index: e2fsprogs-cfs/misc/mke2fs.c
+===================================================================
+--- e2fsprogs-cfs.orig/misc/mke2fs.c
++++ e2fsprogs-cfs/misc/mke2fs.c
+@@ -551,7 +551,10 @@ static void create_lost_and_found(ext2_f
+ 	}
+ 	
+ 	for (i=1; i < EXT2_NDIR_BLOCKS; i++) {
+-		if ((lpf_size += fs->blocksize) >= 16*1024)
++		/* Ensure that lost+found is at least 2 blocks, so we always
++		 * test large empty blocks for big-block filesystems.  */
++		if ((lpf_size += fs->blocksize) >= 16*1024 &&
++		    lpf_size >= 2 * fs->blocksize)
+ 			break;
+ 		retval = ext2fs_expand_dir(fs, ino);
+ 		if (retval) {
+
+--FL5UXtIhxfXey3p5--
