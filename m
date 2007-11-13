@@ -1,70 +1,61 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] e2fsprogs: Handle rec_len correctly for 64KB blocksize
-Date: Tue, 13 Nov 2007 08:08:36 -0700
-Message-ID: <20071113150836.GM3966@webber.adilger.int>
-References: <20071106113142.GA23689@duck.suse.cz> <20071107160939.GF22214@duck.suse.cz> <20071111003703.GA14815@thunk.org> <20071112095245.GA1465@duck.suse.cz> <20071112145823.GB17462@thunk.org>
+From: Coly Li <coyli@suse.de>
+Subject: Re: [PATCH] ext4: dir inode reservation V3
+Date: Wed, 14 Nov 2007 00:27:19 +0800
+Message-ID: <4739D067.5080907@suse.de>
+References: <4739B0C0.3060907@suse.de> <4739B02A.2000209@gmail.com>
+Reply-To: coyli@suse.de
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="FL5UXtIhxfXey3p5"
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Alex Tomas <bzzz.tomas@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:41622 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753179AbXKMPIk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2007 10:08:40 -0500
-Content-Disposition: inline
-In-Reply-To: <20071112145823.GB17462@thunk.org>
+Received: from victor.provo.novell.com ([137.65.250.26]:49941 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753539AbXKMQTL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2007 11:19:11 -0500
+In-Reply-To: <4739B02A.2000209@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Thanks for the feedback :-)
 
---FL5UXtIhxfXey3p5
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Nov 12, 2007  09:58 -0500, Theodore Tso wrote:
-> On Mon, Nov 12, 2007 at 10:52:45AM +0100, Jan Kara wrote:
-> > > Did you test this patch before submitting it?
-> >
-> >   Argh, stupid me. I've just tested that I didn't break anything for normal
-> > block size and thought that I cannot make mistake in such a simple thing
-> > ;).
+Alex Tomas wrote:
+> hmm. so you trade 265% degradation of creation for 40% improvement of
+> unlink?
 > 
-> Could I ask you to perhaps include some 64k blocksize test cases that
-> would exercise the new codepaths?
+265% degradation is only for creating 50000 empty directories. This is not a common case.
+There are 13% improvement on create 15 files in each directories. Total time on creating these
+directories and files are 25m6s VS. 24m86s, indeed, dir inode reservation is a little faster.
 
-One thing I had done to verify that 64kB rec_len was broken was to always
-create lost+found with at least 2 disk blocks, since the second block in
-lost+found will not have any dirents in it and will tickle this bug.
+Maybe most of the people will not create dozens of empty directories in their applications,
+therefore IMHO the 265% degradation is acceptable.
 
-Patch attached.
+If user really need to create so many empty directories, they also can mount the file system without
+dir inode reservation to get better performance.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Software Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> thanks, Alex
+> 
+> Coly Li wrote:
+>>             normal ext4            ext4 with dir inode reservation
+>>     mount options:    -o data=writeback        -o
+>> data=writeback,dir_ireserve=low
+>>     Create dirs:    real    0m49.101s        real    2m59.703s
+>>     Create files:    real    24m17.962s        real    21m8.161s
+>>     Unlink all:    real    24m43.788s        real    17m29.862s
+>> Creating dirs with dir inode reservation is slower than normal ext4 as
+>> predicted, because allocating
+>> directory inodes in non-linear order will cause extra hard disk
+>> seeking and block I/O. Creating
+>> files with dir inode reservation is 13% faster than normal ext4.
+>> Unlink all the directories and
+>> files is 29.2% faster as expected.
+>> When number of directories is increased, the performance improvement
+>> will be more considerable. More
+>> benchmark result will be posted here if necessary, because I need more
+>> time to run more test cases.
+> 
 
-
---FL5UXtIhxfXey3p5
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="e2fsprogs-large_lpf.patch"
-
-Index: e2fsprogs-cfs/misc/mke2fs.c
-===================================================================
---- e2fsprogs-cfs.orig/misc/mke2fs.c
-+++ e2fsprogs-cfs/misc/mke2fs.c
-@@ -551,7 +551,10 @@ static void create_lost_and_found(ext2_f
- 	}
- 	
- 	for (i=1; i < EXT2_NDIR_BLOCKS; i++) {
--		if ((lpf_size += fs->blocksize) >= 16*1024)
-+		/* Ensure that lost+found is at least 2 blocks, so we always
-+		 * test large empty blocks for big-block filesystems.  */
-+		if ((lpf_size += fs->blocksize) >= 16*1024 &&
-+		    lpf_size >= 2 * fs->blocksize)
- 			break;
- 		retval = ext2fs_expand_dir(fs, ino);
- 		if (retval) {
-
---FL5UXtIhxfXey3p5--
+-- 
+Coly Li
+SuSE PRC Labs
