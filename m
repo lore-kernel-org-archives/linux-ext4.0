@@ -1,69 +1,111 @@
-From: Joe Perches <joe@perches.com>
-Subject: [PATCH] - [4/15] - remove defconfig ptr comparisons to 0 - fs/jbd
-Date: Tue, 13 Nov 2007 18:05:01 -0800
-Message-ID: <1195005901.5163.90.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Stephen Tweedie <sct@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from DSL022.labridge.com ([206.117.136.22]:4750 "EHLO perches.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761389AbXKNCFB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Nov 2007 21:05:01 -0500
-Sender: linux-ext4-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: - ridiculous-ext3-costs-was-re-page-fault-costs.patch removed from -mm tree
+Date: Wed, 14 Nov 2007 09:40:54 -0800
+Message-ID: <200711141740.lAEHesfo017241@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: torvalds@linux-foundation.org, adilger@clusterfs.com,
+	akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
+	cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Remove defconfig ptr comparison to 0
 
-Remove sparse warning: Using plain integer as NULL pointer
+The patch titled
+     ext3: mostly fix blobk bitmap read performance regression
+has been removed from the -mm tree.  Its filename was
+     ridiculous-ext3-costs-was-re-page-fault-costs.patch
 
-Signed-off-by: Joe Perches <joe@perches.com>
+This patch was dropped because it is obsolete
 
+------------------------------------------------------
+Subject: ext3: mostly fix blobk bitmap read performance regression
+From: Linus Torvalds <torvalds@linux-foundation.org>
+
+The ext3 block bitmap functions got added validation recently, which caused
+a huge performance regression (ie 5x slower) due to very expensive modulus
+calculations being done in a loop.
+
+This largely fixes it, by moving the calculations out of the loop.  The
+sanity checking is still expensive, but no longer totally excessively so.
+
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>
+Cc: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 5d14243..0459657 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1619,14 +1619,14 @@ static int journal_init_journal_head_cache(void)
+ fs/ext3/balloc.c |   26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
+
+diff -puN fs/ext3/balloc.c~ridiculous-ext3-costs-was-re-page-fault-costs fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ridiculous-ext3-costs-was-re-page-fault-costs
++++ a/fs/ext3/balloc.c
+@@ -80,12 +80,12 @@ struct ext3_group_desc * ext3_get_group_
+ 	return desc + offset;
+ }
+ 
+-static inline int
+-block_in_use(ext3_fsblk_t block, struct super_block *sb, unsigned char *map)
++static inline unsigned int
++block_bit_number(__le32 block, struct super_block *sb)
  {
- 	int retval;
+-	return ext3_test_bit ((block -
+-		le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block)) %
+-			 EXT3_BLOCKS_PER_GROUP(sb), map);
++	__le32 first = EXT3_SB(sb)->s_es->s_first_data_block;
++
++	return (le32_to_cpu(block) - le32_to_cpu(first)) % EXT3_BLOCKS_PER_GROUP(sb);
+ }
  
--	J_ASSERT(journal_head_cache == 0);
-+	J_ASSERT(!journal_head_cache);
- 	journal_head_cache = kmem_cache_create("journal_head",
- 				sizeof(struct journal_head),
- 				0,		/* offset */
- 				SLAB_TEMPORARY,	/* flags */
- 				NULL);		/* ctor */
- 	retval = 0;
--	if (journal_head_cache == 0) {
-+	if (!journal_head_cache) {
- 		retval = -ENOMEM;
- 		printk(KERN_EMERG "JBD: no memory for journal_head cache\n");
+ /**
+@@ -102,6 +102,7 @@ static struct buffer_head *
+ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
+ 	int i;
++	unsigned offset;
+ 	struct ext3_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
+ 	ext3_fsblk_t bitmap_blk;
+@@ -120,20 +121,21 @@ read_block_bitmap(struct super_block *sb
  	}
-diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-index ad2eacf..d5f8eee 100644
---- a/fs/jbd/revoke.c
-+++ b/fs/jbd/revoke.c
-@@ -173,13 +173,13 @@ int __init journal_init_revoke_caches(void)
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
--	if (revoke_record_cache == 0)
-+	if (!revoke_record_cache)
- 		return -ENOMEM;
  
- 	revoke_table_cache = kmem_cache_create("revoke_table",
- 					   sizeof(struct jbd_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (revoke_table_cache == 0) {
-+	if (!revoke_table_cache) {
- 		kmem_cache_destroy(revoke_record_cache);
- 		revoke_record_cache = NULL;
- 		return -ENOMEM;
+ 	/* check whether block bitmap block number is set */
+-	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++	offset = block_bit_number(desc->bg_block_bitmap, sb);
++	if (!ext3_test_bit(offset, bh->b_data)) {
+ 		/* bad block bitmap */
+ 		goto error_out;
+ 	}
+ 	/* check whether the inode bitmap block number is set */
+-	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
+-	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++	offset = block_bit_number(desc->bg_inode_bitmap, sb);
++	if (!ext3_test_bit(offset, bh->b_data)) {
+ 		/* bad block bitmap */
+ 		goto error_out;
+ 	}
+-	/* check whether the inode table block number is set */
+-	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
+-	for (i = 0; i < EXT3_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
+-		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
++	/* check whether the inode table block numbers are set */
++	offset = block_bit_number(desc->bg_inode_table, sb);
++	for (i = 0; i < EXT3_SB(sb)->s_itb_per_group; i++, offset++) {
++		if (!ext3_test_bit(offset, bh->b_data)) {
+ 			/* bad block bitmap */
+ 			goto error_out;
+ 		}
+_
+
+Patches currently in -mm which might be from torvalds@linux-foundation.org are
+
+origin.patch
+revert-task-control-groups-example-cpu-accounting-subsystem.patch
+git-x86.patch
+ridiculous-ext3-costs-was-re-page-fault-costs.patch
+workaround-for-a-pci-restoring-bug.patch
