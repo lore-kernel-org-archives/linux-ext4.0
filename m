@@ -1,55 +1,40 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: test for EA validity checking
-Date: Thu, 15 Nov 2007 11:45:14 -0700
-Message-ID: <20071115184514.GA18130@webber.adilger.int>
-References: <20071110121011.GA14858@webber.adilger.int>
+Subject: [PATCH] set s_raid_{stripe,stride}
+Date: Thu, 15 Nov 2007 11:56:54 -0700
+Message-ID: <20071115185654.GB18130@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="pf9I7BMVVzbSWLtt"
+Content-Type: multipart/mixed; boundary="+g7M9IMkV8truYOl"
 Cc: linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:47294 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:60649 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762592AbXKOSpV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 13:45:21 -0500
+	with ESMTP id S1760878AbXKOS46 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 13:56:58 -0500
 Content-Disposition: inline
-In-Reply-To: <20071110121011.GA14858@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---pf9I7BMVVzbSWLtt
+--+g7M9IMkV8truYOl
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
-On Nov 10, 2007  05:10 -0700, Andreas Dilger wrote:
-> Attached is a test image for extended attribute block checking.
-> This small image contains a number of different kinds of corruptions
-> (bad magic, bad checksum, empty block, bad EA block number), as well
-> as an old-format (v1) EA, and a valid v2 EA.
+This is a resend of a patch originally from Rupesh Thakare that allows
+mke2fs and tune2fs to set/change s_raid_stripe_width and s_raid_stride
+in the superblock.  Knowing the RAID geometry will allow mballoc/delalloc
+to make much better decisions at allocation time to avoid RAID-level
+read-modify-write for unaligned writes.
 
-Attached is an updated patch with a new test image, that includes a
-corrupt EA set on a block device.  That had been causing us some
-e2fsck heartburn because of random inode table corruption.
+Similarly, in newer kernels the readahead has a mechanism to query
+readahead sizes from the filesystem, and keeping these RAID aligned
+avoids extra seeks and in some hardware RAID can also greatly reduce
+the track cache overhead if there are many IO threads doing unaligned
+reads causing the track cache to be flushed before it can be used.
 
-This goes along with an updated "expand-extra-isize" patch.  The root of
-the problem was that I had added an extra check to verify the EA magic
-in ext2fs_read_ext_attr(), but the return value of this function was used
-in check_blocks() to set pctx->errcode, and later in check_ext_attr() the
-non-zero value of pctx->errcode caused an abort when
-ext2fs_inode_has_valid_blocks() was false and it caused PR_1_BLOCK_ITERATE
-to be hit (a fatal error).
-
-I ended up checking the magic in all of the ext2fs_read_ext_attr() callsites,
-but IMHO the library should at least be doing basic validity checking like
-this.
-
-One question that remains unclear is whether pctx->errcode being set from
-the early call of check_ext_attr() should cause check_blocks() to abort?
-In the common regular-file/directory/slow-symlink case pctx->errcode is
-reset by the call to ext2fs_block_iterate2(), so it would seem reasonable
-to go back to checking EA magic in ext2fs_read_ext_attr(), and then clearing
-pctx->errcode in check_ext_attr() if the problem is fixed.
+The kernel code to use this is left as an exercise for the reader.
+Hooking this into the XFS libdisk (or whatever it is called) at mke2fs
+time is extra bonus points.
 
 Cheers, Andreas
 --
@@ -58,1765 +43,304 @@ Sr. Software Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
 
 
---pf9I7BMVVzbSWLtt
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename="e2fsprogs-tests-f_ea_checks.patch"
-Content-Transfer-Encoding: base64
-
-SW5kZXg6IGUyZnNwcm9ncy1jZnMvdGVzdHMvZl9lYV9jaGVja3MvZXhwZWN0LjEKPT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PQotLS0gL2Rldi9udWxsCisrKyBlMmZzcHJvZ3MtY2ZzL3Rlc3RzL2ZfZWFfY2hl
-Y2tzL2V4cGVjdC4xCkBAIC0wLDAgKzEsNTcgQEAKK1Bhc3MgMTogQ2hlY2tpbmcgaW5vZGVz
-LCBibG9ja3MsIGFuZCBzaXplcworSW5vZGUgMTMgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJp
-YnV0ZSBibG9jayAyNi4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTMsIGlfYmxvY2tzIGlzIDQs
-IHNob3VsZCBiZSAyLiAgRml4PyB5ZXMKKworRXh0ZW5kZWQgYXR0cmlidXRlIGluIGlub2Rl
-IDE0IGhhcyBhIGhhc2ggKDE2NDkzNDAxODkpIHdoaWNoIGlzIGludmFsaWQKK0NsZWFyPyB5
-ZXMKKworSW5vZGUgMTQsIGlfYmxvY2tzIGlzIDIsIHNob3VsZCBiZSAwLiAgRml4PyB5ZXMK
-KworSW5vZGUgMTcgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBibG9jayAyOC4gIENs
-ZWFyPyB5ZXMKKworSW5vZGUgMTcsIGlfYmxvY2tzIGlzIDQsIHNob3VsZCBiZSAyLiAgRml4
-PyB5ZXMKKworSW5vZGUgMTYgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBibG9jayAy
-OS4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTYsIGlfYmxvY2tzIGlzIDIsIHNob3VsZCBiZSAw
-LiAgRml4PyB5ZXMKKworSW5vZGUgMTkgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBi
-bG9jayAzMy4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTksIGlfYmxvY2tzIGlzIDIsIHNob3Vs
-ZCBiZSAwLiAgRml4PyB5ZXMKKworSW5vZGUgMTIgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJp
-YnV0ZSBibG9jayA1NS4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTIsIGlfYmxvY2tzIGlzIDIs
-IHNob3VsZCBiZSAwLiAgRml4PyB5ZXMKKworSW5vZGUgMTUsIGlfYmxvY2tzIGlzIDIsIHNo
-b3VsZCBiZSAwLiAgRml4PyB5ZXMKKworUGFzcyAyOiBDaGVja2luZyBkaXJlY3Rvcnkgc3Ry
-dWN0dXJlCitFeHRlbmRlZCBhdHRyaWJ1dGUgYmxvY2sgZm9yIGlub2RlIDE1ICgvZmFyKSBp
-cyBpbnZhbGlkICg5OTkpLgorQ2xlYXI/IHllcworCitQYXNzIDM6IENoZWNraW5nIGRpcmVj
-dG9yeSBjb25uZWN0aXZpdHkKK1Bhc3MgNDogQ2hlY2tpbmcgcmVmZXJlbmNlIGNvdW50cwor
-UGFzcyA1OiBDaGVja2luZyBncm91cCBzdW1tYXJ5IGluZm9ybWF0aW9uCitCbG9jayBiaXRt
-YXAgZGlmZmVyZW5jZXM6ICAtKDI2LS0yOSkgLTMzIC01NQorRml4PyB5ZXMKKworRnJlZSBi
-bG9ja3MgY291bnQgd3JvbmcgZm9yIGdyb3VwICMwICg0ODEsIGNvdW50ZWQ9NDg0KS4KK0Zp
-eD8geWVzCisKK0ZyZWUgYmxvY2tzIGNvdW50IHdyb25nICg0ODEsIGNvdW50ZWQ9NDg0KS4K
-K0ZpeD8geWVzCisKK0lub2RlIGJpdG1hcCBkaWZmZXJlbmNlczogIC0xOAorRml4PyB5ZXMK
-KworRnJlZSBpbm9kZXMgY291bnQgd3JvbmcgZm9yIGdyb3VwICMwICg0NywgY291bnRlZD00
-NikuCitGaXg/IHllcworCitGcmVlIGlub2RlcyBjb3VudCB3cm9uZyAoNDcsIGNvdW50ZWQ9
-NDYpLgorRml4PyB5ZXMKKworCit0ZXN0X2ZpbGVzeXM6ICoqKioqIEZJTEUgU1lTVEVNIFdB
-UyBNT0RJRklFRCAqKioqKgordGVzdF9maWxlc3lzOiAxOC82NCBmaWxlcyAoMC4wJSBub24t
-Y29udGlndW91cyksIDI4LzUxMiBibG9ja3MKK0V4aXQgc3RhdHVzIGlzIDEKSW5kZXg6IGUy
-ZnNwcm9ncy1jZnMvdGVzdHMvZl9lYV9jaGVja3MvZXhwZWN0LjIKPT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQot
-LS0gL2Rldi9udWxsCisrKyBlMmZzcHJvZ3MtY2ZzL3Rlc3RzL2ZfZWFfY2hlY2tzL2V4cGVj
-dC4yCkBAIC0wLDAgKzEsNyBAQAorUGFzcyAxOiBDaGVja2luZyBpbm9kZXMsIGJsb2Nrcywg
-YW5kIHNpemVzCitQYXNzIDI6IENoZWNraW5nIGRpcmVjdG9yeSBzdHJ1Y3R1cmUKK1Bhc3Mg
-MzogQ2hlY2tpbmcgZGlyZWN0b3J5IGNvbm5lY3Rpdml0eQorUGFzcyA0OiBDaGVja2luZyBy
-ZWZlcmVuY2UgY291bnRzCitQYXNzIDU6IENoZWNraW5nIGdyb3VwIHN1bW1hcnkgaW5mb3Jt
-YXRpb24KK3Rlc3RfZmlsZXN5czogMTgvNjQgZmlsZXMgKDAuMCUgbm9uLWNvbnRpZ3VvdXMp
-LCAyOC81MTIgYmxvY2tzCitFeGl0IHN0YXR1cyBpcyAwCkluZGV4OiBlMmZzcHJvZ3MtY2Zz
-L3Rlc3RzL2ZfZWFfY2hlY2tzL2ltYWdlLmd6Cj09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KLS0tIC9kZXYvbnVs
-bAorKysgZTJmc3Byb2dzLWNmcy90ZXN0cy9mX2VhX2NoZWNrcy9pbWFnZS5negpAQCAtMCww
-ICsxLDQgQEAKKx+LCAjJLDtHAgNpbWFnZS5uZXcA7d0JdFTVGQDgZBJEQQ3KVragCKiUTSST
-eRNiQRRECxxBWy1IS1iqsoRVK6igBaSCVRBjUcCCHIWgKFomM0k4oAgoUrG4IGgttrgUFEGt
-UkHpJAEPWo+tFbfyfef8effMuy9/7pv579tykpQU4HDVvuxLqKL9SmpKSqvkMvXgDidURFm/
-KwdndV41JKtzekqNlJ5vp5b3Sx2Q1Tml21vlXQ9sVzUZ45Nxyv5vXfZ60YdnxdaP7vRUfErd
-/JJbzrv92xjr9GdbNDzyDz9u/cC6wj431mpTN3TQuvJxfA1SfcT4DktLRnoyKpXXf6uUkF0C
-h419+/aNS604C/hfjN8HfI9VPjAPAIeZg69/D8Q3ef7xVoeKC5Dxg7M6z9gfB65MDr4WOcap
-GnCIrSibf1p/3vwXSvnBQf2OTUZGMqol47hkHJ+M6smokYyayaiVjNrJKNumzpfIP/+6imWN
-ZN4OyajxSf7UQ3Yv5ke5rxZlf0H+1P35O30mf/pB/Rp+lXvMyfx1/4vxd/maxt8hmb/ef8i/
-7/KszgfiUOePNGt41+tpX5z/t8nj3oE41PnXLk0b0OALxv9G8mcrO+6+8qnj76ff/8yvkP/J
-ZP7639UJ4ISKRe/mOZ0PxOfu//SvluZEUy0AAAAAAN+gsnvcR6ekhlp+0g6FWras+B3+GilV
-QoPzR4764cD80UP7l60ri7TUgfn55c/jy9p5fUeUPxuraI8pf0ZW3if5erVP2mPKn5mV90lu
-W/bcbGpaetrIYQP6eQfg21P1M/X/XlpF/QOHiXS7ANQ/oP4B9Q+of0D9A+ofUP+A+gfUP6D+
-ge+H1G3l/8cjGQ3e7tr336aG1N3lf7ms0v71owaMHGWfwffbFX0Hjx5Q3gorfYn675an/uH/
-qf4d/+Hwrf+MfeofDtf6BwAADhc7pkwM/2r9jvCYvzfO7l3aKfuaBhdnTyi9ODuz3TnZhUOa
-Zs/O2xmetHtiuP+A87OWtz4mdvbGabE+fVfEjmi1PjZqyvLYplkFsTXrI7HzUi5YWmvWbVnH
-35UVPi40Lnxc81vCG26eGr73rKHhuxacEk694p6sju1ffvhnveJLc9KbxFb17R3r0XRcLGP5
-xNicZuNjlVpcEhvUv1Hs9wvvXrq91YS2d1+wN2tq1tDwouqLwt0LnguHXtgVjg7dG6605d3w
-0jdfCIeuWRwuuWlEeOHmvVm7jvxp2+MbLVg6cUG92MSPOsTaLOgYWznnxFjZ+CbPvi536+sT
-cq8svD63yTGjcp9ddGHukOYtcl+qnJJb9fW722W8ltHuqrznip/8c53ShUvOL50yqmPpHQU1
-Sxv32F6y8bS3Sl58MqP01Teblt5xRN3SubuWlXRr8HxxYfWdQZNb0qI7zsgrOmpyjeJbMzcX
-71jVs2TSw5NLusydXFKQc2NJypBbS3qVzCrZ0+jOkqr1JpQMymtZ8tqpk4p7THk0uPHFxdGH
-doRy+r3cOKfOI+1zHpvRI6fzPd1zdtdrkzN+c0pOVr/p0W3VlwUrB3ZJXHhateK5F3UrPmX5
-sOIqa/OK7/3opOLTHixMbO46v6jL1HuDqtc2i64YlxedteGSaM1KtaLV6o0Inu1zedH82+ol
-+r3ZJpHe6P542/YDI5XHtgk2PTUpiA5bFKxptizYlLkyGLlnY3DbUf8M8k9Ni67N2hX0nPp4
-0DhvbjBxyYRg4Bm9gjU9GwZd866O9G97XXz+3yKJyWeNS8xuOC7R/sS2iXXDQ/HL25webHn6
-xWDqoKzog/eNja5Yf2f0iYIl0eFXLo+e+f7q6Gvr1kQvGr4iuq77g9F1m38XPb352GidyWdH
-J15VM/pc4YZg2sIRwTl7+0UGZG6NX/1O/8T7116VmJd9UmLlzVWzV+/+SVD6xCPBG8O3BdNr
-vxQ02zM/OOL6jsGetsWRvgMHRmbcvipy7uZuwcf5DwUbR+0LQqX1ojVWN4q2uigjunPd6uCR
-zBOCmg0L46M/nJq4bOyjiS0LViY+WHZ74rLNmYmtgzeF6557crDz/ZlB4cd/Cita/PyDoNHA
-ULTau+8FTTs/FvQZfmkwbP7e7Dm/bpzIuGBGYuby2Yn0mV0Tg/IXh594b3xwwy93BY83qh/t
-WHRSNHtDRrT21nXBP7qdGWz/6J2i/jf3SaxpfV9i8aJ4ova4aYkP56UkXtpSEMnuOik4t/3a
-ILfp1qBv/2eC59+dFzx8wznBM2nzIvvG1C96rOr18bwdsfjoJn+Mv1H9L/H4sXvjBdurJe45
-KjPRq3WtxKxfbI5f26VKvHvPSyP3zTk6qNIgO7jhppODB4KVkcLaM5cuySyK99pWNdH7/lCi
-/snT4kVDngort+s6PXJs5acjk/9aGln8m8siR79QkH3hA/fHOtVsUDRp2pzY1bOOLTIDAgAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfDn/Ajh567kAAAgAClwg
-Tm8gbmV3bGluZSBhdCBlbmQgb2YgZmlsZQpJbmRleDogZTJmc3Byb2dzLWNmcy90ZXN0cy9m
-X2VhX2NoZWNrcy9uYW1lCj09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KLS0tIC9kZXYvbnVsbAorKysgZTJmc3By
-b2dzLWNmcy90ZXN0cy9mX2VhX2NoZWNrcy9uYW1lCkBAIC0wLDAgKzEgQEAKK2V4dGVuZGVk
-IGF0dHJpYnV0ZSBibG9jayBjaGVja3MK
-
---pf9I7BMVVzbSWLtt
+--+g7M9IMkV8truYOl
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="e2fsprogs-expand-extra-isize.patch"
+Content-Disposition: attachment; filename="e2fsprogs-stride_option.patch"
 
-Index: e2fsprogs-1.40.1/lib/ext2fs/ext_attr.c
+Index: e2fsprogs-1.40.2/lib/ext2fs/initialize.c
 ===================================================================
---- e2fsprogs-1.40.1.orig/lib/ext2fs/ext_attr.c
-+++ e2fsprogs-1.40.1/lib/ext2fs/ext_attr.c
-@@ -17,6 +17,7 @@
- #endif
- #include <string.h>
- #include <time.h>
-+#include <errno.h>
- 
- #include "ext2_fs.h"
- #include "ext2_ext_attr.h"
-@@ -60,11 +61,39 @@ __u32 ext2fs_ext_attr_hash_entry(struct 
- #undef NAME_HASH_SHIFT
- #undef VALUE_HASH_SHIFT
- 
-+#define BLOCK_HASH_SHIFT 16
-+/*
-+ * Re-compute the extended attribute hash value after an entry has changed.
-+ */
-+static void ext2fs_attr_rehash(struct ext2_ext_attr_header *header,
-+			       struct ext2_ext_attr_entry *entry)
-+{
-+	struct ext2_ext_attr_entry *here;
-+	__u32 hash = 0;
-+
-+	entry->e_hash = ext2fs_ext_attr_hash_entry(entry, (char *) header +
-+						   entry->e_value_offs);
-+
-+	here = ENTRY(header+1);
-+	while (!EXT2_EXT_IS_LAST_ENTRY(here)) {
-+		if (!here->e_hash) {
-+			/* Block is not shared if an entry's hash value == 0 */
-+			hash = 0;
-+			break;
-+		}
-+		hash = (hash << BLOCK_HASH_SHIFT) ^
-+		       (hash >> (8*sizeof(hash) - BLOCK_HASH_SHIFT)) ^
-+		       here->e_hash;
-+		here = EXT2_EXT_ATTR_NEXT(here);
-+	}
-+	header->h_hash = hash;
-+}
-+
- errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
- {
- 	errcode_t	retval;
- 
-- 	retval = io_channel_read_blk(fs->io, block, 1, buf);
-+	retval = io_channel_read_blk(fs->io, block, 1, buf);
- 	if (retval)
- 		return retval;
- #ifdef EXT2FS_ENABLE_SWAPFS
-@@ -92,7 +121,7 @@ errcode_t ext2fs_write_ext_attr(ext2_fil
- 	} else
- #endif
- 		write_buf = (char *) inbuf;
-- 	retval = io_channel_write_blk(fs->io, block, 1, write_buf);
-+	retval = io_channel_write_blk(fs->io, block, 1, write_buf);
- 	if (buf)
- 		ext2fs_free_mem(&buf);
- 	if (!retval)
-@@ -126,7 +155,10 @@ errcode_t ext2fs_adjust_ea_refcount(ext2
- 	if (retval)
- 		goto errout;
- 
--	header = (struct ext2_ext_attr_header *) block_buf;
-+	header = BHDR(block_buf);
-+	if (header->h_magic != EXT2_EXT_ATTR_MAGIC)
-+		return EXT2_ET_EA_BAD_MAGIC;
-+
- 	header->h_refcount += adjust;
- 	if (newcount)
- 		*newcount = header->h_refcount;
-@@ -140,3 +172,881 @@ errout:
- 		ext2fs_free_mem(&buf);
- 	return retval;
+--- e2fsprogs-1.40.2.orig/lib/ext2fs/initialize.c
++++ e2fsprogs-1.40.2/lib/ext2fs/initialize.c
+@@ -156,6 +156,8 @@ errcode_t ext2fs_initialize(const char *
+ 	set_field(s_feature_incompat, 0);
+ 	set_field(s_feature_ro_compat, 0);
+ 	set_field(s_first_meta_bg, 0);
++	set_field(s_raid_stride, 0);		/* default stride size: 0 */
++	set_field(s_raid_stripe_width, 0);	/* default stripe width: 0 */
+ 	if (super->s_feature_incompat & ~EXT2_LIB_FEATURE_INCOMPAT_SUPP) {
+ 		retval = EXT2_ET_UNSUPP_FEATURE;
+ 		goto cleanup;
+Index: e2fsprogs-1.40.2/misc/mke2fs.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/misc/mke2fs.c
++++ e2fsprogs-1.40.2/misc/mke2fs.c
+@@ -100,7 +100,7 @@ static void usage(void)
+ 	"\t[-N number-of-inodes] [-m reserved-blocks-percentage] "
+ 	"[-o creator-os]\n\t[-g blocks-per-group] [-L volume-label] "
+ 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+-	"[-r fs-revision] [-R options] [-qvSV]\n\tdevice [blocks-count]\n"),
++	"[-r fs-revision] [-E options] [-qvSV]\n\tdevice [blocks-count]\n"),
+ 		program_name);
+ 	exit(1);
  }
-+
-+struct ext2_attr_info {
-+	int name_index;
-+	const char *name;
-+	const char *value;
-+	int value_len;
-+};
-+
-+struct ext2_attr_search {
-+	struct ext2_ext_attr_entry *first;
-+	char *base;
-+	char *end;
-+	struct ext2_ext_attr_entry *here;
-+	int not_found;
-+};
-+
-+struct ext2_attr_ibody_find {
-+	ext2_ino_t ino;
-+	struct ext2_attr_search s;
-+};
-+
-+struct ext2_attr_block_find {
-+	struct ext2_attr_search s;
-+	char *block;
-+};
-+
-+void ext2fs_attr_shift_entries(struct ext2_ext_attr_entry *entry,
-+			       int value_offs_shift, char *to,
-+			       char *from, int n)
-+{
-+	struct ext2_ext_attr_entry *last = entry;
-+
-+	/* Adjust the value offsets of the entries */
-+	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
-+		if (!last->e_value_block && last->e_value_size) {
-+			last->e_value_offs = last->e_value_offs +
-+							value_offs_shift;
-+		}
-+	}
-+	/* Shift the entries by n bytes */
-+	memmove(to, from, n);
-+}
-+
-+/*
-+ * This function returns the free space present in the inode or the EA block.
-+ * total is number of bytes taken up by the EA entries and is used to shift the
-+ * EAs in ext2fs_expand_extra_isize().
-+ */
-+int ext2fs_attr_free_space(struct ext2_ext_attr_entry *last,
-+			   int *min_offs, char *base, int *total)
-+{
-+	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
-+		*total += EXT2_EXT_ATTR_LEN(last->e_name_len);
-+		if (!last->e_value_block && last->e_value_size) {
-+			int offs = last->e_value_offs;
-+			if (offs < *min_offs)
-+				*min_offs = offs;
-+		}
-+	}
-+
-+	return (*min_offs - ((char *)last - base) - sizeof(__u32));
-+}
-+
-+static errcode_t ext2fs_attr_check_names(struct ext2_ext_attr_entry *entry,
-+					 char *end)
-+{
-+	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+		struct ext2_ext_attr_entry *next = EXT2_EXT_ATTR_NEXT(entry);
-+		if ((char *)next >= end)
-+			return EXT2_ET_EA_BAD_ENTRIES;
-+		entry = next;
-+	}
-+	return 0;
-+}
-+
-+static errcode_t ext2fs_attr_find_entry(struct ext2_ext_attr_entry **pentry,
-+					int name_index, const char *name,
-+					int size, int sorted)
-+{
-+	struct ext2_ext_attr_entry *entry;
-+	int name_len;
-+	int cmp = 1;
-+
-+	if (name == NULL)
-+		return EXT2_ET_EA_BAD_NAME;
-+
-+	name_len = strlen(name);
-+	entry = *pentry;
-+	for (; !EXT2_EXT_IS_LAST_ENTRY(entry);
-+		entry = EXT2_EXT_ATTR_NEXT(entry)) {
-+		cmp = name_index - entry->e_name_index;
-+		if (!cmp)
-+			cmp = name_len - entry->e_name_len;
-+		if (!cmp)
-+			cmp = memcmp(name, entry->e_name, name_len);
-+		if (cmp <= 0 && (sorted || cmp == 0))
-+			break;
-+	}
-+	*pentry = entry;
-+
-+	return cmp ? EXT2_ET_EA_NAME_NOT_FOUND : 0;
-+}
-+
-+static errcode_t ext2fs_attr_block_find(ext2_filsys fs,struct ext2_inode *inode,
-+					struct ext2_attr_info *i,
-+					struct ext2_attr_block_find *bs)
-+{
-+	struct ext2_ext_attr_header *header;
-+	errcode_t error;
-+
-+	if (inode->i_file_acl) {
-+		/* The inode already has an extended attribute block. */
-+		error = ext2fs_get_mem(fs->blocksize, &bs->block);
-+		if (error)
-+			return error;
-+		error = ext2fs_read_ext_attr(fs, inode->i_file_acl, bs->block);
-+		if (error)
-+			goto cleanup;
-+
-+		header = BHDR(bs->block);
-+		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
-+			error = EXT2_ET_EA_BAD_MAGIC;
-+			goto cleanup;
-+		}
-+
-+		/* Find the named attribute. */
-+		bs->s.base = bs->block;
-+		bs->s.first = (struct ext2_ext_attr_entry *)(header + 1);
-+		bs->s.end = bs->block + fs->blocksize;
-+		bs->s.here = bs->s.first;
-+		error = ext2fs_attr_find_entry(&bs->s.here, i->name_index,
-+					       i->name, fs->blocksize, 1);
-+		if (error && error != EXT2_ET_EA_NAME_NOT_FOUND)
-+			goto cleanup;
-+		bs->s.not_found = error;
-+	}
-+	error = 0;
-+
-+cleanup:
-+	if (error && bs->block)
-+		ext2fs_free_mem(&bs->block);
-+	return error;
-+}
-+
-+static errcode_t ext2fs_attr_ibody_find(ext2_filsys fs,
-+					struct ext2_inode_large *inode,
-+					struct ext2_attr_info *i,
-+					struct ext2_attr_ibody_find *is)
-+{
-+	__u32 *eamagic;
-+	char *start;
-+	errcode_t error;
-+
-+	if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE)
-+		return 0;
-+
-+	if (inode->i_extra_isize == 0)
-+		return 0;
-+	eamagic = IHDR(inode);
-+
-+	start = (char *) inode + EXT2_GOOD_OLD_INODE_SIZE +
-+				inode->i_extra_isize + sizeof(__u32);
-+	is->s.first = (struct ext2_ext_attr_entry *) start;
-+	is->s.base = start;
-+	is->s.here = is->s.first;
-+	is->s.end = (char *) inode + EXT2_INODE_SIZE(fs->super);
-+	if (*eamagic == EXT2_EXT_ATTR_MAGIC) {
-+		error = ext2fs_attr_check_names((struct ext2_ext_attr_entry *)
-+						start, is->s.end);
-+		if (error)
-+			return error;
-+		/* Find the named attribute. */
-+		error = ext2fs_attr_find_entry(&is->s.here, i->name_index,
-+					       i->name, is->s.end -
-+					       (char *)is->s.base, 0);
-+		if (error && error != EXT2_ET_EA_NAME_NOT_FOUND)
-+			return error;
-+		is->s.not_found = error;
-+	}
-+
-+	return 0;
-+}
-+
-+static errcode_t ext2fs_attr_set_entry(ext2_filsys fs, struct ext2_attr_info *i,
-+				       struct ext2_attr_search *s)
-+{
-+	struct ext2_ext_attr_entry *last;
-+	int free, min_offs = s->end - s->base, name_len = strlen(i->name);
-+
-+	/* Compute min_offs and last. */
-+	for (last = s->first; !EXT2_EXT_IS_LAST_ENTRY(last);
-+	     last = EXT2_EXT_ATTR_NEXT(last)) {
-+		if (!last->e_value_block && last->e_value_size) {
-+			int offs = last->e_value_offs;
-+
-+			if (offs < min_offs)
-+				min_offs = offs;
-+		}
-+	}
-+	free = min_offs - ((char *)last - s->base) - sizeof(__u32);
-+
-+	if (!s->not_found) {
-+		if (!s->here->e_value_block && s->here->e_value_size) {
-+			int size = s->here->e_value_size;
-+			free += EXT2_EXT_ATTR_SIZE(size);
-+		}
-+		free += EXT2_EXT_ATTR_LEN(name_len);
-+	}
-+	if (i->value) {
-+		if (free < EXT2_EXT_ATTR_LEN(name_len) +
-+			   EXT2_EXT_ATTR_SIZE(i->value_len))
-+			return EXT2_ET_EA_NO_SPACE;
-+	}
-+
-+	if (i->value && s->not_found) {
-+		/* Insert the new name. */
-+		int size = EXT2_EXT_ATTR_LEN(name_len);
-+		int rest = (char *)last - (char *)s->here + sizeof(__u32);
-+
-+		memmove((char *)s->here + size, s->here, rest);
-+		memset(s->here, 0, size);
-+		s->here->e_name_index = i->name_index;
-+		s->here->e_name_len = name_len;
-+		memcpy(s->here->e_name, i->name, name_len);
-+	} else {
-+		if (!s->here->e_value_block && s->here->e_value_size) {
-+			char *first_val = s->base + min_offs;
-+			int offs = s->here->e_value_offs;
-+			char *val = s->base + offs;
-+			int size = EXT2_EXT_ATTR_SIZE(s->here->e_value_size);
-+
-+			if (i->value &&
-+			    size == EXT2_EXT_ATTR_SIZE(i->value_len)) {
-+				/* The old and the new value have the same
-+				   size. Just replace. */
-+				s->here->e_value_size = i->value_len;
-+				memset(val + size - EXT2_EXT_ATTR_PAD, 0,
-+				       EXT2_EXT_ATTR_PAD); /* Clear pad bytes */
-+				memcpy(val, i->value, i->value_len);
-+				return 0;
-+			}
-+
-+			/* Remove the old value. */
-+			memmove(first_val + size, first_val, val - first_val);
-+			memset(first_val, 0, size);
-+			s->here->e_value_size = 0;
-+			s->here->e_value_offs = 0;
-+			min_offs += size;
-+
-+			/* Adjust all value offsets. */
-+			last = s->first;
-+			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
-+				int o = last->e_value_offs;
-+
-+				if (!last->e_value_block &&
-+				    last->e_value_size && o < offs)
-+					last->e_value_offs = o + size;
-+				last = EXT2_EXT_ATTR_NEXT(last);
-+			}
-+		}
-+		if (!i->value) {
-+			/* Remove the old name. */
-+			int size = EXT2_EXT_ATTR_LEN(name_len);
-+
-+			last = ENTRY((char *)last - size);
-+			memmove((char *)s->here, (char *)s->here + size,
-+				(char *)last - (char *)s->here + sizeof(__u32));
-+			memset(last, 0, size);
-+		}
-+	}
-+
-+	if (i->value) {
-+		/* Insert the new value. */
-+		s->here->e_value_size = i->value_len;
-+		if (i->value_len) {
-+			int size = EXT2_EXT_ATTR_SIZE(i->value_len);
-+			char *val = s->base + min_offs - size;
-+
-+			s->here->e_value_offs = min_offs - size;
-+			memset(val + size - EXT2_EXT_ATTR_PAD, 0,
-+			       EXT2_EXT_ATTR_PAD); /* Clear the pad bytes. */
-+			memcpy(val, i->value, i->value_len);
-+		}
-+	}
-+
-+	return 0;
-+}
-+
-+static errcode_t ext2fs_attr_block_set(ext2_filsys fs, struct ext2_inode *inode,
-+				       struct ext2_attr_info *i,
-+				       struct ext2_attr_block_find *bs)
-+{
-+	struct ext2_attr_search *s = &bs->s;
-+	char *new_buf = NULL, *old_block = NULL;
-+	blk_t blk;
-+	int clear_flag = 0;
-+	errcode_t error;
-+
-+	if (i->value && i->value_len > fs->blocksize)
-+		return EXT2_ET_EA_NO_SPACE;
-+
-+	if (s->base) {
-+		if (BHDR(s->base)->h_refcount != 1) {
-+			int offset = (char *)s->here - bs->block;
-+
-+			/* Decrement the refcount of the shared block */
-+			old_block = s->base;
-+			BHDR(s->base)->h_refcount -= 1;
-+
-+			error = ext2fs_get_mem(fs->blocksize, &s->base);
-+			if (error)
-+				goto cleanup;
-+			clear_flag = 1;
-+			memcpy(s->base, bs->block, fs->blocksize);
-+			s->first = ENTRY(BHDR(s->base)+1);
-+			BHDR(s->base)->h_refcount = 1;
-+			s->here = ENTRY(s->base + offset);
-+			s->end = s->base + fs->blocksize;
-+		}
-+	} else {
-+		error = ext2fs_get_mem(fs->blocksize, &s->base);
-+		if (error)
-+			goto cleanup;
-+		clear_flag = 1;
-+		memset(s->base, 0, fs->blocksize);
-+		BHDR(s->base)->h_magic = EXT2_EXT_ATTR_MAGIC;
-+		BHDR(s->base)->h_blocks = 1;
-+		BHDR(s->base)->h_refcount = 1;
-+		s->first = ENTRY(BHDR(s->base)+1);
-+		s->here = ENTRY(BHDR(s->base)+1);
-+		s->end = s->base + fs->blocksize;
-+	}
-+
-+	error = ext2fs_attr_set_entry(fs, i, s);
-+	if (error)
-+		goto cleanup;
-+
-+	if (!EXT2_EXT_IS_LAST_ENTRY(s->first))
-+		ext2fs_attr_rehash(BHDR(s->base), s->here);
-+
-+	if (!EXT2_EXT_IS_LAST_ENTRY(s->first)) {
-+		if (bs->block && bs->block == s->base) {
-+			/* We are modifying this block in-place */
-+			new_buf = bs->block;
-+			blk = inode->i_file_acl;
-+			error = ext2fs_write_ext_attr(fs, blk, s->base);
-+			if (error)
-+				goto cleanup;
-+		} else {
-+			/* We need to allocate a new block */
-+			error = ext2fs_new_block(fs, 0, 0, &blk);
-+			if (error)
-+				goto cleanup;
-+			ext2fs_block_alloc_stats(fs, blk, +1);
-+			error = ext2fs_write_ext_attr(fs, blk, s->base);
-+			if (error)
-+				goto cleanup;
-+			new_buf = s->base;
-+			if (old_block) {
-+				BHDR(s->base)->h_refcount -= 1;
-+				error = ext2fs_write_ext_attr(fs,
-+							      inode->i_file_acl,
-+							      s->base);
-+				if (error)
-+					goto cleanup;
-+			}
-+		}
-+	}
-+
-+	/* Update the i_blocks if we added a new EA block */
-+	if (!inode->i_file_acl && new_buf)
-+		inode->i_blocks += fs->blocksize / 512;
-+	/* Update the inode. */
-+	inode->i_file_acl = new_buf ? blk : 0;
-+
-+cleanup:
-+	if (clear_flag)
-+		ext2fs_free_mem(&s->base);
-+	return 0;
-+}
-+
-+static errcode_t ext2fs_attr_ibody_set(ext2_filsys fs,
-+				       struct ext2_inode_large *inode,
-+				       struct ext2_attr_info *i,
-+				       struct ext2_attr_ibody_find *is)
-+{
-+	__u32 *eamagic;
-+	struct ext2_attr_search *s = &is->s;
-+	errcode_t error;
-+
-+	if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE)
-+		return EXT2_ET_EA_NO_SPACE;
-+
-+	error = ext2fs_attr_set_entry(fs, i, s);
-+	if (error)
-+		return error;
-+
-+	eamagic = IHDR(inode);
-+	if (!EXT2_EXT_IS_LAST_ENTRY(s->first))
-+		*eamagic = EXT2_EXT_ATTR_MAGIC;
-+	else
-+		*eamagic = 0;
-+
-+	return ext2fs_write_inode_full(fs, is->ino, (struct ext2_inode *)inode,
-+				       EXT2_INODE_SIZE(fs->super));
-+}
-+
-+
-+errcode_t ext2fs_attr_set(ext2_filsys fs, ext2_ino_t ino,
-+			  struct ext2_inode *inode,
-+			  int name_index, const char *name, const char *value,
-+			  int value_len, int flags)
-+{
-+	struct ext2_inode_large *inode_large = NULL;
-+	struct ext2_attr_info i = {
-+		.name_index = name_index,
-+		.name = name,
-+		.value = value,
-+		.value_len = value_len,
-+	};
-+	struct ext2_attr_ibody_find is = {
-+		.ino = ino,
-+		.s = { .not_found = -ENODATA, },
-+	};
-+	struct ext2_attr_block_find bs = {
-+		.s = { .not_found = -ENODATA, },
-+	};
-+	errcode_t error;
-+
-+	if (!name)
-+		return EXT2_ET_EA_BAD_NAME;
-+	if (strlen(name) > 255)
-+		return EXT2_ET_EA_NAME_TOO_BIG;
-+
-+	if (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE) {
-+		inode_large = (struct ext2_inode_large *)inode;
-+
-+		error = ext2fs_attr_ibody_find(fs, inode_large, &i, &is);
-+		if (error)
-+			goto cleanup;
-+	}
-+	if (is.s.not_found) {
-+		error = ext2fs_attr_block_find(fs, inode, &i, &bs);
-+		if (error)
-+			goto cleanup;
-+	}
-+
-+	if (is.s.not_found && bs.s.not_found) {
-+		error = EXT2_ET_EA_NAME_NOT_FOUND;
-+		if (flags & XATTR_REPLACE)
-+			goto cleanup;
-+		error = 0;
-+		if (!value)
-+			goto cleanup;
-+	} else {
-+		error = EXT2_ET_EA_NAME_EXISTS;
-+		if (flags & XATTR_CREATE)
-+			goto cleanup;
-+	}
-+
-+	if (!value) {
-+		if (!is.s.not_found &&
-+		    (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE))
-+			error = ext2fs_attr_ibody_set(fs, inode_large, &i, &is);
-+		else if (!bs.s.not_found)
-+			error = ext2fs_attr_block_set(fs, inode, &i, &bs);
-+	} else {
-+		if (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
-+			error = ext2fs_attr_ibody_set(fs, inode_large, &i, &is);
-+		if (!error && !bs.s.not_found) {
-+			i.value = NULL;
-+			error = ext2fs_attr_block_set(fs, inode, &i, &bs);
-+		} else if (error == EXT2_ET_EA_NO_SPACE) {
-+			error = ext2fs_attr_block_set(fs, inode, &i, &bs);
-+			if (error)
-+				goto cleanup;
-+			if (!is.s.not_found) {
-+				i.value = NULL;
-+				if (EXT2_INODE_SIZE(fs->super) >
-+				    EXT2_GOOD_OLD_INODE_SIZE)
-+					error = ext2fs_attr_ibody_set(fs,
-+							inode_large, &i, &is);
-+			}
-+		}
-+	}
-+
-+cleanup:
-+	return error;
-+}
-+
-+static errcode_t ext2fs_attr_check_block(ext2_filsys fs, char *buffer)
-+{
-+	if (BHDR(buffer)->h_magic != (EXT2_EXT_ATTR_MAGIC) ||
-+	    BHDR(buffer)->h_blocks != 1)
-+		return EXT2_ET_EA_BAD_MAGIC;
-+
-+	return ext2fs_attr_check_names((struct ext2_ext_attr_entry *)
-+				       (BHDR(buffer) + 1),
-+				       buffer + fs->blocksize);
-+}
-+
-+static errcode_t ext2fs_attr_block_get(ext2_filsys fs, struct ext2_inode *inode,
-+				       int name_index, const char *name,
-+				       void *buffer, size_t buffer_size,
-+				       int *easize)
-+{
-+	struct ext2_ext_attr_header *header = NULL;
-+	struct ext2_ext_attr_entry *entry;
-+	char *block_buf = NULL;
-+	errcode_t error;
-+
-+	error = EXT2_ET_EA_NAME_NOT_FOUND;
-+	if (!inode->i_file_acl)
-+		goto cleanup;
-+
-+	error = ext2fs_get_mem(fs->blocksize, &block_buf);
-+	if (error)
-+		return error;
-+	error = ext2fs_read_ext_attr(fs, inode->i_file_acl, block_buf);
-+	if (error)
-+		goto cleanup;
-+
-+	error = ext2fs_attr_check_block(fs, block_buf);
-+	if (error)
-+		goto cleanup;
-+
-+	header = BHDR(block_buf);
-+	entry = (struct ext2_ext_attr_entry *)(header+1);
-+	error = ext2fs_attr_find_entry(&entry, name_index, name,
-+				       fs->blocksize, 1);
-+	if (error)
-+		goto cleanup;
-+	if (easize)
-+		*easize = entry->e_value_size;
-+	if (buffer) {
-+		error = EXT2_ET_EA_TOO_BIG;
-+		if (entry->e_value_size > buffer_size)
-+			goto cleanup;
-+		memcpy(buffer, block_buf + entry->e_value_offs,
-+		       entry->e_value_size);
-+	}
-+
-+cleanup:
-+	if (block_buf)
-+		ext2fs_free_mem (&block_buf);
-+	return error;
-+}
-+
-+static errcode_t ext2fs_attr_ibody_get(ext2_filsys fs,
-+				       struct ext2_inode_large *inode,
-+				       int name_index, const char *name,
-+				       void *buffer, size_t buffer_size,
-+				       int *easize)
-+{
-+	struct ext2_ext_attr_entry *entry;
-+	int error;
-+	char *end, *start;
-+	__u32 *eamagic;
-+
-+	if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE)
-+		return EXT2_ET_EA_NAME_NOT_FOUND;
-+
-+	eamagic = IHDR(inode);
-+	error = ext2fs_attr_check_block(fs, buffer);
-+	if (error)
-+		return error;
-+
-+	start = (char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
-+				inode->i_extra_isize + sizeof(__u32);
-+	entry = (struct ext2_ext_attr_entry *)start;
-+	end = (char *)inode + EXT2_INODE_SIZE(fs->super);
-+	error = ext2fs_attr_check_names(entry, end);
-+	if (error)
-+		goto cleanup;
-+	error = ext2fs_attr_find_entry(&entry, name_index, name,
-+				       end - (char *)entry, 0);
-+	if (error)
-+		goto cleanup;
-+	if (easize)
-+		*easize = entry->e_value_size;
-+	if (buffer) {
-+		error = EXT2_ET_EA_TOO_BIG;
-+		if (entry->e_value_size > buffer_size)
-+			goto cleanup;
-+		memcpy(buffer, start + entry->e_value_offs,entry->e_value_size);
-+	}
-+
-+cleanup:
-+	return error;
-+}
-+
-+
-+errcode_t ext2fs_attr_get(ext2_filsys fs, struct ext2_inode *inode,
-+			  int name_index, const char *name, char *buffer,
-+			  size_t buffer_size, int *easize)
-+{
-+	errcode_t error;
-+
-+	error = ext2fs_attr_ibody_get(fs, (struct ext2_inode_large *)inode,
-+				      name_index, name, buffer, buffer_size,
-+				      easize);
-+	if (error == EXT2_ET_EA_NAME_NOT_FOUND)
-+		error = ext2fs_attr_block_get(fs, inode, name_index, name,
-+					      buffer, buffer_size, easize);
-+
-+	return error;
-+}
-+
-+char *ext2_attr_index_prefix[] = {
-+	[EXT2_ATTR_INDEX_USER] = EXT2_ATTR_INDEX_USER_PREFIX,
-+	[EXT2_ATTR_INDEX_POSIX_ACL_ACCESS] = EXT2_ATTR_INDEX_POSIX_ACL_ACCESS_PREFIX,
-+	[EXT2_ATTR_INDEX_POSIX_ACL_DEFAULT] = EXT2_ATTR_INDEX_POSIX_ACL_DEFAULT_PREFIX,
-+	[EXT2_ATTR_INDEX_TRUSTED] = EXT2_ATTR_INDEX_TRUSTED_PREFIX,
-+	[EXT2_ATTR_INDEX_LUSTRE] = EXT2_ATTR_INDEX_LUSTRE_PREFIX,
-+	[EXT2_ATTR_INDEX_SECURITY] = EXT2_ATTR_INDEX_SECURITY_PREFIX,
-+	NULL
-+};
-+
-+int ext2fs_attr_get_next_attr(struct ext2_ext_attr_entry *entry, int name_index,
-+			      char *buffer, int buffer_size, int start)
-+{
-+	const int prefix_len = strlen(ext2_attr_index_prefix[name_index]);
-+	int total_len;
-+
-+	if (!start && !EXT2_EXT_IS_LAST_ENTRY(entry))
-+		entry = EXT2_EXT_ATTR_NEXT(entry);
-+
-+	for (; !EXT2_EXT_IS_LAST_ENTRY(entry);
-+	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
-+		if (!name_index)
-+			break;
-+		if (name_index == entry->e_name_index)
-+			break;
-+	}
-+	if (EXT2_EXT_IS_LAST_ENTRY(entry))
-+		return 0;
-+
-+	total_len = prefix_len + entry->e_name_len + 1;
-+	if (buffer && total_len <= buffer_size) {
-+		memcpy(buffer, ext2_attr_index_prefix[name_index], prefix_len);
-+		memcpy(buffer + prefix_len, entry->e_name, entry->e_name_len);
-+		buffer[prefix_len + entry->e_name_len] = '\0';
-+	}
-+
-+	return total_len;
-+}
-+
-+errcode_t ext2fs_expand_extra_isize(ext2_filsys fs, ext2_ino_t ino,
-+				    struct ext2_inode_large *inode,
-+				    int new_extra_isize, int *ret,
-+				    int *needed_size)
-+{
-+	struct ext2_inode *inode_buf = NULL;
-+	__u32 *eamagic = NULL;
-+	struct ext2_ext_attr_header *header = NULL;
-+	struct ext2_ext_attr_entry *entry = NULL, *last = NULL;
-+	struct ext2_attr_ibody_find is = {
-+		.ino = ino,
-+		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
-+	};
-+	struct ext2_attr_block_find bs = {
-+		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
-+	};
-+	char *start, *end, *block_buf = NULL, *buffer =NULL, *b_entry_name=NULL;
-+	int total_ino = 0, total_blk, free, offs, tried_min_extra_isize = 0;
-+	int s_min_extra_isize = fs->super->s_min_extra_isize;
-+	errcode_t error = 0;
-+
-+	if (needed_size)
-+		*needed_size = new_extra_isize;
-+	error = ext2fs_get_mem(fs->blocksize, &block_buf);
-+	if (error)
-+		return error;
-+
-+	if (inode == NULL) {
-+		error = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode_buf);
-+		if (error)
-+			goto cleanup;
-+
-+		error = ext2fs_read_inode_full(fs, ino, inode_buf,
-+					       EXT2_INODE_SIZE(fs->super));
-+		if (error)
-+			goto cleanup;
-+
-+		inode = (struct ext2_inode_large *)inode_buf;
-+	}
-+
-+retry:
-+	if (inode->i_extra_isize >= new_extra_isize)
-+		goto cleanup;
-+
-+	eamagic = IHDR(inode);
-+	/* No extended attributes present */
-+	if (*eamagic != EXT2_EXT_ATTR_MAGIC) {
-+		memset((char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
-+		       inode->i_extra_isize, 0,
-+		       EXT2_INODE_SIZE(fs->super) - EXT2_GOOD_OLD_INODE_SIZE -
-+		       inode->i_extra_isize);
-+		inode->i_extra_isize = new_extra_isize;
-+		if (needed_size)
-+			*needed_size = 0;
-+		goto write_inode;
-+	}
-+
-+	start = (char *) inode + EXT2_GOOD_OLD_INODE_SIZE +
-+					inode->i_extra_isize + sizeof(__u32);
-+	end = (char *) inode + EXT2_INODE_SIZE(fs->super);
-+	last = entry = (struct ext2_ext_attr_entry *) start;
-+	offs = end - start;
-+	/* Consider space takenup by magic number */
-+	total_ino = sizeof(__u32);
-+	free = ext2fs_attr_free_space(last, &offs, start, &total_ino);
-+
-+	/* Enough free space available in the inode for expansion */
-+	if (free >= new_extra_isize) {
-+		ext2fs_attr_shift_entries(entry, inode->i_extra_isize -
-+				new_extra_isize, (char *)inode +
-+				EXT2_GOOD_OLD_INODE_SIZE + new_extra_isize,
-+				(char *)start - sizeof(__u32), total_ino);
-+		inode->i_extra_isize = new_extra_isize;
-+		if (needed_size)
-+			*needed_size = 0;
-+		goto write_inode;
-+	}
-+
-+	if (inode->i_file_acl) {
-+		error = ext2fs_read_ext_attr(fs, inode->i_file_acl, block_buf);
-+		if (error)
-+			 goto cleanup;
-+
-+		header = BHDR(block_buf);
-+		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
-+			error = EXT2_ET_EA_BAD_MAGIC;
-+			goto cleanup;
-+		}
-+		end = block_buf + fs->blocksize;
-+		last = entry = (struct ext2_ext_attr_entry *)(header+1);
-+		start = (char *) entry;
-+		offs = end - start;
-+		free = ext2fs_attr_free_space(last, &offs, start, &total_blk);
-+		if (free < new_extra_isize) {
-+			if (!tried_min_extra_isize && s_min_extra_isize) {
-+				tried_min_extra_isize++;
-+				new_extra_isize = s_min_extra_isize;
-+				goto retry;
-+			}
-+			if (ret)
-+				*ret = EXT2_EXPAND_EISIZE_NOSPC;
-+			error = EXT2_ET_EA_NO_SPACE;
-+			goto cleanup;
-+		}
-+	} else {
-+		if (ret && *ret == EXT2_EXPAND_EISIZE_UNSAFE) {
-+			*ret = EXT2_EXPAND_EISIZE_NEW_BLOCK;
-+			error = 0;
-+			goto cleanup;
-+		}
-+		free = fs->blocksize;
-+	}
-+
-+	while (new_extra_isize > 0) {
-+		int offs, size, entry_size;
-+		struct ext2_ext_attr_entry *small_entry = NULL;
-+		struct ext2_attr_info i = {
-+			.value = NULL,
-+			.value_len = 0,
-+		};
-+		unsigned int total_size, shift_bytes, temp = ~0U, extra_isize=0;
-+
-+		start = (char *) inode + EXT2_GOOD_OLD_INODE_SIZE +
-+					inode->i_extra_isize + sizeof(__u32);
-+		end = (char *) inode + EXT2_INODE_SIZE(fs->super);
-+		last = (struct ext2_ext_attr_entry *) start;
-+
-+		/* Find the entry best suited to be pushed into EA block */
-+		entry = NULL;
-+		for (; !EXT2_EXT_IS_LAST_ENTRY(last);
-+			last = EXT2_EXT_ATTR_NEXT(last)) {
-+			total_size = EXT2_EXT_ATTR_SIZE(last->e_value_size) +
-+					EXT2_EXT_ATTR_LEN(last->e_name_len);
-+			if (total_size <= free && total_size < temp) {
-+				if (total_size < new_extra_isize) {
-+					small_entry = last;
-+				} else {
-+					entry = last;
-+					temp = total_size;
-+				}
-+			}
-+		}
-+
-+		if (entry == NULL) {
-+			if (small_entry) {
-+				entry = small_entry;
-+			} else {
-+				if (!tried_min_extra_isize &&
-+				    s_min_extra_isize) {
-+					tried_min_extra_isize++;
-+					new_extra_isize = s_min_extra_isize;
-+					goto retry;
-+				}
-+				if (ret)
-+					*ret = EXT2_EXPAND_EISIZE_NOSPC;
-+				error = EXT2_ET_EA_NO_SPACE;
-+				goto cleanup;
-+			}
-+		}
-+		offs = entry->e_value_offs;
-+		size = entry->e_value_size;
-+		entry_size = EXT2_EXT_ATTR_LEN(entry->e_name_len);
-+		i.name_index = entry->e_name_index;
-+		error = ext2fs_get_mem(size, &buffer);
-+		if (error)
-+			goto cleanup;
-+		error = ext2fs_get_mem(entry->e_name_len + 1, &b_entry_name);
-+		if (error)
-+			goto cleanup;
-+		/* Save the entry name and the entry value */
-+		memcpy((char *)buffer, (char *) start + offs,
-+		       EXT2_EXT_ATTR_SIZE(size));
-+		memcpy((char *)b_entry_name, (char *)entry->e_name,
-+		       entry->e_name_len);
-+		b_entry_name[entry->e_name_len] = '\0';
-+		i.name = b_entry_name;
-+
-+		error = ext2fs_attr_ibody_find(fs, inode, &i, &is);
-+		if (error)
-+			goto cleanup;
-+
-+		error = ext2fs_attr_set_entry(fs, &i, &is.s);
-+		if (error)
-+			goto cleanup;
-+
-+		entry = (struct ext2_ext_attr_entry *) start;
-+		if (entry_size + EXT2_EXT_ATTR_SIZE(size) >= new_extra_isize)
-+			shift_bytes = new_extra_isize;
-+		else
-+			shift_bytes = entry_size + EXT2_EXT_ATTR_SIZE(size);
-+		ext2fs_attr_shift_entries(entry, inode->i_extra_isize -
-+			shift_bytes, (char *)inode +
-+			EXT2_GOOD_OLD_INODE_SIZE + extra_isize + shift_bytes,
-+			(char *)start - sizeof(__u32), total_ino - entry_size);
-+
-+		extra_isize += shift_bytes;
-+		new_extra_isize -= shift_bytes;
-+		if (needed_size)
-+			*needed_size = new_extra_isize;
-+		inode->i_extra_isize = extra_isize;
-+
-+		i.name = b_entry_name;
-+		i.value = buffer;
-+		i.value_len = size;
-+		error = ext2fs_attr_block_find(fs, (struct ext2_inode *) inode,
-+					       &i, &bs);
-+		if (error)
-+			goto cleanup;
-+
-+		/* Add entry which was removed from the inode into the block */
-+		error = ext2fs_attr_block_set(fs, (struct ext2_inode *) inode,
-+					      &i, &bs);
-+		if (error)
-+			goto cleanup;
-+	}
-+
-+write_inode:
-+	error = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *) inode,
-+					EXT2_INODE_SIZE(fs->super));
-+cleanup:
-+	if (inode_buf)
-+		ext2fs_free_mem(&inode_buf);
-+	if (block_buf)
-+		ext2fs_free_mem(&block_buf);
-+	if (buffer)
-+		ext2fs_free_mem(&buffer);
-+	if (b_entry_name)
-+		ext2fs_free_mem(&b_entry_name);
-+
-+	return error;
-+}
-Index: e2fsprogs-1.40.1/e2fsck/unix.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/unix.c
-+++ e2fsprogs-1.40.1/e2fsck/unix.c
-@@ -616,6 +616,9 @@ static void parse_extended_opts(e2fsck_t
- 				extended_usage++;
+@@ -802,14 +802,27 @@ static void parse_extended_opts(struct e
+ 				r_usage++;
  				continue;
  			}
-+		/* -E expand_extra_isize - enable EXTRA_ISIZE feature */
-+		} else if (strcmp(token, "expand_extra_isize") == 0) {
-+			ctx->flags |= E2F_FLAG_EXPAND_EISIZE;
- 		} else {
- 			fprintf(stderr, _("Unknown extended option: %s\n"),
- 				token);
-@@ -1222,6 +1225,54 @@ restart:
- 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 		fatal_error(ctx, 0);
- 	check_if_skip(ctx);
-+
-+	if (EXT2_GOOD_OLD_INODE_SIZE + sb->s_want_extra_isize >
-+							EXT2_INODE_SIZE(sb)) {
-+		if (fix_problem(ctx, PR_0_WANT_EXTRA_ISIZE_INVALID, &pctx))
-+			sb->s_want_extra_isize = sizeof(struct ext2_inode_large) -
-+						       EXT2_GOOD_OLD_INODE_SIZE;
-+	}
-+	if (EXT2_GOOD_OLD_INODE_SIZE + sb->s_min_extra_isize >
-+							EXT2_INODE_SIZE(sb)) {
-+		if (fix_problem(ctx, PR_0_MIN_EXTRA_ISIZE_INVALID, &pctx))
-+			sb->s_min_extra_isize = 0;
-+	}
-+	if (EXT2_INODE_SIZE(sb) > EXT2_GOOD_OLD_INODE_SIZE) {
-+		ctx->want_extra_isize = sizeof(struct ext2_inode_large) -
-+						     EXT2_GOOD_OLD_INODE_SIZE;
-+		ctx->min_extra_isize = ~0L;
-+		if (EXT2_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)) {
-+			if (ctx->want_extra_isize < sb->s_want_extra_isize)
-+				ctx->want_extra_isize = sb->s_want_extra_isize;
-+			if (ctx->want_extra_isize < sb->s_min_extra_isize)
-+				ctx->want_extra_isize = sb->s_min_extra_isize;
-+		}
-+	}
-+	else {
-+		if (sb->s_feature_ro_compat &
-+		    EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE) {
-+			fix_problem(ctx, PR_0_CLEAR_EXTRA_ISIZE, &pctx);
-+			sb->s_feature_ro_compat &=
-+					~EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE;
-+		}
-+		sb->s_want_extra_isize = 0;
-+		sb->s_min_extra_isize = 0;
-+		ctx->flags &= ~E2F_FLAG_EXPAND_EISIZE;
-+	}
-+
-+	if (ctx->options & E2F_OPT_READONLY) {
-+		if (ctx->flags & (E2F_FLAG_EXPAND_EISIZE)) {
-+			fprintf(stderr, _("Cannot enable EXTRA_ISIZE feature "
-+					  "on read-only filesystem\n"));
-+			exit(1);
-+		}
-+	} else {
-+		if (sb->s_want_extra_isize > sb->s_min_extra_isize &&
-+		    (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE))
-+			ctx->flags |= E2F_FLAG_EXPAND_EISIZE;
-+	}
-+
- 	if (bad_blocks_file)
- 		read_bad_blocks_file(ctx, bad_blocks_file, replace_bad_blocks);
- 	else if (cflag)
-Index: e2fsprogs-1.40.1/lib/ext2fs/ext2_ext_attr.h
-===================================================================
---- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2_ext_attr.h
-+++ e2fsprogs-1.40.1/lib/ext2fs/ext2_ext_attr.h
-@@ -15,6 +15,9 @@
- /* Maximum number of references to one attribute block */
- #define EXT2_EXT_ATTR_REFCOUNT_MAX	1024
- 
-+#define XATTR_CREATE    0x1     /* set value, fail if attr already exists */
-+#define XATTR_REPLACE   0x2     /* set value, fail if attr does not exist */
-+
- struct ext2_ext_attr_header {
- 	__u32	h_magic;	/* magic number for identification */
- 	__u32	h_refcount;	/* reference count */
-@@ -35,6 +38,32 @@ struct ext2_ext_attr_entry {
- #endif
- };
- 
-+#define BHDR(block) ((struct ext2_ext_attr_header *) block)
-+#define IHDR(inode)			   	\
-+	((__u32 *) ((char *)inode +	     	\
-+		    EXT2_GOOD_OLD_INODE_SIZE +  \
-+		    (inode)->i_extra_isize))
-+#define ENTRY(ptr) ((struct ext2_ext_attr_entry *)(ptr))
-+
-+/* Name indexes */
-+#define EXT2_ATTR_INDEX_USER		    	1
-+#define EXT2_ATTR_INDEX_POSIX_ACL_ACCESS	2
-+#define EXT2_ATTR_INDEX_POSIX_ACL_DEFAULT	3
-+#define EXT2_ATTR_INDEX_TRUSTED			4
-+#define EXT2_ATTR_INDEX_LUSTRE			5
-+#define EXT2_ATTR_INDEX_SECURITY		6
-+#define EXT2_ATTR_INDEX_MAX			7
-+
-+#define EXT2_ATTR_INDEX_USER_PREFIX		 "user."
-+#define EXT2_ATTR_INDEX_POSIX_ACL_ACCESS_PREFIX	 "system.posix_acl_access"
-+#define EXT2_ATTR_INDEX_POSIX_ACL_DEFAULT_PREFIX "system.posix_acl_default"
-+#define EXT2_ATTR_INDEX_TRUSTED_PREFIX		 "trusted."
-+#define EXT2_ATTR_INDEX_LUSTRE_PREFIX		 "lustre."
-+#define EXT2_ATTR_INDEX_SECURITY_PREFIX		 "security."
-+
-+#define EXT2_ATTR_PREFIX(index) (index ## _PREFIX)
-+#define EXT2_ATTR_PREFIX_LEN(index) (index ## _PRE_LEN)
-+
- #define EXT2_EXT_ATTR_PAD_BITS		2
- #define EXT2_EXT_ATTR_PAD		((unsigned) 1<<EXT2_EXT_ATTR_PAD_BITS)
- #define EXT2_EXT_ATTR_ROUND		(EXT2_EXT_ATTR_PAD-1)
-Index: e2fsprogs-1.40.1/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/e2fsck.h
-+++ e2fsprogs-1.40.1/e2fsck/e2fsck.h
-@@ -172,6 +172,7 @@ struct resource_track {
- #define E2F_FLAG_RESTARTED	0x0200 /* E2fsck has been restarted */
- #define E2F_FLAG_RESIZE_INODE	0x0400 /* Request to recreate resize inode */
- #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
-+#define E2F_FLAG_EXPAND_EISIZE	0x2000 /* Expand the inodes (i_extra_isize) */
- 
- /*
-  * Defines for indicating the e2fsck pass number
-@@ -348,6 +349,15 @@ struct e2fsck_struct {
- 
- 	profile_t	profile;
- 
-+	/* Expand large inodes to atleast these many bytes */
-+	int want_extra_isize;
-+	/* minimum i_extra_isize found in used inodes. Should not be lesser
-+	 * than s_min_extra_isize.
-+	 */
-+	__u32 min_extra_isize;
-+	int fs_unexpanded_inodes;
-+	ext2fs_inode_bitmap expand_eisize_map;
-+
- 	/*
- 	 * For the use of callers of the e2fsck functions; not used by
- 	 * e2fsck functions themselves.
-Index: e2fsprogs-1.40.1/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2_fs.h
-+++ e2fsprogs-1.40.1/lib/ext2fs/ext2_fs.h
-@@ -411,10 +411,17 @@ struct ext2_inode_large {
- 	__u32	i_atime_extra;	/* extra Access time (nsec << 2 | epoch) */
- 	__u32	i_crtime;	/* File creation time */
- 	__u32	i_crtime_extra;	/* extra File creation time (nsec << 2 | epoch)*/
-+	__u32   i_version_hi;   /* high 32 bits for 64-bit version */
- };
- 
- #define i_size_high	i_dir_acl
- 
-+#define EXT2_FITS_IN_INODE(inode, field)		\
-+	((offsetof(struct ext2_inode_large, field) +	\
-+	 sizeof((inode)->field)) <=			\
-+	 		 (EXT2_GOOD_OLD_INODE_SIZE +	\
-+	     		  (inode)->i_extra_isize))	\
-+
- #if defined(__KERNEL__) || defined(__linux__)
- #define i_reserved1	osd1.linux1.l_i_reserved1
- #define i_frag		osd2.linux2.l_i_frag
-@@ -648,6 +655,7 @@ struct ext2_super_block {
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-+					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE| \
- 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
- 
- /*
-Index: e2fsprogs-1.40.1/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/pass1.c
-+++ e2fsprogs-1.40.1/e2fsck/pass1.c
-@@ -23,6 +23,7 @@
-  * 	- A bitmap of which inodes have bad fields.	(inode_bad_map)
-  * 	- A bitmap of which inodes are in bad blocks.	(inode_bb_map)
-  * 	- A bitmap of which inodes are imagic inodes.	(inode_imagic_map)
-+ *	- A bitmap of which inodes need to be expanded  (expand_eisize_map)
-  * 	- A bitmap of which blocks are in use.		(block_found_map)
-  * 	- A bitmap of which blocks are in use by two inodes	(block_dup_map)
-  * 	- The data blocks of the directory inodes.	(dir_map)
-@@ -353,16 +354,27 @@ static void check_inode_extra_space(e2fs
- 	    (inode->i_extra_isize < min || inode->i_extra_isize > max)) {
- 		if (!fix_problem(ctx, PR_1_EXTRA_ISIZE, pctx))
- 			return;
--		inode->i_extra_isize = min;
-+		inode->i_extra_isize = ctx->want_extra_isize;
- 		e2fsck_write_inode_full(ctx, pctx->ino, pctx->inode,
- 					EXT2_INODE_SIZE(sb), "pass1");
- 		return;
- 	}
- 
--	eamagic = (__u32 *) (((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
--			inode->i_extra_isize);
--	if (*eamagic == EXT2_EXT_ATTR_MAGIC) {
--		/* it seems inode has an extended attribute(s) in body */
-+	eamagic = IHDR(inode);
-+	if (*eamagic != EXT2_EXT_ATTR_MAGIC &&
-+	    (ctx->flags & E2F_FLAG_EXPAND_EISIZE) &&
-+	    (inode->i_extra_isize < ctx->want_extra_isize)) {
-+		fix_problem(ctx, PR_1_EXPAND_EISIZE, pctx);
-+		memset((char *)inode + EXT2_GOOD_OLD_INODE_SIZE, 0,
-+			EXT2_INODE_SIZE(sb) - EXT2_GOOD_OLD_INODE_SIZE);
-+		inode->i_extra_isize = ctx->want_extra_isize;
-+		e2fsck_write_inode_full(ctx, pctx->ino,
-+					(struct ext2_inode *) inode,
-+					EXT2_INODE_SIZE(sb),
-+					"check_inode_extra_space");
-+		if (inode->i_extra_isize < ctx->min_extra_isize)
-+			ctx->min_extra_isize = inode->i_extra_isize;
-+	} else {
- 		check_ea_in_inode(ctx, pctx);
- 	}
- }
-@@ -468,6 +480,156 @@ extern void e2fsck_setup_tdb_icount(e2fs
- 		*ret = 0;
- }
- 
-+extern char *ext2_attr_index_prefix[];
-+
-+int e2fsck_pass1_delete_attr(e2fsck_t ctx, struct ext2_inode_large *inode,
-+			     struct problem_context *pctx, int needed_size)
-+{
-+	struct ext2_ext_attr_header *header;
-+	struct ext2_ext_attr_entry *entry_ino, *entry_blk = NULL, *entry;
-+	char *start, name[4096], block_buf[4096];
-+	int len, index = EXT2_ATTR_INDEX_USER, entry_size, ea_size;
-+	int in_inode = 1, error;
-+	unsigned int freed_bytes = inode->i_extra_isize;
-+
-+	start = (char *) inode + EXT2_GOOD_OLD_INODE_SIZE +
-+					inode->i_extra_isize + sizeof(__u32);
-+	entry_ino = (struct ext2_ext_attr_entry *) start;
-+
-+	if (inode->i_file_acl) {
-+		error = ext2fs_read_ext_attr(ctx->fs, inode->i_file_acl,
-+					     block_buf);
-+		/* We have already checked this block, shouldn't happen */
-+		if (error) {
-+			fix_problem(ctx, PR_1_EXTATTR_READ_ABORT, pctx);
-+			return 0;
-+		}
-+		header = BHDR(block_buf);
-+		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
-+			fix_problem(ctx, PR_1_EXTATTR_READ_ABORT, pctx);
-+			return 0;
-+		}
-+
-+		entry_blk = (struct ext2_ext_attr_entry *)(header+1);
-+	}
-+	entry = entry_ino;
-+	len = sizeof(entry->e_name);
-+	entry_size = ext2fs_attr_get_next_attr(entry, index, name, len, 1);
-+
-+	while (freed_bytes < needed_size) {
-+		if (entry_size && name[0] != '\0') {
-+			pctx->str = name;
-+			if (fix_problem(ctx, PR_1_EISIZE_DELETE_EA, pctx)) {
-+				int i;
-+
-+				ea_size = EXT2_EXT_ATTR_LEN(entry->e_name_len) +
-+					  EXT2_EXT_ATTR_SIZE(entry->e_value_size);
-+				i = strlen(ext2_attr_index_prefix[entry->e_name_index]);
-+				error = ext2fs_attr_set(ctx->fs, pctx->ino,
-+							(struct ext2_inode *)inode,
-+							index, &name[i], 0,0,0);
-+				if (!error)
-+					freed_bytes += ea_size;
-+			}
-+		}
-+		len = sizeof(entry->e_name);
-+		entry_size = ext2fs_attr_get_next_attr(entry, index,name,len,0);
-+		entry = EXT2_EXT_ATTR_NEXT(entry);
-+		if (EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+			if (in_inode) {
-+				entry = entry_blk;
-+			        len = sizeof(entry->e_name);
-+				entry_size = ext2fs_attr_get_next_attr(entry,
-+							index, name, len, 1);
-+				in_inode = 0;
-+			} else {
-+				index += 1;
-+				in_inode = 1;
-+				if (!entry && index < EXT2_ATTR_INDEX_MAX)
-+					entry = (struct ext2_ext_attr_entry *)start;
-+				else
-+					return freed_bytes;
-+			}
-+		}
-+	}
-+
-+	return freed_bytes;
-+}
-+
-+int e2fsck_pass1_expand_eisize(e2fsck_t ctx, struct ext2_inode_large *inode,
-+			       struct problem_context *pctx)
-+{
-+	int needed_size = 0, retval, ret = EXT2_EXPAND_EISIZE_UNSAFE;
-+	static int message;
-+
-+retry:
-+	retval = ext2fs_expand_extra_isize(ctx->fs, pctx->ino, inode,
-+					   ctx->want_extra_isize, &ret,
-+					   &needed_size);
-+	if (ret & EXT2_EXPAND_EISIZE_NEW_BLOCK)
-+		goto mark_expand_eisize_map;
-+	if (!retval) {
-+		e2fsck_write_inode_full(ctx, pctx->ino,
-+					(struct ext2_inode *)inode,
-+					EXT2_INODE_SIZE(ctx->fs->super),
-+					"pass1");
-+		return 0;
-+	}
-+
-+	if (ret & EXT2_EXPAND_EISIZE_NOSPC) {
-+		if (ctx->options & (E2F_OPT_PREEN | E2F_OPT_YES)) {
-+			fix_problem(ctx, PR_1_EA_BLK_NOSPC, pctx);
-+			ctx->flags |= E2F_FLAG_ABORT;
-+			return -1;
-+		}
-+
-+		if (!message) {
-+			pctx->num = ctx->fs->super->s_min_extra_isize;
-+			fix_problem(ctx, PR_1_EXPAND_EISIZE_WARNING, pctx);
-+			message = 1;
-+		}
-+delete_EA:
-+		retval = e2fsck_pass1_delete_attr(ctx, inode, pctx,
-+						  needed_size);
-+		if (retval >= ctx->want_extra_isize)
-+			goto retry;
-+
-+		needed_size -= retval;
-+
-+		/*
-+		 * We loop here until either the user deletes EA(s) or
-+		 * EXTRA_ISIZE feature is disabled.
-+		 */
-+		if (fix_problem(ctx, PR_1_CLEAR_EXTRA_ISIZE, pctx)) {
-+			ctx->fs->super->s_feature_ro_compat &=
-+					~EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE;
-+			ext2fs_mark_super_dirty(ctx->fs);
-+		} else {
-+			goto delete_EA;
-+		}
-+		ctx->fs_unexpanded_inodes++;
-+
-+		/* No EA was deleted, inode cannot be expanded */
-+		return -1;
-+	}
-+
-+mark_expand_eisize_map:
-+	if (!ctx->expand_eisize_map) {
-+		pctx->errcode = ext2fs_allocate_inode_bitmap(ctx->fs,
-+					 _("expand extrz isize map"),
-+					 &ctx->expand_eisize_map);
-+		if (pctx->errcode) {
-+			fix_problem(ctx, PR_1_ALLOCATE_IBITMAP_ERROR,
-+				    pctx);
-+			exit(1);
-+		}
-+	}
-+
-+	/* Add this inode to the expand_eisize_map */
-+	ext2fs_mark_inode_bitmap(ctx->expand_eisize_map, pctx->ino);
-+	return 0;
-+}
-+
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	int	i;
-@@ -490,6 +652,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	int		inode_size;
- 	struct ext3_extent_header *eh;
- 	int		extent_fs;
-+	int		inode_exp = 0;
- 
- #ifdef RESOURCE_TRACK
- 	init_resource_track(&rtrack, ctx->fs->io);
-@@ -984,6 +1147,22 @@ void e2fsck_pass1(e2fsck_t ctx)
+-			fs_stride = strtoul(arg, &p, 0);
+-			if (*p || (fs_stride == 0)) {
++			param->s_raid_stride = strtoul(arg, &p, 0);
++			if (*p || (param->s_raid_stride == 0)) {
+ 				fprintf(stderr,
+ 					_("Invalid stride parameter: %s\n"),
+ 					arg);
+ 				r_usage++;
+ 				continue;
  			}
- 		}
- 
-+		if (ctx->flags & E2F_FLAG_EXPAND_EISIZE) {
-+			struct ext2_inode_large *inode_l;
-+
-+			inode_l = (struct ext2_inode_large *) inode;
-+
-+			if (inode_l->i_extra_isize < ctx->want_extra_isize) {
-+				fix_problem(ctx, PR_1_EXPAND_EISIZE, &pctx);
-+				inode_exp = e2fsck_pass1_expand_eisize(ctx,
-+								       inode_l,
-+								       &pctx);
++		} else if (strcmp(token, "stripe-width") == 0) {
++			if (!arg) {
++				r_usage++;
++				continue;
 +			}
-+			if ((inode_l->i_extra_isize < ctx->min_extra_isize) &&
-+			    inode_exp == 0)
-+				ctx->min_extra_isize = inode_l->i_extra_isize;
-+		}
-+
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 			return;
- 
-@@ -1286,11 +1465,17 @@ static void adjust_extattr_refcount(e2fs
- 			break;
- 		pctx.blk = blk;
- 		pctx.errcode = ext2fs_read_ext_attr(fs, blk, block_buf);
-+		/* We already checked this block, shouldn't happen */
- 		if (pctx.errcode) {
- 			fix_problem(ctx, PR_1_EXTATTR_READ_ABORT, &pctx);
- 			return;
- 		}
--		header = (struct ext2_ext_attr_header *) block_buf;
-+		header = BHDR(block_buf);
-+		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
-+			fix_problem(ctx, PR_1_EXTATTR_READ_ABORT, &pctx);
-+			return;
-+		}
-+
- 		pctx.blkcount = header->h_refcount;
- 		should_be = header->h_refcount + adjust_sign * count;
- 		pctx.num = should_be;
-@@ -1396,7 +1580,7 @@ static int check_ext_attr(e2fsck_t ctx, 
- 	pctx->errcode = ext2fs_read_ext_attr(fs, blk, block_buf);
- 	if (pctx->errcode && fix_problem(ctx, PR_1_READ_EA_BLOCK, pctx))
- 		goto clear_extattr;
--	header = (struct ext2_ext_attr_header *) block_buf;
-+	header = BHDR(block_buf);
- 	pctx->blk = inode->i_file_acl;
- 	if (((ctx->ext_attr_ver == 1) &&
- 	     (header->h_magic != EXT2_EXT_ATTR_MAGIC_v1)) ||
-Index: e2fsprogs-1.40.1/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2fs.h
-+++ e2fsprogs-1.40.1/lib/ext2fs/ext2fs.h
-@@ -425,6 +425,12 @@ typedef struct ext2_icount *ext2_icount_
- #define EXT2_CHECK_MAGIC(struct, code) \
- 	  if ((struct)->magic != (code)) return (code)
- 
-+/*
-+ * Flags for returning status of ext2fs_expand_extra_isize()
-+ */
-+#define EXT2_EXPAND_EISIZE_UNSAFE	0x0001
-+#define EXT2_EXPAND_EISIZE_NEW_BLOCK 	0x0002
-+#define EXT2_EXPAND_EISIZE_NOSPC	0x0004
- 
- /*
-  * For ext2 compression support
-@@ -467,6 +473,7 @@ typedef struct ext2_icount *ext2_icount_
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
-+					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
- 
- /*
-@@ -728,6 +735,16 @@ extern errcode_t ext2fs_expand_dir(ext2_
- /* ext_attr.c */
- extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
- 					void *data);
-+int ext2fs_attr_get_next_attr(struct ext2_ext_attr_entry *entry, int name_index,
-+			      char *buffer, int buffer_size, int start);
-+errcode_t ext2fs_attr_set(ext2_filsys fs, ext2_ino_t ino,
-+			  struct ext2_inode *inode,
-+			  int name_index, const char *name, const char *value,
-+			  int value_len, int flags);
-+extern errcode_t ext2fs_expand_extra_isize(ext2_filsys fs, ext2_ino_t ino,
-+					   struct ext2_inode_large *inode,
-+					   int new_extra_isize, int *ret,
-+					   int *needed_size);
- extern errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf);
- extern errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block,
- 				       void *buf);
-Index: e2fsprogs-1.40.1/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/problem.h
-+++ e2fsprogs-1.40.1/e2fsck/problem.h
-@@ -212,6 +212,16 @@ struct problem_context {
- /* Last group block bitmap is uninitialized. */
- #define PR_0_BB_UNINIT_LAST			0x000039
- 
-+/* Invalid s_min_extra_isize */
-+#define PR_0_MIN_EXTRA_ISIZE_INVALID		0x00003A
-+
-+/* Invalid s_want_extra_isize */
-+#define PR_0_WANT_EXTRA_ISIZE_INVALID		0x00003B
-+
-+/* Clear EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE flag */
-+#define PR_0_CLEAR_EXTRA_ISIZE			0x00003C
-+
-+
- /*
-  * Pass 1 errors
-  */
-@@ -498,6 +508,25 @@ struct problem_context {
- /* extent/index was modified & repaired - not really a problem */
- #define PR_1_EXTENT_CHANGED		0x010067
- 
-+/* Warning for user that all inodes need to be expanded atleast by
-+ * s_min_extra_isize
-+ */
-+#define PR_1_EXPAND_EISIZE_WARNING	0x010068
-+
-+/* Expand the inode */
-+#define PR_1_EXPAND_EISIZE		0x010069
-+
-+/* Delete an EA so that EXTRA_ISIZE may be enabled */
-+#define PR_1_EISIZE_DELETE_EA		0x01006A
-+
-+/* An EA needs to be deleted by e2fsck is being run with -p or -y */
-+#define PR_1_EA_BLK_NOSPC		0x01006B
-+
-+/* Disable EXTRA_ISIZE feature as inode cannot be expanded
-+ * without deletion of an EA
-+ */
-+#define PR_1_CLEAR_EXTRA_ISIZE		0x01006C
-+
- /*
-  * Pass 1b errors
-  */
-@@ -961,6 +990,9 @@ struct problem_context {
- /* Inode in use but group is marked INODE_UNINIT */
- #define PR_5_INODE_UNINIT		0x050019
- 
-+/* Expand the inodes which need a new EA block */
-+#define PR_5_EXPAND_EISIZE		0x05001a
-+
- /*
-  * Post-Pass 5 errors
-  */
-Index: e2fsprogs-1.40.1/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/problem.c
-+++ e2fsprogs-1.40.1/e2fsck/problem.c
-@@ -376,6 +376,19 @@ static struct e2fsck_problem problem_tab
- 	  N_("last @g @b @B uninitialized.  "),
- 	     PROMPT_FIX, PR_PREEN_OK },
- 
-+	{ PR_0_MIN_EXTRA_ISIZE_INVALID,
-+	  N_("@S has invalid s_min_extra_isize.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	{ PR_0_WANT_EXTRA_ISIZE_INVALID,
-+	  N_("@S has invalid s_want_extra_isize.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	{ PR_0_CLEAR_EXTRA_ISIZE,
-+	  N_("Disable extra_isize feature since @f has 128 byte inodes.  "),
-+	  PROMPT_NONE, 0 },
-+
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-@@ -849,6 +862,38 @@ static struct e2fsck_problem problem_tab
- 	  N_("@i %i has high 16 bits of extent/index @b set\n"),
- 	  PROMPT_CLEAR, PR_PREEN_OK | PR_NO_OK | PR_PREEN_NOMSG },
- 
-+	/* expand inode */
-+	{ PR_1_EXPAND_EISIZE_WARNING,
-+	  N_("\ne2fsck is being run with \"expand_extra_isize\" option or\n"
-+	     "s_min_extra_isize of %d bytes has been set in the superblock.\n"
-+	     "Inode %i does not have enough free space.  Either some EAs\n"
-+	     "need to be deleted from this inode or the RO_COMPAT_EXTRA_ISIZE\n"
-+	     "flag must be cleared.\n\n"), PROMPT_NONE, PR_PREEN_OK | PR_NO_OK |
-+   	     PR_PREEN_NOMSG },
-+
-+	/* expand inode */
-+	{ PR_1_EXPAND_EISIZE,
-+	  N_("Expanding @i %i.\n"),
-+	  PROMPT_NONE, PR_PREEN_OK | PR_NO_OK | PR_PREEN_NOMSG },
-+
-+	/* delete an EA so that EXTRA_ISIZE feature may be enabled */
-+	{ PR_1_EISIZE_DELETE_EA,
-+	  N_("Delete EA %s of @i %i so that EXTRA_ISIZE feature may be "
-+	     "enabled?\n"), PROMPT_FIX, PR_NO_OK | PR_PREEN_NO },
-+
-+	/* an EA needs to be deleted by e2fsck is being run with -p or -y */
-+	{ PR_1_EA_BLK_NOSPC,
-+	  N_("An EA needs to be deleted for @i %i but e2fsck is being run\n"
-+	     "with -p or -y mode.\n"),
-+	  PROMPT_ABORT, 0 },
-+
-+	/* disable EXTRA_ISIZE feature since inode cannot be expanded */
-+	{ PR_1_CLEAR_EXTRA_ISIZE,
-+	  N_("Disable EXTRA_ISIZE feature since @i %i cannot be expanded\n"
-+	     "without deletion of an EA.\n"),
-+	  PROMPT_FIX, 0 },
-+
-+
- 	/* Pass 1b errors */
- 
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-@@ -1587,6 +1632,11 @@ static struct e2fsck_problem problem_tab
- 	  N_("@g %g @i(s) in use but @g is marked INODE_UNINIT\n"),
- 	  PROMPT_FIX, PR_PREEN_OK },
- 
-+	/* Expand inode */
-+	{ PR_5_EXPAND_EISIZE,
-+	  N_("Expanding @i %i.\n"),
-+	  PROMPT_NONE, PR_PREEN_OK | PR_NO_OK | PR_PREEN_NOMSG },
-+
- 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
- 	{ PR_6_RECREATE_JOURNAL,
- 	  N_("Recreate journal to make the filesystem ext3 again?\n"),
-Index: e2fsprogs-1.40.1/e2fsck/e2fsck.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/e2fsck.c
-+++ e2fsprogs-1.40.1/e2fsck/e2fsck.c
-@@ -150,6 +150,7 @@ errcode_t e2fsck_reset_context(e2fsck_t 
- 	ctx->fs_tind_count = 0;
- 	ctx->fs_fragmented = 0;
- 	ctx->large_files = 0;
-+	ctx->fs_unexpanded_inodes = 0;
- 
- 	/* Reset the superblock to the user's requested value */
- 	ctx->superblock = ctx->use_superblock;
-Index: e2fsprogs-1.40.1/e2fsck/pass5.c
-===================================================================
---- e2fsprogs-1.40.1.orig/e2fsck/pass5.c
-+++ e2fsprogs-1.40.1/e2fsck/pass5.c
-@@ -64,6 +64,42 @@ void e2fsck_pass5(e2fsck_t ctx)
- 	ext2fs_free_block_bitmap(ctx->block_found_map);
- 	ctx->block_found_map = 0;
- 
-+	if (ctx->flags & E2F_FLAG_EXPAND_EISIZE) {
-+		int min_extra_isize;
-+
-+		if (!ctx->expand_eisize_map)
-+			goto set_min_extra_isize;
-+
-+		for (pctx.ino = 1; pctx.ino < ctx->fs->super->s_inodes_count;
-+		     pctx.ino++) {
-+			if (ext2fs_test_inode_bitmap(ctx->expand_eisize_map,
-+			    pctx.ino)) {
-+				fix_problem(ctx, PR_5_EXPAND_EISIZE, &pctx);
-+				ext2fs_expand_extra_isize(ctx->fs, pctx.ino, 0,
-+							  ctx->want_extra_isize,
-+							  NULL, NULL);
++			param->s_raid_stripe_width = strtoul(arg, &p, 0);
++			if (*p || (param->s_raid_stripe_width == 0)) {
++				fprintf(stderr,
++					_("Invalid stripe-width parameter: %s\n"),
++					arg);
++				r_usage++;
++				continue;
 +			}
-+		}
-+		ext2fs_free_inode_bitmap(ctx->expand_eisize_map);
+ 		} else if (!strcmp(token, "resize")) {
+ 			unsigned long resize, bpg, rsv_groups;
+ 			unsigned long group_desc_count, desc_blocks;
+@@ -875,7 +888,8 @@ static void parse_extended_opts(struct e
+ 			"and may take an argument which\n"
+ 			"\tis set off by an equals ('=') sign.\n\n"
+ 			"Valid extended options are:\n"
+-			"\tstride=<stride length in blocks>\n"
++			"\tstride=<RAID per-disk data chunk in blocks>\n"
++			"\tstripe-width=<RAID stride * data disks in blocks>\n"
+ 			"\tresize=<resize maximum size in blocks>\n\n"));
+ 		free(buf);
+ 		exit(1);
+@@ -1654,7 +1668,7 @@ int main (int argc, char *argv[])
+ 		test_disk(fs, &bb_list);
+ 
+ 	handle_bad_blocks(fs, bb_list);
+-	fs->stride = fs->super->s_raid_stride = fs_stride;
++	fs->stride = fs_stride = fs->super->s_raid_stride;
+ 	retval = ext2fs_allocate_tables(fs);
+ 	if (retval) {
+ 		com_err(program_name, retval,
+Index: e2fsprogs-1.40.2/misc/tune2fs.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/misc/tune2fs.c
++++ e2fsprogs-1.40.2/misc/tune2fs.c
+@@ -71,6 +71,8 @@ static unsigned short errors;
+ static int open_flag;
+ static char *features_cmd;
+ static char *mntopts_cmd;
++static int stride, stripe_width;
++static int stride_set, stripe_width_set;
+ 
+ int journal_size, journal_flags;
+ char *journal_device;
+@@ -87,9 +89,9 @@ static void usage(void)
+ 		  "\t[-i interval[d|m|w]] [-j] [-J journal_options]\n"
+ 		  "\t[-l] [-s sparse_flag] [-m reserved_blocks_percent]\n"
+ 		  "\t[-o [^]mount_options[,...]] [-r reserved_blocks_count]\n"
+-		  "\t[-u user] [-C mount_count] [-L volume_label] "
+-		  "[-M last_mounted_dir]\n"
+-		  "\t[-O [^]feature[,...]] [-T last_check_time] [-U UUID]"
++		  "\t[-u user] [-C mount_count] [-E options] [-L volume_label]"
++		  "\n\t[-M last_mounted_dir] [-O [^]feature[,...]]\n"
++		  "\t[-T last_check_time] [-U UUID]"
+ 		  " device\n"), program_name);
+ 	exit (1);
+ }
+@@ -505,15 +507,86 @@ static time_t parse_time(char *str)
+ 	return (mktime(&ts));
+ }
+ 
++static void parse_extended_opts(const char *opts)
++{
++	char *buf, *token, *next, *p, *arg;
++	int len;
++	int r_usage = 0;
 +
-+set_min_extra_isize:
-+		if (ctx->fs->super->s_min_extra_isize)
-+			min_extra_isize = ctx->fs->super->s_min_extra_isize;
-+		else
-+			min_extra_isize = ctx->want_extra_isize;
-+		if (ctx->min_extra_isize >= min_extra_isize &&
-+		    !ctx->fs_unexpanded_inodes) {
-+			ctx->fs->super->s_min_extra_isize =ctx->min_extra_isize;
-+			ctx->fs->super->s_feature_ro_compat |=
-+					EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE;
-+		} else {
-+			ctx->fs->super->s_min_extra_isize = 0;
-+			ctx->fs->super->s_feature_ro_compat &=
-+					~EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE;
++	len = strlen(opts);
++	buf = malloc(len+1);
++	if (!buf) {
++		fprintf(stderr,
++			_("Couldn't allocate memory to parse options!\n"));
++		exit(1);
++	}
++	strcpy(buf, opts);
++	for (token = buf; token && *token; token = next) {
++		p = strchr(token, ',');
++		next = 0;
++		if (p) {
++			*p = 0;
++			next = p+1;
 +		}
-+		ext2fs_mark_super_dirty(ctx->fs);
++		arg = strchr(token, '=');
++		if (arg) {
++			*arg = 0;
++			arg++;
++		}
++		if (strcmp(token, "stride") == 0) {
++			if (!arg) {
++				r_usage++;
++				continue;
++			}
++			stride = strtoul(arg, &p, 0);
++			if (*p || (stride == 0)) {
++				fprintf(stderr,
++				       _("Invalid RAID stride: %s\n"),
++					arg);
++				r_usage++;
++				continue;
++			}
++			stride_set = 1;
++		} else if (strcmp(token, "stripe-width") == 0) {
++			if (!arg) {
++				r_usage++;
++				continue;
++			}
++			stripe_width = strtoul(arg, &p, 0);
++			if (*p || (stripe_width == 0)) {
++				fprintf(stderr,
++					_("Invalid RAID stripe-width: %s\n"),
++					arg);
++				r_usage++;
++				continue;
++			}
++			stripe_width_set = 1;
++		} else
++			r_usage++;
++	}
++	if (r_usage) {
++		fprintf(stderr, _("\nBad options specified.\n\n"
++			"Extended options are separated by commas, "
++			"and may take an argument which\n"
++			"\tis set off by an equals ('=') sign.\n\n"
++			"Valid extended options are:\n"
++			"\tstride=<RAID per-disk chunk size in blocks>\n"
++			"\tstripe-width=<RAID stride*data disks in blocks>\n"));
++		exit(1);
 +	}
 +
- #ifdef RESOURCE_TRACK
- 	if (ctx->options & E2F_OPT_TIME2) {
- 		e2fsck_clear_progbar(ctx);
-Index: e2fsprogs-1.40.1/lib/ext2fs/ext2_err.et.in
++}
++
+ static void parse_tune2fs_options(int argc, char **argv)
+ {
+ 	int c;
+ 	char * tmp;
++	char * extended_opts = NULL;
+ 	struct group * gr;
+ 	struct passwd * pw;
+ 
+ 	printf("tune2fs %s (%s)\n", E2FSPROGS_VERSION, E2FSPROGS_DATE);
+-	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:J:L:M:O:T:U:")) != EOF)
++	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:E:J:L:M:O:T:U:")) != EOF)
+ 		switch (c)
+ 		{
+ 			case 'c':
+@@ -556,6 +629,10 @@ static void parse_tune2fs_options(int ar
+ 				e_flag = 1;
+ 				open_flag = EXT2_FLAG_RW;
+ 				break;
++			case 'E':
++				extended_opts = optarg;
++				parse_extended_opts(extended_opts);
++				break;
+ 			case 'f': /* Force */
+ 				f_flag = 1;
+ 				break;
+@@ -930,6 +1007,16 @@ int main (int argc, char ** argv)
+ 
+ 	if (l_flag)
+ 		list_super (sb);
++	if (stride_set) {
++		sb->s_raid_stride = stride;
++		ext2fs_mark_super_dirty(fs);
++		printf(_("Setting stride size to %d\n"), stride);
++	}
++	if (stripe_width_set) {
++		sb->s_raid_stripe_width = stripe_width;
++		ext2fs_mark_super_dirty(fs);
++		printf(_("Setting stripe width to %d"), stripe_width);
++	}
+ 	remove_error_table(&et_ext2_error_table);
+ 	return (ext2fs_close (fs) ? 1 : 0);
+ }
+Index: e2fsprogs-1.40.2/misc/mke2fs.8.in
 ===================================================================
---- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2_err.et.in
-+++ e2fsprogs-1.40.1/lib/ext2fs/ext2_err.et.in
-@@ -338,5 +338,29 @@ ec	EXT2_ET_EXTENT_LEAF_BAD,
- ec	EXT2_ET_EXTENT_NO_SPACE,
- 	"No free space in extent map"
- 
-+ec	EXT2_ET_EA_BAD_MAGIC,
-+	"Extended attribute block has bad magic value"
-+
-+ec	EXT2_ET_EA_BAD_ENTRIES,
-+	"Extended attribute block has bad entries"
-+
-+ec	EXT2_ET_EA_NO_SPACE,
-+	"No free space for extended attribute"
-+
-+ec	EXT2_ET_EA_TOO_BIG,
-+	"Extended attribute too big for buffer"
-+
-+ec	EXT2_ET_EA_NAME_TOO_BIG,
-+	"Extended attribute name too big for header"
-+
-+ec	EXT2_ET_EA_BAD_NAME,
-+	"Extended attribute name is bad"
-+
-+ec	EXT2_ET_EA_NAME_NOT_FOUND,
-+	"Extended attribute name not found"
-+
-+ec	EXT2_ET_EA_NAME_EXISTS,
-+	"Extended attribute name already exists"
-+
- 	end
- 
+--- e2fsprogs-1.40.2.orig/misc/mke2fs.8.in
++++ e2fsprogs-1.40.2/misc/mke2fs.8.in
+@@ -179,10 +179,23 @@ option is still accepted for backwards c
+ following extended options are supported:
+ .RS 1.2i
+ .TP
+-.BI stride= stripe-size
++.BI stride= stride-size
+ Configure the filesystem for a RAID array with
+-.I stripe-size
+-filesystem blocks per stripe.
++.I stride-size
++filesystem blocks. This is the number of blocks read or written to disk
++before moving to next disk. This mostly affects placement of filesystem
++metadata like bitmaps at
++.BR mke2fs (2)
++time to avoid placing them on a single disk, which can hurt the performanace.
++It may also be used by block allocator.
++.TP
++.BI stripe-width= stripe-width
++Configure the filesystem for a RAID array with
++.I stripe-width
++filesystem blocks per stripe. This is typically be stride-size * N, where
++N is the number of data disks in the RAID (e.g. RAID 5 N+1, RAID 6 N+2).
++This allows the block allocator to prevent read-modify-write of the
++parity in a RAID stripe if possible when the data is written.
+ .TP
+ .BI resize= max-online-resize
+ Reserve enough space so that the block group descriptor table can grow
+Index: e2fsprogs-1.40.2/misc/tune2fs.8.in
+===================================================================
+--- e2fsprogs-1.40.2.orig/misc/tune2fs.8.in
++++ e2fsprogs-1.40.2/misc/tune2fs.8.in
+@@ -61,6 +61,10 @@ tune2fs \- adjust tunable filesystem par
+ .I mount-count
+ ]
+ [
++.B \-E
++.I extended-options
++]
++[
+ .B \-L
+ .I volume-name
+ ]
+@@ -144,6 +148,31 @@ Remount filesystem read-only.
+ Cause a kernel panic.
+ .RE
+ .TP
++.BI \-E " extended-options"
++Set extended options for the filesystem.  Extended options are comma
++separated, and may take an argument using the equals ('=') sign.
++The following extended options are supported:
++.RS 1.2i
++.TP
++.BI stride= stride-size
++Configure the filesystem for a RAID array with
++.I stride-size
++filesystem blocks. This is the number of blocks read or written to disk
++before moving to next disk. This mostly affects placement of filesystem
++metadata like bitmaps at
++.BR mke2fs (2)
++time to avoid placing them on a single disk, which can hurt the performanace.
++It may also be used by block allocator.
++.TP
++.BI stripe-width= stripe-width
++Configure the filesystem for a RAID array with
++.I stripe-width
++filesystem blocks per stripe. This is typically be stride-size * N, where
++N is the number of data disks in the RAID (e.g. RAID 5 N+1, RAID 6 N+2).
++This allows the block allocator to prevent read-modify-write of the
++parity in a RAID stripe if possible when the data is written.
++.RE
++.TP
+ .B \-f
+ Force the tune2fs operation to complete even in the face of errors.  This 
+ option is useful when removing the 
 
---pf9I7BMVVzbSWLtt--
+--+g7M9IMkV8truYOl--
