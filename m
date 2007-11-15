@@ -1,111 +1,94 @@
 From: akpm@linux-foundation.org
-Subject: - ridiculous-ext3-costs-was-re-page-fault-costs.patch removed from -mm tree
-Date: Wed, 14 Nov 2007 09:40:54 -0800
-Message-ID: <200711141740.lAEHesfo017241@imap1.linux-foundation.org>
+Subject: - fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes.patch removed from -mm tree
+Date: Wed, 14 Nov 2007 16:45:38 -0800
+Message-ID: <200711150045.lAF0jcdP002055@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org, adilger@clusterfs.com,
-	akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+To: akpm@linux-foundation.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: mostly fix blobk bitmap read performance regression
+     fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes
 has been removed from the -mm tree.  Its filename was
-     ridiculous-ext3-costs-was-re-page-fault-costs.patch
+     fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes.patch
 
-This patch was dropped because it is obsolete
+This patch was dropped because it was folded into fix-64kb-blocksize-in-ext3-directories.patch
 
 ------------------------------------------------------
-Subject: ext3: mostly fix blobk bitmap read performance regression
-From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes
+From: Andrew Morton <akpm@linux-foundation.org>
 
-The ext3 block bitmap functions got added validation recently, which caused
-a huge performance regression (ie 5x slower) due to very expensive modulus
-calculations being done in a loop.
+WARNING: line over 80 characters
+#70: FILE: fs/ext3/namei.c:182:
++static inline struct ext3_dir_entry_2 *ext3_next_entry(struct ext3_dir_entry_2 *p)
 
-This largely fixes it, by moving the calculations out of the loop.  The
-sanity checking is still expensive, but no longer totally excessively so.
+ERROR: "(foo*)" should be "(foo *)"
+#72: FILE: fs/ext3/namei.c:184:
++	return (struct ext3_dir_entry_2 *)((char*)p +
 
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: Andreas Dilger <adilger@clusterfs.com>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+WARNING: line over 80 characters
+#262: FILE: fs/ext3/namei.c:1806:
++	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
+
+total: 1 errors, 2 warnings, 289 lines checked
+Your patch has style problems, please review.  If any of these errors
+are false positives report them to the maintainer, see
+CHECKPATCH in MAINTAINERS.
+
+Please run checkpatch prior to sending patches
+
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/balloc.c |   26 ++++++++++++++------------
- 1 file changed, 14 insertions(+), 12 deletions(-)
+ fs/ext3/namei.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ridiculous-ext3-costs-was-re-page-fault-costs fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ridiculous-ext3-costs-was-re-page-fault-costs
-+++ a/fs/ext3/balloc.c
-@@ -80,12 +80,12 @@ struct ext3_group_desc * ext3_get_group_
- 	return desc + offset;
+diff -puN fs/ext3/namei.c~fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes fs/ext3/namei.c
+--- a/fs/ext3/namei.c~fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes
++++ a/fs/ext3/namei.c
+@@ -179,9 +179,10 @@ static int ext3_dx_add_entry(handle_t *h
+ /*
+  * p is at least 6 bytes before the end of page
+  */
+-static inline struct ext3_dir_entry_2 *ext3_next_entry(struct ext3_dir_entry_2 *p)
++static inline struct ext3_dir_entry_2 *
++ext3_next_entry(struct ext3_dir_entry_2 *p)
+ {
+-	return (struct ext3_dir_entry_2 *)((char*)p +
++	return (struct ext3_dir_entry_2 *)((char *)p +
+ 		ext3_rec_len_from_disk(p->rec_len));
  }
  
--static inline int
--block_in_use(ext3_fsblk_t block, struct super_block *sb, unsigned char *map)
-+static inline unsigned int
-+block_bit_number(__le32 block, struct super_block *sb)
- {
--	return ext3_test_bit ((block -
--		le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block)) %
--			 EXT3_BLOCKS_PER_GROUP(sb), map);
-+	__le32 first = EXT3_SB(sb)->s_es->s_first_data_block;
-+
-+	return (le32_to_cpu(block) - le32_to_cpu(first)) % EXT3_BLOCKS_PER_GROUP(sb);
- }
- 
- /**
-@@ -102,6 +102,7 @@ static struct buffer_head *
- read_block_bitmap(struct super_block *sb, unsigned int block_group)
- {
- 	int i;
-+	unsigned offset;
- 	struct ext3_group_desc * desc;
- 	struct buffer_head * bh = NULL;
- 	ext3_fsblk_t bitmap_blk;
-@@ -120,20 +121,21 @@ read_block_bitmap(struct super_block *sb
- 	}
- 
- 	/* check whether block bitmap block number is set */
--	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-+	offset = block_bit_number(desc->bg_block_bitmap, sb);
-+	if (!ext3_test_bit(offset, bh->b_data)) {
- 		/* bad block bitmap */
- 		goto error_out;
- 	}
- 	/* check whether the inode bitmap block number is set */
--	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
--	if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-+	offset = block_bit_number(desc->bg_inode_bitmap, sb);
-+	if (!ext3_test_bit(offset, bh->b_data)) {
- 		/* bad block bitmap */
- 		goto error_out;
- 	}
--	/* check whether the inode table block number is set */
--	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
--	for (i = 0; i < EXT3_SB(sb)->s_itb_per_group; i++, bitmap_blk++) {
--		if (!block_in_use(bitmap_blk, sb, bh->b_data)) {
-+	/* check whether the inode table block numbers are set */
-+	offset = block_bit_number(desc->bg_inode_table, sb);
-+	for (i = 0; i < EXT3_SB(sb)->s_itb_per_group; i++, offset++) {
-+		if (!ext3_test_bit(offset, bh->b_data)) {
- 			/* bad block bitmap */
- 			goto error_out;
- 		}
+@@ -1803,7 +1804,8 @@ retry:
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+ 	de = ext3_next_entry(de);
+ 	de->inode = cpu_to_le32(dir->i_ino);
+-	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
++	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize -
++					EXT3_DIR_REC_LEN(1));
+ 	de->name_len = 2;
+ 	strcpy (de->name, "..");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
 _
 
-Patches currently in -mm which might be from torvalds@linux-foundation.org are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
 origin.patch
+uml-update-address-space-affected-by-pud_clear.patch
+proc-fix-proc_kill_inodes-to-kill-dentries-on-all-proc-superblocks.patch
+acpi-make-acpi_procfs-default-to-y.patch
+hugetlb-split-alloc_huge_page-into-private-and-shared-components.patch
 revert-task-control-groups-example-cpu-accounting-subsystem.patch
-git-x86.patch
-ridiculous-ext3-costs-was-re-page-fault-costs.patch
-workaround-for-a-pci-restoring-bug.patch
+mips-undo-locking-on-error-path-returns.patch
+pidns-place-under-config_experimental.patch
+fix-64kb-blocksize-in-ext3-directories.patch
+fix-64kb-blocksize-in-ext3-directories-checkpatch-fixes.patch
+file-capabilities-allow-sigcont-within-session-v2-checkpatch-fixes.patch
+x86-disable-preemption-in-delay_tsc.patch
+aic94xx_sds-rename-flash_size.patch
+mips-pcspkr-build-fix.patch
