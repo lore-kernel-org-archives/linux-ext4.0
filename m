@@ -1,256 +1,36 @@
 From: "Abhishek Rai" <abhishekrai@google.com>
 Subject: Re: ext3 metaclustering performance numbers and updated patch
-Date: Thu, 15 Nov 2007 11:55:36 -0800
-Message-ID: <d9885f0f0711151155jd27e6b7oa6696d7eb63e19f0@mail.gmail.com>
+Date: Thu, 15 Nov 2007 12:05:58 -0800
+Message-ID: <d9885f0f0711151205v1d891fa6k45740c14a7d6cbbe@mail.gmail.com>
 References: <d9885f0f0711091733i374d33efq8704d01fbb67036@mail.gmail.com>
 	 <20071110075254.GL3966@webber.adilger.int>
+	 <d9885f0f0711151155jd27e6b7oa6696d7eb63e19f0@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: "Abhishek Rai" <abhishekrai@google.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:20065 "EHLO
+Received: from smtp-out.google.com ([216.239.45.13]:48453 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752923AbXKOTzn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 14:55:43 -0500
-Received: from zps38.corp.google.com (zps38.corp.google.com [172.25.146.38])
-	by smtp-out.google.com with ESMTP id lAFJtcEs009357
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 19:55:39 GMT
-Received: from wr-out-0506.google.com (wrac8.prod.google.com [10.54.54.8])
-	by zps38.corp.google.com with ESMTP id lAFJsc7q015850
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 11:55:37 -0800
-Received: by wr-out-0506.google.com with SMTP id c8so570010wra
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 11:55:37 -0800 (PST)
-In-Reply-To: <20071110075254.GL3966@webber.adilger.int>
+	with ESMTP id S1753393AbXKOUGL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 15:06:11 -0500
+Received: from zps77.corp.google.com (zps77.corp.google.com [172.25.146.77])
+	by smtp-out.google.com with ESMTP id lAFK65kT003834
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:06:05 -0800
+Received: from nz-out-0506.google.com (nzfl1.prod.google.com [10.36.188.1])
+	by zps77.corp.google.com with ESMTP id lAFK5npq023505
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:05:59 -0800
+Received: by nz-out-0506.google.com with SMTP id l1so603868nzf
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:05:59 -0800 (PST)
+In-Reply-To: <d9885f0f0711151155jd27e6b7oa6696d7eb63e19f0@mail.gmail.com>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andreas,
-
-Thanks for the great review. I've hopefully addressed all your concerns.
-Please find my responses inline followed by an updated patch.
-
-On Nov 9, 2007 11:52 PM, Andreas Dilger <adilger@sun.com> wrote:
-> On Nov 09, 2007  17:33 -0800, Abhishek Rai wrote:
-> > Benchmark 5: fsck
-> > Description: Prepare a newly formated 400GB disk as follows: create
-> > 200 files of 0.5GB each, 100 files of 1GB each, 40 files of 2.5GB ech,
-> > and 10 files of 10GB each. fsck command line: fsck -f -n
-> > 1. vanilla:
-> >    Total: 12m18.1s
-> >    User: 15.9s
-> >    System: 18.3s
-> > 2. mc:
-> >    Total: 4m47.0s
-> >    User: 16.0s
-> >    System: 17.1s
->
-> The fsck improvement is quite impressive.
->
-> Do you have any benchmarks with small files 64kB-1MB in size
-> (e.g. kernbench or mongo)?  I'm wondering if there are any drawbacks
-> from the metaclustering block reservation of blocks if the files are
-> relatively small because of the extra seeking involved.
-
-Here are the results for kernbench from a 8 cpu machine with 32GB RAM.
-
-Benchmark: kernbench
-Description: 6 runs, very low standard deviation
-1. vanilla:
-   Elapsed: 35.60
-   User: 228.79
-   System: 21.10
-2. mc:
-   Elapsed: 35.12
-   User: 228.47
-   System: 21.08
-
->
-> Also, it took me a while to determine whether the metacluster is
-> done on a per-group basis instead of per-file or per-filesystem.
-> It is counter-intuitive because the ext3_get_metacluster_range()
-> function only takes the superblock as a parameter and not e.g. the
-> group or inode number.
-
-Good point, renamed the function to ext3_get_grp_metacluster(). But
-refrained from adding a group parameter as that might suggest we vary
-metaclusters from group to group.
-
->
-> > In comparison, approaches that optimize inode table reads or bitmap
-> > block reads deliver little performance gains on such disks with lots
-> > of data as they target only a small fraction of the total e2fsck
-> > latency. However, such approaches (e.g., uninit_groups), deliver
-> > substantial improvement for disks with little data, but e2fsck on such
-> > disks doesn't take "too long" anyway and hence may not be considered a
-> > serious issue in the first place.
->
-> Did you do a comparison of the metacluster code with extents?  That
-> should also improve the e2fsck time in a similar manner by virtue of
-> not needing as many (or any) indirect blocks.  In ideal allocation
-> cases a single extent can represent a whole block group of blocks,
-> and files up to 480MB might not even need any index blocks.
->
-> I understand you aren't very keen on changing the on-disk format, but
-> it would be interesting to compare the relative benefits of the two
-> on identical hardware.
-
-That's a valid point. I'm definitely going to do a performance
-comparison of metaclusters with extents and report my findings.
-
->
-> I also suspect that using ext3_new_indirect_block() for extent
-> index blocks on large files would have a similar positive impact for
-> ext4 extents in the case where they are needed).
-
-I think this would be worth investigating though I don't expect to see
-long e2fsck times with extents in the first place. One difference with
-extents would be that
-prefetching might not be as relevant for extent index blocks as it is
-for indirect blocks given the much larger data coverage achieved by
-the former. However, prefetching is just an optimization, its
-not the main point of this change. I'll investigate this in conjunction
-with metaclustering vs extent comparison.
-
-> While your patch is fairly complex, I personally don't have a big objection
-> to it going into the kernel, but there was a lot of vocal opposition to
-> ext3 changes in the past so you may have an uphill battle with other
-> kernel developers.
->
-> > @@ -1713,6 +1783,161 @@ ext3_fsblk_t ext3_new_block(handle_t *ha
-> > +int ext3_new_indirect_blocks(handle_t *handle, struct inode *inode,
-> > +                     unsigned long group_no, unsigned long *count,
-> > +                     ext3_fsblk_t new_blocks[])
-> > +{
-> > +     if (err && err != -ENOSPC)
-> > +             printk("ext3_new_indirect_blocks: error %d", err);
->
-> Should this be an ext3_error() instead of a printk() or do all of the
-> functions that generate errors already call ext3_error()?  If there is
-> a good reason NOT to make it an ext3_error() you are missing a KERN_*
-> error level.
-
-Done
-
->
-> > +typedef struct {
-> > +     __le32  *p;
-> > +     __le32  key;
-> > +     struct buffer_head *bh;
-> > +} Indirect;
->
-> Typedefs are frowned upon in Linux kernel code.
->
-> > @@ -233,12 +255,6 @@ no_delete:
-> > -typedef struct {
-> > -     __le32  *p;
-> > -     __le32  key;
-> > -     struct buffer_head *bh;
-> > -} Indirect;
->
-> Though, hmm, it seems you didn't invent this yourself...
->
-> > -static ext3_fsblk_t ext3_find_near(struct inode *inode, Indirect *ind)
-> > +static inline ext3_fsblk_t ext3_find_near(struct inode *inode, Indirect *ind)
->
-> Function is much too large to inline, even if it has just a single callsite.
-
-In the worst case it will not be inlined, so that shouldn't be a
-problem. Still, I removed the inline just in case someone adds an
-additional callsite in the future and forgets to remove it then.
-
->
-> > +/*
-> > + * ext3_read_indblocks_async --
-> > + *      Synchronously read at most count indirect blocks listed in
-> > + *      ind_blocks[]. This function calls ext3_read_indblocks_async() to do all
-> > + *      the hard work. It waits for read to complete on first_bh before
-> > + *      returning.
-> > +static int ext3_read_indblocks_sync(struct super_block *sb,
->
-> Comment function name does not match actual function name.
-
-Fixed
-
->
-> > + * ext3_get_metacluster_range:
-> > + *
-> > + *   Determines metacluster block range for all block groups of the file
-> > + *   system. Number of metacluster blocks:
-> > + *   = 2 * (blocks_per_group / block_pointers_per_metablock)
-> > + *   = 2 * (blocks_per_group / (block_size / 4))
-> > + *   = (8 * blocks_per_group) / block_size
->
-> This works out to 64 blocks for a default-formatted 4kB filesystem.
-> Do you have any stats from your previous testing on what the average
-> number of indirect blocks/group is?  For large files (> 8MB or so)
-> I suspect the above will be sufficient, but for small files (< 2MB)
-> this wouldn't be enough as the indirect blocks will not be filled.
-> I guess it isn't harmful in the case where these reserved blocks run
-> out...
-
-This is a very good point. Current, metacluster size is 0.2%. There are
-two factors to consider before increasing metacluster size though:
-
-1. When ext3 runs out of data blocks, it starts using metacluster blocks
-for data block allocation. If metaclusters are too big, this will happen
-too soon resulting in no or little clustering of indirect blocks.
-
-2. Also, in the above case ext3_new_blocks() will make two passes over
-all groups, first pass without allocating from metaclusters and second
-pass doing allocation from metaclusters. This of course will hurt
-performance since first pass is totally unnecessary in this case.
-Unlike gdp->bg_free_blocks_count, there is no field that tells it to
-skip a group if all data blocks are taken even though there are
-metacluster blocks available. If the metacluster is too big, this
-will happen too early. I'd love to have suggestions on how this problem
-can be fixed or whether we can live with it by keeping metaclusters
-reasonably small.
-
-Considering these factors I'd be wary of increasing metacluster size to
-anything more than 0.8% (256 blocks per block group in default
-configuration) which means we'll see all the above special effects only
-when we cross 99.2% space utilization in the file system. In the patch
-below I've changed it so, but please let me know what you think.
-
-> > +ext3_get_metacluster_range(struct super_block *sb,
-> > +                             ext3_grpblk_t *mc_start,
-> > +                             ext3_grpblk_t *mc_end)  /* exclusive */
-> > +{
-> > +     *mc_start = EXT3_BLOCKS_PER_GROUP(sb) / 2;
->
-> Have you tested with mc_start right after the inode table?  For e2fsck
-> that might be slightly better positioning as it could potentially be
-> read into cache without a seek, and it avoids breaking up the group in
-> the middle if you are creating large files.
-
-That's a very good point. I evaluated three different configurations:
-metacluster in the beginning, middle, and end of the block group.
-Putting metacluster in the beginning does give partially better
-performance on sequential IO. Turns out that for sequential reads, the
-beginning configuration was 0.5% better than the middle, and the end
-configuration was 2% worse. But for random reads, middle was the best,
-being 1% better than beginning and end. Most importantly, middle
-configuration was the closest to vanilla always, so I stuck with it.
-
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Software Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->
->
-
-Below is an updated version of the patch with the above comments
-applied.
-
-Thanks,
-Abhishek
+Please ignore previous patch, it has an issue with operator precedence
+in ext3_get_grp_metacluster(), try this instead:
 
 Signed-off-by: Abhishek Rai <abhishekrai@google.com>
-
 
 diff -uprdN linux-2.6.23mm1-clean/fs/ext3/balloc.c
 linux-2.6.23mm1-ext3mc/fs/ext3/balloc.c
@@ -1497,7 +1277,7 @@ linux-2.6.23mm1-ext3mc/include/linux/ext3_fs.h
 --- linux-2.6.23mm1-clean/include/linux/ext3_fs.h	2007-10-17
 18:31:43.000000000 -0700
 +++ linux-2.6.23mm1-ext3mc/include/linux/ext3_fs.h	2007-11-15
-11:53:17.000000000 -0800
+12:03:48.000000000 -0800
 @@ -380,6 +380,7 @@ struct ext3_inode {
  #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
  #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
@@ -1585,7 +1365,7 @@ linux-2.6.23mm1-ext3mc/include/linux/ext3_fs.h
 +{
 +	*mc_start = EXT3_BLOCKS_PER_GROUP(sb) / 2;
 +	if (test_opt(sb, METACLUSTER)) {
-+		*mc_end = *mc_start + EXT3_BLOCKS_PER_GROUP(sb) >> 7;
++		*mc_end = *mc_start + (EXT3_BLOCKS_PER_GROUP(sb) >> 7);
 +	} else {
 +		*mc_end = *mc_start;
 +	}
