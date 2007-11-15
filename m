@@ -1,1389 +1,378 @@
-From: "Abhishek Rai" <abhishekrai@google.com>
-Subject: Re: ext3 metaclustering performance numbers and updated patch
-Date: Thu, 15 Nov 2007 12:05:58 -0800
-Message-ID: <d9885f0f0711151205v1d891fa6k45740c14a7d6cbbe@mail.gmail.com>
-References: <d9885f0f0711091733i374d33efq8704d01fbb67036@mail.gmail.com>
-	 <20071110075254.GL3966@webber.adilger.int>
-	 <d9885f0f0711151155jd27e6b7oa6696d7eb63e19f0@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Abhishek Rai" <abhishekrai@google.com>, linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: - fix-64kb-blocksize-in-ext3-directories.patch removed from -mm tree
+Date: Thu, 15 Nov 2007 13:10:56 -0800
+Message-ID: <200711152110.lAFLAu1X015708@imap1.linux-foundation.org>
+To: jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:48453 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753393AbXKOUGL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 15:06:11 -0500
-Received: from zps77.corp.google.com (zps77.corp.google.com [172.25.146.77])
-	by smtp-out.google.com with ESMTP id lAFK65kT003834
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:06:05 -0800
-Received: from nz-out-0506.google.com (nzfl1.prod.google.com [10.36.188.1])
-	by zps77.corp.google.com with ESMTP id lAFK5npq023505
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:05:59 -0800
-Received: by nz-out-0506.google.com with SMTP id l1so603868nzf
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2007 12:05:59 -0800 (PST)
-In-Reply-To: <d9885f0f0711151155jd27e6b7oa6696d7eb63e19f0@mail.gmail.com>
-Content-Disposition: inline
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41617 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932524AbXKOVR2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Nov 2007 16:17:28 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Please ignore previous patch, it has an issue with operator precedence
-in ext3_get_grp_metacluster(), try this instead:
 
-Signed-off-by: Abhishek Rai <abhishekrai@google.com>
+The patch titled
+     Fix 64KB blocksize in ext3 directories
+has been removed from the -mm tree.  Its filename was
+     fix-64kb-blocksize-in-ext3-directories.patch
 
-diff -uprdN linux-2.6.23mm1-clean/fs/ext3/balloc.c
-linux-2.6.23mm1-ext3mc/fs/ext3/balloc.c
---- linux-2.6.23mm1-clean/fs/ext3/balloc.c	2007-10-17 18:31:42.000000000 -0700
-+++ linux-2.6.23mm1-ext3mc/fs/ext3/balloc.c	2007-11-15 11:23:51.000000000 -0800
-@@ -711,6 +711,7 @@ bitmap_search_next_usable_block(ext3_grp
- 	ext3_grpblk_t next;
- 	struct journal_head *jh = bh2jh(bh);
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-+	BUG_ON(start > maxblocks);
- 	while (start < maxblocks) {
- 		next = ext3_find_next_zero_bit(bh->b_data, maxblocks, start);
- 		if (next >= maxblocks)
-@@ -841,10 +842,12 @@ claim_block(spinlock_t *lock, ext3_grpbl
- static ext3_grpblk_t
- ext3_try_to_allocate(struct super_block *sb, handle_t *handle, int group,
- 			struct buffer_head *bitmap_bh, ext3_grpblk_t grp_goal,
--			unsigned long *count, struct ext3_reserve_window *my_rsv)
-+			int use_metacluster, unsigned long *count,
-+			struct ext3_reserve_window *my_rsv)
+------------------------------------------------------
+Subject: Fix 64KB blocksize in ext3 directories
+From: Jan Kara <jack@suse.cz>
+
+With 64KB blocksize, a directory entry can have size 64KB which does not
+fit into 16 bits we have for entry lenght.  So we store 0xffff instead and
+convert value when read from / written to disk.  The patch also converts
+some places to use ext3_next_entry() when we are changing them anyway.
+
+[akpm@linux-foundation.org: coding-style cleanups]
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/dir.c           |   10 ++--
+ fs/ext3/namei.c         |   92 ++++++++++++++++++--------------------
+ include/linux/ext3_fs.h |   20 ++++++++
+ 3 files changed, 70 insertions(+), 52 deletions(-)
+
+diff -puN fs/ext3/dir.c~fix-64kb-blocksize-in-ext3-directories fs/ext3/dir.c
+--- a/fs/ext3/dir.c~fix-64kb-blocksize-in-ext3-directories
++++ a/fs/ext3/dir.c
+@@ -67,7 +67,7 @@ int ext3_check_dir_entry (const char * f
+ 			  unsigned long offset)
  {
- 	ext3_fsblk_t group_first_block;
- 	ext3_grpblk_t start, end;
-+	ext3_grpblk_t mc_start, mc_end, start2 = -1, end2 = -1;
- 	unsigned long num = 0;
-
- 	/* we do allocation within the reservation window if we have a window */
-@@ -872,12 +875,48 @@ ext3_try_to_allocate(struct super_block
- 	}
-
- 	BUG_ON(start > EXT3_BLOCKS_PER_GROUP(sb));
-+	/* start must have been set to grp_goal if one still exists. */
-+	BUG_ON(grp_goal >= 0 && start != grp_goal);
-+
-+	if (test_opt(sb, METACLUSTER) && !use_metacluster) {
-+		ext3_get_grp_metacluster(sb, &mc_start, &mc_end);
-+
-+		/*
-+	 	 * If there is an overlap with metacluster range, adjust our
-+		 * range to remove overlap, splitting our range into two if
-+		 * needed.
-+	 	 */
-+		if (mc_end > mc_start) {
-+			if (mc_start <= start)
-+				start = max_t(ext3_grpblk_t, start, mc_end);
-+			else if (mc_end >= end)
-+				end = min_t(ext3_grpblk_t, end, mc_start);
-+			else {
-+				start2 = mc_end;
-+				end2 = end;
-+				end = mc_start;
-+			}
-+		}
-+	}
-+
-+	if (start >= end)
-+		goto fail_access;
-+
-+	if (grp_goal > 0)
-+		grp_goal = start;
-
- repeat:
- 	if (grp_goal < 0 || !ext3_test_allocatable(grp_goal, bitmap_bh)) {
- 		grp_goal = find_next_usable_block(start, bitmap_bh, end);
--		if (grp_goal < 0)
-+		if (grp_goal < 0) {
-+			if (start2 >= 0) {
-+				start = start2;
-+				end = end2;
-+				start2 = -1;
-+				goto repeat;
-+			}
- 			goto fail_access;
-+		}
- 		if (!my_rsv) {
- 			int i;
-
-@@ -898,8 +937,15 @@ repeat:
- 		 */
- 		start++;
- 		grp_goal++;
--		if (start >= end)
--			goto fail_access;
-+		if (start >= end) {
-+			if (start2 < 0)
-+				goto fail_access;
-+
-+			start = start2;
-+			end = end2;
-+			start2 = -1;
-+			grp_goal = -1;
-+		}
- 		goto repeat;
- 	}
- 	num++;
-@@ -1084,6 +1130,7 @@ static int alloc_new_reservation(struct
- 	unsigned long size;
- 	int ret;
- 	spinlock_t *rsv_lock = &EXT3_SB(sb)->s_rsv_window_lock;
-+	ext3_grpblk_t mc_start, mc_end;
-
- 	group_first_block = ext3_group_first_block_no(sb, group);
- 	group_end_block = group_first_block + (EXT3_BLOCKS_PER_GROUP(sb) - 1);
-@@ -1143,6 +1190,7 @@ static int alloc_new_reservation(struct
- 	 * To make sure the reservation window has a free bit inside it, we
- 	 * need to check the bitmap after we found a reservable window.
- 	 */
-+	ext3_get_grp_metacluster(sb, &mc_start, &mc_end);
- retry:
- 	ret = find_next_reservable_window(search_head, my_rsv, sb,
- 						start_block, group_end_block);
-@@ -1170,6 +1218,11 @@ retry:
- 			my_rsv->rsv_start - group_first_block,
- 			bitmap_bh, group_end_block - group_first_block + 1);
-
-+	if (first_free_block >= mc_start && first_free_block < mc_end) {
-+		start_block = mc_end;
-+		goto next;
-+	}
-+
- 	if (first_free_block < 0) {
- 		/*
- 		 * no free block left on the bitmap, no point
-@@ -1195,6 +1248,7 @@ retry:
- 	 * start from where the free block is,
- 	 * we also shift the list head to where we stopped last time
- 	 */
-+next:
- 	search_head = my_rsv;
- 	spin_lock(rsv_lock);
- 	goto retry;
-@@ -1223,12 +1277,18 @@ static void try_to_extend_reservation(st
- 	struct ext3_reserve_window_node *next_rsv;
- 	struct rb_node *next;
- 	spinlock_t *rsv_lock = &EXT3_SB(sb)->s_rsv_window_lock;
-+	ext3_grpblk_t mc_start, mc_end;
-
- 	if (!spin_trylock(rsv_lock))
- 		return;
-
- 	next = rb_next(&my_rsv->rsv_node);
-
-+	ext3_get_grp_metacluster(sb, &mc_start, &mc_end);
-+
-+	if (my_rsv->rsv_end >= mc_start && my_rsv->rsv_end < mc_end)
-+		size += mc_end - 1 - my_rsv->rsv_end;
-+
- 	if (!next)
- 		my_rsv->rsv_end += size;
- 	else {
-@@ -1274,7 +1334,7 @@ static void try_to_extend_reservation(st
- static ext3_grpblk_t
- ext3_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
- 			unsigned int group, struct buffer_head *bitmap_bh,
--			ext3_grpblk_t grp_goal,
-+			ext3_grpblk_t grp_goal, int use_metacluster,
- 			struct ext3_reserve_window_node * my_rsv,
- 			unsigned long *count, int *errp)
- {
-@@ -1305,7 +1365,8 @@ ext3_try_to_allocate_with_rsv(struct sup
- 	 */
- 	if (my_rsv == NULL ) {
- 		ret = ext3_try_to_allocate(sb, handle, group, bitmap_bh,
--						grp_goal, count, NULL);
-+						grp_goal, use_metacluster,
-+						count, NULL);
- 		goto out;
- 	}
- 	/*
-@@ -1361,7 +1422,8 @@ ext3_try_to_allocate_with_rsv(struct sup
- 			BUG();
+ 	const char * error_msg = NULL;
+-	const int rlen = le16_to_cpu(de->rec_len);
++	const int rlen = ext3_rec_len_from_disk(de->rec_len);
+ 
+ 	if (rlen < EXT3_DIR_REC_LEN(1))
+ 		error_msg = "rec_len is smaller than minimal";
+@@ -173,10 +173,10 @@ revalidate:
+ 				 * least that it is non-zero.  A
+ 				 * failure will be detected in the
+ 				 * dirent test below. */
+-				if (le16_to_cpu(de->rec_len) <
++				if (ext3_rec_len_from_disk(de->rec_len) <
+ 						EXT3_DIR_REC_LEN(1))
+ 					break;
+-				i += le16_to_cpu(de->rec_len);
++				i += ext3_rec_len_from_disk(de->rec_len);
+ 			}
+ 			offset = i;
+ 			filp->f_pos = (filp->f_pos & ~(sb->s_blocksize - 1))
+@@ -197,7 +197,7 @@ revalidate:
+ 				ret = stored;
+ 				goto out;
+ 			}
+-			offset += le16_to_cpu(de->rec_len);
++			offset += ext3_rec_len_from_disk(de->rec_len);
+ 			if (le32_to_cpu(de->inode)) {
+ 				/* We might block in the next section
+ 				 * if the data destination is
+@@ -219,7 +219,7 @@ revalidate:
+ 					goto revalidate;
+ 				stored ++;
+ 			}
+-			filp->f_pos += le16_to_cpu(de->rec_len);
++			filp->f_pos += ext3_rec_len_from_disk(de->rec_len);
  		}
- 		ret = ext3_try_to_allocate(sb, handle, group, bitmap_bh,
--					   grp_goal, &num, &my_rsv->rsv_window);
-+						grp_goal, use_metacluster,
-+						&num, &my_rsv->rsv_window);
- 		if (ret >= 0) {
- 			my_rsv->rsv_alloc_hit += num;
- 			*count = num;
-@@ -1455,6 +1517,7 @@ ext3_fsblk_t ext3_new_blocks(handle_t *h
- 	int bgi;			/* blockgroup iteration index */
- 	int fatal = 0, err;
- 	int performed_allocation = 0;
-+	int use_metacluster = 0;
- 	ext3_grpblk_t free_blocks;	/* number of free blocks in a group */
- 	struct super_block *sb;
- 	struct ext3_group_desc *gdp;
-@@ -1473,6 +1536,7 @@ ext3_fsblk_t ext3_new_blocks(handle_t *h
- 	sb = inode->i_sb;
- 	if (!sb) {
- 		printk("ext3_new_block: nonexistent device");
-+		*errp = -ENODEV;
- 		return 0;
- 	}
-
-@@ -1487,6 +1551,11 @@ ext3_fsblk_t ext3_new_blocks(handle_t *h
- 	sbi = EXT3_SB(sb);
- 	es = EXT3_SB(sb)->s_es;
- 	ext3_debug("goal=%lu.\n", goal);
-+
-+	/* Caller should ensure this. */
-+	BUG_ON(goal < le32_to_cpu(es->s_first_data_block) ||
-+	       goal >= le32_to_cpu(es->s_blocks_count));
-+
- 	/*
- 	 * Allocate a block from reservation only when
- 	 * filesystem is mounted with reservation(default,-o reservation), and
-@@ -1507,9 +1576,6 @@ ext3_fsblk_t ext3_new_blocks(handle_t *h
- 	/*
- 	 * First, test whether the goal block is free.
- 	 */
--	if (goal < le32_to_cpu(es->s_first_data_block) ||
--	    goal >= le32_to_cpu(es->s_blocks_count))
--		goal = le32_to_cpu(es->s_first_data_block);
- 	group_no = (goal - le32_to_cpu(es->s_first_data_block)) /
- 			EXT3_BLOCKS_PER_GROUP(sb);
- 	goal_group = group_no;
-@@ -1535,7 +1601,7 @@ retry_alloc:
- 			goto io_error;
- 		grp_alloc_blk = ext3_try_to_allocate_with_rsv(sb, handle,
- 					group_no, bitmap_bh, grp_target_blk,
--					my_rsv,	&num, &fatal);
-+					use_metacluster, my_rsv, &num, &fatal);
- 		if (fatal)
- 			goto out;
- 		if (grp_alloc_blk >= 0)
-@@ -1573,8 +1639,8 @@ retry_alloc:
- 		 * try to allocate block(s) from this group, without a goal(-1).
- 		 */
- 		grp_alloc_blk = ext3_try_to_allocate_with_rsv(sb, handle,
--					group_no, bitmap_bh, -1, my_rsv,
--					&num, &fatal);
-+					group_no, bitmap_bh, -1,
-+					use_metacluster, my_rsv, &num, &fatal);
- 		if (fatal)
- 			goto out;
- 		if (grp_alloc_blk >= 0)
-@@ -1593,6 +1659,10 @@ retry_alloc:
- 		group_no = goal_group;
- 		goto retry_alloc;
- 	}
-+	if (test_opt(sb, METACLUSTER) && use_metacluster == 0) {
-+		use_metacluster = 1;
-+		goto retry_alloc;
-+	}
- 	/* No space left on the device */
- 	*errp = -ENOSPC;
- 	goto out;
-@@ -1713,6 +1783,161 @@ ext3_fsblk_t ext3_new_block(handle_t *ha
- 	return ext3_new_blocks(handle, inode, goal, &count, errp);
- }
-
-+/*
-+ * ext3_new_indirect_blocks() -- allocate indirect blocks for inode.
-+ * @inode:		file inode
-+ * @count:		target number of indirect blocks to allocate
-+ * @new_blocks[]:       used for returning block numbers allocated
-+ *
-+ * return: 0 on success, appropriate error code otherwise. Upon return, *count
-+ * contains the number of blocks successfully allocated which is non-zero only
-+ * in the success case.
-+ *
-+ * Allocate maximum of *count indirect blocks from the indirect block metadata
-+ * area of inode's group and store the block numbers in new_blocksp[]. Since
-+ * the allocation is in a predetermined region of the block group, caller just
-+ * needs to pass a group number here which is where the goal and/or the
-+ * reservation window may fall.
-+ */
-+int ext3_new_indirect_blocks(handle_t *handle, struct inode *inode,
-+			unsigned long group_no, unsigned long *count,
-+			ext3_fsblk_t new_blocks[])
-+{
-+	struct super_block *sb;
-+	struct ext3_sb_info *sbi;
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct buffer_head *gdp_bh;
-+	struct ext3_group_desc *gdp;
-+	ext3_grpblk_t group_first_block;      /* first block in the group */
-+	ext3_grpblk_t free_blocks;	/* number of free blocks in the group */
-+	ext3_grpblk_t mc_start, mc_end;
-+	int blk, done = 0;
-+	int err = 0;
-+
-+	BUG_ON(*count > 3);
-+
-+	sb = inode->i_sb;
-+	if (!sb) {
-+		printk(KERN_INFO "ext3_new_indirect_blocks: "
-+			"nonexistent device");
-+		return -ENODEV;
-+	}
-+	BUG_ON(!test_opt(sb, METACLUSTER));
-+	sbi = EXT3_SB(sb);
-+
-+	if (DQUOT_ALLOC_BLOCK(inode, *count))
-+		return -EDQUOT;
-+
-+	if (!ext3_has_free_blocks(sbi)) {
-+		err = -ENOSPC;
-+		goto out;
-+	}
-+
-+	gdp = ext3_get_group_desc(sb, group_no, &gdp_bh);
-+	if (!gdp) {
-+		err = -EIO;
-+		goto out;
-+	}
-+
-+	free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
-+	if (free_blocks == 0) {
-+		err = -ENOSPC;
-+		goto out;
-+	}
-+
-+	bitmap_bh = read_block_bitmap(sb, group_no);
-+	if (!bitmap_bh) {
-+		err = -EIO;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Make sure we use undo access for the bitmap, because it is critical
-+	 * that we do the frozen_data COW on bitmap buffers in all cases even
-+	 * if the buffer is in BJ_Forget state in the committing transaction.
-+	 */
-+	BUFFER_TRACE(bitmap_bh, "get undo access for new indirect block");
-+	err = ext3_journal_get_undo_access(handle, bitmap_bh);
-+	if (err)
-+		goto out;
-+
-+	err = -ENOSPC;
-+	group_first_block = ext3_group_first_block_no(sb, group_no);
-+	ext3_get_grp_metacluster(sb, &mc_start, &mc_end);
-+	blk = mc_start;
-+
-+	while (done < *count && blk < mc_end) {
-+		if (!ext3_test_allocatable(blk, bitmap_bh)) {
-+			/*
-+			 * Don't use find_next_usable_block() here as it may
-+			 * skip free blocks that are not close to the goal.
-+			 * Since our goal is always fixed (mc_start), we may
-+			 * be trying to allocate slightly far from it and that
-+			 * will be a problem.
-+			 */
-+			blk = bitmap_search_next_usable_block(blk, bitmap_bh,
-+								mc_end);
-+			continue;
-+		}
-+		if (claim_block(sb_bgl_lock(sbi, group_no), blk,
-+				bitmap_bh)) {
-+			new_blocks[done++] = group_first_block + blk;
-+		} else {
-+			/*
-+		 	 * The block was allocated by another thread, or it
-+			 * was allocated and then freed by another thread
-+		 	 */
-+			cpu_relax();
-+		}
-+		blk++;
-+	}
-+
-+	if (!done) {
-+		BUFFER_TRACE(bitmap_bh, "journal_release_buffer");
-+		ext3_journal_release_buffer(handle, bitmap_bh);
-+		goto out;
-+	}
-+
-+	BUFFER_TRACE(bitmap_bh, "journal_dirty_metadata for bitmap block");
-+	err = ext3_journal_dirty_metadata(handle, bitmap_bh);
-+	if (err)
-+		goto out;
-+
-+	BUFFER_TRACE(gdp_bh, "get_write_access");
-+	err = ext3_journal_get_write_access(handle, gdp_bh);
-+	if (err)
-+		goto out;
-+
-+	/*
-+	 * Caller is responsible for adding the new indirect block buffers
-+	 * to the journal list.
-+	 */
-+
-+	spin_lock(sb_bgl_lock(sbi, group_no));
-+	gdp->bg_free_blocks_count =
-+		cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count) - done);
-+	spin_unlock(sb_bgl_lock(sbi, group_no));
-+	percpu_counter_sub(&sbi->s_freeblocks_counter, done);
-+
-+	BUFFER_TRACE(gdp_bh, "journal_dirty_metadata for group descriptor");
-+	err = ext3_journal_dirty_metadata(handle, gdp_bh);
-+	sb->s_dirt = 1;
-+	if (err)
-+		goto out;
-+
-+out:
-+	if (bitmap_bh)
-+		brelse(bitmap_bh);
-+
-+	DQUOT_FREE_BLOCK(inode, *count - done);
-+	*count = done;
-+
-+	if (err && err != -ENOSPC)
-+		ext3_error(sb, "ext3_new_indirect_blocks", "error %d", err);
-+
-+	return err;
-+}
-+
- /**
-  * ext3_count_free_blocks() -- count filesystem free blocks
-  * @sb:		superblock
-diff -uprdN linux-2.6.23mm1-clean/fs/ext3/inode.c
-linux-2.6.23mm1-ext3mc/fs/ext3/inode.c
---- linux-2.6.23mm1-clean/fs/ext3/inode.c	2007-10-17 18:31:42.000000000 -0700
-+++ linux-2.6.23mm1-ext3mc/fs/ext3/inode.c	2007-11-15 11:21:07.000000000 -0800
-@@ -39,7 +39,29 @@
- #include "xattr.h"
- #include "acl.h"
-
-+typedef struct {
-+	__le32	*p;
-+	__le32	key;
-+	struct buffer_head *bh;
-+} Indirect;
-+
-+struct ext3_ind_read_info {
-+	int                     count;
-+	int                     seq_prefetch;
-+	long                    size;
-+	struct buffer_head      *bh[0];
-+};
-+
-+# define EXT3_IND_READ_INFO_SIZE(_c)        \
-+	(sizeof(struct ext3_ind_read_info) + \
-+	 sizeof(struct buffer_head *) * (_c))
-+
-+# define EXT3_IND_READ_MAX     	(32)
-+
- static int ext3_writepage_trans_blocks(struct inode *inode);
-+static Indirect *ext3_read_indblocks(struct inode *inode, int iblock,
-+					int depth, int offsets[4],
-+					Indirect chain[4], int *err);
-
+ 		offset = 0;
+ 		brelse (bh);
+diff -puN fs/ext3/namei.c~fix-64kb-blocksize-in-ext3-directories fs/ext3/namei.c
+--- a/fs/ext3/namei.c~fix-64kb-blocksize-in-ext3-directories
++++ a/fs/ext3/namei.c
+@@ -177,6 +177,16 @@ static int ext3_dx_add_entry(handle_t *h
+ 			     struct inode *inode);
+ 
  /*
-  * Test whether an inode is a fast symlink.
-@@ -233,12 +255,6 @@ no_delete:
- 	clear_inode(inode);	/* We must guarantee clearing of inode... */
- }
-
--typedef struct {
--	__le32	*p;
--	__le32	key;
--	struct buffer_head *bh;
--} Indirect;
--
- static inline void add_chain(Indirect *p, struct buffer_head *bh, __le32 *v)
- {
- 	p->key = *(p->p = v);
-@@ -352,18 +368,21 @@ static int ext3_block_to_path(struct ino
-  *	the whole chain, all way to the data (returns %NULL, *err == 0).
++ * p is at least 6 bytes before the end of page
++ */
++static inline struct ext3_dir_entry_2 *
++ext3_next_entry(struct ext3_dir_entry_2 *p)
++{
++	return (struct ext3_dir_entry_2 *)((char *)p +
++		ext3_rec_len_from_disk(p->rec_len));
++}
++
++/*
+  * Future: use high four bits of block for coalesce-on-delete flags
+  * Mask them off for now.
   */
- static Indirect *ext3_get_branch(struct inode *inode, int depth, int *offsets,
--				 Indirect chain[4], int *err)
-+				 Indirect chain[4], int ind_readahead, int *err)
- {
- 	struct super_block *sb = inode->i_sb;
- 	Indirect *p = chain;
- 	struct buffer_head *bh;
-+	int index;
-
- 	*err = 0;
- 	/* i_data is not going away, no lock needed */
- 	add_chain (chain, NULL, EXT3_I(inode)->i_data + *offsets);
- 	if (!p->key)
- 		goto no_block;
--	while (--depth) {
-+	for (index = 0; index < depth - 1; index++) {
-+		if (ind_readahead && depth > 2 && index == depth - 2)
-+			break;
- 		bh = sb_bread(sb, le32_to_cpu(p->key));
- 		if (!bh)
- 			goto failure;
-@@ -396,7 +415,15 @@ no_block:
-  *	It is used when heuristic for sequential allocation fails.
-  *	Rules are:
-  *	  + if there is a block to the left of our position - allocate near it.
-- *	  + if pointer will live in indirect block - allocate near that block.
-+ *	  + If METACLUSTER options is not specified, allocate the data
-+ *	  block close to the metadata block. Otherwise, if pointer will live in
-+ *	  indirect block, we cannot allocate near the indirect block since
-+ *	  indirect blocks are allocated in a reserved area. Even if we allocate
-+ *	  this block right after the preceding logical file block, we'll still
-+ *	  have to incur extra seek due to the indirect block (unless we
-+ *	  prefetch the indirect block separately). So for now (until
-+ *	  prefetching is turned on), it's OK not to return a sequential goal -
-+ *	  just put in the same cylinder group as the inode.
-  *	  + if pointer will live in inode - allocate in the same
-  *	    cylinder group.
-  *
-@@ -421,9 +448,11 @@ static ext3_fsblk_t ext3_find_near(struc
- 			return le32_to_cpu(*p);
- 	}
-
--	/* No such thing, so let's try location of indirect block */
--	if (ind->bh)
--		return ind->bh->b_blocknr;
-+	if (!test_opt(inode->i_sb, METACLUSTER)) {
-+		/* No such thing, so let's try location of indirect block */
-+		if (ind->bh)
-+			return ind->bh->b_blocknr;
-+	}
-
- 	/*
- 	 * It is going to be referred to from the inode itself? OK, just put it
-@@ -475,8 +504,7 @@ static ext3_fsblk_t ext3_find_goal(struc
-  *	@blks: number of data blocks to be mapped.
-  *	@blocks_to_boundary:  the offset in the indirect block
-  *
-- *	return the total number of blocks to be allocate, including the
-- *	direct and indirect blocks.
-+ *	return the total number of direct blocks to be allocated.
-  */
- static int ext3_blks_to_allocate(Indirect *branch, int k, unsigned long blks,
- 		int blocks_to_boundary)
-@@ -508,22 +536,39 @@ static int ext3_blks_to_allocate(Indirec
-  *	ext3_alloc_blocks: multiple allocate blocks needed for a branch
-  *	@indirect_blks: the number of blocks need to allocate for indirect
-  *			blocks
-- *
-+ *	@blks: the number of direct blocks to be allocated
-  *	@new_blocks: on return it will store the new block numbers for
-  *	the indirect blocks(if needed) and the first direct block,
-- *	@blks:	on return it will store the total number of allocated
-- *		direct blocks
-+ *
-+ *	returns the number of direct blocks allocated, error via *err, and
-+ *	new block numbers via new_blocks[]
-  */
- static int ext3_alloc_blocks(handle_t *handle, struct inode *inode,
- 			ext3_fsblk_t goal, int indirect_blks, int blks,
- 			ext3_fsblk_t new_blocks[4], int *err)
- {
-+	struct super_block *sb;
-+	struct ext3_super_block *es;
- 	int target, i;
--	unsigned long count = 0;
-+	unsigned long count = 0, goal_group;
- 	int index = 0;
- 	ext3_fsblk_t current_block = 0;
- 	int ret = 0;
-
-+	BUG_ON(blks <= 0);
-+
-+	sb = inode->i_sb;
-+	if (!sb) {
-+		printk(KERN_INFO "ext3_alloc_blocks: nonexistent device");
-+		*err = -ENODEV;
-+		return 0;
-+	}
-+	es = EXT3_SB(sb)->s_es;
-+
-+	if (goal < le32_to_cpu(es->s_first_data_block) ||
-+	    goal >= le32_to_cpu(es->s_blocks_count))
-+		goal = le32_to_cpu(es->s_first_data_block);
-+
- 	/*
- 	 * Here we try to allocate the requested multiple blocks at once,
- 	 * on a best-effort basis.
-@@ -534,6 +579,41 @@ static int ext3_alloc_blocks(handle_t *h
- 	 */
- 	target = blks + indirect_blks;
-
-+	/*
-+	 * Try to allocate indirect blocks in the metacluster region of block
-+	 * group in which goal falls. This should not only give us clustered
-+	 * metablock allocation, but also allocate new metablocks close to the
-+	 * corresponding data blocks (by putting them in the same block group).
-+	 * Note that allocation of indirect blocks is only guided by goal and
-+	 * not by reservation window since the goal mostly falls within the
-+	 * reservation window for sequential allocation.
-+	 * If the indirect blocks could not be allocated in this block group,
-+	 * we fall back to sequential allocation of indirect block alongside
-+	 * the data block instead of trying other block groups as that can
-+	 * separate indirect and data blocks too far out.
-+	 */
-+	if (test_opt(sb, METACLUSTER) && indirect_blks) {
-+		count = indirect_blks;
-+		goal_group = (goal - le32_to_cpu(es->s_first_data_block)) /
-+				EXT3_BLOCKS_PER_GROUP(sb);
-+		*err = ext3_new_indirect_blocks(handle, inode, goal_group,
-+						&count, new_blocks + index);
-+		if (*err && *err != -ENOSPC) {
-+			printk(KERN_ERR "ext3_alloc_blocks failed to allocate "
-+				"indirect blocks: %d", *err);
-+			goto failed_out;
-+		} else if (*err == 0) {
-+			BUG_ON(count == 0);
-+		}
-+		*err = 0;
-+
-+		if (count > 0) {
-+			index += count;
-+			target -= count;
-+			BUG_ON(index > indirect_blks);
-+		}
-+	}
-+
- 	while (1) {
- 		count = target;
- 		/* allocating blocks for indirect blocks and direct blocks */
-@@ -542,7 +622,7 @@ static int ext3_alloc_blocks(handle_t *h
- 			goto failed_out;
-
- 		target -= count;
--		/* allocate blocks for indirect blocks */
-+		/* store indirect block numbers we just allocated */
- 		while (index < indirect_blks && count) {
- 			new_blocks[index++] = current_block++;
- 			count--;
-@@ -570,10 +650,14 @@ failed_out:
-  *	@inode: owner
-  *	@indirect_blks: number of allocated indirect blocks
-  *	@blks: number of allocated direct blocks
-+ *	@goal: goal for allocation
-  *	@offsets: offsets (in the blocks) to store the pointers to next.
-  *	@branch: place to store the chain in.
-  *
-- *	This function allocates blocks, zeroes out all but the last one,
-+ *	returns error and number of direct blocks allocated via *blks
-+ *
-+ *	This function allocates indirect_blks + *blks, zeroes out all
-+ *	indirect blocks,
-  *	links them into chain and (if we are synchronous) writes them to disk.
-  *	In other words, it prepares a branch that can be spliced onto the
-  *	inode. It stores the information about that chain in the branch[], in
-@@ -799,17 +883,24 @@ int ext3_get_blocks_handle(handle_t *han
- 	int blocks_to_boundary = 0;
- 	int depth;
- 	struct ext3_inode_info *ei = EXT3_I(inode);
--	int count = 0;
-+	int count = 0, ind_readahead;
- 	ext3_fsblk_t first_block = 0;
-
--
-+	BUG_ON(!create &&
-+		iblock >= (inode->i_size + inode->i_sb->s_blocksize - 1) >>
-+					inode->i_sb->s_blocksize_bits);
- 	J_ASSERT(handle != NULL || create == 0);
- 	depth = ext3_block_to_path(inode,iblock,offsets,&blocks_to_boundary);
-
- 	if (depth == 0)
- 		goto out;
-
--	partial = ext3_get_branch(inode, depth, offsets, chain, &err);
-+	ind_readahead = !create && depth > 2;
-+	partial = ext3_get_branch(inode, depth, offsets, chain,
-+				  ind_readahead, &err);
-+	if (!partial && ind_readahead)
-+		partial = ext3_read_indblocks(inode, iblock, depth,
-+					      offsets, chain, &err);
-
- 	/* Simplest case - block found, no allocation needed */
- 	if (!partial) {
-@@ -844,7 +935,7 @@ int ext3_get_blocks_handle(handle_t *han
- 	}
-
- 	/* Next simple case - plain lookup or failed read of indirect block */
--	if (!create || err == -EIO)
-+	if (!create || (err && err != -EAGAIN))
- 		goto cleanup;
-
- 	mutex_lock(&ei->truncate_mutex);
-@@ -866,7 +957,8 @@ int ext3_get_blocks_handle(handle_t *han
- 			brelse(partial->bh);
- 			partial--;
+@@ -280,7 +290,7 @@ static struct stats dx_show_leaf(struct 
+ 			space += EXT3_DIR_REC_LEN(de->name_len);
+ 			names++;
  		}
--		partial = ext3_get_branch(inode, depth, offsets, chain, &err);
-+		partial = ext3_get_branch(inode, depth, offsets, chain, 0,
-+					&err);
- 		if (!partial) {
- 			count++;
- 			mutex_unlock(&ei->truncate_mutex);
-@@ -1974,7 +2066,7 @@ static Indirect *ext3_find_shared(struct
- 	/* Make k index the deepest non-null offest + 1 */
- 	for (k = depth; k > 1 && !offsets[k-1]; k--)
- 		;
--	partial = ext3_get_branch(inode, k, offsets, chain, &err);
-+	partial = ext3_get_branch(inode, k, offsets, chain, 0, &err);
- 	/* Writer: pointers */
- 	if (!partial)
- 		partial = chain + k-1;
-@@ -3297,3 +3389,508 @@ int ext3_change_inode_journal_flag(struc
-
- 	return err;
+-		de = (struct ext3_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
+ 	}
+ 	printk("(%i)\n", names);
+ 	return (struct stats) { names, space, 1 };
+@@ -547,14 +557,6 @@ static int ext3_htree_next_block(struct 
+ 
+ 
+ /*
+- * p is at least 6 bytes before the end of page
+- */
+-static inline struct ext3_dir_entry_2 *ext3_next_entry(struct ext3_dir_entry_2 *p)
+-{
+-	return (struct ext3_dir_entry_2 *)((char*)p + le16_to_cpu(p->rec_len));
+-}
+-
+-/*
+  * This function fills a red-black tree with information from a
+  * directory block.  It returns the number directory entries loaded
+  * into the tree.  If there is an error it is returned in err.
+@@ -720,7 +722,7 @@ static int dx_make_map (struct ext3_dir_
+ 			cond_resched();
+ 		}
+ 		/* XXX: do we need to check rec_len == 0 case? -Chris */
+-		de = (struct ext3_dir_entry_2 *) ((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
+ 	}
+ 	return count;
  }
-+
-+/*
-+ * ext3_ind_read_end_bio --
-+ *
-+ * 	bio callback for read IO issued from ext3_read_indblocks.
-+ * 	Will be called only once, when all I/O has completed.
-+ * 	Frees read_info and bio.
-+ */
-+static void ext3_ind_read_end_bio(struct bio *bio, int err)
-+{
-+	struct ext3_ind_read_info *read_info = bio->bi_private;
-+	struct buffer_head *bh;
-+	int uptodate = !err && test_bit(BIO_UPTODATE, &bio->bi_flags);
-+	int i;
-+
-+	BUG_ON(read_info->count <= 0);
-+
-+	if (err == -EOPNOTSUPP)
-+		set_bit(BIO_EOPNOTSUPP, &bio->bi_flags);
-+
-+	for (i = 0; i < read_info->count; i++) {
-+		bh = read_info->bh[i];
-+		BUG_ON(bh == NULL);
-+
-+		if (err == -EOPNOTSUPP)
-+			set_bit(BH_Eopnotsupp, &bh->b_state);
-+
-+		if (uptodate) {
-+			BUG_ON(buffer_uptodate(bh));
-+			BUG_ON(ext3_buffer_prefetch(bh));
-+			set_buffer_uptodate(bh);
-+			if (read_info->seq_prefetch)
-+				ext3_set_buffer_prefetch(bh);
-+		}
-+
-+		unlock_buffer(bh);
-+		brelse(bh);
-+	}
-+
-+	kfree(read_info);
-+	bio_put(bio);
-+}
-+
-+/*
-+ * ext3_get_max_read --
-+ * 	@inode: inode of file.
-+ * 	@block: block number in file (starting from zero).
-+ * 	@offset_in_dind_block: offset of the indirect block inside it's
-+ * 	parent doubly-indirect block.
-+ *
-+ *      Compute the maximum no. of indirect blocks that can be read
-+ *      satisfying following constraints:
-+ *              - Don't read indirect blocks beyond the end of current
-+ *              doubly-indirect block.
-+ *              - Don't read beyond eof.
-+ */
-+static inline unsigned long ext3_get_max_read(const struct inode *inode,
-+						  int block,
-+						  int offset_in_dind_block)
-+{
-+	const struct super_block *sb = inode->i_sb;
-+	unsigned long max_read;
-+	unsigned long ptrs = EXT3_ADDR_PER_BLOCK(inode->i_sb);
-+	unsigned long ptrs_bits = EXT3_ADDR_PER_BLOCK_BITS(inode->i_sb);
-+	unsigned long blocks_in_file =
-+		(inode->i_size + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
-+	unsigned long remaining_ind_blks_in_dind =
-+		(ptrs >= offset_in_dind_block) ? (ptrs - offset_in_dind_block)
-+					       : 0;
-+	unsigned long remaining_ind_blks_before_eof =
-+		((blocks_in_file - EXT3_NDIR_BLOCKS + ptrs - 1) >> ptrs_bits) -
-+		((block - EXT3_NDIR_BLOCKS) >> ptrs_bits);
-+
-+	BUG_ON(block >= blocks_in_file);
-+
-+	max_read = min_t(unsigned long, remaining_ind_blks_in_dind,
-+			 remaining_ind_blks_before_eof);
-+
-+	BUG_ON(max_read < 1);
-+
-+	return max_read;
-+}
-+
-+static void ext3_read_indblocks_submit(struct bio **pbio,
-+					struct ext3_ind_read_info **pread_info,
-+					int *read_cnt, int seq_prefetch)
-+{
-+	struct bio *bio = *pbio;
-+	struct ext3_ind_read_info *read_info = *pread_info;
-+
-+	BUG_ON(*read_cnt < 1);
-+
-+	read_info->seq_prefetch = seq_prefetch;
-+	read_info->count = *read_cnt;
-+	read_info->size = bio->bi_size;
-+	bio->bi_private = read_info;
-+	bio->bi_end_io = ext3_ind_read_end_bio;
-+	submit_bio(READ, bio);
-+
-+	*pbio = NULL;
-+	*pread_info = NULL;
-+	*read_cnt = 0;
-+}
-+
-+/*
-+ * ext3_read_indblocks_async --
-+ *      @sb:            super block
-+ *      @ind_blocks[]:  array of indirect block numbers on disk
-+ *      @count:         maximum number of indirect blocks to read
-+ *      @first_bh:      buffer_head for indirect block ind_blocks[0], may be
-+ *                      NULL
-+ *      @seq_prefetch:  if this is part of a sequential prefetch and buffers'
-+ *                      prefetch bit must be set.
-+ *      @blocks_done:   number of blocks considered for prefetching.
-+ *
-+ *      Issue a single bio request to read upto count buffers identified in
-+ *      ind_blocks[]. Fewer than count buffers may be read in some cases:
-+ *      - If a buffer is found to be uptodate and it's prefetch bit is set, we
-+ *      don't look at any more buffers as they will most likely be in
-the cache.
-+ *      - We skip buffers we cannot lock without blocking (except for first_bh
-+ *			read_info->seq_prefetch = seq_prefetch;
-+			read_info->count = read_cnt;
-+			read_info->size = bio->bi_size;
-+			bio->bi_private = read_info;
-+			bio->bi_end_io = ext3_ind_read_end_bio;
-+			submit_bio(READ, bio);
-+      if specified).
-+ *      - We skip buffers beyond a certain range on disk.
-+ *
-+ *      This function must issue read on first_bh if specified unless of course
-+ *      it's already uptodate.
-+ */
-+static int ext3_read_indblocks_async(struct super_block *sb,
-+				     __le32 ind_blocks[], int count,
-+				     struct buffer_head *first_bh,
-+				     int seq_prefetch,
-+				     unsigned long *blocks_done)
-+{
-+	struct buffer_head *bh;
-+	struct bio *bio = NULL;
-+	struct ext3_ind_read_info *read_info = NULL;
-+	int read_cnt = 0, blk;
-+	ext3_fsblk_t prev_blk = 0, io_start_blk = 0, curr;
-+	int err = 0;
-+
-+	BUG_ON(count < 1);
-+	/* Don't move this to ext3_get_max_read() since callers often need to
-+	 * trim the count returned by that function. So this bound must only
-+	 * be imposed at the last moment. */
-+	count = min_t(unsigned long, count, EXT3_IND_READ_MAX);
-+	*blocks_done = 0UL;
-+
-+	if (count == 1 && first_bh) {
-+		lock_buffer(first_bh);
-+		get_bh(first_bh);
-+		first_bh->b_end_io = end_buffer_read_sync;
-+		submit_bh(READ, first_bh);
-+		*blocks_done = 1UL;
-+		return 0;
-+	}
-+
-+	for (blk = 0; blk < count; blk++) {
-+		curr = le32_to_cpu(ind_blocks[blk]);
-+
-+		if (!curr)
-+			continue;
-+
-+		if (io_start_blk > 0) {
-+			if (max(io_start_blk, curr) - min(io_start_blk, curr) >=
-+					EXT3_IND_READ_MAX)
-+				continue;
-+		}
-+
-+		if (prev_blk > 0 && curr != prev_blk + 1) {
-+			ext3_read_indblocks_submit(&bio, &read_info,
-+						&read_cnt, seq_prefetch);
-+			prev_blk = 0;
-+			break;
-+		}
-+
-+		if (blk == 0 && first_bh) {
-+			bh = first_bh;
-+			get_bh(first_bh);
-+		} else {
-+			bh = sb_getblk(sb, curr);
-+			if (unlikely(!bh)) {
-+				err = -ENOMEM;
-+				goto failure;
-+			}
-+		}
-+
-+		if (buffer_uptodate(bh)) {
-+			if (ext3_buffer_prefetch(bh)) {
-+				brelse(bh);
-+				break;
-+			}
-+			brelse(bh);
-+			continue;
-+		}
-+
-+		/* Lock the buffer without blocking, skipping any buffers
-+		 * which would require us to block. first_bh when specified is
-+		 * an exception as caller typically wants it to be read for
-+		 * sure (e.g., ext3_read_indblocks_sync).
-+		 */
-+		if (bh == first_bh) {
-+			lock_buffer(bh);
-+		} else if (test_set_buffer_locked(bh)) {
-+			brelse(bh);
-+			continue;
-+		}
-+
-+		/* Check again with the buffer locked. */
-+		if (buffer_uptodate(bh)) {
-+			if (ext3_buffer_prefetch(bh)) {
-+				unlock_buffer(bh);
-+				brelse(bh);
-+				break;
-+			}
-+			unlock_buffer(bh);
-+			brelse(bh);
-+			continue;
-+		}
-+
-+		if (read_cnt == 0) {
-+			/* read_info freed in ext3_ind_read_end_bio(). */
-+			read_info = kmalloc(EXT3_IND_READ_INFO_SIZE(count),
-+					    GFP_KERNEL);
-+			if (unlikely(!read_info)) {
-+				err = -ENOMEM;
-+				goto failure;
-+			}
-+
-+			bio = bio_alloc(GFP_KERNEL, count);
-+			if (unlikely(!bio)) {
-+				err = -ENOMEM;
-+				goto failure;
-+			}
-+			bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
-+			bio->bi_bdev = bh->b_bdev;
-+		}
-+
-+		if (bio_add_page(bio, bh->b_page, bh->b_size, bh_offset(bh))
-+				< bh->b_size) {
-+			brelse(bh);
-+			if (read_cnt == 0)
-+				goto failure;
-+
-+			break;
-+		}
-+
-+		read_info->bh[read_cnt++] = bh;
-+
-+		prev_blk = curr;
-+		if (io_start_blk == 0)
-+			io_start_blk = curr;
-+	}
-+
-+	if (read_cnt == 0)
-+		goto done;
-+
-+	ext3_read_indblocks_submit(&bio, &read_info, &read_cnt, seq_prefetch);
-+
-+	*blocks_done = blk;
-+	return 0;
-+
-+failure:
-+	while (--read_cnt >= 0) {
-+		unlock_buffer(read_info->bh[read_cnt]);
-+		brelse(read_info->bh[read_cnt]);
-+	}
-+
-+done:
-+	if (read_info)
-+		kfree(read_info);
-+
-+	if (bio)
-+		bio_put(bio);
-+
-+	return err;
-+}
-+
-+/*
-+ * ext3_read_indblocks_sync --
-+ *      @sb:            super block
-+ *      @ind_blocks[]:  array of indirect block numbers on disk
-+ *      @count:         maximum number of indirect blocks to read
-+ *      @first_bh:      buffer_head for indirect block ind_blocks[0], must be
-+ *                      non-NULL.
-+ *      @seq_prefetch:  set prefetch bit of buffers, used when this is part of
-+ *                      a sequential prefetch.
-+ *      @blocks_done:   number of blocks considered for prefetching.
-+ *
-+ *      Synchronously read at most count indirect blocks listed in
-+ *      ind_blocks[]. This function calls ext3_read_indblocks_async() to do all
-+ *      the hard work. It waits for read to complete on first_bh before
-+ *      returning.
-+ */
-+
-+static int ext3_read_indblocks_sync(struct super_block *sb,
-+				    __le32 ind_blocks[], int count,
-+				    struct buffer_head *first_bh,
-+				    int seq_prefetch,
-+				    unsigned long *blocks_done)
-+{
-+	int err;
-+
-+	BUG_ON(count < 1);
-+	BUG_ON(!first_bh);
-+
-+	err = ext3_read_indblocks_async(sb, ind_blocks, count, first_bh,
-+					seq_prefetch, blocks_done);
-+	if (err)
-+		return err;
-+
-+	wait_on_buffer(first_bh);
-+	if (!buffer_uptodate(first_bh))
-+		err = -EIO;
-+
-+	/* if seq_prefetch != 0, ext3_read_indblocks_async() sets prefetch bit
-+	 * for all buffers, but the first buffer for sync IO is never a prefetch
-+	 * buffer since it's needed presently so mark it so.
-+	 */
-+	if (seq_prefetch)
-+		ext3_clear_buffer_prefetch(first_bh);
-+
-+	BUG_ON(ext3_buffer_prefetch(first_bh));
-+
-+	return err;
-+}
-+
-+/*
-+ * ext3_read_indblocks --
-+ *
-+ * 	@inode: inode of file
-+ * 	@iblock: block number inside file (starting from 0).
-+ * 	@depth: depth of path from inode to data block.
-+ * 	@offsets: array of offsets within blocks identified in 'chain'.
-+ * 	@chain: array of Indirect with info about all levels of blocks until
-+ * 	the data block.
-+ * 	@err: error pointer.
-+ *
-+ * 	This function is called after reading all metablocks leading to 'iblock'
-+ * 	except the (singly) indirect block. It reads the indirect block if not
-+ * 	already in the cache and may also prefetch next few indirect blocks.
-+ * 	It uses a combination of synchronous and asynchronous requests to
-+ * 	accomplish this. We do prefetching even for random reads by reading
-+ * 	ahead one indirect block since reads of size >=512KB have at least 12%
-+ * 	chance of spanning two indirect blocks.
-+ */
-+
-+static Indirect *ext3_read_indblocks(struct inode *inode, int iblock,
-+				     int depth, int offsets[4],
-+				     Indirect chain[4], int *err)
-+{
-+	struct super_block *sb = inode->i_sb;
-+	struct buffer_head *first_bh, *prev_bh;
-+	unsigned long max_read, blocks_done = 0;
-+	__le32 *ind_blocks;
-+
-+	/* Must have doubly indirect block for prefetching indirect blocks. */
-+	BUG_ON(depth <= 2);
-+	BUG_ON(!chain[depth-2].key);
-+
-+	*err = 0;
-+
-+	/* Handle first block */
-+	ind_blocks = chain[depth-2].p;
-+	first_bh = sb_getblk(sb, le32_to_cpu(ind_blocks[0]));
-+	if (unlikely(!first_bh)) {
-+		printk(KERN_ERR "Failed to get block %u for sb %p\n",
-+		       le32_to_cpu(ind_blocks[0]), sb);
-+		goto failure;
-+	}
-+
-+	BUG_ON(first_bh->b_size != sb->s_blocksize);
-+
-+	if (buffer_uptodate(first_bh)) {
-+		/* Found the buffer in cache, either it was accessed recently or
-+		 * it was prefetched while reading previous indirect block(s).
-+		 * We need to figure out if we need to prefetch the following
-+		 * indirect blocks.
-+		 */
-+		if (!ext3_buffer_prefetch(first_bh)) {
-+			/* Either we've seen this indirect block before while
-+			 * accessing another data block, or this is a random
-+			 * read. In the former case, we must have done the
-+			 * needful the first time we had a cache hit on this
-+			 * indirect block, in the latter case we obviously
-+			 * don't need to do any prefetching.
-+			 */
-+			goto done;
-+		}
-+
-+		max_read = ext3_get_max_read(inode, iblock,
-+					     offsets[depth-2]);
-+
-+		/* This indirect block is in the cache due to prefetching and
-+		 * this is its first cache hit, clear the prefetch bit and
-+		 * make sure the following blocks are also prefetched.
-+		 */
-+		ext3_clear_buffer_prefetch(first_bh);
-+
-+		if (max_read >= 2) {
-+			/* ext3_read_indblocks_async() stops at the first
-+			 * indirect block which has the prefetch bit set which
-+			 * will most likely be the very next indirect block.
-+			 */
-+			ext3_read_indblocks_async(sb, &ind_blocks[1],
-+						  max_read - 1,
-+						  NULL, 1, &blocks_done);
-+		}
-+
-+	} else {
-+		/* Buffer is not in memory, we need to read it. If we are
-+		 * reading sequentially from the previous indirect block, we
-+		 * have just detected a sequential read and we must prefetch
-+		 * some indirect blocks for future.
-+		 */
-+
-+		max_read = ext3_get_max_read(inode, iblock,
-+					     offsets[depth-2]);
-+
-+		if ((ind_blocks - (__le32 *)chain[depth-2].bh->b_data) >= 1) {
-+			prev_bh = sb_getblk(sb, le32_to_cpu(ind_blocks[-1]));
-+			if (buffer_uptodate(prev_bh) &&
-+			    !ext3_buffer_prefetch(prev_bh)) {
-+				/* Detected sequential read. */
-+				brelse(prev_bh);
-+
-+				/* Sync read indirect block, also read the next
-+				 * few indirect blocks.
-+				 */
-+				*err = ext3_read_indblocks_sync(sb, ind_blocks,
-+							 max_read, first_bh, 1,
-+							 &blocks_done);
-+
-+				if (*err)
-+					goto out;
-+
-+				/* In case the very next indirect block is
-+				 * discontiguous by a non-trivial amount,
-+				 * ext3_read_indblocks_sync() above won't
-+				 * prefetch it (indicated by blocks_done < 2).
-+				 * So to help sequential read, schedule an
-+				 * async request for reading the next
-+				 * contiguous indirect block range (which
-+				 * in metaclustering case would be the next
-+				 * metacluster, without metaclustering it
-+				 * would be the next indirect block). This is
-+				 * expected to benefit the non-metaclustering
-+				 * case.
-+				 */
-+				if (max_read >= 2 && blocks_done < 2)
-+					ext3_read_indblocks_async(sb,
-+							&ind_blocks[1],
-+							max_read - 1,
-+							NULL, 1, &blocks_done);
-+
-+				goto done;
-+			}
-+			brelse(prev_bh);
-+		}
-+
-+		/* Either random read, or sequential detection failed above.
-+		 * We always prefetch the next indirect block in this case
-+		 * whenever possible.
-+		 * This is because for random reads of size ~512KB, there is
-+		 * >12% chance that a read will span two indirect blocks.
-+		 */
-+		*err = ext3_read_indblocks_sync(sb, ind_blocks,
-+						(max_read >= 2) ? 2 : 1,
-+						first_bh, 0, &blocks_done);
-+		if (*err)
-+			goto out;
-+	}
-+
-+done:
-+	/* Reader: pointers */
-+	if (!verify_chain(chain, &chain[depth - 2])) {
-+		brelse(first_bh);
-+		goto changed;
-+	}
-+	add_chain(&chain[depth - 1], first_bh,
-+		  (__le32*)first_bh->b_data + offsets[depth - 1]);
-+	/* Reader: end */
-+	if (!chain[depth - 1].key)
-+		goto out;
-+
-+	BUG_ON(!buffer_uptodate(first_bh));
-+	return NULL;
-+
-+changed:
-+	*err = -EAGAIN;
-+	goto out;
-+failure:
-+	*err = -EIO;
-+out:
-+	if (*err) {
-+		ext3_debug("Error %d reading indirect blocks\n", *err);
-+		return &chain[depth - 2];
-+	} else
-+		return &chain[depth - 1];
-+}
-+
-diff -uprdN linux-2.6.23mm1-clean/fs/ext3/super.c
-linux-2.6.23mm1-ext3mc/fs/ext3/super.c
---- linux-2.6.23mm1-clean/fs/ext3/super.c	2007-10-17 18:31:42.000000000 -0700
-+++ linux-2.6.23mm1-ext3mc/fs/ext3/super.c	2007-11-09 16:46:29.000000000 -0800
-@@ -625,6 +625,9 @@ static int ext3_show_options(struct seq_
- 	else if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_WRITEBACK_DATA)
- 		seq_puts(seq, ",data=writeback");
-
-+	if (test_opt(sb, METACLUSTER))
-+		seq_puts(seq, ",metacluster");
-+
- 	ext3_show_quota_options(seq, sb);
-
- 	return 0;
-@@ -758,7 +761,7 @@ enum {
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
--	Opt_grpquota
-+	Opt_grpquota, Opt_metacluster
- };
-
- static match_table_t tokens = {
-@@ -808,6 +811,7 @@ static match_table_t tokens = {
- 	{Opt_quota, "quota"},
- 	{Opt_usrquota, "usrquota"},
- 	{Opt_barrier, "barrier=%u"},
-+	{Opt_metacluster, "metacluster"},
- 	{Opt_err, NULL},
- 	{Opt_resize, "resize"},
- };
-@@ -1140,6 +1144,9 @@ clear_qf_name:
- 		case Opt_bh:
- 			clear_opt(sbi->s_mount_opt, NOBH);
- 			break;
-+		case Opt_metacluster:
-+			set_opt(sbi->s_mount_opt, METACLUSTER);
-+			break;
- 		default:
- 			printk (KERN_ERR
- 				"EXT3-fs: Unrecognized mount option \"%s\" "
-diff -uprdN linux-2.6.23mm1-clean/include/linux/ext3_fs.h
-linux-2.6.23mm1-ext3mc/include/linux/ext3_fs.h
---- linux-2.6.23mm1-clean/include/linux/ext3_fs.h	2007-10-17
-18:31:43.000000000 -0700
-+++ linux-2.6.23mm1-ext3mc/include/linux/ext3_fs.h	2007-11-15
-12:03:48.000000000 -0800
-@@ -380,6 +380,7 @@ struct ext3_inode {
- #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
- #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
- #define EXT3_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
-+#define EXT3_MOUNT_METACLUSTER		0x400000 /* Indirect block clustering */
-
- /* Compatibility, for having both ext2_fs.h and ext3_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
-@@ -493,6 +494,7 @@ struct ext3_super_block {
- #ifdef __KERNEL__
- #include <linux/ext3_fs_i.h>
- #include <linux/ext3_fs_sb.h>
-+#include <linux/buffer_head.h>
- static inline struct ext3_sb_info * EXT3_SB(struct super_block *sb)
- {
- 	return sb->s_fs_info;
-@@ -722,6 +724,11 @@ struct dir_private_info {
- 	__u32		next_hash;
- };
-
-+/* Special bh flag used by the metacluster readahead logic. */
-+enum ext3_bh_state_bits {
-+	EXT3_BH_PREFETCH = BH_JBD_Sentinel,
-+};
-+
- /* calculate the first block number of the group */
- static inline ext3_fsblk_t
- ext3_group_first_block_no(struct super_block *sb, unsigned long group_no)
-@@ -730,6 +737,24 @@ ext3_group_first_block_no(struct super_b
- 		le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block);
+@@ -822,7 +824,7 @@ static inline int search_dirblock(struct
+ 			return 1;
+ 		}
+ 		/* prevent looping on a bad block */
+-		de_len = le16_to_cpu(de->rec_len);
++		de_len = ext3_rec_len_from_disk(de->rec_len);
+ 		if (de_len <= 0)
+ 			return -1;
+ 		offset += de_len;
+@@ -1130,7 +1132,7 @@ dx_move_dirents(char *from, char *to, st
+ 		rec_len = EXT3_DIR_REC_LEN(de->name_len);
+ 		memcpy (to, de, rec_len);
+ 		((struct ext3_dir_entry_2 *) to)->rec_len =
+-				cpu_to_le16(rec_len);
++				ext3_rec_len_to_disk(rec_len);
+ 		de->inode = 0;
+ 		map++;
+ 		to += rec_len;
+@@ -1149,13 +1151,12 @@ static struct ext3_dir_entry_2* dx_pack_
+ 
+ 	prev = to = de;
+ 	while ((char*)de < base + size) {
+-		next = (struct ext3_dir_entry_2 *) ((char *) de +
+-						    le16_to_cpu(de->rec_len));
++		next = ext3_next_entry(de);
+ 		if (de->inode && de->name_len) {
+ 			rec_len = EXT3_DIR_REC_LEN(de->name_len);
+ 			if (de > to)
+ 				memmove(to, de, rec_len);
+-			to->rec_len = cpu_to_le16(rec_len);
++			to->rec_len = ext3_rec_len_to_disk(rec_len);
+ 			prev = to;
+ 			to = (struct ext3_dir_entry_2 *) (((char *) to) + rec_len);
+ 		}
+@@ -1229,8 +1230,8 @@ static struct ext3_dir_entry_2 *do_split
+ 	/* Fancy dance to stay within two buffers */
+ 	de2 = dx_move_dirents(data1, data2, map + split, count - split);
+ 	de = dx_pack_dirents(data1,blocksize);
+-	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
+-	de2->rec_len = cpu_to_le16(data2 + blocksize - (char *) de2);
++	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
++	de2->rec_len = ext3_rec_len_to_disk(data2 + blocksize - (char *) de2);
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data1, blocksize, 1));
+ 	dxtrace(dx_show_leaf (hinfo, (struct ext3_dir_entry_2 *) data2, blocksize, 1));
+ 
+@@ -1300,7 +1301,7 @@ static int add_dirent_to_buf(handle_t *h
+ 				return -EEXIST;
+ 			}
+ 			nlen = EXT3_DIR_REC_LEN(de->name_len);
+-			rlen = le16_to_cpu(de->rec_len);
++			rlen = ext3_rec_len_from_disk(de->rec_len);
+ 			if ((de->inode? rlen - nlen: rlen) >= reclen)
+ 				break;
+ 			de = (struct ext3_dir_entry_2 *)((char *)de + rlen);
+@@ -1319,11 +1320,11 @@ static int add_dirent_to_buf(handle_t *h
+ 
+ 	/* By now the buffer is marked for journaling */
+ 	nlen = EXT3_DIR_REC_LEN(de->name_len);
+-	rlen = le16_to_cpu(de->rec_len);
++	rlen = ext3_rec_len_from_disk(de->rec_len);
+ 	if (de->inode) {
+ 		struct ext3_dir_entry_2 *de1 = (struct ext3_dir_entry_2 *)((char *)de + nlen);
+-		de1->rec_len = cpu_to_le16(rlen - nlen);
+-		de->rec_len = cpu_to_le16(nlen);
++		de1->rec_len = ext3_rec_len_to_disk(rlen - nlen);
++		de->rec_len = ext3_rec_len_to_disk(nlen);
+ 		de = de1;
+ 	}
+ 	de->file_type = EXT3_FT_UNKNOWN;
+@@ -1400,17 +1401,18 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	/* The 0th block becomes the root, move the dirents out */
+ 	fde = &root->dotdot;
+-	de = (struct ext3_dir_entry_2 *)((char *)fde + le16_to_cpu(fde->rec_len));
++	de = (struct ext3_dir_entry_2 *)((char *)fde +
++			ext3_rec_len_from_disk(fde->rec_len));
+ 	len = ((char *) root) + blocksize - (char *) de;
+ 	memcpy (data1, de, len);
+ 	de = (struct ext3_dir_entry_2 *) data1;
+ 	top = data1 + len;
+-	while ((char *)(de2=(void*)de+le16_to_cpu(de->rec_len)) < top)
++	while ((char *)(de2 = ext3_next_entry(de)) < top)
+ 		de = de2;
+-	de->rec_len = cpu_to_le16(data1 + blocksize - (char *) de);
++	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
+ 	/* Initialize the root; the dot dirents already exist */
+ 	de = (struct ext3_dir_entry_2 *) (&root->dotdot);
+-	de->rec_len = cpu_to_le16(blocksize - EXT3_DIR_REC_LEN(2));
++	de->rec_len = ext3_rec_len_to_disk(blocksize - EXT3_DIR_REC_LEN(2));
+ 	memset (&root->info, 0, sizeof(root->info));
+ 	root->info.info_length = sizeof(root->info);
+ 	root->info.hash_version = EXT3_SB(dir->i_sb)->s_def_hash_version;
+@@ -1490,7 +1492,7 @@ static int ext3_add_entry (handle_t *han
+ 		return retval;
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	de->inode = 0;
+-	de->rec_len = cpu_to_le16(blocksize);
++	de->rec_len = ext3_rec_len_to_disk(blocksize);
+ 	return add_dirent_to_buf(handle, dentry, inode, de, bh);
  }
-
-+static inline void
-+ext3_set_buffer_prefetch(struct buffer_head *bh)
+ 
+@@ -1553,7 +1555,7 @@ static int ext3_dx_add_entry(handle_t *h
+ 			goto cleanup;
+ 		node2 = (struct dx_node *)(bh2->b_data);
+ 		entries2 = node2->entries;
+-		node2->fake.rec_len = cpu_to_le16(sb->s_blocksize);
++		node2->fake.rec_len = ext3_rec_len_to_disk(sb->s_blocksize);
+ 		node2->fake.inode = 0;
+ 		BUFFER_TRACE(frame->bh, "get_write_access");
+ 		err = ext3_journal_get_write_access(handle, frame->bh);
+@@ -1651,9 +1653,9 @@ static int ext3_delete_entry (handle_t *
+ 			BUFFER_TRACE(bh, "get_write_access");
+ 			ext3_journal_get_write_access(handle, bh);
+ 			if (pde)
+-				pde->rec_len =
+-					cpu_to_le16(le16_to_cpu(pde->rec_len) +
+-						    le16_to_cpu(de->rec_len));
++				pde->rec_len = ext3_rec_len_to_disk(
++					ext3_rec_len_from_disk(pde->rec_len) +
++					ext3_rec_len_from_disk(de->rec_len));
+ 			else
+ 				de->inode = 0;
+ 			dir->i_version++;
+@@ -1661,10 +1663,9 @@ static int ext3_delete_entry (handle_t *
+ 			ext3_journal_dirty_metadata(handle, bh);
+ 			return 0;
+ 		}
+-		i += le16_to_cpu(de->rec_len);
++		i += ext3_rec_len_from_disk(de->rec_len);
+ 		pde = de;
+-		de = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++		de = ext3_next_entry(de);
+ 	}
+ 	return -ENOENT;
+ }
+@@ -1798,13 +1799,13 @@ retry:
+ 	de = (struct ext3_dir_entry_2 *) dir_block->b_data;
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	de->name_len = 1;
+-	de->rec_len = cpu_to_le16(EXT3_DIR_REC_LEN(de->name_len));
++	de->rec_len = ext3_rec_len_to_disk(EXT3_DIR_REC_LEN(de->name_len));
+ 	strcpy (de->name, ".");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+-	de = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++	de = ext3_next_entry(de);
+ 	de->inode = cpu_to_le32(dir->i_ino);
+-	de->rec_len = cpu_to_le16(inode->i_sb->s_blocksize-EXT3_DIR_REC_LEN(1));
++	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize -
++					EXT3_DIR_REC_LEN(1));
+ 	de->name_len = 2;
+ 	strcpy (de->name, "..");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+@@ -1856,8 +1857,7 @@ static int empty_dir (struct inode * ino
+ 		return 1;
+ 	}
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+-	de1 = (struct ext3_dir_entry_2 *)
+-			((char *) de + le16_to_cpu(de->rec_len));
++	de1 = ext3_next_entry(de);
+ 	if (le32_to_cpu(de->inode) != inode->i_ino ||
+ 			!le32_to_cpu(de1->inode) ||
+ 			strcmp (".", de->name) ||
+@@ -1868,9 +1868,9 @@ static int empty_dir (struct inode * ino
+ 		brelse (bh);
+ 		return 1;
+ 	}
+-	offset = le16_to_cpu(de->rec_len) + le16_to_cpu(de1->rec_len);
+-	de = (struct ext3_dir_entry_2 *)
+-			((char *) de1 + le16_to_cpu(de1->rec_len));
++	offset = ext3_rec_len_from_disk(de->rec_len) +
++			ext3_rec_len_from_disk(de1->rec_len);
++	de = ext3_next_entry(de1);
+ 	while (offset < inode->i_size ) {
+ 		if (!bh ||
+ 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
+@@ -1899,9 +1899,8 @@ static int empty_dir (struct inode * ino
+ 			brelse (bh);
+ 			return 0;
+ 		}
+-		offset += le16_to_cpu(de->rec_len);
+-		de = (struct ext3_dir_entry_2 *)
+-				((char *) de + le16_to_cpu(de->rec_len));
++		offset += ext3_rec_len_from_disk(de->rec_len);
++		de = ext3_next_entry(de);
+ 	}
+ 	brelse (bh);
+ 	return 1;
+@@ -2255,8 +2254,7 @@ retry:
+ }
+ 
+ #define PARENT_INO(buffer) \
+-	((struct ext3_dir_entry_2 *) ((char *) buffer + \
+-	le16_to_cpu(((struct ext3_dir_entry_2 *) buffer)->rec_len)))->inode
++	(ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
+ 
+ /*
+  * Anybody can rename anything with this: the permission checks are left to the
+diff -puN include/linux/ext3_fs.h~fix-64kb-blocksize-in-ext3-directories include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~fix-64kb-blocksize-in-ext3-directories
++++ a/include/linux/ext3_fs.h
+@@ -656,6 +656,26 @@ struct ext3_dir_entry_2 {
+ #define EXT3_DIR_ROUND			(EXT3_DIR_PAD - 1)
+ #define EXT3_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT3_DIR_ROUND) & \
+ 					 ~EXT3_DIR_ROUND)
++#define EXT3_MAX_REC_LEN		((1<<16)-1)
++
++static inline unsigned ext3_rec_len_from_disk(__le16 dlen)
 +{
-+	set_bit(EXT3_BH_PREFETCH, &bh->b_state);
++	unsigned len = le16_to_cpu(dlen);
++
++	if (len == EXT3_MAX_REC_LEN)
++		return 1 << 16;
++	return len;
 +}
 +
-+static inline void
-+ext3_clear_buffer_prefetch(struct buffer_head *bh)
++static inline __le16 ext3_rec_len_to_disk(unsigned len)
 +{
-+	clear_bit(EXT3_BH_PREFETCH, &bh->b_state);
-+}
-+
-+static inline int
-+ext3_buffer_prefetch(struct buffer_head *bh)
-+{
-+	return test_bit(EXT3_BH_PREFETCH, &bh->b_state);
++	if (len == (1 << 16))
++		return cpu_to_le16(EXT3_MAX_REC_LEN);
++	else if (len > (1 << 16))
++		BUG();
++	return cpu_to_le16(len);
 +}
 +
  /*
-  * Special error return code only used by dx_probe() and its callers.
-  */
-@@ -752,6 +777,9 @@ extern int ext3_bg_has_super(struct supe
- extern unsigned long ext3_bg_num_gdb(struct super_block *sb, int group);
- extern ext3_fsblk_t ext3_new_block (handle_t *handle, struct inode *inode,
- 			ext3_fsblk_t goal, int *errp);
-+extern int ext3_new_indirect_blocks(handle_t *handle, struct inode *,
-+				unsigned long group_no, unsigned long *,
-+				ext3_fsblk_t new_blocks[]);
- extern ext3_fsblk_t ext3_new_blocks (handle_t *handle, struct inode *inode,
- 			ext3_fsblk_t goal, unsigned long *count, int *errp);
- extern void ext3_free_blocks (handle_t *handle, struct inode *inode,
-@@ -870,6 +898,31 @@ extern const struct inode_operations ext
- extern const struct inode_operations ext3_symlink_inode_operations;
- extern const struct inode_operations ext3_fast_symlink_inode_operations;
+  * Hash Tree Directory indexing
+  * (c) Daniel Phillips, 2001
+_
 
-+/*
-+ * ext3_get_grp_metacluster:
-+ *
-+ * 	Determines metacluster block range for all block groups of the file
-+ * 	system.
-+ *
-+ * 	Number of metacluster blocks = blocks_per_group/128. This allows us
-+ * 	to fit all indirect blocks in a block group with average file size of
-+ * 	256KB into the group's metacluster. We want to avoid having large
-+ * 	metaclusters because then we'll run of data blocks sooner and when
-+ * 	out of data blocks metaclustering goes for a toss.
-+ * 	
-+ */
-+static inline void
-+ext3_get_grp_metacluster(struct super_block *sb,
-+				ext3_grpblk_t *mc_start,
-+				ext3_grpblk_t *mc_end)	/* exclusive */
-+{
-+	*mc_start = EXT3_BLOCKS_PER_GROUP(sb) / 2;
-+	if (test_opt(sb, METACLUSTER)) {
-+		*mc_end = *mc_start + (EXT3_BLOCKS_PER_GROUP(sb) >> 7);
-+	} else {
-+		*mc_end = *mc_start;
-+	}
-+}
+Patches currently in -mm which might be from jack@suse.cz are
 
- #endif	/* __KERNEL__ */
-
-diff -uprdN linux-2.6.23mm1-clean/include/linux/jbd.h
-linux-2.6.23mm1-ext3mc/include/linux/jbd.h
---- linux-2.6.23mm1-clean/include/linux/jbd.h	2007-10-17
-18:31:43.000000000 -0700
-+++ linux-2.6.23mm1-ext3mc/include/linux/jbd.h	2007-11-09
-16:46:29.000000000 -0800
-@@ -294,6 +294,7 @@ enum jbd_state_bits {
- 	BH_State,		/* Pins most journal_head state */
- 	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
- 	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-+	BH_JBD_Sentinel,	/* Start bit for clients of jbd */
- };
-
- BUFFER_FNS(JBD, jbd)
+origin.patch
+git-ocfs2.patch
+r-o-bind-mounts-elevate-write-count-for-some-ioctls-vs-forbid-user-to-change-file-flags-on-quota-files.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext4-from-using-iget-and-read_inode-try.patch
