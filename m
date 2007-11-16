@@ -1,81 +1,64 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: [PATCH] ext3,4:fdatasync should skip metadata writeout
-Date: Fri, 16 Nov 2007 11:47:27 +0900
-Message-ID: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
+Subject: Re: [PATCH] ext3,4:fdatasync should skip metadata writeout
+Date: Fri, 16 Nov 2007 04:17:16 +0100
+Message-ID: <20071116031716.GJ13834@lazybastard.org>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2> <20071115185919.7df4cda9.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;	boundary="=====================_5216595==_"
-To: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.oss.ntt.co.jp ([222.151.198.98]:35741 "EHLO
-	serv1.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753629AbXKPDVo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 22:21:44 -0500
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20071115185919.7df4cda9.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---=====================_5216595==_
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+On Thu, 15 November 2007 18:59:19 -0800, Andrew Morton wrote:
+> On Fri, 16 Nov 2007 11:47:27 +0900 Hisashi Hifumi <hifumi.hisashi@oss=
+=2Entt.co.jp> wrote:
+>=20
+> > Currently fdatasync is identical to fsync in ext3,4.
+> > I think fdatasync should skip journal flush in data=3Dordered and d=
+ata=3Dwriteback mode
+> > because this syscall is not required to synchronize the metadata.
+>=20
+> I suppose so.  Although one wonders what earthly point there is in sy=
+ncing
+> a file's data if we haven't yet written out the metadata which is req=
+uired
+> for locating that data.
+>=20
+> IOW, fdatasync() is only useful if the application knows that it is o=
+verwriting
+> already-instantiated blocks.
+>=20
+> In which case it might as well have used fsync().  For ext2-style fil=
+esystems,
+> anyway.
 
-Hi.
-Currently fdatasync is identical to fsync in ext3,4.
-I think fdatasync should skip journal flush in data=ordered and data=writeback mode
-because this syscall is not required to synchronize the metadata.
+fsync() will sync an inode even if only i_atime was changed.
+fdatasync() would ignore such changes.  I guess atime was the major
+reason for creating fdatasync() in the first place.
 
-My patch as below is similar to the approach of GFS2's fsync code(gfs2_fsync).
+The patch I sent you just minutes ago sorta documents this.
+I_DIRTY_DATASYNC was added with patch-2.4.0-test12 for just this reason=
+=2E
 
-Thanks.
+So basically an application can almost always use fdatasync() instead o=
+f
+fsync() and rely on the kernel to only cut corners, if doing so will no=
+t
+endanger the data synced to disk.
 
-Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+J=C3=B6rn
 
-diff -Nrup linux-2.6.24-rc2.org/fs/ext3/fsync.c linux-2.6.24-rc2/fs/ext3/fsync.c
---- linux-2.6.24-rc2.org/fs/ext3/fsync.c	2007-11-07 06:57:46.000000000 +0900
-+++ linux-2.6.24-rc2/fs/ext3/fsync.c	2007-11-15 17:50:24.000000000 +0900
-@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
- 		goto out;
- 	}
- 
-+	if (datasync)
-+		goto out;	
-+
- 	/*
- 	* The VFS has written the file data.  If the inode is unaltered
- 	* then we need not start a commit.
-diff -Nrup linux-2.6.24-rc2.org/fs/ext4/fsync.c linux-2.6.24-rc2/fs/ext4/fsync.c
---- linux-2.6.24-rc2.org/fs/ext4/fsync.c	2007-11-07 06:57:46.000000000 +0900
-+++ linux-2.6.24-rc2/fs/ext4/fsync.c	2007-11-15 17:50:54.000000000 +0900
-@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
- 		goto out;
- 	}
- 
-+	if (datasync)
-+		goto out;
-+
- 	/*
- 	* The VFS has written the file data.  If the inode is unaltered
- 	* then we need not start a commit.
---=====================_5216595==_
-Content-Type: application/octet-stream; name="patch-2624rc2-ext34-fdatasync.txt";
- x-mac-type="54455854"; x-mac-creator="74747874"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="patch-2624rc2-ext34-fdatasync.txt"
-
-ZGlmZiAtTnJ1cCBsaW51eC0yLjYuMjQtcmMyLm9yZy9mcy9leHQzL2ZzeW5jLmMgbGludXgtMi42
-LjI0LXJjMi9mcy9leHQzL2ZzeW5jLmMNCi0tLSBsaW51eC0yLjYuMjQtcmMyLm9yZy9mcy9leHQz
-L2ZzeW5jLmMJMjAwNy0xMS0wNyAwNjo1Nzo0Ni4wMDAwMDAwMDAgKzA5MDANCisrKyBsaW51eC0y
-LjYuMjQtcmMyL2ZzL2V4dDMvZnN5bmMuYwkyMDA3LTExLTE1IDE3OjUwOjI0LjAwMDAwMDAwMCAr
-MDkwMA0KQEAgLTcyLDYgKzcyLDkgQEAgaW50IGV4dDNfc3luY19maWxlKHN0cnVjdCBmaWxlICog
-ZmlsZSwgcw0KIAkJZ290byBvdXQ7DQogCX0NCiANCisJaWYgKGRhdGFzeW5jKQ0KKwkJZ290byBv
-dXQ7CQ0KKw0KIAkvKg0KIAkgKiBUaGUgVkZTIGhhcyB3cml0dGVuIHRoZSBmaWxlIGRhdGEuICBJ
-ZiB0aGUgaW5vZGUgaXMgdW5hbHRlcmVkDQogCSAqIHRoZW4gd2UgbmVlZCBub3Qgc3RhcnQgYSBj
-b21taXQuDQpkaWZmIC1OcnVwIGxpbnV4LTIuNi4yNC1yYzIub3JnL2ZzL2V4dDQvZnN5bmMuYyBs
-aW51eC0yLjYuMjQtcmMyL2ZzL2V4dDQvZnN5bmMuYw0KLS0tIGxpbnV4LTIuNi4yNC1yYzIub3Jn
-L2ZzL2V4dDQvZnN5bmMuYwkyMDA3LTExLTA3IDA2OjU3OjQ2LjAwMDAwMDAwMCArMDkwMA0KKysr
-IGxpbnV4LTIuNi4yNC1yYzIvZnMvZXh0NC9mc3luYy5jCTIwMDctMTEtMTUgMTc6NTA6NTQuMDAw
-MDAwMDAwICswOTAwDQpAQCAtNzIsNiArNzIsOSBAQCBpbnQgZXh0NF9zeW5jX2ZpbGUoc3RydWN0
-IGZpbGUgKiBmaWxlLCBzDQogCQlnb3RvIG91dDsNCiAJfQ0KIA0KKwlpZiAoZGF0YXN5bmMpDQor
-CQlnb3RvIG91dDsNCisNCiAJLyoNCiAJICogVGhlIFZGUyBoYXMgd3JpdHRlbiB0aGUgZmlsZSBk
-YXRhLiAgSWYgdGhlIGlub2RlIGlzIHVuYWx0ZXJlZA0KIAkgKiB0aGVuIHdlIG5lZWQgbm90IHN0
-YXJ0IGEgY29tbWl0Lg0K
---=====================_5216595==_--
+--=20
+Joern's library part 6:
+http://www.gzip.org/zlib/feldspar.html
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
