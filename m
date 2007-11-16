@@ -1,55 +1,85 @@
-From: Wendy Cheng <wcheng@redhat.com>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
 Subject: Re: [PATCH] ext3,4:fdatasync should skip metadata writeout
-Date: Thu, 15 Nov 2007 22:47:40 -0500
-Message-ID: <473D12DC.8090907@redhat.com>
-References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2> <20071115185919.7df4cda9.akpm@linux-foundation.org>
-Reply-To: wcheng@redhat.com
+Date: Fri, 16 Nov 2007 04:43:32 +0100
+Message-ID: <20071116034332.GK13834@lazybastard.org>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49942 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755535AbXKPDbj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Nov 2007 22:31:39 -0500
-In-Reply-To: <20071115185919.7df4cda9.akpm@linux-foundation.org>
+Received: from lazybastard.de ([212.112.238.170]:51715 "EHLO
+	longford.lazybastard.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754466AbXKPDsc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2007 22:48:32 -0500
+Content-Disposition: inline
+In-Reply-To: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
+On Fri, 16 November 2007 11:47:27 +0900, Hisashi Hifumi wrote:
+>=20
+> diff -Nrup linux-2.6.24-rc2.org/fs/ext3/fsync.c linux-2.6.24-rc2/fs/e=
+xt3/fsync.c
+> --- linux-2.6.24-rc2.org/fs/ext3/fsync.c	2007-11-07 06:57:46.00000000=
+0 +0900
+> +++ linux-2.6.24-rc2/fs/ext3/fsync.c	2007-11-15 17:50:24.000000000 +0=
+900
+> @@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+>  		goto out;
+>  	}
+> =20
+> +	if (datasync)
+> +		goto out;=09
+> +
+>  	/*
+>  	* The VFS has written the file data.  If the inode is unaltered
+>  	* then we need not start a commit.
 
->On Fri, 16 Nov 2007 11:47:27 +0900 Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp> wrote:
->
->  
->
->>Currently fdatasync is identical to fsync in ext3,4.
->>I think fdatasync should skip journal flush in data=ordered and data=writeback mode
->>because this syscall is not required to synchronize the metadata.
->>    
->>
->
->I suppose so.  Although one wonders what earthly point there is in syncing
->a file's data if we haven't yet written out the metadata which is required
->for locating that data.
->
->IOW, fdatasync() is only useful if the application knows that it is overwriting
->already-instantiated blocks.
->
->In which case it might as well have used fsync().  For ext2-style filesystems,
->anyway.
->
->hm.  It needs some thought.
->
->  
->
+This is wrong.  If I_DIRTY_DATASYNC is set, the inode needs to be
+written even for datasync.
 
-There are non-trivial amount of performance critical programs, 
-particularly in financial application segment ported from legacy UNIX 
-platforms, know the difference between fsync() and fdatasync(). Those 
-can certainly take advantages of this separation. Don't underestimate 
-the talents of these application programmers.
+How about the patch below?
 
--- Wendy
+J=C3=B6rn
+
+--=20
+Audacity augments courage; hesitation, fear.
+-- Publilius Syrus
+
+
+Signed-off-by: J=C3=B6rn Engel <joern@logfs.org>
+---
+
+ fs/ext3/fsync.c |    3 ++-
+ fs/ext4/fsync.c |    3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+--- git_I_DIRTY/fs/ext3/fsync.c~ext3_datasync	2007-11-15 20:51:54.00000=
+0000 +0100
++++ git_I_DIRTY/fs/ext3/fsync.c	2007-11-16 04:42:28.000000000 +0100
+@@ -76,7 +76,8 @@ int ext3_sync_file(struct file * file, s
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
+ 	 */
+-	if (inode->i_state & (I_DIRTY_SYNC|I_DIRTY_DATASYNC)) {
++	if (((inode->i_state & I_DIRTY_SYNC) && !datasync)
++			|| (inode->i_state & I_DIRTY_DATASYNC)) {
+ 		struct writeback_control wbc =3D {
+ 			.sync_mode =3D WB_SYNC_ALL,
+ 			.nr_to_write =3D 0, /* sys_fsync did this */
+--- git_I_DIRTY/fs/ext4/fsync.c~ext3_datasync	2007-11-15 20:51:54.00000=
+0000 +0100
++++ git_I_DIRTY/fs/ext4/fsync.c	2007-11-16 04:44:29.000000000 +0100
+@@ -76,7 +76,8 @@ int ext4_sync_file(struct file * file, s
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
+ 	 */
+-	if (inode->i_state & (I_DIRTY_SYNC|I_DIRTY_DATASYNC)) {
++	if (((inode->i_state & I_DIRTY_SYNC) && !datasync)
++			|| (inode->i_state & I_DIRTY_DATASYNC)) {
+ 		struct writeback_control wbc =3D {
+ 			.sync_mode =3D WB_SYNC_ALL,
+ 			.nr_to_write =3D 0, /* sys_fsync did this */
