@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-add-block-bitmap-validation.patch added to -mm tree
-Date: Mon, 19 Nov 2007 23:20:08 -0800
-Message-ID: <200711200720.lAK7K8Hu020976@imap1.linux-foundation.org>
+Subject: + add-buffer-head-related-helper-functions.patch added to -mm tree
+Date: Mon, 19 Nov 2007 23:19:57 -0800
+Message-ID: <200711200719.lAK7JvUD020931@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
@@ -11,9 +11,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: add block bitmap validation
+     Add buffer head related helper functions
 has been added to the -mm tree.  Its filename is
-     ext4-add-block-bitmap-validation.patch
+     add-buffer-head-related-helper-functions.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -21,146 +21,84 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext4: add block bitmap validation
+Subject: Add buffer head related helper functions
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-When a new block bitmap is read from disk in read_block_bitmap() there are a
-few bits that should ALWAYS be set.  In particular, the blocks given
-corresponding to block bitmap, inode bitmap and inode tables.  Validate the
-block bitmap against these blocks.
+Add buffer head related helper function bh_uptodate_or_lock() and
+bh_submit_read() which can be used by file systems.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c |   99 ++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 81 insertions(+), 18 deletions(-)
+ fs/buffer.c                 |   41 ++++++++++++++++++++++++++++++++++
+ include/linux/buffer_head.h |    2 +
+ 2 files changed, 43 insertions(+)
 
-diff -puN fs/ext4/balloc.c~ext4-add-block-bitmap-validation fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-add-block-bitmap-validation
-+++ a/fs/ext4/balloc.c
-@@ -189,13 +189,65 @@ struct ext4_group_desc * ext4_get_group_
- 	return desc;
+diff -puN fs/buffer.c~add-buffer-head-related-helper-functions fs/buffer.c
+--- a/fs/buffer.c~add-buffer-head-related-helper-functions
++++ a/fs/buffer.c
+@@ -3204,6 +3204,47 @@ init_buffer_head(struct kmem_cache *cach
+ 	INIT_LIST_HEAD(&bh->b_assoc_buffers);
  }
  
-+static int ext4_valid_block_bitmap(struct super_block *sb,
-+					struct ext4_group_desc *desc,
-+					unsigned int block_group,
-+					struct buffer_head *bh)
++/**
++ * bh_uptodate_or_lock: Test whether the buffer is uptodate
++ * @bh: struct buffer_head
++ *
++ * Return true if the buffer is up-to-date and false,
++ * with the buffer locked, if not.
++ */
++int bh_uptodate_or_lock(struct buffer_head *bh)
 +{
-+	ext4_grpblk_t offset;
-+	ext4_grpblk_t next_zero_bit;
-+	ext4_fsblk_t bitmap_blk;
-+	ext4_fsblk_t group_first_block;
-+
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-+		/* with FLEX_BG, the inode/block bitmaps and itable
-+		 * blocks may not be in the group at all
-+		 * so the bitmap validation will be skipped for those groups
-+		 * or it has to also read the block group where the bitmaps
-+		 * are located to verify they are set.
-+		 */
-+		return 1;
-+	}
-+	group_first_block = ext4_group_first_block_no(sb, block_group);
-+
-+	/* check whether block bitmap block number is set */
-+	bitmap_blk = ext4_block_bitmap(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext4_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode bitmap block number is set */
-+	bitmap_blk = ext4_inode_bitmap(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext4_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode table block number is set */
-+	bitmap_blk = ext4_inode_table(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
-+				offset + EXT4_SB(sb)->s_itb_per_group,
-+				offset);
-+	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
-+		/* good bitmap for inode tables */
-+		return 1;
-+
-+err_out:
-+	ext4_error(sb, __FUNCTION__,
-+			"Invalid block bitmap - "
-+			"block_group = %d, block = %llu",
-+			block_group, bitmap_blk);
-+	return 0;
-+}
- /**
-  * read_block_bitmap()
-  * @sb:			super block
-  * @block_group:	given block group
-  *
-- * Read the bitmap for a given block_group, reading into the specified
-- * slot in the superblock's bitmap cache.
-+ * Read the bitmap for a given block_group,and validate the
-+ * bits for block/inode/inode tables are set in the bitmaps
-  *
-  * Return buffer_head on success or NULL in case of failure.
-  */
-@@ -210,25 +262,36 @@ read_block_bitmap(struct super_block *sb
- 	if (!desc)
- 		return NULL;
- 	bitmap_blk = ext4_block_bitmap(sb, desc);
--	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--		bh = sb_getblk(sb, bitmap_blk);
--		if (!buffer_uptodate(bh)) {
--			lock_buffer(bh);
--			if (!buffer_uptodate(bh)) {
--				ext4_init_block_bitmap(sb, bh, block_group,
--						       desc);
--				set_buffer_uptodate(bh);
--			}
--			unlock_buffer(bh);
--		}
--	} else {
--		bh = sb_bread(sb, bitmap_blk);
-+	bh = sb_getblk(sb, bitmap_blk);
-+	if (unlikely(!bh)) {
-+		ext4_error(sb, __FUNCTION__,
-+			    "Cannot read block bitmap - "
-+			    "block_group = %d, block_bitmap = %llu",
-+			    block_group, bitmap_blk);
-+		return NULL;
- 	}
--	if (!bh)
--		ext4_error (sb, __FUNCTION__,
-+	if (bh_uptodate_or_lock(bh))
-+		return bh;
-+
-+	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+		ext4_init_block_bitmap(sb, bh, block_group, desc);
-+		set_buffer_uptodate(bh);
++	if (!buffer_uptodate(bh)) {
++		lock_buffer(bh);
++		if (!buffer_uptodate(bh))
++			return 0;
 +		unlock_buffer(bh);
-+		return bh;
 +	}
-+	if (bh_submit_read(bh) < 0) {
-+		brelse(bh);
-+		ext4_error(sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
--			    "block_group = %lu, block_bitmap = %llu",
-+			    "block_group = %d, block_bitmap = %llu",
- 			    block_group, bitmap_blk);
-+		return NULL;
-+	}
-+	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
-+		brelse(bh);
-+		return NULL;
-+	}
++	return 1;
++}
++EXPORT_SYMBOL(bh_uptodate_or_lock);
++/**
++ * bh_submit_read: Submit a locked buffer for reading
++ * @bh: struct buffer_head
++ *
++ * Returns a negative error
++ */
++int bh_submit_read(struct buffer_head *bh)
++{
++	if (!buffer_locked(bh))
++		lock_buffer(bh);
 +
- 	return bh;
- }
- /*
++	if (buffer_uptodate(bh))
++		return 0;
++
++	get_bh(bh);
++	bh->b_end_io = end_buffer_read_sync;
++	submit_bh(READ, bh);
++	wait_on_buffer(bh);
++	if (buffer_uptodate(bh))
++		return 0;
++	return -EIO;
++}
++EXPORT_SYMBOL(bh_submit_read);
+ void __init buffer_init(void)
+ {
+ 	int nrpages;
+diff -puN include/linux/buffer_head.h~add-buffer-head-related-helper-functions include/linux/buffer_head.h
+--- a/include/linux/buffer_head.h~add-buffer-head-related-helper-functions
++++ a/include/linux/buffer_head.h
+@@ -192,6 +192,8 @@ int sync_dirty_buffer(struct buffer_head
+ int submit_bh(int, struct buffer_head *);
+ void write_boundary_block(struct block_device *bdev,
+ 			sector_t bblock, unsigned blocksize);
++int bh_uptodate_or_lock(struct buffer_head *bh);
++int bh_submit_read(struct buffer_head *bh);
+ 
+ extern int buffer_heads_over_limit;
+ 
 _
 
 Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
