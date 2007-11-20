@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + ext2-add-block-bitmap-validation.patch added to -mm tree
-Date: Mon, 19 Nov 2007 23:19:58 -0800
-Message-ID: <200711200719.lAK7Jw9R020934@imap1.linux-foundation.org>
+Subject: + ext4-add-block-bitmap-validation.patch added to -mm tree
+Date: Mon, 19 Nov 2007 23:20:08 -0800
+Message-ID: <200711200720.lAK7K8Hu020976@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
@@ -11,9 +11,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext2: add block bitmap validation
+     ext4: add block bitmap validation
 has been added to the -mm tree.  Its filename is
-     ext2-add-block-bitmap-validation.patch
+     ext4-add-block-bitmap-validation.patch
 
 *** Remember to use Documentation/SubmitChecklist when testing your code ***
 
@@ -21,7 +21,7 @@ See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
 out what to do about this
 
 ------------------------------------------------------
-Subject: ext2: add block bitmap validation
+Subject: ext4: add block bitmap validation
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
 When a new block bitmap is read from disk in read_block_bitmap() there are a
@@ -34,112 +34,133 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/balloc.c |   81 ++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 72 insertions(+), 9 deletions(-)
+ fs/ext4/balloc.c |   99 ++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 81 insertions(+), 18 deletions(-)
 
-diff -puN fs/ext2/balloc.c~ext2-add-block-bitmap-validation fs/ext2/balloc.c
---- a/fs/ext2/balloc.c~ext2-add-block-bitmap-validation
-+++ a/fs/ext2/balloc.c
-@@ -69,9 +69,53 @@ struct ext2_group_desc * ext2_get_group_
- 	return desc + offset;
+diff -puN fs/ext4/balloc.c~ext4-add-block-bitmap-validation fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-add-block-bitmap-validation
++++ a/fs/ext4/balloc.c
+@@ -189,13 +189,65 @@ struct ext4_group_desc * ext4_get_group_
+ 	return desc;
  }
  
-+static int ext2_valid_block_bitmap(struct super_block *sb,
-+					struct ext2_group_desc *desc,
++static int ext4_valid_block_bitmap(struct super_block *sb,
++					struct ext4_group_desc *desc,
 +					unsigned int block_group,
 +					struct buffer_head *bh)
 +{
-+	ext2_grpblk_t offset;
-+	ext2_grpblk_t next_zero_bit;
-+	ext2_fsblk_t bitmap_blk;
-+	ext2_fsblk_t group_first_block;
++	ext4_grpblk_t offset;
++	ext4_grpblk_t next_zero_bit;
++	ext4_fsblk_t bitmap_blk;
++	ext4_fsblk_t group_first_block;
 +
-+	group_first_block = ext2_group_first_block_no(sb, block_group);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
++		/* with FLEX_BG, the inode/block bitmaps and itable
++		 * blocks may not be in the group at all
++		 * so the bitmap validation will be skipped for those groups
++		 * or it has to also read the block group where the bitmaps
++		 * are located to verify they are set.
++		 */
++		return 1;
++	}
++	group_first_block = ext4_group_first_block_no(sb, block_group);
 +
 +	/* check whether block bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	bitmap_blk = ext4_block_bitmap(sb, desc);
 +	offset = bitmap_blk - group_first_block;
-+	if (!ext2_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(offset, bh->b_data))
 +		/* bad block bitmap */
 +		goto err_out;
 +
 +	/* check whether the inode bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
++	bitmap_blk = ext4_inode_bitmap(sb, desc);
 +	offset = bitmap_blk - group_first_block;
-+	if (!ext2_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(offset, bh->b_data))
 +		/* bad block bitmap */
 +		goto err_out;
 +
 +	/* check whether the inode table block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
++	bitmap_blk = ext4_inode_table(sb, desc);
 +	offset = bitmap_blk - group_first_block;
-+	next_zero_bit = ext2_find_next_zero_bit(bh->b_data,
-+				offset + EXT2_SB(sb)->s_itb_per_group,
++	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
++				offset + EXT4_SB(sb)->s_itb_per_group,
 +				offset);
-+	if (next_zero_bit >= offset + EXT2_SB(sb)->s_itb_per_group)
++	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
 +		/* good bitmap for inode tables */
 +		return 1;
 +
 +err_out:
-+	ext2_error(sb, __FUNCTION__,
++	ext4_error(sb, __FUNCTION__,
 +			"Invalid block bitmap - "
-+			"block_group = %d, block = %lu",
++			"block_group = %d, block = %llu",
 +			block_group, bitmap_blk);
 +	return 0;
 +}
-+
- /*
-- * Read the bitmap for a given block_group, reading into the specified 
+ /**
+  * read_block_bitmap()
+  * @sb:			super block
+  * @block_group:	given block group
+  *
+- * Read the bitmap for a given block_group, reading into the specified
 - * slot in the superblock's bitmap cache.
 + * Read the bitmap for a given block_group,and validate the
 + * bits for block/inode/inode tables are set in the bitmaps
   *
   * Return buffer_head on success or NULL in case of failure.
   */
-@@ -80,17 +124,36 @@ read_block_bitmap(struct super_block *sb
- {
- 	struct ext2_group_desc * desc;
- 	struct buffer_head * bh = NULL;
--	
--	desc = ext2_get_group_desc (sb, block_group, NULL);
-+	ext2_fsblk_t bitmap_blk;
-+
-+	desc = ext2_get_group_desc(sb, block_group, NULL);
+@@ -210,25 +262,36 @@ read_block_bitmap(struct super_block *sb
  	if (!desc)
--		goto error_out;
--	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
--	if (!bh)
--		ext2_error (sb, "read_block_bitmap",
-+		return NULL;
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
+ 		return NULL;
+ 	bitmap_blk = ext4_block_bitmap(sb, desc);
+-	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-		bh = sb_getblk(sb, bitmap_blk);
+-		if (!buffer_uptodate(bh)) {
+-			lock_buffer(bh);
+-			if (!buffer_uptodate(bh)) {
+-				ext4_init_block_bitmap(sb, bh, block_group,
+-						       desc);
+-				set_buffer_uptodate(bh);
+-			}
+-			unlock_buffer(bh);
+-		}
+-	} else {
+-		bh = sb_bread(sb, bitmap_blk);
 +	bh = sb_getblk(sb, bitmap_blk);
 +	if (unlikely(!bh)) {
-+		ext2_error(sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %u",
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
--error_out:
++		ext4_error(sb, __FUNCTION__,
++			    "Cannot read block bitmap - "
++			    "block_group = %d, block_bitmap = %llu",
++			    block_group, bitmap_blk);
 +		return NULL;
-+	}
-+	if (likely(bh_uptodate_or_lock(bh)))
+ 	}
+-	if (!bh)
+-		ext4_error (sb, __FUNCTION__,
++	if (bh_uptodate_or_lock(bh))
 +		return bh;
 +
++	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
++		ext4_init_block_bitmap(sb, bh, block_group, desc);
++		set_buffer_uptodate(bh);
++		unlock_buffer(bh);
++		return bh;
++	}
 +	if (bh_submit_read(bh) < 0) {
 +		brelse(bh);
-+		ext2_error(sb, __FUNCTION__,
-+			    "Cannot read block bitmap - "
-+			    "block_group = %d, block_bitmap = %u",
-+			    block_group, le32_to_cpu(desc->bg_block_bitmap));
++		ext4_error(sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+-			    "block_group = %lu, block_bitmap = %llu",
++			    "block_group = %d, block_bitmap = %llu",
+ 			    block_group, bitmap_blk);
 +		return NULL;
 +	}
-+	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
++	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
 +		brelse(bh);
 +		return NULL;
 +	}
 +
  	return bh;
  }
- 
+ /*
 _
 
 Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
