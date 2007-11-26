@@ -1,177 +1,84 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 2/2] ext4 extents: use ext4_lblk_t where appropriate
-Date: Mon, 26 Nov 2007 12:59:18 -0600
-Message-ID: <474B1786.8090300@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: 2.6.24-rc3-$SHA1: kernel BUG at fs/jbd/checkpoint.c:683!
+Date: Mon, 26 Nov 2007 20:04:05 +0100
+Message-ID: <20071126190405.GB5647@atrey.karlin.mff.cuni.cz>
+References: <20071126055925.GC1726@martell.zuzino.mipt.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <alex@clusterfs.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@osdl.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Alexey Dobriyan <adobriyan@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36177 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755350AbXKZS7W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2007 13:59:22 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:50518 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751287AbXKZTEG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2007 14:04:06 -0500
+Content-Disposition: inline
+In-Reply-To: <20071126055925.GC1726@martell.zuzino.mipt.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Several places in extents.c look like they should be using
-ext4_lblk_t rather than unsigned long or unsigned int.
+> In a desperate attempt to screw up /proc one more time, I added some
+> proc fixes, wrote test module which creates and removes simple proc
+> file, then ran a) modprobe/rmmod loop, b) cat /proc/foo/bar loop,
+> c) LTP loop. So far so good -- survived overnight run.
+> 
+> While rebooting into new kernel, kernel died:
+> 
+> [56400.857832] kernel BUG at fs/jbd/checkpoint.c:683!
+> [56400.857911] invalid opcode: 0000 [1] PREEMPT SMP 
+> [56400.857996] CPU 0 
+> [56400.858059] Modules linked in: foo
+> [56400.858138] Pid: 392, comm: kjournald Not tainted 2.6.24-rc3-proc #11
+> [56400.858227] RIP: 0010:[<ffffffff802cbf10>]  [<ffffffff802cbf10>] __journal_drop_transaction+0x110/0x120
+> [56400.858380] RSP: 0000:ffff81017f30dd58  EFLAGS: 00010286
+> [56400.858462] RAX: ffff81012ab9f210 RBX: ffff81017f336cd8 RCX: ffff81017fcbbe48
+> [56400.858555] RDX: ffff81012ab9f210 RSI: ffff810110eeb318 RDI: ffff81017f336cd8
+> [56400.858648] RBP: ffff81017aa8a2a0 R08: 0000000000000000 R09: ffff81017aa8a4f8
+> [56400.858741] R10: 0000000000000001 R11: ffffffff8021b220 R12: ffff81017aa8a2a0
+> [56400.858834] R13: ffff81017aa8a2a0 R14: ffff81017f30ddbc R15: ffff81017f30ddbc
+> [56400.858927] FS:  0000000000000000(0000) GS:ffffffff804ea000(0000) knlGS:0000000000000000
+> [56400.859070] CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+> [56400.859157] CR2: 0000000000437c50 CR3: 0000000104dae000 CR4: 00000000000006e0
+> [56400.859250] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [56400.859343] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [56400.859436] Process kjournald (pid: 392, threadinfo ffff81017f30c000, task ffff81017fcc8ec0)
+> [56400.859581] Stack:  ffffffff802cbf7a ffff81016f795c60 ffffffff802cc0a8 0000000000000000
+> [56400.859734]  ffff810110eeb318 ffff81012ab9f210 0000000000000001 ffff810117e4da50
+> [56400.859881]  ffff81017f30ddbc ffff81017f336e3c ffffffff802cca0b ffff810117e4da50
+> [56400.859979] Call Trace:
+> [56400.860093]  [<ffffffff802cbf7a>] __journal_remove_checkpoint+0x5a/0xb0
+> [56400.860183]  [<ffffffff802cc0a8>] journal_clean_one_cp_list+0xd8/0x170
+> [56400.860273]  [<ffffffff802cca0b>] __journal_clean_checkpoint_list+0x4b/0xa0
+> [56400.860370]  [<ffffffff802ca6ed>] journal_commit_transaction+0x21d/0x1110
+> [56400.860462]  [<ffffffff80230984>] lock_timer_base+0x34/0x70
+> [56400.860546]  [<ffffffff80230a13>] try_to_del_timer_sync+0x53/0x60
+> [56400.860633]  [<ffffffff802cee1f>] kjournald+0xdf/0x240
+> [56400.860715]  [<ffffffff8023c3d0>] autoremove_wake_function+0x0/0x30
+> [56400.860803]  [<ffffffff802ced40>] kjournald+0x0/0x240
+> [56400.860884]  [<ffffffff8023bffb>] kthread+0x4b/0x80
+> [56400.860967]  [<ffffffff8020ca38>] child_rip+0xa/0x12
+> [56400.861047]  [<ffffffff8023bfb0>] kthread+0x0/0x80
+> [56400.861126]  [<ffffffff8020ca2e>] child_rip+0x0/0x12
+> [56400.861205] 
+> [56400.861262] 
+> [56400.861263] Code: 0f 0b eb fe 66 66 66 90 66 66 66 90 66 66 66 90 53 48 8b 77 
+> [56400.861546] RIP  [<ffffffff802cbf10>] __journal_drop_transaction+0x110/0x120
+> [56400.861642]  RSP <ffff81017f30dd58>
+> [56400.862158] Kernel panic - not syncing: Fatal exception
+  Thanks for report. It's a bug in JBD code and strangely enough noone
+hit it before you :). The problem is that
+__journal_clean_checkpoint_list() finds there's a buffer on
+transaction's checkpoint list which has already been written. So it
+removes and because there are no other buffers there, it tries to free
+the transaction as well which is a bug. It should also check that the
+transaction is not currently running.
+   Now the question is how to properly check this. We should hold
+j_state_lock for that but we are holding other locks which rank below
+it... Argh. Will have to think about it.
 
-(any further scrutiny welcomed) :)
+								Honza
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
----
-
-Index: linux-2.6.24-rc1/fs/ext4/extents.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/extents.c
-+++ linux-2.6.24-rc1/fs/ext4/extents.c
-@@ -1165,7 +1165,7 @@ ext4_ext_search_right(struct inode *inod
-  * allocated block. Thus, index entries have to be consistent
-  * with leaves.
-  */
--static unsigned long
-+static ext4_lblk_t
- ext4_ext_next_allocated_block(struct ext4_ext_path *path)
- {
- 	int depth;
-@@ -1383,7 +1383,7 @@ unsigned int ext4_ext_check_overlap(stru
- 				    struct ext4_extent *newext,
- 				    struct ext4_ext_path *path)
- {
--	unsigned long b1, b2;
-+	ext4_lblk_t b1, b2;
- 	unsigned int depth, len1;
- 	unsigned int ret = 0;
- 
-@@ -1404,7 +1404,7 @@ unsigned int ext4_ext_check_overlap(stru
- 			goto out;
- 	}
- 
--	/* check for wrap through zero */
-+	/* check for wrap through zero on extent logical start block*/
- 	if (b1 + len1 < b1) {
- 		len1 = EXT_MAX_BLOCK - b1;
- 		newext->ee_len = cpu_to_le16(len1);
-@@ -1622,15 +1623,17 @@ ext4_ext_put_gap_in_cache(struct inode *
- 				ext4_ext_get_actual_len(ex));
- 	} else if (block >= le32_to_cpu(ex->ee_block)
- 			+ ext4_ext_get_actual_len(ex)) {
-+		ext4_lblk_t next;
-+
- 		lblock = le32_to_cpu(ex->ee_block)
- 			+ ext4_ext_get_actual_len(ex);
--		len = ext4_ext_next_allocated_block(path);
-+		next = ext4_ext_next_allocated_block(path);
- 		ext_debug("cache gap(after): [%u:%u] %u",
- 				le32_to_cpu(ex->ee_block),
- 				ext4_ext_get_actual_len(ex),
- 				block);
--		BUG_ON(len == lblock);
--		len = len - lblock;
-+		BUG_ON(next == lblock);
-+		len = next - lblock;
- 	} else {
- 		lblock = len = 0;
- 		BUG();
-@@ -1752,7 +1755,7 @@ int ext4_ext_calc_credits_for_insert(str
- 
- static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 				struct ext4_extent *ex,
--				unsigned long from, unsigned long to)
-+				ext4_lblk_t from, ext4_lblk_t to)
- {
- 	struct buffer_head *bh;
- 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
-@@ -1778,11 +1781,12 @@ static int ext4_remove_blocks(handle_t *
- 	if (from >= le32_to_cpu(ex->ee_block)
- 	    && to == le32_to_cpu(ex->ee_block) + ee_len - 1) {
- 		/* tail removal */
--		unsigned long num;
-+		ext4_lblk_t num;
- 		ext4_fsblk_t start;
-+
- 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
- 		start = ext_pblock(ex) + ee_len - num;
--		ext_debug("free last %lu blocks starting %llu\n", num, start);
-+		ext_debug("free last %u blocks starting %llu\n", num, start);
- 		for (i = 0; i < num; i++) {
- 			bh = sb_find_get_block(inode->i_sb, start + i);
- 			ext4_forget(handle, 0, inode, bh, start + i);
-@@ -1790,10 +1794,10 @@ static int ext4_remove_blocks(handle_t *
- 		ext4_free_blocks(handle, inode, start, num, metadata);
- 	} else if (from == le32_to_cpu(ex->ee_block)
- 		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
--		printk("strange request: removal %lu-%lu from %u:%u\n",
-+		printk("strange request: removal %u-%u from %u:%u\n",
- 			from, to, le32_to_cpu(ex->ee_block), ee_len);
- 	} else {
--		printk("strange request: removal(2) %lu-%lu from %u:%u\n",
-+		printk("strange request: removal(2) %u-%u from %u:%u\n",
- 			from, to, le32_to_cpu(ex->ee_block), ee_len);
- 	}
- 	return 0;
-@@ -1801,19 +1805,20 @@ static int ext4_remove_blocks(handle_t *
- 
- static int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
--		struct ext4_ext_path *path, unsigned long start)
-+		struct ext4_ext_path *path, ext4_lblk_t start)
- {
- 	int err = 0, correct_index = 0;
- 	int depth = ext_depth(inode), credits;
- 	struct ext4_extent_header *eh;
--	unsigned a, b, block, num;
--	unsigned long ex_ee_block;
-+	ext4_lblk_t a, b, block;
-+	unsigned num;
-+	ext4_lblk_t ex_ee_block;
- 	unsigned short ex_ee_len;
- 	unsigned uninitialized = 0;
- 	struct ext4_extent *ex;
- 
- 	/* the header must be checked already in ext4_ext_remove_space() */
--	ext_debug("truncate since %lu in leaf\n", start);
-+	ext_debug("truncate since %u in leaf\n", start);
- 	if (!path[depth].p_hdr)
- 		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
- 	eh = path[depth].p_hdr;
-@@ -1944,7 +1949,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path
- 	return 1;
- }
- 
--static int ext4_ext_remove_space(struct inode *inode, unsigned long start)
-+static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
-@@ -1952,7 +1957,7 @@ static int ext4_ext_remove_space(struct 
- 	handle_t *handle;
- 	int i = 0, err = 0;
- 
--	ext_debug("truncate since %lu\n", start);
-+	ext_debug("truncate since %u\n", start);
- 
- 	/* probably first extent we're gonna free will be last in block */
- 	handle = ext4_journal_start(inode, depth + 1);
-@@ -2144,7 +2149,8 @@ static int ext4_ext_convert_to_initializ
- 	struct ext4_extent *ex2 = NULL;
- 	struct ext4_extent *ex3 = NULL;
- 	struct ext4_extent_header *eh;
--	unsigned int allocated, ee_block, ee_len, depth;
-+	ext4_lblk_t ee_block;
-+	unsigned int allocated, ee_len, depth;
- 	ext4_fsblk_t newblock;
- 	int err = 0;
- 	int ret = 0;
-@@ -2487,7 +2493,7 @@ void ext4_ext_truncate(struct inode * in
- {
- 	struct address_space *mapping = inode->i_mapping;
- 	struct super_block *sb = inode->i_sb;
--	unsigned long last_block;
-+	ext4_lblk_t last_block;
- 	handle_t *handle;
- 	int err = 0;
- 
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
