@@ -1,163 +1,163 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: fix up EXT4FS_DEBUG builds
-Date: Mon, 26 Nov 2007 12:47:05 -0600
-Message-ID: <474B14A9.7040206@redhat.com>
+Subject: [PATCH 1/2] ext4 extents: remove unneeded casts
+Date: Mon, 26 Nov 2007 12:59:05 -0600
+Message-ID: <474B1779.1060608@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Alex Tomas <alex@clusterfs.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44869 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:36153 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752108AbXKZSrO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2007 13:47:14 -0500
+	id S1753560AbXKZS7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2007 13:59:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Builds with EXT4FS_DEBUG defined (to enable ext4_debug()) fail
-without these changes.  Clean up some format warnings too.
+There are many casts in extents.c which are not needed,
+as the variables are already the type of the cast, or
+are being promoted for no particular reason in printk's.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
 ---
 
-Index: linux-2.6.24-rc1/fs/ext4/balloc.c
+Index: linux-2.6.24-rc1/fs/ext4/extents.c
 ===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/balloc.c
-+++ linux-2.6.24-rc1/fs/ext4/balloc.c
-@@ -1579,7 +1579,7 @@ ext4_fsblk_t ext4_new_blocks_old(handle_
+--- linux-2.6.24-rc1.orig/fs/ext4/extents.c
++++ linux-2.6.24-rc1/fs/ext4/extents.c
+@@ -374,7 +374,7 @@ ext4_ext_binsearch_idx(struct inode *ino
+ 	struct ext4_extent_idx *r, *l, *m;
  
- 	sbi = EXT4_SB(sb);
- 	es = EXT4_SB(sb)->s_es;
--	ext4_debug("goal=%lu.\n", goal);
-+	ext4_debug("goal=%llu.\n", goal);
- 	/*
- 	 * Allocate a block from reservation only when
- 	 * filesystem is mounted with reservation(default,-o reservation), and
-@@ -1689,7 +1689,7 @@ retry_alloc:
  
- allocated:
+-	ext_debug("binsearch for %lu(idx):  ", (unsigned long)block);
++	ext_debug("binsearch for %u(idx):  ", block);
  
--	ext4_debug("using block group %d(%d)\n",
-+	ext4_debug("using block group %lu(%d)\n",
- 			group_no, gdp->bg_free_blocks_count);
- 
- 	BUFFER_TRACE(gdp_bh, "get_write_access");
-@@ -1880,7 +1880,7 @@ ext4_fsblk_t ext4_count_free_blocks(stru
- 	brelse(bitmap_bh);
- 	printk("ext4_count_free_blocks: stored = %llu"
- 		", computed = %llu, %llu\n",
--	       EXT4_FREE_BLOCKS_COUNT(es),
-+		ext4_free_blocks_count(es),
- 		desc_count, bitmap_count);
- 	return bitmap_count;
- #else
-Index: linux-2.6.24-rc1/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/ialloc.c
-+++ linux-2.6.24-rc1/fs/ext4/ialloc.c
-@@ -857,7 +857,7 @@ unsigned long ext4_count_free_inodes (st
- 			continue;
- 
- 		x = ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
--		printk("group %d: stored = %d, counted = %lu\n",
-+		printk("group %lu: stored = %d, counted = %lu\n",
- 			i, le16_to_cpu(gdp->bg_free_inodes_count), x);
- 		bitmap_count += x;
- 	}
-Index: linux-2.6.24-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/mballoc.c
-+++ linux-2.6.24-rc1/fs/ext4/mballoc.c
-@@ -2953,9 +2953,6 @@ static int ext4_mb_mark_diskspace_used(s
- 	sbi = EXT4_SB(sb);
- 	es = sbi->s_es;
- 
--	ext4_debug("using block group %d(%d)\n", ac->ac_b_group.group,
--			gdp->bg_free_blocks_count);
--
- 	err = -EIO;
- 	bitmap_bh = read_block_bitmap(sb, ac->ac_b_ex.fe_group);
- 	if (!bitmap_bh)
-@@ -2970,6 +2967,9 @@ static int ext4_mb_mark_diskspace_used(s
- 	if (!gdp)
- 		goto out_err;
- 
-+	ext4_debug("using block group %lu(%d)\n", ac->ac_b_ex.fe_group,
-+			gdp->bg_free_blocks_count);
-+
- 	err = ext4_journal_get_write_access(handle, gdp_bh);
- 	if (err)
- 		goto out_err;
-Index: linux-2.6.24-rc1/fs/ext4/resize.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/ext4/resize.c
-+++ linux-2.6.24-rc1/fs/ext4/resize.c
-@@ -206,7 +206,7 @@ static int setup_new_group_blocks(struct
+ 	l = EXT_FIRST_INDEX(eh) + 1;
+ 	r = EXT_LAST_INDEX(eh);
+@@ -440,7 +440,7 @@ ext4_ext_binsearch(struct inode *inode,
+ 		return;
  	}
  
- 	if (ext4_bg_has_super(sb, input->group)) {
--		ext4_debug("mark backup superblock %#04lx (+0)\n", start);
-+		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
- 		ext4_set_bit(0, bh->b_data);
+-	ext_debug("binsearch for %lu:  ", (unsigned long)block);
++	ext_debug("binsearch for %u:  ", block);
+ 
+ 	l = EXT_FIRST_EXTENT(eh) + 1;
+ 	r = EXT_LAST_EXTENT(eh);
+@@ -766,7 +766,7 @@ static int ext4_ext_split(handle_t *hand
+ 	while (k--) {
+ 		oldblock = newblock;
+ 		newblock = ablocks[--a];
+-		bh = sb_getblk(inode->i_sb, (ext4_fsblk_t)newblock);
++		bh = sb_getblk(inode->i_sb, newblock);
+ 		if (!bh) {
+ 			err = -EIO;
+ 			goto cleanup;
+@@ -786,9 +786,8 @@ static int ext4_ext_split(handle_t *hand
+ 		fidx->ei_block = border;
+ 		ext4_idx_store_pblock(fidx, oldblock);
+ 
+-		ext_debug("int.index at %d (block %llu): %lu -> %llu\n", i,
+-				newblock, (unsigned long) le32_to_cpu(border),
+-				oldblock);
++		ext_debug("int.index at %d (block %llu): %u -> %llu\n",
++				i, newblock, le32_to_cpu(border), oldblock);
+ 		/* copy indexes */
+ 		m = 0;
+ 		path[i].p_idx++;
+@@ -982,7 +981,7 @@ repeat:
+ 		/* refill path */
+ 		ext4_ext_drop_refs(path);
+ 		path = ext4_ext_find_extent(inode,
+-				    (ext4_lblk_t )le32_to_cpu(newext->ee_block),
++				    (ext4_lblk_t)le32_to_cpu(newext->ee_block),
+ 				    path);
+ 		if (IS_ERR(path))
+ 			err = PTR_ERR(path);
+@@ -1617,19 +1616,19 @@ ext4_ext_put_gap_in_cache(struct inode *
+ 	} else if (block < le32_to_cpu(ex->ee_block)) {
+ 		lblock = block;
+ 		len = le32_to_cpu(ex->ee_block) - block;
+-		ext_debug("cache gap(before): %lu [%lu:%lu]",
+-				(unsigned long) block,
+-				(unsigned long) le32_to_cpu(ex->ee_block),
+-				(unsigned long) ext4_ext_get_actual_len(ex));
++		ext_debug("cache gap(before): %u [%u:%u]",
++				block,
++				le32_to_cpu(ex->ee_block),
++				ext4_ext_get_actual_len(ex));
+ 	} else if (block >= le32_to_cpu(ex->ee_block)
+ 			+ ext4_ext_get_actual_len(ex)) {
+ 		lblock = le32_to_cpu(ex->ee_block)
+ 			+ ext4_ext_get_actual_len(ex);
+ 		len = ext4_ext_next_allocated_block(path);
+-		ext_debug("cache gap(after): [%lu:%lu] %lu",
+-				(unsigned long) le32_to_cpu(ex->ee_block),
+-				(unsigned long) ext4_ext_get_actual_len(ex),
+-				(unsigned long) block);
++		ext_debug("cache gap(after): [%u:%u] %u",
++				le32_to_cpu(ex->ee_block),
++				ext4_ext_get_actual_len(ex),
++				block);
+ 		BUG_ON(len == lblock);
+ 		len = len - lblock;
+ 	} else {
+@@ -1637,7 +1636,7 @@ ext4_ext_put_gap_in_cache(struct inode *
+ 		BUG();
  	}
  
-@@ -215,7 +215,7 @@ static int setup_new_group_blocks(struct
- 	     i < gdblocks; i++, block++, bit++) {
- 		struct buffer_head *gdb;
+-	ext_debug(" -> %lu:%lu\n", (unsigned long) lblock, len);
++	ext_debug(" -> %u:%lu\n", lblock, len);
+ 	ext4_ext_put_in_cache(inode, lblock, len, 0, EXT4_EXT_CACHE_GAP);
+ }
  
--		ext4_debug("update backup group %#04lx (+%d)\n", block, bit);
-+		ext4_debug("update backup group %#04llx (+%d)\n", block, bit);
- 
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -243,7 +243,7 @@ static int setup_new_group_blocks(struct
- 	     i < reserved_gdb; i++, block++, bit++) {
- 		struct buffer_head *gdb;
- 
--		ext4_debug("clear reserved block %#04lx (+%d)\n", block, bit);
-+		ext4_debug("clear reserved block %#04llx (+%d)\n", block, bit);
- 
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -256,10 +256,10 @@ static int setup_new_group_blocks(struct
- 		ext4_set_bit(bit, bh->b_data);
- 		brelse(gdb);
+@@ -1659,11 +1658,9 @@ ext4_ext_in_cache(struct inode *inode, e
+ 		ex->ee_block = cpu_to_le32(cex->ec_block);
+ 		ext4_ext_store_pblock(ex, cex->ec_start);
+ 		ex->ee_len = cpu_to_le16(cex->ec_len);
+-		ext_debug("%lu cached by %lu:%lu:%llu\n",
+-				(unsigned long) block,
+-				(unsigned long) cex->ec_block,
+-				(unsigned long) cex->ec_len,
+-				cex->ec_start);
++		ext_debug("%u cached by %u:%u:%llu\n",
++				block,
++				cex->ec_block, cex->ec_len, cex->ec_start);
+ 		return cex->ec_type;
  	}
--	ext4_debug("mark block bitmap %#04x (+%ld)\n", input->block_bitmap,
-+	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
- 	ext4_set_bit(input->block_bitmap - start, bh->b_data);
--	ext4_debug("mark inode bitmap %#04x (+%ld)\n", input->inode_bitmap,
-+	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
- 		   input->inode_bitmap - start);
- 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
  
-@@ -268,7 +268,7 @@ static int setup_new_group_blocks(struct
- 	     i < sbi->s_itb_per_group; i++, bit++, block++) {
- 		struct buffer_head *it;
+@@ -2286,9 +2283,8 @@ int ext4_ext_get_blocks(handle_t *handle
+ 	struct ext4_allocation_request ar;
  
--		ext4_debug("clear inode block %#04lx (+%d)\n", block, bit);
-+		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
+ 	__clear_bit(BH_New, &bh_result->b_state);
+-	ext_debug("blocks %lu/%lu requested for inode %u\n",
+-			(unsigned long) iblock, max_blocks,
+-			(unsigned) inode->i_ino);
++	ext_debug("blocks %u/%lu requested for inode %lu\n",
++			iblock, max_blocks, inode->i_ino);
  
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -291,7 +291,7 @@ static int setup_new_group_blocks(struct
- 	brelse(bh);
+ 	/* check in cache */
+ 	goal = ext4_ext_in_cache(inode, iblock, &newex);
+@@ -2350,7 +2346,7 @@ int ext4_ext_get_blocks(handle_t *handle
+ 			newblock = iblock - ee_block + ee_start;
+ 			/* number of remaining blocks in the extent */
+ 			allocated = ee_len - (iblock - ee_block);
+-			ext_debug("%d fit into %lu:%d -> %llu\n", (int) iblock,
++			ext_debug("%u fit into %lu:%d -> %llu\n", iblock,
+ 					ee_block, ee_len, newblock);
  
- 	/* Mark unused entries in inode bitmap used */
--	ext4_debug("clear inode bitmap %#04x (+%ld)\n",
-+	ext4_debug("clear inode bitmap %#04llx (+%llu)\n",
- 		   input->inode_bitmap, input->inode_bitmap - start);
- 	if (IS_ERR(bh = bclean(handle, sb, input->inode_bitmap))) {
- 		err = PTR_ERR(bh);
-@@ -1054,7 +1054,7 @@ int ext4_group_extend(struct super_block
- 	ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
- 	sb->s_dirt = 1;
- 	unlock_super(sb);
--	ext4_debug("freeing blocks %lu through %llu\n", o_blocks_count,
-+	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
- 		   o_blocks_count + add);
- 	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
- 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 			/* Do not put uninitialized extent in the cache */
+@@ -2632,9 +2628,8 @@ retry:
+ 		if (!ret) {
+ 			ext4_error(inode->i_sb, "ext4_fallocate",
+ 				   "ext4_ext_get_blocks returned 0! inode#%lu"
+-				   ", block=%lu, max_blocks=%lu",
+-				   inode->i_ino, (unsigned long)block,
+-				   (unsigned long)max_blocks);
++				   ", block=%u, max_blocks=%lu",
++				   inode->i_ino, block, max_blocks);
+ 			ret = -EIO;
+ 			ext4_mark_inode_dirty(handle, inode);
+
+ 			ret2 = ext4_journal_stop(handle);
