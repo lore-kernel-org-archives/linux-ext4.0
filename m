@@ -1,72 +1,87 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: ext4 still broken on arm (at least)
-Date: Wed, 28 Nov 2007 08:45:59 -0800
-Message-ID: <474D9B47.80209@us.ibm.com>
-References: <20071127211444.703741a9.akpm@linux-foundation.org> <20071128053020.GA6977@skywalker> <20071127214308.5215a6a2.akpm@linux-foundation.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix up vfs inode version patch for modules
+Date: Wed, 28 Nov 2007 14:33:42 -0600
+Message-ID: <474DD0A6.9010809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-arch@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:48881 "EHLO e6.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57521 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756817AbXK1QqF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Nov 2007 11:46:05 -0500
-In-Reply-To: <20071127214308.5215a6a2.akpm@linux-foundation.org>
+	id S1750917AbXK1Udo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Nov 2007 15:33:44 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lASKXhuQ018190
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:43 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lASKXhDS016312
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:43 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lASKXgKV005947
+	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:42 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton wrote:
-> On Wed, 28 Nov 2007 11:00:20 +0530 "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> 
->> On Tue, Nov 27, 2007 at 09:14:44PM -0800, Andrew Morton wrote:
->>> fs/ext4/mballoc.c: In function `ext4_mb_generate_buddy':
->>> fs/ext4/mballoc.c:836: error: implicit declaration of function `ext2_find_next_bit'                                                                             
->>
->> I actually sent in a patch which changes asking for review to
->> linux-arch. I haven't got the response yet.
-> 
-> Don't expect one...
-> 
->> Attaching the patch
->> below 
-> 
-> 
->> Introduce ext4_find_next_bit
->>
->> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->>
->> This gets used by the ext4 multi block allocator patches.
->>
->> Also add generic_find_next_le_bit
->>
->> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->> Cc: <linux-ext4@vger.kernel.org>
->> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
->> ---
->>
->>  include/asm-arm/bitops.h                     |    2 +
->>  include/asm-generic/bitops/ext2-non-atomic.h |    2 +
->>  include/asm-generic/bitops/le.h              |    4 ++
->>  include/asm-m68k/bitops.h                    |    2 +
->>  include/asm-m68knommu/bitops.h               |    2 +
->>  include/asm-powerpc/bitops.h                 |    4 ++
->>  include/asm-s390/bitops.h                    |    2 +
->>  include/linux/ext4_fs.h                      |    1 +
->>  lib/find_next_bit.c                          |   43 ++++++++++++++++++++++++++
-> 
-> May as well merge it I guess.  I'll do that.  Possibly it should be
-> merged into the ext4 tree instead, so that people can build the ext4 devel
-> tree on other architectures but obviously there's no call for that.
-> 
-I will merge it to ext4 development tree.
+ext4 calls inode_inc_iversion(), but it's not exported, so modular ext4
+has trouble.  Any reason not to just make it an inline, as below?
 
-Mingming
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+---
+
+Index: linux-2.6.24-rc1/fs/inode.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/inode.c
++++ linux-2.6.24-rc1/fs/inode.c
+@@ -1243,23 +1243,6 @@ void touch_atime(struct vfsmount *mnt, s
+ EXPORT_SYMBOL(touch_atime);
+ 
+ /**
+- *     inode_inc_iversion      -       increments i_version
+- *     @inode: inode that need to be updated
+- *
+- *     Every time the inode is modified, the i_version field
+- *     will be incremented.
+- *     The filesystem has to be mounted with i_version flag
+- *
+- */
+-
+-void inode_inc_iversion(struct inode *inode)
+-{
+-	spin_lock(&inode->i_lock);
+-	inode->i_version++;
+-	spin_unlock(&inode->i_lock);
+-}
+-
+-/**
+  *	file_update_time	-	update mtime and ctime time
+  *	@file: file accessed
+  *
+Index: linux-2.6.24-rc1/include/linux/fs.h
+===================================================================
+--- linux-2.6.24-rc1.orig/include/linux/fs.h
++++ linux-2.6.24-rc1/include/linux/fs.h
+@@ -1396,7 +1396,21 @@ static inline void inode_dec_link_count(
+ 	mark_inode_dirty(inode);
+ }
+ 
+-extern void inode_inc_iversion(struct inode *inode);
++/**
++ * inode_inc_iversion - increments i_version
++ * @inode: inode that need to be updated
++ *
++ * Every time the inode is modified, the i_version field will be incremented.
++ * The filesystem has to be mounted with i_version flag
++ */
++
++static inline void inode_inc_iversion(struct inode *inode)
++{
++       spin_lock(&inode->i_lock);
++       inode->i_version++;
++       spin_unlock(&inode->i_lock);
++}
++
+ extern void touch_atime(struct vfsmount *mnt, struct dentry *dentry);
+ static inline void file_accessed(struct file *file)
+ {
