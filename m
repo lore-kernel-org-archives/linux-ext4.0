@@ -1,63 +1,169 @@
 From: akpm@linux-foundation.org
-Subject: [patch 2/8] jbd2: remove printk() from J_ASSERT macros
-Date: Thu, 29 Nov 2007 12:52:48 -0800
-Message-ID: <200711292052.lATKqnQx006828@imap1.linux-foundation.org>
+Subject: [patch 8/8] ext4: fix up EXT4FS_DEBUG builds
+Date: Thu, 29 Nov 2007 12:52:53 -0800
+Message-ID: <200711292052.lATKqrqk006846@imap1.linux-foundation.org>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, csnook@redhat.com, sct@redhat.com
+	akpm@linux-foundation.org, sandeen@redhat.com
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:35243 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:60001 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759485AbXK2UyJ (ORCPT
+	by vger.kernel.org with ESMTP id S1759521AbXK2UyO (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2007 15:54:09 -0500
+	Thu, 29 Nov 2007 15:54:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Chris Snook <csnook@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-Remove printk from J_ASSERT to preserve registers during BUG.
+Builds with EXT4FS_DEBUG defined (to enable ext4_debug()) fail without
+these changes.  Clean up some format warnings too.
 
-Signed-off-by: Chris Snook <csnook@redhat.com>
-Cc: "Stephen C. Tweedie" <sct@redhat.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
+[akpm@linux-foundation.org: add printk facility level]
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Cc: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- include/linux/jbd2.h |   16 +---------------
- 1 file changed, 1 insertion(+), 15 deletions(-)
+ fs/ext4/balloc.c  |    6 +++---
+ fs/ext4/ialloc.c  |    2 +-
+ fs/ext4/mballoc.c |    6 +++---
+ fs/ext4/resize.c  |   16 ++++++++--------
+ 4 files changed, 15 insertions(+), 15 deletions(-)
 
-diff -puN include/linux/jbd2.h~jbd2-remove-printk-from-j_assert-macros include/linux/jbd2.h
---- a/include/linux/jbd2.h~jbd2-remove-printk-from-j_assert-macros
-+++ a/include/linux/jbd2.h
-@@ -283,17 +283,7 @@ typedef struct journal_superblock_s
- #include <linux/fs.h>
- #include <linux/sched.h>
+diff -puN fs/ext4/balloc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext4-fix-up-ext4fs_debug-builds
++++ a/fs/ext4/balloc.c
+@@ -1645,7 +1645,7 @@ ext4_fsblk_t ext4_new_blocks_old(handle_
  
--#define JBD2_ASSERTIONS
--#ifdef JBD2_ASSERTIONS
--#define J_ASSERT(assert)						\
--do {									\
--	if (!(assert)) {						\
--		printk (KERN_EMERG					\
--			"Assertion failure in %s() at %s:%d: \"%s\"\n",	\
--			__FUNCTION__, __FILE__, __LINE__, # assert);	\
--		BUG();							\
--	}								\
--} while (0)
-+#define J_ASSERT(assert)	BUG_ON(!(assert))
+ 	sbi = EXT4_SB(sb);
+ 	es = EXT4_SB(sb)->s_es;
+-	ext4_debug("goal=%lu.\n", goal);
++	ext4_debug("goal=%llu.\n", goal);
+ 	/*
+ 	 * Allocate a block from reservation only when
+ 	 * filesystem is mounted with reservation(default,-o reservation), and
+@@ -1755,7 +1755,7 @@ retry_alloc:
  
- #if defined(CONFIG_BUFFER_DEBUG)
- void buffer_assertion_failure(struct buffer_head *bh);
-@@ -309,10 +299,6 @@ void buffer_assertion_failure(struct buf
- #define J_ASSERT_JH(jh, expr)	J_ASSERT(expr)
- #endif
+ allocated:
  
--#else
--#define J_ASSERT(assert)	do { } while (0)
--#endif		/* JBD2_ASSERTIONS */
+-	ext4_debug("using block group %d(%d)\n",
++	ext4_debug("using block group %lu(%d)\n",
+ 			group_no, gdp->bg_free_blocks_count);
+ 
+ 	BUFFER_TRACE(gdp_bh, "get_write_access");
+@@ -1949,7 +1949,7 @@ ext4_fsblk_t ext4_count_free_blocks(stru
+ 	brelse(bitmap_bh);
+ 	printk("ext4_count_free_blocks: stored = %llu"
+ 		", computed = %llu, %llu\n",
+-	       EXT4_FREE_BLOCKS_COUNT(es),
++		ext4_free_blocks_count(es),
+ 		desc_count, bitmap_count);
+ 	return bitmap_count;
+ #else
+diff -puN fs/ext4/ialloc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-fix-up-ext4fs_debug-builds
++++ a/fs/ext4/ialloc.c
+@@ -856,7 +856,7 @@ unsigned long ext4_count_free_inodes (st
+ 			continue;
+ 
+ 		x = ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
+-		printk("group %d: stored = %d, counted = %lu\n",
++		printk(KERN_DEBUG "group %lu: stored = %d, counted = %lu\n",
+ 			i, le16_to_cpu(gdp->bg_free_inodes_count), x);
+ 		bitmap_count += x;
+ 	}
+diff -puN fs/ext4/mballoc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/mballoc.c
+--- a/fs/ext4/mballoc.c~ext4-fix-up-ext4fs_debug-builds
++++ a/fs/ext4/mballoc.c
+@@ -2946,9 +2946,6 @@ static int ext4_mb_mark_diskspace_used(s
+ 	sbi = EXT4_SB(sb);
+ 	es = sbi->s_es;
+ 
+-	ext4_debug("using block group %d(%d)\n", ac->ac_b_group.group,
+-			gdp->bg_free_blocks_count);
 -
- #if defined(JBD2_PARANOID_IOFAIL)
- #define J_EXPECT(expr, why...)		J_ASSERT(expr)
- #define J_EXPECT_BH(bh, expr, why...)	J_ASSERT_BH(bh, expr)
+ 	err = -EIO;
+ 	bitmap_bh = read_block_bitmap(sb, ac->ac_b_ex.fe_group);
+ 	if (!bitmap_bh)
+@@ -2963,6 +2960,9 @@ static int ext4_mb_mark_diskspace_used(s
+ 	if (!gdp)
+ 		goto out_err;
+ 
++	ext4_debug("using block group %lu(%d)\n", ac->ac_b_ex.fe_group,
++			gdp->bg_free_blocks_count);
++
+ 	err = ext4_journal_get_write_access(handle, gdp_bh);
+ 	if (err)
+ 		goto out_err;
+diff -puN fs/ext4/resize.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/resize.c
+--- a/fs/ext4/resize.c~ext4-fix-up-ext4fs_debug-builds
++++ a/fs/ext4/resize.c
+@@ -206,7 +206,7 @@ static int setup_new_group_blocks(struct
+ 	}
+ 
+ 	if (ext4_bg_has_super(sb, input->group)) {
+-		ext4_debug("mark backup superblock %#04lx (+0)\n", start);
++		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
+ 		ext4_set_bit(0, bh->b_data);
+ 	}
+ 
+@@ -215,7 +215,7 @@ static int setup_new_group_blocks(struct
+ 	     i < gdblocks; i++, block++, bit++) {
+ 		struct buffer_head *gdb;
+ 
+-		ext4_debug("update backup group %#04lx (+%d)\n", block, bit);
++		ext4_debug("update backup group %#04llx (+%d)\n", block, bit);
+ 
+ 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
+ 			goto exit_bh;
+@@ -243,7 +243,7 @@ static int setup_new_group_blocks(struct
+ 	     i < reserved_gdb; i++, block++, bit++) {
+ 		struct buffer_head *gdb;
+ 
+-		ext4_debug("clear reserved block %#04lx (+%d)\n", block, bit);
++		ext4_debug("clear reserved block %#04llx (+%d)\n", block, bit);
+ 
+ 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
+ 			goto exit_bh;
+@@ -256,10 +256,10 @@ static int setup_new_group_blocks(struct
+ 		ext4_set_bit(bit, bh->b_data);
+ 		brelse(gdb);
+ 	}
+-	ext4_debug("mark block bitmap %#04x (+%ld)\n", input->block_bitmap,
++	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
+ 		   input->block_bitmap - start);
+ 	ext4_set_bit(input->block_bitmap - start, bh->b_data);
+-	ext4_debug("mark inode bitmap %#04x (+%ld)\n", input->inode_bitmap,
++	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
+ 		   input->inode_bitmap - start);
+ 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
+ 
+@@ -268,7 +268,7 @@ static int setup_new_group_blocks(struct
+ 	     i < sbi->s_itb_per_group; i++, bit++, block++) {
+ 		struct buffer_head *it;
+ 
+-		ext4_debug("clear inode block %#04lx (+%d)\n", block, bit);
++		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
+ 
+ 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
+ 			goto exit_bh;
+@@ -291,7 +291,7 @@ static int setup_new_group_blocks(struct
+ 	brelse(bh);
+ 
+ 	/* Mark unused entries in inode bitmap used */
+-	ext4_debug("clear inode bitmap %#04x (+%ld)\n",
++	ext4_debug("clear inode bitmap %#04llx (+%llu)\n",
+ 		   input->inode_bitmap, input->inode_bitmap - start);
+ 	if (IS_ERR(bh = bclean(handle, sb, input->inode_bitmap))) {
+ 		err = PTR_ERR(bh);
+@@ -1054,7 +1054,7 @@ int ext4_group_extend(struct super_block
+ 	ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+ 	sb->s_dirt = 1;
+ 	unlock_super(sb);
+-	ext4_debug("freeing blocks %lu through %llu\n", o_blocks_count,
++	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
 _
