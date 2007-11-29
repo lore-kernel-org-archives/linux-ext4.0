@@ -1,87 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] fix up vfs inode version patch for modules
-Date: Wed, 28 Nov 2007 14:33:42 -0600
-Message-ID: <474DD0A6.9010809@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] Fix reading of bitmaps from a filesystem image
+Date: Thu, 29 Nov 2007 17:29:48 +0100
+Message-ID: <20071129162948.GH16558@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57521 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750917AbXK1Udo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Nov 2007 15:33:44 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lASKXhuQ018190
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:43 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lASKXhDS016312
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:43 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lASKXgKV005947
-	for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2007 15:33:42 -0500
+Received: from styx.suse.cz ([82.119.242.94]:41146 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1758808AbXK2Q3u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Nov 2007 11:29:50 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4 calls inode_inc_iversion(), but it's not exported, so modular ext4
-has trouble.  Any reason not to just make it an inline, as below?
+  Hi,
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+  reading of bitmaps from a filesystem image seems to be busted. The patch
+below fixes it for me.
 
+									Honza
+
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 ---
 
-Index: linux-2.6.24-rc1/fs/inode.c
-===================================================================
---- linux-2.6.24-rc1.orig/fs/inode.c
-+++ linux-2.6.24-rc1/fs/inode.c
-@@ -1243,23 +1243,6 @@ void touch_atime(struct vfsmount *mnt, s
- EXPORT_SYMBOL(touch_atime);
- 
- /**
-- *     inode_inc_iversion      -       increments i_version
-- *     @inode: inode that need to be updated
-- *
-- *     Every time the inode is modified, the i_version field
-- *     will be incremented.
-- *     The filesystem has to be mounted with i_version flag
-- *
-- */
--
--void inode_inc_iversion(struct inode *inode)
--{
--	spin_lock(&inode->i_lock);
--	inode->i_version++;
--	spin_unlock(&inode->i_lock);
--}
--
--/**
-  *	file_update_time	-	update mtime and ctime time
-  *	@file: file accessed
-  *
-Index: linux-2.6.24-rc1/include/linux/fs.h
-===================================================================
---- linux-2.6.24-rc1.orig/include/linux/fs.h
-+++ linux-2.6.24-rc1/include/linux/fs.h
-@@ -1396,7 +1396,21 @@ static inline void inode_dec_link_count(
- 	mark_inode_dirty(inode);
- }
- 
--extern void inode_inc_iversion(struct inode *inode);
-+/**
-+ * inode_inc_iversion - increments i_version
-+ * @inode: inode that need to be updated
-+ *
-+ * Every time the inode is modified, the i_version field will be incremented.
-+ * The filesystem has to be mounted with i_version flag
-+ */
-+
-+static inline void inode_inc_iversion(struct inode *inode)
-+{
-+       spin_lock(&inode->i_lock);
-+       inode->i_version++;
-+       spin_unlock(&inode->i_lock);
-+}
-+
- extern void touch_atime(struct vfsmount *mnt, struct dentry *dentry);
- static inline void file_accessed(struct file *file)
- {
+Subject: Fix reading of bitmaps from filesystem image
+
+Reading of bitmaps from image file could never work with more than one
+group in a filesystem... Fix the loops so that we read appropriate number
+of blocks.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index 1897ec3..abbe5e8 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -190,7 +190,7 @@ static errcode_t read_bitmaps(ext2_filsy
+ 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
+ 		blk = (fs->image_header->offset_inodemap / fs->blocksize);
+ 		ino_cnt = fs->super->s_inodes_count;
+-		while (inode_nbytes > 0) {
++		while (do_inode && ino_cnt > 0) {
+ 			retval = io_channel_read_blk(fs->image_io, blk++,
+ 						     1, inode_bitmap);
+ 			if (retval)
+@@ -202,15 +202,14 @@ static errcode_t read_bitmaps(ext2_filsy
+ 					       ino_itr, cnt, inode_bitmap);
+ 			if (retval)
+ 				goto cleanup;
+-			ino_itr += fs->blocksize << 3;
+-			ino_cnt -= fs->blocksize << 3;
+-			inode_nbytes -= fs->blocksize;
++			ino_itr += cnt;
++			ino_cnt -= cnt;
+ 		}
+ 		blk = (fs->image_header->offset_blockmap /
+ 		       fs->blocksize);
+ 		blk_cnt = EXT2_BLOCKS_PER_GROUP(fs->super) * 
+ 			fs->group_desc_count;
+-		while (block_nbytes > 0) {
++		while (do_block && blk_cnt > 0) {
+ 			retval = io_channel_read_blk(fs->image_io, blk++,
+ 						     1, block_bitmap);
+ 			if (retval)
+@@ -222,9 +221,8 @@ static errcode_t read_bitmaps(ext2_filsy
+ 				       blk_itr, cnt, block_bitmap);
+ 			if (retval)
+ 				goto cleanup;
+-			blk_itr += fs->blocksize << 3;
+-			blk_cnt -= fs->blocksize << 3;
+-			block_nbytes -= fs->blocksize;
++			blk_itr += cnt;
++			blk_cnt -= cnt;
+ 		}
+ 		goto success_cleanup;
+ 	}
