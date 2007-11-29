@@ -1,169 +1,52 @@
 From: akpm@linux-foundation.org
-Subject: [patch 8/8] ext4: fix up EXT4FS_DEBUG builds
-Date: Thu, 29 Nov 2007 12:52:53 -0800
-Message-ID: <200711292052.lATKqrqk006846@imap1.linux-foundation.org>
+Subject: [patch 6/8] ext4/super.c: fix #ifdef's
+Date: Thu, 29 Nov 2007 12:52:51 -0800
+Message-ID: <200711292052.lATKqqIm006840@imap1.linux-foundation.org>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, sandeen@redhat.com
+	akpm@linux-foundation.org, bunk@kernel.org, rpjday@mindspring.com
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:60001 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55910 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759521AbXK2UyO (ORCPT
+	by vger.kernel.org with ESMTP id S1759521AbXK2UyT (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2007 15:54:14 -0500
+	Thu, 29 Nov 2007 15:54:19 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Adrian Bunk <bunk@kernel.org>
 
-Builds with EXT4FS_DEBUG defined (to enable ext4_debug()) fail without
-these changes.  Clean up some format warnings too.
+Fix the names of two variables in #ifdef's.
 
-[akpm@linux-foundation.org: add printk facility level]
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Cc: Mingming Cao <cmm@us.ibm.com>
+Based on a report by Robert P. J. Day.
+
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
+Cc: "Robert P. J. Day" <rpjday@mindspring.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c  |    6 +++---
- fs/ext4/ialloc.c  |    2 +-
- fs/ext4/mballoc.c |    6 +++---
- fs/ext4/resize.c  |   16 ++++++++--------
- 4 files changed, 15 insertions(+), 15 deletions(-)
+ fs/ext4/super.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-fix-up-ext4fs_debug-builds
-+++ a/fs/ext4/balloc.c
-@@ -1645,7 +1645,7 @@ ext4_fsblk_t ext4_new_blocks_old(handle_
- 
- 	sbi = EXT4_SB(sb);
- 	es = EXT4_SB(sb)->s_es;
--	ext4_debug("goal=%lu.\n", goal);
-+	ext4_debug("goal=%llu.\n", goal);
- 	/*
- 	 * Allocate a block from reservation only when
- 	 * filesystem is mounted with reservation(default,-o reservation), and
-@@ -1755,7 +1755,7 @@ retry_alloc:
- 
- allocated:
- 
--	ext4_debug("using block group %d(%d)\n",
-+	ext4_debug("using block group %lu(%d)\n",
- 			group_no, gdp->bg_free_blocks_count);
- 
- 	BUFFER_TRACE(gdp_bh, "get_write_access");
-@@ -1949,7 +1949,7 @@ ext4_fsblk_t ext4_count_free_blocks(stru
- 	brelse(bitmap_bh);
- 	printk("ext4_count_free_blocks: stored = %llu"
- 		", computed = %llu, %llu\n",
--	       EXT4_FREE_BLOCKS_COUNT(es),
-+		ext4_free_blocks_count(es),
- 		desc_count, bitmap_count);
- 	return bitmap_count;
- #else
-diff -puN fs/ext4/ialloc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-fix-up-ext4fs_debug-builds
-+++ a/fs/ext4/ialloc.c
-@@ -856,7 +856,7 @@ unsigned long ext4_count_free_inodes (st
- 			continue;
- 
- 		x = ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
--		printk("group %d: stored = %d, counted = %lu\n",
-+		printk(KERN_DEBUG "group %lu: stored = %d, counted = %lu\n",
- 			i, le16_to_cpu(gdp->bg_free_inodes_count), x);
- 		bitmap_count += x;
+diff -puN fs/ext4/super.c~ext4-superc-fix-ifdefs fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-superc-fix-ifdefs
++++ a/fs/ext4/super.c
+@@ -709,7 +709,7 @@ static int ext4_show_options(struct seq_
+ 		seq_puts(seq, ",debug");
+ 	if (test_opt(sb, OLDALLOC))
+ 		seq_puts(seq, ",oldalloc");
+-#ifdef CONFIG_EXT4_FS_XATTR
++#ifdef CONFIG_EXT4DEV_FS_XATTR
+ 	if (test_opt(sb, XATTR_USER))
+ 		seq_puts(seq, ",user_xattr");
+ 	if (!test_opt(sb, XATTR_USER) &&
+@@ -717,7 +717,7 @@ static int ext4_show_options(struct seq_
+ 		seq_puts(seq, ",nouser_xattr");
  	}
-diff -puN fs/ext4/mballoc.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/mballoc.c
---- a/fs/ext4/mballoc.c~ext4-fix-up-ext4fs_debug-builds
-+++ a/fs/ext4/mballoc.c
-@@ -2946,9 +2946,6 @@ static int ext4_mb_mark_diskspace_used(s
- 	sbi = EXT4_SB(sb);
- 	es = sbi->s_es;
- 
--	ext4_debug("using block group %d(%d)\n", ac->ac_b_group.group,
--			gdp->bg_free_blocks_count);
--
- 	err = -EIO;
- 	bitmap_bh = read_block_bitmap(sb, ac->ac_b_ex.fe_group);
- 	if (!bitmap_bh)
-@@ -2963,6 +2960,9 @@ static int ext4_mb_mark_diskspace_used(s
- 	if (!gdp)
- 		goto out_err;
- 
-+	ext4_debug("using block group %lu(%d)\n", ac->ac_b_ex.fe_group,
-+			gdp->bg_free_blocks_count);
-+
- 	err = ext4_journal_get_write_access(handle, gdp_bh);
- 	if (err)
- 		goto out_err;
-diff -puN fs/ext4/resize.c~ext4-fix-up-ext4fs_debug-builds fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-fix-up-ext4fs_debug-builds
-+++ a/fs/ext4/resize.c
-@@ -206,7 +206,7 @@ static int setup_new_group_blocks(struct
- 	}
- 
- 	if (ext4_bg_has_super(sb, input->group)) {
--		ext4_debug("mark backup superblock %#04lx (+0)\n", start);
-+		ext4_debug("mark backup superblock %#04llx (+0)\n", start);
- 		ext4_set_bit(0, bh->b_data);
- 	}
- 
-@@ -215,7 +215,7 @@ static int setup_new_group_blocks(struct
- 	     i < gdblocks; i++, block++, bit++) {
- 		struct buffer_head *gdb;
- 
--		ext4_debug("update backup group %#04lx (+%d)\n", block, bit);
-+		ext4_debug("update backup group %#04llx (+%d)\n", block, bit);
- 
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -243,7 +243,7 @@ static int setup_new_group_blocks(struct
- 	     i < reserved_gdb; i++, block++, bit++) {
- 		struct buffer_head *gdb;
- 
--		ext4_debug("clear reserved block %#04lx (+%d)\n", block, bit);
-+		ext4_debug("clear reserved block %#04llx (+%d)\n", block, bit);
- 
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -256,10 +256,10 @@ static int setup_new_group_blocks(struct
- 		ext4_set_bit(bit, bh->b_data);
- 		brelse(gdb);
- 	}
--	ext4_debug("mark block bitmap %#04x (+%ld)\n", input->block_bitmap,
-+	ext4_debug("mark block bitmap %#04llx (+%llu)\n", input->block_bitmap,
- 		   input->block_bitmap - start);
- 	ext4_set_bit(input->block_bitmap - start, bh->b_data);
--	ext4_debug("mark inode bitmap %#04x (+%ld)\n", input->inode_bitmap,
-+	ext4_debug("mark inode bitmap %#04llx (+%llu)\n", input->inode_bitmap,
- 		   input->inode_bitmap - start);
- 	ext4_set_bit(input->inode_bitmap - start, bh->b_data);
- 
-@@ -268,7 +268,7 @@ static int setup_new_group_blocks(struct
- 	     i < sbi->s_itb_per_group; i++, bit++, block++) {
- 		struct buffer_head *it;
- 
--		ext4_debug("clear inode block %#04lx (+%d)\n", block, bit);
-+		ext4_debug("clear inode block %#04llx (+%d)\n", block, bit);
- 
- 		if ((err = extend_or_restart_transaction(handle, 1, bh)))
- 			goto exit_bh;
-@@ -291,7 +291,7 @@ static int setup_new_group_blocks(struct
- 	brelse(bh);
- 
- 	/* Mark unused entries in inode bitmap used */
--	ext4_debug("clear inode bitmap %#04x (+%ld)\n",
-+	ext4_debug("clear inode bitmap %#04llx (+%llu)\n",
- 		   input->inode_bitmap, input->inode_bitmap - start);
- 	if (IS_ERR(bh = bclean(handle, sb, input->inode_bitmap))) {
- 		err = PTR_ERR(bh);
-@@ -1054,7 +1054,7 @@ int ext4_group_extend(struct super_block
- 	ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
- 	sb->s_dirt = 1;
- 	unlock_super(sb);
--	ext4_debug("freeing blocks %lu through %llu\n", o_blocks_count,
-+	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
- 		   o_blocks_count + add);
- 	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
- 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ #endif
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
++#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
+ 	if (test_opt(sb, POSIX_ACL))
+ 		seq_puts(seq, ",acl");
+ 	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
 _
