@@ -1,158 +1,49 @@
 From: akpm@linux-foundation.org
-Subject: [patch 7/8] ext4: add block bitmap validation
-Date: Thu, 29 Nov 2007 12:52:52 -0800
-Message-ID: <200711292052.lATKqrm8006843@imap1.linux-foundation.org>
+Subject: [patch 4/8] ext4: fix freespace accounting with mballoc on 32bit machines
+Date: Thu, 29 Nov 2007 12:52:50 -0800
+Message-ID: <200711292052.lATKqouX006834@imap1.linux-foundation.org>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com
+	akpm@linux-foundation.org, sandeen@redhat.com
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:40743 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:36111 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755442AbXK2Uxj (ORCPT
+	by vger.kernel.org with ESMTP id S1758001AbXK2UyI (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2007 15:53:39 -0500
+	Thu, 29 Nov 2007 15:54:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-When a new block bitmap is read from disk in read_block_bitmap() there are a
-few bits that should ALWAYS be set.  In particular, the blocks given
-corresponding to block bitmap, inode bitmap and inode tables.  Validate the
-block bitmap against these blocks.
+On a 32bit machine, passing the negative unsigned long fe_len
+into percpu_counter_add (which expects s64) messes up the counters:
 
-[akpm@linux-foundation.org: fix printk warning]
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+[root@bear-05 linux-2.6.23-rc7]# df -h
+
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/sdb7              97G -149P  149P   -  /mnt/test
+
+Patch below fixes this.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c |  101 ++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 82 insertions(+), 19 deletions(-)
+ fs/ext4/mballoc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/balloc.c~ext4-add-block-bitmap-validation fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-add-block-bitmap-validation
-+++ a/fs/ext4/balloc.c
-@@ -189,13 +189,65 @@ struct ext4_group_desc * ext4_get_group_
- 	return desc;
- }
+diff -puN fs/ext4/mballoc.c~ext4-fix-freespace-accounting-with-mballoc-on-32bit-machines fs/ext4/mballoc.c
+--- a/fs/ext4/mballoc.c~ext4-fix-freespace-accounting-with-mballoc-on-32bit-machines
++++ a/fs/ext4/mballoc.c
+@@ -3005,7 +3005,7 @@ static int ext4_mb_mark_diskspace_used(s
+ 				- ac->ac_b_ex.fe_len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+-	percpu_counter_add(&sbi->s_freeblocks_counter, - ac->ac_b_ex.fe_len);
++	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
  
-+static int ext4_valid_block_bitmap(struct super_block *sb,
-+					struct ext4_group_desc *desc,
-+					unsigned int block_group,
-+					struct buffer_head *bh)
-+{
-+	ext4_grpblk_t offset;
-+	ext4_grpblk_t next_zero_bit;
-+	ext4_fsblk_t bitmap_blk;
-+	ext4_fsblk_t group_first_block;
-+
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-+		/* with FLEX_BG, the inode/block bitmaps and itable
-+		 * blocks may not be in the group at all
-+		 * so the bitmap validation will be skipped for those groups
-+		 * or it has to also read the block group where the bitmaps
-+		 * are located to verify they are set.
-+		 */
-+		return 1;
-+	}
-+	group_first_block = ext4_group_first_block_no(sb, block_group);
-+
-+	/* check whether block bitmap block number is set */
-+	bitmap_blk = ext4_block_bitmap(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext4_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode bitmap block number is set */
-+	bitmap_blk = ext4_inode_bitmap(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext4_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode table block number is set */
-+	bitmap_blk = ext4_inode_table(sb, desc);
-+	offset = bitmap_blk - group_first_block;
-+	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
-+				offset + EXT4_SB(sb)->s_itb_per_group,
-+				offset);
-+	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
-+		/* good bitmap for inode tables */
-+		return 1;
-+
-+err_out:
-+	ext4_error(sb, __FUNCTION__,
-+			"Invalid block bitmap - "
-+			"block_group = %d, block = %llu",
-+			block_group, bitmap_blk);
-+	return 0;
-+}
- /**
-  * read_block_bitmap()
-  * @sb:			super block
-  * @block_group:	given block group
-  *
-- * Read the bitmap for a given block_group, reading into the specified
-- * slot in the superblock's bitmap cache.
-+ * Read the bitmap for a given block_group,and validate the
-+ * bits for block/inode/inode tables are set in the bitmaps
-  *
-  * Return buffer_head on success or NULL in case of failure.
-  */
-@@ -210,25 +262,36 @@ read_block_bitmap(struct super_block *sb
- 	if (!desc)
- 		return NULL;
- 	bitmap_blk = ext4_block_bitmap(sb, desc);
--	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--		bh = sb_getblk(sb, bitmap_blk);
--		if (!buffer_uptodate(bh)) {
--			lock_buffer(bh);
--			if (!buffer_uptodate(bh)) {
--				ext4_init_block_bitmap(sb, bh, block_group,
--						       desc);
--				set_buffer_uptodate(bh);
--			}
--			unlock_buffer(bh);
--		}
--	} else {
--		bh = sb_bread(sb, bitmap_blk);
-+	bh = sb_getblk(sb, bitmap_blk);
-+	if (unlikely(!bh)) {
-+		ext4_error(sb, __FUNCTION__,
-+			    "Cannot read block bitmap - "
-+			    "block_group = %d, block_bitmap = %llu",
-+			    (int)block_group, (unsigned long long)bitmap_blk);
-+		return NULL;
- 	}
--	if (!bh)
--		ext4_error (sb, __FUNCTION__,
-+	if (bh_uptodate_or_lock(bh))
-+		return bh;
-+
-+	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+		ext4_init_block_bitmap(sb, bh, block_group, desc);
-+		set_buffer_uptodate(bh);
-+		unlock_buffer(bh);
-+		return bh;
-+	}
-+	if (bh_submit_read(bh) < 0) {
-+		brelse(bh);
-+		ext4_error(sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
--			    "block_group = %lu, block_bitmap = %llu",
--			    block_group, bitmap_blk);
-+			    "block_group = %d, block_bitmap = %llu",
-+			    (int)block_group, (unsigned long long)bitmap_blk);
-+		return NULL;
-+	}
-+	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
-+		brelse(bh);
-+		return NULL;
-+	}
-+
- 	return bh;
- }
- /*
+ 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
+ 	if (err)
 _
