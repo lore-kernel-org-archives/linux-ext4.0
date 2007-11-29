@@ -1,81 +1,98 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] Fix reading of bitmaps from a filesystem image
-Date: Thu, 29 Nov 2007 17:29:48 +0100
-Message-ID: <20071129162948.GH16558@duck.suse.cz>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH] e2fsprogs: fix blkid whole-disk scanning heuristics
+Date: Thu, 29 Nov 2007 12:57:35 -0600
+Message-ID: <474F0B9F.5070902@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:41146 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1758808AbXK2Q3u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2007 11:29:50 -0500
-Content-Disposition: inline
+Received: from sandeen.net ([209.173.210.139]:19758 "EHLO sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762883AbXK2TbP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Nov 2007 14:31:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+The heuristics in blkid/devname.c probe_all() for scanning whole disks
+with no partitions assume that a device name with no digit on the end
+will always be present as a delineator, i.e.:
 
-  reading of bitmaps from a filesystem image seems to be busted. The patch
-below fixes it for me.
+sda
+sda1
+sdb
+sdc
 
-									Honza
+In this case, when sdc is seen, it's the clue to go back and scan sdb.
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+however, for something like:
+
+sda
+sda1
+sdb
+loop0
+
+this falls down, and sdb is never scanned.
+(thanks to Karel Zak for pointing this out).
+
+I believe the following patch will fix this up, but when messing
+with partition scanning, I don't mind a second opinion.  :)
+
+Thanks,
+
+-Eric
+
 ---
 
-Subject: Fix reading of bitmaps from filesystem image
+Addresses-Red-Hat-Bugzilla: #400321
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Reading of bitmaps from image file could never work with more than one
-group in a filesystem... Fix the loops so that we read appropriate number
-of blocks.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 1897ec3..abbe5e8 100644
---- a/lib/ext2fs/rw_bitmaps.c
-+++ b/lib/ext2fs/rw_bitmaps.c
-@@ -190,7 +190,7 @@ static errcode_t read_bitmaps(ext2_filsy
- 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
- 		blk = (fs->image_header->offset_inodemap / fs->blocksize);
- 		ino_cnt = fs->super->s_inodes_count;
--		while (inode_nbytes > 0) {
-+		while (do_inode && ino_cnt > 0) {
- 			retval = io_channel_read_blk(fs->image_io, blk++,
- 						     1, inode_bitmap);
- 			if (retval)
-@@ -202,15 +202,14 @@ static errcode_t read_bitmaps(ext2_filsy
- 					       ino_itr, cnt, inode_bitmap);
- 			if (retval)
- 				goto cleanup;
--			ino_itr += fs->blocksize << 3;
--			ino_cnt -= fs->blocksize << 3;
--			inode_nbytes -= fs->blocksize;
-+			ino_itr += cnt;
-+			ino_cnt -= cnt;
- 		}
- 		blk = (fs->image_header->offset_blockmap /
- 		       fs->blocksize);
- 		blk_cnt = EXT2_BLOCKS_PER_GROUP(fs->super) * 
- 			fs->group_desc_count;
--		while (block_nbytes > 0) {
-+		while (do_block && blk_cnt > 0) {
- 			retval = io_channel_read_blk(fs->image_io, blk++,
- 						     1, block_bitmap);
- 			if (retval)
-@@ -222,9 +221,8 @@ static errcode_t read_bitmaps(ext2_filsy
- 				       blk_itr, cnt, block_bitmap);
- 			if (retval)
- 				goto cleanup;
--			blk_itr += fs->blocksize << 3;
--			blk_cnt -= fs->blocksize << 3;
--			block_nbytes -= fs->blocksize;
-+			blk_itr += cnt;
-+			blk_cnt -= cnt;
- 		}
- 		goto success_cleanup;
- 	}
+Index: e2fsprogs-1.40.2/lib/blkid/devname.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/lib/blkid/devname.c
++++ e2fsprogs-1.40.2/lib/blkid/devname.c
+@@ -490,10 +490,11 @@ static int probe_all(blkid_cache cache, 
+ 
+ 		DBG(DEBUG_DEVNAME, printf("read partition name %s\n", ptname));
+ 
+-		/* Skip whole disk devs unless they have no partitions
+-		 * If we don't have a partition on this dev, also
++		/* Skip whole disk devs unless they have no partitions.
++		 * If base name of device has changed, also
+ 		 * check previous dev to see if it didn't have a partn.
+-		 * heuristic: partition name ends in a digit.
++		 * heuristic: partition name ends in a digit, & partition
++		 * names contain whole device name as substring.
+ 		 *
+ 		 * Skip extended partitions.
+ 		 * heuristic: size is 1
+@@ -502,6 +503,8 @@ static int probe_all(blkid_cache cache, 
+ 		 */
+ 
+ 		lens[which] = strlen(ptname);
++
++		/* ends in a digit, clearly a partition, so check */
+ 		if (isdigit(ptname[lens[which] - 1])) {
+ 			DBG(DEBUG_DEVNAME,
+ 			    printf("partition dev %s, devno 0x%04X\n",
+@@ -510,10 +513,15 @@ static int probe_all(blkid_cache cache, 
+ 			if (sz > 1)
+ 				probe_one(cache, ptname, devs[which], 0, 
+ 					  only_if_new);
+-			lens[which] = 0;
+-			lens[last] = 0;
+-		} else if (lens[last] && strncmp(ptnames[last], ptname,
+-						 lens[last])) {
++			lens[which] = 0;	/* mark as checked */
++		}
++
++		/*
++		 * If last was not checked because it looked like a whole-disk
++		 * dev, and the device's base name has changed,
++		 * check last as well.
++		 */
++		if (lens[last] && strncmp(ptnames[last], ptname, lens[last])) {
+ 			DBG(DEBUG_DEVNAME,
+ 			    printf("whole dev %s, devno 0x%04X\n",
+ 				   ptnames[last], (unsigned int) devs[last]));
