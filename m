@@ -1,130 +1,90 @@
-From: akpm@linux-foundation.org
-Subject: + jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc.patch added to -mm tree
-Date: Thu, 29 Nov 2007 14:36:50 -0800
-Message-ID: <200711292236.lATMaoSc010738@imap1.linux-foundation.org>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: circular locking dependency detected
+Date: Fri, 30 Nov 2007 13:04:46 +0530
+Message-ID: <20071130073446.GA7864@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: lkml <linux-kernel@vger.kernel.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55259 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756086AbXK2Wgz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2007 17:36:55 -0500
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:44120 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756652AbXK3HfR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2007 02:35:17 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-The patch titled
-     jbd2: Fix assertion failure in fs/jbd2/checkpoint.c
-has been added to the -mm tree.  Its filename is
-     jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc.patch
+=======================================================
+[ INFO: possible circular locking dependency detected ]
+2.6.24-rc3 #6
+-------------------------------------------------------
+bash/2294 is trying to acquire lock:
+(&journal->j_list_lock){--..}, at: [<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+but task is already holding lock:
+(inode_lock){--..}, at: [<c01864b6>] drop_pagecache+0x48/0xd8
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+which lock already depends on the new lock.
 
-------------------------------------------------------
-Subject: jbd2: Fix assertion failure in fs/jbd2/checkpoint.c
-From: Jan Kara <jack@suse.cz>
 
-Before we start committing a transaction, we call
-__journal_clean_checkpoint_list() to cleanup transaction's written-back
-buffers.
+the existing dependency chain (in reverse order) is:
 
-If this call happens to remove all of them (and there were already some
-buffers), __journal_remove_checkpoint() will decide to free the transaction
-because it isn't (yet) a committing transaction and soon we fail some
-assertion - the transaction really isn't ready to be freed :).
+-> #1 (inode_lock){--..}:
+[<c0143929>] __lock_acquire+0xa31/0xc1a
+[<c0143b8c>] lock_acquire+0x7a/0x94
+[<c0447ae5>] _spin_lock+0x2e/0x58
+[<c0185fae>] __mark_inode_dirty+0xd8/0x15e
+[<c018996f>] __set_page_dirty+0xfb/0x10a
+[<c01899fe>] mark_buffer_dirty+0x80/0x86
+[<c01ed1b6>] __journal_temp_unlink_buffer+0xc1/0xc5
+[<c01ed2f3>] __journal_unfile_buffer+0xb/0x15
+[<c01ed338>] __journal_refile_buffer+0x3b/0x85
+[<c01efe1b>] journal_commit_transaction+0xe7f/0x10ec
+[<c01f34b0>] kjournald+0x131/0x35f
+[<c0138ee9>] kthread+0x3b/0x62
+[<c0105c7f>] kernel_thread_helper+0x7/0x10
+[<ffffffff>] 0xffffffff
 
-We change the check in __journal_remove_checkpoint() to free only a
-transaction in T_FINISHED state.  The locking there is subtle though (as
-everywhere in JBD ;().  We use j_list_lock to protect the check and a
-subsequent call to __journal_drop_transaction() and do the same in the end
-of journal_commit_transaction() which is the only place where a transaction
-can get to T_FINISHED state.
+-> #0 (&journal->j_list_lock){--..}:
+[<c0143819>] __lock_acquire+0x921/0xc1a
+[<c0143b8c>] lock_acquire+0x7a/0x94
+[<c0447ae5>] _spin_lock+0x2e/0x58
+[<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
+[<c01cb7a2>] ext3_releasepage+0x68/0x74
+[<c0151ff1>] try_to_release_page+0x33/0x44
+[<c01578b0>] __invalidate_mapping_pages+0x74/0xe0
+[<c01864de>] drop_pagecache+0x70/0xd8
+[<c018657c>] drop_caches_sysctl_handler+0x36/0x4e
+[<c019efaa>] proc_sys_write+0x6b/0x85
+[<c016da2b>] vfs_write+0x90/0x119
+[<c016dfe2>] sys_write+0x3d/0x61
+[<c0104f6e>] sysenter_past_esp+0x5f/0xa5
+[<ffffffff>] 0xffffffff
 
-Probably I'm too paranoid here and such locking is not really necessary -
-checkpoint lists are processed only from log_do_checkpoint() where a
-transaction must be already committed to be processed or from
-__journal_clean_checkpoint_list() where kjournald itself calls it and thus
-transaction cannot change state either.  Better be safe if something
-changes in future...
+other info that might help us debug this:
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+2 locks held by bash/2294:
+#0:  (&type->s_umount_key#16){----}, at: [<c01864a6>] drop_pagecache+0x38/0xd8
+#1:  (inode_lock){--..}, at: [<c01864b6>] drop_pagecache+0x48/0xd8
 
- fs/jbd2/checkpoint.c |   12 ++++++------
- fs/jbd2/commit.c     |    8 ++++----
- include/linux/jbd2.h |    2 ++
- 3 files changed, 12 insertions(+), 10 deletions(-)
-
-diff -puN fs/jbd2/checkpoint.c~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc fs/jbd2/checkpoint.c
---- a/fs/jbd2/checkpoint.c~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc
-+++ a/fs/jbd2/checkpoint.c
-@@ -608,15 +608,15 @@ int __jbd2_journal_remove_checkpoint(str
- 
- 	/*
- 	 * There is one special case to worry about: if we have just pulled the
--	 * buffer off a committing transaction's forget list, then even if the
--	 * checkpoint list is empty, the transaction obviously cannot be
--	 * dropped!
-+	 * buffer off a running or committing transaction's checkpoing list,
-+	 * then even if the checkpoint list is empty, the transaction obviously
-+	 * cannot be dropped!
- 	 *
--	 * The locking here around j_committing_transaction is a bit sleazy.
-+	 * The locking here around t_state is a bit sleazy.
- 	 * See the comment at the end of jbd2_journal_commit_transaction().
- 	 */
--	if (transaction == journal->j_committing_transaction) {
--		JBUFFER_TRACE(jh, "belongs to committing transaction");
-+	if (transaction->t_state != T_FINISHED) {
-+		JBUFFER_TRACE(jh, "belongs to running/committing transaction");
- 		goto out;
- 	}
- 
-diff -puN fs/jbd2/commit.c~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc fs/jbd2/commit.c
---- a/fs/jbd2/commit.c~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc
-+++ a/fs/jbd2/commit.c
-@@ -971,10 +971,10 @@ restart_loop:
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 	/*
--	 * This is a bit sleazy.  We borrow j_list_lock to protect
--	 * journal->j_committing_transaction in __jbd2_journal_remove_checkpoint.
--	 * Really, __jbd2_journal_remove_checkpoint should be using j_state_lock but
--	 * it's a bit hassle to hold that across __jbd2_journal_remove_checkpoint
-+	 * This is a bit sleazy.  We use j_list_lock to protect transition
-+	 * of a transaction into T_FINISHED state and calling
-+	 * __jbd2_journal_drop_transaction(). Otherwise we could race with
-+	 * other checkpointing code processing the transaction...
- 	 */
- 	spin_lock(&journal->j_state_lock);
- 	spin_lock(&journal->j_list_lock);
-diff -puN include/linux/jbd2.h~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc include/linux/jbd2.h
---- a/include/linux/jbd2.h~jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc
-+++ a/include/linux/jbd2.h
-@@ -479,6 +479,8 @@ struct transaction_s
- 	/*
- 	 * Transaction's current state
- 	 * [no locking - only kjournald2 alters this]
-+	 * [j_list_lock] guards transition of a transaction into T_FINISHED
-+	 * state and subsequent call of __jbd2_journal_drop_transaction()
- 	 * FIXME: needs barriers
- 	 * KLUDGE: [use j_state_lock]
- 	 */
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-origin.patch
-jbd-fix-assertion-failure-in-fs-jbd-checkpointc.patch
-inotify-send-in_attrib-events-when-link-count-changes.patch
-jbd2-fix-assertion-failure-in-fs-jbd2-checkpointc.patch
-r-o-bind-mounts-elevate-write-count-for-some-ioctls-vs-forbid-user-to-change-file-flags-on-quota-files.patch
-iget-stop-ext3-from-using-iget-and-read_inode-try.patch
-iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
-iget-stop-ext4-from-using-iget-and-read_inode-try.patch
+stack backtrace:
+[<c0105ffb>] show_trace_log_lvl+0x1a/0x2f
+[<c0106875>] show_trace+0x12/0x14
+[<c0106967>] dump_stack+0x16/0x18
+[<c0141b33>] print_circular_bug_tail+0x5f/0x68
+[<c0143819>] __lock_acquire+0x921/0xc1a
+[<c0143b8c>] lock_acquire+0x7a/0x94
+[<c0447ae5>] _spin_lock+0x2e/0x58
+[<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
+[<c01cb7a2>] ext3_releasepage+0x68/0x74
+[<c0151ff1>] try_to_release_page+0x33/0x44
+[<c01578b0>] __invalidate_mapping_pages+0x74/0xe0
+[<c01864de>] drop_pagecache+0x70/0xd8
+[<c018657c>] drop_caches_sysctl_handler+0x36/0x4e
+[<c019efaa>] proc_sys_write+0x6b/0x85
+[<c016da2b>] vfs_write+0x90/0x119
+[<c016dfe2>] sys_write+0x3d/0x61
+[<c0104f6e>] sysenter_past_esp+0x5f/0xa5
+=======================
