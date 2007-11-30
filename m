@@ -1,90 +1,170 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: circular locking dependency detected
-Date: Fri, 30 Nov 2007 13:04:46 +0530
-Message-ID: <20071130073446.GA7864@skywalker>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [RFC] support multiple max offset limits for a single superblock
+Date: Fri, 30 Nov 2007 10:35:01 -0600
+Message-ID: <47503BB5.2010501@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: lkml <linux-kernel@vger.kernel.org>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp01.in.ibm.com ([59.145.155.1]:44120 "EHLO
-	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756652AbXK3HfR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2007 02:35:17 -0500
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:32963 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932822AbXK3QfE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Nov 2007 11:35:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Reiserfs, and now ext4, both have the possibility of encountering older on-disk
+format files which do not support the s_maxbytes of the newer formats.  Reiserfs
+currently has spots in various places to catch these too-large offsets and
+reject them, but it's replicating a bit of code in the process.
 
-=======================================================
-[ INFO: possible circular locking dependency detected ]
-2.6.24-rc3 #6
--------------------------------------------------------
-bash/2294 is trying to acquire lock:
-(&journal->j_list_lock){--..}, at: [<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
+I could do the same for ext4, but Chris Mason prodded me to think of something
+more generic... this is what I came up with.  A filesystem could then define
+a maxbytes i_op, and if present, it would return the max offset for that 
+particular inode, based on format.
 
-but task is already holding lock:
-(inode_lock){--..}, at: [<c01864b6>] drop_pagecache+0x48/0xd8
+I'm not wedded to this, but thought I'd send it out for comment.
 
-which lock already depends on the new lock.
+(BTW another option would be to convert old-format files when accessed, but
+that has its own set of tradeoffs...)
 
+Thanks,
 
-the existing dependency chain (in reverse order) is:
+-Eric
 
--> #1 (inode_lock){--..}:
-[<c0143929>] __lock_acquire+0xa31/0xc1a
-[<c0143b8c>] lock_acquire+0x7a/0x94
-[<c0447ae5>] _spin_lock+0x2e/0x58
-[<c0185fae>] __mark_inode_dirty+0xd8/0x15e
-[<c018996f>] __set_page_dirty+0xfb/0x10a
-[<c01899fe>] mark_buffer_dirty+0x80/0x86
-[<c01ed1b6>] __journal_temp_unlink_buffer+0xc1/0xc5
-[<c01ed2f3>] __journal_unfile_buffer+0xb/0x15
-[<c01ed338>] __journal_refile_buffer+0x3b/0x85
-[<c01efe1b>] journal_commit_transaction+0xe7f/0x10ec
-[<c01f34b0>] kjournald+0x131/0x35f
-[<c0138ee9>] kthread+0x3b/0x62
-[<c0105c7f>] kernel_thread_helper+0x7/0x10
-[<ffffffff>] 0xffffffff
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
--> #0 (&journal->j_list_lock){--..}:
-[<c0143819>] __lock_acquire+0x921/0xc1a
-[<c0143b8c>] lock_acquire+0x7a/0x94
-[<c0447ae5>] _spin_lock+0x2e/0x58
-[<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
-[<c01cb7a2>] ext3_releasepage+0x68/0x74
-[<c0151ff1>] try_to_release_page+0x33/0x44
-[<c01578b0>] __invalidate_mapping_pages+0x74/0xe0
-[<c01864de>] drop_pagecache+0x70/0xd8
-[<c018657c>] drop_caches_sysctl_handler+0x36/0x4e
-[<c019efaa>] proc_sys_write+0x6b/0x85
-[<c016da2b>] vfs_write+0x90/0x119
-[<c016dfe2>] sys_write+0x3d/0x61
-[<c0104f6e>] sysenter_past_esp+0x5f/0xa5
-[<ffffffff>] 0xffffffff
+---
 
-other info that might help us debug this:
-
-2 locks held by bash/2294:
-#0:  (&type->s_umount_key#16){----}, at: [<c01864a6>] drop_pagecache+0x38/0xd8
-#1:  (inode_lock){--..}, at: [<c01864b6>] drop_pagecache+0x48/0xd8
-
-stack backtrace:
-[<c0105ffb>] show_trace_log_lvl+0x1a/0x2f
-[<c0106875>] show_trace+0x12/0x14
-[<c0106967>] dump_stack+0x16/0x18
-[<c0141b33>] print_circular_bug_tail+0x5f/0x68
-[<c0143819>] __lock_acquire+0x921/0xc1a
-[<c0143b8c>] lock_acquire+0x7a/0x94
-[<c0447ae5>] _spin_lock+0x2e/0x58
-[<c01eee2f>] journal_try_to_free_buffers+0x76/0x10c
-[<c01cb7a2>] ext3_releasepage+0x68/0x74
-[<c0151ff1>] try_to_release_page+0x33/0x44
-[<c01578b0>] __invalidate_mapping_pages+0x74/0xe0
-[<c01864de>] drop_pagecache+0x70/0xd8
-[<c018657c>] drop_caches_sysctl_handler+0x36/0x4e
-[<c019efaa>] proc_sys_write+0x6b/0x85
-[<c016da2b>] vfs_write+0x90/0x119
-[<c016dfe2>] sys_write+0x3d/0x61
-[<c0104f6e>] sysenter_past_esp+0x5f/0xa5
-=======================
+Index: linux-2.6.24-rc1/fs/buffer.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/buffer.c
++++ linux-2.6.24-rc1/fs/buffer.c
+@@ -2175,7 +2175,7 @@ int generic_cont_expand_simple(struct in
+ 		send_sig(SIGXFSZ, current, 0);
+ 		goto out;
+ 	}
+-	if (size > inode->i_sb->s_maxbytes)
++	if (size > inode_maxbytes(inode))
+ 		goto out;
+ 
+ 	err = pagecache_write_begin(NULL, mapping, size, 0,
+Index: linux-2.6.24-rc1/fs/open.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/open.c
++++ linux-2.6.24-rc1/fs/open.c
+@@ -399,7 +399,7 @@ asmlinkage long sys_fallocate(int fd, in
+ 
+ 	ret = -EFBIG;
+ 	/* Check for wrap through zero too */
+-	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
++	if (((offset + len) > inode_maxbytes(inode)) || ((offset + len) < 0))
+ 		goto out_fput;
+ 
+ 	if (inode->i_op && inode->i_op->fallocate)
+Index: linux-2.6.24-rc1/fs/read_write.c
+===================================================================
+--- linux-2.6.24-rc1.orig/fs/read_write.c
++++ linux-2.6.24-rc1/fs/read_write.c
+@@ -45,7 +45,7 @@ loff_t generic_file_llseek(struct file *
+ 			offset += file->f_pos;
+ 	}
+ 	retval = -EINVAL;
+-	if (offset>=0 && offset<=inode->i_sb->s_maxbytes) {
++	if (offset >= 0 && offset <= inode_maxbytes(inode)) {
+ 		if (offset != file->f_pos) {
+ 			file->f_pos = offset;
+ 			file->f_version = 0;
+@@ -71,7 +71,7 @@ loff_t remote_llseek(struct file *file, 
+ 			offset += file->f_pos;
+ 	}
+ 	retval = -EINVAL;
+-	if (offset>=0 && offset<=file->f_path.dentry->d_inode->i_sb->s_maxbytes) {
++	if (offset>=0 && offset<=inode_maxbytes(file->f_path.dentry->d_inode)) {
+ 		if (offset != file->f_pos) {
+ 			file->f_pos = offset;
+ 			file->f_version = 0;
+@@ -764,7 +764,7 @@ static ssize_t do_sendfile(int out_fd, i
+ 		goto fput_out;
+ 
+ 	if (!max)
+-		max = min(in_inode->i_sb->s_maxbytes, out_inode->i_sb->s_maxbytes);
++		max = min(inode_maxbytes(in_inode), inode_maxbytes(out_inode));
+ 
+ 	pos = *ppos;
+ 	retval = -EINVAL;
+Index: linux-2.6.24-rc1/include/linux/fs.h
+===================================================================
+--- linux-2.6.24-rc1.orig/include/linux/fs.h
++++ linux-2.6.24-rc1/include/linux/fs.h
+@@ -1217,8 +1217,17 @@ struct inode_operations {
+ 	void (*truncate_range)(struct inode *, loff_t, loff_t);
+ 	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
+ 			  loff_t len);
++	unsigned long long (*maxbytes)(struct inode *inode);
+ };
+ 
++static inline unsigned long long inode_maxbytes(struct inode *inode)
++{
++	if (unlikely(inode->i_op->maxbytes)) {
++		return inode->i_op->maxbytes(inode);
++	} else
++		return inode->i_sb->s_maxbytes;
++}
++
+ struct seq_file;
+ 
+ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+Index: linux-2.6.24-rc1/mm/filemap.c
+===================================================================
+--- linux-2.6.24-rc1.orig/mm/filemap.c
++++ linux-2.6.24-rc1/mm/filemap.c
+@@ -1827,15 +1827,15 @@ inline int generic_write_checks(struct f
+ 	 * Linus frestrict idea will clean these up nicely..
+ 	 */
+ 	if (likely(!isblk)) {
+-		if (unlikely(*pos >= inode->i_sb->s_maxbytes)) {
+-			if (*count || *pos > inode->i_sb->s_maxbytes) {
++		if (unlikely(*pos >= inode_maxbytes(inode))) {
++			if (*count || *pos > inode_maxbytes(inode)) {
+ 				return -EFBIG;
+ 			}
+-			/* zero-length writes at ->s_maxbytes are OK */
++			/* zero-length writes at inode_maxbytes are OK */
+ 		}
+ 
+-		if (unlikely(*pos + *count > inode->i_sb->s_maxbytes))
+-			*count = inode->i_sb->s_maxbytes - *pos;
++		if (unlikely(*pos + *count > inode_maxbytes(inode)))
++			*count = inode_maxbytes(inode) - *pos;
+ 	} else {
+ #ifdef CONFIG_BLOCK
+ 		loff_t isize;
+Index: linux-2.6.24-rc1/mm/memory.c
+===================================================================
+--- linux-2.6.24-rc1.orig/mm/memory.c
++++ linux-2.6.24-rc1/mm/memory.c
+@@ -1936,7 +1936,7 @@ do_expand:
+ 	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
+ 	if (limit != RLIM_INFINITY && offset > limit)
+ 		goto out_sig;
+-	if (offset > inode->i_sb->s_maxbytes)
++	if (offset > inode_maxbytes(inode))
+ 		goto out_big;
+ 	i_size_write(inode, offset);
+ 
+Index: linux-2.6.24-rc1/mm/nommu.c
+===================================================================
+--- linux-2.6.24-rc1.orig/mm/nommu.c
++++ linux-2.6.24-rc1/mm/nommu.c
+@@ -78,7 +78,7 @@ do_expand:
+ 	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
+ 	if (limit != RLIM_INFINITY && offset > limit)
+ 		goto out_sig;
+-	if (offset > inode->i_sb->s_maxbytes)
++	if (offset > inode_maxbytes(inode))
+ 		goto out;
+ 	i_size_write(inode, offset);
+ 
