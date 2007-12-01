@@ -1,26 +1,27 @@
-From: Theodore Tso <tytso@thunk.org>
-Subject: Re: [PATCH] fix check_mntent_file() to pass mode for open(O_CREAT)
-Date: Sat, 1 Dec 2007 07:11:19 -0500
-Message-ID: <20071201121119.GE28558@thunk.org>
-References: <20071109012015.GA14612@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] Fix bug in ext2fs_unlink
+Date: Sat, 1 Dec 2007 07:08:57 -0500
+Message-ID: <20071201120857.GC28558@thunk.org>
+References: <20071127170306.GB4617@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48412 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48419 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751814AbXLARfd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 1 Dec 2007 12:35:33 -0500
+	id S1750713AbXLARgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 1 Dec 2007 12:36:03 -0500
 Content-Disposition: inline
-In-Reply-To: <20071109012015.GA14612@webber.adilger.int>
+In-Reply-To: <20071127170306.GB4617@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 08, 2007 at 06:20:15PM -0700, Andreas Dilger wrote:
-> On my FC8 install, ismounted.c fails to build because open(O_CREAT) is
-> used without passing a mode.  The following trivial patch fixes it.
+On Tue, Nov 27, 2007 at 06:03:06PM +0100, Jan Kara wrote:
+>   Hi,
 > 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+>   the patch below fixes a bug in ext2fs_unlink() I came across when testing
+> my changes to e2fsprogs for 64KB blocksize support... Please apply.
 
 Thanks, applied.
 
