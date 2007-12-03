@@ -1,66 +1,50 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC] Flex_BG ialloc awareness.
-Date: Mon, 3 Dec 2007 13:42:47 -0700
-Message-ID: <20071203204247.GL3604@webber.adilger.int>
-References: <20071203130539.52e096a0@gara>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 1/4] ext4: minor fix in jbd2 stats kmalloc failure case
+Date: Mon, 03 Dec 2007 17:29:43 -0600
+Message-ID: <47549167.4000107@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:38198 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750740AbXLCUmt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2007 15:42:49 -0500
-Content-Disposition: inline
-In-Reply-To: <20071203130539.52e096a0@gara>
+Received: from mx1.redhat.com ([66.187.233.31]:39900 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751183AbXLCX3p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2007 18:29:45 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lB3NTik4032601
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:29:44 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB3NThxU016168
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:29:43 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lB3NThwA022139
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:29:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 03, 2007  13:05 -0600, Jose R. Santos wrote:
-> @@ -600,6 +600,7 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
->  	ext4_grpblk_t group_freed;
-> +	ext4_group_t meta_group;
+(Mingming: these 4 patches can apply after 
+jbd-stats-through-procfs-with-external-journal-oops-fix.patch)
 
-Please do not call these meta_groups.  This already means something very
-specific (i.e. desc_per_block groups) and using it for FLEX_BG is confusing.
-One possibly desirable relation is if the FLEX_BG count is some integer or
-power-of-two multiple of the metabg count.  That would allow the FLEX_BG
-code to share the same in-memory group struct as the mballoc code and save
-on some memory overhead.
+---------------------------------------------------------------------
 
-> +			meta_group = ext4_meta_group(sbi, block_group);
-> +			spin_lock(&sbi->s_meta_groups[meta_group].meta_group_lock);
-> +			sbi->s_meta_groups[meta_group].free_inodes++;
-> +			if (is_directory)
-> +				sbi->s_meta_groups[meta_group].num_dirs--;
-> +			spin_unlock(&sbi->s_meta_groups[meta_group].meta_group_lock);
+The other instance of this problem was caught, but this one got missed:
+Free the correct pointer on s->stats allocation failure in jbd2_seq_info_open
 
-This can be as many as hundreds or thousands of spin locks.  Why not use
-the same hashed locking code as the group descriptors themselves?
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-		spin_lock(sb_bgl_lock(sbi, meta_group));
-		spin_unlock(sb_bgl_lock(sbi, meta_group));
+---
 
-This scales with the number of CPUs and chance of contention is very low.
-
-> +int find_group_meta(struct super_block *sb, struct inode *parent)
-> +{
-> +	ext4_group_t parent_mgroup = parent_group / sbi->s_groups_per_meta;
-
-This could use ext4_meta_group(sbi, parent_group)?
-
-> +static inline ext4_group_t ext4_meta_group(struct ext4_sb_info *sbi,
-> +					     ext4_group_t block_group)
-> +{
-> +	return block_group/sbi->s_groups_per_meta;
-> +}
-
-It would be preferable to limit s_groups_per_meta to be a power-of-two
-so that this can become a shift instead of a divide.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Index: linux-2.6.24-rc3/fs/jbd2/journal.c
+===================================================================
+--- linux-2.6.24-rc3.orig/fs/jbd2/journal.c
++++ linux-2.6.24-rc3/fs/jbd2/journal.c
+@@ -850,7 +850,7 @@ static int jbd2_seq_info_open(struct ino
+ 		return -EIO;
+ 	size = sizeof(struct transaction_stats_s);
+ 	s->stats = kmalloc(size, GFP_KERNEL);
+-	if (s == NULL) {
++	if (s->stats == NULL) {
+ 		kfree(s);
+ 		return -EIO;
+ 	}
