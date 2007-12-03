@@ -1,46 +1,101 @@
-From: Cordenner jean noel <jean-noel.cordenner@bull.net>
-Subject: [patch] ext4 i_version: make the flag visible on /proc/mounts
-Date: Mon, 03 Dec 2007 17:26:18 +0100
-Message-ID: <1196699178.1302.15.camel@frecb002711.frec.bull.fr>
-Reply-To: jean-noel.cordenner@bull.net
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] fix up vfs inode version patch for modules
+Date: Mon, 03 Dec 2007 10:00:34 -0800
+Message-ID: <1196704834.4022.2.camel@localhost.localdomain>
+References: <474DD0A6.9010809@redhat.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58801 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751353AbXLCQb7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2007 11:31:59 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 9526319D9D4
-	for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2007 17:31:57 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 22365-09 for <linux-ext4@vger.kernel.org>;
- Mon,  3 Dec 2007 17:31:54 +0100 (CET)
-Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 1826C19D9CF
-	for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2007 17:31:54 +0100 (CET)
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:33945 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750754AbXLCSBK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2007 13:01:10 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lB3I0YuX007039
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 13:00:34 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lB3I0YsU076680
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 13:00:34 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lB3I0YcO030082
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 13:00:34 -0500
+In-Reply-To: <474DD0A6.9010809@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Wed, 2007-11-28 at 14:33 -0600, Eric Sandeen wrote:
+> ext4 calls inode_inc_iversion(), but it's not exported, so modular ext4
+> has trouble.  Any reason not to just make it an inline, as below?
+> 
 
-This patch adds the i_version flag in ext4_show_options().
+I agree.
 
-
-
-Index: linux-2.6.24-rc3-ext4-1/fs/ext4/super.c
-===================================================================
---- linux-2.6.24-rc3-ext4-1.orig/fs/ext4/super.c	2007-12-03 16:14:55.000000000 +0100
-+++ linux-2.6.24-rc3-ext4-1/fs/ext4/super.c	2007-12-03 16:16:36.000000000 +0100
-@@ -732,6 +732,8 @@
- 		seq_puts(seq, ",nobh");
- 	if (!test_opt(sb, EXTENTS))
- 		seq_puts(seq, ",noextents");
-+	if (test_opt(sb, I_VERSION))
-+		seq_puts(seq, ",i_version");
- 
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
- 		seq_puts(seq, ",data=journal");
+Mingming
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> ---
+> 
+> Index: linux-2.6.24-rc1/fs/inode.c
+> ===================================================================
+> --- linux-2.6.24-rc1.orig/fs/inode.c
+> +++ linux-2.6.24-rc1/fs/inode.c
+> @@ -1243,23 +1243,6 @@ void touch_atime(struct vfsmount *mnt, s
+>  EXPORT_SYMBOL(touch_atime);
+> 
+>  /**
+> - *     inode_inc_iversion      -       increments i_version
+> - *     @inode: inode that need to be updated
+> - *
+> - *     Every time the inode is modified, the i_version field
+> - *     will be incremented.
+> - *     The filesystem has to be mounted with i_version flag
+> - *
+> - */
+> -
+> -void inode_inc_iversion(struct inode *inode)
+> -{
+> -	spin_lock(&inode->i_lock);
+> -	inode->i_version++;
+> -	spin_unlock(&inode->i_lock);
+> -}
+> -
+> -/**
+>   *	file_update_time	-	update mtime and ctime time
+>   *	@file: file accessed
+>   *
+> Index: linux-2.6.24-rc1/include/linux/fs.h
+> ===================================================================
+> --- linux-2.6.24-rc1.orig/include/linux/fs.h
+> +++ linux-2.6.24-rc1/include/linux/fs.h
+> @@ -1396,7 +1396,21 @@ static inline void inode_dec_link_count(
+>  	mark_inode_dirty(inode);
+>  }
+> 
+> -extern void inode_inc_iversion(struct inode *inode);
+> +/**
+> + * inode_inc_iversion - increments i_version
+> + * @inode: inode that need to be updated
+> + *
+> + * Every time the inode is modified, the i_version field will be incremented.
+> + * The filesystem has to be mounted with i_version flag
+> + */
+> +
+> +static inline void inode_inc_iversion(struct inode *inode)
+> +{
+> +       spin_lock(&inode->i_lock);
+> +       inode->i_version++;
+> +       spin_unlock(&inode->i_lock);
+> +}
+> +
+>  extern void touch_atime(struct vfsmount *mnt, struct dentry *dentry);
+>  static inline void file_accessed(struct file *file)
+>  {
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
