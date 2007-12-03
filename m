@@ -1,48 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Check for the correct error return from ext4_ext_get_blocks
-Date: Mon, 03 Dec 2007 09:37:37 -0600
-Message-ID: <475422C1.2030906@redhat.com>
-References: <1196677650-10479-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Cordenner jean noel <jean-noel.cordenner@bull.net>
+Subject: [patch] ext4 i_version: make the flag visible on /proc/mounts
+Date: Mon, 03 Dec 2007 17:26:18 +0100
+Message-ID: <1196699178.1302.15.camel@frecb002711.frec.bull.fr>
+Reply-To: jean-noel.cordenner@bull.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48992 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750713AbXLCPyE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2007 10:54:04 -0500
-In-Reply-To: <1196677650-10479-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58801 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751353AbXLCQb7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2007 11:31:59 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 9526319D9D4
+	for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2007 17:31:57 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 22365-09 for <linux-ext4@vger.kernel.org>;
+ Mon,  3 Dec 2007 17:31:54 +0100 (CET)
+Received: from ecn002.frec.bull.fr (ecn002.frec.bull.fr [129.183.4.6])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 1826C19D9CF
+	for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2007 17:31:54 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> ext4_ext_get_blocks returns negative values on error. We should
-> check for  <= 0
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/extents.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index a2475d4..ce57245 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2558,8 +2558,8 @@ retry:
->  		ret = ext4_ext_get_blocks(handle, inode, block,
->  					  max_blocks, &map_bh,
->  					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
-> -		WARN_ON(!ret);
-> -		if (!ret) {
-> +		WARN_ON(ret <= 0);
-> +		if (ret <= 0) {
->  			ext4_error(inode->i_sb, "ext4_fallocate",
->  				   "ext4_ext_get_blocks returned 0! inode#%lu"
->  				   ", block=%llu, max_blocks=%llu",
+Hi,
 
-Need to change the "returned 0!" part of the error to "returned %d!"
-then too, I guess?
+This patch adds the i_version flag in ext4_show_options().
 
--Eric
+
+
+Index: linux-2.6.24-rc3-ext4-1/fs/ext4/super.c
+===================================================================
+--- linux-2.6.24-rc3-ext4-1.orig/fs/ext4/super.c	2007-12-03 16:14:55.000000000 +0100
++++ linux-2.6.24-rc3-ext4-1/fs/ext4/super.c	2007-12-03 16:16:36.000000000 +0100
+@@ -732,6 +732,8 @@
+ 		seq_puts(seq, ",nobh");
+ 	if (!test_opt(sb, EXTENTS))
+ 		seq_puts(seq, ",noextents");
++	if (test_opt(sb, I_VERSION))
++		seq_puts(seq, ",i_version");
+ 
+ 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
+ 		seq_puts(seq, ",data=journal");
