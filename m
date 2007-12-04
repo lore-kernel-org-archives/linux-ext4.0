@@ -1,37 +1,65 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/4] ext4: minor fix in jbd2 stats kmalloc failure case
-Date: Mon, 03 Dec 2007 16:23:49 -0800
-Message-ID: <1196727829.4013.1.camel@localhost.localdomain>
-References: <47549167.4000107@redhat.com>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:41334 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750740AbXLDAXu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2007 19:23:50 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lB40NnG1030623
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lB40Nnqn099886
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lB40Nnta013539
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
-In-Reply-To: <47549167.4000107@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks.patch added to -mm tree
+Date: Mon, 03 Dec 2007 21:46:37 -0800
+Message-ID: <200712040546.lB45kbVn003121@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2007-12-03 at 17:29 -0600, Eric Sandeen wrote:
-> (Mingming: these 4 patches can apply after 
-> jbd-stats-through-procfs-with-external-journal-oops-fix.patch)
-> 
-Thanks Eric, looks all good to me. Updated the patch queue with the four
-jbd2 stats fixes from you.
 
-Mingming
+The patch titled
+     ext4: check for the correct error return from ext4_ext_get_blocks
+has been added to the -mm tree.  Its filename is
+     ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks.patch
+
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+------------------------------------------------------
+Subject: ext4: check for the correct error return from ext4_ext_get_blocks
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+
+ext4_ext_get_blocks returns negative values on error. We should
+check for  <= 0
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/extents.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff -puN fs/ext4/extents.c~ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks
++++ a/fs/ext4/extents.c
+@@ -2628,8 +2628,8 @@ retry:
+ 		ret = ext4_ext_get_blocks(handle, inode, block,
+ 					  max_blocks, &map_bh,
+ 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
+-		WARN_ON(!ret);
+-		if (!ret) {
++		WARN_ON(ret <= 0);
++		if (ret <= 0) {
+ 			ext4_error(inode->i_sb, "ext4_fallocate",
+ 				   "ext4_ext_get_blocks returned 0! inode#%lu"
+ 				   ", block=%lu, max_blocks=%lu",
+_
+
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+origin.patch
+ext2-return-after-ext2_error-in-case-of-failures.patch
+ext2-change-the-default-behaviour-on-error.patch
+add-buffer-head-related-helper-functions.patch
+ext2-add-block-bitmap-validation.patch
+ext3-add-block-bitmap-validation.patch
+ext4-add-block-bitmap-validation.patch
+ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks.patch
+ext3-return-after-ext3_error-in-case-of-failures.patch
+ext3-change-the-default-behaviour-on-error.patch
