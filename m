@@ -1,30 +1,34 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 3/3] ext4: store maxbytes for bitmapped  files and return
- EFBIG as appropriate
-Date: Tue, 04 Dec 2007 10:00:34 -0600
-Message-ID: <475579A2.2090301@redhat.com>
-References: <47557870.9060405@redhat.com>
+Subject: Re: [PATCH 3/3] ext4: (V2) store maxbytes for bitmapped  files and
+ return EFBIG as appropriate
+Date: Tue, 04 Dec 2007 13:31:01 -0600
+Message-ID: <4755AAF5.3010607@redhat.com>
+References: <47557870.9060405@redhat.com> <475579A2.2090301@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59604 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:35715 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755192AbXLDQAg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Dec 2007 11:00:36 -0500
+	id S1751116AbXLDTbC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Dec 2007 14:31:02 -0500
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lB4G0a15018693
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 11:00:36 -0500
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lB4JV2DI010932
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 14:31:02 -0500
 Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB4G0ZaG026256
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 11:00:35 -0500
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB4JV1gS010239
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 14:31:01 -0500
 Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB4G0YlE027758
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 11:00:35 -0500
-In-Reply-To: <47557870.9060405@redhat.com>
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB4JV119029763
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Dec 2007 14:31:01 -0500
+In-Reply-To: <475579A2.2090301@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+Crud, minor off-by-one in ext4_file_write.  V2 below:
+
+===============================
 
 Calculate & store the max offset for bitmapped files, and
 catch too-large seeks, truncates, and writes in ext4, shortening
@@ -50,7 +54,7 @@ Index: linux-2.6.24-rc3/fs/ext4/file.c
 ===================================================================
 --- linux-2.6.24-rc3.orig/fs/ext4/file.c
 +++ linux-2.6.24-rc3/fs/ext4/file.c
-@@ -56,8 +56,25 @@ ext4_file_write(struct kiocb *iocb, cons
+@@ -56,8 +56,29 @@ ext4_file_write(struct kiocb *iocb, cons
  	ssize_t ret;
  	int err;
  
@@ -64,8 +68,12 @@ Index: linux-2.6.24-rc3/fs/ext4/file.c
 +		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
 +		size_t length = iov_length(iov, nr_segs);
 +
-+		if (pos > sbi->s_bitmap_maxbytes)
-+			return -EFBIG;
++		if (pos >= sbi->s_bitmap_maxbytes) {
++			if (length || pos > sbi->s_bitmap_maxbytes) {
++				return -EFBIG;
++			}
++			/* zero-length writes at maxbytes are OK */
++		}
 +
 +		if (pos + length > sbi->s_bitmap_maxbytes) {
 +			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
