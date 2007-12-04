@@ -1,225 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 4/4] ext4: open-code jbd2 stats union references
-Date: Mon, 03 Dec 2007 17:30:12 -0600
-Message-ID: <47549184.5090908@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH 1/4] ext4: minor fix in jbd2 stats kmalloc failure case
+Date: Mon, 03 Dec 2007 16:23:49 -0800
+Message-ID: <1196727829.4013.1.camel@localhost.localdomain>
+References: <47549167.4000107@redhat.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39907 "EHLO mx1.redhat.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:41334 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751196AbXLCXaN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2007 18:30:13 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lB3NUDWI000567
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:30:13 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lB3NUC8p016744
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:30:12 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lB3NUC3P022659
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 18:30:12 -0500
+	id S1750740AbXLDAXu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2007 19:23:50 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id lB40NnG1030623
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lB40Nnqn099886
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lB40Nnta013539
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2007 19:23:49 -0500
+In-Reply-To: <47549167.4000107@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-open-code references to stats unions for clarity, as suggested
-by akpm on his review.
+On Mon, 2007-12-03 at 17:29 -0600, Eric Sandeen wrote:
+> (Mingming: these 4 patches can apply after 
+> jbd-stats-through-procfs-with-external-journal-oops-fix.patch)
+> 
+Thanks Eric, looks all good to me. Updated the patch queue with the four
+jbd2 stats fixes from you.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
----
-
-Index: linux-2.6.24-rc3/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.24-rc3.orig/fs/jbd2/commit.c
-+++ linux-2.6.24-rc3/fs/jbd2/commit.c
-@@ -339,10 +339,10 @@ void jbd2_journal_commit_transaction(jou
- 	spin_lock(&journal->j_state_lock);
- 	commit_transaction->t_state = T_LOCKED;
- 
--	stats.ts_wait = commit_transaction->t_max_wait;
--	stats.ts_locked = jiffies;
--	stats.ts_running = jbd2_time_diff(commit_transaction->t_start,
--						stats.ts_locked);
-+	stats.u.run.rs_wait = commit_transaction->t_max_wait;
-+	stats.u.run.rs_locked = jiffies;
-+	stats.u.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
-+						stats.u.run.rs_locked);
- 
- 	spin_lock(&commit_transaction->t_handle_lock);
- 	while (commit_transaction->t_updates) {
-@@ -414,8 +414,9 @@ void jbd2_journal_commit_transaction(jou
- 	 */
- 	jbd2_journal_switch_revoke_table(journal);
- 
--	stats.ts_flushing = jiffies;
--	stats.ts_locked = jbd2_time_diff(stats.ts_locked, stats.ts_flushing);
-+	stats.u.run.rs_flushing = jiffies;
-+	stats.u.run.rs_locked = jbd2_time_diff(stats.u.run.rs_locked,
-+					       stats.u.run.rs_flushing);
- 
- 	commit_transaction->t_state = T_FLUSH;
- 	journal->j_committing_transaction = commit_transaction;
-@@ -508,10 +509,11 @@ void jbd2_journal_commit_transaction(jou
- 	 */
- 	commit_transaction->t_state = T_COMMIT;
- 
--	stats.ts_logging = jiffies;
--	stats.ts_flushing = jbd2_time_diff(stats.ts_flushing, stats.ts_logging);
--	stats.ts_blocks = commit_transaction->t_outstanding_credits;
--	stats.ts_blocks_logged = 0;
-+	stats.u.run.rs_logging = jiffies;
-+	stats.u.run.rs_flushing = jbd2_time_diff(stats.u.run.rs_flushing,
-+						 stats.u.run.rs_logging);
-+	stats.u.run.rs_blocks = commit_transaction->t_outstanding_credits;
-+	stats.u.run.rs_blocks_logged = 0;
- 
- 	descriptor = NULL;
- 	bufs = 0;
-@@ -661,7 +663,7 @@ start_journal_io:
- 				submit_bh(WRITE, bh);
- 			}
- 			cond_resched();
--			stats.ts_blocks_logged += bufs;
-+			stats.u.run.rs_blocks_logged += bufs;
- 
- 			/* Force a new descriptor to be generated next
-                            time round the loop. */
-@@ -908,7 +910,7 @@ restart_loop:
- 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
- 
- 	commit_transaction->t_start = jiffies;
--	stats.ts_logging = jbd2_time_diff(stats.ts_logging,
-+	stats.u.run.rs_logging = jbd2_time_diff(stats.u.run.rs_logging,
- 						commit_transaction->t_start);
- 
- 	/*
-@@ -916,7 +918,7 @@ restart_loop:
- 	 */
- 	stats.ts_type = JBD2_STATS_RUN;
- 	stats.ts_tid = commit_transaction->t_tid;
--	stats.ts_handle_count = commit_transaction->t_handle_count;
-+	stats.u.run.rs_handle_count = commit_transaction->t_handle_count;
- 	spin_lock(&journal->j_history_lock);
- 	memcpy(journal->j_history + journal->j_history_cur, &stats,
- 			sizeof(stats));
-@@ -927,14 +929,14 @@ restart_loop:
- 	 * Calculate overall stats
- 	 */
- 	journal->j_stats.ts_tid++;
--	journal->j_stats.ts_wait += stats.ts_wait;
--	journal->j_stats.ts_running += stats.ts_running;
--	journal->j_stats.ts_locked += stats.ts_locked;
--	journal->j_stats.ts_flushing += stats.ts_flushing;
--	journal->j_stats.ts_logging += stats.ts_logging;
--	journal->j_stats.ts_handle_count += stats.ts_handle_count;
--	journal->j_stats.ts_blocks += stats.ts_blocks;
--	journal->j_stats.ts_blocks_logged += stats.ts_blocks_logged;
-+	journal->j_stats.u.run.rs_wait += stats.u.run.rs_wait;
-+	journal->j_stats.u.run.rs_running += stats.u.run.rs_running;
-+	journal->j_stats.u.run.rs_locked += stats.u.run.rs_locked;
-+	journal->j_stats.u.run.rs_flushing += stats.u.run.rs_flushing;
-+	journal->j_stats.u.run.rs_logging += stats.u.run.rs_logging;
-+	journal->j_stats.u.run.rs_handle_count += stats.u.run.rs_handle_count;
-+	journal->j_stats.u.run.rs_blocks += stats.u.run.rs_blocks;
-+	journal->j_stats.u.run.rs_blocks_logged += stats.u.run.rs_blocks_logged;
- 	spin_unlock(&journal->j_history_lock);
- 
- 	commit_transaction->t_state = T_FINISHED;
-Index: linux-2.6.24-rc3/fs/jbd2/journal.c
-===================================================================
---- linux-2.6.24-rc3.orig/fs/jbd2/journal.c
-+++ linux-2.6.24-rc3/fs/jbd2/journal.c
-@@ -714,19 +714,20 @@ static int jbd2_seq_history_show(struct 
- 	if (ts->ts_type == JBD2_STATS_RUN)
- 		seq_printf(seq, "%-4s %-5lu %-5u %-5u %-5u %-5u %-5u "
- 				"%-6lu %-5lu %-5lu\n", "R", ts->ts_tid,
--				jiffies_to_msecs(ts->ts_wait),
--				jiffies_to_msecs(ts->ts_running),
--				jiffies_to_msecs(ts->ts_locked),
--				jiffies_to_msecs(ts->ts_flushing),
--				jiffies_to_msecs(ts->ts_logging),
--				ts->ts_handle_count, ts->ts_blocks,
--				ts->ts_blocks_logged);
-+				jiffies_to_msecs(ts->u.run.rs_wait),
-+				jiffies_to_msecs(ts->u.run.rs_running),
-+				jiffies_to_msecs(ts->u.run.rs_locked),
-+				jiffies_to_msecs(ts->u.run.rs_flushing),
-+				jiffies_to_msecs(ts->u.run.rs_logging),
-+				ts->u.run.rs_handle_count,
-+				ts->u.run.rs_blocks,
-+				ts->u.run.rs_blocks_logged);
- 	else if (ts->ts_type == JBD2_STATS_CHECKPOINT)
- 		seq_printf(seq, "%-4s %-5lu %48s %-5u %-5lu %-5lu %-5lu\n",
- 				"C", ts->ts_tid, " ",
--				jiffies_to_msecs(ts->ts_chp_time),
--				ts->ts_written, ts->ts_dropped,
--				ts->ts_forced_to_close);
-+				jiffies_to_msecs(ts->u.chp.cs_chp_time),
-+				ts->u.chp.cs_written, ts->u.chp.cs_dropped,
-+				ts->u.chp.cs_forced_to_close);
- 	else
- 		J_ASSERT(0);
- 	return 0;
-@@ -815,22 +816,22 @@ static int jbd2_seq_info_show(struct seq
- 			s->journal->j_max_transaction_buffers);
- 	if (s->stats->ts_tid == 0)
- 		return 0;
--	seq_printf(seq, "average: \n  %lums waiting for transaction\n",
--		   jiffies_to_msecs(s->stats->ts_wait / s->stats->ts_tid));
--	seq_printf(seq, "  %lums running transaction\n",
--		   jiffies_to_msecs(s->stats->ts_running / s->stats->ts_tid));
--	seq_printf(seq, "  %lums transaction was being locked\n",
--		   jiffies_to_msecs(s->stats->ts_locked / s->stats->ts_tid));
--	seq_printf(seq, "  %lums flushing data (in ordered mode)\n",
--		   jiffies_to_msecs(s->stats->ts_flushing / s->stats->ts_tid));
--	seq_printf(seq, "  %lums logging transaction\n",
--		   jiffies_to_msecs(s->stats->ts_logging / s->stats->ts_tid));
-+	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
-+	    jiffies_to_msecs(s->stats->u.run.rs_wait / s->stats->ts_tid));
-+	seq_printf(seq, "  %ums running transaction\n",
-+	    jiffies_to_msecs(s->stats->u.run.rs_running / s->stats->ts_tid));
-+	seq_printf(seq, "  %ums transaction was being locked\n",
-+	    jiffies_to_msecs(s->stats->u.run.rs_locked / s->stats->ts_tid));
-+	seq_printf(seq, "  %ums flushing data (in ordered mode)\n",
-+	    jiffies_to_msecs(s->stats->u.run.rs_flushing / s->stats->ts_tid));
-+	seq_printf(seq, "  %ums logging transaction\n",
-+	    jiffies_to_msecs(s->stats->u.run.rs_logging / s->stats->ts_tid));
- 	seq_printf(seq, "  %lu handles per transaction\n",
--		   s->stats->ts_handle_count / s->stats->ts_tid);
-+	    s->stats->u.run.rs_handle_count / s->stats->ts_tid);
- 	seq_printf(seq, "  %lu blocks per transaction\n",
--		   s->stats->ts_blocks / s->stats->ts_tid);
-+	    s->stats->u.run.rs_blocks / s->stats->ts_tid);
- 	seq_printf(seq, "  %lu logged blocks per transaction\n",
--		   s->stats->ts_blocks_logged / s->stats->ts_tid);
-+	    s->stats->u.run.rs_blocks_logged / s->stats->ts_tid);
- 	return 0;
- }
- 
-Index: linux-2.6.24-rc3/include/linux/jbd2.h
-===================================================================
---- linux-2.6.24-rc3.orig/include/linux/jbd2.h
-+++ linux-2.6.24-rc3/include/linux/jbd2.h
-@@ -612,20 +612,6 @@ struct transaction_stats_s
- #define JBD2_STATS_RUN		1
- #define JBD2_STATS_CHECKPOINT	2
- 
--#define ts_wait			u.run.rs_wait
--#define ts_running		u.run.rs_running
--#define ts_locked		u.run.rs_locked
--#define ts_flushing		u.run.rs_flushing
--#define ts_logging		u.run.rs_logging
--#define ts_handle_count		u.run.rs_handle_count
--#define ts_blocks		u.run.rs_blocks
--#define ts_blocks_logged	u.run.rs_blocks_logged
--
--#define ts_chp_time		u.chp.cs_chp_time
--#define ts_forced_to_close	u.chp.cs_forced_to_close
--#define ts_written		u.chp.cs_written
--#define ts_dropped		u.chp.cs_dropped
--
- static inline unsigned long
- jbd2_time_diff(unsigned long start, unsigned long end)
- {
+Mingming
