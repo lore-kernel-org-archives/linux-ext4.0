@@ -1,633 +1,667 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] Reduce stack used by lib/hexdump.c
-Date: Thu, 06 Dec 2007 13:52:27 -0800
-Message-ID: <1196977948.10819.135.camel@localhost>
-References: <1196359724.22120.22.camel@localhost>
-	 <20071129102400.dac158d8.randy.dunlap@oracle.com>
-	 <1196361860.22120.27.camel@localhost> <474F0A68.1080809@oracle.com>
-	 <1196369873.22120.69.camel@localhost> <474F28EB.20608@oracle.com>
-	 <Pine.LNX.4.64.0711292206450.3089@fbirervta.pbzchgretzou.qr>
-	 <1196378922.22120.72.camel@localhost>
-	 <20071205160133.0766c4f5.akpm@linux-foundation.org>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [RFC] [PATCH] Flex_BG ialloc awareness V2.
+Date: Thu, 6 Dec 2007 16:10:45 -0600
+Message-ID: <20071206161045.1054bbe7@gara>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="MP_/6xuFrXKAaFL9I19txq2QF2T"
+To: linux-ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:46055 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751913AbXLFWKp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2007 17:10:45 -0500
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id lB6MAikp011482
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Dec 2007 17:10:45 -0500
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lB6MAig9080526
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Dec 2007 15:10:44 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lB6MAimM010873
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Dec 2007 15:10:44 -0700
+Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id lB6MAiix010854
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Dec 2007 15:10:44 -0700
+Received: from gara (wecm-9-67-18-163.wecm.ibm.com [9.67.18.163])
+	by austin.ibm.com (8.13.8/8.12.10) with ESMTP id lB6MAghK035450
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Dec 2007 16:10:43 -0600
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+--MP_/6xuFrXKAaFL9I19txq2QF2T
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: jengelh@computergmbh.de, Kyle Moffett <mrmacman_g4@mac.com>,
-	randy.dunlap@oracle.com, linux-kernel@vger.kernel.org,
-	"Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@clusterfs.com>,
-	Dave Kleikamp <shaggy@austin.ibm.com>,
-	David Brownell <dbrownell@users.sourceforge.net>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	"James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
-	Jeff Garzik <jgarzik@pobox.com>, Mingming Cao <cmm@us.ibm.com>,
-	Stephen Tweedie <sct@redhat.com>, Zhu Yi <yi.zhu@intel.com>,
-	ipw3945-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	linux-mtd@lists.infradead.org, linux-scsi@vger.kernel.org,
-	linux-usb-devel@lists.sourceforge.net,
-	linux-usb-users@lists.sourceforge.net,
-	linux-wireless@vger.kernel.org, netdev <netdev@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-In-Reply-To: <20071205160133.0766c4f5.akpm@linux-foundation.org>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Disposition: inline
 
-On Wed, 2007-12-05 at 16:01 -0800, Andrew Morton wrote:
-> No, I think print_hex_dump() is too low-level to be doing allocations. 
-> For example, one could easily choose to call print_hex_dump() at oops time,
-> and then what happens if we oops in kmalloc() (as we often do...)?
-> 
-> You could trim linebuf[] to 80 chars or so.  Extra points for making it
-> very clear when someone tries to exceed that - strcpy(linebuf, "stop being
-> stupid").
+Hi folks,
 
-No extra points, but here's a revised patch to hexdump against
-Linus' current:
+New version of the Flex_BG ialloc allocation patch.
 
-hex_dump_to_buffer:
-	Removes casts to type for non-1 group sizes
-		Used by: fs/ext(3|4)super.c, fs/jfs
-		If someone really dislikes this change, please say so.
-		I think casting to type in a hex dump odd, especially
-		for mixed type structures.
-		If you want an array of type dumper, it probably
-		shouldn't be called hex_dump_to_buffer.
-	Groups by arbitrary size
+Changes from the last version:
 
-print_hex_dump:
-	Removes rowsize argument
-	Reduces linebuf stack use to ~120 bytes
-		prefix:25 + address:20 + data:48 + ascii:20)
-	Aligns multiline ascii output
-	Changes return to size_t, number of bytes actually output
+- Size of the FLEX_BG in now written to the super block at mke2fs time
+  instead of calculating at mount time (testing patch for e2fsprog's
+  next branch attached).
 
-include/linux/kernel.h
-	Removes hex_asc define
-	Updates hex_dump prototypes
+- Rename a lots of the confusing "meta" terms as suggested by Andreas.
 
-The rest are trivial conversions to new argument list.
-	
-size before:
-   text    data     bss     dec     hex filename
-   1142       0       0    1142     476 lib/hexdump.o
+- Use the Orlov if the FLEX_BG size is 0.
 
-size after:
-   text    data     bss     dec     hex filename
-    823       0       0     823     337 lib/hexdump.o
+- Use shift instead of divide in ext4_meta_group() as suggested by
+  Andreas.
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- include/linux/kernel.h                      |   13 +-
- lib/hexdump.c                               |  164 ++++++++++++---------------
- drivers/mtd/ubi/debug.c                     |    2 +-
- drivers/mtd/ubi/io.c                        |    2 +-
- drivers/net/wireless/iwlwifi/iwl3945-base.c |    4 +-
- drivers/net/wireless/iwlwifi/iwl4965-base.c |    4 +-
- drivers/scsi/ide-scsi.c                     |    8 +-
- drivers/usb/gadget/file_storage.c           |    4 +-
- fs/ext3/super.c                             |    6 +-
- fs/ext4/super.c                             |    6 +-
- fs/jffs2/wbuf.c                             |    4 +-
- fs/jfs/jfs_imap.c                           |    2 +-
- fs/jfs/jfs_logmgr.c                         |    6 +-
- fs/jfs/jfs_metapage.c                       |    2 +-
- fs/jfs/jfs_txnmgr.c                         |    8 +-
- fs/jfs/xattr.c                              |    4 +-
- 16 files changed, 110 insertions(+), 129 deletions(-)
+- Use sb_bgl_lock() instead of one spinlock per FLEX_BG as suggested by
+  Andreas.  (Needs more perf testing)
 
-diff --git a/include/linux/kernel.h b/include/linux/kernel.h
-index 94bc996..ab45524 100644
---- a/include/linux/kernel.h
-+++ b/include/linux/kernel.h
-@@ -248,15 +248,14 @@ enum {
- 	DUMP_PREFIX_ADDRESS,
- 	DUMP_PREFIX_OFFSET
- };
--extern void hex_dump_to_buffer(const void *buf, size_t len,
--				int rowsize, int groupsize,
--				char *linebuf, size_t linebuflen, bool ascii);
-+extern size_t hex_dump_to_buffer(const void *buf, size_t len,
-+				 size_t rowsize, size_t groupsize,
-+				 char *linebuf, size_t linebuflen, bool ascii);
- extern void print_hex_dump(const char *level, const char *prefix_str,
--				int prefix_type, int rowsize, int groupsize,
--				const void *buf, size_t len, bool ascii);
-+			   int prefix_type, size_t groupsize,
-+			   const void *buf, size_t len, bool ascii);
- extern void print_hex_dump_bytes(const char *prefix_str, int prefix_type,
--			const void *buf, size_t len);
--#define hex_asc(x)	"0123456789abcdef"[x]
-+				 const void *buf, size_t len);
+- Remove some dead/prototype code.
+
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+--
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index b102b0e..7ef9787 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -600,6 +600,7 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	struct ext4_sb_info *sbi;
+ 	int err = 0, ret;
+ 	ext4_grpblk_t group_freed;
++	ext4_group_t flex_group;
  
- #define pr_emerg(fmt, arg...) \
- 	printk(KERN_EMERG fmt, ##arg)
-diff --git a/lib/hexdump.c b/lib/hexdump.c
-index 3435465..df82012 100644
---- a/lib/hexdump.c
-+++ b/lib/hexdump.c
-@@ -12,18 +12,21 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
+ 	*pdquot_freed_blocks = 0;
+ 	sbi = EXT4_SB(sb);
+@@ -745,6 +746,14 @@ do_more:
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
  
-+#define ROWSIZE ((size_t)16)
-+#define MAX_PREFIX_LEN ((size_t)20)
-+
- /**
-  * hex_dump_to_buffer - convert a blob of data to "hex ASCII" in memory
-  * @buf: data blob to dump
-  * @len: number of bytes in the @buf
-- * @rowsize: number of bytes to print per line; must be 16 or 32
-+ * @rowsize: maximum number of bytes to output (aligns ascii)
-  * @groupsize: number of bytes to print at a time (1, 2, 4, 8; default = 1)
-  * @linebuf: where to put the converted data
-  * @linebuflen: total size of @linebuf, including space for terminating NUL
-  * @ascii: include ASCII after the hex output
-  *
-  * hex_dump_to_buffer() works on one "line" of output at a time, i.e.,
-- * 16 or 32 bytes of input data converted to hex + ASCII output.
-+ * input data converted to hex + ASCII output.
-  *
-  * Given a buffer of u8 data, hex_dump_to_buffer() converts the input data
-  * to a hex + ASCII dump at the supplied memory location.
-@@ -31,85 +34,54 @@
-  *
-  * E.g.:
-  *   hex_dump_to_buffer(frame->data, frame->len, 16, 1,
-- *			linebuf, sizeof(linebuf), 1);
-+ *			linebuf, sizeof(linebuf), true);
-  *
-  * example output buffer:
-  * 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f  @ABCDEFGHIJKLMNO
-  */
--void hex_dump_to_buffer(const void *buf, size_t len, int rowsize,
--			int groupsize, char *linebuf, size_t linebuflen,
--			bool ascii)
-+size_t hex_dump_to_buffer(const void *buf, size_t len,
-+			  size_t rowsize, size_t groupsize,
-+			  char *linebuf, size_t linebuflen, bool ascii)
- {
- 	const u8 *ptr = buf;
--	u8 ch;
--	int j, lx = 0;
--	int ascii_column;
--
--	if (rowsize != 16 && rowsize != 32)
--		rowsize = 16;
--
-+	int i, lx = 0;
-+	size_t ascii_column;
-+	size_t ngroups;
- 	if (!len)
- 		goto nil;
--	if (len > rowsize)		/* limit to one line at a time */
--		len = rowsize;
--	if ((len % groupsize) != 0)	/* no mixed size output */
--		groupsize = 1;
--
--	switch (groupsize) {
--	case 8: {
--		const u64 *ptr8 = buf;
--		int ngroups = len / groupsize;
--
--		for (j = 0; j < ngroups; j++)
--			lx += scnprintf(linebuf + lx, linebuflen - lx,
--				"%16.16llx ", (unsigned long long)*(ptr8 + j));
--		ascii_column = 17 * ngroups + 2;
--		break;
--	}
--
--	case 4: {
--		const u32 *ptr4 = buf;
--		int ngroups = len / groupsize;
--
--		for (j = 0; j < ngroups; j++)
--			lx += scnprintf(linebuf + lx, linebuflen - lx,
--				"%8.8x ", *(ptr4 + j));
--		ascii_column = 9 * ngroups + 2;
--		break;
--	}
- 
--	case 2: {
--		const u16 *ptr2 = buf;
--		int ngroups = len / groupsize;
-+	if (groupsize == 0)
-+		groupsize = 1;
-+	else if (groupsize > rowsize)
-+		groupsize = rowsize;
- 
--		for (j = 0; j < ngroups; j++)
--			lx += scnprintf(linebuf + lx, linebuflen - lx,
--				"%4.4x ", *(ptr2 + j));
--		ascii_column = 5 * ngroups + 2;
--		break;
--	}
-+	ngroups = rowsize / groupsize;
-+	ascii_column = (2 * groupsize + 1) * ngroups + 2;
-+	if (len > (ngroups * groupsize))
-+		len = ngroups * groupsize;
- 
--	default:
--		for (j = 0; (j < rowsize) && (j < len) && (lx + 4) < linebuflen;
--		     j++) {
--			ch = ptr[j];
--			linebuf[lx++] = hex_asc(ch >> 4);
--			linebuf[lx++] = hex_asc(ch & 0x0f);
-+	for (i = 0; i < len; i++) {
-+		if (i && (i % groupsize) == 0)
- 			linebuf[lx++] = ' ';
--		}
--		ascii_column = 3 * rowsize + 2;
--		break;
-+		lx += scnprintf(linebuf + lx, linebuflen - lx,
-+				"%02x", ptr[i] & 0xff);
- 	}
-+
- 	if (!ascii)
- 		goto nil;
- 
- 	while (lx < (linebuflen - 1) && lx < (ascii_column - 1))
- 		linebuf[lx++] = ' ';
--	for (j = 0; (j < rowsize) && (j < len) && (lx + 2) < linebuflen; j++)
--		linebuf[lx++] = (isascii(ptr[j]) && isprint(ptr[j])) ? ptr[j]
--				: '.';
-+
-+	for (i = 0; i < len && (lx + 2) < linebuflen; i++) {
-+		if (i > 0 && groupsize > 1 && (i % groupsize) == 0)
-+			linebuf[lx++] = ' ';
-+		linebuf[lx++] = (isascii(ptr[i]) && isprint(ptr[i]))
-+			? ptr[i] : '.';
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    sbi->s_groups_per_flex_shift) {
++		flex_group = ext4_flex_group(sbi, block_group);
++		spin_lock(sb_bgl_lock(sbi, flex_group));
++		sbi->s_flex_groups[flex_group].free_blocks += count;
++		spin_unlock(sb_bgl_lock(sbi, flex_group));
 +	}
- nil:
--	linebuf[lx++] = '\0';
-+	linebuf[lx] = '\0';
-+	return len;
- }
- EXPORT_SYMBOL(hex_dump_to_buffer);
- 
-@@ -120,7 +92,6 @@ EXPORT_SYMBOL(hex_dump_to_buffer);
-  *  caller supplies trailing spaces for alignment if desired
-  * @prefix_type: controls whether prefix of an offset, address, or none
-  *  is printed (%DUMP_PREFIX_OFFSET, %DUMP_PREFIX_ADDRESS, %DUMP_PREFIX_NONE)
-- * @rowsize: number of bytes to print per line; must be 16 or 32
-  * @groupsize: number of bytes to print at a time (1, 2, 4, 8; default = 1)
-  * @buf: data blob to dump
-  * @len: number of bytes in the @buf
-@@ -131,48 +102,60 @@ EXPORT_SYMBOL(hex_dump_to_buffer);
-  * leading prefix.
-  *
-  * print_hex_dump() works on one "line" of output at a time, i.e.,
-- * 16 or 32 bytes of input data converted to hex + ASCII output.
-+ * 16 bytes of input data converted to hex + ASCII output.
-  * print_hex_dump() iterates over the entire input @buf, breaking it into
-- * "line size" chunks to format and print.
-+ * groups of up to 16 byte chunks to format and print.
-  *
-  * E.g.:
-- *   print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_ADDRESS,
-- *		16, 1, frame->data, frame->len, 1);
-+ *   print_hex_dump(KERN_DEBUG, "raw data: ", DUMP_PREFIX_ADDRESS, 1,
-+ *		    frame->data, frame->len, 1);
-  *
-  * Example output using %DUMP_PREFIX_OFFSET and 1-byte mode:
-- * 0009ab42: 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f  @ABCDEFGHIJKLMNO
-- * Example output using %DUMP_PREFIX_ADDRESS and 4-byte mode:
-- * ffffffff88089af0: 73727170 77767574 7b7a7978 7f7e7d7c  pqrstuvwxyz{|}~.
-+ * 00000000: 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f  @ABCDEFGHIJKLMNO
-+ * Example output using %DUMP_PREFIX_ADDRESS and 4-byte mode on BE 64 bit:
-+ * ffffffff88089af0: 70717273 74757677 78797a7b 7c7d7e7f  pqrs tuvw xyz{ |}~.
-+ * Example output using %DUMP_PREFIX_ADDRESS and 5-byte mode on LE 32 bit:
-+ * 88089af0: 7071727374 7576777879 7a7b7d7d7e  pqrst uvwxy z{|}~
-  */
 +
- void print_hex_dump(const char *level, const char *prefix_str, int prefix_type,
--			int rowsize, int groupsize,
--			const void *buf, size_t len, bool ascii)
-+		    size_t groupsize, const void *buf, size_t len, bool ascii)
- {
- 	const u8 *ptr = buf;
--	int i, linelen, remaining = len;
--	unsigned char linebuf[200];
--
--	if (rowsize != 16 && rowsize != 32)
--		rowsize = 16;
--
--	for (i = 0; i < len; i += rowsize) {
--		linelen = min(remaining, rowsize);
--		remaining -= rowsize;
--		hex_dump_to_buffer(ptr + i, linelen, rowsize, groupsize,
--				linebuf, sizeof(linebuf), ascii);
-+	size_t i;
-+	size_t linelen;
-+	size_t prefix_len = strlen(prefix_str);
-+	unsigned char linebuf[sizeof(KERN_INFO) +
-+			      MAX_PREFIX_LEN +
-+			      (2 * sizeof(void *) + 4) +
-+			      (3 * ROWSIZE) +
-+			      (3 * ROWSIZE / 2) + 1];
-+	if (prefix_len > MAX_PREFIX_LEN)
-+		prefix_len = MAX_PREFIX_LEN;
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+ 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
+@@ -1610,6 +1619,7 @@ ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
+ 	unsigned short windowsz = 0;
+ 	ext4_group_t ngroups;
+ 	unsigned long num = *count;
++	ext4_group_t flex_group;
+ 
+ 	*errp = -ENOSPC;
+ 	sb = inode->i_sb;
+@@ -1815,6 +1825,14 @@ allocated:
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+ 
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    sbi->s_groups_per_flex_shift) {
++		flex_group = ext4_flex_group(sbi, group_no);
++		spin_lock(sb_bgl_lock(sbi, flex_group));
++		sbi->s_flex_groups[flex_group].free_blocks -= num;
++		spin_unlock(sb_bgl_lock(sbi, flex_group));
++	}
 +
-+	i = 0;
-+	while (i < len) {
-+		size_t bytes;
-+		linelen = min(len - i, ROWSIZE);
-+		bytes = hex_dump_to_buffer(ptr + i, linelen, ROWSIZE, groupsize,
-+					   linebuf, sizeof(linebuf), ascii);
+ 	BUFFER_TRACE(gdp_bh, "journal_dirty_metadata for group descriptor");
+ 	err = ext4_journal_dirty_metadata(handle, gdp_bh);
+ 	if (!fatal)
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 17b5df1..35ab8ff 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -158,6 +158,7 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+ 	struct ext4_super_block * es;
+ 	struct ext4_sb_info *sbi;
+ 	int fatal = 0, err;
++	ext4_group_t flex_group;
  
- 		switch (prefix_type) {
- 		case DUMP_PREFIX_ADDRESS:
--			printk("%s%s%*p: %s\n", level, prefix_str,
--				(int)(2 * sizeof(void *)), ptr + i, linebuf);
-+			printk("%s%-.*s%*p: %s\n", level,
-+			       prefix_len, prefix_str,
-+			       (int)(2 * sizeof(void *)), ptr + i, linebuf);
- 			break;
- 		case DUMP_PREFIX_OFFSET:
--			printk("%s%s%.8x: %s\n", level, prefix_str, i, linebuf);
-+			printk("%s%-.*s%.8x: %s\n", level,
-+			       prefix_len, prefix_str, i, linebuf);
- 			break;
- 		default:
--			printk("%s%s%s\n", level, prefix_str, linebuf);
-+			printk("%s%-.*s%s\n", level,
-+			       prefix_len, prefix_str, linebuf);
- 			break;
+ 	if (atomic_read(&inode->i_count) > 1) {
+ 		printk ("ext4_free_inode: inode has count=%d\n",
+@@ -235,6 +236,13 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+ 			if (is_directory)
+ 				percpu_counter_dec(&sbi->s_dirs_counter);
+ 
++			if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++			    sbi->s_groups_per_flex_shift) {
++				flex_group = ext4_flex_group(sbi, block_group);
++				spin_lock(sb_bgl_lock(sbi, flex_group));
++				sbi->s_flex_groups[flex_group].free_inodes++;
++				spin_unlock(sb_bgl_lock(sbi, flex_group));
++			}
  		}
-+		i += bytes;
- 	}
+ 		BUFFER_TRACE(bh2, "call ext4_journal_dirty_metadata");
+ 		err = ext4_journal_dirty_metadata(handle, bh2);
+@@ -289,6 +297,71 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
+ 	return ret;
  }
- EXPORT_SYMBOL(print_hex_dump);
-@@ -187,12 +170,11 @@ EXPORT_SYMBOL(print_hex_dump);
-  * @len: number of bytes in the @buf
+ 
++#define free_block_ratio 10
++
++int find_group_flex(struct super_block *sb, struct inode *parent)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_group_desc *desc;
++	struct buffer_head *bh;
++	struct flex_groups *flex_group = sbi->s_flex_groups;
++	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
++	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
++	ext4_group_t ngroups = sbi->s_groups_count;
++	int flex_size = ext4_flex_bg_size(sbi);
++	ext4_group_t best_flex = -1;
++	ext4_group_t best_group = -1;
++	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
++	int flex_freeb_ratio;
++	ext4_group_t n_fbg_groups;
++	ext4_group_t i;
++
++	n_fbg_groups = (sbi->s_groups_count + flex_size - 1) / flex_size;
++	best_flex = parent_fbg_group;
++
++find_close_to_parent:
++	flex_freeb_ratio = flex_group[best_flex].free_blocks*100/blocks_per_flex;
++	if (flex_group[best_flex].free_inodes &&
++	    flex_freeb_ratio > free_block_ratio)
++		goto found_flexbg;
++
++	if (best_flex && best_flex == parent_fbg_group) {
++		best_flex--;
++		goto find_close_to_parent;
++	}
++
++	for (i = 0; i < n_fbg_groups; i++) {
++		if (i == parent_fbg_group || i == parent_fbg_group - 1)
++			continue;
++
++		flex_freeb_ratio = flex_group[i].free_blocks*100/blocks_per_flex;
++
++		if (flex_freeb_ratio > free_block_ratio &&
++		    flex_group[i].free_inodes) {
++			best_flex = i;
++			break;
++		}
++
++		if (best_flex < 0 ||
++		    (flex_group[i].free_blocks >
++		     flex_group[best_flex].free_blocks &&
++		     flex_group[i].free_inodes))
++			best_flex = i;
++	}
++
++found_flexbg:
++	for (i = best_flex * flex_size; i < ngroups &&
++		     i < (best_flex + 1) * flex_size; i++) {
++		desc = ext4_get_group_desc(sb, i, &bh);
++		if (le16_to_cpu(desc->bg_free_inodes_count)) {
++			best_group = i;
++			goto out;
++		}
++	}
++out:
++	return best_group;
++}
++
+ /*
+  * Orlov's allocator for directories.
   *
-  * Calls print_hex_dump(), with log level of KERN_DEBUG,
-- * rowsize of 16, groupsize of 1, and ASCII output included.
-+ * groupsize of 1, and ASCII output included.
-  */
- void print_hex_dump_bytes(const char *prefix_str, int prefix_type,
--			const void *buf, size_t len)
-+			  const void *buf, size_t len)
- {
--	print_hex_dump(KERN_DEBUG, prefix_str, prefix_type, 16, 1,
--			buf, len, 1);
-+	print_hex_dump(KERN_DEBUG, prefix_str, prefix_type, 1, buf, len, true);
- }
- EXPORT_SYMBOL(print_hex_dump_bytes);
-diff --git a/drivers/mtd/ubi/debug.c b/drivers/mtd/ubi/debug.c
-index 56956ec..d99c4d5 100644
---- a/drivers/mtd/ubi/debug.c
-+++ b/drivers/mtd/ubi/debug.c
-@@ -42,7 +42,7 @@ void ubi_dbg_dump_ec_hdr(const struct ubi_ec_hdr *ec_hdr)
- 	dbg_msg("data_offset    %d",    be32_to_cpu(ec_hdr->data_offset));
- 	dbg_msg("hdr_crc        %#08x", be32_to_cpu(ec_hdr->hdr_crc));
- 	dbg_msg("erase counter header hexdump:");
--	print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 32, 1,
-+	print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 1,
- 		       ec_hdr, UBI_EC_HDR_SIZE, 1);
- }
+@@ -504,6 +577,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	int free = 0;
++	ext4_group_t flex_group;
  
-diff --git a/drivers/mtd/ubi/io.c b/drivers/mtd/ubi/io.c
-index 7c304ee..20cf7b2 100644
---- a/drivers/mtd/ubi/io.c
-+++ b/drivers/mtd/ubi/io.c
-@@ -1243,7 +1243,7 @@ static int paranoid_check_all_ff(struct ubi_device *ubi, int pnum, int offset,
- fail:
- 	ubi_err("paranoid check failed for PEB %d", pnum);
- 	dbg_msg("hex dump of the %d-%d region", offset, offset + len);
--	print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 32, 1,
-+	print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET, 1,
- 		       ubi->dbg_peb_buf, len, 1);
- 	err = 1;
- error:
-diff --git a/drivers/net/wireless/iwlwifi/iwl3945-base.c b/drivers/net/wireless/iwlwifi/iwl3945-base.c
-index 4bdf237..563c30f 100644
---- a/drivers/net/wireless/iwlwifi/iwl3945-base.c
-+++ b/drivers/net/wireless/iwlwifi/iwl3945-base.c
-@@ -184,8 +184,8 @@ static void iwl_print_hex_dump(int level, void *p, u32 len)
- 	if (!(iwl_debug_level & level))
- 		return;
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+@@ -517,6 +591,13 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
  
--	print_hex_dump(KERN_DEBUG, "iwl data: ", DUMP_PREFIX_OFFSET, 16, 1,
--			p, len, 1);
-+	print_hex_dump(KERN_DEBUG, "iwl data: ", DUMP_PREFIX_OFFSET, 1,
-+		       p, len, 1);
- #endif
- }
+ 	sbi = EXT4_SB(sb);
+ 	es = sbi->s_es;
++
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++		sbi->s_groups_per_flex_shift) {
++		group = find_group_flex(sb, dir);
++		goto got_group;
++	}
++
+ 	if (S_ISDIR(mode)) {
+ 		if (test_opt (sb, OLDALLOC))
+ 			ret2 = find_group_dir(sb, dir, &group);
+@@ -525,6 +606,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 	} else
+ 		ret2 = find_group_other(sb, dir, &group);
  
-diff --git a/drivers/net/wireless/iwlwifi/iwl4965-base.c b/drivers/net/wireless/iwlwifi/iwl4965-base.c
-index 8f85564..150f6e4 100644
---- a/drivers/net/wireless/iwlwifi/iwl4965-base.c
-+++ b/drivers/net/wireless/iwlwifi/iwl4965-base.c
-@@ -183,8 +183,8 @@ static void iwl_print_hex_dump(int level, void *p, u32 len)
- 	if (!(iwl_debug_level & level))
- 		return;
++got_group:
+ 	err = -ENOSPC;
+ 	if (ret2 == -1)
+ 		goto out;
+@@ -681,6 +763,14 @@ got:
+ 		percpu_counter_inc(&sbi->s_dirs_counter);
+ 	sb->s_dirt = 1;
  
--	print_hex_dump(KERN_DEBUG, "iwl data: ", DUMP_PREFIX_OFFSET, 16, 1,
--			p, len, 1);
-+	print_hex_dump(KERN_DEBUG, "iwl data: ", DUMP_PREFIX_OFFSET, 1,
-+		       p, len, 1);
- #endif
- }
- 
-diff --git a/drivers/scsi/ide-scsi.c b/drivers/scsi/ide-scsi.c
-index 7a835a3..cc2da8a 100644
---- a/drivers/scsi/ide-scsi.c
-+++ b/drivers/scsi/ide-scsi.c
-@@ -272,7 +272,7 @@ static int idescsi_check_condition(ide_drive_t *drive, struct request *failed_co
- 	pc->scsi_cmd = ((idescsi_pc_t *) failed_command->special)->scsi_cmd;
- 	if (test_bit(IDESCSI_LOG_CMD, &scsi->log)) {
- 		printk ("ide-scsi: %s: queue cmd = ", drive->name);
--		print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 16, 1, pc->c,
-+		print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 1, pc->c,
- 			       6, 0);
- 	}
- 	rq->rq_disk = scsi->disk;
-@@ -328,7 +328,7 @@ static int idescsi_end_request (ide_drive_t *drive, int uptodate, int nrsecs)
- 		idescsi_pc_t *opc = (idescsi_pc_t *) rq->buffer;
- 		if (log) {
- 			printk ("ide-scsi: %s: wrap up check %lu, rst = ", drive->name, opc->scsi_cmd->serial_number);
--			print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 16, 1,
-+			print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 1,
- 				       pc->buffer, 16, 0);
- 		}
- 		memcpy((void *) opc->scsi_cmd->sense_buffer, pc->buffer, SCSI_SENSE_BUFFERSIZE);
-@@ -808,11 +808,11 @@ static int idescsi_queue (struct scsi_cmnd *cmd,
- 
- 	if (test_bit(IDESCSI_LOG_CMD, &scsi->log)) {
- 		printk ("ide-scsi: %s: que %lu, cmd = ", drive->name, cmd->serial_number);
--		print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 16, 1,
-+		print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 1,
- 			       cmd->cmnd, cmd->cmd_len, 0);
- 		if (memcmp(pc->c, cmd->cmnd, cmd->cmd_len)) {
- 			printk ("ide-scsi: %s: que %lu, tsl = ", drive->name, cmd->serial_number);
--			print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 16, 1,
-+			print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 1,
- 				       pc->c, 12, 0);
- 		}
- 	}
-diff --git a/drivers/usb/gadget/file_storage.c b/drivers/usb/gadget/file_storage.c
-index 1d174dc..e690949 100644
---- a/drivers/usb/gadget/file_storage.c
-+++ b/drivers/usb/gadget/file_storage.c
-@@ -723,7 +723,7 @@ static void dump_msg(struct fsg_dev *fsg, const char *label,
- 	if (length < 512) {
- 		DBG(fsg, "%s, length %u:\n", label, length);
- 		print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET,
--				16, 1, buf, length, 0);
-+			       1, buf, length, 0);
- 	}
- }
- 
-@@ -741,7 +741,7 @@ static void dump_msg(struct fsg_dev *fsg, const char *label,
- static void dump_cdb(struct fsg_dev *fsg)
- {
- 	print_hex_dump(KERN_DEBUG, "SCSI CDB: ", DUMP_PREFIX_NONE,
--			16, 1, fsg->cmnd, fsg->cmnd_size, 0);
-+		       1, fsg->cmnd, fsg->cmnd_size, 0);
- }
- 
- #else
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index de55da9..f5022a3 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -464,9 +464,9 @@ static void ext3_destroy_inode(struct inode *inode)
- 	if (!list_empty(&(EXT3_I(inode)->i_orphan))) {
- 		printk("EXT3 Inode %p: orphan list check failed!\n",
- 			EXT3_I(inode));
--		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 16, 4,
--				EXT3_I(inode), sizeof(struct ext3_inode_info),
--				false);
-+		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 4,
-+			       EXT3_I(inode), sizeof(struct ext3_inode_info),
-+			       false);
- 		dump_stack();
- 	}
- 	kmem_cache_free(ext3_inode_cachep, EXT3_I(inode));
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    sbi->s_groups_per_flex_shift) {
++		flex_group = ext4_flex_group(sbi, group);
++		spin_lock(sb_bgl_lock(sbi, flex_group));
++		sbi->s_flex_groups[flex_group].free_inodes--;
++		spin_unlock(sb_bgl_lock(sbi, flex_group));
++	}
++
+ 	inode->i_uid = current->fsuid;
+ 	if (test_opt (sb, GRPID))
+ 		inode->i_gid = dir->i_gid;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8031dc0..edd6a80 100644
+index b626339..81ad9b1 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -517,9 +517,9 @@ static void ext4_destroy_inode(struct inode *inode)
- 	if (!list_empty(&(EXT4_I(inode)->i_orphan))) {
- 		printk("EXT4 Inode %p: orphan list check failed!\n",
- 			EXT4_I(inode));
--		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 16, 4,
--				EXT4_I(inode), sizeof(struct ext4_inode_info),
--				true);
-+		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 4,
-+			       EXT4_I(inode), sizeof(struct ext4_inode_info),
-+			       true);
- 		dump_stack();
+@@ -518,6 +518,7 @@ static void ext4_put_super (struct super_block * sb)
+ 	for (i = 0; i < sbi->s_gdb_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	kfree(sbi->s_group_desc);
++	kfree(sbi->s_flex_groups);
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+@@ -1423,6 +1424,61 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 	return res;
+ }
+ 
++static int ext4_fill_flex_info(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_group_desc *gdp = NULL;
++	struct buffer_head *bh;
++	ext4_group_t flex_group_count;
++	ext4_group_t flex_group;
++	unsigned int shift;
++	int groups_per_flex = 0;
++	int tmp = 0;
++	__u64 block_bitmap = 0, cur_block_bitmap;
++	int i;
++
++	groups_per_flex = le16_to_cpu(sbi->s_es->s_flex_bg_size);
++
++	if (!groups_per_flex) {
++		sbi->s_groups_per_flex_shift = 0;
++		return 1;
++	}
++
++	shift = 0;
++	tmp = groups_per_flex;
++	while ((tmp >>= 1UL) != 0UL)
++		shift++;
++
++	sbi->s_groups_per_flex_shift = shift;
++	flex_group_count = (sbi->s_groups_count + groups_per_flex - 1) /
++		groups_per_flex;
++	sbi->s_flex_groups = kmalloc(flex_group_count *
++				     sizeof(struct flex_groups), GFP_KERNEL);
++	if (sbi->s_flex_groups == NULL) {
++		printk(KERN_ERR "EXT4-fs: not enough memory\n");
++		goto failed;
++	}
++	memset(sbi->s_flex_groups, 0, flex_group_count *
++	       sizeof(struct flex_groups));
++
++	gdp = ext4_get_group_desc(sb, 1, &bh);
++	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
++
++	for (i = 0; i < sbi->s_groups_count; i++) {
++		gdp = ext4_get_group_desc(sb, i, &bh);
++
++		flex_group = ext4_flex_group(sbi, i);
++		sbi->s_flex_groups[flex_group].free_inodes +=
++			le16_to_cpu(gdp->bg_free_inodes_count);
++		sbi->s_flex_groups[flex_group].free_blocks +=
++			le16_to_cpu(gdp->bg_free_blocks_count);
++	}
++
++	return 1;
++failed:
++	return 0;
++}
++
+ __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
+ 			    struct ext4_group_desc *gdp)
+ {
+@@ -2037,6 +2093,13 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+ 		printk(KERN_ERR "EXT4-fs: group descriptors corrupted!\n");
+ 		goto failed_mount2;
  	}
- 	kmem_cache_free(ext4_inode_cachep, EXT4_I(inode));
-diff --git a/fs/jffs2/wbuf.c b/fs/jffs2/wbuf.c
-index d1d4f27..c03977e 100644
---- a/fs/jffs2/wbuf.c
-+++ b/fs/jffs2/wbuf.c
-@@ -248,11 +248,11 @@ static int jffs2_verify_write(struct jffs2_sb_info *c, unsigned char *buf,
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
++		if (!ext4_fill_flex_info(sb)) {
++			printk(KERN_ERR
++			       "EXT4-fs: unable to initialize flex_bg meta info!\n");
++			goto failed_mount2;
++		}
++
+ 	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index bcdb59d..3b94dbf 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -152,6 +152,15 @@ struct ext4_group_desc
+ 	__u32	bg_reserved2[3];
+ };
  
- 	printk(KERN_WARNING "Write verify error (ECC %s) at %08x. Wrote:\n",
- 	       eccstr, c->wbuf_ofs);
--	print_hex_dump(KERN_WARNING, "", DUMP_PREFIX_OFFSET, 16, 1,
-+	print_hex_dump(KERN_WARNING, "", DUMP_PREFIX_OFFSET, 1,
- 		       c->wbuf, c->wbuf_pagesize, 0);
++/*
++ * Structure of a flex block group info
++ */
++
++struct flex_groups {
++	__u32 free_inodes;
++	__u32 free_blocks;
++};
++
+ #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
+ #define EXT4_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
+ #define EXT4_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
+@@ -622,7 +631,9 @@ struct ext4_super_block {
+ 	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
+ 	__le64  s_mmp_block;            /* Block for multi-mount protection */
+ 	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+-	__u32   s_reserved[163];        /* Padding to the end of the block */
++	__le16	s_flex_bg_size;		/* FLEX_BG group size */
++	__le16	padding;		/* Padding to next 32bits */
++	__u32   s_reserved[162];        /* Padding to the end of the block */
+ };
  
- 	printk(KERN_WARNING "Read back:\n");
--	print_hex_dump(KERN_WARNING, "", DUMP_PREFIX_OFFSET, 16, 1,
-+	print_hex_dump(KERN_WARNING, "", DUMP_PREFIX_OFFSET, 1,
- 		       c->wbuf_verify, c->wbuf_pagesize, 0);
+ #ifdef __KERNEL__
+@@ -1120,6 +1131,17 @@ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
+ 	raw_inode->i_size_high = cpu_to_le32(i_size >> 32);
+ }
  
- 	return -EIO;
-diff --git a/fs/jfs/jfs_imap.c b/fs/jfs/jfs_imap.c
-index 3870ba8..c22907d 100644
---- a/fs/jfs/jfs_imap.c
-+++ b/fs/jfs/jfs_imap.c
-@@ -890,7 +890,7 @@ int diFree(struct inode *ip)
- 	 * the map.
- 	 */
- 	if (iagno >= imap->im_nextiag) {
--		print_hex_dump(KERN_ERR, "imap: ", DUMP_PREFIX_ADDRESS, 16, 4,
-+		print_hex_dump(KERN_ERR, "imap: ", DUMP_PREFIX_ADDRESS, 4,
- 			       imap, 32, 0);
- 		jfs_error(ip->i_sb,
- 			  "diFree: inum = %d, iagno = %d, nextiag = %d",
-diff --git a/fs/jfs/jfs_logmgr.c b/fs/jfs/jfs_logmgr.c
-index 15a3974..a54e19f 100644
---- a/fs/jfs/jfs_logmgr.c
-+++ b/fs/jfs/jfs_logmgr.c
-@@ -1627,15 +1627,15 @@ void jfs_flush_journal(struct jfs_log *log, int wait)
- 			if (lp->xflag & COMMIT_PAGE) {
- 				struct metapage *mp = (struct metapage *)lp;
- 				print_hex_dump(KERN_ERR, "metapage: ",
--					       DUMP_PREFIX_ADDRESS, 16, 4,
-+					       DUMP_PREFIX_ADDRESS, 4,
- 					       mp, sizeof(struct metapage), 0);
- 				print_hex_dump(KERN_ERR, "page: ",
--					       DUMP_PREFIX_ADDRESS, 16,
-+					       DUMP_PREFIX_ADDRESS,
- 					       sizeof(long), mp->page,
- 					       sizeof(struct page), 0);
- 			} else
- 				print_hex_dump(KERN_ERR, "tblock:",
--					       DUMP_PREFIX_ADDRESS, 16, 4,
-+					       DUMP_PREFIX_ADDRESS, 4,
- 					       lp, sizeof(struct tblock), 0);
++static inline ext4_group_t ext4_flex_group(struct ext4_sb_info *sbi,
++					     ext4_group_t block_group)
++{
++	return block_group >> sbi->s_groups_per_flex_shift;
++}
++
++static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
++{
++	return 1 << sbi->s_groups_per_flex_shift;
++}
++
+ #define ext4_std_error(sb, errno)				\
+ do {								\
+ 	if ((errno))						\
+diff --git a/include/linux/ext4_fs_sb.h b/include/linux/ext4_fs_sb.h
+index 744e746..ac7af1b 100644
+--- a/include/linux/ext4_fs_sb.h
++++ b/include/linux/ext4_fs_sb.h
+@@ -147,6 +147,9 @@ struct ext4_sb_info {
+ 
+ 	/* locality groups */
+ 	struct ext4_locality_group *s_locality_groups;
++
++	unsigned int s_groups_per_flex_shift;
++	struct flex_groups *s_flex_groups;
+ };
+ #define EXT4_GROUP_INFO(sb, group)					   \
+ 	EXT4_SB(sb)->s_group_info[(group) >> EXT4_DESC_PER_BLOCK_BITS(sb)] \
+
+--MP_/6xuFrXKAaFL9I19txq2QF2T
+Content-Type: text/x-patch; name=e2fsprogs-flexbg-grouping.patch
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=e2fsprogs-flexbg-grouping.patch
+
+commit 6aea7c4b5bf1c4da4630823a926e025fb7dbddd5
+Author: Jose R. Santos <jrs@us.ibm.com>
+Date:   Thu Dec 6 14:00:48 2007 -0600
+
+    New bitmap and inode table allocation for FLEX_BG
+    
+    Change the way we allocate bitmaps and inode tables if the FLEX_BG
+    feature is used at mke2fs time.  The block and inode bitmaps are
+    allocated as a one contiguous set for each flex block group.  Due to
+    the size of the inode tables, the inode table for each block group is
+    allocate individually but packed close together at the beginning of a
+    flex group.  For now, this allow for the inode table to be packed
+    close to the inode bitmaps in cases where we try to allocate a large
+    group of inode tables right after the bitmaps and fail.
+    
+    Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 4ad2ba9..ce81eaa 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -27,6 +27,124 @@
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+ 
++#define ALLOC_BLOCK_BITMAPS	1
++#define ALLOC_INODE_BITMAPS	2
++#define ALLOC_INODE_TABLES	3
++
++errcode_t ext2fs_allocate_contiguous(ext2_filsys fs, dgrp_t group,
++				     int type, blk_t start_blk, blk_t last_blk, 
++				     int count, ext2fs_block_bitmap bmap)
++{
++	errcode_t	retval;
++	blk_t		new_blk, blk;
++	int		i, j;
++
++	if (!bmap)
++		bmap = fs->block_map;
++
++	switch (type) {
++	case ALLOC_BLOCK_BITMAPS:
++		retval = ext2fs_get_free_blocks(fs, start_blk, last_blk,
++						1 * count, bmap, &new_blk);
++		if (retval)
++			return retval;
++		for (i=0, blk=new_blk; i < count; i++, blk++) {
++			ext2fs_mark_block_bitmap(bmap, blk);
++			fs->group_desc[group+i].bg_block_bitmap = blk;
++		}
++		break;
++
++	case ALLOC_INODE_BITMAPS:
++		retval = ext2fs_get_free_blocks(fs, start_blk, last_blk,
++						1 * count, bmap, &new_blk);
++		if (retval)
++			return retval;
++		for (i=0, blk=new_blk; i < count; i++, blk++) {
++			ext2fs_mark_block_bitmap(bmap, blk);
++			fs->group_desc[group+i].bg_inode_bitmap = blk;
++		}
++		break;
++
++	case ALLOC_INODE_TABLES:
++		for (i=0; i < count; i++) {
++			retval = ext2fs_get_free_blocks(fs, start_blk, last_blk,
++							fs->inode_blocks_per_group,
++							bmap, &new_blk);
++			if (retval)
++				return retval;
++			blk = new_blk;
++			for (j=0; j < fs->inode_blocks_per_group; j++, blk++)
++				ext2fs_mark_block_bitmap(bmap, blk);
++			fs->group_desc[group+i].bg_inode_table = new_blk;
++		}
++		break;
++
++	}
++	return 0;
++}
++
++
++
++errcode_t ext2fs_allocate_flex_groups(ext2_filsys fs)
++{
++	errcode_t	retval;
++	blk_t		start, last, j, blocks;
++	dgrp_t		i, k;
++	int		meta_bg_size;
++
++	meta_bg_size = ext2fs_swab16(fs->super->s_flex_bg_size);
++	blocks = 0;
++
++	for (i = 0; i < fs->group_desc_count; i=i+meta_bg_size) {
++		
++		start = ext2fs_group_first_block(fs, i);
++
++		if (i+meta_bg_size >= fs->group_desc_count) {
++			last = ext2fs_group_last_block(fs, fs->group_desc_count);
++			meta_bg_size = fs->group_desc_count - i;
++		}
++		else
++			last = ext2fs_group_last_block(fs, i+meta_bg_size-1);
++
++		retval = ext2fs_allocate_contiguous(fs, i, ALLOC_BLOCK_BITMAPS,
++						    start, last, meta_bg_size,
++						    fs->block_map);
++		if (retval)
++			return retval;
++		retval = ext2fs_allocate_contiguous(fs, i, ALLOC_INODE_BITMAPS,
++						    start, last, meta_bg_size,
++						    fs->block_map);
++		if (retval)
++			return retval;
++		retval = ext2fs_allocate_contiguous(fs, i, ALLOC_INODE_TABLES,
++						    start, last, meta_bg_size,
++						    fs->block_map);
++		if (retval)
++			return retval;
++
++		/*
++		 * The content of bg_free_blocks_count is previously
++		 * assigned with out knowledge of the new allocation
++		 * scheme.  Need to update the number of free blocks
++		 * per group descriptor or fsck will complain.
++		 */
++
++		for (k=i; k<i+meta_bg_size; k++){
++			if (k > fs->group_desc_count)
++				break;
++			start = ext2fs_group_first_block(fs, k);
++			last = ext2fs_group_last_block(fs, k);
++			for (j=start; j<=last; j++) {
++				if( !ext2fs_fast_test_block_bitmap(fs->block_map, j))
++					blocks++;
++			}
++				fs->group_desc[k].bg_free_blocks_count = blocks;
++			blocks = 0;
++		}
++	}
++	return 0;
++}
++
+ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 				      ext2fs_block_bitmap bmap)
+ {
+@@ -107,10 +225,16 @@ errcode_t ext2fs_allocate_tables(ext2_filsys fs)
+ 	errcode_t	retval;
+ 	dgrp_t		i;
+ 
+-	for (i = 0; i < fs->group_desc_count; i++) {
+-		retval = ext2fs_allocate_group_table(fs, i, fs->block_map);
+-		if (retval)
+-			return retval;
++	if (EXT2_HAS_INCOMPAT_FEATURE (fs->super, 
++				       EXT4_FEATURE_INCOMPAT_FLEX_BG)) 
++		ext2fs_allocate_flex_groups(fs);
++	
++	else {
++		for (i = 0; i < fs->group_desc_count; i++) {
++			retval = ext2fs_allocate_group_table(fs, i, fs->block_map);
++			if (retval)
++				return retval;
++		}
+ 	}
+ 	return 0;
+ }
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 2394857..7528707 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -577,7 +577,9 @@ struct ext2_super_block {
+ 	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
+ 	__u64   s_mmp_block;            /* Block for multi-mount protection */
+ 	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+-	__u32   s_reserved[163];        /* Padding to the end of the block */
++	__u16	s_flex_bg_size;		/* FLEX_BG group size */
++	__u16	padding;		/* Padding to next 32bits */
++	__u32   s_reserved[162];        /* Padding to the end of the block */
+ };
+ 
+ /*
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 16e9eaa..935a013 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -156,6 +156,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 	set_field(s_feature_incompat, 0);
+ 	set_field(s_feature_ro_compat, 0);
+ 	set_field(s_first_meta_bg, 0);
++	set_field(s_flex_bg_size, 0);
+ 	if (super->s_feature_incompat & ~EXT2_LIB_FEATURE_INCOMPAT_SUPP) {
+ 		retval = EXT2_ET_UNSUPP_FEATURE;
+ 		goto cleanup;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 9e2d7a8..7319832 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -96,7 +96,7 @@ static void usage(void)
+ {
+ 	fprintf(stderr, _("Usage: %s [-c|-t|-l filename] [-b block-size] "
+ 	"[-f fragment-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+-	"[-j] [-J journal-options]\n"
++	"[-j] [-J journal-options] [-G meta group size]\n"
+ 	"\t[-N number-of-inodes] [-m reserved-blocks-percentage] "
+ 	"[-o creator-os]\n\t[-g blocks-per-group] [-L volume-label] "
+ 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+@@ -912,6 +912,7 @@ static void PRS(int argc, char *argv[])
+ 	int		blocksize = 0;
+ 	int		inode_ratio = 0;
+ 	int		inode_size = 0;
++	unsigned long	flex_bg_size = 0;
+ 	double		reserved_ratio = 5.0;
+ 	int		sector_size = 0;
+ 	int		show_version_only = 0;
+@@ -994,7 +995,7 @@ static void PRS(int argc, char *argv[])
+ 	}
+ 
+ 	while ((c = getopt (argc, argv,
+-		    "b:cf:g:i:jl:m:no:qr:s:tvE:FI:J:L:M:N:O:R:ST:V")) != EOF) {
++		    "b:cf:g:G:i:jl:m:no:qr:s:tvE:FI:J:L:M:N:O:R:ST:V")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			blocksize = strtol(optarg, &tmp, 0);
+@@ -1045,6 +1046,19 @@ static void PRS(int argc, char *argv[])
+ 				exit(1);
+ 			}
+ 			break;
++		case 'G':
++			flex_bg_size = strtoul(optarg, &tmp, 0);
++			if (*tmp) {
++				com_err(program_name, 0,
++					_("Illegal number for Flex_BG size"));
++				exit(1);
++			}
++			if ((flex_bg_size & (flex_bg_size-1)) != 0) {
++				com_err(program_name, 0,
++					_("Flex_BG size must be a power of 2"));
++				exit(1);
++			}
++			break;
+ 		case 'i':
+ 			inode_ratio = strtoul(optarg, &tmp, 0);
+ 			if (inode_ratio < EXT2_MIN_BLOCK_SIZE ||
+@@ -1444,6 +1458,10 @@ static void PRS(int argc, char *argv[])
  		}
  	}
-diff --git a/fs/jfs/jfs_metapage.c b/fs/jfs/jfs_metapage.c
-index f5cd8d3..9e5fb41 100644
---- a/fs/jfs/jfs_metapage.c
-+++ b/fs/jfs/jfs_metapage.c
-@@ -461,7 +461,7 @@ add_failed:
- 	printk(KERN_ERR "JFS: bio_add_page failed unexpectedly\n");
- 	goto skip;
- dump_bio:
--	print_hex_dump(KERN_ERR, "JFS: dump of bio: ", DUMP_PREFIX_ADDRESS, 16,
-+	print_hex_dump(KERN_ERR, "JFS: dump of bio: ", DUMP_PREFIX_ADDRESS,
- 		       4, bio, sizeof(*bio), 0);
- skip:
- 	bio_put(bio);
-diff --git a/fs/jfs/jfs_txnmgr.c b/fs/jfs/jfs_txnmgr.c
-index e7c60ae..a105198 100644
---- a/fs/jfs/jfs_txnmgr.c
-+++ b/fs/jfs/jfs_txnmgr.c
-@@ -830,14 +830,14 @@ struct tlock *txLock(tid_t tid, struct inode *ip, struct metapage * mp,
- 	/* assert(jfs_ip->fileset == AGGREGATE_I); */
- 	if (jfs_ip->fileset != AGGREGATE_I) {
- 		printk(KERN_ERR "txLock: trying to lock locked page!");
--		print_hex_dump(KERN_ERR, "ip: ", DUMP_PREFIX_ADDRESS, 16, 4,
-+		print_hex_dump(KERN_ERR, "ip: ", DUMP_PREFIX_ADDRESS, 4,
- 			       ip, sizeof(*ip), 0);
--		print_hex_dump(KERN_ERR, "mp: ", DUMP_PREFIX_ADDRESS, 16, 4,
-+		print_hex_dump(KERN_ERR, "mp: ", DUMP_PREFIX_ADDRESS, 4,
- 			       mp, sizeof(*mp), 0);
- 		print_hex_dump(KERN_ERR, "Locker's tblock: ",
--			       DUMP_PREFIX_ADDRESS, 16, 4, tid_to_tblock(tid),
-+			       DUMP_PREFIX_ADDRESS, 4, tid_to_tblock(tid),
- 			       sizeof(struct tblock), 0);
--		print_hex_dump(KERN_ERR, "Tlock: ", DUMP_PREFIX_ADDRESS, 16, 4,
-+		print_hex_dump(KERN_ERR, "Tlock: ", DUMP_PREFIX_ADDRESS, 4,
- 			       tlck, sizeof(*tlck), 0);
- 		BUG();
- 	}
-diff --git a/fs/jfs/xattr.c b/fs/jfs/xattr.c
-index 9b7f2cd..43c0d70 100644
---- a/fs/jfs/xattr.c
-+++ b/fs/jfs/xattr.c
-@@ -590,8 +590,8 @@ static int ea_get(struct inode *inode, struct ea_buffer *ea_buf, int min_size)
-       size_check:
- 	if (EALIST_SIZE(ea_buf->xattr) != ea_size) {
- 		printk(KERN_ERR "ea_get: invalid extended attribute\n");
--		print_hex_dump(KERN_ERR, "", DUMP_PREFIX_ADDRESS, 16, 1,
--				     ea_buf->xattr, ea_size, 1);
-+		print_hex_dump(KERN_ERR, "", DUMP_PREFIX_ADDRESS, 1,
-+			       ea_buf->xattr, ea_size, 1);
- 		ea_release(inode, ea_buf);
- 		rc = -EIO;
- 		goto clean_up;
+ 
++	if(flex_bg_size) {
++		fs_param.s_flex_bg_size = ext2fs_swab16(flex_bg_size);
++	}
++
+ 	if (!force && fs_param.s_blocks_count >= ((unsigned) 1 << 31)) {
+ 		com_err(program_name, 0,
+ 			_("Filesystem too large.  No more than 2**31-1 blocks\n"
 
-
+--MP_/6xuFrXKAaFL9I19txq2QF2T--
