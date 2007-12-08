@@ -1,129 +1,72 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH] ext[234]: remove unused argument for ext[234]_find_goal()
-Date: Sun, 9 Dec 2007 00:36:10 +0900
-Message-ID: <20071208153610.GD4878@APFDCB5C>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: 2.6.24-rc4-mm1: some issues on sparc64
+Date: Sat, 8 Dec 2007 10:22:39 -0800
+Message-ID: <20071208102239.2457eeaa.akpm@linux-foundation.org>
+References: <20071204211701.994dfce6.akpm@linux-foundation.org>
+	<200712081920.28748.m.kozlowski@tuxland.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Stephen Tweedie <sct@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	adilger@clusterfs.com
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: David Miller <davem@davemloft.net>, linux-kernel@vger.kernel.org,
+	sparclinux@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from py-out-1112.google.com ([64.233.166.179]:18734 "EHLO
-	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750989AbXLHPhA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2007 10:37:00 -0500
-Received: by py-out-1112.google.com with SMTP id u77so2286131pyb
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2007 07:36:59 -0800 (PST)
-Content-Disposition: inline
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:58006 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751078AbXLHSWr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2007 13:22:47 -0500
+In-Reply-To: <200712081920.28748.m.kozlowski@tuxland.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The argument chain for ext[234]_find_goal() is not used.
-This patch removes it and fixes comment as well.
+On Sat, 8 Dec 2007 19:20:28 +0100 Mariusz Kozlowski <m.kozlowski@tuxland.pl> wrote:
 
-Cc: Stephen Tweedie <sct@redhat.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: adilger@clusterfs.com
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> 	The box is sun ultra 60 (dual sparc64). This was caught when
+> system (gentoo) was emerging some package. 
+> 
+> [27006.402237] kernel BUG at fs/jbd/transaction.c:1894!
 
----
- fs/ext2/inode.c |    7 ++-----
- fs/ext3/inode.c |    8 +++-----
- fs/ext4/inode.c |    8 +++-----
- 3 files changed, 8 insertions(+), 15 deletions(-)
+That's
 
-Index: 2.6-git/fs/ext2/inode.c
-===================================================================
---- 2.6-git.orig/fs/ext2/inode.c
-+++ 2.6-git/fs/ext2/inode.c
-@@ -286,15 +286,12 @@ static unsigned long ext2_find_near(stru
-  *	ext2_find_goal - find a prefered place for allocation.
-  *	@inode: owner
-  *	@block:  block we want
-- *	@chain:  chain of indirect blocks
-  *	@partial: pointer to the last triple within a chain
-  *
-  *	Returns preferred place for a block (the goal).
-  */
- 
--static inline int ext2_find_goal(struct inode *inode,
--				 long block,
--				 Indirect chain[4],
-+static inline int ext2_find_goal(struct inode *inode, long block,
- 				 Indirect *partial)
- {
- 	struct ext2_block_alloc_info *block_i;
-@@ -639,7 +636,7 @@ reread:
- 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
- 		ext2_init_block_alloc_info(inode);
- 
--	goal = ext2_find_goal(inode, iblock, chain, partial);
-+	goal = ext2_find_goal(inode, iblock, partial);
- 
- 	/* the number of blocks need to allocate for [d,t]indirect blocks */
- 	indirect_blks = (chain + depth) - partial - 1;
-Index: 2.6-git/fs/ext3/inode.c
-===================================================================
---- 2.6-git.orig/fs/ext3/inode.c
-+++ 2.6-git/fs/ext3/inode.c
-@@ -439,16 +439,14 @@ static ext3_fsblk_t ext3_find_near(struc
-  *	ext3_find_goal - find a prefered place for allocation.
-  *	@inode: owner
-  *	@block:  block we want
-- *	@chain:  chain of indirect blocks
-  *	@partial: pointer to the last triple within a chain
-- *	@goal:	place to store the result.
-  *
-  *	Normally this function find the prefered place for block allocation,
-- *	stores it in *@goal and returns zero.
-+ *	returns it.
-  */
- 
- static ext3_fsblk_t ext3_find_goal(struct inode *inode, long block,
--		Indirect chain[4], Indirect *partial)
-+				   Indirect *partial)
- {
- 	struct ext3_block_alloc_info *block_i;
- 
-@@ -884,7 +882,7 @@ int ext3_get_blocks_handle(handle_t *han
- 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
- 		ext3_init_block_alloc_info(inode);
- 
--	goal = ext3_find_goal(inode, iblock, chain, partial);
-+	goal = ext3_find_goal(inode, iblock, partial);
- 
- 	/* the number of blocks need to allocate for [d,t]indirect blocks */
- 	indirect_blks = (chain + depth) - partial - 1;
-Index: 2.6-git/fs/ext4/inode.c
-===================================================================
---- 2.6-git.orig/fs/ext4/inode.c
-+++ 2.6-git/fs/ext4/inode.c
-@@ -437,16 +437,14 @@ static ext4_fsblk_t ext4_find_near(struc
-  *	ext4_find_goal - find a prefered place for allocation.
-  *	@inode: owner
-  *	@block:  block we want
-- *	@chain:  chain of indirect blocks
-  *	@partial: pointer to the last triple within a chain
-- *	@goal:	place to store the result.
-  *
-  *	Normally this function find the prefered place for block allocation,
-- *	stores it in *@goal and returns zero.
-+ *	returns it.
-  */
- 
- static ext4_fsblk_t ext4_find_goal(struct inode *inode, long block,
--		Indirect chain[4], Indirect *partial)
-+				   Indirect *partial)
- {
- 	struct ext4_block_alloc_info *block_i;
- 
-@@ -883,7 +881,7 @@ int ext4_get_blocks_handle(handle_t *han
- 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
- 		ext4_init_block_alloc_info(inode);
- 
--	goal = ext4_find_goal(inode, iblock, chain, partial);
-+	goal = ext4_find_goal(inode, iblock, partial);
- 
- 	/* the number of blocks need to allocate for [d,t]indirect blocks */
- 	indirect_blks = (chain + depth) - partial - 1;
+        J_ASSERT_BH(bh, !buffer_jbddirty(bh));
+
+at the end of journal_unmap_buffer().
+
+I don't recall seeing that before and I can't think of anything we've
+done recently which could cause it, sorry.
+
+> [27006.402268]               \|/ ____ \|/
+> [27006.402274]               "@'/ .. \`@"
+> [27006.402279]               /_| \__/ |_\
+> [27006.402285]                  \__U_/
+
+x86 needs that.
+
+> [27006.402298] rm(4713): Kernel bad sw trap 5 [#1]
+> [27006.402538] TSTATE: 0000009911009605 TPC: 000000000053b1cc TNPC: 000000000053b1d0 Y: 00000000    Not tainted
+> [27006.402579] TPC: <journal_invalidatepage+0x3d4/0x460>
+> [27006.402593] g0: 0000000000000002 g1: 0000000000000000 g2: 0000000000000001 g3: fffff800a7d90000
+> [27006.402610] g4: fffff800b54ea460 g5: fffff8007f832000 g6: fffff800a7d90000 g7: 000000000076d868
+> [27006.402627] o0: 000000000072b660 o1: 0000000000000766 o2: 0000000000000002 o3: 0000000000000001
+> [27006.402644] o4: 00000000008a2940 o5: 0000000000000000 sp: fffff800a7d92c91 ret_pc: 000000000053b1c4
+> [27006.402665] RPC: <journal_invalidatepage+0x3cc/0x460>
+> [27006.402679] l0: fffff800afbf4070 l1: 000000000069511c l2: 0000000000002000 l3: 0000000000000000
+> [27006.402696] l4: 0000000000000001 l5: fffff800ba4cb730 l6: fffff800bf1cd338 l7: 0000000000000001
+> [27006.402713] i0: fffff800bf1cd000 i1: 0000000201db2708 i2: 0000000000000000 i3: 0000000000727000
+> [27006.402730] i4: 0000000000200000 i5: fffff800bf1cd028 i6: fffff800a7d92d51 i7: 0000000000529254
+> [27006.402763] I7: <ext3_invalidatepage+0x3c/0x60>
+> [27006.402776] Caller[0000000000529254]: ext3_invalidatepage+0x3c/0x60
+> [27006.402800] Caller[00000000004b22fc]: do_invalidatepage+0x24/0x60
+> [27006.402826] Caller[00000000004b29c4]: truncate_complete_page+0x6c/0x80
+> [27006.402849] Caller[00000000004b2a6c]: truncate_inode_pages_range+0x94/0x440
+> [27006.402872] Caller[00000000004b2e2c]: truncate_inode_pages+0x14/0x20
+> [27006.402894] Caller[0000000000529888]: ext3_delete_inode+0x10/0x160
+> [27006.402918] Caller[00000000004e7ca0]: generic_delete_inode+0x88/0x120
+> [27006.402949] Caller[00000000004e7e60]: generic_drop_inode+0x128/0x1c0
+> [27006.402971] Caller[00000000004e75d4]: iput+0x7c/0xa0
+> [27006.402992] Caller[00000000004dd680]: do_unlinkat+0x108/0x1a0
+> [27006.403024] Caller[00000000004dd884]: sys_unlinkat+0x2c/0x60
+> [27006.403047] Caller[00000000004062d4]: linux_sparc_syscall32+0x3c/0x40
+> [27006.403081] Caller[00000000f7e7d0ec]: 0xf7e7d0f4
+> [27006.403102] Instruction DUMP: 92102766  7ffbbeaf  90122260 <91d02005> 92102780  7ffbbeab  90122260  91d02005  7ffbbea8
