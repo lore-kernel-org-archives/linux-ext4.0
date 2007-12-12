@@ -1,228 +1,218 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Bug 9546] New: Huge latency in concurrent I/O when using data=ordered
-Date: Wed, 12 Dec 2007 15:43:44 +0100
-Message-ID: <20071212144344.GC17448@atrey.karlin.mff.cuni.cz>
-References: <bug-9546-27@http.bugzilla.kernel.org/> <20071211133127.432592c1.akpm@linux-foundation.org> <20071212091527.GA17448@atrey.karlin.mff.cuni.cz>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: ext3 SMP bug  ?  PANIC in __d_find_alias
+Date: Wed, 12 Dec 2007 20:36:40 +0100
+Message-ID: <200712122036.41270.rjw@sisk.pl>
+References: <475FD03A.7080401@0Bits.COM>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="5vNYLRcllDrimb99"
-Cc: linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org,
-	casteyde.christian@free.fr
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Mitch <Mitch@0bits.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:50098 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751901AbXLLOnp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Dec 2007 09:43:45 -0500
+Received: from ogre.sisk.pl ([217.79.144.158]:58749 "EHLO ogre.sisk.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754818AbXLLTRl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Dec 2007 14:17:41 -0500
+In-Reply-To: <475FD03A.7080401@0Bits.COM>
 Content-Disposition: inline
-In-Reply-To: <20071212091527.GA17448@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+[Added CC to linux-ext4@vger.kernel.org]
 
---5vNYLRcllDrimb99
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Wednesday, 12 of December 2007, Mitch wrote:
+> Can anyone help with this ? This seems to be a true SMP bug - the same 
+> kernel on another UP machine is working fine (although different h/w). 
+> Seems like stress (find for example) can easily trigger this. Does it 
+> look like i have a bad filesystem ? Can anyone help me figure out which 
+> one ? The fact that this is tainted (due to nvidia) is a red herring i 
+> think because both my machines (the SMP and UP one) are using the same 
+> nvidia module and the panic is in ext3 code.
 
-> > 
-> > (switching to email - please respond via emailed reply-to-all, not via the
-> > bugzilla web interface)
-> > 
-> > On Tue, 11 Dec 2007 11:36:39 -0800 (PST)
-> > bugme-daemon@bugzilla.kernel.org wrote:
-> > 
-> > > http://bugzilla.kernel.org/show_bug.cgi?id=9546
-> > > 
-> > >            Summary: Huge latency in concurrent I/O when using data=ordered
-> > >            Product: File System
-> > >            Version: 2.5
-> > >      KernelVersion: 2.6.24-rc4
-> > >           Platform: All
-> > >         OS/Version: Linux
-> > >               Tree: Mainline
-> > >             Status: NEW
-> > >           Severity: normal
-> > >           Priority: P1
-> > >          Component: ext3
-> > >         AssignedTo: akpm@osdl.org
-> > >         ReportedBy: casteyde.christian@free.fr
-> > > 
-> > > 
-> > > Most recent kernel where this bug did not occur:
-> > > Unknown, certainly not a regression, but something specific to ext3 algorithm
-> > > 
-> > > Distribution:
-> > > Bluewhite64 12 (Slackware 12 64 bits port) and Slackware 12
-> > > 
-> > > Hardware Environment:
-> > > Athlon 64 3000+laptop IDE 5400 80GB+1.2GB RAM
-> > > Athlon 64X2 4200+SATA 7200 200GB drive+1GB
-> > > Athlon 2800+IDE 7200 40GB drive+512MB
-> > > 
-> > > Software Environment:
-> > > dd, cp, konqueror/KDE, mount/tune2fs
-> > > 
-> > > Problem Description:
-> > > When the system does heavy input/output operations on big files, small files
-> > > access from other applications are always not served for very long time. This
-> > > can cause huge latencies. The system is really not usable at all, even with all
-> > > the recent improvements done to increase interactivity on desktop.
-> > > 
-> > > This behaviour is very visible with the simple following test case:
-> > > 1. Build a DVD structure from big MPEG+PS files with dvdauthor (it copies the
-> > > files in the DVD stucture, then pass on them to fix VOBUs, but this part is not
-> > > very long so this is not the main problem).
-> > > 2. While the computer is doing this, try to open a web browser such as
-> > > konqueror. Then open a page from bookmark. Then open a new tab, then open
-> > > another page from bookmark. Switch bak to first page.
-> > > 
-> > > What I get is:
-> > > 35 seconds to open Konqueror.
-> > > 8 seconds to open the "bookmark menu". Incredible.
-> > > 30 seconds to open the web page (DSL/10GBits).
-> > > 5 seconds to open the second tab.
-> > > 6 seconds to reopen the menu.
-> > > 36 seconds to open the second page.
-> > > 14 seconds to come back to first tab.
-> > > This is unbelievable! The system is completely trashed, with more than 1GB RAM,
-> > > whatever the hardware configuration is used.
-> > > 
-> > > Of course, I investigated the problem... First, DMA is OK. Second, I thought
-> > > cache would make memory swapped. So I used echo 0 > swapiness. Then (of course,
-> > > the system was not swapping at all), I thought TEXT sections from software
-> > > discarded (that would be simply stupid, but who knows?). I then tried to make
-> > > the writing process throttled with dirty_background_ratio (say 10%) while
-> > > reserving a greater RAM portion for the rest of the system with dirty_ratio
-> > > (say 70%). No way. Then I launched top, and looked at the WCHAN to see what was
-> > > the problem for the frozen process (ie: konqueror). The I saw the faulty guy:
-> > > log_wait_commit!
-> > > 
-> > > So I concluded there is unfair access to the filesystem journal. So I tried
-> > > other journaling options than the default "ordered" data mode. The results were
-> > > really different: "5s, 2s, 4s, etc.", both with journal and write back mode!
-> > > 
-> > > I therefore think there is a great lock and even maybe a priority inversion in
-> > > log_wait_commit of the ext3 filesystem. I think that, even if it is throttled,
-> > > the writing process always get access to the journal in ordered mode, simply
-> > > because it writes many pages at a time and because the ordered mode indeed
-> > > implies... ordering of requests (as I understand it).
-> > > 
-> > > It's sad this is the default option that gives the worst interactivity
-> > > problems. Indeed, this messes all previous work done to enhance desktop
-> > > experience I think, too bad!
-> > > 
-> > > Btw, I've also seen on Internet that some people reported that journal data
-> > > mode gives "better" performance. I think the problem was indeed related to
-> > > latency rather than performance (timing the writing process effectively shows a
-> > > output rate halved with journal data mode, and twice the time to process).
-> > > 
-> > > Steps to reproduce:
-> > > I did a simple script:
-> > > #!/bin/bash
-> > > 
-> > > SRC1=src1.bin
-> > > SRC2=src2.bin
-> > > DEST_DIR=tmpdir
-> > > DST1=dst.bin
-> > > 
-> > > # First, create the source files:
-> > > if [ ! -e $SRC1 ] ; then
-> > >         dd if=/dev/zero of=$SRC1 bs=10k count=150000
-> > > fi
-> > > if [ ! -e $SRC2 ] ; then
-> > >         dd if=/dev/zero of=$SRC2 bs=10k count=150000
-> > > fi
-> > > mkdir $DEST_DIR > /dev/null 2>&1
-> > > sync
-> > > 
-> > > # Do the test:
-> > > echo "Trashing the system..."
-> > > rm $DEST_DIR/$DST1 > /dev/null 2>&1
-> > > cp $SRC1 $DEST_DIR/$DST1
-> > > cat $SRC2 >> $DEST_DIR/$DST1
-> > > echo "Done!"
-> > > 
-> > > #rm -rf $DEST_DIR $SRC1 $SRC2
-> > > 
-> > > While running it, try to use "normally" the interactive programs, such as
-> > > konqueror (the program should have to access files, such as cookies, cache and
-> > > so for konqueror). Then remount/tune the filesystem to use another data mode
-> > > for ext3.
-> > > 
-> > > I didn't try with other journaling filesystems. I guess ext2 also doesn't
-> > > exhibit the problem.
-> > > 
-> > 
-> > Interesting that data=writeback helped this.  You don't give a lot of
-> > details, but I assume that data=writeback made a large difference here?
->   What I think could be happening:
-> One process does data-intensive load. Thus in the ordered mode the
-> transaction is tiny but has tons of data buffers attached. If commit
-> happens, it takes a long time to sync all the data before the commit
-> can proceed... In the writeback mode, we don't wait for data buffers, in
-> the journal mode amount of data to be written is really limited by the
-> maximum size of a transaction and so we write by much smaller chunks
-> and better latency is thus ensured.
->   I'll try some tests to verify whether my theory is correct :).
-  Hmm, I couldn't reproduce the bad behavior... But anyway, if my theory
-is correct, attached patch should help - can you try it please? It's a
-debugging quality only but shouldn't do anything bad to your data :)
+Which kernel is this?
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Did it happen with any previous kernel?
 
---5vNYLRcllDrimb99
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="jbd-2.6.24-rc5-jbd_latency_fix.diff"
 
-Don't allow too much data buffers in a transaction.
-
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 08ff6c7..e6f9dd6 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -163,7 +163,7 @@ repeat_locked:
- 	spin_lock(&transaction->t_handle_lock);
- 	needed = transaction->t_outstanding_credits + nblocks;
- 
--	if (needed > journal->j_max_transaction_buffers) {
-+	if (needed > journal->j_max_transaction_buffers || atomic_read(&transaction->t_data_buf_count) > 32768) {
- 		/*
- 		 * If the current transaction is already too large, then start
- 		 * to commit it: we can then go back and attach this handle to
-@@ -1528,6 +1528,7 @@ static void __journal_temp_unlink_buffer(struct journal_head *jh)
- 		return;
- 	case BJ_SyncData:
- 		list = &transaction->t_sync_datalist;
-+		atomic_dec(&transaction->t_data_buf_count);
- 		break;
- 	case BJ_Metadata:
- 		transaction->t_nr_buffers--;
-@@ -1989,6 +1990,7 @@ void __journal_file_buffer(struct journal_head *jh,
- 		return;
- 	case BJ_SyncData:
- 		list = &transaction->t_sync_datalist;
-+		atomic_inc(&transaction->t_data_buf_count);
- 		break;
- 	case BJ_Metadata:
- 		transaction->t_nr_buffers++;
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index d9ecd13..6dd284a 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -541,6 +541,12 @@ struct transaction_s
- 	int			t_outstanding_credits;
- 
- 	/*
-+	 * Number of data buffers on t_sync_datalist attached to
-+	 * the transaction.
-+	 */
-+	atomic_t		t_data_buf_count;
-+
-+	/*
- 	 * Forward and backward links for the circular list of all transactions
- 	 * awaiting checkpoint. [j_list_lock]
- 	 */
-
---5vNYLRcllDrimb99--
+> Dec 10 03:02:43 home kernel: BUG: unable to handle kernel NULL pointer 
+> dereference at virtual address 00000000
+> Dec 10 03:02:43 home kernel:  printing eip:
+> Dec 10 03:02:43 home kernel: c01761fc
+> Dec 10 03:02:43 home kernel: *pdpt = 00000000198a6001
+> Dec 10 03:02:43 home kernel: *pde = 0000000000000000
+> Dec 10 03:02:43 home kernel: Oops: 0000 [#1]
+> Dec 10 03:02:43 home kernel: PREEMPT SMP
+> Dec 10 03:02:43 home kernel: Modules linked in: loop nls_iso8859_1 
+> nls_cp437 vfat fat tun iptable_nat nvidia(P) appletalk psnap llc nfsd expo
+> rtfs lockd sunrpc xt_limit xt_tcpudp iptable_mangle ipt_LOG 
+> ipt_MASQUERADE nf_nat ipt_TOS ipt_REJECT nf_conntrack_irc 
+> nf_conntrack_ftp nf_con
+> ntrack_ipv4 xt_state nf_conntrack iptable_filter ip_tables x_tables 
+> ftdi_sio usbserial forcedeth snd_hda_intel snd_seq_oss snd_seq_midi_event
+>   snd_seq snd_seq_device snd_pcm_oss snd_pcm snd_timer snd_page_alloc 
+> snd_mixer_oss snd usb_storage ehci_hcd ohci_hcd it87 hwmon_vid i2c_dev i
+> 2c_core
+> Dec 10 03:02:43 home kernel: CPU:    1
+> Dec 10 03:02:43 home kernel: EIP:    0060:[__d_find_alias+44/192] 
+> Tainted: P        VLI
+> Dec 10 03:02:43 home kernel: EFLAGS: 00010282   (2.6.23 #5)
+> Dec 10 03:02:43 home kernel: EIP is at __d_find_alias+0x2c/0xc0
+> Dec 10 03:02:43 home kernel: eax: 00000000   ebx: c03579bc   ecx: 
+> 00000000   edx: 00004000
+> Dec 10 03:02:44 home kernel: esi: f55d58bc   edi: 00000000   ebp: 
+> 00000001   esp: d479dda4
+> Dec 10 03:02:44 home kernel: ds: 007b   es: 007b   fs: 00d8  gs: 0033 
+> ss: 0068
+> Dec 10 03:02:44 home kernel: Process find (pid: 8233, ti=d479c000 
+> task=f6d35ab0 task.ti=d479c000)
+> Dec 10 03:02:44 home kernel: Stack: f55d58a4 ebf42f00 f6735800 ebf42f00 
+> c017832f f55d58a4 ebf42f00 f6735800
+> Dec 10 03:02:44 home kernel:        c01ad386 c0177755 ebf42f60 d479de38 
+> ebf42f00 e85bf2fc c0357e80 ebf42f00
+> Dec 10 03:02:44 home kernel:        d479df04 c016d242 d479de44 f7c04740 
+> f1352a98 f1352b0c d479de38 00034c98
+> Dec 10 03:02:44 home kernel: Call Trace:
+> Dec 10 03:02:44 home kernel:  [d_splice_alias+95/208] 
+> d_splice_alias+0x5f/0xd0
+> Dec 10 03:02:44 home kernel:  [ext3_lookup+230/288] ext3_lookup+0xe6/0x120
+> Dec 10 03:02:44 home kernel:  [d_alloc+309/416] d_alloc+0x135/0x1a0
+> Dec 10 03:02:44 home kernel:  [do_lookup+290/416] do_lookup+0x122/0x1a0
+> Dec 10 03:02:44 home kernel:  [__link_path_walk+1873/3408] 
+> __link_path_walk+0x751/0xd50
+> Dec 10 03:02:44 home kernel:  [link_path_walk+101/192] 
+> link_path_walk+0x65/0xc0
+> Dec 10 03:02:44 home kernel:  [link_path_walk+69/192] 
+> link_path_walk+0x45/0xc0
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [do_path_lookup+120/448] 
+> do_path_lookup+0x78/0x1c0
+> Dec 10 03:02:44 home kernel:  [getname+160/192] getname+0xa0/0xc0
+> Dec 10 03:02:44 home kernel:  [__user_walk_fd+59/96] 
+> __user_walk_fd+0x3b/0x60
+> Dec 10 03:02:44 home kernel:  [vfs_lstat_fd+31/80] vfs_lstat_fd+0x1f/0x50
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [sys_lstat64+15/48] sys_lstat64+0xf/0x30
+> Dec 10 03:02:44 home kernel:  [__fput+257/352] __fput+0x101/0x160
+> Dec 10 03:02:44 home kernel:  [mntput_no_expire+19/96] 
+> mntput_no_expire+0x13/0x60
+> Dec 10 03:02:44 home kernel:  [filp_close+71/128] filp_close+0x47/0x80
+> Dec 10 03:02:44 home kernel:  [sys_close+102/208] sys_close+0x66/0xd0
+> Dec 10 03:02:44 home kernel:  [sysenter_past_esp+95/133] 
+> sysenter_past_esp+0x5f/0x85
+> Dec 10 03:02:44 home kernel:  =======================
+> Dec 10 03:02:44 home kernel: Code: 89 c1 89 d5 57 56 8d 70 18 53 8b 40 
+> 18 31 db 39 c6 74 6c 0f b7 51 6a 31 ff 81 e2 00 f0 00 00 eb 0a 85 ed 7
+> 4 6a 39 ce 74 2e 89 c8 <8b> 08 0f 18 01 90 81 fa 00 40 00 00 8d 58 bc 74 
+> 06 f6 43 04 10
+> Dec 10 03:02:44 home kernel: EIP: [__d_find_alias+44/192] 
+> __d_find_alias+0x2c/0xc0 SS:ESP 0068:d479dda4
+> Dec 10 03:02:44 home kernel: note: find[8233] exited with preempt_count 1
+> Dec 10 03:02:44 home kernel: BUG: scheduling while atomic: 
+> find/0x10000002/8233
+> Dec 10 03:02:44 home kernel:  [schedule+1474/1728] 
+> __sched_text_start+0x5c2/0x6c0
+> Dec 10 03:02:44 home kernel:  [__cond_resched+24/48] 
+> __cond_resched+0x18/0x30
+> Dec 10 03:02:44 home kernel:  [cond_resched+42/64] cond_resched+0x2a/0x40
+> Dec 10 03:02:44 home kernel:  [unmap_vmas+1502/1536] unmap_vmas+0x5de/0x600
+> Dec 10 03:02:44 home kernel:  [exit_mmap+123/288] exit_mmap+0x7b/0x120
+> Dec 10 03:02:44 home kernel:  [mmput+30/128] mmput+0x1e/0x80
+> Dec 10 03:02:44 home kernel:  [do_exit+272/2048] do_exit+0x110/0x800
+> Dec 10 03:02:44 home kernel:  [die+588/592] die+0x24c/0x250
+> Dec 10 03:02:44 home kernel:  [do_page_fault+722/2016] 
+> do_page_fault+0x2d2/0x7e0
+> Dec 10 03:02:44 home kernel:  [do_page_fault+0/2016] do_page_fault+0x0/0x7e0
+> Dec 10 03:02:44 home kernel:  [error_code+114/120] error_code+0x72/0x78
+> Dec 10 03:02:44 home kernel:  [__d_find_alias+44/192] 
+> __d_find_alias+0x2c/0xc0
+> Dec 10 03:02:44 home kernel:  [d_splice_alias+95/208] 
+> d_splice_alias+0x5f/0xd0
+> Dec 10 03:02:44 home kernel:  [ext3_lookup+230/288] ext3_lookup+0xe6/0x120
+> Dec 10 03:02:44 home kernel:  [d_alloc+309/416] d_alloc+0x135/0x1a0
+> Dec 10 03:02:44 home kernel:  [do_lookup+290/416] do_lookup+0x122/0x1a0
+> Dec 10 03:02:44 home kernel:  [__link_path_walk+1873/3408] 
+> __link_path_walk+0x751/0xd50
+> Dec 10 03:02:44 home kernel:  [link_path_walk+101/192] 
+> link_path_walk+0x65/0xc0
+> Dec 10 03:02:44 home kernel:  [link_path_walk+69/192] 
+> link_path_walk+0x45/0xc0
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [do_path_lookup+120/448] 
+> do_path_lookup+0x78/0x1c0
+> Dec 10 03:02:44 home kernel:  [getname+160/192] getname+0xa0/0xc0
+> Dec 10 03:02:44 home kernel:  [__user_walk_fd+59/96] 
+> __user_walk_fd+0x3b/0x60
+> Dec 10 03:02:44 home kernel:  [vfs_lstat_fd+31/80] vfs_lstat_fd+0x1f/0x50
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [sys_lstat64+15/48] sys_lstat64+0xf/0x30
+> Dec 10 03:02:44 home kernel:  [__fput+257/352] __fput+0x101/0x160
+> Dec 10 03:02:44 home kernel:  [mntput_no_expire+19/96] 
+> mntput_no_expire+0x13/0x60
+> Dec 10 03:02:44 home kernel:  [filp_close+71/128] filp_close+0x47/0x80
+> Dec 10 03:02:44 home kernel:  [sys_close+102/208] sys_close+0x66/0xd0
+> Dec 10 03:02:44 home kernel:  [sysenter_past_esp+95/133] 
+> sysenter_past_esp+0x5f/0x85
+> Dec 10 03:02:44 home kernel:  =======================
+> Dec 10 03:02:44 home kernel: BUG: scheduling while atomic: 
+> find/0x10000002/8233
+> Dec 10 03:02:44 home kernel:  [schedule+1474/1728] 
+> __sched_text_start+0x5c2/0x6c0
+> Dec 10 03:02:44 home kernel:  [release_pages+295/336] 
+> release_pages+0x127/0x150
+> Dec 10 03:02:44 home kernel:  [reschedule_interrupt+40/48] 
+> reschedule_interrupt+0x28/0x30
+> Dec 10 03:02:44 home kernel:  [__cond_resched+24/48] 
+> __cond_resched+0x18/0x30
+> Dec 10 03:02:44 home kernel:  [cond_resched+42/64] cond_resched+0x2a/0x40
+> Dec 10 03:02:44 home kernel:  [unmap_vmas+1502/1536] unmap_vmas+0x5de/0x600
+> Dec 10 03:02:44 home kernel:  [exit_mmap+123/288] exit_mmap+0x7b/0x120
+> Dec 10 03:02:44 home kernel:  [mmput+30/128] mmput+0x1e/0x80
+> Dec 10 03:02:44 home kernel:  [do_exit+272/2048] do_exit+0x110/0x800
+> Dec 10 03:02:44 home kernel:  [die+588/592] die+0x24c/0x250
+> Dec 10 03:02:44 home kernel:  [do_page_fault+722/2016] 
+> do_page_fault+0x2d2/0x7e0
+> Dec 10 03:02:44 home kernel:  [do_page_fault+0/2016] do_page_fault+0x0/0x7e0
+> Dec 10 03:02:44 home kernel:  [error_code+114/120] error_code+0x72/0x78
+> Dec 10 03:02:44 home kernel:  [__d_find_alias+44/192] 
+> __d_find_alias+0x2c/0xc0
+> Dec 10 03:02:44 home kernel:  [d_splice_alias+95/208] 
+> d_splice_alias+0x5f/0xd0
+> Dec 10 03:02:44 home kernel:  [ext3_lookup+230/288] ext3_lookup+0xe6/0x120
+> Dec 10 03:02:44 home kernel:  [d_alloc+309/416] d_alloc+0x135/0x1a0
+> Dec 10 03:02:44 home kernel:  [do_lookup+290/416] do_lookup+0x122/0x1a0
+> Dec 10 03:02:44 home kernel:  [__link_path_walk+1873/3408] 
+> __link_path_walk+0x751/0xd50
+> Dec 10 03:02:44 home kernel:  [link_path_walk+101/192] 
+> link_path_walk+0x65/0xc0
+> Dec 10 03:02:44 home kernel:  [link_path_walk+69/192] 
+> link_path_walk+0x45/0xc0
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [do_path_lookup+120/448] 
+> do_path_lookup+0x78/0x1c0
+> Dec 10 03:02:44 home kernel:  [getname+160/192] getname+0xa0/0xc0
+> Dec 10 03:02:44 home kernel:  [__user_walk_fd+59/96] 
+> __user_walk_fd+0x3b/0x60
+> Dec 10 03:02:44 home kernel:  [vfs_lstat_fd+31/80] vfs_lstat_fd+0x1f/0x50
+> Dec 10 03:02:44 home kernel:  [nameidata_to_filp+53/64] 
+> nameidata_to_filp+0x35/0x40
+> Dec 10 03:02:44 home kernel:  [do_filp_open+75/96] do_filp_open+0x4b/0x60
+> Dec 10 03:02:44 home kernel:  [sys_lstat64+15/48] sys_lstat64+0xf/0x30
+> Dec 10 03:02:44 home kernel:  [__fput+257/352] __fput+0x101/0x160
+> Dec 10 03:02:44 home kernel:  [mntput_no_expire+19/96] 
+> mntput_no_expire+0x13/0x60
+> Dec 10 03:02:44 home kernel:  [filp_close+71/128] filp_close+0x47/0x80
+> Dec 10 03:02:44 home kernel:  [sys_close+102/208] sys_close+0x66/0xd0
+> Dec 10 03:02:44 home kernel:  [sysenter_past_esp+95/133] 
+> sysenter_past_esp+0x5f/0x85
+> Dec 10 03:02:44 home kernel:  =======================
