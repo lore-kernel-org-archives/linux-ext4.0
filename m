@@ -1,37 +1,33 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC] [PATCH] Flex_BG ialloc awareness V2.
-Date: Thu, 13 Dec 2007 15:58:57 -0700
-Message-ID: <20071213225857.GK3214@webber.adilger.int>
-References: <20071206161045.1054bbe7@gara> <20071207101428.GE3214@webber.adilger.int> <20071207095212.037ca68a@gara> <20071211110033.GQ3214@webber.adilger.int> <20071211100812.557b923b@gara> <20071211231528.GS3214@webber.adilger.int> <20071213095112.100b3d9e@gara>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -mm] ext4: remove unused code from ext4_find_entry()
+Date: Thu, 13 Dec 2007 20:03:03 -0500
+Message-ID: <20071214010303.GA17344@thunk.org>
+References: <200712122246.41284.m.kozlowski@tuxland.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: sct@redhat.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+To: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:35441 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763905AbXLMW67 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2007 17:58:59 -0500
+Received: from thunk.org ([69.25.196.29]:60950 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935358AbXLNBDq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Dec 2007 20:03:46 -0500
 Content-Disposition: inline
-In-Reply-To: <20071213095112.100b3d9e@gara>
+In-Reply-To: <200712122246.41284.m.kozlowski@tuxland.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 13, 2007  09:51 -0600, Jose R. Santos wrote:
-> Now, storing the bits only guaranties that the flexbg size is always a
-> power-of-two and does not guarantee that the super block flexbg size
-> represents the actual meta-data grouping on disk.  For this we need to
-> verify that the bitmap offsets match what the super block reports.  It
-> may be an unlikely scenario, but it may be worth it to check this as
-> well at mount time.
+On Wed, Dec 12, 2007 at 10:46:40PM +0100, Mariusz Kozlowski wrote:
+> Hello,
+> 
+> 	The unused code found in ext3_find_entry() is also present (and still unused)
+> in the ext4_find_entry() code. This patch removes it. Compile tested only.
+> 
+> Signed-off-by: Mariusz Kozlowski <m.kozlowski@tuxland.pl>
 
-I'm not sure what you mean...  Isn't the flexbg size just a count of
-the number of block groups?  If it is always a power of two, and the
-groups per metabg is always a power of two (it is) then they will
-always be even multiples.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Thanks, this will be in the next ext4 patchset.
+
+	     	     	    	 - Ted
