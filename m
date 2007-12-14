@@ -1,18 +1,18 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext3: issue warning when bad inode found via ext3_lookup
-Date: Fri, 14 Dec 2007 11:41:37 -0600
-Message-ID: <4762C051.1070609@redhat.com>
+Subject: [PATCH] ext4: issue warning when bad inode found via ext4_lookup
+Date: Fri, 14 Dec 2007 11:41:41 -0600
+Message-ID: <4762C055.3080709@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
+	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>
 To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46389 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:46428 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753942AbXLNRlm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Dec 2007 12:41:42 -0500
+	id S1754449AbXLNRmW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Dec 2007 12:42:22 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -41,7 +41,7 @@ Fix? no
 Pass 3: Checking directory connectivity
 Unconnected directory inode 2053 (/dir/???)
 
-BUT there are no kernel messages logged anywhere because ext3_read_inode
+BUT there are no kernel messages logged anywhere because ext4_read_inode
 silently makes a bad_inode in this case, so that stale NFS filehandles
 aren't noisy.  However, when we encounter such a problem after a by-name
 lookup, I think a warning is appropriate, as it indicates filesystem
@@ -50,16 +50,17 @@ corruption.
 Signed-off-by: Eric Sandeen <sandeen@redhat.com
 ---
 
-Index: linux-2.6.24-rc3/fs/ext3/namei.c
+Index: linux-2.6.24-rc3/fs/ext4/namei.c
 ===================================================================
---- linux-2.6.24-rc3.orig/fs/ext3/namei.c
-+++ linux-2.6.24-rc3/fs/ext3/namei.c
-@@ -1049,6 +1049,9 @@ static struct dentry *ext3_lookup(struct
+--- linux-2.6.24-rc3.orig/fs/ext4/namei.c
++++ linux-2.6.24-rc3/fs/ext4/namei.c
+@@ -1050,6 +1050,9 @@ static struct dentry *ext4_lookup(struct
  			return ERR_PTR(-EACCES);
  
  		if (is_bad_inode(inode)) {
-+			ext3_warning(inode->i_sb, __FUNCTION__,
++			ext4_warning(inode->i_sb, __FUNCTION__,
 +				     "bad inode %lu in dir #%lu",
-+				      inode->i_ino, dir->i_ino);
++				     inode->i_ino, dir->i_ino);
  			iput(inode);
  			return ERR_PTR(-ENOENT);
+ 		}
