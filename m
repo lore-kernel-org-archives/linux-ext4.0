@@ -1,283 +1,264 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: BUG: soft lockup - CPU#0 stuck for 11s! [fsstress:5534]
-Date: Thu, 20 Dec 2007 20:02:42 +0530
-Message-ID: <20071220143242.GB6953@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix.patch removed from -mm tree
+Date: Thu, 20 Dec 2007 15:30:51 -0800
+Message-ID: <200712202330.lBKNUpYh018564@imap1.linux-foundation.org>
+To: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:38121 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753367AbXLTPCI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Dec 2007 10:02:08 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id lBKEWR2L015797
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 01:32:27 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lBKEaOdU231482
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 01:36:24 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lBKEWltn008825
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 01:32:48 +1100
-Content-Disposition: inline
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:33199 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750743AbXLTXbd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Dec 2007 18:31:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I am seeing this with the patch queue. I can reproduce this on x86 and
-powerpc. I see the file system full when this happens. The same happens even
-without delalloc enabled.
 
+The patch titled
+     ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix
+has been removed from the -mm tree.  Its filename was
+     ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix.patch
 
-Any idea what i should try now. It is not spinning on the spin lock. I had the
-spin lock debug enabled and added similar check for ext4_lock_group also.
+This patch was dropped because it is obsolete
 
-diff --git a/include/linux/bit_spinlock.h b/include/linux/bit_spinlock.h
-index 7113a32..9833376 100644
---- a/include/linux/bit_spinlock.h
-+++ b/include/linux/bit_spinlock.h
-@@ -9,6 +9,7 @@
-  */
- static inline void bit_spin_lock(int bitnum, unsigned long *addr)
- {
-+       unsigned int stuck = 0xffffffff;
-        /*
-         * Assuming the lock is uncontended, this never enters
-         * the body of the outer loop. If it is contended, then
-@@ -21,6 +22,11 @@ static inline void bit_spin_lock(int bitnum, unsigned long *addr)
-        while (unlikely(test_and_set_bit_lock(bitnum, addr))) {
-                while (test_bit(bitnum, addr)) {
-                        preempt_enable();
-+                       if (!--stuck) {
-+                               printk("bit_spin_lock(%p) ", __builtin_return_address(0));
-+                               dump_stack();
-+                               stuck = 0xffffffff;
-+                       }
-                        cpu_relax();
-                        preempt_disable();
-                }
-diff --git a/kernel/sched.c b/kernel/sched.c
+------------------------------------------------------
+Subject: ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix
+From: Andrew Morton <akpm@linux-foundation.org>
 
-The kernels are non preempt and I guess we are getting stuck in the kernel
-trying to allocate new blocks.
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
--aneesh
+ fs/ext4/extents.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
+diff -puN fs/ext4/extents.c~ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix fs/ext4/extents.c
+--- a/fs/ext4/extents.c~ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix
++++ a/fs/ext4/extents.c
+@@ -2631,8 +2631,8 @@ retry:
+ 		WARN_ON(ret <= 0);
+ 		if (ret <= 0) {
+ 			ext4_error(inode->i_sb, "ext4_fallocate",
+-				   "ext4_ext_get_blocks returned 0! inode#%lu"
+-				   ", block=%lu, max_blocks=%lu",
++				   "ext4_ext_get_blocks returned error: "
++				    "inode#%lu, block=%lu, max_blocks=%lu",
+ 				   inode->i_ino, (unsigned long)block,
+ 				   (unsigned long)max_blocks);
+ 			ret = -EIO;
+_
 
-BUG: soft lockup - CPU#0 stuck for 11s! [fsstress:5534]
-NIP: c0000000001a98d8 LR: c0000000001a98fc CTR: c0000000001900ec
-REGS: c0000000ed84ab30 TRAP: 0901   Not tainted  (2.6.24-rc5-autokern1)
-MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 24008428  XER: 00000020
-TASK = c0000000ed846000[5534] 'fsstress' THREAD: c0000000ed848000 CPU: 0
-GPR00: 0000000000000002 c0000000ed84adb0 c000000000604760 c0000000e4105cc8 
-GPR04: 000000000000002b c0000000ed84ae30 0000000000000015 c000000000733c98 
-GPR08: 0000000000000000 c0000000fc9905a0 0000000000000000 0000000000000000 
-GPR12: 0000000024002428 c000000000542980 
-NIP [c0000000001a98d8] .ext4_mb_discard_preallocations+0x1e4/0x600
-LR [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600
-Call Trace:
-[c0000000ed84adb0] [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600 (unreliable)
-[c0000000ed84afa0] [c0000000001ab6d8] .ext4_mb_new_blocks+0x18a0/0x19a4
-[c0000000ed84b220] [c0000000001a14d8] .ext4_ext_get_blocks+0x970/0xb5c
-[c0000000ed84b3b0] [c00000000018ec5c] .ext4_get_block+0x138/0x1c0
-[c0000000ed84b470] [c0000000001163a0] .__block_prepare_write+0x1f8/0x4c8
-[c0000000ed84b580] [c0000000001168b8] .block_write_begin+0xc4/0x160
-[c0000000ed84b650] [c00000000018c4e8] .ext4_write_begin+0x12c/0x24c
-[c0000000ed84b750] [c0000000000aa9b0] .generic_file_buffered_write+0x174/0x760
-[c0000000ed84b8a0] [c0000000000ab684] .__generic_file_aio_write_nolock+0x3ec/0x444
-[c0000000ed84b9e0] [c0000000000ab75c] .generic_file_aio_write+0x80/0x114
-[c0000000ed84baa0] [c000000000188634] .ext4_file_write+0xc8/0x190
-[c0000000ed84bb50] [c0000000000e3484] .do_sync_write+0xd0/0x130
-[c0000000ed84bcf0] [c0000000000e35ec] .vfs_write+0x108/0x1c8
-[c0000000ed84bd90] [c0000000000e3784] .sys_write+0x4c/0x8c
-[c0000000ed84be30] [c00000000000872c] syscall_exit+0x0/0x40
-Instruction dump:
-794bffe3 41a2002c e8090000 780affe3 41820018 7c210b78 7c421378 e8090000 
-780bffe3 4bffffec 38000002 4bffffc0 <e93d0020> 3b9d0020 3be9fff0 7fa9e000 
-BUG: soft lockup - CPU#3 stuck for 11s! [fsstress:6291]
-NIP: c0000000001a98c0 LR: c0000000001a98fc CTR: c0000000001900ec
-REGS: c0000000ebecf0e0 TRAP: 0901   Not tainted  (2.6.24-rc5-autokern1)
-MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 44008428  XER: 00000008
-TASK = c0000000ebebc820[6291] 'fsstress' THREAD: c0000000ebecc000 CPU: 3
-GPR00: 0000000000000002 c0000000ebecf360 c000000000604760 c0000000e4105cc8 
-GPR04: 000000000000002b c0000000ebecf3e0 0000000000000015 c000000000748c98 
-GPR08: 0000000000000000 c0000000fc9905a0 0000000000000001 0000000000000001 
-GPR12: 0000000024002488 c000000000543100 
-NIP [c0000000001a98c0] .ext4_mb_discard_preallocations+0x1cc/0x600
-LR [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600
-Call Trace:
-[c0000000ebecf360] [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600 (unreliable)
-[c0000000ebecf550] [c0000000001ab6d8] .ext4_mb_new_blocks+0x18a0/0x19a4
-[c0000000ebecf7d0] [c0000000001a14d8] .ext4_ext_get_blocks+0x970/0xb5c
-[c0000000ebecf960] [c00000000018fccc] .ext4_getblk+0xc4/0x2a4
-[c0000000ebecfa80] [c00000000018fed0] .ext4_bread+0x24/0xec
-[c0000000ebecfb20] [c0000000001941a4] .ext4_mkdir+0x1fc/0x490
-[c0000000ebecfbf0] [c0000000000f181c] .vfs_mkdir+0x134/0x1d0
-[c0000000ebecfc90] [c0000000000f1968] .sys_mkdirat+0xb0/0x10c
-[c0000000ebecfdc0] [c00000000001721c] .compat_sys_mkdir+0x14/0x28
-[c0000000ebecfe30] [c00000000000872c] syscall_exit+0x0/0x40
-Instruction dump:
-7d29582a 7d4048a8 7d4b0378 7d6049ad 40a2fff4 4c00012c 794bffe3 41a2002c 
-e8090000 780affe3 41820018 7c210b78 <7c421378> e8090000 780bffe3 4bffffec 
-BUG: soft lockup - CPU#2 stuck for 11s! [fsstress:5738]
-NIP: c0000000001a98c0 LR: c0000000001a98fc CTR: c0000000001900ec
-REGS: c0000000e59eab30 TRAP: 0901   Not tainted  (2.6.24-rc5-autokern1)
-MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 44008428  XER: 00000018
-TASK = c0000000e59e6000[5738] 'fsstress' THREAD: c0000000e59e8000 CPU: 2
-GPR00: 0000000000000002 c0000000e59eadb0 c000000000604760 c0000000e4105cc8 
-GPR04: 000000000000002b c0000000e59eae30 0000000000000015 c000000000741c98 
-GPR08: 0000000000000000 c0000000fc9905a0 0000000000000001 0000000000000001 
-GPR12: 0000000024002428 c000000000542e80 
-NIP [c0000000001a98c0] .ext4_mb_discard_preallocations+0x1cc/0x600
-LR [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600
-Call Trace:
-[c0000000e59eadb0] [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600 (unreliable)
-[c0000000e59eafa0] [c0000000001ab6d8] .ext4_mb_new_blocks+0x18a0/0x19a4
-[c0000000e59eb220] [c0000000001a14d8] .ext4_ext_get_blocks+0x970/0xb5c
-[c0000000e59eb3b0] [c00000000018ec5c] .ext4_get_block+0x138/0x1c0
-[c0000000e59eb470] [c0000000001163a0] .__block_prepare_write+0x1f8/0x4c8
-[c0000000e59eb580] [c0000000001168b8] .block_write_begin+0xc4/0x160
-[c0000000e59eb650] [c00000000018c4e8] .ext4_write_begin+0x12c/0x24c
-[c0000000e59eb750] [c0000000000aa9b0] .generic_file_buffered_write+0x174/0x760
-[c0000000e59eb8a0] [c0000000000ab684] .__generic_file_aio_write_nolock+0x3ec/0x444
-[c0000000e59eb9e0] [c0000000000ab75c] .generic_file_aio_write+0x80/0x114
-[c0000000e59ebaa0] [c000000000188634] .ext4_file_write+0xc8/0x190
-[c0000000e59ebb50] [c0000000000e3484] .do_sync_write+0xd0/0x130
-[c0000000e59ebcf0] [c0000000000e35ec] .vfs_write+0x108/0x1c8
-[c0000000e59ebd90] [c0000000000e3784] .sys_write+0x4c/0x8c
-[c0000000e59ebe30] [c00000000000872c] syscall_exit+0x0/0x40
-Instruction dump:
-7d29582a 7d4048a8 7d4b0378 7d6049ad 40a2fff4 4c00012c 794bffe3 41a2002c 
-e8090000 780affe3 41820018 7c210b78 <7c421378> e8090000 780bffe3 4bffffec 
-BUG: soft lockup - CPU#1 stuck for 11s! [fsstress:5942]
-NIP: c0000000001a98a0 LR: c0000000001a98fc CTR: c00000000007f95c
-REGS: c0000000ebc26b30 TRAP: 0901   Not tainted  (2.6.24-rc5-autokern1)
-MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 24008428  XER: 00000010
-TASK = c0000000ebc22000[5942] 'fsstress' THREAD: c0000000ebc24000 CPU: 1
-GPR00: 0000000000000002 c0000000ebc26db0 c000000000604760 c0000000e4105cc8 
-GPR04: 000000000000002b c0000000ebc26e30 0000000000000015 c00000000073ac98 
-GPR08: 0000000000000000 c0000000fc9905a0 0000000000000002 0000000000000002 
-GPR12: 0000000024002428 c000000000542c00 
-NIP [c0000000001a98a0] .ext4_mb_discard_preallocations+0x1ac/0x600
-LR [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600
-Call Trace:
-[c0000000ebc26db0] [c0000000001a98fc] .ext4_mb_discard_preallocations+0x208/0x600 (unreliable)
-[c0000000ebc26fa0] [c0000000001ab6d8] .ext4_mb_new_blocks+0x18a0/0x19a4
-[c0000000ebc27220] [c0000000001a14d8] .ext4_ext_get_blocks+0x970/0xb5c
-[c0000000ebc273b0] [c00000000018ec5c] .ext4_get_block+0x138/0x1c0
-[c0000000ebc27470] [c0000000001163a0] .__block_prepare_write+0x1f8/0x4c8
-[c0000000ebc27580] [c0000000001168b8] .block_write_begin+0xc4/0x160
-[c0000000ebc27650] [c00000000018c4e8] .ext4_write_begin+0x12c/0x24c
-[c0000000ebc27750] [c0000000000aa9b0] .generic_file_buffered_write+0x174/0x760
-[c0000000ebc278a0] [c0000000000ab610] .__generic_file_aio_write_nolock+0x378/0x444
-[c0000000ebc279e0] [c0000000000ab75c] .generic_file_aio_write+0x80/0x114
-[c0000000ebc27aa0] [c000000000188634] .ext4_file_write+0xc8/0x190
-[c0000000ebc27b50] [c0000000000e3484] .do_sync_write+0xd0/0x130
-[c0000000ebc27cf0] [c0000000000e35ec] .vfs_write+0x108/0x1c8
-[c0000000ebc27d90] [c0000000000e3784] .sys_write+0x4c/0x8c
-[c0000000ebc27e30] [c00000000000872c] syscall_exit+0x0/0x40
-Instruction dump:
-e92a0030 e94a4208 7f6b5c36 3929ffff 796b1f24 7f694838 7d6b502a 79291f24 
-7d29582a 7d4048a8 7d4b0378 7d6049ad <40a2fff4> 4c00012c 794bffe3 41a2002c 
--- 0:conmux-control -- time-stamp -- Dec/20/07  2:53:52 --
--- 0:conmux-control -- time-stamp -- Dec/20/07  3:01:55 --
-(bot:conmon-payload) disconnected
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
-
-
-x86 gives me this stack.
------------------------
-
-BUG: soft lockup - CPU#6 stuck for 11s! [fsstress:14048]
-
-Pid: 14048, comm: fsstress Not tainted (2.6.24-rc5-autokern1 #1)
-EIP: 0060:[<c01d2f1c>] EFLAGS: 00000282 CPU: 6
-EIP is at ext4_mb_discard_preallocations+0x13a/0x439
-EAX: 00000002 EBX: dbd50180 ECX: 00000007 EDX: ffffffba
-ESI: e44599c8 EDI: dbd50194 EBP: e44599b0 ESP: e419fb5c
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-CR0: 8005003b CR2: 080eae1c CR3: 373cd000 CR4: 000006b0
-DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-DR6: ffff0ff0 DR7: 00000400
- [<c01be636>] ext4_mark_iloc_dirty+0x382/0x3dd
- [<c01be7df>] ext4_mark_inode_dirty+0x14e/0x15e
- [<c01cfe12>] ext4_mb_store_history+0x14b/0x153
- [<c01d51b9>] ext4_mb_new_blocks+0x17de/0x1891
- [<c01ce529>] __ext4_journal_dirty_metadata+0x15/0x3c
- [<c01be7df>] ext4_mark_inode_dirty+0x14e/0x15e
- [<c0170f1b>] __find_get_block+0x17b/0x185
- [<c01cbdc8>] ext4_ext_find_extent+0x5b/0x217
- [<c01cd44c>] ext4_ext_get_blocks+0x74d/0x924
- [<c01be636>] ext4_mark_iloc_dirty+0x382/0x3dd
- [<c01c086b>] ext4_get_blocks_wrap+0xc7/0x109
- [<c01c14e6>] ext4_getblk+0x4f/0x16f
- [<c01c161f>] ext4_bread+0x19/0x72
- [<c01c4f32>] ext4_mkdir+0x150/0x2d2
- [<c01d72d4>] ext4_permission+0x0/0xa
- [<c015cccd>] vfs_mkdir+0x8f/0xd3
- [<c015cd99>] sys_mkdirat+0x88/0xbf
- [<c0154f4b>] __fput+0x116/0x140
- [<c01655c1>] mntput_no_expire+0x11/0x63
- [<c0152cf4>] filp_close+0x4f/0x56
- [<c015cdef>] sys_mkdir+0x1f/0x23
- [<c01024ba>] sysenter_past_esp+0x5f/0x85
- =======================
-BUG: soft lockup - CPU#7 stuck for 11s! [fsstress:14017]
-
-Pid: 14017, comm: fsstress Not tainted (2.6.24-rc5-autokern1 #1)
-EIP: 0060:[<c01d2f32>] EFLAGS: 00000246 CPU: 7
-EIP is at ext4_mb_discard_preallocations+0x150/0x439
-EAX: dbd50180 EBX: e44599b8 ECX: 00000007 EDX: ffffffff
-ESI: e44599c8 EDI: dbd50194 EBP: e44599b0 ESP: f66737cc
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-CR0: 8005003b CR2: b7f02840 CR3: 36443000 CR4: 000006b0
-DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-DR6: ffff0ff0 DR7: 00000400
- [<c01be636>] ext4_mark_iloc_dirty+0x382/0x3dd
- [<c01be7df>] ext4_mark_inode_dirty+0x14e/0x15e
- [<c0170f1b>] __find_get_block+0x17b/0x185
- [<c01d000c>] ext4_mb_init+0x1f2/0x85a
- [<c01d51b9>] ext4_mb_new_blocks+0x17de/0x1891
- [<c01ce529>] __ext4_journal_dirty_metadata+0x15/0x3c
- [<c01be7df>] ext4_mark_inode_dirty+0x14e/0x15e
- [<c01cfe12>] ext4_mb_store_history+0x14b/0x153
- [<c01c63b1>] __ext4_journal_stop+0x19/0x34
- [<c0170f1b>] __find_get_block+0x17b/0x185
- [<c01cbed4>] ext4_ext_find_extent+0x167/0x217
- [<c01cd44c>] ext4_ext_get_blocks+0x74d/0x924
- [<c01c086b>] ext4_get_blocks_wrap+0xc7/0x109
- [<c01c1388>] ext4_da_get_block_write+0x6f/0x17e
- [<c01c1319>] ext4_da_get_block_write+0x0/0x17e
- [<c0174a9e>] mpage_da_map_blocks+0x6d/0x230
- [<c01cb78e>] __ext4_ext_check_header+0x77/0xfa
- [<c0170f1b>] __find_get_block+0x17b/0x185
- [<c01cb78e>] __ext4_ext_check_header+0x77/0xfa
- [<c0174cb5>] mpage_add_bh_to_extent+0x54/0x6b
- [<c017592b>] __mpage_da_writepage+0xb1/0xc6
- [<c0376e5c>] _read_unlock_irq+0x5/0x7
- [<c0136ce7>] find_get_pages_tag+0x76/0x80
- [<c013d10a>] write_cache_pages+0x169/0x280
- [<c017587a>] __mpage_da_writepage+0x0/0xc6
- [<c0175858>] mpage_da_writepages+0x5d/0x7f
- [<c01c0827>] ext4_get_blocks_wrap+0x83/0x109
- [<c01c12ce>] ext4_da_get_block_prep+0x4c/0x97
- [<c01c1319>] ext4_da_get_block_write+0x0/0x17e
- [<c01bd9db>] ext4_da_writepages+0x0/0xa
- [<c013d265>] do_writepages+0x20/0x33
- [<c0136ba6>] __filemap_fdatawrite_range+0x65/0x70
- [<c0137ae6>] filemap_fdatawrite+0x23/0x27
- [<c0137afb>] filemap_write_and_wait+0x11/0x29
- [<c01384a8>] generic_file_buffered_write+0x57a/0x5a0
- [<c011c05c>] current_fs_time+0x13/0x15
- [<c0139437>] __generic_file_aio_write_nolock+0x3c3/0x4b5
- [<c0139581>] generic_file_aio_write+0x58/0xb6
- [<c01bc5a4>] ext4_file_write+0xb4/0x124
- [<c0153eb8>] do_sync_write+0xc7/0x10a
- [<c0127898>] autoremove_wake_function+0x0/0x33
- [<c0156e44>] sys_fstat64+0x1e/0x23
- [<c0153df1>] do_sync_write+0x0/0x10a
- [<c0154495>] vfs_write+0x89/0x10b
- [<c0154b91>] sys_write+0x41/0x67
- [<c01024ba>] sysenter_past_esp+0x5f/0x85
- =======================
-(bot:conmon-payload) disconnecte
+origin.patch
+get_task_comm-return-the-result.patch
+clone-prepare-to-recycle-clone_detached-and-clone_stopped.patch
+clone-prepare-to-recycle-clone_detached-and-clone_stopped-fix.patch
+timerfd-v3-new-timerfd-api-ia64-fix.patch
+timerfd-v3-new-timerfd-api-m68k-fix.patch
+timerfd-v3-new-timerfd-api-mips-fix.patch
+timerfd-v3-new-timerfd-api-arch-fixes.patch
+timerfd-v3-new-timerfd-api-powerpc-fix.patch
+timerfd-v3-new-timerfd-api-sparc64-fix.patch
+git-acpi.patch
+acpi-enable-c3-power-state-on-dell-inspiron-8200.patch
+small-acpica-extension-to-be-able-to-store-the-name-of.patch
+git-alsa.patch
+git-alsa-fixup.patch
+git-agpgart.patch
+working-3d-dri-intel-agpko-resume-for-i815-chip.patch
+git-arm.patch
+kernel-auditc-warning-fix.patch
+git-cpufreq.patch
+git-powerpc.patch
+revert-gregkh-driver-pm-acquire-device-locks-prior-to-suspending.patch
+gregkh-driver-kset-convert-to-kobj_sysfs_ops-vs-git-acpi.patch
+unbork-gregkh-driver-kset-convert-sys-devices-to-use-kset_create-vioc.patch
+git-drm.patch
+intel-agp-enable-i915-recognition.patch
+git-dvb.patch
+git-dvb-one-videobuf_read_start-is-enough.patch
+fix-jdelvare-i2c-i2c-constify-client-address-data.patch
+git-hid.patch
+revert-git-hrt.patch
+git-ieee1394.patch
+git-infiniband.patch
+git-kvm.patch
+git-libata-all.patch
+libata-xfer_mask-is-unsigned-int-not-unsigned-long.patch
+libata-set-proper-ata-udma-mode-for-bf548-according-to-system-clock-checkpatch-fixes.patch
+libata-fix-early-use-of-port-printk-checkpatch-fixes.patch
+git-md-accel.patch
+git-mmc.patch
+git-mtd.patch
+git-net.patch
+git-net-vs-git-lblnet.patch
+git-net-vs-git-lblnet-2.patch
+git-netdev-all.patch
+git-net-vs-git-netdev-all.patch
+update-smc91x-driver-with-arm-versatile-board-info.patch
+backlight-omap1-backlight-driver.patch
+git-battery.patch
+bluetooth-uninlining.patch
+git-nfsd.patch
+quirk-enable-msi-mapping-on-ht1000.patch
+git-sched.patch
+git-sched-fixup.patch
+git-sched-fixup-2.patch
+git-sh.patch
+git-scsi-misc.patch
+scsi-aic94xx-cleanups-checkpatch-fixes.patch
+scsi-aic94xx-cleanups-checkpatch-fixes-checkpatch-fixes.patch
+libsas-convert-ata-bridge-to-use-new-eh.patch
+git-unionfs.patch
+vfs-swap-do_ioctl-and-vfs_ioctl-names-fix.patch
+usb-testing-driver-dont-free-a-locked-mutex.patch
+ehci-hcd-fix-sparse-warning-about-shadowing-status-symbol-checkpatch-fixes.patch
+9p-util-fix-semaphore-handling.patch
+git-watchdog.patch
+git-watchdog-fixup.patch
+add-support-for-sb1-hardware-watchdog.patch
+git-wireless.patch
+git-ipwireless_cs.patch
+git-x86.patch
+git-x86-fixup.patch
+pci-dont-load-acpi_php-when-acpi-is-disabled.patch
+i386-use-raw_smp_processor_id-in-die.patch
+git-cryptodev.patch
+git-cryptodev-fixup.patch
+git-xtensa.patch
+git-kgdb-fixup.patch
+bonding-locking-fix.patch
+usbtouchscreen-fix-buffer-overflow-make-more-egalax-work-checkpatch-fixes.patch
+pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix.patch
+pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2.patch
+vmalloc-add-const-to-void-parameters-fix.patch
+i386-resolve-dependency-of-asm-i386-pgtableh-on-highmemh-checkpatch-fixes.patch
+slub-fix-coding-style-violations-checkpatch-fixes.patch
+slub-provide-unique-end-marker-for-each-slab-fix.patch
+slub-do-our-own-locking-via-slab_lock-and-slab_unlock-checkpatch-fixes.patch
+bufferhead-revert-constructor-removal-checkpatch-fixes.patch
+shmem-factor-out-sbi-free_inodes-manipulations-fix.patch
+maps4-rework-task_size-macros-mips-fix.patch
+maps4-make-page-monitoring-proc-file-optional-fix.patch
+page-allocator-clean-up-pcp-draining-functions-swsusp-fix-fix.patch
+mm-page-writeback-highmem_is_dirtyable-option-fix.patch
+vmscan-give-referenced-active-and-unmapped-pages-a-second-trip-around-the-lru.patch
+vm-dont-run-touch_buffer-during-buffercache-lookups.patch
+revert-capabilities-clean-up-file-capability-reading.patch
+revert-capabilities-clean-up-file-capability-reading-checkpatch-fixes.patch
+add-64-bit-capability-support-to-the-kernel-checkpatch-fixes.patch
+add-64-bit-capability-support-to-the-kernel-fix.patch
+add-64-bit-capability-support-to-the-kernel-fix-modify-old-libcap-warning-message-checkpatch-fixes.patch
+add-64-bit-capability-support-to-the-kernel-fix-modify-old-libcap-warning-message-fix.patch
+alpha-atomic_add_return-should-return-int.patch
+alpha-fix-warning-by-fixing-flush_tlb_kernel_range.patch
+pm-qos-infrastructure-and-interface.patch
+pm-qos-infrastructure-and-interface-static-initialization-with-blocking-notifiers.patch
+dio-array_size-cleanup-update-checkpatch-fixes.patch
+uml-get-rid-of-asmlinkage-checkpatch-fixes.patch
+uml-improve-detection-of-host-cmov-checkpatch-fixes.patch
+uml-further-bugsc-tidying-checkpatch-fixes.patch
+kernel-printkc-concerns-about-the-console-handover.patch
+riscom8-fix-smp-brokenness-fix.patch
+use-macros-instead-of-task_-flags-checkpatch-fixes.patch
+sound-oss-pss-set_io_base-always-returns-success-mark-it-void-checkpatch-fixes.patch
+remove-warnings-for-longstanding-conditions-fix.patch
+genericizing-iova-fix.patch
+parallel-port-convert-port_mutex-to-the-mutex-api-checkpatch-fixes.patch
+remove-support-for-un-needed-_extratext-section-checkpatch-fixes.patch
+allow-auto-destruction-of-loop-devices-checkpatch-fixes.patch
+remove-__attribute_used__-checkpatch-fixes.patch
+read_current_time-cleanups.patch
+read_current_time-cleanups-build-fix-fix.patch
+get-rid-of-nr_open-and-introduce-a-sysctl_nr_open-fix.patch
+kallsyms-should-prefer-non-weak-symbols-checkpatch-fixes.patch
+deprecate-smbfs-in-favour-of-cifs.patch
+quota-improve-inode-list-scanning-in-add_dquot_ref-fix.patch
+tty-enable-the-echoing-of-c-in-the-n_tty-discipline-checkpatch-fixes.patch
+stopmachine-semaphore-to-mutex-fix.patch
+parport-add-support-for-the-quatech-sppxp-100-parallel-port-pci-expresscard-fix.patch
+sync_sb_inodes-propagate-errors.patch
+add-have_oprofile.patch
+ecryptfs-make-show_options-reflect-actual-mount-options-fix.patch
+rtc-ds1302-rtc-support-checkpatch-fixes.patch
+rtc-add-support-for-the-s-35390a-rtc-chip-fix.patch
+mcp23s08-spi-gpio-expander-checkpatch-fixes.patch
+fbmon-cleanup-trailing-whitespaces-checkpatch-fixes.patch
+logo-move-declarations-of-logos-to-linux_logoh-fix.patch
+declare-pnp-option-parsing-functions-as-__init-checkpatch-fixes.patch
+isapnp-driver-semaphore-to-mutex-fix.patch
+isapnp-driver-semaphore-to-mutex-fix-fix.patch
+ext4-check-for-the-correct-error-return-from-ext4_ext_get_blocks-fix.patch
+kill-filp_open-checkpatch-fixes.patch
+rename-open_namei-to-open_pathname-fix.patch
+r-o-bind-mounts-elevate-write-count-during-entire-ncp_ioctl-fix.patch
+r-o-bind-mounts-elevate-write-count-for-do_utimes.patch
+r-o-bind-mounts-elevate-write-count-for-some-ioctls-checkpatch-fixes.patch
+r-o-bind-mounts-elevate-write-count-for-some-ioctls-vs-forbid-user-to-change-file-flags-on-quota-files.patch
+r-o-bind-mounts-elevate-write-count-opened-files-oops-fix.patch
+r-o-bind-mounts-nfs-check-mnt-instead-of-superblock-directly-checkpatch-fixes.patch
+r-o-bind-mounts-track-number-of-mount-writer-fix-buggy-loop-checkpatch-fixes.patch
+cgroup-simplify-space-stripping-fix.patch
+memory-controller-memory-accounting-v7.patch
+memory-controller-add-per-container-lru-and-reclaim-v7.patch
+memory-controller-oom-handling-v7.patch
+memory-controller-add-switch-to-control-what-type-of-pages-to-limit-v7.patch
+memcontrol-move-oom-task-exclusion-to-tasklist.patch
+memory-cgroup-enhancements-fix-zone-handling-in-try_to_free_mem_cgroup_page-warning-fix.patch
+memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup-checkpatch-fixes.patch
+memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup-fix-1.patch
+memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup-uninlining.patch
+memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup-fix-2.patch
+memory-cgroup-enhancements-add-memorystat-file-checkpatch-fixes.patch
+memory-cgroup-enhancements-add-memorystat-file-printk-fix.patch
+per-zone-and-reclaim-enhancements-for-memory-controller-take-3-remember-reclaim-priority-in-memory-cgroup-fix.patch
+per-zone-and-reclaim-enhancements-for-memory-controller-take-3-remember-reclaim-priority-in-memory-cgroup-fix-2.patch
+per-zone-and-reclaim-enhancements-for-memory-controller-take-3-modifies-vmscanc-for-isolate-globa-cgroup-lru-activity-fix.patch
+drivers-edac-add-marvell-mv64x60-driver-fix.patch
+introduce-flags-for-reserve_bootmem-checkpatch-fixes.patch
+iget-stop-affs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-efs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-freevxfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-the-minix-filesystem-from-using-iget-and-checkpatch-fixes.patch
+iget-stop-procfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-qnx4-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-romfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-the-sysv-filesystem-from-using-iget-and-checkpatch-fixes.patch
+iget-stop-ufs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-hostfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+embed-a-struct-path-into-struct-nameidata-instead-of-nd-dentrymnt-checkpatch-fixes.patch
+one-less-parameter-to-__d_path-checkpatch-fixes.patch
+d_path-use-struct-path-in-struct-avc_audit_data-checkpatch-fixes.patch
+d_path-make-get_dcookie-use-a-struct-path-argument-checkpatch-fixes.patch
+use-struct-path-in-struct-svc_export-checkpatch-fixes.patch
+cleanup-the-code-managed-with-the-user_ns-option-checkpatch-fixes.patch
+cleanup-the-code-managed-with-pid_ns-option-checkpatch-fixes.patch
+proc-detect-duplicate-names-on-registration-fix.patch
+proc-seqfile-convert-proc_pid_status-to-properly-handle-pid-namespaces-checkpatch-fixes.patch
+proc-seqfile-convert-proc_pid_status-to-properly-handle-pid-namespaces-fix.patch
+proc-seqfile-convert-proc_pid_status-to-properly-handle-pid-namespaces-fix-2.patch
+proc-seqfile-convert-proc_pid_status-to-properly-handle-pid-namespaces-fix-3.patch
+intel-iommu-fault_reason_index_cleanuppatch-fix.patch
+pid-sys_wait-fixes-v2-checkpatch-fixes.patch
+aout-suppress-aout-library-support-if-config_arch_supports_aout-vs-git-x86.patch
+aout-suppress-aout-library-support-if-config_arch_supports_aout-vs-sanitize-the-type-of-struct-useru_ar0.patch
+aout-remove-unnecessary-inclusions-of-asm-linux-aouth-alpha-fix.patch
+mn10300-add-the-mn10300-am33-architecture-to-the-kernel-fix.patch
+rewrite-rd-fixes.patch
+make-copy_from_user_inatomic-not-zero-the-tail-on-i386-vs-reiser4.patch
+reiser4.patch
+jens-broke-reiser4patch-added-to-mm-tree.patch
+page-owner-tracking-leak-detector.patch
+nr_blockdev_pages-in_interrupt-warning.patch
+slab-leaks3-default-y.patch
+profile-likely-unlikely-macros-fix.patch
+put_bh-debug.patch
+shrink_slab-handle-bad-shrinkers.patch
+getblk-handle-2tb-devices.patch
+getblk-handle-2tb-devices-fix.patch
+undeprecate-pci_find_device.patch
+w1-build-fix.patch
