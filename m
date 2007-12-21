@@ -1,56 +1,92 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: BUG: soft lockup - CPU#0 stuck for 11s! [fsstress:5534]
-Date: Fri, 21 Dec 2007 16:28:56 +0530
-Message-ID: <20071221105856.GA6989@skywalker>
-References: <20071220143242.GB6953@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <bzzz@sun.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Subject: [PATCH] ext4: Fix the soft lockup with multi block allocator.
+Date: Fri, 21 Dec 2007 16:39:50 +0530
+Message-ID: <1198235390-18485-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu, adilger@sun.com, bzzz@sun.com, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:56161 "EHLO
-	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751971AbXLUK7L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2007 05:59:11 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id lBLAwxuB018441
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 16:28:59 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lBLAwwZW622816
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 16:28:59 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id lBLAwxDf010623
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 10:58:59 GMT
-Content-Disposition: inline
-In-Reply-To: <20071220143242.GB6953@skywalker>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:50798 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750718AbXLULJz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2007 06:09:55 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id lBLB9m0Q020483
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 22:09:48 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lBLB9rKO3637368
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 22:09:53 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lBLB9rrb030773
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2007 22:09:53 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 20, 2007 at 08:02:42PM +0530, Aneesh Kumar K.V wrote:
-> I am seeing this with the patch queue. I can reproduce this on x86 and
-> powerpc. I see the file system full when this happens. The same happens even
-> without delalloc enabled.
-> 
-> 
+With the multi block allocator when we don't have prealloc space we discard
+the existing preallocaltion data and try to rebuild the buddy cache. While
+discarding the loop through the group specific prealloc list. If we find any
+particular prealloc space being used we mark the space busy. If we are not
+able to find enough free space and if we have any prealloc space busy we loop
+back again. With non preempted kernel this tight loop resulted in watchdog
+timer triggering soft lockup warning.
 
 
-The below patch fix the same for me. One thing i observed with the patch queue
-is, enabling delalloc by default. Delalloc doesn't handle the file system full
-case because there is no block reservation. Unless we have block reservation i
-guess we should disable delalloc by default.
+Whe we are allocation the block we search the prealloc list and mark the
+prealloc space used via incrementing pa_count value. One after succesffuly
+allocating the block we need to update the block bitmap and this could
+actually involved a disk io if the bitmap need to read from the disk. This
+actually cause prealloc space to be marked used for quiet a long time. This
+inturn results in the discard logic going on tight loop resulting in watchdog
+timer triggering soft lockup warning.
 
-I will send a full patch with proper log message.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/mballoc.c |   12 +++---------
+ 1 files changed, 3 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 72e1920..8b45ac0 100644
+index 844765c..cbc8143 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3791,6 +3791,7 @@ repeat:
+@@ -3729,7 +3729,7 @@ static int ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 	struct list_head list;
+ 	struct ext4_buddy e4b;
+ 	int err;
+-	int busy;
++	int busy = 0;
+ 	int free = 0;
+ 
+ 	mb_debug("discard preallocation for group %lu\n", group);
+@@ -3754,20 +3754,12 @@ static int ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 	INIT_LIST_HEAD(&list);
+ 
+ repeat:
+-	busy = 0;
+ 	ext4_lock_group(sb, group);
+ 	list_for_each_entry_safe(pa, tmp,
+ 				&grp->bb_prealloc_list, pa_group_list) {
+ 		spin_lock(&pa->pa_lock);
+ 		if (atomic_read(&pa->pa_count)) {
+ 			spin_unlock(&pa->pa_lock);
+-			/* FIXME!!
+-			 * It is quiet natural to have the pa being
+-			 * used on other cpus when we are trying free
+-			 * space
+-			printk(KERN_ERR "uh! busy PA\n");
+-			dump_stack();
+-			*/
+ 			busy = 1;
+ 			continue;
+ 		}
+@@ -3790,7 +3782,9 @@ repeat:
+ 
  	/* if we still need more blocks and some PAs were used, try again */
  	if (free < needed && busy) {
++		busy = 0;
  		ext4_unlock_group(sb, group);
 +		schedule_timeout(HZ);
  		goto repeat;
  	}
  
+-- 
+1.5.4.rc0-dirty
