@@ -1,38 +1,65 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Updated PATCH] ext4: Use the correct block number when
-	reading the super block.
-Date: Mon, 31 Dec 2007 14:12:10 +0530
-Message-ID: <20071231084210.GA9890@skywalker>
-References: <1199089762-10378-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: What's in e2fsprogs.git (stable)
+Date: Tue, 1 Jan 2008 13:01:28 -0500
+Message-ID: <20080101180128.GB23047@mit.edu>
+References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com, tytso@mit.edu, akpm@linux-foundation.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:46019 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753544AbXLaIoF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Dec 2007 03:44:05 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id lBV8ihbJ027074
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2007 19:44:43 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id lBV8kPis160542
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2007 19:46:25 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id lBV8gW7x009744
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2007 19:42:32 +1100
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:62285 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753639AbYAASBp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jan 2008 13:01:45 -0500
 Content-Disposition: inline
-In-Reply-To: <1199089762-10378-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20071217171135.GB7070@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 31, 2007 at 01:59:22PM +0530, Aneesh Kumar K.V wrote:
-> If the block device hard sector size is larger than EXT4_MIN_BLOCK_SIZE we
-> end up with wrong block number when reading super block.
-> 
+Lots of old (and new) bugs that had been hanging around Sourcefroge
+and Debian bug trackers have been fixed.  In addition, yesterday I
+released 1.40.4 of e2fsprogs.
 
-Ignore the patch. I got confused by the do_div syntax. The do_div already save
-the division result in logical_sb_block;
+* The 'maint' branch has these fixes since the last announcement.
 
--aneesh
+Theodore Ts'o (29):
+  uuidd: Use /var/lib/libuuid instead of /var/run/uuidd
+  libuuid: When starting uuidd, use waitpid() to reap the zombie
+      process
+  libuuid: Only try to start the uuidd daemon a limited number of
+      times
+  debian: Add a dependency on libuuid1 to the uuid-runtime package
+  Add #define needed for Hurd ioctl definitions
+  libuuid: Fix bug which caused uuidd to fail if sizeof(int) !=
+      sizeof(int *)
+  uuidd: Avoid race conditions to that only one uuidd is started
+  Update Vietnamese translation from the Translation Project
+  Convert use of ext2fs_get_mem to ext2fs_get_array for overflow
+      detection
+  Fix build failure on non-Linux/non-Hurd/non-Masix systems
+  Add --disable-tls configure option
+  Add --disable-uuidd configure option
+  debian: Do not use TLS or uuidd when building the bootfloppy udeb's
+  Test for sys/syscall.h in configure to fix dietlibc build problem
+  Fix build error in blkid/tst_types.c when using diet libc
+  debian: build the e2fsck-static package so it works on 2.4 kernels
+  debian: Use useradd and groupadd in favor of adduser
+  Update dependencies in lib/uuid/Makefile.in
+  debian: Fix the document ID in comerr_dev.doc-base
+  Expand discussion of the -D option in e2fsck's man page
+  Update release notes, version files for 1.40.4 release
+  libss: Remove unnecessary Makefile dependency for test_ss
+  debian: Fix all postinst/prerm/postrm scripts to include debhelper
+      additions
+  uuidd: Add _GNU_SOURCE #define to pick up setres[ug]id() prototypes
+  debugfs: Add #include <string.h> to pick up prototype for
+      strcasecmp
+  e2image: If there is an error while writing a block, call exit(1)
+  e2fsck: When optimizing non-htree directories, sort by inode number
+  debugfs: allow the undel command reallocate without linking the
+      inode
+  Fix build failure on non-Linux/non-Hurd/non-Masix systems
+
+
+* The 'master' branch has these since the last announcement
+  in addition to the above.
