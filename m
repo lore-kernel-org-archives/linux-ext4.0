@@ -1,49 +1,55 @@
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+From: Adrian Bunk <bunk@kernel.org>
 Subject: Re: [2.6.24 patch] let EXT4DEV_FS depend on BROKEN
-Date: Wed, 2 Jan 2008 20:40:34 +0000
-Message-ID: <20080102204034.703ebdd3@the-village.bc.nu>
-References: <20080102013218.GO27566@does.not.exist>
-	<20080102174157.GD3351@webber.adilger.int>
+Date: Wed, 2 Jan 2008 23:16:55 +0200
+Message-ID: <20080102211655.GC15898@does.not.exist>
+References: <20080102013218.GO27566@does.not.exist> <20080102192629.28e67241.diegocg@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@clusterfs.com,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: Diego Calleja <diegocg@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from outpipe-village-512-1.bc.nu ([81.2.110.250]:51832 "EHLO
-	the-village.bc.nu" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753437AbYABUuQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2008 15:50:16 -0500
-In-Reply-To: <20080102174157.GD3351@webber.adilger.int>
+Received: from smtp6.pp.htv.fi ([213.243.153.40]:39116 "EHLO smtp6.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756091AbYABVRO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Jan 2008 16:17:14 -0500
+Content-Disposition: inline
+In-Reply-To: <20080102192629.28e67241.diegocg@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2 Jan 2008 10:41:57 -0700
-Andreas Dilger <adilger@sun.com> wrote:
-
-> On Jan 02, 2008  03:32 +0200, Adrian Bunk wrote:
-> > It might make sense to offer ext4 in -mm and even in early -rc kernels, 
-> > but I've already seen people using ext4 simply because a stable kernel 
+On Wed, Jan 02, 2008 at 07:26:29PM +0100, Diego Calleja wrote:
+> El Wed, 2 Jan 2008 03:32:18 +0200, Adrian Bunk <bunk@kernel.org> escr=
+ibi=C3=B3:
+>=20
+> > It might make sense to offer ext4 in -mm and even in early -rc kern=
+els,=20
+> > but I've already seen people using ext4 simply because a stable ker=
+nel=20
 > > offered it - and that's definitely not intended.
-> > 
-> > Anyone who _really_ wants to test ext4 should anyway be able to do the 
-> > trivial change of removing the "depends on BROKEN" line.
-> > 
-> > Signed-off-by: Adrian Bunk <bunk@kernel.org>
-> > 
-> > @@ -138,7 +138,7 @@ config EXT3_FS_SECURITY
-> >  
-> >  config EXT4DEV_FS
-> >  	tristate "Ext4dev/ext4 extended fs support development (EXPERIMENTAL)"
-> > -	depends on EXPERIMENTAL
-> > +	depends on BROKEN
-> >  	select JBD2
-> >  	select CRC16
-> >  	help
-> 
-> Isn't CONFIG_EXPERIMENTAL enough?
+>=20
+> But isn't that the whole purpose of having ext4 snapshots in the stab=
+le kernel - to
+> allow people to try it?
 
-Of course it is - Adrian is however trying to remove CONFIG_EXPERIMENTAL
-and reality is getting in his way again 
+ext4 has quite an unusual development model for kernel code, other=20
+code in the state of ext4 is usually only in -mm and not in stable=20
+kernels.
+
+Stable kernels are mainly meant for usage, not for trying stuff.
+And although I see a point in perhaps shipping some not-yet-perfect=20
+device drivers for otherwise unsupported hardware or some
+not-yet-perfect filesystems required for accessing foreign
+(non-Linux) filesystems, I don't see any point in offering a
+WIP Linux-only filesystem in stable kernels.
+
+cu
+Adrian
+
+--=20
+
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
