@@ -1,57 +1,57 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Eric Anopolsky <erpo41@gmail.com>
 Subject: Re: [2.6.24 patch] let EXT4DEV_FS depend on BROKEN
-Date: Wed, 02 Jan 2008 16:31:16 -0500
-Message-ID: <1199309476.19161.20.camel@heimdal.trondhjem.org>
+Date: Wed, 02 Jan 2008 13:51:32 -0800
+Message-ID: <1199310692.5786.53.camel@dione>
 References: <20080102013218.GO27566@does.not.exist>
-	 <20080102192629.28e67241.diegocg@gmail.com>
-	 <20080102211655.GC15898@does.not.exist>
+	 <20080102174157.GD3351@webber.adilger.int>
+	 <20080102195146.GB15898@does.not.exist>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Diego Calleja <diegocg@gmail.com>, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@clusterfs.com,
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-XMu64o54CM2SRP122olD"
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Adrian Bunk <bunk@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:40702 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755368AbYABVb7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2008 16:31:59 -0500
-In-Reply-To: <20080102211655.GC15898@does.not.exist>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757784AbYABVvz@vger.kernel.org>
+In-Reply-To: <20080102195146.GB15898@does.not.exist>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-On Wed, 2008-01-02 at 23:16 +0200, Adrian Bunk wrote:
-> On Wed, Jan 02, 2008 at 07:26:29PM +0100, Diego Calleja wrote:
-> > El Wed, 2 Jan 2008 03:32:18 +0200, Adrian Bunk <bunk@kernel.org> es=
-cribi=C3=B3:
-> >=20
-> > > It might make sense to offer ext4 in -mm and even in early -rc ke=
-rnels,=20
-> > > but I've already seen people using ext4 simply because a stable k=
-ernel=20
-> > > offered it - and that's definitely not intended.
-> >=20
-> > But isn't that the whole purpose of having ext4 snapshots in the st=
-able kernel - to
-> > allow people to try it?
+--=-XMu64o54CM2SRP122olD
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+> > Isn't CONFIG_EXPERIMENTAL enough?
 >=20
-> ext4 has quite an unusual development model for kernel code, other=20
-> code in the state of ext4 is usually only in -mm and not in stable=20
-> kernels.
+> Most people and all distributions use CONFIG_EXPERIMENTAL=3Dy simply=20
+> because too many options (including options required for hardware=20
+> support) depend on it.
 
-Bullshit... We all do this.
+Maybe I'm wrong, but I think most people use the distro-provided
+precompiled kernels. This is only a danger to people who insist on
+compiling their own kernels but who don't know enough to investigate
+things labeled "EXPERIMENTAL" before typing Y.
 
-> Stable kernels are mainly meant for usage, not for trying stuff.
-> And although I see a point in perhaps shipping some not-yet-perfect=20
-> device drivers for otherwise unsupported hardware or some
-> not-yet-perfect filesystems required for accessing foreign
-> (non-Linux) filesystems, I don't see any point in offering a
-> WIP Linux-only filesystem in stable kernels.
+IMHO, these people are a dying breed since modern distros seem to do a
+good job at preventing problems that drive ordinary users to compile
+their own kernels in the first place. IMHO, it's reasonable to expect
+the small minority of Linux users who want to compile their own kernels
+to learn that "EXPERIMENTAL" means something.
 
-This breaks with the 2.6.x development model that we've been working
-with for several years now. I, for one, do not wish to change that
-model.
+Cheers,
+Eric
 
-Trond
+
+--=-XMu64o54CM2SRP122olD
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBHfAdke2L37HVup3ARArSqAKDg09++/R8jwUIWZlL7fxBKUnWspwCeLiUY
+ht/3UcAfTENpr7My3h+Mmk0=
+=Z7oK
+-----END PGP SIGNATURE-----
+
+--=-XMu64o54CM2SRP122olD--
+
