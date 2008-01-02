@@ -1,281 +1,357 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] UPDATED: types fixup for mballoc
-Date: Wed, 02 Jan 2008 14:01:48 -0600
-Message-ID: <477BEDAC.1030802@redhat.com>
-References: <473CCEB8.5060201@redhat.com> <473D2147.9030504@redhat.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH] e2fsprogs: add minimal resize size option
+Date: Wed, 2 Jan 2008 15:16:59 -0500
+Message-ID: <20080102201659.GI31745@dhcp243-37.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <alex@clusterfs.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42821 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:44440 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752398AbYABUB4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Jan 2008 15:01:56 -0500
-In-Reply-To: <473D2147.9030504@redhat.com>
+	id S1753501AbYABU16 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Jan 2008 15:27:58 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m02KRv4h010001
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jan 2008 15:27:57 -0500
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m02KRvSv018702
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jan 2008 15:27:57 -0500
+Received: from dhcp243-37.rdu.redhat.com (dhcp243-37.rdu.redhat.com [10.11.243.37])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m02KRvgG001196
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jan 2008 15:27:57 -0500
+Received: from dhcp243-37.rdu.redhat.com (localhost.localdomain [127.0.0.1])
+	by dhcp243-37.rdu.redhat.com (8.14.1/8.14.1) with ESMTP id m02KGxSn001850
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jan 2008 15:16:59 -0500
+Received: (from jwhiter@localhost)
+	by dhcp243-37.rdu.redhat.com (8.14.1/8.14.1/Submit) id m02KGxxx001849
+	for linux-ext4@vger.kernel.org; Wed, 2 Jan 2008 15:16:59 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Eric Sandeen wrote:
->   
->> I ran into a potential overflow in ext4_mb_scan_aligned, 
->> and went looking for others in mballoc.  This patch hits a 
->> few spots, compile-tested only at this point, comments welcome.
->>
->> This patch:
->>
->>     
->
-> ... introduces a 64-bit divide.  Oops... will fix that up & resend.
->
->   
-Took a while to get back to this :)  But just used do_div return value
-for remainder instead of modulo (which would have been a 64-bit modulo)
+Hello,
 
-There's another do_div trick, and a bitwise round-up in there too,
-now that there are more 64-bit containers...  Anyway, patch follows.
+People wishing to make live usb disks and such are looking for a way to get the
+minimum resize size for an ext fs in blocks so that they can just resize their
+image to that size and do with it what they will.  This patch adds that
+functionality, just pass -m option and it calculates the minimum number of
+blocks the fs can be resized to.  Comments welcome, I was learning the ext disk
+layout while writing this so if I've done something stupid/overly complicated
+please point it out :), I've commented abundantly so hopefully my madness will
+make sense.  Thank you,
 
--------------
-
-I ran into a potential overflow in ext4_mb_scan_aligned, 
-and went looking for others in mballoc.  This patch hits a 
-few spots, compile-tested only at this point, comments welcome.
-
-This patch:
-
-changes fe_len to an int, I don't think we need it to be a long,
-looking at how it's used (should it be a grpblk_t?)  Also change
-anything assigned to return value of mb_find_extent, since it returns
-fe_len.
-
-changes anything that does groupno * EXT4_BLOCKS_PER_GROUP
-or pa->pa_pstart + <whatever> to an ext4_fsblk_t
-
-fixes up any related formats
-
-The change to ext4_mb_scan_aligned to avoid a 64-bit modulo
-could use an extra look I think.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
----
+Josef
 
 
-Index: linux-2.6.24-rc3/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-rc3.orig/fs/ext4/mballoc.c
-+++ linux-2.6.24-rc3/fs/ext4/mballoc.c
-@@ -363,7 +363,7 @@ struct ext4_free_extent {
- 	ext4_lblk_t fe_logical;
- 	ext4_grpblk_t fe_start;
- 	ext4_group_t fe_group;
--	unsigned long fe_len;
-+	int fe_len;
- };
+diff --git a/resize/main.c b/resize/main.c
+index 7c1d0c1..2f2887a 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -36,7 +36,7 @@ char *program_name, *device_name, *io_options;
  
- /*
-@@ -586,14 +586,14 @@ static void mb_free_blocks_double(struct
- 	BUG_ON(!ext4_is_group_locked(sb, e4b->bd_group));
- 	for (i = 0; i < count; i++) {
- 		if (!mb_test_bit(first + i, e4b->bd_info->bb_bitmap)) {
--			unsigned long blocknr;
-+			ext4_fsblk_t blocknr;
- 			blocknr = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb);
- 			blocknr += first + i;
- 			blocknr +=
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 
- 			ext4_error(sb, __FUNCTION__, "double-free of inode"
--				   " %lu's block %lu(bit %u in group %lu)\n",
-+				   " %lu's block %llu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr,
- 				   first + i, e4b->bd_group);
- 		}
-@@ -1226,14 +1226,14 @@ static int mb_free_blocks(struct inode *
- 		order = 0;
- 
- 		if (!mb_test_bit(block, EXT4_MB_BITMAP(e4b))) {
--			unsigned long blocknr;
-+			ext4_fsblk_t blocknr;
- 			blocknr = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb);
- 			blocknr += block;
- 			blocknr +=
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 
- 			ext4_error(sb, __FUNCTION__, "double-free of inode"
--				   " %lu's block %lu(bit %u in group %lu)\n",
-+				   " %lu's block %llu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr, block,
- 				   e4b->bd_group);
- 		}
-@@ -1416,7 +1416,7 @@ static void ext4_mb_use_best_found(struc
- 					struct ext4_buddy *e4b)
+ static void usage (char *prog)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
--	unsigned long ret;
-+	int ret;
+-	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-p] "
++	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-m] [-p] "
+ 			   "device [new_size]\n\n"), prog);
  
- 	BUG_ON(ac->ac_b_ex.fe_group != e4b->bd_group);
- 	BUG_ON(ac->ac_status == AC_STATUS_FOUND);
-@@ -1609,10 +1609,12 @@ static int ext4_mb_find_by_goal(struct e
- 			     ac->ac_g_ex.fe_len, &ex);
+ 	exit (1);
+@@ -183,7 +183,7 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
  
- 	if (max >= ac->ac_g_ex.fe_len && ac->ac_g_ex.fe_len == sbi->s_stripe) {
--		unsigned long start;
--		start = (e4b->bd_group * EXT4_BLOCKS_PER_GROUP(ac->ac_sb) +
--			ex.fe_start + le32_to_cpu(es->s_first_data_block));
--		if (start % sbi->s_stripe == 0) {
-+		ext4_fsblk_t start;
+-	while ((c = getopt (argc, argv, "d:fFhpS:")) != EOF) {
++	while ((c = getopt (argc, argv, "d:fFhmpS:")) != EOF) {
+ 		switch (c) {
+ 		case 'h':
+ 			usage(program_name);
+@@ -197,6 +197,9 @@ int main (int argc, char ** argv)
+ 		case 'd':
+ 			flags |= atoi(optarg);
+ 			break;
++		case 'm':
++			flags |= RESIZE_BLOCKS_NEEDED_ONLY;
++			break;
+ 		case 'p':
+ 			flags |= RESIZE_PERCENT_COMPLETE;
+ 			break;
+@@ -340,6 +343,13 @@ int main (int argc, char ** argv)
+ 		exit(1);
+ 	}
+ 	if (new_size_str) {
++		if (flags & RESIZE_BLOCKS_NEEDED_ONLY) {
++			com_err(program_name, 0,
++				"specifying a new size when asking for "
++				"minimal size");
++			exit(1);
++		}
 +
-+		start = (e4b->bd_group * EXT4_BLOCKS_PER_GROUP(ac->ac_sb)) +
-+			ex.fe_start + le32_to_cpu(es->s_first_data_block);
-+		/* use do_div to get remainder (would be 64-bit modulo) */
-+		if (do_div(start, sbi->s_stripe) == 0) {
- 			ac->ac_found++;
- 			ac->ac_b_ex = ex;
- 			ext4_mb_use_best_found(ac, e4b);
-@@ -1724,6 +1726,7 @@ static void ext4_mb_complex_scan_group(s
- /*
-  * This is a special case for storages like raid5
-  * we try to find stripe-aligned chunks for stripe-size requests
-+ * XXX should do so at least for multiples of stripe size as well
-  */
- static void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
- 				 struct ext4_buddy *e4b)
-@@ -1732,17 +1735,18 @@ static void ext4_mb_scan_aligned(struct 
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	void *bitmap = EXT4_MB_BITMAP(e4b);
- 	struct ext4_free_extent ex;
--	unsigned long i;
--	unsigned long max;
-+	ext4_fsblk_t a;
-+	ext4_grpblk_t i;
-+	int max;
- 
- 	BUG_ON(sbi->s_stripe == 0);
- 
--	/* find first stripe-aligned block */
--	i = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb)
-+	/* find first stripe-aligned block in group */
-+	a = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb)
- 		+ le32_to_cpu(sbi->s_es->s_first_data_block);
--	i = ((i + sbi->s_stripe - 1) / sbi->s_stripe) * sbi->s_stripe;
--	i = (i - le32_to_cpu(sbi->s_es->s_first_data_block))
--			% EXT4_BLOCKS_PER_GROUP(sb);
-+	a = (a + sbi->s_stripe - 1) & ~((ext4_fsblk_t)sbi->s_stripe - 1);
-+	a = a - le32_to_cpu(sbi->s_es->s_first_data_block);
-+	i = do_div(a, EXT4_BLOCKS_PER_GROUP(sb));
- 
- 	while (i < sb->s_blocksize * 8) {
- 		if (!mb_test_bit(i, bitmap)) {
-@@ -2026,35 +2030,35 @@ static int ext4_mb_seq_history_show(stru
- 	if (hs->op == EXT4_MB_HISTORY_ALLOC) {
- 		fmt = "%-5u %-8u %-23s %-23s %-23s %-5u %-5u %-2u "
- 			"%-5u %-5s %-5u %-6u\n";
--		sprintf(buf2, "%lu/%d/%lu@%lu", hs->result.fe_group,
-+		sprintf(buf2, "%lu/%d/%u@%u", hs->result.fe_group,
- 			hs->result.fe_start, hs->result.fe_len,
--			(unsigned long)hs->result.fe_logical);
--		sprintf(buf, "%lu/%d/%lu@%lu", hs->orig.fe_group,
-+			hs->result.fe_logical);
-+		sprintf(buf, "%lu/%d/%u@%u", hs->orig.fe_group,
- 			hs->orig.fe_start, hs->orig.fe_len,
--			(unsigned long)hs->orig.fe_logical);
--		sprintf(buf3, "%lu/%d/%lu@%lu", hs->goal.fe_group,
-+			hs->orig.fe_logical);
-+		sprintf(buf3, "%lu/%d/%u@%u", hs->goal.fe_group,
- 			hs->goal.fe_start, hs->goal.fe_len,
--			(unsigned long)hs->goal.fe_logical);
-+			hs->goal.fe_logical);
- 		seq_printf(seq, fmt, hs->pid, hs->ino, buf, buf3, buf2,
- 				hs->found, hs->groups, hs->cr, hs->flags,
- 				hs->merged ? "M" : "", hs->tail,
- 				hs->buddy ? 1 << hs->buddy : 0);
- 	} else if (hs->op == EXT4_MB_HISTORY_PREALLOC) {
- 		fmt = "%-5u %-8u %-23s %-23s %-23s\n";
--		sprintf(buf2, "%lu/%d/%lu@%lu", hs->result.fe_group,
-+		sprintf(buf2, "%lu/%d/%u@%u", hs->result.fe_group,
- 			hs->result.fe_start, hs->result.fe_len,
--			(unsigned long)hs->result.fe_logical);
--		sprintf(buf, "%lu/%d/%lu@%lu", hs->orig.fe_group,
-+			hs->result.fe_logical);
-+		sprintf(buf, "%lu/%d/%u@%u", hs->orig.fe_group,
- 			hs->orig.fe_start, hs->orig.fe_len,
--			(unsigned long)hs->orig.fe_logical);
-+			hs->orig.fe_logical);
- 		seq_printf(seq, fmt, hs->pid, hs->ino, buf, "", buf2);
- 	} else if (hs->op == EXT4_MB_HISTORY_DISCARD) {
--		sprintf(buf2, "%lu/%d/%lu", hs->result.fe_group,
-+		sprintf(buf2, "%lu/%d/%u", hs->result.fe_group,
- 			hs->result.fe_start, hs->result.fe_len);
- 		seq_printf(seq, "%-5u %-8u %-23s discard\n",
- 				hs->pid, hs->ino, buf2);
- 	} else if (hs->op == EXT4_MB_HISTORY_FREE) {
--		sprintf(buf2, "%lu/%d/%lu", hs->result.fe_group,
-+		sprintf(buf2, "%lu/%d/%u", hs->result.fe_group,
- 			hs->result.fe_start, hs->result.fe_len);
- 		seq_printf(seq, "%-5u %-8u %-23s free\n",
- 				hs->pid, hs->ino, buf2);
-@@ -2943,7 +2947,7 @@ static int ext4_mb_mark_diskspace_used(s
- 	struct buffer_head *gdp_bh;
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
--	sector_t block;
-+	ext4_fsblk_t block;
- 	int err;
- 
- 	BUG_ON(ac->ac_status != AC_STATUS_FOUND);
-@@ -2984,8 +2988,8 @@ static int ext4_mb_mark_diskspace_used(s
- 				EXT4_SB(sb)->s_itb_per_group)) {
- 
- 		ext4_error(sb, __FUNCTION__,
--			   "Allocating block in system zone - block = %lu",
--			   (unsigned long) block);
-+			   "Allocating block in system zone - block = %llu",
-+			   block);
+ 		new_size = parse_num_blocks(new_size_str, 
+ 					    fs->super->s_log_block_size);
+ 		if (!new_size) {
+@@ -347,7 +357,7 @@ int main (int argc, char ** argv)
+ 				new_size_str);
+ 			exit(1);
+ 		}
+-	} else {
++	} else if (!(flags & RESIZE_BLOCKS_NEEDED_ONLY)) {
+ 		new_size = max_size;
+ 		/* Round down to an even multiple of a pagesize */
+ 		if (sys_page_size > fs->blocksize)
+@@ -392,7 +402,8 @@ int main (int argc, char ** argv)
+ 			"long.  Nothing to do!\n\n"), new_size);
+ 		exit(0);
  	}
- #ifdef AGGRESSIVE_CHECK
- 	{
-@@ -3250,12 +3254,13 @@ static void ext4_mb_use_inode_pa(struct 
- 				struct ext4_prealloc_space *pa)
- {
- 	ext4_fsblk_t start;
--	unsigned long len;
-+	ext4_fsblk_t end;
-+	int len;
- 
- 	/* found preallocated blocks, use them */
- 	start = pa->pa_pstart + (ac->ac_o_ex.fe_logical - pa->pa_lstart);
--	len = min(pa->pa_pstart + pa->pa_len, start + ac->ac_o_ex.fe_len);
--	len = len - start;
-+	end = min(pa->pa_pstart + pa->pa_len, start + ac->ac_o_ex.fe_len);
-+	len = end - start;
- 	ext4_get_group_no_and_offset(ac->ac_sb, start, &ac->ac_b_ex.fe_group,
- 					&ac->ac_b_ex.fe_start);
- 	ac->ac_b_ex.fe_len = len;
-@@ -3954,8 +3959,8 @@ static void ext4_mb_show_ac(struct ext4_
- 
- 	printk(KERN_ERR "EXT4-fs: can't allocate: status %d flags %d\n",
- 			ac->ac_status, ac->ac_flags);
--	printk(KERN_ERR "EXT4-fs: orig %lu/%lu/%lu@%lu, goal %lu/%lu/%lu@%lu, "
--			"best %lu/%lu/%lu@%lu cr %d\n",
-+	printk(KERN_ERR "EXT4-fs: orig %lu/%lu/%u@%u, goal %lu/%lu/%u@%u, "
-+			"best %lu/%lu/%u@%u cr %d\n",
- 			ac->ac_o_ex.fe_group, ac->ac_o_ex.fe_start,
- 			ac->ac_o_ex.fe_len, ac->ac_o_ex.fe_logical,
- 			ac->ac_g_ex.fe_group, ac->ac_g_ex.fe_start,
-Index: linux-2.6.24-rc3/fs/ext4/inode.c
-===================================================================
---- linux-2.6.24-rc3.orig/fs/ext4/inode.c
-+++ linux-2.6.24-rc3/fs/ext4/inode.c
-@@ -309,7 +309,7 @@ static int ext4_block_to_path(struct ino
- 		offsets[n++] = i_block & (ptrs - 1);
- 		final = ptrs;
+-	if (mount_flags & EXT2_MF_MOUNTED) {
++	if ((mount_flags & EXT2_MF_MOUNTED) &&
++	    !(flags & RESIZE_BLOCKS_NEEDED_ONLY)) {
+ 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
  	} else {
--		ext4_warning(inode->i_sb, "ext4_block_to_path", "block %u > max",
-+		ext4_warning(inode->i_sb, "ext4_block_to_path", "block %lu > max",
- 				i_block + direct_blocks +
- 				indirect_blocks + double_blocks);
+ 		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
+@@ -403,23 +414,28 @@ int main (int argc, char ** argv)
+ 				device_name);
+ 			exit(1);
+ 		}
+-	printf("Resizing the filesystem on %s to %u (%dk) blocks.\n",
+-		       device_name, new_size, fs->blocksize / 1024);
++		if (!(flags & RESIZE_BLOCKS_NEEDED_ONLY))
++			printf("Resizing the filesystem on %s to %u (%dk) "
++			       "blocks.\n", device_name, new_size,
++			       fs->blocksize / 1024);
+ 		retval = resize_fs(fs, &new_size, flags,
+ 				   ((flags & RESIZE_PERCENT_COMPLETE) ?
+ 				    resize_progress_func : 0));
  	}
++
+ 	if (retval) {
+ 		com_err(program_name, retval, _("while trying to resize %s"),
+ 			device_name);
+ 		ext2fs_close (fs);
+ 		exit(1);
+ 	}
+-	printf(_("The filesystem on %s is now %u blocks long.\n\n"),
+-	       device_name, new_size);
+ 
+-	if ((st_buf.st_size > new_file_size) &&
+-	    (fd > 0)) {
++	if (!(flags & RESIZE_BLOCKS_NEEDED_ONLY))
++		printf(_("The filesystem on %s is now %u blocks long.\n\n"),
++		       device_name, new_size);
++
++	if ((st_buf.st_size > new_file_size) && (fd > 0) &&
++	    !(flags & RESIZE_BLOCKS_NEEDED_ONLY)) {
+ #ifdef HAVE_FSTAT64
+ 		ftruncate64(fd, new_file_size);
+ #else
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 9959671..ae0cb8d 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -63,7 +63,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+ 				 ((blk) < (FS_INODE_TB((fs), (i)) + \
+ 					   (fs)->inode_blocks_per_group)))
+ 
+-
++#define META_OVERHEAD(fs) (2 + (fs)->inode_blocks_per_group)
++#define SUPER_OVERHEAD(fs) (1 + (fs)->desc_blocks +\
++			    (fs)->super->s_reserved_gdt_blocks)
+ 
+ /*
+  * This is the top-level routine which does the dirty deed....
+@@ -79,7 +81,156 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 	retval = ext2fs_read_bitmaps(fs);
+ 	if (retval)
+ 		return retval;
+-	
++
++	/*
++	 * since we only want to figure out the minimum number of blocks this
++	 * fs can be resized to, figure out the minimum number of blocks needed
++	 * to handle the metadata and reset new_size to that
++	 */
++	if (flags & RESIZE_BLOCKS_NEEDED_ONLY) {
++		blk_t inode_count, blks_needed, groups, blk, data_blocks;
++		blk_t grp, data_needed, last_start, tmp = 0;
++		int overhead = 0, old_group = -1, num_of_superblocks = 0;
++
++		/*
++		 * first figure out how many group descriptors we need to
++		 * handle the number of inodes we have
++		 */
++		inode_count = fs->super->s_inodes_count -
++			fs->super->s_free_inodes_count;
++		blks_needed = ext2fs_div_ceil(inode_count,
++						fs->super->s_inodes_per_group)
++			* EXT2_BLOCKS_PER_GROUP(fs->super);
++		groups = ext2fs_div_ceil(blks_needed,
++					 EXT2_BLOCKS_PER_GROUP(fs->super));
++
++		/*
++		 * we need to figure out how many backup superblocks we have
++		 * so we can account for that in the metadata
++		 */
++		for (grp = 0; grp < fs->group_desc_count; grp++) {
++			if (ext2fs_bg_has_super(fs, grp))
++				num_of_superblocks++;
++		}
++
++		/* calculate how many blocks are needed for data */
++		data_needed = fs->super->s_blocks_count -
++			fs->super->s_free_blocks_count;
++		data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
++		data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
++
++
++		/*
++		 * figure out how many data blocks we have given the number
++		 * of groups we need for our inodes
++		 */
++		data_blocks = groups * EXT2_BLOCKS_PER_GROUP(fs->super);
++		last_start = 0;
++		for (grp = 0; grp < groups; grp++) {
++			overhead = META_OVERHEAD(fs);
++
++			if (ext2fs_bg_has_super(fs, grp))
++				overhead += SUPER_OVERHEAD(fs);
++
++			/*
++			 * we want to keep track of how much data we can store
++			 * in the groups leading up to the last group so we
++			 * can determine how big the last group needs to be
++			 */
++			if (grp != (groups - 1))
++				last_start += EXT2_BLOCKS_PER_GROUP(fs->super)
++					- overhead;
++
++			data_blocks -= overhead;
++		}
++
++		/*
++		 * if we need more group descriptors in order to accomodate
++		 * our data then we need to add them here
++		 */
++		while (data_needed > data_blocks) {
++			blk_t remainder = data_needed - data_blocks;
++			blk_t extra_grps;
++
++			/*
++			 * figure out how many more groups we need for the data
++			 */
++			extra_grps = ext2fs_div_ceil(remainder,
++				EXT2_BLOCKS_PER_GROUP(fs->super));
++
++			data_blocks += extra_grps *
++				EXT2_BLOCKS_PER_GROUP(fs->super);
++
++			/* ok we have to account for the last group */
++			overhead = META_OVERHEAD(fs);
++			if (ext2fs_bg_has_super(fs, groups-1))
++				overhead += SUPER_OVERHEAD(fs);
++			last_start += EXT2_BLOCKS_PER_GROUP(fs->super) -
++				overhead;
++
++			for (grp = groups; grp < groups+extra_grps; grp++) {
++				overhead = META_OVERHEAD(fs);
++				if (ext2fs_bg_has_super(fs, grp))
++					overhead += SUPER_OVERHEAD(fs);
++
++				/*
++				 * again, we need to see how much data we cram
++				 * into all the groups leading up to the last
++				 * group
++				 */
++				if (grp != (groups + extra_grps - 1)) {
++					last_start +=
++						EXT2_BLOCKS_PER_GROUP(fs->super)
++						- overhead;
++				}
++
++				data_blocks -= overhead;
++			}
++
++			groups += extra_grps;
++		}
++
++		/* now for the fun voodoo */
++		overhead = META_OVERHEAD(fs);
++
++		/*
++		 * if this is the case then the last group is going to have
++		 * data in it so we need to adjust the size of the last group
++		 * accordingly
++		 */
++		if (last_start < data_needed) {
++			blk_t remainder = data_needed - last_start;
++
++			/*
++			 * 50 is a magic number that mkfs/resize uses to
++			 * see if its even worth making/resizing the fs.
++			 * basically you need to have at least 50 blocks in
++			 * addition to the blocks needed for the metadata in
++			 * the last group
++			 */
++			if (remainder > 50)
++				overhead += remainder;
++			else
++				overhead += 50;
++		} else
++			overhead += 50;
++
++		if (ext2fs_bg_has_super(fs, groups-1))
++			overhead += SUPER_OVERHEAD(fs);
++
++		/*
++		 * since our last group doesn't have to be BLOCKS_PER_GROUP
++		 * larg, we only do groups-1, and then add the number of blocks
++		 * needed to handle the group descriptor metadata+data that we
++		 * need
++		 */
++		blks_needed = (groups-1) * EXT2_BLOCKS_PER_GROUP(fs->super);
++		blks_needed += overhead;
++
++		printf("Minimum resize size in blocks is %d\n", blks_needed);
++		return 0;
++	}
++
+ 	/*
+ 	 * Create the data structure
+ 	 */
+@@ -90,7 +241,7 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 
+ 	rfs->old_fs = fs;
+ 	rfs->flags = flags;
+-	rfs->itable_buf	 = 0;
++	rfs->itable_buf = 0;
+ 	rfs->progress = progress;
+ 	retval = ext2fs_dup_handle(fs, &rfs->new_fs);
+ 	if (retval)
+@@ -113,7 +264,7 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 		       rfs->new_fs->super->s_free_blocks_count,
+ 		       rfs->needed_blocks);
+ #endif
+-	
++
+ 	retval = block_mover(rfs);
+ 	if (retval)
+ 		goto errout;
+diff --git a/resize/resize2fs.h b/resize/resize2fs.h
+index f87d04e..cf42a62 100644
+--- a/resize/resize2fs.h
++++ b/resize/resize2fs.h
+@@ -79,6 +79,7 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
+ 
+ #define RESIZE_PERCENT_COMPLETE		0x0100
+ #define RESIZE_VERBOSE			0x0200
++#define RESIZE_BLOCKS_NEEDED_ONLY	0x0400
+ 
+ /*
+  * The core state structure for the ext2 resizer
+@@ -127,7 +128,7 @@ extern errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 					    int pass, unsigned long cur,
+ 					    unsigned long max));
+ 
+-extern errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs, 
++extern errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+ 				blk_t new_size);
+ 
+ 
