@@ -1,42 +1,36 @@
-From: Mathieu SEGAUD <mathieu.segaud@regala.cx>
-Subject: Re: [PATCH] [Coding Style]: fs/ext{3,4}/ext{3,4}_jbd{,2}.c
-Date: Fri, 04 Jan 2008 14:47:24 +0100
-Message-ID: <8763y9em8j.fsf@barad-dur.regala.cx>
-References: <1199452896-20145-1-git-send-email-mathieu.segaud@regala.cx>
-	<1199452896-20145-2-git-send-email-mathieu.segaud@regala.cx>
-	<1199452896-20145-3-git-send-email-mathieu.segaud@regala.cx>
-	<1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx>
-	<1199452896-20145-5-git-send-email-mathieu.segaud@regala.cx>
-	<477E379F.4000103@student.ltu.se>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] [Coding Style]: misc fixes for fs/ext{3,4}/acl.{c,h}
+	from checkpatch.pl
+Date: Fri, 4 Jan 2008 08:56:20 -0500
+Message-ID: <20080104135620.GF17436@mit.edu>
+References: <1199452896-20145-1-git-send-email-mathieu.segaud@regala.cx> <20080104134458.GE17436@mit.edu> <871w8xem5o.fsf@barad-dur.regala.cx>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: Richard Knutsson <ricknu-0@student.ltu.se>
+To: Mathieu SEGAUD <mathieu.segaud@regala.cx>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from def92-3-81-56-114-101.fbx.proxad.net ([81.56.114.101]:51011
-	"EHLO barad-dur.regala.cx" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754210AbYADN5H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2008 08:57:07 -0500
-In-Reply-To: <477E379F.4000103@student.ltu.se> (Richard Knutsson's message of "Fri\, 04 Jan 2008 14\:41\:51 +0100")
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:37133 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753421AbYADN4Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2008 08:56:24 -0500
+Content-Disposition: inline
+In-Reply-To: <871w8xem5o.fsf@barad-dur.regala.cx>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Vous m'avez dit r=E9cemment :
+On Fri, Jan 04, 2008 at 02:49:07PM +0100, Mathieu SEGAUD wrote:
+> Vous m'avez dit r=E9cemment :
+>=20
+> > Coding-style only changes tends to screw up our ability to merge
+> > pending patches, but I'll take care of it, thanks
+>=20
+> yep, I noticed that...
+> would you rather me wait till 2.6.24 is out ?
 
-[snip]
+I'll take your patches and merge all or most of it as I can into the
+patch queue destined for 2.6.24-rc1.  Check back with me after -rc1;
+if there are some left over we'll do them after that.
 
-> Hi Mathieu
->
-> What about changing the __FUNCTION__ to __func__, while you are at it=
-?
-
-well, won't do any harm, even though other compilers than GCC are not
-officialy supported :)
-
-thanks a lot
-And I think I will revamp, including fixes into fs/ext2
-
---=20
-Mathieu
+   	     	       	    	     	  	- Ted
