@@ -1,20 +1,19 @@
 From: Mathieu Segaud <mathieu.segaud@regala.cx>
-Subject: [PATCH] [Coding Style]: fs/ext{3,4}/ext{3,4}_jbd{,2}.c
-Date: Fri,  4 Jan 2008 14:21:36 +0100
-Message-ID: <1199452896-20145-5-git-send-email-mathieu.segaud@regala.cx>
+Subject: [PATCH] [Coding Style]: fs/ext{3,4}/dir.c
+Date: Fri,  4 Jan 2008 14:21:35 +0100
+Message-ID: <1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx>
 References: <1199452896-20145-1-git-send-email-mathieu.segaud@regala.cx>
  <1199452896-20145-2-git-send-email-mathieu.segaud@regala.cx>
  <1199452896-20145-3-git-send-email-mathieu.segaud@regala.cx>
- <1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Mathieu Segaud <mathieu.segaud@regala.cx>
 To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bde.crans.org ([138.231.137.76]:48603 "EHLO bde.crans.org"
+Received: from bde.crans.org ([138.231.137.76]:48602 "EHLO bde.crans.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752898AbYADNaS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752894AbYADNaS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 4 Jan 2008 08:30:18 -0500
-In-Reply-To: <1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx>
+In-Reply-To: <1199452896-20145-3-git-send-email-mathieu.segaud@regala.cx>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -22,123 +21,333 @@ Misc style fixes from checkpatch.pl
 
 Signed-off-by: Mathieu Segaud <mathieu.segaud@regala.cx>
 ---
- fs/ext3/ext3_jbd.c  |   12 ++++++------
- fs/ext4/ext4_jbd2.c |   12 ++++++------
- 2 files changed, 12 insertions(+), 12 deletions(-)
+ fs/ext3/dir.c |   55 ++++++++++++++++++++++++++++---------------------------
+ fs/ext4/dir.c |   50 +++++++++++++++++++++++++-------------------------
+ 2 files changed, 53 insertions(+), 52 deletions(-)
 
-diff --git a/fs/ext3/ext3_jbd.c b/fs/ext3/ext3_jbd.c
-index e1f91fd..6c96260 100644
---- a/fs/ext3/ext3_jbd.c
-+++ b/fs/ext3/ext3_jbd.c
-@@ -9,7 +9,7 @@ int __ext3_journal_get_undo_access(const char *where, handle_t *handle,
- {
- 	int err = journal_get_undo_access(handle, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index 8ca3bfd..fc3621e 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -33,10 +33,10 @@ static unsigned char ext3_filetype_table[] = {
+ };
+ 
+ static int ext3_readdir(struct file *, void *, filldir_t);
+-static int ext3_dx_readdir(struct file * filp,
+-			   void * dirent, filldir_t filldir);
+-static int ext3_release_dir (struct inode * inode,
+-				struct file * filp);
++static int ext3_dx_readdir(struct file *filp,
++			   void *dirent, filldir_t filldir);
++static int ext3_release_dir(struct inode *inode,
++				struct file *filp);
+ 
+ const struct file_operations ext3_dir_operations = {
+ 	.llseek		= generic_file_llseek,
+@@ -61,12 +61,12 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
  }
  
-@@ -18,7 +18,7 @@ int __ext3_journal_get_write_access(const char *where, handle_t *handle,
+ 
+-int ext3_check_dir_entry (const char * function, struct inode * dir,
+-			  struct ext3_dir_entry_2 * de,
+-			  struct buffer_head * bh,
++int ext3_check_dir_entry(const char *function, struct inode *dir,
++			  struct ext3_dir_entry_2 *de,
++			  struct buffer_head *bh,
+ 			  unsigned long offset)
  {
- 	int err = journal_get_write_access(handle, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+-	const char * error_msg = NULL;
++	const char *error_msg = NULL;
+ 	const int rlen = ext3_rec_len_from_disk(de->rec_len);
+ 
+ 	if (rlen < EXT3_DIR_REC_LEN(1))
+@@ -82,7 +82,7 @@ int ext3_check_dir_entry (const char * function, struct inode * dir,
+ 		error_msg = "inode out of bounds";
+ 
+ 	if (error_msg != NULL)
+-		ext3_error (dir->i_sb, function,
++		ext3_error(dir->i_sb, function,
+ 			"bad entry in directory #%lu: %s - "
+ 			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+ 			dir->i_ino, error_msg, offset,
+@@ -91,8 +91,8 @@ int ext3_check_dir_entry (const char * function, struct inode * dir,
+ 	return error_msg == NULL ? 1 : 0;
  }
  
-@@ -27,7 +27,7 @@ int __ext3_journal_forget(const char *where, handle_t *handle,
+-static int ext3_readdir(struct file * filp,
+-			 void * dirent, filldir_t filldir)
++static int ext3_readdir(struct file *filp,
++			 void *dirent, filldir_t filldir)
  {
- 	int err = journal_forget(handle, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+ 	int error = 0;
+ 	unsigned long offset;
+@@ -148,7 +148,7 @@ static int ext3_readdir(struct file * filp,
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext3_error (sb, "ext3_readdir",
++			ext3_error(sb, "ext3_readdir",
+ 				"directory #%lu contains a hole at offset %lu",
+ 				inode->i_ino, (unsigned long)filp->f_pos);
+ 			/* corrupt size?  Maybe no more blocks to read */
+@@ -187,13 +187,14 @@ revalidate:
+ 		while (!error && filp->f_pos < inode->i_size
+ 		       && offset < sb->s_blocksize) {
+ 			de = (struct ext3_dir_entry_2 *) (bh->b_data + offset);
+-			if (!ext3_check_dir_entry ("ext3_readdir", inode, de,
++			if (!ext3_check_dir_entry("ext3_readdir", inode, de,
+ 						   bh, offset)) {
+-				/* On error, skip the f_pos to the
+-                                   next block. */
++				/*
++				 * On error, skip the f_pos to the next block.
++				 */
+ 				filp->f_pos = (filp->f_pos |
+ 						(sb->s_blocksize - 1)) + 1;
+-				brelse (bh);
++				brelse(bh);
+ 				ret = stored;
+ 				goto out;
+ 			}
+@@ -217,12 +218,12 @@ revalidate:
+ 					break;
+ 				if (version != filp->f_version)
+ 					goto revalidate;
+-				stored ++;
++				stored++;
+ 			}
+ 			filp->f_pos += ext3_rec_len_from_disk(de->rec_len);
+ 		}
+ 		offset = 0;
+-		brelse (bh);
++		brelse(bh);
+ 	}
+ out:
+ 	return ret;
+@@ -289,9 +290,9 @@ static void free_rb_tree_fname(struct rb_root *root)
+ 		parent = rb_parent(n);
+ 		fname = rb_entry(n, struct fname, rb_hash);
+ 		while (fname) {
+-			struct fname * old = fname;
++			struct fname *old = fname;
+ 			fname = fname->next;
+-			kfree (old);
++			kfree(old);
+ 		}
+ 		if (!parent)
+ 			root->rb_node = NULL;
+@@ -336,7 +337,7 @@ int ext3_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 			     struct ext3_dir_entry_2 *dirent)
+ {
+ 	struct rb_node **p, *parent = NULL;
+-	struct fname * fname, *new_fn;
++	struct fname *fname, *new_fn;
+ 	struct dir_private_info *info;
+ 	int len;
+ 
+@@ -393,19 +394,19 @@ int ext3_htree_store_dirent(struct file *dir_file, __u32 hash,
+  * for all entres on the fname linked list.  (Normally there is only
+  * one entry on the linked list, unless there are 62 bit hash collisions.)
+  */
+-static int call_filldir(struct file * filp, void * dirent,
++static int call_filldir(struct file *filp, void *dirent,
+ 			filldir_t filldir, struct fname *fname)
+ {
+ 	struct dir_private_info *info = filp->private_data;
+ 	loff_t	curr_pos;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+-	struct super_block * sb;
++	struct super_block *sb;
+ 	int error;
+ 
+ 	sb = inode->i_sb;
+ 
+ 	if (!fname) {
+-		printk("call_filldir: called with null fname?!?\n");
++		printk(KERN_WARNING "call_filldir: called with null fname?!?\n");
+ 		return 0;
+ 	}
+ 	curr_pos = hash2pos(fname->hash, fname->minor_hash);
+@@ -424,8 +425,8 @@ static int call_filldir(struct file * filp, void * dirent,
+ 	return 0;
  }
  
-@@ -36,7 +36,7 @@ int __ext3_journal_revoke(const char *where, handle_t *handle,
+-static int ext3_dx_readdir(struct file * filp,
+-			 void * dirent, filldir_t filldir)
++static int ext3_dx_readdir(struct file  filp,
++			 void  dirent, filldir_t filldir)
  {
- 	int err = journal_revoke(handle, blocknr, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+ 	struct dir_private_info *info = filp->private_data;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+@@ -506,7 +507,7 @@ finished:
+ 	return 0;
  }
  
-@@ -45,7 +45,7 @@ int __ext3_journal_get_create_access(const char *where,
+-static int ext3_release_dir (struct inode * inode, struct file * filp)
++static int ext3_release_dir(struct inode *inode, struct file *filp)
  {
- 	int err = journal_get_create_access(handle, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+        if (filp->private_data)
+ 		ext3_htree_free_dir_info(filp->private_data);
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index f612bef..14385b6 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -33,10 +33,10 @@ static unsigned char ext4_filetype_table[] = {
+ };
+ 
+ static int ext4_readdir(struct file *, void *, filldir_t);
+-static int ext4_dx_readdir(struct file * filp,
+-			   void * dirent, filldir_t filldir);
+-static int ext4_release_dir (struct inode * inode,
+-				struct file * filp);
++static int ext4_dx_readdir(struct file *filp,
++			   void *dirent, filldir_t filldir);
++static int ext4_release_dir(struct inode *inode,
++				struct file *filp);
+ 
+ const struct file_operations ext4_dir_operations = {
+ 	.llseek		= generic_file_llseek,
+@@ -61,12 +61,12 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
  }
  
-@@ -54,6 +54,6 @@ int __ext3_journal_dirty_metadata(const char *where,
+ 
+-int ext4_check_dir_entry (const char * function, struct inode * dir,
+-			  struct ext4_dir_entry_2 * de,
+-			  struct buffer_head * bh,
++int ext4_check_dir_entry(const char *function, struct inode *dir,
++			  struct ext4_dir_entry_2 *de,
++			  struct buffer_head *bh,
+ 			  unsigned long offset)
  {
- 	int err = journal_dirty_metadata(handle, bh);
- 	if (err)
--		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext3_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
- }
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index d6afe4e..2256c43 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -9,7 +9,7 @@ int __ext4_journal_get_undo_access(const char *where, handle_t *handle,
- {
- 	int err = jbd2_journal_get_undo_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+-	const char * error_msg = NULL;
++	const char *error_msg = NULL;
+ 	const int rlen = le16_to_cpu(de->rec_len);
+ 
+ 	if (rlen < EXT4_DIR_REC_LEN(1))
+@@ -82,7 +82,7 @@ int ext4_check_dir_entry (const char * function, struct inode * dir,
+ 		error_msg = "inode out of bounds";
+ 
+ 	if (error_msg != NULL)
+-		ext4_error (dir->i_sb, function,
++		ext4_error(dir->i_sb, function,
+ 			"bad entry in directory #%lu: %s - "
+ 			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+ 			dir->i_ino, error_msg, offset,
+@@ -91,8 +91,8 @@ int ext4_check_dir_entry (const char * function, struct inode * dir,
+ 	return error_msg == NULL ? 1 : 0;
  }
  
-@@ -18,7 +18,7 @@ int __ext4_journal_get_write_access(const char *where, handle_t *handle,
+-static int ext4_readdir(struct file * filp,
+-			 void * dirent, filldir_t filldir)
++static int ext4_readdir(struct file *filp,
++			 void *dirent, filldir_t filldir)
  {
- 	int err = jbd2_journal_get_write_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+ 	int error = 0;
+ 	unsigned long offset;
+@@ -147,7 +147,7 @@ static int ext4_readdir(struct file * filp,
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext4_error (sb, "ext4_readdir",
++			ext4_error(sb, "ext4_readdir",
+ 				"directory #%lu contains a hole at offset %lu",
+ 				inode->i_ino, (unsigned long)filp->f_pos);
+ 			/* corrupt size?  Maybe no more blocks to read */
+@@ -186,14 +186,14 @@ revalidate:
+ 		while (!error && filp->f_pos < inode->i_size
+ 		       && offset < sb->s_blocksize) {
+ 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
+-			if (!ext4_check_dir_entry ("ext4_readdir", inode, de,
++			if (!ext4_check_dir_entry("ext4_readdir", inode, de,
+ 						   bh, offset)) {
+ 				/*
+ 				 * On error, skip the f_pos to the next block
+ 				 */
+ 				filp->f_pos = (filp->f_pos |
+ 						(sb->s_blocksize - 1)) + 1;
+-				brelse (bh);
++				brelse(bh);
+ 				ret = stored;
+ 				goto out;
+ 			}
+@@ -217,12 +217,12 @@ revalidate:
+ 					break;
+ 				if (version != filp->f_version)
+ 					goto revalidate;
+-				stored ++;
++				stored++;
+ 			}
+ 			filp->f_pos += le16_to_cpu(de->rec_len);
+ 		}
+ 		offset = 0;
+-		brelse (bh);
++		brelse(bh);
+ 	}
+ out:
+ 	return ret;
+@@ -289,9 +289,9 @@ static void free_rb_tree_fname(struct rb_root *root)
+ 		parent = rb_parent(n);
+ 		fname = rb_entry(n, struct fname, rb_hash);
+ 		while (fname) {
+-			struct fname * old = fname;
++			struct fname *old = fname;
+ 			fname = fname->next;
+-			kfree (old);
++			kfree(old);
+ 		}
+ 		if (!parent)
+ 			root->rb_node = NULL;
+@@ -336,7 +336,7 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 			     struct ext4_dir_entry_2 *dirent)
+ {
+ 	struct rb_node **p, *parent = NULL;
+-	struct fname * fname, *new_fn;
++	struct fname *fname, *new_fn;
+ 	struct dir_private_info *info;
+ 	int len;
+ 
+@@ -393,19 +393,19 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+  * for all entres on the fname linked list.  (Normally there is only
+  * one entry on the linked list, unless there are 62 bit hash collisions.)
+  */
+-static int call_filldir(struct file * filp, void * dirent,
++static int call_filldir(struct file *filp, void *dirent,
+ 			filldir_t filldir, struct fname *fname)
+ {
+ 	struct dir_private_info *info = filp->private_data;
+ 	loff_t	curr_pos;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+-	struct super_block * sb;
++	struct super_block *sb;
+ 	int error;
+ 
+ 	sb = inode->i_sb;
+ 
+ 	if (!fname) {
+-		printk("call_filldir: called with null fname?!?\n");
++		printk(KERN_WARNING "call_filldir: called with null fname?!?\n");
+ 		return 0;
+ 	}
+ 	curr_pos = hash2pos(fname->hash, fname->minor_hash);
+@@ -424,8 +424,8 @@ static int call_filldir(struct file * filp, void * dirent,
+ 	return 0;
  }
  
-@@ -27,7 +27,7 @@ int __ext4_journal_forget(const char *where, handle_t *handle,
+-static int ext4_dx_readdir(struct file * filp,
+-			 void * dirent, filldir_t filldir)
++static int ext4_dx_readdir(struct file *filp,
++			 void *dirent, filldir_t filldir)
  {
- 	int err = jbd2_journal_forget(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
+ 	struct dir_private_info *info = filp->private_data;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+@@ -506,7 +506,7 @@ finished:
+ 	return 0;
  }
  
-@@ -36,7 +36,7 @@ int __ext4_journal_revoke(const char *where, handle_t *handle,
+-static int ext4_release_dir (struct inode * inode, struct file * filp)
++static int ext4_release_dir(struct inode *inode, struct file *filp)
  {
- 	int err = jbd2_journal_revoke(handle, blocknr, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
- }
- 
-@@ -45,7 +45,7 @@ int __ext4_journal_get_create_access(const char *where,
- {
- 	int err = jbd2_journal_get_create_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
- }
- 
-@@ -54,6 +54,6 @@ int __ext4_journal_dirty_metadata(const char *where,
- {
- 	int err = jbd2_journal_dirty_metadata(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
- 	return err;
- }
+ 	if (filp->private_data)
+ 		ext4_htree_free_dir_info(filp->private_data);
 -- 
 1.5.3.7
