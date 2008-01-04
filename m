@@ -1,59 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] UPDATED2: types fixup for mballoc
-Date: Thu, 03 Jan 2008 15:07:48 -0600
-Message-ID: <477D4EA4.6040402@redhat.com>
-References: <473CCEB8.5060201@redhat.com> <473D2147.9030504@redhat.com> <477BEDAC.1030802@redhat.com> <20080103191733.GJ3351@webber.adilger.int> <477D3678.7020203@redhat.com> <477D4152.4020901@redhat.com> <20080103203546.GM3351@webber.adilger.int>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [2.6.24 patch] let EXT4DEV_FS depend on BROKEN
+Date: Fri, 04 Jan 2008 00:41:37 -0500
+Message-ID: <11223.1199425297@turing-police.cc.vt.edu>
+References: <20080102013218.GO27566@does.not.exist> <20080102174157.GD3351@webber.adilger.int> <20080102195146.GB15898@does.not.exist>
+            <1199310692.5786.53.camel@dione>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: multipart/signed; boundary="==_Exmh_1199425297_4991P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
 Content-Transfer-Encoding: 7bit
-To: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	Alex Tomas <Alex.Tomas@Sun.COM>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47445 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751657AbYACVHu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jan 2008 16:07:50 -0500
-In-Reply-To: <20080103203546.GM3351@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Eric Anopolsky <erpo41@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759683AbYADFmj@vger.kernel.org>
+In-Reply-To: Your message of "Wed, 02 Jan 2008 13:51:32 PST."
+             <1199310692.5786.53.camel@dione>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On Jan 03, 2008  14:10 -0600, Eric Sandeen wrote:
->> @@ -1732,17 +1735,19 @@ static void ext4_mb_scan_aligned(struct 
->> +	/* find first stripe-aligned block in group */
->> +	a = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb)
->>  		+ le32_to_cpu(sbi->s_es->s_first_data_block);
->> +	a += sbi->s_stripe - 1;
-> 
-> Why not just have "+ sbi->s_stipe - 1" on the previous line, instead of "+="?
+--==_Exmh_1199425297_4991P
+Content-Type: text/plain; charset=us-ascii
 
-hmm good point.
+On Wed, 02 Jan 2008 13:51:32 PST, Eric Anopolsky said:
 
-> Also minor coding style nit: the "+" is normally at the end of the previous
-> line instead of at the start of the next line, so:
-> 
-> 	/* find first stripe-aligned block in group */
-> 	a = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb) +
-> 		le32_to_cpu(sbi->s_es->s_first_data_block) + sbi->s_stripe - 1;
+> their own kernels in the first place. IMHO, it's reasonable to expect
+> the small minority of Linux users who want to compile their own kernels
+> to learn that "EXPERIMENTAL" means something.
 
-Ok, that was inherited :)
+And what, exactly, does it mean, given that there's a bunch of stuff that's
+tagged EXPERIMENTAL that's more solid/tested than a lot of stuff that *isn't*
+marked with it?
 
->> +	a = (a * sbi->s_stripe) - le32_to_cpu(sbi->s_es->s_first_data_block);
->> +	i = do_div(a, EXT4_BLOCKS_PER_GROUP(sb));
-> 
-> I guess this doesn't stricly need to be a modulus either, because we know
-> which group this will be in and can just subtract the start.  You can just do:
->  
-> 	/* find first stripe-aligned block in this group */
-> 	group_start = e4b->bd_group * EXT4_BLOCKS_PER_GROUP(sb) +;
-> 		le32_to_cpu(sbi->s_es->s_first_data_block);
-> 
-> 	a = group_start + sbi->s_stripe - 1;
-> 	do_div(a, sbi->s_stripe);
-> 	a = (a * sbi->s_stripe) - group_start;
+--==_Exmh_1199425297_4991P
+Content-Type: application/pgp-signature
 
-Ok, I knew I had stared at this for too long :)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.8 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
 
-4th try coming soon.
+iD8DBQFHfccRcC3lWbTT17ARAtmXAKDs4mqrhvnW+ht3dOT5lSNu+ZazIACfbZDG
+3Zmkfv0FztJybw/6GZo6rko=
+=vhof
+-----END PGP SIGNATURE-----
 
--Eric
+--==_Exmh_1199425297_4991P--
