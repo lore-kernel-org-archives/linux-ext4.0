@@ -1,7 +1,7 @@
 From: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>
 Subject: Re: [PATCH] [Coding Style]: fs/ext{3,4}/ext{3,4}_jbd{,2}.c
-Date: Sat, 05 Jan 2008 07:48:42 +0300
-Message-ID: <477F0C2A.3070301@gmail.com>
+Date: Sat, 05 Jan 2008 07:47:36 +0300
+Message-ID: <477F0BE8.60307@gmail.com>
 References: <1199452896-20145-1-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-2-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-3-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-5-git-send-email-mathieu.segaud@regala.cx> <477E379F.4000103@student.ltu.se> <20080105041228.GP3351@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -11,12 +11,12 @@ To: Richard Knutsson <ricknu-0@student.ltu.se>,
 	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.153]:49164 "EHLO
+Received: from fg-out-1718.google.com ([72.14.220.152]:49040 "EHLO
 	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751735AbYAEEsu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2008 23:48:50 -0500
-Received: by fg-out-1718.google.com with SMTP id e21so3739680fga.17
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2008 20:48:45 -0800 (PST)
+	with ESMTP id S1753606AbYAEEtF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2008 23:49:05 -0500
+Received: by fg-out-1718.google.com with SMTP id e21so3739679fga.17
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2008 20:49:04 -0800 (PST)
 In-Reply-To: <20080105041228.GP3351@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
