@@ -1,71 +1,58 @@
-From: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
 Subject: Re: [PATCH] [Coding Style]: fs/ext{3,4}/ext{3,4}_jbd{,2}.c
-Date: Sat, 05 Jan 2008 07:47:36 +0300
-Message-ID: <477F0BE8.60307@gmail.com>
+Date: Sat, 5 Jan 2008 05:18:17 +0000
+Message-ID: <20080105051817.GD27894@ZenIV.linux.org.uk>
 References: <1199452896-20145-1-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-2-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-3-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-4-git-send-email-mathieu.segaud@regala.cx> <1199452896-20145-5-git-send-email-mathieu.segaud@regala.cx> <477E379F.4000103@student.ltu.se> <20080105041228.GP3351@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
 To: Richard Knutsson <ricknu-0@student.ltu.se>,
 	Mathieu Segaud <mathieu.segaud@regala.cx>,
 	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.152]:49040 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753606AbYAEEtF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2008 23:49:05 -0500
-Received: by fg-out-1718.google.com with SMTP id e21so3739679fga.17
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2008 20:49:04 -0800 (PST)
+Received: from zeniv.linux.org.uk ([195.92.253.2]:55006 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751135AbYAEFSX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jan 2008 00:18:23 -0500
+Content-Disposition: inline
 In-Reply-To: <20080105041228.GP3351@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
-> On Jan 04, 2008  14:41 +0100, Richard Knutsson wrote:
->>>  @@ -54,6 +54,6 @@ int __ext4_journal_dirty_metadata(const char *wh=
-ere,
->>>  {
->>>  	int err =3D jbd2_journal_dirty_metadata(handle, bh);
->>>  	if (err)
->>> -		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
->>> +		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle, err);
->>>  	return err;
->>>  }
->> What about changing the __FUNCTION__ to __func__, while you are at i=
-t?
->=20
+On Fri, Jan 04, 2008 at 09:12:28PM -0700, Andreas Dilger wrote:
+
 > What's wrong with __FUNCTION__?  I thought that was ANSI C?
 
-No, it was not. The ANSI C 1990 Standard defines the following so-calle=
-d
-"predefined macros": __LINE__, __FILE__, __DATE__, __TIME__, and __STDC=
-__.
-The ISO/IEC 9899 Standard commonly referred to as the C99, defines a fe=
-w
-additional predefined macros, as well as an additional predefined
-identifier __func__. For more information please refer to the ISO/IEC 9=
-899
-document itself, which is freely available for download at the time of
-me writing this.
+__FUNCTION__ is a gccism of dubious taste - it pretends to be a macro
+when it's something far out of scope of preprocessor.  Think for a minute
+and you'll see why - you can't expand it until you are done with parsing.
 
-Although seemingly "natural", the __FUNCTION__ macro has never been par=
-t
-of the C Standard.
+__func__ is C99, but it's not what __FUNCTION__ used to be - it's not a
+string literal.  6.4.2.2(1):
 
-Dmitri
+	The identifier __func__ shall be implicitly declared by the translator
+as if, immediately following the opening brace of each function definition,
+the declaration
+	static const char __func__[] = "function-name";
+appeared, where function-name is the name of the lexically-enclosing function.
 
->=20
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->=20
+IOW, it's a phase 7 (parsing and translation of translation units) and not
+phase 4 (preprocessor).  Practical implications are:
+	* _way_ fewer kludges
+	* it happens after phase 6 (string literal concatenation)
+So __FUNCION__ " is called" within body of foo() would result in
+"foo is called" while __func__ "is called" is a syntax error.
+
+These days old gcc __FUNCTION__ is gone; it's a macro expanding to __func__,
+so behaviour does *not* match the original (see above).
+
+The thing is, it's not something like __FILE__ or __LINE__ and never had been;
+it tried to pretend that it had been like those but that required far too
+nasty kludges and these days it is firmly in the "nothing to do with
+preprocessor" land.  Old name is #defined to __func__ to approximate the
+old behaviour, but it doesn't approximate it all that well and it's really
+not fit for anything but backwards compatibility in legacy code.
+
+BTW, we used to have code that broke when gcc abandoned the old kludge -
+several years ago there'd been a pile of patches fixing the resulting
+turds.
