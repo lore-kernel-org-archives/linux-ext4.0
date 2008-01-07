@@ -1,75 +1,241 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [Bug 9692] New: journal_data mount option causes filesystem
-Date: Mon, 7 Jan 2008 16:14:07 -0700
-Message-ID: <20080107231407.GX3351@webber.adilger.int>
-References: <478180BD.3050204@jaysonking.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Jayson King <dev@jaysonking.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:51387 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753005AbYAGXOK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jan 2008 18:14:10 -0500
-Content-Disposition: inline
-In-Reply-To: <478180BD.3050204@jaysonking.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Jan 06, 2008  19:30 -0600, Jayson King wrote:
-> This looks to be an off-by-one bug with e2fsck in the function
-> check_blocks(), and there isn't any actual filesystem corruption
-> (e2fsck causes the corruption).
-
-This is actually a problem for cases where blocksize != pagesize.
-We have a similar patch in our e2fsprogs, and I thought we sent
-an equivalent patch to Ted previously...
-
--                   (pb.last_block / blkpg * blkpg != pb.last_block ||
-+                   ((pb.last_block+1) / blkpg * blkpg != (pb.last_block+1) ||
+From: akpm@linux-foundation.org
+Subject: + byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch added to -mm tree
+Date: Mon, 07 Jan 2008 15:44:58 -0800
+Message-ID: <200801072344.m07NiwUn018286@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: marcin.slusarz@gmail.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
+	mark.fasheh@oracle.com, tes@sgi.com
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
-Signed-off-by: Andreas Dilger <adilger@sun.com>
+The patch titled
+     byteorder: move le32_add_cpu & friends from OCFS2 to core
+has been added to the -mm tree.  Its filename is
+     byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch
 
-> >From 654f24814e7b80d3b16bec2a67c13c43cb20eb2f Mon Sep 17 00:00:00 2001
-> From: Jayson R. King <dev@jaysonking.com>
-> Date: Sun, 6 Jan 2008 18:14:18 -0600
-> Subject: e2fsck: Fix off-by-one error in check_blocks()
-> 
-> e2fsck allows extra blocks to be allocated to an inode up to the next
-> multiple of page size iff the block size is not equal to page size. An
-> off-by-one error in checking for this causes e2fsck to wrongly detect
-> a bad i_size for such inodes and results in incorrectly adjusting the
-> i_size to include those blocks.
-> 
-> Signed-off-by: Jayson R. King <dev@jaysonking.com>
-> ---
->  e2fsck/pass1.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 56218ae..7bf0686 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -1593,7 +1593,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
->  		if ((pb.last_block >= 0) &&
->  		    /* allow allocated blocks to end of PAGE_SIZE */
->  		    (size < (__u64)pb.last_block * fs->blocksize) &&
-> -		    (pb.last_block / blkpg * blkpg != pb.last_block ||
-> +		    ((pb.last_block+1) & (blkpg-1) != 0 ||
->  		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize))
->  			bad_size = 3;
->  		else if (size > ext2_max_sizes[fs->super->s_log_block_size])
-> -- 
-> 1.5.3.3
-> 
-> 
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: byteorder: move le32_add_cpu & friends from OCFS2 to core
+From: Marcin Slusarz <marcin.slusarz@gmail.com>
+
+This patchset moves le*_add_cpu and be*_add_cpu functions from OCFS2 to core
+header (1st), converts ext3 filesystem to this API (2nd) and replaces XFS
+different named functions with new ones (3rd).
+
+There are many places where these functions will be useful.  Just look at:
+grep -r 'cpu_to_[ble12346]*([ble12346]*_to_cpu.*[-+]' linux-src/ Patch for
+ext3 is an example how conversions will probably look like.
 
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+
+This patch:
+
+- move inline functions which add native byte order variable to
+  little/big endian variable to core header
+  * le16_add_cpu(__le16 *var, u16 val)
+  * le32_add_cpu(__le32 *var, u32 val)
+  * le64_add_cpu(__le64 *var, u64 val)
+  * be32_add_cpu(__be32 *var, u32 val)
+- add for completeness:
+  * be16_add_cpu(__be16 *var, u16 val)
+  * be64_add_cpu(__be64 *var, u64 val)
+
+Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Acked-by: Mark Fasheh <mark.fasheh@oracle.com>
+Cc: David Chinner <dgc@sgi.com>
+Cc: Timothy Shimmin <tes@sgi.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ocfs2/cluster/endian.h         |   30 ------------------
+ fs/ocfs2/cluster/nodemanager.c    |    1 
+ fs/ocfs2/dlm/dlmast.c             |    1 
+ fs/ocfs2/endian.h                 |   45 ----------------------------
+ fs/ocfs2/ocfs2.h                  |    1 
+ include/linux/byteorder/generic.h |   30 ++++++++++++++++++
+ 6 files changed, 30 insertions(+), 78 deletions(-)
+
+diff -puN fs/ocfs2/cluster/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/cluster/endian.h
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_CLUSTER_ENDIAN_H
+-#define OCFS2_CLUSTER_ENDIAN_H
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_CLUSTER_ENDIAN_H */
+diff -puN fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/cluster/nodemanager.c
+--- a/fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/cluster/nodemanager.c
+@@ -24,7 +24,6 @@
+ #include <linux/sysctl.h>
+ #include <linux/configfs.h>
+ 
+-#include "endian.h"
+ #include "tcp.h"
+ #include "nodemanager.h"
+ #include "heartbeat.h"
+diff -puN fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/dlm/dlmast.c
+--- a/fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/dlm/dlmast.c
+@@ -43,7 +43,6 @@
+ #include "cluster/heartbeat.h"
+ #include "cluster/nodemanager.h"
+ #include "cluster/tcp.h"
+-#include "cluster/endian.h"
+ 
+ #include "dlmapi.h"
+ #include "dlmcommon.h"
+diff -puN fs/ocfs2/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/endian.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_ENDIAN_H
+-#define OCFS2_ENDIAN_H
+-
+-static inline void le16_add_cpu(__le16 *var, u16 val)
+-{
+-	*var = cpu_to_le16(le16_to_cpu(*var) + val);
+-}
+-
+-static inline void le32_add_cpu(__le32 *var, u32 val)
+-{
+-	*var = cpu_to_le32(le32_to_cpu(*var) + val);
+-}
+-
+-static inline void le64_add_cpu(__le64 *var, u64 val)
+-{
+-	*var = cpu_to_le64(le64_to_cpu(*var) + val);
+-}
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_ENDIAN_H */
+diff -puN fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/ocfs2.h
+--- a/fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/ocfs2.h
+@@ -43,7 +43,6 @@
+ #include "dlm/dlmapi.h"
+ 
+ #include "ocfs2_fs.h"
+-#include "endian.h"
+ #include "ocfs2_lockid.h"
+ 
+ /* Most user visible OCFS2 inodes will have very few pieces of
+diff -puN include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core include/linux/byteorder/generic.h
+--- a/include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/include/linux/byteorder/generic.h
+@@ -146,6 +146,36 @@
+ #define htons(x) ___htons(x)
+ #define ntohs(x) ___ntohs(x)
+ 
++static inline void le16_add_cpu(__le16 *var, u16 val)
++{
++	*var = cpu_to_le16(le16_to_cpu(*var) + val);
++}
++
++static inline void le32_add_cpu(__le32 *var, u32 val)
++{
++	*var = cpu_to_le32(le32_to_cpu(*var) + val);
++}
++
++static inline void le64_add_cpu(__le64 *var, u64 val)
++{
++	*var = cpu_to_le64(le64_to_cpu(*var) + val);
++}
++
++static inline void be16_add_cpu(__be16 *var, u16 val)
++{
++	*var = cpu_to_be16(be16_to_cpu(*var) + val);
++}
++
++static inline void be32_add_cpu(__be32 *var, u32 val)
++{
++	*var = cpu_to_be32(be32_to_cpu(*var) + val);
++}
++
++static inline void be64_add_cpu(__be64 *var, u64 val)
++{
++	*var = cpu_to_be64(be64_to_cpu(*var) + val);
++}
++
+ #endif /* KERNEL */
+ 
+ #endif /* _LINUX_BYTEORDER_GENERIC_H */
+_
+
+Patches currently in -mm which might be from marcin.slusarz@gmail.com are
+
+git-alsa.patch
+git-ocfs2.patch
+ehci-hcd-fix-sparse-warning-about-shadowing-status-symbol-checkpatch-fixes.patch
+vgacon-fix-sparse-warning-about-shadowing-i-symbol.patch
+fbcon-fix-sparse-warning-about-shadowing-p-symbol.patch
+fbcon-fix-sparse-warning-about-shadowing-rotate-symbol.patch
+udf-remove-wrong-prototype-of-udf_readdir.patch
+udf-improve-readability-of-do_udf_readdir.patch
+udf-fix-coding-style-of-dirc.patch
+udf-fix-3-signedness-1-unitialized-variable-warnings.patch
+udf-fix-signedness-issue.patch
+byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch
+ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu.patch
+xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
