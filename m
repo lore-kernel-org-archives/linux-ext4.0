@@ -1,948 +1,725 @@
-From: akpm@linux-foundation.org
-Subject: + xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch added to -mm tree
-Date: Mon, 07 Jan 2008 15:45:10 -0800
-Message-ID: <200801072345.m07NjAGk018299@imap1.linux-foundation.org>
-Cc: marcin.slusarz@gmail.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
-	mark.fasheh@oracle.com, tes@sgi.com
-To: mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] mballoc update
+Date: Tue, 8 Jan 2008 12:01:14 +0530
+Message-ID: <20080108063114.GA6615@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Alex Tomas <bzzz@sun.com>, Andreas Dilger <adilger@sun.com>,
+	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41066 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753323AbYAGXpz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jan 2008 18:45:55 -0500
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:36332 "EHLO
+	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755952AbYAHGbu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jan 2008 01:31:50 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m086VI5a017010
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Jan 2008 12:01:18 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m086VH4v1052778
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Jan 2008 12:01:18 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m086VHNG012985
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Jan 2008 06:31:17 GMT
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-The patch titled
-     xfs: convert beX_add to beX_add_cpu (new common API)
-has been added to the -mm tree.  Its filename is
-     xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
+This is the update for mballoc patch. The changes are result of merging
+with the lustre cvs version of mballoc. I liked this patch better because
+it is simple. I also the updated the commit message. The update commit
+message is also attached below. We only have one FIXME!! in the commit
+message now to explain the inode buddy cache  allocator.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+Let me know what you think.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+This is not yet for patch queue. I will update the mballoc-core.patch
+and send it the full patch later.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+--- commit message ---
 
-------------------------------------------------------
-Subject: xfs: convert beX_add to beX_add_cpu (new common API)
-From: Marcin Slusarz <marcin.slusarz@gmail.com>
+ext4: Add multi block allocator for ext4
 
-remove beX_add functions and replace all uses with beX_add_cpu
+From: Alex Tomas <alex@clusterfs.com>
 
-Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
-Cc: Mark Fasheh <mark.fasheh@oracle.com>
-Cc: David Chinner <dgc@sgi.com>
-Cc: Timothy Shimmin <tes@sgi.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+The allocation request involve request for multiple number of
+blocks near to the goal(block) value specified.
 
- fs/xfs/quota/xfs_qm.c          |    6 ++--
- fs/xfs/quota/xfs_trans_dquot.c |    6 ++--
- fs/xfs/xfs_alloc.c             |   16 +++++-----
- fs/xfs/xfs_alloc_btree.c       |   16 +++++-----
- fs/xfs/xfs_arch.h              |   15 ----------
- fs/xfs/xfs_attr_leaf.c         |   46 +++++++++++++++----------------
- fs/xfs/xfs_bmap_btree.c        |   16 +++++-----
- fs/xfs/xfs_da_btree.c          |   14 ++++-----
- fs/xfs/xfs_dir2_block.c        |    8 ++---
- fs/xfs/xfs_dir2_data.c         |    4 +-
- fs/xfs/xfs_dir2_leaf.c         |   16 +++++-----
- fs/xfs/xfs_dir2_node.c         |   18 ++++++------
- fs/xfs/xfs_fsops.c             |    4 +-
- fs/xfs/xfs_ialloc.c            |   12 ++++----
- fs/xfs/xfs_ialloc_btree.c      |   16 +++++-----
- fs/xfs/xfs_trans.c             |   24 ++++++++--------
- 16 files changed, 111 insertions(+), 126 deletions(-)
+During initialization phase of the allocator we decide to use the group
+preallocation or inode preallocation depending on the size file. The size of
+the file could be the resulting file size we would have after allocation or
+the current file size which ever is larger. If the size is less that
+sbi->s_mb_stream_request we select the group preallocation. The default value
+of s_mb_stream_request is 16 blocks. This can also be tuned via
+/proc/fs/ext4/<partition>/stream_req. The value is represented in terms of
+number of blocks.
 
-diff -puN fs/xfs/quota/xfs_qm.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/quota/xfs_qm.c
---- a/fs/xfs/quota/xfs_qm.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/quota/xfs_qm.c
-@@ -1648,14 +1648,14 @@ xfs_qm_quotacheck_dqadjust(
- 	 * Adjust the inode count and the block count to reflect this inode's
- 	 * resource usage.
- 	 */
--	be64_add(&dqp->q_core.d_icount, 1);
-+	be64_add_cpu(&dqp->q_core.d_icount, 1);
- 	dqp->q_res_icount++;
- 	if (nblks) {
--		be64_add(&dqp->q_core.d_bcount, nblks);
-+		be64_add_cpu(&dqp->q_core.d_bcount, nblks);
- 		dqp->q_res_bcount += nblks;
- 	}
- 	if (rtblks) {
--		be64_add(&dqp->q_core.d_rtbcount, rtblks);
-+		be64_add_cpu(&dqp->q_core.d_rtbcount, rtblks);
- 		dqp->q_res_rtbcount += rtblks;
- 	}
+The main motivation for having small file use group preallocation is to ensure
+that we have small file closer in the disk.
+
+
+First stage the allocator looks at the inode prealloc list
+ext4_inode_info->i_prealloc_list contain list of prealloc
+spaces for this particular inode. The inode prealloc space
+is represented as
+pa_lstart -> the logical start block for this prealloc space
+pa_pstart -> the physical start block for this prealloc space
+pa_len    -> lenght for this prealloc space
+pa_free   ->  free space available in this prealloc space
+
+The inode preallocation space is used looking at the _logical_
+start block. If only the logical file block falls within the
+range of prealloc space we will consume the particular prealloc
+space. This make sure that that the we have contiguous physical
+blocks representing the file blocks
+
+The important thing to be noted in case of inode prealloc space
+is that we don't modify the values associated to inode prealloc
+space except pa_free.
+
+If we are not able to find blocks in the inode prealloc space and if we have
+the group allocation flag set then we look at the locality group prealloc
+space. These are per CPU prealloc list represented as
+
+ext4_sb_info.s_locality_groups[smp_processor_id()]
+
+The reason for having a per cpu locality group is to reduce the contention
+between CPUs. It is possible to get scheduled at this point.
+
+The locality group prealloc space is used looking at whether we have
+enough free space (pa_free) withing the prealloc space.
+
+If we can't allocate blocks via inode prealloc or/and locality group prealloc
+then we look at the buddy cache. The buddy cache is represented by
+ext4_sb_info.s_buddy_cache (struct inode) whose file offset gets mapped to the
+buddy and bitmap information regarding different groups. The buddy information
+is attached to buddy cache inode so that we can access them through the page
+cache. The information regarding each group is loaded via ext4_mb_load_buddy.
+The information involve block bitmap and buddy information. The information are
+stored in the inode as
+
+ {                        page                        }
+ [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
+
+
+one block each for bitmap and buddy information.
+So for each group we take up 2 blocks. A page can
+contain blocks_per_page (PAGE_CACHE_SIZE / blocksize)  blocks.
+So it can have information regarding groups_per_page which
+is blocks_per_page/2
+
+Buddy cache inode is not stored on disk. The inode get
+thrown away at the end when unmounting the disk.
+
+We look for count number of blocks in the buddy cache. If
+we were able to locate that many free blocks we return
+with additional information regarding rest of the
+contiguous physical block available
+
+
+Before allocating blocks via buddy cache we normalize the request blocks. This
+ensure we ask for more blocks that we needed. The extra blocks that we get
+after allocation is added to the respective prealloc list. In case of inode
+preallocation we follow a list of heuristics based on file size. This can be
+found in ext4_mb_normalize_request. If we are doing a group prealloc we try to
+normalize the request to sbi->s_mb_group_prealloc. Default value of
+s_mb_group_prealloc is set to 512 blocks. This can be tuned via
+/proc/fs/ext4/<partition/group_prealloc. The value is represented in terms of
+number of blocks. If we have mounted the file system with -O stripe=<value>
+option the group prealloc request is normalized to the stripe value (sbi->s_stripe)
+
+/* FIXME!! explanation of how blocks are picked from buddy cache and the tunable
+max_to_scan min_to_scan  order2_req */
+
+Both the prealloc space are getting populated
+as above. So for the first request we will hit the buddy cache
+which will result in this prealloc space getting filled. The prealloc
+space is then later used for the subsequent request.
+
+--- code diff ----
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 58a70a1..1c47364 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -290,6 +290,8 @@
+  * files smaller than MB_DEFAULT_STREAM_THRESHOLD are served
+  * by the stream allocator, which purpose is to pack requests
+  * as close each to other as possible to produce smooth I/O traffic
++ * We use locality group prealloc space for stream request.
++ * We can tune the same via /proc/fs/ext4/<parition>/stream_req
+  */
+ #define MB_DEFAULT_STREAM_THRESHOLD	16	/* 64K */
  
-diff -puN fs/xfs/quota/xfs_trans_dquot.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/quota/xfs_trans_dquot.c
---- a/fs/xfs/quota/xfs_trans_dquot.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/quota/xfs_trans_dquot.c
-@@ -421,13 +421,13 @@ xfs_trans_apply_dquot_deltas(
- 				       (xfs_qcnt_t) -qtrx->qt_icount_delta);
- #endif
- 			if (totalbdelta)
--				be64_add(&d->d_bcount, (xfs_qcnt_t)totalbdelta);
-+				be64_add_cpu(&d->d_bcount, (xfs_qcnt_t)totalbdelta);
+@@ -299,9 +301,9 @@
+ #define MB_DEFAULT_ORDER2_REQS		2
  
- 			if (qtrx->qt_icount_delta)
--				be64_add(&d->d_icount, (xfs_qcnt_t)qtrx->qt_icount_delta);
-+				be64_add_cpu(&d->d_icount, (xfs_qcnt_t)qtrx->qt_icount_delta);
+ /*
+- * default stripe size = 1MB
++ * default group prealloc size 512 blocks
+  */
+-#define MB_DEFAULT_STRIPE		256
++#define MB_DEFAULT_GROUP_PREALLOC	512
  
- 			if (totalrtbdelta)
--				be64_add(&d->d_rtbcount, (xfs_qcnt_t)totalrtbdelta);
-+				be64_add_cpu(&d->d_rtbcount, (xfs_qcnt_t)totalrtbdelta);
+ static struct kmem_cache *ext4_pspace_cachep;
  
- 			/*
- 			 * Get any default limits in use.
-diff -puN fs/xfs/xfs_alloc.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_alloc.c
---- a/fs/xfs/xfs_alloc.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_alloc.c
-@@ -592,7 +592,7 @@ xfs_alloc_ag_vextent(
- 		if (!(args->wasfromfl)) {
- 
- 			agf = XFS_BUF_TO_AGF(args->agbp);
--			be32_add(&agf->agf_freeblks, -(args->len));
-+			be32_add_cpu(&agf->agf_freeblks, -(args->len));
- 			xfs_trans_agblocks_delta(args->tp,
- 						 -((long)(args->len)));
- 			args->pag->pagf_freeblks -= args->len;
-@@ -1720,7 +1720,7 @@ xfs_free_ag_extent(
- 
- 		agf = XFS_BUF_TO_AGF(agbp);
- 		pag = &mp->m_perag[agno];
--		be32_add(&agf->agf_freeblks, len);
-+		be32_add_cpu(&agf->agf_freeblks, len);
- 		xfs_trans_agblocks_delta(tp, len);
- 		pag->pagf_freeblks += len;
- 		XFS_WANT_CORRUPTED_GOTO(
-@@ -2008,18 +2008,18 @@ xfs_alloc_get_freelist(
- 	 * Get the block number and update the data structures.
- 	 */
- 	bno = be32_to_cpu(agfl->agfl_bno[be32_to_cpu(agf->agf_flfirst)]);
--	be32_add(&agf->agf_flfirst, 1);
-+	be32_add_cpu(&agf->agf_flfirst, 1);
- 	xfs_trans_brelse(tp, agflbp);
- 	if (be32_to_cpu(agf->agf_flfirst) == XFS_AGFL_SIZE(mp))
- 		agf->agf_flfirst = 0;
- 	pag = &mp->m_perag[be32_to_cpu(agf->agf_seqno)];
--	be32_add(&agf->agf_flcount, -1);
-+	be32_add_cpu(&agf->agf_flcount, -1);
- 	xfs_trans_agflist_delta(tp, -1);
- 	pag->pagf_flcount--;
- 
- 	logflags = XFS_AGF_FLFIRST | XFS_AGF_FLCOUNT;
- 	if (btreeblk) {
--		be32_add(&agf->agf_btreeblks, 1);
-+		be32_add_cpu(&agf->agf_btreeblks, 1);
- 		pag->pagf_btreeblks++;
- 		logflags |= XFS_AGF_BTREEBLKS;
- 	}
-@@ -2117,17 +2117,17 @@ xfs_alloc_put_freelist(
- 			be32_to_cpu(agf->agf_seqno), &agflbp)))
- 		return error;
- 	agfl = XFS_BUF_TO_AGFL(agflbp);
--	be32_add(&agf->agf_fllast, 1);
-+	be32_add_cpu(&agf->agf_fllast, 1);
- 	if (be32_to_cpu(agf->agf_fllast) == XFS_AGFL_SIZE(mp))
- 		agf->agf_fllast = 0;
- 	pag = &mp->m_perag[be32_to_cpu(agf->agf_seqno)];
--	be32_add(&agf->agf_flcount, 1);
-+	be32_add_cpu(&agf->agf_flcount, 1);
- 	xfs_trans_agflist_delta(tp, 1);
- 	pag->pagf_flcount++;
- 
- 	logflags = XFS_AGF_FLLAST | XFS_AGF_FLCOUNT;
- 	if (btreeblk) {
--		be32_add(&agf->agf_btreeblks, -1);
-+		be32_add_cpu(&agf->agf_btreeblks, -1);
- 		pag->pagf_btreeblks--;
- 		logflags |= XFS_AGF_BTREEBLKS;
- 	}
-diff -puN fs/xfs/xfs_alloc_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_alloc_btree.c
---- a/fs/xfs/xfs_alloc_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_alloc_btree.c
-@@ -221,7 +221,7 @@ xfs_alloc_delrec(
- 			 */
- 			bno = be32_to_cpu(agf->agf_roots[cur->bc_btnum]);
- 			agf->agf_roots[cur->bc_btnum] = *lpp;
--			be32_add(&agf->agf_levels[cur->bc_btnum], -1);
-+			be32_add_cpu(&agf->agf_levels[cur->bc_btnum], -1);
- 			mp->m_perag[be32_to_cpu(agf->agf_seqno)].pagf_levels[cur->bc_btnum]--;
- 			/*
- 			 * Put this buffer/block on the ag's freelist.
-@@ -1256,9 +1256,9 @@ xfs_alloc_lshift(
- 	/*
- 	 * Bump and log left's numrecs, decrement and log right's numrecs.
- 	 */
--	be16_add(&left->bb_numrecs, 1);
-+	be16_add_cpu(&left->bb_numrecs, 1);
- 	xfs_alloc_log_block(cur->bc_tp, lbp, XFS_BB_NUMRECS);
--	be16_add(&right->bb_numrecs, -1);
-+	be16_add_cpu(&right->bb_numrecs, -1);
- 	xfs_alloc_log_block(cur->bc_tp, rbp, XFS_BB_NUMRECS);
- 	/*
- 	 * Slide the contents of right down one entry.
-@@ -1346,7 +1346,7 @@ xfs_alloc_newroot(
- 
- 		agf = XFS_BUF_TO_AGF(cur->bc_private.a.agbp);
- 		agf->agf_roots[cur->bc_btnum] = cpu_to_be32(nbno);
--		be32_add(&agf->agf_levels[cur->bc_btnum], 1);
-+		be32_add_cpu(&agf->agf_levels[cur->bc_btnum], 1);
- 		seqno = be32_to_cpu(agf->agf_seqno);
- 		mp->m_perag[seqno].pagf_levels[cur->bc_btnum]++;
- 		xfs_alloc_log_agf(cur->bc_tp, cur->bc_private.a.agbp,
-@@ -1558,9 +1558,9 @@ xfs_alloc_rshift(
- 	/*
- 	 * Decrement and log left's numrecs, bump and log right's numrecs.
- 	 */
--	be16_add(&left->bb_numrecs, -1);
-+	be16_add_cpu(&left->bb_numrecs, -1);
- 	xfs_alloc_log_block(cur->bc_tp, lbp, XFS_BB_NUMRECS);
--	be16_add(&right->bb_numrecs, 1);
-+	be16_add_cpu(&right->bb_numrecs, 1);
- 	xfs_alloc_log_block(cur->bc_tp, rbp, XFS_BB_NUMRECS);
- 	/*
- 	 * Using a temporary cursor, update the parent key values of the
-@@ -1643,7 +1643,7 @@ xfs_alloc_split(
- 	 */
- 	if ((be16_to_cpu(left->bb_numrecs) & 1) &&
- 	    cur->bc_ptrs[level] <= be16_to_cpu(right->bb_numrecs) + 1)
--		be16_add(&right->bb_numrecs, 1);
-+		be16_add_cpu(&right->bb_numrecs, 1);
- 	i = be16_to_cpu(left->bb_numrecs) - be16_to_cpu(right->bb_numrecs) + 1;
- 	/*
- 	 * For non-leaf blocks, copy keys and addresses over to the new block.
-@@ -1689,7 +1689,7 @@ xfs_alloc_split(
- 	 * Adjust numrecs, sibling pointers.
- 	 */
- 	lbno = XFS_DADDR_TO_AGBNO(cur->bc_mp, XFS_BUF_ADDR(lbp));
--	be16_add(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
-+	be16_add_cpu(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
- 	right->bb_rightsib = left->bb_rightsib;
- 	left->bb_rightsib = cpu_to_be32(rbno);
- 	right->bb_leftsib = cpu_to_be32(lbno);
-diff -puN fs/xfs/xfs_arch.h~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_arch.h
---- a/fs/xfs/xfs_arch.h~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_arch.h
-@@ -170,21 +170,6 @@
-     } \
+@@ -532,10 +534,10 @@ static inline void mb_set_bit(int bit, void *addr)
+ 	ext4_set_bit(bit, addr);
  }
  
--static inline void be16_add(__be16 *a, __s16 b)
--{
--	*a = cpu_to_be16(be16_to_cpu(*a) + b);
--}
+-static inline void mb_set_bit_atomic(int bit, void *addr)
++static inline void mb_set_bit_atomic(spinlock_t *lock, int bit, void *addr)
+ {
+ 	mb_correct_addr_and_bit(bit, addr);
+-	ext4_set_bit_atomic(NULL, bit, addr);
++	ext4_set_bit_atomic(lock, bit, addr);
+ }
+ 
+ static inline void mb_clear_bit(int bit, void *addr)
+@@ -544,10 +546,10 @@ static inline void mb_clear_bit(int bit, void *addr)
+ 	ext4_clear_bit(bit, addr);
+ }
+ 
+-static inline void mb_clear_bit_atomic(int bit, void *addr)
++static inline void mb_clear_bit_atomic(spinlock_t *lock, int bit, void *addr)
+ {
+ 	mb_correct_addr_and_bit(bit, addr);
+-	ext4_clear_bit_atomic(NULL, bit, addr);
++	ext4_clear_bit_atomic(lock, bit, addr);
+ }
+ 
+ static inline void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
+@@ -1155,7 +1157,7 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
+ 	return 0;
+ }
+ 
+-static void mb_clear_bits(void *bm, int cur, int len)
++static void mb_clear_bits(spinlock_t *lock, void *bm, int cur, int len)
+ {
+ 	__u32 *addr;
+ 
+@@ -1168,12 +1170,12 @@ static void mb_clear_bits(void *bm, int cur, int len)
+ 			cur += 32;
+ 			continue;
+ 		}
+-		mb_clear_bit_atomic(cur, bm);
++		mb_clear_bit_atomic(lock, cur, bm);
+ 		cur++;
+ 	}
+ }
+ 
+-static void mb_set_bits(void *bm, int cur, int len)
++static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
+ {
+ 	__u32 *addr;
+ 
+@@ -1186,7 +1188,7 @@ static void mb_set_bits(void *bm, int cur, int len)
+ 			cur += 32;
+ 			continue;
+ 		}
+-		mb_set_bit_atomic(cur, bm);
++		mb_set_bit_atomic(lock, cur, bm);
+ 		cur++;
+ 	}
+ }
+@@ -1403,7 +1405,8 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+ 		e4b->bd_info->bb_counters[ord]++;
+ 	}
+ 
+-	mb_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
++	mb_set_bits(sb_bgl_lock(EXT4_SB(e4b->bd_sb), ex->fe_group),
++			EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
+ 	mb_check_buddy(e4b);
+ 
+ 	return ret;
+@@ -1509,8 +1512,8 @@ static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
+ 	struct ext4_free_extent *gex = &ac->ac_g_ex;
+ 
+ 	BUG_ON(ex->fe_len <= 0);
+-	BUG_ON(ex->fe_len >= (1 << ac->ac_sb->s_blocksize_bits) * 8);
+-	BUG_ON(ex->fe_start >= (1 << ac->ac_sb->s_blocksize_bits) * 8);
++	BUG_ON(ex->fe_len >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
+ 
+ 	ac->ac_found++;
+@@ -1702,8 +1705,8 @@ static void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 	i = e4b->bd_info->bb_first_free;
+ 
+ 	while (free && ac->ac_status == AC_STATUS_CONTINUE) {
+-		i = ext4_find_next_zero_bit(bitmap, sb->s_blocksize * 8, i);
+-		if (i >= sb->s_blocksize * 8) {
++		i = ext4_find_next_zero_bit(bitmap, EXT4_BLOCKS_PER_GROUP(sb), i);
++		if (i >= EXT4_BLOCKS_PER_GROUP(sb)) {
+ 			BUG_ON(free != 0);
+ 			break;
+ 		}
+@@ -1744,7 +1747,7 @@ static void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+ 	i = (i - le32_to_cpu(sbi->s_es->s_first_data_block))
+ 			% EXT4_BLOCKS_PER_GROUP(sb);
+ 
+-	while (i < sb->s_blocksize * 8) {
++	while (i < EXT4_BLOCKS_PER_GROUP(sb)) {
+ 		if (!mb_test_bit(i, bitmap)) {
+ 			max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
+ 			if (max >= sbi->s_stripe) {
+@@ -1812,9 +1815,11 @@ static int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 	ext4_group_t i;
+ 	int cr;
+ 	int err = 0;
++	int bsbits;
+ 	struct ext4_sb_info *sbi;
+ 	struct super_block *sb;
+ 	struct ext4_buddy e4b;
++	loff_t size, isize;
+ 
+ 	sb = ac->ac_sb;
+ 	sbi = EXT4_SB(sb);
+@@ -1839,13 +1844,14 @@ static int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 			ac->ac_2order = i;
+ 	}
+ 
++	bsbits = ac->ac_sb->s_blocksize_bits;
+ 	/* if stream allocation is enabled, use global goal */
++	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
++	isize = i_size_read(ac->ac_inode) >> bsbits;
++	if (size < isize)
++		size = isize;
+ 
+-	/* FIXME!!
+-	 * Need more explanation on what it is and how stream
+-	 * allocation is represented by the below conditional
+-	 */
+-	if ((ac->ac_g_ex.fe_len < sbi->s_mb_large_req) &&
++	if (size < sbi->s_mb_stream_request &&
+ 			(ac->ac_flags & EXT4_MB_HINT_DATA)) {
+ 		/* TBD: may be hot point */
+ 		spin_lock(&sbi->s_md_lock);
+@@ -2291,7 +2297,8 @@ static void ext4_mb_history_init(struct super_block *sb)
+ 	spin_lock_init(&sbi->s_mb_history_lock);
+ 	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
+ 	sbi->s_mb_history = kmalloc(i, GFP_KERNEL);
+-	memset(sbi->s_mb_history, 0, i);
++	if (likely(sbi->s_mb_history != NULL))
++		memset(sbi->s_mb_history, 0, i);
+ 	/* if we can't allocate history, then we simple won't use it */
+ }
+ 
+@@ -2300,7 +2307,7 @@ static void ext4_mb_store_history(struct ext4_allocation_context *ac)
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_mb_history h;
+ 
+-	if (likely(sbi->s_mb_history == NULL))
++	if (unlikely(sbi->s_mb_history == NULL))
+ 		return;
+ 
+ 	if (!(ac->ac_op & sbi->s_mb_history_filter))
+@@ -2404,6 +2411,7 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 				"EXT4-fs: can't read descriptor %lu\n", i);
+ 			goto err_freebuddy;
+ 		}
++		memset(meta_group_info[j], 0, len);
+ 		set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,
+ 			&meta_group_info[j]->bb_state);
+ 
+@@ -2510,39 +2518,16 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 
+ 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+ 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+-	sbi->s_mb_max_groups_to_scan = MB_DEFAULT_MAX_GROUPS_TO_SCAN;
+ 	sbi->s_mb_stats = MB_DEFAULT_STATS;
++	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+ 	sbi->s_mb_history_filter = EXT4_MB_HISTORY_DEFAULT;
 -
--static inline void be32_add(__be32 *a, __s32 b)
--{
--	*a = cpu_to_be32(be32_to_cpu(*a) + b);
--}
+-	sbi->s_mb_prealloc_table_size = 7;
+-	i = sbi->s_mb_prealloc_table_size;
+-	sbi->s_mb_prealloc_table = kmalloc(sizeof(unsigned long) * i,
+-						GFP_NOFS);
+-	if (sbi->s_mb_prealloc_table == NULL) {
+-		clear_opt(sbi->s_mount_opt, MBALLOC);
+-		kfree(sbi->s_mb_offsets);
+-		kfree(sbi->s_mb_maxs);
+-		return -ENOMEM;
+-	}
 -
--static inline void be64_add(__be64 *a, __s64 b)
--{
--	*a = cpu_to_be64(be64_to_cpu(*a) + b);
--}
+-	sbi->s_mb_prealloc_table[0] = 4;
+-	sbi->s_mb_prealloc_table[1] = 8;
+-	sbi->s_mb_prealloc_table[2] = 16;
+-	sbi->s_mb_prealloc_table[3] = 32;
+-	sbi->s_mb_prealloc_table[4] = 64;
+-	sbi->s_mb_prealloc_table[5] = 128;
+-	sbi->s_mb_prealloc_table[6] = 256;
 -
- /*
-  * In directories inode numbers are stored as unaligned arrays of unsigned
-  * 8bit integers on disk.
-diff -puN fs/xfs/xfs_attr_leaf.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_attr_leaf.c
---- a/fs/xfs/xfs_attr_leaf.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_attr_leaf.c
-@@ -317,7 +317,7 @@ xfs_attr_shortform_add(xfs_da_args_t *ar
- 	memcpy(sfe->nameval, args->name, args->namelen);
- 	memcpy(&sfe->nameval[args->namelen], args->value, args->valuelen);
- 	sf->hdr.count++;
--	be16_add(&sf->hdr.totsize, size);
-+	be16_add_cpu(&sf->hdr.totsize, size);
- 	xfs_trans_log_inode(args->trans, dp, XFS_ILOG_CORE | XFS_ILOG_ADATA);
+-	sbi->s_mb_small_req = 256;
+-	sbi->s_mb_large_req = 1024;
+-	sbi->s_mb_group_prealloc = 512;
++	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
  
- 	xfs_sbversion_add_attr2(mp, args->trans);
-@@ -363,7 +363,7 @@ xfs_attr_shortform_remove(xfs_da_args_t 
- 	if (end != totsize)
- 		memmove(&((char *)sf)[base], &((char *)sf)[end], totsize - end);
- 	sf->hdr.count--;
--	be16_add(&sf->hdr.totsize, -size);
-+	be16_add_cpu(&sf->hdr.totsize, -size);
+ 	i = sizeof(struct ext4_locality_group) * NR_CPUS;
+ 	sbi->s_locality_groups = kmalloc(i, GFP_NOFS);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		clear_opt(sbi->s_mount_opt, MBALLOC);
+-		kfree(sbi->s_mb_prealloc_table);
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+ 		return -ENOMEM;
+@@ -2713,75 +2698,10 @@ static void ext4_mb_free_committed_blocks(struct super_block *sb)
+ #define EXT4_MB_MAX_TO_SCAN_NAME	"max_to_scan"
+ #define EXT4_MB_MIN_TO_SCAN_NAME	"min_to_scan"
+ #define EXT4_MB_ORDER2_REQ		"order2_req"
+-#define EXT4_MB_SMALL_REQ		"small_req"
+-#define EXT4_MB_LARGE_REQ		"large_req"
+-#define EXT4_MB_PREALLOC_TABLE		"prealloc_table"
++#define EXT4_MB_STREAM_REQ		"stream_req"
+ #define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
  
- 	/*
- 	 * Fix up the start offset of the attribute fork
-@@ -1133,7 +1133,7 @@ xfs_attr_leaf_add_work(xfs_dabuf_t *bp, 
- 		xfs_da_log_buf(args->trans, bp,
- 		    XFS_DA_LOGRANGE(leaf, entry, tmp + sizeof(*entry)));
- 	}
--	be16_add(&hdr->count, 1);
-+	be16_add_cpu(&hdr->count, 1);
+-static int ext4_mb_read_prealloc_table(char *page, char **start,
+-			off_t off, int count, int *eof, void *data)
+-{
+-	struct ext4_sb_info *sbi = data;
+-	int len = 0;
+-	int i;
+-
+-	*eof = 1;
+-	if (off != 0)
+-		return 0;
+-	for (i = 0; i < sbi->s_mb_prealloc_table_size; i++)
+-		len += sprintf(page + len, "%ld ",
+-				sbi->s_mb_prealloc_table[i]);
+-	len += sprintf(page + len, "\n");
+-	*start = page;
+-	return len;
+-}
  
- 	/*
- 	 * Allocate space for the new string (at the end of the run).
-@@ -1147,7 +1147,7 @@ xfs_attr_leaf_add_work(xfs_dabuf_t *bp, 
- 					 mp->m_sb.sb_blocksize, NULL));
- 	ASSERT(be16_to_cpu(map->size) < XFS_LBSIZE(mp));
- 	ASSERT((be16_to_cpu(map->size) & 0x3) == 0);
--	be16_add(&map->size,
-+	be16_add_cpu(&map->size,
- 		-xfs_attr_leaf_newentsize(args->namelen, args->valuelen,
- 					  mp->m_sb.sb_blocksize, &tmp));
- 	entry->nameidx = cpu_to_be16(be16_to_cpu(map->base) +
-@@ -1214,12 +1214,12 @@ xfs_attr_leaf_add_work(xfs_dabuf_t *bp, 
- 	map = &hdr->freemap[0];
- 	for (i = 0; i < XFS_ATTR_LEAF_MAPSIZE; map++, i++) {
- 		if (be16_to_cpu(map->base) == tmp) {
--			be16_add(&map->base, sizeof(xfs_attr_leaf_entry_t));
--			be16_add(&map->size,
-+			be16_add_cpu(&map->base, sizeof(xfs_attr_leaf_entry_t));
-+			be16_add_cpu(&map->size,
- 				 -((int)sizeof(xfs_attr_leaf_entry_t)));
- 		}
- 	}
--	be16_add(&hdr->usedbytes, xfs_attr_leaf_entsize(leaf, args->index));
-+	be16_add_cpu(&hdr->usedbytes, xfs_attr_leaf_entsize(leaf, args->index));
- 	xfs_da_log_buf(args->trans, bp,
- 		XFS_DA_LOGRANGE(leaf, hdr, sizeof(*hdr)));
- 	return(0);
-@@ -1727,9 +1727,9 @@ xfs_attr_leaf_remove(xfs_dabuf_t *bp, xf
- 		ASSERT(be16_to_cpu(map->base) < XFS_LBSIZE(mp));
- 		ASSERT(be16_to_cpu(map->size) < XFS_LBSIZE(mp));
- 		if (be16_to_cpu(map->base) == tablesize) {
--			be16_add(&map->base,
-+			be16_add_cpu(&map->base,
- 				 -((int)sizeof(xfs_attr_leaf_entry_t)));
--			be16_add(&map->size, sizeof(xfs_attr_leaf_entry_t));
-+			be16_add_cpu(&map->size, sizeof(xfs_attr_leaf_entry_t));
- 		}
+-static int ext4_mb_write_prealloc_table(struct file *file,
+-			const char __user *buf, unsigned long cnt, void *data)
+-{
+-	struct ext4_sb_info *sbi = data;
+-	unsigned long value;
+-	unsigned long prev = 0;
+-	char str[128];
+-	char *cur;
+-	char *end;
+-	unsigned long *new_table;
+-	int num = 0;
+-	int i = 0;
+-
+-	if (cnt >= sizeof(str))
+-		return -EINVAL;
+-	if (copy_from_user(str, buf, cnt))
+-		return -EFAULT;
+-
+-	num = 0;
+-	cur = str;
+-	end = str + cnt;
+-	while (cur < end) {
+-		while ((cur < end) && (*cur == ' ')) cur++;
+-		value = simple_strtol(cur, &cur, 0);
+-		if (value == 0)
+-			break;
+-		if (value <= prev)
+-			return -EINVAL;
+-		prev = value;
+-		num++;
+-	}
+-
+-	new_table = kmalloc(num * sizeof(*new_table), GFP_KERNEL);
+-	if (new_table == NULL)
+-		return -ENOMEM;
+-	kfree(sbi->s_mb_prealloc_table);
+-	sbi->s_mb_prealloc_table = new_table;
+-	sbi->s_mb_prealloc_table_size = num;
+-	cur = str;
+-	end = str + cnt;
+-	while (cur < end && i < num) {
+-		while ((cur < end) && (*cur == ' ')) cur++;
+-		new_table[i++] = simple_strtol(cur, &cur, 0);
+-	}
+-	return cnt;
+-}
  
- 		if ((be16_to_cpu(map->base) + be16_to_cpu(map->size))
-@@ -1751,19 +1751,19 @@ xfs_attr_leaf_remove(xfs_dabuf_t *bp, xf
- 	if ((before >= 0) || (after >= 0)) {
- 		if ((before >= 0) && (after >= 0)) {
- 			map = &hdr->freemap[before];
--			be16_add(&map->size, entsize);
--			be16_add(&map->size,
-+			be16_add_cpu(&map->size, entsize);
-+			be16_add_cpu(&map->size,
- 				 be16_to_cpu(hdr->freemap[after].size));
- 			hdr->freemap[after].base = 0;
- 			hdr->freemap[after].size = 0;
- 		} else if (before >= 0) {
- 			map = &hdr->freemap[before];
--			be16_add(&map->size, entsize);
-+			be16_add_cpu(&map->size, entsize);
- 		} else {
- 			map = &hdr->freemap[after];
- 			/* both on-disk, don't endian flip twice */
- 			map->base = entry->nameidx;
--			be16_add(&map->size, entsize);
-+			be16_add_cpu(&map->size, entsize);
- 		}
- 	} else {
- 		/*
-@@ -1788,7 +1788,7 @@ xfs_attr_leaf_remove(xfs_dabuf_t *bp, xf
- 	 * Compress the remaining entries and zero out the removed stuff.
- 	 */
- 	memset(XFS_ATTR_LEAF_NAME(leaf, args->index), 0, entsize);
--	be16_add(&hdr->usedbytes, -entsize);
-+	be16_add_cpu(&hdr->usedbytes, -entsize);
- 	xfs_da_log_buf(args->trans, bp,
- 	     XFS_DA_LOGRANGE(leaf, XFS_ATTR_LEAF_NAME(leaf, args->index),
- 				   entsize));
-@@ -1796,7 +1796,7 @@ xfs_attr_leaf_remove(xfs_dabuf_t *bp, xf
- 	tmp = (be16_to_cpu(hdr->count) - args->index)
- 					* sizeof(xfs_attr_leaf_entry_t);
- 	memmove((char *)entry, (char *)(entry+1), tmp);
--	be16_add(&hdr->count, -1);
-+	be16_add_cpu(&hdr->count, -1);
- 	xfs_da_log_buf(args->trans, bp,
- 	    XFS_DA_LOGRANGE(leaf, entry, tmp + sizeof(*entry)));
- 	entry = &leaf->entries[be16_to_cpu(hdr->count)];
-@@ -2182,15 +2182,15 @@ xfs_attr_leaf_moveents(xfs_attr_leafbloc
- 		 */
- 		if (entry_s->flags & XFS_ATTR_INCOMPLETE) { /* skip partials? */
- 			memset(XFS_ATTR_LEAF_NAME(leaf_s, start_s + i), 0, tmp);
--			be16_add(&hdr_s->usedbytes, -tmp);
--			be16_add(&hdr_s->count, -1);
-+			be16_add_cpu(&hdr_s->usedbytes, -tmp);
-+			be16_add_cpu(&hdr_s->count, -1);
- 			entry_d--;	/* to compensate for ++ in loop hdr */
- 			desti--;
- 			if ((start_s + i) < offset)
- 				result++;	/* insertion index adjustment */
- 		} else {
- #endif /* GROT */
--			be16_add(&hdr_d->firstused, -tmp);
-+			be16_add_cpu(&hdr_d->firstused, -tmp);
- 			/* both on-disk, don't endian flip twice */
- 			entry_d->hashval = entry_s->hashval;
- 			/* both on-disk, don't endian flip twice */
-@@ -2203,10 +2203,10 @@ xfs_attr_leaf_moveents(xfs_attr_leafbloc
- 			ASSERT(be16_to_cpu(entry_s->nameidx) + tmp
- 							<= XFS_LBSIZE(mp));
- 			memset(XFS_ATTR_LEAF_NAME(leaf_s, start_s + i), 0, tmp);
--			be16_add(&hdr_s->usedbytes, -tmp);
--			be16_add(&hdr_d->usedbytes, tmp);
--			be16_add(&hdr_s->count, -1);
--			be16_add(&hdr_d->count, 1);
-+			be16_add_cpu(&hdr_s->usedbytes, -tmp);
-+			be16_add_cpu(&hdr_d->usedbytes, tmp);
-+			be16_add_cpu(&hdr_s->count, -1);
-+			be16_add_cpu(&hdr_d->count, 1);
- 			tmp = be16_to_cpu(hdr_d->count)
- 						* sizeof(xfs_attr_leaf_entry_t)
- 						+ sizeof(xfs_attr_leaf_hdr_t);
-@@ -2247,7 +2247,7 @@ xfs_attr_leaf_moveents(xfs_attr_leafbloc
- 	 * Fill in the freemap information
- 	 */
- 	hdr_d->freemap[0].base = cpu_to_be16(sizeof(xfs_attr_leaf_hdr_t));
--	be16_add(&hdr_d->freemap[0].base, be16_to_cpu(hdr_d->count) *
-+	be16_add_cpu(&hdr_d->freemap[0].base, be16_to_cpu(hdr_d->count) *
- 			sizeof(xfs_attr_leaf_entry_t));
- 	hdr_d->freemap[0].size = cpu_to_be16(be16_to_cpu(hdr_d->firstused)
- 			      - be16_to_cpu(hdr_d->freemap[0].base));
-diff -puN fs/xfs/xfs_bmap_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_bmap_btree.c
---- a/fs/xfs/xfs_bmap_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_bmap_btree.c
-@@ -631,7 +631,7 @@ xfs_bmbt_delrec(
- 		memcpy(lrp, rrp, numrrecs * sizeof(*lrp));
- 		xfs_bmbt_log_recs(cur, lbp, numlrecs + 1, numlrecs + numrrecs);
- 	}
--	be16_add(&left->bb_numrecs, numrrecs);
-+	be16_add_cpu(&left->bb_numrecs, numrrecs);
- 	left->bb_rightsib = right->bb_rightsib;
- 	xfs_bmbt_log_block(cur, lbp, XFS_BB_RIGHTSIB | XFS_BB_NUMRECS);
- 	if (be64_to_cpu(left->bb_rightsib) != NULLDFSBNO) {
-@@ -924,7 +924,7 @@ xfs_bmbt_killroot(
- 		xfs_iroot_realloc(ip, i, cur->bc_private.b.whichfork);
- 		block = ifp->if_broot;
- 	}
--	be16_add(&block->bb_numrecs, i);
-+	be16_add_cpu(&block->bb_numrecs, i);
- 	ASSERT(block->bb_numrecs == cblock->bb_numrecs);
- 	kp = XFS_BMAP_KEY_IADDR(block, 1, cur);
- 	ckp = XFS_BMAP_KEY_IADDR(cblock, 1, cur);
-@@ -947,7 +947,7 @@ xfs_bmbt_killroot(
- 			XFS_TRANS_DQ_BCOUNT, -1L);
- 	xfs_trans_binval(cur->bc_tp, cbp);
- 	cur->bc_bufs[level - 1] = NULL;
--	be16_add(&block->bb_level, -1);
-+	be16_add_cpu(&block->bb_level, -1);
- 	xfs_trans_log_inode(cur->bc_tp, ip,
- 		XFS_ILOG_CORE | XFS_ILOG_FBROOT(cur->bc_private.b.whichfork));
- 	cur->bc_nlevels--;
-@@ -1401,9 +1401,9 @@ xfs_bmbt_rshift(
- 		key.br_startoff = cpu_to_be64(xfs_bmbt_disk_get_startoff(rrp));
- 		rkp = &key;
- 	}
--	be16_add(&left->bb_numrecs, -1);
-+	be16_add_cpu(&left->bb_numrecs, -1);
- 	xfs_bmbt_log_block(cur, lbp, XFS_BB_NUMRECS);
--	be16_add(&right->bb_numrecs, 1);
-+	be16_add_cpu(&right->bb_numrecs, 1);
- #ifdef DEBUG
- 	if (level > 0)
- 		xfs_btree_check_key(XFS_BTNUM_BMAP, rkp, rkp + 1);
-@@ -1535,7 +1535,7 @@ xfs_bmbt_split(
- 	right->bb_numrecs = cpu_to_be16(be16_to_cpu(left->bb_numrecs) / 2);
- 	if ((be16_to_cpu(left->bb_numrecs) & 1) &&
- 	    cur->bc_ptrs[level] <= be16_to_cpu(right->bb_numrecs) + 1)
--		be16_add(&right->bb_numrecs, 1);
-+		be16_add_cpu(&right->bb_numrecs, 1);
- 	i = be16_to_cpu(left->bb_numrecs) - be16_to_cpu(right->bb_numrecs) + 1;
- 	if (level > 0) {
- 		lkp = XFS_BMAP_KEY_IADDR(left, i, cur);
-@@ -1562,7 +1562,7 @@ xfs_bmbt_split(
- 		xfs_bmbt_log_recs(cur, rbp, 1, be16_to_cpu(right->bb_numrecs));
- 		*startoff = xfs_bmbt_disk_get_startoff(rrp);
- 	}
--	be16_add(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
-+	be16_add_cpu(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
- 	right->bb_rightsib = left->bb_rightsib;
- 	left->bb_rightsib = cpu_to_be64(args.fsbno);
- 	right->bb_leftsib = cpu_to_be64(lbno);
-@@ -2240,7 +2240,7 @@ xfs_bmbt_newroot(
- 	bp = xfs_btree_get_bufl(args.mp, cur->bc_tp, args.fsbno, 0);
- 	cblock = XFS_BUF_TO_BMBT_BLOCK(bp);
- 	*cblock = *block;
--	be16_add(&block->bb_level, 1);
-+	be16_add_cpu(&block->bb_level, 1);
- 	block->bb_numrecs = cpu_to_be16(1);
- 	cur->bc_nlevels++;
- 	cur->bc_ptrs[level + 1] = 1;
-diff -puN fs/xfs/xfs_da_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_da_btree.c
---- a/fs/xfs/xfs_da_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_da_btree.c
-@@ -511,12 +511,12 @@ xfs_da_node_rebalance(xfs_da_state_t *st
- 		 * Move the req'd B-tree elements from high in node1 to
- 		 * low in node2.
- 		 */
--		be16_add(&node2->hdr.count, count);
-+		be16_add_cpu(&node2->hdr.count, count);
- 		tmp = count * (uint)sizeof(xfs_da_node_entry_t);
- 		btree_s = &node1->btree[be16_to_cpu(node1->hdr.count) - count];
- 		btree_d = &node2->btree[0];
- 		memcpy(btree_d, btree_s, tmp);
--		be16_add(&node1->hdr.count, -count);
-+		be16_add_cpu(&node1->hdr.count, -count);
- 	} else {
- 		/*
- 		 * Move the req'd B-tree elements from low in node2 to
-@@ -527,7 +527,7 @@ xfs_da_node_rebalance(xfs_da_state_t *st
- 		btree_s = &node2->btree[0];
- 		btree_d = &node1->btree[be16_to_cpu(node1->hdr.count)];
- 		memcpy(btree_d, btree_s, tmp);
--		be16_add(&node1->hdr.count, count);
-+		be16_add_cpu(&node1->hdr.count, count);
- 		xfs_da_log_buf(tp, blk1->bp,
- 			XFS_DA_LOGRANGE(node1, btree_d, tmp));
+ #define MB_PROC_VALUE_READ(name)				\
+ static int ext4_mb_read_##name(char *page, char **start,	\
+@@ -2823,10 +2743,8 @@ MB_PROC_VALUE_READ(min_to_scan);
+ MB_PROC_VALUE_WRITE(min_to_scan);
+ MB_PROC_VALUE_READ(order2_reqs);
+ MB_PROC_VALUE_WRITE(order2_reqs);
+-MB_PROC_VALUE_READ(small_req);
+-MB_PROC_VALUE_WRITE(small_req);
+-MB_PROC_VALUE_READ(large_req);
+-MB_PROC_VALUE_WRITE(large_req);
++MB_PROC_VALUE_READ(stream_request);
++MB_PROC_VALUE_WRITE(stream_request);
+ MB_PROC_VALUE_READ(group_prealloc);
+ MB_PROC_VALUE_WRITE(group_prealloc);
  
-@@ -539,7 +539,7 @@ xfs_da_node_rebalance(xfs_da_state_t *st
- 		btree_s = &node2->btree[count];
- 		btree_d = &node2->btree[0];
- 		memmove(btree_d, btree_s, tmp);
--		be16_add(&node2->hdr.count, -count);
-+		be16_add_cpu(&node2->hdr.count, -count);
- 	}
+@@ -2857,18 +2775,15 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
+ 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
+ 	MB_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, min_to_scan);
+ 	MB_PROC_HANDLER(EXT4_MB_ORDER2_REQ, order2_reqs);
+-	MB_PROC_HANDLER(EXT4_MB_SMALL_REQ, small_req);
+-	MB_PROC_HANDLER(EXT4_MB_LARGE_REQ, large_req);
+-	MB_PROC_HANDLER(EXT4_MB_PREALLOC_TABLE, prealloc_table);
++	MB_PROC_HANDLER(EXT4_MB_STREAM_REQ, stream_request);
+ 	MB_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, group_prealloc);
  
- 	/*
-@@ -604,7 +604,7 @@ xfs_da_node_add(xfs_da_state_t *state, x
- 	btree->before = cpu_to_be32(newblk->blkno);
- 	xfs_da_log_buf(state->args->trans, oldblk->bp,
- 		XFS_DA_LOGRANGE(node, btree, tmp + sizeof(*btree)));
--	be16_add(&node->hdr.count, 1);
-+	be16_add_cpu(&node->hdr.count, 1);
- 	xfs_da_log_buf(state->args->trans, oldblk->bp,
- 		XFS_DA_LOGRANGE(node, &node->hdr, sizeof(node->hdr)));
+ 	return 0;
  
-@@ -959,7 +959,7 @@ xfs_da_node_remove(xfs_da_state_t *state
- 	memset((char *)btree, 0, sizeof(xfs_da_node_entry_t));
- 	xfs_da_log_buf(state->args->trans, drop_blk->bp,
- 	    XFS_DA_LOGRANGE(node, btree, sizeof(*btree)));
--	be16_add(&node->hdr.count, -1);
-+	be16_add_cpu(&node->hdr.count, -1);
- 	xfs_da_log_buf(state->args->trans, drop_blk->bp,
- 	    XFS_DA_LOGRANGE(node, &node->hdr, sizeof(node->hdr)));
- 
-@@ -1018,7 +1018,7 @@ xfs_da_node_unbalance(xfs_da_state_t *st
- 	 */
- 	tmp = be16_to_cpu(drop_node->hdr.count) * (uint)sizeof(xfs_da_node_entry_t);
- 	memcpy(btree, &drop_node->btree[0], tmp);
--	be16_add(&save_node->hdr.count, be16_to_cpu(drop_node->hdr.count));
-+	be16_add_cpu(&save_node->hdr.count, be16_to_cpu(drop_node->hdr.count));
- 
- 	xfs_da_log_buf(tp, save_blk->bp,
- 		XFS_DA_LOGRANGE(save_node, &save_node->hdr,
-diff -puN fs/xfs/xfs_dir2_block.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_dir2_block.c
---- a/fs/xfs/xfs_dir2_block.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_dir2_block.c
-@@ -271,7 +271,7 @@ xfs_dir2_block_addname(
+ err_out:
++	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
+ 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_PREALLOC_TABLE, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_LARGE_REQ, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_SMALL_REQ, sbi->s_mb_proc);
++	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
+@@ -2890,9 +2805,7 @@ static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
+ 	snprintf(devname, sizeof(devname) - 1, "%s",
+ 		bdevname(sb->s_bdev, devname));
+ 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_PREALLOC_TABLE, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_SMALL_REQ, sbi->s_mb_proc);
+-	remove_proc_entry(EXT4_MB_LARGE_REQ, sbi->s_mb_proc);
++	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
+@@ -2996,8 +2909,8 @@ static int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
  		}
- 		lfloglow = toidx + 1 - (be32_to_cpu(btp->stale) - 1);
- 		lfloghigh -= be32_to_cpu(btp->stale) - 1;
--		be32_add(&btp->count, -(be32_to_cpu(btp->stale) - 1));
-+		be32_add_cpu(&btp->count, -(be32_to_cpu(btp->stale) - 1));
- 		xfs_dir2_data_make_free(tp, bp,
- 			(xfs_dir2_data_aoff_t)((char *)blp - (char *)block),
- 			(xfs_dir2_data_aoff_t)((be32_to_cpu(btp->stale) - 1) * sizeof(*blp)),
-@@ -326,7 +326,7 @@ xfs_dir2_block_addname(
- 		/*
- 		 * Update the tail (entry count).
- 		 */
--		be32_add(&btp->count, 1);
-+		be32_add_cpu(&btp->count, 1);
- 		/*
- 		 * If we now need to rebuild the bestfree map, do so.
- 		 * This needs to happen before the next call to use_free.
-@@ -387,7 +387,7 @@ xfs_dir2_block_addname(
- 			lfloglow = MIN(mid, lfloglow);
- 			lfloghigh = MAX(highstale, lfloghigh);
- 		}
--		be32_add(&btp->stale, -1);
-+		be32_add_cpu(&btp->stale, -1);
  	}
- 	/*
- 	 * Point to the new data entry.
-@@ -767,7 +767,7 @@ xfs_dir2_block_removename(
- 	/*
- 	 * Fix up the block tail.
- 	 */
--	be32_add(&btp->stale, 1);
-+	be32_add_cpu(&btp->stale, 1);
- 	xfs_dir2_block_log_tail(tp, bp);
- 	/*
- 	 * Remove the leaf entry by marking it stale.
-diff -puN fs/xfs/xfs_dir2_data.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_dir2_data.c
---- a/fs/xfs/xfs_dir2_data.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_dir2_data.c
-@@ -587,7 +587,7 @@ xfs_dir2_data_make_free(
- 		/*
- 		 * Fix up the new big freespace.
- 		 */
--		be16_add(&prevdup->length, len + be16_to_cpu(postdup->length));
-+		be16_add_cpu(&prevdup->length, len + be16_to_cpu(postdup->length));
- 		*xfs_dir2_data_unused_tag_p(prevdup) =
- 			cpu_to_be16((char *)prevdup - (char *)d);
- 		xfs_dir2_data_log_unused(tp, bp, prevdup);
-@@ -621,7 +621,7 @@ xfs_dir2_data_make_free(
- 	 */
- 	else if (prevdup) {
- 		dfp = xfs_dir2_data_freefind(d, prevdup);
--		be16_add(&prevdup->length, len);
-+		be16_add_cpu(&prevdup->length, len);
- 		*xfs_dir2_data_unused_tag_p(prevdup) =
- 			cpu_to_be16((char *)prevdup - (char *)d);
- 		xfs_dir2_data_log_unused(tp, bp, prevdup);
-diff -puN fs/xfs/xfs_dir2_leaf.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_dir2_leaf.c
---- a/fs/xfs/xfs_dir2_leaf.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_dir2_leaf.c
-@@ -359,7 +359,7 @@ xfs_dir2_leaf_addname(
- 			bestsp--;
- 			memmove(&bestsp[0], &bestsp[1],
- 				be32_to_cpu(ltp->bestcount) * sizeof(bestsp[0]));
--			be32_add(&ltp->bestcount, 1);
-+			be32_add_cpu(&ltp->bestcount, 1);
- 			xfs_dir2_leaf_log_tail(tp, lbp);
- 			xfs_dir2_leaf_log_bests(tp, lbp, 0, be32_to_cpu(ltp->bestcount) - 1);
- 		}
-@@ -445,7 +445,7 @@ xfs_dir2_leaf_addname(
- 		 */
- 		lfloglow = index;
- 		lfloghigh = be16_to_cpu(leaf->hdr.count);
--		be16_add(&leaf->hdr.count, 1);
-+		be16_add_cpu(&leaf->hdr.count, 1);
- 	}
- 	/*
- 	 * There are stale entries.
-@@ -523,7 +523,7 @@ xfs_dir2_leaf_addname(
- 			lfloglow = MIN(index, lfloglow);
- 			lfloghigh = MAX(highstale, lfloghigh);
- 		}
--		be16_add(&leaf->hdr.stale, -1);
-+		be16_add_cpu(&leaf->hdr.stale, -1);
- 	}
- 	/*
- 	 * Fill in the new leaf entry.
-@@ -626,7 +626,7 @@ xfs_dir2_leaf_compact(
- 	 * Update and log the header, log the leaf entries.
- 	 */
- 	ASSERT(be16_to_cpu(leaf->hdr.stale) == from - to);
--	be16_add(&leaf->hdr.count, -(be16_to_cpu(leaf->hdr.stale)));
-+	be16_add_cpu(&leaf->hdr.count, -(be16_to_cpu(leaf->hdr.stale)));
- 	leaf->hdr.stale = 0;
- 	xfs_dir2_leaf_log_header(args->trans, bp);
- 	if (loglow != -1)
-@@ -728,7 +728,7 @@ xfs_dir2_leaf_compact_x1(
- 	/*
- 	 * Adjust the leaf header values.
- 	 */
--	be16_add(&leaf->hdr.count, -(from - to));
-+	be16_add_cpu(&leaf->hdr.count, -(from - to));
- 	leaf->hdr.stale = cpu_to_be16(1);
- 	/*
- 	 * Remember the low/high stale value only in the "right"
-@@ -1470,7 +1470,7 @@ xfs_dir2_leaf_removename(
- 	/*
- 	 * We just mark the leaf entry stale by putting a null in it.
- 	 */
--	be16_add(&leaf->hdr.stale, 1);
-+	be16_add_cpu(&leaf->hdr.stale, 1);
- 	xfs_dir2_leaf_log_header(tp, lbp);
- 	lep->address = cpu_to_be32(XFS_DIR2_NULL_DATAPTR);
- 	xfs_dir2_leaf_log_ents(tp, lbp, index, index);
-@@ -1531,7 +1531,7 @@ xfs_dir2_leaf_removename(
- 			 */
- 			memmove(&bestsp[db - i], bestsp,
- 				(be32_to_cpu(ltp->bestcount) - (db - i)) * sizeof(*bestsp));
--			be32_add(&ltp->bestcount, -(db - i));
-+			be32_add_cpu(&ltp->bestcount, -(db - i));
- 			xfs_dir2_leaf_log_tail(tp, lbp);
- 			xfs_dir2_leaf_log_bests(tp, lbp, 0, be32_to_cpu(ltp->bestcount) - 1);
- 		} else
-@@ -1712,7 +1712,7 @@ xfs_dir2_leaf_trim_data(
- 	 * Eliminate the last bests entry from the table.
- 	 */
- 	bestsp = xfs_dir2_leaf_bests_p(ltp);
--	be32_add(&ltp->bestcount, -1);
-+	be32_add_cpu(&ltp->bestcount, -1);
- 	memmove(&bestsp[1], &bestsp[0], be32_to_cpu(ltp->bestcount) * sizeof(*bestsp));
- 	xfs_dir2_leaf_log_tail(tp, lbp);
- 	xfs_dir2_leaf_log_bests(tp, lbp, 0, be32_to_cpu(ltp->bestcount) - 1);
-diff -puN fs/xfs/xfs_dir2_node.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_dir2_node.c
---- a/fs/xfs/xfs_dir2_node.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_dir2_node.c
-@@ -254,7 +254,7 @@ xfs_dir2_leafn_add(
- 				(be16_to_cpu(leaf->hdr.count) - index) * sizeof(*lep));
- 		lfloglow = index;
- 		lfloghigh = be16_to_cpu(leaf->hdr.count);
--		be16_add(&leaf->hdr.count, 1);
-+		be16_add_cpu(&leaf->hdr.count, 1);
- 	}
- 	/*
- 	 * There are stale entries.  We'll use one for the new entry.
-@@ -322,7 +322,7 @@ xfs_dir2_leafn_add(
- 			lfloglow = MIN(index, lfloglow);
- 			lfloghigh = MAX(highstale, lfloghigh);
- 		}
--		be16_add(&leaf->hdr.stale, -1);
-+		be16_add_cpu(&leaf->hdr.stale, -1);
- 	}
- 	/*
- 	 * Insert the new entry, log everything.
-@@ -697,10 +697,10 @@ xfs_dir2_leafn_moveents(
- 	/*
- 	 * Update the headers and log them.
- 	 */
--	be16_add(&leaf_s->hdr.count, -(count));
--	be16_add(&leaf_s->hdr.stale, -(stale));
--	be16_add(&leaf_d->hdr.count, count);
--	be16_add(&leaf_d->hdr.stale, stale);
-+	be16_add_cpu(&leaf_s->hdr.count, -(count));
-+	be16_add_cpu(&leaf_s->hdr.stale, -(stale));
-+	be16_add_cpu(&leaf_d->hdr.count, count);
-+	be16_add_cpu(&leaf_d->hdr.stale, stale);
- 	xfs_dir2_leaf_log_header(tp, bp_s);
- 	xfs_dir2_leaf_log_header(tp, bp_d);
- 	xfs_dir2_leafn_check(args->dp, bp_s);
-@@ -885,7 +885,7 @@ xfs_dir2_leafn_remove(
- 	 * Kill the leaf entry by marking it stale.
- 	 * Log the leaf block changes.
- 	 */
--	be16_add(&leaf->hdr.stale, 1);
-+	be16_add_cpu(&leaf->hdr.stale, 1);
- 	xfs_dir2_leaf_log_header(tp, bp);
- 	lep->address = cpu_to_be32(XFS_DIR2_NULL_DATAPTR);
- 	xfs_dir2_leaf_log_ents(tp, bp, index, index);
-@@ -971,7 +971,7 @@ xfs_dir2_leafn_remove(
- 			/*
- 			 * One less used entry in the free table.
- 			 */
--			be32_add(&free->hdr.nused, -1);
-+			be32_add_cpu(&free->hdr.nused, -1);
- 			xfs_dir2_free_log_header(tp, fbp);
- 			/*
- 			 * If this was the last entry in the table, we can
-@@ -1642,7 +1642,7 @@ xfs_dir2_node_addname_int(
- 		 * (this should always be true) then update the header.
- 		 */
- 		if (be16_to_cpu(free->bests[findex]) == NULLDATAOFF) {
--			be32_add(&free->hdr.nused, 1);
-+			be32_add_cpu(&free->hdr.nused, 1);
- 			xfs_dir2_free_log_header(tp, fbp);
- 		}
- 		/*
-diff -puN fs/xfs/xfs_fsops.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_fsops.c
---- a/fs/xfs/xfs_fsops.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_fsops.c
-@@ -318,7 +318,7 @@ xfs_growfs_data_private(
- 		}
- 		ASSERT(bp);
- 		agi = XFS_BUF_TO_AGI(bp);
--		be32_add(&agi->agi_length, new);
-+		be32_add_cpu(&agi->agi_length, new);
- 		ASSERT(nagcount == oagcount ||
- 		       be32_to_cpu(agi->agi_length) == mp->m_sb.sb_agblocks);
- 		xfs_ialloc_log_agi(tp, bp, XFS_AGI_LENGTH);
-@@ -331,7 +331,7 @@ xfs_growfs_data_private(
- 		}
- 		ASSERT(bp);
- 		agf = XFS_BUF_TO_AGF(bp);
--		be32_add(&agf->agf_length, new);
-+		be32_add_cpu(&agf->agf_length, new);
- 		ASSERT(be32_to_cpu(agf->agf_length) ==
- 		       be32_to_cpu(agi->agi_length));
- 		xfs_alloc_log_agf(tp, bp, XFS_AGF_LENGTH);
-diff -puN fs/xfs/xfs_ialloc.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_ialloc.c
---- a/fs/xfs/xfs_ialloc.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_ialloc.c
-@@ -301,8 +301,8 @@ xfs_ialloc_ag_alloc(
- 		}
- 		xfs_trans_inode_alloc_buf(tp, fbuf);
- 	}
--	be32_add(&agi->agi_count, newlen);
--	be32_add(&agi->agi_freecount, newlen);
-+	be32_add_cpu(&agi->agi_count, newlen);
-+	be32_add_cpu(&agi->agi_freecount, newlen);
- 	agno = be32_to_cpu(agi->agi_seqno);
- 	down_read(&args.mp->m_peraglock);
- 	args.mp->m_perag[agno].pagi_freecount += newlen;
-@@ -885,7 +885,7 @@ nextag:
- 	if ((error = xfs_inobt_update(cur, rec.ir_startino, rec.ir_freecount,
- 			rec.ir_free)))
- 		goto error0;
--	be32_add(&agi->agi_freecount, -1);
-+	be32_add_cpu(&agi->agi_freecount, -1);
- 	xfs_ialloc_log_agi(tp, agbp, XFS_AGI_FREECOUNT);
- 	down_read(&mp->m_peraglock);
- 	mp->m_perag[tagno].pagi_freecount--;
-@@ -1065,8 +1065,8 @@ xfs_difree(
- 		 * to be freed when the transaction is committed.
- 		 */
- 		ilen = XFS_IALLOC_INODES(mp);
--		be32_add(&agi->agi_count, -ilen);
--		be32_add(&agi->agi_freecount, -(ilen - 1));
-+		be32_add_cpu(&agi->agi_count, -ilen);
-+		be32_add_cpu(&agi->agi_freecount, -(ilen - 1));
- 		xfs_ialloc_log_agi(tp, agbp, XFS_AGI_COUNT | XFS_AGI_FREECOUNT);
- 		down_read(&mp->m_peraglock);
- 		mp->m_perag[agno].pagi_freecount -= ilen - 1;
-@@ -1095,7 +1095,7 @@ xfs_difree(
- 		/* 
- 		 * Change the inode free counts and log the ag/sb changes.
- 		 */
--		be32_add(&agi->agi_freecount, 1);
-+		be32_add_cpu(&agi->agi_freecount, 1);
- 		xfs_ialloc_log_agi(tp, agbp, XFS_AGI_FREECOUNT);
- 		down_read(&mp->m_peraglock);
- 		mp->m_perag[agno].pagi_freecount++;
-diff -puN fs/xfs/xfs_ialloc_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_ialloc_btree.c
---- a/fs/xfs/xfs_ialloc_btree.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_ialloc_btree.c
-@@ -189,7 +189,7 @@ xfs_inobt_delrec(
- 			 */
- 			bno = be32_to_cpu(agi->agi_root);
- 			agi->agi_root = *pp;
--			be32_add(&agi->agi_level, -1);
-+			be32_add_cpu(&agi->agi_level, -1);
- 			/*
- 			 * Free the block.
- 			 */
-@@ -1132,7 +1132,7 @@ xfs_inobt_lshift(
- 	/*
- 	 * Bump and log left's numrecs, decrement and log right's numrecs.
- 	 */
--	be16_add(&left->bb_numrecs, 1);
-+	be16_add_cpu(&left->bb_numrecs, 1);
- 	xfs_inobt_log_block(cur->bc_tp, lbp, XFS_BB_NUMRECS);
- #ifdef DEBUG
- 	if (level > 0)
-@@ -1140,7 +1140,7 @@ xfs_inobt_lshift(
- 	else
- 		xfs_btree_check_rec(cur->bc_btnum, lrp - 1, lrp);
  #endif
--	be16_add(&right->bb_numrecs, -1);
-+	be16_add_cpu(&right->bb_numrecs, -1);
- 	xfs_inobt_log_block(cur->bc_tp, rbp, XFS_BB_NUMRECS);
- 	/*
- 	 * Slide the contents of right down one entry.
-@@ -1232,7 +1232,7 @@ xfs_inobt_newroot(
- 	 * Set the root data in the a.g. inode structure.
- 	 */
- 	agi->agi_root = cpu_to_be32(args.agbno);
--	be32_add(&agi->agi_level, 1);
-+	be32_add_cpu(&agi->agi_level, 1);
- 	xfs_ialloc_log_agi(args.tp, cur->bc_private.i.agbp,
- 		XFS_AGI_ROOT | XFS_AGI_LEVEL);
- 	/*
-@@ -1426,9 +1426,9 @@ xfs_inobt_rshift(
- 	/*
- 	 * Decrement and log left's numrecs, bump and log right's numrecs.
- 	 */
--	be16_add(&left->bb_numrecs, -1);
-+	be16_add_cpu(&left->bb_numrecs, -1);
- 	xfs_inobt_log_block(cur->bc_tp, lbp, XFS_BB_NUMRECS);
--	be16_add(&right->bb_numrecs, 1);
-+	be16_add_cpu(&right->bb_numrecs, 1);
- #ifdef DEBUG
- 	if (level > 0)
- 		xfs_btree_check_key(cur->bc_btnum, rkp, rkp + 1);
-@@ -1529,7 +1529,7 @@ xfs_inobt_split(
- 	 */
- 	if ((be16_to_cpu(left->bb_numrecs) & 1) &&
- 	    cur->bc_ptrs[level] <= be16_to_cpu(right->bb_numrecs) + 1)
--		be16_add(&right->bb_numrecs, 1);
-+		be16_add_cpu(&right->bb_numrecs, 1);
- 	i = be16_to_cpu(left->bb_numrecs) - be16_to_cpu(right->bb_numrecs) + 1;
- 	/*
- 	 * For non-leaf blocks, copy keys and addresses over to the new block.
-@@ -1565,7 +1565,7 @@ xfs_inobt_split(
- 	 * Find the left block number by looking in the buffer.
- 	 * Adjust numrecs, sibling pointers.
- 	 */
--	be16_add(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
-+	be16_add_cpu(&left->bb_numrecs, -(be16_to_cpu(right->bb_numrecs)));
- 	right->bb_rightsib = left->bb_rightsib;
- 	left->bb_rightsib = cpu_to_be32(args.agbno);
- 	right->bb_leftsib = cpu_to_be32(lbno);
-diff -puN fs/xfs/xfs_trans.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api fs/xfs/xfs_trans.c
---- a/fs/xfs/xfs_trans.c~xfs-convert-bex_add-to-bex_add_cpu-new-common-api
-+++ a/fs/xfs/xfs_trans.c
-@@ -567,26 +567,26 @@ xfs_trans_apply_sb_deltas(
- 	 */
- 	if (!xfs_sb_version_haslazysbcount(&(tp->t_mountp->m_sb))) {
- 		if (tp->t_icount_delta)
--			be64_add(&sbp->sb_icount, tp->t_icount_delta);
-+			be64_add_cpu(&sbp->sb_icount, tp->t_icount_delta);
- 		if (tp->t_ifree_delta)
--			be64_add(&sbp->sb_ifree, tp->t_ifree_delta);
-+			be64_add_cpu(&sbp->sb_ifree, tp->t_ifree_delta);
- 		if (tp->t_fdblocks_delta)
--			be64_add(&sbp->sb_fdblocks, tp->t_fdblocks_delta);
-+			be64_add_cpu(&sbp->sb_fdblocks, tp->t_fdblocks_delta);
- 		if (tp->t_res_fdblocks_delta)
--			be64_add(&sbp->sb_fdblocks, tp->t_res_fdblocks_delta);
-+			be64_add_cpu(&sbp->sb_fdblocks, tp->t_res_fdblocks_delta);
- 	}
+-	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
+-		    ac->ac_b_ex.fe_len);
++	mb_set_bits(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group), bitmap_bh->b_data,
++				ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
  
- 	if (tp->t_frextents_delta)
--		be64_add(&sbp->sb_frextents, tp->t_frextents_delta);
-+		be64_add_cpu(&sbp->sb_frextents, tp->t_frextents_delta);
- 	if (tp->t_res_frextents_delta)
--		be64_add(&sbp->sb_frextents, tp->t_res_frextents_delta);
-+		be64_add_cpu(&sbp->sb_frextents, tp->t_res_frextents_delta);
+ 	spin_lock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+@@ -3027,6 +2940,10 @@ out_err:
  
- 	if (tp->t_dblocks_delta) {
--		be64_add(&sbp->sb_dblocks, tp->t_dblocks_delta);
-+		be64_add_cpu(&sbp->sb_dblocks, tp->t_dblocks_delta);
- 		whole = 1;
+ /*
+  * here we normalize request for locality group
++ * Group request are normalized to s_strip size if we set the same via mount
++ * option. If not we set it to s_mb_group_prealloc which can be configured via
++ * /proc/fs/ext4/<partition>/group_prealloc
++ *
+  * XXX: should we try to preallocate more than the group has now?
+  */
+ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+@@ -3035,7 +2952,10 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+ 	struct ext4_locality_group *lg = ac->ac_lg;
+ 
+ 	BUG_ON(lg == NULL);
+-	ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
++	if (EXT4_SB(sb)->s_stripe)
++		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
++	else
++		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
+ 	mb_debug("#%u: goal %lu blocks for locality group\n",
+ 		current->pid, ac->ac_g_ex.fe_len);
+ }
+@@ -3047,14 +2967,12 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 				struct ext4_allocation_request *ar)
+ {
+-	unsigned long wind;
+-	int bsbits, i;
++	int bsbits, max;
+ 	ext4_lblk_t end;
+ 	struct list_head *cur;
+ 	loff_t size, orig_size;
+ 	ext4_lblk_t start, orig_start;
+ 	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
+-	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 
+ 	/* do normalize only data requests, metadata requests
+ 	   do not need preallocation */
+@@ -3083,36 +3001,51 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	size = size << bsbits;
+ 	if (size < i_size_read(ac->ac_inode))
+ 		size = i_size_read(ac->ac_inode);
+-	size = (size + ac->ac_sb->s_blocksize - 1) >> bsbits;
+ 
+-	start = 0;
+-	wind = 0;
++	/* max available blocks in a free group */
++	max = EXT4_BLOCKS_PER_GROUP(ac->ac_sb) - 1 - 1 -
++				EXT4_SB(ac->ac_sb)->s_itb_per_group;
+ 
+-	/* let's choose preallocation window depending on file size */
+-	for (i = 0; i < sbi->s_mb_prealloc_table_size; i++) {
+-		if (size <= sbi->s_mb_prealloc_table[i]) {
+-			wind = sbi->s_mb_prealloc_table[i];
+-			break;
+-		}
+-	}
+-	size = wind;
+-
+-	if (wind == 0) {
+-		__u64 tstart, tend;
+-		/* file is quite large, we now preallocate with
+-		 * the biggest configured window with regart to
+-		 * logical offset */
+-		wind = sbi->s_mb_prealloc_table[i - 1];
+-		tstart = ac->ac_o_ex.fe_logical;
+-		do_div(tstart, wind);
+-		start = tstart * wind;
+-		tend = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len - 1;
+-		do_div(tend, wind);
+-		tend = tend * wind + wind;
+-		size = tend - start;
++#define NRL_CHECK_SIZE(req,size,max,bits)	\
++		(req <= (size) || max <= ((size) >> bits))
++
++	/* first, try to predict filesize */
++	/* XXX: should this table be tunable? */
++	start = 0;
++	if (size <= 16 * 1024) {
++		size = 16 * 1024;
++	} else if (size <= 32 * 1024) {
++		size = 32 * 1024;
++	} else if (size <= 64 * 1024) {
++		size = 64 * 1024;
++	} else if (size <= 128 * 1024) {
++		size = 128 * 1024;
++	} else if (size <= 256 * 1024) {
++		size = 256 * 1024;
++	} else if (size <= 512 * 1024) {
++		size = 512 * 1024;
++	} else if (size <= 1024 * 1024) {
++		size = 1024 * 1024;
++	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
++		start = ac->ac_o_ex.fe_logical << bsbits;
++		start = (start / (1024 * 1024)) * (1024 * 1024);
++		size = 1024 * 1024;
++	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
++		start = ac->ac_o_ex.fe_logical << bsbits;
++		start = (start / (4 * (1024 * 1024))) * 4 * (1024 * 1024);
++		size = 4 * 1024 * 1024;
++	} else if(NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,(8<<20)>>bsbits,max,bsbits)){
++		start = ac->ac_o_ex.fe_logical;
++		start = start << bsbits;
++		start = (start / (8 * (1024 * 1024))) * 8 * (1024 * 1024);
++		size = 8 * 1024 * 1024;
++	} else {
++		start = ac->ac_o_ex.fe_logical;
++		start = start << bsbits;
++		size = ac->ac_o_ex.fe_len << bsbits;
  	}
- 	if (tp->t_agcount_delta) {
--		be32_add(&sbp->sb_agcount, tp->t_agcount_delta);
-+		be32_add_cpu(&sbp->sb_agcount, tp->t_agcount_delta);
- 		whole = 1;
+-	orig_size = size;
+-	orig_start = start;
++	orig_size = size = size >> bsbits;
++	orig_start = start = start >> bsbits;
+ 
+ 	/* don't cover already allocated blocks in selected range */
+ 	if (ar->pleft && start <= ar->lleft) {
+@@ -3395,8 +3328,10 @@ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 					     &groupnr, &start);
+ 		len = pa->pa_len;
+ 		spin_unlock(&pa->pa_lock);
++		if (unlikely(len == 0))
++			continue;
+ 		BUG_ON(groupnr != group);
+-		mb_set_bits(bitmap, start, len);
++		mb_set_bits(sb_bgl_lock(EXT4_SB(sb), group), bitmap, start, len);
+ 		preallocated += len;
+ 		count++;
  	}
- 	if (tp->t_imaxpct_delta) {
-@@ -594,19 +594,19 @@ xfs_trans_apply_sb_deltas(
- 		whole = 1;
+@@ -3641,7 +3576,7 @@ static int ext4_mb_release_inode_pa(struct ext4_buddy *e4b,
+ 
+ 	BUG_ON(pa->pa_deleted == 0);
+ 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
+-	BUG_ON(group != e4b->bd_group);
++	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
+ 	end = bit + pa->pa_len;
+ 
+ 	ac.ac_sb = sb;
+@@ -3696,7 +3631,7 @@ static int ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+ 
+ 	BUG_ON(pa->pa_deleted == 0);
+ 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
+-	BUG_ON(group != e4b->bd_group);
++	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
+ 	mb_free_blocks(pa->pa_inode, e4b, bit, pa->pa_len);
+ 	atomic_add(pa->pa_len, &EXT4_SB(sb)->s_mb_discarded);
+ 
+@@ -3989,27 +3924,29 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ #endif
+ }
+ 
+-/* FIXME!!
+- * Need comment explaining when we look at locality group
+- * based allocation
++/*
++ * We use locality group preallocation for small size file. The size of the
++ * file is determined by the current size or the resulting size after
++ * allocation which ever is larger
++ *
++ * One can tune this size via /proc/fs/ext4/<partition>/stream_req
+  */
+-
+ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
++	int bsbits = ac->ac_sb->s_blocksize_bits;
++	loff_t size, isize;
+ 
+ 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
+ 		return;
+ 
+-	/* request is so large that we don't care about
+-	 * streaming - it overweights any possible seek */
+-	if (ac->ac_o_ex.fe_len >= sbi->s_mb_large_req)
+-		return;
++	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
++	isize = i_size_read(ac->ac_inode) >> bsbits;
++	if (size < isize)
++		size = isize;
+ 
+-	/* FIXME!!
+-	 * is this  >=  considering the above ?
+-	 */
+-	if (ac->ac_o_ex.fe_len >= sbi->s_mb_small_req)
++	/* don't use group allocation for large files */
++	if (size >= sbi->s_mb_stream_request)
+ 		return;
+ 
+ 	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
+@@ -4419,7 +4356,8 @@ do_more:
+ 			BUG_ON(!mb_test_bit(bit + i, bitmap_bh->b_data));
  	}
- 	if (tp->t_rextsize_delta) {
--		be32_add(&sbp->sb_rextsize, tp->t_rextsize_delta);
-+		be32_add_cpu(&sbp->sb_rextsize, tp->t_rextsize_delta);
- 		whole = 1;
- 	}
- 	if (tp->t_rbmblocks_delta) {
--		be32_add(&sbp->sb_rbmblocks, tp->t_rbmblocks_delta);
-+		be32_add_cpu(&sbp->sb_rbmblocks, tp->t_rbmblocks_delta);
- 		whole = 1;
- 	}
- 	if (tp->t_rblocks_delta) {
--		be64_add(&sbp->sb_rblocks, tp->t_rblocks_delta);
-+		be64_add_cpu(&sbp->sb_rblocks, tp->t_rblocks_delta);
- 		whole = 1;
- 	}
- 	if (tp->t_rextents_delta) {
--		be64_add(&sbp->sb_rextents, tp->t_rextents_delta);
-+		be64_add_cpu(&sbp->sb_rextents, tp->t_rextents_delta);
- 		whole = 1;
- 	}
- 	if (tp->t_rextslog_delta) {
-_
-
-Patches currently in -mm which might be from marcin.slusarz@gmail.com are
-
-git-alsa.patch
-git-ocfs2.patch
-ehci-hcd-fix-sparse-warning-about-shadowing-status-symbol-checkpatch-fixes.patch
-vgacon-fix-sparse-warning-about-shadowing-i-symbol.patch
-fbcon-fix-sparse-warning-about-shadowing-p-symbol.patch
-fbcon-fix-sparse-warning-about-shadowing-rotate-symbol.patch
-udf-remove-wrong-prototype-of-udf_readdir.patch
-udf-improve-readability-of-do_udf_readdir.patch
-udf-fix-coding-style-of-dirc.patch
-udf-fix-3-signedness-1-unitialized-variable-warnings.patch
-udf-fix-signedness-issue.patch
-byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch
-ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu.patch
-xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
+ #endif
+-	mb_clear_bits(bitmap_bh->b_data, bit, count);
++	mb_clear_bits(sb_bgl_lock(sbi, block_group), bitmap_bh->b_data,
++			bit, count);
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+diff --git a/include/linux/ext4_fs_sb.h b/include/linux/ext4_fs_sb.h
+index 85100ea..3bc6583 100644
+--- a/include/linux/ext4_fs_sb.h
++++ b/include/linux/ext4_fs_sb.h
+@@ -105,17 +105,12 @@ struct ext4_sb_info {
+ 	unsigned short *s_mb_offsets, *s_mb_maxs;
+ 
+ 	/* tunables */
+-	unsigned long s_mb_factor;
+ 	unsigned long s_stripe;
+-	unsigned long s_mb_small_req;
+-	unsigned long s_mb_large_req;
++	unsigned long s_mb_stream_request;
+ 	unsigned long s_mb_max_to_scan;
+ 	unsigned long s_mb_min_to_scan;
+-	unsigned long s_mb_max_groups_to_scan;
+ 	unsigned long s_mb_stats;
+ 	unsigned long s_mb_order2_reqs;
+-	unsigned long *s_mb_prealloc_table;
+-	unsigned long s_mb_prealloc_table_size;
+ 	unsigned long s_mb_group_prealloc;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
