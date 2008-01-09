@@ -1,63 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Use superblock s_raid_stripe_width as stripe size
- during block allocation.
-Date: Wed, 09 Jan 2008 11:21:10 -0600
-Message-ID: <47850286.80001@redhat.com>
-References: <1199898469-10369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Should we enabling mballoc by default ?
+Date: Wed, 9 Jan 2008 23:39:06 +0530
+Message-ID: <20080109180906.GB8259@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>, Theodore Tso <tytso@mit.edu>,
+	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34349 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752306AbYAIRW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Jan 2008 12:22:57 -0500
-In-Reply-To: <1199898469-10369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:43165 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753763AbYAISJi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jan 2008 13:09:38 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m09I9LBM024511
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 05:09:21 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m09I9aYa418042
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 05:09:36 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m09I9KuQ011733
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 05:09:20 +1100
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> The stipe size used during block allocation is calculated as below.
-> a) if we specify a stripe=<value> option using mount time. Use that value.
-> b) if not use the value specified in super block.
-> b) If the value specfied at mount time is greater than blocks per group use
-> the value specified ini the super block.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/super.c |   10 ++++++++++
->  1 files changed, 10 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index db1edc8..10330eb 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2136,6 +2136,16 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
->  	sbi->s_rsv_window_head.rsv_alloc_hit = 0;
->  	sbi->s_rsv_window_head.rsv_goal_size = 0;
->  	ext4_rsv_window_add(sb, &sbi->s_rsv_window_head);
-> +	/*
-> +	 * set the stripe size. If we have specified it via mount option, then
-> +	 * use the mount option value. If the value specified at mount time is
-> +	 * greater than the blocks per group use the super block value.
-> +	 * Allocator needs it be less than blocks per group.
-> +	 */
-> +	if (!sbi->s_stripe ||
-> +			sbi->s_stripe >= sbi->s_blocks_per_group) {
+Hi,
 
-Is stripe == s_blocks_per_group problematic?
+mballoc currently causes fragmentation of small size files. The
+behaviour can be observed by running parallel dd on ext4 file system. A
+sample test case can be found here.
 
-Should we warn/printk in the case that the specified size is too big?
+http://www.radian.org/~kvaneesh/ext4/mballoc-frag/fragmentation-analysis
 
-Thanks,
+This is because for small size request/file mballoc uses group prealloc
+space. That means if you have singe cpu and multiple threads doing
+parallel io to the file the block request are served from the same
+prealloc space. This results in the fragmentation observed above. (Group
+prealloc space is per cpu )
 
--Eric
+This problem should go away with delayed allocation because the write
+out happens with multiple blocks and mballoc places then close together
+even though they get served by the same group prealloc space.
+Considering that we don't have delalloc yet, i guess we should push
+mballoc to 2.6.25 with default disabled and O_DIRECT type workloads can
+enabled then via mount option.
 
-> +		sbi->s_stripe = le32_to_cpu(es->s_raid_stripe_width);
-> +	}
->  
->  	/*
->  	 * set up enough so that it can read an inode
+
+-aneesh
