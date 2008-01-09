@@ -1,77 +1,63 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Check for return value from sb_set_blocksize
-Date: Wed,  9 Jan 2008 22:37:49 +0530
-Message-ID: <1199898469-10369-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Use superblock s_raid_stripe_width as stripe size
+ during block allocation.
+Date: Wed, 09 Jan 2008 11:21:10 -0600
+Message-ID: <47850286.80001@redhat.com>
 References: <1199898469-10369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, adilger@sun.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, tytso@mit.edu, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:43395 "EHLO
-	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751641AbYAIRIC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jan 2008 12:08:02 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m09H7rcp011271
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Jan 2008 22:37:53 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m09H7ru6917592
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Jan 2008 22:37:53 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m09H7stQ006594
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Jan 2008 17:07:55 GMT
+Received: from mx1.redhat.com ([66.187.233.31]:34349 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752306AbYAIRW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Jan 2008 12:22:57 -0500
 In-Reply-To: <1199898469-10369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-sb_set_blocksize validates whether the specfied block size can be used by
-the file system. Make sure we fail mounting the file system if the
-blocksize specfied cannot be used.
+Aneesh Kumar K.V wrote:
+> The stipe size used during block allocation is calculated as below.
+> a) if we specify a stripe=<value> option using mount time. Use that value.
+> b) if not use the value specified in super block.
+> b) If the value specfied at mount time is greater than blocks per group use
+> the value specified ini the super block.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/super.c |   10 ++++++++++
+>  1 files changed, 10 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index db1edc8..10330eb 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2136,6 +2136,16 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+>  	sbi->s_rsv_window_head.rsv_alloc_hit = 0;
+>  	sbi->s_rsv_window_head.rsv_goal_size = 0;
+>  	ext4_rsv_window_add(sb, &sbi->s_rsv_window_head);
+> +	/*
+> +	 * set the stripe size. If we have specified it via mount option, then
+> +	 * use the mount option value. If the value specified at mount time is
+> +	 * greater than the blocks per group use the super block value.
+> +	 * Allocator needs it be less than blocks per group.
+> +	 */
+> +	if (!sbi->s_stripe ||
+> +			sbi->s_stripe >= sbi->s_blocks_per_group) {
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/super.c |   18 +++++++-----------
- 1 files changed, 7 insertions(+), 11 deletions(-)
+Is stripe == s_blocks_per_group problematic?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 10330eb..ab62d7f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1793,7 +1793,6 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 	unsigned long def_mount_opts;
- 	struct inode *root;
- 	int blocksize;
--	int hblock;
- 	int db_count;
- 	int i;
- 	int needs_recovery;
-@@ -1958,20 +1957,17 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
--	hblock = bdev_hardsect_size(sb->s_bdev);
- 	if (sb->s_blocksize != blocksize) {
--		/*
--		 * Make sure the blocksize for the filesystem is larger
--		 * than the hardware sectorsize for the machine.
--		 */
--		if (blocksize < hblock) {
--			printk(KERN_ERR "EXT4-fs: blocksize %d too small for "
--			       "device blocksize %d.\n", blocksize, hblock);
-+
-+		brelse (bh);
-+
-+		/* Validate the filesystem blocksize */
-+		if (!sb_set_blocksize(sb, blocksize)) {
-+			printk(KERN_ERR "EXT4-fs: bad block size %d.\n",
-+					blocksize);
- 			goto failed_mount;
- 		}
- 
--		brelse (bh);
--		sb_set_blocksize(sb, blocksize);
- 		logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
- 		offset = do_div(logical_sb_block, blocksize);
- 		bh = sb_bread(sb, logical_sb_block);
--- 
-1.5.4.rc2.60.gb2e62-dirty
+Should we warn/printk in the case that the specified size is too big?
+
+Thanks,
+
+-Eric
+
+> +		sbi->s_stripe = le32_to_cpu(es->s_raid_stripe_width);
+> +	}
+>  
+>  	/*
+>  	 * set up enough so that it can read an inode
