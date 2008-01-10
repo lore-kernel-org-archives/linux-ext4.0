@@ -1,118 +1,81 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: fix uniniatilized extend splitting error.
-Date: Thu, 10 Jan 2008 14:31:03 -0700
-Message-ID: <20080110213103.GJ3351@webber.adilger.int>
-References: <20080110143142.GC8685@dmon-lap.sw.ru>
+Subject: Re: patch queue update
+Date: Thu, 10 Jan 2008 14:43:23 -0700
+Message-ID: <20080110214323.GL3351@webber.adilger.int>
+References: <20080110153358.GA9367@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"Amit K. Arora" <aarora@linux.vnet.ibm.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:46973 "EHLO
+Received: from mail.clusterfs.com ([74.0.229.162]:55824 "EHLO
 	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752935AbYAJVbH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jan 2008 16:31:07 -0500
+	with ESMTP id S1751741AbYAJVnZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jan 2008 16:43:25 -0500
 Content-Disposition: inline
-In-Reply-To: <20080110143142.GC8685@dmon-lap.sw.ru>
+In-Reply-To: <20080110153358.GA9367@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 10, 2008  17:31 +0300, Dmitry Monakhov wrote:
-> While playing with new fancy fallocate interface on ext4 i've triggered
-> bug which corrupted my grub :).
+On Jan 10, 2008  21:03 +0530, Aneesh Kumar K.V wrote:
+>  	if (i >= sbi->s_mb_order2_reqs) {
+> -		i--;
+> -		if ((ac->ac_g_ex.fe_len & (~(1 << i))) == 0)
+> +		/*
+> +		 * This should tell if fe_len is exactly power of 2
+> +		 */
+> +		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
+>  			ac->ac_2order = i;
 
-I notice I'm CC'd on this, but in fact Amit wrote the code.  I've CC'd
-him even though I expect he will notice it anyways.
+While you changed i to (i - 1) in the "if" you didn't change it when
+setting ac_2order...  Is that incorrect?
 
-> My testcase:
-> ~~~~~~~~~~~~
-> blksize = 0x1000;
-> fd = open(argv[1], O_RDWR|O_CREAT, 0700);
-> unsigned long long sz = 0x10000000UL;
-> /* allocating big blocks chunk */
-> syscall(__NR_fallocate, fd, 0, 0UL, sz)
-> 
-> /* grab all other available filesystem space */
-> tfd = open("tmp", O_RDWR|O_CREAT|O_DIRECT, 0700);
-> while( write(tfd, buf, 4096) > 0); /* loop untill ENOSPC */
-> fsync(fd); /* just in case */
-> while (pos < sz) {
-> 	/* each seek+ write operation result in splits uninitialized extent
-> 	in three extents. Splitting may result in new extent allocation
-> 	which probably will fail because of ENOSPC*/
-> 
-> 	lseek(fd, blksize*2 -1, SEEK_CUR);
-> 	if ((ret = write(fd, 'a', 1)) != 1)
-> 		exit(1);
-> 	pos += blksize * 2;
-> }
+>  		/*
+> +		 * Yield the CPU here so that we don't get soft lockup
+>  		 */
+> -		schedule_timeout(HZ);
+> +		schedule();
+>  		goto repeat;
+>  	}
+>  
+> @@ -3808,7 +3820,7 @@ repeat:
+>  			printk(KERN_ERR "uh-oh! used pa while discarding\n");
+>  			dump_stack();
+>  			current->state = TASK_UNINTERRUPTIBLE;
+> -			schedule();
+> +			schedule_timeout(HZ);
+>  			goto repeat;
 
-Interesting test, and well thought out...
+Is this change to schedule_timeout() intentional?  The earlier code is
+removing the use of schedule_timeout.  I could be wrong, as I didn't
+follow this discussion closely, but sometimes changes like this happen
+accidentally and people don't look at the patch itself...
 
-> Buggy place:
-> ~~~~~~~~~~~~
-> ext4_ext_get_blocks(..., bh_result,..)
-> {
-> 	err = 0;
-> 	allocated = 0;
-> ....
-> 	 ret = ext4_ext_convert_to_initialized(...)
->  	if (ret < 0)
-> << By occasion real error code was lost here.
-> 		goto out2
-> ....
-> out2:
-> ....
-> 	return err? err: allocated;
-> << Wow.. exit with "0", and caller assumes what bh_result was properly filled
-> <<   and then will submit it for write. But in fact bh contains random data in
-> <<   ->b_bdev, ->b_blocknr fileds :).
-> }
+> +static unsigned long ext4_get_stripe_size(struct ext4_sb_info *sbi)
+> +{
+> +	unsigned long stride = le16_to_cpu(sbi->s_es->s_raid_stride);
+> +	unsigned long stripe_width = le32_to_cpu(sbi->s_es->s_raid_stripe_width);
+> +
+> +	if (sbi->s_stripe && sbi->s_stripe <= sbi->s_blocks_per_group) {
+> +		return sbi->s_stripe;
+> +	} else if (stripe_width <= sbi->s_blocks_per_group) {
+> +		return stripe_width;
+> +	} else if (stride <= sbi->s_blocks_per_group) {
+> +		return stride;
+> +	}
 
-The other item that Amit and I discussed in the past is in the case of
-ENOSPC it would be possible instead of splitting the extent to zero-fill
-the smaller extent (1 block in your test case) and write the whole thing
-as an initialized extent.  This could then either be merged with the
-previous or following allocated extent, or the whole extent zeroed if that
-was not possible.
+If you are doing "return XXX" you don't need "else".
 
-It would add some latency in the worst case to do this in the kernel,
-but this would only happen if there is no free space at all.  It might
-even be desirable to always zero-fill small extents instead of splitting
-uninitialized extents, because a random write of 64kB is not more expensive
-than 4kB and avoids overhead of splitting the nicely contiguous extent tree.
+> +	/*
+> +	 * set the stripe size. If we have specified it via mount option, then
+> +	 * use the mount option value. If the value specified at mount time is
+> +	 * greater than the blocks per group use the super block value.
+> +	 * Allocator needs it be less than blocks per group.
+> +	 */
+> +	sbi->s_stripe = ext4_get_stripe_size(sbi);
 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/extents.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 8528774..fc8e508 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2320,9 +2320,10 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  			ret = ext4_ext_convert_to_initialized(handle, inode,
->  								path, iblock,
->  								max_blocks);
-> -			if (ret <= 0)
-> +			if (ret <= 0) {
-> +				err = ret;
->  				goto out2;
-> -			else
-> +			} else
->  				allocated = ret;
->  			goto outnew;
->  		}
-> -- 
-> 1.5.3.1.40.g6972-dirty
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This comment should probably go by ext4_get_stripe_size() definition instead
+of here at the caller.
 
 Cheers, Andreas
 --
