@@ -1,186 +1,102 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: play with 8TB to 16TB fs's better
-Date: Thu, 10 Jan 2008 16:53:21 -0500
-Message-ID: <20080110215321.GI3323@unused.rdu.redhat.com>
-References: <20080108193325.GB3323@unused.rdu.redhat.com> <20080108230215.GI3351@webber.adilger.int> <20080109210438.GF3323@unused.rdu.redhat.com> <20080110035934.GD3351@webber.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] ext4: fix uniniatilized extend splitting error.
+Date: Thu, 10 Jan 2008 15:42:55 -0800
+Message-ID: <1200008575.4012.7.camel@localhost.localdomain>
+References: <20080110143142.GC8685@dmon-lap.sw.ru>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: adilger@sun.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@clusterfs.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37250 "EHLO mx1.redhat.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:46859 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753970AbYAJVyF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Jan 2008 16:54:05 -0500
-Content-Disposition: inline
-In-Reply-To: <20080110035934.GD3351@webber.adilger.int>
+	id S1751833AbYAJXm7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Jan 2008 18:42:59 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0ANgvZd000736
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 18:42:57 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0ANgvnD495248
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 18:42:57 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0ANguPc026744
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2008 18:42:57 -0500
+In-Reply-To: <20080110143142.GC8685@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Thanks for catching this, I added your fix to the ext4 patch queue
+http://repo.or.cz/w/ext4-patch-queue.git
 
-Here's take 3.  I've moved the blocks >= 1 << 31 check after the instantiation
-of the ext2_filsys so I can use the io manager stuff directly.  Also made a few
-tweaks and such based on Andreas' comments.  Let me know if this works.  Thank
-you,
-
-Josef
-
-
-Index: e2fsprogs/lib/ext2fs/getsize.c
-===================================================================
---- e2fsprogs.orig/lib/ext2fs/getsize.c
-+++ e2fsprogs/lib/ext2fs/getsize.c
-@@ -135,6 +135,21 @@ static int valid_offset (int fd, ext2_lo
- 	return 1;
- }
- 
-+static int valid_size(unsigned long long *size64, int blocksize)
-+{
-+	/* see if we are above 16tb */
-+	if ((*size64 / blocksize) > 0xFFFFFFFF) {
-+		/* if we are just at 2^32 blocks adjust the size slightly */
-+		if ((*size64 / blocksize) == 0x100000000) {
-+			(*size64)--;
-+			return 1;
-+		} else
-+			return 0;
-+	}
-+
-+	return 1;
-+}
-+
- /*
-  * Returns the number of blocks in a partition
-  */
-@@ -189,7 +204,7 @@ errcode_t ext2fs_get_device_size(const c
- 	if (valid_blkgetsize64 &&
- 	    ioctl(fd, BLKGETSIZE64, &size64) >= 0) {
- 		if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
--		    ((size64 / blocksize) > 0xFFFFFFFF)) {
-+		    !valid_size(&size64, blocksize)) {
- 			rc = EFBIG;
- 			goto out;
- 		}
-@@ -252,13 +267,14 @@ errcode_t ext2fs_get_device_size(const c
- 		struct stat	st;
- 		if (fstat(fd, &st) == 0)
- #endif
-+			size64 = st.st_size;
- 			if (S_ISREG(st.st_mode)) {
- 				if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
--				    ((st.st_size / blocksize) > 0xFFFFFFFF)) {
-+				    !valid_size(&size64, blocksize)) {
- 					rc = EFBIG;
- 					goto out;
- 				}
--				*retblocks = st.st_size / blocksize;
-+				*retblocks = size64 / blocksize;
- 				goto out;
- 			}
- 	}
-@@ -283,7 +299,7 @@ errcode_t ext2fs_get_device_size(const c
- 	valid_offset (fd, 0);
- 	size64 = low + 1;
- 	if ((sizeof(*retblocks) < sizeof(unsigned long long))
--	    && ((size64 / blocksize) > 0xFFFFFFFF)) {
-+	    && !valid_size(&size64, blocksize)) {
- 		rc = EFBIG;
- 		goto out;
- 	}
-Index: e2fsprogs/misc/mke2fs.c
-===================================================================
---- e2fsprogs.orig/misc/mke2fs.c
-+++ e2fsprogs/misc/mke2fs.c
-@@ -916,6 +916,54 @@ static void edit_feature(const char *str
- 	}
- }
- 
-+static errcode_t check_for_wrap(ext2_filsys fs)
-+{
-+	char *buf, *orig;
-+	errcode_t retval;
-+
-+	buf = malloc(fs->blocksize);
-+	if (!buf) {
-+		com_err(program_name, retval, "trying to allocate buffer\n");
-+		exit(1);
-+	}
-+
-+	orig = malloc(fs->blocksize);
-+	if (!orig) {
-+		com_err(program_name, retval, "trying to allocate buffer\n");
-+		free(buf);
-+		exit(1);
-+	}
-+
-+	memset(buf, 0, fs->blocksize);
-+	memset(orig, 0, fs->blocksize);
-+
-+	retval = io_channel_write_blk(fs->io, 1, 1, buf);
-+	if (retval)
-+		goto out;
-+
-+	memset(buf, 0xdead, fs->blocksize);
-+	retval = io_channel_write_blk(fs->io, (1UL << 31)+1, 1, buf);
-+	if (retval)
-+		goto out;
-+
-+	retval = io_channel_flush(fs->io);
-+	if (retval)
-+		goto out;
-+
-+	retval = io_channel_read_blk(fs->io, 1, 1, buf);
-+	if (retval)
-+		goto out;
-+
-+	if (memcmp(buf, orig, fs->blocksize))
-+		retval = -1;
-+
-+out:
-+	free(buf);
-+	free(orig);
-+
-+	return retval;
-+}
-+
- extern const char *mke2fs_default_profile;
- static const char *default_files[] = { "<default>", 0 };
- 
-@@ -1455,13 +1503,6 @@ static void PRS(int argc, char *argv[])
- 		}
- 	}
- 
--	if (!force && fs_param.s_blocks_count >= ((unsigned) 1 << 31)) {
--		com_err(program_name, 0,
--			_("Filesystem too large.  No more than 2**31-1 blocks\n"
--			  "\t (8TB using a blocksize of 4k) are currently supported."));
--             exit(1);
--	}
--
- 	if ((blocksize > 4096) &&
- 	    (fs_param.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
- 		fprintf(stderr, _("\nWarning: some 2.4 kernels do not support "
-@@ -1572,6 +1613,23 @@ int main (int argc, char *argv[])
- 		exit(1);
- 	}
- 
-+	if (fs->super->s_blocks_count >= ((unsigned) 1 << 31)) {
-+		if (!noaction) {
-+			retval = check_for_wrap(fs);
-+			if (retval) {
-+				com_err(program_name, retval, "Write wrapped,"
-+					"filesystem is too large for the disk"
-+					"to handle %d\n", (signed)retval);
-+				exit(1);
-+			}
-+		}
-+
-+		com_err(program_name, 0, "\nWarning: older 2.6 kernels "
-+		       "(2.6.18 and older) may have problems with such a \n\t"
-+		       "large filesystem.  If you have problems try a newer "
-+		       "kernel\n");
-+	}
-+
- 	/*
- 	 * Wipe out the old on-disk superblock
- 	 */
+On Thu, 2008-01-10 at 17:31 +0300, Dmitry Monakhov wrote:
+> Hi,
+> While playing with new fancy fallocate interface on ext4 i've triggered
+> bug which corrupted my grub :).
+> 
+> My testcase:
+> ~~~~~~~~~~~~
+> blksize = 0x1000;
+> fd = open(argv[1], O_RDWR|O_CREAT, 0700);
+> unsigned long long sz = 0x10000000UL;
+> /* allocating big blocks chunk */
+> syscall(__NR_fallocate, fd, 0, 0UL, sz)
+> 
+> /* grab all other available filesystem space */
+> tfd = open("tmp", O_RDWR|O_CREAT|O_DIRECT, 0700);
+> while( write(tfd, buf, 4096) > 0); /* loop untill ENOSPC */
+> fsync(fd); /* just in case */
+> while (pos < sz) {
+> 	/* each seek+ write operation result in splits uninitialized extent
+> 	in three extents. Splitting may result in new extent allocation
+> 	which probably will fail because of ENOSPC*/
+> 
+> 	lseek(fd, blksize*2 -1, SEEK_CUR);
+> 	if ((ret = write(fd, 'a', 1)) != 1)
+> 		exit(1);
+> 	pos += blksize * 2;
+> }
+> 
+> Buggy place:
+> ~~~~~~~~~~~~
+> ext4_ext_get_blocks(..., bh_result,..)
+> {
+> 	err = 0;
+> 	allocated = 0;
+> ....
+> 	 ret = ext4_ext_convert_to_initialized(...)
+>  	if (ret < 0)
+> << By occasion real error code was lost here.
+> 		goto out2
+> ....
+> out2:
+> ....
+> 	return err? err: allocated;
+> << Wow.. exit with "0", and caller assumes what bh_result was properly filled
+> <<   and then will submit it for write. But in fact bh contains random data in
+> <<   ->b_bdev, ->b_blocknr fileds :).
+> }
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/extents.c |    5 +++--
+>  1 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 8528774..fc8e508 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2320,9 +2320,10 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+>  			ret = ext4_ext_convert_to_initialized(handle, inode,
+>  								path, iblock,
+>  								max_blocks);
+> -			if (ret <= 0)
+> +			if (ret <= 0) {
+> +				err = ret;
+>  				goto out2;
+> -			else
+> +			} else
+>  				allocated = ret;
+>  			goto outnew;
+>  		}
