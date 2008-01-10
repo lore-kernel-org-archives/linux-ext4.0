@@ -1,48 +1,88 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: Use superblock s_raid_stripe_width as stripe size
-	during block allocation.
-Date: Thu, 10 Jan 2008 01:22:23 -0700
-Message-ID: <20080110082223.GF3351@webber.adilger.int>
-References: <1199898469-10369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080109233627.GB3351@webber.adilger.int> <20080110042859.GB8271@skywalker>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: fix uniniatilized extend splitting error.
+Date: Thu, 10 Jan 2008 17:31:42 +0300
+Message-ID: <20080110143142.GC8685@dmon-lap.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Andreas Dilger <adilger@clusterfs.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.clusterfs.com ([74.0.229.162]:60651 "EHLO
-	mail.clusterfs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750733AbYAJIWY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jan 2008 03:22:24 -0500
+Received: from mailhub.sw.ru ([195.214.232.25]:8303 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753648AbYAJOea (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Jan 2008 09:34:30 -0500
 Content-Disposition: inline
-In-Reply-To: <20080110042859.GB8271@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 10, 2008  09:58 +0530, Aneesh Kumar K.V wrote:
-> > d) if s_stripe is still > s_blocks_per_group try s_raid_stride
-> > e) if s_stripe is still > s_blocks_per_group use 0
-> 
-> But i guess mke2fs and tune2fs should validate the value of
-> s_raid_stripe_width and s_raid_stride. Both of them should be less that
-> blocks per group. Should I add extra check in the kernel for them ?
+Hi,
+While playing with new fancy fallocate interface on ext4 i've triggered
+bug which corrupted my grub :).
 
-It's true that mke2fs and tune2fs should validate this, but it is also
-possible to become corrupted, and e2fsck doesn't fix it yet nor can it
-make a good estimate of the right value.
+My testcase:
+~~~~~~~~~~~~
+blksize = 0x1000;
+fd = open(argv[1], O_RDWR|O_CREAT, 0700);
+unsigned long long sz = 0x10000000UL;
+/* allocating big blocks chunk */
+syscall(__NR_fallocate, fd, 0, 0UL, sz)
 
-> > > +	if (!sbi->s_stripe ||
-> > > +			sbi->s_stripe >= sbi->s_blocks_per_group) {
-> > 
-> 
-> So what do you think should it be > or >=. Looking at the mballoc I
-> guess it should work with stripe size equal to blocks per group. I am
-> not sure how efficient the allocation would be though.
+/* grab all other available filesystem space */
+tfd = open("tmp", O_RDWR|O_CREAT|O_DIRECT, 0700);
+while( write(tfd, buf, 4096) > 0); /* loop untill ENOSPC */
+fsync(fd); /* just in case */
+while (pos < sz) {
+	/* each seek+ write operation result in splits uninitialized extent
+	in three extents. Splitting may result in new extent allocation
+	which probably will fail because of ENOSPC*/
 
-I think if s_stripe == s_blocks_per_group that is fine...  For 1kB block
-filesystem that is only 8MB in size.
+	lseek(fd, blksize*2 -1, SEEK_CUR);
+	if ((ret = write(fd, 'a', 1)) != 1)
+		exit(1);
+	pos += blksize * 2;
+}
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Buggy place:
+~~~~~~~~~~~~
+ext4_ext_get_blocks(..., bh_result,..)
+{
+	err = 0;
+	allocated = 0;
+....
+	 ret = ext4_ext_convert_to_initialized(...)
+ 	if (ret < 0)
+<< By occasion real error code was lost here.
+		goto out2
+....
+out2:
+....
+	return err? err: allocated;
+<< Wow.. exit with "0", and caller assumes what bh_result was properly filled
+<<   and then will submit it for write. But in fact bh contains random data in
+<<   ->b_bdev, ->b_blocknr fileds :).
+}
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/extents.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 8528774..fc8e508 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2320,9 +2320,10 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 			ret = ext4_ext_convert_to_initialized(handle, inode,
+ 								path, iblock,
+ 								max_blocks);
+-			if (ret <= 0)
++			if (ret <= 0) {
++				err = ret;
+ 				goto out2;
+-			else
++			} else
+ 				allocated = ret;
+ 			goto outnew;
+ 		}
+-- 
+1.5.3.1.40.g6972-dirty
