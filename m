@@ -1,110 +1,127 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: patch queue update
-Date: Fri, 11 Jan 2008 09:39:14 +0530
-Message-ID: <20080111040914.GA6959@skywalker>
-References: <20080110153358.GA9367@skywalker> <20080110214323.GL3351@webber.adilger.int>
+From: "Amit K. Arora" <aarora@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: fix uniniatilized extend splitting error.
+Date: Fri, 11 Jan 2008 14:38:45 +0530
+Message-ID: <20080111090845.GA27437@amitarora.in.ibm.com>
+References: <20080110143142.GC8685@dmon-lap.sw.ru> <20080110213103.GJ3351@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: Andreas Dilger <adilger@sun.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:49039 "EHLO
-	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752962AbYAKEJW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jan 2008 23:09:22 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m0B49H7i026662
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 09:39:17 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0B49Hv9757954
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 09:39:17 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m0B49Ji2017004
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 04:09:19 GMT
-Received: from skywalker ([9.124.218.74])
-	by d28av01.in.ibm.com (8.13.1/8.12.11) with ESMTP id m0B49Htp016995
-	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 04:09:19 GMT
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:34368 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755610AbYAKJIl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jan 2008 04:08:41 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0B98cZI019322
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 04:08:38 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0B98cJF137864
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 04:08:38 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0B98bVH009404
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 04:08:38 -0500
 Content-Disposition: inline
-In-Reply-To: <20080110214323.GL3351@webber.adilger.int>
+In-Reply-To: <20080110213103.GJ3351@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 10, 2008 at 02:43:23PM -0700, Andreas Dilger wrote:
-> On Jan 10, 2008  21:03 +0530, Aneesh Kumar K.V wrote:
-> >  	if (i >= sbi->s_mb_order2_reqs) {
-> > -		i--;
-> > -		if ((ac->ac_g_ex.fe_len & (~(1 << i))) == 0)
-> > +		/*
-> > +		 * This should tell if fe_len is exactly power of 2
-> > +		 */
-> > +		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
-> >  			ac->ac_2order = i;
+On Thu, Jan 10, 2008 at 02:31:03PM -0700, Andreas Dilger wrote:
+> On Jan 10, 2008  17:31 +0300, Dmitry Monakhov wrote:
+> > While playing with new fancy fallocate interface on ext4 i've triggered
+> > bug which corrupted my grub :).
+>
+> I notice I'm CC'd on this, but in fact Amit wrote the code.  I've CC'd
+> him even though I expect he will notice it anyways.
+
+Andreas, thanks for adding me to the CC list!
+ 
+> > My testcase:
+> > ~~~~~~~~~~~~
+> > blksize = 0x1000;
+> > fd = open(argv[1], O_RDWR|O_CREAT, 0700);
+> > unsigned long long sz = 0x10000000UL;
+> > /* allocating big blocks chunk */
+> > syscall(__NR_fallocate, fd, 0, 0UL, sz)
+> > 
+> > /* grab all other available filesystem space */
+> > tfd = open("tmp", O_RDWR|O_CREAT|O_DIRECT, 0700);
+> > while( write(tfd, buf, 4096) > 0); /* loop untill ENOSPC */
+> > fsync(fd); /* just in case */
+> > while (pos < sz) {
+> > 	/* each seek+ write operation result in splits uninitialized extent
+> > 	in three extents. Splitting may result in new extent allocation
+> > 	which probably will fail because of ENOSPC*/
+> > 
+> > 	lseek(fd, blksize*2 -1, SEEK_CUR);
+> > 	if ((ret = write(fd, 'a', 1)) != 1)
+> > 		exit(1);
+> > 	pos += blksize * 2;
+> > }
 > 
-> While you changed i to (i - 1) in the "if" you didn't change it when
-> setting ac_2order...  Is that incorrect?
+> Interesting test, and well thought out...
 
-Yes that ac_2order should be i - 1;
-Will fix it in the next update.
+Dmitry, Good catch and thanks for the patch below !
+Please add "Acked-by: Amit Arora <aarora@in.ibm.com>".
+ 
+> The other item that Amit and I discussed in the past is in the case of
+> ENOSPC it would be possible instead of splitting the extent to zero-fill
+> the smaller extent (1 block in your test case) and write the whole thing
+> as an initialized extent.  This could then either be merged with the
+> previous or following allocated extent, or the whole extent zeroed if that
+> was not possible.
 
-I see that the patch queue update doesn't have most of the changes I
-have placed at http://www.radian.org/~kvaneesh/ext4/jan-10-2008-ver2/
+Yes, this is one of the things pending..
+ 
+> It would add some latency in the worst case to do this in the kernel,
+> but this would only happen if there is no free space at all.  It might
+> even be desirable to always zero-fill small extents instead of splitting
+> uninitialized extents, because a random write of 64kB is not more expensive
+> than 4kB and avoids overhead of splitting the nicely contiguous extent tree.
 
+I feel this is debatable and it may not be easy to define what extent size is
+small enough. Anyhow, since we merge the extents when possible it should
+not be too bad, unless someone deliberately writes to alternate blocks
+in the uninitialized extent. Hence, as Mingming suggested, I too think that we
+should be doing it only when necessary.
+
+--
+Regards,
+Amit Arora
+ 
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > ---
+> >  fs/ext4/extents.c |    5 +++--
+> >  1 files changed, 3 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index 8528774..fc8e508 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -2320,9 +2320,10 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+> >  			ret = ext4_ext_convert_to_initialized(handle, inode,
+> >  								path, iblock,
+> >  								max_blocks);
+> > -			if (ret <= 0)
+> > +			if (ret <= 0) {
+> > +				err = ret;
+> >  				goto out2;
+> > -			else
+> > +			} else
+> >  				allocated = ret;
+> >  			goto outnew;
+> >  		}
+> > -- 
+> > 1.5.3.1.40.g6972-dirty
+> > 
+> > 
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> >  		/*
-> > +		 * Yield the CPU here so that we don't get soft lockup
-> >  		 */
-> > -		schedule_timeout(HZ);
-> > +		schedule();
-> >  		goto repeat;
-> >  	}
-> >  
-> > @@ -3808,7 +3820,7 @@ repeat:
-> >  			printk(KERN_ERR "uh-oh! used pa while discarding\n");
-> >  			dump_stack();
-> >  			current->state = TASK_UNINTERRUPTIBLE;
-> > -			schedule();
-> > +			schedule_timeout(HZ);
-> >  			goto repeat;
-> 
-> Is this change to schedule_timeout() intentional?  The earlier code is
-> removing the use of schedule_timeout.  I could be wrong, as I didn't
-> follow this discussion closely, but sometimes changes like this happen
-> accidentally and people don't look at the patch itself...
-
-
-The patch queue had it modified from schedule_timeout to schedule(). I
-am moving it back to the original version. If we have set the task state
-to TASK_UNINTERRUPTIBLE it should be schedule_timeout. And at these
-place we intent to wait uninterrupted for 1 sec. The place where we
-wanted to just yield is ext4_mb_discard_group_preallocations.
-
-
-> > +static unsigned long ext4_get_stripe_size(struct ext4_sb_info *sbi)
-> > +{
-> > +	unsigned long stride = le16_to_cpu(sbi->s_es->s_raid_stride);
-> > +	unsigned long stripe_width = le32_to_cpu(sbi->s_es->s_raid_stripe_width);
-> > +
-> > +	if (sbi->s_stripe && sbi->s_stripe <= sbi->s_blocks_per_group) {
-> > +		return sbi->s_stripe;
-> > +	} else if (stripe_width <= sbi->s_blocks_per_group) {
-> > +		return stripe_width;
-> > +	} else if (stride <= sbi->s_blocks_per_group) {
-> > +		return stride;
-> > +	}
-> 
-> If you are doing "return XXX" you don't need "else".
-> 
-> > +	/*
-> > +	 * set the stripe size. If we have specified it via mount option, then
-> > +	 * use the mount option value. If the value specified at mount time is
-> > +	 * greater than the blocks per group use the super block value.
-> > +	 * Allocator needs it be less than blocks per group.
-> > +	 */
-> > +	sbi->s_stripe = ext4_get_stripe_size(sbi);
-> 
-> This comment should probably go by ext4_get_stripe_size() definition instead
-> of here at the caller.
-
-Will move that to the function definition.
-
--aneesh
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
