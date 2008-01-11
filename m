@@ -1,144 +1,110 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH] e2fsprogs: New bitmap and inode table allocation for
- FLEX_BG
-Date: Fri, 11 Jan 2008 16:11:28 -0600
-Message-ID: <20080111161128.23fac6bc@gara>
-References: <20080111112806.1bbd9f38@gara>
-	<20080111210104.GR3351@webber.adilger.int>
+Subject: Re: [PATCH] New inode allocation for FLEX_BG meta-data groups.
+Date: Fri, 11 Jan 2008 16:44:17 -0600
+Message-ID: <20080111164417.328b7505@gara>
+References: <20080111112818.0cdeadbd@gara>
+	<20080111214658.GS3351@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:37598 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760856AbYAKWLi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jan 2008 17:11:38 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e32.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0BL8hjF020511
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 16:08:43 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0BMBUXc086062
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 15:11:30 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0BMBUpv019386
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 15:11:30 -0700
-In-Reply-To: <20080111210104.GR3351@webber.adilger.int>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:47915 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759665AbYAKWoU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jan 2008 17:44:20 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0BMiJiU015135
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 17:44:19 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0BMiJxd116908
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 17:44:19 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0BMiJlA026381
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2008 17:44:19 -0500
+In-Reply-To: <20080111214658.GS3351@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 11 Jan 2008 14:01:04 -0700
+On Fri, 11 Jan 2008 14:46:58 -0700
 Andreas Dilger <adilger@sun.com> wrote:
 
 > On Jan 11, 2008  11:28 -0600, Jose R. Santos wrote:
-> > +blk_t ext2fs_flexbg_offset(ext2_filsys fs, dgrp_t group, int flexbg_size, 
-> > +			   ext2fs_block_bitmap bmap, int offset, int size)
+> > @@ -127,6 +127,8 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+> >  		mark_bitmap_end(group_blocks, sb->s_blocksize * 8, bh->b_data);
+> >  	}
+> >  
+> > +	if (sbi->s_log_groups_per_flex)
+> > +		return free_blocks;
+> >  	return free_blocks - sbi->s_itb_per_group - 2;
+> 
+> To be honest, I think this is a wart in ext4_init_block_bitmap() that
+> it returns the number of free blocks in the group.  That value should
+> really be set at mke2fs or e2fsck time, and if the last group is marked
+> BLOCK_UNINIT it gets the free blocks count wrong because it always starts
+> with EXT4_BLOCKS_PER_GROUP().
+> 
+> The above patch may also be incorrect since there may be inode tables or
+> bitmaps in the above group even in the case of FLEX_BG filesystems.
+> 
+> > +#define free_block_ratio 10
+> > +
+> > +static int find_group_flex(struct super_block *sb, struct inode *parent, ext4_group_t *best_group)
+> > +{
+> > +	n_fbg_groups = (sbi->s_groups_count + flex_size - 1) / flex_size;
+> 
+> Can be a shift?
+
+You're right.  This should be:
+
+n_fbg_groups = (sbi->s_groups_count + flex_size - 1) >> sbi->s_log_groups_per_flex;
+
+> I would suggest doing some kind of testing to see how well this allocation
+> policy is working.  We don't want to force all allocations contiguously at
+> the start of the filesystem, or we end up with FAT...
+
+I've done several IO patterns with multiple threads and all of my test
+are either same or faster performance than with the regular allocator.
+Im hopping that moving this to the patch queue will expose the
+allocator to more tests.
+ 
+> > +static int ext4_fill_flex_info(struct super_block *sb)
+> > +{
+> > +	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
+> 
+> Hmm, I guess no le*_to_cpu() because this is 8 bits?
+
+Correct.
+
+> > +
+> > +	flex_group_count = (sbi->s_groups_count + groups_per_flex - 1) /
+> > +		groups_per_flex;
+> > +	sbi->s_flex_groups = kmalloc(flex_group_count *
+> > +				     sizeof(struct flex_groups), GFP_KERNEL);
+> > +	if (sbi->s_flex_groups == NULL) {
+> > +		printk(KERN_ERR "EXT4-fs: not enough memory\n");
+> 
+> This should report "not enough memory for N flex groups" or something.
 
 OK.
  
-> Could you please add some comments for what this function is trying to do?
+> > @@ -2105,6 +2154,13 @@ static int ext4_fill_super (struct super_block *sb,
+> > +	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+> > +		if (!ext4_fill_flex_info(sb)) {
+> > +			printk(KERN_ERR
+> > +			       "EXT4-fs: unable to initialize flex_bg meta info!\n");
+> > +			goto failed_mount2;
 > 
-> > +	last_grp = (group + (flexbg_size - (group % flexbg_size) - 1));
-> 
-> Is this the same as:
-> 
-> 	last_grp = group + (flexbg_size - 1) / flexbg_size * flexbg_size
-> 	
-> (i.e. trying to round up to the next even multiple of flexbg_size)?
-> 
-> Didn't we decide to have flexbg_size be a power-of-two value, so we could
-> use shift and mask instead of divide and mod?  It's less of an issue because
-> group is only a 32-bit value, I guess.
+> Should this be considered a fatal error, or could sbi->s_log_groups_per_flex
+> just be set to 0 and the filesystem be used as-is (maybe with sub-optimal
+> allocations or something)?  Otherwise this renders the filesystem unusable.
 
-Yes, I fixes this in the kernel code but neglected to fix it on the here.
- 
-> > +	if (ext2fs_get_free_blocks(fs, start_blk, last_blk, 1, bmap, 
-> > +				   &first_free))
-> > +		return first_free;
-> > +	
-> > +	if (ext2fs_get_free_blocks(fs, first_free + offset, last_blk, size, 
-> > +				   bmap, &first_free))
-> > +		return first_free;
-> > +
-> > +	return first_free;
-> > +}
-> > +
-> >  errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
-> >  				      ext2fs_block_bitmap bmap)
-> >  {
-> >  	errcode_t	retval;
-> >  	blk_t		group_blk, start_blk, last_blk, new_blk, blk;
-> > -	int		j;
-> > +	dgrp_t		last_grp;
-> > +	int		j, rem_grps, flexbg_size = 0;
-> >  
-> >  	group_blk = ext2fs_group_first_block(fs, group);
-> >  	last_blk = ext2fs_group_last_block(fs, group);
-> >  
-> >  	if (!bmap)
-> >  		bmap = fs->block_map;
-> > +
-> > +	if (EXT2_HAS_INCOMPAT_FEATURE (fs->super,
-> > +				       EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-> > +		flexbg_size = 1 << fs->super->s_log_groups_per_flex;
-> > +		rem_grps = flexbg_size - (group % flexbg_size);
-> 
-> Hmm, no point in doing "groups % flexbg_size" if we have
-> s_log_groups_per_flex.  Could do "groups & (flexbg_size - 1)" instead.
-> 
-> > @@ -101,7 +102,11 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
-> > +	if (flex_bg_size) {
-> > +		if ((group % flex_bg_size) == 0)
-> > +			numblocks -= 2 + fs->inode_blocks_per_group;
-> 
-> Ditto.
-> 
-> > @@ -1045,6 +1046,20 @@ static void PRS(int argc, char *argv[])
-> >  				exit(1);
-> >  			}
-> >  			break;
-> > +		case 'G':
-> > +			flex_bg_size = strtoul(optarg, &tmp, 0);
-> > +			if (*tmp) {
-> > +				com_err(program_name, 0,
-> > +					_("Illegal number for Flex_BG size"));
-> > +				exit(1);
-> > +			}
-> > +			if (flex_bg_size < 2 || 
-> > +			    (flex_bg_size & (flex_bg_size-1)) != 0) {
-> > +				com_err(program_name, 0,
-> > +					_("Flex_BG size must be a power of 2"));
-> > +				exit(1);
-> > +			}
-> > +			break;
-> 
-> We've been putting new options under "-E var=value"...  I don't know what
-> Ted's thoughs are on using new option letters, though this one might qualify.
+I thought about doing that but using a sub-optimal allocator would
+permanently screw up the ondisk data locality.  Maybe mounting the
+filesystem read-only would be more appropriate.
 
-I thought this would qualify as a new option letter.  Waiting on input
-from Ted.
-
-> > @@ -1444,6 +1459,16 @@ static void PRS(int argc, char *argv[])
-> >  		}
-> >  	}
-> >  
-> > +	if(flex_bg_size) {
-> 
-> Space after "if ".
-
-Will fix.
- 
-> > +		shift = 0;
-> > +		tmp = flex_bg_size;
-> > +		while ((tmp >>= 1UL) != 0UL)
-> > +			shift++;
-> 
-> There isn't a "log2" function?
-
-Couldn't find anything in lib or include.
- 
 > Cheers, Andreas
 > --
 > Andreas Dilger
