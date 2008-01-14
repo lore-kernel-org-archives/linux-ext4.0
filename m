@@ -1,48 +1,41 @@
-From: Joerg Platte <jplatte@naasa.net>
+From: Peter Zijlstra <peterz@infradead.org>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
-Date: Mon, 14 Jan 2008 12:30:12 +0100
-Message-ID: <200801141230.13694.jplatte@naasa.net>
-References: <200801071151.11200.lists@naasa.net> <20080114035439.GA7330@mail.ustc.edu.cn> <400304530.01514@ustc.edu.cn>
-Reply-To: jplatte@naasa.net
+Date: Mon, 14 Jan 2008 12:41:26 +0100
+Message-ID: <1200310886.15103.1.camel@twins>
+References: <200801071151.11200.lists@naasa.net>
+	 <20080114035439.GA7330@mail.ustc.edu.cn> <400304530.01514@ustc.edu.cn>
+	 <200801141230.13694.jplatte@naasa.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@elte.hu>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Fengguang Wu <wfg@mail.ustc.edu.cn>, Ingo Molnar <mingo@elte.hu>,
 	linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Fengguang Wu <wfg@mail.ustc.edu.cn>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756032AbYANLa3@vger.kernel.org>
-In-Reply-To: <400304530.01514@ustc.edu.cn>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: jplatte@naasa.net
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from pentafluge.infradead.org ([213.146.154.40]:42595 "EHLO
+	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754817AbYANLlf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2008 06:41:35 -0500
+In-Reply-To: <200801141230.13694.jplatte@naasa.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am Montag, 14. Januar 2008 schrieb Fengguang Wu:
 
-> Joerg, this patch fixed the bug for me :-)
+On Mon, 2008-01-14 at 12:30 +0100, Joerg Platte wrote:
+> Am Montag, 14. Januar 2008 schrieb Fengguang Wu:
+> 
+> > Joerg, this patch fixed the bug for me :-)
+> 
+> Fengguang, congratulations, I can confirm that your patch fixed the bug! With 
+> previous kernels the bug showed up after each reboot. Now, when booting the 
+> patched kernel everything is fine and there is no longer any suspicious 
+> iowait!
+> 
+> Do you have an idea why this problem appeared in 2.6.24? Did somebody change 
+> the ext2 code or is it related to the changes in the scheduler?
 
-=46engguang, congratulations, I can confirm that your patch fixed the b=
-ug! With=20
-previous kernels the bug showed up after each reboot. Now, when booting=
- the=20
-patched kernel everything is fine and there is no longer any suspicious=
-=20
-iowait!
-
-Do you have an idea why this problem appeared in 2.6.24? Did somebody c=
-hange=20
-the ext2 code or is it related to the changes in the scheduler?
-
-regards,
-J=F6rg
-
---=20
-PGP Key: send mail with subject 'SEND PGP-KEY' PGP Key-ID: FD 4E 21 1D
-PGP Fingerprint: 388A872AFC5649D3 BCEC65778BE0C605
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-kernel"=
- in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-Please read the FAQ at  http://www.tux.org/lkml/
+It was Fengguang who changed the inode writeback code, and I guess the
+new and improved code was less able do deal with these funny corner
+cases. But he has been very good in tracking them down and solving them,
+kudos to him for that work!
