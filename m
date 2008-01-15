@@ -1,59 +1,60 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [CALL FOR TESTING] Make Ext3 fsck way faster [2.6.24-rc6 -mm
-	patch]
-Date: Tue, 15 Jan 2008 10:28:01 -0500
-Message-ID: <20080115152801.GA7292@mit.edu>
-References: <200801140839.01986.abhishekrai@google.com> <20080114163412.83a8b18d.akpm@linux-foundation.org> <20080115030441.a0270609.akpm@linux-foundation.org> <20080115131533.GA5766@infradead.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: checkpatch.pl warnings
+Date: Tue, 15 Jan 2008 11:34:59 -0800
+Message-ID: <1200425699.4072.0.camel@localhost.localdomain>
+References: <4787D498.1050202@redhat.com> <20080112163144.GA6546@skywalker>
+	 <4788ED9E.3090207@redhat.com> <4788EE87.5040007@redhat.com>
+	 <1200343767.4197.7.camel@localhost.localdomain>
+	 <20080115125224.GA18227@skywalker>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Abhishek Rai <abhishekrai@google.com>,
-	linux-kernel@vger.kernel.org, rohitseth@google.com,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752857AbYAOP2j@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080115131533.GA5766@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:58022 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750896AbYAOTfF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jan 2008 14:35:05 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0FJZ1vj002563
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2008 14:35:01 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0FJZ172117294
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2008 14:35:01 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0FJZ1gI012353
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2008 14:35:01 -0500
+In-Reply-To: <20080115125224.GA18227@skywalker>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2008 at 01:15:33PM +0000, Christoph Hellwig wrote:
-> They won't fsck in planned downtimes.  They will have to use fsck when
-> the shit hits the fan and they need to.   Not sure about ext3, but big
-> XFS user with a close tie to the US goverment were concerned about this
-> case for really big filesystems and have sponsored speedup including
-> multithreading xfs_repair.  I'm pretty sure the same arguments apply
-> to ext3, even if the filesystems are a few magnitudes smaller.
-
-Agreed, 100%.  Even if you fsck snapshots during slow periods, it
-still doesn't help you if the filesystem gets corrupted due to a
-hardware or software error.  That's where this will matter the most.
-
-Val Hensen has done a proof of concept patch that multi-threads e2fsck
-(and she's working on one that would be long-term supportable) that
-might reduce the value of this patch, but metaclustering should still
-help.
-
-> > In any decent environment, people will fsck their ext3 filesystems during
-> > planned downtime, and the benefit of reducing that downtime from 6
-> > hours/machine to 2 hours/machine is probably fairly small, given that there
-> > is no service interruption.  (The same applies to desktops and laptops).
+On Tue, 2008-01-15 at 18:22 +0530, Aneesh Kumar K.V wrote:
+> On Mon, Jan 14, 2008 at 12:49:27PM -0800, Mingming Cao wrote:
+> > Hi Guys,
 > > 
-> > Sure, the benefit is not *zero*, but it's small.  Much less than it would
-> > be with ext2.  I mean, the "avoid unplanned fscks" feature is the whole
-> > reason why ext3 has journalling (and boy is that feature expensive during
-> > normal operation).
+> > Could you check the checkpatch.pl warnings and see if it make sense to fix them? Thanks!
+> > 
+> > cmm@kernel:~/fs/ext4/stylecheck$ grep "has style problems" *
+> > linux-2.6.24-rc7-48-bit-i_blocks.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-ext3-4-migrate.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-ext4_export_iov_shorten_from_kernel_for_ext4.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-ext4-journal_chksum-2.6.20.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-ext4_rec_len_overflow_with_64kblk_fix-v2.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-ext4_store_maxbytes_for_bitmaped_files.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-inode-version-ext4.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-jbd-stats-through-procfs.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-large-file-blocktype.patch.out:Your patch has style problems, please review.  If any of these errors
+> > linux-2.6.24-rc7-mballoc-core.patch.out:Your patch has style problems, please review.  If any of these errors
+> > 
+> 
+> Fixed the checkpatch.pl warning for all the patches in the patch queue.
+> The diff is attached below for review.
 
-Also, it's not just reducing fsck times, although that's the main one.
-The last time this was suggested, the rationale was to speed up the
-"rm dvd.iso" case.  Also, something which *could* be done, if Abhishek
-wants to pursue it, would be to pull in all of the indirect blocks
-when the file is opened, and create an in-memory extent tree that
-would speed up access to the file.  It's rarely worth doing this
-without metaclustering, since it doesn't help for sequential I/O, only
-random I/O, but with metaclustering it would also be a win for
-sequential I/O.  (This would also remove the minor performance
-degradation for sequential I/O imposed by metaclustering, and in fact
-improve it slightly for really big files.)
+Thanks!
 
-					- Ted
+patch queue has been updated.
+
+Mingming
