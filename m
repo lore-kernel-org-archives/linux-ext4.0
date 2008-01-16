@@ -1,7 +1,7 @@
 From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
 Date: Wed, 16 Jan 2008 13:25:13 +0800
-Message-ID: <400461184.09985@ustc.edu.cn>
+Message-ID: <E1JF0m1-000101-OK__1176.35095161877$1200461251$gmane$org@localhost.localdomain>
 References: <200801071151.11200.lists@naasa.net> <20080114035439.GA7330@mail.ustc.edu.cn> <400304530.01514@ustc.edu.cn> <200801141230.13694.jplatte@naasa.net> <1200310886.15103.1.camel@twins> <400358577.30629@ustc.edu.cn> <170fa0d20801151313s57dcc08cn550113036c3003be@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -11,16 +11,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
 	Linus Torvalds <torvalds@linux-foundation.org>,
 	Andrew Morton <akpm@linux-foundation.org>
 To: Mike Snitzer <snitzer@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:48445 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1750912AbYAPF0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jan 2008 00:26:44 -0500
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758076AbYAPF04@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <170fa0d20801151313s57dcc08cn550113036c3003be@mail.gmail.com>
 Message-Id: <E1JF0m1-000101-OK@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Tue, Jan 15, 2008 at 04:13:22PM -0500, Mike Snitzer wrote:
 > On Jan 14, 2008 7:50 AM, Fengguang Wu <wfg@mail.ustc.edu.cn> wrote:
@@ -81,3 +77,4 @@ Wow, glad to hear that.
 
 It's not ready mainly because it is fresh made and need more
 feedbacks. It's doing OK on my desktop :-)
+
