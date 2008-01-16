@@ -1,7 +1,7 @@
 From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
 Date: Wed, 16 Jan 2008 20:00:04 +0800
-Message-ID: <400484811.11914@ustc.edu.cn>
+Message-ID: <E1JF6w8-0000vs-HM__20664.0112134211$1200484860$gmane$org@localhost.localdomain>
 References: <76258.29672.qm@web32604.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -11,16 +11,12 @@ Cc: Mike Snitzer <snitzer@gmail.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	Linus Torvalds <torvalds@linux-foundation.org>
 To: Martin Knoblauch <knobi@knobisoft.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:51275 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751909AbYAPMAF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jan 2008 07:00:05 -0500
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753978AbYAPMAY@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <76258.29672.qm@web32604.mail.mud.yahoo.com>
 Message-Id: <E1JF6w8-0000vs-HM@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Wed, Jan 16, 2008 at 01:26:41AM -0800, Martin Knoblauch wrote:
 > > For those interested in using your writeback improvements in
@@ -122,3 +118,4 @@ Fengguang
  				congestion_wait(WRITE, HZ/10);
  			else
  				break;	/* All the old data is written */
+
