@@ -1,111 +1,124 @@
-From: Martin Knoblauch <knobi@knobisoft.de>
+From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
-Date: Wed, 16 Jan 2008 01:26:41 -0800 (PST)
-Message-ID: <76258.29672.qm@web32604.mail.mud.yahoo.com>
+Date: Wed, 16 Jan 2008 20:00:04 +0800
+Message-ID: <400484811.11914@ustc.edu.cn>
+References: <76258.29672.qm@web32604.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
+Cc: Mike Snitzer <snitzer@gmail.com>,
+	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
 	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	Linus Torvalds <torvalds@linux-foundation.org>
-To: Mike Snitzer <snitzer@gmail.com>,
-	Fengguang Wu <wfg@mail.ustc.edu.cn>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752583AbYAPJ05@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Martin Knoblauch <knobi@knobisoft.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.ustc.edu.cn ([202.38.64.16]:51275 "HELO ustc.edu.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1751909AbYAPMAF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Jan 2008 07:00:05 -0500
+Content-Disposition: inline
+In-Reply-To: <76258.29672.qm@web32604.mail.mud.yahoo.com>
+Message-Id: <E1JF6w8-0000vs-HM@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
------ Original Message ----
-> From: Mike Snitzer <snitzer@gmail.com>
-> To: Fengguang Wu <wfg@mail.ustc.edu.cn>
-> Cc: Peter Zijlstra <peterz@infradead.org>; jplatte@naasa.net; Ingo Molnar <mingo@elte.hu>; linux-kernel@vger.kernel.org; "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>; Linus Torvalds <torvalds@linux-foundation.org>; Andrew Morton <akpm@li>
-> Sent: Tuesday, January 15, 2008 10:13:22 PM
-> Subject: Re: regression: 100% io-wait with 2.6.24-rcX
+On Wed, Jan 16, 2008 at 01:26:41AM -0800, Martin Knoblauch wrote:
+> > For those interested in using your writeback improvements in
+> > production sooner rather than later (primarily with ext3); what
+> > recommendations do you have?  Just heavily test our own 2.6.24 + your
+> > evolving "close, but not ready for merge" -mm writeback patchset?
+> > 
+> Hi Fengguang, Mike,
 > 
-> On Jan 14, 2008 7:50 AM, Fengguang Wu  wrote:
-> > On Mon, Jan 14, 2008 at 12:41:26PM +0100, Peter Zijlstra wrote:
-> > >
-> > > On Mon, 2008-01-14 at 12:30 +0100, Joerg Platte wrote:
-> > > > Am Montag, 14. Januar 2008 schrieb Fengguang Wu:
-> > > >
-> > > > > Joerg, this patch fixed the bug for me :-)
-> > > >
-> > > > Fengguang, congratulations, I can confirm that your patch
-> fixed
-> 
- the bug! With
-> > > > previous kernels the bug showed up after each reboot. Now,
-> when
-> 
- booting the
-> > > > patched kernel everything is fine and there is no longer
-> any
-> 
- suspicious
-> > > > iowait!
-> > > >
-> > > > Do you have an idea why this problem appeared in 2.6.24?
-> Did
-> 
- somebody change
-> > > > the ext2 code or is it related to the changes in the scheduler?
-> > >
-> > > It was Fengguang who changed the inode writeback code, and I
-> guess
-> 
- the
-> > > new and improved code was less able do deal with these funny corner
-> > > cases. But he has been very good in tracking them down and
-> solving
-> 
- them,
-> > > kudos to him for that work!
-> >
-> > Thank you.
-> >
-> > In particular the bug is triggered by the patch named:
-> >         "writeback: introduce writeback_control.more_io to
-> indicate
-> 
- more io"
-> > That patch means to speed up writeback, but unfortunately its
-> > aggressiveness has disclosed bugs in reiserfs, jfs and now ext2.
-> >
-> > Linus, given the number of bugs it triggered, I'd recommend revert
-> > this patch(git commit
-> 2e6883bdf49abd0e7f0d9b6297fc3be7ebb2250b).
-> 
- Let's
-> > push it back to -mm tree for more testings?
-> 
-> Fengguang,
-> 
-> I'd like to better understand where your writeback work stands
-> relative to 2.6.24-rcX and -mm.  To be clear, your changes in
-> 2.6.24-rc7 have been benchmarked to provide a ~33% sequential write
-> performance improvement with ext3 (as compared to 2.6.22, CFS could be
-> helping, etc but...).  Very impressive!
-> 
-> Given this improvement it is unfortunate to see your request to revert
-> 2e6883bdf49abd0e7f0d9b6297fc3be7ebb2250b but it is understandable if
-> you're not confident in it for 2.6.24.
-> 
-> That said, you recently posted an -mm patchset that first reverts
-> 2e6883bdf49abd0e7f0d9b6297fc3be7ebb2250b and then goes on to address
-> the "slow writes for concurrent large and small file writes" bug:
-> http://lkml.org/lkml/2008/1/15/132
-> 
-> For those interested in using your writeback improvements in
-> production sooner rather than later (primarily with ext3); what
-> recommendations do you have?  Just heavily test our own 2.6.24 + your
-> evolving "close, but not ready for merge" -mm writeback patchset?
-> 
-Hi Fengguang, Mike,
+>  I can add myself to Mikes question. It would be good to know a "roadmap" for the writeback changes. Testing 2.6.24-rcX so far has been showing quite nice improvement of the overall writeback situation and it would be sad to see this [partially] gone in 2.6.24-final. Linus apparently already has reverted  "...2250b". I will definitely repeat my tests with -rc8. and report.
 
- I can add myself to Mikes question. It would be good to know a "roadmap" for the writeback changes. Testing 2.6.24-rcX so far has been showing quite nice improvement of the overall writeback situation and it would be sad to see this [partially] gone in 2.6.24-final. Linus apparently already has reverted  "...2250b". I will definitely repeat my tests with -rc8. and report.
+Thank you, Martin. Can you help test this patch on 2.6.24-rc7?
+Maybe we can push it to 2.6.24 after your testing.
 
- Cheers
-Martin
+Fengguang
+---
+ fs/fs-writeback.c         |   17 +++++++++++++++--
+ include/linux/writeback.h |    1 +
+ mm/page-writeback.c       |    9 ++++++---
+ 3 files changed, 22 insertions(+), 5 deletions(-)
 
-
-
-
+--- linux.orig/fs/fs-writeback.c
++++ linux/fs/fs-writeback.c
+@@ -284,7 +284,16 @@ __sync_single_inode(struct inode *inode,
+ 				 * soon as the queue becomes uncongested.
+ 				 */
+ 				inode->i_state |= I_DIRTY_PAGES;
+-				requeue_io(inode);
++				if (wbc->nr_to_write <= 0)
++					/*
++					 * slice used up: queue for next turn
++					 */
++					requeue_io(inode);
++				else
++					/*
++					 * somehow blocked: retry later
++					 */
++					redirty_tail(inode);
+ 			} else {
+ 				/*
+ 				 * Otherwise fully redirty the inode so that
+@@ -479,8 +488,12 @@ sync_sb_inodes(struct super_block *sb, s
+ 		iput(inode);
+ 		cond_resched();
+ 		spin_lock(&inode_lock);
+-		if (wbc->nr_to_write <= 0)
++		if (wbc->nr_to_write <= 0) {
++			wbc->more_io = 1;
+ 			break;
++		}
++		if (!list_empty(&sb->s_more_io))
++			wbc->more_io = 1;
+ 	}
+ 	return;		/* Leave any unwritten inodes on s_io */
+ }
+--- linux.orig/include/linux/writeback.h
++++ linux/include/linux/writeback.h
+@@ -62,6 +62,7 @@ struct writeback_control {
+ 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
+ 	unsigned for_writepages:1;	/* This is a writepages() call */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
++	unsigned more_io:1;		/* more io to be dispatched */
+ };
+ 
+ /*
+--- linux.orig/mm/page-writeback.c
++++ linux/mm/page-writeback.c
+@@ -558,6 +558,7 @@ static void background_writeout(unsigned
+ 			global_page_state(NR_UNSTABLE_NFS) < background_thresh
+ 				&& min_pages <= 0)
+ 			break;
++		wbc.more_io = 0;
+ 		wbc.encountered_congestion = 0;
+ 		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
+ 		wbc.pages_skipped = 0;
+@@ -565,8 +566,9 @@ static void background_writeout(unsigned
+ 		min_pages -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
+ 		if (wbc.nr_to_write > 0 || wbc.pages_skipped > 0) {
+ 			/* Wrote less than expected */
+-			congestion_wait(WRITE, HZ/10);
+-			if (!wbc.encountered_congestion)
++			if (wbc.encountered_congestion || wbc.more_io)
++				congestion_wait(WRITE, HZ/10);
++			else
+ 				break;
+ 		}
+ 	}
+@@ -631,11 +633,12 @@ static void wb_kupdate(unsigned long arg
+ 			global_page_state(NR_UNSTABLE_NFS) +
+ 			(inodes_stat.nr_inodes - inodes_stat.nr_unused);
+ 	while (nr_to_write > 0) {
++		wbc.more_io = 0;
+ 		wbc.encountered_congestion = 0;
+ 		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
+ 		writeback_inodes(&wbc);
+ 		if (wbc.nr_to_write > 0) {
+-			if (wbc.encountered_congestion)
++			if (wbc.encountered_congestion || wbc.more_io)
+ 				congestion_wait(WRITE, HZ/10);
+ 			else
+ 				break;	/* All the old data is written */
