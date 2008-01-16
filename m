@@ -1,7 +1,7 @@
 From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
 Date: Wed, 16 Jan 2008 13:14:09 +0800
-Message-ID: <400460464.27881@ustc.edu.cn>
+Message-ID: <E1JF0bJ-0000zU-FG__48159.8998806023$1200460513$gmane$org@localhost.localdomain>
 References: <200801071151.11200.lists@naasa.net> <20080114035439.GA7330@mail.ustc.edu.cn> <400304530.01514@ustc.edu.cn> <200801141230.13694.jplatte@naasa.net> <1200310886.15103.1.camel@twins> <E1JEOmD-0001Ap-U7@localhost.localdomain> <20080115214212.GB32428@elte.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -12,16 +12,12 @@ Cc: Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Mike Snitzer <snitzer@gmail.com>
 To: Ingo Molnar <mingo@elte.hu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:39740 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751785AbYAPFOW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jan 2008 00:14:22 -0500
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757458AbYAPFOg@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20080115214212.GB32428@elte.hu>
 Message-Id: <E1JF0bJ-0000zU-FG@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Tue, Jan 15, 2008 at 10:42:13PM +0100, Ingo Molnar wrote:
 > 
@@ -167,3 +163,4 @@ Mike, you can use this one on 2.6.24.
  				congestion_wait(WRITE, HZ/10);
  			else
  				break;	/* All the old data is written */
+
