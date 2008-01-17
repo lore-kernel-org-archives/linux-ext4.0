@@ -1,103 +1,90 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 2/4]JBD2: Group short-lived and reclaimable kernel
-	allocations
-Date: Thu, 17 Jan 2008 11:48:08 -0800
-Message-ID: <1200599288.4134.32.camel@localhost.localdomain>
+Subject: [PATCH 4/4]JBD2: sparse pointer use of zero as null
+Date: Thu, 17 Jan 2008 11:48:23 -0800
+Message-ID: <1200599303.4134.34.camel@localhost.localdomain>
 References: <12004403661489-git-send-email-jonas.bonn@gmail.com>
 	 <20080115155914.c72aaea9.akpm@linux-foundation.org>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mel@csn.ul.ie>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:35295 "EHLO e6.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:51532 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757362AbYAQTsF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 14:48:05 -0500
+	id S1757412AbYAQTsR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2008 14:48:17 -0500
 In-Reply-To: <20080115155914.c72aaea9.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-JBD2: Group short-lived and reclaimable kernel allocations
-From: Mingming Cao <cmm@us.ibm.com>
-Ported from JBD to JBD2
+Ported from upstream jbd changes to jbd2
 
---------------------------------
-From: Mel Gorman <mel@csn.ul.ie>
-Date: Tue, 16 Oct 2007 08:25:52 +0000 (-0700)
-Subject: Group short-lived and reclaimable kernel allocations
-X-Git-Tag: v2.6.24-rc1~1137
-X-Git-Url: http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Ftorvalds%2Flinux-2.6.git;a=commitdiff_plain;h=e12ba74d8ff3e2f73a583500d7095e406df4d093
+sparse pointer use of zero as null
 
-Group short-lived and reclaimable kernel allocations
+Get rid of sparse related warnings from places that use integer as NULL
+pointer.
 
-This patch marks a number of allocations that are either short-lived such as
-network buffers or are reclaimable such as inode allocations.  When something
-like updatedb is called, long-lived and unmovable kernel allocations tend to
-be spread throughout the address space which increases fragmentation.
-
-This patch groups these allocations together as much as possible by adding a
-new MIGRATE_TYPE.  The MIGRATE_RECLAIMABLE type is for allocations that can be
-reclaimed on demand, but not moved.  i.e.  they can be migrated by deleting
-them and re-reading the information from elsewhere.
-
-Cc: Mel Gorman <mel@csn.ul.ie>
-Cc: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
+ fs/jbd2/transaction.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
----
- fs/jbd2/journal.c |    4 ++--
- fs/jbd2/revoke.c  |    6 ++++--
- 2 files changed, 6 insertions(+), 4 deletions(-)
-
-Index: linux-2.6.24-rc7/fs/jbd2/journal.c
+Index: linux-2.6.24-rc7/fs/jbd2/transaction.c
 ===================================================================
---- linux-2.6.24-rc7.orig/fs/jbd2/journal.c	2008-01-16 15:02:40.000000000 -0800
-+++ linux-2.6.24-rc7/fs/jbd2/journal.c	2008-01-16 17:40:24.000000000 -0800
-@@ -1975,7 +1975,7 @@ static int journal_init_jbd2_journal_hea
- 	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
- 				sizeof(struct journal_head),
- 				0,		/* offset */
--				0,		/* flags */
-+				SLAB_TEMPORARY,	/* flags */
- 				NULL);		/* ctor */
- 	retval = 0;
- 	if (jbd2_journal_head_cache == 0) {
-@@ -2271,7 +2271,7 @@ static int __init journal_init_handle_ca
- 	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
- 				sizeof(handle_t),
- 				0,		/* offset */
--				0,		/* flags */
-+				SLAB_TEMPORARY,	/* flags */
- 				NULL);		/* ctor */
- 	if (jbd2_handle_cache == NULL) {
- 		printk(KERN_EMERG "JBD: failed to create handle cache\n");
-Index: linux-2.6.24-rc7/fs/jbd2/revoke.c
-===================================================================
---- linux-2.6.24-rc7.orig/fs/jbd2/revoke.c	2008-01-06 13:45:38.000000000 -0800
-+++ linux-2.6.24-rc7/fs/jbd2/revoke.c	2008-01-16 17:40:24.000000000 -0800
-@@ -171,13 +171,15 @@ int __init jbd2_journal_init_revoke_cach
- {
- 	jbd2_revoke_record_cache = kmem_cache_create("jbd2_revoke_record",
- 					   sizeof(struct jbd2_revoke_record_s),
--					   0, SLAB_HWCACHE_ALIGN, NULL);
-+					   0,
-+					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
-+					   NULL);
- 	if (jbd2_revoke_record_cache == 0)
- 		return -ENOMEM;
+--- linux-2.6.24-rc7.orig/fs/jbd2/transaction.c	2008-01-16 17:49:48.000000000 -0800
++++ linux-2.6.24-rc7/fs/jbd2/transaction.c	2008-01-16 18:06:33.000000000 -0800
+@@ -1182,7 +1182,7 @@ int jbd2_journal_dirty_metadata(handle_t
+ 	}
  
- 	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
- 					   sizeof(struct jbd2_revoke_table_s),
--					   0, 0, NULL);
-+					   0, SLAB_TEMPORARY, NULL);
- 	if (jbd2_revoke_table_cache == 0) {
- 		kmem_cache_destroy(jbd2_revoke_record_cache);
- 		jbd2_revoke_record_cache = NULL;
+ 	/* That test should have eliminated the following case: */
+-	J_ASSERT_JH(jh, jh->b_frozen_data == 0);
++	J_ASSERT_JH(jh, jh->b_frozen_data == NULL);
+ 
+ 	JBUFFER_TRACE(jh, "file as BJ_Metadata");
+ 	spin_lock(&journal->j_list_lock);
+@@ -1532,7 +1532,7 @@ void __jbd2_journal_temp_unlink_buffer(s
+ 
+ 	J_ASSERT_JH(jh, jh->b_jlist < BJ_Types);
+ 	if (jh->b_jlist != BJ_None)
+-		J_ASSERT_JH(jh, transaction != 0);
++		J_ASSERT_JH(jh, transaction != NULL);
+ 
+ 	switch (jh->b_jlist) {
+ 	case BJ_None:
+@@ -1601,11 +1601,11 @@ __journal_try_to_free_buffer(journal_t *
+ 	if (buffer_locked(bh) || buffer_dirty(bh))
+ 		goto out;
+ 
+-	if (jh->b_next_transaction != 0)
++	if (jh->b_next_transaction != NULL)
+ 		goto out;
+ 
+ 	spin_lock(&journal->j_list_lock);
+-	if (jh->b_transaction != 0 && jh->b_cp_transaction == 0) {
++	if (jh->b_transaction != NULL && jh->b_cp_transaction == NULL) {
+ 		if (jh->b_jlist == BJ_SyncData || jh->b_jlist == BJ_Locked) {
+ 			/* A written-back ordered data buffer */
+ 			JBUFFER_TRACE(jh, "release data");
+@@ -1613,7 +1613,7 @@ __journal_try_to_free_buffer(journal_t *
+ 			jbd2_journal_remove_journal_head(bh);
+ 			__brelse(bh);
+ 		}
+-	} else if (jh->b_cp_transaction != 0 && jh->b_transaction == 0) {
++	} else if (jh->b_cp_transaction != NULL && jh->b_transaction == NULL) {
+ 		/* written-back checkpointed metadata buffer */
+ 		if (jh->b_jlist == BJ_None) {
+ 			JBUFFER_TRACE(jh, "remove from checkpoint list");
+@@ -1973,7 +1973,7 @@ void __jbd2_journal_file_buffer(struct j
+ 
+ 	J_ASSERT_JH(jh, jh->b_jlist < BJ_Types);
+ 	J_ASSERT_JH(jh, jh->b_transaction == transaction ||
+-				jh->b_transaction == 0);
++				jh->b_transaction == NULL);
+ 
+ 	if (jh->b_transaction && jh->b_jlist == jlist)
+ 		return;
 
- 
  
