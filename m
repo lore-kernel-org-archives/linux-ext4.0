@@ -1,62 +1,71 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 3/4]JBD2: user of the jiffies rounding code
-Date: Thu, 17 Jan 2008 11:48:17 -0800
-Message-ID: <1200599297.4134.33.camel@localhost.localdomain>
-References: <12004403661489-git-send-email-jonas.bonn@gmail.com>
-	 <20080115155914.c72aaea9.akpm@linux-foundation.org>
+Subject: Re: [PATCH] Fix oops in mballoc caused by a variable overflow
+Date: Thu, 17 Jan 2008 12:07:16 -0800
+Message-ID: <1200600436.4134.35.camel@localhost.localdomain>
+References: <1200510717.4561.11.camel@ext1.frec.bull.fr>
+	 <1200509307.3985.8.camel@localhost.localdomain>
+	 <20080117064736.GA6749@skywalker> <478F234C.90807@bull.net>
+	 <20080117120752.GB24979@skywalker> <478F5395.9040203@bull.net>
+	 <20080117162928.GC6667@skywalker>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Arjan van de Ven <arjan@linux.intel.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:39362 "EHLO e6.ny.us.ibm.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:50768 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751012AbYAQTuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 14:50:14 -0500
-In-Reply-To: <20080115155914.c72aaea9.akpm@linux-foundation.org>
+	id S1751925AbYAQUHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2008 15:07:14 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0HK7AhT001081
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 15:07:10 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0HK7AIq133554
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 15:07:10 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0HK79Vq025305
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 15:07:10 -0500
+In-Reply-To: <20080117162928.GC6667@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ported from JBD changes from Arjan van de Ven <arjan@linux.intel.com>
--------------------------------------------
-Date: Sun, 10 Dec 2006 10:21:26 +0000 (-0800)
-Subject: [PATCH] user of the jiffies rounding code: JBD
-X-Git-Tag: v2.6.20-rc1~15^2~43
-X-Git-Url: http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Ftorvalds%2Flinux-2.6.git;a=commitdiff_plain;h=44d306e1508fef6fa7a6eb15a1aba86ef68389a6
+On Thu, 2008-01-17 at 21:59 +0530, Aneesh Kumar K.V wrote:
+> On Thu, Jan 17, 2008 at 02:09:41PM +0100, Valerie Clement wrote:
+> > Aneesh Kumar K.V wrote:
+> >> On Thu, Jan 17, 2008 at 10:43:40AM +0100, Valerie Clement wrote:
+> >>> Aneesh Kumar K.V wrote:
+> >>>> What about this  ? I guess we will overflow start = start << bsbits;
+> >>>>
+> >>> Hi Aneesh,
+> >>> your patch below doesn't fix the issue, because as start_off is also  
+> >>> loff_t, start_off = ac->ac_o_ex.fe_logical << bsbits  also overflows.
+> >>>
+> >>
+> >> loff_t is 64 bits.
+> >>
+> >> typedef __kernel_loff_t         loff_t;
+> >> typedef long long       __kernel_loff_t;
+> >> typedef __u32 ext4_lblk_t;
+> >> typedef unsigned long long ext4_fsblk_t
+> >>
+> >> start_off = ac->ac_o_ex.fe_logical << bsbits;
+> >>
+> >> In the above line what we are storing in start_off is the offset in bytes.So it makes
+> >> sense to use the type loff_t. It is neither logical block nor physical block.
+> >
+> > Oh yes, sorry, you're right. I read too quickly.
+> >
+> > In fact, it's missing a cast :
+> >   start_off = (loff_t) ac->ac_o_ex.fe_logical << bsbits;
+> >
+> > With that change, the test is ok.
+> 
+> Updated patch below.
+> 
+Thanks, folded to the mballoc-core patch
 
-[PATCH] user of the jiffies rounding code: JBD
-
-This patch introduces a user: of the round_jiffies() function; the "5 second"
-ext3/jbd wakeup.
-
-While "every 5 seconds" doesn't sound as a problem, there can be many of these
-(and these timers do add up over all the kernel).  The "5 second" wakeup isn't
-really timing sensitive; in addition even with rounding it'll still happen
-every 5 seconds (with the exception of the very first time, which is likely to
-be rounded up to somewhere closer to 6 seconds)
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
-
----
- fs/jbd2/transaction.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-Index: linux-2.6.24-rc7/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.24-rc7.orig/fs/jbd2/transaction.c	2008-01-16 15:41:14.000000000 -0800
-+++ linux-2.6.24-rc7/fs/jbd2/transaction.c	2008-01-16 17:49:48.000000000 -0800
-@@ -54,7 +54,7 @@ jbd2_get_transaction(journal_t *journal,
- 	spin_lock_init(&transaction->t_handle_lock);
- 
- 	/* Set up the commit timer for the new transaction. */
--	journal->j_commit_timer.expires = transaction->t_expires;
-+	journal->j_commit_timer.expires = round_jiffies(transaction->t_expires);
- 	add_timer(&journal->j_commit_timer);
- 
- 	J_ASSERT(journal->j_running_transaction == NULL);
-
- 
+Mingming
+> -aneesh
