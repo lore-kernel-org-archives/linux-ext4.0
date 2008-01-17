@@ -1,161 +1,110 @@
-From: Fengguang Wu <wfg@mail.ustc.edu.cn>
-Subject: [PATCH] writeback: speed up writeback of big dirty files
-Date: Thu, 17 Jan 2008 13:28:18 +0800
-Message-ID: <E1JFNIY-0007R4-VO__17720.0265498415$1200559446$gmane$org@localhost.localdomain>
-References: <230154.6549.qm@web32604.mail.mud.yahoo.com> <170fa0d20801160827p73ae28d0u702120a4f9f48936@mail.gmail.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [PATCH] Fix oops in mballoc caused by a variable overflow
+Date: Thu, 17 Jan 2008 10:43:40 +0100
+Message-ID: <478F234C.90807@bull.net>
+References: <1200510717.4561.11.camel@ext1.frec.bull.fr> <1200509307.3985.8.camel@localhost.localdomain> <20080117064736.GA6749@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mike Snitzer <snitzer@gmail.com>,
-	Martin Knoblauch <spamtrap@knobisoft.de>,
-	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
-	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756407AbYAQIn0@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <170fa0d20801160827p73ae28d0u702120a4f9f48936@mail.gmail.com>
-Message-Id: <E1JFNIY-0007R4-VO@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:60913 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754834AbYAQJmT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2008 04:42:19 -0500
+In-Reply-To: <20080117064736.GA6749@skywalker>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> On Jan 16, 2008 9:15 AM, Martin Knoblauch <spamtrap@knobisoft.de> wrote:
-> Fengguang's latest writeback patch applies cleanly, builds, boots on 2.6.24-rc8.
+Aneesh Kumar K.V wrote:
+> What about this  ? I guess we will overflow 
+> start = start << bsbits;
+> 
 
-Linus, if possible, I'd suggest this patch be merged for 2.6.24.
+Hi Aneesh,
+your patch below doesn't fix the issue, because as start_off is also 
+loff_t, start_off = ac->ac_o_ex.fe_logical << bsbits  also overflows.
 
-It's a safer version of the reverted patch. It was tested on
-ext2/ext3/jfs/xfs/reiserfs and won't 100% iowait even without the
-other bug fixing patches.
-
-Fengguang
----
-
-writeback: speed up writeback of big dirty files
-
-After making dirty a 100M file, the normal behavior is to
-start the writeback for all data after 30s delays. But
-sometimes the following happens instead:
-
-	- after 30s:    ~4M
-	- after 5s:     ~4M
-	- after 5s:     all remaining 92M
-
-Some analyze shows that the internal io dispatch queues goes like this:
-
-		s_io            s_more_io
-		-------------------------
-	1)	100M,1K         0
-	2)	1K              96M
-	3)	0               96M
-1) initial state with a 100M file and a 1K file
-2) 4M written, nr_to_write <= 0, so write more
-3) 1K written, nr_to_write > 0, no more writes(BUG)
-nr_to_write > 0 in (3) fools the upper layer to think that data have all been
-written out. The big dirty file is actually still sitting in s_more_io. We
-cannot simply splice s_more_io back to s_io as soon as s_io becomes empty, and
-let the loop in generic_sync_sb_inodes() continue: this may starve newly
-expired inodes in s_dirty.  It is also not an option to draw inodes from both
-s_more_io and s_dirty, an let the loop go on: this might lead to live locks,
-and might also starve other superblocks in sync time(well kupdate may still
-starve some superblocks, that's another bug).
-We have to return when a full scan of s_io completes. So nr_to_write > 0 does
-not necessarily mean that "all data are written". This patch introduces a flag
-writeback_control.more_io to indicate that more io should be done. With it the
-big dirty file no longer has to wait for the next kupdate invocation 5s later.
-
-In sync_sb_inodes() we only set more_io on super_blocks we actually visited.
-This aviods the interaction between two pdflush deamons.
-
-Also in __sync_single_inode() we don't blindly keep requeuing the io if the
-filesystem cannot progress. Failing to do so may lead to 100% iowait.
-
-Tested-by: Mike Snitzer <snitzer@gmail.com>
-Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
----
- fs/fs-writeback.c         |   18 ++++++++++++++++--
- include/linux/writeback.h |    1 +
- mm/page-writeback.c       |    9 ++++++---
- 3 files changed, 23 insertions(+), 5 deletions(-)
-
---- linux.orig/fs/fs-writeback.c
-+++ linux/fs/fs-writeback.c
-@@ -284,7 +284,17 @@ __sync_single_inode(struct inode *inode,
- 				 * soon as the queue becomes uncongested.
- 				 */
- 				inode->i_state |= I_DIRTY_PAGES;
--				requeue_io(inode);
-+				if (wbc->nr_to_write <= 0) {
-+					/*
-+					 * slice used up: queue for next turn
-+					 */
-+					requeue_io(inode);
-+				} else {
-+					/*
-+					 * somehow blocked: retry later
-+					 */
-+					redirty_tail(inode);
-+				}
- 			} else {
- 				/*
- 				 * Otherwise fully redirty the inode so that
-@@ -479,8 +489,12 @@ sync_sb_inodes(struct super_block *sb, s
- 		iput(inode);
- 		cond_resched();
- 		spin_lock(&inode_lock);
--		if (wbc->nr_to_write <= 0)
-+		if (wbc->nr_to_write <= 0) {
-+			wbc->more_io = 1;
- 			break;
-+		}
-+		if (!list_empty(&sb->s_more_io))
-+			wbc->more_io = 1;
- 	}
- 	return;		/* Leave any unwritten inodes on s_io */
- }
---- linux.orig/include/linux/writeback.h
-+++ linux/include/linux/writeback.h
-@@ -62,6 +62,7 @@ struct writeback_control {
- 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
- 	unsigned for_writepages:1;	/* This is a writepages() call */
- 	unsigned range_cyclic:1;	/* range_start is cyclic */
-+	unsigned more_io:1;		/* more io to be dispatched */
- };
- 
- /*
---- linux.orig/mm/page-writeback.c
-+++ linux/mm/page-writeback.c
-@@ -558,6 +558,7 @@ static void background_writeout(unsigned
- 			global_page_state(NR_UNSTABLE_NFS) < background_thresh
- 				&& min_pages <= 0)
- 			break;
-+		wbc.more_io = 0;
- 		wbc.encountered_congestion = 0;
- 		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
- 		wbc.pages_skipped = 0;
-@@ -565,8 +566,9 @@ static void background_writeout(unsigned
- 		min_pages -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
- 		if (wbc.nr_to_write > 0 || wbc.pages_skipped > 0) {
- 			/* Wrote less than expected */
--			congestion_wait(WRITE, HZ/10);
--			if (!wbc.encountered_congestion)
-+			if (wbc.encountered_congestion || wbc.more_io)
-+				congestion_wait(WRITE, HZ/10);
-+			else
- 				break;
- 		}
- 	}
-@@ -631,11 +633,12 @@ static void wb_kupdate(unsigned long arg
- 			global_page_state(NR_UNSTABLE_NFS) +
- 			(inodes_stat.nr_inodes - inodes_stat.nr_unused);
- 	while (nr_to_write > 0) {
-+		wbc.more_io = 0;
- 		wbc.encountered_congestion = 0;
- 		wbc.nr_to_write = MAX_WRITEBACK_PAGES;
- 		writeback_inodes(&wbc);
- 		if (wbc.nr_to_write > 0) {
--			if (wbc.encountered_congestion)
-+			if (wbc.encountered_congestion || wbc.more_io)
- 				congestion_wait(WRITE, HZ/10);
- 			else
- 				break;	/* All the old data is written */
-
+> I guess start should be of type loff_t. Patch below
+> 
+> -aneesh
+> 
+> ext4: Fix overflow in ext4_mb_normalize_request
+> 
+> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> 
+> kernel BUG at fs/ext4/mballoc.c:3148!
+> 
+> The BUG_ON is:
+> BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+> 
+> where the value of "size" is 4293920768.
+> 
+> This is due to the overflow of the variable "start" in the
+> ext4_mb_normalize_request() function.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+> 
+>  fs/ext4/mballoc.c |   21 ++++++++-------------
+>  1 files changed, 8 insertions(+), 13 deletions(-)
+> 
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index d8cd81e..d8a2db8 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2998,7 +2998,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>  	int bsbits, max;
+>  	ext4_lblk_t end;
+>  	struct list_head *cur;
+> -	loff_t size, orig_size;
+> +	loff_t size, orig_size, start_off;
+>  	ext4_lblk_t start, orig_start;
+>  	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
+>  
+> @@ -3039,7 +3039,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>  
+>  	/* first, try to predict filesize */
+>  	/* XXX: should this table be tunable? */
+> -	start = 0;
+> +	start_off = 0;
+>  	if (size <= 16 * 1024) {
+>  		size = 16 * 1024;
+>  	} else if (size <= 32 * 1024) {
+> @@ -3055,26 +3055,21 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>  	} else if (size <= 1024 * 1024) {
+>  		size = 1024 * 1024;
+>  	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
+> -		start = ac->ac_o_ex.fe_logical << bsbits;
+> -		start = (start / (1024 * 1024)) * (1024 * 1024);
+> +		start_off = (ac->ac_o_ex.fe_logical >> (20 - bsbits)) << 20;
+>  		size = 1024 * 1024;
+>  	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
+> -		start = ac->ac_o_ex.fe_logical << bsbits;
+> -		start = (start / (4 * (1024 * 1024))) * 4 * (1024 * 1024);
+> +		start_off = (ac->ac_o_ex.fe_logical >> (22 - bsbits)) << 22;
+>  		size = 4 * 1024 * 1024;
+>  	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
+>  					(8<<20)>>bsbits, max, bsbits)) {
+> -		start = ac->ac_o_ex.fe_logical;
+> -		start = start << bsbits;
+> -		start = (start / (8 * (1024 * 1024))) * 8 * (1024 * 1024);
+> +		start_off = (ac->ac_o_ex.fe_logical >> (23 - bsbits)) << 23;
+>  		size = 8 * 1024 * 1024;
+>  	} else {
+> -		start = ac->ac_o_ex.fe_logical;
+> -		start = start << bsbits;
+> -		size = ac->ac_o_ex.fe_len << bsbits;
+> +		start_off = ac->ac_o_ex.fe_logical << bsbits;
+> +		size	  = ac->ac_o_ex.fe_len << bsbits;
+>  	}
+>  	orig_size = size = size >> bsbits;
+> -	orig_start = start = start >> bsbits;
+> +	orig_start = start = start_off >> bsbits;
+>  
+>  	/* don't cover already allocated blocks in selected range */
+>  	if (ar->pleft && start <= ar->lleft) {
+> 
