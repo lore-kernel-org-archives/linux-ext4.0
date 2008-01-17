@@ -1,97 +1,60 @@
-From: Mel Gorman <mel@csn.ul.ie>
-Subject: Re: regression: 100% io-wait with 2.6.24-rcX
-Date: Thu, 17 Jan 2008 22:12:21 +0000
-Message-ID: <20080117221220.GC25975@csn.ul.ie>
-References: <169450.15299.qm@web32606.mail.mud.yahoo.com>
+From: Mathieu SEGAUD <mathieu.segaud@regala.cx>
+Subject: Re: [PATCH] Convert ext3_ioctl() to an unlocked_ioctl
+Date: Fri, 18 Jan 2008 00:48:29 +0100
+Message-ID: <87wsq89foy.fsf@barad-dur.regala.cx>
+References: <1200573450-1246-1-git-send-email-mathieu.segaud@regala.cx>
+	<1200573450-1246-2-git-send-email-mathieu.segaud@regala.cx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Fengguang Wu <wfg@mail.ustc.edu.cn>,
-	Mike Snitzer <snitzer@gmail.com>,
-	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
-	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	James.Bottomley@steeleye.com
-To: Martin Knoblauch <spamtrap@knobisoft.de>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	sct@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gir.skynet.ie ([193.1.99.77]:46800 "EHLO gir.skynet.ie"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752088AbYAQWMX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 17:12:23 -0500
-Content-Disposition: inline
-In-Reply-To: <169450.15299.qm@web32606.mail.mud.yahoo.com>
+Received: from def92-3-81-56-114-101.fbx.proxad.net ([81.56.114.101]:38855
+	"EHLO barad-dur.regala.cx" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756101AbYAQXsa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2008 18:48:30 -0500
+In-Reply-To: <1200573450-1246-2-git-send-email-mathieu.segaud@regala.cx> (Mathieu Segaud's message of "Thu\, 17 Jan 2008 13\:37\:29 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On (17/01/08 13:50), Martin Knoblauch didst pronounce:
-> > <mail manglement snipped>
-> 
-> The effect  is  defintely  depending on  the  IO  hardware. I performed the same tests
-> on a different box with an AACRAID controller and there things look different.
+Vous m'avez dit r=E9cemment :
 
-I take it different also means it does not show this odd performance
-behaviour and is similar whether the patch is applied or not?
+> --- a/fs/ext3/ioctl.c
+> +++ b/fs/ext3/ioctl.c
+> @@ -17,12 +17,19 @@
+>  #include <linux/smp_lock.h>
+>  #include <asm/uaccess.h>
+> =20
+> -int ext3_ioctl (struct inode * inode, struct file * filp, unsigned i=
+nt cmd,
+> +long ext3_ioctl(struct file *filp, unsigned int cmd,
+>  		unsigned long arg)
+>  {
+> -	struct ext3_inode_info *ei =3D EXT3_I(inode);
+> +	struct ext3_inode_info *ei;
+> +	struct inode *inode;
+>  	unsigned int flags;
+>  	unsigned short rsv_window_size;
+> +	long retval =3D 0;
+> +
+> +	lock_kernel();
+> +
+> +	inode =3D filp->f_dentry->d_inode;
 
-> Basically
-> the "offending" commit helps seingle stream performance on that box, while dual/triple
-> stream are not affected. So I suspect that the CCISS is just not behaving well.
-> 
-> And yes, the tests are usually done on a freshly booted box. Of course, I repeat them
-> a few times. On the CCISS box the numbers are very constant. On the AACRAID box
-> they vary quite a bit.
-> 
->  I can certainly stress the box before doing the tests. Please define "many" for the kernel
-> compiles :-)
-> 
+I guess this should be
+        inode =3D filp->f_path.dentry->d_inode;
 
-With 8GiB of RAM, try making 24 copies of the kernel and compiling them
-all simultaneously. Running that for for 20-30 minutes should be enough to
-randomise the freelists affecting what color of page is used for the dd test.
 
-> > >  OK, the change happened between rc5 and rc6. Just following a
-> > > gut feeling, I reverted
-> > > 
-> > > #commit 81eabcbe0b991ddef5216f30ae91c4b226d54b6d
-> > > #Author: Mel Gorman 
-> > > #Date:   Mon Dec 17 16:20:05 2007 -0800
-> > > #
-> 
-> > > 
-> > > This has brought back the good results I observed and reported.
-> > > I do not know what to make out of this. At least on the systems
-> > > I care about (HP/DL380g4, dual CPUs, HT-enabled, 8 GB Memory,
-> > > SmartaArray6i controller with 4x72GB SCSI disks as RAID5 (battery
-> > > protected writeback cache enabled) and gigabit networking (tg3)) this
-> > > optimisation is a dissaster.
-> > > 
-> > 
-> > That patch was not an optimisation, it was a regression fix
-> > against 2.6.23 and I don't believe reverting it is an option. Other IO
-> > hardware benefits from having the allocator supply pages in PFN order.
-> 
->  I think this late in the 2.6.24 game we just should leave things as they are. But
-> we should try to find a way to make CCISS faster, as it apparently can be faster.
-> 
-> > Your controller would seem to suffer when presented with the same situation
-> > but I don't know why that is. I've added James to the cc in case he has seen this
-> > sort of situation before.
-> > 
-> > > On the other hand, it is not a regression against 2.6.22/23. Those
-> > 
->  > had bad IO scaling to. It would just be a shame to loose an apparently
-> > 
->  > great performance win.
-> > 
-> > Could you try running your tests again when the system has been
-> > stressed with some other workload first?
-> > 
-> 
->  Will do.
-> 
+I will repost a fixed patch
+sorry for this one.
 
-Thanks
 
--- 
-Mel Gorman
-Part-time Phd Student                          Linux Technology Center
-University of Limerick                         IBM Dublin Software Lab
+> +	ei =3D EXT3_I(inode);
+> =20
+>  	ext3_debug ("cmd =3D %u, arg =3D %lu\n", cmd, arg);
+> =20
+
+--=20
+Mathieu
