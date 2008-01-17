@@ -1,153 +1,172 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Fix oops in mballoc caused by a variable overflow
-Date: Thu, 17 Jan 2008 21:59:28 +0530
-Message-ID: <20080117162928.GC6667@skywalker>
-References: <1200510717.4561.11.camel@ext1.frec.bull.fr> <1200509307.3985.8.camel@localhost.localdomain> <20080117064736.GA6749@skywalker> <478F234C.90807@bull.net> <20080117120752.GB24979@skywalker> <478F5395.9040203@bull.net>
+From: Martin Knoblauch <spamtrap@knobisoft.de>
+Subject: Re: regression: 100% io-wait with 2.6.24-rcX
+Date: Thu, 17 Jan 2008 09:44:35 -0800 (PST)
+Message-ID: <411558.92960.qm@web32601.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="4Ckj6UjgE2iN1+kY"
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mike Snitzer <snitzer@gmail.com>,
+	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
+	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:52056 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710AbYAQQ3i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2008 11:29:38 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m0HGUP1I028938
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2008 03:30:25 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0HGXD1l262382
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2008 03:33:13 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0HGTaM9001312
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2008 03:29:36 +1100
-Content-Disposition: inline
-In-Reply-To: <478F5395.9040203@bull.net>
+Received: from web32601.mail.mud.yahoo.com ([68.142.207.228]:37673 "HELO
+	web32601.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751701AbYAQRoj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2008 12:44:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---4Ckj6UjgE2iN1+kY
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Thu, Jan 17, 2008 at 02:09:41PM +0100, Valerie Clement wrote:
-> Aneesh Kumar K.V wrote:
->> On Thu, Jan 17, 2008 at 10:43:40AM +0100, Valerie Clement wrote:
->>> Aneesh Kumar K.V wrote:
->>>> What about this  ? I guess we will overflow start = start << bsbits;
->>>>
->>> Hi Aneesh,
->>> your patch below doesn't fix the issue, because as start_off is also  
->>> loff_t, start_off = ac->ac_o_ex.fe_logical << bsbits  also overflows.
->>>
->>
->> loff_t is 64 bits.
->>
->> typedef __kernel_loff_t         loff_t;
->> typedef long long       __kernel_loff_t;
->> typedef __u32 ext4_lblk_t;
->> typedef unsigned long long ext4_fsblk_t
->>
->> start_off = ac->ac_o_ex.fe_logical << bsbits;
->>
->> In the above line what we are storing in start_off is the offset in bytes.So it makes
->> sense to use the type loff_t. It is neither logical block nor physical block.
->
-> Oh yes, sorry, you're right. I read too quickly.
->
-> In fact, it's missing a cast :
->   start_off = (loff_t) ac->ac_o_ex.fe_logical << bsbits;
->
-> With that change, the test is ok.
-
-Updated patch below.
-
--aneesh
-
---4Ckj6UjgE2iN1+kY
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="overflow-fix.patch"
-
-ext4: Fix overflow in ext4_mb_normalize_request
-
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-kernel BUG at fs/ext4/mballoc.c:3148!
-
-The BUG_ON is:
-BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-
-where the value of "size" is 4293920768.
-
-This is due to the overflow of the variable "start" in the
-ext4_mb_normalize_request() function.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
-
- fs/ext4/mballoc.c |   24 +++++++++++-------------
- 1 files changed, 11 insertions(+), 13 deletions(-)
-
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d8cd81e..d16083c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2998,7 +2998,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	int bsbits, max;
- 	ext4_lblk_t end;
- 	struct list_head *cur;
--	loff_t size, orig_size;
-+	loff_t size, orig_size, start_off;
- 	ext4_lblk_t start, orig_start;
- 	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
+----- Original Message ----
+> From: Martin Knoblauch <spamtrap@knobisoft.de>
+> To: Fengguang Wu <wfg@mail.ustc.edu.cn>
+> Cc: Mike Snitzer <snitzer@gmail.com>; Peter Zijlstra <peterz@infradead.org>; jplatte@naasa.net; Ingo Molnar <mingo@elte.hu>; linux-kernel@vger.kernel.org; "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>; Linus Torvalds <torvalds@linux-foundation.org>
+> Sent: Thursday, January 17, 2008 2:52:58 PM
+> Subject: Re: regression: 100% io-wait with 2.6.24-rcX
+> 
+> ----- Original Message ----
+> > From: Fengguang Wu 
+> > To: Martin Knoblauch 
+> > Cc: Mike Snitzer ; Peter
+> Zijlstra
+> 
+ ; jplatte@naasa.net; Ingo Molnar
+> ;
+> 
+ linux-kernel@vger.kernel.org;
+> "linux-ext4@vger.kernel.org"
+> 
+ ; Linus
+> Torvalds
+> 
  
-@@ -3039,7 +3039,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 
- 	/* first, try to predict filesize */
- 	/* XXX: should this table be tunable? */
--	start = 0;
-+	start_off = 0;
- 	if (size <= 16 * 1024) {
- 		size = 16 * 1024;
- 	} else if (size <= 32 * 1024) {
-@@ -3055,26 +3055,24 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	} else if (size <= 1024 * 1024) {
- 		size = 1024 * 1024;
- 	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
--		start = ac->ac_o_ex.fe_logical << bsbits;
--		start = (start / (1024 * 1024)) * (1024 * 1024);
-+		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
-+						(20 - bsbits)) << 20;
- 		size = 1024 * 1024;
- 	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
--		start = ac->ac_o_ex.fe_logical << bsbits;
--		start = (start / (4 * (1024 * 1024))) * 4 * (1024 * 1024);
-+		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
-+							(22 - bsbits)) << 22;
- 		size = 4 * 1024 * 1024;
- 	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
- 					(8<<20)>>bsbits, max, bsbits)) {
--		start = ac->ac_o_ex.fe_logical;
--		start = start << bsbits;
--		start = (start / (8 * (1024 * 1024))) * 8 * (1024 * 1024);
-+		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
-+							(23 - bsbits)) << 23;
- 		size = 8 * 1024 * 1024;
- 	} else {
--		start = ac->ac_o_ex.fe_logical;
--		start = start << bsbits;
--		size = ac->ac_o_ex.fe_len << bsbits;
-+		start_off = (loff_t)ac->ac_o_ex.fe_logical << bsbits;
-+		size	  = ac->ac_o_ex.fe_len << bsbits;
- 	}
- 	orig_size = size = size >> bsbits;
--	orig_start = start = start >> bsbits;
-+	orig_start = start = start_off >> bsbits;
- 
- 	/* don't cover already allocated blocks in selected range */
- 	if (ar->pleft && start <= ar->lleft) {
+> > Sent: Wednesday, January 16, 2008 1:00:04 PM
+> > Subject: Re: regression: 100% io-wait with 2.6.24-rcX
+> > 
+> > On Wed, Jan 16, 2008 at 01:26:41AM -0800, Martin Knoblauch wrote:
+> > > > For those interested in using your writeback improvements in
+> > > > production sooner rather than later (primarily with ext3); what
+> > > > recommendations do you have?  Just heavily test our own 2.6.24
+> > +
+> > 
+>  your
+> > > > evolving "close, but not ready for merge" -mm writeback patchset?
+> > > > 
+> > > Hi Fengguang, Mike,
+> > > 
+> > >  I can add myself to Mikes question. It would be good to know
+> > a
+> > 
+>  "roadmap" for the writeback changes. Testing 2.6.24-rcX so far has
+> > been
+> > 
+>  showing quite nice improvement of the overall writeback situation and
+> > it
+> > 
+>  would be sad to see this [partially] gone in 2.6.24-final.
+> > Linus
+> > 
+>  apparently already has reverted  "...2250b". I will definitely
+> repeat
+> 
+ my
+> > tests
+> > 
+>  with -rc8. and report.
+> > 
+> > Thank you, Martin. Can you help test this patch on 2.6.24-rc7?
+> > Maybe we can push it to 2.6.24 after your testing.
+> > 
+> Hi Fengguang,
+> 
+>  something really bad has happened between -rc3 and
+> -rc6.
+> 
+ Embarrassingly I did not catch that earlier :-(
+> 
+>  Compared to the numbers I posted
+> in
+> 
+ http://lkml.org/lkml/2007/10/26/208 , dd1 is now at 60 MB/sec
+> (slight
+> 
+ plus), while dd2/dd3 suck the same way as in pre 2.6.24. The only
+> test
+> 
+ that is still good is mix3, which I attribute to the per-BDI stuff.
+> 
+>  At the moment I am frantically trying to find when things went down.
+> I
+> 
+ did run -rc8 and rc8+yourpatch. No difference to what I see with
+> -rc6.
+> 
+ Sorry that I cannot provide any input to your patch.
+> 
 
---4Ckj6UjgE2iN1+kY--
+ OK, the change happened between rc5 and rc6. Just following a gut feeling, I reverted
+
+#commit 81eabcbe0b991ddef5216f30ae91c4b226d54b6d
+#Author: Mel Gorman <mel@csn.ul.ie>
+#Date:   Mon Dec 17 16:20:05 2007 -0800
+#
+#    mm: fix page allocation for larger I/O segments
+#    
+#    In some cases the IO subsystem is able to merge requests if the pages are
+#    adjacent in physical memory.  This was achieved in the allocator by having
+#    expand() return pages in physically contiguous order in situations were a
+#    large buddy was split.  However, list-based anti-fragmentation changed the
+#    order pages were returned in to avoid searching in buffered_rmqueue() for a
+#    page of the appropriate migrate type.
+#    
+#    This patch restores behaviour of rmqueue_bulk() preserving the physical
+#    order of pages returned by the allocator without incurring increased search
+#    costs for anti-fragmentation.
+#    
+#    Signed-off-by: Mel Gorman <mel@csn.ul.ie>
+#    Cc: James Bottomley <James.Bottomley@steeleye.com>
+#    Cc: Jens Axboe <jens.axboe@oracle.com>
+#    Cc: Mark Lord <mlord@pobox.com
+#    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+#    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+diff -urN linux-2.6.24-rc5/mm/page_alloc.c linux-2.6.24-rc6/mm/page_alloc.c
+--- linux-2.6.24-rc5/mm/page_alloc.c    2007-12-21 04:14:11.305633890 +0000
++++ linux-2.6.24-rc6/mm/page_alloc.c    2007-12-21 04:14:17.746985697 +0000
+@@ -847,8 +847,19 @@
+                struct page *page = __rmqueue(zone, order, migratetype);
+                if (unlikely(page == NULL))
+                        break;
++
++               /*
++                * Split buddy pages returned by expand() are received here
++                * in physical page order. The page is added to the callers and
++                * list and the list head then moves forward. From the callers
++                * perspective, the linked list is ordered by page number in
++                * some conditions. This is useful for IO devices that can
++                * merge IO requests if the physical pages are ordered
++                * properly.
++                */
+                list_add(&page->lru, list);
+                set_page_private(page, migratetype);
++               list = &page->lru;
+        }
+        spin_unlock(&zone->lock);
+        return i;
+
+
+
+This has brought back the good results I observed and reported.
+I do not know what to make out of this. At least on the systems I care
+about (HP/DL380g4, dual CPUs, HT-enabled, 8 GB Memory, SmartaArray6i
+controller with 4x72GB SCSI disks as RAID5 (battery protected writeback
+cache enabled) and gigabit networking (tg3)) this optimisation is a dissaster.
+
+ On the other hand, it is not a regression against 2.6.22/23. Those had
+bad IO scaling to. It would just be a shame to loose an apparently great
+performance win.
+is
+
+Cheers
+Martin
