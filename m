@@ -1,99 +1,103 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 1/4]jbd2: port jbd lockdep support to jbd2
-Date: Thu, 17 Jan 2008 11:47:59 -0800
-Message-ID: <1200599279.4134.31.camel@localhost.localdomain>
+Subject: [PATCH 2/4]JBD2: Group short-lived and reclaimable kernel
+	allocations
+Date: Thu, 17 Jan 2008 11:48:08 -0800
+Message-ID: <1200599288.4134.32.camel@localhost.localdomain>
 References: <12004403661489-git-send-email-jonas.bonn@gmail.com>
 	 <20080115155914.c72aaea9.akpm@linux-foundation.org>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jonas Bonn <jonas.bonn@gmail.com>, linux-kernel@vger.kernel.org,
+Cc: Mel Gorman <mel@csn.ul.ie>, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>, tytso@mit.edu
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:51097 "EHLO e2.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:35295 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751839AbYAQTrz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 14:47:55 -0500
+	id S1757362AbYAQTsF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2008 14:48:05 -0500
 In-Reply-To: <20080115155914.c72aaea9.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andrew, Ted,
+JBD2: Group short-lived and reclaimable kernel allocations
+From: Mingming Cao <cmm@us.ibm.com>
+Ported from JBD to JBD2
 
-I walked through the linus's git tree history and found 4 patches should
-port from ext3/jbd to ext4/jbd2, since the day ext4 was forked
-(2006.10.11) to today. I have already queued the ported patches in ext4
-patch queue and verified they seems fine. Here is the first one.
+--------------------------------
+From: Mel Gorman <mel@csn.ul.ie>
+Date: Tue, 16 Oct 2007 08:25:52 +0000 (-0700)
+Subject: Group short-lived and reclaimable kernel allocations
+X-Git-Tag: v2.6.24-rc1~1137
+X-Git-Url: http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Ftorvalds%2Flinux-2.6.git;a=commitdiff_plain;h=e12ba74d8ff3e2f73a583500d7095e406df4d093
 
+Group short-lived and reclaimable kernel allocations
 
+This patch marks a number of allocations that are either short-lived such as
+network buffers or are reclaimable such as inode allocations.  When something
+like updatedb is called, long-lived and unmovable kernel allocations tend to
+be spread throughout the address space which increases fragmentation.
 
-jbd2: port jbd lockdep support to jbd2
-> Except lockdep doesn't know about journal_start(), which has ranking
-> requirements similar to a semaphore.  
+This patch groups these allocations together as much as possible by adding a
+new MIGRATE_TYPE.  The MIGRATE_RECLAIMABLE type is for allocations that can be
+reclaimed on demand, but not moved.  i.e.  they can be migrated by deleting
+them and re-reading the information from elsewhere.
 
+Cc: Mel Gorman <mel@csn.ul.ie>
+Cc: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/jbd2/transaction.c |   11 +++++++++++
- include/linux/jbd2.h  |    4 ++++
- 2 files changed, 15 insertions(+)
 
-Index: linux-2.6.24-rc7/fs/jbd2/transaction.c
+---
+ fs/jbd2/journal.c |    4 ++--
+ fs/jbd2/revoke.c  |    6 ++++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+Index: linux-2.6.24-rc7/fs/jbd2/journal.c
 ===================================================================
---- linux-2.6.24-rc7.orig/fs/jbd2/transaction.c	2008-01-16 15:30:24.000000000 -0800
-+++ linux-2.6.24-rc7/fs/jbd2/transaction.c	2008-01-16 15:41:14.000000000 -0800
-@@ -241,6 +241,8 @@ out:
- 	return ret;
- }
- 
-+static struct lock_class_key jbd2_handle_key;
-+
- /* Allocate a new handle.  This should probably be in a slab... */
- static handle_t *new_handle(int nblocks)
+--- linux-2.6.24-rc7.orig/fs/jbd2/journal.c	2008-01-16 15:02:40.000000000 -0800
++++ linux-2.6.24-rc7/fs/jbd2/journal.c	2008-01-16 17:40:24.000000000 -0800
+@@ -1975,7 +1975,7 @@ static int journal_init_jbd2_journal_hea
+ 	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
+ 				sizeof(struct journal_head),
+ 				0,		/* offset */
+-				0,		/* flags */
++				SLAB_TEMPORARY,	/* flags */
+ 				NULL);		/* ctor */
+ 	retval = 0;
+ 	if (jbd2_journal_head_cache == 0) {
+@@ -2271,7 +2271,7 @@ static int __init journal_init_handle_ca
+ 	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
+ 				sizeof(handle_t),
+ 				0,		/* offset */
+-				0,		/* flags */
++				SLAB_TEMPORARY,	/* flags */
+ 				NULL);		/* ctor */
+ 	if (jbd2_handle_cache == NULL) {
+ 		printk(KERN_EMERG "JBD: failed to create handle cache\n");
+Index: linux-2.6.24-rc7/fs/jbd2/revoke.c
+===================================================================
+--- linux-2.6.24-rc7.orig/fs/jbd2/revoke.c	2008-01-06 13:45:38.000000000 -0800
++++ linux-2.6.24-rc7/fs/jbd2/revoke.c	2008-01-16 17:40:24.000000000 -0800
+@@ -171,13 +171,15 @@ int __init jbd2_journal_init_revoke_cach
  {
-@@ -251,6 +253,9 @@ static handle_t *new_handle(int nblocks)
- 	handle->h_buffer_credits = nblocks;
- 	handle->h_ref = 1;
+ 	jbd2_revoke_record_cache = kmem_cache_create("jbd2_revoke_record",
+ 					   sizeof(struct jbd2_revoke_record_s),
+-					   0, SLAB_HWCACHE_ALIGN, NULL);
++					   0,
++					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
++					   NULL);
+ 	if (jbd2_revoke_record_cache == 0)
+ 		return -ENOMEM;
  
-+	lockdep_init_map(&handle->h_lockdep_map, "jbd2_handle",
-+						&jbd2_handle_key, 0);
-+
- 	return handle;
- }
+ 	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
+ 					   sizeof(struct jbd2_revoke_table_s),
+-					   0, 0, NULL);
++					   0, SLAB_TEMPORARY, NULL);
+ 	if (jbd2_revoke_table_cache == 0) {
+ 		kmem_cache_destroy(jbd2_revoke_record_cache);
+ 		jbd2_revoke_record_cache = NULL;
+
  
-@@ -293,7 +298,11 @@ handle_t *jbd2_journal_start(journal_t *
- 		jbd2_free_handle(handle);
- 		current->journal_info = NULL;
- 		handle = ERR_PTR(err);
-+		goto out;
- 	}
-+
-+	lock_acquire(&handle->h_lockdep_map, 0, 0, 0, 2, _THIS_IP_);
-+out:
- 	return handle;
- }
- 
-@@ -1419,6 +1428,8 @@ int jbd2_journal_stop(handle_t *handle)
- 		spin_unlock(&journal->j_state_lock);
- 	}
- 
-+	lock_release(&handle->h_lockdep_map, 1, _THIS_IP_);
-+
- 	jbd2_free_handle(handle);
- 	return err;
- }
-Index: linux-2.6.24-rc7/include/linux/jbd2.h
-===================================================================
---- linux-2.6.24-rc7.orig/include/linux/jbd2.h	2008-01-16 15:29:03.000000000 -0800
-+++ linux-2.6.24-rc7/include/linux/jbd2.h	2008-01-16 15:29:54.000000000 -0800
-@@ -418,6 +418,10 @@ struct handle_s
- 	unsigned int	h_sync:		1;	/* sync-on-close */
- 	unsigned int	h_jdata:	1;	/* force data journaling */
- 	unsigned int	h_aborted:	1;	/* fatal error on handle */
-+
-+#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+	struct lockdep_map	h_lockdep_map;
-+#endif
- };
  
