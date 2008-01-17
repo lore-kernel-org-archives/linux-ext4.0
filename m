@@ -1,397 +1,58 @@
-From: Mathieu Segaud <mathieu.segaud@regala.cx>
-Subject: [PATCH] Convert ext3_ioctl() to an unlocked_ioctl
-Date: Thu, 17 Jan 2008 13:37:29 +0100
-Message-ID: <1200573450-1246-2-git-send-email-mathieu.segaud@regala.cx>
-References: <1200573450-1246-1-git-send-email-mathieu.segaud@regala.cx>
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	sct@redhat.com, Mathieu Segaud <mathieu.segaud@regala.cx>
-To: linux-ext4@vger.kernel.org
+From: "Abhishek Rai" <abhishekrai@google.com>
+Subject: Re: [CALL FOR TESTING] Make Ext3 fsck way faster [2.6.24-rc6 -mm patch]
+Date: Thu, 17 Jan 2008 07:47:54 -0500
+Message-ID: <d9885f0f0801170447r1c2bfeb9l6c911bfa0113366f@mail.gmail.com>
+References: <200801140839.01986.abhishekrai@google.com>
+	 <20080114163412.83a8b18d.akpm@linux-foundation.org>
+	 <20080115030441.a0270609.akpm@linux-foundation.org>
+	 <20080115131533.GA5766@infradead.org> <20080115152801.GA7292@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Tso" <tytso@mit.edu>,
+	"Christoph Hellwig" <hch@infradead.org>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	"Abhishek Rai" <abhishekrai@google.com>,
+	linux-kernel@vger.kerne
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bde.crans.org ([138.231.137.76]:34768 "EHLO bde.crans.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269AbYAQMhf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 07:37:35 -0500
-In-Reply-To: <1200573450-1246-1-git-send-email-mathieu.segaud@regala.cx>
+Received: from smtp-out.google.com ([216.239.33.17]:14743 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756329AbYAQMsD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2008 07:48:03 -0500
+Received: from zps38.corp.google.com (zps38.corp.google.com [172.25.146.38])
+	by smtp-out.google.com with ESMTP id m0HCluw2001380
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 12:47:57 GMT
+Received: from rv-out-0910.google.com (rvbl15.prod.google.com [10.140.88.15])
+	by zps38.corp.google.com with ESMTP id m0HCltfQ011584
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 04:47:56 -0800
+Received: by rv-out-0910.google.com with SMTP id l15so456323rvb.26
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2008 04:47:55 -0800 (PST)
+In-Reply-To: <20080115152801.GA7292@mit.edu>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Mathieu Segaud <mathieu.segaud@regala.cx>
----
- fs/ext3/dir.c           |    2 +-
- fs/ext3/file.c          |    2 +-
- fs/ext3/ioctl.c         |  161 ++++++++++++++++++++++++++++++++---------------
- include/linux/ext3_fs.h |    3 +-
- 4 files changed, 113 insertions(+), 55 deletions(-)
+On Jan 15, 2008 10:28 AM, Theodore Tso <tytso@mit.edu> wrote:
+> Also, it's not just reducing fsck times, although that's the main one.
+> The last time this was suggested, the rationale was to speed up the
+> "rm dvd.iso" case.  Also, something which *could* be done, if Abhishek
+> wants to pursue it, would be to pull in all of the indirect blocks
+> when the file is opened, and create an in-memory extent tree that
+> would speed up access to the file.  It's rarely worth doing this
+> without metaclustering, since it doesn't help for sequential I/O, only
+> random I/O, but with metaclustering it would also be a win for
+> sequential I/O.  (This would also remove the minor performance
+> degradation for sequential I/O imposed by metaclustering, and in fact
+> improve it slightly for really big files.)
+>
+>                                         - Ted
+>
 
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index 8ca3bfd..5ab6b88 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -42,7 +42,7 @@ const struct file_operations ext3_dir_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= generic_read_dir,
- 	.readdir	= ext3_readdir,		/* we take BKL. needed?*/
--	.ioctl		= ext3_ioctl,		/* BKL held */
-+	.unlocked_ioctl	= ext3_ioctl,		/* BKL held */
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext3_compat_ioctl,
- #endif
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index acc4913..49798ed 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -112,7 +112,7 @@ const struct file_operations ext3_file_operations = {
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
- 	.aio_write	= ext3_file_write,
--	.ioctl		= ext3_ioctl,
-+	.unlocked_ioctl	= ext3_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext3_compat_ioctl,
- #endif
-diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-index 023a070..bccb372 100644
---- a/fs/ext3/ioctl.c
-+++ b/fs/ext3/ioctl.c
-@@ -17,12 +17,19 @@
- #include <linux/smp_lock.h>
- #include <asm/uaccess.h>
- 
--int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
-+long ext3_ioctl(struct file *filp, unsigned int cmd,
- 		unsigned long arg)
- {
--	struct ext3_inode_info *ei = EXT3_I(inode);
-+	struct ext3_inode_info *ei;
-+	struct inode *inode;
- 	unsigned int flags;
- 	unsigned short rsv_window_size;
-+	long retval = 0;
-+
-+	lock_kernel();
-+
-+	inode = filp->f_dentry->d_inode;
-+	ei = EXT3_I(inode);
- 
- 	ext3_debug ("cmd = %u, arg = %lu\n", cmd, arg);
- 
-@@ -30,7 +37,8 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 	case EXT3_IOC_GETFLAGS:
- 		ext3_get_inode_flags(ei);
- 		flags = ei->i_flags & EXT3_FL_USER_VISIBLE;
--		return put_user(flags, (int __user *) arg);
-+		retval = put_user(flags, (int __user *) arg);
-+		goto out;
- 	case EXT3_IOC_SETFLAGS: {
- 		handle_t *handle = NULL;
- 		int err;
-@@ -38,14 +46,20 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		unsigned int oldflags;
- 		unsigned int jflag;
- 
--		if (IS_RDONLY(inode))
--			return -EROFS;
-+		if (IS_RDONLY(inode)) {
-+			retval = -EROFS;
-+			goto out;
-+		}
- 
--		if (!is_owner_or_cap(inode))
--			return -EACCES;
-+		if (!is_owner_or_cap(inode)) {
-+			retval = -EACCES;
-+			goto out;
-+		}
- 
--		if (get_user(flags, (int __user *) arg))
--			return -EFAULT;
-+		if (get_user(flags, (int __user *) arg)) {
-+			retval = -EFAULT;
-+			goto out;
-+		}
- 
- 		if (!S_ISDIR(inode->i_mode))
- 			flags &= ~EXT3_DIRSYNC_FL;
-@@ -54,7 +68,8 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		/* Is it quota file? Do not allow user to mess with it */
- 		if (IS_NOQUOTA(inode)) {
- 			mutex_unlock(&inode->i_mutex);
--			return -EPERM;
-+			retval = -EPERM;
-+			goto out;
- 		}
- 		oldflags = ei->i_flags;
- 
-@@ -70,7 +85,8 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		if ((flags ^ oldflags) & (EXT3_APPEND_FL | EXT3_IMMUTABLE_FL)) {
- 			if (!capable(CAP_LINUX_IMMUTABLE)) {
- 				mutex_unlock(&inode->i_mutex);
--				return -EPERM;
-+				retval = -EPERM;
-+				goto out;
- 			}
- 		}
- 
-@@ -81,7 +97,8 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL)) {
- 			if (!capable(CAP_SYS_RESOURCE)) {
- 				mutex_unlock(&inode->i_mutex);
--				return -EPERM;
-+				retval = -EPERM;
-+				goto out;
- 			}
- 		}
- 
-@@ -89,7 +106,8 @@ int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
- 		handle = ext3_journal_start(inode, 1);
- 		if (IS_ERR(handle)) {
- 			mutex_unlock(&inode->i_mutex);
--			return PTR_ERR(handle);
-+			retval = PTR_ERR(handle);
-+			goto out;
- 		}
- 		if (IS_SYNC(inode))
- 			handle->h_sync = 1;
-@@ -109,17 +127,20 @@ flags_err:
- 		ext3_journal_stop(handle);
- 		if (err) {
- 			mutex_unlock(&inode->i_mutex);
--			return err;
-+			retval = err;
-+			goto out;
- 		}
- 
- 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL))
- 			err = ext3_change_inode_journal_flag(inode, jflag);
- 		mutex_unlock(&inode->i_mutex);
--		return err;
-+		retval = err;
-+		goto out;
- 	}
- 	case EXT3_IOC_GETVERSION:
- 	case EXT3_IOC_GETVERSION_OLD:
--		return put_user(inode->i_generation, (int __user *) arg);
-+		retval = put_user(inode->i_generation, (int __user *) arg);
-+		goto out;
- 	case EXT3_IOC_SETVERSION:
- 	case EXT3_IOC_SETVERSION_OLD: {
- 		handle_t *handle;
-@@ -127,16 +148,24 @@ flags_err:
- 		__u32 generation;
- 		int err;
- 
--		if (!is_owner_or_cap(inode))
--			return -EPERM;
--		if (IS_RDONLY(inode))
--			return -EROFS;
--		if (get_user(generation, (int __user *) arg))
--			return -EFAULT;
-+		if (!is_owner_or_cap(inode)) {
-+			retval = -EPERM;
-+			goto out;
-+		}
-+		if (IS_RDONLY(inode)) {
-+			retval = -EROFS;
-+			goto out;
-+		}
-+		if (get_user(generation, (int __user *) arg)) {
-+			retval = -EFAULT;
-+			goto out;
-+		}
- 
- 		handle = ext3_journal_start(inode, 1);
--		if (IS_ERR(handle))
--			return PTR_ERR(handle);
-+		if (IS_ERR(handle)) {
-+			retval = PTR_ERR(handle);
-+			goto out;
-+		}
- 		err = ext3_reserve_inode_write(handle, inode, &iloc);
- 		if (err == 0) {
- 			inode->i_ctime = CURRENT_TIME_SEC;
-@@ -144,7 +173,8 @@ flags_err:
- 			err = ext3_mark_iloc_dirty(handle, inode, &iloc);
- 		}
- 		ext3_journal_stop(handle);
--		return err;
-+		retval = err;
-+		goto out;
- 	}
- #ifdef CONFIG_JBD_DEBUG
- 	case EXT3_IOC_WAIT_FOR_READONLY:
-@@ -158,7 +188,7 @@ flags_err:
- 		{
- 			struct super_block *sb = inode->i_sb;
- 			DECLARE_WAITQUEUE(wait, current);
--			int ret = 0;
-+			long ret = 0;
- 
- 			set_current_state(TASK_INTERRUPTIBLE);
- 			add_wait_queue(&EXT3_SB(sb)->ro_wait_queue, &wait);
-@@ -167,6 +197,7 @@ flags_err:
- 				ret = 1;
- 			}
- 			remove_wait_queue(&EXT3_SB(sb)->ro_wait_queue, &wait);
-+			unlock_kernel();
- 			return ret;
- 		}
- #endif
-@@ -175,22 +206,33 @@ flags_err:
- 			&& S_ISREG(inode->i_mode)
- 			&& ei->i_block_alloc_info) {
- 			rsv_window_size = ei->i_block_alloc_info->rsv_window_node.rsv_goal_size;
--			return put_user(rsv_window_size, (int __user *)arg);
-+			retval = put_user(rsv_window_size, (int __user *)arg);
-+			goto out;
- 		}
--		return -ENOTTY;
-+		retval = -ENOTTY;
-+		goto out;
- 	case EXT3_IOC_SETRSVSZ: {
- 
--		if (!test_opt(inode->i_sb, RESERVATION) ||!S_ISREG(inode->i_mode))
--			return -ENOTTY;
-+		if (!test_opt(inode->i_sb, RESERVATION) ||
-+				!S_ISREG(inode->i_mode)) {
-+			retval = -ENOTTY;
-+			goto out;
-+		}
- 
--		if (IS_RDONLY(inode))
--			return -EROFS;
-+		if (IS_RDONLY(inode)) {
-+			retval = -EROFS;
-+			goto out;
-+		}
- 
--		if (!is_owner_or_cap(inode))
--			return -EACCES;
-+		if (!is_owner_or_cap(inode)) {
-+			retval = -EACCES;
-+			goto out;
-+		}
- 
--		if (get_user(rsv_window_size, (int __user *)arg))
--			return -EFAULT;
-+		if (get_user(rsv_window_size, (int __user *)arg)) {
-+			retval = -EFAULT;
-+			goto out;
-+		}
- 
- 		if (rsv_window_size > EXT3_MAX_RESERVE_BLOCKS)
- 			rsv_window_size = EXT3_MAX_RESERVE_BLOCKS;
-@@ -208,27 +250,34 @@ flags_err:
- 			rsv->rsv_goal_size = rsv_window_size;
- 		}
- 		mutex_unlock(&ei->truncate_mutex);
--		return 0;
-+		goto out;
- 	}
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
- 		int err;
- 
--		if (!capable(CAP_SYS_RESOURCE))
--			return -EPERM;
-+		if (!capable(CAP_SYS_RESOURCE)) {
-+			retval = -EPERM;
-+			goto out;
-+		}
- 
--		if (IS_RDONLY(inode))
--			return -EROFS;
-+		if (IS_RDONLY(inode)) {
-+			retval = -EROFS;
-+			goto out;
-+		}
- 
--		if (get_user(n_blocks_count, (__u32 __user *)arg))
--			return -EFAULT;
-+		if (get_user(n_blocks_count, (__u32 __user *)arg)) {
-+			retval = -EFAULT;
-+			goto out;
-+		}
- 
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
- 		journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- 
-+		unlock_kernel();
- 		return err;
- 	}
- 	case EXT3_IOC_GROUP_ADD: {
-@@ -236,28 +285,40 @@ flags_err:
- 		struct super_block *sb = inode->i_sb;
- 		int err;
- 
--		if (!capable(CAP_SYS_RESOURCE))
--			return -EPERM;
-+		if (!capable(CAP_SYS_RESOURCE)) {
-+			retval = -EPERM;
-+			goto out;
-+		}
- 
--		if (IS_RDONLY(inode))
--			return -EROFS;
-+		if (IS_RDONLY(inode)) {
-+			retval = -EROFS;
-+			goto out;
-+		}
- 
- 		if (copy_from_user(&input, (struct ext3_new_group_input __user *)arg,
--				sizeof(input)))
--			return -EFAULT;
-+				sizeof(input))) {
-+			retval = -EFAULT;
-+			goto out;
-+		}
- 
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
- 		journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- 
-+		unlock_kernel();
- 		return err;
- 	}
- 
- 
- 	default:
-+		unlock_kernel();
- 		return -ENOTTY;
- 	}
-+
-+out:
-+	unlock_kernel();
-+	return retval;
- }
- 
- #ifdef CONFIG_COMPAT
-@@ -305,9 +366,7 @@ long ext3_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	default:
- 		return -ENOIOCTLCMD;
- 	}
--	lock_kernel();
- 	ret = ext3_ioctl(inode, file, cmd, (unsigned long) compat_ptr(arg));
--	unlock_kernel();
- 	return ret;
- }
- #endif
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 241c01c..1c925eb 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -838,8 +838,7 @@ extern void ext3_get_inode_flags(struct ext3_inode_info *);
- extern void ext3_set_aops(struct inode *inode);
- 
- /* ioctl.c */
--extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
--		       unsigned long);
-+extern long ext3_ioctl(struct file *, unsigned int, unsigned long);
- extern long ext3_compat_ioctl (struct file *, unsigned int, unsigned long);
- 
- /* namei.c */
--- 
-1.5.3.8
+Also, since the in memory extent tree will now occupy much less space,
+we can keep them cached for a much longer time which will improve
+performance of random reads. The new metaclustering patch is more
+amenable to this trick since it reduces fragmentation thereby reducing
+the number of extents.
+
+Thanks,
+Abhishek
