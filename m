@@ -1,7 +1,7 @@
 From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: [PATCH] writeback: speed up writeback of big dirty files
 Date: Thu, 17 Jan 2008 13:28:18 +0800
-Message-ID: <400559396.04956@ustc.edu.cn>
+Message-ID: <E1JFNIY-0007R4-VO__17720.0265498415$1200559446$gmane$org@localhost.localdomain>
 References: <230154.6549.qm@web32604.mail.mud.yahoo.com> <170fa0d20801160827p73ae28d0u702120a4f9f48936@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -11,16 +11,12 @@ Cc: Mike Snitzer <snitzer@gmail.com>,
 	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:38297 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1754340AbYAQInI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2008 03:43:08 -0500
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756407AbYAQIn0@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <170fa0d20801160827p73ae28d0u702120a4f9f48936@mail.gmail.com>
 Message-Id: <E1JFNIY-0007R4-VO@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 > On Jan 16, 2008 9:15 AM, Martin Knoblauch <spamtrap@knobisoft.de> wrote:
 > Fengguang's latest writeback patch applies cleanly, builds, boots on 2.6.24-rc8.
@@ -162,3 +158,4 @@ Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
  				congestion_wait(WRITE, HZ/10);
  			else
  				break;	/* All the old data is written */
+
