@@ -1,55 +1,60 @@
-From: Mathieu SEGAUD <mathieu.segaud@regala.cx>
-Subject: Re: [PATCH] Convert ext4_ioctl to an unlocked_ioctl
-Date: Fri, 18 Jan 2008 00:50:01 +0100
-Message-ID: <87sl0w9fme.fsf@barad-dur.regala.cx>
-References: <1200573450-1246-1-git-send-email-mathieu.segaud@regala.cx>
-	<1200573450-1246-2-git-send-email-mathieu.segaud@regala.cx>
-	<1200573450-1246-3-git-send-email-mathieu.segaud@regala.cx>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] Parallelize IO for e2fsck
+Date: Fri, 18 Jan 2008 12:15:42 +1100
+Message-ID: <20080118011542.GQ155259@sgi.com>
+References: <70b6f0bf0801161322k2740a8dch6a0d6e6e112cd2d0@mail.gmail.com> <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	sct@redhat.com
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	Ric Wheeler <ric@emc.com>
+To: Valerie Henson <val@vahconsulting.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from def92-3-81-56-114-101.fbx.proxad.net ([81.56.114.101]:38858
-	"EHLO barad-dur.regala.cx" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751993AbYAQXuD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2008 18:50:03 -0500
-In-Reply-To: <1200573450-1246-3-git-send-email-mathieu.segaud@regala.cx> (Mathieu Segaud's message of "Thu\, 17 Jan 2008 13\:37\:30 +0100")
+Received: from relay1.sgi.com ([192.48.171.29]:52092 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1760037AbYARBQD (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2008 20:16:03 -0500
+Content-Disposition: inline
+In-Reply-To: <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Vous m'avez dit r=E9cemment :
+On Wed, Jan 16, 2008 at 01:30:43PM -0800, Valerie Henson wrote:
+> Hi y'all,
+> 
+> This is a request for comments on the rewrite of the e2fsck IO
+> parallelization patches I sent out a few months ago.  The mechanism is
+> totally different.  Previously IO was parallelized by issuing IOs from
+> multiple threads; now a single thread issues fadvise(WILLNEED) and
+> then uses read() to complete the IO.
 
-as well for this one,
+Interesting.
 
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -17,12 +17,18 @@
->  #include <linux/smp_lock.h>
->  #include <asm/uaccess.h>
-> =20
-> -int ext4_ioctl (struct inode * inode, struct file * filp, unsigned i=
-nt cmd,
-> -		unsigned long arg)
-> +long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long a=
-rg)
->  {
-> -	struct ext4_inode_info *ei =3D EXT4_I(inode);
-> +	struct ext4_inode_info *ei;
-> +	struct inode *inode;
->  	unsigned int flags;
->  	unsigned short rsv_window_size;
-> +	long retval =3D 0;
-> +
-> +	lock_kernel();
-> +
-> +	inode =3D filp->f_dentry->d_inode;
+We ultimately rejected a similar patch to xfs_repair (pre-population
+the kernel block device cache) mainly because of low memory
+performance issues and it doesn't really enable you to do anything
+particularly smart with optimising I/O patterns for larger, high
+performance RAID arrays.
 
-this should be inode =3D filp->f_path.dentry->d_inode;
+The low memory problems were particularly bad; the readahead
+thrashing cause a slowdown of 2-3x compared to the baseline and
+often it was due to the repair process requiring all of memory
+to cache stuff it would need later. IIRC, multi-terabyte ext3
+filesystems have similar memory usage problems to XFS, so there's
+a good chance that this patch will see the same sorts of issues.
 
-I will update this one too, sorry for this one as well :-)
+> Single disk performance doesn't change, but elapsed time drops by
+> about 50% on a big RAID-5 box.  Passes 1 and 2 are parallelized.  Pass
+> 5 is left as an exercise for the reader.
 
---=20
-Mathieu
+Promising results, though....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
