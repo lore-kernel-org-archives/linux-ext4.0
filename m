@@ -1,107 +1,91 @@
-From: Mel Gorman <mel@csn.ul.ie>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: regression: 100% io-wait with 2.6.24-rcX
-Date: Fri, 18 Jan 2008 16:01:23 +0000
-Message-ID: <20080118160123.GB11840@csn.ul.ie>
-References: <166634.14296.qm@web32603.mail.mud.yahoo.com>
+Date: Fri, 18 Jan 2008 09:46:26 -0800 (PST)
+Message-ID: <alpine.LFD.1.00.0801180931250.2957@woody.linux-foundation.org>
+References: <166634.14296.qm@web32603.mail.mud.yahoo.com> <20080118160123.GB11840@csn.ul.ie>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Fengguang Wu <wfg@mail.ustc.edu.cn>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Martin Knoblauch <spamtrap@knobisoft.de>,
+	Fengguang Wu <wfg@mail.ustc.edu.cn>,
 	Mike Snitzer <snitzer@gmail.com>,
 	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
 	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
 	James.Bottomley@steeleye.com
-To: Martin Knoblauch <spamtrap@knobisoft.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760872AbYARQBj@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <166634.14296.qm@web32603.mail.mud.yahoo.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Mel Gorman <mel@csn.ul.ie>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:50593 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752604AbYARRsG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jan 2008 12:48:06 -0500
+In-Reply-To: <20080118160123.GB11840@csn.ul.ie>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On (18/01/08 00:19), Martin Knoblauch didst pronounce:
-> > > The effect  is  defintely  depending on  the  IO  hardware.
-> > > performed the same tests
-> > > on a different box with an AACRAID controller and there things
-> > > look different.
-> > 
-> > I take it different also means it does not show this odd performance
-> > behaviour and is similar whether the patch is applied or not?
-> >
+
+
+On Fri, 18 Jan 2008, Mel Gorman wrote:
 > 
-> Here are the numbers (MB/s) from the AACRAID box, after a fresh boot:
-> 
-> Test            2.6.19.2  2.6.24-rc6  2.6.24-rc6-81eabcbe0b991ddef5216f30ae91c4b226d54b6d
-> dd1             325       350         290
-> dd1-dir         180       160         160
-> dd2           2x 90     2x113       2x110
-> dd2-dir       2x120     2x 92       2x 93
-> dd3           3x 54     3x 70       3x 70
-> dd3-dir       3x 83     3x 64       3x 64
-> mix3       55,2x 30 400,2x 25   310,2x 25
-> 
->  What we are seing here is that:
-> 
-> a) DIRECT IO takes a much bigger hit (2.6.19 vs. 2.6.24) on this IO system compared to the CCISS box
-> b) Reverting your patch hurts single stream
+> Right, and this is consistent with other complaints about the PFN of the
+> page mattering to some hardware.
 
-Right, and this is consistent with other complaints about the PFN of the
-page mattering to some hardware.
+I don't think it's actually the PFN per se.
 
-> c) dual/triple stream are not affected by your patch and are improved over 2.6.19
+I think it's simply that some controllers (quite probably affected by both 
+driver and hardware limits) have some subtle interactions with the size of 
+the IO commands.
 
-I am not very surprised. The callers to the page allocator are probably
-making no special effort to get a batch of pages in PFN-order. They are just
-assuming that subsequent calls give contiguous pages. With two or more
-threads involved, there will not be a correlation between physical pages
-and what is on disk any more.
+For example, let's say that you have a controller that has some limit X on 
+the size of IO in flight (whether due to hardware or driver issues doesn't 
+really matter) in addition to a limit on the size of the scatter-gather 
+size. They all tend to have limits, and they differ.
 
-> d) the mix3 performance is improved compared to 2.6.19.
-> d1) reverting your patch hurts the local-disk part of mix3
-> e) the AACRAID setup is definitely faster than the CCISS.
-> 
->  So, on this box your patch is definitely needed to get the pre-2.6.24 performance
-> when writing a single big file.
-> 
->  Actually things on the CCISS box might be even more complicated. I forgot the fact
-> that on that box we have ext2/LVM/DM/Hardware, while on the AACRAID box we have
-> ext2/Hardware. Do you think that the LVM/MD are sensitive to the page order/coloring?
-> 
+Now, the PFN doesn't matter per se, but the allocation pattern definitely 
+matters for whether the IO's are physically contiguous, and thus matters 
+for the size of the scatter-gather thing.
 
-I don't have enough experience with LVM setups to make an intelligent
-guess.
+Now, generally the rule-of-thumb is that you want big commands, so 
+physical merging is good for you, but I could well imagine that the IO 
+limits interact, and end up hurting each other. Let's say that a better 
+allocation order allows for bigger contiguous physical areas, and thus 
+fewer scatter-gather entries.
 
->  Anyway: does your patch only address this performance issue, or are there also
-> data integrity concerns without it?
+What does that result in? The obvious answer is
 
-Performance issue only. There are no data integrity concerns with that
-patch.
+  "Better performance obviously, because the controller needs to do fewer 
+   scatter-gather lookups, and the requests are bigger, because there are 
+   fewer IO's that hit scatter-gather limits!"
 
-> I may consider reverting the patch for my
-> production environment. It really helps two thirds of my boxes big time, while it does
-> not hurt the other third that much :-)
-> 
+Agreed?
 
-That is certainly an option.
+Except maybe the *real* answer for some controllers end up being
 
-> > > 
-> > >  I can certainly stress the box before doing the tests. Please
-> > > define "many" for the kernel compiles :-)
-> > > 
-> > 
-> > With 8GiB of RAM, try making 24 copies of the kernel and compiling them
-> > all simultaneously. Running that for for 20-30 minutes should be enough
-> > 
->  to randomise the freelists affecting what color of page is used for the
-> > dd  test.
-> > 
-> 
->  ouch :-) OK, I will try that.
-> 
+  "Worse performance, because individual commands grow because they don't 
+   hit the per-command limits, but now we hit the global size-in-flight 
+   limits and have many fewer of these good commands in flight. And while 
+   the commands are larger, it means that there are fewer outstanding 
+   commands, which can mean that the disk cannot scheduling things 
+   as well, or makes high latency of command generation by the controller 
+   much more visible because there aren't enough concurrent requests 
+   queued up to hide it"
 
-Thanks.
+Is this the reason? I have no idea. But somebody who knows the AACRAID 
+hardware and driver limits might think about interactions like that. 
+Sometimes you actually might want to have smaller individual commands if 
+there is some other limit that means that it can be more advantageous to 
+have many small requests over a few big onees.
 
--- 
-Mel Gorman
-Part-time Phd Student                          Linux Technology Center
-University of Limerick                         IBM Dublin Software Lab
+RAID might well make it worse. Maybe small requests work better because 
+they are simpler to schedule because they only hit one disk (eg if you 
+have simple striping)! So that's another reason why one *large* request 
+may actually be slower than two requests half the size, even if it's 
+against the "normal rule".
+
+And it may be that that AACRAID box takes a big hit on DIO exactly because 
+DIO has been optimized almost purely for making one command as big as 
+possible.
+
+Just a theory.
+
+		Linus
