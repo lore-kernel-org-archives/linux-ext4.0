@@ -1,51 +1,54 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] Shrink ext3_inode_info by 8 bytes for !POSIX_ACL.
-Date: Fri, 18 Jan 2008 11:16:09 -0800
-Message-ID: <1200683769.7261.5.camel@localhost.localdomain>
-References: <1200170142-1151-1-git-send-email-indan@nul.nu>
-Reply-To: cmm@us.ibm.com
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: regression: 100% io-wait with 2.6.24-rcX
+Date: Fri, 18 Jan 2008 11:23:15 -0800 (PST)
+Message-ID: <alpine.LFD.1.00.0801181109410.2957@woody.linux-foundation.org>
+References: <903015.63912.qm@web32611.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Indan Zupancic <indan@nul.nu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Mel Gorman <mel@csn.ul.ie>, Fengguang Wu <wfg@mail.ustc.edu.cn>,
+	Mike Snitzer <snitzer@gmail.com>,
+	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
+	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	James.Bottomley@steeleye.com
+To: Martin Knoblauch <spamtrap@knobisoft.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:47250 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761237AbYARTQg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jan 2008 14:16:36 -0500
-In-Reply-To: <1200170142-1151-1-git-send-email-indan@nul.nu>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47031 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758982AbYARTYI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jan 2008 14:24:08 -0500
+In-Reply-To: <903015.63912.qm@web32611.mail.mud.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 2008-01-12 at 21:35 +0100, Indan Zupancic wrote:
-> i_file_acl and i_dir_acl aren't always needed.
-> 
-> With certain configs this makes 10 ext3_inode_cache objects fit in
-> one slab instead of the current 9, as the size shrinks from 416 to
-> 408 bytes for 32 bit, !POSIX_ACL and !EXT3_FS_XATTR configs.
-> 
-> Signed-off-by: Indan Zupancic <indan@nul.nu>
-> ---
->  fs/ext3/ialloc.c          |    2 ++
->  fs/ext3/inode.c           |   29 +++++++++++++++++++----------
->  include/linux/ext3_fs_i.h |    2 ++
->  3 files changed, 23 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-> index 1bc8cd8..01745bc 100644
-> --- a/fs/ext3/ialloc.c
-> +++ b/fs/ext3/ialloc.c
-> @@ -574,8 +574,10 @@ got:
->  	ei->i_frag_no = 0;
->  	ei->i_frag_size = 0;
->  #endif
-> +#ifdef CONFIG_EXT3_FS_POSIX_ACL
->  	ei->i_file_acl = 0;
->  	ei->i_dir_acl = 0;
-> +#endif
 
-For regular file, i_dir_acl is being reused as i_size_high to support
-large file.
 
-Mingming
+On Fri, 18 Jan 2008, Martin Knoblauch wrote:
+>
+>  just to make one thing clear - I am not so much concerned about the
+> performance of AACRAID. It is OK with or without Mel's patch. It is
+> better with Mel's patch. The regression in DIO compared to 2.6.19.2 is
+> completely independent of Mel's stuff.
+> 
+>  What interests me much more is the behaviour of the CCISS+LVM based
+> system. Here I see a huge benefit of reverting Mel's patch.
+
+Ok, I just got your usage cases confused.
+
+The argument stays the same: some controllers/drivers may have subtle 
+behavioural differences that come from the IO limits themselves.
+
+So it wasn't AACRAID, it was CCISS+LVM. The argument is the same: it may 
+well be that the *bigger* IO sizes are actually what hurts, even if the 
+conventional wisdom is traditionally that bigger submissions are better.
+
+>  At least, rc1-rc5 have shown that the CCISS system can do well. Now
+> the question is which part of the system does not cope well with the
+> larger IO sizes? Is it the CCISS controller, LVM or both. I am open to
+> suggestions on how to debug that. 
+
+I think you need to ask the MD/DM people for suggestions.. Who aren't cc'd 
+here.
+
+		Linus
