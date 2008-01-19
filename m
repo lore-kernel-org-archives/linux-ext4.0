@@ -1,56 +1,221 @@
-From: "Indan Zupancic" <indan@nul.nu>
-Subject: Re: [PATCH] Shrink ext3_inode_info by 8 bytes for !POSIX_ACL.
-Date: Sat, 19 Jan 2008 00:51:26 +0100 (CET)
-Message-ID: <43651.81.207.0.53.1200700286.squirrel@secure.samage.net>
-References: <1200170142-1151-1-git-send-email-indan@nul.nu>
-    <1200683769.7261.5.camel@localhost.localdomain>
+From: Martin Knoblauch <spamtrap@knobisoft.de>
+Subject: Re: [PATCH] writeback: speed up writeback of big dirty files
+Date: Sat, 19 Jan 2008 02:05:59 -0800 (PST)
+Message-ID: <981671.64816.qm@web32608.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain;charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: cmm@us.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from neon.samage.net ([85.17.153.66]:45493 "EHLO neon.samage.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757143AbYARXvc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jan 2008 18:51:32 -0500
-In-Reply-To: <1200683769.7261.5.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mike Snitzer <snitzer@gmail.com>,
+	Peter Zijlstra <peterz@infradead.org>, jplatte@naasa.net,
+	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Fengguang Wu <wfg@mail.ustc.edu.cn>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756864AbYASKGR@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, January 18, 2008 20:16, Mingming Cao wrote:
-> On Sat, 2008-01-12 at 21:35 +0100, Indan Zupancic wrote:
->> i_file_acl and i_dir_acl aren't always needed.
->>
->> With certain configs this makes 10 ext3_inode_cache objects fit in
->> one slab instead of the current 9, as the size shrinks from 416 to
->> 408 bytes for 32 bit, !POSIX_ACL and !EXT3_FS_XATTR configs.
->>
->> Signed-off-by: Indan Zupancic <indan@nul.nu>
->> ---
->>  fs/ext3/ialloc.c          |    2 ++
->>  fs/ext3/inode.c           |   29 +++++++++++++++++++----------
->>  include/linux/ext3_fs_i.h |    2 ++
->>  3 files changed, 23 insertions(+), 10 deletions(-)
->>
->> diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
->> index 1bc8cd8..01745bc 100644
->> --- a/fs/ext3/ialloc.c
->> +++ b/fs/ext3/ialloc.c
->> @@ -574,8 +574,10 @@ got:
->>  	ei->i_frag_no = 0;
->>  	ei->i_frag_size = 0;
->>  #endif
->> +#ifdef CONFIG_EXT3_FS_POSIX_ACL
->>  	ei->i_file_acl = 0;
->>  	ei->i_dir_acl = 0;
->> +#endif
->
-> For regular file, i_dir_acl is being reused as i_size_high to support
-> large file.
+---- Original Message ----
+> From: Fengguang Wu <wfg@mail.ustc.edu.cn>
+> To: Linus Torvalds <torvalds@linux-foundation.org>
+> Cc: Mike Snitzer <snitzer@gmail.com>; Martin Knoblauch <spamtrap@knobisoft.de>; Peter Zijlstra <peterz@infradead.org>; jplatte@naasa.net; Ingo Molnar <mingo@elte.hu>; linux-kernel@vger.kernel.org; "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+> Sent: Thursday, January 17, 2008 6:28:18 AM
+> Subject: [PATCH] writeback: speed up writeback of big dirty files
+> 
+> On Jan 16, 2008 9:15 AM, Martin Knoblauch
+> 
+> 
+ wrote:
+> > Fengguang's latest writeback patch applies cleanly, builds, boots
+> on
+> 
+ 2.6.24-rc8.
+> 
+> Linus, if possible, I'd suggest this patch be merged for 2.6.24.
+> 
+> It's a safer version of the reverted patch. It was tested on
+> ext2/ext3/jfs/xfs/reiserfs and won't 100% iowait even without the
+> other bug fixing patches.
+> 
+> Fengguang
+> ---
+> 
+> writeback: speed up writeback of big dirty files
+> 
+> After making dirty a 100M file, the normal behavior is to
+> start the writeback for all data after 30s delays. But
+> sometimes the following happens instead:
+> 
+>     - after 30s:    ~4M
+>     - after 5s:     ~4M
+>     - after 5s:     all remaining 92M
+> 
+> Some analyze shows that the internal io dispatch queues goes like this:
+> 
+>         s_io            s_more_io
+>         -------------------------
+>     1)    100M,1K         0
+>     2)    1K              96M
+>     3)    0               96M
+> 1) initial state with a 100M file and a 1K file
+> 2) 4M written, nr_to_write <= 0, so write more
+> 3) 1K written, nr_to_write > 0, no more writes(BUG)
+> nr_to_write > 0 in (3) fools the upper layer to think that data
+> have
+> 
+ all been
+> written out. The big dirty file is actually still sitting in
+> s_more_io.
+> 
+ We
+> cannot simply splice s_more_io back to s_io as soon as s_io
+> becomes
+> 
+ empty, and
+> let the loop in generic_sync_sb_inodes() continue: this may
+> starve
+> 
+ newly
+> expired inodes in s_dirty.  It is also not an option to draw
+> inodes
+> 
+ from both
+> s_more_io and s_dirty, an let the loop go on: this might lead to
+> live
+> 
+ locks,
+> and might also starve other superblocks in sync time(well kupdate
+> may
+> 
+ still
+> starve some superblocks, that's another bug).
+> We have to return when a full scan of s_io completes. So nr_to_write
+> >
+> 
+ 0 does
+> not necessarily mean that "all data are written". This patch
+> introduces
+> 
+ a flag
+> writeback_control.more_io to indicate that more io should be done.
+> With
+> 
+ it the
+> big dirty file no longer has to wait for the next kupdate invocation
+> 5s
+> 
+ later.
+> 
+> In sync_sb_inodes() we only set more_io on super_blocks we
+> actually
+> 
+ visited.
+> This aviods the interaction between two pdflush deamons.
+> 
+> Also in __sync_single_inode() we don't blindly keep requeuing the io
+> if
+> 
+ the
+> filesystem cannot progress. Failing to do so may lead to 100% iowait.
+> 
+> Tested-by: Mike Snitzer 
+> Signed-off-by: Fengguang Wu 
+> ---
+>  fs/fs-writeback.c         |   18 ++++++++++++++++--
+>  include/linux/writeback.h |    1 +
+>  mm/page-writeback.c       |    9 ++++++---
+>  3 files changed, 23 insertions(+), 5 deletions(-)
+> 
+> --- linux.orig/fs/fs-writeback.c
+> +++ linux/fs/fs-writeback.c
+> @@ -284,7 +284,17 @@ __sync_single_inode(struct inode *inode,
+>                   * soon as the queue becomes uncongested.
+>                   */
+>                  inode->i_state |= I_DIRTY_PAGES;
+> -                requeue_io(inode);
+> +                if (wbc->nr_to_write <= 0) {
+> +                    /*
+> +                     * slice used up: queue for next turn
+> +                     */
+> +                    requeue_io(inode);
+> +                } else {
+> +                    /*
+> +                     * somehow blocked: retry later
+> +                     */
+> +                    redirty_tail(inode);
+> +                }
+>              } else {
+>                  /*
+>                   * Otherwise fully redirty the inode so that
+> @@ -479,8 +489,12 @@ sync_sb_inodes(struct super_block *sb, s
+>          iput(inode);
+>          cond_resched();
+>          spin_lock(&inode_lock);
+> -        if (wbc->nr_to_write <= 0)
+> +        if (wbc->nr_to_write <= 0) {
+> +            wbc->more_io = 1;
+>              break;
+> +        }
+> +        if (!list_empty(&sb->s_more_io))
+> +            wbc->more_io = 1;
+>      }
+>      return;        /* Leave any unwritten inodes on s_io */
+>  }
+> --- linux.orig/include/linux/writeback.h
+> +++ linux/include/linux/writeback.h
+> @@ -62,6 +62,7 @@ struct writeback_control {
+>      unsigned for_reclaim:1;        /* Invoked from the page
+> allocator
+> 
+ */
+>      unsigned for_writepages:1;    /* This is a writepages() call */
+>      unsigned range_cyclic:1;    /* range_start is cyclic */
+> +    unsigned more_io:1;        /* more io to be dispatched */
+>  };
+>  
+>  /*
+> --- linux.orig/mm/page-writeback.c
+> +++ linux/mm/page-writeback.c
+> @@ -558,6 +558,7 @@ static void background_writeout(unsigned
+>              global_page_state(NR_UNSTABLE_NFS) < background_thresh
+>                  && min_pages <= 0)
+>              break;
+> +        wbc.more_io = 0;
+>          wbc.encountered_congestion = 0;
+>          wbc.nr_to_write = MAX_WRITEBACK_PAGES;
+>          wbc.pages_skipped = 0;
+> @@ -565,8 +566,9 @@ static void background_writeout(unsigned
+>          min_pages -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
+>          if (wbc.nr_to_write > 0 || wbc.pages_skipped > 0) {
+>              /* Wrote less than expected */
+> -            congestion_wait(WRITE, HZ/10);
+> -            if (!wbc.encountered_congestion)
+> +            if (wbc.encountered_congestion || wbc.more_io)
+> +                congestion_wait(WRITE, HZ/10);
+> +            else
+>                  break;
+>          }
+>      }
+> @@ -631,11 +633,12 @@ static void wb_kupdate(unsigned long arg
+>              global_page_state(NR_UNSTABLE_NFS) +
+>              (inodes_stat.nr_inodes - inodes_stat.nr_unused);
+>      while (nr_to_write > 0) {
+> +        wbc.more_io = 0;
+>          wbc.encountered_congestion = 0;
+>          wbc.nr_to_write = MAX_WRITEBACK_PAGES;
+>          writeback_inodes(&wbc);
+>          if (wbc.nr_to_write > 0) {
+> -            if (wbc.encountered_congestion)
+> +            if (wbc.encountered_congestion || wbc.more_io)
+>                  congestion_wait(WRITE, HZ/10);
+>              else
+>                  break;    /* All the old data is written */
+> 
+> 
+> 
+Hi Fenguang,
 
-Only the i_dir_acl of struct ext3_inode, not the one from ext3_inode_info.
+ sorry for not coming back earlier. I compiled -rc8 with your patch. It boots and works with my test cases. More I cannot say. The performance decrease I see compared to -rc5 has been discussed elsewhere in this thread and is not related to your work.
 
-Thanks,
+Cheers
+Martin
 
-Indan
