@@ -1,7 +1,7 @@
 From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH 39/49] ext4: Add ext4_find_next_bit()
-Date: Mon, 21 Jan 2008 22:02:18 -0500
-Message-ID: <1200970948-17903-40-git-send-email-tytso@mit.edu>
+Subject: [PATCH 26/49] jbd2: Fix assertion failure in fs/jbd2/checkpoint.c
+Date: Mon, 21 Jan 2008 22:02:05 -0500
+Message-ID: <1200970948-17903-27-git-send-email-tytso@mit.edu>
 References: <1200970948-17903-1-git-send-email-tytso@mit.edu>
  <1200970948-17903-2-git-send-email-tytso@mit.edu>
  <1200970948-17903-3-git-send-email-tytso@mit.edu>
@@ -28,225 +28,110 @@ References: <1200970948-17903-1-git-send-email-tytso@mit.edu>
  <1200970948-17903-24-git-send-email-tytso@mit.edu>
  <1200970948-17903-25-git-send-email-tytso@mit.edu>
  <1200970948-17903-26-git-send-email-tytso@mit.edu>
- <1200970948-17903-27-git-send-email-tytso@mit.edu>
- <1200970948-17903-28-git-send-email-tytso@mit.edu>
- <1200970948-17903-29-git-send-email-tytso@mit.edu>
- <1200970948-17903-30-git-send-email-tytso@mit.edu>
- <1200970948-17903-31-git-send-email-tytso@mit.edu>
- <1200970948-17903-32-git-send-email-tytso@mit.edu>
- <1200970948-17903-33-git-send-email-tytso@mit.edu>
- <1200970948-17903-34-git-send-email-tytso@mit.edu>
- <1200970948-17903-35-git-send-email-tytso@mit.edu>
- <1200970948-17903-36-git-send-email-tytso@mit.edu>
- <1200970948-17903-37-git-send-email-tytso@mit.edu>
- <1200970948-17903-38-git-send-email-tytso@mit.edu>
- <1200970948-17903-39-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	<linux-ext4@vger.kernel.org>,
+Cc: Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64702 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:32889 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754101AbYAVDDA (ORCPT
+	by vger.kernel.org with ESMTP id S1759806AbYAVDGb (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2008 22:03:00 -0500
-In-Reply-To: <1200970948-17903-39-git-send-email-tytso@mit.edu>
+	Mon, 21 Jan 2008 22:06:31 -0500
+In-Reply-To: <1200970948-17903-26-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-This function is used by the ext4 multi block allocator patches.
+Before we start committing a transaction, we call
+__journal_clean_checkpoint_list() to cleanup transaction's written-back
+buffers.
 
-Also add generic_find_next_le_bit
+If this call happens to remove all of them (and there were already some
+buffers), __journal_remove_checkpoint() will decide to free the transaction
+because it isn't (yet) a committing transaction and soon we fail some
+assertion - the transaction really isn't ready to be freed :).
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+We change the check in __journal_remove_checkpoint() to free only a
+transaction in T_FINISHED state.  The locking there is subtle though (as
+everywhere in JBD ;().  We use j_list_lock to protect the check and a
+subsequent call to __journal_drop_transaction() and do the same in the end
+of journal_commit_transaction() which is the only place where a transaction
+can get to T_FINISHED state.
+
+Probably I'm too paranoid here and such locking is not really necessary -
+checkpoint lists are processed only from log_do_checkpoint() where a
+transaction must be already committed to be processed or from
+__journal_clean_checkpoint_list() where kjournald itself calls it and thus
+transaction cannot change state either.  Better be safe if something
+changes in future...
+
+Signed-off-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- include/asm-arm/bitops.h                     |    2 +
- include/asm-generic/bitops/ext2-non-atomic.h |    2 +
- include/asm-generic/bitops/le.h              |    4 ++
- include/asm-m68k/bitops.h                    |    2 +
- include/asm-m68knommu/bitops.h               |    2 +
- include/asm-powerpc/bitops.h                 |    4 ++
- include/asm-s390/bitops.h                    |    2 +
- include/linux/ext4_fs.h                      |    1 +
- lib/find_next_bit.c                          |   43 ++++++++++++++++++++++++++
- 9 files changed, 62 insertions(+), 0 deletions(-)
+ fs/jbd2/checkpoint.c |   12 ++++++------
+ fs/jbd2/commit.c     |    8 ++++----
+ include/linux/jbd2.h |    2 ++
+ 3 files changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/include/asm-arm/bitops.h b/include/asm-arm/bitops.h
-index 47a6b08..5c60bfc 100644
---- a/include/asm-arm/bitops.h
-+++ b/include/asm-arm/bitops.h
-@@ -310,6 +310,8 @@ static inline int constant_fls(int x)
- 		_find_first_zero_bit_le(p,sz)
- #define ext2_find_next_zero_bit(p,sz,off)	\
- 		_find_next_zero_bit_le(p,sz,off)
-+#define ext2_find_next_bit(p, sz, off) \
-+		_find_next_bit_le(p, sz, off)
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 3fccde7..7e958c8 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -602,15 +602,15 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
  
- /*
-  * Minix is defined to use little-endian byte ordering.
-diff --git a/include/asm-generic/bitops/ext2-non-atomic.h b/include/asm-generic/bitops/ext2-non-atomic.h
-index 1697404..63cf822 100644
---- a/include/asm-generic/bitops/ext2-non-atomic.h
-+++ b/include/asm-generic/bitops/ext2-non-atomic.h
-@@ -14,5 +14,7 @@
- 	generic_find_first_zero_le_bit((unsigned long *)(addr), (size))
- #define ext2_find_next_zero_bit(addr, size, off) \
- 	generic_find_next_zero_le_bit((unsigned long *)(addr), (size), (off))
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
+ 	/*
+ 	 * There is one special case to worry about: if we have just pulled the
+-	 * buffer off a committing transaction's forget list, then even if the
+-	 * checkpoint list is empty, the transaction obviously cannot be
+-	 * dropped!
++	 * buffer off a running or committing transaction's checkpoing list,
++	 * then even if the checkpoint list is empty, the transaction obviously
++	 * cannot be dropped!
+ 	 *
+-	 * The locking here around j_committing_transaction is a bit sleazy.
++	 * The locking here around t_state is a bit sleazy.
+ 	 * See the comment at the end of jbd2_journal_commit_transaction().
+ 	 */
+-	if (transaction == journal->j_committing_transaction) {
+-		JBUFFER_TRACE(jh, "belongs to committing transaction");
++	if (transaction->t_state != T_FINISHED) {
++		JBUFFER_TRACE(jh, "belongs to running/committing transaction");
+ 		goto out;
+ 	}
  
- #endif /* _ASM_GENERIC_BITOPS_EXT2_NON_ATOMIC_H_ */
-diff --git a/include/asm-generic/bitops/le.h b/include/asm-generic/bitops/le.h
-index b9c7e5d..80e3bf1 100644
---- a/include/asm-generic/bitops/le.h
-+++ b/include/asm-generic/bitops/le.h
-@@ -20,6 +20,8 @@
- #define generic___test_and_clear_le_bit(nr, addr) __test_and_clear_bit(nr, addr)
- 
- #define generic_find_next_zero_le_bit(addr, size, offset) find_next_zero_bit(addr, size, offset)
-+#define generic_find_next_le_bit(addr, size, offset) \
-+			find_next_bit(addr, size, offset)
- 
- #elif defined(__BIG_ENDIAN)
- 
-@@ -42,6 +44,8 @@
- 
- extern unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
- 		unsigned long size, unsigned long offset);
-+extern unsigned long generic_find_next_le_bit(const unsigned long *addr,
-+		unsigned long size, unsigned long offset);
- 
- #else
- #error "Please fix <asm/byteorder.h>"
-diff --git a/include/asm-m68k/bitops.h b/include/asm-m68k/bitops.h
-index 2976b5d..83d1f28 100644
---- a/include/asm-m68k/bitops.h
-+++ b/include/asm-m68k/bitops.h
-@@ -410,6 +410,8 @@ static inline int ext2_find_next_zero_bit(const void *vaddr, unsigned size,
- 	res = ext2_find_first_zero_bit (p, size - 32 * (p - addr));
- 	return (p - addr) * 32 + res;
- }
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
- 
- #endif /* __KERNEL__ */
- 
-diff --git a/include/asm-m68knommu/bitops.h b/include/asm-m68knommu/bitops.h
-index f8dfb7b..f43afe1 100644
---- a/include/asm-m68knommu/bitops.h
-+++ b/include/asm-m68knommu/bitops.h
-@@ -294,6 +294,8 @@ found_middle:
- 	return result + ffz(__swab32(tmp));
- }
- 
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
- #include <asm-generic/bitops/minix.h>
- 
- #endif /* __KERNEL__ */
-diff --git a/include/asm-powerpc/bitops.h b/include/asm-powerpc/bitops.h
-index 733b4af..220d9a7 100644
---- a/include/asm-powerpc/bitops.h
-+++ b/include/asm-powerpc/bitops.h
-@@ -359,6 +359,8 @@ static __inline__ int test_le_bit(unsigned long nr,
- unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
- 				    unsigned long size, unsigned long offset);
- 
-+unsigned long generic_find_next_le_bit(const unsigned long *addr,
-+				    unsigned long size, unsigned long offset);
- /* Bitmap functions for the ext2 filesystem */
- 
- #define ext2_set_bit(nr,addr) \
-@@ -378,6 +380,8 @@ unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
- #define ext2_find_next_zero_bit(addr, size, off) \
- 	generic_find_next_zero_le_bit((unsigned long*)addr, size, off)
- 
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)addr, size, off)
- /* Bitmap functions for the minix filesystem.  */
- 
- #define minix_test_and_set_bit(nr,addr) \
-diff --git a/include/asm-s390/bitops.h b/include/asm-s390/bitops.h
-index 34d9a63..dba6fec 100644
---- a/include/asm-s390/bitops.h
-+++ b/include/asm-s390/bitops.h
-@@ -772,6 +772,8 @@ static inline int sched_find_first_bit(unsigned long *b)
- 	test_and_clear_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
- #define ext2_test_bit(nr, addr)      \
- 	test_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
-+#define ext2_find_next_bit(addr, size, off) \
-+	generic_find_next_le_bit((unsigned long *)(addr), (size), (off))
- 
- #ifndef __s390x__
- 
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 213974f..d0b7ca9 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -493,6 +493,7 @@ do {									       \
- #define ext4_test_bit			ext2_test_bit
- #define ext4_find_first_zero_bit	ext2_find_first_zero_bit
- #define ext4_find_next_zero_bit		ext2_find_next_zero_bit
-+#define ext4_find_next_bit		ext2_find_next_bit
- 
- /*
-  * Maximal mount counts between two filesystem checks
-diff --git a/lib/find_next_bit.c b/lib/find_next_bit.c
-index bda0d71..78ccd73 100644
---- a/lib/find_next_bit.c
-+++ b/lib/find_next_bit.c
-@@ -178,4 +178,47 @@ found_middle_swap:
- 
- EXPORT_SYMBOL(generic_find_next_zero_le_bit);
- 
-+unsigned long generic_find_next_le_bit(const unsigned long *addr, unsigned
-+		long size, unsigned long offset)
-+{
-+	const unsigned long *p = addr + BITOP_WORD(offset);
-+	unsigned long result = offset & ~(BITS_PER_LONG - 1);
-+	unsigned long tmp;
-+
-+	if (offset >= size)
-+		return size;
-+	size -= result;
-+	offset &= (BITS_PER_LONG - 1UL);
-+	if (offset) {
-+		tmp = ext2_swabp(p++);
-+		tmp &= (~0UL << offset);
-+		if (size < BITS_PER_LONG)
-+			goto found_first;
-+		if (tmp)
-+			goto found_middle;
-+		size -= BITS_PER_LONG;
-+		result += BITS_PER_LONG;
-+	}
-+
-+	while (size & ~(BITS_PER_LONG - 1)) {
-+		tmp = *(p++);
-+		if (tmp)
-+			goto found_middle_swap;
-+		result += BITS_PER_LONG;
-+		size -= BITS_PER_LONG;
-+	}
-+	if (!size)
-+		return result;
-+	tmp = ext2_swabp(p);
-+found_first:
-+	tmp &= (~0UL >> (BITS_PER_LONG - size));
-+	if (tmp == 0UL)		/* Are any bits set? */
-+		return result + size; /* Nope. */
-+found_middle:
-+	return result + __ffs(tmp);
-+
-+found_middle_swap:
-+	return result + __ffs(ext2_swab(tmp));
-+}
-+EXPORT_SYMBOL(generic_find_next_le_bit);
- #endif /* __BIG_ENDIAN */
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 6986f33..39b5cee 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -867,10 +867,10 @@ restart_loop:
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+ 	/*
+-	 * This is a bit sleazy.  We borrow j_list_lock to protect
+-	 * journal->j_committing_transaction in __jbd2_journal_remove_checkpoint.
+-	 * Really, __jbd2_journal_remove_checkpoint should be using j_state_lock but
+-	 * it's a bit hassle to hold that across __jbd2_journal_remove_checkpoint
++	 * This is a bit sleazy.  We use j_list_lock to protect transition
++	 * of a transaction into T_FINISHED state and calling
++	 * __jbd2_journal_drop_transaction(). Otherwise we could race with
++	 * other checkpointing code processing the transaction...
+ 	 */
+ 	spin_lock(&journal->j_state_lock);
+ 	spin_lock(&journal->j_list_lock);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index d5f7cff..d861ffd 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -442,6 +442,8 @@ struct transaction_s
+ 	/*
+ 	 * Transaction's current state
+ 	 * [no locking - only kjournald2 alters this]
++	 * [j_list_lock] guards transition of a transaction into T_FINISHED
++	 * state and subsequent call of __jbd2_journal_drop_transaction()
+ 	 * FIXME: needs barriers
+ 	 * KLUDGE: [use j_state_lock]
+ 	 */
 -- 
 1.5.4.rc3.31.g1271-dirty
