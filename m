@@ -1,137 +1,83 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH 26/49] jbd2: Fix assertion failure in fs/jbd2/checkpoint.c
-Date: Mon, 21 Jan 2008 22:02:05 -0500
-Message-ID: <1200970948-17903-27-git-send-email-tytso@mit.edu>
-References: <1200970948-17903-1-git-send-email-tytso@mit.edu>
- <1200970948-17903-2-git-send-email-tytso@mit.edu>
- <1200970948-17903-3-git-send-email-tytso@mit.edu>
- <1200970948-17903-4-git-send-email-tytso@mit.edu>
- <1200970948-17903-5-git-send-email-tytso@mit.edu>
- <1200970948-17903-6-git-send-email-tytso@mit.edu>
- <1200970948-17903-7-git-send-email-tytso@mit.edu>
- <1200970948-17903-8-git-send-email-tytso@mit.edu>
- <1200970948-17903-9-git-send-email-tytso@mit.edu>
- <1200970948-17903-10-git-send-email-tytso@mit.edu>
- <1200970948-17903-11-git-send-email-tytso@mit.edu>
- <1200970948-17903-12-git-send-email-tytso@mit.edu>
- <1200970948-17903-13-git-send-email-tytso@mit.edu>
- <1200970948-17903-14-git-send-email-tytso@mit.edu>
- <1200970948-17903-15-git-send-email-tytso@mit.edu>
- <1200970948-17903-16-git-send-email-tytso@mit.edu>
- <1200970948-17903-17-git-send-email-tytso@mit.edu>
- <1200970948-17903-18-git-send-email-tytso@mit.edu>
- <1200970948-17903-19-git-send-email-tytso@mit.edu>
- <1200970948-17903-20-git-send-email-tytso@mit.edu>
- <1200970948-17903-21-git-send-email-tytso@mit.edu>
- <1200970948-17903-22-git-send-email-tytso@mit.edu>
- <1200970948-17903-23-git-send-email-tytso@mit.edu>
- <1200970948-17903-24-git-send-email-tytso@mit.edu>
- <1200970948-17903-25-git-send-email-tytso@mit.edu>
- <1200970948-17903-26-git-send-email-tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: linux-kernel@vger.kernel.org
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] Parallelize IO for e2fsck
+Date: Tue, 22 Jan 2008 14:38:30 +1100
+Message-ID: <20080122033830.GR155259@sgi.com>
+References: <70b6f0bf0801161322k2740a8dch6a0d6e6e112cd2d0@mail.gmail.com> <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com> <20080121230041.GL3180@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Valerie Henson <val@vahconsulting.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilg
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:32889 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759806AbYAVDGb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2008 22:06:31 -0500
-In-Reply-To: <1200970948-17903-26-git-send-email-tytso@mit.edu>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:37410 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751953AbYAVDjO (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Mon, 21 Jan 2008 22:39:14 -0500
+Content-Disposition: inline
+In-Reply-To: <20080121230041.GL3180@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+On Mon, Jan 21, 2008 at 04:00:41PM -0700, Andreas Dilger wrote:
+> On Jan 16, 2008  13:30 -0800, Valerie Henson wrote:
+> > I have a partial solution that sort of blindly manages the buffer
+> > cache.  First, the user passes e2fsck a parameter saying how much
+> > memory is available as buffer cache.  The readahead thread reads
+> > things in and immediately throws them away so they are only in buffer
+> > cache (no double-caching).  Then readahead and e2fsck work together so
+> > that readahead only reads in new blocks when the main thread is done
+> > with earlier blocks.  The already-used blocks get kicked out of buffer
+> > cache to make room for the new ones.
+> >
+> > What would be nice is to take into account the current total memory
+> > usage of the whole fsck process and factor that in.  I don't think it
+> > would be hard to add to the existing cache management framework.
+> > Thoughts?
+> 
+> I discussed this with Ted at one point also.  This is a generic problem,
+> not just for readahead, because "fsck" can run multiple e2fsck in parallel
+> and in case of many large filesystems on a single node this can cause
+> memory usage problems also.
+> 
+> What I was proposing is that "fsck.{fstype}" be modified to return an
+> estimated minimum amount of memory needed, and some "desired" amount of
+> memory (i.e. readahead) to fsck the filesystem, using some parameter like
+> "fsck.{fstype} --report-memory-needed /dev/XXX".  If this does not
+> return the output in the expected format, or returns an error then fsck
+> will assume some amount of memory based on the device size and continue
+> as it does today.
 
-Before we start committing a transaction, we call
-__journal_clean_checkpoint_list() to cleanup transaction's written-back
-buffers.
+And while fsck is running, some other program runs that uses
+memory and blows your carefully calculated paramters to smithereens?
 
-If this call happens to remove all of them (and there were already some
-buffers), __journal_remove_checkpoint() will decide to free the transaction
-because it isn't (yet) a committing transaction and soon we fail some
-assertion - the transaction really isn't ready to be freed :).
+I think there is a clear need for applications to be able to
+register a callback from the kernel to indicate that the machine as
+a whole is running out of memory and that the application should
+trim it's caches to reduce memory utilisation.
 
-We change the check in __journal_remove_checkpoint() to free only a
-transaction in T_FINISHED state.  The locking there is subtle though (as
-everywhere in JBD ;().  We use j_list_lock to protect the check and a
-subsequent call to __journal_drop_transaction() and do the same in the end
-of journal_commit_transaction() which is the only place where a transaction
-can get to T_FINISHED state.
+Perhaps instead of swapping immediately, a SIGLOWMEM could be sent
+to a processes that aren't masking the signal followed by a short
+grace period to allow the processes to free up some memory before
+swapping out pages from that process?
 
-Probably I'm too paranoid here and such locking is not really necessary -
-checkpoint lists are processed only from log_do_checkpoint() where a
-transaction must be already committed to be processed or from
-__journal_clean_checkpoint_list() where kjournald itself calls it and thus
-transaction cannot change state either.  Better be safe if something
-changes in future...
+With this sort of feedback, the fsck process can scale back it's
+readahead and remove cached info that is not critical to what it
+is currently doing and thereby prevent readahead thrashing as
+memory usage of the fsck process itself grows.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
- fs/jbd2/checkpoint.c |   12 ++++++------
- fs/jbd2/commit.c     |    8 ++++----
- include/linux/jbd2.h |    2 ++
- 3 files changed, 12 insertions(+), 10 deletions(-)
+Another example where this could be useful is to tell browsers to
+release some of their cache rather than having the VM swap it out.
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 3fccde7..7e958c8 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -602,15 +602,15 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 
- 	/*
- 	 * There is one special case to worry about: if we have just pulled the
--	 * buffer off a committing transaction's forget list, then even if the
--	 * checkpoint list is empty, the transaction obviously cannot be
--	 * dropped!
-+	 * buffer off a running or committing transaction's checkpoing list,
-+	 * then even if the checkpoint list is empty, the transaction obviously
-+	 * cannot be dropped!
- 	 *
--	 * The locking here around j_committing_transaction is a bit sleazy.
-+	 * The locking here around t_state is a bit sleazy.
- 	 * See the comment at the end of jbd2_journal_commit_transaction().
- 	 */
--	if (transaction == journal->j_committing_transaction) {
--		JBUFFER_TRACE(jh, "belongs to committing transaction");
-+	if (transaction->t_state != T_FINISHED) {
-+		JBUFFER_TRACE(jh, "belongs to running/committing transaction");
- 		goto out;
- 	}
- 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 6986f33..39b5cee 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -867,10 +867,10 @@ restart_loop:
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 	/*
--	 * This is a bit sleazy.  We borrow j_list_lock to protect
--	 * journal->j_committing_transaction in __jbd2_journal_remove_checkpoint.
--	 * Really, __jbd2_journal_remove_checkpoint should be using j_state_lock but
--	 * it's a bit hassle to hold that across __jbd2_journal_remove_checkpoint
-+	 * This is a bit sleazy.  We use j_list_lock to protect transition
-+	 * of a transaction into T_FINISHED state and calling
-+	 * __jbd2_journal_drop_transaction(). Otherwise we could race with
-+	 * other checkpointing code processing the transaction...
- 	 */
- 	spin_lock(&journal->j_state_lock);
- 	spin_lock(&journal->j_list_lock);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index d5f7cff..d861ffd 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -442,6 +442,8 @@ struct transaction_s
- 	/*
- 	 * Transaction's current state
- 	 * [no locking - only kjournald2 alters this]
-+	 * [j_list_lock] guards transition of a transaction into T_FINISHED
-+	 * state and subsequent call of __jbd2_journal_drop_transaction()
- 	 * FIXME: needs barriers
- 	 * KLUDGE: [use j_state_lock]
- 	 */
+IMO, a scheme like this will be far more reliable than trying to
+guess what the optimal settings are going to be over the whole
+lifetime of a process....
+
+Cheers,
+
+Dave.
 -- 
-1.5.4.rc3.31.g1271-dirty
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
