@@ -1,53 +1,59 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 36/49] ext4: Add EXT4_IOC_MIGRATE ioctl
-Date: Wed, 23 Jan 2008 14:07:16 -0800
-Message-ID: <20080123140716.e6f5d14f.akpm@linux-foundation.org>
-References: <1200970948-17903-1-git-send-email-tytso@mit.edu>
-	<1200970948-17903-21-git-send-email-tytso@mit.edu>
-	<1200970948-17903-22-git-send-email-tytso@mit.edu>
-	<1200970948-17903-23-git-send-email-tytso@mit.edu>
-	<1200970948-17903-24-git-send-email-tytso@mit.edu>
-	<1200970948-17903-25-git-send-email-tytso@mit.edu>
-	<1200970948-17903-26-git-send-email-tytso@mit.edu>
-	<1200970948-17903-27-git-send-email-tytso@mit.edu>
-	<1200970948-17903-28-git-send-email-tytso@mit.edu>
-	<1200970948-17903-29-git-send-email-tytso@mit.edu>
-	<1200970948-17903-30-git-send-email-tytso@mit.edu>
-	<1200970948-17903-31-git-send-email-tytso@mit.edu>
-	<1200970948-17903-32-git-send-email-tytso@mit.edu>
-	<1200970948-17903-33-git-send-email-tytso@mit.edu>
-	<1200970948-17903-34-git-send-email-tytso@mit.edu>
-	<1200970948-17903-35-git-send-email-tytso@mit.edu>
-	<1200970948-17903-36-git-send-email-tytso@mit.edu>
-	<1200970948-17903-37-git-send-email-tytso@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 33/49] ext4: Add the journal checksum feature
+Date: Wed, 23 Jan 2008 15:40:10 -0700
+Message-ID: <20080123224010.GF18433@webber.adilger.int>
+References: <1200970948-17903-26-git-send-email-tytso@mit.edu>
+ <1200970948-17903-27-git-send-email-tytso@mit.edu>
+ <1200970948-17903-28-git-send-email-tytso@mit.edu>
+ <1200970948-17903-29-git-send-email-tytso@mit.edu>
+ <1200970948-17903-30-git-send-email-tytso@mit.edu>
+ <1200970948-17903-31-git-send-email-tytso@mit.edu>
+ <1200970948-17903-32-git-send-email-tytso@mit.edu>
+ <1200970948-17903-33-git-send-email-tytso@mit.edu>
+ <1200970948-17903-34-git-send-email-tytso@mit.edu>
+ <20080123140704.01249f86.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com,
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@MIT.EDU>, linux-kernel@vger.kernel.org,
+	girish@clusterfs.com, adilger@clusterfs.com,
+	shaggy@linux.vnet.ibm.com, cmm@us.ibm.com,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@MIT.EDU>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:59166 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751727AbYAWWNN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2008 17:13:13 -0500
-In-Reply-To: <1200970948-17903-37-git-send-email-tytso@mit.edu>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:8714 "EHLO
+	pd3mo3so.prod.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750994AbYAWWky (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jan 2008 17:40:54 -0500
+In-reply-to: <20080123140704.01249f86.akpm@linux-foundation.org>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Mon, 21 Jan 2008 22:02:15 -0500 "Theodore Ts'o" <tytso@MIT.EDU> wrote:
-> The below patch add ioctl for migrating ext3 indirect block mapped inode
-> to ext4 extent mapped inode.
+On Jan 23, 2008  14:07 -0800, Andrew Morton wrote:
+> > +{
+> > +	struct page *page = bh->b_page;
+> > +	char *addr;
+> > +	__u32 checksum;
+> > +
+> > +	addr = kmap_atomic(page, KM_USER0);
+> > +	checksum = crc32_be(crc32_sum,
+> > +		(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
+> > +	kunmap_atomic(addr, KM_USER0);
+> > +
+> > +	return checksum;
+> > +}
+> 
+> Can this buffer actually be in highmem?
 
-This patch adds lots of weird and inexplicable single- and double-newlines
-in inappropriate places.  However it frequently forgets to add newlines
-between end-of-locals and start-of-code, which is usual practice.
+Yes, this was found during system testing.  While ext3/4 will only allocate
+buffer heads in lowmem, the jbd/jbd2 code can allocate buffers in highmem.
+I was surprised about this also.
 
+Please see the thread in ext4-devel:
+[PATCH][RFC]JBD2: Fix journal checksum kernel oops on NUMA
 
-+struct list_blocks_struct {
-+	ext4_lblk_t first_block, last_block;
-+	ext4_fsblk_t first_pblock, last_pblock;
-+};
-	
-This structure would benefit from some code comments.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
