@@ -1,93 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] UPDATED: ignore "safe" flag differences when
- fsck compares superblocks
-Date: Fri, 25 Jan 2008 12:29:58 -0600
-Message-ID: <479A2AA6.1020002@redhat.com>
-References: <479629DF.7090500@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH, RFC] Add new "development flag" to the ext4 filesystem
+Date: Fri, 25 Jan 2008 03:50:04 -0700
+Message-ID: <20080125105004.GW18433@webber.adilger.int>
+References: <20080122231707.GA21968@mit.edu> <4796BAB9.7000502@redhat.com>
+ <20080123165307.GA32663@mit.edu> <20080123215029.GB18433@webber.adilger.int>
+ <20080125100545.GB10202@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@MIT.EDU>, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60993 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753779AbYAYSaB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jan 2008 13:30:01 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m0PIU0MX008381
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2008 13:30:00 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0PITxJH017896
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2008 13:29:59 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m0PITx7u022861
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2008 13:29:59 -0500
-In-Reply-To: <479629DF.7090500@redhat.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:49237 "EHLO
+	pd2mo1so.prod.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754245AbYAYUYZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 15:24:25 -0500
+Received: from pd4mr2so.prod.shaw.ca
+ (pd4mr2so-qfe3.prod.shaw.ca [10.0.141.213]) by l-daemon
+ (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15 2004))
+ with ESMTP id <0JV7009L5V9VUI60@l-daemon> for linux-ext4@vger.kernel.org; Fri,
+ 25 Jan 2008 13:22:43 -0700 (MST)
+Received: from pn2ml10so.prod.shaw.ca ([10.0.121.80])
+ by pd4mr2so.prod.shaw.ca (Sun Java System Messaging Server 6.2-7.05 (built Sep
+ 5 2006)) with ESMTP id <0JV700A1SV9UYSA0@pd4mr2so.prod.shaw.ca> for
+ linux-ext4@vger.kernel.org; Fri, 25 Jan 2008 13:22:43 -0700 (MST)
+Received: from webber.adilger.int ([68.147.251.212])
+ by l-daemon (Sun ONE Messaging Server 6.0 HotFix 1.01 (built Mar 15 2004))
+ with ESMTP id <0JV700BR1V9T0J20@l-daemon> for linux-ext4@vger.kernel.org; Fri,
+ 25 Jan 2008 13:22:42 -0700 (MST)
+In-reply-to: <20080125100545.GB10202@atrey.karlin.mff.cuni.cz>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(updated for thinko: when proper flag *is* set on both primary & backup)
+On Jan 25, 2008  11:05 +0100, Jan Kara wrote:
+> For example ext2 on fsync() just sync's a single inode
+> (and has to use private_list to track metadata buffers associated with
+> the inode) while ext3 flushes the whole journal.
 
-Recent e2fsprogs (1.40.3 and higher) fsck compares primary superblock to 
-backups, and if things differ, it forces a full check.  However, the
-kernel has a penchant for updating flags the first time a feature is
-used - attributes, large files, etc.
+As for fsync(), we definitely need to preserve correct behaviour for the
+file itself, but there isn't a requirement that ext2 behave exactly like
+ext3 (it of course cannot).  In the proposed ext4-mount-unjournaled-ext2
+case, the superblock would be marked dirty as it is today and an e2fsck
+would need to be run at boot time.  That is fine so long as the fsync()
+will cause the one file's data to be on disk before it returns.
 
-However, it only updates these on the primary sb.  This then causes
-the new e2fsck behavior to trigger a full check.  I think these flags
-can be safely ignored on this check; having them set on the primary
-but not the backups doesn't indicate corruption; if they're wrongly
-set on the primary, really no damage is done, and if the backup is
-used, but it doesn't have the flags set when it should, I'm pretty sure
-e2fsck can cope with that.
+> In ext2, directory
+> handling code is quite different. ext2 works in page cache of the
+> directory while ext3 uses page cache of the underlying device via buffer
+> heads - at least this second thing would be more or less mechanical
+> thing to change and would make sence (we wouldn't have to reimplement
+> readahead in ext3 directory handling code as we do now). I've looked at
+> it once but then more urgent things came and ... you know it.
 
-I'll admit the patch below is not glamorous.  Any comments, either
-on the style(sic) or the intent of the patch?
+I don't think it is a requirement that ext3 mounting a filesystem without
+a journal has to use page cache for directories.  I wouldn't object to
+that being fixed.  It definitely isn't a requirement for this to work,
+just an implementation difference.
 
-Thanks,
-
--Eric
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
-Index: e2fsprogs-1.40.4/e2fsck/super.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/super.c
-+++ e2fsprogs-1.40.4/e2fsck/super.c
-@@ -814,10 +814,32 @@ int check_backup_super_block(e2fsck_t ct
- 			continue;
- 		}
- 
--#define SUPER_DIFFERENT(x) (fs->super->x != tfs->super->x)
--		if (SUPER_DIFFERENT(s_feature_compat) ||
--		    SUPER_DIFFERENT(s_feature_incompat) ||
--		    SUPER_DIFFERENT(s_feature_ro_compat) ||
-+		/*
-+		 * A few flags are set on the fly by the kernel, but
-+		 * only in the primary superblock.  They are safe
-+	 	 * to copy even if they differ.
-+	 	 */ 
-+
-+#define FEATURE_COMPAT_IGNORE		(EXT2_FEATURE_COMPAT_EXT_ATTR)
-+#define FEATURE_RO_COMPAT_IGNORE	(EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK)
-+#define FEATURE_INCOMPAT_IGNORE		(EXT3_FEATURE_INCOMPAT_EXTENTS)
-+
-+#define SUPER_COMPAT_DIFFERENT(x)	\
-+	(( fs->super->x & ~FEATURE_COMPAT_IGNORE) !=	\
-+	 (tfs->super->x & ~FEATURE_COMPAT_IGNORE))
-+#define SUPER_INCOMPAT_DIFFERENT(x)	\
-+	(( fs->super->x & ~FEATURE_INCOMPAT_IGNORE) !=	\
-+	 (tfs->super->x & ~FEATURE_INCOMPAT_IGNORE))
-+#define SUPER_RO_COMPAT_DIFFERENT(x)	\
-+	(( fs->super->x & ~FEATURE_RO_COMPAT_IGNORE) !=	\
-+	 (tfs->super->x & ~FEATURE_RO_COMPAT_IGNORE))
-+#define SUPER_DIFFERENT(x)		\
-+	(fs->super->x != tfs->super->x)
-+
-+		if (SUPER_COMPAT_DIFFERENT(s_feature_compat) ||
-+		    SUPER_INCOMPAT_DIFFERENT(s_feature_incompat) ||
-+		    SUPER_RO_COMPAT_DIFFERENT(s_feature_ro_compat) ||
- 		    SUPER_DIFFERENT(s_blocks_count) ||
- 		    SUPER_DIFFERENT(s_inodes_count) ||
- 		    memcmp(fs->super->s_uuid, tfs->super->s_uuid,
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
