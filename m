@@ -1,43 +1,48 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [RFC] ext3 freeze feature
-Date: Fri, 25 Jan 2008 11:42:29 -0500
-Message-ID: <20080125164229.GD17907@mit.edu>
-References: <20080125195938t-sato@mail.jp.nec.com> <20080125121851.GA3361@dmon-lap.sw.ru> <20080125133329.GB8184@mit.edu> <479A0F91.2030206@redhat.com>
+From: Bryan Henderson <hbryan@us.ibm.com>
+Subject: Re: [RFC] Parallelize IO for e2fsck
+Date: Fri, 25 Jan 2008 10:03:34 -0800
+Message-ID: <OF1E5FD388.EC04F1B3-ON882573DB.00620670-882573DB.0063346F@us.ibm.com>
+References: <20080124234037.GJ15858@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Takashi Sato <t-sato@yk.jp.nec.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="US-ASCII"
+Cc: Bodo Eggert <7eggert@gmx.de>,
+	Andreas Dilger <adilger@clusterfs.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>,
+	Adrian Bunk <bunk@kernel.org>, David Chinner <dgc@sgi.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-linux-kernel@vger.kernel.org, Ric Wheeler <ric@emc.com>,
+	Valerie Henson <val@vahconsulting.com>, Valdis.Kletnieks@vt.edu
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <479A0F91.2030206@redhat.com>
+In-Reply-To: <20080124234037.GJ15858@mit.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 25, 2008 at 10:34:25AM -0600, Eric Sandeen wrote:
-> > But it was this concern which is why ext3 never exported freeze
-> > functionality to userspace, even though other commercial filesystems
-> > do support this.  It wasn't that it wasn't considered, but the concern
-> > about whether or not it was sufficiently safe to make available.
-> 
-> What's the safety concern; that the admin will forget to unfreeze?
+> AIX basically did this with SIGDANGER (the signal is ignored by
+> default), except there wasn't the ability for the process to tell the
+> kernel at what level of memory pressure before it should start getting
+> notified, and there was no way for the kernel to tell how bad the
+> memory pressure actually was.  On the other hand, it was a relatively
+> simple design.
 
-That the admin would manage to deadlock him/herself and wedge up the
-whole system...
+AIX does provide a system call to find out how much paging backing store 
+space is available and the thresholds set by the system administrator. 
+Running out of paging space is the only memory pressure AIX is concerned 
+about.  While I think having processes make memory usage decisions based 
+on that is a shoddy way to manage system resources, that's what it is 
+intended for.
 
-> I'm also not sure I see the point of the timeout in the original patch;
-> either you are done snapshotting and ready to unfreeze, or you're not;
-> 1, or 2, or 3 seconds doesn't really matter.  When you're done, you're
-> done, and you can only unfreeze then.  Shouldn't this be done
-> programmatically, and not with some pre-determined timeout?
+Incidentally, some context for the AIX approach to the OOM problem: a 
+process may exclude itself from OOM vulnerability altogether.  It places 
+itself in "early allocation" mode, which means at the time it creates 
+virtual memory, it reserves enough backing store for the worst case.  The 
+memory manager does not send such a process the SIGDANGER signal or 
+terminate it when it runs out of paging space.  Before c. 2000, this was 
+the only mode.  Now the default is late allocation mode, which is similar 
+to Linux.
 
-This is only a guess, but I suspect it was a fail-safe in case the
-admin did manage to deadlock him/herself.  
+--
+Bryan Henderson                     IBM Almaden Research Center
+San Jose CA                         Filesystems
 
-I would think a better approach would be to make the filesystem
-unfreeze if the file descriptor that was used to freeze the filesystem
-is closed, and then have explicit deadlock detection that kills the
-process doing the freeze, at which point the filesystem unlocks and
-the system can recover.
-
-					- Ted
