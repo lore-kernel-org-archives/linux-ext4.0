@@ -1,68 +1,46 @@
-From: Zan Lynx <zlynx@acm.org>
-Subject: Re: [RFC] Parallelize IO for e2fsck
-Date: Thu, 24 Jan 2008 17:25:42 -0700
-Message-ID: <1201220742.7557.10.camel@localhost>
-References: <9Mo9w-7Ws-25@gated-at.bofh.it> <9Mo9w-7Ws-23@gated-at.bofh.it>
-	 <9OdWm-7uN-25@gated-at.bofh.it> <9Oi9A-5EJ-3@gated-at.bofh.it>
-	 <9OiMg-6IC-1@gated-at.bofh.it> <9OlqL-2xG-3@gated-at.bofh.it>
-	 <9Orda-3ub-45@gated-at.bofh.it> <E1JI5vz-0001GG-Vs@be1.7eggert.dyndns.org>
-	 <20080124230809.GA29120@does.not.exist>  <20080124234037.GJ15858@mit.edu>
+From: Junio C Hamano <junio@pobox.com>
+Subject: Re: [PATCH] Convert ext4_ioctl to an unlocked_ioctl
+Date: Thu, 24 Jan 2008 22:35:16 -0800
+Message-ID: <7vir1i76qj.fsf@gitster.siamese.dyndns.org>
+References: <1201007375-27914-1-git-send-email-mathieu.segaud@regala.cx>
+	<1201007375-27914-2-git-send-email-mathieu.segaud@regala.cx>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-WUdmbAZBiuRp34QY66ro"
-Cc: Adrian Bunk <bunk@kernel.org>, Bodo Eggert <7eggert@gmx.de>,
-	Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	Andreas Dilger <adilger@sun.com>, Valdis.Kletnieks@vt.edu,
-	David Chinner <dgc@sgi.com>,
-	Valerie Henson <val@vahconsulting.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Ric Wheeler <ric@emc.com>
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753338AbYAYAgT@vger.kernel.org>
-In-Reply-To: <20080124234037.GJ15858@mit.edu>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, sct@redhat.com,
+	Mathieu Segaud <mathieu.segaud@regala.cx>
+To: Mathieu Segaud <mathieu.segaud@regala.cx>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from a-sasl-quonix.sasl.smtp.pobox.com ([208.72.237.25]:53104 "EHLO
+	sasl.smtp.pobox.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753014AbYAYGf1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 01:35:27 -0500
+In-Reply-To: <1201007375-27914-2-git-send-email-mathieu.segaud@regala.cx>
+	(Mathieu Segaud's message of "Tue, 22 Jan 2008 14:09:34 +0100")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Mathieu Segaud <mathieu.segaud@regala.cx> writes:
 
---=-WUdmbAZBiuRp34QY66ro
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> Signed-off-by: Mathieu Segaud <mathieu.segaud@regala.cx>
+> ---
+>  fs/ext4/dir.c           |    2 +-
+>  fs/ext4/file.c          |    2 +-
+>  fs/ext4/ioctl.c         |  161 ++++++++++++++++++++++++++++++++---------------
+>  include/linux/ext4_fs.h |    3 +-
+>  4 files changed, 112 insertions(+), 56 deletions(-)
+>
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index f612bef..8f6677a 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -42,7 +42,7 @@ const struct file_operations ext4_dir_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= generic_read_dir,
+>  	.readdir	= ext4_readdir,		/* we take BKL. needed?*/
+> -	.ioctl		= ext4_ioctl,		/* BKL held */
+> +	.unlocked_ioctl	= ext4_ioctl,		/* BKL held */
 
-
-On Thu, 2008-01-24 at 18:40 -0500, Theodore Tso wrote:
-> On Fri, Jan 25, 2008 at 01:08:09AM +0200, Adrian Bunk wrote:
-> > In practice, there is a small number of programs that are both the
-> > common memory hogs and should be able to reduce their memory consumptio=
-n
-> > by 10% or 20% without big problems when requested (e.g. Java VMs,
-> > Firefox and databases come into my mind).
->=20
-> I agree, it's only a few processes where this makes sense.  But for
-> those that do, it would be useful if they could register with the
-> kernel that would like to know, (just before the system starts
-> ejecting cached data, just before swapping, etc.) and at what
-> frequency.  And presumably, if the kernel notices that a process is
-> responding to such requests with memory actually getting released back
-> to the system, that process could get "rewarded" by having the OOM
-> killer less likely to target that particular thread.
-
-Have y'all been following the /dev/mem_notify patches?
-http://article.gmane.org/gmane.linux.kernel/628653
-
---=20
-Zan Lynx <zlynx@acm.org>
-
---=-WUdmbAZBiuRp34QY66ro
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.7 (GNU/Linux)
-
-iD8DBQBHmSyGG8fHaOLTWwgRApaiAJ0bgnU4rjpNsYpx1JtF9NNA2cfNFQCgk9Tc
-k4QqM4HKpAqCNcCXkUJi8mg=
-=4s28
------END PGP SIGNATURE-----
-
---=-WUdmbAZBiuRp34QY66ro--
+Wasn't the purpose of this whole exercise to eventually allow
+them to be outside BKL?  IOW, don't you want to drop this
+comment for the .unlocked_ioctl member of this struct?
