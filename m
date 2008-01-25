@@ -1,53 +1,327 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH, RFC] Add new "development flag" to the ext4 filesystem
-Date: Fri, 25 Jan 2008 11:05:45 +0100
-Message-ID: <20080125100545.GB10202@atrey.karlin.mff.cuni.cz>
-References: <20080122231707.GA21968@mit.edu> <4796BAB9.7000502@redhat.com> <20080123165307.GA32663@mit.edu> <20080123215029.GB18433@webber.adilger.int>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: [RFC] ext3 freeze feature
+Date: Fri, 25 Jan 2008 19:59:38 +0900
+Message-ID: <20080125195938t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@MIT.EDU>, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:52610 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753949AbYAYKFq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 05:05:46 -0500
-Content-Disposition: inline
-In-Reply-To: <20080123215029.GB18433@webber.adilger.int>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:39295 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751793AbYAYLBK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 06:01:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Hi,
 
-> On Jan 23, 2008  11:53 -0500, Theodore Tso wrote:
-> > Since I'm still hoping that
-> > some point in the future, fs/ext4 could subsume fs/ext3 so we don't
-> > have to worry about bug fixes going into fs/ext2 AND fs/ext3 AND
-> > fs/ext4, I have my own reasons for wanting that.
-> 
-> If any newbie kernel hacker wants a filesystem project, allowing ext4
-> to mount ext2 filesystems w/o a journal would be very useful.  I
-> suspect that a simple flag check in the ext4_journal_* wrappers of the
-> jbd2 functions would be enough in many cases.
-> 
-> One of the reasons to keep ext2 around is that ext3 cannot mount the
-> filesystem without a journal, and removing that limitation for ext4
-> would bring us one step closer to removing a ton of duplicate code.
-> Another reason for ext2 vs. ext3 was overhead from journaling, and
-> that could also be removed by allowing ext4 to mount ext2 filesystems
-> w/o a journal.
-  Actually, folding ext2 into ext3/4 isn't as easy as one would guess in
-the beginning. For example ext2 on fsync() just sync's a single inode
-(and has to use private_list to track metadata buffers associated with
-the inode) while ext3 flushes the whole journal. Also in ext2, directory
-handling code is quite different. ext2 works in page cache of the
-directory while ext3 uses page cache of the underlying device via buffer
-heads - at least this second thing would be more or less mechanical
-thing to change and would make sence (we wouldn't have to reimplement
-readahead in ext3 directory handling code as we do now). I've looked at
-it once but then more urgent things came and ... you know it.
+Currently, ext3 doesn't have the freeze feature which suspends write
+requests.  So, we cannot get a backup which keeps the filesystem's
+consistency with the storage device's features (snapshot, replication)
+while it is mounted.
+In many case, a commercial filesystems (e.g. VxFS) has the freeze
+feature and it would be used to get the consistent backup.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+So I am planning on implementing the ioctl of the freeze feature for ext3.
+I think we can get the consistent backup with the following steps.
+1. Freeze the filesystem with ioctl.
+2. Separate the replication volume or get the snapshot
+   with the storage device's feature.
+3. Unfreeze the filesystem with ioctl.
+4. Get the backup from the separated replication volume
+   or the snapshot.
+
+The usage of the ioctl is as below.
+ int ioctl(int fd, int cmd, long *timeval)
+ fd: The file descriptor of the mountpoint.
+ cmd: EXT3_IOC_FREEZE for the freeze or EXT3_IOC_THAW for the unfreeze.
+ timeval: The timeout value expressed in seconds.
+          If it's 0, the timeout isn't set.
+ Return value: 0 if the operation succeeds. Otherwise, -1.
+
+I have made sure that write requests were suspended with the experimental
+patch for this feature and attached it in this mail.
+
+The points of the implementation are followings.
+- Add calls of the freeze function (freeze_bdev) and
+  the unfreeze function (thaw_bdev) in ext3_ioctl().
+
+- ext3_freeze_timeout() which calls the unfreeze function (thaw_bdev)
+  is registered to the delayed work queue to unfreeze the filesystem
+  automatically after the lapse of the specified time.
+
+Any comments are very welcome.
+
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+---
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/fs/ext3/ioctl.c linux-2.6.24-rc8-freeze/fs/ext3/ioctl.c
+--- linux-2.6.24-rc8/fs/ext3/ioctl.c	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/fs/ext3/ioctl.c	2008-01-22 18:20:33.000000000 +0900
+@@ -254,6 +254,42 @@ flags_err:
+ 		return err;
+ 	}
+ 
++	case EXT3_IOC_FREEZE: {
++		long timeout_sec;
++		long timeout_msec;
++		if (!capable(CAP_SYS_ADMIN))
++			return -EPERM;
++		if (inode->i_sb->s_frozen != SB_UNFROZEN)
++			return -EINVAL;
++		/* arg(sec) to tick value */
++		get_user(timeout_sec, (long __user *) arg);
++		timeout_msec = timeout_sec * 1000;
++		if (timeout_msec < 0)
++			return -EINVAL;
++
++		/* Freeze */
++		freeze_bdev(inode->i_sb->s_bdev);
++
++		/* set up unfreeze timer */
++		if (timeout_msec > 0)
++			ext3_add_freeze_timeout(EXT3_SB(inode->i_sb),
++						timeout_msec);
++		return 0;
++	}
++	case EXT3_IOC_THAW: {
++		if (!capable(CAP_SYS_ADMIN))
++			return -EPERM;
++		if (inode->i_sb->s_frozen == SB_UNFROZEN)
++			return -EINVAL;
++
++		/* delete unfreeze timer */
++		ext3_del_freeze_timeout(EXT3_SB(inode->i_sb));
++
++		/* Unfreeze */
++		thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
++
++		return 0;
++	}
+ 
+ 	default:
+ 		return -ENOTTY;
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/fs/ext3/super.c linux-2.6.24-rc8-freeze/fs/ext3/super.c
+--- linux-2.6.24-rc8/fs/ext3/super.c	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/fs/ext3/super.c	2008-01-22 18:20:33.000000000 +0900
+@@ -63,6 +63,7 @@ static int ext3_statfs (struct dentry * 
+ static void ext3_unlockfs(struct super_block *sb);
+ static void ext3_write_super (struct super_block * sb);
+ static void ext3_write_super_lockfs(struct super_block *sb);
++static void ext3_freeze_timeout(struct work_struct *work);
+ 
+ /*
+  * Wrappers for journal_start/end.
+@@ -323,6 +324,44 @@ void ext3_update_dynamic_rev(struct supe
+ }
+ 
+ /*
++ * ext3_add_freeze_timeout - Add timeout for ext3 freeze.
++ *
++ * @sbi			: ext3 super block
++ * @timeout_msec	: timeout period
++ *
++ * Add the delayed work for ext3 freeze timeout
++ * to the delayed work queue.
++ */
++void ext3_add_freeze_timeout(struct ext3_sb_info *sbi,
++			long timeout_msec)
++{
++	s64 timeout_jiffies = msecs_to_jiffies(timeout_msec);
++
++	/*
++	 * setup freeze timeout function
++	 */
++	INIT_DELAYED_WORK(&sbi->s_freeze_timeout, ext3_freeze_timeout);
++
++	/* set delayed work queue */
++	cancel_delayed_work(&sbi->s_freeze_timeout);
++	schedule_delayed_work(&sbi->s_freeze_timeout, timeout_jiffies);
++}
++
++/*
++ * ext3_del_freeze_timeout - Delete timeout for ext3 freeze.
++ *
++ * @sbi	: ext3 super block
++ *
++ * Delete the delayed work for ext3 freeze timeout
++ * from the delayed work queue.
++ */
++void ext3_del_freeze_timeout(struct ext3_sb_info *sbi)
++{
++	if (delayed_work_pending(&sbi->s_freeze_timeout))
++		cancel_delayed_work(&sbi->s_freeze_timeout);
++}
++
++/*
+  * Open the external journal device
+  */
+ static struct block_device *ext3_blkdev_get(dev_t dev)
+@@ -2367,10 +2406,31 @@ static void ext3_unlockfs(struct super_b
+ 		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+ 		unlock_super(sb);
+-		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		journal_unlock_updates_if_needed(EXT3_SB(sb)->s_journal);
+ 	}
+ }
+ 
++/*
++ * ext3_freeze_timeout - Thaw the filesystem.
++ *
++ * @work	: work queue (delayed_work.work)
++ *
++ * Called by the delayed work when elapsing the timeout period.
++ * Thaw the filesystem.
++ */
++static void ext3_freeze_timeout(struct work_struct *work)
++{
++	struct ext3_sb_info *sbi = container_of(work,
++				struct ext3_sb_info,
++				s_freeze_timeout.work);
++	struct super_block *sb = get_super_block(sbi);
++
++	BUG_ON(sb == NULL);
++
++	if (sb->s_frozen != SB_UNFROZEN)
++		thaw_bdev(sb->s_bdev, sb);
++}
++
+ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ {
+ 	struct ext3_super_block * es;
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/fs/jbd/journal.c linux-2.6.24-rc8-freeze/fs/jbd/journal.c
+--- linux-2.6.24-rc8/fs/jbd/journal.c	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/fs/jbd/journal.c	2008-01-22 18:20:33.000000000 +0900
+@@ -46,6 +46,7 @@ EXPORT_SYMBOL(journal_extend);
+ EXPORT_SYMBOL(journal_stop);
+ EXPORT_SYMBOL(journal_lock_updates);
+ EXPORT_SYMBOL(journal_unlock_updates);
++EXPORT_SYMBOL(journal_unlock_updates_if_needed);
+ EXPORT_SYMBOL(journal_get_write_access);
+ EXPORT_SYMBOL(journal_get_create_access);
+ EXPORT_SYMBOL(journal_get_undo_access);
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/fs/jbd/transaction.c linux-2.6.24-rc8-freeze/fs/jbd/transaction.c
+--- linux-2.6.24-rc8/fs/jbd/transaction.c	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/fs/jbd/transaction.c	2008-01-22 18:20:33.000000000 +0900
+@@ -485,6 +485,29 @@ void journal_unlock_updates (journal_t *
+ 	wake_up(&journal->j_wait_transaction_locked);
+ }
+ 
++/**
++ * journal_unlock_updates_if_needed	 - release barrier if needed.
++ *
++ * @journal:  Journal to release the barrier on.
++ *
++ * Release a transaction barrier obtained if barrier count is not 0.
++ * Should be called without the journal lock held.
++ */
++void journal_unlock_updates_if_needed(journal_t *journal)
++{
++	spin_lock(&journal->j_state_lock);
++
++	if (!journal->j_barrier_count) {
++		spin_unlock(&journal->j_state_lock);
++		return;
++	}
++
++	--journal->j_barrier_count;
++	spin_unlock(&journal->j_state_lock);
++	mutex_unlock(&journal->j_barrier);
++	wake_up(&journal->j_wait_transaction_locked);
++}
++
+ /*
+  * Report any unexpected dirty buffers which turn up.  Normally those
+  * indicate an error, but they can occur if the user is running (say)
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/fs/super.c linux-2.6.24-rc8-freeze/fs/super.c
+--- linux-2.6.24-rc8/fs/super.c	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/fs/super.c	2008-01-22 18:20:33.000000000 +0900
+@@ -950,3 +950,30 @@ struct vfsmount *kern_mount_data(struct 
+ }
+ 
+ EXPORT_SYMBOL_GPL(kern_mount_data);
++
++/**
++ * get_super_block - get super_block
++ * @s_fs_info	: filesystem dependent information
++ * 		  (super_block.s_fs_info)
++ *
++ * Get super_block which holds s_fs_info from super_blocks.
++ * get_super_block() returns a pointer of super block or
++ * %NULL if it have failed.
++ */
++struct super_block *get_super_block(void *s_fs_info)
++{
++	struct super_block *sb;
++
++	spin_lock(&sb_lock);
++	sb = sb_entry(super_blocks.prev);
++	for (; sb != sb_entry(&super_blocks);
++				sb = sb_entry(sb->s_list.prev)) {
++		if (sb->s_fs_info == s_fs_info) {
++			spin_unlock(&sb_lock);
++			return sb;
++		}
++	}
++	spin_unlock(&sb_lock);
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(get_super_block);
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/include/linux/ext3_fs.h linux-2.6.24-rc8-freeze/include/linux/ext3_fs.h
+--- linux-2.6.24-rc8/include/linux/ext3_fs.h	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/include/linux/ext3_fs.h	2008-01-22 18:20:33.000000000 +0900
+@@ -225,6 +225,8 @@ struct ext3_new_group_data {
+ #endif
+ #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
++#define EXT3_IOC_FREEZE			_IOW('f', 9, long)
++#define EXT3_IOC_THAW			_IOW('f', 10, long)
+ 
+ /*
+  * ioctl commands in 32 bit emulation
+@@ -864,6 +866,9 @@ extern void ext3_abort (struct super_blo
+ extern void ext3_warning (struct super_block *, const char *, const char *, ...)
+ 	__attribute__ ((format (printf, 3, 4)));
+ extern void ext3_update_dynamic_rev (struct super_block *sb);
++extern void ext3_add_freeze_timeout(struct ext3_sb_info *sbi,
++			long timeout_msec);
++extern void ext3_del_freeze_timeout(struct ext3_sb_info *sbi);
+ 
+ #define ext3_std_error(sb, errno)				\
+ do {								\
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/include/linux/ext3_fs_sb.h linux-2.6.24-rc8-freeze/include/linux/ext3_fs_sb.h
+--- linux-2.6.24-rc8/include/linux/ext3_fs_sb.h	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/include/linux/ext3_fs_sb.h	2008-01-22 18:20:33.000000000 +0900
+@@ -81,6 +81,8 @@ struct ext3_sb_info {
+ 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+ 	int s_jquota_fmt;			/* Format of quota to use */
+ #endif
++	/* Delayed work for freeze */
++	struct delayed_work s_freeze_timeout;
+ };
+ 
+ #endif	/* _LINUX_EXT3_FS_SB */
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/include/linux/fs.h linux-2.6.24-rc8-freeze/include/linux/fs.h
+--- linux-2.6.24-rc8/include/linux/fs.h	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/include/linux/fs.h	2008-01-22 18:20:33.000000000 +0900
+@@ -2095,6 +2095,7 @@ struct ctl_table;
+ int proc_nr_files(struct ctl_table *table, int write, struct file *filp,
+ 		  void __user *buffer, size_t *lenp, loff_t *ppos);
+ 
++extern struct super_block *get_super_block(void *s_fs_info);
+ 
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_FS_H */
+diff -uprN -X linux-2.6.24-rc8/Documentation/dontdiff linux-2.6.24-rc8/include/linux/jbd.h linux-2.6.24-rc8-freeze/include/linux/jbd.h
+--- linux-2.6.24-rc8/include/linux/jbd.h	2008-01-16 13:22:48.000000000 +0900
++++ linux-2.6.24-rc8-freeze/include/linux/jbd.h	2008-01-22 18:20:33.000000000 +0900
+@@ -905,6 +905,7 @@ extern int	 journal_stop(handle_t *);
+ extern int	 journal_flush (journal_t *);
+ extern void	 journal_lock_updates (journal_t *);
+ extern void	 journal_unlock_updates (journal_t *);
++extern void	 journal_unlock_updates_if_needed(journal_t *);
+ 
+ extern journal_t * journal_init_dev(struct block_device *bdev,
+ 				struct block_device *fs_dev,
