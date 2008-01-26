@@ -1,82 +1,47 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 36/49] ext4: Add EXT4_IOC_MIGRATE ioctl
-Date: Fri, 25 Jan 2008 23:15:00 -0500
-Message-ID: <20080126041500.GA28889@mit.edu>
-References: <1200970948-17903-30-git-send-email-tytso@mit.edu> <1200970948-17903-31-git-send-email-tytso@mit.edu> <1200970948-17903-32-git-send-email-tytso@mit.edu> <1200970948-17903-33-git-send-email-tytso@mit.edu> <1200970948-17903-34-git-send-email-tytso@mit.edu> <1200970948-17903-35-git-send-email-tytso@mit.edu> <1200970948-17903-36-git-send-email-tytso@mit.edu> <1200970948-17903-37-git-send-email-tytso@mit.edu> <20080123140716.e6f5d14f.akpm@linux-foundation.org> <20080124055532.GC7902@skywalker>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC] ext3 freeze feature
+Date: Sat, 26 Jan 2008 16:17:24 +1100
+Message-ID: <20080126051724.GM155407@sgi.com>
+References: <20080125195938t-sato@mail.jp.nec.com> <84144f020801250317pbdafc4fnd47cc8a297194e86@mail.gmail.com> <001c01c85f4f$bfd128f0$41a8400a@bsd.tnes.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Pekka Enberg <penberg@cs.helsinki.fi>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58387 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752490AbYAZEPa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 23:15:30 -0500
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:57258 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750970AbYAZFRv (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Sat, 26 Jan 2008 00:17:51 -0500
 Content-Disposition: inline
-In-Reply-To: <20080124055532.GC7902@skywalker>
+In-Reply-To: <001c01c85f4f$bfd128f0$41a8400a@bsd.tnes.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 24, 2008 at 11:25:32AM +0530, Aneesh Kumar K.V wrote:
-> +static int free_ext_idx(handle_t *handle, struct inode *inode,
-> +					struct ext4_extent_idx *ix)
-> +{
-> +	int i, retval = 0;
-> +	ext4_fsblk_t block;
-> +	struct buffer_head *bh;
-> +	struct ext4_extent_header *eh;
-> +
-> +	block = idx_pblock(ix);
-> +	bh = sb_bread(inode->i_sb, block);
-> +	if (!bh)
-> +		return -EIO;
-> +
-> +	eh = (struct ext4_extent_header *)bh->b_data;
-> +	if (eh->eh_depth == 0) {
-> +		brelse(bh);
-> +		ext4_free_blocks(handle, inode, block, 1);
-> +	} else {
-> +		ix = EXT_FIRST_INDEX(eh);
-> +		for (i = 0; i < le16_to_cpu(eh->eh_entries); i++, ix++) {
-> +			retval = free_ext_idx(handle, inode, ix);
-> +			if (retval)
-> +				return retval;
-> +		}
-> +	}
-> +	return retval;
-> +}
+On Fri, Jan 25, 2008 at 09:42:30PM +0900, Takashi Sato wrote:
+> >I am also wondering whether we should have system call(s) for these:
+> >
+> >On Jan 25, 2008 12:59 PM, Takashi Sato <t-sato@yk.jp.nec.com> wrote:
+> >>+       case EXT3_IOC_FREEZE: {
+> >
+> >>+       case EXT3_IOC_THAW: {
+> >
+> >And just convert XFS to use them too?
+> 
+> I think it is reasonable to implement it as the generic system call, as you
+> said.  Does XFS folks think so?
 
-Aneesh, looks like if eh->eh_depth is != 0, bh gets leaked.  This is
-how I plan to fix it up:
+Sure.
 
-+static int free_ext_idx(handle_t *handle, struct inode *inode,
-+					struct ext4_extent_idx *ix)
-+{
-+	int i, retval = 0;
-+	ext4_fsblk_t block;
-+	struct buffer_head *bh;
-+	struct ext4_extent_header *eh;
-+
-+	block = idx_pblock(ix);
-+	bh = sb_bread(inode->i_sb, block);
-+	if (!bh)
-+		return -EIO;
-+
-+	eh = (struct ext4_extent_header *)bh->b_data;
-+	if (eh->eh_depth == 0)
-+		ext4_free_blocks(handle, inode, block, 1);
-+	else {
-+		ix = EXT_FIRST_INDEX(eh);
-+		for (i = 0; i < le16_to_cpu(eh->eh_entries); i++, ix++) {
-+			retval = free_ext_idx(handle, inode, ix);
-+			if (retval)
-+				break;
-+		}
-+	}
-+	put_bh(bh);
-+	return retval;
-+}
+Note that we can't immediately remove the XFS ioctls otherwise
+we'd break userspace utilities that use them....
 
-						- Ted
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
