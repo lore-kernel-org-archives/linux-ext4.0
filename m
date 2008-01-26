@@ -1,42 +1,64 @@
 From: David Chinner <dgc@sgi.com>
 Subject: Re: [RFC] ext3 freeze feature
-Date: Sat, 26 Jan 2008 16:17:24 +1100
-Message-ID: <20080126051724.GM155407@sgi.com>
-References: <20080125195938t-sato@mail.jp.nec.com> <84144f020801250317pbdafc4fnd47cc8a297194e86@mail.gmail.com> <001c01c85f4f$bfd128f0$41a8400a@bsd.tnes.nec.co.jp>
+Date: Sat, 26 Jan 2008 16:35:26 +1100
+Message-ID: <20080126053526.GN155407@sgi.com>
+References: <20080125195938t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Pekka Enberg <penberg@cs.helsinki.fi>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 To: Takashi Sato <t-sato@yk.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:57258 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750970AbYAZFRv (ORCPT
-	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
-	Sat, 26 Jan 2008 00:17:51 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <001c01c85f4f$bfd128f0$41a8400a@bsd.tnes.nec.co.jp>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080125195938t-sato@mail.jp.nec.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 25, 2008 at 09:42:30PM +0900, Takashi Sato wrote:
-> >I am also wondering whether we should have system call(s) for these:
-> >
-> >On Jan 25, 2008 12:59 PM, Takashi Sato <t-sato@yk.jp.nec.com> wrote:
-> >>+       case EXT3_IOC_FREEZE: {
-> >
-> >>+       case EXT3_IOC_THAW: {
-> >
-> >And just convert XFS to use them too?
+On Fri, Jan 25, 2008 at 07:59:38PM +0900, Takashi Sato wrote:
+> The points of the implementation are followings.
+> - Add calls of the freeze function (freeze_bdev) and
+>   the unfreeze function (thaw_bdev) in ext3_ioctl().
 > 
-> I think it is reasonable to implement it as the generic system call, as you
-> said.  Does XFS folks think so?
+> - ext3_freeze_timeout() which calls the unfreeze function (thaw_bdev)
+>   is registered to the delayed work queue to unfreeze the filesystem
+>   automatically after the lapse of the specified time.
 
-Sure.
+Seems like pointless complexity to me - what happens if a
+timeout occurs while the filsystem is still freezing?
 
-Note that we can't immediately remove the XFS ioctls otherwise
-we'd break userspace utilities that use them....
+It's not uncommon for a freeze to take minutes if memory
+is full of dirty data that needs to be flushed out, esp. if
+dm-snap is doing COWs for every write issued....
+
+> +	case EXT3_IOC_FREEZE: {
+....
+> +		if (inode->i_sb->s_frozen != SB_UNFROZEN)
+> +			return -EINVAL;
+....
+> +		freeze_bdev(inode->i_sb->s_bdev);
+....
+> +	case EXT3_IOC_THAW: {
+> +		if (!capable(CAP_SYS_ADMIN))
+> +			return -EPERM;
+> +		if (inode->i_sb->s_frozen == SB_UNFROZEN)
+> +			return -EINVAL;
+.....
+> +		/* Unfreeze */
+> +		thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
+
+That's inherently unsafe - you can have multiple unfreezes
+running in parallel which seriously screws with the bdev semaphore
+count that is used to lock the device due to doing multiple up()s
+for every down.
+
+Your timeout thingy guarantee that at some point you will get
+multiple up()s occuring due to the timer firing racing with
+a thaw ioctl. 
+
+If this interface is to be more widely exported, then it needs
+a complete revamp of the bdev is locked while it is frozen so
+that there is no chance of a double up() ever occuring on the
+bd_mount_sem due to racing thaws.....
 
 Cheers,
 
