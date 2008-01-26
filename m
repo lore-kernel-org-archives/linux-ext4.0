@@ -1,37 +1,63 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 24/49] ext4: add block bitmap validation
-Date: Sat, 26 Jan 2008 08:26:04 -0500
-Message-ID: <20080126132604.GB8348@mit.edu>
-References: <1200970948-17903-17-git-send-email-tytso@mit.edu> <1200970948-17903-18-git-send-email-tytso@mit.edu> <1200970948-17903-19-git-send-email-tytso@mit.edu> <1200970948-17903-20-git-send-email-tytso@mit.edu> <1200970948-17903-21-git-send-email-tytso@mit.edu> <1200970948-17903-22-git-send-email-tytso@mit.edu> <1200970948-17903-23-git-send-email-tytso@mit.edu> <1200970948-17903-24-git-send-email-tytso@mit.edu> <1200970948-17903-25-git-send-email-tytso@mit.edu> <20080123140654.fe8c658e.akpm@linux-foundation.org>
+Subject: Re: Patch for 2.6.25 queue
+Date: Sat, 26 Jan 2008 12:03:31 -0500
+Message-ID: <20080126170331.GB13231@mit.edu>
+References: <20080126113849.GA18602@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com,
+Cc: Theodore Y Tso <theotso@us.ibm.com>, Mingming Cao <cmm@us.ibm.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51485 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49858 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753149AbYAZN0P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jan 2008 08:26:15 -0500
+	with ESMTP id S1751101AbYAZRDi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jan 2008 12:03:38 -0500
 Content-Disposition: inline
-In-Reply-To: <20080123140654.fe8c658e.akpm@linux-foundation.org>
+In-Reply-To: <20080126113849.GA18602@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 23, 2008 at 02:06:54PM -0800, Andrew Morton wrote:
-> brelse() should only be used when the bh might be NULL - put_bh()
-> can be used here.
-> 
-> Please review all ext4/jbd2 code for this trivial speedup.
+On Sat, Jan 26, 2008 at 05:08:49PM +0530, Aneesh Kumar K.V wrote:
+> This diff contain mballoc fixes and update for ext3-4 migrate patch.
 
-I've reviewed all of the pending patches in the stable queue for this
-speedup, and applied them where necessary; it was useful, since I
-detected a buffer head leak in one of the patches while I was at it.
+I will fold these patches into the patch queue in the proper places
+(and adjust other patches as necessary).
 
-The ext4/jbd2 code as a whole still needs to be reviewed for this
-speedup, but I don't want to fix this in the initial stable push, lest
-I break something by accident.  I'll put it in the "TO DO" queue.
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index a60672c..9de0cdf 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4452,7 +4452,6 @@ do_more:
+>  		overflow = bit + count - EXT4_BLOCKS_PER_GROUP(sb);
+>  		count -= overflow;
+>  	}
+> -	put_bh(bitmap_bh);
+>  	bitmap_bh = read_block_bitmap(sb, block_group);
+>  	if (!bitmap_bh)
+>  		goto error_return;
 
-Regards,
+This patch hunk causes a failure due to a botched brelse->put_bh
+conversion, but removing it isn't the right fix.  It was there to
+avoid a buffer leak on a goto.  So the right fix is to remove the
+put_bh() above, but to add one here, circa line 4542 of mballoc.c:
 
-      		   	      	       	     - Ted
+	if (overflow && !err) {
+		block += count;
+		count = overflow;
++		put_bh(bitmap_bh);
+		goto do_more;
+	}
+
+And once we do that, we can drop the initialization of bitmap_bh to
+NULL, circa line 4408:
+
+			int metadata, unsigned long *freed)
+{
+-	struct buffer_head *bitmap_bh = NULL;
++	struct buffer_head *bitmap_bh;
+	struct super_block *sb = inode->i_sb;
+	struct ext4_allocation_context ac;
+
+
+						- Ted
