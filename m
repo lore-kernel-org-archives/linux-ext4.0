@@ -1,64 +1,82 @@
-From: Bryan Henderson <hbryan@us.ibm.com>
-Subject: Re: [RFC] Parallelize IO for e2fsck
-Date: Fri, 25 Jan 2008 17:55:51 -0800
-Message-ID: <OF9B297CB7.4B613CFE-ON882573DC.00092EE4-882573DC.000A9B77@us.ibm.com>
-References: <alpine.LSU.0.999.0801252338460.26260@be1.lrz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 36/49] ext4: Add EXT4_IOC_MIGRATE ioctl
+Date: Fri, 25 Jan 2008 23:15:00 -0500
+Message-ID: <20080126041500.GA28889@mit.edu>
+References: <1200970948-17903-30-git-send-email-tytso@mit.edu> <1200970948-17903-31-git-send-email-tytso@mit.edu> <1200970948-17903-32-git-send-email-tytso@mit.edu> <1200970948-17903-33-git-send-email-tytso@mit.edu> <1200970948-17903-34-git-send-email-tytso@mit.edu> <1200970948-17903-35-git-send-email-tytso@mit.edu> <1200970948-17903-36-git-send-email-tytso@mit.edu> <1200970948-17903-37-git-send-email-tytso@mit.edu> <20080123140716.e6f5d14f.akpm@linux-foundation.org> <20080124055532.GC7902@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: Bodo Eggert <7eggert@gmx.de>, Andreas Dilger <adilger@sun.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	Adrian Bunk <bunk@kernel.org>, David Chinner <dgc@sgi.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Ric Wheeler <ric@emc.com>,
-	Theodore Tso <tytso@MIT.EDU>,
-	Valerie Henson <val@vahconsulting.com>, Valdis.Kletnieks@vt.edu
-To: Bodo Eggert <7eggert@gmx.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:55569 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755438AbYAZB4Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jan 2008 20:56:24 -0500
-In-Reply-To: <alpine.LSU.0.999.0801252338460.26260@be1.lrz>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58387 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752490AbYAZEPa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2008 23:15:30 -0500
+Content-Disposition: inline
+In-Reply-To: <20080124055532.GC7902@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->> Incidentally, some context for the AIX approach to the OOM problem: a 
->> process may exclude itself from OOM vulnerability altogether.  It 
-places 
->> itself in "early allocation" mode, which means at the time it creates 
->> virtual memory, it reserves enough backing store for the worst case. 
-The 
->> memory manager does not send such a process the SIGDANGER signal or 
->> terminate it when it runs out of paging space.  Before c. 2000, this 
-was 
->> the only mode.  Now the default is late allocation mode, which is 
-similar 
->> to Linux.
->
->This is an interesting approach. It feels like some programs might be 
->interested in choosing this mode instead of risking OOM. 
+On Thu, Jan 24, 2008 at 11:25:32AM +0530, Aneesh Kumar K.V wrote:
+> +static int free_ext_idx(handle_t *handle, struct inode *inode,
+> +					struct ext4_extent_idx *ix)
+> +{
+> +	int i, retval = 0;
+> +	ext4_fsblk_t block;
+> +	struct buffer_head *bh;
+> +	struct ext4_extent_header *eh;
+> +
+> +	block = idx_pblock(ix);
+> +	bh = sb_bread(inode->i_sb, block);
+> +	if (!bh)
+> +		return -EIO;
+> +
+> +	eh = (struct ext4_extent_header *)bh->b_data;
+> +	if (eh->eh_depth == 0) {
+> +		brelse(bh);
+> +		ext4_free_blocks(handle, inode, block, 1);
+> +	} else {
+> +		ix = EXT_FIRST_INDEX(eh);
+> +		for (i = 0; i < le16_to_cpu(eh->eh_entries); i++, ix++) {
+> +			retval = free_ext_idx(handle, inode, ix);
+> +			if (retval)
+> +				return retval;
+> +		}
+> +	}
+> +	return retval;
+> +}
 
-It's the way virtual memory always worked when it was first invented.  The 
-system not only reserved space to back every page of virtual memory; it 
-assigned the particular blocks for it.  Late allocation was a later 
-innovation, and I believe its main goal was to make it possible to use the 
-cheaper disk drives for paging instead of drums.  Late allocation gives 
-you better locality on disk, so the seeking doesn't eat you alive (drums 
-don't seek).  Even then, I assume (but am not sure) that the system at 
-least reserved the space in an account somewhere so at pageout time there 
-was guaranteed to be a place to which to page out.  Overcommitting page 
-space to save on disk space was a later idea.
+Aneesh, looks like if eh->eh_depth is != 0, bh gets leaked.  This is
+how I plan to fix it up:
 
-I was surprised to see AIX do late allocation by default, because IBM's 
-traditional style is bulletproof systems.  A system where a process can be 
-killed at unpredictable times because of resource demands of unrelated 
-processes doesn't really fit that style.
++static int free_ext_idx(handle_t *handle, struct inode *inode,
++					struct ext4_extent_idx *ix)
++{
++	int i, retval = 0;
++	ext4_fsblk_t block;
++	struct buffer_head *bh;
++	struct ext4_extent_header *eh;
++
++	block = idx_pblock(ix);
++	bh = sb_bread(inode->i_sb, block);
++	if (!bh)
++		return -EIO;
++
++	eh = (struct ext4_extent_header *)bh->b_data;
++	if (eh->eh_depth == 0)
++		ext4_free_blocks(handle, inode, block, 1);
++	else {
++		ix = EXT_FIRST_INDEX(eh);
++		for (i = 0; i < le16_to_cpu(eh->eh_entries); i++, ix++) {
++			retval = free_ext_idx(handle, inode, ix);
++			if (retval)
++				break;
++		}
++	}
++	put_bh(bh);
++	return retval;
++}
 
-It's really a fairly unusual application that benefits from late 
-allocation: one that creates a lot more virtual memory than it ever 
-touches.  For example, a sparse array.  Or am I missing something?
-
---
-Bryan Henderson                     IBM Almaden Research Center
-San Jose CA                         Filesystems
+						- Ted
