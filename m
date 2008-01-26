@@ -1,56 +1,80 @@
-From: Bodo Eggert <7eggert@gmx.de>
+From: Zan Lynx <zlynx@acm.org>
 Subject: Re: [RFC] Parallelize IO for e2fsck
-Date: Sat, 26 Jan 2008 00:01:20 +0100 (CET)
-Message-ID: <alpine.LSU.0.999.0801252338460.26260@be1.lrz>
-References: <OF1E5FD388.EC04F1B3-ON882573DB.00620670-882573DB.0063346F@us.i
- bm.com>
+Date: Fri, 25 Jan 2008 17:55:12 -0700
+Message-ID: <1201308912.7784.6.camel@localhost>
+References: <9Mo9w-7Ws-23@gated-at.bofh.it> <9OdWm-7uN-25@gated-at.bofh.it>
+	 <9Oi9A-5EJ-3@gated-at.bofh.it> <9OiMg-6IC-1@gated-at.bofh.it>
+	 <9OlqL-2xG-3@gated-at.bofh.it> <9Orda-3ub-45@gated-at.bofh.it>
+	 <E1JI5vz-0001GG-Vs@be1.7eggert.dyndns.org>
+	 <20080124230809.GA29120@does.not.exist> <20080124234037.GJ15858@mit.edu>
+	 <1201220742.7557.10.camel@localhost>
+	 <20080125110942.GX18433@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=us-ascii
-Cc: Theodore Tso <tytso@MIT.EDU>, Bodo Eggert <7eggert@gmx.de>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Andreas Dilger <adilger@sun.com>,
-	Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	Adrian Bunk <bunk@kernel.org>, David Chinner <dgc@sgi.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-linux-kernel@vger.kernel.org, Ric Wheeler <ric@emc.com>,
-	Valerie Henson <val@vahconsulting.com>, Valdis.Kletnieks@vt.edu
-To: Bryan Henderson <hbryan@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <OF1E5FD388.EC04F1B3-ON882573DB.00620670-882573DB.0063346F@us.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-On Fri, 25 Jan 2008, Bryan Henderson wrote:
-
-> > AIX basically did this with SIGDANGER (the signal is ignored by
-> > default), except there wasn't the ability for the process to tell the
-> > kernel at what level of memory pressure before it should start getting
-> > notified, and there was no way for the kernel to tell how bad the
-> > memory pressure actually was.  On the other hand, it was a relatively
-> > simple design.
-> 
-> AIX does provide a system call to find out how much paging backing store 
-> space is available and the thresholds set by the system administrator. 
-> Running out of paging space is the only memory pressure AIX is concerned 
-> about.  While I think having processes make memory usage decisions based 
-> on that is a shoddy way to manage system resources, that's what it is 
-> intended for.
-
-If you start partitioning the system into virtual servers (or something
-similar), being close to swapping may be somebody else's problem.
-(They shouldn't have exceeded their guaranteed memory limit).
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-8OvqBAtkr4HvXMMKWXpO"
+Cc: Theodore Tso <tytso@MIT.EDU>, Adrian Bunk <bunk@kernel.org>,
+	Bodo Eggert <7eggert@gmx.de>,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>, Valdis.Kletnieks@vt.edu,
+	David Chinner <dgc@sgi.com>,
+	Valerie Henson <val@vahconsulting.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Ric Wheeler <ric@emc.com>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from threatwall.zlynx.org ([199.45.143.218]:33126 "EHLO zlynx.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752156AbYAZA4E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jan 2008 19:56:04 -0500
+In-Reply-To: <20080125110942.GX18433@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-> Incidentally, some context for the AIX approach to the OOM problem: a 
-> process may exclude itself from OOM vulnerability altogether.  It places 
-> itself in "early allocation" mode, which means at the time it creates 
-> virtual memory, it reserves enough backing store for the worst case.  The 
-> memory manager does not send such a process the SIGDANGER signal or 
-> terminate it when it runs out of paging space.  Before c. 2000, this was 
-> the only mode.  Now the default is late allocation mode, which is similar 
-> to Linux.
+--=-8OvqBAtkr4HvXMMKWXpO
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-This is an interesting approach. It feels like some programs might be 
-interested in choosing this mode instead of risking OOM. 
--- 
-The programmer's National Anthem is 'AAAAAAAAHHHHHHHH'
+
+On Fri, 2008-01-25 at 04:09 -0700, Andreas Dilger wrote:
+> On Jan 24, 2008  17:25 -0700, Zan Lynx wrote:
+> > Have y'all been following the /dev/mem_notify patches?
+> > http://article.gmane.org/gmane.linux.kernel/628653
+>=20
+> Having the notification be via poll() is a very restrictive processing
+> model.  Having the notification be via a signal means that any kind of
+> process (and not just those that are event loop driven) can register
+> a callback at some arbitrary point in the code and be notified.  I
+> don't object to the poll() interface, but it would be good to have a
+> signal mechanism also.
+
+The commentary on the mem_notify threads claimed that the signal is
+easily provided by setting up the file handle for SIGIO.
+
+Yeah.  Here it is...copied from email written by KOSAKI Motohiro:
+
+implement FASYNC capability to /dev/mem_notify.
+
+<usage example>
+        fd =3D open("/dev/mem_notify", O_RDONLY);
+
+        fcntl(fd, F_SETOWN, getpid());
+
+        flags =3D fcntl(fd, F_GETFL);
+        fcntl(fd, F_SETFL, flags|FASYNC);  /* when low memory, receive SIGI=
+O */
+</usage example>
+--=20
+Zan Lynx <zlynx@acm.org>
+
+--=-8OvqBAtkr4HvXMMKWXpO
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.7 (GNU/Linux)
+
+iD8DBQBHmoTwG8fHaOLTWwgRAqrUAJ9BqPjzdrwVehS2K6X740ZhufJk1wCfVj8U
+jWxnklmPauoBzUVuXxKKUjE=
+=YOk3
+-----END PGP SIGNATURE-----
+
+--=-8OvqBAtkr4HvXMMKWXpO--
