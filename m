@@ -1,49 +1,69 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] Fix commit block write in JBD
-Date: Sat, 26 Jan 2008 22:02:07 -0800
-Message-ID: <20080126220207.9152ff8b.akpm@linux-foundation.org>
-References: <20080123190943.GG10144@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Integrating patches in SLES10 e2fsprogs
+Date: Sun, 27 Jan 2008 09:06:59 -0600
+Message-ID: <479C9E13.8040209@redhat.com>
+References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Matthias Koenig <mkoenig@suse.de>, linux-ext4@vger.kernel.org,
+	hvogel@suse.de, Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
+	Eric Sandeen <esandeen@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:57248 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756776AbYA0GCp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Jan 2008 01:02:45 -0500
-In-Reply-To: <20080123190943.GG10144@duck.suse.cz>
+Received: from mx1.redhat.com ([66.187.233.31]:40821 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752272AbYA0PHp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Jan 2008 10:07:45 -0500
+In-Reply-To: <20080127050543.GC24842@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Wed, 23 Jan 2008 20:09:43 +0100 Jan Kara <jack@suse.cz> wrote:
+Theodore Tso wrote:
+
+> Patch10:        close.patch
 > 
-> Commit block is expected to have several copies of the header. Fix the
-> bug Andrew has spotted ages ago.
+> I don't understand what this patch is trying to do.
+
+* Tue Nov 15 2005 jblunck@suse.de
+- added close.patch provided by Ted Tso (IBM) to fix bug #132708
+
+*grin* Maybe obsolete by now?  haven't looked closely.
+
+> Patch12:        e2fsprogs-mkinstalldirs.patch
+> 
+> Why?
 > 
 
-"ages" indeed.
+Probably same as why we have something similar; for one reason or other
+need to rerun autoconf, and e2fsprogs isn't compatible with latest
+autoconf.  (This is a patch I inherited, and haven't yet investigated
+all the details)
+
+> Patch22:        e2fsprogs-1.40.4-uuidd_pid_path.patch
+> 
+> The problem with this patch is that /var/run is cleared via rm -rf, so
+> it is highly problamtic to put the scratch directory for uuidd in
+> /var/run.
+
+Hm, I had similar issues with uuidd too - common theme here?
 
 > 
-> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-> index 610264b..a69b240 100644
-> --- a/fs/jbd/commit.c
-> +++ b/fs/jbd/commit.c
-> @@ -116,9 +116,8 @@ static int journal_write_commit_record(journal_t *journal,
->  
->  	bh = jh2bh(descriptor);
->  
-> -	/* AKPM: buglet - add `i' to tmp! */
->  	for (i = 0; i < bh->b_size; i += 512) {
-> -		journal_header_t *tmp = (journal_header_t*)bh->b_data;
-> +		journal_header_t *tmp = (journal_header_t*)(bh->b_data+i);
->  		tmp->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
->  		tmp->h_blocktype = cpu_to_be32(JFS_COMMIT_BLOCK);
->  		tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
+> Patch32:        libcom_err-no-e2fsck.static.patch
+> 
+> This patch does two completely unrelated things.  One is to disable
+> the libcom_err regression test suite (probably because some of the
+> other changes made) and the other is to disable building the
+> e2fsck.static file.  Why these two are bundled into a single patch I'm
+> not sure.
 
-But I don't think we can _use_ this feature now.  Because there are
-100000000000 disks out there which didn't implement it.
+And I have a patch to do the latter as well.  Interesting how we've
+arrived at similar needed changes, independently.  :)
 
-So why not just remove the loop and do a single write?
+and Patch99:        e2fsprogs-no_cmd_hiding.patch
+
+honestly I like that; I should whip up a nice patch to emulate kbuild,
+with V=1 or something, unless there is some other easy way to show full
+build commands already?
+
+-Eric
