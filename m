@@ -1,75 +1,70 @@
-From: Theodore Tso <tytso@MIT.EDU>
+From: Andreas Dilger <adilger@sun.com>
 Subject: Re: Integrating patches in SLES10 e2fsprogs
-Date: Tue, 29 Jan 2008 09:35:37 -0500
-Message-ID: <20080129143537.GH6774@mit.edu>
-References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <n7x1w82nf7m.fsf@sor.suse.de> <20080128153802.GB17752@mit.edu> <n7xd4rkn3hx.fsf@sor.suse.de>
+Date: Mon, 28 Jan 2008 13:59:19 -0700
+Message-ID: <20080128205919.GW18433@webber.adilger.int>
+References: <20080124211728.GA24900@webber.adilger.int>
+	<n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu>
+	<n7x1w82nf7m.fsf@sor.suse.de> <20080128153802.GB17752@mit.edu>
+	<479E08D5.3040609@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, hvogel@suse.de,
-	Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
-	Eric Sandeen <esandeen@redhat.com>
-To: Matthias Koenig <mkoenig@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60051 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759830AbYA2Og2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jan 2008 09:36:28 -0500
-Content-Disposition: inline
-In-Reply-To: <n7xd4rkn3hx.fsf@sor.suse.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: hvogel@suse.de, Theodore Tso <tytso@mit.edu>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Matthias Koenig <mkoenig@suse.de>,
+	Girish Shilamkar <Girish.Shilamkar@sun.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <ext3-users-bounces@redhat.com>
+In-reply-to: <479E08D5.3040609@redhat.com>
+Resent-message-id: <20080129203143.GC20490@webber.adilger.int>
+Content-disposition: inline
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/ext3-users>
+List-Post: <mailto:ext3-users@redhat.com>
+List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=subscribe>
+Sender: ext3-users-bounces@redhat.com
+Errors-To: ext3-users-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 29, 2008 at 02:52:10PM +0100, Matthias Koenig wrote:
-> > Are you running aclocal?  That may be causing the issues since I think
-> > that may be causing it to ignore the autoconf macros I've established
-> > in the top-level aclocal.m4 file.
+On Jan 28, 2008  10:54 -0600, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > On Mon, Jan 28, 2008 at 04:26:53PM +0100, Matthias Koenig wrote:
+> >>> Patch6:         e2fsprogs-mdraid.patch
+> >>>
+> >>> This apparently adds a new environment variable,
+> >>> BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
+> >>> devices.  I'm not sure why.
+> >> Workaround for people having stale RAID signature on their disk:
+> >> https://bugzilla.novell.com/show_bug.cgi?id=100530
+> > 
+> > Hmm... there's got to be a better way around this.
 > 
-> Yes, someone here fixed the german po file (I already sent it to
-> translation project). So we have to rerun the
-> gettext related part, which results in the requirement to rerun aclocal.
-
-Hmm?  You should be able to rebuild the .gmo file without needing to
-re-run aclocal.  I do it all the time.  :-)
-
-> > The problem is that the FHS does not guarantee that the subdirectories
-> > stick around, and a number of distro's are using mounting tmpfs for
-> > /var/run.  Makes sense, it can significantly speed up operations ---
-> > but upon reboot, everything in /var/run is *gone*.
+> Won't help existing block devices, but it'd be nice to have a common
+> library which could be called @ mkfs time to wipe out all known
+> signatures...
 > 
-> I see, then there is a problem of course. This is not the way it is
-> done in Suse, so I did not see this problem.
-> But, shouldn't the daemon then have an rc init script which checks for
-> the needed subdirectory in /var/run and creates this if necessary?  If I
-> look into /var/run I see a lot of daemons running with their own UID/GID
-> and having their own directory. In this case there must be a mechanism
-> to guarantee the existence of this directory, which would obviously be
-> done in the init script (not sure if any init scripts currently do this
-> in Suse).
+> mkfs.xfs tries to do this, but it'd be silly to duplicate in every mkfs.
 
-Well, it either needs to be done in the init script or the daemons run
-with root privs, create the directory, and then drop root privs.  So
-yes, there are alternatives.  (a) Yet Another init script, (b) setuid
-root, with a hard-coded user name that has to be looked up via
-getpwent() and configured into /etc/passwd or the LDAP server, (c)
-just put the darned directory in /var/lib.
+Well, blkid already has a way to _detect_ a lot of filesystem signatures,
+so it might be relatively easy to exploit the type_array[] entries to have
+it zap out all of these blocks.  That said, the majority of them are in
+the first 68kB of the filesystem (mdraid excluded) so it shouldn't be too
+hard to zero them out.  Let's hope nobody ever uses "0x00000000" as magic.
 
-It's all about tradeoffs, and for me, (c) was the easist, especially
-since /var/lib/libuuid/clock.txt needs to be persistent across boots
-anyway, and so needs to be in /var/lib instead of /var/run.  So yes, I
-could have created some machinery to make sure /var/run/uuidd is
-always present, but why not just reuse the already existing
-/var/lib/libuuid directory, which has the correct ownership and which
-has to be in /var/lib anyway?
+mke2fs already tries to do this, though I notice:
+- the zap_sector() call will skip the entire write if there is a BSD bootblock,
+  instead of skipping only the first sector(s) and overwriting the rest...
+  Since I don't know much about BSD bootblocks, I don't know what the right
+  behaviour is, but I can guess we still want to zero out 4-68kB (or whatever).
+- it only overwrites up to sector 8 (4kB) and not further into the disk to
+  catch e.g. reiserfs superblocks.  Usually it will overwrite this anyways
+  (GDT, bitmaps, inode table), but in some rare cases it might not.
 
-> > and I still haven't figured out how to easily build my own
-> > custom kernel RPM's on OpenSUSE, but it's quite nice.
-> 
-> unfortunately we don't have make-kpkg.
-
-Yeah, and the RPM macros for generating kernel are incredibly twisted.
-At least they were for RHEL4, when I was figuring out how to generate
-a real-time kernel rpm.  Serious temptations to gouge out my eyeballs
-with a spoon by the time I was done....
-
-       	     					- Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
