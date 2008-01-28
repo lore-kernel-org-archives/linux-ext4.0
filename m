@@ -1,77 +1,48 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] [3/18] BKL-removal: Convert ext3 to use unlocked_ioctl
-Date: Sun, 27 Jan 2008 21:33:47 -0800
-Message-ID: <20080127213347.5bf5c324.akpm@linux-foundation.org>
-References: <20080127317.043953000@suse.de>
-	<20080127021709.55F0814D2E@wotan.suse.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Integrating patches in SLES10 e2fsprogs
+Date: Sun, 27 Jan 2008 23:43:33 -0600
+Message-ID: <479D6B85.2090403@redhat.com>
+References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <479C9E13.8040209@redhat.com> <20080127202725.GA2545@mit.edu> <479D5CB9.5060801@redhat.com> <20080128052415.GA23482@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andi Kleen <ak@suse.de>
+Cc: Matthias Koenig <mkoenig@suse.de>, linux-ext4@vger.kernel.org,
+	hvogel@suse.de, Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
+	Eric Sandeen <esandeen@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:46931 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755368AbYA1FeG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2008 00:34:06 -0500
-In-Reply-To: <20080127021709.55F0814D2E@wotan.suse.de>
+Received: from mx1.redhat.com ([66.187.233.31]:48584 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750777AbYA1Fn6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jan 2008 00:43:58 -0500
+In-Reply-To: <20080128052415.GA23482@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 27 Jan 2008 03:17:09 +0100 (CET) Andi Kleen <ak@suse.de> wrote:
-
+Theodore Tso wrote:
+> On Sun, Jan 27, 2008 at 10:40:25PM -0600, Eric Sandeen wrote:
+>> %build
+>> aclocal
+>> autoconf
+>> %configure --enable-elf-shlibs --enable-nls --disable-e2initrd-helper
+>> --enable-blkid-devmapper --enable-blkid-selinux --enable-dynamic-e2fsck
+>> make %{?_smp_mflags}
+>>
 > 
-> I checked ext3_ioctl and it looked largely safe to not be used
-> without BKL.  So convert it over to unlocked_ioctl.
-> 
-> The only case where I wasn't quite sure was for the
-> dynamic fs grow ioctls versus umounting -- I kept the BKL for those. 
-> 
+> It should be fine if you eliminate the "aclocal" call.  And I've never
+> understood why people like to regenerate configure scripts from
+> configure.in in the first place....
 
-Please cpoy linux-ext4 on ext2/3/4 material.
+Well, we patched configure.in too, for other reasons...  that at least
+explains the autoconf call.  And I'll plead inheritance on some of this ;)
 
-I skippped a lot of these patches because I just got bored of fixing
-rejects.  Now is a very optimistic time to be raising patches against
-mainline.
+> In any case, I've just released e2fsprogs 1.40.6.  It contains some of
+> obviously correct patches from the Novell and Red Hat packages.  More
+> importantly, it includes the "mke2fs -E test_fs" feature which will be
+> needed once we push test_fs ext4 patches to mainline, which I plan to
+> push to Linus in the next day or two.
 
-I'm going to work on getting a unified devel tree operating: one which
-contains everyone's latest stuff and is updated daily.  Basically it'll be
--mm without a couple of the quilt trees.  People can then prepare patches
-against that, as it seems that most can't be bothered patching against -mm,
-let alone building and testing it.  More later.
+Good deal.  I'll push that to Rawhide tomorrow.
 
-> +		/* AK: not sure the BKL is needed, but this might prevent
-> +		 * races against umount */
-> +		lock_kernel();
->  		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
->  		journal_lock_updates(EXT3_SB(sb)->s_journal);
->  		journal_flush(EXT3_SB(sb)->s_journal);
->  		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-> +		unlock_kernel();
->  
->  		return err;
->  	}
-> @@ -245,11 +249,14 @@ flags_err:
->  		if (copy_from_user(&input, (struct ext3_new_group_input __user *)arg,
->  				sizeof(input)))
->  			return -EFAULT;
-> -
-> +		/* AK: not sure the BKL is needed, but this might prevent
-> +		 * races against umount */
-> +		lock_kernel();
->  		err = ext3_group_add(sb, &input);
->  		journal_lock_updates(EXT3_SB(sb)->s_journal);
->  		journal_flush(EXT3_SB(sb)->s_journal);
->  		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-> +		unlock_kernel();
->  
-
-The ext3_ioctl() caller has an open fd against the fs - should be
-sufficient to keep unmount away?
-
-(gets even more rejects, drops all the fasync patches too)
-
-It's all reached the stage of stupid.
+Thanks,
+-Eric
