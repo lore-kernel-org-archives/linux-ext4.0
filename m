@@ -1,38 +1,38 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Oops, incorrect tag: v1.40.5 in e2fsprogs git repository
-Date: Mon, 28 Jan 2008 13:18:25 -0500
-Message-ID: <20080128181825.GA24206@mit.edu>
+Subject: Re: [RFC] Parallelize IO for e2fsck
+Date: Mon, 28 Jan 2008 14:56:33 -0500
+Message-ID: <20080128195633.GB20528@mit.edu>
+References: <70b6f0bf0801161322k2740a8dch6a0d6e6e112cd2d0@mail.gmail.com> <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com> <20080121230041.GL3180@webber.adilger.int> <20080122033830.GR155259@sgi.com> <3673.1200975438@turing-police.cc.vt.edu> <20080122070050.GM3180@webber.adilger.int> <20080122144052.GC17804@mit.edu> <20080128193005.GC4032@ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: pasky@suse.cz
-To: linux-ext4@vger.kernel.org
+Cc: Valdis.Kletnieks@vt.edu, David Chinner <dgc@sgi.com>,
+	Valerie Henson <val@vahconsulting.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andreas Dilger <adilger@clusterfs.com>,
+	Ric Wheeler <ric@emc.com>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:46808 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:58473 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752142AbYA1SSw (ORCPT
+	by vger.kernel.org with ESMTP id S1752369AbYA1T5U (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2008 13:18:52 -0500
+	Mon, 28 Jan 2008 14:57:20 -0500
 Content-Disposition: inline
+In-Reply-To: <20080128193005.GC4032@ucw.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon, Jan 28, 2008 at 07:30:05PM +0000, Pavel Machek wrote:
+> 
+> As user pages are always in highmem, this should be easy to decide:
+> only send SIGDANGER when highmem is full. (Yes, there are
+> inodes/dentries/file descriptors in lowmem, but I doubt apps will
+> respond to SIGDANGER by closing files).
 
-I screwed up, and incorrectly tagged v1.40.5 in the e2fsprogs git
-repository.  I accidentally tagged the "next" branch instead of the
-"maint" branch, so the the wrong commit was tagged as v1.40.5.  Argh...
+Good point; for a system with at least (say) 2GB of memory, that
+definitely makes sense.  For a system with less than 768 megs of
+memory (how quaint, but it wasn't that long ago this was a lot of
+memory :-), there wouldn't *be* any memory in highmem at all....
 
-This has been fixed on git.kernel.org, but it's still busted on
-repo.or.cz.  
-
-If you've pulled from the e2fsprogs git repository incorrectly, you'll
-need to run the command:
-
-     git tag -d v1.40.5
-
-... and then re-pull from the git repository to get the correct tag.
-
-Petr, if you could run the same command on the e2fsprogs repository on
-repo.or.cz, it would be much appreciated!!
-
-				- Ted
+	       		     	 	- Ted
