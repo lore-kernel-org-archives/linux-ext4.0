@@ -1,112 +1,81 @@
-From: Matthias Koenig <mkoenig@suse.de>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Integrating patches in SLES10 e2fsprogs
-Date: Mon, 28 Jan 2008 16:26:53 +0100
-Message-ID: <n7x1w82nf7m.fsf@sor.suse.de>
-References: <20080124211728.GA24900@webber.adilger.int>
-	<n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu>
+Date: Mon, 28 Jan 2008 10:38:02 -0500
+Message-ID: <20080128153802.GB17752@mit.edu>
+References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <n7x1w82nf7m.fsf@sor.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, hvogel@suse.de,
 	Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
 	Eric Sandeen <esandeen@redhat.com>
-To: Theodore Tso <tytso@mit.edu>
+To: Matthias Koenig <mkoenig@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns1.suse.de ([195.135.220.2]:37971 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753915AbYA1P0z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2008 10:26:55 -0500
-In-Reply-To: <20080127050543.GC24842@mit.edu> (Theodore Tso's message of "Sun\,
-	27 Jan 2008 00\:05\:43 -0500")
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:56082 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752120AbYA1PiN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2008 10:38:13 -0500
+Content-Disposition: inline
+In-Reply-To: <n7x1w82nf7m.fsf@sor.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso <tytso@mit.edu> writes:
+On Mon, Jan 28, 2008 at 04:26:53PM +0100, Matthias Koenig wrote:
+> > Patch6:         e2fsprogs-mdraid.patch
+> >
+> > This apparently adds a new environment variable,
+> > BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
+> > devices.  I'm not sure why.
+> 
+> Workaround for people having stale RAID signature on their disk:
+> https://bugzilla.novell.com/show_bug.cgi?id=100530
 
-> Wow.  You have a lot of patches in the SLES 10 e2fsprogs.  I'm not
-> sure why of them are there, though.  For example:
->
-> Patch0:         elf.diff
->
-> I'm not sure what this one is for.
->
-> Patch1:		e2fsprogs-1.35-libdir.diff
->
-> This one does two different things.  One is include AC_HEADER_TIME in
-> configure.in, and the other is to use $lib instead of "lib" when
-> defining root_libdir.  This seems to force root_libdir to /, which
-> makes no sense to me.
+Hmm... there's got to be a better way around this.
 
-We want to have the shared libs in /lib{,64}, but the devel so links
-have to remain in /usr/lib{,64}. 
-But looking closer at this, it seems that these patches are not needed,
-since the result can be obtained by defining ELF_INSTALL_DIR.
-I will drop these.
+I'm not authorized to look at that BZ entry.  Is there any way you can
+make my "tytso" account have access to any e2fsprogs related BZ
+entries?  Thanks!
 
-> Patch4:         e2fsprogs-blkid.diff
->
-> This patch causes fsck to check the BLKID_FILE environment variable
-> and passes it to the blkid library.  But the blkid library *already*
-> checks the BLKID_FILE environtment variable already.  So I'm not sure
-> why this is necessary at all.
+> > Patch12:        e2fsprogs-mkinstalldirs.patch
+> >
+> > Why?
+> 
+> Is needed since we recreate the auto* files.
+> But I agree that this patch should better set
+> MKINSTALLDIRS = @MKDIR_P@
+> not to literal "mkdir -p". The @MKINSTALLDIRS@ seems to be
+> obsolete in newer gettext (which seems to pull this in).
 
-Ok, the patch is obsolete indeed.
+Are you running aclocal?  That may be causing the issues since I think
+that may be causing it to ignore the autoconf macros I've established
+in the top-level aclocal.m4 file.
 
-> Patch6:         e2fsprogs-mdraid.patch
->
-> This apparently adds a new environment variable,
-> BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
-> devices.  I'm not sure why.
+> > Patch22:        e2fsprogs-1.40.4-uuidd_pid_path.patch
+> >
+> > The problem with this patch is that /var/run is cleared via rm -rf, so
+> > it is highly problamtic to put the scratch directory for uuidd in
+> > /var/run.
+> 
+> Are you really sure? My interpretation of FHS is, that files under
+> /var/run/ have to be cleared or truncated, but the subdirectories do not
+> get deleted.
 
-Workaround for people having stale RAID signature on their disk:
-https://bugzilla.novell.com/show_bug.cgi?id=100530
+The problem is that the FHS does not guarantee that the subdirectories
+stick around, and a number of distro's are using mounting tmpfs for
+/var/run.  Makes sense, it can significantly speed up operations ---
+but upon reboot, everything in /var/run is *gone*.
 
-> Patch10:        close.patch
->
-> I don't understand what this patch is trying to do.
 
-This patch is obsolete, as the issue is fixed by
-git commit 0d961040fe9ad927254b5a0e1a4de7bedadd8579
+Please let me know when you have a newer OpenSUSE factory RPM ready
+for use, and I'll take a look at the remaining patches and see which
+ones are ready for merging upstream.  Markus managed to convince me it
+was worthwhile to install the latest OpenSUSE on a laptop so I could
+see how things are shaping up, and I have to say I'm pretty impressed.
+I haven't updated it to try tracking the latest OpenSUSE factory
+RPM's, and I still haven't figured out how to easily build my own
+custom kernel RPM's on OpenSUSE, but it's quite nice.
 
-The original patch posted in Novell bugzilla #132708
-contained this additional hunk, which is likely obsolete:
-@@ -217,6 +217,7 @@
- 	
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-+	super_shadow = fs->super;
- 	fs_state = fs->super->s_state;
- 
- 	fs->super->s_wtime = time(NULL);
+On my "one of these days" list is to get another cheap/used laptop so
+I can try out the latest Fedora Core Rawhide without having to fire up
+a huge (noisy) x86_64 box....
 
-> Patch12:        e2fsprogs-mkinstalldirs.patch
->
-> Why?
-
-Is needed since we recreate the auto* files.
-But I agree that this patch should better set
-MKINSTALLDIRS = @MKDIR_P@
-not to literal "mkdir -p". The @MKINSTALLDIRS@ seems to be
-obsolete in newer gettext (which seems to pull this in).
-
-> Patch22:        e2fsprogs-1.40.4-uuidd_pid_path.patch
->
-> The problem with this patch is that /var/run is cleared via rm -rf, so
-> it is highly problamtic to put the scratch directory for uuidd in
-> /var/run.
-
-Are you really sure? My interpretation of FHS is, that files under
-/var/run/ have to be cleared or truncated, but the subdirectories do not
-get deleted.
-
-> Patch34:        libcom_err-compile_et_permissions.patch
->
-> Why?
-
-This is just a workaround and is not intended to stay there forever,
-it is also not intended for upstream inclusion.
-I have been asked to add this to avoid build problems of some other
-package (I think it was kerberos). I will have to check if this is
-still needed.
-
-Thanks,
-Matthias
+						- Ted
