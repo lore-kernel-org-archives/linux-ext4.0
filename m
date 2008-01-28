@@ -1,28 +1,48 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Integrating patches in SLES10 e2fsprogs
-Date: Mon, 28 Jan 2008 12:03:19 -0500
-Message-ID: <20080128170319.GE17752@mit.edu>
-References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <479C9E13.8040209@redhat.com> <20080127202725.GA2545@mit.edu> <479D5CB9.5060801@redhat.com> <20080128052415.GA23482@mit.edu> <m28x2adjmn.fsf@vador.mandriva.com> <m24pcydje0.fsf@vador.mandriva.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Oops, incorrect tag: v1.40.5 in e2fsprogs git repository
+Date: Mon, 28 Jan 2008 13:19:23 -0500
+Message-ID: <20080128181923.GB24206@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Thierry Vignaud <tvignaud@mandriva.com>
+Content-Type: text/plain; charset=us-ascii; x-action=pgp-signed
+Cc: pasky@suse.cz
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42675 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752550AbYA1RDV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2008 12:03:21 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:47102 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751900AbYA1ST1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jan 2008 13:19:27 -0500
 Content-Disposition: inline
-In-Reply-To: <m24pcydje0.fsf@vador.mandriva.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 05:06:47PM +0100, Thierry Vignaud wrote:
-> Worse, http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=summary hasn't
-> any tag for neither 1.40.5 nor 1.40.6 in primary branch (only maint
-> shows 1.40.5)
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Sorry, I forget to use the --tags option when I pushed the patches to
-the git tree.  This was fixed about an hour ago.
+Hi,
 
-    	       	    	      	       	    - Ted
+I screwed up, and incorrectly tagged v1.40.5 in the e2fsprogs git
+repository.  I accidentally tagged the "next" branch instead of the
+"maint" branch, so the the wrong commit was tagged as v1.40.5.  Argh...
+
+This has been fixed on git.kernel.org, but it's still busted on
+repo.or.cz.  
+
+If you've pulled from the e2fsprogs git repository incorrectly, you'll
+need to run the command:
+
+     git tag -d v1.40.5
+
+... and then re-pull from the git repository to get the correct tag.
+
+Petr, if you could run the same command on the e2fsprogs repository on
+repo.or.cz, it would be much appreciated!!
+
+				- Ted
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFHnhyr7To545NnTEARAr3gAKD1ikMgB74Qw+65fdZRn0kaEXry8ACcDIva
+bEVF2ZqTSaaf5hOE3hmfZyw=
+=wRDe
+-----END PGP SIGNATURE-----
