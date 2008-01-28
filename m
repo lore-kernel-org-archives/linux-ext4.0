@@ -1,46 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Integrating patches in SLES10 e2fsprogs
-Date: Mon, 28 Jan 2008 10:54:45 -0600
-Message-ID: <479E08D5.3040609@redhat.com>
-References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <n7x1w82nf7m.fsf@sor.suse.de> <20080128153802.GB17752@mit.edu>
+Date: Mon, 28 Jan 2008 12:00:04 -0500
+Message-ID: <20080128170004.GD17752@mit.edu>
+References: <20080124211728.GA24900@webber.adilger.int> <n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu> <479C9E13.8040209@redhat.com> <20080127202725.GA2545@mit.edu> <479D5CB9.5060801@redhat.com> <20080128052415.GA23482@mit.edu> <m28x2adjmn.fsf@vador.mandriva.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Matthias Koenig <mkoenig@suse.de>, linux-ext4@vger.kernel.org,
-	hvogel@suse.de, Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
-	Eric Sandeen <esandeen@redhat.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Thierry Vignaud <tvignaud@mandriva.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53216 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751474AbYA1QzL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2008 11:55:11 -0500
-In-Reply-To: <20080128153802.GB17752@mit.edu>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42658 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754459AbYA1RAL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2008 12:00:11 -0500
+Content-Disposition: inline
+In-Reply-To: <m28x2adjmn.fsf@vador.mandriva.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Jan 28, 2008 at 04:26:53PM +0100, Matthias Koenig wrote:
->>> Patch6:         e2fsprogs-mdraid.patch
->>>
->>> This apparently adds a new environment variable,
->>> BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
->>> devices.  I'm not sure why.
->> Workaround for people having stale RAID signature on their disk:
->> https://bugzilla.novell.com/show_bug.cgi?id=100530
+On Mon, Jan 28, 2008 at 05:01:36PM +0100, Thierry Vignaud wrote:
+> Theodore Tso <tytso@mit.edu> writes:
 > 
-> Hmm... there's got to be a better way around this.
+> > In any case, I've just released e2fsprogs 1.40.6.
 
-Won't help existing block devices, but it'd be nice to have a common
-library which could be called @ mkfs time to wipe out all known
-signatures...
+Oops, typo, that should have read 1.40.5.
 
-mkfs.xfs tries to do this, but it'd be silly to duplicate in every mkfs.
+> 
+> which prompts me to note that it's neither on
+> ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.13 nor on
+> http://e2fsprogs.sourceforge.net/
 
-> On my "one of these days" list is to get another cheap/used laptop so
-> I can try out the latest Fedora Core Rawhide without having to fire up
-> a huge (noisy) x86_64 box....
+I don't know why people would think it's at
+/pub/linux/utils/util-linux-ng, but it is at e2fsprogs.sf.net, and
+I've just uploaded 1.40.5 to /pub/linux/kernel/people/tytso/e2fsprogs
+on master.kernel.org, so it should be at ftp.kernel.org very shortly.
+(Sorry, didn't get to that last night.)
 
-Just partition... ;)
+> What is supposed to be the current primary source?
 
--Eric
+Well, for the absolutely *latest*, the git trees are at:
+
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=summary
+or
+	git://repo.or.cz/e2fsprogs.git
+	http://repo.or.cz/w/e2fsprogs.git
+
+For the release tarballs, they can be downloaded at e2fsprogs's
+SourceForge page, or at
+
+	ftp.kernel.org:/pub/linux/kernel/people/tytso/e2fsprogs
+
+Regards,
+
+					- Ted
