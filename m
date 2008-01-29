@@ -1,70 +1,67 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Integrating patches in SLES10 e2fsprogs
-Date: Mon, 28 Jan 2008 13:59:19 -0700
-Message-ID: <20080128205919.GW18433@webber.adilger.int>
-References: <20080124211728.GA24900@webber.adilger.int>
-	<n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu>
-	<n7x1w82nf7m.fsf@sor.suse.de> <20080128153802.GB17752@mit.edu>
-	<479E08D5.3040609@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] allow in-inode EAs on ext4 root inode
+Date: Tue, 29 Jan 2008 14:42:25 -0600
+Message-ID: <479F8FB1.6010608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: hvogel@suse.de, Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <esandeen@redhat.com>,
-	Matthias Koenig <mkoenig@suse.de>,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <ext3-users-bounces@redhat.com>
-In-reply-to: <479E08D5.3040609@redhat.com>
-Resent-message-id: <20080129203143.GC20490@webber.adilger.int>
-Content-disposition: inline
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/ext3-users>
-List-Post: <mailto:ext3-users@redhat.com>
-List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=subscribe>
-Sender: ext3-users-bounces@redhat.com
-Errors-To: ext3-users-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@clusterfs.com>,
+	Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:37381 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754385AbYA2Umu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2008 15:42:50 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 28, 2008  10:54 -0600, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > On Mon, Jan 28, 2008 at 04:26:53PM +0100, Matthias Koenig wrote:
-> >>> Patch6:         e2fsprogs-mdraid.patch
-> >>>
-> >>> This apparently adds a new environment variable,
-> >>> BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
-> >>> devices.  I'm not sure why.
-> >> Workaround for people having stale RAID signature on their disk:
-> >> https://bugzilla.novell.com/show_bug.cgi?id=100530
-> > 
-> > Hmm... there's got to be a better way around this.
-> 
-> Won't help existing block devices, but it'd be nice to have a common
-> library which could be called @ mkfs time to wipe out all known
-> signatures...
-> 
-> mkfs.xfs tries to do this, but it'd be silly to duplicate in every mkfs.
+The ext3 root inode was treated specially with respect 
+to in-inode extended attributes, for reasons detailed 
+in the removed comment below.  The first mkfs-created
+inodes would not get extra_i_size or the EXT3_STATE_XATTR 
+flag set in ext3_read_inode, which disallowed reading or 
+setting in-inode EAs on the root.
 
-Well, blkid already has a way to _detect_ a lot of filesystem signatures,
-so it might be relatively easy to exploit the type_array[] entries to have
-it zap out all of these blocks.  That said, the majority of them are in
-the first 68kB of the filesystem (mdraid excluded) so it shouldn't be too
-hard to zero them out.  Let's hope nobody ever uses "0x00000000" as magic.
+However, in ext4, ext4_mark_inode_dirty calls 
+ext4_expand_extra_isize for all inodes; once this is done 
+EAs may be placed in the root ext4 inode body.
 
-mke2fs already tries to do this, though I notice:
-- the zap_sector() call will skip the entire write if there is a BSD bootblock,
-  instead of skipping only the first sector(s) and overwriting the rest...
-  Since I don't know much about BSD bootblocks, I don't know what the right
-  behaviour is, but I can guess we still want to zero out 4-68kB (or whatever).
-- it only overwrites up to sector 8 (4kB) and not further into the disk to
-  catch e.g. reiserfs superblocks.  Usually it will overwrite this anyways
-  (GDT, bitmaps, inode table), but in some rare cases it might not.
+But for reasons above, it won't be found after a reboot.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+testcase:
+
+setfattr -n user.name -v value mntpt/
+setfattr -n user.name2 -v value2 mntpt/
+umount mntpt/; remount mntpt/
+getfattr -d mntpt/
+
+name2/value2 has gone missing; debugfs shows it in the
+inode body, but it is not found there by getattr.
+
+The following fixes it up; newer mkfs appears to properly
+zero the inodes, so this workaround isn't needed for ext4.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+---
+
+Index: linux-2.6.24-rc6-mm1/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.24-rc6-mm1.orig/fs/ext4/inode.c
++++ linux-2.6.24-rc6-mm1/fs/ext4/inode.c
+@@ -2750,13 +2750,7 @@ void ext4_read_inode(struct inode * inod
+ 		ei->i_data[block] = raw_inode->i_block[block];
+ 	INIT_LIST_HEAD(&ei->i_orphan);
+ 
+-	if (inode->i_ino >= EXT4_FIRST_INO(inode->i_sb) + 1 &&
+-	    EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+-		/*
+-		 * When mke2fs creates big inodes it does not zero out
+-		 * the unused bytes above EXT4_GOOD_OLD_INODE_SIZE,
+-		 * so ignore those first few inodes.
+-		 */
++	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+ 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
+ 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
+ 		    EXT4_INODE_SIZE(inode->i_sb)) {
