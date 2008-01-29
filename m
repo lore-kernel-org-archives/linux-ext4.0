@@ -1,42 +1,71 @@
-From: david@lang.hm
-Subject: Re: [RFC] Parallelize IO for e2fsck
-Date: Tue, 29 Jan 2008 00:29:28 -0800 (PST)
-Message-ID: <alpine.DEB.1.00.0801290028460.16707@asgard.lang.hm>
-References: <70b6f0bf0801161322k2740a8dch6a0d6e6e112cd2d0@mail.gmail.com> <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com> <20080121230041.GL3180@webber.adilger.int> <20080122033830.GR155259@sgi.com> <3673.1200975438@turing-police.cc.vt.edu>
- <20080122070050.GM3180@webber.adilger.int> <20080122144052.GC17804@mit.edu> <20080128193005.GC4032@ucw.cz> <20080128195633.GB20528@mit.edu>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [GIT PULL] ext4 update
+Date: Tue, 29 Jan 2008 07:53:07 -0500
+Message-ID: <20080129125307.GF6774@mit.edu>
+References: <E1JJjMo-00011j-EU@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Pavel Machek <pavel@ucw.cz>, Valdis.Kletnieks@vt.edu,
-	David Chinner <dgc@sgi.com>,
-	Valerie Henson <val@vahconsulting.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger@clusterfs.com>,
-	Ric Wheeler <ric@emc.com>
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dsl081-033-126.lax1.dsl.speakeasy.net ([64.81.33.126]:51819
-	"EHLO bifrost.lang.hm" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751196AbYA2HSM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2008 02:18:12 -0500
-In-Reply-To: <20080128195633.GB20528@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758182AbYA2M7A@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <E1JJjMo-00011j-EU@closure.thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 28 Jan 2008, Theodore Tso wrote:
+>fwiw, diffstat is confused by git's diff output; you need to use
+>'diffstat -p1'
 
-> On Mon, Jan 28, 2008 at 07:30:05PM +0000, Pavel Machek wrote:
->>
->> As user pages are always in highmem, this should be easy to decide:
->> only send SIGDANGER when highmem is full. (Yes, there are
->> inodes/dentries/file descriptors in lowmem, but I doubt apps will
->> respond to SIGDANGER by closing files).
->
-> Good point; for a system with at least (say) 2GB of memory, that
-> definitely makes sense.  For a system with less than 768 megs of
-> memory (how quaint, but it wasn't that long ago this was a lot of
-> memory :-), there wouldn't *be* any memory in highmem at all....
+Argh, I have *got* to create a script that does this automatically.
 
-not to mention machines with 1G of ram (900M lowmem, 128M highmem)
+Revised diffstat -p1 output follows...
 
-David Lang
+						- Ted
+
+ Documentation/filesystems/ext4.txt           |   20 
+ Documentation/filesystems/proc.txt           |   39 
+ fs/Kconfig                                   |    1 
+ fs/afs/dir.c                                 |    9 
+ fs/afs/inode.c                               |    3 
+ fs/buffer.c                                  |   44 
+ fs/ext2/super.c                              |   32 
+ fs/ext3/super.c                              |   32 
+ fs/ext4/Makefile                             |    4 
+ fs/ext4/balloc.c                             |  251 +
+ fs/ext4/dir.c                                |   14 
+ fs/ext4/extents.c                            |  525 +--
+ fs/ext4/file.c                               |   23 
+ fs/ext4/group.h                              |    8 
+ fs/ext4/ialloc.c                             |  161 
+ fs/ext4/inode.c                              |  396 +-
+ fs/ext4/ioctl.c                              |    7 
+ fs/ext4/mballoc.c                            | 4552 +++++++++++++++++++++++++++
+ fs/ext4/migrate.c                            |  570 +++
+ fs/ext4/namei.c                              |  135 
+ fs/ext4/resize.c                             |   28 
+ fs/ext4/super.c                              |  389 +-
+ fs/ext4/xattr.c                              |    4 
+ fs/inode.c                                   |   39 
+ fs/jbd2/checkpoint.c                         |   22 
+ fs/jbd2/commit.c                             |  255 +
+ fs/jbd2/journal.c                            |  368 ++
+ fs/jbd2/recovery.c                           |  151 
+ fs/jbd2/revoke.c                             |    6 
+ fs/jbd2/transaction.c                        |   34 
+ fs/read_write.c                              |    1 
+ include/asm-arm/bitops.h                     |    2 
+ include/asm-generic/bitops/ext2-non-atomic.h |    2 
+ include/asm-generic/bitops/le.h              |    4 
+ include/asm-m68k/bitops.h                    |    2 
+ include/asm-m68knommu/bitops.h               |    2 
+ include/asm-powerpc/bitops.h                 |    4 
+ include/asm-s390/bitops.h                    |    2 
+ include/linux/buffer_head.h                  |    2 
+ include/linux/ext4_fs.h                      |  224 +
+ include/linux/ext4_fs_extents.h              |   25 
+ include/linux/ext4_fs_i.h                    |   25 
+ include/linux/ext4_fs_sb.h                   |   55 
+ include/linux/fs.h                           |   21 
+ include/linux/jbd2.h                         |  135 
+ lib/find_next_bit.c                          |   43 
+ 46 files changed, 7773 insertions(+), 898 deletions(-)
