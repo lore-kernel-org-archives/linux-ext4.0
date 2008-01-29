@@ -1,71 +1,109 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [GIT PULL] ext4 update
-Date: Tue, 29 Jan 2008 07:53:07 -0500
-Message-ID: <20080129125307.GF6774@mit.edu>
-References: <E1JJjMo-00011j-EU@closure.thunk.org>
+From: Matthias Koenig <mkoenig@suse.de>
+Subject: Re: Integrating patches in SLES10 e2fsprogs
+Date: Tue, 29 Jan 2008 14:52:10 +0100
+Message-ID: <n7xd4rkn3hx.fsf@sor.suse.de>
+References: <20080124211728.GA24900@webber.adilger.int>
+	<n7xir1iq69b.fsf@sor.suse.de> <20080127050543.GC24842@mit.edu>
+	<n7x1w82nf7m.fsf@sor.suse.de> <20080128153802.GB17752@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758182AbYA2M7A@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <E1JJjMo-00011j-EU@closure.thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, hvogel@suse.de,
+	Girish Shilamkar <Girish.Shilamkar@Sun.COM>,
+	Eric Sandeen <esandeen@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns1.suse.de ([195.135.220.2]:55373 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932848AbYA2NwN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2008 08:52:13 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->fwiw, diffstat is confused by git's diff output; you need to use
->'diffstat -p1'
+Theodore Tso <tytso@mit.edu> writes:
 
-Argh, I have *got* to create a script that does this automatically.
+> On Mon, Jan 28, 2008 at 04:26:53PM +0100, Matthias Koenig wrote:
+>> > Patch6:         e2fsprogs-mdraid.patch
+>> >
+>> > This apparently adds a new environment variable,
+>> > BLKID_SKIP_CHECK_MDRAID, which forces blkid to not detect mdraid
+>> > devices.  I'm not sure why.
+>> 
+>> Workaround for people having stale RAID signature on their disk:
+>> https://bugzilla.novell.com/show_bug.cgi?id=100530
+>
+> Hmm... there's got to be a better way around this.
+>
+> I'm not authorized to look at that BZ entry.  Is there any way you can
+> make my "tytso" account have access to any e2fsprogs related BZ
+> entries?  Thanks!
 
-Revised diffstat -p1 output follows...
+Still waiting for the person with privileges to do this.
+In the meanwhile I will add you to the CC list of this bug, then you
+should also be able to access the bug.
 
-						- Ted
+>
+>> > Patch12:        e2fsprogs-mkinstalldirs.patch
+>> >
+>> > Why?
+>> 
+>> Is needed since we recreate the auto* files.
+>> But I agree that this patch should better set
+>> MKINSTALLDIRS = @MKDIR_P@
+>> not to literal "mkdir -p". The @MKINSTALLDIRS@ seems to be
+>> obsolete in newer gettext (which seems to pull this in).
+>
+> Are you running aclocal?  That may be causing the issues since I think
+> that may be causing it to ignore the autoconf macros I've established
+> in the top-level aclocal.m4 file.
 
- Documentation/filesystems/ext4.txt           |   20 
- Documentation/filesystems/proc.txt           |   39 
- fs/Kconfig                                   |    1 
- fs/afs/dir.c                                 |    9 
- fs/afs/inode.c                               |    3 
- fs/buffer.c                                  |   44 
- fs/ext2/super.c                              |   32 
- fs/ext3/super.c                              |   32 
- fs/ext4/Makefile                             |    4 
- fs/ext4/balloc.c                             |  251 +
- fs/ext4/dir.c                                |   14 
- fs/ext4/extents.c                            |  525 +--
- fs/ext4/file.c                               |   23 
- fs/ext4/group.h                              |    8 
- fs/ext4/ialloc.c                             |  161 
- fs/ext4/inode.c                              |  396 +-
- fs/ext4/ioctl.c                              |    7 
- fs/ext4/mballoc.c                            | 4552 +++++++++++++++++++++++++++
- fs/ext4/migrate.c                            |  570 +++
- fs/ext4/namei.c                              |  135 
- fs/ext4/resize.c                             |   28 
- fs/ext4/super.c                              |  389 +-
- fs/ext4/xattr.c                              |    4 
- fs/inode.c                                   |   39 
- fs/jbd2/checkpoint.c                         |   22 
- fs/jbd2/commit.c                             |  255 +
- fs/jbd2/journal.c                            |  368 ++
- fs/jbd2/recovery.c                           |  151 
- fs/jbd2/revoke.c                             |    6 
- fs/jbd2/transaction.c                        |   34 
- fs/read_write.c                              |    1 
- include/asm-arm/bitops.h                     |    2 
- include/asm-generic/bitops/ext2-non-atomic.h |    2 
- include/asm-generic/bitops/le.h              |    4 
- include/asm-m68k/bitops.h                    |    2 
- include/asm-m68knommu/bitops.h               |    2 
- include/asm-powerpc/bitops.h                 |    4 
- include/asm-s390/bitops.h                    |    2 
- include/linux/buffer_head.h                  |    2 
- include/linux/ext4_fs.h                      |  224 +
- include/linux/ext4_fs_extents.h              |   25 
- include/linux/ext4_fs_i.h                    |   25 
- include/linux/ext4_fs_sb.h                   |   55 
- include/linux/fs.h                           |   21 
- include/linux/jbd2.h                         |  135 
- lib/find_next_bit.c                          |   43 
- 46 files changed, 7773 insertions(+), 898 deletions(-)
+Yes, someone here fixed the german po file (I already sent it to
+translation project). So we have to rerun the
+gettext related part, which results in the requirement to rerun aclocal.
+
+>
+>> > Patch22:        e2fsprogs-1.40.4-uuidd_pid_path.patch
+>> >
+>> > The problem with this patch is that /var/run is cleared via rm -rf, so
+>> > it is highly problamtic to put the scratch directory for uuidd in
+>> > /var/run.
+>> 
+>> Are you really sure? My interpretation of FHS is, that files under
+>> /var/run/ have to be cleared or truncated, but the subdirectories do not
+>> get deleted.
+>
+> The problem is that the FHS does not guarantee that the subdirectories
+> stick around, and a number of distro's are using mounting tmpfs for
+> /var/run.  Makes sense, it can significantly speed up operations ---
+> but upon reboot, everything in /var/run is *gone*.
+
+I see, then there is a problem of course. This is not the way it is
+done in Suse, so I did not see this problem.
+But, shouldn't the daemon then have an rc init script which checks for
+the needed subdirectory in /var/run and creates this if necessary?  If I
+look into /var/run I see a lot of daemons running with their own UID/GID
+and having their own directory. In this case there must be a mechanism
+to guarantee the existence of this directory, which would obviously be
+done in the init script (not sure if any init scripts currently do this
+in Suse). The only problem with uuidd is that it is designed to run upon
+demand. But on the other side it is also not strictly necessary to run
+uuidd to create UUIDs, only if you have special requirements on the
+UUIDs. So I don't see a problem if uuidd could not be started for the
+creation of UUIDs *generally* and if people wanting really unique
+time-based UUIDs are required to run the init script first upon boot, 
+which guarantees the existence of the /var/run/uuidd directory.
+Any problems with this approach?
+
+> Please let me know when you have a newer OpenSUSE factory RPM ready
+> for use, and I'll take a look at the remaining patches and see which
+> ones are ready for merging upstream. 
+
+Yes, will do so. I am currently still looking through all the patches
+where they come from and why they are needed. Will probably submit
+a new package today.
+
+> and I still haven't figured out how to easily build my own
+> custom kernel RPM's on OpenSUSE, but it's quite nice.
+
+unfortunately we don't have make-kpkg.
+
+Matthias
