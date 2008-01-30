@@ -1,40 +1,58 @@
-From: supersud501 <supersud501@yahoo.de>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH, RFC] Add new "development flag" to the ext4 filesystem
-Date: Wed, 30 Jan 2008 23:26:20 +0100
-Message-ID: <47A0F98C.1080304@yahoo.de>
-References: <20080122231707.GA21968@mit.edu>
+Date: Wed, 30 Jan 2008 17:48:21 -0500
+Message-ID: <20080130224820.GA20529@mit.edu>
+References: <20080122231707.GA21968@mit.edu> <47A0F98C.1080304@yahoo.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+To: supersud501 <supersud501@yahoo.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp002.mail.ukl.yahoo.com ([217.12.11.33]:37183 "HELO
-	smtp002.mail.ukl.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753926AbYA3W3z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jan 2008 17:29:55 -0500
-In-Reply-To: <20080122231707.GA21968@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:47607 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753132AbYA3Wsa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jan 2008 17:48:30 -0500
+Content-Disposition: inline
+In-Reply-To: <47A0F98C.1080304@yahoo.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> As discussed on RFC, this flag is simply a generic "this is a
-> crash/burn test filesystem" marker.  If it is set, then filesystem
-> code which is "in development" will be allowed to mount the
-> filesystem.  Filesystem code which is not considered ready for
-> prime-time will check for this flag, and if it is not set, it will
-> refuse to touch the filesystem.
-> 
-> As we start rolling ext4 out to distro's like Fedora, et. al, this
-> makes it less likely that a user might accidentally start using ext4
-> on a production filesystem; a bad thing, since that will essentially
-> make it be unfsckable until e2fsprogs catches up.
-> 
-> 						- Ted
-> 
-> 
+On Wed, Jan 30, 2008 at 11:26:20PM +0100, supersud501 wrote:
+>
+> how can i set this "flag" on my filesystem? i've never set any flags before 
+> so i just removed the code from ext4-module to mount my filesystems, but 
+> setting the flag once would make it easier i think :)
 
-how can i set this "flag" on my filesystem? i've never set any flags 
-before so i just removed the code from ext4-module to mount my 
-filesystems, but setting the flag once would make it easier i think :)
+If you have e2fsprogs 1.40.5, you set at mke2fs time via "mke2fs -E
+test_fs ...".  If you haven't mounted the filesystem using ext4 yet,
+you can also convert an existing filesystem using "tune2fs -E test_fs
+/dev/hdXXX".  At least with e2fsprogs 1.40.5, it won't work with a
+filesystem with extents enabled because tune2fs will refuse to touch
+such a filesystem.  (And you don't want to use e2fsprogs 1.40.5 with
+ext4 anyway, since e2fsck in 1.40.5 doesn't understand extents yet.)
+
+You can manually set the flag using debugfs:
+
+    # debugfs -w /dev/hdXX
+    debugfs: set_super_value s_flags 4
+    debugfs: quit
+
+(Or, if you're lazy, you can also type the shorthand "ssv flags 4" to
+debugfs.)
+
+With e2fsprogs 1.40.5, if the test_fs flag is set, then blkid will
+return a filesystem type ext4dev, such that if your mount is
+configured to use blkid (instead of vol_id), it will automatically use
+ext4dev to mount a filesystem that has (a) a journal (since ext4
+currently requires a journal), and (b) the test_fs flag set.
+
+This makes it easier for people who are testing ext4, since they will
+just be able to do something like:
+
+      # mke2fs -j -E test_fs /dev/mapper/lvmset-test
+      # mount /dev/mapper/lvmset-test
+
+.. and /dev/mapper/lvmset-test will automatically be mounted using
+ext4.
+
+							 - Ted
