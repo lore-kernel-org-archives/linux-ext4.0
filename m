@@ -1,48 +1,66 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 update
-Date: Wed, 30 Jan 2008 19:52:20 +1100 (EST)
-Message-ID: <alpine.LFD.1.00.0801301947540.3426@www.l.google.com>
-References: <E1JJjMo-00011j-EU@closure.thunk.org> <20080129125307.GF6774@mit.edu> <Pine.LNX.4.64.0801292250110.14907@fbirervta.pbzchgretzou.qr> <20080130071123.GF21944@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH RESEND] jbd: Remove useless loop in
+	journal_write_commit_record()
+Date: Wed, 30 Jan 2008 11:08:00 +0100
+Message-ID: <20080130100800.GB16140@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jan Engelhardt <jengelh@computergmbh.de>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:52432 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758044AbYA3IxF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jan 2008 03:53:05 -0500
-In-Reply-To: <20080130071123.GF21944@mit.edu>
+Received: from styx.suse.cz ([82.119.242.94]:49235 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750964AbYA3KIB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jan 2008 05:08:01 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+  Hi,
 
+  resending the patch just in case you've missed it.
 
-On Wed, 30 Jan 2008, Theodore Tso wrote:
-> 
-> That's because you are doing a diff stat of changes that haven't been
-> checked in yet.  I was doing a "git log -p origin.. | diffstat -p1",
-> and in that incantation you definitely do need the -p1 to diffstat.
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+---
 
-You should *always* use "-p1" to diffstat, because if you don't, diffstat 
-just makes up the paths totally (the same way you should always use "-p1" 
-to GNU 'patch').
+Commit block was intended to have several copies of the header. But
+due to a bug it never had them and actually, nobody checks that. So
+just remove the useless loop.
 
-The fact is, diffstat just guesses, based on the prefix. But those guesses 
-will be totally bogus at times, especially if you have newly created files 
-(I _think_ that is because one of the pathnames in the diff is /dev/null, 
-and that will apparently throw off the guesses).
+Signed-off-by: Jan Kara <jack@suse.cz>
 
-So if you don't use an explicit "-p1", diffstat will guess the -p level 
-from the longest common path prefix, _but_ get that wrong for some paths 
-anyway, so sometimes you'll see the "a/" prefix etc.
-
-Of course, rather than using diffstat at all, just do something like
-
-	git diff --stat origin..
-
-instead.
-
-		Linus
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index 610264b..b54948f 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -104,7 +104,8 @@ static int journal_write_commit_record(journal_t *journal,
+ {
+ 	struct journal_head *descriptor;
+ 	struct buffer_head *bh;
+-	int i, ret;
++	journal_header_t *header;
++	int ret;
+ 	int barrier_done = 0;
+ 
+ 	if (is_journal_aborted(journal))
+@@ -116,13 +117,10 @@ static int journal_write_commit_record(journal_t *journal,
+ 
+ 	bh = jh2bh(descriptor);
+ 
+-	/* AKPM: buglet - add `i' to tmp! */
+-	for (i = 0; i < bh->b_size; i += 512) {
+-		journal_header_t *tmp = (journal_header_t*)bh->b_data;
+-		tmp->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
+-		tmp->h_blocktype = cpu_to_be32(JFS_COMMIT_BLOCK);
+-		tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
+-	}
++	header = (journal_header_t*)(bh->b_data);
++	header->h_magic = cpu_to_be32(JFS_MAGIC_NUMBER);
++	header->h_blocktype = cpu_to_be32(JFS_COMMIT_BLOCK);
++	header->h_sequence = cpu_to_be32(commit_transaction->t_tid);
+ 
+ 	JBUFFER_TRACE(descriptor, "write commit block");
+ 	set_buffer_dirty(bh);
