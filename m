@@ -1,79 +1,78 @@
-From: Jan Engelhardt <jengelh@computergmbh.de>
-Subject: Re: [GIT PULL] ext4 update
-Date: Tue, 29 Jan 2008 22:54:03 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0801292250110.14907@fbirervta.pbzchgretzou.qr>
-References: <E1JJjMo-00011j-EU@closure.thunk.org> <20080129125307.GF6774@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH e2fsprogs] print "mostly-printable" xattr strings in debugfs
+Date: Tue, 29 Jan 2008 21:30:46 -0600
+Message-ID: <479FEF66.6040308@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sovereign.computergmbh.de ([85.214.69.204]:59412 "EHLO
-	sovereign.computergmbh.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757645AbYA2VyE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2008 16:54:04 -0500
-In-Reply-To: <20080129125307.GF6774@mit.edu>
+Received: from mx1.redhat.com ([66.187.233.31]:58802 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753430AbYA3Das (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2008 22:30:48 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m0U3Ulo1013331
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2008 22:30:47 -0500
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0U3UlBc003255
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2008 22:30:47 -0500
+Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0U3Ukpu020232
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2008 22:30:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Taking a cue from getfattr... if a string is "mostly"
+printable characters, go ahead & print as a string,
+and escape what's left over.
 
-On Jan 29 2008 07:53, Theodore Tso wrote:
->
->>fwiw, diffstat is confused by git's diff output; you need to use
->>'diffstat -p1'
+so we get:
 
-I am seeing normal behavior:
+Extended attributes stored in inode body: 
+  selinux = "system_u:object_r:root_t:s0\000" (28)
 
-22:52 sovereign:~/linux > git status
-# On branch dev-pcidata-dvb
-# Changes to be committed:
-#   (use "git reset HEAD <file>..." to unstage)
-#
-#       modified:   drivers/media/dvb/b2c2/flexcop-pci.c
-#       modified:   drivers/media/dvb/ttpci/av7110.c
-#       modified:   drivers/media/dvb/ttpci/budget-av.c
-#       modified:   drivers/media/dvb/ttpci/budget-ci.c
-#       modified:   drivers/media/dvb/ttpci/budget-patch.c
-#       modified:   drivers/media/dvb/ttpci/budget.c
-#       modified:   drivers/media/radio/radio-gemtek-pci.c
-#       modified:   drivers/media/radio/radio-maestro.c
-#       modified:   drivers/media/radio/radio-maxiradio.c
-#       modified:   drivers/media/video/bt8xx/bttv-driver.c
-#       modified:   drivers/media/video/cafe_ccic.c
-#       modified:   drivers/media/video/cx23885/cx23885-core.c
-#       modified:   drivers/media/video/cx88/cx88-mpeg.c
-#       modified:   drivers/media/video/cx88/cx88-video.c
-#       modified:   drivers/media/video/dpc7146.c
-#       modified:   drivers/media/video/hexium_gemini.c
-#       modified:   drivers/media/video/hexium_orion.c
-#       modified:   drivers/media/video/meye.c
-#       modified:   drivers/media/video/mxb.c
-#       modified:   drivers/media/video/saa7134/saa7134-cards.c
-#       modified:   drivers/media/video/stradis.c
-#       modified:   drivers/media/video/zoran_card.c
-#
-22:52 sovereign:~/linux > git diff HEAD | diffstat
- dvb/b2c2/flexcop-pci.c        |    2 +-
- dvb/ttpci/av7110.c            |    4 ++--
- dvb/ttpci/budget-av.c         |    2 +-
- dvb/ttpci/budget-ci.c         |    4 ++--
- dvb/ttpci/budget-patch.c      |    2 +-
- dvb/ttpci/budget.c            |    2 +-
- radio/radio-gemtek-pci.c      |    3 +--
- radio/radio-maestro.c         |    2 +-
- radio/radio-maxiradio.c       |    2 +-
- video/bt8xx/bttv-driver.c     |    2 +-
- video/cafe_ccic.c             |    2 +-
- video/cx23885/cx23885-core.c  |    2 +-
- video/cx88/cx88-mpeg.c        |    2 +-
- video/cx88/cx88-video.c       |    2 +-
- video/dpc7146.c               |    4 ++--
- video/hexium_gemini.c         |    4 ++--
- video/hexium_orion.c          |    4 ++--
- video/meye.c                  |    2 +-
- video/mxb.c                   |    4 ++--
- video/saa7134/saa7134-cards.c |    2 +-
- video/stradis.c               |    2 +-
- video/zoran_card.c            |    2 +-
- 22 files changed, 28 insertions(+), 29 deletions(-)
+instead of:
+
+Extended attributes stored in inode body: 
+  selinux = "73 79 73 74 65 6d 5f 75 3a 6f 62 6a 65 63 74 5f 72 3a 72 6f 6f 74 5f 74 3a 73 30 00 " (28)
+
+(selinux includes the trailing null in "len" so it
+never prints as a string today)
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ 
+Index: e2fsprogs-1.40.5/debugfs/debugfs.c
+===================================================================
+--- e2fsprogs-1.40.5.orig/debugfs/debugfs.c
++++ e2fsprogs-1.40.5/debugfs/debugfs.c
+@@ -434,19 +434,21 @@ static int list_blocks_proc(ext2_filsys 
+ 
+ static void dump_xattr_string(FILE *out, const char *str, int len)
+ {
+-	int printable = 1;
++	int printable = 0;
+ 	int i;
+ 	
+-	/* check is string printable? */
++	/* check: is string "printable enough?" */
+ 	for (i = 0; i < len; i++)
+-		if (!isprint(str[i])) {
+-			printable = 0;
+-			break;
+-		}
++		if (isprint(str[i]))
++			printable++;
++
++	if (printable <= len*7/8)
++		printable = 0;
+ 
+ 	for (i = 0; i < len; i++)
+ 		if (printable)
+-			fprintf(out, "%c", (unsigned char)str[i]);
++			fprintf(out, isprint(str[i]) ? "%c" : "\\%03o",
++				(unsigned char)str[i]);
+ 		else
+ 			fprintf(out, "%02x ", (unsigned char)str[i]);
+ }
