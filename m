@@ -1,106 +1,155 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Fw: [Bugme-new] [Bug 9849] New: NULL pointer deref in
-	journal_wait_on_commit_record
-Date: Wed, 30 Jan 2008 15:17:57 -0800
-Message-ID: <1201735077.3873.22.camel@localhost.localdomain>
-References: <20080130120055.7dc3331b.akpm@linux-foundation.org>
-Reply-To: cmm@us.ibm.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH e2fsprogs] - detect LVM2 PVs in libblkid
+Date: Wed, 30 Jan 2008 17:25:03 -0600
+Message-ID: <47A1074F.8090909@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Girish Shilamkar <girish@clusterfs.com>, snakebyte@gmx.de
-To: Andrew Morton <akpm@linux-foundation.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:50127 "EHLO e3.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:48297 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752659AbYA3XSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jan 2008 18:18:08 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0UNI0sn025292
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0UNI0FI249852
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0UNHx7b022293
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
-In-Reply-To: <20080130120055.7dc3331b.akpm@linux-foundation.org>
+	id S1753943AbYA3XZF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jan 2008 18:25:05 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m0UNP5Du021531
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:25:05 -0500
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0UNP4tQ014014
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:25:04 -0500
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0UNP3uq005976
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:25:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-01-30 at 12:00 -0800, Andrew Morton wrote:
-> 
-> Begin forwarded message:
-> 
-> Date: Wed, 30 Jan 2008 03:24:08 -0800 (PST)
-> From: bugme-daemon@bugzilla.kernel.org
-> To: bugme-new@lists.osdl.org
-> Subject: [Bugme-new] [Bug 9849] New: NULL pointer deref in journal_wait_on_commit_record
-> 
-> 
-> http://bugzilla.kernel.org/show_bug.cgi?id=9849
-> 
->            Summary: NULL pointer deref in journal_wait_on_commit_record
->            Product: File System
->            Version: 2.5
->      KernelVersion: 2.6.24-03997-g85004cc
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: ext4
->         AssignedTo: fs_ext4@kernel-bugs.osdl.org
->         ReportedBy: snakebyte@gmx.de
-> 
-> 
-> Latest working kernel version: -
-> Earliest failing kernel version: 2.6.24-03863-g0ba6c33
-> Distribution: Ubuntu
-> Problem Description:
-> 
-> using a corrupted image causes an oops in unmount, seems as if
-> journal_wait_on_commit_record() gets passed a NULL pointer
-> 
+The anaconda folks are now using blkid instead of hand-rolled
+tests for filesystem type at install time, but they had one
+more request:
 
-The buufer head pointer passed to journal_wait_on_commit_record() could
-be NULL if the previous journal_submit_commit_record() failed or journal
-has already aborted.
+Bugzilla Bug 409321: RFE: information on blkdevs "formatted" as PVs
+https://bugzilla.redhat.com/show_bug.cgi?id=409321
 
-Looking at the jbd2 debug messages, before the oops happen, the jbd2 is
-aborted due to trying to access the next log block beyond the end of
-device. This might be caused by using a corrupted image.
+The attached patch does the right thing for me on my sample
+set of exactly 1 PV...
 
-We need to check the error returns from journal_submit_commit_record()
-and avoid calling journal_wait_on_commit_record() in the failure case.
+Any issues with reporting back something which is not actually
+a filesystem ("lvm2pv") ?
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-The buufer head pointer passed to journal_wait_on_commit_record()
-could be NULL if the previous journal_submit_commit_record() failed
-or journal has already aborted.
+[root@host]# misc/blkid -c /dev/null /dev/sda2
+/dev/sda2: UUID="guOQGdcOE3IafCm0190XkPZTy5fCEanQ" TYPE="lvm2pv" 
+[root@host]# pvs -o pv_name,pv_uuid
+  PV         PV UUID                               
+  /dev/sda2  guOQGd-cOE3-IafC-m019-0XkP-ZTy5-fCEanQ
 
-We need to check the error returns from journal_submit_commit_record()
-and avoid calling journal_wait_on_commit_record() in the failure case.
+Bits liberally stolen from lvm2 userspace.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
 ---
- fs/jbd2/commit.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Index: linux-2.6.24-rc8/fs/jbd2/commit.c
+Index: e2fsprogs-1.40.5/lib/blkid/probe.h
 ===================================================================
---- linux-2.6.24-rc8.orig/fs/jbd2/commit.c	2008-01-30 14:12:10.000000000 -0800
-+++ linux-2.6.24-rc8/fs/jbd2/commit.c	2008-01-30 15:09:50.000000000 -0800
-@@ -872,7 +872,8 @@ wait_for_iobuf:
- 		if (err)
- 			__jbd2_journal_abort_hard(journal);
- 	}
--	err = journal_wait_on_commit_record(cbh);
-+	if (!err && !is_journal_aborted(journal))
-+		err = journal_wait_on_commit_record(cbh);
+--- e2fsprogs-1.40.5.orig/lib/blkid/probe.h
++++ e2fsprogs-1.40.5/lib/blkid/probe.h
+@@ -531,6 +531,20 @@ struct hfs_mdb {
+         __u16        embed_blockcount;
+ } __attribute__((packed));
  
- 	if (err)
- 		jbd2_journal_abort(journal, err);
++/* this is lvm's label_header & pv_header combined. */
++
++#define LVM2_ID_LEN 32
++
++struct lvm2_pv_label_header {
++	/* label_header */
++	__u8	id[8];		/* LABELONE */
++	__u64	sector_xl;	/* Sector number of this label */
++	__u32	crc_xl;		/* From next field to end of sector */
++	__u32	offset_xl;	/* Offset from start of struct to contents */
++	__u8	type[8];	/* LVM2 001 */
++	/* pv_header */
++	__u8	pv_uuid[LVM2_ID_LEN];
++} __attribute__ ((packed));
+ 
+ /*
+  * Byte swap functions
+Index: e2fsprogs-1.40.5/lib/blkid/probe.c
+===================================================================
+--- e2fsprogs-1.40.5.orig/lib/blkid/probe.c
++++ e2fsprogs-1.40.5/lib/blkid/probe.c
+@@ -895,6 +895,64 @@ static int probe_hfsplus(struct blkid_pr
+ 	return 1;
+ }
+ 
++#define LVM2_LABEL_SIZE 512
++static int lvm2_calc_crc(const void *buf, uint size)
++{
++	static const uint crctab[] = {
++		0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
++		0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
++		0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
++		0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
++	};
++	uint i, crc = 0xf597a6cf;
++	const __u8 *data = (const __u8 *) buf;
++
++	for (i = 0; i < size; i++) {
++		crc ^= *data++;
++		crc = (crc >> 4) ^ crctab[crc & 0xf];
++		crc = (crc >> 4) ^ crctab[crc & 0xf];
++	}
++	return crc;
++}
++
++static int probe_lvm2(struct blkid_probe *probe,
++			struct blkid_magic *id __BLKID_ATTR((unused)),
++			unsigned char *buf)
++{
++	int sector = (id->bim_kboff) << 1;;
++	struct lvm2_pv_label_header *label;
++	label = (struct lvm2_pv_label_header *)buf;
++
++	/* buf is at 0k or 1k offset; find label inside */
++	if (memcmp(buf, "LABELONE", 8) == 0) {
++		label = (struct lvm2_pv_label_header *)buf;
++	} else if (memcmp(buf + 512, "LABELONE", 8) == 0) {
++		label = (struct lvm2_pv_label_header *)(buf + 512);
++		sector++;
++	} else {
++		return 1;
++	}
++
++	if (blkid_le64(label->sector_xl) != sector) {
++		DBG(DEBUG_PROBE,
++		    printf("LVM2: label for sector %d found at sector %d\n",
++			   blkid_le64(label->sector_xl), sector));
++		return 1;
++	}
++
++	if (lvm2_calc_crc(&label->offset_xl, LVM2_LABEL_SIZE -
++		((void *)&label->offset_xl - (void *)label)) !=
++			blkid_le32(label->crc_xl)) {
++		DBG(DEBUG_PROBE,
++		    printf("LVM2: label checksum incorrect at sector %d\n",
++			   sector));
++		return 1;
++	}
++
++	blkid_set_tag(probe->dev, "UUID", label->pv_uuid, LVM2_ID_LEN);
++
++	return 0;
++}
+ /*
+  * BLKID_BLK_OFFS is at least as large as the highest bim_kboff defined
+  * in the type_array table below + bim_kbalign.
+@@ -988,6 +1046,10 @@ static struct blkid_magic type_array[] =
+   { "crypt_LUKS", 0,	 0,  6,	"LUKS\xba\xbe",		probe_luks },
+   { "squashfs",	 0,	 0,  4,	"sqsh",			0 },
+   { "squashfs",	 0,	 0,  4,	"hsqs",			0 },
++  { "lvm2pv",	 0,  0x218,  8, "LVM2 001",		probe_lvm2 },
++  { "lvm2pv",	 0,  0x018,  8, "LVM2 001",		probe_lvm2 },
++  { "lvm2pv",	 1,  0x018,  8, "LVM2 001",		probe_lvm2 },
++  { "lvm2pv",	 1,  0x218,  8, "LVM2 001",		probe_lvm2 },
+   {   NULL,	 0,	 0,  0, NULL,			NULL }
+ };
+ 
