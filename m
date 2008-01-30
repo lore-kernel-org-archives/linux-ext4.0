@@ -1,149 +1,106 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 9855] New: ext3 ACL corruption
-Date: Wed, 30 Jan 2008 14:49:30 -0800
-Message-ID: <20080130144930.e23f78de.akpm@linux-foundation.org>
-References: <bug-9855-10286@http.bugzilla.kernel.org/>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: Fw: [Bugme-new] [Bug 9849] New: NULL pointer deref in
+	journal_wait_on_commit_record
+Date: Wed, 30 Jan 2008 15:17:57 -0800
+Message-ID: <1201735077.3873.22.camel@localhost.localdomain>
+References: <20080130120055.7dc3331b.akpm@linux-foundation.org>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: bugme-daemon@bugzilla.kernel.org, kmshanah@ucwb.org.au
-To: linux-ext4@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
+Cc: Eric Sandeen <sandeen@sgi.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Girish Shilamkar <girish@clusterfs.com>, snakebyte@gmx.de
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55752 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753452AbYA3WuK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jan 2008 17:50:10 -0500
-In-Reply-To: <bug-9855-10286@http.bugzilla.kernel.org/>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:50127 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752659AbYA3XSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jan 2008 18:18:08 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m0UNI0sn025292
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m0UNI0FI249852
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m0UNHx7b022293
+	for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2008 18:18:00 -0500
+In-Reply-To: <20080130120055.7dc3331b.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 30 Jan 2008 14:29:27 -0800 (PST)
-bugme-daemon@bugzilla.kernel.org wrote:
-
-> http://bugzilla.kernel.org/show_bug.cgi?id=9855
+On Wed, 2008-01-30 at 12:00 -0800, Andrew Morton wrote:
 > 
->            Summary: ext3 ACL corruption
+> Begin forwarded message:
+> 
+> Date: Wed, 30 Jan 2008 03:24:08 -0800 (PST)
+> From: bugme-daemon@bugzilla.kernel.org
+> To: bugme-new@lists.osdl.org
+> Subject: [Bugme-new] [Bug 9849] New: NULL pointer deref in journal_wait_on_commit_record
+> 
+> 
+> http://bugzilla.kernel.org/show_bug.cgi?id=9849
+> 
+>            Summary: NULL pointer deref in journal_wait_on_commit_record
 >            Product: File System
 >            Version: 2.5
->      KernelVersion: 2.6.23
+>      KernelVersion: 2.6.24-03997-g85004cc
 >           Platform: All
 >         OS/Version: Linux
 >               Tree: Mainline
 >             Status: NEW
 >           Severity: normal
 >           Priority: P1
->          Component: ext3
->         AssignedTo: akpm@osdl.org
->         ReportedBy: kmshanah@ucwb.org.au
+>          Component: ext4
+>         AssignedTo: fs_ext4@kernel-bugs.osdl.org
+>         ReportedBy: snakebyte@gmx.de
 > 
 > 
-> Latest working kernel version: Unknown
-> Earliest failing kernel version: Definitely 2.6.23 and 2.6.23.8 but earlier is
-> possible
-> Distribution: Debian Etch
-> Hardware Environment: Multiple x86 machines
-> 
-> Software Environment:
-> Filesystem is Ext3 on LVM on RAID-1 (on SATA).
-> # e2fsck -V
-> e2fsck 1.40-WIP (14-Nov-2006)
->         Using EXT2FS Library version 1.40-WIP, 14-Nov-2006
-> 
+> Latest working kernel version: -
+> Earliest failing kernel version: 2.6.24-03863-g0ba6c33
+> Distribution: Ubuntu
 > Problem Description:
-> On several occasions now I have had e2fsck prune away ACLs on my file systems
-> during a file system check after rebooting a number of (reasonably) long
-> running Samba servers. This morning I decided to manually run fsck before
-> rebooting one of these:
 > 
-> # e2fsck -pfv /dev/mapper/vg_main-lv_samba
-> (entry->e_value_offs + entry->e_value_size: 116, offs: 120)
-> /dev/mapper/vg_main-lv_samba: Extended attribute in inode 163841 has a value
-> offset (56) which is invalid
-> CLEARED.
-> (entry->e_value_offs + entry->e_value_size: 116, offs: 120)
-> /dev/mapper/vg_main-lv_samba: Extended attribute in inode 262146 has a value
-> offset (56) which is invalid
-> CLEARED.
-> [ snip lots of (near) identical errors]
+> using a corrupted image causes an oops in unmount, seems as if
+> journal_wait_on_commit_record() gets passed a NULL pointer
 > 
->     8301 inodes used (0.08%)
->     1621 non-contiguous inodes (19.5%)
->          # of inodes with ind/dind/tind blocks: 3837/24/0
->  1108478 blocks used (5.29%)
->        0 bad blocks
->        1 large file
-> 
->     7590 regular files
->      662 directories
->        0 character device files
->        0 block device files
->        0 fifos
->        0 links
->       40 symbolic links (38 fast symbolic links)
->        0 sockets
-> --------
->     8292 files
-> 
-> (Note: after remounting)
-> # tune2fs -l /dev/mapper/vg_main-lv_samba 
-> tune2fs 1.40-WIP (14-Nov-2006)
-> Filesystem volume name:   <none>
-> Last mounted on:          <not available>
-> Filesystem UUID:          88677414-c1f8-41ba-b737-d9f6170d771b
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
-> needs_recovery sparse_super large_file
-> Filesystem flags:         signed directory hash 
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              10485760
-> Block count:              20971520
-> Reserved block count:     1048576
-> Free blocks:              19863038
-> Free inodes:              10477459
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      1019
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         16384
-> Inode blocks per group:   1024
-> Filesystem created:       Wed Feb 21 21:38:33 2007
-> Last mount time:          Thu Jan 31 03:18:54 2008
-> Last write time:          Thu Jan 31 03:18:54 2008
-> Mount count:              1
-> Maximum mount count:      30
-> Last checked:             Thu Jan 31 03:16:51 2008
-> Check interval:           15552000 (6 months)
-> Next check after:         Tue Jul 29 02:16:51 2008
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Journal inode:            8
-> Default directory hash:   tea
-> Directory Hash Seed:      be8c201b-3563-4fa5-a2a6-e2864e4b73e2
-> Journal backup:           inode blocks
-> 
-> 
-> Steps to reproduce:
-> Unfortunately, precise steps are not known. Restoring all the filesystem's ACLs
-> from a recent dump made using "getfacl -RP" fixes the ACLs without causing the
-> corruption to return.
-> 
-> These are production Samba servers making fairly extensive use of file and
-> directory ACLs. Thus far, I've only noticed the corruptions when it came time
-> to upgrade to a new kernel and reboot (and the boot scripts then run fsck).
-> Note that I've never noticed any issues at runtime because of this - only when
-> I later realised that ACLs had been removed from random files and/or
-> directories.
-> 
-> I think I will implement some scripts to unmount and run fsck nightly from
-> cron, so I can at least detect the corruption a little earlier. If there is
-> some more helpful debugging output I can provide, please let me know.
-> 
+
+The buufer head pointer passed to journal_wait_on_commit_record() could
+be NULL if the previous journal_submit_commit_record() failed or journal
+has already aborted.
+
+Looking at the jbd2 debug messages, before the oops happen, the jbd2 is
+aborted due to trying to access the next log block beyond the end of
+device. This might be caused by using a corrupted image.
+
+We need to check the error returns from journal_submit_commit_record()
+and avoid calling journal_wait_on_commit_record() in the failure case.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+The buufer head pointer passed to journal_wait_on_commit_record()
+could be NULL if the previous journal_submit_commit_record() failed
+or journal has already aborted.
+
+We need to check the error returns from journal_submit_commit_record()
+and avoid calling journal_wait_on_commit_record() in the failure case.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/jbd2/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+Index: linux-2.6.24-rc8/fs/jbd2/commit.c
+===================================================================
+--- linux-2.6.24-rc8.orig/fs/jbd2/commit.c	2008-01-30 14:12:10.000000000 -0800
++++ linux-2.6.24-rc8/fs/jbd2/commit.c	2008-01-30 15:09:50.000000000 -0800
+@@ -872,7 +872,8 @@ wait_for_iobuf:
+ 		if (err)
+ 			__jbd2_journal_abort_hard(journal);
+ 	}
+-	err = journal_wait_on_commit_record(cbh);
++	if (!err && !is_journal_aborted(journal))
++		err = journal_wait_on_commit_record(cbh);
+ 
+ 	if (err)
+ 		jbd2_journal_abort(journal, err);
