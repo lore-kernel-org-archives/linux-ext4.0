@@ -1,58 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Bugme-new] [Bug 9855] New: ext3 ACL corruption
-Date: Thu, 31 Jan 2008 08:58:09 -0600
-Message-ID: <47A1E201.7070801@redhat.com>
-References: <bug-9855-10286@http.bugzilla.kernel.org/> <20080130144930.e23f78de.akpm@linux-foundation.org> <20080131074916.GN23836@webber.adilger.int>
+From: Eric Sesterhenn <snakebyte@gmx.de>
+Subject: Re: BUG_ON at mballoc.c:3752
+Date: Thu, 31 Jan 2008 16:42:07 +0100
+Message-ID: <20080131154207.GA22201@alice>
+References: <20080131140137.GA20780@alice>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>,
-	bugme-daemon@bugzilla.kernel.org, kmshanah@ucwb.org.au,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=utf-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:41078 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753566AbYAaO63 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2008 09:58:29 -0500
-In-Reply-To: <20080131074916.GN23836@webber.adilger.int>
+Received: from mail.gmx.net ([213.165.64.20]:43240 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1751812AbYAaPmJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2008 10:42:09 -0500
+Content-Disposition: inline
+In-Reply-To: <20080131140137.GA20780@alice>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jan 30, 2008  14:49 -0800, Andrew Morton wrote:
->>> Problem Description:
-
->>> Inode size:               256     
+* Eric Sesterhenn (snakebyte@gmx.de) wrote:
+> hi,
 > 
-> This is a bit interesting, since it isn't very common to use large inodes.
-> I suspect this relates to the problem.
+> while running a modified version of fsfuzzer i triggered the BUG() in
+> ext4_mb_release_inode_pa(). Sadly I am not able to reproduce this using
+> the generated image, but running the fuzzer will usually trigger this in
+> less than 40 attempts. Increasing the JBD2 Debug level didnt give more
+> information. The kernel is current git with
+> ext4-fix-null-pointer-deref-in-journal_wait_on_commit_record.patch
+> applied. 
 
-I think it is somewhat common on samba servers, though.
+I am now able to reproduce this using this image:
+http://www.cccmz.de/~snakebyte/ext4.24.img.bz2
 
-And it's the new default in the latest e2fsprogs... maybe something will
-shake out in the F9 development cycle.
+the following commands will trigger the oops for me
 
->>> These are production Samba servers making fairly extensive use of file and
->>> directory ACLs. Thus far, I've only noticed the corruptions when it came time
->>> to upgrade to a new kernel and reboot (and the boot scripts then run fsck).
->>> Note that I've never noticed any issues at runtime because of this - only when
->>> I later realised that ACLs had been removed from random files and/or
->>> directories.
->>>
->>> I think I will implement some scripts to unmount and run fsck nightly from
->>> cron, so I can at least detect the corruption a little earlier. If there is
->>> some more helpful debugging output I can provide, please let me know.
-> 
-> There is just such a script in the thread "forced fsck (again?)".  Since you
-> are using LVs for the filesystem.
+mount cfs/ext4.24.img /media/test -t ext4dev -o extents -o loop
+mkdir /media/test/stress
+chown snakebyte:snakebyte /media/test/stress && sudo -u snakebyte fstest -n 10 -l 10 -f 5 -s 40000 -p /media/test/stress/
 
-Which is on the ext3-users list btw...
 
-> If you are able to reproduce this, could you please dump the inode and EA
-> block before fixing the problem.
+The && between the chown and fstest seems necessary
 
-Do you need instructions on doing that?
-
--Eric
+Greetings, Eric
