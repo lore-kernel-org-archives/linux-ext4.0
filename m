@@ -1,78 +1,99 @@
-From: Fengguang Wu <wfg@mail.ustc.edu.cn>
-Subject: [PATCH] clear PAGECACHE_TAG_DIRTY for truncated pages
-Date: Fri, 1 Feb 2008 20:18:47 +0800
-Message-ID: <E1JKur1-0001Dh-Ol__34168.5060099282$1201868406$gmane$org@localhost.localdomain>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bug 9866] New: chattr sticky behaviour and Orlov block
+ allocator
+Date: Fri, 1 Feb 2008 10:28:04 -0800
+Message-ID: <20080201102804.38f61075.akpm@linux-foundation.org>
+References: <bug-9866-27@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	Michael Rubin <mrubin@google.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764752AbYBAMTR@vger.kernel.org>
-Content-Disposition: inline
-Message-Id: <E1JKur1-0001Dh-Ol@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: bugme-daemon@bugzilla.kernel.org, Joerg-Cyril.Hoehle@T-Systems.com
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:42046 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753202AbYBAS2T convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Feb 2008 13:28:19 -0500
+In-Reply-To: <bug-9866-27@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The `truncated' page in block_write_full_page()/nobh_writepage() may
-stick for a long time.  For example, ext2_rmdir() will set i_size to
-0, and then the dir inode and its pages may hang around because of
-being referenced by some process.
+On Fri,  1 Feb 2008 07:25:09 -0800 (PST) bugme-daemon@bugzilla.kernel.o=
+rg wrote:
 
-To produce this situation:
-
-In terminal 1:
-                $ mkdir hi; cd hi
-                $ sleep 1h; cd ..
-In terminal 2:
-                $ rmdir hi
-
-The dir 'hi' is deleted in terminal 2 while still being referenced by
-the shell(as working dir) in terminal 1.  The deleted inode 'hi' with
-its dirty-and-truncated page will stay for 1 hour, during which the
-pdflush will retry the page _at least_ once every 5s.
-
-So clear PAGECACHE_TAG_DIRTY to prevent pdflush from retrying on it.
-
-Tested-by: Joerg Platte <jplatte@naasa.net>
-Cc: Peter Zijlstra <peterz@infradead.org>
-Cc: Michael Rubin <mrubin@google.com>
-Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
----
- fs/buffer.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+)
-
---- linux-mm.orig/fs/buffer.c
-+++ linux-mm/fs/buffer.c
-@@ -2631,7 +2631,13 @@ int nobh_writepage(struct page *page, ge
- 		if (page->mapping->a_ops->invalidatepage)
- 			page->mapping->a_ops->invalidatepage(page, offset);
- #endif
-+		/*
-+		 * Clear PAGECACHE_TAG_DIRTY to stop pdflush from retrying.
-+		 * Read block_write_full_page() for more details.
-+		 */
-+		set_page_writeback(page);
- 		unlock_page(page);
-+		end_page_writeback(page);
- 		return 0; /* don't care */
- 	}
- 
-@@ -2826,7 +2832,17 @@ int block_write_full_page(struct page *p
- 		 * freeable here, so the page does not leak.
- 		 */
- 		do_invalidatepage(page, 0);
-+		/*
-+		 * Clear PAGECACHE_TAG_DIRTY to stop pdflush from retrying.
-+		 *
-+		 * Some truncated pages may hang around for long time.
-+		 * For example, ext2_rmdir() will set i_size to 0, and then
-+		 * keep the pages as long as the dir is still referenced(as
-+		 * the working dir of some process).
-+		 */
-+		set_page_writeback(page);
- 		unlock_page(page);
-+		end_page_writeback(page);
- 		return 0; /* don't care */
- 	}
- 
+> http://bugzilla.kernel.org/show_bug.cgi?id=3D9866
+>=20
+>            Summary: chattr sticky behaviour and Orlov block allocator
+>            Product: File System
+>            Version: 2.5
+>      KernelVersion: 2.6.22
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: ext3
+>         AssignedTo: akpm@osdl.org
+>         ReportedBy: Joerg-Cyril.Hoehle@T-Systems.com
+>=20
+>=20
+> Latest working kernel version: 2.6.22
+> Earliest failing kernel version: 2.6.18 (oldest tested)
+> Distribution: Ubuntu Gutsy
+> Hardware Environment: Fujitsu Siemens C1110 laptop
+> Software Environment: chattr 1.40.2 (12-Jul-2007), mke2fs 1.40.2 (12-=
+Jul-2007)
+> Problem Description:
+> Some file attributes have sticky behaviour in ext2/3 whereas I believ=
+e
+> it should not. Namely, a directory marked with chattr +T serves "to b=
+e
+> the top of directory hierarchies for the purposes of the Orlov block
+> allocator", as the manpage says.
+>=20
+> It seems wrong that subdirectories stickily inherit the +T flag: they
+> are obviously not top-level! Even files get the T attribute this way,
+> even though the chattr manpages only documents it for directories.
+>=20
+> References:
+> http://lwn.net/Articles/14633/
+> http://lwn.net/Articles/14447/ Theodore Ts'o ext3 patch
+> http://en.wikipedia.org/wiki/Orlov_block_allocator
+>=20
+>=20
+> Steps to reproduce:
+> The following shows the sticky behaviour:
+> $ mkdir tests
+> chattr -V +T tests
+> chattr 1.40.2 (12-Jul-2007)
+> Flags von tests wie folgt gesetzt: ----------------T-
+> $ mkdir tests/src
+> $ cp -dp /etc/fstab tests/src
+> $ lsattr . tests tests/src
+> ----------------T- ./tests
+> ----------------T- tests/src
+> ----------------T- tests/src/fstab
+>=20
+> I verified (using cp -dpr and ls -lifR) that indeed, the inherited T
+> attribute causes all subdirectories to be created in inodes far apart
+> (like with mount -o remount,oldalloc), whereas the Orlov allocator
+> normally would put the directories next to each other.  My expectatio=
+n
+> is that only e.g. /home/user{1,2,3,4,5,6} should be created spread
+> out, whereas each user home's contents would be next each other
+> (/home/user1/{foo,bar,etc}).
+>=20
+> The effect of this bug makes chattr +T unusable, because Orlov
+> optimization is de facto eliminated.
+>=20
+> Regards,
+>  J=F6rg H=F6hle
+>=20
+>=20
+> --=20
+> Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Dema=
+il
+> ------- You are receiving this mail because: -------
+> You are the assignee for the bug, or are watching the assignee.
