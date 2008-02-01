@@ -1,99 +1,218 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bug 9866] New: chattr sticky behaviour and Orlov block
- allocator
-Date: Fri, 1 Feb 2008 10:28:04 -0800
-Message-ID: <20080201102804.38f61075.akpm@linux-foundation.org>
-References: <bug-9866-27@http.bugzilla.kernel.org/>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: BUG_ON at mballoc.c:3752
+Date: Fri, 01 Feb 2008 11:34:06 -0800
+Message-ID: <1201894446.5623.8.camel@localhost.localdomain>
+References: <20080131140137.GA20780@alice>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: bugme-daemon@bugzilla.kernel.org, Joerg-Cyril.Hoehle@T-Systems.com
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sesterhenn <snakebyte@gmx.de>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:42046 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753202AbYBAS2T convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Feb 2008 13:28:19 -0500
-In-Reply-To: <bug-9866-27@http.bugzilla.kernel.org/>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:36125 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752652AbYBATe2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Feb 2008 14:34:28 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m11Ja3bL020360
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Feb 2008 14:36:03 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m11JYAxP209086
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Feb 2008 14:34:10 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m11JY9Js018210
+	for <linux-ext4@vger.kernel.org>; Fri, 1 Feb 2008 14:34:10 -0500
+In-Reply-To: <20080131140137.GA20780@alice>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri,  1 Feb 2008 07:25:09 -0800 (PST) bugme-daemon@bugzilla.kernel.o=
-rg wrote:
+On Thu, 2008-01-31 at 15:01 +0100, Eric Sesterhenn wrote:
+> hi,
+> 
+> while running a modified version of fsfuzzer i triggered the BUG() in
+> ext4_mb_release_inode_pa(). Sadly I am not able to reproduce this using
+> the generated image, but running the fuzzer will usually trigger this in
+> less than 40 attempts. Increasing the JBD2 Debug level didnt give more
+> information. The kernel is current git with
+> ext4-fix-null-pointer-deref-in-journal_wait_on_commit_record.patch
+> applied. 
+> 
+> Greetings, Eric
+> 
+Thanks for reporting this.
 
-> http://bugzilla.kernel.org/show_bug.cgi?id=3D9866
->=20
->            Summary: chattr sticky behaviour and Orlov block allocator
->            Product: File System
->            Version: 2.5
->      KernelVersion: 2.6.22
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: ext3
->         AssignedTo: akpm@osdl.org
->         ReportedBy: Joerg-Cyril.Hoehle@T-Systems.com
->=20
->=20
-> Latest working kernel version: 2.6.22
-> Earliest failing kernel version: 2.6.18 (oldest tested)
-> Distribution: Ubuntu Gutsy
-> Hardware Environment: Fujitsu Siemens C1110 laptop
-> Software Environment: chattr 1.40.2 (12-Jul-2007), mke2fs 1.40.2 (12-=
-Jul-2007)
-> Problem Description:
-> Some file attributes have sticky behaviour in ext2/3 whereas I believ=
-e
-> it should not. Namely, a directory marked with chattr +T serves "to b=
-e
-> the top of directory hierarchies for the purposes of the Orlov block
-> allocator", as the manpage says.
->=20
-> It seems wrong that subdirectories stickily inherit the +T flag: they
-> are obviously not top-level! Even files get the T attribute this way,
-> even though the chattr manpages only documents it for directories.
->=20
-> References:
-> http://lwn.net/Articles/14633/
-> http://lwn.net/Articles/14447/ Theodore Ts'o ext3 patch
-> http://en.wikipedia.org/wiki/Orlov_block_allocator
->=20
->=20
-> Steps to reproduce:
-> The following shows the sticky behaviour:
-> $ mkdir tests
-> chattr -V +T tests
-> chattr 1.40.2 (12-Jul-2007)
-> Flags von tests wie folgt gesetzt: ----------------T-
-> $ mkdir tests/src
-> $ cp -dp /etc/fstab tests/src
-> $ lsattr . tests tests/src
-> ----------------T- ./tests
-> ----------------T- tests/src
-> ----------------T- tests/src/fstab
->=20
-> I verified (using cp -dpr and ls -lifR) that indeed, the inherited T
-> attribute causes all subdirectories to be created in inodes far apart
-> (like with mount -o remount,oldalloc), whereas the Orlov allocator
-> normally would put the directories next to each other.  My expectatio=
-n
-> is that only e.g. /home/user{1,2,3,4,5,6} should be created spread
-> out, whereas each user home's contents would be next each other
-> (/home/user1/{foo,bar,etc}).
->=20
-> The effect of this bug makes chattr +T unusable, because Orlov
-> optimization is de facto eliminated.
->=20
-> Regards,
->  J=F6rg H=F6hle
->=20
->=20
-> --=20
-> Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Dema=
-il
-> ------- You are receiving this mail because: -------
-> You are the assignee for the bug, or are watching the assignee.
+> [ 1570.971980] EXT4-fs error (device loop0) in ext4_reserve_inode_write: Journal has aborted
+
+Is there any more info about why jbd has aborted?
+
+> [ 1570.972077] pa c6512330: logic 16, phys. 2337, len 16
+> [ 1570.972103] free 2, pa_free 1
+
+looks like free!=pa_free.
+
+Aneesh, could you take a look? Thanks!
+
+Mingming
+> [ 1570.972191] ------------[ cut here ]------------
+> [ 1570.972217] kernel BUG at fs/ext4/mballoc.c:3752!
+> [ 1570.972241] invalid opcode: 0000 [#1] PREEMPT DEBUG_PAGEALLOC
+> [ 1570.972386] Modules linked in:
+> [ 1570.972425] 
+> [ 1570.972509] Pid: 6629, comm: fstest Not tainted (2.6.24-05749-g8af03e7-dirty #19)
+> [ 1570.972534] EIP: 0060:[<c02266b9>] EFLAGS: 00010202 CPU: 0
+> [ 1570.972570] EIP is at ext4_mb_release_inode_pa+0x169/0x1a0
+> [ 1570.972595] EAX: 00000001 EBX: 00000930 ECX: 00000001 EDX: 00000001
+> [ 1570.972678] ESI: 00000930 EDI: c6512330 EBP: cb638b28 ESP: cb638a84
+> [ 1570.972703]  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 0068
+> [ 1570.972728] Process fstest (pid: 6629, ti=cb638000 task=cb698000 task.ti=cb638000)
+> [ 1570.972751] Stack: c07c21bb 00000002 00000001 00000921 00000010 cbff34e0 cb638b54 00000002 
+> [ 1570.972899]        cb5fa430 c64824a0 cb5fb920 00000022 cbff34e0 cb638ad4 00000246 00000400 
+> [ 1570.972899]        cbfa2000 cb5fb920 cbff34e0 00000000 0000092e 00000000 00000002 cbfa2000 
+> [ 1570.972899] Call Trace:
+> [ 1570.972899]  [<c020e3a4>] ? read_block_bitmap+0x54/0x120
+> [ 1570.972899]  [<c022bd24>] ? ext4_mb_discard_inode_preallocations+0x124/0x300
+> [ 1570.972899]  [<c022bda5>] ? ext4_mb_discard_inode_preallocations+0x1a5/0x300
+> [ 1570.972899]  [<c0223577>] ? ext4_ext_get_blocks+0x3a7/0x4b0
+> [ 1570.972899]  [<c0213928>] ? ext4_get_blocks_wrap+0xe8/0x130
+> [ 1570.972899]  [<c0213bce>] ? ext4_get_block+0x7e/0xf0
+> [ 1570.972899]  [<c019d7ba>] ? __block_prepare_write+0x17a/0x3a0
+> [ 1570.972899]  [<c019da68>] ? block_write_begin+0x48/0xe0
+> [ 1570.972899]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.972899]  [<c0215127>] ? ext4_write_begin+0xb7/0x190
+> [ 1570.972899]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.972899]  [<c01557e9>] ? generic_perform_write+0xa9/0x190
+> [ 1570.972899]  [<c01575bd>] ? generic_file_buffered_write+0x6d/0x130
+> [ 1570.972899]  [<c01578c1>] ? __generic_file_aio_write_nolock+0x241/0x550
+> [ 1570.972899]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.972899]  [<c0157c2c>] ? generic_file_aio_write+0x5c/0xd0
+> [ 1570.972899]  [<c015ab0d>] ? free_one_page+0x1ed/0x220
+> [ 1570.972899]  [<c0210410>] ? ext4_file_write+0x50/0x160
+> [ 1570.972899]  [<c017b11d>] ? do_sync_write+0xcd/0x110
+> [ 1570.972899]  [<c01096f9>] ? native_sched_clock+0x69/0xc0
+> [ 1570.972899]  [<c01373c0>] ? autoremove_wake_function+0x0/0x50
+> [ 1570.972899]  [<c01070e5>] ? do_softirq+0x55/0xd0
+> [ 1570.972899]  [<c01050d3>] ? restore_nocheck+0x12/0x15
+> [ 1570.972899]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.972899]  [<c017b959>] ? vfs_write+0x99/0x130
+> [ 1570.972899]  [<c017b050>] ? do_sync_write+0x0/0x110
+> [ 1570.972899]  [<c017c048>] ? sys_pwrite64+0x68/0x70
+> [ 1570.972899]  [<c0104fea>] ? sysenter_past_esp+0x5f/0xa5
+> [ 1570.972899]  =======================
+> [ 1570.972899] Code: ff 0f b7 47 4e 89 44 24 08 8b 85 78 ff ff ff c7 04 24 bb 21 7c c0 89 44 24 04 e8 c3 e0 ef ff 0f b7 47 4e 39 85 78 ff ff ff 74 07 <0f> 0b eb fe 8d 76 00 8b 85 78 ff ff ff 8b 95 7c ff ff ff 01 82 
+> [ 1570.972899] EIP: [<c02266b9>] ext4_mb_release_inode_pa+0x169/0x1a0 SS:ESP 0068:cb638a84
+> [ 1570.972942] ---[ end trace 51819e80cd9431da ]---
+> [ 1570.972969] note: fstest[6629] exited with preempt_count 1
+> [ 1570.973013] BUG: sleeping function called from invalid context at kernel/rwsem.c:21
+> [ 1570.973039] in_atomic():1, irqs_disabled():0
+> [ 1570.973077] INFO: lockdep is turned off.
+> [ 1570.973104] Pid: 6629, comm: fstest Tainted: G      D 2.6.24-05749-g8af03e7-dirty #19
+> [ 1570.973159]  [<c011e1a6>] __might_sleep+0xc6/0xf0
+> [ 1570.973224]  [<c06b2c99>] down_read+0x19/0x80
+> [ 1570.973295]  [<c013a7fd>] ? hrtimer_try_to_cancel+0x3d/0x80
+> [ 1570.973396]  [<c0125a27>] exit_mm+0x27/0xd0
+> [ 1570.973467]  [<c01272f3>] do_exit+0x133/0x2e0
+> [ 1570.973529]  [<c010611c>] die+0x13c/0x140
+> [ 1570.973590]  [<c0135197>] ? search_exception_tables+0x27/0x30
+> [ 1570.973993]  [<c01061b1>] do_trap+0x91/0xc0
+> [ 1570.974054]  [<c0106440>] ? do_invalid_op+0x0/0xa0
+> [ 1570.974133]  [<c01064c9>] do_invalid_op+0x89/0xa0
+> [ 1570.974195]  [<c02266b9>] ? ext4_mb_release_inode_pa+0x169/0x1a0
+> [ 1570.974290]  [<c012007b>] ? account_system_time+0x9b/0xd0
+> [ 1570.974370]  [<c01245de>] ? vprintk+0x1ce/0x360
+> [ 1570.974465]  [<c06b4492>] error_code+0x6a/0x70
+> [ 1570.974531]  [<c012007b>] ? account_system_time+0x9b/0xd0
+> [ 1570.974626]  [<c02266b9>] ? ext4_mb_release_inode_pa+0x169/0x1a0
+> [ 1570.974707]  [<c020e3a4>] ? read_block_bitmap+0x54/0x120
+> [ 1570.974803]  [<c022bd24>] ? ext4_mb_discard_inode_preallocations+0x124/0x300
+> [ 1570.975151]  [<c022bda5>] ext4_mb_discard_inode_preallocations+0x1a5/0x300
+> [ 1570.975221]  [<c0223577>] ext4_ext_get_blocks+0x3a7/0x4b0
+> [ 1570.975289]  [<c0213928>] ext4_get_blocks_wrap+0xe8/0x130
+> [ 1570.975352]  [<c0213bce>] ext4_get_block+0x7e/0xf0
+> [ 1570.975413]  [<c019d7ba>] __block_prepare_write+0x17a/0x3a0
+> [ 1570.975479]  [<c019da68>] block_write_begin+0x48/0xe0
+> [ 1570.975541]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.975635]  [<c0215127>] ext4_write_begin+0xb7/0x190
+> [ 1570.975697]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.975776]  [<c01557e9>] generic_perform_write+0xa9/0x190
+> [ 1570.975838]  [<c01575bd>] generic_file_buffered_write+0x6d/0x130
+> [ 1570.975944]  [<c01578c1>] __generic_file_aio_write_nolock+0x241/0x550
+> [ 1570.976007]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.976105]  [<c0157c2c>] generic_file_aio_write+0x5c/0xd0
+> [ 1570.976166]  [<c015ab0d>] ? free_one_page+0x1ed/0x220
+> [ 1570.976247]  [<c0210410>] ext4_file_write+0x50/0x160
+> [ 1570.976308]  [<c017b11d>] do_sync_write+0xcd/0x110
+> [ 1570.976372]  [<c01096f9>] ? native_sched_clock+0x69/0xc0
+> [ 1570.976470]  [<c01373c0>] ? autoremove_wake_function+0x0/0x50
+> [ 1570.976567]  [<c01070e5>] ? do_softirq+0x55/0xd0
+> [ 1570.976662]  [<c01050d3>] ? restore_nocheck+0x12/0x15
+> [ 1570.976741]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.976837]  [<c017b959>] vfs_write+0x99/0x130
+> [ 1570.976933]  [<c017b050>] ? do_sync_write+0x0/0x110
+> [ 1570.977014]  [<c017c048>] sys_pwrite64+0x68/0x70
+> [ 1570.977075]  [<c0104fea>] sysenter_past_esp+0x5f/0xa5
+> [ 1570.977137]  =======================
+> [ 1570.977400] BUG: scheduling while atomic: fstest/6629/0x00000002
+> [ 1570.977426] INFO: lockdep is turned off.
+> [ 1570.977468] Pid: 6629, comm: fstest Tainted: G      D 2.6.24-05749-g8af03e7-dirty #19
+> [ 1570.977494]  [<c0120125>] __schedule_bug+0x75/0x80
+> [ 1570.977557]  [<c06b1db5>] schedule+0x2d5/0x3a0
+> [ 1570.977621]  [<c06b3325>] rwsem_down_failed_common+0x75/0x170
+> [ 1570.977684]  [<c0142fde>] ? __lock_contended+0xbe/0x110
+> [ 1570.977780]  [<c06b343d>] rwsem_down_write_failed+0x1d/0x30
+> [ 1570.977842]  [<c06b34ca>] call_rwsem_down_write_failed+0x6/0x8
+> [ 1570.977933]  [<c06b2d81>] ? down_write+0x81/0x90
+> [ 1570.978013]  [<c021058c>] ? ext4_release_file+0x6c/0x80
+> [ 1570.978108]  [<c021058c>] ext4_release_file+0x6c/0x80
+> [ 1570.978168]  [<c017c484>] __fput+0xb4/0x1b0
+> [ 1570.978231]  [<c017c788>] fput+0x18/0x20
+> [ 1570.978291]  [<c0179827>] filp_close+0x47/0x70
+> [ 1570.978352]  [<c0125dd0>] close_files+0x70/0x80
+> [ 1570.978415]  [<c0125e0a>] put_files_struct+0x2a/0x60
+> [ 1570.978477]  [<c0125e80>] __exit_files+0x40/0x50
+> [ 1570.978538]  [<c0127301>] do_exit+0x141/0x2e0
+> [ 1570.978600]  [<c010611c>] die+0x13c/0x140
+> [ 1570.978661]  [<c0135197>] ? search_exception_tables+0x27/0x30
+> [ 1570.978741]  [<c01061b1>] do_trap+0x91/0xc0
+> [ 1570.978803]  [<c0106440>] ? do_invalid_op+0x0/0xa0
+> [ 1570.979039]  [<c01064c9>] do_invalid_op+0x89/0xa0
+> [ 1570.979104]  [<c02266b9>] ? ext4_mb_release_inode_pa+0x169/0x1a0
+> [ 1570.979185]  [<c012007b>] ? account_system_time+0x9b/0xd0
+> [ 1570.979280]  [<c01245de>] ? vprintk+0x1ce/0x360
+> [ 1570.979360]  [<c06b4492>] error_code+0x6a/0x70
+> [ 1570.979423]  [<c012007b>] ? account_system_time+0x9b/0xd0
+> [ 1570.979519]  [<c02266b9>] ? ext4_mb_release_inode_pa+0x169/0x1a0
+> [ 1570.979600]  [<c020e3a4>] ? read_block_bitmap+0x54/0x120
+> [ 1570.979700]  [<c022bd24>] ? ext4_mb_discard_inode_preallocations+0x124/0x300
+> [ 1570.979797]  [<c022bda5>] ext4_mb_discard_inode_preallocations+0x1a5/0x300
+> [ 1570.979861]  [<c0223577>] ext4_ext_get_blocks+0x3a7/0x4b0
+> [ 1570.979964]  [<c0213928>] ext4_get_blocks_wrap+0xe8/0x130
+> [ 1570.980026]  [<c0213bce>] ext4_get_block+0x7e/0xf0
+> [ 1570.980087]  [<c019d7ba>] __block_prepare_write+0x17a/0x3a0
+> [ 1570.980153]  [<c019da68>] block_write_begin+0x48/0xe0
+> [ 1570.980215]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.980309]  [<c0215127>] ext4_write_begin+0xb7/0x190
+> [ 1570.980371]  [<c0213b50>] ? ext4_get_block+0x0/0xf0
+> [ 1570.980450]  [<c01557e9>] generic_perform_write+0xa9/0x190
+> [ 1570.980513]  [<c01575bd>] generic_file_buffered_write+0x6d/0x130
+> [ 1570.980576]  [<c01578c1>] __generic_file_aio_write_nolock+0x241/0x550
+> [ 1570.980639]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.980735]  [<c0157c2c>] generic_file_aio_write+0x5c/0xd0
+> [ 1570.980796]  [<c015ab0d>] ? free_one_page+0x1ed/0x220
+> [ 1570.980932]  [<c0210410>] ext4_file_write+0x50/0x160
+> [ 1570.980995]  [<c017b11d>] do_sync_write+0xcd/0x110
+> [ 1570.981058]  [<c01096f9>] ? native_sched_clock+0x69/0xc0
+> [ 1570.981142]  [<c01373c0>] ? autoremove_wake_function+0x0/0x50
+> [ 1570.981238]  [<c01070e5>] ? do_softirq+0x55/0xd0
+> [ 1570.981317]  [<c01050d3>] ? restore_nocheck+0x12/0x15
+> [ 1570.981410]  [<c0144b44>] ? trace_hardirqs_on+0xc4/0x150
+> [ 1570.981491]  [<c017b959>] vfs_write+0x99/0x130
+> [ 1570.981552]  [<c017b050>] ? do_sync_write+0x0/0x110
+> [ 1570.981646]  [<c017c048>] sys_pwrite64+0x68/0x70
+> [ 1570.981708]  [<c0104fea>] sysenter_past_esp+0x5f/0xa5
+> [ 1570.981769]  =======================
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
