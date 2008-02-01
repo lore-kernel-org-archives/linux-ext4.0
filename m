@@ -1,52 +1,79 @@
-From: Kazuto Miyoshi <miyoshi@linux.bs1.fc.nec.co.jp>
-Subject: Re: [RFC] ext3 freeze feature
-Date: Fri, 01 Feb 2008 12:03:59 +0900 (JST)
-Message-ID: <20080201.120359.51771100.miyoshi@linux.bs1.fc.nec.co.jp>
-References: <20080125121851.GA3361@dmon-lap.sw.ru>
-	<20080125133329.GB8184@mit.edu>
-	<01cb01c861af$8515d230$41a8400a@bsd.tnes.nec.co.jp>
+From: Fengguang Wu <wfg@mail.ustc.edu.cn>
+Subject: [PATCH] clear PAGECACHE_TAG_DIRTY for truncated pages
+Date: Fri, 1 Feb 2008 20:18:47 +0800
+Message-ID: <401868346.26085@ustc.edu.cn>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: tytso@MIT.EDU, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: t-sato@yk.jp.nec.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:46974 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752652AbYBADEZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jan 2008 22:04:25 -0500
-In-Reply-To: <01cb01c861af$8515d230$41a8400a@bsd.tnes.nec.co.jp>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Peter Zijlstra <peterz@infradead.org>,
+	Michael Rubin <mrubin@google.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Message-Id: <E1JKur1-0001Dh-Ol@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+The `truncated' page in block_write_full_page()/nobh_writepage() may
+stick for a long time.  For example, ext2_rmdir() will set i_size to
+0, and then the dir inode and its pages may hang around because of
+being referenced by some process.
 
-Sato-san,
+To produce this situation:
 
-> > What you *could* do is to start putting processes to sleep if they
-> > attempt to write to the frozen filesystem, and then detect the
-> > deadlock case where the process holding the file descriptor used to
-> > freeze the filesystem gets frozen because it attempted to write to the
-> > filesystem --- at which point it gets some kind of signal (which
-> > defaults to killing the process), and the filesystem is unfrozen and
-> > as part of the unfreeze you wake up all of the processes that were put
-> > to sleep for touching the frozen filesystem.
-> 
-> I don't think close() usually writes to journal and the deadlock occurs.
-> Is there the special case which close() writes to journal in case of
-> getting signal?
+In terminal 1:
+                $ mkdir hi; cd hi
+                $ sleep 1h; cd ..
+In terminal 2:
+                $ rmdir hi
 
-I am afraid that Ted-san is concerning about the fact that the freeze
-program can touch the target filesystem by mistake (rather than just
-close() and its journal behavior)
+The dir 'hi' is deleted in terminal 2 while still being referenced by
+the shell(as working dir) in terminal 1.  The deleted inode 'hi' with
+its dirty-and-truncated page will stay for 1 hour, during which the
+pdflush will retry the page _at least_ once every 5s.
 
-# cd /mnt
-# freeze /mnt > ./logfile
+So clear PAGECACHE_TAG_DIRTY to prevent pdflush from retrying on it.
 
-This is more unclear to admins than "rm -rf /" case.
-So we need to implement some bail-out mechanism as he pointed out,
-such that if kernel noticed that the freezer is trying to touch
-the target filesystem, kernel would kill the freezer and
-automatically unfreeze the filesystem again.
+Tested-by: Joerg Platte <jplatte@naasa.net>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Michael Rubin <mrubin@google.com>
+Signed-off-by: Fengguang Wu <wfg@mail.ustc.edu.cn>
+---
+ fs/buffer.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+)
 
-Regards, 
+--- linux-mm.orig/fs/buffer.c
++++ linux-mm/fs/buffer.c
+@@ -2631,7 +2631,13 @@ int nobh_writepage(struct page *page, ge
+ 		if (page->mapping->a_ops->invalidatepage)
+ 			page->mapping->a_ops->invalidatepage(page, offset);
+ #endif
++		/*
++		 * Clear PAGECACHE_TAG_DIRTY to stop pdflush from retrying.
++		 * Read block_write_full_page() for more details.
++		 */
++		set_page_writeback(page);
+ 		unlock_page(page);
++		end_page_writeback(page);
+ 		return 0; /* don't care */
+ 	}
+ 
+@@ -2826,7 +2832,17 @@ int block_write_full_page(struct page *p
+ 		 * freeable here, so the page does not leak.
+ 		 */
+ 		do_invalidatepage(page, 0);
++		/*
++		 * Clear PAGECACHE_TAG_DIRTY to stop pdflush from retrying.
++		 *
++		 * Some truncated pages may hang around for long time.
++		 * For example, ext2_rmdir() will set i_size to 0, and then
++		 * keep the pages as long as the dir is still referenced(as
++		 * the working dir of some process).
++		 */
++		set_page_writeback(page);
+ 		unlock_page(page);
++		end_page_writeback(page);
+ 		return 0; /* don't care */
+ 	}
+ 
+
