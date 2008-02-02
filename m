@@ -1,149 +1,388 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][5/28] e2fsprogs-tests-f_ea_checks.patch
-Date: Sat, 02 Feb 2008 01:22:05 -0700
-Message-ID: <20080202082205.GE31694@webber.adilger.int>
+Subject: Re: [PATCH][6/28] e2fsprogs-nlinks.patch
+Date: Sat, 02 Feb 2008 01:25:03 -0700
+Message-ID: <20080202082503.GF31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_T2teAfD5z5Gu9UsRiv5kmw)"
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58298 "EHLO
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58316 "EHLO
 	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754136AbYBBIWJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:22:09 -0500
+	with ESMTP id S1756570AbYBBIZH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:25:07 -0500
 Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128M84D016488
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:22:08 -0800 (PST)
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128P6LR016506
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:25:06 -0800 (PST)
 Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
  id <0JVL00001R3JH300@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:22:08 -0800 (PST)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:25:06 -0800 (PST)
 In-reply-to: <20080202075943.GB23836@webber.adilger.int>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Boundary_(ID_T2teAfD5z5Gu9UsRiv5kmw)
-Content-type: text/plain; charset=us-ascii
-Content-transfer-encoding: 7BIT
-Content-disposition: inline
+Add support for the DIR_NLINK feature.
 
-Attached binary test patch.
+This patch includes the changes required to e2fsck to understand the 
+nlink count changes made in the kernel. In pass2, while counting the 
+links for a directory, if the link count exceeds 65000, its permanently 
+set to EXT2_LINK_MAX + 10. In pass4, when the counted and actual nlink
+counts are compared, e2fsck does not flag an error if counted links =
+EXT2_NLINK_MAX + 10 and existing link count is 1. 
+
+It also handles the case when a directory had more than 65000 subdirs 
+and they were later deleted. The nlink count of such a directory remains 
+1. In pass4 if counted links are 2 and if existing nlink count = 1, 
+e2fsck corrects the nlink count without displaying any errors. 
+
+The file hard link count is also increased to 65000, but this cannot be
+exceeded.
+
+Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+
+Index: e2fsprogs-1.40.1/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs-1.40.1.orig/e2fsck/pass2.c
++++ e2fsprogs-1.40.1/e2fsck/pass2.c
+@@ -717,7 +717,7 @@ static int check_dir_block(ext2_filsys f
+ 	blk_t			block_nr = db->blk;
+ 	ext2_ino_t 		ino = db->ino;
+ 	ext2_ino_t 		subdir_parent;
+-	__u16			links;
++	__u32			links;
+ 	struct check_dir_struct	*cd;
+ 	char 			*buf;
+ 	e2fsck_t		ctx;
+@@ -1024,9 +1024,11 @@ static int check_dir_block(ext2_filsys f
+ 			dups_found++;
+ 		} else
+ 			dict_alloc_insert(&de_dict, dirent, dirent);
+-		
+-		ext2fs_icount_increment(ctx->inode_count, dirent->inode,
+-					&links);
++
++		ext2fs_icount_inc32(ctx->inode_count, dirent->inode, &links,
++				    ext2fs_test_inode_bitmap(ctx->inode_dir_map,
++							     dirent->inode) ?
++				    EXT2_LINK_MAX : (__u32)~0U);
+ 		if (links > 1)
+ 			ctx->fs_links_count++;
+ 		ctx->fs_total_count++;
+Index: e2fsprogs-1.40.1/e2fsck/pass4.c
+===================================================================
+--- e2fsprogs-1.40.1.orig/e2fsck/pass4.c
++++ e2fsprogs-1.40.1/e2fsck/pass4.c
+@@ -99,7 +99,8 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 	struct resource_track	rtrack;
+ #endif
+ 	struct problem_context	pctx;
+-	__u16	link_count, link_counted;
++	__u16	link_count;
++	__u32	link_counted;
+ 	char	*buf = 0;
+ 	int	group, maxgroup;
+ 	
+@@ -145,7 +146,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 		     ext2fs_test_inode_bitmap(ctx->inode_bb_map, i)))
+ 			continue;
+ 		ext2fs_icount_fetch(ctx->inode_link_info, i, &link_count);
+-		ext2fs_icount_fetch(ctx->inode_count, i, &link_counted);
++		ext2fs_icount_fetch32(ctx->inode_count, i, &link_counted);
+ 		if (link_counted == 0) {
+ 			if (!buf)
+ 				buf = e2fsck_allocate_memory(ctx,
+@@ -156,10 +157,12 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 				continue;
+ 			ext2fs_icount_fetch(ctx->inode_link_info, i,
+ 					    &link_count);
+-			ext2fs_icount_fetch(ctx->inode_count, i,
+-					    &link_counted);
++			ext2fs_icount_fetch32(ctx->inode_count, i,
++					      &link_counted);
+ 		}
+-		if (link_counted != link_count) {
++		if (link_counted != link_count &&
++		    !(ext2fs_test_inode_bitmap(ctx->inode_dir_map, i) &&
++		      link_count == 1 && link_counted > EXT2_LINK_MAX)) {
+ 			e2fsck_read_inode(ctx, i, inode, "pass4");
+ 			pctx.ino = i;
+ 			pctx.inode = inode;
+@@ -169,7 +172,12 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 					    PR_4_INCONSISTENT_COUNT, &pctx);
+ 			}
+ 			pctx.num = link_counted;
+-			if (fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx)) {
++			/* i_link_count was previously exceeded, but no longer
++			 * is, fix this but don't consider it an error */
++			if ((LINUX_S_ISDIR(inode->i_mode) && link_counted > 1 &&
++			     (inode->i_flags & EXT2_INDEX_FL) &&
++			     link_count == 1 && !(ctx->options & E2F_OPT_NO)) ||
++			     (fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx))) {
+ 				inode->i_links_count = link_counted;
+ 				e2fsck_write_inode(ctx, i, inode, "pass4");
+ 			}
+Index: e2fsprogs-1.40.1/lib/ext2fs/ext2_fs.h
+===================================================================
+--- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2_fs.h
++++ e2fsprogs-1.40.1/lib/ext2fs/ext2_fs.h
+@@ -646,6 +646,7 @@ struct ext2_super_block {
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
++					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+ 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+ 
+ /*
+Index: e2fsprogs-1.40.1/lib/ext2fs/ext2fs.h
+===================================================================
+--- e2fsprogs-1.40.1.orig/lib/ext2fs/ext2fs.h
++++ e2fsprogs-1.40.1/lib/ext2fs/ext2fs.h
+@@ -462,7 +462,8 @@ typedef struct ext2_icount *ext2_icount_
+ 					 EXT3_FEATURE_INCOMPAT_RECOVER)
+ #endif
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+-					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
++					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
++					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK)
+ 
+ /*
+  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+@@ -471,7 +472,6 @@ typedef struct ext2_icount *ext2_icount_
+ #define EXT2_LIB_SOFTSUPP_INCOMPAT	(EXT3_FEATURE_INCOMPAT_EXTENTS)
+ #define EXT2_LIB_SOFTSUPP_RO_COMPAT	(EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
+-					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)
+ 
+ /*
+@@ -795,12 +795,20 @@ extern errcode_t ext2fs_create_icount2(e
+ extern errcode_t ext2fs_create_icount(ext2_filsys fs, int flags, 
+ 				      unsigned int size,
+ 				      ext2_icount_t *ret);
++extern errcode_t ext2fs_icount_fetch32(ext2_icount_t icount, ext2_ino_t ino,
++				       __u32 *ret);
+ extern errcode_t ext2fs_icount_fetch(ext2_icount_t icount, ext2_ino_t ino,
+ 				     __u16 *ret);
++extern errcode_t ext2fs_icount_inc32(ext2_icount_t icount, ext2_ino_t ino,
++				     __u32 *ret, __u32 overflow);
+ extern errcode_t ext2fs_icount_increment(ext2_icount_t icount, ext2_ino_t ino,
+ 					 __u16 *ret);
++extern errcode_t ext2fs_icount_dec32(ext2_icount_t icount, ext2_ino_t ino,
++				     __u32 *ret);
+ extern errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
+ 					 __u16 *ret);
++extern errcode_t ext2fs_icount_store32(ext2_icount_t icount, ext2_ino_t ino,
++				       __u32 count);
+ extern errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
+ 				     __u16 count);
+ extern ext2_ino_t ext2fs_get_icount_size(ext2_icount_t icount);
+Index: e2fsprogs-1.40.1/lib/ext2fs/icount.c
+===================================================================
+--- e2fsprogs-1.40.1.orig/lib/ext2fs/icount.c
++++ e2fsprogs-1.40.1/lib/ext2fs/icount.c
+@@ -43,7 +43,7 @@
+ 
+ struct ext2_icount_el {
+ 	ext2_ino_t	ino;
+-	__u16	count;
++	__u32	count;
+ };
+ 
+ struct ext2_icount {
+@@ -397,16 +397,16 @@ static struct ext2_icount_el *get_icount
+ }
+ 
+ static errcode_t set_inode_count(ext2_icount_t icount, ext2_ino_t ino,
+-				 __u16 count)
++				 __u32 count)
+ {
+-	struct ext2_icount_el 	*el;
++	struct ext2_icount_el	*el;
+ 	TDB_DATA key, data;
+ 
+ 	if (icount->tdb) {
+ 		key.dptr = (unsigned char *) &ino;
+ 		key.dsize = sizeof(ext2_ino_t);
+ 		data.dptr = (unsigned char *) &count;
+-		data.dsize = sizeof(__u16);
++		data.dsize = sizeof(__u32);
+ 		if (count) {
+ 			if (tdb_store(icount->tdb, key, data, TDB_REPLACE))
+ 				return tdb_error(icount->tdb) +
+@@ -428,9 +428,9 @@ static errcode_t set_inode_count(ext2_ic
+ }
+ 
+ static errcode_t get_inode_count(ext2_icount_t icount, ext2_ino_t ino,
+-				 __u16 *count)
++				 __u32 *count)
+ {
+-	struct ext2_icount_el 	*el;
++	struct ext2_icount_el	*el;
+ 	TDB_DATA key, data;
+ 
+ 	if (icount->tdb) {
+@@ -443,7 +443,7 @@ static errcode_t get_inode_count(ext2_ic
+ 			return tdb_error(icount->tdb) + EXT2_ET_TDB_SUCCESS;
+ 		}
+ 
+-		*count = *((__u16 *) data.dptr);
++		*count = *((__u32 *) data.dptr);
+ 		free(data.dptr);
+ 		return 0;
+ 	}
+@@ -480,7 +480,7 @@ errcode_t ext2fs_icount_validate(ext2_ic
+ 	return ret;
+ }
+ 
+-errcode_t ext2fs_icount_fetch(ext2_icount_t icount, ext2_ino_t ino, __u16 *ret)
++errcode_t ext2fs_icount_fetch32(ext2_icount_t icount, ext2_ino_t ino, __u32 *ret)
+ {
+ 	EXT2_CHECK_MAGIC(icount, EXT2_ET_MAGIC_ICOUNT);
+ 
+@@ -500,10 +500,21 @@ errcode_t ext2fs_icount_fetch(ext2_icoun
+ 	return 0;
+ }
+ 
+-errcode_t ext2fs_icount_increment(ext2_icount_t icount, ext2_ino_t ino,
+-				  __u16 *ret)
++errcode_t ext2fs_icount_fetch(ext2_icount_t icount, ext2_ino_t ino, __u16 *ret)
+ {
+-	__u16			curr_value;
++	__u32 ret32 = ret ? *ret : 0;
++	errcode_t err;
++
++	err = ext2fs_icount_fetch32(icount, ino, &ret32);
++	*ret = (__u16)ret32;
++
++	return err;
++}
++
++errcode_t ext2fs_icount_inc32(ext2_icount_t icount, ext2_ino_t ino,
++			      __u32 *ret, __u32 overflow)
++{
++	__u32			curr_value;
+ 
+ 	EXT2_CHECK_MAGIC(icount, EXT2_ET_MAGIC_ICOUNT);
+ 
+@@ -528,6 +539,8 @@ errcode_t ext2fs_icount_increment(ext2_i
+ 		if (ext2fs_test_inode_bitmap(icount->multiple, ino)) {
+ 			get_inode_count(icount, ino, &curr_value);
+ 			curr_value++;
++			if (curr_value >= overflow)
++				curr_value = overflow + 10;
+ 			if (set_inode_count(icount, ino, curr_value))
+ 				return EXT2_ET_NO_MEMORY;
+ 		} else {
+@@ -547,6 +560,8 @@ errcode_t ext2fs_icount_increment(ext2_i
+ 		 */
+ 		get_inode_count(icount, ino, &curr_value);
+ 		curr_value++;
++		if (curr_value >= overflow)
++			curr_value = overflow + 10;
+ 		if (set_inode_count(icount, ino, curr_value))
+ 			return EXT2_ET_NO_MEMORY;
+ 	}
+@@ -557,10 +572,23 @@ errcode_t ext2fs_icount_increment(ext2_i
+ 	return 0;
+ }
+ 
+-errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
++errcode_t ext2fs_icount_increment(ext2_icount_t icount, ext2_ino_t ino,
+ 				  __u16 *ret)
+ {
+-	__u16			curr_value;
++	__u32 ret32 = ret ? *ret : 0;
++	errcode_t err;
++
++	err = ext2fs_icount_inc32(icount, ino, &ret32, (__u16)~0U);
++	if (ret)
++		*ret = ret32;
++
++	return err;
++}
++
++errcode_t ext2fs_icount_dec32(ext2_icount_t icount, ext2_ino_t ino,
++			      __u32 *ret)
++{
++	__u32			curr_value;
+ 
+ 	if (!ino || (ino > icount->num_inodes))
+ 		return EXT2_ET_INVALID_ARGUMENT;
+@@ -600,8 +628,21 @@ errcode_t ext2fs_icount_decrement(ext2_i
+ 	return 0;
+ }
+ 
+-errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
+-			      __u16 count)
++errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
++				  __u16 *ret)
++{
++	__u32 ret32 = ret ? *ret : 0;
++	errcode_t err;
++
++	err = ext2fs_icount_dec32(icount, ino, &ret32);
++	if (ret)
++		*ret = ret32;
++
++	return err;
++}
++
++errcode_t ext2fs_icount_store32(ext2_icount_t icount, ext2_ino_t ino,
++				__u32 count)
+ {
+ 	if (!ino || (ino > icount->num_inodes))
+ 		return EXT2_ET_INVALID_ARGUMENT;
+@@ -635,6 +676,12 @@ errcode_t ext2fs_icount_store(ext2_icoun
+ 	return 0;
+ }
+ 
++errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
++			      __u16 count)
++{
++	return ext2fs_icount_store32(icount, ino, count);
++}
++
+ ext2_ino_t ext2fs_get_icount_size(ext2_icount_t icount)
+ {
+ 	if (!icount || icount->magic != EXT2_ET_MAGIC_ICOUNT)
+Index: e2fsprogs-1.40.1/e2fsck/pass3.c
+===================================================================
+--- e2fsprogs-1.40.1.orig/e2fsck/pass3.c
++++ e2fsprogs-1.40.1/e2fsck/pass3.c
+@@ -581,19 +581,22 @@ errcode_t e2fsck_adjust_inode_count(e2fs
+ #endif
+ 
+ 	if (adj == 1) {
+-		ext2fs_icount_increment(ctx->inode_count, ino, 0);
++		ext2fs_icount_inc32(ctx->inode_count, ino, 0,
++				    ext2fs_test_inode_bitmap(ctx->inode_dir_map,
++							     ino) ?
++				    EXT2_LINK_MAX : ~0U);
+ 		if (inode.i_links_count == (__u16) ~0)
+ 			return 0;
+ 		ext2fs_icount_increment(ctx->inode_link_info, ino, 0);
+ 		inode.i_links_count++;
+ 	} else if (adj == -1) {
+-		ext2fs_icount_decrement(ctx->inode_count, ino, 0);
++		ext2fs_icount_dec32(ctx->inode_count, ino, 0);
+ 		if (inode.i_links_count == 0)
+ 			return 0;
+ 		ext2fs_icount_decrement(ctx->inode_link_info, ino, 0);
+ 		inode.i_links_count--;
+ 	}
+-	
++
+ 	retval = ext2fs_write_inode(fs, ino, &inode);
+ 	if (retval)
+ 		return retval;
 
 Cheers, Andreas
 --
 Andreas Dilger
 Sr. Staff Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
-
-
---Boundary_(ID_T2teAfD5z5Gu9UsRiv5kmw)
-Content-type: application/octet-stream; NAME=e2fsprogs-tests-f_ea_checks.patch
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=e2fsprogs-tests-f_ea_checks.patch
-
-SW5kZXg6IGUyZnNwcm9ncy1jZnMvdGVzdHMvZl9lYV9jaGVja3MvZXhwZWN0LjEK
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PQotLS0gL2Rldi9udWxsCisrKyBlMmZzcHJvZ3Mt
-Y2ZzL3Rlc3RzL2ZfZWFfY2hlY2tzL2V4cGVjdC4xCkBAIC0wLDAgKzEsNTcgQEAK
-K1Bhc3MgMTogQ2hlY2tpbmcgaW5vZGVzLCBibG9ja3MsIGFuZCBzaXplcworSW5v
-ZGUgMTMgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBibG9jayAyNi4gIENs
-ZWFyPyB5ZXMKKworSW5vZGUgMTMsIGlfYmxvY2tzIGlzIDQsIHNob3VsZCBiZSAy
-LiAgRml4PyB5ZXMKKworRXh0ZW5kZWQgYXR0cmlidXRlIGluIGlub2RlIDE0IGhh
-cyBhIGhhc2ggKDE2NDkzNDAxODkpIHdoaWNoIGlzIGludmFsaWQKK0NsZWFyPyB5
-ZXMKKworSW5vZGUgMTQsIGlfYmxvY2tzIGlzIDIsIHNob3VsZCBiZSAwLiAgRml4
-PyB5ZXMKKworSW5vZGUgMTcgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBi
-bG9jayAyOC4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTcsIGlfYmxvY2tzIGlzIDQs
-IHNob3VsZCBiZSAyLiAgRml4PyB5ZXMKKworSW5vZGUgMTYgaGFzIGEgYmFkIGV4
-dGVuZGVkIGF0dHJpYnV0ZSBibG9jayAyOS4gIENsZWFyPyB5ZXMKKworSW5vZGUg
-MTYsIGlfYmxvY2tzIGlzIDIsIHNob3VsZCBiZSAwLiAgRml4PyB5ZXMKKworSW5v
-ZGUgMTkgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJpYnV0ZSBibG9jayAzMy4gIENs
-ZWFyPyB5ZXMKKworSW5vZGUgMTksIGlfYmxvY2tzIGlzIDIsIHNob3VsZCBiZSAw
-LiAgRml4PyB5ZXMKKworSW5vZGUgMTIgaGFzIGEgYmFkIGV4dGVuZGVkIGF0dHJp
-YnV0ZSBibG9jayA1NS4gIENsZWFyPyB5ZXMKKworSW5vZGUgMTIsIGlfYmxvY2tz
-IGlzIDIsIHNob3VsZCBiZSAwLiAgRml4PyB5ZXMKKworSW5vZGUgMTUsIGlfYmxv
-Y2tzIGlzIDIsIHNob3VsZCBiZSAwLiAgRml4PyB5ZXMKKworUGFzcyAyOiBDaGVj
-a2luZyBkaXJlY3Rvcnkgc3RydWN0dXJlCitFeHRlbmRlZCBhdHRyaWJ1dGUgYmxv
-Y2sgZm9yIGlub2RlIDE1ICgvZmFyKSBpcyBpbnZhbGlkICg5OTkpLgorQ2xlYXI/
-IHllcworCitQYXNzIDM6IENoZWNraW5nIGRpcmVjdG9yeSBjb25uZWN0aXZpdHkK
-K1Bhc3MgNDogQ2hlY2tpbmcgcmVmZXJlbmNlIGNvdW50cworUGFzcyA1OiBDaGVj
-a2luZyBncm91cCBzdW1tYXJ5IGluZm9ybWF0aW9uCitCbG9jayBiaXRtYXAgZGlm
-ZmVyZW5jZXM6ICAtKDI2LS0yOSkgLTMzIC01NQorRml4PyB5ZXMKKworRnJlZSBi
-bG9ja3MgY291bnQgd3JvbmcgZm9yIGdyb3VwICMwICg0ODEsIGNvdW50ZWQ9NDg0
-KS4KK0ZpeD8geWVzCisKK0ZyZWUgYmxvY2tzIGNvdW50IHdyb25nICg0ODEsIGNv
-dW50ZWQ9NDg0KS4KK0ZpeD8geWVzCisKK0lub2RlIGJpdG1hcCBkaWZmZXJlbmNl
-czogIC0xOAorRml4PyB5ZXMKKworRnJlZSBpbm9kZXMgY291bnQgd3JvbmcgZm9y
-IGdyb3VwICMwICg0NywgY291bnRlZD00NikuCitGaXg/IHllcworCitGcmVlIGlu
-b2RlcyBjb3VudCB3cm9uZyAoNDcsIGNvdW50ZWQ9NDYpLgorRml4PyB5ZXMKKwor
-Cit0ZXN0X2ZpbGVzeXM6ICoqKioqIEZJTEUgU1lTVEVNIFdBUyBNT0RJRklFRCAq
-KioqKgordGVzdF9maWxlc3lzOiAxOC82NCBmaWxlcyAoMC4wJSBub24tY29udGln
-dW91cyksIDI4LzUxMiBibG9ja3MKK0V4aXQgc3RhdHVzIGlzIDEKSW5kZXg6IGUy
-ZnNwcm9ncy1jZnMvdGVzdHMvZl9lYV9jaGVja3MvZXhwZWN0LjIKPT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PQotLS0gL2Rldi9udWxsCisrKyBlMmZzcHJvZ3MtY2ZzL3Rlc3Rz
-L2ZfZWFfY2hlY2tzL2V4cGVjdC4yCkBAIC0wLDAgKzEsNyBAQAorUGFzcyAxOiBD
-aGVja2luZyBpbm9kZXMsIGJsb2NrcywgYW5kIHNpemVzCitQYXNzIDI6IENoZWNr
-aW5nIGRpcmVjdG9yeSBzdHJ1Y3R1cmUKK1Bhc3MgMzogQ2hlY2tpbmcgZGlyZWN0
-b3J5IGNvbm5lY3Rpdml0eQorUGFzcyA0OiBDaGVja2luZyByZWZlcmVuY2UgY291
-bnRzCitQYXNzIDU6IENoZWNraW5nIGdyb3VwIHN1bW1hcnkgaW5mb3JtYXRpb24K
-K3Rlc3RfZmlsZXN5czogMTgvNjQgZmlsZXMgKDAuMCUgbm9uLWNvbnRpZ3VvdXMp
-LCAyOC81MTIgYmxvY2tzCitFeGl0IHN0YXR1cyBpcyAwCkluZGV4OiBlMmZzcHJv
-Z3MtY2ZzL3Rlc3RzL2ZfZWFfY2hlY2tzL2ltYWdlLmd6Cj09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT0KLS0tIC9kZXYvbnVsbAorKysgZTJmc3Byb2dzLWNmcy90ZXN0cy9mX2Vh
-X2NoZWNrcy9pbWFnZS5negpAQCAtMCwwICsxLDQgQEAKKx+LCAjJLDtHAgNpbWFn
-ZS5uZXcA7d0JdFTVGQDgZBJEQQ3KVragCKiUTSSTeRNiQRRECxxBWy1IS1iqsoRV
-K6igBaSCVRBjUcCCHIWgKFomM0k4oAgoUrG4IGgttrgUFEGtUkHpJAEPWo+tFbfy
-fef8effMuy9/7pv579tykpQU4HDVvuxLqKL9SmpKSqvkMvXgDidURFm/KwdndV41
-JKtzekqNlJ5vp5b3Sx2Q1Tml21vlXQ9sVzUZ45Nxyv5vXfZ60YdnxdaP7vRUfErd
-/JJbzrv92xjr9GdbNDzyDz9u/cC6wj431mpTN3TQuvJxfA1SfcT4DktLRnoyKpXX
-f6uUkF0Ch419+/aNS604C/hfjN8HfI9VPjAPAIeZg69/D8Q3ef7xVoeKC5Dxg7M6
-z9gfB65MDr4WOcapGnCIrSibf1p/3vwXSvnBQf2OTUZGMqol47hkHJ+M6smokYya
-yaiVjNrJKNumzpfIP/+6imWNZN4OyajxSf7UQ3Yv5ke5rxZlf0H+1P35O30mf/pB
-/Rp+lXvMyfx1/4vxd/maxt8hmb/ef8i/7/KszgfiUOePNGt41+tpX5z/t8nj3oE4
-1PnXLk0b0OALxv9G8mcrO+6+8qnj76ff/8yvkP/JZP7639UJ4ISKRe/mOZ0PxOfu
-//SvluZEUy0AAAAAAN+gsnvcR6ekhlp+0g6FWras+B3+GilVQoPzR4764cD80UP7
-l60ri7TUgfn55c/jy9p5fUeUPxuraI8pf0ZW3if5erVP2mPKn5mV90luW/bcbGpa
-etrIYQP6eQfg21P1M/X/XlpF/QOHiXS7ANQ/oP4B9Q+of0D9A+ofUP+A+gfUP6D+
-ge+H1G3l/8cjGQ3e7tr336aG1N3lf7ms0v71owaMHGWfwffbFX0Hjx5Q3gorfYn6
-75an/uH/qf4d/+Hwrf+MfeofDtf6BwAADhc7pkwM/2r9jvCYvzfO7l3aKfuaBhdn
-Tyi9ODuz3TnZhUOaZs/O2xmetHtiuP+A87OWtz4mdvbGabE+fVfEjmi1PjZqyvLY
-plkFsTXrI7HzUi5YWmvWbVnH35UVPi40Lnxc81vCG26eGr73rKHhuxacEk694p6s
-ju1ffvhnveJLc9KbxFb17R3r0XRcLGP5xNicZuNjlVpcEhvUv1Hs9wvvXrq91YS2
-d1+wN2tq1tDwouqLwt0LnguHXtgVjg7dG6605d3w0jdfCIeuWRwuuWlEeOHmvVm7
-jvxp2+MbLVg6cUG92MSPOsTaLOgYWznnxFjZ+CbPvi536+sTcq8svD63yTGjcp9d
-dGHukOYtcl+qnJJb9fW722W8ltHuqrznip/8c53ShUvOL50yqmPpHQU1Sxv32F6y
-8bS3Sl58MqP01Teblt5xRN3SubuWlXRr8HxxYfWdQZNb0qI7zsgrOmpyjeJbMzcX
-71jVs2TSw5NLusydXFKQc2NJypBbS3qVzCrZ0+jOkqr1JpQMymtZ8tqpk4p7THk0
-uPHFxdGHdoRy+r3cOKfOI+1zHpvRI6fzPd1zdtdrkzN+c0pOVr/p0W3VlwUrB3ZJ
-XHhateK5F3UrPmX5sOIqa/OK7/3opOLTHixMbO46v6jL1HuDqtc2i64YlxedteGS
-aM1KtaLV6o0Inu1zedH82+ol+r3ZJpHe6P542/YDI5XHtgk2PTUpiA5bFKxptizY
-lLkyGLlnY3DbUf8M8k9Ni67N2hX0nPp40DhvbjBxyYRg4Bm9gjU9GwZd866O9G97
-XXz+3yKJyWeNS8xuOC7R/sS2iXXDQ/HL25webHn6xWDqoKzog/eNja5Yf2f0iYIl
-0eFXLo+e+f7q6Gvr1kQvGr4iuq77g9F1m38XPb352GidyWdHJ15VM/pc4YZg2sIR
-wTl7+0UGZG6NX/1O/8T7116VmJd9UmLlzVWzV+/+SVD6xCPBG8O3BdNrvxQ02zM/
-OOL6jsGetsWRvgMHRmbcvipy7uZuwcf5DwUbR+0LQqX1ojVWN4q2uigjunPd6uCR
-zBOCmg0L46M/nJq4bOyjiS0LViY+WHZ74rLNmYmtgzeF6557crDz/ZlB4cd/Cita
-/PyDoNHAULTau+8FTTs/FvQZfmkwbP7e7Dm/bpzIuGBGYuby2Yn0mV0Tg/IXh594
-b3xwwy93BY83qh/tWHRSNHtDRrT21nXBP7qdGWz/6J2i/jf3SaxpfV9i8aJ4ova4
-aYkP56UkXtpSEMnuOik4t/3aILfp1qBv/2eC59+dFzx8wznBM2nzIvvG1C96rOr1
-8bwdsfjoJn+Mv1H9L/H4sXvjBdurJe45KjPRq3WtxKxfbI5f26VKvHvPSyP3zTk6
-qNIgO7jhppODB4KVkcLaM5cuySyK99pWNdH7/lCi/snT4kVDngort+s6PXJs5acj
-k/9aGln8m8siR79QkH3hA/fHOtVsUDRp2pzY1bOOLTIDAgAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfDn/Ajh567kAAAgAClwgTm8gbmV3
-bGluZSBhdCBlbmQgb2YgZmlsZQpJbmRleDogZTJmc3Byb2dzLWNmcy90ZXN0cy9m
-X2VhX2NoZWNrcy9uYW1lCj09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KLS0tIC9kZXYvbnVs
-bAorKysgZTJmc3Byb2dzLWNmcy90ZXN0cy9mX2VhX2NoZWNrcy9uYW1lCkBAIC0w
-LDAgKzEgQEAKK2V4dGVuZGVkIGF0dHJpYnV0ZSBibG9jayBjaGVja3MK
-
---Boundary_(ID_T2teAfD5z5Gu9UsRiv5kmw)--
