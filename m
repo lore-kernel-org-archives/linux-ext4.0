@@ -1,29 +1,29 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][0/28] e2fsprogs-extents.patch
-Date: Sat, 02 Feb 2008 01:25:59 -0700
-Message-ID: <20080202082559.GG31694@webber.adilger.int>
+Subject: Re: [PATCH][7/28] e2fsprogs-extents.patch
+Date: Sat, 02 Feb 2008 01:27:01 -0700
+Message-ID: <20080202082701.GH31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
+ <20080202082559.GG31694@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58318 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757016AbYBBI0I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:26:08 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128Q5fl016512
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:26:05 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49646 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759398AbYBBI1I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:27:08 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128R7e0021403
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:27:07 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JVL00001R3JH300@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:26:05 -0800 (PST)
-In-reply-to: <20080202075943.GB23836@webber.adilger.int>
+ id <0JVL00901RGN2500@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:27:07 -0800 (PST)
+In-reply-to: <20080202082559.GG31694@webber.adilger.int>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
 
 Support for checking 32-bit extents format inodes and the INCOMPAT_EXTENTS
 feature.
