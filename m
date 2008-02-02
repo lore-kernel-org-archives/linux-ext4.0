@@ -1,85 +1,188 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][8/28] e2fsprogs-config-before-cmdline.patch
-Date: Sat, 02 Feb 2008 01:29:25 -0700
-Message-ID: <20080202082925.GI31694@webber.adilger.int>
+Subject: Re: [PATCH][9/28] e2fsprogs-SLES10--m-support.patch
+Date: Sat, 02 Feb 2008 01:30:13 -0700
+Message-ID: <20080202083013.GJ31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58343 "EHLO
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58347 "EHLO
 	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757256AbYBBI32 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:29:28 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128TSD7016540
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:29:28 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+	with ESMTP id S1757323AbYBBIaU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:30:20 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128UJ6X016551
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:30:19 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JVL00101RH2RF00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:29:28 -0800 (PST)
+ id <0JVL00901RGN2500@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:30:19 -0800 (PST)
 In-reply-to: <20080202075943.GB23836@webber.adilger.int>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-The patch changes the order that the config file and command line are
-parsed so that command line has precedence.  It also allows multiple
--E options to be specified on the command line.
+SLES9 patch to add "fsck -m" option to skip checking mounted filesystems.
+This isn't in their upstream e2fsprogs, since SLES uses the fsck in
+util-linux, but is needed for compatibility.
 
-Signed-off-by: Jim Garlick <garlick@llnl.gov>
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-
-Index: e2fsprogs-1.40.4/e2fsck/unix.c
+Index: e2fsprogs-1.40.1/misc/fsck.8.in
 ===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/unix.c
-+++ e2fsprogs-1.40.4/e2fsck/unix.c
-@@ -588,7 +588,6 @@ static errcode_t PRS(int argc, char *arg
- #ifdef HAVE_SIGNAL_H
- 	struct sigaction	sa;
+--- e2fsprogs-1.40.1.orig/misc/fsck.8.in
++++ e2fsprogs-1.40.1/misc/fsck.8.in
+@@ -180,6 +180,10 @@ option, 
+ will use the specified filesystem type.  If this type is not
+ available, then the default file system type (currently ext2) is used. 
+ .TP
++.B \-m
++Do not check mounted filesystems and return an exit code of 0
++for mounted filesystems.
++.TP
+ .B \-A
+ Walk through the
+ .I /etc/fstab
+Index: e2fsprogs-1.40.1/misc/fsck.c
+===================================================================
+--- e2fsprogs-1.40.1.orig/misc/fsck.c
++++ e2fsprogs-1.40.1/misc/fsck.c
+@@ -103,6 +103,7 @@ int noexecute = 0;
+ int serialize = 0;
+ int skip_root = 0;
+ int like_mount = 0;
++int ignore_mounted = 0;
+ int notitle = 0;
+ int parallel_root = 0;
+ int progress = 0;
+@@ -793,7 +794,7 @@ static void compile_fs_type(char *fs_typ
+ #if 0
+ 		printf("Adding %s to list (type %d).\n", s, cmp->type[num]);
  #endif
--	char		*extended_opts = 0;
- 	char		*cp;
- 	int 		res;		/* result of sscanf */
- #ifdef CONFIG_JBD_DEBUG
-@@ -619,6 +618,12 @@ static errcode_t PRS(int argc, char *arg
- 		ctx->program_name = *argv;
- 	else
- 		ctx->program_name = "e2fsck";
-+
-+	if ((cp = getenv("E2FSCK_CONFIG")) != NULL)
-+		config_fn[0] = cp;
-+	profile_set_syntax_err_cb(syntax_err_report);
-+	profile_init(config_fn, &ctx->profile);
-+
- 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
- 		switch (c) {
- 		case 'C':
-@@ -645,7 +650,7 @@ static errcode_t PRS(int argc, char *arg
- 			ctx->options |= E2F_OPT_COMPRESS_DIRS;
- 			break;
- 		case 'E':
--			extended_opts = optarg;
-+			parse_extended_opts(ctx, optarg);
- 			break;
- 		case 'p':
- 		case 'a':
-@@ -771,13 +776,6 @@ static errcode_t PRS(int argc, char *arg
- 			argv[optind]);
- 		fatal_error(ctx, 0);
+-	        cmp->list[num++] = string_copy(s);
++		cmp->list[num++] = string_copy(s);
+ 		s = strtok(NULL, ",");
  	}
--	if (extended_opts)
--		parse_extended_opts(ctx, extended_opts);
--
--	if ((cp = getenv("E2FSCK_CONFIG")) != NULL)
--		config_fn[0] = cp;
--	profile_set_syntax_err_cb(syntax_err_report);
--	profile_init(config_fn, &ctx->profile);
+ 	free(list);
+@@ -819,7 +820,7 @@ static int opt_in_list(char *opt, char *
+ 		}
+ 		s = strtok(NULL, ",");
+ 	}
+-        free(list);
++	free(list);
+ 	return 0;
+ }
  
- 	if (flush) {
- 		fd = open(ctx->filesystem_name, O_RDONLY, 0);
+@@ -855,6 +856,56 @@ static int fs_match(struct fs_info *fs, 
+ 	return (cmp->negate ? !ret : ret);
+ }
+ 
++/* Check to see whether a filesystem is already mounted */
++static int is_mounted(struct fs_info *fs)
++{
++	struct stat st_buf;
++	dev_t fs_rdev;
++	char *testdir;
++	int retval = 0;
++
++	if (!fs->mountpt) {
++		/*
++		 * We have already read /proc/mounts
++		 * so any device without a mountpoint
++		 * is indeed not mounted.
++		 */
++		return 0;
++	}
++
++	if (!strcmp(fs->mountpt,"/")) {
++		/* Root should be always mounted */
++		return 1;
++	}
++
++	if (stat(fs->mountpt, &st_buf) < 0)
++		return 0;
++
++	if (!S_ISDIR(st_buf.st_mode)) {
++		/* This is not a directory, cannot be mounted */
++		return 0;
++	}
++
++	fs_rdev = st_buf.st_dev;
++
++	/* Compare with the upper directory */
++	testdir = malloc(strlen(fs->mountpt) + 4);
++	strcpy(testdir,fs->mountpt);
++	if (fs->mountpt[strlen(fs->mountpt) - 1] == '/')
++		strcat(testdir,"..");
++	else
++		strcat(testdir,"/..");
++
++	if (stat(testdir, &st_buf) == 0) {
++		if (st_buf.st_dev != fs_rdev) {
++			retval = 1;
++		}
++	}
++	free(testdir);
++
++	return retval;
++}
++
+ /* Check if we should ignore this filesystem. */
+ static int ignore(struct fs_info *fs)
+ {
+@@ -1002,6 +1053,15 @@ static int check_all(NOARGS)
+ 				not_done_yet++;
+ 				continue;
+ 			}
++			if (ignore_mounted) {
++				/*
++				 * Ignore mounted devices.
++				 */
++				if (is_mounted(fs)) {
++					fs->flags |= FLAG_DONE;
++					continue;
++				}
++			}
+ 			/*
+ 			 * If a filesystem on a particular device has
+ 			 * already been spawned, then we need to defer
+@@ -1179,6 +1239,9 @@ static void PRS(int argc, char *argv[])
+ 			case 'P':
+ 				parallel_root++;
+ 				break;
++			case 'm':
++				ignore_mounted++;
++				break;
+ 			case 's':
+ 				serialize++;
+ 				break;
+@@ -1254,6 +1317,10 @@ int main(int argc, char *argv[])
+ 		fstab = _PATH_MNTTAB;
+ 	load_fs_info(fstab);
+ 
++	/* Load info from /proc/mounts, too */
++	if (ignore_mounted)
++		load_fs_info("/proc/mounts");
++
+ 	/* Update our search path to include uncommon directories. */
+ 	if (oldpath) {
+ 		fsck_path = malloc (strlen (fsck_prefix_path) + 1 +
+@@ -1296,6 +1363,14 @@ int main(int argc, char *argv[])
+ 			if (!fs)
+ 				continue;
+ 		}
++		if (ignore_mounted) {
++			/*
++			 * Ignore mounted devices.
++			 */
++			if (is_mounted(fs)) {
++				continue;
++			}
++		}
+ 		fsck_device(fs, interactive);
+ 		if (serialize ||
+ 		    (max_running && (num_running >= max_running))) {
 
 Cheers, Andreas
 --
