@@ -1,32 +1,35 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] ext4: Replace use of iget() with iget_locked()
-Date: Sat, 02 Feb 2008 10:55:24 -0500
-Message-ID: <E1JLKiC-0002et-Tr@closure.thunk.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Replace use of iget() with iget_locked()
+Date: Sat, 2 Feb 2008 11:20:51 -0500
+Message-ID: <20080202162051.GB5219@mit.edu>
+References: <E1JLKiC-0002et-Tr@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:35242 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:52642 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757492AbYBBPz3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 10:55:29 -0500
+	with ESMTP id S1764872AbYBBQUy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 11:20:54 -0500
+Content-Disposition: inline
+In-Reply-To: <E1JLKiC-0002et-Tr@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Feb 02, 2008 at 10:55:24AM -0500, Theodore Ts'o wrote:
+> In the mm tree is a patch queued up to nuke iget().  So replace use of
+> iget() with iget_locked().  I will be pushing this to Linus shortly.
 
-In the mm tree is a patch queued up to nuke iget().  So replace use of
-iget() with iget_locked().  I will be pushing this to Linus shortly.
+Oops, wrong version of the patch; this is the correct one.
 
-     	  		    	    	    - Ted
+      	    	       	   	       - Ted
 
-
-commit 46ea772acbda42780ae014e608f51e71083be46b
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Feb 2 10:52:41 2008 -0500
-
-    ext4: Replace use of iget() with iget_locked()
+ext4: Replace use of iget() with iget_locked()
     
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
+---
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
 index 575b521..d45fcaa 100644
 --- a/fs/ext4/ialloc.c
@@ -52,6 +55,63 @@ index 575b521..d45fcaa 100644
  		ext4_warning(sb, __FUNCTION__,
  			     "bad orphan inode %lu!  e2fsck was run?", ino);
  		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 67b6d8a..57dd8fb 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1041,11 +1041,16 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
+ 				   "bad inode number: %lu", ino);
+ 			inode = NULL;
+ 		} else
+-			inode = iget(dir->i_sb, ino);
++			inode = iget_locked(dir->i_sb, ino);
+ 
+ 		if (!inode)
+ 			return ERR_PTR(-EACCES);
+ 
++		if (inode->i_state & I_NEW) {
++			inode->i_sb->s_op->read_inode(inode);
++			unlock_new_inode(inode);
++		}
++
+ 		if (is_bad_inode(inode)) {
+ 			iput(inode);
+ 			return ERR_PTR(-ENOENT);
+@@ -1080,11 +1085,16 @@ struct dentry *ext4_get_parent(struct dentry *child)
+ 			   "bad inode number: %lu", ino);
+ 		inode = NULL;
+ 	} else
+-		inode = iget(child->d_inode->i_sb, ino);
++		inode = iget_locked(child->d_inode->i_sb, ino);
+ 
+ 	if (!inode)
+ 		return ERR_PTR(-EACCES);
+ 
++	if (inode->i_state & I_NEW) {
++		inode->i_sb->s_op->read_inode(inode);
++		unlock_new_inode(inode);
++	}
++
+ 	if (is_bad_inode(inode)) {
+ 		iput(inode);
+ 		return ERR_PTR(-ENOENT);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 4fbba60..ebdca31 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -779,7 +779,11 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 				     "No reserved GDT blocks, can't resize");
+ 			return -EPERM;
+ 		}
+-		inode = iget(sb, EXT4_RESIZE_INO);
++		inode = iget_locked(sb, EXT4_RESIZE_INO);
++		if (inode && (inode->i_state & I_NEW)) {
++			sb->s_op->read_inode(inode);
++			unlock_new_inode(inode);
++		}
+ 		if (!inode || is_bad_inode(inode)) {
+ 			ext4_warning(sb, __FUNCTION__,
+ 				     "Error opening resize inode");
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
 index 055a0cd..1ef0359 100644
 --- a/fs/ext4/super.c
