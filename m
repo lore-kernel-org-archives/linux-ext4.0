@@ -1,1159 +1,1246 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][20/28] e2fsprogs-mmp.patch
-Date: Sat, 02 Feb 2008 01:48:32 -0700
-Message-ID: <20080202084832.GU31694@webber.adilger.int>
+Subject: Re: [PATCH][21/28] e2fsprogs-journal_chksum.patch
+Date: Sat, 02 Feb 2008 01:49:14 -0700
+Message-ID: <20080202084914.GV31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58478 "EHLO
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58484 "EHLO
 	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757250AbYBBIsh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:48:37 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128ma5q016672
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:48:36 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+	with ESMTP id S1757471AbYBBItU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:49:20 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128nJij016675
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:49:19 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JVL00B01S8CF600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:48:36 -0800 (PST)
+ id <0JVL00501SFKSW00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:49:19 -0800 (PST)
 In-reply-to: <20080202075943.GB23836@webber.adilger.int>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-Add multi-mount protection support to libext2fs (INCOMPAT_MMP feature).
+E2fsprogs part of Journal Checksum feature.
 
-This allows mke2fs, e2fsck, and others to detect if the filesystem is
-mounted on a remote node (on SAN disks) and avoid corrupting the
-filesystem.  For e2fsprogs this only means that it check the MMP block
-to see if the filesystem is in use, and mark the filesystem busy while
-e2fsck is running on the system.
+This adds support for journals with the INCOMPAT_ASYNC_COMMIT and
+COMPAT_CHECKSUM features.
 
-There is no requirement that e2fsck updates the MMP block in any regular
-interval, but e2fsck does this occasionally to provide additional
-information to the sysadmin in case of conflict.
+If CHECKSUM is set, each transaction has a checksum of the full
+transaction and it is verified before the transaction is replayed.
+If any interior block is missing or corrupted, or if the transaction is
+incomplete it will not be replayed.
 
-Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
+The ASYNC_COMMIT feature allows the kernel to avoid waiting for the
+transaction (meta)data to commit before writing the journal commit block.
+
 Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
+Signed-off-by: Girish Shilamkar <girish@clusterfs.com>
 
-Index: e2fsprogs-1.40.5/lib/e2p/feature.c
+Index: e2fsprogs-1.40.2/lib/ext2fs/kernel-jbd.h
 ===================================================================
---- e2fsprogs-1.40.5.orig/lib/e2p/feature.c
-+++ e2fsprogs-1.40.5/lib/e2p/feature.c
-@@ -67,6 +67,8 @@ static struct feature feature_list[] = {
- 			"extent" },
- 	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_64BIT,
- 			"64bit" },
-+	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP,
-+			"mmp" },
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FLEX_BG,
-                         "flex_bg"},
- 	{	0, 0, 0 },
-Index: e2fsprogs-1.40.5/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/ext2_fs.h
-+++ e2fsprogs-1.40.5/lib/ext2fs/ext2_fs.h
-@@ -566,11 +566,11 @@ struct ext2_super_block {
- 	__u16	s_min_extra_isize;	/* All inodes have at least # bytes */
- 	__u16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
- 	__u32	s_flags;		/* Miscellaneous flags */
--	__u16   s_raid_stride;		/* RAID stride */
--	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
--	__u64   s_mmp_block;            /* Block for multi-mount protection */
--	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
--	__u32   s_reserved[163];        /* Padding to the end of the block */
-+	__u16	s_raid_stride;		/* RAID stride */
-+	__u16	s_mmp_update_interval;	/* # seconds to wait in MMP checking */
-+	__u64	s_mmp_block;		/* Block for multi-mount protection */
-+	__u32	s_raid_stripe_width;	/* blocks on all data disks (N*stride)*/
-+	__u32	s_reserved[163];	/* Padding to the end of the block */
- };
- 
- /*
-@@ -637,7 +637,8 @@ struct ext2_super_block {
- 
- 
- #define EXT2_FEATURE_COMPAT_SUPP	0
--#define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
-+#define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
-+				       EXT4_FEATURE_INCOMPAT_MMP)
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-@@ -717,26 +718,34 @@ struct ext2_dir_entry_2 {
- /*
-  * This structure will be used for multiple mount protection. It will be
-  * written into the block number saved in the s_mmp_block field in the
-- * superblock.
-- */
--#define	EXT2_MMP_MAGIC    0x004D4D50 /* ASCII for MMP */
--#define	EXT2_MMP_CLEAN    0xFF4D4D50 /* Value of mmp_seq for clean unmount */
--#define	EXT2_MMP_FSCK_ON  0xE24D4D50 /* Value of mmp_seq when being fscked */
-+ * superblock. Programs that check MMP should assume that if
-+ * SEQ_FSCK (or any unknown code above SEQ_MAX) is present then it is NOT safe
-+ * to use the filesystem, regardless of how old the timestamp is.
-+ */
-+#define EXT2_MMP_MAGIC     0x004D4D50U /* ASCII for MMP */
-+#define EXT2_MMP_SEQ_CLEAN 0xFF4D4D50U /* mmp_seq value for clean unmount */
-+#define EXT2_MMP_SEQ_FSCK  0xE24D4D50U /* mmp_seq value when being fscked */
-+#define EXT2_MMP_SEQ_MAX   0xE24D4D4FU /* maximum valid mmp_seq value */
- 
- struct mmp_struct {
--	__u32	mmp_magic;
--	__u32	mmp_seq;
--	__u64	mmp_time;
--	char	mmp_nodename[64];
--	char	mmp_bdevname[32];
--	__u16	mmp_interval;
-+	__u32	mmp_magic;		/* Magic number for MMP */
-+	__u32	mmp_seq;		/* Sequence no. updated periodically */
-+	__u64	mmp_time;		/* Time last updated */
-+	char	mmp_nodename[64];	/* Node which last updated MMP block */
-+	char	mmp_bdevname[32];	/* Bdev which last updated MMP block */
-+	__u16	mmp_check_interval;	/* Changed mmp_check_interval */
- 	__u16	mmp_pad1;
--	__u32	mmp_pad2;
-+	__u32	mmp_pad2[227];
- };
- 
- /*
-- * Interval in number of seconds to update the MMP sequence number.
-+ * Default interval in seconds to update the MMP sequence number.
-+ */
-+#define EXT2_MMP_UPDATE_INTERVAL	1
-+
-+/*
-+ * Minimum interval for MMP checking in seconds.
-  */
--#define EXT2_MMP_DEF_INTERVAL	5
-+#define EXT2_MMP_MIN_CHECK_INTERVAL     5
- 
- #endif	/* _LINUX_EXT2_FS_H */
-Index: e2fsprogs-1.40.5/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/ext2fs.h
-+++ e2fsprogs-1.40.5/lib/ext2fs/ext2fs.h
-@@ -171,6 +171,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_IMAGE_FILE		0x2000
- #define EXT2_FLAG_EXCLUSIVE		0x4000
- #define EXT2_FLAG_SOFTSUPP_FEATURES	0x8000
-+#define EXT2_FLAG_SKIP_MMP		0x10000
- 
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-@@ -185,6 +186,15 @@ typedef struct ext2_file *ext2_file_t;
-  */
- #define EXT2_MKJOURNAL_V1_SUPER	0x0000001
+--- e2fsprogs-1.40.2.orig/lib/ext2fs/kernel-jbd.h
++++ e2fsprogs-1.40.2/lib/ext2fs/kernel-jbd.h
+@@ -108,7 +108,29 @@ typedef struct journal_header_s
+ 	__u32		h_sequence;
+ } journal_header_t;
  
 +/*
-+ * The timestamp in the MMP structure will be updated by e2fsck at some
-+ * arbitary intervals (start of passes, after every EXT2_MMP_INODE_INTERVAL
-+ * inodes in pass1 and pass1b).  There is no guarantee that e2fsck is updating
-+ * the MMP block in a timely manner, and the updates it does are purely for
-+ * the convenience of the sysadmin and not for automatic validation.
++ * Checksum types.
 + */
-+#define EXT2_MMP_INODE_INTERVAL 20000
++#define JFS_CRC32_CHKSUM   1
++#define JFS_MD5_CHKSUM     2
++#define JFS_SHA1_CHKSUM    3
 +
- struct struct_ext2_filsys {
- 	errcode_t			magic;
- 	io_channel			io;
-@@ -228,6 +238,15 @@ struct struct_ext2_filsys {
- 	 */
- 	struct ext2_inode_cache		*icache;
- 	io_channel			image_io;
-+
-+	/*
-+	 * Buffer for Multiple mount protection(MMP) block.
-+	 */
-+	char *mmp_buf;
-+	/*
-+	 * Time at which e2fsck last updated the MMP block.
-+	 */
-+	long mmp_last_written;
- };
++#define JFS_CRC32_CHKSUM_SIZE 4
  
++#define JFS_CHECKSUM_BYTES (32 / sizeof(__u32))
++/*
++ * Commit block header for storing transactional checksums:
++ */
++struct commit_header
++{
++	__u32		h_magic;
++	__u32		h_blocktype;
++	__u32		h_sequence;
++	unsigned char   h_chksum_type;
++	unsigned char   h_chksum_size;
++	unsigned char   h_padding[2];
++	__u32		h_chksum[JFS_CHECKSUM_BYTES];
++};
+ /* 
+  * The block tag: used to describe a single buffer in the journal 
+  */
+@@ -194,12 +216,17 @@ typedef struct journal_superblock_s
+ 	((j)->j_format_version >= 2 &&					\
+ 	 ((j)->j_superblock->s_feature_incompat & cpu_to_be32((mask))))
+ 
+-#define JFS_FEATURE_INCOMPAT_REVOKE	0x00000001
++#define JFS_FEATURE_COMPAT_CHECKSUM    0x00000001
++
++#define JFS_FEATURE_INCOMPAT_REVOKE		0x00000001
++/*#define JFS_FEATURE_INCOMPAT_64BIT             0x00000002*/
++#define JFS_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
+ 
+ /* Features known to this kernel version: */
+-#define JFS_KNOWN_COMPAT_FEATURES	0
++#define JFS_KNOWN_COMPAT_FEATURES	JFS_FEATURE_COMPAT_CHECKSUM
+ #define JFS_KNOWN_ROCOMPAT_FEATURES	0
+-#define JFS_KNOWN_INCOMPAT_FEATURES	JFS_FEATURE_INCOMPAT_REVOKE
++#define JFS_KNOWN_INCOMPAT_FEATURES	(JFS_FEATURE_INCOMPAT_REVOKE| \
++					JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)
+ 
+ #ifdef __KERNEL__
+ 
+Index: e2fsprogs-1.40.2/lib/ext2fs/crc32.h
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/crc32.h
+@@ -0,0 +1,28 @@
++/*
++ * crc32.h
++ * See crc32.c for license and changes
++ */
++#ifndef _LINUX_CRC32_H
++#define _LINUX_CRC32_H
++
++typedef unsigned int u32;
++typedef unsigned char u8;
++
++extern u32 crc32_le(u32 crc, unsigned char const *p, size_t len);
++extern u32 crc32_be(u32 crc, unsigned char const *p, size_t len);
++extern u32 bitreverse(u32 in);
++
++#define crc32(seed, data, length)  crc32_le(seed, (unsigned char const *)data, length)
++
++/*
++ * Helpers for hash table generation of ethernet nics:
++ *
++ * Ethernet sends the least significant bit of a byte first, thus crc32_le
++ * is used. The output of crc32_le is bit reversed [most significant bit
++ * is in bit nr 0], thus it must be reversed before use. Except for
++ * nics that bit swap the result internally...
++ */
++#define ether_crc(length, data)    bitreverse(crc32_le(~0, data, length))
++#define ether_crc_le(length, data) crc32_le(~0, data, length)
++
++#endif /* _LINUX_CRC32_H */
+Index: e2fsprogs-1.40.2/lib/ext2fs/crc32.c
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/crc32.c
+@@ -0,0 +1,519 @@
++/*
++ * Oct 15, 2000 Matt Domsch <Matt_Domsch@dell.com>
++ * Nicer crc32 functions/docs submitted by linux@horizon.com.  Thanks!
++ * Code was from the public domain, copyright abandoned.  Code was
++ * subsequently included in the kernel, thus was re-licensed under the
++ * GNU GPL v2.
++ *
++ * Oct 12, 2000 Matt Domsch <Matt_Domsch@dell.com>
++ * Same crc32 function was used in 5 other places in the kernel.
++ * I made one version, and deleted the others.
++ * There are various incantations of crc32().  Some use a seed of 0 or ~0.
++ * Some xor at the end with ~0.  The generic crc32() function takes
++ * seed as an argument, and doesn't xor at the end.  Then individual
++ * users can do whatever they need.
++ *   drivers/net/smc9194.c uses seed ~0, doesn't xor with ~0.
++ *   fs/jffs2 uses seed 0, doesn't xor with ~0.
++ *   fs/partitions/efi.c uses seed ~0, xor's with ~0.
++ *
++ * This source code is licensed under the GNU General Public License,
++ * Version 2.  See the file COPYING for more details.
++ */
++
++#include <stdlib.h>
++#include "crc32_user.h"
++#include "crc32.h"
++#include "crc32defs.h"
++#if CRC_LE_BITS == 8
++#define tole(x) __constant_cpu_to_le32(x)
++#define tobe(x) __constant_cpu_to_be32(x)
++#else
++#define tole(x) (x)
++#define tobe(x) (x)
++#endif
++#include "crc32table.h"
++
++
++#if CRC_LE_BITS == 1
++/*
++ * In fact, the table-based code will work in this case, but it can be
++ * simplified by inlining the table in ?: form.
++ */
++
++/**
++ * crc32_le() - Calculate bitwise little-endian Ethernet AUTODIN II CRC32
++ * @crc - seed value for computation.  ~0 for Ethernet, sometimes 0 for
++ *        other uses, or the previous crc32 value if computing incrementally.
++ * @p   - pointer to buffer over which CRC is run
++ * @len - length of buffer @p
++ *
++ */
++u32  crc32_le(u32 crc, unsigned char const *p, size_t len)
++{
++	int i;
++	while (len--) {
++		crc ^= *p++;
++		for (i = 0; i < 8; i++)
++			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
++	}
++	return crc;
++}
++#else				/* Table-based approach */
++
++/**
++ * crc32_le() - Calculate bitwise little-endian Ethernet AUTODIN II CRC32
++ * @crc - seed value for computation.  ~0 for Ethernet, sometimes 0 for
++ *        other uses, or the previous crc32 value if computing incrementally.
++ * @p   - pointer to buffer over which CRC is run
++ * @len - length of buffer @p
++ *
++ */
++u32  crc32_le(u32 crc, unsigned char const *p, size_t len)
++{
++# if CRC_LE_BITS == 8
++	const u32      *b =(u32 *)p;
++	const u32      *tab = crc32table_le;
++
++# if __BYTE_ORDER == __LITTLE_ENDIAN
++#  define DO_CRC(x) crc = tab[ (crc ^ (x)) & 255 ] ^ (crc>>8)
++# else
++#  define DO_CRC(x) crc = tab[ ((crc >> 24) ^ (x)) & 255] ^ (crc<<8)
++# endif
++
++	crc = __cpu_to_le32(crc);
++	/* Align it */
++	if(unlikely(((long)b)&3 && len)){
++		do {
++			u8 *p = (u8 *)b;
++			DO_CRC(*p++);
++			b = (void *)p;
++		} while ((--len) && ((long)b)&3 );
++	}
++	if(likely(len >= 4)){
++		/* load data 32 bits wide, xor data 32 bits wide. */
++		size_t save_len = len & 3;
++	        len = len >> 2;
++		--b; /* use pre increment below(*++b) for speed */
++		do {
++			crc ^= *++b;
++			DO_CRC(0);
++			DO_CRC(0);
++			DO_CRC(0);
++			DO_CRC(0);
++		} while (--len);
++		b++; /* point to next byte(s) */
++		len = save_len;
++	}
++	/* And the last few bytes */
++	if(len){
++		do {
++			u8 *p = (u8 *)b;
++			DO_CRC(*p++);
++			b = (void *)p;
++		} while (--len);
++	}
++
++	return __le32_to_cpu(crc);
++#undef ENDIAN_SHIFT
++#undef DO_CRC
++
++# elif CRC_LE_BITS == 4
++	while (len--) {
++		crc ^= *p++;
++		crc = (crc >> 4) ^ crc32table_le[crc & 15];
++		crc = (crc >> 4) ^ crc32table_le[crc & 15];
++	}
++	return crc;
++# elif CRC_LE_BITS == 2
++	while (len--) {
++		crc ^= *p++;
++		crc = (crc >> 2) ^ crc32table_le[crc & 3];
++		crc = (crc >> 2) ^ crc32table_le[crc & 3];
++		crc = (crc >> 2) ^ crc32table_le[crc & 3];
++		crc = (crc >> 2) ^ crc32table_le[crc & 3];
++	}
++	return crc;
++# endif
++}
++#endif
++
++#if CRC_BE_BITS == 1
++/*
++ * In fact, the table-based code will work in this case, but it can be
++ * simplified by inlining the table in ?: form.
++ */
++
++/**
++ * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
++ * @crc - seed value for computation.  ~0 for Ethernet, sometimes 0 for
++ *        other uses, or the previous crc32 value if computing incrementally.
++ * @p   - pointer to buffer over which CRC is run
++ * @len - length of buffer @p
++ *
++ */
++u32  crc32_be(u32 crc, unsigned char const *p, size_t len)
++{
++	int i;
++	printf("CRC %u\n",crc);
++	while (len--) {
++		crc ^= *p++ << 24;
++		for (i = 0; i < 8; i++)
++			crc =
++			    (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE :
++					  0);
++	}
++	return crc;
++}
++
++#else				/* Table-based approach */
++/**
++ * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
++ * @crc - seed value for computation.  ~0 for Ethernet, sometimes 0 for
++ *        other uses, or the previous crc32 value if computing incrementally.
++ * @p   - pointer to buffer over which CRC is run
++ * @len - length of buffer @p
++ *
++ */
++u32  crc32_be(u32 crc, unsigned char const *p, size_t len)
++{
++# if CRC_BE_BITS == 8
++	const u32      *b =(u32 *)p;
++	const u32      *tab = crc32table_be;
++
++# if __BYTE_ORDER == __LITTLE_ENDIAN
++#  define DO_CRC(x) crc = tab[ (crc ^ (x)) & 255 ] ^ (crc>>8)
++# else
++#  define DO_CRC(x) crc = tab[ ((crc >> 24) ^ (x)) & 255] ^ (crc<<8)
++# endif
++	crc = __cpu_to_be32(crc);
++	/* Align it */
++	if(unlikely(((long)b)&3 && len)){
++		do {
++			u8 *p = (u8 *)b;
++			DO_CRC(*p++);
++			b = (u32 *)p;
++		} while ((--len) && ((long)b)&3 );
++	}
++
++	if(likely(len >= 4)){
++		/* load data 32 bits wide, xor data 32 bits wide. */
++		size_t save_len = len & 3;
++	        len = len >> 2;
++		--b; /* use pre increment below(*++b) for speed */
++		do {
++			crc ^= *++b;
++			DO_CRC(0);
++			DO_CRC(0);
++			DO_CRC(0);
++			DO_CRC(0);
++		} while (--len);
++		b++; /* point to next byte(s) */
++		len = save_len;
++	}
++	/* And the last few bytes */
++	if(len){
++		do {
++			u8 *p = (u8 *)b;
++			DO_CRC(*p++);
++			b = (void *)p;
++		} while (--len);
++	}
++	return __be32_to_cpu(crc);
++#undef ENDIAN_SHIFT
++#undef DO_CRC
++
++# elif CRC_BE_BITS == 4
++	while (len--) {
++		crc ^= *p++ << 24;
++		crc = (crc << 4) ^ crc32table_be[crc >> 28];
++		crc = (crc << 4) ^ crc32table_be[crc >> 28];
++	}
++	return crc;
++# elif CRC_BE_BITS == 2
++	while (len--) {
++		crc ^= *p++ << 24;
++		crc = (crc << 2) ^ crc32table_be[crc >> 30];
++		crc = (crc << 2) ^ crc32table_be[crc >> 30];
++		crc = (crc << 2) ^ crc32table_be[crc >> 30];
++		crc = (crc << 2) ^ crc32table_be[crc >> 30];
++	}
++	return crc;
++# endif
++}
++#endif
++
++u32 bitreverse(u32 x)
++{
++	x = (x >> 16) | (x << 16);
++	x = (x >> 8 & 0x00ff00ff) | (x << 8 & 0xff00ff00);
++	x = (x >> 4 & 0x0f0f0f0f) | (x << 4 & 0xf0f0f0f0);
++	x = (x >> 2 & 0x33333333) | (x << 2 & 0xcccccccc);
++	x = (x >> 1 & 0x55555555) | (x << 1 & 0xaaaaaaaa);
++	return x;
++}
++
++
++/*
++ * A brief CRC tutorial.
++ *
++ * A CRC is a long-division remainder.  You add the CRC to the message,
++ * and the whole thing (message+CRC) is a multiple of the given
++ * CRC polynomial.  To check the CRC, you can either check that the
++ * CRC matches the recomputed value, *or* you can check that the
++ * remainder computed on the message+CRC is 0.  This latter approach
++ * is used by a lot of hardware implementations, and is why so many
++ * protocols put the end-of-frame flag after the CRC.
++ *
++ * It's actually the same long division you learned in school, except that
++ * - We're working in binary, so the digits are only 0 and 1, and
++ * - When dividing polynomials, there are no carries.  Rather than add and
++ *   subtract, we just xor.  Thus, we tend to get a bit sloppy about
++ *   the difference between adding and subtracting.
++ *
++ * A 32-bit CRC polynomial is actually 33 bits long.  But since it's
++ * 33 bits long, bit 32 is always going to be set, so usually the CRC
++ * is written in hex with the most significant bit omitted.  (If you're
++ * familiar with the IEEE 754 floating-point format, it's the same idea.)
++ *
++ * Note that a CRC is computed over a string of *bits*, so you have
++ * to decide on the endianness of the bits within each byte.  To get
++ * the best error-detecting properties, this should correspond to the
++ * order they're actually sent.  For example, standard RS-232 serial is
++ * little-endian; the most significant bit (sometimes used for parity)
++ * is sent last.  And when appending a CRC word to a message, you should
++ * do it in the right order, matching the endianness.
++ *
++ * Just like with ordinary division, the remainder is always smaller than
++ * the divisor (the CRC polynomial) you're dividing by.  Each step of the
++ * division, you take one more digit (bit) of the dividend and append it
++ * to the current remainder.  Then you figure out the appropriate multiple
++ * of the divisor to subtract to being the remainder back into range.
++ * In binary, it's easy - it has to be either 0 or 1, and to make the
++ * XOR cancel, it's just a copy of bit 32 of the remainder.
++ *
++ * When computing a CRC, we don't care about the quotient, so we can
++ * throw the quotient bit away, but subtract the appropriate multiple of
++ * the polynomial from the remainder and we're back to where we started,
++ * ready to process the next bit.
++ *
++ * A big-endian CRC written this way would be coded like:
++ * for (i = 0; i < input_bits; i++) {
++ * 	multiple = remainder & 0x80000000 ? CRCPOLY : 0;
++ * 	remainder = (remainder << 1 | next_input_bit()) ^ multiple;
++ * }
++ * Notice how, to get at bit 32 of the shifted remainder, we look
++ * at bit 31 of the remainder *before* shifting it.
++ *
++ * But also notice how the next_input_bit() bits we're shifting into
++ * the remainder don't actually affect any decision-making until
++ * 32 bits later.  Thus, the first 32 cycles of this are pretty boring.
++ * Also, to add the CRC to a message, we need a 32-bit-long hole for it at
++ * the end, so we have to add 32 extra cycles shifting in zeros at the
++ * end of every message,
++ *
++ * So the standard trick is to rearrage merging in the next_input_bit()
++ * until the moment it's needed.  Then the first 32 cycles can be precomputed,
++ * and merging in the final 32 zero bits to make room for the CRC can be
++ * skipped entirely.
++ * This changes the code to:
++ * for (i = 0; i < input_bits; i++) {
++ *      remainder ^= next_input_bit() << 31;
++ * 	multiple = (remainder & 0x80000000) ? CRCPOLY : 0;
++ * 	remainder = (remainder << 1) ^ multiple;
++ * }
++ * With this optimization, the little-endian code is simpler:
++ * for (i = 0; i < input_bits; i++) {
++ *      remainder ^= next_input_bit();
++ * 	multiple = (remainder & 1) ? CRCPOLY : 0;
++ * 	remainder = (remainder >> 1) ^ multiple;
++ * }
++ *
++ * Note that the other details of endianness have been hidden in CRCPOLY
++ * (which must be bit-reversed) and next_input_bit().
++ *
++ * However, as long as next_input_bit is returning the bits in a sensible
++ * order, we can actually do the merging 8 or more bits at a time rather
++ * than one bit at a time:
++ * for (i = 0; i < input_bytes; i++) {
++ * 	remainder ^= next_input_byte() << 24;
++ * 	for (j = 0; j < 8; j++) {
++ * 		multiple = (remainder & 0x80000000) ? CRCPOLY : 0;
++ * 		remainder = (remainder << 1) ^ multiple;
++ * 	}
++ * }
++ * Or in little-endian:
++ * for (i = 0; i < input_bytes; i++) {
++ * 	remainder ^= next_input_byte();
++ * 	for (j = 0; j < 8; j++) {
++ * 		multiple = (remainder & 1) ? CRCPOLY : 0;
++ * 		remainder = (remainder << 1) ^ multiple;
++ * 	}
++ * }
++ * If the input is a multiple of 32 bits, you can even XOR in a 32-bit
++ * word at a time and increase the inner loop count to 32.
++ *
++ * You can also mix and match the two loop styles, for example doing the
++ * bulk of a message byte-at-a-time and adding bit-at-a-time processing
++ * for any fractional bytes at the end.
++ *
++ * The only remaining optimization is to the byte-at-a-time table method.
++ * Here, rather than just shifting one bit of the remainder to decide
++ * in the correct multiple to subtract, we can shift a byte at a time.
++ * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
++ * but again the multiple of the polynomial to subtract depends only on
++ * the high bits, the high 8 bits in this case.
++ *
++ * The multile we need in that case is the low 32 bits of a 40-bit
++ * value whose high 8 bits are given, and which is a multiple of the
++ * generator polynomial.  This is simply the CRC-32 of the given
++ * one-byte message.
++ *
++ * Two more details: normally, appending zero bits to a message which
++ * is already a multiple of a polynomial produces a larger multiple of that
++ * polynomial.  To enable a CRC to detect this condition, it's common to
++ * invert the CRC before appending it.  This makes the remainder of the
++ * message+crc come out not as zero, but some fixed non-zero value.
++ *
++ * The same problem applies to zero bits prepended to the message, and
++ * a similar solution is used.  Instead of starting with a remainder of
++ * 0, an initial remainder of all ones is used.  As long as you start
++ * the same way on decoding, it doesn't make a difference.
++ */
++
++#ifdef UNITTEST
++
++#include <stdlib.h>
++#include <stdio.h>
++
++#if 0				/*Not used at present */
++static void
++buf_dump(char const *prefix, unsigned char const *buf, size_t len)
++{
++	fputs(prefix, stdout);
++	while (len--)
++		printf(" %02x", *buf++);
++	putchar('\n');
++
++}
++#endif
++
++static void bytereverse(unsigned char *buf, size_t len)
++{
++	while (len--) {
++		unsigned char x = *buf;
++		x = (x >> 4) | (x << 4);
++		x = (x >> 2 & 0x33) | (x << 2 & 0xcc);
++		x = (x >> 1 & 0x55) | (x << 1 & 0xaa);
++		*buf++ = x;
++	}
++}
++
++static void random_garbage(unsigned char *buf, size_t len)
++{
++	while (len--)
++		*buf++ = (unsigned char) random();
++}
++
++#if 0				/* Not used at present */
++static void store_le(u32 x, unsigned char *buf)
++{
++	buf[0] = (unsigned char) x;
++	buf[1] = (unsigned char) (x >> 8);
++	buf[2] = (unsigned char) (x >> 16);
++	buf[3] = (unsigned char) (x >> 24);
++}
++#endif
++
++static void store_be(u32 x, unsigned char *buf)
++{
++	buf[0] = (unsigned char) (x >> 24);
++	buf[1] = (unsigned char) (x >> 16);
++	buf[2] = (unsigned char) (x >> 8);
++	buf[3] = (unsigned char) x;
++}
++
++/*
++ * This checks that CRC(buf + CRC(buf)) = 0, and that
++ * CRC commutes with bit-reversal.  This has the side effect
++ * of bytewise bit-reversing the input buffer, and returns
++ * the CRC of the reversed buffer.
++ */
++static u32 test_step(u32 init, unsigned char *buf, size_t len)
++{
++	u32 crc1, crc2;
++	size_t i;
++
++	crc1 = crc32_be(init, buf, len);
++	store_be(crc1, buf + len);
++	crc2 = crc32_be(init, buf, len + 4);
++	if (crc2)
++		printf("\nCRC cancellation fail: 0x%08x should be 0\n",
++		       crc2);
++
++	for (i = 0; i <= len + 4; i++) {
++		crc2 = crc32_be(init, buf, i);
++		crc2 = crc32_be(crc2, buf + i, len + 4 - i);
++		if (crc2)
++			printf("\nCRC split fail: 0x%08x\n", crc2);
++	}
++
++	/* Now swap it around for the other test */
++
++	bytereverse(buf, len + 4);
++	init = bitreverse(init);
++	crc2 = bitreverse(crc1);
++	if (crc1 != bitreverse(crc2))
++		printf("\nBit reversal fail: 0x%08x -> %0x08x -> 0x%08x\n",
++		       crc1, crc2, bitreverse(crc2));
++	crc1 = crc32_le(init, buf, len);
++	if (crc1 != crc2)
++		printf("\nCRC endianness fail: 0x%08x != 0x%08x\n", crc1,
++		       crc2);
++	crc2 = crc32_le(init, buf, len + 4);
++	if (crc2)
++		printf("\nCRC cancellation fail: 0x%08x should be 0\n",
++		       crc2);
++
++	for (i = 0; i <= len + 4; i++) {
++		crc2 = crc32_le(init, buf, i);
++		crc2 = crc32_le(crc2, buf + i, len + 4 - i);
++		if (crc2)
++			printf("\nCRC split fail: 0x%08x\n", crc2);
++	}
++
++	return crc1;
++}
++
++#define SIZE 64
++#define INIT1 0
++#define INIT2 0
++
++int main(void)
++{
++	unsigned char buf1[SIZE + 4];
++	unsigned char buf2[SIZE + 4];
++	unsigned char buf3[SIZE + 4];
++	int i, j;
++	u32 crc1, crc2, crc3;
++
++	for (i = 0; i <= SIZE; i++) {
++		printf("\rTesting length %d...", i);
++		fflush(stdout);
++		random_garbage(buf1, i);
++		random_garbage(buf2, i);
++		for (j = 0; j < i; j++)
++			buf3[j] = buf1[j] ^ buf2[j];
++
++		crc1 = test_step(INIT1, buf1, i);
++		crc2 = test_step(INIT2, buf2, i);
++		/* Now check that CRC(buf1 ^ buf2) = CRC(buf1) ^ CRC(buf2) */
++		crc3 = test_step(INIT1 ^ INIT2, buf3, i);
++		if (crc3 != (crc1 ^ crc2))
++			printf("CRC XOR fail: 0x%08x != 0x%08x ^ 0x%08x\n",
++			       crc3, crc1, crc2);
++	}
++	printf("\nAll test complete.  No failures expected.\n");
++	return 0;
++}
++
++#endif				/* UNITTEST */
+Index: e2fsprogs-1.40.2/lib/ext2fs/crc32defs.h
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/crc32defs.h
+@@ -0,0 +1,32 @@
++/*
++ * There are multiple 16-bit CRC polynomials in common use, but this is
++ * *the* standard CRC-32 polynomial, first popularized by Ethernet.
++ * x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+x^0
++ */
++#define CRCPOLY_LE 0xedb88320
++#define CRCPOLY_BE 0x04c11db7
++
++/* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
++/* For less performance-sensitive, use 4 */
++#ifndef CRC_LE_BITS
++# define CRC_LE_BITS 8
++#endif
++#ifndef CRC_BE_BITS
++# define CRC_BE_BITS 8
++#endif
++
++/*
++ * Little-endian CRC computation.  Used with serial bit streams sent
++ * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
++ */
++#if CRC_LE_BITS > 8 || CRC_LE_BITS < 1 || CRC_LE_BITS & CRC_LE_BITS-1
++# error CRC_LE_BITS must be a power of 2 between 1 and 8
++#endif
++
++/*
++ * Big-endian CRC computation.  Used with serial bit streams sent
++ * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
++ */
++#if CRC_BE_BITS > 8 || CRC_BE_BITS < 1 || CRC_BE_BITS & CRC_BE_BITS-1
++# error CRC_BE_BITS must be a power of 2 between 1 and 8
++#endif
+Index: e2fsprogs-1.40.2/lib/ext2fs/crc32table.h
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/crc32table.h
+@@ -0,0 +1,135 @@
++/* this file is generated - do not edit */
++
++static const u32 crc32table_le[] = {
++tole(0x00000000L), tole(0x77073096L), tole(0xee0e612cL), tole(0x990951baL),
++tole(0x076dc419L), tole(0x706af48fL), tole(0xe963a535L), tole(0x9e6495a3L),
++tole(0x0edb8832L), tole(0x79dcb8a4L), tole(0xe0d5e91eL), tole(0x97d2d988L),
++tole(0x09b64c2bL), tole(0x7eb17cbdL), tole(0xe7b82d07L), tole(0x90bf1d91L),
++tole(0x1db71064L), tole(0x6ab020f2L), tole(0xf3b97148L), tole(0x84be41deL),
++tole(0x1adad47dL), tole(0x6ddde4ebL), tole(0xf4d4b551L), tole(0x83d385c7L),
++tole(0x136c9856L), tole(0x646ba8c0L), tole(0xfd62f97aL), tole(0x8a65c9ecL),
++tole(0x14015c4fL), tole(0x63066cd9L), tole(0xfa0f3d63L), tole(0x8d080df5L),
++tole(0x3b6e20c8L), tole(0x4c69105eL), tole(0xd56041e4L), tole(0xa2677172L),
++tole(0x3c03e4d1L), tole(0x4b04d447L), tole(0xd20d85fdL), tole(0xa50ab56bL),
++tole(0x35b5a8faL), tole(0x42b2986cL), tole(0xdbbbc9d6L), tole(0xacbcf940L),
++tole(0x32d86ce3L), tole(0x45df5c75L), tole(0xdcd60dcfL), tole(0xabd13d59L),
++tole(0x26d930acL), tole(0x51de003aL), tole(0xc8d75180L), tole(0xbfd06116L),
++tole(0x21b4f4b5L), tole(0x56b3c423L), tole(0xcfba9599L), tole(0xb8bda50fL),
++tole(0x2802b89eL), tole(0x5f058808L), tole(0xc60cd9b2L), tole(0xb10be924L),
++tole(0x2f6f7c87L), tole(0x58684c11L), tole(0xc1611dabL), tole(0xb6662d3dL),
++tole(0x76dc4190L), tole(0x01db7106L), tole(0x98d220bcL), tole(0xefd5102aL),
++tole(0x71b18589L), tole(0x06b6b51fL), tole(0x9fbfe4a5L), tole(0xe8b8d433L),
++tole(0x7807c9a2L), tole(0x0f00f934L), tole(0x9609a88eL), tole(0xe10e9818L),
++tole(0x7f6a0dbbL), tole(0x086d3d2dL), tole(0x91646c97L), tole(0xe6635c01L),
++tole(0x6b6b51f4L), tole(0x1c6c6162L), tole(0x856530d8L), tole(0xf262004eL),
++tole(0x6c0695edL), tole(0x1b01a57bL), tole(0x8208f4c1L), tole(0xf50fc457L),
++tole(0x65b0d9c6L), tole(0x12b7e950L), tole(0x8bbeb8eaL), tole(0xfcb9887cL),
++tole(0x62dd1ddfL), tole(0x15da2d49L), tole(0x8cd37cf3L), tole(0xfbd44c65L),
++tole(0x4db26158L), tole(0x3ab551ceL), tole(0xa3bc0074L), tole(0xd4bb30e2L),
++tole(0x4adfa541L), tole(0x3dd895d7L), tole(0xa4d1c46dL), tole(0xd3d6f4fbL),
++tole(0x4369e96aL), tole(0x346ed9fcL), tole(0xad678846L), tole(0xda60b8d0L),
++tole(0x44042d73L), tole(0x33031de5L), tole(0xaa0a4c5fL), tole(0xdd0d7cc9L),
++tole(0x5005713cL), tole(0x270241aaL), tole(0xbe0b1010L), tole(0xc90c2086L),
++tole(0x5768b525L), tole(0x206f85b3L), tole(0xb966d409L), tole(0xce61e49fL),
++tole(0x5edef90eL), tole(0x29d9c998L), tole(0xb0d09822L), tole(0xc7d7a8b4L),
++tole(0x59b33d17L), tole(0x2eb40d81L), tole(0xb7bd5c3bL), tole(0xc0ba6cadL),
++tole(0xedb88320L), tole(0x9abfb3b6L), tole(0x03b6e20cL), tole(0x74b1d29aL),
++tole(0xead54739L), tole(0x9dd277afL), tole(0x04db2615L), tole(0x73dc1683L),
++tole(0xe3630b12L), tole(0x94643b84L), tole(0x0d6d6a3eL), tole(0x7a6a5aa8L),
++tole(0xe40ecf0bL), tole(0x9309ff9dL), tole(0x0a00ae27L), tole(0x7d079eb1L),
++tole(0xf00f9344L), tole(0x8708a3d2L), tole(0x1e01f268L), tole(0x6906c2feL),
++tole(0xf762575dL), tole(0x806567cbL), tole(0x196c3671L), tole(0x6e6b06e7L),
++tole(0xfed41b76L), tole(0x89d32be0L), tole(0x10da7a5aL), tole(0x67dd4accL),
++tole(0xf9b9df6fL), tole(0x8ebeeff9L), tole(0x17b7be43L), tole(0x60b08ed5L),
++tole(0xd6d6a3e8L), tole(0xa1d1937eL), tole(0x38d8c2c4L), tole(0x4fdff252L),
++tole(0xd1bb67f1L), tole(0xa6bc5767L), tole(0x3fb506ddL), tole(0x48b2364bL),
++tole(0xd80d2bdaL), tole(0xaf0a1b4cL), tole(0x36034af6L), tole(0x41047a60L),
++tole(0xdf60efc3L), tole(0xa867df55L), tole(0x316e8eefL), tole(0x4669be79L),
++tole(0xcb61b38cL), tole(0xbc66831aL), tole(0x256fd2a0L), tole(0x5268e236L),
++tole(0xcc0c7795L), tole(0xbb0b4703L), tole(0x220216b9L), tole(0x5505262fL),
++tole(0xc5ba3bbeL), tole(0xb2bd0b28L), tole(0x2bb45a92L), tole(0x5cb36a04L),
++tole(0xc2d7ffa7L), tole(0xb5d0cf31L), tole(0x2cd99e8bL), tole(0x5bdeae1dL),
++tole(0x9b64c2b0L), tole(0xec63f226L), tole(0x756aa39cL), tole(0x026d930aL),
++tole(0x9c0906a9L), tole(0xeb0e363fL), tole(0x72076785L), tole(0x05005713L),
++tole(0x95bf4a82L), tole(0xe2b87a14L), tole(0x7bb12baeL), tole(0x0cb61b38L),
++tole(0x92d28e9bL), tole(0xe5d5be0dL), tole(0x7cdcefb7L), tole(0x0bdbdf21L),
++tole(0x86d3d2d4L), tole(0xf1d4e242L), tole(0x68ddb3f8L), tole(0x1fda836eL),
++tole(0x81be16cdL), tole(0xf6b9265bL), tole(0x6fb077e1L), tole(0x18b74777L),
++tole(0x88085ae6L), tole(0xff0f6a70L), tole(0x66063bcaL), tole(0x11010b5cL),
++tole(0x8f659effL), tole(0xf862ae69L), tole(0x616bffd3L), tole(0x166ccf45L),
++tole(0xa00ae278L), tole(0xd70dd2eeL), tole(0x4e048354L), tole(0x3903b3c2L),
++tole(0xa7672661L), tole(0xd06016f7L), tole(0x4969474dL), tole(0x3e6e77dbL),
++tole(0xaed16a4aL), tole(0xd9d65adcL), tole(0x40df0b66L), tole(0x37d83bf0L),
++tole(0xa9bcae53L), tole(0xdebb9ec5L), tole(0x47b2cf7fL), tole(0x30b5ffe9L),
++tole(0xbdbdf21cL), tole(0xcabac28aL), tole(0x53b39330L), tole(0x24b4a3a6L),
++tole(0xbad03605L), tole(0xcdd70693L), tole(0x54de5729L), tole(0x23d967bfL),
++tole(0xb3667a2eL), tole(0xc4614ab8L), tole(0x5d681b02L), tole(0x2a6f2b94L),
++tole(0xb40bbe37L), tole(0xc30c8ea1L), tole(0x5a05df1bL), tole(0x2d02ef8dL)
++};
++
++static const u32 crc32table_be[] = {
++tobe(0x00000000L), tobe(0x04c11db7L), tobe(0x09823b6eL), tobe(0x0d4326d9L),
++tobe(0x130476dcL), tobe(0x17c56b6bL), tobe(0x1a864db2L), tobe(0x1e475005L),
++tobe(0x2608edb8L), tobe(0x22c9f00fL), tobe(0x2f8ad6d6L), tobe(0x2b4bcb61L),
++tobe(0x350c9b64L), tobe(0x31cd86d3L), tobe(0x3c8ea00aL), tobe(0x384fbdbdL),
++tobe(0x4c11db70L), tobe(0x48d0c6c7L), tobe(0x4593e01eL), tobe(0x4152fda9L),
++tobe(0x5f15adacL), tobe(0x5bd4b01bL), tobe(0x569796c2L), tobe(0x52568b75L),
++tobe(0x6a1936c8L), tobe(0x6ed82b7fL), tobe(0x639b0da6L), tobe(0x675a1011L),
++tobe(0x791d4014L), tobe(0x7ddc5da3L), tobe(0x709f7b7aL), tobe(0x745e66cdL),
++tobe(0x9823b6e0L), tobe(0x9ce2ab57L), tobe(0x91a18d8eL), tobe(0x95609039L),
++tobe(0x8b27c03cL), tobe(0x8fe6dd8bL), tobe(0x82a5fb52L), tobe(0x8664e6e5L),
++tobe(0xbe2b5b58L), tobe(0xbaea46efL), tobe(0xb7a96036L), tobe(0xb3687d81L),
++tobe(0xad2f2d84L), tobe(0xa9ee3033L), tobe(0xa4ad16eaL), tobe(0xa06c0b5dL),
++tobe(0xd4326d90L), tobe(0xd0f37027L), tobe(0xddb056feL), tobe(0xd9714b49L),
++tobe(0xc7361b4cL), tobe(0xc3f706fbL), tobe(0xceb42022L), tobe(0xca753d95L),
++tobe(0xf23a8028L), tobe(0xf6fb9d9fL), tobe(0xfbb8bb46L), tobe(0xff79a6f1L),
++tobe(0xe13ef6f4L), tobe(0xe5ffeb43L), tobe(0xe8bccd9aL), tobe(0xec7dd02dL),
++tobe(0x34867077L), tobe(0x30476dc0L), tobe(0x3d044b19L), tobe(0x39c556aeL),
++tobe(0x278206abL), tobe(0x23431b1cL), tobe(0x2e003dc5L), tobe(0x2ac12072L),
++tobe(0x128e9dcfL), tobe(0x164f8078L), tobe(0x1b0ca6a1L), tobe(0x1fcdbb16L),
++tobe(0x018aeb13L), tobe(0x054bf6a4L), tobe(0x0808d07dL), tobe(0x0cc9cdcaL),
++tobe(0x7897ab07L), tobe(0x7c56b6b0L), tobe(0x71159069L), tobe(0x75d48ddeL),
++tobe(0x6b93dddbL), tobe(0x6f52c06cL), tobe(0x6211e6b5L), tobe(0x66d0fb02L),
++tobe(0x5e9f46bfL), tobe(0x5a5e5b08L), tobe(0x571d7dd1L), tobe(0x53dc6066L),
++tobe(0x4d9b3063L), tobe(0x495a2dd4L), tobe(0x44190b0dL), tobe(0x40d816baL),
++tobe(0xaca5c697L), tobe(0xa864db20L), tobe(0xa527fdf9L), tobe(0xa1e6e04eL),
++tobe(0xbfa1b04bL), tobe(0xbb60adfcL), tobe(0xb6238b25L), tobe(0xb2e29692L),
++tobe(0x8aad2b2fL), tobe(0x8e6c3698L), tobe(0x832f1041L), tobe(0x87ee0df6L),
++tobe(0x99a95df3L), tobe(0x9d684044L), tobe(0x902b669dL), tobe(0x94ea7b2aL),
++tobe(0xe0b41de7L), tobe(0xe4750050L), tobe(0xe9362689L), tobe(0xedf73b3eL),
++tobe(0xf3b06b3bL), tobe(0xf771768cL), tobe(0xfa325055L), tobe(0xfef34de2L),
++tobe(0xc6bcf05fL), tobe(0xc27dede8L), tobe(0xcf3ecb31L), tobe(0xcbffd686L),
++tobe(0xd5b88683L), tobe(0xd1799b34L), tobe(0xdc3abdedL), tobe(0xd8fba05aL),
++tobe(0x690ce0eeL), tobe(0x6dcdfd59L), tobe(0x608edb80L), tobe(0x644fc637L),
++tobe(0x7a089632L), tobe(0x7ec98b85L), tobe(0x738aad5cL), tobe(0x774bb0ebL),
++tobe(0x4f040d56L), tobe(0x4bc510e1L), tobe(0x46863638L), tobe(0x42472b8fL),
++tobe(0x5c007b8aL), tobe(0x58c1663dL), tobe(0x558240e4L), tobe(0x51435d53L),
++tobe(0x251d3b9eL), tobe(0x21dc2629L), tobe(0x2c9f00f0L), tobe(0x285e1d47L),
++tobe(0x36194d42L), tobe(0x32d850f5L), tobe(0x3f9b762cL), tobe(0x3b5a6b9bL),
++tobe(0x0315d626L), tobe(0x07d4cb91L), tobe(0x0a97ed48L), tobe(0x0e56f0ffL),
++tobe(0x1011a0faL), tobe(0x14d0bd4dL), tobe(0x19939b94L), tobe(0x1d528623L),
++tobe(0xf12f560eL), tobe(0xf5ee4bb9L), tobe(0xf8ad6d60L), tobe(0xfc6c70d7L),
++tobe(0xe22b20d2L), tobe(0xe6ea3d65L), tobe(0xeba91bbcL), tobe(0xef68060bL),
++tobe(0xd727bbb6L), tobe(0xd3e6a601L), tobe(0xdea580d8L), tobe(0xda649d6fL),
++tobe(0xc423cd6aL), tobe(0xc0e2d0ddL), tobe(0xcda1f604L), tobe(0xc960ebb3L),
++tobe(0xbd3e8d7eL), tobe(0xb9ff90c9L), tobe(0xb4bcb610L), tobe(0xb07daba7L),
++tobe(0xae3afba2L), tobe(0xaafbe615L), tobe(0xa7b8c0ccL), tobe(0xa379dd7bL),
++tobe(0x9b3660c6L), tobe(0x9ff77d71L), tobe(0x92b45ba8L), tobe(0x9675461fL),
++tobe(0x8832161aL), tobe(0x8cf30badL), tobe(0x81b02d74L), tobe(0x857130c3L),
++tobe(0x5d8a9099L), tobe(0x594b8d2eL), tobe(0x5408abf7L), tobe(0x50c9b640L),
++tobe(0x4e8ee645L), tobe(0x4a4ffbf2L), tobe(0x470cdd2bL), tobe(0x43cdc09cL),
++tobe(0x7b827d21L), tobe(0x7f436096L), tobe(0x7200464fL), tobe(0x76c15bf8L),
++tobe(0x68860bfdL), tobe(0x6c47164aL), tobe(0x61043093L), tobe(0x65c52d24L),
++tobe(0x119b4be9L), tobe(0x155a565eL), tobe(0x18197087L), tobe(0x1cd86d30L),
++tobe(0x029f3d35L), tobe(0x065e2082L), tobe(0x0b1d065bL), tobe(0x0fdc1becL),
++tobe(0x3793a651L), tobe(0x3352bbe6L), tobe(0x3e119d3fL), tobe(0x3ad08088L),
++tobe(0x2497d08dL), tobe(0x2056cd3aL), tobe(0x2d15ebe3L), tobe(0x29d4f654L),
++tobe(0xc5a92679L), tobe(0xc1683bceL), tobe(0xcc2b1d17L), tobe(0xc8ea00a0L),
++tobe(0xd6ad50a5L), tobe(0xd26c4d12L), tobe(0xdf2f6bcbL), tobe(0xdbee767cL),
++tobe(0xe3a1cbc1L), tobe(0xe760d676L), tobe(0xea23f0afL), tobe(0xeee2ed18L),
++tobe(0xf0a5bd1dL), tobe(0xf464a0aaL), tobe(0xf9278673L), tobe(0xfde69bc4L),
++tobe(0x89b8fd09L), tobe(0x8d79e0beL), tobe(0x803ac667L), tobe(0x84fbdbd0L),
++tobe(0x9abc8bd5L), tobe(0x9e7d9662L), tobe(0x933eb0bbL), tobe(0x97ffad0cL),
++tobe(0xafb010b1L), tobe(0xab710d06L), tobe(0xa6322bdfL), tobe(0xa2f33668L),
++tobe(0xbcb4666dL), tobe(0xb8757bdaL), tobe(0xb5365d03L), tobe(0xb1f740b4L)
++};
+Index: e2fsprogs-1.40.2/lib/ext2fs/crc32_user.h
+===================================================================
+--- /dev/null
++++ e2fsprogs-1.40.2/lib/ext2fs/crc32_user.h
+@@ -0,0 +1,45 @@
++/*
++ * Defines macros and types required by crc32 code undefined in user space.
++ */
++#ifndef _LINUX_CRC32_USER_H
++#define _LINUX_CRC32_USER_H
++#include <linux/types.h>
++
++#define likely(x)       __builtin_expect(!!(x), 1)
++#define unlikely(x)     __builtin_expect(!!(x), 0)
++
++#define __swab32(x) \
++({ \
++        __u32 __x = (x); \
++        ((__u32)( \
++                (((__u32)(__x) & (__u32)0x000000ffUL) << 24) | \
++                (((__u32)(__x) & (__u32)0x0000ff00UL) <<  8) | \
++                (((__u32)(__x) & (__u32)0x00ff0000UL) >>  8) | \
++                (((__u32)(__x) & (__u32)0xff000000UL) >> 24) )); \
++})
++
++#define ___constant_swab32(x) \
++        ((__u32)( \
++                (((__u32)(x) & (__u32)0x000000ffUL) << 24) | \
++                (((__u32)(x) & (__u32)0x0000ff00UL) <<  8) | \
++                (((__u32)(x) & (__u32)0x0000ff00UL) <<  8) | \
++                (((__u32)(x) & (__u32)0x00ff0000UL) >>  8) | \
++                (((__u32)(x) & (__u32)0xff000000UL) >> 24) ))
++
++#if __BYTE_ORDER == __LITTLE_ENDIAN
++#define __le32_to_cpu(x) ((__u32)(x))
++#define __cpu_to_le32(x) ((__u32)(x))
++#define __be32_to_cpu(x) __swab32((x))
++#define __cpu_to_be32(x) __swab32((x))
++#define __constant_cpu_to_le32(x) ((__u32)(x))
++#define __constant_cpu_to_be32(x) (( __u32)___constant_swab32((x)))
++#else
++#define __le32_to_cpu(x) __swab32((x))
++#define __cpu_to_le32(x) __swab32((x))
++#define __be32_to_cpu(x) ((__u32)(x))
++#define __cpu_to_be32(x) ((__u32)(x))
++#define __constant_cpu_to_le32(x) ___constant_swab32((x))
++#define __constant_cpu_to_be32(x) ((__u32)(x))
++#endif
++
++#endif /* _LINUX_CRC32_USER_H */
+Index: e2fsprogs-1.40.2/lib/ext2fs/Makefile.in
+===================================================================
+--- e2fsprogs-1.40.2.orig/lib/ext2fs/Makefile.in
++++ e2fsprogs-1.40.2/lib/ext2fs/Makefile.in
+@@ -69,6 +69,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_O
+ 	unlink.o \
+ 	valid_blk.o \
+ 	version.o \
++	crc32.o \
+ 	crc16.o \
+ 	csum.o
+ 
+@@ -143,6 +144,7 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/tst_types.c \
+ 	$(srcdir)/tst_iscan.c \
+ 	$(srcdir)/tst_csum.c \
++	$(srcdir)/crc32.c \
+ 	$(srcdir)/crc16.c \
+ 	$(srcdir)/csum.c
+ 
+@@ -234,10 +236,11 @@ tst_bitops: tst_bitops.o inline.o $(STAT
+ 	@$(CC) -o tst_bitops tst_bitops.o inline.o $(ALL_CFLAGS) \
+ 		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
+ 
+-tst_csum: tst_csum.o csum.o crc16.o $(STATIC_LIBEXT2FS) $(STATIC_LIBUUID)
++tst_csum: tst_csum.o csum.o crc16.o crc32.o $(STATIC_LIBEXT2FS) \
++		$(STATIC_LIBUUID)
+ 	@echo "	LD $@"
+-	@$(CC) -o tst_csum csum.o tst_csum.o crc16.o $(STATIC_LIBEXT2FS) \
+-		$(STATIC_LIBUUID) $(LIBCOM_ERR)
++	@$(CC) -o tst_csum csum.o tst_csum.o crc16.o crc32.o \
++		$(STATIC_LIBEXT2FS) $(STATIC_LIBUUID) $(LIBCOM_ERR)
+ 
+ tst_getsectsize: tst_getsectsize.o getsectsize.o $(STATIC_LIBEXT2FS)
+ 	@echo "	LD $@"
+@@ -384,6 +387,8 @@ cmp_bitmaps.o: $(srcdir)/cmp_bitmaps.c $
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
+ crc16.o: $(srcdir)/crc16.c $(srcdir)/ext2_fs.h $(srcdir)/crc16.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
++crc32.o: $(srcdir)/crc32.c $(srcdir)/ext2_fs.h $(srcdir)/crc16.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
+ csum.o: $(srcdir)/csum.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
+ dblist.o: $(srcdir)/dblist.c $(srcdir)/ext2_fs.h \
+Index: e2fsprogs-1.40.2/e2fsck/e2fsck.h
+===================================================================
+--- e2fsprogs-1.40.2.orig/e2fsck/e2fsck.h
++++ e2fsprogs-1.40.2/e2fsck/e2fsck.h
+@@ -30,10 +30,12 @@
  #if EXT2_FLAT_INCLUDES
-@@ -444,14 +463,16 @@ typedef struct ext2_icount *ext2_icount_
- 					 EXT2_FEATURE_INCOMPAT_META_BG|\
- 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
-  					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
--					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
-+					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
-+					 EXT4_FEATURE_INCOMPAT_MMP)
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "crc32.h"
+ #include "blkid.h"
  #else
- #define EXT2_LIB_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE|\
- 					 EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|\
- 					 EXT2_FEATURE_INCOMPAT_META_BG|\
- 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
- 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
--					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
-+					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
-+					 EXT4_FEATURE_INCOMPAT_MMP)
+ #include "ext2fs/ext2_fs.h"
+ #include "ext2fs/ext2fs.h"
++#include "ext2fs/crc32.h"
+ #include "blkid/blkid.h"
  #endif
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
-@@ -995,6 +1016,12 @@ errcode_t ext2fs_link(ext2_filsys fs, ex
- errcode_t ext2fs_unlink(ext2_filsys fs, ext2_ino_t dir, const char *name,
- 			ext2_ino_t ino, int flags);
  
-+/* mmp.c */
-+errcode_t ext2fs_read_mmp(ext2_filsys fs, blk_t mmp_blk, char *buf);
-+errcode_t ext2fs_write_mmp(ext2_filsys fs, blk_t mmp_blk, char *buf);
-+errcode_t ext2fs_enable_mmp(ext2_filsys fs);
-+long int ext2fs_mmp_new_seq();
-+
- /* read_bb.c */
- extern errcode_t ext2fs_read_bb_inode(ext2_filsys fs,
- 				      ext2_badblocks_list *bb_list);
-@@ -1032,6 +1059,7 @@ extern void ext2fs_swap_inode(ext2_filsy
- extern void ext2fs_swap_extent_header(struct ext3_extent_header *eh);
- extern void ext2fs_swap_extent_index(struct ext3_extent_idx *ix);
- extern void ext2fs_swap_extent(struct ext3_extent *ex);
-+extern void ext2fs_swap_mmp(struct mmp_struct *mmp);
- 
- /* valid_blk.c */
- extern int ext2fs_inode_has_valid_blocks(struct ext2_inode *inode);
-Index: e2fsprogs-1.40.5/misc/tune2fs.c
+Index: e2fsprogs-1.40.2/e2fsck/recovery.c
 ===================================================================
---- e2fsprogs-1.40.5.orig/misc/tune2fs.c
-+++ e2fsprogs-1.40.5/misc/tune2fs.c
-@@ -60,7 +60,7 @@ char * device_name;
- char * new_label, *new_last_mounted, *new_UUID;
- char * io_options;
- static int c_flag, C_flag, e_flag, f_flag, g_flag, i_flag, l_flag, L_flag;
--static int m_flag, M_flag, r_flag, s_flag = -1, u_flag, U_flag, T_flag;
-+static int m_flag, M_flag, r_flag, s_flag = -1, u_flag, U_flag, T_flag, p_flag;
- static time_t last_check_time;
- static int print_label;
- static int max_mount_count, mount_count, mount_flags;
-@@ -69,6 +69,7 @@ static double reserved_ratio;
- static unsigned long resgid, resuid;
- static unsigned short errors;
- static int open_flag;
-+static unsigned int mmp_update_interval;
- static char *features_cmd;
- static char *mntopts_cmd;
- static int stride, stripe_width;
-@@ -89,7 +90,8 @@ static void usage(void)
- 		  "[-g group]\n"
- 		  "\t[-i interval[d|m|w]] [-j] [-J journal_options]\n"
- 		  "\t[-l] [-s sparse_flag] [-m reserved_blocks_percent]\n"
--		  "\t[-o [^]mount_options[,...]] [-r reserved_blocks_count]\n"
-+		  "\t[-o [^]mount_options[,...]] [-p mmp_update_interval]"
-+		  "[-r reserved_blocks_count]\n"
- 		  "\t[-u user] [-C mount_count] [-L volume_label]\n"
- 		  "\t[-M last_mounted_dir] [-O [^]feature[,...]]\n"
- 		  "\t[-E extended-option[,...]] [-T last_check_time] "
-@@ -101,7 +103,8 @@ static __u32 ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX,	/* Compat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE|		/* Incompat */
--		EXT4_FEATURE_INCOMPAT_FLEX_BG,
-+		EXT4_FEATURE_INCOMPAT_FLEX_BG |
-+		EXT4_FEATURE_INCOMPAT_MMP,
- 	EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |	/* R/O compat */
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
- };
-@@ -290,6 +293,7 @@ static void update_feature_set(ext2_fils
- {
- 	int sparse, old_sparse, filetype, old_filetype;
- 	int journal, old_journal, dxdir, old_dxdir, uninit, old_uninit;
-+	int mmp, old_mmp;
- 	int flex_bg, old_flex_bg;
- 	struct ext2_super_block *sb= fs->super;
- 	__u32	old_compat, old_incompat, old_ro_compat;
-@@ -293,6 +296,7 @@ static void update_feature_set(ext2_fils
- 	int flex_bg, old_flex_bg;
- 	struct ext2_super_block *sb= fs->super;
- 	__u32	old_compat, old_incompat, old_ro_compat;
-+	int error;
+--- e2fsprogs-1.40.2.orig/e2fsck/recovery.c
++++ e2fsprogs-1.40.2/e2fsck/recovery.c
+@@ -21,6 +21,7 @@
+ #include <linux/jbd.h>
+ #include <linux/errno.h>
+ #include <linux/slab.h>
++#include <linux/crc32.h>
+ #endif
  
- 	old_compat = sb->s_feature_compat;
- 	old_ro_compat = sb->s_feature_ro_compat;
-@@ -310,6 +315,8 @@ static void update_feature_set(ext2_fils
- 		EXT2_FEATURE_COMPAT_DIR_INDEX;
- 	old_uninit = sb->s_feature_ro_compat &
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
-+	old_mmp = sb->s_feature_incompat &
-+		EXT4_FEATURE_INCOMPAT_MMP;
- 	if (e2p_edit_feature(features, &sb->s_feature_compat,
- 			     ok_features)) {
- 		fprintf(stderr, _("Invalid filesystem option set: %s\n"),
-@@ -328,6 +335,8 @@ static void update_feature_set(ext2_fils
- 		EXT2_FEATURE_COMPAT_DIR_INDEX;
- 	uninit = sb->s_feature_ro_compat &
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
-+	mmp = sb->s_feature_incompat &
-+		EXT4_FEATURE_INCOMPAT_MMP;
- 	if (old_journal && !journal) {
- 		if ((mount_flags & EXT2_MF_MOUNTED) &&
- 		    !(mount_flags & EXT2_MF_READONLY)) {
-@@ -376,6 +385,75 @@ static void update_feature_set(ext2_fils
+ /*
+@@ -304,6 +305,36 @@ int journal_skip_recovery(journal_t *jou
+ 	return err;
+ }
+ 
++/* calc_chksums calculates the checksums for the blocks described in the
++ * descriptor block.
++ */
++static int calc_chksums(journal_t *journal, struct buffer_head *bh,
++			unsigned long *next_log_block, __u32 *crc32_sum)
++{
++	int i, num_blks, err;
++	unsigned io_block;
++	struct buffer_head *obh;
++
++	num_blks = count_tags(bh, journal->j_blocksize);
++	/* Calculate checksum of the descriptor block. */
++	*crc32_sum = crc32_be(*crc32_sum, (void *)bh->b_data, bh->b_size);
++	for (i = 0; i < num_blks; i++) {
++		io_block = (*next_log_block)++;
++		wrap(journal, *next_log_block);
++
++		err = jread(&obh, journal, io_block);
++		if (err) {
++			printk (KERN_ERR "JBD: IO error %d recovering block "
++				"%u in log\n", err, io_block);
++			return 1;
++		} else {
++			*crc32_sum = crc32_be(*crc32_sum, (void *)obh->b_data,
++				     obh->b_size);
++		}
++	}
++	return 0;
++}
++
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -315,6 +346,7 @@ static int do_one_pass(journal_t *journa
+ 	struct buffer_head *	bh;
+ 	unsigned int		sequence;
+ 	int			blocktype;
++	__u32			crc32_sum = ~0; /* Transactional Checksums */
+ 	
+ 	/* Precompute the maximum metadata descriptors in a descriptor block */
+ 	int			MAX_BLOCKS_PER_DESC;
+@@ -404,9 +436,24 @@ static int do_one_pass(journal_t *journa
+ 		switch(blocktype) {
+ 		case JFS_DESCRIPTOR_BLOCK:
+ 			/* If it is a valid descriptor block, replay it
+-			 * in pass REPLAY; otherwise, just skip over the
+-			 * blocks it describes. */
++			 * in pass REPLAY; if journal_checksums enabled, then
++			 * calculate checksums in PASS_SCAN, otherwise,
++			 * just skip over the blocks it describes. */
+ 			if (pass != PASS_REPLAY) {
++				if (pass == PASS_SCAN &&
++				    JFS_HAS_COMPAT_FEATURE(journal,
++					    JFS_FEATURE_COMPAT_CHECKSUM) &&
++				    !info->end_transaction) {
++					if (calc_chksums(journal, bh,
++							&next_log_block,
++							&crc32_sum)) {
++						brelse(bh);
++						break;
++					}
++					brelse(bh);
++					continue;
++				}
++
+ 				next_log_block +=
+ 					count_tags(bh, journal->j_blocksize);
+ 				wrap(journal, next_log_block);
+@@ -501,9 +548,96 @@ static int do_one_pass(journal_t *journa
+ 			continue;
+ 
+ 		case JFS_COMMIT_BLOCK:
+-			/* Found an expected commit block: not much to
+-			 * do other than move on to the next sequence
++			/*     How to differentiate between interrupted commit
++			 *               and journal corruption ?
++			 *
++			 * {nth transaction}
++			 *        Checksum Verification Failed
++			 *			 |
++			 *		 ____________________
++			 *		|		     |
++			 * 	async_commit             sync_commit
++			 *     		|                    |
++			 *		| GO TO NEXT    "Journal Corruption"
++			 *		| TRANSACTION
++			 *		|
++			 * {(n+1)th transanction}
++			 *		|
++			 * 	 _______|______________
++			 * 	|	 	      |
++			 * Commit block found	Commit block not found
++			 *      |		      |
++			 * "Journal Corruption"       |
++			 *		 _____________|__________
++			 *     		|	           	|
++			 *	nth trans corrupt	OR   nth trans
++			 *	and (n+1)th interrupted     interrupted
++			 *	before commit block
++			 *      could reach the disk.
++			 *	(Cannot find the difference in above
++			 *	 mentioned conditions. Hence assume
++			 *	 "Interrupted Commit".)
++			 */
++
++			/* Found an expected commit block: if checksums
++			 * are present verify them in PASS_SCAN; else not
++			 * much to do other than move on to the next sequence
+ 			 * number. */
++			if (pass == PASS_SCAN &&
++			    JFS_HAS_COMPAT_FEATURE(journal,
++				    JFS_FEATURE_COMPAT_CHECKSUM)) {
++				int chksum_err, chksum_seen;
++				struct commit_header *cbh =
++					(struct commit_header *)bh->b_data;
++				__u32 found_chksum = ntohl(cbh->h_chksum[0]);
++
++				chksum_err = chksum_seen = 0;
++
++				if (info->end_transaction) {
++					printk(KERN_ERR "JBD: Transaction %u "
++						"found to be corrupt.\n",
++						next_commit_ID - 1);
++					brelse(bh);
++					break;
++				}
++
++				if (crc32_sum == found_chksum &&
++				    cbh->h_chksum_type == JFS_CRC32_CHKSUM &&
++				    cbh->h_chksum_size ==
++						JFS_CRC32_CHKSUM_SIZE) {
++				       chksum_seen = 1;
++				} else if (!(cbh->h_chksum_type == 0 &&
++					     cbh->h_chksum_size == 0 &&
++					     found_chksum == 0 &&
++					     !chksum_seen)) {
++				/*
++				 * If fs is mounted using an old kernel and then
++				 * kernel with journal_chksum is used then we
++				 * get a situation where the journal flag has
++				 * checksum flag set but checksums are not
++				 * present i.e chksum = 0, in the individual
++				 * commit blocks.
++				 * Hence to avoid checksum failures, in this
++				 * situation, this extra check is added.
++				 */
++						chksum_err = 1;
++				}
++
++				if (chksum_err) {
++					info->end_transaction = next_commit_ID;
++
++					if (!JFS_HAS_COMPAT_FEATURE(journal,
++					   JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)){
++						printk(KERN_ERR
++						       "JBD: Transaction %u "
++						       "found to be corrupt.\n",
++						       next_commit_ID);
++						brelse(bh);
++						break;
++					}
++				}
++				crc32_sum = ~0;
++			}
+ 			brelse(bh);
+ 			next_commit_ID++;
+ 			continue;
+@@ -539,9 +673,10 @@ static int do_one_pass(journal_t *journa
+ 	 * transaction marks the end of the valid log.
+ 	 */
+ 	
+-	if (pass == PASS_SCAN)
+-		info->end_transaction = next_commit_ID;
+-	else {
++	if (pass == PASS_SCAN) {
++		if (!info->end_transaction)
++			info->end_transaction = next_commit_ID;
++	} else {
+ 		/* It's really bad news if different passes end up at
+ 		 * different places (but possible due to IO errors). */
+ 		if (info->end_transaction != next_commit_ID) {
+Index: e2fsprogs-1.40.2/lib/ext2fs/tst_csum.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/lib/ext2fs/tst_csum.c
++++ e2fsprogs-1.40.2/lib/ext2fs/tst_csum.c
+@@ -1,16 +1,17 @@
+ /*
+- * This testing program verifies checksumming operations
+- *
+- * Copyright (C) 2006, 2007 by Andreas Dilger <adilger@clusterfs.com>
+- *
+- * %Begin-Header%
+- * This file may be redistributed under the terms of the GNU Public
+- * License.
+- * %End-Header%
+- */
++* This testing program verifies checksumming operations
++*
++* Copyright (C) 2006, 2007 by Andreas Dilger <adilger@clusterfs.com>
++*
++* %Begin-Header%
++* This file may be redistributed under the terms of the GNU Public
++* License.
++* %End-Header%
++*/
+ 
+ #include "ext2fs/ext2_fs.h"
+ #include "ext2fs/ext2fs.h"
++#include "ext2fs/crc32.h"
+ #include "ext2fs/crc16.h"
+ #include "uuid/uuid.h"
+ 
+@@ -64,28 +65,61 @@ int main(int argc, char **argv)
+ 						    0x4b, 0xae, 0xec, 0xdb } };
+ 	__u16 csum1, csum2, csum_known = 0xd3a4;
+ 	char data[8] = { 0x10, 0x20, 0x30, 0x40, 0xf1, 0xb2, 0xc3, 0xd4 };
+-	__u16 data_crc[8] =   { 0xcc01, 0x180c, 0x1118, 0xfa10,
+-				0x483a, 0x6648, 0x6726, 0x85e6 };
+-	__u16 data_crc0[8] =  { 0x8cbe, 0xa80d, 0xd169, 0xde10,
+-				0x481e, 0x7d48, 0x673d, 0x8ea6 };
++	__u16 data_crc16[8] =   { 0xcc01, 0x180c, 0x1118, 0xfa10,
++				  0x483a, 0x6648, 0x6726, 0x85e6 };
++	__u16 data_crc16_0[8] =  { 0x8cbe, 0xa80d, 0xd169, 0xde10,
++				   0x481e, 0x7d48, 0x673d, 0x8ea6 };
++	__u32 data_crc32[8] =  {
++				 0x4c11db70, 0x88722df3, 0xe91b93c6, 0xc8756001,
++				 0x839b9c9f, 0x4b6fef27, 0x20eb2a56, 0x7196ddd5
++			       };
++	__u32 data_crc32_0[8] = {
++				  0x21964c4, 0x88c5498e, 0x5e7feec6, 0xf71bd7a,
++				  0xc48b2703, 0x71155355, 0xa1efe310, 0x1892668c
++				};
+ 	int i;
+ 
+ 	for (i = 0; i < sizeof(data); i++) {
+ 		csum1 = crc16(0, data, i + 1);
+-		printf("crc16(0): data[%d]: %04x=%04x\n", i, csum1,data_crc[i]);
+-		if (csum1 != data_crc[i]) {
++		printf("crc16(0): data[%d]: %04x=%04x\n", i, csum1,
++		       data_crc16[i]);
++		if (csum1 != data_crc16[i]) {
+ 			printf("error: crc16(0) for data[%d] should be %04x\n",
+-			       i, data_crc[i]);
++			       i, data_crc16[i]);
  			exit(1);
  		}
  	}
-+	if (!old_mmp && mmp) {
-+		if ((mount_flags & EXT2_MF_MOUNTED) ||
-+		    (mount_flags & EXT2_MF_READONLY)) {
-+			fputs(_("The multiple mount protection feature can't \n"
-+				"be set if the filesystem is mounted or \n"
-+				"read-only.\n"), stderr);
+ 
+ 	for (i = 0; i < sizeof(data); i++) {
+ 		csum1 = crc16(~0, data, i + 1);
+-		printf("crc16(~0): data[%d]: %04x=%04x\n",i,csum1,data_crc0[i]);
+-		if (csum1 != data_crc0[i]) {
++		printf("crc16(~0): data[%d]: %04x=%04x\n", i, csum1,
++		       data_crc16_0[i]);
++		if (csum1 != data_crc16_0[i]) {
+ 			printf("error: crc16(~0) for data[%d] should be %04x\n",
+-			       i, data_crc0[i]);
++			       i, data_crc16_0[i]);
 +			exit(1);
 +		}
-+
-+		error = ext2fs_enable_mmp(fs);
-+		if (error) {
-+			fputs(_("\nError while enabling multiple mount "
-+				"protection feature."), stderr);
++	}
++	for (i = 0; i < sizeof(data); i++) {
++		__u32 csum32;
++		csum32 = crc32_be(0, data, i + 1);
++		printf("crc32(0): data[%d]: %04x=%04x\n", i, csum32,
++		       data_crc32[i]);
++		if (csum32 != data_crc32[i]) {
++			printf("error: crc32(0) for data[%d] should be %04x\n",
++			       i, data_crc32[i]);
 +			exit(1);
 +		}
-+
-+		printf(_("Multiple mount protection has been enabled. The MMP "
-+			 "update interval has been set to %d seconds.\n"),
-+		       sb->s_mmp_update_interval);
 +	}
 +
-+	if (old_mmp && !mmp) {
-+		blk_t mmp_block;
-+		struct mmp_struct *mmp_s;
-+		char *buf;
-+
-+		if (mount_flags & EXT2_MF_READONLY) {
-+			fputs(_("The multiple mount protection feature cannot\n"
-+				"be disabled if the filesystem is readonly.\n"),
-+				stderr);
-+			exit(1);
-+		}
-+
-+		error = ext2fs_read_bitmaps(fs);
-+		if (error) {
-+			fputs(_("Error while reading bitmaps\n"), stderr);
-+			exit(1);
-+		}
-+
-+		mmp_block = sb->s_mmp_block;
-+
-+		error = ext2fs_get_mem(fs->blocksize, &buf);
-+		if (error) {
-+			fputs(_("Error allocating memory.\n"), stderr);
-+			exit(1);
-+		}
-+
-+		mmp_s = (struct mmp_struct *) buf;
-+		error = ext2fs_read_mmp(fs, mmp_block, buf);
-+		if (error) {
-+			if (error == EXT2_ET_MMP_MAGIC_INVALID)
-+				printf(_("Magic number in MMP block does not "
-+					 "match. expected: %x, actual: %x\n"),
-+					 EXT2_MMP_MAGIC, mmp_s->mmp_magic);
-+			else
-+				com_err (program_name, error,
-+	 				 _("while reading MMP block."));
-+			goto mmp_error;
-+		}
-+
-+		ext2fs_unmark_block_bitmap(fs->block_map, mmp_block);
-+		ext2fs_mark_bb_dirty(fs);
-+
-+mmp_error:
-+		sb->s_mmp_block = 0;
-+		sb->s_mmp_update_interval = 0;
-+		if (buf)
-+			ext2fs_free_mem(&buf);
-+	}
- 
- 	if (sb->s_rev_level == EXT2_GOOD_OLD_REV &&
- 	    (sb->s_feature_compat || sb->s_feature_ro_compat ||
-@@ -530,7 +608,7 @@ static void parse_tune2fs_options(int ar
- 	struct passwd * pw;
- 
- 	printf("tune2fs %s (%s)\n", E2FSPROGS_VERSION, E2FSPROGS_DATE);
--	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:r:s:u:C:E:J:L:M:O:T:U:")) != EOF)
-+	while ((c = getopt(argc, argv, "c:e:fg:i:jlm:o:p:r:s:u:C:E:J:L:M:O:T:U:")) != EOF)
- 		switch (c)
- 		{
- 			case 'c':
-@@ -685,6 +763,26 @@ static void parse_tune2fs_options(int ar
- 				features_cmd = optarg;
- 				open_flag = EXT2_FLAG_RW;
- 				break;
-+			case 'p':
-+				mmp_update_interval = strtol (optarg, &tmp, 0);
-+				if (*tmp && mmp_update_interval < 0) {
-+					com_err (program_name, 0, _("invalid "
-+						 "mmp update interval"));
-+					usage();
-+				}
-+				if (mmp_update_interval == 0)
-+					mmp_update_interval = EXT2_MMP_UPDATE_INTERVAL;
-+				if (mmp_update_interval > EXT2_MMP_UPDATE_INTERVAL) {
-+					com_err (program_name, 0,
-+						 _("MMP update interval of %s "
-+						   "seconds may be dangerous "
-+						   "under high load. Consider "
-+						   "decreasing it."),
-+						 optarg);
-+				}
-+				p_flag = 1;
-+				open_flag = EXT2_FLAG_RW;
-+				break;
- 			case 'r':
- 				reserved_blocks = strtoul (optarg, &tmp, 0);
- 				if (*tmp) {
-@@ -883,6 +981,9 @@ int main (int argc, char ** argv)
- #else
- 	io_ptr = unix_io_manager;
- #endif
-+	if (open_flag == EXT2_FLAG_RW && f_flag)
-+		open_flag |= EXT2_FLAG_SKIP_MMP;
-+
- 	retval = ext2fs_open2(device_name, io_options, open_flag, 
- 			      0, 0, io_ptr, &fs);
-         if (retval) {
-@@ -944,6 +1045,12 @@ int main (int argc, char ** argv)
- 		printf (_("Setting reserved blocks percentage to %g%% (%u blocks)\n"),
- 			reserved_ratio, sb->s_r_blocks_count);
++	for (i = 0; i < sizeof(data); i++) {
++		__u32 csum32;
++		csum32 = crc32_be(~0U, data, i + 1);
++		printf("crc32(~0): data[%d]: %04x=%04x\n", i, csum32,
++		       data_crc32_0[i]);
++		if (csum32 != data_crc32_0[i]) {
++			printf("error: crc32(~0) for data[%d] should be %04x\n",
++			       i, data_crc32_0[i]);
+ 			exit(1);
+ 		}
  	}
-+	if (p_flag) {
-+		sb->s_mmp_update_interval = mmp_update_interval;
-+		ext2fs_mark_super_dirty(fs);
-+		printf (_("Setting multiple mount protection update interval to "
-+			  "%lu seconds\n"), mmp_update_interval);
-+	}
- 	if (r_flag) {
- 		if (reserved_blocks >= sb->s_blocks_count/2) {
- 			com_err (program_name, 0,
-Index: e2fsprogs-1.40.5/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/pass1.c
-+++ e2fsprogs-1.40.5/e2fsck/pass1.c
-@@ -795,7 +795,20 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	    (fs->super->s_mtime < fs->super->s_inodes_count))
- 		busted_fs_time = 1;
- 
-+	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) &&
-+	    !(fs->super->s_mmp_block < fs->super->s_first_data_block ||
-+	      fs->super->s_mmp_block >= fs->super->s_blocks_count))
-+		ext2fs_mark_block_bitmap(ctx->block_found_map,
-+					 fs->super->s_mmp_block);
-+
- 	while (1) {
-+		if (ino % EXT2_MMP_INODE_INTERVAL == 0) {
-+			errcode_t error;
-+
-+			error = e2fsck_mmp_update(fs);
-+			if (error)
-+				fatal_error(ctx, 0);
-+		}
- 		old_op = ehandler_operation(_("getting next inode from scan"));
- 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino, 
- 							  inode, inode_size);
-Index: e2fsprogs-1.40.5/e2fsck/unix.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/unix.c
-+++ e2fsprogs-1.40.5/e2fsck/unix.c
-@@ -1076,6 +1076,23 @@ restart:
- 			       "to do a read-only\n"
- 			       "check of the device.\n"));
- #endif
-+		else if (retval == EXT2_ET_MMP_BAD_BLOCK) {
-+			if (fix_problem(ctx, PR_0_MMP_INVALID_BLK, &pctx)) {
-+				fs->super->s_mmp_block = 0;
-+				ext2fs_mark_super_dirty(fs);
-+			}
-+		}
-+		else if (retval == EXT2_ET_MMP_FAILED) {
-+			dump_mmp_msg((struct mmp_struct *)fs->mmp_buf,
-+				     _("Device is already active on another node."));
-+		}
-+		else if (retval == EXT2_ET_MMP_FSCK_ON) {
-+			dump_mmp_msg((struct mmp_struct *)fs->mmp_buf,
-+				     _("It seems as if e2fsck is running on the "
-+				     "filesystem.\nIf you are sure that e2fsck is "
-+				     "not running then use \"tune2fs -O ^mmp {device}\" "
-+				     "followed by \"tune2fs -O mmp {device}\""));
-+		}
- 		else
- 			fix_problem(ctx, PR_0_SB_CORRUPT, &pctx);
- 		fatal_error(ctx, 0);
-Index: e2fsprogs-1.40.5/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/problem.c
-+++ e2fsprogs-1.40.5/e2fsck/problem.c
-@@ -389,6 +389,11 @@ static struct e2fsck_problem problem_tab
- 	  PROMPT_NONE, 0 },
- 
- 
-+	/* Superblock has invalid MMP block. */
-+	{ PR_0_MMP_INVALID_BLK,
-+	  N_("@S has invalid MMP block.  "),
-+	  PROMPT_CLEAR, PR_PREEN_OK },
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-Index: e2fsprogs-1.40.5/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/problem.h
-+++ e2fsprogs-1.40.5/e2fsck/problem.h
-@@ -222,6 +222,9 @@ struct problem_context {
- #define PR_0_CLEAR_EXTRA_ISIZE			0x00003C
- 
- 
-+/* Superblock has invalid MMP block. */
-+#define PR_0_MMP_INVALID_BLK			0x00003A
-+
- /*
-  * Pass 1 errors
-  */
-Index: e2fsprogs-1.40.5/lib/ext2fs/swapfs.c
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/swapfs.c
-+++ e2fsprogs-1.40.5/lib/ext2fs/swapfs.c
-@@ -70,6 +70,8 @@ void ext2fs_swap_super(struct ext2_super
- 	sb->s_min_extra_isize = ext2fs_swab16(sb->s_min_extra_isize);
- 	sb->s_want_extra_isize = ext2fs_swab16(sb->s_want_extra_isize);
- 	sb->s_flags = ext2fs_swab32(sb->s_flags);
-+	sb->s_mmp_update_interval = ext2fs_swab16(sb->s_mmp_update_interval);
-+	sb->s_mmp_block = ext2fs_swab64(sb->s_mmp_block);
- 	for (i=0; i < 4; i++)
- 		sb->s_hash_seed[i] = ext2fs_swab32(sb->s_hash_seed[i]);
- 	for (i=0; i < 17; i++)
-@@ -310,4 +312,12 @@ void ext2fs_swap_inode(ext2_filsys fs, s
- 				sizeof(struct ext2_inode));
- }
- 
-+void ext2fs_swap_mmp(struct mmp_struct *mmp)
-+{
-+	mmp->mmp_magic = ext2fs_swab32(mmp->mmp_magic);
-+	mmp->mmp_seq = ext2fs_swab32(mmp->mmp_seq);
-+	mmp->mmp_time = ext2fs_swab64(mmp->mmp_time);
-+	mmp->mmp_check_interval = ext2fs_swab16(mmp->mmp_check_interval);
-+}
-+
- #endif
-Index: e2fsprogs-1.40.5/lib/ext2fs/openfs.c
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/openfs.c
-+++ e2fsprogs-1.40.5/lib/ext2fs/openfs.c
-@@ -22,6 +22,9 @@
- #if HAVE_SYS_TYPES_H
- #include <sys/types.h>
- #endif
-+#ifdef HAVE_ERRNO_H
-+#include <errno.h>
-+#endif
- 
- #include "ext2_fs.h"
- 
-@@ -67,6 +70,97 @@ errcode_t ext2fs_open(const char *name, 
- }
- 
- /*
-+ * Make sure that the fs is not mounted or being fsck'ed while opening the fs.
-+ */
-+int ext2fs_multiple_mount_protect(ext2_filsys fs)
-+{
-+	blk_t mmp_blk = fs->super->s_mmp_block;
-+	char *buf;
-+	struct mmp_struct *mmp_s;
-+	unsigned seq;
-+	unsigned int mmp_check_interval;
-+	errcode_t retval = 0;
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &fs->mmp_buf);
-+	if (retval)
-+		goto mmp_error;
-+	buf = fs->mmp_buf;
-+
-+	retval = ext2fs_read_mmp(fs, mmp_blk, buf);
-+	if (retval)
-+		goto mmp_error;
-+
-+	mmp_s = (struct mmp_struct *) buf;
-+
-+	mmp_check_interval = fs->super->s_mmp_update_interval;
-+	if (mmp_check_interval < EXT2_MMP_MIN_CHECK_INTERVAL)
-+		mmp_check_interval = EXT2_MMP_MIN_CHECK_INTERVAL;
-+
-+	/*
-+	 * If check_interval in MMP block is larger, use that instead of
-+	 * check_interval from the superblock.
-+	 */
-+	if (mmp_s->mmp_check_interval > mmp_check_interval)
-+		mmp_check_interval = mmp_s->mmp_check_interval;
-+
-+
-+	seq = mmp_s->mmp_seq;
-+	if (seq == EXT2_MMP_SEQ_CLEAN)
-+		goto clean_seq;
-+	if (seq == EXT2_MMP_SEQ_FSCK) {
-+		retval = EXT2_ET_MMP_FSCK_ON;
-+		goto mmp_error;
-+	}
-+
-+	if (seq > EXT2_MMP_SEQ_FSCK) {
-+		retval = EXT2_ET_MMP_UNKNOWN_SEQ;
-+		goto mmp_error;
-+	}
-+
-+	sleep(2 * mmp_check_interval + 1);
-+
-+	retval = ext2fs_read_mmp(fs, mmp_blk, buf);
-+	if (retval)
-+		goto mmp_error;
-+
-+	if (seq != mmp_s->mmp_seq) {
-+		retval = EXT2_ET_MMP_FAILED;
-+		goto mmp_error;
-+	}
-+
-+clean_seq:
-+	mmp_s->mmp_seq = seq = ext2fs_mmp_new_seq();
-+
-+	retval = ext2fs_write_mmp(fs, mmp_blk, buf);
-+	if (retval)
-+		goto mmp_error;
-+
-+	sleep(2 * mmp_check_interval + 1);
-+
-+	retval = ext2fs_read_mmp(fs, mmp_blk, buf);
-+	if (retval)
-+		goto mmp_error;
-+
-+	if (seq != mmp_s->mmp_seq) {
-+		retval = EXT2_ET_MMP_FAILED;
-+		goto mmp_error;
-+	}
-+
-+	mmp_s->mmp_seq = EXT2_MMP_SEQ_FSCK;
-+	retval = ext2fs_write_mmp(fs, mmp_blk, buf);
-+	if (retval)
-+		goto mmp_error;
-+
-+	return 0;
-+
-+mmp_error:
-+	if (buf)
-+		ext2fs_free_mem(&buf);
-+
-+	return retval;
-+}
-+
-+/*
-  *  Note: if superblock is non-zero, block-size must also be non-zero.
-  * 	Superblock and block_size can be zero to use the default size.
-  *
-@@ -76,6 +170,7 @@ errcode_t ext2fs_open(const char *name, 
-  * 	EXT2_FLAG_FORCE - Open the filesystem even if some of the
-  *				features aren't supported.
-  *	EXT2_FLAG_JOURNAL_DEV_OK - Open an ext3 journal device
-+ *	EXT2_FLAG_SKIP_MMP - Open without multi-mount protection check.
-  */
- errcode_t ext2fs_open2(const char *name, const char *io_options,
- 		       int flags, int superblock,
-@@ -320,6 +415,15 @@ errcode_t ext2fs_open2(const char *name,
- 	}
- 
- 	*ret_fs = fs;
-+
-+	fs->mmp_buf = NULL;
-+	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) &&
-+	    (flags & EXT2_FLAG_RW) && !(flags & EXT2_FLAG_SKIP_MMP)) {
-+		retval = ext2fs_multiple_mount_protect(fs);
-+		if (retval)
-+			goto cleanup;
-+	}
-+
- 	return 0;
- cleanup:
- 	ext2fs_free(fs);
-Index: e2fsprogs-1.40.5/lib/ext2fs/ext2_err.et.in
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/ext2_err.et.in
-+++ e2fsprogs-1.40.5/lib/ext2fs/ext2_err.et.in
-@@ -362,5 +362,25 @@ ec	EXT2_ET_EA_NAME_NOT_FOUND,
- ec	EXT2_ET_EA_NAME_EXISTS,
- 	"Extended attribute name already exists"
- 
-+ec	EXT2_ET_MMP_MAGIC_INVALID,
-+	"MMP: Invalid magic number in MMP block"
-+
-+ec	EXT2_ET_MMP_FAILED,
-+	"MMP: Device already active on another node"
-+
-+ec	EXT2_ET_MMP_FSCK_ON,
-+	"MMP: Seems as if fsck is already being run on the filesystem."
-+
-+ec	EXT2_ET_MMP_BAD_BLOCK,
-+	"MMP: MMP block number beyond filesystem range."
-+
-+ec	EXT2_ET_MMP_UNKNOWN_SEQ,
-+	"MMP: MMP sequence is beyond EXT2_MMP_SEQ_MAX. This filesystem "
-+	"seems to be undergoing an unknown operation."
-+
-+ec	EXT2_ET_MMP_FSCK_ABORT,
-+	"MMP: Expected sequence not found. Filesystem may be mounted while "
-+	"fsck was running"
-+
- 	end
- 
-Index: e2fsprogs-1.40.5/lib/ext2fs/closefs.c
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/closefs.c
-+++ e2fsprogs-1.40.5/lib/ext2fs/closefs.c
-@@ -351,12 +351,63 @@ errout:
- 	return retval;
- }
- 
-+errcode_t write_mmp_clean(ext2_filsys fs)
-+{
-+	blk_t mmp_blk = fs->super->s_mmp_block;
-+	char *buf = fs->mmp_buf, *buf_cmp;
-+	struct mmp_struct *mmp, *mmp_cmp;
-+	errcode_t retval;
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &buf_cmp);
-+	if (retval)
-+		goto mmp_error;
-+
-+	retval = ext2fs_read_mmp(fs, mmp_blk, buf_cmp);
-+	if (retval)
-+		goto mmp_error;
-+	mmp_cmp = (struct mmp_struct *) buf_cmp;
-+
-+	/*
-+	 * This is important since we may come here just after when MMP feature
-+	 * is set and fs->mmp_buf is NULL
-+	 */
-+	if (!buf)
-+		goto check_skipped;
-+
-+	/*
-+	 * Make sure that the MMP block is not changed.
-+	 */
-+	mmp = (struct mmp_struct *) buf;
-+	if (memcmp(mmp, mmp_cmp, sizeof(struct mmp_struct)))
-+		return EXT2_ET_MMP_FSCK_ABORT;
-+
-+check_skipped:
-+	mmp_cmp->mmp_seq = EXT2_MMP_SEQ_CLEAN;
-+	retval = ext2fs_write_mmp(fs, mmp_blk, buf_cmp);
-+
-+mmp_error:
-+	if (buf)
-+		ext2fs_free_mem(&buf);
-+	if (buf_cmp)
-+		ext2fs_free_mem(&buf_cmp);
-+
-+	return retval;
-+}
-+
-+
- errcode_t ext2fs_close(ext2_filsys fs)
- {
- 	errcode_t	retval;
- 	
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-+	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) &&
-+	    (fs->flags & EXT2_FLAG_RW) && !(fs->flags & EXT2_FLAG_SKIP_MMP)) {
-+		retval = write_mmp_clean(fs);
-+		if (retval)
-+			return retval;
-+	}
-+
- 	if (fs->flags & EXT2_FLAG_DIRTY) {
- 		retval = ext2fs_flush(fs);
- 		if (retval)
-Index: e2fsprogs-1.40.5/e2fsck/e2fsck.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/e2fsck.c
-+++ e2fsprogs-1.40.5/e2fsck/e2fsck.c
-@@ -186,6 +186,7 @@ int e2fsck_run(e2fsck_t ctx)
- {
- 	int	i;
- 	pass_t	e2fsck_pass;
-+	int error;
- 
- #ifdef HAVE_SETJMP_H
- 	if (setjmp(ctx->abort_loc)) {
-@@ -198,6 +199,9 @@ int e2fsck_run(e2fsck_t ctx)
- 	for (i=0; (e2fsck_pass = e2fsck_passes[i]); i++) {
- 		if (ctx->flags & E2F_FLAG_RUN_RETURN)
- 			break;
-+		error = e2fsck_mmp_update(ctx->fs);
-+		if (error)
-+		      	fatal_error(ctx, 0);
- 		e2fsck_pass(ctx);
- 		if (ctx->progress)
- 			(void) (ctx->progress)(ctx, 0, 0, 0);
-Index: e2fsprogs-1.40.5/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/e2fsck.h
-+++ e2fsprogs-1.40.5/e2fsck/e2fsck.h
-@@ -535,6 +535,8 @@ extern void mtrace_print(char *mesg);
- extern blk_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs,
- 			   const char *name, io_manager manager);
- extern int ext2_file_type(unsigned int mode);
-+errcode_t e2fsck_mmp_update(ext2_filsys fs);
-+void dump_mmp_msg(struct mmp_struct *mmp, const char *msg);
- 
- /* unix.c */
- extern void e2fsck_clear_progbar(e2fsck_t ctx);
-Index: e2fsprogs-1.40.5/lib/ext2fs/Makefile.in
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/Makefile.in
-+++ e2fsprogs-1.40.5/lib/ext2fs/Makefile.in
-@@ -55,6 +55,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_O
- 	lookup.o \
- 	mkdir.o \
- 	mkjournal.o \
-+	mmp.o \
- 	native.o \
- 	newdir.o \
- 	openfs.o \
-@@ -116,6 +117,7 @@ SRCS= ext2_err.c \
- 	$(srcdir)/lookup.c \
- 	$(srcdir)/mkdir.c \
- 	$(srcdir)/mkjournal.c \
-+	$(srcdir)/mmp.c	\
- 	$(srcdir)/namei.c \
- 	$(srcdir)/native.c \
- 	$(srcdir)/newdir.c \
-@@ -502,6 +504,7 @@ mkdir.o: $(srcdir)/mkdir.c $(srcdir)/ext
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
-  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
-+mmp.o: $(srcdir)/ext2_fs.h $(srcdir)/ext2fs.h
- mkjournal.o: $(srcdir)/mkjournal.c $(srcdir)/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/e2p/e2p.h \
-  $(srcdir)/ext2_fs.h $(srcdir)/ext2fs.h $(srcdir)/ext3_extents.h \
-Index: e2fsprogs-1.40.5/lib/ext2fs/mmp.c
-===================================================================
---- /dev/null
-+++ e2fsprogs-1.40.5/lib/ext2fs/mmp.c
-@@ -0,0 +1,139 @@
-+/*
-+ * Helper functions for multiple mount protection(MMP).
-+ *
-+ * Copyright (C) 2006, 2007 by Kalpak Shah <kalpak@clusterfs.com>
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License.
-+ * %End-Header%
-+ */
-+
-+#if HAVE_UNISTD_H
-+#include <unistd.h>
-+#endif
-+#include <sys/time.h>
-+
-+#include "ext2fs/ext2_fs.h"
-+#include "ext2fs/ext2fs.h"
-+
-+errcode_t ext2fs_read_mmp(ext2_filsys fs, blk_t mmp_blk, char *buf)
-+{
-+	struct mmp_struct *mmp_s;
-+	errcode_t retval;
-+
-+	if ((mmp_blk < fs->super->s_first_data_block) ||
-+	    (mmp_blk >= fs->super->s_blocks_count))
-+		return EXT2_ET_MMP_BAD_BLOCK;
-+
-+	/*
-+	 * Make sure that we read direct from disk by reading only
-+	 * sizeof(stuct mmp_struct) bytes.
-+	 */
-+	retval = io_channel_read_blk(fs->io, mmp_blk,
-+				     -(int)sizeof(struct mmp_struct), buf);
-+	if (retval)
-+		return retval;
-+
-+	mmp_s = (struct mmp_struct *) buf;
-+
-+#ifdef EXT2FS_ENABLE_SWAPFS
-+	if (fs->flags & EXT2_FLAG_SWAP_BYTES)
-+		ext2fs_swap_mmp(mmp_s);
-+#endif
-+
-+	if (mmp_s->mmp_magic != EXT2_MMP_MAGIC)
-+		return EXT2_ET_MMP_MAGIC_INVALID;
-+
-+	return 0;
-+}
-+
-+errcode_t ext2fs_write_mmp(ext2_filsys fs, blk_t mmp_blk, char *buf)
-+{
-+	struct mmp_struct *mmp_s = (struct mmp_struct *) buf;
-+	struct timeval tv;
-+	int retval;
-+
-+	gethostname(mmp_s->mmp_nodename, sizeof(mmp_s->mmp_nodename));
-+	gettimeofday(&tv, 0);
-+	mmp_s->mmp_time = tv.tv_sec;
-+
-+#ifdef EXT2FS_ENABLE_SWAPFS
-+	if (fs->super->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
-+		ext2fs_swap_mmp(mmp_s);
-+#endif
-+
-+	retval = io_channel_write_blk(fs->io, mmp_blk,
-+				      -(int)sizeof(struct mmp_struct), buf);
-+
-+#ifdef EXT2FS_ENABLE_SWAPFS
-+	if (fs->super->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
-+		ext2fs_swap_mmp(mmp_s);
-+#endif
-+
-+	/*
-+	 * Make sure the block gets to disk quickly.
-+	 */
-+	io_channel_flush(fs->io);
-+	return retval;
-+}
-+
-+long int ext2fs_mmp_new_seq()
-+{
-+	long int new_seq;
-+
-+	do {
-+		new_seq = random();
-+	} while (new_seq > EXT2_MMP_SEQ_MAX);
-+
-+	return new_seq;
-+}
-+
-+errcode_t ext2fs_enable_mmp(ext2_filsys fs)
-+{
-+	struct ext2_super_block *sb = fs->super;
-+	struct mmp_struct *mmp_s = NULL;
-+	blk_t mmp_block;
-+	char *buf;
-+	int error;
-+
-+	error = ext2fs_read_bitmaps(fs);
-+	if (error)
-+		goto out;
-+
-+	error = ext2fs_new_block(fs, 0, 0, &mmp_block);
-+	if (error)
-+		goto out;
-+
-+	ext2fs_block_alloc_stats(fs, mmp_block, +1);
-+	sb->s_mmp_block = mmp_block;
-+
-+	error = ext2fs_get_mem(fs->blocksize, &buf);
-+	if (error)
-+		goto out;
-+
-+	mmp_s = (struct mmp_struct *) buf;
-+	memset(mmp_s, 0, sizeof(struct mmp_struct));
-+
-+	mmp_s->mmp_magic = EXT2_MMP_MAGIC;
-+	mmp_s->mmp_seq = EXT2_MMP_SEQ_CLEAN;
-+	mmp_s->mmp_time = 0;
-+	mmp_s->mmp_nodename[0] = '\0';
-+	mmp_s->mmp_bdevname[0] = '\0';
-+	mmp_s->mmp_check_interval = EXT2_MMP_MIN_CHECK_INTERVAL;
-+
-+	error = ext2fs_write_mmp(fs, mmp_block, buf);
-+	if (error) {
-+		if (buf)
-+			ext2fs_free_mem(&buf);
-+		goto out;
-+	}
-+
-+	if (buf)
-+		ext2fs_free_mem(&buf);
-+
-+	sb->s_mmp_update_interval = EXT2_MMP_UPDATE_INTERVAL;
-+
-+out:
-+	return error;
-+}
-Index: e2fsprogs-1.40.5/e2fsck/pass1b.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/pass1b.c
-+++ e2fsprogs-1.40.5/e2fsck/pass1b.c
-@@ -272,6 +272,13 @@ static void pass1b(e2fsck_t ctx, char *b
- 	pb.pctx = &pctx;
- 	pctx.str = "pass1b";
- 	while (1) {
-+		if (ino % EXT2_MMP_INODE_INTERVAL == 0) {
-+			errcode_t error;
-+
-+			error = e2fsck_mmp_update(fs);
-+			if (error)
-+				fatal_error(ctx, 0);
-+		}
- 		pctx.errcode = ext2fs_get_next_inode(scan, &ino, &inode);
- 		if (pctx.errcode == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE)
- 			continue;
-Index: e2fsprogs-1.40.5/misc/tune2fs.8.in
-===================================================================
---- e2fsprogs-1.40.5.orig/misc/tune2fs.8.in
-+++ e2fsprogs-1.40.5/misc/tune2fs.8.in
-@@ -438,6 +438,11 @@ Setting the filesystem feature is equiva
- .B \-j
- option.
- .TP
-+.B mmp
-+Enable or disable multiple mount protection(MMP) feature. MMP helps to protect
-+the filesystem from being multiply mounted and is useful in shared storage
-+environment.
-+.TP
- .B sparse_super
- Limit the number of backup superblocks to save space on large filesystems.
- .TP
-@@ -474,6 +479,9 @@ being mounted by kernels which do not su
- .B uninit_groups
- feature is not yet supported by any officially released kernel.
- .TP
-+.BI \-p " mmp_check_interval"
-+Set the desired MMP check interval in seconds. It is 5 seconds by default.
-+.TP
- .BI \-r " reserved-blocks-count"
- Set the number of reserved filesystem blocks.
- .TP
-Index: e2fsprogs-1.40.5/misc/mke2fs.c
-===================================================================
---- e2fsprogs-1.40.5.orig/misc/mke2fs.c
-+++ e2fsprogs-1.40.5/misc/mke2fs.c
-@@ -922,7 +922,8 @@ static __u32 ok_features[3] = {
- 	EXT2_FEATURE_INCOMPAT_FILETYPE|		/* Incompat */
- 		EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|
- 		EXT2_FEATURE_INCOMPAT_META_BG|
--		EXT4_FEATURE_INCOMPAT_FLEX_BG,
-+		EXT4_FEATURE_INCOMPAT_FLEX_BG|
-+		EXT4_FEATURE_INCOMPAT_MMP,
- 	EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|	/* R/O compat */
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM
- };
-@@ -1803,8 +1804,21 @@ int main (int argc, char *argv[])
- 	}
- no_journal:
- 
--	if (!super_only)
-+	if (!super_only) {
- 		ext2fs_set_gdt_csum(fs);
-+		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) {
-+			retval = ext2fs_enable_mmp(fs);
-+			if (retval) {
-+				fprintf(stderr, _("\nError while enabling "
-+					"multiple mount protection feature."));
-+				exit(1);
-+			}
-+			printf(_("Multiple mount protection has been enabled. "
-+				 "The MMP update interval has been set to "
-+				 "%d seconds.\n"),
-+				 fs->super->s_mmp_update_interval);
-+		}
-+	}
- 	if (!quiet)
- 		printf(_("Writing superblocks and "
- 		       "filesystem accounting information: "));
-Index: e2fsprogs-1.40.5/e2fsck/util.c
-===================================================================
---- e2fsprogs-1.40.5.orig/e2fsck/util.c
-+++ e2fsprogs-1.40.5/e2fsck/util.c
-@@ -607,3 +607,61 @@ errcode_t e2fsck_zero_blocks(ext2_filsys
- 	}
- 	return 0;
- }
-+
-+void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
-+{
-+	printf("MMP check failed: %s\n", msg);
-+	printf("MMP failure info: last update time: %llu, "
-+	       "last update node: %s, last update device: %s\n",
-+	       (long long)mmp->mmp_time, mmp->mmp_nodename, mmp->mmp_bdevname);
-+}
-+
-+#define EXT2_MIN_MMP_UPDATE_INTERVAL 60
-+
-+errcode_t e2fsck_mmp_update(ext2_filsys fs)
-+{
-+	blk_t mmp_blk = fs->super->s_mmp_block;
-+	char *buf = fs->mmp_buf, *buf_cmp;
-+	struct mmp_struct *mmp, *mmp_cmp;
-+	struct timeval tv;
-+	errcode_t retval;
-+
-+	if (!(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) ||
-+	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP))
-+		return 0;
-+
-+	gettimeofday(&tv, 0);
-+	if (tv.tv_sec - fs->mmp_last_written < EXT2_MIN_MMP_UPDATE_INTERVAL)
-+		return 0;
-+
-+	retval = ext2fs_get_mem(fs->blocksize, &buf_cmp);
-+	if (retval)
-+		goto mmp_error;
-+
-+	retval = ext2fs_read_mmp(fs, mmp_blk, buf_cmp);
-+	if (retval)
-+		goto mmp_error;
-+
-+	mmp = (struct mmp_struct *) buf;
-+	mmp_cmp = (struct mmp_struct *) buf_cmp;
-+
-+	if (memcmp(mmp, mmp_cmp, sizeof(struct mmp_struct))) {
-+		dump_mmp_msg(mmp_cmp, _("\n UNEXPECTED INCONSISTENCY: "
-+			     "Unexpected MMP structure read from disk.\n"
-+			     "It seems the filesystem is being modified while "
-+			     "fsck is running.\n"));
-+		retval = EXT2_ET_MMP_FSCK_ABORT;
-+		goto mmp_error;
-+	}
-+
-+	mmp->mmp_time = tv.tv_sec;
-+	fs->mmp_last_written = tv.tv_sec;
-+	mmp->mmp_seq = EXT2_MMP_SEQ_FSCK;
-+	retval = ext2fs_write_mmp(fs, mmp_blk, buf);
-+
-+mmp_error:
-+	if (buf_cmp)
-+		ext2fs_free_mem(&buf_cmp);
-+
-+	return retval;
-+}
-Index: e2fsprogs-1.40.5/lib/ext2fs/bitops.h
-===================================================================
---- e2fsprogs-1.40.5.orig/lib/ext2fs/bitops.h
-+++ e2fsprogs-1.40.5/lib/ext2fs/bitops.h
-@@ -329,6 +329,12 @@ _INLINE_ __u32 ext2fs_swab32(__u32 val)
- 		((val<<8)&0xFF0000) | (val<<24));
- }
- 
-+_INLINE_ __u64 ext2fs_swab64(__u64 val)
-+{
-+	return (ext2fs_swab32(val >> 32) |
-+		(((__u64)ext2fs_swab32(val & 0xFFFFFFFFUL)) << 32));
-+}
-+
- #endif /* !_EXT2_HAVE_ASM_SWAB */
- 
- #if !defined(_EXT2_HAVE_ASM_FINDBIT_)
-Index: e2fsprogs-1.40.5/debugfs/set_fields.c
-===================================================================
---- e2fsprogs-1.40.5.orig/debugfs/set_fields.c
-+++ e2fsprogs-1.40.5/debugfs/set_fields.c
-@@ -129,7 +129,7 @@ static struct field_set_info super_field
- 	{ "flags", &set_sb.s_flags, 4, parse_uint },
- 	{ "raid_stride", &set_sb.s_raid_stride, 2, parse_uint },
- 	{ "min_extra_isize", &set_sb.s_min_extra_isize, 4, parse_uint },
--	{ "mmp_interval", &set_sb.s_mmp_interval, 2, parse_uint },
-+	{ "mmp_update_interval", &set_sb.s_mmp_update_interval, 2, parse_uint },
- 	{ "mmp_block", &set_sb.s_mmp_block, 8, parse_uint },
- 	{ "raid_stripe_width", &set_sb.s_raid_stripe_width, 4, parse_uint },
- 	{ 0, 0, 0, 0 }
 
 Cheers, Andreas
 --
