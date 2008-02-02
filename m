@@ -1,231 +1,112 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][26/28] e2fsprogs-fiemap.patch
-Date: Sat, 02 Feb 2008 01:54:41 -0700
-Message-ID: <20080202085441.GA31694@webber.adilger.int>
+Subject: Re: [PATCH][27/28] e2fsprogs-debugfs-supported_features.patch
+Date: Sat, 02 Feb 2008 01:56:07 -0700
+Message-ID: <20080202085607.GB31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49947 "EHLO
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49959 "EHLO
 	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757657AbYBBIyo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:54:44 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128si7O021744
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:54:44 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+	with ESMTP id S1757613AbYBBI4K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:56:10 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128uA61021750
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:56:10 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JVL00D01SL36C00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:54:44 -0800 (PST)
+ id <0JVL00501SFKSW00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:56:10 -0800 (PST)
 In-reply-to: <20080202075943.GB23836@webber.adilger.int>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-Add support for ioctl(FIEMAP) to filefrag.  If the kernel supports FIEMAP
-the filefrag program prefers this more efficient mechanism to get extent
-information instead of repeated FIBMAP calls.
+Print out the currently supported features of e2fsprogs/libext2fs
+via a new "debugfs supported_features" command.
 
 Signed-off-by: Kalpak Shah <kalpak@clusterfs.com>
 Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
 
-Index: e2fsprogs-1.40.2/misc/filefrag.c
+Index: e2fsprogs-1.40.2/debugfs/debug_cmds.ct
 ===================================================================
---- e2fsprogs-1.40.2.orig/misc/filefrag.c
-+++ e2fsprogs-1.40.2/misc/filefrag.c
-@@ -38,11 +38,47 @@ extern int optind;
- #include <sys/vfs.h>
- #include <sys/ioctl.h>
- #include <linux/fd.h>
-+#include <ext2fs/ext2_types.h>
+--- e2fsprogs-1.40.2.orig/debugfs/debug_cmds.ct
++++ e2fsprogs-1.40.2/debugfs/debug_cmds.ct
+@@ -154,5 +154,8 @@ request	do_dump_unused, "Dump unused blo
+ request do_set_current_time, "Set current time to use when setting filesystme fields",
+ 	set_current_time;
  
- int verbose = 0;
++request do_supported_features, "Print features supported by this version of e2fsprogs",
++	supported_features;
++
+ end;
  
--#define FIBMAP	   _IO(0x00,1)	/* bmap access */
--#define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
-+struct fiemap_extent {
-+	__u64 fe_offset; /* offset in bytes for the start of the extent */
-+	__u64 fe_length; /* length in bytes for the extent */
-+	__u32 fe_flags;  /* returned FIEMAP_EXTENT_* flags for the extent */
-+	__u32 fe_lun;    /* logical device number for extent (starting at 0) */
-+};
-+
-+struct fiemap {
-+	__u64 fm_start;	 	/* logical starting byte offset (in/out) */
-+	__u64 fm_length;	/* logical length of map (in/out) */
-+	__u32 fm_flags;	 	/* FIEMAP_FLAG_* flags for request (in/out) */
-+	__u32 fm_extent_count;  /* number of extents in fm_extents (in/out) */
-+	__u64 fm_unused;
-+	struct fiemap_extent fm_extents[0];
-+};
-+
-+#define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
-+#define FIEMAP_FLAG_HSM_READ    0x00000002 /* get data from HSM before map */
-+#define FIEMAP_FLAG_NUM_EXTENTS 0x00000004 /* return only number of extents */
-+#define FIEMAP_FLAG_INCOMPAT    0xff000000 /* error for unknown flags in here */
-+
-+#define FIEMAP_EXTENT_HOLE      0x00000001 /* has no data or space allocation */
-+#define FIEMAP_EXTENT_UNWRITTEN 0x00000002 /* space allocated, but no data */
-+#define FIEMAP_EXTENT_UNMAPPED  0x00000004 /* has data but no space allocation*/
-+#define FIEMAP_EXTENT_ERROR     0x00000008 /* mapping error, errno in fe_start*/
-+#define FIEMAP_EXTENT_NO_DIRECT 0x00000010 /* cannot access data directly */
-+#define FIEMAP_EXTENT_LAST      0x00000020 /* last extent in the file */
-+#define FIEMAP_EXTENT_DELALLOC  0x00000040 /* has data but not yet written,
-+					      must have EXTENT_UNKNOWN set */
-+#define FIEMAP_EXTENT_SECONDARY 0x00000080 /* data (also) in secondary storage,
-+					      not in primary if EXTENT_UNKNOWN*/
-+#define FIEMAP_EXTENT_EOF       0x00000100 /* if fm_start+fm_len is beyond EOF*/
-+
-+
-+#define FIBMAP		_IO(0x00, 1)	/* bmap access */
-+#define FIGETBSZ	_IO(0x00, 2)	/* get the block size used for bmap */
-+#define EXT4_IOC_FIEMAP	_IOWR('f', 10, struct fiemap) /* get file  extent info*/
- 
- #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
- #define	EXT3_IOC_GETFLAGS		_IOR('f', 1, long)
-@@ -71,6 +107,62 @@ static unsigned long get_bmap(int fd, un
- 	return b;
+Index: e2fsprogs-1.40.2/debugfs/debugfs.c
+===================================================================
+--- e2fsprogs-1.40.2.orig/debugfs/debugfs.c
++++ e2fsprogs-1.40.2/debugfs/debugfs.c
+@@ -1772,6 +1772,44 @@ void do_set_current_time(int argc, char 
+ 	}
  }
  
-+int filefrag_fiemap(int fd, int bs, int *num_extents)
++void do_supported_features(int argc, char *argv[])
 +{
-+	char buf[4096] = "";
-+	struct fiemap *fiemap = (struct fiemap *)buf;
-+	int count = (sizeof(buf) - sizeof(*fiemap)) /
-+			sizeof(struct fiemap_extent);
-+	__u64 logical_blk = 0, last_blk = 0;
-+	unsigned long flags;
-+	int tot_extents = 0;
-+	int eof = 0;
-+	int i;
-+	int rc;
++        FILE	*out = stdout;
++        int	i, j, ret;
++        __u32	supp[3] = { EXT2_LIB_FEATURE_COMPAT_SUPP,
++			    EXT2_LIB_FEATURE_INCOMPAT_SUPP,
++			    EXT2_LIB_FEATURE_RO_COMPAT_SUPP };
++	__u32	m;
++	int compat;
++	unsigned int feature_flag;
 +
-+	memset(fiemap, 0, sizeof(struct fiemap));
-+	fiemap->fm_extent_count = count;
-+	fiemap->fm_length = ~0ULL;
-+	if (!verbose)
-+		flags |= FIEMAP_FLAG_NUM_EXTENTS;
++	if (argc >= 1) {
++		ret = e2p_string2feature(argv[1], &compat, &feature_flag);
++		if (ret)
++			goto err;
 +
-+	do {
-+		fiemap->fm_length = ~0ULL;
-+		fiemap->fm_flags = flags;
-+		fiemap->fm_extent_count = count;
-+		rc = ioctl (fd, EXT4_IOC_FIEMAP, (unsigned long) fiemap);
-+		if (rc)
-+			return rc;
++		if (!(supp[compat] & feature_flag))
++			goto err;
 +
-+		if (!verbose) {
-+			*num_extents = fiemap->fm_extent_count;
-+			goto out;
++		fprintf(out, "Supported feature: %s\n", argv[1]);
++	} else {
++		fprintf(out, "Supported features:");
++	        for (i = 0; i < 3; i++) {
++		        for (j = 0, m = 1; j < 32; j++, m <<= 1) {
++			        if (supp[i] & m)
++        			        fprintf(out, " %s",
++						e2p_feature2string(i, m));
++	        	}
 +		}
++	        fprintf(out, "\n");
++	}
 +
-+		for (i = 0; i < fiemap->fm_extent_count; i++) {
-+			__u64 phy_blk;
-+			unsigned long ext_len;
++	return;
 +
-+			phy_blk = fiemap->fm_extents[i].fe_offset / bs;
-+			ext_len = fiemap->fm_extents[i].fe_length / bs;
-+			if (logical_blk && (phy_blk != last_blk+1))
-+				printf("Discontinuity: Block %llu is at %llu "
-+				       "(was %llu)\n", logical_blk, phy_blk,
-+				       last_blk);
-+			logical_blk += ext_len;
-+			last_blk = phy_blk + ext_len - 1;
-+			if (fiemap->fm_extents[i].fe_flags & FIEMAP_EXTENT_EOF)
-+				eof = 1;
-+		}
-+		fiemap->fm_start += fiemap->fm_length;
-+		tot_extents += fiemap->fm_extent_count;
-+	} while (0);
-+
-+	*num_extents = tot_extents;
-+out:
-+	return 0;
++err:
++	com_err(argv[0], 0, "Unknown feature: %s\n", argv[1]);
 +}
 +
- #define EXT2_DIRECT	12
+ static int source_file(const char *cmd_file, int sci_idx)
+ {
+ 	FILE		*f;
+Index: e2fsprogs-1.40.2/lib/ext2fs/ext2_fs.h
+===================================================================
+--- e2fsprogs-1.40.2.orig/lib/ext2fs/ext2_fs.h
++++ e2fsprogs-1.40.2/lib/ext2fs/ext2_fs.h
+@@ -656,8 +656,7 @@ struct ext2_super_block {
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+-					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE| \
+-					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
++					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)
  
- static void frag_report(const char *filename)
-@@ -86,7 +178,7 @@ static void frag_report(const char *file
- 	unsigned long	block, last_block = 0, numblocks, i;
- 	long		bpib;	/* Blocks per indirect block */
- 	long		cylgroups;
--	int		discont = 0, expected;
-+	int		num_extents = 0, expected;
- 	int		is_ext2 = 0;
- 	unsigned int	flags;
- 
-@@ -135,7 +227,8 @@ static void frag_report(const char *file
- 	if (ioctl(fd, EXT3_IOC_GETFLAGS, &flags) < 0)
- 		flags = 0;
- 	if (flags & EXT4_EXTENTS_FL) {
--		printf("File is stored in extents format\n");
-+		if (verbose)
-+			printf("File is stored in extents format\n");
- 		is_ext2 = 0;
- 	}
- 	if (verbose)
-@@ -148,32 +241,36 @@ static void frag_report(const char *file
- 		printf("First block: %lu\nLast block: %lu\n",
- 		       get_bmap(fd, 0), get_bmap(fd, numblocks - 1));
- 	}
--	for (i=0; i < numblocks; i++) {
--		if (is_ext2 && last_block) {
--			if (((i-EXT2_DIRECT) % bpib) == 0)
--				last_block++;
--			if (((i-EXT2_DIRECT-bpib) % (bpib*bpib)) == 0)
--				last_block++;
--			if (((i-EXT2_DIRECT-bpib-bpib*bpib) % (bpib*bpib*bpib)) == 0)
--				last_block++;
--		}
--		block = get_bmap(fd, i);
--		if (block == 0)
--			continue;
--		if (last_block && (block != last_block +1) ) {
--			if (verbose)
--				printf("Discontinuity: Block %ld is at %lu (was %lu)\n",
--				       i, block, last_block);
--			discont++;
-+	if (is_ext2 || (filefrag_fiemap(fd, bs, &num_extents) != 0)) {
-+		for (i = 0; i < numblocks; i++) {
-+			if (is_ext2 && last_block) {
-+				if (((i-EXT2_DIRECT) % bpib) == 0)
-+					last_block++;
-+				if (((i-EXT2_DIRECT-bpib) % (bpib*bpib)) == 0)
-+					last_block++;
-+				if (((i-EXT2_DIRECT-bpib-bpib*bpib) %
-+							(bpib*bpib*bpib)) == 0)
-+					last_block++;
-+			}
-+			block = get_bmap(fd, i);
-+			if (block == 0)
-+				continue;
-+			if (last_block && (block != last_block+1) ) {
-+				if (verbose)
-+					printf("Discontinuity: Block %ld is at "
-+					       "%lu (was %lu)\n",
-+					       i, block, last_block+1);
-+				num_extents++;
-+			}
-+			last_block = block;
- 		}
--		last_block = block;
- 	}
--	if (discont==0)
-+	if (num_extents == 1)
- 		printf("%s: 1 extent found", filename);
- 	else
--		printf("%s: %d extents found", filename, discont+1);
-+		printf("%s: %d extents found", filename, num_extents);
- 	expected = (numblocks/((bs*8)-(fsinfo.f_files/8/cylgroups)-3))+1;
--	if (is_ext2 && expected != discont+1)
-+	if (is_ext2 && expected != num_extents)
- 		printf(", perfection would be %d extent%s\n", expected,
- 			(expected>1) ? "s" : "");
- 	else
+ /*
+  * Default values for user and/or group using reserved blocks
 
 Cheers, Andreas
 --
