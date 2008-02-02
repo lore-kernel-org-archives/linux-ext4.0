@@ -1,107 +1,111 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: 2.6.24-git12-ext4-1 patchset released
-Date: Sat, 02 Feb 2008 13:03:12 -0500
-Message-ID: <E1JLMhs-0003Rp-A3@closure.thunk.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:42778 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751528AbYBBSDQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 13:03:16 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2.patch added to -mm tree
+Date: Sat, 02 Feb 2008 11:27:33 -0800
+Message-ID: <200802021927.m12JREB9013133@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: ak@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-I've just released 2.6.24-git12-ext4-1.  It removes the ext2/ext3 BKL
-patches from Andi Kleen, since akpm has apparently already merged those
-into -mm and they were causing conflicts with Dave Hansen's read-only
-bind mount patches.  
+The patch titled
+     BKL-removal: remove incorrect comment refering to lock_kernel() from jbd/jbd2
+has been added to the -mm tree.  Its filename is
+     bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2.patch
 
-It also adds a patch to replace the use of iget() with iget_unlocked()
-(since an iget() removal patch has been queued in -mm), and adds a
-number of bug fixes. all, of which I hope to push to Linus shortly.
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-As a git tree:
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.24-git12-ext4-1
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.24-git
-12-ext4-1
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-As a patchset:
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.24-git12-ext4-1
+------------------------------------------------------
+Subject: BKL-removal: remove incorrect comment refering to lock_kernel() from jbd/jbd2
+From: Andi Kleen <ak@suse.de>
 
-                                                - Ted
+None of the callers of this function does actually take the BKL as far as I
+can see.  So remove the comment refering to the BKL.
 
-New or modified patches since the last patchset indicated with an
-asterisk(*):
+Signed-off-by: Andi Kleen <ak@suse.de>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Akira Fujita (4):
-      ext4: online defrad header file changes
-      ext4: online defrag-- Allocate new contiguous blocks with mballoc
-      ext4: online defrag -- Move the file data to the new blocks
-    * Free space fragmentation functions
+ fs/jbd/recovery.c  |    2 +-
+ fs/jbd2/recovery.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Alex Tomas (2):
-      vfs: add basic delayed allocation support
-      ext4: Add basic delayed allocation support
+diff -puN fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd/recovery.c
+--- a/fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
++++ a/fs/jbd/recovery.c
+@@ -354,7 +354,7 @@ static int do_one_pass(journal_t *journa
+ 		struct buffer_head *	obh;
+ 		struct buffer_head *	nbh;
+ 
+-		cond_resched();		/* We're under lock_kernel() */
++		cond_resched();
+ 
+ 		/* If we already know where to stop the log traversal,
+ 		 * check right now that we haven't gone past the end of
+diff -puN fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd2/recovery.c
+--- a/fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
++++ a/fs/jbd2/recovery.c
+@@ -397,7 +397,7 @@ static int do_one_pass(journal_t *journa
+ 		struct buffer_head *	obh;
+ 		struct buffer_head *	nbh;
+ 
+-		cond_resched();		/* We're under lock_kernel() */
++		cond_resched();
+ 
+ 		/* If we already know where to stop the log traversal,
+ 		 * check right now that we haven't gone past the end of
+_
 
-Andi Kleen (3):
-      Remove incorrect comment refering to lock_kernel() from jbd/jbd2
-      Convert ext4 to use unlocked_ioctl v2
-      Remove incorrect BKL comments in ext4
+Patches currently in -mm which might be from ak@suse.de are
 
-Aneesh Kumar K.V (3):
-      ext4: undo the stable boundary patch changes
-      ext4: Enable delalloc and mballoc by default.
-      ext4: Show delalloc options
-
-Eric Sandeen (1):
-      allow in-inode EAs on ext4 root inode
-
-Jan Kara (1):
-    * jbd: Remove useless loop when writing commit record
-
-Josef Bacik (1):
-    * jbd: fix assertion failure in journal_next_log_block
-
-Mingming Cao (2):
-      jbd: blocks reservation fix for large block support
-      jbd2: blocks reservation fix for large block support
-
-Theodore Ts'o (5):
-    * ext4: Replace use of iget() with iget_locked()
-    * jbd2: Add error check to journal_wait_on_commit_record to avoid oops
-      patch test-filesys-flag.patch
-      ext4: Stable/Unstable boundary
-      ext4: New inode allocation for FLEX_BG meta-data groups.
-
- fs/buffer.c                     |    3 +-
- fs/ext4/Makefile                |    2 +-
- fs/ext4/balloc.c                |   28 +-
- fs/ext4/defrag.c                | 2214 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/dir.c                   |    4 +-
- fs/ext4/extents.c               |   65 +-
- fs/ext4/file.c                  |    2 +-
- fs/ext4/ialloc.c                |  110 ++-
- fs/ext4/inode.c                 |  174 +++-
- fs/ext4/ioctl.c                 |   25 +-
- fs/ext4/mballoc.c               |    7 +
- fs/ext4/namei.c                 |   14 +-
- fs/ext4/resize.c                |    6 +-
- fs/ext4/super.c                 |  113 ++-
- fs/jbd/commit.c                 |   21 +-
- fs/jbd/journal.c                |    7 +-
- fs/jbd/recovery.c               |    2 +-
- fs/jbd2/commit.c                |   12 +-
- fs/jbd2/journal.c               |    7 +-
- fs/jbd2/recovery.c              |    2 +-
- fs/mpage.c                      |  406 +++++++
- include/linux/ext4_fs.h         |  107 ++-
- include/linux/ext4_fs_extents.h |   22 +
- include/linux/ext4_fs_sb.h      |    3 +
- include/linux/jbd.h             |    3 +-
- include/linux/jbd2.h            |    3 +-
- include/linux/mpage.h           |    2 +
- 27 files changed, 3271 insertions(+), 93 deletions(-)
+origin.patch
+bkl-removal-convert-cifs-over-to-unlocked_ioctl.patch
+git-jfs.patch
+git-ocfs2.patch
+serial-keep-the-dtr-setting-for-serial-console.patch
+quirks-set-en-bit-of-msi-mapping-for-devices-onht-based-nvidia-platform.patch
+quirks-set-en-bit-of-msi-mapping-for-devices-onht-based-nvidia-platform-checkpatch-fixes.patch
+pci-disable-decoding-during-sizing-of-bars.patch
+x86-validate-against-acpi-motherboard-resources.patch
+git-x86.patch
+x86-amd-thermal-interrupt-support.patch
+x86-clear-pci_mmcfg_virt-when-mmcfg-get-rejected.patch
+x86-mmconf-enable-mcfg-early.patch
+x86-mmconf-enable-mcfg-early-cleanup.patch
+x86_64-check-and-enable-mmconfig-for-amd-family-10h-opteron-v3.patch
+x86_64-check-msr-to-get-mmconfig-for-amd-family-10h-opteron-v3.patch
+x86_64-set-cfg_size-for-amd-family-10h-in-case-mmconfig-is-used.patch
+iommu-sg-merging-x86-make-pci-gart-iommu-respect-the-segment-size-limits.patch
+iommu-sg-x86-convert-calgary-iommu-to-use-the-iommu-helper.patch
+iommu-sg-x86-convert-gart-iommu-to-use-the-iommu-helper.patch
+iommu-sg-kill-__clear_bit_string-and-find_next_zero_string.patch
+git-xfs.patch
+swapin_readahead-excise-numa-bogosity.patch
+remove-unused-arguments-in-zone_init_free_lists.patch
+read_current_time-cleanups.patch
+add-hpet-rtc-emulation-to-rtc_drv_cmos.patch
+bkl-removal-convert-ext2-over-to-use-unlocked_ioctl.patch
+bkl-removal-remove-incorrect-bkl-comment-in-ext2.patch
+bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2.patch
+modules-handle-symbols-that-have-a-zero-value.patch
+allow-executables-larger-than-2gb.patch
+bkl-removal-convert-pipe-to-use-unlocked_ioctl-too.patch
+remove-aout-interpreter-support-in-elf-loader.patch
+convert-loglevel-related-kernel-boot-parameters-to-early_param.patch
+profile-likely-unlikely-macros.patch
+profile-likely-unlikely-macros-fix.patch
