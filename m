@@ -1,168 +1,61 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Replace use of iget() with iget_locked()
-Date: Sat, 2 Feb 2008 11:20:51 -0500
-Message-ID: <20080202162051.GB5219@mit.edu>
-References: <E1JLKiC-0002et-Tr@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Replace iget with iget_locked in defrag-free-space-fragementation
+Date: Sat, 02 Feb 2008 11:40:23 -0500
+Message-ID: <E1JLLPj-0006dq-9C@closure.thunk.org>
+Cc: Mingming Cao <cmm@us.ibm.com>, Takashi Sato <t-sato@yk.jp.nec.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:52642 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:57617 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1764872AbYBBQUy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 11:20:54 -0500
-Content-Disposition: inline
-In-Reply-To: <E1JLKiC-0002et-Tr@closure.thunk.org>
+	with ESMTP id S1750842AbYBBQkm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 11:40:42 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 02, 2008 at 10:55:24AM -0500, Theodore Ts'o wrote:
-> In the mm tree is a patch queued up to nuke iget().  So replace use of
-> iget() with iget_locked().  I will be pushing this to Linus shortly.
 
-Oops, wrong version of the patch; this is the correct one.
+FYI, since iget() is going to be disappearing in 2.6.25, and akpm has
+disabled ext4 in the -mm tree as a result, I'm folding the following
+patch into the defrag-free-space-fragmentation.patch in the ext4 tree.
 
-      	    	       	   	       - Ted
+We also have an issue where the read-only bind patches from Dave Hansen
+are making changes which conflict with the ext4 patch tree, which is
+making akpm very grumpy.  I'll try to take a look at this later in the
+weekend...
 
-ext4: Replace use of iget() with iget_locked()
-    
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+						- Ted
 
----
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 575b521..d45fcaa 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -805,9 +805,17 @@ struct inode *ext4_orphan_get(struct super_block *sb, unsigned long ino)
- 	 * is a valid orphan (no e2fsck run on fs).  Orphans also include
- 	 * inodes that were being truncated, so we can't check i_nlink==0.
- 	 */
--	if (!ext4_test_bit(bit, bitmap_bh->b_data) ||
--			!(inode = iget(sb, ino)) || is_bad_inode(inode) ||
--			NEXT_ORPHAN(inode) > max_ino) {
-+	if (!ext4_test_bit(bit, bitmap_bh->b_data))
-+		goto bad_orphan_inode;
-+	inode = iget_locked(sb, ino);
-+	if (!inode)
-+		goto bad_orphan_inode;
-+	if (inode->i_state & I_NEW) {
-+		sb->s_op->read_inode(inode);
-+		unlock_new_inode(inode);
-+	}
-+	if (is_bad_inode(inode) || NEXT_ORPHAN(inode) > max_ino) {
-+	bad_orphan_inode:
- 		ext4_warning(sb, __FUNCTION__,
- 			     "bad orphan inode %lu!  e2fsck was run?", ino);
- 		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 67b6d8a..57dd8fb 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1041,11 +1041,16 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
- 				   "bad inode number: %lu", ino);
- 			inode = NULL;
- 		} else
--			inode = iget(dir->i_sb, ino);
-+			inode = iget_locked(dir->i_sb, ino);
+diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
+index d9a14e4..6370fb8 100644
+--- a/fs/ext4/defrag.c
++++ b/fs/ext4/defrag.c
+@@ -287,9 +287,13 @@ static int ext4_ext_extents_info(struct ext4_extents_info *ext_info,
+ 	int entries = 0;
+ 	int err = 0;
  
- 		if (!inode)
- 			return ERR_PTR(-EACCES);
- 
-+		if (inode->i_state & I_NEW) {
-+			inode->i_sb->s_op->read_inode(inode);
-+			unlock_new_inode(inode);
-+		}
-+
- 		if (is_bad_inode(inode)) {
- 			iput(inode);
- 			return ERR_PTR(-ENOENT);
-@@ -1080,11 +1085,16 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 			   "bad inode number: %lu", ino);
- 		inode = NULL;
- 	} else
--		inode = iget(child->d_inode->i_sb, ino);
-+		inode = iget_locked(child->d_inode->i_sb, ino);
- 
+-	inode = iget(sb, ext_info->ino);
++	inode = iget_locked(sb, ext_info->ino);
  	if (!inode)
- 		return ERR_PTR(-EACCES);
- 
-+	if (inode->i_state & I_NEW) {
-+		inode->i_sb->s_op->read_inode(inode);
-+		unlock_new_inode(inode);
-+	}
-+
- 	if (is_bad_inode(inode)) {
- 		iput(inode);
- 		return ERR_PTR(-ENOENT);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 4fbba60..ebdca31 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -779,7 +779,11 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
- 		}
--		inode = iget(sb, EXT4_RESIZE_INO);
-+		inode = iget_locked(sb, EXT4_RESIZE_INO);
-+		if (inode && (inode->i_state & I_NEW)) {
-+			sb->s_op->read_inode(inode);
-+			unlock_new_inode(inode);
-+		}
- 		if (!inode || is_bad_inode(inode)) {
- 			ext4_warning(sb, __FUNCTION__,
- 				     "Error opening resize inode");
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 055a0cd..1ef0359 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -777,9 +777,13 @@ static struct inode *ext4_nfs_get_inode(struct super_block *sb,
- 	 * Currently we don't know the generation for parent directory, so
- 	 * a generation of 0 means "accept any"
- 	 */
--	inode = iget(sb, ino);
-+	inode = iget_locked(sb, ino);
- 	if (inode == NULL)
- 		return ERR_PTR(-ENOMEM);
+ 		return -EACCES;
 +	if (inode->i_state & I_NEW) {
 +		sb->s_op->read_inode(inode);
 +		unlock_new_inode(inode);
 +	}
- 	if (is_bad_inode(inode) ||
- 	    (generation && inode->i_generation != generation)) {
- 		iput(inode);
-@@ -2243,7 +2247,15 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 	 * so we can safely mount the rest of the filesystem now.
- 	 */
  
--	root = iget(sb, EXT4_ROOT_INO);
-+	root = iget_locked(sb, EXT4_ROOT_INO);
-+	if (!root) {
-+		printk(KERN_ERR "EXT4-fs: iget_locked for root inode failed\n");
-+		goto failed_mount4;
-+	}
-+	if (root->i_state & I_NEW) {
-+		sb->s_op->read_inode(root);
-+		unlock_new_inode(root);
-+	}
- 	sb->s_root = d_alloc_root(root);
- 	if (!sb->s_root) {
- 		printk(KERN_ERR "EXT4-fs: get root inode failed\n");
-@@ -2372,11 +2384,15 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 	 * things happen if we iget() an unused inode, as the subsequent
- 	 * iput() will try to delete it. */
+ 	down_write(&EXT4_I(inode)->i_data_sem);
  
--	journal_inode = iget(sb, journal_inum);
-+	journal_inode = iget_locked(sb, journal_inum);
- 	if (!journal_inode) {
--		printk(KERN_ERR "EXT4-fs: no journal found.\n");
-+		printk(KERN_ERR "EXT4-fs: iget_locked for journal inode failed.\n");
- 		return NULL;
- 	}
-+	if (journal_inode->i_state & I_NEW) {
-+		sb->s_op->read_inode(journal_inode);
-+		unlock_new_inode(journal_inode);
+@@ -588,9 +592,13 @@ static int ext4_ext_defrag_victim(struct file *target_filp,
+ 	ext.len = 0;
+ 
+ 	/* Get the inode of the victim file */
+-	victim_inode = iget(sb, ex_info->ino);
++	victim_inode = iget_locked(sb, ex_info->ino);
+ 	if (!victim_inode)
+ 		return -EACCES;
++	if (victim_inode->i_state & I_NEW) {
++		sb->s_op->read_inode(victim_inode);
++		unlock_new_inode(victim_inode);
 +	}
- 	if (!journal_inode->i_nlink) {
- 		make_bad_inode(journal_inode);
- 		iput(journal_inode);
+ 
+ 	/* Setup file for the victim file */
+ 	victim_dent.d_inode = victim_inode;
