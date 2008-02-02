@@ -1,916 +1,950 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][15/28] e2fsprogs-ibadness-counter.patch
-Date: Sat, 02 Feb 2008 01:41:00 -0700
-Message-ID: <20080202084100.GP31694@webber.adilger.int>
+Subject: Re: [PATCH][16/28] e2fsprogs-tests-f_ibadness.patch
+Date: Sat, 02 Feb 2008 01:43:40 -0700
+Message-ID: <20080202084340.GQ31694@webber.adilger.int>
 References: <20080202075943.GB23836@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: multipart/mixed; boundary="Boundary_(ID_E88WH1Ji0P10jwS8zDCiqg)"
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58429 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753297AbYBBIlE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:41:04 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128f49U016635
-	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:41:04 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49822 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756866AbYBBInq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2008 03:43:46 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m128hjGX021610
+	for <linux-ext4@vger.kernel.org>; Sat, 2 Feb 2008 00:43:45 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JVL00A01RU56300@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:41:04 -0800 (PST)
+ id <0JVL00401S3NBC00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 02 Feb 2008 00:43:45 -0800 (PST)
 In-reply-to: <20080202075943.GB23836@webber.adilger.int>
-Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-The present e2fsck code checks the inode, per field basis. It doesn't
-take into consideration to total sanity of the inode. This may cause
-e2fsck turning a garbage inode into an apparently sane inode ("It is a
-vessel of fertilizer, and none may abide its strength.").
+--Boundary_(ID_E88WH1Ji0P10jwS8zDCiqg)
+Content-type: text/plain; charset=us-ascii
+Content-transfer-encoding: 7BIT
+Content-disposition: inline
 
-The following patch adds a heuristics to detect the degree of badness of
-an inode. icount mechanism is used to keep track of the badness of every
-inode. The badness is increased as various fields in inode are found to
-be corrupt. Badness above a certain threshold value results in deletion
-of the inode. The default threshold value is 7, it can be specified to
-e2fsck using "-E inode_badness_threshold=<value>"
-
-This can avoid lengthy pass1b shared block processing, where a corrupt
-chunk of the inode table has resulted in a bunch of garbage inodes
-suddenly having shared blocks with a lot of good inodes (or each other).
-
-Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
-Signed-off-by: Girish Shilamkar <girish@clusterfs.com>
-
-Index: e2fsprogs-1.40.4/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/e2fsck.h
-+++ e2fsprogs-1.40.4/e2fsck/e2fsck.h
-@@ -11,6 +11,7 @@
- 
- #include <stdio.h>
- #include <string.h>
-+#include <stddef.h>
- #ifdef HAVE_UNISTD_H
- #include <unistd.h>
- #endif
-@@ -195,6 +196,18 @@ typedef enum {
- 	E2F_CLONE_ZERO
- } clone_opt_t;
- 
-+#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
-+	((offsetof(typeof(*ext4_inode), field) +	\
-+	  sizeof(ext4_inode->field))			\
-+	<= (EXT2_GOOD_OLD_INODE_SIZE +			\
-+	    (einode)->i_extra_isize))			\
-+
-+#define BADNESS_NORMAL 		1
-+#define BADNESS_HIGH		2
-+#define BADNESS_THRESHOLD	8
-+#define BADNESS_BAD_MODE	100
-+#define BADNESS_LARGE_FILE 	2199023255552ULL
-+
- /*
-  * Define the extended attribute refcount structure
-  */
-@@ -229,7 +242,6 @@ struct e2fsck_struct {
- 			unsigned long max);
- 
- 	ext2fs_inode_bitmap inode_used_map; /* Inodes which are in use */
--	ext2fs_inode_bitmap inode_bad_map; /* Inodes which are bad somehow */
- 	ext2fs_inode_bitmap inode_dir_map; /* Inodes which are directories */
- 	ext2fs_inode_bitmap inode_bb_map; /* Inodes which are in bad blocks */
- 	ext2fs_inode_bitmap inode_imagic_map; /* AFS inodes */
-@@ -244,6 +256,8 @@ struct e2fsck_struct {
- 	 */
- 	ext2_icount_t	inode_count;
- 	ext2_icount_t inode_link_info;
-+	ext2_icount_t inode_badness;
-+	int inode_badness_threshold;
- 
- 	ext2_refcount_t	refcount;
- 	ext2_refcount_t refcount_extra;
-@@ -344,6 +358,7 @@ struct e2fsck_struct {
- 	/* misc fields */
- 	time_t now;
- 	time_t time_fudge;	/* For working around buggy init scripts */
-+	time_t now_tolerance_val;
- 	int ext_attr_ver;
-         shared_opt_t shared;
-         clone_opt_t clone;
-@@ -454,6 +469,8 @@ extern int e2fsck_pass1_check_device_ino
- 					   struct ext2_inode *inode);
- extern int e2fsck_pass1_check_symlink(ext2_filsys fs,
- 				      struct ext2_inode *inode, char *buf);
-+extern void e2fsck_mark_inode_bad(e2fsck_t ctx, ino_t ino, int count);
-+extern int is_inode_bad(e2fsck_t ctx, ino_t ino);
- 
- /* pass2.c */
- extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
-Index: e2fsprogs-1.40.4/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/pass1.c
-+++ e2fsprogs-1.40.4/e2fsck/pass1.c
-@@ -20,7 +20,8 @@
-  * 	- A bitmap of which inodes are in use.		(inode_used_map)
-  * 	- A bitmap of which inodes are directories.	(inode_dir_map)
-  * 	- A bitmap of which inodes are regular files.	(inode_reg_map)
-- * 	- A bitmap of which inodes have bad fields.	(inode_bad_map)
-+ * 	- An icount mechanism is used to keep track of
-+ *	  inodes with bad fields and its badness	(ctx->inode_badness)
-  * 	- A bitmap of which inodes are in bad blocks.	(inode_bb_map)
-  * 	- A bitmap of which inodes are imagic inodes.	(inode_imagic_map)
-  *	- A bitmap of which inodes need to be expanded  (expand_eisize_map)
-@@ -68,7 +69,6 @@ static void check_blocks(e2fsck_t ctx, s
- static void mark_table_blocks(e2fsck_t ctx);
- static void alloc_bb_map(e2fsck_t ctx);
- static void alloc_imagic_map(e2fsck_t ctx);
--static void mark_inode_bad(e2fsck_t ctx, ino_t ino);
- static void handle_fs_bad_blocks(e2fsck_t ctx);
- static void process_inodes(e2fsck_t ctx, char *block_buf);
- static EXT2_QSORT_TYPE process_inode_cmp(const void *a, const void *b);
-@@ -220,6 +220,7 @@ static void check_immutable(e2fsck_t ctx
- 	if (!(pctx->inode->i_flags & BAD_SPECIAL_FLAGS))
- 		return;
- 
-+	e2fsck_mark_inode_bad(ctx, pctx->ino, BADNESS_NORMAL);
- 	if (!fix_problem(ctx, PR_1_SET_IMMUTABLE, pctx))
- 		return;
- 
-@@ -238,6 +239,7 @@ static void check_size(e2fsck_t ctx, str
- 	if ((inode->i_size == 0) && (inode->i_size_high == 0))
- 		return;
- 	
-+	e2fsck_mark_inode_bad(ctx, pctx->ino, BADNESS_NORMAL);
- 	if (!fix_problem(ctx, PR_1_SET_NONZSIZE, pctx))
- 		return;
- 	
-@@ -352,6 +354,7 @@ static void check_inode_extra_space(e2fs
- 	 */
- 	if (inode->i_extra_isize &&
- 	    (inode->i_extra_isize < min || inode->i_extra_isize > max)) {
-+		e2fsck_mark_inode_bad(ctx, pctx->ino, BADNESS_NORMAL);
- 		if (!fix_problem(ctx, PR_1_EXTRA_ISIZE, pctx))
- 			return;
- 		inode->i_extra_isize = ctx->want_extra_isize;
-@@ -441,6 +444,7 @@ static void check_is_really_dir(e2fsck_t
- 	    (dirent->rec_len % 4))
- 		return;
- 
-+	e2fsck_mark_inode_bad(ctx, pctx->ino, BADNESS_NORMAL);
- 	if (fix_problem(ctx, PR_1_TREAT_AS_DIRECTORY, pctx)) {
- 		inode->i_mode = (inode->i_mode & 07777) | LINUX_S_IFDIR;
- 		e2fsck_write_inode_full(ctx, pctx->ino, inode, 
-@@ -637,6 +641,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	ext2_filsys fs = ctx->fs;
- 	ext2_ino_t	ino;
- 	struct ext2_inode *inode;
-+	struct ext2_inode_large *inode_large;
- 	ext2_inode_scan	scan;
- 	char		*block_buf;
- #ifdef RESOURCE_TRACK
-@@ -873,8 +878,10 @@ void e2fsck_pass1(e2fsck_t ctx)
- 							    ino, 0);
- 					e2fsck_write_inode(ctx, ino, inode,
- 							   "pass1");
-+				} else {
-+					e2fsck_mark_inode_bad(ctx, ino,
-+							BADNESS_NORMAL);
- 				}
--
- 			}
- 			/*
- 			 * If dtime is set, offer to clear it.  mke2fs
-@@ -891,6 +898,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 					e2fsck_write_inode(ctx, ino, inode,
- 							   "pass1");
- 				}
-+				e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 			}
- 		} else if (ino == EXT2_JOURNAL_INO) {
- 			ext2fs_mark_inode_bitmap(ctx->inode_used_map, ino);
-@@ -997,6 +1005,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 				inode->i_dtime = 0;
- 				e2fsck_write_inode(ctx, ino, inode, "pass1");
- 			}
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		}
- 		
- 		ext2fs_mark_inode_bitmap(ctx->inode_used_map, ino);
-@@ -1013,14 +1022,16 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			frag = fsize = 0;
- 		}
- 		
-+		/* Fixed in pass2, e2fsck_process_bad_inode(). */
- 		if (inode->i_faddr || frag || fsize ||
- 		    (LINUX_S_ISDIR(inode->i_mode) && inode->i_dir_acl))
--			mark_inode_bad(ctx, ino);
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+		/* Fixed in pass2, e2fsck_process_bad_inode(). */
- 		if ((fs->super->s_creator_os == EXT2_OS_LINUX) &&
- 		    !(fs->super->s_feature_ro_compat & 
- 		      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
- 		    (inode->osd2.linux2.l_i_blocks_hi != 0))
--			mark_inode_bad(ctx, ino);
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		if (inode->i_flags & EXT2_IMAGIC_FL) {
- 			if (imagic_fs) {
- 				if (!ctx->inode_imagic_map)
-@@ -1033,6 +1044,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 					e2fsck_write_inode(ctx, ino,
- 							   inode, "pass1");
- 				}
-+				e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 			}
- 		}
- 
-@@ -1075,8 +1087,41 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			check_immutable(ctx, &pctx);
- 			check_size(ctx, &pctx);
- 			ctx->fs_sockets_count++;
--		} else
--			mark_inode_bad(ctx, ino);
-+		} else {
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+		}
-+
-+		if (inode->i_atime > ctx->now + ctx->now_tolerance_val ||
-+		    inode->i_mtime > ctx->now + ctx->now_tolerance_val)
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+
-+		if (inode->i_ctime < sb->s_mkfs_time ||
-+		    inode->i_ctime > ctx->now + ctx->now_tolerance_val)
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_HIGH);
-+
-+		if (EXT4_FITS_IN_INODE(inode_large,
-+		    (struct ext2_inode_large *)inode, i_crtime)) {
-+			if (((struct ext2_inode_large *)inode)->i_crtime <
-+			      sb->s_mkfs_time ||
-+			    ((struct ext2_inode_large *)inode)->i_crtime >
-+			      ctx->now + ctx->now_tolerance_val) {
-+				e2fsck_mark_inode_bad(ctx, ino, BADNESS_HIGH);
-+			}
-+		}
-+
-+		/* Is it a regular file */
-+		if ((LINUX_S_ISREG(inode->i_mode)) &&
-+		   /* File size > 2TB */
-+		    ((((long long)inode->i_size_high << 32) +
-+		      inode->i_size) > BADNESS_LARGE_FILE) &&
-+		    /* fs does not have huge file feature */
-+		    ((fs->super->s_creator_os == EXT2_OS_LINUX) &&
-+		     !(fs->super->s_feature_ro_compat &
-+			     EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
-+		     /* inode does not have enough blocks for size */
-+		     (inode->osd2.linux2.l_i_blocks_hi != 0))) {
-+			       e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+		}
- 
- 		eh = (struct ext3_extent_header *)inode->i_block;
- 		if ((inode->i_flags & EXT4_EXTENTS_FL)) {
-@@ -1091,19 +1136,28 @@ void e2fsck_pass1(e2fsck_t ctx)
- 					ext2fs_mark_super_dirty(fs);
- 					extent_fs = 1;
- 				}
--			} else if (fix_problem(ctx, PR_1_SET_EXTENT_FL, &pctx)){
--				inode->i_flags &= ~EXT4_EXTENTS_FL;
--				e2fsck_write_inode(ctx, ino, inode, "pass1");
--				goto check_ind_inode;
-+			} else {
-+				e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+				if (fix_problem(ctx, PR_1_SET_EXTENT_FL,
-+							&pctx)) {
-+					inode->i_flags &= ~EXT4_EXTENTS_FL;
-+					e2fsck_write_inode(ctx, ino,
-+							   inode,"pass1");
-+					goto check_ind_inode;
-+				}
- 			}
- 		} else if (extent_fs &&
- 			   (LINUX_S_ISREG(inode->i_mode) ||
- 			    LINUX_S_ISDIR(inode->i_mode)) &&
- 			   ext2fs_extent_header_verify(eh, EXT2_N_BLOCKS *
--						       sizeof(__u32)) == 0 &&
--			   fix_problem(ctx, PR_1_UNSET_EXTENT_FL, &pctx)) {
--			inode->i_flags |= EXT4_EXTENTS_FL;
--			e2fsck_write_inode(ctx, ino, inode, "pass1");
-+						       sizeof(__u32)) == 0) {
-+				if (fix_problem(ctx, PR_1_UNSET_EXTENT_FL,
-+							&pctx)) {
-+					inode->i_flags |= EXT4_EXTENTS_FL;
-+					e2fsck_write_inode(ctx, ino, inode,
-+							"pass1");
-+				}
-+				e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		}
- 		if (extent_fs && inode->i_flags & EXT4_EXTENTS_FL) {
- 			ctx->extent_files++;
-@@ -1344,29 +1398,27 @@ static EXT2_QSORT_TYPE process_inode_cmp
- }
- 
- /*
-- * Mark an inode as being bad in some what
-+ * Mark an inode as being bad and increment its badness counter.
-  */
--static void mark_inode_bad(e2fsck_t ctx, ino_t ino)
-+void e2fsck_mark_inode_bad(e2fsck_t ctx, ino_t ino, int count)
- {
--	struct		problem_context pctx;
--
--	if (!ctx->inode_bad_map) {
--		clear_problem_context(&pctx);
-+	struct	problem_context pctx;
-+	__u16 result;
- 	
--		pctx.errcode = ext2fs_allocate_inode_bitmap(ctx->fs,
--			    _("bad inode map"), &ctx->inode_bad_map);
-+	if (!ctx->inode_badness) {
-+		clear_problem_context(&pctx);
-+		pctx.errcode = ext2fs_create_icount2(ctx->fs, 0, 0, NULL,
-+						     &ctx->inode_badness);
- 		if (pctx.errcode) {
--			pctx.num = 3;
--			fix_problem(ctx, PR_1_ALLOCATE_IBITMAP_ERROR, &pctx);
--			/* Should never get here */
-+			fix_problem(ctx, PR_1_ALLOCATE_ICOUNT, &pctx);
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return;
- 		}
- 	}
--	ext2fs_mark_inode_bitmap(ctx->inode_bad_map, ino);
-+	ext2fs_icount_fetch(ctx->inode_badness, ino, &result);
-+	ext2fs_icount_store(ctx->inode_badness, ino, count + result);
- }
- 
--
- /*
-  * This procedure will allocate the inode "bb" (badblock) map table
-  */
-@@ -1521,7 +1573,8 @@ static int check_ext_attr(e2fsck_t ctx, 
- 	if (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR) ||
- 	    (blk < fs->super->s_first_data_block) ||
- 	    (blk >= fs->super->s_blocks_count)) {
--		mark_inode_bad(ctx, ino);
-+		/* Fixed in pass2, e2fsck_process_bad_inode(). */
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		return 0;
- 	}
- 
-@@ -1701,21 +1754,28 @@ static int handle_htree(e2fsck_t ctx, st
- 
- 	if ((!LINUX_S_ISDIR(inode->i_mode) &&
- 	     fix_problem(ctx, PR_1_HTREE_NODIR, pctx)) ||
--	    (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX) &&
--	     fix_problem(ctx, PR_1_HTREE_SET, pctx)))
--		return 1;
-+	    (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX))) {
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+	   	if (fix_problem(ctx, PR_1_HTREE_SET, pctx))
-+			return 1;
-+	}
- 
- 	ext2fs_block_iterate2(fs, ino, BLOCK_FLAG_DATA_ONLY | BLOCK_FLAG_HOLE,
- 			      block_buf, htree_blk_iter_cb, &blk);
- 	if (((blk == 0) ||
- 	     (blk < fs->super->s_first_data_block) ||
--	     (blk >= fs->super->s_blocks_count)) &&
--	    fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
--		return 1;
-+	     (blk >= fs->super->s_blocks_count))) {
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+		if (fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
-+			return 1;
-+	}
- 
- 	retval = io_channel_read_blk(fs->io, blk, 1, block_buf);
--	if (retval && fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
--		return 1;
-+	if (retval) {
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
-+		if (fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
-+			return 1;
-+	}
- 	
- 	/* XXX should check that beginning matches a directory */
- 	root = (struct ext2_dx_root_info *) (block_buf + 24);
-@@ -1785,6 +1845,9 @@ static int e2fsck_ind_block_verify(struc
- 			bad++;
- 	}
- 
-+	if (num_indir <= EXT2_N_BLOCKS)
-+		e2fsck_mark_inode_bad(p->ctx, p->ino, bad);
-+
- 	if ((num_indir <= EXT2_N_BLOCKS && bad > 4) || bad > 8)
- 		return PR_1_INDIRECT_BAD;
- 
-@@ -1828,6 +1891,10 @@ static int e2fsck_ext_block_verify(struc
- 				pctx->blkcount = ex->ee_start;
- 				pctx->num = ex->ee_len;
- 				pctx->blk = ex->ee_block;
-+				/* To ensure that extent is in inode */
-+				if (eh->eh_max == 4)
-+					e2fsck_mark_inode_bad(p->ctx, p->ino,
-+							BADNESS_HIGH);
- 				if (fix_problem(ctx, PR_1_EXTENT_BAD, pctx)) {
- 					ext2fs_extent_remove(eh, ex);
- 					i--; ex--; /* check next (moved) item */
-@@ -1854,6 +1921,10 @@ static int e2fsck_ext_block_verify(struc
- 				pctx->blkcount = ix->ei_leaf;;
- 				pctx->num = i;
- 				pctx->blk = ix->ei_block;
-+				/* To ensure that extent_idx is in inode */
-+				if (eh->eh_max == 4)
-+					e2fsck_mark_inode_bad(p->ctx, p->ino,
-+							BADNESS_HIGH);
- 				if (fix_problem(ctx, PR_1_EXTENT_IDX_BAD,pctx)){
- 					ext2fs_extent_index_remove(eh, ix);
- 					i--; ix--; /* check next (moved) item */
-@@ -1861,7 +1932,6 @@ static int e2fsck_ext_block_verify(struc
- 					continue;
- 				}
- 			}
--
- 			ix_prev = ix;
- 		}
- 	}
-@@ -1916,6 +1986,7 @@ static void check_blocks(e2fsck_t ctx, s
- 				inode->i_flags &= ~EXT2_COMPRBLK_FL;
- 				dirty_inode++;
- 			}
-+			e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		}
- 	}
- 
-@@ -1961,6 +2032,7 @@ static void check_blocks(e2fsck_t ctx, s
- 		ext2fs_icount_store(ctx->inode_link_info, ino, 0);
- 		inode->i_dtime = ctx->now;
- 		dirty_inode++;
-+		ext2fs_icount_store(ctx->inode_badness, ino, 0);
- 		ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
- 		ext2fs_unmark_inode_bitmap(ctx->inode_reg_map, ino);
- 		ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
-@@ -2000,6 +2072,11 @@ static void check_blocks(e2fsck_t ctx, s
- 			ctx->fs_directory_count--;
- 			goto out;
- 		}
-+		/*
-+		 * The mode might be in-correct. Increasing the badness by
-+		 * small amount won't hurt much.
-+		 */
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 	}
- 
- 	pb.num_blocks *= (fs->blocksize / 512);
-@@ -2039,6 +2116,7 @@ static void check_blocks(e2fsck_t ctx, s
- 				inode->i_size_high = pctx->num >> 32;
- 			dirty_inode++;
- 		}
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		pctx->num = 0;
- 	}
- 	if (LINUX_S_ISREG(inode->i_mode) &&
-@@ -2050,6 +2128,7 @@ static void check_blocks(e2fsck_t ctx, s
- 			inode->i_blocks = pb.num_blocks;
- 			dirty_inode++;
- 		}
-+		e2fsck_mark_inode_bad(ctx, ino, BADNESS_NORMAL);
- 		pctx->num = 0;
- 	}
- out:
-Index: e2fsprogs-1.40.4/e2fsck/pass4.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/pass4.c
-+++ e2fsprogs-1.40.4/e2fsck/pass4.c
-@@ -185,6 +185,7 @@ void e2fsck_pass4(e2fsck_t ctx)
- 	}
- 	ext2fs_free_icount(ctx->inode_link_info); ctx->inode_link_info = 0;
- 	ext2fs_free_icount(ctx->inode_count); ctx->inode_count = 0;
-+	ext2fs_free_icount(ctx->inode_badness); ctx->inode_badness = 0;
- 	ext2fs_free_inode_bitmap(ctx->inode_bb_map);
- 	ctx->inode_bb_map = 0;
- 	ext2fs_free_inode_bitmap(ctx->inode_imagic_map);
-Index: e2fsprogs-1.40.4/e2fsck/pass2.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/pass2.c
-+++ e2fsprogs-1.40.4/e2fsck/pass2.c
-@@ -251,10 +251,6 @@ void e2fsck_pass2(e2fsck_t ctx)
- 	ext2fs_free_mem(&buf);
- 	ext2fs_free_dblist(fs->dblist);
- 
--	if (ctx->inode_bad_map) {
--		ext2fs_free_inode_bitmap(ctx->inode_bad_map);
--		ctx->inode_bad_map = 0;
--	}
- 	if (ctx->inode_reg_map) {
- 		ext2fs_free_inode_bitmap(ctx->inode_reg_map);
- 		ctx->inode_reg_map = 0;
-@@ -501,6 +497,7 @@ static _INLINE_ int check_filetype(e2fsc
- {
- 	int	filetype = dirent->name_len >> 8;
- 	int	should_be = EXT2_FT_UNKNOWN;
-+	__u32	result;
- 	struct ext2_inode	inode;
- 
- 	if (!(ctx->fs->super->s_feature_incompat &
-@@ -512,16 +509,18 @@ static _INLINE_ int check_filetype(e2fsc
- 		return 1;
- 	}
- 
-+	if (ctx->inode_badness)
-+		ext2fs_icount_fetch32(ctx->inode_badness, dirent->inode,
-+				      &result);
-+
- 	if (ext2fs_test_inode_bitmap(ctx->inode_dir_map, dirent->inode)) {
- 		should_be = EXT2_FT_DIR;
- 	} else if (ext2fs_test_inode_bitmap(ctx->inode_reg_map,
- 					    dirent->inode)) {
- 		should_be = EXT2_FT_REG_FILE;
--	} else if (ctx->inode_bad_map &&
--		   ext2fs_test_inode_bitmap(ctx->inode_bad_map,
--					    dirent->inode))
-+	} else if (ctx->inode_badness && result >= BADNESS_BAD_MODE) {
- 		should_be = 0;
--	else {
-+	} else {
- 		e2fsck_read_inode(ctx, dirent->inode, &inode,
- 				  "check_filetype");
- 		should_be = ext2_file_type(inode.i_mode);
-@@ -956,12 +955,10 @@ static int check_dir_block(ext2_filsys f
- 		 * (We wait until now so that we can display the
- 		 * pathname to the user.)
- 		 */
--		if (ctx->inode_bad_map &&
--		    ext2fs_test_inode_bitmap(ctx->inode_bad_map,
--					     dirent->inode)) {
--			if (e2fsck_process_bad_inode(ctx, ino,
--						     dirent->inode,
--						     buf + fs->blocksize)) {
-+		if ((ctx->inode_badness) &&
-+		    ext2fs_icount_is_set(ctx->inode_badness, dirent->inode)) {
-+			if (e2fsck_process_bad_inode(ctx, ino, dirent->inode,
-+						buf + fs->blocksize)) {
- 				dirent->inode = 0;
- 				dir_modified++;
- 				goto next;
-@@ -1195,8 +1192,8 @@ static void deallocate_inode(e2fsck_t ct
- 	e2fsck_read_bitmaps(ctx);
- 	ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
- 	ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
--	if (ctx->inode_bad_map)
--		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
-+	if (ctx->inode_badness)
-+		ext2fs_icount_store(ctx->inode_badness, ino, 0);
- 	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
- 
- 	if (inode.i_file_acl &&
-@@ -1261,8 +1258,10 @@ extern int e2fsck_process_bad_inode(e2fs
- 	int			not_fixed = 0;
- 	unsigned char		*frag, *fsize;
- 	struct problem_context	pctx;
--	int	problem = 0;
-+	int			problem = 0;
-+	__u16			badness;
- 
-+	ext2fs_icount_fetch(ctx->inode_badness, ino, &badness);
- 	e2fsck_read_inode(ctx, ino, &inode, "process_bad_inode");
- 
- 	clear_problem_context(&pctx);
-@@ -1277,6 +1276,7 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
- 	}
- 
- 	if (!LINUX_S_ISDIR(inode.i_mode) && !LINUX_S_ISREG(inode.i_mode) &&
-@@ -1310,6 +1310,11 @@ extern int e2fsck_process_bad_inode(e2fs
- 		} else
- 			not_fixed++;
- 		problem = 0;
-+		/*
-+		 * A high value is associated with bad mode in order to detect
-+		 * that mode was corrupt in check_filetype()
-+		 */
-+		badness += BADNESS_BAD_MODE;
- 	}
- 		
- 	if (inode.i_faddr) {
-@@ -1318,6 +1323,7 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
- 	}
- 
- 	switch (fs->super->s_creator_os) {
-@@ -1339,6 +1345,7 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
- 		pctx.num = 0;
- 	}
- 	if (fsize && *fsize) {
-@@ -1348,11 +1355,28 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
- 		pctx.num = 0;
- 	}
- 
-+	/* In pass1 these conditions were used to mark inode bad so that
-+	 * it calls e2fsck_process_bad_inode and make an extensive check
-+	 * plus prompt for action to be taken. To compensate for badness
-+	 * incremented in pass1 by this condition, decrease it.
-+	 */
-+	if ((inode.i_faddr || frag || fsize ||
-+	     (LINUX_S_ISDIR(inode.i_mode) && inode.i_dir_acl)) ||
-+	    (inode.i_file_acl &&
-+	     (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR) ||
-+	      (inode.i_file_acl < fs->super->s_first_data_block) ||
-+	      (inode.i_file_acl >= fs->super->s_blocks_count)))) {
-+		/* badness can be 0 if called from pass4. */
-+		if (badness)
-+			badness -= BADNESS_NORMAL;
-+	}
-+
- 	if ((fs->super->s_creator_os == EXT2_OS_LINUX) &&
--	    !(fs->super->s_feature_ro_compat & 
-+	    !(fs->super->s_feature_ro_compat &
- 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
- 	    (inode.osd2.linux2.l_i_blocks_hi != 0)) {
- 		pctx.num = inode.osd2.linux2.l_i_blocks_hi;
-@@ -1360,6 +1384,8 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode.osd2.linux2.l_i_blocks_hi = 0;
- 			inode_modified++;
- 		}
-+		/* Badness was increased in pass1 for this condition */
-+		/* badness += BADNESS_NORMAL; */
- 	}
- 
- 	if (inode.i_file_acl &&
-@@ -1370,6 +1396,7 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
- 	}
- 	if (inode.i_dir_acl &&
- 	    LINUX_S_ISDIR(inode.i_mode)) {
-@@ -1378,12 +1405,28 @@ extern int e2fsck_process_bad_inode(e2fs
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-+		badness += BADNESS_NORMAL;
-+	}
-+
-+	/*
-+	 * The high value due to BADNESS_BAD_MODE should not delete the inode.
-+	 */
-+	if ((badness - ((badness >= BADNESS_BAD_MODE) ? BADNESS_BAD_MODE : 0))>=
-+			ctx->inode_badness_threshold) {
-+		pctx.num = badness;
-+		if (fix_problem(ctx, PR_2_INODE_TOOBAD, &pctx)) {
-+			deallocate_inode(ctx, ino, 0);
-+			if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-+				return 0;
-+			return 1;
-+		}
-+		not_fixed++;
- 	}
- 
- 	if (inode_modified)
- 		e2fsck_write_inode(ctx, ino, &inode, "process_bad_inode");
--	if (!not_fixed && ctx->inode_bad_map)
--		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
-+	if (ctx->inode_badness)
-+		ext2fs_icount_store(ctx->inode_badness, ino, 0);
- 	return 0;
- }
- 
-Index: e2fsprogs-1.40.4/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/problem.c
-+++ e2fsprogs-1.40.4/e2fsck/problem.c
-@@ -1316,6 +1316,11 @@ static struct e2fsck_problem problem_tab
- 	  N_("@i %i found in @g %g unused inodes area.  "),
- 	  PROMPT_FIX, PR_PREEN_OK },
- 
-+	/* Inode too bad */
-+	{ PR_2_INODE_TOOBAD,
-+	  N_("@i %i is badly corrupt (badness value = %N).  "),
-+	  PROMPT_CLEAR, PR_PREEN_OK },
-+
- 	/* Pass 3 errors */
- 
- 	/* Pass 3: Checking directory connectivity */
-Index: e2fsprogs-1.40.4/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/problem.h
-+++ e2fsprogs-1.40.4/e2fsck/problem.h
-@@ -792,6 +792,9 @@ struct problem_context {
- /* Inode found in group unused inodes area */
- #define PR_2_INOREF_IN_UNUSED		0x020046
- 
-+/* Inode completely corrupt */
-+#define PR_2_INODE_TOOBAD		0x020047
-+
- /*
-  * Pass 3 errors
-  */
-Index: e2fsprogs-1.40.4/lib/ext2fs/icount.c
-===================================================================
---- e2fsprogs-1.40.4.orig/lib/ext2fs/icount.c
-+++ e2fsprogs-1.40.4/lib/ext2fs/icount.c
-@@ -462,6 +462,23 @@ static errcode_t get_inode_count(ext2_ic
- 	return 0;
- }
- 
-+int ext2fs_icount_is_set(ext2_icount_t icount, ext2_ino_t ino)
-+{
-+	__u16 result;
-+
-+	if (ext2fs_test_inode_bitmap(icount->single, ino))
-+		return 1;
-+	else if (icount->multiple) {
-+		if (ext2fs_test_inode_bitmap(icount->multiple, ino))
-+			return 1;
-+		return 0;
-+	}
-+	ext2fs_icount_fetch(icount, ino, &result);
-+	if (result)
-+		return 1;
-+	return 0;
-+}
-+
- errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *out)
- {
- 	errcode_t	ret = 0;
-@@ -501,6 +518,7 @@ errcode_t ext2fs_icount_fetch32(ext2_ico
- 		*ret = 0;
- 		return 0;
- 	}
-+
- 	get_inode_count(icount, ino, ret);
- 	return 0;
- }
-Index: e2fsprogs-1.40.4/e2fsck/pass1b.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/pass1b.c
-+++ e2fsprogs-1.40.4/e2fsck/pass1b.c
-@@ -613,8 +613,8 @@ static void delete_file(e2fsck_t ctx, ex
- 		fix_problem(ctx, PR_1B_BLOCK_ITERATE, &pctx);
- 	ext2fs_unmark_inode_bitmap(ctx->inode_used_map, ino);
- 	ext2fs_unmark_inode_bitmap(ctx->inode_dir_map, ino);
--	if (ctx->inode_bad_map)
--		ext2fs_unmark_inode_bitmap(ctx->inode_bad_map, ino);
-+ 	if (ctx->inode_badness)
-+ 		e2fsck_mark_inode_bad(ctx, ino, 0);
- 	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
- 
- 	/* Inode may have changed by block_iterate, so reread it */
-Index: e2fsprogs-1.40.4/e2fsck/unix.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/unix.c
-+++ e2fsprogs-1.40.4/e2fsck/unix.c
-@@ -624,6 +624,18 @@ static void parse_extended_opts(e2fsck_t
- 				extended_usage++;
- 				continue;
- 			}
-+		/* -E inode_badness_threshold=<value> */
-+ 		} else if (strcmp(token, "inode_badness_threshold") == 0) {
-+ 			if (!arg) {
-+ 				extended_usage++;
-+ 				continue;
-+ 			}
-+ 			ctx->inode_badness_threshold = strtoul(arg, &p, 0);
-+			if (*p != '\0' || (ctx->inode_badness_threshold > 200)){
-+				fprintf(stderr, _("Invalid badness value.\n"));
-+				extended_usage++;
-+				continue;
-+			}
- 		} else {
- 			fprintf(stderr, _("Unknown extended option: %s\n"),
- 				token);
-@@ -639,6 +646,7 @@ static void parse_extended_opts(e2fsck_t
- 		       "\tshared=<preserve|lost+found|delete>\n"
- 		       "\tclone=<dup|zero>\n"
- 		       "\tea_ver=<ea_version (1 or 2)>\n"
-+ 		       "\tinode_badness_threhold=(value)\n"
-  		       "\texpand_extra_isize\n"
- 		       "\n"), stderr);
- 		exit(1);
-@@ -703,6 +711,9 @@ static errcode_t PRS(int argc, char *arg
- 	profile_init(config_fn, &ctx->profile);
- 	initialize_profile_options(ctx);
- 
-+	ctx->inode_badness_threshold = BADNESS_THRESHOLD;
-+	ctx->now_tolerance_val = 172800; /* Two days */
-+
- 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
- 		switch (c) {
- 		case 'C':
-Index: e2fsprogs-1.40.4/e2fsck/e2fsck.c
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/e2fsck.c
-+++ e2fsprogs-1.40.4/e2fsck/e2fsck.c
-@@ -105,10 +105,6 @@ errcode_t e2fsck_reset_context(e2fsck_t 
- 		ext2fs_free_inode_bitmap(ctx->inode_bb_map);
- 		ctx->inode_bb_map = 0;
- 	}
--	if (ctx->inode_bad_map) {
--		ext2fs_free_inode_bitmap(ctx->inode_bad_map);
--		ctx->inode_bad_map = 0;
--	}
- 	if (ctx->inode_imagic_map) {
- 		ext2fs_free_inode_bitmap(ctx->inode_imagic_map);
- 		ctx->inode_imagic_map = 0;
-Index: e2fsprogs-1.40.4/e2fsck/e2fsck.8.in
-===================================================================
---- e2fsprogs-1.40.4.orig/e2fsck/e2fsck.8.in
-+++ e2fsprogs-1.40.4/e2fsck/e2fsck.8.in
-@@ -191,6 +191,13 @@ in place (preserve); 
- Assume the format of the extended attribute blocks in the filesystem is
- the specified version number.  The version number may be 1 or 2.  The
- default extended attribute version format is 2.
-+.TP
-+.BI inode_badness_threshold= threshold_value
-+A badness counter is associated with every inode, which determines the degree
-+of inode corruption. Each error found in the inode will increase the badness by
-+1 or 2, and inodes with a badness at or above
-+.I threshold_value will be prompted for deletion. The default
-+.I threshold_value is 7.
- .RE
- .TP
- .B \-f
-Index: e2fsprogs-1.40.4/tests/f_bad_disconnected_inode/expect.1
-===================================================================
---- e2fsprogs-1.40.4.orig/tests/f_bad_disconnected_inode/expect.1
-+++ e2fsprogs-1.40.4/tests/f_bad_disconnected_inode/expect.1
-@@ -39,10 +39,7 @@ Clear? yes
- i_blocks_hi for inode 16 (...) is 62762, should be zero.
- Clear? yes
- 
--Unattached inode 16
--Connect to /lost+found? yes
--
--Inode 16 ref count is 5925, should be 1.  Fix? yes
-+Inode 16 is badly corrupt (badness value = 10).  Clear? yes
- 
- Pass 5: Checking group summary information
- Block bitmap differences:  -(9--19)
-@@ -54,19 +51,16 @@ Fix? yes
- Free blocks count wrong (79, counted=91).
- Fix? yes
- 
--Inode bitmap differences:  +16
--Fix? yes
--
--Free inodes count wrong for group #0 (7, counted=4).
-+Free inodes count wrong for group #0 (8, counted=5).
- Fix? yes
- 
- Directories count wrong for group #0 (3, counted=2).
- Fix? yes
- 
--Free inodes count wrong (7, counted=4).
-+Free inodes count wrong (8, counted=5).
- Fix? yes
- 
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 12/16 files (0.0% non-contiguous), 9/100 blocks
-+test_filesys: 11/16 files (0.0% non-contiguous), 9/100 blocks
- Exit status is 1
-Index: e2fsprogs-1.40.4/tests/f_bad_disconnected_inode/expect.2
-===================================================================
---- e2fsprogs-1.40.4.orig/tests/f_bad_disconnected_inode/expect.2
-+++ e2fsprogs-1.40.4/tests/f_bad_disconnected_inode/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 12/16 files (0.0% non-contiguous), 9/100 blocks
-+test_filesys: 11/16 files (0.0% non-contiguous), 9/100 blocks
- Exit status is 0
-Index: e2fsprogs-1.40.4/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.40.4.orig/lib/ext2fs/ext2fs.h
-+++ e2fsprogs-1.40.4/lib/ext2fs/ext2fs.h
-@@ -831,6 +831,7 @@ extern errcode_t ext2fs_initialize(const
- 
- /* icount.c */
- extern void ext2fs_free_icount(ext2_icount_t icount);
-+extern int ext2fs_icount_is_set(ext2_icount_t icount, ext2_ino_t ino);
- extern errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 					  int flags, ext2_icount_t *ret);
- extern errcode_t ext2fs_create_icount2(ext2_filsys fs, int flags, 
+Test case for bad inode detection, and fixes for old test cases.
 
 Cheers, Andreas
 --
 Andreas Dilger
 Sr. Staff Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
+
+
+--Boundary_(ID_E88WH1Ji0P10jwS8zDCiqg)
+Content-type: application/octet-stream; NAME=e2fsprogs-tests-f_ibadness.patch
+Content-transfer-encoding: BASE64
+Content-disposition: attachment; filename=e2fsprogs-tests-f_ibadness.patch
+
+VGVzdCBjYXNlIGZvciBiYWQgaW5vZGUgZGV0ZWN0aW9uLCBhbmQgZml4ZXMgZm9y
+IG9sZCB0ZXN0IGNhc2VzLgoKSW5kZXg6IGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2Zf
+aWJhZG5lc3MvbmFtZQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Ci0tLSAvZGV2L251bGwK
+KysrIGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2ZfaWJhZG5lc3MvbmFtZQpAQCAtMCww
+ICsxIEBACitJbm9kZSB3aXRoIGJhZG5lc3MgPSA4CkluZGV4OiBlMmZzcHJvZ3Mt
+MS4zOS90ZXN0cy9mX2liYWRuZXNzL2V4cGVjdC4xCj09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT0KLS0tIC9kZXYvbnVsbAorKysgZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9pYmFk
+bmVzcy9leHBlY3QuMQpAQCAtMCwwICsxLDQwIEBACitQYXNzIDE6IENoZWNraW5n
+IGlub2RlcywgYmxvY2tzLCBhbmQgc2l6ZXMKK0lub2RlIDEzIGlzIGluIHVzZSwg
+YnV0IGhhcyBkdGltZSBzZXQuICBGaXg/IHllcworCitJbm9kZSAxMyBoYXMgaWxs
+ZWdhbCBibG9jayhzKS4gIENsZWFyPyB5ZXMKKworSWxsZWdhbCBibG9jayAjMCAo
+NDI5NDk2NzI5NSkgaW4gaW5vZGUgMTMuICBDTEVBUkVELgorSWxsZWdhbCBibG9j
+ayAjMSAoNDI5NDk2NzI5NSkgaW4gaW5vZGUgMTMuICBDTEVBUkVELgorSW5vZGUg
+MTMsIGlfYmxvY2tzIGlzIDM0NTM0NTMsIHNob3VsZCBiZSAxNDAuICBGaXg/IHll
+cworCitQYXNzIDI6IENoZWNraW5nIGRpcmVjdG9yeSBzdHJ1Y3R1cmUKK2lfZmls
+ZV9hY2wgZm9yIGlub2RlIDEzICgvdGVzdGZpbGUpIGlzIDM0NSwgc2hvdWxkIGJl
+IHplcm8uCitDbGVhcj8geWVzCisKK2lfZmFkZHIgZm9yIGlub2RlIDEzICgvdGVz
+dGZpbGUpIGlzIDM0NTM0LCBzaG91bGQgYmUgemVyby4KK0NsZWFyPyB5ZXMKKwor
+SW5vZGUgMTMgaXMgYmFkbHkgY29ycnVwdCAoYmFkbmVzcyB2YWx1ZSA9IDkpLiAg
+Q2xlYXI/IHllcworCitQYXNzIDM6IENoZWNraW5nIGRpcmVjdG9yeSBjb25uZWN0
+aXZpdHkKK1Bhc3MgNDogQ2hlY2tpbmcgcmVmZXJlbmNlIGNvdW50cworUGFzcyA1
+OiBDaGVja2luZyBncm91cCBzdW1tYXJ5IGluZm9ybWF0aW9uCitCbG9jayBiaXRt
+YXAgZGlmZmVyZW5jZXM6ICAtKDEzNjgtLTEzNjkpCitGaXg/IHllcworCitGcmVl
+IGJsb2NrcyBjb3VudCB3cm9uZyBmb3IgZ3JvdXAgIzAgKDY4MjMsIGNvdW50ZWQ9
+NjgyNSkuCitGaXg/IHllcworCitGcmVlIGJsb2NrcyBjb3VudCB3cm9uZyAoMTQ2
+OTEsIGNvdW50ZWQ9MTQ2OTMpLgorRml4PyB5ZXMKKworRnJlZSBpbm9kZXMgY291
+bnQgd3JvbmcgZm9yIGdyb3VwICMwICgyMDM5LCBjb3VudGVkPTIwMzcpLgorRml4
+PyB5ZXMKKworRnJlZSBpbm9kZXMgY291bnQgd3JvbmcgKDQwODcsIGNvdW50ZWQ9
+NDA4NSkuCitGaXg/IHllcworCisKK3Rlc3RfZmlsZXN5czogKioqKiogRklMRSBT
+WVNURU0gV0FTIE1PRElGSUVEICoqKioqCit0ZXN0X2ZpbGVzeXM6IDExLzQwOTYg
+ZmlsZXMgKDkuMSUgbm9uLWNvbnRpZ3VvdXMpLCAxNjkxLzE2Mzg0IGJsb2Nrcwor
+RXhpdCBzdGF0dXMgaXMgMQpJbmRleDogZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9p
+YmFkbmVzcy9leHBlY3QuMgo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09Ci0tLSAvZGV2L251
+bGwKKysrIGUyZnNwcm9ncy0xLjM5L3Rlc3RzL2ZfaWJhZG5lc3MvZXhwZWN0LjIK
+QEAgLTAsMCArMSw3IEBACitQYXNzIDE6IENoZWNraW5nIGlub2RlcywgYmxvY2tz
+LCBhbmQgc2l6ZXMKK1Bhc3MgMjogQ2hlY2tpbmcgZGlyZWN0b3J5IHN0cnVjdHVy
+ZQorUGFzcyAzOiBDaGVja2luZyBkaXJlY3RvcnkgY29ubmVjdGl2aXR5CitQYXNz
+IDQ6IENoZWNraW5nIHJlZmVyZW5jZSBjb3VudHMKK1Bhc3MgNTogQ2hlY2tpbmcg
+Z3JvdXAgc3VtbWFyeSBpbmZvcm1hdGlvbgordGVzdF9maWxlc3lzOiAxMS80MDk2
+IGZpbGVzICg5LjElIG5vbi1jb250aWd1b3VzKSwgMTY5MS8xNjM4NCBibG9ja3MK
+K0V4aXQgc3RhdHVzIGlzIDAKKioqIC9kZXYvbnVsbAkyMDA3LTA2LTIxIDE0OjQ2
+OjA3LjMyMDQ0MTE5NiArMDUzMAotLS0gZTJmc3Byb2dzLTEuMzkvdGVzdHMvZl9p
+YmFkbmVzcy9pbWFnZS5negkyMDA3LTA2LTIxIDE1OjQyOjAxLjAwMDAwMDAwMCAr
+MDUzMAoqKioqKioqKioqKioqKioKKioqIDAgKioqKgotLS0gMSwyNyAtLS0tCisg
+H4sICFNLekYCA2ltYWdlAOzdB5xdV14YYNm7Czui9w7PWmzPyJIs2d5mWV7G0sgW
+VjGSvN0MU56kWc/MG6ZY1rIGlt57ryEhCaSQQBISCEkIkEoq6QkppJAKKyAkYSGk
+Qf7n3PLufWWK7IUl830//2Xpvftuv+eec+655xw4AOxbHxrxaQcOPPiyAwc+6fUH
+Dvz6hxw4cEfz+04ZrzxwYPaLJs++9qtOnD1w4FUHrvzKHXm6D/mK+PfFX8qTVr/7
+gIjPj3go4s7y83tf+aMf9+OHTn/qj/30T/3QLxxd+4n3zsa8YeiTVzb+/gs//O2/
+/Mkf/NixH3+/n/uGb5j5zZ+/s7GhP/sFk2cvx7+vRFyNeDrijRFvinhzxFsi3hrx
+toi3RzwT8ZkRs3cO7sy2O5xhvA97LOJ0xJmIuY//9fe/88DL29/HtX864kzET3xy
+upxebqfB/yde1rEPYL96uesf9q1XuP5h33o/1z/sW+/v+od965Wuf9i3Jlz/sG8d
+dP3DvvUBrn/Ytz7Q9Q/71ge5/mHf+mDXP+xbH+L6h33rQ13/sG99mOsf9q0Pd/3D
+vvURrn/Ytz7S9Q/71ke5/mHf+mjXP+xbH+P6h33rY13/sG99nOsf9q2Pd/3DvvUJ
+rn/Ytz7R9Q/71ie5/mHf+mTXP+xbn+L6h32r4/qHfesu1z/sW4dc/7Bvvcr1D/vW
+p7r+Yd+62/UP+9Y9rn/Yt+51/cO+Nen6h31ryvUP+9Zh1z/sW/e5/mHfOuL6h33r
+qOsf9q1jrn/Yt+53/cO+ddz1D/vWCdc/7FsPuP5h33rQ9Q/71kOuf9i3Xu36h33r
+Na5/2Lde6/qHfet1rn/Yt17v+od962HXP+xbJ13/sG894vqHfeuU6x/2rUdd/7Bv
+vcH1D/vWp7n+Yd+adv3DvvVbv/t8nqMGL9H1/zHSP9ivquvgZ79g8mwVv53X3y9N
+v+eOAy8/cOAjvnDy7NoXFZE+f88dLztwZ2O6M3dIq3npff6744/jL3/58Pl/x4Hf
+fJHz/ow7drn8Ax/augar5X/gK/vTXY55XYm4GvF0xBsj3hTx5oi3RLw14m0Rb494
+JuIzI2bvdHx38pPT6fiPSv/uPPCxjelmYn+ejXg84omIcxGfHvFkxPmICxEXIy5F
+PLWHtOr73/2ePPVvxHKreOVXnTj7npcwvfu1iS/74vHLP3Dg/SZfeeBNX3HibBV3
+zLwivjl04IN+5KEDn/tB7XzSW+Ort0W8PeKZiM+MmI34rIi5iPmIhYjFV7SX85Zy
+e37xS5xzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAv5vcGfGBB+6481j99zvvPBb/+ID4+6ceOHjncm9j
+875rva3VxfTdgQMfeuAVd1xbWu6eiL9/UMTPvOyVd2x2NzbTZ9XnwO8OHzBw/b/n
+ZcX1D+wTL7cLwPUPuP4B1z/g+gdc/4DrH3D9A65/wPUPuP6B3y1eViYBr4h4v4j3
+j3hlxETEwQPVOwLF+z4fHPEhB9J7QAcOfFjEh0d8RMRHRnxUxEdHfEzEx0Z8XMTH
+R3xCxCdGfFLEJ0d8SkQn4q6IQxGvOpDeNTpw4O6IeyLujZiMmIo4HHFfxJGIoxHp
+1YT7I45HpHeNHoh4MOKhiFdHvCbitRGvi3h9xMMRJyMeiTgV8WjEGyI+LWLaoWef
++8mTr/+2fg7g5dVf7ygv/SH3vvJHP+7HD53+1B/76Z/6oV84uvYT5bTA797r/47y
+tn96zGR3ljFT/v9M8f87yv8feGxcegG87/qtT9nn2w/72GPlTT/dyH/g43/1/e8c
+qAx8LAorIOqnI85E/MQnp2oBlYXA/yfln1QJePzAgZ/9gsmzVVRFno9tTDcTJaSz
+EY9HPBFxLuLTI56MOB9xIeJixKWIp/ZQI/L9735Pnvo3YrlVpH+/546Xrlrl1ya+
+7Iu3W35K0de+aPJsFdXy72xMd8cH3/7yJ77hW1W1vo8bPv9/e/zSdJz/cQJ+xBcO
+nn8va51/Z9Qy8l7w+e9O6f/LXz58/t9x4Ddf5Lw/445dLj8/Tetfg9XyP/CV/eku
+x7yuRFyNeDrijRFvinhzxFsi3hrxtoi3RzwT8ZkRs3fuvPzt+v/7yF31//eyO671
+estLq88e1f8fqP967/g8B2sE2SJeVPm3eP6Xbv3vb2/Avr3+X2lvwP7SfP73g57/
+Afsp/7PPn//91ve95460nR/4hZNnqxi1/PtXVjfv39jsrXfvT8O9rG2euH/X1b2/
+vs3y+Z01G4f5syLmIuYjFiIWI7oR1yKuR9yIWIp4R8SzEcsRKxGrEb2ItYjPjliP
+2IjYjNiKeC7iZsTzEbci3hnxORHvingh4nMjPi/i8yPeHfEFEV8Y8UURXxzxJRFf
+GvFlEV8e8RURXxnxVRFfHfE1EV8b8XURXx/xDRHfGPFNEd8c8S0R3xrxbRHfHvEd
+Ed8Z8V0R3x3xPRHfG/F7Ir4v4vdG/L6I74/4/RF/IOIPRvxAxA9G/KGIPxzxRyL+
+aMQPRfyxiD8e8cMRPxLxJyL+ZMSfivjRiD8d8WcifizixyP+bMRPRPy5iD8f8Rci
+fjLiL0b8VMRPR/xMxF+K+MsRfyXir0b8tYi/HvGzEX8j4m9G/K2Ivx3xdyL+bsTP
+Rfy9iL8f8Q8i/mHEP4r4xxH/JOKfRvyziJ+P+OcR/yLiX0b8q4hfiPjXEf8m4t9G
+/LuIX4z49xH/IeI/RvyniP8c8V8ifinilyN+JeK/Rvy3iP8e8at3pLQj0pyIX4/4
+HxG/EfE/I/5XxP+O+D8R/zfiNyN+646i9HlHxJ0RL4t4ecQrIt4vIjKkB14ZMRFx
+MOIDIj4w4oMiPjjiQyI+NOLDIj484iMiPjLioyI+OuJjIj424uMiPj7iEyI+MeKT
+Ij454lMiOhF3RRyKeFXEp0bcHXFPxL0RkxFTEYcj7os4EnE04ljE/RHHI05EPBDx
+YMRDEa+OeE3EayNeF/H6iIcjTkY8EnEq4tGIN0R8WsR0xGMRpyPORMxEnI14POKJ
+iHMRnx7xZMT5iAsRFyMuRTwV8RkRlyOuRFyNeDrijRFvinhzxFsi3hrxtoi3RzwT
+8ZmN54O/08//03Lb9x/P/3nv8/z/xT7//6D337i14vk//G4s//br/19mb8C+vP5T
+TiVV7J8ZM1l679f7vfD/qfeF9v/K/yj///aW//d9/sfzv/z87yM8/9vv5X8NewAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAACA2/JZdx44MPeyAwfmX25fwH4zF9f/fMRCxGJEN+JaxPWIGxFLEe+IeDZi
+OWIlYjWiF7EW8dkR6xEbEZsRWxHPRdyMeD7iVsQ7Iz4n4l0RL0R8bsTnRXx+xLsj
+viDiCyO+KOKLI74k4ksjviziyyO+IuIrI74q4qsjvibiayO+LuLrI74h4hsjvini
+myO+JeJbI74t4tsjviPiOyO+K+K7I74n4nsjfk/E90X83ojfF/H9Eb8/4g9E/MGI
+H4j4wYg/FPGHI/5IxB+N+KGIPxbxxyN+OOJHIv5ExJ+M+FMRPxrxpyP+TMSPRfx4
+xJ+N+ImIPxfx5yP+QsRPRvzFiJ+K+OmIn4n4SxF/OeKvRPzViL8W8dcjfjbib0T8
+zYi/FfG3I/5OxN+N+LmIvxfx9yP+QcQ/jPhHEf844p9E/NOIfxbx8xH/POJfRPzL
+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
+1mY2Jp7azY8Xl9IW9tZj5x+rZhCf7fr3693rW8tz68VBrecQn+5qDjfmnut25ucW
+yyNQ/z4+2vUaxOanOeSj0pjD/O5nsDJ3fWmh/KSeQfHp9jMpljlwEPKHs9fixFrc
+46/TKbR5s1euSTWnxa215nzSSdw/DeuTtjqOt/rb0TiMjRMxEoX4eun6apyycWVt
+bM5t3OjM3Ywkorva27p+o3kGduKc3bwxt5mWkGZRnN0pnYtdt3GjtxWXXboEVrvF
+zNYjdaiu8uIqaswszWBxaz1f1/H9avp8OV2A67HlsRVzjYShs3Cju/DssU5ncnp5
+80YvrVVMkGextLrQW92IhKy7unCr2JrN2PLu4pH26qVEb3C9qjnk1LcXy3s+Eqxj
+1Q662NvsFpubU/ITj3VuLkUCNp+24rneszGrpbyv14vEYW71VmxPJFsLkeCVRyPN
+Jh/5lGTcf/Dgqxa715ZWu53ZSFZnr1x6+vLpmTgE9x/uXO9uxq5fX13urk5OpUlf
+Fdu1vBXr9UhKolevH7vxaOOzzaWVbvHJtZhj54npN87Mzly+fPHS7BONqbrr66u9
+PFl3dXHp2sH+V4eK5PnYjUPNyZ/fjE/vT/+bjT9m5zY319uL7U/xYJoi7mQbaYLG
+fNfWe3ETW0kzrlYuVurcxfPnLs7Mnn364ukr/X1Qfhprt7zRHfo4dvJy/Lte9zgx
+N/NVGYdjvbfQ3diYzft4Mq9vnCpxpnSubRyJPf/s7ObE4fzl6vqRgxMTE3E3iomf
+XVjdnN0sjkz8tZwyToZr6csjnTxlmn/6pHft2kY3pnmut7TYOby2vvTcbLrKpk6O
+XJFInrZZmU6xMrPV2iS7WaN64l2vVP4iXyvF+mxMFgc6Zrqw+fyRdIptLeT1Tkdp
+Nq6czVjjmFX6Ni9u4UYk3uX6zm9dG5j1ytx6zCvlU0bNf2DiuNv3FsqEd+fp+unr
+dtPeiFt1LPxaY59vuw7VESoSwYG9MXZbZ9589YHZz7hy6fLV2atveWqmPZfZhZW1
+yZTmbJbHYS7m1PjnfH8+cQEupF9s5tze7EJs6fzciLMk/7uYec4Wpj/y4YjDv3h9
+fS1mcH29t7VWHfnOuEM/t/iOyIakazNdvHHbvZYzNAPbnRdXfVecb/mvxSWQT7mB
+XXMkn4Ll3NPNIpYbqVa56GLi2L8LkZmMO+VyzmVte0Xk76ZO5kSxf1L2r+rZ8sPP
+OThR7Zy4qOPPkwcntlaL29XE0kbKmjx8ItZuI2Ux0t8Wlrtz+aONrbW19Zhf/D1t
+1bX1uesrkWB1F/NUvZX8ZfGv+fl8yaS/FqnawydiMUU6MrG6tVKeZ/3PVuae73/W
+uJInludi/+Rv4ovYZcXPWztko/omTzv0VbmEWLvnlnpbG/XMyv3RP1M6h/P/+l+N
+vKhPFvvvWrVbyzxH/HuluznX3IjiBJkoftNfWpXQz97IOf3O4e6N2bRyMVE64yYm
++ifJyYMvnBw6mmXuK2eRWwezUxzM4e0qN6sxr9bF0zwz2iudTsPh9SmKZWd7682S
+R9zsyxXsLEfWobg7l2fzNhtQ7PKN2c3ebPn1yNtBmUykS+pkfeOand16zUPFdqbT
+J5U7Nt6WE5oL02+efez8pdNPzp6/9PjslXNvnekcrZL+YoJzFwcnuK9z4pn+xq13
+u7lstdJdSTm+nKDObRZlkFwgTZmdOGprc+tFPi4yYXHVx5qtb0beIs1j80b8ZaO1
+I3KKsrUaxZDF2TyXgWs5r9zZK7PTV69enpzcWk3ljKmpqYOfU59z12LF4kRbmbxn
+aMdN5ctg4MPOqc7xOGrVdp1OV2U6Vitzz0ZJbStlsiJ791wUQqvs5EbKyy1HxvBy
+d3NrfTVnaMsMcJ4uzSZf3JEx3ooE7nj6OrKoxxp5vIfTxseMYoKUAYm/rvZuFgW0
+XJCLFciz6Jw9d/bSvRu5tHglTofuZlFe3YjcT8oodm8V5Ze09I25lVQW+uytyIan
+ZOdkcfaV51FZvixzzPN5Ld/ZXe8d6+T9n86l8tzO+322uKMXW1ScXUPJ6rj0IR+O
+lN4sxekyEft1IpZ1rirYLnaf71xbnrueNjrnLOLj1WJ3xH9Rpuhd39rIPykWfv+1
+pWu9+zfyxqeP7495X+sUJaSjjy7NpnltdO7pTObz9tzFMzNvnj17vvOudKo8NBt/
+zFy8eiU+ibNkYmI9H7J0xOsVe1O3v1M6KZuRdv5ir6yWyEX45XxsinqElA2O5Hsr
+r0t8tzCXSk3pm2e766vd5fhpd2P13s10vi8szS/fKm4PzfNjoioApAO7uLiULo8o
+hrSP1JFGNn+jl45s/C3/tLewMLcRP9mIMlzsublUwRDzWElFgNaZmosO+fRY7a0e
+TQc7/37sIuOUvtLL12mcjEc6N6NItJrWP25cy3NLq/nHN4uDlUqsK1s5V9Y+mEWx
+siqXdVMNzI25tbVu8es072IVN3LBKs7qVNi5d6M/3/KWkmaYd22UqfLJnn9/q7cV
+n6a9GwvrxMyKfdtel43WYqY6nUvVzxtH6cbcRhy8WGYUwOJ6i21NmaBIzlevd/PJ
+eOzYsV2cbRcuPH11+rHzM/UZ98Ds9FNPzVw8k0+4dMOYSCszuXTqoZOdpc4jxSRl
+0nolPrrvvqmcA2otJB+Uty09M5XzRv1zduKFg9W/TuyUZm3cWomyzLM7J1rlhNul
+WmOTh/K3u04Z+sWLOrsXeeCUXFQZrHxTixJpkWPpLNXZkyrbUByP/r5KN7XZG0tR
+PH/XuzqtTzunImmfio8P5kXeTooxmGSU9R2nOuXNpqyrmquzNZNp64tE8GSxpsXn
+xakwvOadR0/FDjv6aDFVfFCsb7HC5dLuGpik8+ijndc3pxs4b44/E+dZ+kVkR7vr
+8b84MuuR7+uv5vY/Llep/nWx4CJvkfdIa5eU53fskxNjz/Bdn+DlPlrqzaYrMa7T
+2VRtkvK6k2mVlnpHOkPre6STstNxGg2vWpxHsV5VHUcuU7R39slygXnCwSNxcODa
+66Q6g/o4Dh3G9P/etYFt3HGlJovLYKr9syPj5jawwrtaZko1qt/EudRa8fYJPipx
+qe7bdRI7Gcc7p+iLR9PtYaqZ/scNo5/lPdLpXbvWXc85vV6VUpfpSVXz8tj0mdkr
+T82cPjd9Pi646cev7CphHVH1UK/fHmofinxK7Jm7JtM/Y58MphBDq9dIEdLBzHUT
+dXXxZF5iPasj6ecXZ65cmb146fKF6fNVinBX3HJmyxUqfvLU5dkTs1dmrvY3u5jN
+wNJGr+SpzucOrWa/dHVzfWmzyr8Nrl5jfkc6h3K6fmiqfeiLu2hcNpEHS/fbIht2
+pMyc5lM/jnzKWqSnT8UdozjscczzLaU87EOZ/PIGEnPY6xEbd3OJq6qxRbELRt0q
+ypvCPfd0Rt1C8pfNnT7x0h/ji5cuvjWVp0Yc4omyfNJf2XxVjlrR/MWLOcYTI45G
+dy7mUmX2b/+g5DtHVXzdmI+VzStR31RGFcFnl+fWrw9XMLQqhmejUBNFzcP5f2Xh
+OxaQSpRH0qeLJwfyERubvfW56928345EBmglcrE5VSorROrM5qkiba5Oo8mxqzc1
+cIo1lxA/LDMUl87M5CLzZHu7p3IZO0/z+KVLZ2YvnT/TmLhztJ80x4LX41ikueaF
+xBam1apuFmUOI0rkY2d2X7pRjJhd/Ka8aczObj34QDpfY8elmbfmXc16/LbkH6bD
+MbC7Bg/WVCevflHgKp5Ap6JU/jby/UUVT3pIHFmUXDWXJttMGdm4QSxt3Cim7Bx/
++nw6pL3O3ELxvDTlzIsjmu+mjcNwdGALI3+dDnnKtcWWHu2vT5RV0v3srryl8cfs
+uSuz56evXJ2N/N/lt0zmBZeZ+DyrVGi4ke/hsYpl3VR3Lj8+Tbe/tbkoeaXVqtbr
+aH2DHr+D8h29mGMq/W6Wz8Y7q6kw/9zc8tLiG4p5plSlXtFU/VEclTyTo492Z9MP
+ZuMWP9V5tDzTizUv7xqrWyt5BwxMfTJPUV8FOZHKM784fWFm9vzMxTzB9V7xpCr9
+44Vy+/urmvIVO+yGXa14tWeLe0ts+1b5qLze/vo3+ct+ep6y/qO+282e6E8+dl+8
+cfr808VFMHZvNNc5Cisgywu5AmbsiufT8b7OwUZ925tH7Jn+qk2ljFv6VbUl63Et
+XJs8NHq+I2bwcOdQo+h16O6tIhl8uHP31ttXDzWLZbueZTGHqZM77Nkytd1uz146
+ezZujCP2bXlhVLNqNHqY76YC6mpdjdKdG7uzi1/dlW/7O50GVc33dmubCzajVjat
+bUoh+sXD+lJPHxfXe7F2xYOWtM+LtP2+UXutviC6+fdVE5q83b3lxaqNx7itz79J
+m50yO0Ofpv9vtz+KpG7Mjnhi+soToy+F/iU/5gLL51OVIuxw0uftr24y7STkYvxt
+sk5AXzgY6/BwXaO3lKqHuiupnv3ZVBWSmtBsraUqr2PxXeyv57oxy63V9PXyrVz3
+k6urUmX10nqexcz05MZUfly/tdlbyfmka7FHUj320fl3vvOdjaqhegeVCdFw1q/8
+x8g8fbonLq2sxWrErus9V9SpF3sxtVIo1iMt6vBkcT+LO2o+Z6ZSpuXp8yNzgbPX
+tpaXB7OCkyPyzVPN7GE+Jwfv+hvzUwNlgxFlr7zMIpORk//f6cxjuaO6c/n5bpnX
+W0l5v5W5528vo1ffftv7Jh31cXmw4vK6/3BVt52qLYu555kei8LUkVReupGbo1QV
+/uWdsywQvJCbNHSOH6yT/GLVX5VS8Cpjl+91dy+mhLxxvHOly4gcYBzFon3DRD77
+2rnDnLgu5IZzg9nGpdm1ucUTcd+PG/5ckVebWClyXwO1EM2F9fOb9ddpNumqjWMx
+IsucdurRsfv0ZF7nfImeLeqp0+WbK7rTE6ibA2sdezWlmLm+PleALt8qUoi44vIt
+Oj+a2mjXV28zo1E1ws3J7rlnsK6x+e0j6RxsVVM2v300nZxT/YrCMUXI2DOXpyOn
+2i5B9s+Y0bn+U2nR6dtdJhadoYRhp5ShfdJOlNdeusaqZCvKL3sswIw7f/P+OVwv
+YvDmcGH68XOn66uvvhsUV06q+I8ySH7CvBjlxDofWyb4873FW8VFOFwmrndScdPJ
+FSWdVg18LKmqVy8bgeb2tMWplx8w9VvJHUmN4NbiOMS5ttJvrHm1fhK2nOtSiucv
+3eeXNm/lBxvpYVCRZqR/Fc9bzt27kmteylM81bv0Vp9Lj00Wy8cvUcJaLxoCL9+q
+msfFZbN4rJOqedKcUluy+P1Gr3gYl2eSHsBs5G/KEzE9lkpls5ykpXYm6WFBbpv6
+ts1bmxu9hx84fvy1xx988MSx46974LUzZ64+M6biJ7eeSCubmlPstcXQRPvZwa4r
+hJoTppaJRd5i4nA6JOm5+UTRpqZ8qB95rNneWrrBVk1q8jkeGZR+m4n0/6pxxcRS
+Ts7LZ6Z1nUKcqufPXXz6zbNX4qo9c+5yP21YyddApAf97y/PPD78fZGm9Cc6f/HJ
+ETMZrsjPtVmt3Eb5LOr4+GdR6aKJbeqc6gxV1ld1z3fF9znNSQdmaXWrW32xlKrB
+H8pf9ffDfffV1fppvo8M3M5HPZ7oP51Iv3j01IifNJ9J9CevmgCkVi7p0W2rAUpR
+gTHQMja3DWqloCnJOLeaS96dsi6+eOI4nxu45qThheopVP+YnH5i+wP72PnBY5Yr
+IQdvF+lpWrVZcfhO5Inu6u/N9uHsdV9x4MC1iOsRNyKWIt4R8WzEcsRKxGpEL2It
+4rMj1iM2IjYjtiKei7gZ8XzErYh3RnxOxLsiXoj43IjPi/j8iHdHfEHEF0Z8UcQX
+R3xJxJdGfFnEl0d8RcRXRnxVxFdHfE3E10Z8XcTXR3xDxDdGfFPEN0d8S8S3Rnxb
+xLdHfEfEd0Z8V8R3R3xPxPe+wrseMCjfoVKxvWijuh7/6hbNrSZnJw+lZ6cpn9Bv
+l58TtEP5MWJxJ+vXVeQHremmWDShLJPckc9bi3arEyMWerzKnBVzb6dWxV12sNTV
+vw9HtjC3oCuS1sli8qOPVvWDnXs6x58/ezZXhZ1oPNZvTpfuevH1vcfuHTFBkSe4
+q5EpGDFR7Km8sEc6Jx7Y5uu74z43/tvmLav/2P5omuWed0l6bB355IFFTO1qNz1w
+O7spT3Bimwn2sItegqelo0tBVy/PTEdu/8psZKhmTl+9dPktVWGoKD8177Rp97Y/
+iF302hAr379Dn4057aWAVD5SG102GnhWUk12aETe91BdlkhFkvXVIpNcrsVG7Lu1
+2c3F+dmlUY2qU7VGfgorINxoRV3kgqtm1odj79etI8sWzbl9cCx5Y0zWtsj+ThxO
+i43J6uzt5o31bhSUlxePdLqr6VF7OqZpAVVWNw5Ten1m9np3c7Z4g6TYEeXnUVrc
+WIiEYuHGbH7L5lB8UCdN8Y/j6b+yJvqecuFp5zRnG2vSvd5d32G+VXX2odjStKGz
+9apXi4kFVB8NLmK+11vuzq3udhHFri7meyLmW+yaXHc5mMSmuVf7vp/A3lN9NJx2
+Vt+kxjXHH3go500f30qNVvODspwZL5aXKx7LfZb+PreQ2rZOlp8c6bxp9tKTjWu1
+3viUvayX8sipTn+vtC/dwU1ZiBM4XR/lebY439+eepnlmZnOwKEt6582ceI3z/iy
+0W/z7YpGa9KJ3KJ5om7MXDY1b7QPrlPekyNa8W/ToH3gdYiJ9MfI9t3lG0aXZ4pX
+qSIlmj79ZD3r2Hu9rfWFuKDW5xaenVjP/6sq3BpPp/N80/sBqUVS9ZQ3zaGucK+L
+vWvN5vETEyMbpucPi7+f3HN1aqPQ2y/z5ku+fD/mWv3+wPzWxmZ3Mb0KKyCTmsHW
+zRM2yxR3trUpY5ryV78ov0gzH7dTl1aXNmfbu3TynmKfTvV3am5iMjuw2ybvKetp
+qhY+ebN7a0V93z2dmQfOzl566ursU5dnZi7mk330jeap6bgjPTEzfWbmclyqrXlO
+tguxcUFsracm+Ctrc5tpCemecDZuU09fnpk9fenCU3HDintM0d5wqq4qHLtmFy81
+KgPLy27rwQdm08sD5fU3eU/+bZHE9fIzmyOdVxctWCaGvioP1wv17r6QdvNM3JfT
+Hu3O5hrmyUPFO5qH+ju4bqyVt+ixp56ajAL1RuRMTjx9/nznkUdiTxQfHO2k/M3B
+fovAMW8S5NqH6tuhFxEaFRH1dV7N62LagUV9RVV3mNZnKdc/Nqfu/701WXqy8yJ/
+tP0sJvv/OJx3UNo/S1Np35zIuYv2uxhLVVX38E56prlC+bC9Kr0uf61eejoLq+sz
+5yDnd30anss1pEWG5cpUkfoV1+LwjNK7rv1ZPVjP6tzFcmZle9mpRpP66fJlkPJ1
+442yRi9mt1HWoKcL6ViZ+ejfVaqXSKpMYlFvk24qs+nBx9HU0r6sVp1bOzRVVkwX
+z63v6df09d8+L+87zaUVZ1b+pHjkmY/L6It/+nwckumrsbGPnbt6Yfqp9L7rpUY6
+UF5kRUO8d53Kl25qfzc7/dily1cH6sT3us1542K7B96qLje9tb3VW9a72dwH3oc3
+N5dZ++/yj9/g6t3+3Wzwa95HNrhVF9k+p8uGDWPO6cGX+V+qk/qxl2KjxxVU8vKO
+t49aqtycTW/j160kR35ZbcnQrmxlOh/I+/B4o9hQ7bZtFzm813Y6NU5fevri1dvc
+PdWj5nHtA1vN6cY/lO4cnuqXTOsTqnjzbrIsCVZL6RdVig8PTdUPvAdee5vc7q3D
+HRZ4sH+SduqSUmMuRbut4qi028CNWNrUVGt+h+bW1+dupSdfQ29OHioLa4OvPNYl
+0JHnTc5GLs6njFNx0tz2yXDmsT2fDaNfSxx+YNp+TS69qNvpra/dmFstu5apXrCq
+GlQf6b8DWLxvmX9e7ptU61c8FK+ar+Tnj5GLW8yvEvZfSSuWsXGsWHjZOc5WulXn
+F8BSm6Obc7GD4xikCisgqa2Nqu+M/Cpx8ev823SlRcEm7eRO7k9j+bnuRvHgvflG
+WbX6rW490u9TYaGzkg9mPno3e+mhS+qjInL019Idvfk+1thc8+XIql+6eP4tjbxz
+K5veWO2y+dO4r8vscn0Ec+1VUZyK++3mrcmy8dsLxfEb7qagPEPqsmOzke1213K7
+1vBw58Fm6naouD5TPch6zmFtpcb2+boo5xm7qroIb/TWNxe2NjeK+eZGF73tq4zj
+H6tFF0DpGKRiZVFbPPrCSlM3CisgzfniaiS+xbqVu6OqAyvvbGn6MZXIxSru9Ro9
+d+X09MW938uGLs9m1wy7vXonWq+D5cJ4XuRk7lShSPWvnJ298uS5pyKnf+XKuYuP
+z54r3/PIiVFey9wNTmRcq/tA/dS6X7g/FhMWRfiBz5snWaOyolqxjVx1lpPLqj+I
+YtVatQlHisNSzrM6AFXqfj11XjBVvcXW/rQ8wfLNuK5fyN1HzKYuGobfHTs5qgh9
+M1cqDLy7Vt65ijn0a7Ba06zs+MO06KHKixONRuAninNrh8sjkqP08npnNVXMFMfp
+2npvpXGhjLlSctVfag7aqFEujsA9uTa5vMInOlW9cv82WpyH210m/cNUvbdUn+dX
+zj1+cfp8lLKvPDnYTGjg2uo3o7k6m94nKkqjUSwtsiv5bC1TzMGsW9XPVdqAVgcs
+1UXYSkJbGf+hueQt3/2PqpJe42fNVgkvjNjQKtnfSyqyYzLS2LHVMu9Ka5S+mo9s
+67P1qRGfFtd285PW9T6UGvSnbzU8a7QVaLTkHZH9KSpp0zsS3clReeNG0tx/tDG4
+hJPVkR+xL5slj1E/zr8dt8dzjmr2ytVLl2dau3znfd7Y6Xmvv9DfQ/XZnE7lOIPL
+Fd2u25e1+Tyj8ftxobd2a9u2JP2L+J61+WPt/k52vf8e2m5n7Vx2u43dNhErW5xl
+zT12svym3xdNak41f6zf3UydQSqnavcr0/y26hcnf5ZmUuQCq38Vfeo0f1D0rVNP
+0O9Ip/6o7D+n9aPB6yh9uFbcMe8pa9HzZ82b6LiDXRzbsivJB6rXuvMNrl9WafRV
+NNQtVzoo862ELGciWrUAezxLRp8TZUJ9deZynBgv9lTIi673bpGkb9MYNU7DfHdI
+58yFmXSPSOvy1OVLF56qC0nV2u99ZW73BrDt84DBO0TxVvdgsnH50qWrjXTj/lyU
+jbz4hbqHhVQGWu/1NvsdLDSadp7spAcT+Rervc0j9Rux/begO51zm1XffuWUccav
+5tMt9xNY9OT64LHiy/vr++52bQmrXT3+uXnerouX0oOIwePTf2i+WOaPivdCejdP
+DnzfaqRWXn/10dr5btNPJsv7zfGpahZj3mdtPHBv/LjZ9rg8Y0Y2MRjTuKD8SX1o
+09vOecOrkvaog7bybFrH8hfPdddTPyyd48cemO8UlVOLzZ5l4/hu3igKKyC4efpi
+9kVxPr0sf63sICqfRqlYvtzb2Lwv30+qXzR6Ru2knmqKUvHN3nrqcmm+l3qhyRPe
+3/9pv2IgStfpdcvc7e71bnlulT/ozm0sLd+KmT4WBfSqCX3qjLJeofpkLn+R2k13
+Nta6C6kn4YW51CNv+9QcOH/uuaezTVZlp3P0zNVzF2Z2PkWP/86dOWNSjk+/9PTl
+lOXuJx63mYwNVV28oxepY9xfl3JGYeziBpOJEU2K07PH8gIcfQiqueZ0PRL4aueN
+OxxlM5t+Y5pY6Et2ZFp9S+bf5tU40mkX1dvpev92Nrpx7VCD6Y2iGXHV+eXgV8Pt
+4KrduPNeLO6RF+OsPn1+Zvpyld1u78yVSDC6m5Nl8e/4UAlw7wnsUPq6bdOm4UZN
+zYf67Tc9Rp3/ZXPys+cuX7labHGjdrsqOK5uTrReuS/z2y/iCisgaeX1U8Jx/lJ6
+Vj94PWx71yw2d+BFx8szV2Yuv3HmTH0NFBs+Jrswk6rzBxc60Oisf9Fte3XexuqM
+W+Rd5QsAu55dnQUspt42ra7fatwhUXjJkuj8x24Tg8FagHybr9/USXfe8uHCzRu9
+8iWdoiPw1CfYWnont+jUuvhVUSNcVW83qrrjBno1dcJXvkCWZ3G9t7mZ+jsrurCb
+W94s8gHzt4pK8K3V5VQUynXoaW435hbzOz03ejfz0osflu+s5lrv9O/iz7Pn3nxh
+5uHBevp6S9KrQLm/uM10Ny869C5+OJmyF/0JctdysRPiXpA68sl1+utbqwtlj9t5
+Y4ofznfL/m8Xq3t/zjVcznusfP3uHfmlweqRwsHBvM6RnLdp9Ldd9tOf55sW3btW
+/KbejtTvXdkDSvXTIpfd7668+kXdEfdmyrdVHWqXadbSanwzl7vlX++mtxZTx5MT
+VU9w+Z2yqs/2TvHeVZG/WsiPz5p9d0ZeqvjhzZQN2ix+v1p3+F8+MUjHs3jkkV8z
+nu/GibBeLTC+L1/2LE6aTjHUwtzqxs30tuVG/Tik2rjiMJSvnqR3sOa3rtcDGDSW
+WO/ImO/DR6cOVpmy0XmyuwaqQXOy1LrnLZa1qcNv3bTrYuu6wNF3v/OX3jQ6FzeU
+iRt5g35DkRgc7zw8UA7ZfToymIy80H9Pv0oOrtbvscV0WyvloY7LdrlblMPqIQLK
+E661jikTH6fc8djxrb1+1zYZ3/b3w1nllUaBf9TO7T9FyXv5rTOXL+02szxQnnuJ
+EuQxCe3qsfnYLcePPbhQVqkUu3lxKZ/RZZGqtTcjPaoSzWLvF+M5dDqXemsbRTJY
+fH8ll2/Si/Kr3Zt57kMv9KbnhkUPq+kiO1Jeu92il9V8pOvLLZdl0oXc7yRz+Ein
+ZKj6vkzbVrpx6RZzudm6YjvPdrtr9Sgj+Z3AcpNy92f95Hz0RbrjhZU6kdrdhXV8
+11fM8IWypwJReVXdXj5uI26Pkdy2Czu5ON1bn+2VXZ7kHiPTgcr5rUtXZp94+vKZ
+h6tetvuJSG9j8YFjN7bW05+zS7Ppy5PFU96iBcaYyer+X+rK+qEFXpi+cu7N45a4
+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
+j82bpkr3u43u+nPdxdncb19k2IuP069TPv765o04+K/rX5F729jGHa6V5SkWkvNY
+ZRfxJ1tr1fymLvanbE+UhR6fPv2W/vrs+IMnps+fnb1w5qE9/OTqzPTuNjhN/caR
+m1u9u1guq7jbtLtAy4vKF2zV88XuFlpNvevdXLWHjuP5XHd5o72nB76MQsWJ3a3G
+mZmnrj4xetuHXnfopJbwcbdLQ+S1u4XNvbNu5Fq49AorIEv3+aU4jefWl2817omD
+zYyLviWKl+B338a4KKuntC+9Ydovzs+lzGHRrGi+9cV8kWusN6aY4tFyFm/oHD3R
+ebj8x9Hiy2pr35hXMPXSmxt15EdVzSbpefyEudVuGuIitfDKNeFlE59uo8FFenRa
+7rKNKPeWD7pSS46l+mdzneW59evdNET9fCyrV+Qv0mvKW2vLS8UQw9VD1fQctGjI
+sV527rm02XgIlxtqpUr2IiVq9FmcJqs7Cisgzmu1fqt8lW9jbvm5uetFv53xxcVL
+V2ceLqpaU61qfoclNf+Za704WI13VwzDsJRyab31yLPnl2FWBrJDZQ4oHe4iKSv7
+FtlupKLDa3UZszwT2u1F4i+pCisgJZ0d1XmR1uhtrb5KnjmSMkvFuDvNatM0gzya
+T/Vdnlnn/qpGrPjRVDnl0pF8RMpnsenKa/z2VLt3lDLv0V1ZWLs1We2kxqqXq128
+gdpYsWL06/qFk/jmSH8Njwys15GBCyjfEeoBycv3Q+pfN94KKyApeniIz9629MxQ
+I5LiwUe/RW5xPh4ZcSY2e3UtZ/ZIZy2/8jXQmfJgNqNfY1T/8tHRv2xmOPq/2v7R
+UDWjMWNW9Rda3MZjU1OnDsV29zui7jf5al+2nc2bSwvd3M/50mrd/rO/K1KPJ0Vv
+MP0dXP49pUPPNJdZ11E3TqVHBk6lNK90NB6NUni6rRd/f10jpS7GFkvjxc+czgPa
+FW9lds7MPPb047MzUVRKL2TGxp1Nx7B6npeGV+3Np6SmGLuyk9+Wzc1D4zqu+h2b
+W1tL6UZK5PI21kM35PPx+PMLc42TuXr3ZFz5s0wAUln1vZEAbNPlV+4TrPHL+GB2
+Y+65gZcfU9GwemNxuwJaMV3ZtqxMGlpjPbQeYI7tT6lc9cEjWfaHdO7Mm8tjWTxr
+yn3qrK13n0snRP9fja527krvwzX+fV/kAHacd7Ejii0qZ5keKPWXlmZab1Fz9v0u
+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
++hZreKjoOqy4uZXv5neX4+LrXNtaXci9Yy4M9ipUPqq+mV/vXu2UlYF1S5Y0j/yw
+PLVmSc+/i6auc3Xvz2mmkbPfinv4jVv95h/pci3n1azaLSpmi9/Od9tVj0M94g72
+BVS0NM2pSVlzWvR0Ws+5KvIXHZIeLCbtnNq+dWNRg5uaZNSF/0NPXb70+OXpCxfO
+XXy8k18ofrjz9OqzkdFLfe7NbcQm5/5Rmvvq0FT9xn1xOyzur8XTozKf0V/AI538
+xCifhZ3Ju7emDh3p9G/IxV6uB6Hv93HTn/+2bTDHLPTRTtl4oFzg+BmMWYnhhiSj
+es0daFNS5kxONXfIiJVb2hjsDnxptexo/O7F9Orw1Oi3Vqp8S3Gs6/tjeRRS68n8
+RfFCWF7JMg3Zbk3KnnqH+zk/lJPlQ3Er3/WqnTo1sJdSd6jz11utU3baK+W70MXL
+/i/Fwptlg50WXo48v/eFP7rtwnN3do0MTXXd7PSTKh9THNFGZ57N+qBdHNzycVVe
+i9ZWFXfeEVtWnkmntq+Lql5iGbh66q7ID74qiv3pCVrRNeiTpy9enZydn4rsZfoz
+DliRWc8vXqfSeLqVjvrqTPHd29Nqjvo+DaMz1Xp6l/rL6NwYuCGkK7r1rG3q2GAH
+La0qyMFUOh+OImUuH7gVL4GMfgGkMXn5mkc66GNf3dj9Sx6jX/DYvg3RDg166ncb
+mu+CzK6u9/uLne0/hckftWucq4eWE2XHqGuNttyj16jdb/pQo6J2Y6S6BVDjAUzk
+fqtG/uWeqh7YzORzbfrMmctT1QgQUS5Z7D3cOd1vkp4Hg09zS9t9bTmdMCkzd6T+
+trj24ts83vZaHn5ytbPc6z1bDjTfmcyj0vdWj97oRY4uDbVTVPGl1sZx3x2/WlUP
+M8vLxeRjJyzmWZWoFpbT2D7r5TnQ34yh51rzRWPYYntSU9j2NvV7lOmUw/rm3m2K
+Nrw3u/eup9Fm8lAWnUPXtqqVzBfOodjo1C55obuWnmZvrvcWtxaKMSyKUyDltroP
+5B1brmbqL6eoGIl1uNnNezD1HpeOfFVqnNuIb1INyUb1m825fGIXOyoPO5A79V1e
+ml9PfZBUT+Zzz3H91dvoH9biJEkzSdt1b8wg9wuZGyFHGav4UZGZS218IwfWXZiL
+a6yT+orMNb4Lac8s3+osraz11jfnVssFVSd+MWxHTlLjr2mspKVc/F2P+Syn3252
++7u8PHRFgbTZm0pauWKNih0U6dWNubVyN8SxiOxrNw98utjrrPQ2Nu9Pu6LcwUc3
+1roLS9dyhjBtfPGjjW6sfSx8+VYc+2vpp2mfpNO0/Fk5dXG4V3vlZlVHPB3wYooj
+qRnkytytcqCS+CLvvW7uLLDa7bkSu7se2cS55aXNW2kf5LHXT3a6x64fK1t3F10r
+pUNZ7sJiI4vG1cVY3OmHuZn2YL78WFF9MNApUKu7pzr7FQlE9dS8/1pzPf5sqyPH
+G6ld52rVbruXhoapKgSXuhvlL1Jz77IQkVq7Dj7FqoafHW5q2u/zvX0/mWrNrtqA
+I0VWq6wNO1TdP07dvXik6u59eesNb3hDUeFWT1jfZ1IyOdCh/GCPNv2cSnoz8ZF2
+Xy/HTw5OMFArULRqbpVxp4pa/dy/fb2xF5aKJyDFnW7yVXenxj2rjTd96q25ay/b
+kutkc7kzteIuN6h9QgzUcT7VfpBYL/ZI3UXPkU6sXe6np1hg1cPcwPo01qPukeVK
+JAipyj+uu+r5WzEaQ75q4rJ6UzcSsPW4AOPc/uytpeoNhZwYVD2JzadkanVz6fpW
+bytdipNvurG0cCO/OVKcoGlIoNQRbcqzFJdIMcbb0vU8g7IHsjwWUe5mY73oh6dq
+jp2zZ8emmp2EpVO2urGkS6Xd8GSq8bRkrRqeM91kG1m3eq9Mta659ozuO5FqMdK7
+eAeLxmyttjPlu2JDv6p6pDk4cCGntt/VWfloZ7JosfLATi1WcpXLQEuy4tFvenZy
+srmQ1HCmaE/caJ9wIuXn46N+a5nxM7w883jVoUlrte9qzb+xEcfHz+vKWy6cP3fx
+yeLdy04/mdvhpcX6ncUd31gcXvK58+k9tPNltfnFpy/U/do32g6MOgfKvZZa7FSv
+nPUH62qdH2XjjH79+GAvQ0XiWDeKzG8rrjXHvpka1fiy9Yi9eCZUNlfYRRuQ+mWI
+SIKai2p8PNRpzR5aaDQ3s9+b5YjtbDauHt7inTc5t/RojsU5uH/rxinv1f071ATm
+tvZvo5FSVZgsaj/Ht4itrru6AV9dyB75o0g31lI97HBTwEc7Jx7YsW+OuExnL0xf
+fEuuWB1VrZpWtdWCZmLku/TNwYLHjM399FO5LDB7If6YfnxmxHIabRbLRUWpsWj1
+Ujzmnmy3j6l2/VOXz9ezrx/3vlAm1qNbSY7cl9WdeLhXseFWylWqsctmTu27fir5
+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
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAADgfcTc/MJBewEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AP4fO3WvC0EUBmD47BA2kaCl2AgSGhoaFdldSoX/f5XeJYhL0LkEjUQjsdmKUqfW
+7AWg0uJbS7JIRCOR9TzJm5kzZ6Y4JzMDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAA3+iNZlKaaEtpbyqlx56Ucs3zA2/lG8Prw9G5lIbS4kPjvtfx/N3r3Ptz
+XdFBjCbjmL1dH8mf91UGS8MXV5entbH96u8sZvrLlXzTee3s+L7QXRyvdNwcHc0+
+3WZNC62vYyHGi9FStBytRKvRWrQebUSb0Va0He1Eu9nnzfwo5w3jDytGpagcnfQ/
+dmap/eN8fPulqBxVC/XPqd2mAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAtKDnH+q0VdBqDvz/4P/y
+CwQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOClPTgQ
+AAAAABDkbz3BBhUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAJwAu13yXQAAAAEKXCBObyBuZXdsaW5lIGF0IGVuZCBvZiBm
+aWxlCg==
+
+--Boundary_(ID_E88WH1Ji0P10jwS8zDCiqg)--
