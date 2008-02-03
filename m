@@ -1,67 +1,62 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: [PATCH] Fix ext4 bitops
-Date: Sun, 3 Feb 2008 13:39:02 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0802031336240.28712@anakin>
-References: <20080201200208.GA28274@wavehammer.waldi.eu.org>
- <20080201122257.9524c2bb.akpm@linux-foundation.org>
- <20080201210404.GA31271@wavehammer.waldi.eu.org> <20080203121238.GD18211@osiris.ibm.com>
+From: "KOSAKI Motohiro" <kosaki.motohiro@jp.fujitsu.com>
+Subject: Re: [RFC] Parallelize IO for e2fsck
+Date: Sun, 3 Feb 2008 22:51:10 +0900
+Message-ID: <2f11576a0802030551s53eeb7b3k450254f3d2cf9ab7@mail.gmail.com>
+References: <70b6f0bf0801161322k2740a8dch6a0d6e6e112cd2d0@mail.gmail.com>
+	 <70b6f0bf0801161330y46ec555m5d4994a1eea7d045@mail.gmail.com>
+	 <20080121230041.GL3180@webber.adilger.int>
+	 <20080122033830.GR155259@sgi.com>
+	 <3673.1200975438@turing-police.cc.vt.edu>
+	 <20080122070050.GM3180@webber.adilger.int>
+	 <20080122144052.GC17804@mit.edu> <20080128193005.GC4032@ucw.cz>
+	 <20080128195633.GB20528@mit.edu> <20080128200105.GA4719@ucw.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Bastian Blank <bastian@waldi.eu.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-s390@vger.kernel.org,
-	Linux Kernel Development <linux-kernel@vger.kernel.org>,
-	Linux/PPC Development <linuxppc-dev@ozlabs.org>,
-	linux-ext4@vger.kernel.org
-To: Heiko Carstens <heiko.carstens@de.ibm.com>,
-	aneesh.kumar@linux.vnet.ibm.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S936272AbYBCMjZ@vger.kernel.org>
-In-Reply-To: <20080203121238.GD18211@osiris.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Tso" <tytso@mit.edu>, Valdis.Kletnieks@vt.edu,
+	"David Chinner" <dgc@sgi.com>,
+	"Valerie Henson" <val@vahconsulting.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	"Andreas Dilger" <adilger@clusterfs.com>,
+	"Ric Wheeler" <ric@emc.com>, kosaki.motohiro@jp.fujitsu.com
+To: "Pavel Machek" <pavel@ucw.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from py-out-1112.google.com ([64.233.166.176]:63973 "EHLO
+	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752766AbYBCNvO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Feb 2008 08:51:14 -0500
+Received: by py-out-1112.google.com with SMTP id u52so2678457pyb.10
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Feb 2008 05:51:11 -0800 (PST)
+In-Reply-To: <20080128200105.GA4719@ucw.cz>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 3 Feb 2008, Heiko Carstens wrote:
-> On Fri, Feb 01, 2008 at 10:04:04PM +0100, Bastian Blank wrote:
-> > On Fri, Feb 01, 2008 at 12:22:57PM -0800, Andrew Morton wrote:
-> > > On Fri, 1 Feb 2008 21:02:08 +0100
-> > > Bastian Blank <bastian@waldi.eu.org> wrote:
-> > > 
-> > > > Fix ext4 bitops.
-> > > 
-> > > This is incomplete.  Please tell us what was "fixed".
-> > > 
-> > > If it was a build error then please quote the compile error output in the
-> > > changelog, as well as the usual description of what the problem is, and how
-> > > it was fixed.
-> > 
-> > | fs/ext4/mballoc.c: In function 'ext4_mb_generate_buddy':
-> > | fs/ext4/mballoc.c:954: error: implicit declaration of function 'generic_find_next_le_bit'
-> > 
-> > The s390 specific bitops uses parts of the generic implementation.
-> > Include the correct header.
-> 
-> That doesn't work:
-> 
-> fs/built-in.o: In function `ext4_mb_release_inode_pa':
-> mballoc.c:(.text+0x95a8a): undefined reference to `generic_find_next_le_bit'
-> fs/built-in.o: In function `ext4_mb_init_cache':
-> mballoc.c:(.text+0x967ea): undefined reference to `generic_find_next_le_bit'
-> 
-> This still needs generic_find_next_le_bit which comes
-> from lib/find_next_bit.c. That one doesn't get built on s390 since we
-> don't set GENERIC_FIND_NEXT_BIT.
-> Currently we have the lengthly patch below queued.
+Hi Pavel
 
-Similar issue on m68k. As Bastian also saw it on powerpc, I'm getting the
-impression the ext4 people don't (compile) test on big endian machines?
+> > > As user pages are always in highmem, this should be easy to decide:
+> > > only send SIGDANGER when highmem is full. (Yes, there are
+> > > inodes/dentries/file descriptors in lowmem, but I doubt apps will
+> > > respond to SIGDANGER by closing files).
+> >
+> > Good point; for a system with at least (say) 2GB of memory, that
+> > definitely makes sense.  For a system with less than 768 megs of
+> > memory (how quaint, but it wasn't that long ago this was a lot of
+> > memory :-), there wouldn't *be* any memory in highmem at all....
+>
+> Ok, so it is 'send SIGDANGER when all zones are low', because user
+> allocations can go from all zones (unless you have something really
+> exotic, I'm not sure if that is true on huge NUMA  machines & similar).
 
-Gr{oetje,eeting}s,
+thank you good point out.
 
-						Geert
+to be honest, the zone awareness of current mem_notify is premature.
+I think we need enhancement rss statistics to per zone rss.
+but not implemented yet ;-)
 
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+and, unfortunately I have no highmem machine.
+the mem_notify is not so tested on highmem machine.
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-							    -- Linus Torvalds
+if you help to test, I am very happy!
+Thanks.
