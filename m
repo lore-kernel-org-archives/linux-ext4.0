@@ -1,30 +1,30 @@
 From: akpm@linux-foundation.org
-Subject: - pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2.patch removed from -mm tree
-Date: Sun, 03 Feb 2008 19:39:17 -0800
-Message-ID: <200802040338.m143cwfh012066@imap1.linux-foundation.org>
+Subject: - pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix.patch removed from -mm tree
+Date: Sun, 03 Feb 2008 19:39:12 -0800
+Message-ID: <200802040338.m143crEi012063@imap1.linux-foundation.org>
 To: akpm@linux-foundation.org, aia21@cantab.net, bfields@fieldses.org,
 	clameter@sgi.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
 	mark.fasheh@oracle.com, mhalcrow@us.ibm.com, sfrench@us.ib
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:46070 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55694 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753101AbYBDDks (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Feb 2008 22:40:48 -0500
+	by vger.kernel.org with ESMTP id S1753002AbYBDDkr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Feb 2008 22:40:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2
+     pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix
 has been removed from the -mm tree.  Its filename was
-     pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2.patch
+     pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix.patch
 
 This patch was dropped because it was folded into pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2
+Subject: pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix
 From: Andrew Morton <akpm@linux-foundation.org>
 
 Cc: "J. Bruce Fields" <bfields@fieldses.org>
@@ -40,24 +40,34 @@ Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ntfs/compress.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/write.c |    2 +-
+ fs/ntfs/aops.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN fs/nfs/write.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2 fs/nfs/write.c
-diff -puN fs/ntfs/aops.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2 fs/ntfs/aops.c
-diff -puN net/unix/af_unix.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2 net/unix/af_unix.c
-diff -puN fs/ntfs/compress.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2 fs/ntfs/compress.c
---- a/fs/ntfs/compress.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2
-+++ a/fs/ntfs/compress.c
-@@ -565,7 +565,7 @@ int ntfs_read_compressed_block(struct pa
- 	if (xpage >= max_page) {
- 		kfree(bhs);
- 		kfree(pages);
+diff -puN fs/nfs/write.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix fs/nfs/write.c
+--- a/fs/nfs/write.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix
++++ a/fs/nfs/write.c
+@@ -669,7 +669,7 @@ zero_page:
+ 	 * then we need to zero any uninitalised data. */
+ 	if (req->wb_pgbase == 0 && req->wb_bytes != PAGE_CACHE_SIZE
+ 			&& !PageUptodate(req->wb_page))
+-		zero_user_page(req->wb_page, req->wb_bytes, PAGE_CACHE_SIZE);
++		zero_user_segment(req->wb_page, req->wb_bytes, PAGE_CACHE_SIZE);
+ 	return req;
+ }
+ 
+diff -puN fs/ntfs/aops.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix fs/ntfs/aops.c
+--- a/fs/ntfs/aops.c~pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix
++++ a/fs/ntfs/aops.c
+@@ -414,7 +414,7 @@ retry_readpage:
+ 	/* Is the page fully outside i_size? (truncate in progress) */
+ 	if (unlikely(page->index >= (i_size + PAGE_CACHE_SIZE - 1) >>
+ 			PAGE_CACHE_SHIFT)) {
 -		zero_user_page(page, 0, PAGE_CACHE_SIZE, KM_USER0);
 +		zero_user(page, 0, PAGE_CACHE_SIZE);
- 		ntfs_debug("Compressed read outside i_size - truncated?");
- 		SetPageUptodate(page);
- 		unlock_page(page);
+ 		ntfs_debug("Read outside i_size - truncated?");
+ 		goto done;
+ 	}
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
@@ -71,6 +81,7 @@ timerfd-v3-new-timerfd-api.patch
 include-asm-powerpc-nvramh-needs-listh.patch
 serial-add-addi-data-gmbh-communication-cardsin8250_pcic-and-pci_idsh.patch
 pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user.patch
+pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix.patch
 pagecache-zeroing-zero_user_segment-zero_user_segments-and-zero_user-fix-2.patch
 vmalloc-add-const-to-void-parameters-fix.patch
 i386-resolve-dependency-of-asm-i386-pgtableh-on-highmemh-checkpatch-fixes.patch
