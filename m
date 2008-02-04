@@ -1,84 +1,59 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: [PATCH] Fix ext4 bitops
-Date: Mon, 4 Feb 2008 21:11:16 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0802042109020.15250@anakin>
-References: <20080201200208.GA28274@wavehammer.waldi.eu.org>
- <20080201122257.9524c2bb.akpm@linux-foundation.org>
- <20080201210404.GA31271@wavehammer.waldi.eu.org> <20080203121238.GD18211@osiris.ibm.com>
- <Pine.LNX.4.64.0802031336240.28712@anakin> <20080204045025.GA7494@skywalker>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: - disable-ext4.patch removed from -mm tree
+Date: Mon, 4 Feb 2008 12:11:31 -0800
+Message-ID: <20080204121131.a6e07705.akpm@linux-foundation.org>
+References: <200802032018.m13KIGoC029855@imap1.linux-foundation.org>
+	<20080203122551.6830370a.akpm@linux-foundation.org>
+	<20080204013626.GE18392@mit.edu>
+	<20080203191540.3cb2660b.akpm@linux-foundation.org>
+	<20080204150044.GK18392@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Heiko Carstens <heiko.carstens@de.ibm.com>,
-	Bastian Blank <bastian@waldi.eu.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-s390@vger.kernel.org,
-	Linux Kernel Development <linux-kernel@vger.kernel.org>,
-	Linux/PPC Development <linuxppc-dev@ozlabs.org>,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758397AbYBDULi@vger.kernel.org>
-In-Reply-To: <20080204045025.GA7494@skywalker>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: dhowells@redhat.com,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:58324 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754799AbYBDUMY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 15:12:24 -0500
+In-Reply-To: <20080204150044.GK18392@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 4 Feb 2008, Aneesh Kumar K.V wrote:
-> On Sun, Feb 03, 2008 at 01:39:02PM +0100, Geert Uytterhoeven wrote:
-> > On Sun, 3 Feb 2008, Heiko Carstens wrote:
-> > > On Fri, Feb 01, 2008 at 10:04:04PM +0100, Bastian Blank wrote:
-> > > > On Fri, Feb 01, 2008 at 12:22:57PM -0800, Andrew Morton wrote:
-> > > > > On Fri, 1 Feb 2008 21:02:08 +0100
-> > > > > Bastian Blank <bastian@waldi.eu.org> wrote:
-> > > > > > Fix ext4 bitops.
-> > > > > 
-> > > > > This is incomplete.  Please tell us what was "fixed".
-> > > > > 
-> > > > > If it was a build error then please quote the compile error output in the
-> > > > > changelog, as well as the usual description of what the problem is, and how
-> > > > > it was fixed.
-> > > > 
-> > > > | fs/ext4/mballoc.c: In function 'ext4_mb_generate_buddy':
-> > > > | fs/ext4/mballoc.c:954: error: implicit declaration of function 'generic_find_next_le_bit'
-> > > > 
-> > > > The s390 specific bitops uses parts of the generic implementation.
-> > > > Include the correct header.
-> > > 
-> > > That doesn't work:
-> > > 
-> > > fs/built-in.o: In function `ext4_mb_release_inode_pa':
-> > > mballoc.c:(.text+0x95a8a): undefined reference to `generic_find_next_le_bit'
-> > > fs/built-in.o: In function `ext4_mb_init_cache':
-> > > mballoc.c:(.text+0x967ea): undefined reference to `generic_find_next_le_bit'
-> > > 
-> > > This still needs generic_find_next_le_bit which comes
-> > > from lib/find_next_bit.c. That one doesn't get built on s390 since we
-> > > don't set GENERIC_FIND_NEXT_BIT.
-> > > Currently we have the lengthly patch below queued.
+On Mon, 4 Feb 2008 10:00:44 -0500 Theodore Tso <tytso@mit.edu> wrote:
+
+> On Sun, Feb 03, 2008 at 07:15:40PM -0800, Andrew Morton wrote:
+> > On Sun, 3 Feb 2008 20:36:26 -0500 Theodore Tso <tytso@mit.edu> wrote:
 > > 
-> > Similar issue on m68k. As Bastian also saw it on powerpc, I'm getting the
-> > impression the ext4 people don't (compile) test on big endian machines?
+> > > On Sun, Feb 03, 2008 at 12:25:51PM -0800, Andrew Morton wrote:
+> > > > When I merge David's iget coversion patches this will instead wreck the
+> > > > ext4 patchset.
+> > > 
+> > > That's ok, it shouldn't be hard for me to fix this up.  How quickly
+> > > will you be able to merge David's iget converstion patches?
+> > 
+> > They're about 1,000 patches back.
 > 
-> I have sent this patches to linux-arch expecting a review from
-> different arch people. It is true that the patches are tested only on
-> powerpc, x86-64, x86. That's the primary reason of me sending the
-> patches to linux-arch.
+> OK, if you're not planning on pushing David's changes to Linus right
+> away, what if I pull in David's
 > 
-> http://marc.info/?l=linux-arch&m=119503501127737&w=2
+> 	iget-stop-ext4-from-using-iget-and-read_inode-try.patch 
+> 
+> and push it plus some other ext4 bug fixes directly to Linus, and let
+> you know when that has happened so you can drop David's patch from
+> your queue?
 
-Sometimes it's difficult to see what can go wrong due to a single patch that
-just adds a #define. Sorry, I missed the lack of prototype for
-generic_find_next_le_bit() and that we don't set GENERIC_FIND_NEXT_BIT,
-just like s390.
+Sure, go for it.
 
-And yes, usually I rely on the -mm autocompiler to catch things like
-this, but this time it didn't work out...
+> David's changes to ext4 can be applied standalone without the rest of
+> his series, so it would be safe to push that to Linus independently
+> and in advance of the rest of his series.  That should also help
+> reduce the number of inter-patch queue dependencies.
 
-Gr{oetje,eeting}s,
-
-						Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-							    -- Linus Torvalds
+That patch series is kind of logjammed anyway because it breaks isofs. 
+Last time I discussed this with David he seemed to find this amusing rather
+than an urgent problem.  I'd drop the whole lot if there weren't lots of
+other patches dependent upon them.  Mayeb I can do a selective droppage,
+but I hate going out-of-order, and merging untested patch combinations.
