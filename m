@@ -1,59 +1,67 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Fix Null dereference.
-Date: Mon,  4 Feb 2008 12:45:07 +0530
-Message-ID: <1202109307-30671-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org, bunk@kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu
+From: Eric Sesterhenn <snakebyte@gmx.de>
+Subject: Re: BUG_ON at mballoc.c:3752
+Date: Mon, 4 Feb 2008 09:29:36 +0100
+Message-ID: <20080204082936.GB5284@alice>
+References: <20080131140137.GA20780@alice> <20080131154207.GA22201@alice> <20080204060055.GC7494@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:41367 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752827AbYBDHPO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 02:15:14 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m147F9eA019993
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 12:45:09 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m147F8xH741496
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 12:45:08 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m147F8iw019711
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 07:15:08 GMT
+Received: from mail.gmx.net ([213.165.64.20]:56133 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1753757AbYBDI3j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Feb 2008 03:29:39 -0500
+Content-Disposition: inline
+In-Reply-To: <20080204060055.GC7494@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Repoted by Adrian Bunk <bunk@kernel.org>:
+* Aneesh Kumar K.V (aneesh.kumar@linux.vnet.ibm.com) wrote:
+> On Thu, Jan 31, 2008 at 04:42:07PM +0100, Eric Sesterhenn wrote:
+> > * Eric Sesterhenn (snakebyte@gmx.de) wrote:
+> > > hi,
+> > > 
+> > > while running a modified version of fsfuzzer i triggered the BUG() in
+> > > ext4_mb_release_inode_pa(). Sadly I am not able to reproduce this using
+> > > the generated image, but running the fuzzer will usually trigger this in
+> > > less than 40 attempts. Increasing the JBD2 Debug level didnt give more
+> > > information. The kernel is current git with
+> > > ext4-fix-null-pointer-deref-in-journal_wait_on_commit_record.patch
+> > > applied. 
+> > 
+> > I am now able to reproduce this using this image:
+> > http://www.cccmz.de/~snakebyte/ext4.24.img.bz2
+> > 
+> > the following commands will trigger the oops for me
+> > 
+> > mount cfs/ext4.24.img /media/test -t ext4dev -o extents -o loop
+> > mkdir /media/test/stress
+> > chown snakebyte:snakebyte /media/test/stress && sudo -u snakebyte fstest -n 10 -l 10 -f 5 -s 40000 -p /media/test/stress/
+> > 
+> 
+> The file system is corrupted. The BUG_ON indicate that the free spcae
+> marked in the prealloc space and found by looking at the bitmap are not
+> same. Do you have a set of steps that i can follow to reproduce this ?
 
-The Coverity checker spotted the following NULL dereference:
+just compile the mangle.c and run the modified fuzzer for a while (link
+below) or use the steps above
 
-static int ext4_mb_mark_diskspace_used
-{
-	...
-	if (!bitmap_bh)
-		goto out_err;
-	...
-out_err:
-	sb->s_dirt = 1;
-	put_bh(bitmap_bh);
-	...
+> on a clean file system ?
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+had no luck on a clean fs with this
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 76e5fed..06d1f52 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3069,7 +3069,7 @@ static int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 
- out_err:
- 	sb->s_dirt = 1;
--	put_bh(bitmap_bh);
-+	brelse(bitmap_bh);
- 	return err;
- }
- 
--- 
-1.5.4.rc3.24.gb53139-dirty
+> Where do i find the fsfuzzer that you are using ?
+
+http://www.cccmz.de/~snakebyte/fsfuzzer-0.6-lmh-eric.tar.bz2
+http://www.cccmz.de/~snakebyte/fsfuzz.diff
+
+needs user/group nobody:nobody and stuff like fstest, fsx, iozone,
+fsstress
+
+The changes i made are basically changing the fuzzing ratio, adding udf,
+hfsplus and ext4, reducing the number of runs to 100 (not unlimited),
+saving a backup of the image before mounting and running the tests, and
+mounting ext3 with -o debug
+
+Greetings, Eric
