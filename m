@@ -1,65 +1,93 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Fix ext4 bitops
-Date: Mon, 4 Feb 2008 14:59:34 +0530
-Message-ID: <20080204092934.GE7494@skywalker>
-References: <20080201200208.GA28274@wavehammer.waldi.eu.org> <20080201122257.9524c2bb.akpm@linux-foundation.org> <20080201210404.GA31271@wavehammer.waldi.eu.org> <20080203121238.GD18211@osiris.ibm.com> <Pine.LNX.4.64.0802031336240.28712@anakin> <20080204045025.GA7494@skywalker> <20080204092436.GB7530@osiris.boeblingen.de.ibm.com>
+Subject: Re: Fw: [Bugme-new] [Bug 9849] New: NULL pointer deref in
+	journal_wait_on_commit_record
+Date: Mon, 4 Feb 2008 15:17:58 +0530
+Message-ID: <20080204094758.GF7494@skywalker>
+References: <20080130120055.7dc3331b.akpm@linux-foundation.org> <1201735077.3873.22.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
-	Bastian Blank <bastian@waldi.eu.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-s390@vger.kernel.org,
-	Linux Kernel Development <linux-kernel@vger.kernel.org>,
-	Linux/PPC Development <linuxppc-dev@ozlabs.org>,
-	linux-ext4@vger.kernel.org
-To: Heiko Carstens <heiko.carstens@de.ibm.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Girish Shilamkar <girish@clusterfs.com>
+To: Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:48966 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750733AbYBDJ3p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 04:29:45 -0500
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:49217 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750764AbYBDJsI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 04:48:08 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m149lZS6014757
+	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 20:47:35 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m149m6Zl3805396
+	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 20:48:06 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m149m6jK030224
+	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 20:48:06 +1100
 Content-Disposition: inline
-In-Reply-To: <20080204092436.GB7530@osiris.boeblingen.de.ibm.com>
+In-Reply-To: <1201735077.3873.22.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 04, 2008 at 10:24:36AM +0100, Heiko Carstens wrote:
-> > > > > | fs/ext4/mballoc.c: In function 'ext4_mb_generate_buddy':
-> > > > > | fs/ext4/mballoc.c:954: error: implicit declaration of function 'generic_find_next_le_bit'
-> > > > > 
-> > > > > The s390 specific bitops uses parts of the generic implementation.
-> > > > > Include the correct header.
-> > > > 
-> > > > That doesn't work:
-> > > > 
-> > > > fs/built-in.o: In function `ext4_mb_release_inode_pa':
-> > > > mballoc.c:(.text+0x95a8a): undefined reference to `generic_find_next_le_bit'
-> > > > fs/built-in.o: In function `ext4_mb_init_cache':
-> > > > mballoc.c:(.text+0x967ea): undefined reference to `generic_find_next_le_bit'
-> > > > 
-> > > > This still needs generic_find_next_le_bit which comes
-> > > > from lib/find_next_bit.c. That one doesn't get built on s390 since we
-> > > > don't set GENERIC_FIND_NEXT_BIT.
-> > > > Currently we have the lengthly patch below queued.
-> > > 
-> > > Similar issue on m68k. As Bastian also saw it on powerpc, I'm getting the
-> > > impression the ext4 people don't (compile) test on big endian machines?
-> > > 
-> > > Gr{oetje,eeting}s,
-> > > 
-> > 
-> > I have sent this patches to linux-arch expecting a review from
-> > different arch people. It is true that the patches are tested only on
-> > powerpc, x86-64, x86. That's the primary reason of me sending the
-> > patches to linux-arch.
+On Wed, Jan 30, 2008 at 03:17:57PM -0800, Mingming Cao wrote:
 > 
-> Is there anything special I need to do so the ext4 code actually uses
-> ext2_find_next_bit() ? Haven't looked at the ext4 code, but I'd like to
-> test if the s390 implementation is ok.
+> The buufer head pointer passed to journal_wait_on_commit_record() could
+> be NULL if the previous journal_submit_commit_record() failed or journal
+> has already aborted.
+> 
+> Looking at the jbd2 debug messages, before the oops happen, the jbd2 is
+> aborted due to trying to access the next log block beyond the end of
+> device. This might be caused by using a corrupted image.
+> 
+> We need to check the error returns from journal_submit_commit_record()
+> and avoid calling journal_wait_on_commit_record() in the failure case.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> The buufer head pointer passed to journal_wait_on_commit_record()
+> could be NULL if the previous journal_submit_commit_record() failed
+> or journal has already aborted.
+> 
+> We need to check the error returns from journal_submit_commit_record()
+> and avoid calling journal_wait_on_commit_record() in the failure case.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> ---
+>  fs/jbd2/commit.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> Index: linux-2.6.24-rc8/fs/jbd2/commit.c
+> ===================================================================
+> --- linux-2.6.24-rc8.orig/fs/jbd2/commit.c	2008-01-30 14:12:10.000000000 -0800
+> +++ linux-2.6.24-rc8/fs/jbd2/commit.c	2008-01-30 15:09:50.000000000 -0800
+> @@ -872,7 +872,8 @@ wait_for_iobuf:
+>  		if (err)
+>  			__jbd2_journal_abort_hard(journal);
+>  	}
+> -	err = journal_wait_on_commit_record(cbh);
+> +	if (!err && !is_journal_aborted(journal))
+> +		err = journal_wait_on_commit_record(cbh);
+> 
+>  	if (err)
+>  		jbd2_journal_abort(journal, err);
+> 
+> 
 
-With the latest linus kernel in git you can test it by mounting  ext4
+Needs the below small change also. I don't see this patch in the patch
+queue. So i guess we can add the below diff to the same. The change was
+suggested by Girish. Before journal checksum changes sync_dirty_buffer
+did the get_bh.
 
-mount -t ext4dev <device> <mntpoint>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-
--aneesh
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index da8d0eb..2b88ab0 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -136,7 +136,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 
+ 	JBUFFER_TRACE(descriptor, "submit commit block");
+ 	lock_buffer(bh);
+-
++	get_bh(bh);
+ 	set_buffer_dirty(bh);
+ 	set_buffer_uptodate(bh);
+ 	bh->b_end_io = journal_end_buffer_io_sync;
