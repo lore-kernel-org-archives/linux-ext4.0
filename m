@@ -1,34 +1,42 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: merge plans, was Re: - disable-ext4.patch removed from -mm tree
-Date: Mon, 4 Feb 2008 15:24:18 -0500
-Message-ID: <20080204202418.GA1649@lst.de>
-References: <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: - disable-ext4.patch removed from -mm tree
+Date: Mon, 4 Feb 2008 15:30:29 -0500
+Message-ID: <20080204203029.GN18392@mit.edu>
+References: <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org> <20080204150044.GK18392@mit.edu> <20080204121131.a6e07705.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, dhowells@redhat.com,
+Cc: dhowells@redhat.com,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:36359 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758576AbYBDUYl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 15:24:41 -0500
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:53755 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758144AbYBDUbJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 15:31:09 -0500
 Content-Disposition: inline
-In-Reply-To: <20080203191540.3cb2660b.akpm@linux-foundation.org>
+In-Reply-To: <20080204121131.a6e07705.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 03, 2008 at 07:15:40PM -0800, Andrew Morton wrote:
-> On Sun, 3 Feb 2008 20:36:26 -0500 Theodore Tso <tytso@mit.edu> wrote:
+On Mon, Feb 04, 2008 at 12:11:31PM -0800, Andrew Morton wrote:
 > 
-> > On Sun, Feb 03, 2008 at 12:25:51PM -0800, Andrew Morton wrote:
-> > > When I merge David's iget coversion patches this will instead wreck the
-> > > ext4 patchset.
-> > 
-> > That's ok, it shouldn't be hard for me to fix this up.  How quickly
-> > will you be able to merge David's iget converstion patches?
+> That patch series is kind of logjammed anyway because it breaks isofs. 
+> Last time I discussed this with David he seemed to find this amusing rather
+> than an urgent problem.  I'd drop the whole lot if there weren't lots of
+> other patches dependent upon them.  Mayeb I can do a selective droppage,
+> but I hate going out-of-order, and merging untested patch combinations.
 > 
-> They're about 1,000 patches back
 
-Care to post a merge plan so we have a slight chance to make sure not
-too much crap is hiding in these 1000 patches?
+All of the patches which move from using iget() to iget_unlocked()
+should in theory (if they are well written) be standalone and not have
+any prerequisites, and a good thing to apply in and of themselves.  
+
+So maybe the right thing to do is to push all of them right away, and
+then if they all can go in safely w/o breaking filesystems, we can
+actually do the deed about removing the iget() interface itself, and
+if not, it can wait until 2.6.26.  It's not really that big of a deal
+to actually nuke the interface itself, as long as we are gradually
+reducing our usage of it....  Or is there some patch which David is
+trying to push that desperately depends on iget() going away?
+
+						- Ted
