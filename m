@@ -1,49 +1,81 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: - disable-ext4.patch removed from -mm tree
-Date: Mon, 4 Feb 2008 10:00:44 -0500
-Message-ID: <20080204150044.GK18392@mit.edu>
-References: <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: jbd2_handle and i_data_sem circular locking dependency detected
+Date: Mon, 4 Feb 2008 10:23:16 -0500
+Message-ID: <200802041023.16998.jbacik@redhat.com>
+References: <20080204101228.GA1939@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: dhowells@redhat.com,
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@sun.com>,
+	Mingming Cao <cmm@us.ibm.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:39164 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750943AbYBDPBT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 10:01:19 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:41661 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751145AbYBDPfz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Feb 2008 10:35:55 -0500
+In-Reply-To: <20080204101228.GA1939@skywalker>
 Content-Disposition: inline
-In-Reply-To: <20080203191540.3cb2660b.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 03, 2008 at 07:15:40PM -0800, Andrew Morton wrote:
-> On Sun, 3 Feb 2008 20:36:26 -0500 Theodore Tso <tytso@mit.edu> wrote:
-> 
-> > On Sun, Feb 03, 2008 at 12:25:51PM -0800, Andrew Morton wrote:
-> > > When I merge David's iget coversion patches this will instead wreck the
-> > > ext4 patchset.
-> > 
-> > That's ok, it shouldn't be hard for me to fix this up.  How quickly
-> > will you be able to merge David's iget converstion patches?
-> 
-> They're about 1,000 patches back.
+On Monday 04 February 2008 5:12:28 am Aneesh Kumar K.V wrote:
+> Hi,
+>
+> This is with the new ext3 -> ext4 migrate code added. The recently added
+> lockdep for jbd2 helped to find this out. We want to hold the i_data_sem
+> on the ext3 inode during migration to prevent walking the ext3 inode
+> when it is being converted to ext4 format. Also we want to avoid
+> file truncation and new blocks being added while converting to ext4.
+> Also we dont want to reserve large number of credits for journal.
+> Any idea how to fix this ?
+>
 
-OK, if you're not planning on pushing David's changes to Linus right
-away, what if I pull in David's
+Hello,
 
-	iget-stop-ext4-from-using-iget-and-read_inode-try.patch 
+Seems you should be taking the i_data_sem after starting the journal in 
+ext4_ext_migrate.  I haven't looked at this stuff too much, but everywhere I 
+see i_data_sem taken its within a journal_start/journal_stop.  Here's the 
+patch.  Let me know if I'm way off btw, like I said I'm new to this :).  Thank 
+you,
 
-and push it plus some other ext4 bug fixes directly to Linus, and let
-you know when that has happened so you can drop David's patch from
-your queue?
+Josef
 
-David's changes to ext4 can be applied standalone without the rest of
-his series, so it would be safe to push that to Linus independently
-and in advance of the rest of his series.  That should also help
-reduce the number of inter-patch queue dependencies.
-
-Regards,
-
-       	       	      	      	  - Ted
+Index: linux-2.6/fs/ext4/migrate.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/migrate.c
++++ linux-2.6/fs/ext4/migrate.c
+@@ -414,7 +414,6 @@ int ext4_ext_migrate(struct inode *inode
+ 	if ((EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+ 		return -EINVAL;
+ 
+-	down_write(&EXT4_I(inode)->i_data_sem);
+ 	handle = ext4_journal_start(inode,
+ 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+@@ -424,6 +423,9 @@ int ext4_ext_migrate(struct inode *inode
+ 		retval = PTR_ERR(handle);
+ 		goto err_out;
+ 	}
++
++	down_write(&EXT4_I(inode)->i_data_sem);
++
+ 	tmp_inode = ext4_new_inode(handle,
+ 				inode->i_sb->s_root->d_inode,
+ 				S_IFREG);
+@@ -549,10 +551,10 @@ err_out:
+ 	 */
+ 	tmp_inode->i_nlink = 0;
+ 
+-	ext4_journal_stop(handle);
+-
+ 	up_write(&EXT4_I(inode)->i_data_sem);
+ 
++	ext4_journal_stop(handle);
++
+ 	if (tmp_inode)
+ 		iput(tmp_inode);
+ 
