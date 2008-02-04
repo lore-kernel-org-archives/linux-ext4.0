@@ -1,112 +1,77 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: [RESEND] [PATCH] ext3,4:fdatasync should skip metadata
-  writeout when overwriting
-Date: Mon, 04 Feb 2008 19:15:25 +0900
-Message-ID: <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
-References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
- <20071115185919.7df4cda9.akpm@linux-foundation.org>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: [PATCH] ext4: Don't set EXTENTS_FL flag for fast symlinks
+Date: Mon, 04 Feb 2008 14:20:36 +0100
+Message-ID: <1202131236.6573.5.camel@ext1.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.oss.ntt.co.jp ([222.151.198.98]:57635 "EHLO
-	serv1.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751205AbYBDKgI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 05:36:08 -0500
-In-Reply-To: <20071115185919.7df4cda9.akpm@linux-foundation.org>
-References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
- <20071115185919.7df4cda9.akpm@linux-foundation.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:55137 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753580AbYBDNRx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 08:17:53 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 577281A16EB
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Feb 2008 14:18:02 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 20590-09 for <linux-ext4@vger.kernel.org>;
+ Mon,  4 Feb 2008 14:17:58 +0100 (CET)
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4EB971A16F3
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Feb 2008 14:16:54 +0100 (CET)
+Received: from [127.0.0.1] (frecb000755.frec.bull.fr [129.183.101.79])
+	by cyclope.frec.bull.fr (Postfix) with ESMTP id 2DDBF272B9
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Feb 2008 14:16:52 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
+Don't set EXTENTS_FL flag for fast symlinks
 
-Currently fdatasync is identical to fsync in ext3,4.
-I think fdatasync should skip journal flush in data=ordered and data=writeback mode
-when it overwrites to already-instantiated blocks on HDD.
-When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal writeout
-because this indicates only atime or/and mtime updates.  
+From: Valerie Clement <valerie.clement@bull.net>
 
-Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+For fast symbolic links, the file content is stored in the i_block[]
+array, which is not compatible with the new file extents format.
+e2fsck reports error on such files because EXTENTS_FL is set.
+Don't set the EXTENTS_FL flag when creating fast symlinks.
 
-I did a performance test using the sysbench.
+In the case of file migration, skip fast symbolic links.
 
-#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G 
---file-test-mode=rndwr --file-fsync-mode=fdatasync run
+Signed-off-by: Valerie Clement <valerie.clement@bull.net>
 
-The result was:
+---
 
-	-2.6.24
-	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
-	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
-	  775.45 Requests/sec executed
+ fs/ext4/migrate.c |    6 ++++++
+ fs/ext4/namei.c   |    1 +
+ 2 files changed, 7 insertions(+), 0 deletions(-)
 
-	Test execution summary:
-	    total time:                          64.5814s
-	    total number of events:              50080
-	    total time taken by event execution: 3713.9836
-	    per-request statistics:
-	         min:                            0.0000s
-	         avg:                            0.0742s
-	         max:                            0.9375s
-	         approx.  95 percentile:         0.2901s
-
-	Threads fairness:
-	    events (avg/stddev):           391.2500/23.26
-	    execution time (avg/stddev):   29.0155/1.99
-
-
-	-2.6.24-patched
-	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
-	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
-	 1050.83 Requests/sec executed
-
-	Test execution summary:
-	    total time:                          47.5900s
-	    total number of events:              50009
-	    total time taken by event execution: 2934.5768
-	    per-request statistics:
- 	         min:                            0.0000s
-	         avg:                            0.0587s
- 	         max:                            0.8938s
-	         approx.  95 percentile:         0.1993s
-
-	Threads fairness:
-	    events (avg/stddev):           390.6953/22.64
-	    execution time (avg/stddev):   22.9264/1.17
-
-
-Filesystem I/O throughput was improved.
-
-Thanks.
-
-Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-
-diff -Nrup linux-2.6.24.org/fs/ext3/fsync.c linux-2.6.24/fs/ext3/fsync.c
---- linux-2.6.24.org/fs/ext3/fsync.c	2008-01-25 07:58:37.000000000 +0900
-+++ linux-2.6.24/fs/ext3/fsync.c	2008-02-04 12:42:42.000000000 +0900
-@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
- 		goto out;
- 	}
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 3ebc233..9ee1f7c 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -414,6 +414,12 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 	if ((EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+ 		return -EINVAL;
  
-+	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+		goto out;
++	if (S_ISLNK(inode->i_mode) && inode->i_blocks == 0)
++		/*
++		 * don't migrate fast symlink
++		 */
++		return retval;
 +
- 	/*
- 	 * The VFS has written the file data.  If the inode is unaltered
- 	 * then we need not start a commit.
-diff -Nrup linux-2.6.24.org/fs/ext4/fsync.c linux-2.6.24/fs/ext4/fsync.c
---- linux-2.6.24.org/fs/ext4/fsync.c	2008-01-25 07:58:37.000000000 +0900
-+++ linux-2.6.24/fs/ext4/fsync.c	2008-02-04 12:43:37.000000000 +0900
-@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
- 		goto out;
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	handle = ext4_journal_start(inode,
+ 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 67b6d8a..71273c5 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2234,6 +2234,7 @@ retry:
+ 		inode->i_op = &ext4_fast_symlink_inode_operations;
+ 		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
+ 		inode->i_size = l-1;
++		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
  	}
- 
-+        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+                goto out;
-+
- 	/*
- 	 * The VFS has written the file data.  If the inode is unaltered
- 	 * then we need not start a commit.
+ 	EXT4_I(inode)->i_disksize = inode->i_size;
+ 	err = ext4_add_nondir(handle, dentry, inode);
