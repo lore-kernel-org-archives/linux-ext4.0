@@ -1,108 +1,112 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: jbd2_handle and i_data_sem circular locking dependency detected
-Date: Mon, 4 Feb 2008 15:42:28 +0530
-Message-ID: <20080204101228.GA1939@skywalker>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: [RESEND] [PATCH] ext3,4:fdatasync should skip metadata
+  writeout when overwriting
+Date: Mon, 04 Feb 2008 19:15:25 +0900
+Message-ID: <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
+ <20071115185919.7df4cda9.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Mingming Cao <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>, Josef Bacik <jbacik@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:49517 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750870AbYBDKMj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 05:12:39 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m14ACIF3024975
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 21:12:18 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m14ACbGG3449028
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 21:12:37 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m14ACaqO002438
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2008 21:12:37 +1100
-Content-Disposition: inline
+Received: from ns.oss.ntt.co.jp ([222.151.198.98]:57635 "EHLO
+	serv1.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751205AbYBDKgI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2008 05:36:08 -0500
+In-Reply-To: <20071115185919.7df4cda9.akpm@linux-foundation.org>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
+ <20071115185919.7df4cda9.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hi.
 
-This is with the new ext3 -> ext4 migrate code added. The recently added
-lockdep for jbd2 helped to find this out. We want to hold the i_data_sem
-on the ext3 inode during migration to prevent walking the ext3 inode
-when it is being converted to ext4 format. Also we want to avoid 
-file truncation and new blocks being added while converting to ext4.
-Also we dont want to reserve large number of credits for journal.
-Any idea how to fix this ?
+Currently fdatasync is identical to fsync in ext3,4.
+I think fdatasync should skip journal flush in data=ordered and data=writeback mode
+when it overwrites to already-instantiated blocks on HDD.
+When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal writeout
+because this indicates only atime or/and mtime updates.  
+
+Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+
+I did a performance test using the sysbench.
+
+#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G 
+--file-test-mode=rndwr --file-fsync-mode=fdatasync run
+
+The result was:
+
+	-2.6.24
+	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
+	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
+	  775.45 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          64.5814s
+	    total number of events:              50080
+	    total time taken by event execution: 3713.9836
+	    per-request statistics:
+	         min:                            0.0000s
+	         avg:                            0.0742s
+	         max:                            0.9375s
+	         approx.  95 percentile:         0.2901s
+
+	Threads fairness:
+	    events (avg/stddev):           391.2500/23.26
+	    execution time (avg/stddev):   29.0155/1.99
 
 
--aneesh
+	-2.6.24-patched
+	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
+	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
+	 1050.83 Requests/sec executed
 
-=======================================================
-[ INFO: possible circular locking dependency detected ]
-2.6.24-rc8 #6
--------------------------------------------------------
-rm/2401 is trying to acquire lock:
- (&ei->i_data_sem){----}, at: [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
+	Test execution summary:
+	    total time:                          47.5900s
+	    total number of events:              50009
+	    total time taken by event execution: 2934.5768
+	    per-request statistics:
+ 	         min:                            0.0000s
+	         avg:                            0.0587s
+ 	         max:                            0.8938s
+	         approx.  95 percentile:         0.1993s
 
-but task is already holding lock:
- (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
+	Threads fairness:
+	    events (avg/stddev):           390.6953/22.64
+	    execution time (avg/stddev):   22.9264/1.17
 
-which lock already depends on the new lock.
 
+Filesystem I/O throughput was improved.
 
-the existing dependency chain (in reverse order) is:
+Thanks.
 
--> #1 (jbd2_handle){--..}:
-       [<c0143a5c>] __lock_acquire+0xa31/0xc1a
-       [<c0143cbf>] lock_acquire+0x7a/0x94
-       [<c01fc4ca>] jbd2_journal_start+0xf5/0xff
-       [<c01e3539>] ext4_journal_start_sb+0x48/0x4a
-       [<c01eb980>] ext4_ext_migrate+0x7d/0x535
-       [<c01df328>] ext4_ioctl+0x528/0x56c
-       [<c0177700>] do_ioctl+0x50/0x67
-       [<c017794e>] vfs_ioctl+0x237/0x24a
-       [<c0177992>] sys_ioctl+0x31/0x4b
-       [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
-       [<ffffffff>] 0xffffffff
+Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
--> #0 (&ei->i_data_sem){----}:
-       [<c014394c>] __lock_acquire+0x921/0xc1a
-       [<c0143cbf>] lock_acquire+0x7a/0x94
-       [<c044f247>] down_read+0x42/0x79
-       [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
-       [<c01dcba1>] ext4_getblk+0x62/0x1c4
-       [<c01e0de9>] ext4_find_entry+0x350/0x5b7
-       [<c01e200c>] ext4_unlink+0x6e/0x1a4
-       [<c017449e>] vfs_unlink+0x49/0x89
-       [<c0175f02>] do_unlinkat+0x96/0x12c
-       [<c0175fa8>] sys_unlink+0x10/0x12
-       [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
-       [<ffffffff>] 0xffffffff
-
-other info that might help us debug this:
-
-3 locks held by rm/2401:
- #0:  (&type->i_mutex_dir_key#5/1){--..}, at: [<c0175eca>] do_unlinkat+0x5e/0x12c
- #1:  (&sb->s_type->i_mutex_key#8){--..}, at: [<c017448b>] vfs_unlink+0x36/0x89
- #2:  (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
-
-stack backtrace:
-Pid: 2401, comm: rm Not tainted 2.6.24-rc8 #6
- [<c0106017>] show_trace_log_lvl+0x1a/0x2f
- [<c0106893>] show_trace+0x12/0x14
- [<c0106b89>] dump_stack+0x6c/0x72
- [<c0141b26>] print_circular_bug_tail+0x5f/0x68
- [<c014394c>] __lock_acquire+0x921/0xc1a
- [<c0143cbf>] lock_acquire+0x7a/0x94
- [<c044f247>] down_read+0x42/0x79
- [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
- [<c01dcba1>] ext4_getblk+0x62/0x1c4
- [<c01e0de9>] ext4_find_entry+0x350/0x5b7
- [<c01e200c>] ext4_unlink+0x6e/0x1a4
- [<c017449e>] vfs_unlink+0x49/0x89
- [<c0175f02>] do_unlinkat+0x96/0x12c
- [<c0175fa8>] sys_unlink+0x10/0x12
- [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
+diff -Nrup linux-2.6.24.org/fs/ext3/fsync.c linux-2.6.24/fs/ext3/fsync.c
+--- linux-2.6.24.org/fs/ext3/fsync.c	2008-01-25 07:58:37.000000000 +0900
++++ linux-2.6.24/fs/ext3/fsync.c	2008-02-04 12:42:42.000000000 +0900
+@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+ 		goto out;
+ 	}
  
++	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++		goto out;
++
+ 	/*
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
+diff -Nrup linux-2.6.24.org/fs/ext4/fsync.c linux-2.6.24/fs/ext4/fsync.c
+--- linux-2.6.24.org/fs/ext4/fsync.c	2008-01-25 07:58:37.000000000 +0900
++++ linux-2.6.24/fs/ext4/fsync.c	2008-02-04 12:43:37.000000000 +0900
+@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
+ 		goto out;
+ 	}
+ 
++        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++                goto out;
++
+ 	/*
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
