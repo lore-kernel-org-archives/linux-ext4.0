@@ -1,31 +1,47 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: - disable-ext4.patch removed from -mm tree
-Date: Tue, 05 Feb 2008 09:40:22 +0000
-Message-ID: <27718.1202204422@redhat.com>
-References: <20080204121131.a6e07705.akpm@linux-foundation.org> <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org> <20080204150044.GK18392@mit.edu>
-Cc: dhowells@redhat.com, Theodore Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: merge plans, was Re: - disable-ext4.patch removed from -mm tree
+Date: Tue, 5 Feb 2008 10:44:54 +0100
+Message-ID: <20080205094454.GA2847@lst.de>
+References: <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org> <20080204202418.GA1649@lst.de> <20080204143529.7b99932d.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@lst.de>, tytso@mit.edu, dhowells@redhat.com,
+	linux-ext4@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:56022 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.210]:34910 "EHLO verein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753512AbYBEJlR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Feb 2008 04:41:17 -0500
-In-Reply-To: <20080204121131.a6e07705.akpm@linux-foundation.org>
+	id S1753555AbYBEJpr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Feb 2008 04:45:47 -0500
+Content-Disposition: inline
+In-Reply-To: <20080204143529.7b99932d.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton <akpm@linux-foundation.org> wrote:
+On Mon, Feb 04, 2008 at 02:35:29PM -0800, Andrew Morton wrote:
+> On Mon, 4 Feb 2008 15:24:18 -0500
+> Christoph Hellwig <hch@lst.de> wrote:
+> 
+> > On Sun, Feb 03, 2008 at 07:15:40PM -0800, Andrew Morton wrote:
+> > > On Sun, 3 Feb 2008 20:36:26 -0500 Theodore Tso <tytso@mit.edu> wrote:
+> > > 
+> > > > On Sun, Feb 03, 2008 at 12:25:51PM -0800, Andrew Morton wrote:
+> > > > > When I merge David's iget coversion patches this will instead wreck the
+> > > > > ext4 patchset.
+> > > > 
+> > > > That's ok, it shouldn't be hard for me to fix this up.  How quickly
+> > > > will you be able to merge David's iget converstion patches?
+> > > 
+> > > They're about 1,000 patches back
+> > 
+> > Care to post a merge plan so we have a slight chance to make sure not
+> > too much crap is hiding in these 1000 patches?
+> 
+> Pretty much everything up to
+> 
+> #
+> # end
+> #
+> reiser4-sb_sync_inodes.patch
 
-> Last time I discussed this with David he seemed to find this amusing rather
-> than an urgent problem.
-
-Amusing?  In what way?
-
-I've been at LCA, and I left all but one of my machines powered down because
-the local substation broke and has been giving wildly variable voltages, if at
-all.  I've had to replace two PSUs because of this.  That's made it hard to
-test stuff remotely.  If you wish to view this as amusing, then by all means
-do so.
-
-David
+That includes the git trees?  Defintive NACK to unionfs.
