@@ -1,49 +1,31 @@
-From: Kevin Shanahan <kmshanah@ucwb.org.au>
-Subject: Re: [Bug 9855] ext3 ACL corruption
-Date: Tue, 05 Feb 2008 19:12:26 +1030
-Message-ID: <1202200946.4280.4.camel@kulgan.wumi.org.au>
-References: <1201771074.4480.2.camel@kulgan.wumi.org.au>
-	 <20080131100539.GQ23836@webber.adilger.int>
-	 <1201781664.4480.16.camel@kulgan.wumi.org.au>
-	 <20080205010617.GL23836@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>,
-	bugme-daemon@bugzilla.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Andreas Dilger <adilger@sun.com>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: - disable-ext4.patch removed from -mm tree
+Date: Tue, 05 Feb 2008 09:40:22 +0000
+Message-ID: <27718.1202204422@redhat.com>
+References: <20080204121131.a6e07705.akpm@linux-foundation.org> <200802032018.m13KIGoC029855@imap1.linux-foundation.org> <20080203122551.6830370a.akpm@linux-foundation.org> <20080204013626.GE18392@mit.edu> <20080203191540.3cb2660b.akpm@linux-foundation.org> <20080204150044.GK18392@mit.edu>
+Cc: dhowells@redhat.com, Theodore Tso <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bowden.ucwb.org.au ([203.122.237.119]:48432 "EHLO
-	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754873AbYBEImf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Feb 2008 03:42:35 -0500
-In-Reply-To: <20080205010617.GL23836@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:56022 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753512AbYBEJlR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Feb 2008 04:41:17 -0500
+In-Reply-To: <20080204121131.a6e07705.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2008-02-04 at 18:06 -0700, Andreas Dilger wrote:
-> Hmm, I wonder if e2fsck is calculating the wrong file offset or something?
-> The kernel appears to be taking the EA data offset from the end of
-> i_extra_isize and the ext3_xattr_ibody_header fields (so 0x88 + e_value_offs
-> from the start of the inode).
-> 
-> Conversely, debugfs isn't having any problem with this EA at all.
-> 
-> h, I think I see the problem, and this was fixed in newer e2fsck.
-> The EAs are stored "out of order" in the inode and older e2fsprogs
-> considered that an error.  That was fixed in the final 1.40 release:
-> 
-> 	Remove check in e2fsck which requires EA's in inodes to be sorted;
-> 	they don't need to be sorted, and e2fsck was previously wrongly
-> 	clearing unsorted EA's stored in the inode structure.
+Andrew Morton <akpm@linux-foundation.org> wrote:
 
-Ah, I think you got it! I've just now reproduced the problem on one
-filesystem with the old e2fsck-1.40-WIP from Debian Etch and then
-checked again with the newer e2fsck-1.40.5 from Sid. The new version
-doesn't report any problems.
+> Last time I discussed this with David he seemed to find this amusing rather
+> than an urgent problem.
 
-Thanks very much for your time looking into this.
+Amusing?  In what way?
 
-Regards,
-Kevin.
+I've been at LCA, and I left all but one of my machines powered down because
+the local substation broke and has been giving wildly variable voltages, if at
+all.  I've had to replace two PSUs because of this.  That's made it hard to
+test stuff remotely.  If you wish to view this as amusing, then by all means
+do so.
+
+David
