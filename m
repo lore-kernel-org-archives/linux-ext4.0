@@ -1,63 +1,346 @@
-From: akpm@linux-foundation.org
-Subject: [patch 250/260] ext3: return after ext3_error in case of failures
-Date: Wed, 06 Feb 2008 01:40:13 -0800
-Message-ID: <200802060939.m169dsEf004787@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
-	linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix circular locking dependency with migrate and rm.
+Date: Wed,  6 Feb 2008 16:30:04 +0530
+Message-ID: <1202295604-9948-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu, cmm@us.ibm.com, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:37495 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760663AbYBFKEm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 05:04:42 -0500
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:60749 "EHLO
+	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1759207AbYBFLAK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 06:00:10 -0500
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m16B03Wk024750
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 16:30:03 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m16B03g2417938
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 16:30:03 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m16B027i006337
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 11:00:03 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+We now take inode->i_mutex lock to prevent any update of the inode i_data
+field. Before we switch the inode format we take i_data_sem to prevent
+parallel read.
 
-This fixes some instances where we were continuing after calling
-ext3_error.  ext3_error calls panic only if errors=panic mount option is
-set.  So we need to make sure we return correctly after ext3_error call
+=======================================================
+[ INFO: possible circular locking dependency detected ]
+2.6.24-rc8 #6
+-------------------------------------------------------
+rm/2401 is trying to acquire lock:
+ (&ei->i_data_sem){----}, at: [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
+
+but task is already holding lock:
+ (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
+
+which lock already depends on the new lock.
+
+
+the existing dependency chain (in reverse order) is:
+
+-> #1 (jbd2_handle){--..}:
+       [<c0143a5c>] __lock_acquire+0xa31/0xc1a
+       [<c0143cbf>] lock_acquire+0x7a/0x94
+       [<c01fc4ca>] jbd2_journal_start+0xf5/0xff
+       [<c01e3539>] ext4_journal_start_sb+0x48/0x4a
+       [<c01eb980>] ext4_ext_migrate+0x7d/0x535
+       [<c01df328>] ext4_ioctl+0x528/0x56c
+       [<c0177700>] do_ioctl+0x50/0x67
+       [<c017794e>] vfs_ioctl+0x237/0x24a
+       [<c0177992>] sys_ioctl+0x31/0x4b
+       [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
+       [<ffffffff>] 0xffffffff
+
+-> #0 (&ei->i_data_sem){----}:
+       [<c014394c>] __lock_acquire+0x921/0xc1a
+       [<c0143cbf>] lock_acquire+0x7a/0x94
+       [<c044f247>] down_read+0x42/0x79
+       [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
+       [<c01dcba1>] ext4_getblk+0x62/0x1c4
+       [<c01e0de9>] ext4_find_entry+0x350/0x5b7
+       [<c01e200c>] ext4_unlink+0x6e/0x1a4
+       [<c017449e>] vfs_unlink+0x49/0x89
+       [<c0175f02>] do_unlinkat+0x96/0x12c
+       [<c0175fa8>] sys_unlink+0x10/0x12
+       [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
+       [<ffffffff>] 0xffffffff
+
+other info that might help us debug this:
+
+3 locks held by rm/2401:
+ #0:  (&type->i_mutex_dir_key#5/1){--..}, at: [<c0175eca>] do_unlinkat+0x5e/0x12c
+ #1:  (&sb->s_type->i_mutex_key#8){--..}, at: [<c017448b>] vfs_unlink+0x36/0x89
+ #2:  (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
+
+stack backtrace:
+Pid: 2401, comm: rm Not tainted 2.6.24-rc8 #6
+ [<c0106017>] show_trace_log_lvl+0x1a/0x2f
+ [<c0106893>] show_trace+0x12/0x14
+ [<c0106b89>] dump_stack+0x6c/0x72
+ [<c0141b26>] print_circular_bug_tail+0x5f/0x68
+ [<c014394c>] __lock_acquire+0x921/0xc1a
+ [<c0143cbf>] lock_acquire+0x7a/0x94
+ [<c044f247>] down_read+0x42/0x79
+ [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
+ [<c01dcba1>] ext4_getblk+0x62/0x1c4
+ [<c01e0de9>] ext4_find_entry+0x350/0x5b7
+ [<c01e200c>] ext4_unlink+0x6e/0x1a4
+ [<c017449e>] vfs_unlink+0x49/0x89
+ [<c0175f02>] do_unlinkat+0x96/0x12c
+ [<c0175fa8>] sys_unlink+0x10/0x12
+ [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
+ fs/ext4/migrate.c |  117 +++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 74 insertions(+), 43 deletions(-)
 
- fs/ext3/balloc.c |    8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-return-after-ext3_error-in-case-of-failures
-+++ a/fs/ext3/balloc.c
-@@ -530,11 +530,13 @@ do_more:
- 	    in_range (block, le32_to_cpu(desc->bg_inode_table),
- 		      sbi->s_itb_per_group) ||
- 	    in_range (block + count - 1, le32_to_cpu(desc->bg_inode_table),
--		      sbi->s_itb_per_group))
-+		      sbi->s_itb_per_group)) {
- 		ext3_error (sb, "ext3_free_blocks",
- 			    "Freeing blocks in system zones - "
- 			    "Block = "E3FSBLK", count = %lu",
- 			    block, count);
-+		goto error_return;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 9ee1f7c..8c6c685 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -61,10 +61,9 @@ static int finish_range(handle_t *handle, struct inode *inode,
+ 		retval = ext4_journal_restart(handle, needed);
+ 		if (retval)
+ 			goto err_out;
+-	}
+-	if (needed) {
++	} else if (needed) {
+ 		retval = ext4_journal_extend(handle, needed);
+-		if (retval != 0) {
++		if (retval) {
+ 			/*
+ 			 * IF not able to extend the journal restart the journal
+ 			 */
+@@ -220,6 +219,26 @@ static int update_tind_extent_range(handle_t *handle, struct inode *inode,
+ 
+ }
+ 
++static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
++{
++	int retval = 0, needed;
++
++	if (handle->h_buffer_credits > EXT4_RESERVE_TRANS_BLOCKS)
++		return 0;
++	/*
++	 * We are freeing a blocks. During this we touch
++	 * superblock, group descriptor and block bitmap.
++	 * So allocate a credit of 3. We may update
++	 * quota (user and group).
++	 */
++	needed = 3 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
++
++	if (ext4_journal_extend(handle, needed) != 0)
++		retval = ext4_journal_restart(handle, needed);
++
++	return retval;
++}
++
+ static int free_dind_blocks(handle_t *handle,
+ 				struct inode *inode, __le32 i_data)
+ {
+@@ -234,11 +253,14 @@ static int free_dind_blocks(handle_t *handle,
+ 
+ 	tmp_idata = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+-		if (tmp_idata[i])
++		if (tmp_idata[i]) {
++			extend_credit_for_blkdel(handle, inode);
+ 			ext4_free_blocks(handle, inode,
+ 					le32_to_cpu(tmp_idata[i]), 1, 1);
++		}
+ 	}
+ 	put_bh(bh);
++	extend_credit_for_blkdel(handle, inode);
+ 	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
+ 	return 0;
+ }
+@@ -267,29 +289,32 @@ static int free_tind_blocks(handle_t *handle,
+ 		}
+ 	}
+ 	put_bh(bh);
++	extend_credit_for_blkdel(handle, inode);
+ 	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
+ 	return 0;
+ }
+ 
+-static int free_ind_block(handle_t *handle, struct inode *inode)
++static int free_ind_block(handle_t *handle, struct inode *inode, __le32 *i_data)
+ {
+ 	int retval;
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+ 
+-	if (ei->i_data[EXT4_IND_BLOCK])
++	/* ei->i_data[EXT4_IND_BLOCK] */
++	if (i_data[0]) {
++		extend_credit_for_blkdel(handle, inode);
+ 		ext4_free_blocks(handle, inode,
+-				le32_to_cpu(ei->i_data[EXT4_IND_BLOCK]), 1, 1);
++				le32_to_cpu(i_data[0]), 1, 1);
 +	}
+ 
+-	if (ei->i_data[EXT4_DIND_BLOCK]) {
+-		retval = free_dind_blocks(handle, inode,
+-						ei->i_data[EXT4_DIND_BLOCK]);
++	/* ei->i_data[EXT4_DIND_BLOCK] */
++	if (i_data[1]) {
++		retval = free_dind_blocks(handle, inode, i_data[1]);
+ 		if (retval)
+ 			return retval;
+ 	}
+ 
+-	if (ei->i_data[EXT4_TIND_BLOCK]) {
+-		retval = free_tind_blocks(handle, inode,
+-						ei->i_data[EXT4_TIND_BLOCK]);
++	/* ei->i_data[EXT4_TIND_BLOCK] */
++	if (i_data[2]) {
++		retval = free_tind_blocks(handle, inode, i_data[2]);
+ 		if (retval)
+ 			return retval;
+ 	}
+@@ -297,15 +322,13 @@ static int free_ind_block(handle_t *handle, struct inode *inode)
+ }
+ 
+ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+-				struct inode *tmp_inode, int retval)
++				struct inode *tmp_inode)
+ {
++	int retval;
++	__le32	i_data[3];
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_inode_info *tmp_ei = EXT4_I(tmp_inode);
+ 
+-	retval = free_ind_block(handle, inode);
+-	if (retval)
+-		goto err_out;
+-
+ 	/*
+ 	 * One credit accounted for writing the
+ 	 * i_data field of the original inode
+@@ -317,6 +340,11 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+ 			goto err_out;
+ 	}
+ 
++	i_data[0] = ei->i_data[EXT4_IND_BLOCK];
++	i_data[1] = ei->i_data[EXT4_DIND_BLOCK];
++	i_data[2] = ei->i_data[EXT4_TIND_BLOCK];
++
++	down_write(&EXT4_I(inode)->i_data_sem);
+ 	/*
+ 	 * We have the extent map build with the tmp inode.
+ 	 * Now copy the i_data across
+@@ -336,8 +364,15 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+ 	spin_lock(&inode->i_lock);
+ 	inode->i_blocks += tmp_inode->i_blocks;
+ 	spin_unlock(&inode->i_lock);
++	up_write(&EXT4_I(inode)->i_data_sem);
+ 
++	/*
++	 * We mark the inode dirty after, because we decrement the
++	 * i_blocks when freeing the indirect meta-data blocks
++	 */
++	retval = free_ind_block(handle, inode, i_data);
+ 	ext4_mark_inode_dirty(handle, inode);
++
+ err_out:
+ 	return retval;
+ }
+@@ -365,6 +400,7 @@ static int free_ext_idx(handle_t *handle, struct inode *inode,
+ 		}
+ 	}
+ 	put_bh(bh);
++	extend_credit_for_blkdel(handle, inode);
+ 	ext4_free_blocks(handle, inode, block, 1, 1);
+ 	return retval;
+ }
+@@ -420,7 +456,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 		 */
+ 		return retval;
+ 
+-	down_write(&EXT4_I(inode)->i_data_sem);
+ 	handle = ext4_journal_start(inode,
+ 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+@@ -454,13 +489,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 	ext4_orphan_add(handle, tmp_inode);
+ 	ext4_journal_stop(handle);
+ 
+-	ei = EXT4_I(inode);
+-	i_data = ei->i_data;
+-	memset(&lb, 0, sizeof(lb));
+-
+-	/* 32 bit block address 4 bytes */
+-	max_entries = inode->i_sb->s_blocksize >> 2;
+-
+ 	/*
+ 	 * start with one credit accounted for
+ 	 * superblock modification.
+@@ -469,7 +497,20 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 	 * trascation that created the inode. Later as and
+ 	 * when we add extents we extent the journal
+ 	 */
++	/*
++	 * inode_mutex prevent write and truncate on the file. Read still goes
++	 * through. We take i_data_sem in ext4_ext_swap_inode_data before we
++	 * switch the inode format to prevent read.
++	 */
++	mutex_lock(&(inode->i_mutex));
+ 	handle = ext4_journal_start(inode, 1);
++
++	ei = EXT4_I(inode);
++	i_data = ei->i_data;
++	memset(&lb, 0, sizeof(lb));
++
++	/* 32 bit block address 4 bytes */
++	max_entries = inode->i_sb->s_blocksize >> 2;
+ 	for (i = 0; i < EXT4_NDIR_BLOCKS; i++, blk_count++) {
+ 		if (i_data[i]) {
+ 			retval = update_extent_range(handle, tmp_inode,
+@@ -507,19 +548,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 	 */
+ 	retval = finish_range(handle, tmp_inode, &lb);
+ err_out:
+-	/*
+-	 * We are either freeing extent information or indirect
+-	 * blocks. During this we touch superblock, group descriptor
+-	 * and block bitmap. Later we mark the tmp_inode dirty
+-	 * via ext4_ext_tree_init. So allocate a credit of 4
+-	 * We may update quota (user and group).
+-	 *
+-	 * FIXME!! we may be touching bitmaps in different block groups.
+-	 */
+-	if (ext4_journal_extend(handle,
+-			4 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb)) != 0)
+-		ext4_journal_restart(handle,
+-				4 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
+ 	if (retval)
+ 		/*
+ 		 * Failure case delete the extent information with the
+@@ -528,7 +556,11 @@ err_out:
+ 		free_ext_block(handle, tmp_inode);
+ 	else
+ 		retval = ext4_ext_swap_inode_data(handle, inode,
+-							tmp_inode, retval);
++							tmp_inode);
++
++	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
++	if (ext4_journal_extend(handle, 1) != 0)
++		ext4_journal_restart(handle, 1);
  
  	/*
- 	 * We are about to start releasing blocks in the bitmap,
-@@ -1637,11 +1639,13 @@ allocated:
- 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
- 		      EXT3_SB(sb)->s_itb_per_group) ||
- 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
--		      EXT3_SB(sb)->s_itb_per_group))
-+		      EXT3_SB(sb)->s_itb_per_group)) {
- 		ext3_error(sb, "ext3_new_block",
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
-+		goto out;
-+	}
+ 	 * Mark the tmp_inode as of size zero
+@@ -556,8 +588,7 @@ err_out:
+ 	tmp_inode->i_nlink = 0;
  
- 	performed_allocation = 1;
+ 	ext4_journal_stop(handle);
+-
+-	up_write(&EXT4_I(inode)->i_data_sem);
++	mutex_unlock(&(inode->i_mutex));
  
-_
+ 	if (tmp_inode)
+ 		iput(tmp_inode);
+-- 
+1.5.4.23.gef5b9-dirty
