@@ -1,114 +1,233 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] jbd: fix assertion failure in journal_next_log_block
-Date: Wed, 06 Feb 2008 10:47:17 -0800
-Message-ID: <1202323637.4112.6.camel@localhost.localdomain>
-References: <20080131161417.GA29679@unused.rdu.redhat.com>
-	 <20080205172731.GD29130@atrey.karlin.mff.cuni.cz>
-	 <200802051359.05758.jbacik@redhat.com>
+Subject: Re: [PATCH] ext4: Fix DIO locking
+Date: Wed, 06 Feb 2008 11:08:07 -0800
+Message-ID: <1202324887.4112.11.camel@localhost.localdomain>
+References: <20080206160606.GA3475@duck.suse.cz>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:48073 "EHLO e4.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:48010 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753033AbYBFSrR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Feb 2008 13:47:17 -0500
-In-Reply-To: <200802051359.05758.jbacik@redhat.com>
+	id S1752027AbYBFTIJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Feb 2008 14:08:09 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m16J86Xe023748
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 14:08:06 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m16J86lV1079692
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 14:08:06 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m16J861F019817
+	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 14:08:06 -0500
+In-Reply-To: <20080206160606.GA3475@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-02-05 at 13:59 -0500, Josef Bacik wrote:
-> On Tuesday 05 February 2008 12:27:31 pm Jan Kara wrote:
-> >   Hello,
-> >
-> >   Sorry for replying a bit late but I'm currently falling behind in
-> > maling-list reading...
-> >
-> > > The way jbd tries to determine if there is enough space left on the
-> > > journal in order to start a new transaction is looking at the space left
-> > > in the journal and the space needed for the committing transaction, which
-> > > is 1/4 of the journal + the number of t_outstanding_credits for that
-> > > transaction.  In this case its assumed that t_outstanding_credits
-> > > accurately represents the number of credits
-> >
-> >   Yes.
-> >
-> > > waiting to be written to the journal, but this sometimes isn't the case. 
-> > > The transaction has two counters for buffers, t_outstanding_credits which
-> > > is used in conjunction with handles that are added to the transaction,
-> > > and t_nr_buffers which is only incremented/decremented when buffers are
-> > > added/removed from the transaction and are actually destined to be
-> > > journaled.  Normally these two
-> >
-> >   t_nr_buffers actually represents number of buffers on BJ_Metadata list
-> > and nobody uses it (except for the assertion in
-> > __journal_temp_unlink_buffer()). t_outstanding_credits is supposed to be
-> > *the* counter making sure we don't write more than we have credits for.
-> >
-> > > counters are the same, however there are cases where the committing
-> > > transaction can have buffers moved to the next running transaction, for
-> > > example any buffers on the committing transactions t_reserved list would
-> > > be moved to the next (running) transaction, and if it had been dirtied in
-> > > the process it would immediately make it onto the t_updates list, which
-> > > would increment t_nr_buffers
-> >
-> >   You probably mean t_buffers list here...
-> >
-> > > but not t_outstanding_credits.  So you get into this situation where
-> >
-> >   But which moving and dirtying do you mean? The caller which dirties
-> > the buffer must make sure that he has acquired enough credits for the
-> > transaction where the buffer ends up... So if there were not enough
-> > buffers in the running transaction where we refiled the buffer it is a
-> > bug in the caller which dirties the buffer.
-> >
+On Wed, 2008-02-06 at 17:06 +0100, Jan Kara wrote:
+>   Hi,
 > 
-> You know now that you say that I feel like an idiot, you are right the only way 
-> for something to actually end up on that list was if somebody dirtied it and if 
-> they did it would have had to been accounted for at some point on the running 
-> transaction.
-> 
-> > > t_nr_buffers (the actual number of buffers that are on the transaction)
-> > > is greater than the number of buffers accounted for via
-> > > t_outstanding_credits. This presents a problem since as we loop through
-> > > writting buffers to the journal, we decrement t_outstanding_credits, and
-> > > if t_nr_buffers is more than t_outstanding_credits then we end up with a
-> > > negative number for
-> > > t_outstanding_credits, which means we start saying we need less than 1/4
-> > > of the journal for our committing transaction and allow more transactions
-> > > than we can handle to start, and then bam we fail because
-> > > journal_next_log_block doesn't have enough free blocks in order to handle
-> > > the request.  This has been tested and fixes the issue (which could not
-> > > be reproduced by me but several other people could get it to reproduce
-> > > using postmark), and although I couldn't reproduce the assertion, I could
-> > > very easily reproduce the situation where t_outstanding_credits was <
-> > > than t_nr_buffers.
-> >
-> >   I suppose you see the assertion J_ASSERT(journal->j_free > 1); to
-> > fail, right? I don't see how your patch could help avoid that assertion.
-> > You've just removed accounting of t_outstanding_credits which has no
-> > impact on the real number of free blocks in the journal stored in
-> > j_free. Anyway, if you can reproduce t_outstanding_credits <
-> > t_nr_buffers, then there's something fishy. Are you able to reproduce it
-> > also with a current kernel?
-> >   Thanks for looking into the problem :)
-> >
-> 
-> Well my patch helped avoid the assertion because t_outstanding_credits was going 
-> negative therefore we were letting transactions start when we shouldn't be, and 
-> eventually we would end up with too much of the journal in use and we'd assert.  
-> Course I can't reproduce where t_outstanding_credits < t_nr_buffers upstream 
-> (again I feel like an idiot, should have tested that first).  Thanks for 
-> looking at this Jan.
-> 
-> Mingming, would you mind pulling this patch out of the patch queue please since 
-> its wrong?  Thanks much,
+>   this patch fixes lock inversion in ext4 direct IO path. The similar patch
+> has already been accepted for ext3. Mingming, will you put it into ext4
+> patch queue? Thanks.
 > 
 
-Sure, done!
+Thanks! Added to the ext4 patch queue.
 
 Mingming
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> ---
+> 
+> We cannot start transaction in ext4_direct_IO() and just let it last during the
+> whole write because dio_get_page() acquires mmap_sem which ranks above
+> transaction start (e.g. because we have dependency chain
+> mmap_sem->PageLock->journal_start, or because we update atime while holding
+> mmap_sem) and thus deadlocks could happen. We solve the problem by starting
+> a transaction separately for each ext4_get_block() call.
+> 
+> We *could* have a problem that we allocate a block and before its data are
+> written out the machine crashes and thus we expose stale data. But that
+> does not happen because for hole-filling generic code falls back to buffered
+> writes and for file extension, we add inode to orphan list and thus in
+> case of crash, journal replay will truncate inode back to the original size.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index bb717cb..1948b97 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -895,7 +895,16 @@ out:
+>  	return err;
+>  }
+> 
+> -#define DIO_CREDITS (EXT4_RESERVE_TRANS_BLOCKS + 32)
+> +/* Maximum number of blocks we map for direct IO at once. */
+> +#define DIO_MAX_BLOCKS 4096
+> +/*
+> + * Number of credits we need for writing DIO_MAX_BLOCKS:
+> + * We need sb + group descriptor + bitmap + inode -> 4
+> + * For B blocks with A block pointers per block we need:
+> + * 1 (triple ind.) + (B/A/A + 2) (doubly ind.) + (B/A + 2) (indirect).
+> + * If we plug in 4096 for B and 256 for A (for 1KB block size), we get 25.
+> + */
+> +#define DIO_CREDITS 25
+> 
+>  int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+>  			unsigned long max_blocks, struct buffer_head *bh,
+> @@ -942,49 +951,31 @@ static int ext4_get_block(struct inode *inode, sector_t iblock,
+>  			struct buffer_head *bh_result, int create)
+>  {
+>  	handle_t *handle = ext4_journal_current_handle();
+> -	int ret = 0;
+> +	int ret = 0, started = 0;
+>  	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+> 
+> -	if (!create)
+> -		goto get_block;		/* A read */
+> -
+> -	if (max_blocks == 1)
+> -		goto get_block;		/* A single block get */
+> -
+> -	if (handle->h_transaction->t_state == T_LOCKED) {
+> -		/*
+> -		 * Huge direct-io writes can hold off commits for long
+> -		 * periods of time.  Let this commit run.
+> -		 */
+> -		ext4_journal_stop(handle);
+> -		handle = ext4_journal_start(inode, DIO_CREDITS);
+> -		if (IS_ERR(handle))
+> +	
+> +	if (create && !handle) {	/* Direct IO write... */
+> +		if (max_blocks > DIO_MAX_BLOCKS)
+> +			max_blocks = DIO_MAX_BLOCKS;
+> +		handle = ext4_journal_start(inode, DIO_CREDITS +
+> +			      2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
+> +		if (IS_ERR(handle)) {
+>  			ret = PTR_ERR(handle);
+> -		goto get_block;
+> -	}
+> -
+> -	if (handle->h_buffer_credits <= EXT4_RESERVE_TRANS_BLOCKS) {
+> -		/*
+> -		 * Getting low on buffer credits...
+> -		 */
+> -		ret = ext4_journal_extend(handle, DIO_CREDITS);
+> -		if (ret > 0) {
+> -			/*
+> -			 * Couldn't extend the transaction.  Start a new one.
+> -			 */
+> -			ret = ext4_journal_restart(handle, DIO_CREDITS);
+> +			goto out;
+>  		}
+> +		started = 1;
+>  	}
+> 
+> -get_block:
+> -	if (ret == 0) {
+> -		ret = ext4_get_blocks_wrap(handle, inode, iblock,
+> +	ret = ext4_get_blocks_wrap(handle, inode, iblock,
+>  					max_blocks, bh_result, create, 0);
+> -		if (ret > 0) {
+> -			bh_result->b_size = (ret << inode->i_blkbits);
+> -			ret = 0;
+> -		}
+> +	if (ret > 0) {
+> +		bh_result->b_size = (ret << inode->i_blkbits);
+> +		ret = 0;
+>  	}
+> +	if (started)
+> +		ext4_journal_stop(handle);
+> +out:
+>  	return ret;
+>  }
+> 
+> @@ -1674,7 +1665,8 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+>   * if the machine crashes during the write.
+>   *
+>   * If the O_DIRECT write is intantiating holes inside i_size and the machine
+> - * crashes then stale disk data _may_ be exposed inside the file.
+> + * crashes then stale disk data _may_ be exposed inside the file. But current
+> + * VFS code falls back into buffered path in that case so we are safe.
+>   */
+>  static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+>  			const struct iovec *iov, loff_t offset,
+> @@ -1683,7 +1675,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+>  	struct file *file = iocb->ki_filp;
+>  	struct inode *inode = file->f_mapping->host;
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+> -	handle_t *handle = NULL;
+> +	handle_t *handle;
+>  	ssize_t ret;
+>  	int orphan = 0;
+>  	size_t count = iov_length(iov, nr_segs);
+> @@ -1691,17 +1683,21 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+>  	if (rw == WRITE) {
+>  		loff_t final_size = offset + count;
+> 
+> -		handle = ext4_journal_start(inode, DIO_CREDITS);
+> -		if (IS_ERR(handle)) {
+> -			ret = PTR_ERR(handle);
+> -			goto out;
+> -		}
+>  		if (final_size > inode->i_size) {
+> +			/* Credits for sb + inode write */
+> +			handle = ext4_journal_start(inode, 2);
+> +			if (IS_ERR(handle)) {
+> +				ret = PTR_ERR(handle);
+> +				goto out;
+> +			}
+>  			ret = ext4_orphan_add(handle, inode);
+> -			if (ret)
+> -				goto out_stop;
+> +			if (ret) {
+> +				ext4_journal_stop(handle);
+> +				goto out;
+> +			}
+>  			orphan = 1;
+>  			ei->i_disksize = inode->i_size;
+> +			ext4_journal_stop(handle);
+>  		}
+>  	}
+> 
+> @@ -1709,18 +1705,21 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+>  				 offset, nr_segs,
+>  				 ext4_get_block, NULL);
+> 
+> -	/*
+> -	 * Reacquire the handle: ext4_get_block() can restart the transaction
+> -	 */
+> -	handle = ext4_journal_current_handle();
+> -
+> -out_stop:
+> -	if (handle) {
+> +	if (orphan) {
+>  		int err;
+> 
+> -		if (orphan && inode->i_nlink)
+> +		/* Credits for sb + inode write */
+> +		handle = ext4_journal_start(inode, 2);
+> +		if (IS_ERR(handle)) {
+> +			/* This is really bad luck. We've written the data
+> +			 * but cannot extend i_size. Bail out and pretend
+> +			 * the write failed... */
+> +			ret = PTR_ERR(handle);
+> +			goto out;
+> +		}
+> +		if (inode->i_nlink)
+>  			ext4_orphan_del(handle, inode);
+> -		if (orphan && ret > 0) {
+> +		if (ret > 0) {
+>  			loff_t end = offset + ret;
+>  			if (end > inode->i_size) {
+>  				ei->i_disksize = end;
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
