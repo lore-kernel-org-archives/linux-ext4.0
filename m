@@ -1,168 +1,134 @@
 From: akpm@linux-foundation.org
-Subject: [patch 253/260] ext[234]: use ext[234]_get_group_desc()
-Date: Wed, 06 Feb 2008 01:40:16 -0800
-Message-ID: <200802060939.m169dvHm004799@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, akinobu.mita@gmail.com,
+Subject: [patch 244/260] ext2: add block bitmap validation
+Date: Wed, 06 Feb 2008 01:40:08 -0800
+Message-ID: <200802060939.m169dnMg004763@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:43463 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:37118 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757145AbYBFJtF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:05 -0500
+	by vger.kernel.org with ESMTP id S1757654AbYBFJtJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Akinobu Mita <akinobu.mita@gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Use ext[234]_get_group_desc() to get group descriptor from group number.
+When a new block bitmap is read from disk in read_block_bitmap() there are a
+few bits that should ALWAYS be set.  In particular, the blocks given
+corresponding to block bitmap, inode bitmap and inode tables.  Validate the
+block bitmap against these blocks.
 
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/super.c |   12 ++++--------
- fs/ext3/super.c |   13 ++++---------
- fs/ext4/super.c |   14 ++++----------
- 3 files changed, 12 insertions(+), 27 deletions(-)
+ fs/ext2/balloc.c |   81 ++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 72 insertions(+), 9 deletions(-)
 
-diff -puN fs/ext2/super.c~ext-use-ext_get_group_desc fs/ext2/super.c
---- a/fs/ext2/super.c~ext-use-ext_get_group_desc
-+++ a/fs/ext2/super.c
-@@ -617,27 +617,24 @@ static int ext2_setup_super (struct supe
- 	return res;
+diff -puN fs/ext2/balloc.c~ext2-add-block-bitmap-validation fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c~ext2-add-block-bitmap-validation
++++ a/fs/ext2/balloc.c
+@@ -69,9 +69,53 @@ struct ext2_group_desc * ext2_get_group_
+ 	return desc + offset;
  }
  
--static int ext2_check_descriptors (struct super_block * sb)
-+static int ext2_check_descriptors(struct super_block *sb)
- {
- 	int i;
--	int desc_block = 0;
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	unsigned long first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
- 	unsigned long last_block;
--	struct ext2_group_desc * gdp = NULL;
- 
- 	ext2_debug ("Checking group descriptors");
- 
--	for (i = 0; i < sbi->s_groups_count; i++)
--	{
-+	for (i = 0; i < sbi->s_groups_count; i++) {
-+		struct ext2_group_desc *gdp = ext2_get_group_desc(sb, i, NULL);
++static int ext2_valid_block_bitmap(struct super_block *sb,
++					struct ext2_group_desc *desc,
++					unsigned int block_group,
++					struct buffer_head *bh)
++{
++	ext2_grpblk_t offset;
++	ext2_grpblk_t next_zero_bit;
++	ext2_fsblk_t bitmap_blk;
++	ext2_fsblk_t group_first_block;
 +
- 		if (i == sbi->s_groups_count - 1)
- 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
- 		else
- 			last_block = first_block +
- 				(EXT2_BLOCKS_PER_GROUP(sb) - 1);
- 
--		if ((i % EXT2_DESC_PER_BLOCK(sb)) == 0)
--			gdp = (struct ext2_group_desc *) sbi->s_group_desc[desc_block++]->b_data;
- 		if (le32_to_cpu(gdp->bg_block_bitmap) < first_block ||
- 		    le32_to_cpu(gdp->bg_block_bitmap) > last_block)
- 		{
-@@ -667,7 +664,6 @@ static int ext2_check_descriptors (struc
- 			return 0;
- 		}
- 		first_block += EXT2_BLOCKS_PER_GROUP(sb);
--		gdp++;
- 	}
- 	return 1;
- }
-diff -puN fs/ext3/super.c~ext-use-ext_get_group_desc fs/ext3/super.c
---- a/fs/ext3/super.c~ext-use-ext_get_group_desc
-+++ a/fs/ext3/super.c
-@@ -1252,28 +1252,24 @@ static int ext3_setup_super(struct super
- }
- 
- /* Called at mount-time, super-block is locked */
--static int ext3_check_descriptors (struct super_block * sb)
-+static int ext3_check_descriptors(struct super_block *sb)
- {
- 	struct ext3_sb_info *sbi = EXT3_SB(sb);
- 	ext3_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
- 	ext3_fsblk_t last_block;
--	struct ext3_group_desc * gdp = NULL;
--	int desc_block = 0;
- 	int i;
- 
- 	ext3_debug ("Checking group descriptors");
- 
--	for (i = 0; i < sbi->s_groups_count; i++)
--	{
-+	for (i = 0; i < sbi->s_groups_count; i++) {
-+		struct ext3_group_desc *gdp = ext3_get_group_desc(sb, i, NULL);
++	group_first_block = ext2_group_first_block_no(sb, block_group);
 +
- 		if (i == sbi->s_groups_count - 1)
- 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
- 		else
- 			last_block = first_block +
- 				(EXT3_BLOCKS_PER_GROUP(sb) - 1);
- 
--		if ((i % EXT3_DESC_PER_BLOCK(sb)) == 0)
--			gdp = (struct ext3_group_desc *)
--					sbi->s_group_desc[desc_block++]->b_data;
- 		if (le32_to_cpu(gdp->bg_block_bitmap) < first_block ||
- 		    le32_to_cpu(gdp->bg_block_bitmap) > last_block)
- 		{
-@@ -1306,7 +1302,6 @@ static int ext3_check_descriptors (struc
- 			return 0;
- 		}
- 		first_block += EXT3_BLOCKS_PER_GROUP(sb);
--		gdp++;
- 	}
- 
- 	sbi->s_es->s_free_blocks_count=cpu_to_le32(ext3_count_free_blocks(sb));
-diff -puN fs/ext4/super.c~ext-use-ext_get_group_desc fs/ext4/super.c
---- a/fs/ext4/super.c~ext-use-ext_get_group_desc
-+++ a/fs/ext4/super.c
-@@ -1458,7 +1458,7 @@ int ext4_group_desc_csum_verify(struct e
++	/* check whether block bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	offset = bitmap_blk - group_first_block;
++	if (!ext2_test_bit(offset, bh->b_data))
++		/* bad block bitmap */
++		goto err_out;
++
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
++	offset = bitmap_blk - group_first_block;
++	if (!ext2_test_bit(offset, bh->b_data))
++		/* bad block bitmap */
++		goto err_out;
++
++	/* check whether the inode table block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
++	offset = bitmap_blk - group_first_block;
++	next_zero_bit = ext2_find_next_zero_bit(bh->b_data,
++				offset + EXT2_SB(sb)->s_itb_per_group,
++				offset);
++	if (next_zero_bit >= offset + EXT2_SB(sb)->s_itb_per_group)
++		/* good bitmap for inode tables */
++		return 1;
++
++err_out:
++	ext2_error(sb, __FUNCTION__,
++			"Invalid block bitmap - "
++			"block_group = %d, block = %lu",
++			block_group, bitmap_blk);
++	return 0;
++}
++
+ /*
+- * Read the bitmap for a given block_group, reading into the specified 
+- * slot in the superblock's bitmap cache.
++ * Read the bitmap for a given block_group,and validate the
++ * bits for block/inode/inode tables are set in the bitmaps
+  *
+  * Return buffer_head on success or NULL in case of failure.
+  */
+@@ -80,17 +124,36 @@ read_block_bitmap(struct super_block *sb
+ {
+ 	struct ext2_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
+-	
+-	desc = ext2_get_group_desc (sb, block_group, NULL);
++	ext2_fsblk_t bitmap_blk;
++
++	desc = ext2_get_group_desc(sb, block_group, NULL);
+ 	if (!desc)
+-		goto error_out;
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
+-	if (!bh)
+-		ext2_error (sb, "read_block_bitmap",
++		return NULL;
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	bh = sb_getblk(sb, bitmap_blk);
++	if (unlikely(!bh)) {
++		ext2_error(sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %u",
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+-error_out:
++		return NULL;
++	}
++	if (likely(bh_uptodate_or_lock(bh)))
++		return bh;
++
++	if (bh_submit_read(bh) < 0) {
++		brelse(bh);
++		ext2_error(sb, __FUNCTION__,
++			    "Cannot read block bitmap - "
++			    "block_group = %d, block_bitmap = %u",
++			    block_group, le32_to_cpu(desc->bg_block_bitmap));
++		return NULL;
++	}
++	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
++		brelse(bh);
++		return NULL;
++	}
++
+ 	return bh;
  }
  
- /* Called at mount-time, super-block is locked */
--static int ext4_check_descriptors (struct super_block * sb)
-+static int ext4_check_descriptors(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
-@@ -1466,8 +1466,6 @@ static int ext4_check_descriptors (struc
- 	ext4_fsblk_t block_bitmap;
- 	ext4_fsblk_t inode_bitmap;
- 	ext4_fsblk_t inode_table;
--	struct ext4_group_desc * gdp = NULL;
--	int desc_block = 0;
- 	int flexbg_flag = 0;
- 	ext4_group_t i;
- 
-@@ -1476,17 +1474,15 @@ static int ext4_check_descriptors (struc
- 
- 	ext4_debug ("Checking group descriptors");
- 
--	for (i = 0; i < sbi->s_groups_count; i++)
--	{
-+	for (i = 0; i < sbi->s_groups_count; i++) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, i, NULL);
-+
- 		if (i == sbi->s_groups_count - 1 || flexbg_flag)
- 			last_block = ext4_blocks_count(sbi->s_es) - 1;
- 		else
- 			last_block = first_block +
- 				(EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 
--		if ((i % EXT4_DESC_PER_BLOCK(sb)) == 0)
--			gdp = (struct ext4_group_desc *)
--					sbi->s_group_desc[desc_block++]->b_data;
- 		block_bitmap = ext4_block_bitmap(sb, gdp);
- 		if (block_bitmap < first_block || block_bitmap > last_block)
- 		{
-@@ -1524,8 +1520,6 @@ static int ext4_check_descriptors (struc
- 		}
- 		if (!flexbg_flag)
- 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
--		gdp = (struct ext4_group_desc *)
--			((__u8 *)gdp + EXT4_DESC_SIZE(sb));
- 	}
- 
- 	ext4_free_blocks_count_set(sbi->s_es, ext4_count_free_blocks(sb));
 _
