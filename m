@@ -1,134 +1,122 @@
 From: akpm@linux-foundation.org
-Subject: [patch 244/260] ext2: add block bitmap validation
-Date: Wed, 06 Feb 2008 01:40:08 -0800
-Message-ID: <200802060939.m169dnMg004763@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
+Subject: [patch 254/260] ext[234]: remove unused argument for ext[234]_find_goal()
+Date: Wed, 06 Feb 2008 01:40:16 -0800
+Message-ID: <200802060939.m169dwkC004803@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, akinobu.mita@gmail.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:37118 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:46361 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757654AbYBFJtJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:09 -0500
+	by vger.kernel.org with ESMTP id S1755920AbYBFJtC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:02 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Akinobu Mita <akinobu.mita@gmail.com>
 
-When a new block bitmap is read from disk in read_block_bitmap() there are a
-few bits that should ALWAYS be set.  In particular, the blocks given
-corresponding to block bitmap, inode bitmap and inode tables.  Validate the
-block bitmap against these blocks.
+The argument chain for ext[234]_find_goal() is not used.  This patch removes
+it and fixes comment as well.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/balloc.c |   81 ++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 72 insertions(+), 9 deletions(-)
+ fs/ext2/inode.c |    7 ++-----
+ fs/ext3/inode.c |    8 +++-----
+ fs/ext4/inode.c |    9 +++------
+ 3 files changed, 8 insertions(+), 16 deletions(-)
 
-diff -puN fs/ext2/balloc.c~ext2-add-block-bitmap-validation fs/ext2/balloc.c
---- a/fs/ext2/balloc.c~ext2-add-block-bitmap-validation
-+++ a/fs/ext2/balloc.c
-@@ -69,9 +69,53 @@ struct ext2_group_desc * ext2_get_group_
- 	return desc + offset;
- }
- 
-+static int ext2_valid_block_bitmap(struct super_block *sb,
-+					struct ext2_group_desc *desc,
-+					unsigned int block_group,
-+					struct buffer_head *bh)
-+{
-+	ext2_grpblk_t offset;
-+	ext2_grpblk_t next_zero_bit;
-+	ext2_fsblk_t bitmap_blk;
-+	ext2_fsblk_t group_first_block;
-+
-+	group_first_block = ext2_group_first_block_no(sb, block_group);
-+
-+	/* check whether block bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext2_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext2_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode table block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
-+	offset = bitmap_blk - group_first_block;
-+	next_zero_bit = ext2_find_next_zero_bit(bh->b_data,
-+				offset + EXT2_SB(sb)->s_itb_per_group,
-+				offset);
-+	if (next_zero_bit >= offset + EXT2_SB(sb)->s_itb_per_group)
-+		/* good bitmap for inode tables */
-+		return 1;
-+
-+err_out:
-+	ext2_error(sb, __FUNCTION__,
-+			"Invalid block bitmap - "
-+			"block_group = %d, block = %lu",
-+			block_group, bitmap_blk);
-+	return 0;
-+}
-+
- /*
-- * Read the bitmap for a given block_group, reading into the specified 
-- * slot in the superblock's bitmap cache.
-+ * Read the bitmap for a given block_group,and validate the
-+ * bits for block/inode/inode tables are set in the bitmaps
+diff -puN fs/ext2/inode.c~ext-remove-unused-argument-for-ext_find_goal fs/ext2/inode.c
+--- a/fs/ext2/inode.c~ext-remove-unused-argument-for-ext_find_goal
++++ a/fs/ext2/inode.c
+@@ -286,15 +286,12 @@ static unsigned long ext2_find_near(stru
+  *	ext2_find_goal - find a prefered place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+- *	@chain:  chain of indirect blocks
+  *	@partial: pointer to the last triple within a chain
   *
-  * Return buffer_head on success or NULL in case of failure.
+  *	Returns preferred place for a block (the goal).
   */
-@@ -80,17 +124,36 @@ read_block_bitmap(struct super_block *sb
- {
- 	struct ext2_group_desc * desc;
- 	struct buffer_head * bh = NULL;
--	
--	desc = ext2_get_group_desc (sb, block_group, NULL);
-+	ext2_fsblk_t bitmap_blk;
-+
-+	desc = ext2_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
--		goto error_out;
--	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
--	if (!bh)
--		ext2_error (sb, "read_block_bitmap",
-+		return NULL;
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
-+	bh = sb_getblk(sb, bitmap_blk);
-+	if (unlikely(!bh)) {
-+		ext2_error(sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %u",
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
--error_out:
-+		return NULL;
-+	}
-+	if (likely(bh_uptodate_or_lock(bh)))
-+		return bh;
-+
-+	if (bh_submit_read(bh) < 0) {
-+		brelse(bh);
-+		ext2_error(sb, __FUNCTION__,
-+			    "Cannot read block bitmap - "
-+			    "block_group = %d, block_bitmap = %u",
-+			    block_group, le32_to_cpu(desc->bg_block_bitmap));
-+		return NULL;
-+	}
-+	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
-+		brelse(bh);
-+		return NULL;
-+	}
-+
- 	return bh;
- }
  
+-static inline int ext2_find_goal(struct inode *inode,
+-				 long block,
+-				 Indirect chain[4],
++static inline int ext2_find_goal(struct inode *inode, long block,
+ 				 Indirect *partial)
+ {
+ 	struct ext2_block_alloc_info *block_i;
+@@ -638,7 +635,7 @@ reread:
+ 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
+ 		ext2_init_block_alloc_info(inode);
+ 
+-	goal = ext2_find_goal(inode, iblock, chain, partial);
++	goal = ext2_find_goal(inode, iblock, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+ 	indirect_blks = (chain + depth) - partial - 1;
+diff -puN fs/ext3/inode.c~ext-remove-unused-argument-for-ext_find_goal fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext-remove-unused-argument-for-ext_find_goal
++++ a/fs/ext3/inode.c
+@@ -439,16 +439,14 @@ static ext3_fsblk_t ext3_find_near(struc
+  *	ext3_find_goal - find a prefered place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+- *	@chain:  chain of indirect blocks
+  *	@partial: pointer to the last triple within a chain
+- *	@goal:	place to store the result.
+  *
+  *	Normally this function find the prefered place for block allocation,
+- *	stores it in *@goal and returns zero.
++ *	returns it.
+  */
+ 
+ static ext3_fsblk_t ext3_find_goal(struct inode *inode, long block,
+-		Indirect chain[4], Indirect *partial)
++				   Indirect *partial)
+ {
+ 	struct ext3_block_alloc_info *block_i;
+ 
+@@ -884,7 +882,7 @@ int ext3_get_blocks_handle(handle_t *han
+ 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
+ 		ext3_init_block_alloc_info(inode);
+ 
+-	goal = ext3_find_goal(inode, iblock, chain, partial);
++	goal = ext3_find_goal(inode, iblock, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+ 	indirect_blks = (chain + depth) - partial - 1;
+diff -puN fs/ext4/inode.c~ext-remove-unused-argument-for-ext_find_goal fs/ext4/inode.c
+--- a/fs/ext4/inode.c~ext-remove-unused-argument-for-ext_find_goal
++++ a/fs/ext4/inode.c
+@@ -429,16 +429,13 @@ static ext4_fsblk_t ext4_find_near(struc
+  *	ext4_find_goal - find a prefered place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+- *	@chain:  chain of indirect blocks
+  *	@partial: pointer to the last triple within a chain
+- *	@goal:	place to store the result.
+  *
+  *	Normally this function find the prefered place for block allocation,
+- *	stores it in *@goal and returns zero.
++ *	returns it.
+  */
+-
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+-		Indirect chain[4], Indirect *partial)
++		Indirect *partial)
+ {
+ 	struct ext4_block_alloc_info *block_i;
+ 
+@@ -839,7 +836,7 @@ int ext4_get_blocks_handle(handle_t *han
+ 	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
+ 		ext4_init_block_alloc_info(inode);
+ 
+-	goal = ext4_find_goal(inode, iblock, chain, partial);
++	goal = ext4_find_goal(inode, iblock, partial);
+ 
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+ 	indirect_blks = (chain + depth) - partial - 1;
 _
