@@ -1,136 +1,55 @@
 From: akpm@linux-foundation.org
-Subject: [patch 245/260] ext3: add block bitmap validation
-Date: Wed, 06 Feb 2008 01:40:09 -0800
-Message-ID: <200802060939.m169doBL004767@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
-	linux-ext4@vger.kernel.org
+Subject: [patch 248/260] BKL-removal: remove incorrect comment refering to lock_kernel() from jbd/jbd2
+Date: Wed, 06 Feb 2008 01:40:11 -0800
+Message-ID: <200802060939.m169drRs004779@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, ak@suse.de, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:42524 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:47527 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757524AbYBFJtH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:07 -0500
+	by vger.kernel.org with ESMTP id S1757945AbYBFJtn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:49:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Andi Kleen <ak@suse.de>
 
-When a new block bitmap is read from disk in read_block_bitmap() there are a
-few bits that should ALWAYS be set.  In particular, the blocks given
-corresponding to block bitmap, inode bitmap and inode tables.  Validate the
-block bitmap against these blocks.
+None of the callers of this function does actually take the BKL as far as I
+can see.  So remove the comment refering to the BKL.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andi Kleen <ak@suse.de>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/balloc.c |   78 ++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 70 insertions(+), 8 deletions(-)
+ fs/jbd/recovery.c  |    2 +-
+ fs/jbd2/recovery.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-add-block-bitmap-validation fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-add-block-bitmap-validation
-+++ a/fs/ext3/balloc.c
-@@ -80,13 +80,57 @@ struct ext3_group_desc * ext3_get_group_
- 	return desc + offset;
- }
+diff -puN fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd/recovery.c
+--- a/fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
++++ a/fs/jbd/recovery.c
+@@ -354,7 +354,7 @@ static int do_one_pass(journal_t *journa
+ 		struct buffer_head *	obh;
+ 		struct buffer_head *	nbh;
  
-+static int ext3_valid_block_bitmap(struct super_block *sb,
-+					struct ext3_group_desc *desc,
-+					unsigned int block_group,
-+					struct buffer_head *bh)
-+{
-+	ext3_grpblk_t offset;
-+	ext3_grpblk_t next_zero_bit;
-+	ext3_fsblk_t bitmap_blk;
-+	ext3_fsblk_t group_first_block;
-+
-+	group_first_block = ext3_group_first_block_no(sb, block_group);
-+
-+	/* check whether block bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext3_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode bitmap block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
-+	offset = bitmap_blk - group_first_block;
-+	if (!ext3_test_bit(offset, bh->b_data))
-+		/* bad block bitmap */
-+		goto err_out;
-+
-+	/* check whether the inode table block number is set */
-+	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
-+	offset = bitmap_blk - group_first_block;
-+	next_zero_bit = ext3_find_next_zero_bit(bh->b_data,
-+				offset + EXT3_SB(sb)->s_itb_per_group,
-+				offset);
-+	if (next_zero_bit >= offset + EXT3_SB(sb)->s_itb_per_group)
-+		/* good bitmap for inode tables */
-+		return 1;
-+
-+err_out:
-+	ext3_error(sb, __FUNCTION__,
-+			"Invalid block bitmap - "
-+			"block_group = %d, block = %lu",
-+			block_group, bitmap_blk);
-+	return 0;
-+}
-+
- /**
-  * read_block_bitmap()
-  * @sb:			super block
-  * @block_group:	given block group
-  *
-- * Read the bitmap for a given block_group, reading into the specified
-- * slot in the superblock's bitmap cache.
-+ * Read the bitmap for a given block_group,and validate the
-+ * bits for block/inode/inode tables are set in the bitmaps
-  *
-  * Return buffer_head on success or NULL in case of failure.
-  */
-@@ -95,17 +139,35 @@ read_block_bitmap(struct super_block *sb
- {
- 	struct ext3_group_desc * desc;
- 	struct buffer_head * bh = NULL;
-+	ext3_fsblk_t bitmap_blk;
+-		cond_resched();		/* We're under lock_kernel() */
++		cond_resched();
  
--	desc = ext3_get_group_desc (sb, block_group, NULL);
-+	desc = ext3_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
--		goto error_out;
--	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
--	if (!bh)
--		ext3_error (sb, "read_block_bitmap",
-+		return NULL;
-+	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
-+	bh = sb_getblk(sb, bitmap_blk);
-+	if (unlikely(!bh)) {
-+		ext3_error(sb, __FUNCTION__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %u",
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
--error_out:
-+		return NULL;
-+	}
-+	if (likely(bh_uptodate_or_lock(bh)))
-+		return bh;
-+
-+	if (bh_submit_read(bh) < 0) {
-+		brelse(bh);
-+		ext3_error(sb, __FUNCTION__,
-+			    "Cannot read block bitmap - "
-+			    "block_group = %d, block_bitmap = %u",
-+			    block_group, le32_to_cpu(desc->bg_block_bitmap));
-+		return NULL;
-+	}
-+	if (!ext3_valid_block_bitmap(sb, desc, block_group, bh)) {
-+		brelse(bh);
-+		return NULL;
-+	}
- 	return bh;
- }
- /*
+ 		/* If we already know where to stop the log traversal,
+ 		 * check right now that we haven't gone past the end of
+diff -puN fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd2/recovery.c
+--- a/fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
++++ a/fs/jbd2/recovery.c
+@@ -397,7 +397,7 @@ static int do_one_pass(journal_t *journa
+ 		struct buffer_head *	obh;
+ 		struct buffer_head *	nbh;
+ 
+-		cond_resched();		/* We're under lock_kernel() */
++		cond_resched();
+ 
+ 		/* If we already know where to stop the log traversal,
+ 		 * check right now that we haven't gone past the end of
 _
