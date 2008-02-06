@@ -1,117 +1,65 @@
-From: Solofo.Ramangalahy@bull.net
-Subject: [PATCH] ext4: cleanup for compiling mballoc with verification and debugging #defines
-Date: Wed, 6 Feb 2008 14:32:11 +0100
-Message-ID: <18345.46811.448893.451203@frecb006361.adech.frec.bull.fr>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH 0/3] Move fsck from e2fsprogs to util-linux-ng
+Date: Wed, 6 Feb 2008 09:05:59 -0500
+Message-ID: <20080206140559.GJ27119@mit.edu>
+References: <20080206113426.7833.59505.stgit@sor.suse.de> <20080206125651.GD558@petra.dvoda.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: Matthias Koenig <mkoenig@suse.de>, util-linux-ng@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:55716 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757825AbYBFNcI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 08:32:08 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 67B991A18BB
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:15 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 22353-10 for <linux-ext4@vger.kernel.org>;
- Wed,  6 Feb 2008 14:32:12 +0100 (CET)
-Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id BEFE91A18B0
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:11 +0100 (CET)
-Received: from frecb006361.adech.frec.bull.fr.bull.net (frecb006361.frec.bull.fr [129.183.101.70])
-	by cyclope.frec.bull.fr (Postfix) with ESMTP id E9646272AD
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:08 +0100 (CET)
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:48224 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752363AbYBFOGo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 09:06:44 -0500
+Content-Disposition: inline
+In-Reply-To: <20080206125651.GD558@petra.dvoda.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Feb 06, 2008 at 01:56:51PM +0100, Karel Zak wrote:
+> It would be nice to add a note
+> 
+>     "fsck is deprecated in favor of fsck from util-linux-ng"
+> 
+> to RELEASE-NOTES in e2fsprogs.
 
-From: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
+I don't want to deprecate fsck quite yet from e2fsprogs, because there
+are some ext4 issues with fsck (or more accurately, fsck's use of
+vol_id instead of blkid), where it is more convenient if at least for
+distros that are being aggressive with ext4 testing, if we don't try
+to move fsck just now.
 
-Allows compiling mballoc with:
-#define AGGRESSIVE_CHECK
-#define DOUBLE_CHECK
-#define MB_DEBUG
+I'm working with Eric Sandeen from Red Hat to make sure that we can
+get usable ext4 support for FC9 in rawhide, and making sure that
+vol_id is doing the right thing with ext4 support is one more moving
+part that I'd rather not have to coordinate with.  So it's going to be
+much simpler for now if we keep fsck in e2fsprogs, and what I'm
+telling people who want to play with ext4 is that life will be much
+simpler if they use the latest e2fsprogs and build mount so that it
+uses blkid, and NOT vol_id.
 
-Signed-off-by: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-Cc: <linux-ext4@vger.kernel.org>
+Kay and I have had philosophical differences about how hard to try to
+make in-line detection of filesystems work, and when I've tried to
+submit patches that fine-tune filesystem id detection, by rejiggering
+the order in which various filesystems types are tried (based on how
+thoroughly their mkfs commands scrub the disk to remove false
+positives for previous filesystems on the disk), they've been rejected
+by Kay.
 
----
- fs/ext4/mballoc.c |   22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+So these days, while I'll take any patches to improve blkid's
+filesystem detection, I've largely stopped trying to send patches in
+the other direction.  And there are some rather delicate tests that
+have been encoded into blkid to coordinate with ext4 and ext4dev
+(since at some point when the code is production ready we will be
+changing the filesystem name from ext4dev to ext4), it's just much
+simpler if I tell people that in order to support ext4, the only
+approach I've validated uses fsck from e2fsprogs, and mount compiled
+to use libblkid.
 
-Index: linux-2.6.24-git12-ext4-1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.24-git12-ext4-1.orig/fs/ext4/mballoc.c
-+++ linux-2.6.24-git12-ext4-1/fs/ext4/mballoc.c
-@@ -346,14 +346,14 @@
-  */
- 
- /*
-- * with AGGRESSIVE_CHECK allocator runs consistency checks over
-- * structures. these checks slow things down a lot
-+ * With AGGRESSIVE_CHECK allocator runs consistency checks over
-+ * structures. These checks slow things down a lot.
-  */
- #define AGGRESSIVE_CHECK__
- 
- /*
-- * with DOUBLE_CHECK defined mballoc creates persistent in-core
-- * bitmaps, maintains and uses them to check for double allocations
-+ * With DOUBLE_CHECK defined, mballoc creates persistent in-core
-+ * bitmaps, maintains and uses them to check for double allocations.
-  */
- #define DOUBLE_CHECK__
- 
-@@ -881,10 +881,10 @@ static int __mb_check_buddy(struct ext4_
- 	list_for_each(cur, &grp->bb_prealloc_list) {
- 		ext4_group_t groupnr;
- 		struct ext4_prealloc_space *pa;
--		pa = list_entry(cur, struct ext4_prealloc_space, group_list);
--		ext4_get_group_no_and_offset(sb, pa->pstart, &groupnr, &k);
-+		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
-+		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &groupnr, &k);
- 		MB_CHECK_ASSERT(groupnr == e4b->bd_group);
--		for (i = 0; i < pa->len; i++)
-+		for (i = 0; i < pa->pa_len; i++)
- 			MB_CHECK_ASSERT(mb_test_bit(k + i, buddy));
- 	}
- 	return 0;
-@@ -3097,7 +3097,7 @@ static void ext4_mb_normalize_group_requ
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
- 	else
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
--	mb_debug("#%u: goal %lu blocks for locality group\n",
-+	mb_debug("#%u: goal %u blocks for locality group\n",
- 		current->pid, ac->ac_g_ex.fe_len);
- }
- 
-@@ -3341,7 +3341,7 @@ static void ext4_mb_use_inode_pa(struct 
- 	BUG_ON(pa->pa_free < len);
- 	pa->pa_free -= len;
- 
--	mb_debug("use %llu/%lu from inode pa %p\n", start, len, pa);
-+	mb_debug("use %llu/%u from inode pa %p\n", start, len, pa);
- }
- 
- /*
-@@ -4060,7 +4060,7 @@ static void ext4_mb_show_ac(struct ext4_
- 			printk(KERN_ERR "PA:%lu:%d:%u \n", i,
- 							start, pa->pa_len);
- 		}
--		ext4_lock_group(sb, i);
-+		ext4_unlock_group(sb, i);
- 
- 		if (grp->bb_free == 0)
- 			continue;
-@@ -4412,7 +4412,7 @@ void ext4_mb_free_blocks(handle_t *handl
- 			unsigned long block, unsigned long count,
- 			int metadata, unsigned long *freed)
- {
--	struct buffer_head *bitmap_bh = 0;
-+	struct buffer_head *bitmap_bh = NULL;
- 	struct super_block *sb = inode->i_sb;
- 	struct ext4_allocation_context ac;
- 	struct ext4_group_desc *gdp;
+I'd love to try to work on merging the functionality between vol_id
+and blkid, and at some point that's great, but I just don't have the
+time right now to try to coordinate yet another moving part.
+
+     	       	      	 	    		- Ted
