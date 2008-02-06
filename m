@@ -1,212 +1,121 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix DIO locking
-Date: Wed, 6 Feb 2008 17:06:06 +0100
-Message-ID: <20080206160606.GA3475@duck.suse.cz>
+Subject: Re: [RESEND] [PATCH] ext3,4:fdatasync should skip metadata writeout when overwriting
+Date: Wed, 6 Feb 2008 17:22:31 +0100
+Message-ID: <20080206162231.GA23382@atrey.karlin.mff.cuni.cz>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2> <20071115185919.7df4cda9.akpm@linux-foundation.org> <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>
-To: linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:42717 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751790AbYBFQGI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Feb 2008 11:06:08 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:36712 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751884AbYBFQWc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 11:22:32 -0500
 Content-Disposition: inline
+In-Reply-To: <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
   Hi,
 
-  this patch fixes lock inversion in ext4 direct IO path. The similar patch
-has already been accepted for ext3. Mingming, will you put it into ext4
-patch queue? Thanks.
-
+> Currently fdatasync is identical to fsync in ext3,4.
+> I think fdatasync should skip journal flush in data=ordered and data=writeback mode
+> when it overwrites to already-instantiated blocks on HDD.
+> When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal writeout
+> because this indicates only atime or/and mtime updates.  
+> 
+> Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+> 
+> I did a performance test using the sysbench.
+> 
+> #sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G 
+> --file-test-mode=rndwr --file-fsync-mode=fdatasync run
+> 
+> The result was:
+> 
+> 	-2.6.24
+> 	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
+> 	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
+> 	  775.45 Requests/sec executed
+> 
+> 	Test execution summary:
+> 	    total time:                          64.5814s
+> 	    total number of events:              50080
+> 	    total time taken by event execution: 3713.9836
+> 	    per-request statistics:
+> 	         min:                            0.0000s
+> 	         avg:                            0.0742s
+> 	         max:                            0.9375s
+> 	         approx.  95 percentile:         0.2901s
+> 
+> 	Threads fairness:
+> 	    events (avg/stddev):           391.2500/23.26
+> 	    execution time (avg/stddev):   29.0155/1.99
+> 
+> 
+> 	-2.6.24-patched
+> 	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
+> 	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
+> 	 1050.83 Requests/sec executed
+> 
+> 	Test execution summary:
+> 	    total time:                          47.5900s
+> 	    total number of events:              50009
+> 	    total time taken by event execution: 2934.5768
+> 	    per-request statistics:
+>  	         min:                            0.0000s
+> 	         avg:                            0.0587s
+>  	         max:                            0.8938s
+> 	         approx.  95 percentile:         0.1993s
+> 
+> 	Threads fairness:
+> 	    events (avg/stddev):           390.6953/22.64
+> 	    execution time (avg/stddev):   22.9264/1.17
+> 
+> 
+> Filesystem I/O throughput was improved.
+> 
+> Thanks.
+> 
+> Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+  Yes, the patch looks fine. You can add
+Acked-by: Jan Kara <jack@suse.cz>
+  if you wish.
 								Honza
+
+> diff -Nrup linux-2.6.24.org/fs/ext3/fsync.c linux-2.6.24/fs/ext3/fsync.c
+> --- linux-2.6.24.org/fs/ext3/fsync.c	2008-01-25 07:58:37.000000000 +0900
+> +++ linux-2.6.24/fs/ext3/fsync.c	2008-02-04 12:42:42.000000000 +0900
+> @@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+>  		goto out;
+>  	}
+>  
+> +	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> +		goto out;
+> +
+>  	/*
+>  	 * The VFS has written the file data.  If the inode is unaltered
+>  	 * then we need not start a commit.
+> diff -Nrup linux-2.6.24.org/fs/ext4/fsync.c linux-2.6.24/fs/ext4/fsync.c
+> --- linux-2.6.24.org/fs/ext4/fsync.c	2008-01-25 07:58:37.000000000 +0900
+> +++ linux-2.6.24/fs/ext4/fsync.c	2008-02-04 12:43:37.000000000 +0900
+> @@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
+>  		goto out;
+>  	}
+>  
+> +        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> +                goto out;
+> +
+>  	/*
+>  	 * The VFS has written the file data.  If the inode is unaltered
+>  	 * then we need not start a commit.
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
-SUSE Labs, CR
----
-
-We cannot start transaction in ext4_direct_IO() and just let it last during the
-whole write because dio_get_page() acquires mmap_sem which ranks above
-transaction start (e.g. because we have dependency chain
-mmap_sem->PageLock->journal_start, or because we update atime while holding
-mmap_sem) and thus deadlocks could happen. We solve the problem by starting
-a transaction separately for each ext4_get_block() call.
-
-We *could* have a problem that we allocate a block and before its data are
-written out the machine crashes and thus we expose stale data. But that
-does not happen because for hole-filling generic code falls back to buffered
-writes and for file extension, we add inode to orphan list and thus in
-case of crash, journal replay will truncate inode back to the original size.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bb717cb..1948b97 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -895,7 +895,16 @@ out:
- 	return err;
- }
- 
--#define DIO_CREDITS (EXT4_RESERVE_TRANS_BLOCKS + 32)
-+/* Maximum number of blocks we map for direct IO at once. */
-+#define DIO_MAX_BLOCKS 4096
-+/*
-+ * Number of credits we need for writing DIO_MAX_BLOCKS:
-+ * We need sb + group descriptor + bitmap + inode -> 4
-+ * For B blocks with A block pointers per block we need:
-+ * 1 (triple ind.) + (B/A/A + 2) (doubly ind.) + (B/A + 2) (indirect).
-+ * If we plug in 4096 for B and 256 for A (for 1KB block size), we get 25.
-+ */
-+#define DIO_CREDITS 25
- 
- int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 			unsigned long max_blocks, struct buffer_head *bh,
-@@ -942,49 +951,31 @@ static int ext4_get_block(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
- {
- 	handle_t *handle = ext4_journal_current_handle();
--	int ret = 0;
-+	int ret = 0, started = 0;
- 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
- 
--	if (!create)
--		goto get_block;		/* A read */
--
--	if (max_blocks == 1)
--		goto get_block;		/* A single block get */
--
--	if (handle->h_transaction->t_state == T_LOCKED) {
--		/*
--		 * Huge direct-io writes can hold off commits for long
--		 * periods of time.  Let this commit run.
--		 */
--		ext4_journal_stop(handle);
--		handle = ext4_journal_start(inode, DIO_CREDITS);
--		if (IS_ERR(handle))
-+	
-+	if (create && !handle) {	/* Direct IO write... */
-+		if (max_blocks > DIO_MAX_BLOCKS)
-+			max_blocks = DIO_MAX_BLOCKS;
-+		handle = ext4_journal_start(inode, DIO_CREDITS +
-+			      2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
-+		if (IS_ERR(handle)) {
- 			ret = PTR_ERR(handle);
--		goto get_block;
--	}
--
--	if (handle->h_buffer_credits <= EXT4_RESERVE_TRANS_BLOCKS) {
--		/*
--		 * Getting low on buffer credits...
--		 */
--		ret = ext4_journal_extend(handle, DIO_CREDITS);
--		if (ret > 0) {
--			/*
--			 * Couldn't extend the transaction.  Start a new one.
--			 */
--			ret = ext4_journal_restart(handle, DIO_CREDITS);
-+			goto out;
- 		}
-+		started = 1;
- 	}
- 
--get_block:
--	if (ret == 0) {
--		ret = ext4_get_blocks_wrap(handle, inode, iblock,
-+	ret = ext4_get_blocks_wrap(handle, inode, iblock,
- 					max_blocks, bh_result, create, 0);
--		if (ret > 0) {
--			bh_result->b_size = (ret << inode->i_blkbits);
--			ret = 0;
--		}
-+	if (ret > 0) {
-+		bh_result->b_size = (ret << inode->i_blkbits);
-+		ret = 0;
- 	}
-+	if (started)
-+		ext4_journal_stop(handle);
-+out:
- 	return ret;
- }
- 
-@@ -1674,7 +1665,8 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
-  * if the machine crashes during the write.
-  *
-  * If the O_DIRECT write is intantiating holes inside i_size and the machine
-- * crashes then stale disk data _may_ be exposed inside the file.
-+ * crashes then stale disk data _may_ be exposed inside the file. But current
-+ * VFS code falls back into buffered path in that case so we are safe.
-  */
- static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 			const struct iovec *iov, loff_t offset,
-@@ -1683,7 +1675,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	handle_t *handle = NULL;
-+	handle_t *handle;
- 	ssize_t ret;
- 	int orphan = 0;
- 	size_t count = iov_length(iov, nr_segs);
-@@ -1691,17 +1683,21 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 	if (rw == WRITE) {
- 		loff_t final_size = offset + count;
- 
--		handle = ext4_journal_start(inode, DIO_CREDITS);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			goto out;
--		}
- 		if (final_size > inode->i_size) {
-+			/* Credits for sb + inode write */
-+			handle = ext4_journal_start(inode, 2);
-+			if (IS_ERR(handle)) {
-+				ret = PTR_ERR(handle);
-+				goto out;
-+			}
- 			ret = ext4_orphan_add(handle, inode);
--			if (ret)
--				goto out_stop;
-+			if (ret) {
-+				ext4_journal_stop(handle);
-+				goto out;
-+			}
- 			orphan = 1;
- 			ei->i_disksize = inode->i_size;
-+			ext4_journal_stop(handle);
- 		}
- 	}
- 
-@@ -1709,18 +1705,21 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 				 offset, nr_segs,
- 				 ext4_get_block, NULL);
- 
--	/*
--	 * Reacquire the handle: ext4_get_block() can restart the transaction
--	 */
--	handle = ext4_journal_current_handle();
--
--out_stop:
--	if (handle) {
-+	if (orphan) {
- 		int err;
- 
--		if (orphan && inode->i_nlink)
-+		/* Credits for sb + inode write */
-+		handle = ext4_journal_start(inode, 2);
-+		if (IS_ERR(handle)) {
-+			/* This is really bad luck. We've written the data
-+			 * but cannot extend i_size. Bail out and pretend
-+			 * the write failed... */
-+			ret = PTR_ERR(handle);
-+			goto out;
-+		}
-+		if (inode->i_nlink)
- 			ext4_orphan_del(handle, inode);
--		if (orphan && ret > 0) {
-+		if (ret > 0) {
- 			loff_t end = offset + ret;
- 			if (end > inode->i_size) {
- 				ei->i_disksize = end;
+SuSE CR Labs
