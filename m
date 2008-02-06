@@ -1,350 +1,117 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix circular locking dependency with migrate and
-	rm.
-Date: Wed, 6 Feb 2008 14:19:28 +0100
-Message-ID: <20080206131928.GE12547@duck.suse.cz>
-References: <1202295604-9948-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Solofo.Ramangalahy@bull.net
+Subject: [PATCH] ext4: cleanup for compiling mballoc with verification and debugging #defines
+Date: Wed, 6 Feb 2008 14:32:11 +0100
+Message-ID: <18345.46811.448893.451203@frecb006361.adech.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:53672 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1761571AbYBFNTa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Feb 2008 08:19:30 -0500
-Content-Disposition: inline
-In-Reply-To: <1202295604-9948-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:55716 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757825AbYBFNcI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 08:32:08 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 67B991A18BB
+	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:15 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 22353-10 for <linux-ext4@vger.kernel.org>;
+ Wed,  6 Feb 2008 14:32:12 +0100 (CET)
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id BEFE91A18B0
+	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:11 +0100 (CET)
+Received: from frecb006361.adech.frec.bull.fr.bull.net (frecb006361.frec.bull.fr [129.183.101.70])
+	by cyclope.frec.bull.fr (Postfix) with ESMTP id E9646272AD
+	for <linux-ext4@vger.kernel.org>; Wed,  6 Feb 2008 14:32:08 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 06-02-08 16:30:04, Aneesh Kumar K.V wrote:
-> We now take inode->i_mutex lock to prevent any update of the inode i_data
-> field. Before we switch the inode format we take i_data_sem to prevent
-> parallel read.
-> 
-> =======================================================
-> [ INFO: possible circular locking dependency detected ]
-> 2.6.24-rc8 #6
-> -------------------------------------------------------
-> rm/2401 is trying to acquire lock:
->  (&ei->i_data_sem){----}, at: [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
-> 
-> but task is already holding lock:
->  (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
-> 
-> which lock already depends on the new lock.
-> 
-> 
-> the existing dependency chain (in reverse order) is:
-> 
-> -> #1 (jbd2_handle){--..}:
->        [<c0143a5c>] __lock_acquire+0xa31/0xc1a
->        [<c0143cbf>] lock_acquire+0x7a/0x94
->        [<c01fc4ca>] jbd2_journal_start+0xf5/0xff
->        [<c01e3539>] ext4_journal_start_sb+0x48/0x4a
->        [<c01eb980>] ext4_ext_migrate+0x7d/0x535
->        [<c01df328>] ext4_ioctl+0x528/0x56c
->        [<c0177700>] do_ioctl+0x50/0x67
->        [<c017794e>] vfs_ioctl+0x237/0x24a
->        [<c0177992>] sys_ioctl+0x31/0x4b
->        [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
->        [<ffffffff>] 0xffffffff
-> 
-> -> #0 (&ei->i_data_sem){----}:
->        [<c014394c>] __lock_acquire+0x921/0xc1a
->        [<c0143cbf>] lock_acquire+0x7a/0x94
->        [<c044f247>] down_read+0x42/0x79
->        [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
->        [<c01dcba1>] ext4_getblk+0x62/0x1c4
->        [<c01e0de9>] ext4_find_entry+0x350/0x5b7
->        [<c01e200c>] ext4_unlink+0x6e/0x1a4
->        [<c017449e>] vfs_unlink+0x49/0x89
->        [<c0175f02>] do_unlinkat+0x96/0x12c
->        [<c0175fa8>] sys_unlink+0x10/0x12
->        [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
->        [<ffffffff>] 0xffffffff
-> 
-> other info that might help us debug this:
-> 
-> 3 locks held by rm/2401:
->  #0:  (&type->i_mutex_dir_key#5/1){--..}, at: [<c0175eca>] do_unlinkat+0x5e/0x12c
->  #1:  (&sb->s_type->i_mutex_key#8){--..}, at: [<c017448b>] vfs_unlink+0x36/0x89
->  #2:  (jbd2_handle){--..}, at: [<c01fc4a7>] jbd2_journal_start+0xd2/0xff
-> 
-> stack backtrace:
-> Pid: 2401, comm: rm Not tainted 2.6.24-rc8 #6
->  [<c0106017>] show_trace_log_lvl+0x1a/0x2f
->  [<c0106893>] show_trace+0x12/0x14
->  [<c0106b89>] dump_stack+0x6c/0x72
->  [<c0141b26>] print_circular_bug_tail+0x5f/0x68
->  [<c014394c>] __lock_acquire+0x921/0xc1a
->  [<c0143cbf>] lock_acquire+0x7a/0x94
->  [<c044f247>] down_read+0x42/0x79
->  [<c01dca58>] ext4_get_blocks_wrap+0x21/0x108
->  [<c01dcba1>] ext4_getblk+0x62/0x1c4
->  [<c01e0de9>] ext4_find_entry+0x350/0x5b7
->  [<c01e200c>] ext4_unlink+0x6e/0x1a4
->  [<c017449e>] vfs_unlink+0x49/0x89
->  [<c0175f02>] do_unlinkat+0x96/0x12c
->  [<c0175fa8>] sys_unlink+0x10/0x12
->  [<c0104f8a>] sysenter_past_esp+0x5f/0xa5
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-  Add Acked-by: Jan Kara <jack@suse.cz> if you wish.
 
-									Honza
-> ---
->  fs/ext4/migrate.c |  117 +++++++++++++++++++++++++++++++++-------------------
->  1 files changed, 74 insertions(+), 43 deletions(-)
-> 
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index 9ee1f7c..8c6c685 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-> @@ -61,10 +61,9 @@ static int finish_range(handle_t *handle, struct inode *inode,
->  		retval = ext4_journal_restart(handle, needed);
->  		if (retval)
->  			goto err_out;
-> -	}
-> -	if (needed) {
-> +	} else if (needed) {
->  		retval = ext4_journal_extend(handle, needed);
-> -		if (retval != 0) {
-> +		if (retval) {
->  			/*
->  			 * IF not able to extend the journal restart the journal
->  			 */
-> @@ -220,6 +219,26 @@ static int update_tind_extent_range(handle_t *handle, struct inode *inode,
->  
->  }
->  
-> +static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
-> +{
-> +	int retval = 0, needed;
-> +
-> +	if (handle->h_buffer_credits > EXT4_RESERVE_TRANS_BLOCKS)
-> +		return 0;
-> +	/*
-> +	 * We are freeing a blocks. During this we touch
-> +	 * superblock, group descriptor and block bitmap.
-> +	 * So allocate a credit of 3. We may update
-> +	 * quota (user and group).
-> +	 */
-> +	needed = 3 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb);
-> +
-> +	if (ext4_journal_extend(handle, needed) != 0)
-> +		retval = ext4_journal_restart(handle, needed);
-> +
-> +	return retval;
-> +}
-> +
->  static int free_dind_blocks(handle_t *handle,
->  				struct inode *inode, __le32 i_data)
->  {
-> @@ -234,11 +253,14 @@ static int free_dind_blocks(handle_t *handle,
->  
->  	tmp_idata = (__le32 *)bh->b_data;
->  	for (i = 0; i < max_entries; i++) {
-> -		if (tmp_idata[i])
-> +		if (tmp_idata[i]) {
-> +			extend_credit_for_blkdel(handle, inode);
->  			ext4_free_blocks(handle, inode,
->  					le32_to_cpu(tmp_idata[i]), 1, 1);
-> +		}
->  	}
->  	put_bh(bh);
-> +	extend_credit_for_blkdel(handle, inode);
->  	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
->  	return 0;
->  }
-> @@ -267,29 +289,32 @@ static int free_tind_blocks(handle_t *handle,
->  		}
->  	}
->  	put_bh(bh);
-> +	extend_credit_for_blkdel(handle, inode);
->  	ext4_free_blocks(handle, inode, le32_to_cpu(i_data), 1, 1);
->  	return 0;
->  }
->  
-> -static int free_ind_block(handle_t *handle, struct inode *inode)
-> +static int free_ind_block(handle_t *handle, struct inode *inode, __le32 *i_data)
->  {
->  	int retval;
-> -	struct ext4_inode_info *ei = EXT4_I(inode);
->  
-> -	if (ei->i_data[EXT4_IND_BLOCK])
-> +	/* ei->i_data[EXT4_IND_BLOCK] */
-> +	if (i_data[0]) {
-> +		extend_credit_for_blkdel(handle, inode);
->  		ext4_free_blocks(handle, inode,
-> -				le32_to_cpu(ei->i_data[EXT4_IND_BLOCK]), 1, 1);
-> +				le32_to_cpu(i_data[0]), 1, 1);
-> +	}
->  
-> -	if (ei->i_data[EXT4_DIND_BLOCK]) {
-> -		retval = free_dind_blocks(handle, inode,
-> -						ei->i_data[EXT4_DIND_BLOCK]);
-> +	/* ei->i_data[EXT4_DIND_BLOCK] */
-> +	if (i_data[1]) {
-> +		retval = free_dind_blocks(handle, inode, i_data[1]);
->  		if (retval)
->  			return retval;
->  	}
->  
-> -	if (ei->i_data[EXT4_TIND_BLOCK]) {
-> -		retval = free_tind_blocks(handle, inode,
-> -						ei->i_data[EXT4_TIND_BLOCK]);
-> +	/* ei->i_data[EXT4_TIND_BLOCK] */
-> +	if (i_data[2]) {
-> +		retval = free_tind_blocks(handle, inode, i_data[2]);
->  		if (retval)
->  			return retval;
->  	}
-> @@ -297,15 +322,13 @@ static int free_ind_block(handle_t *handle, struct inode *inode)
->  }
->  
->  static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
-> -				struct inode *tmp_inode, int retval)
-> +				struct inode *tmp_inode)
->  {
-> +	int retval;
-> +	__le32	i_data[3];
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	struct ext4_inode_info *tmp_ei = EXT4_I(tmp_inode);
->  
-> -	retval = free_ind_block(handle, inode);
-> -	if (retval)
-> -		goto err_out;
-> -
->  	/*
->  	 * One credit accounted for writing the
->  	 * i_data field of the original inode
-> @@ -317,6 +340,11 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
->  			goto err_out;
->  	}
->  
-> +	i_data[0] = ei->i_data[EXT4_IND_BLOCK];
-> +	i_data[1] = ei->i_data[EXT4_DIND_BLOCK];
-> +	i_data[2] = ei->i_data[EXT4_TIND_BLOCK];
-> +
-> +	down_write(&EXT4_I(inode)->i_data_sem);
->  	/*
->  	 * We have the extent map build with the tmp inode.
->  	 * Now copy the i_data across
-> @@ -336,8 +364,15 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
->  	spin_lock(&inode->i_lock);
->  	inode->i_blocks += tmp_inode->i_blocks;
->  	spin_unlock(&inode->i_lock);
-> +	up_write(&EXT4_I(inode)->i_data_sem);
->  
-> +	/*
-> +	 * We mark the inode dirty after, because we decrement the
-> +	 * i_blocks when freeing the indirect meta-data blocks
-> +	 */
-> +	retval = free_ind_block(handle, inode, i_data);
->  	ext4_mark_inode_dirty(handle, inode);
-> +
->  err_out:
->  	return retval;
->  }
-> @@ -365,6 +400,7 @@ static int free_ext_idx(handle_t *handle, struct inode *inode,
->  		}
->  	}
->  	put_bh(bh);
-> +	extend_credit_for_blkdel(handle, inode);
->  	ext4_free_blocks(handle, inode, block, 1, 1);
->  	return retval;
->  }
-> @@ -420,7 +456,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
->  		 */
->  		return retval;
->  
-> -	down_write(&EXT4_I(inode)->i_data_sem);
->  	handle = ext4_journal_start(inode,
->  					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
->  					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-> @@ -454,13 +489,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
->  	ext4_orphan_add(handle, tmp_inode);
->  	ext4_journal_stop(handle);
->  
-> -	ei = EXT4_I(inode);
-> -	i_data = ei->i_data;
-> -	memset(&lb, 0, sizeof(lb));
-> -
-> -	/* 32 bit block address 4 bytes */
-> -	max_entries = inode->i_sb->s_blocksize >> 2;
-> -
->  	/*
->  	 * start with one credit accounted for
->  	 * superblock modification.
-> @@ -469,7 +497,20 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
->  	 * trascation that created the inode. Later as and
->  	 * when we add extents we extent the journal
->  	 */
-> +	/*
-> +	 * inode_mutex prevent write and truncate on the file. Read still goes
-> +	 * through. We take i_data_sem in ext4_ext_swap_inode_data before we
-> +	 * switch the inode format to prevent read.
-> +	 */
-> +	mutex_lock(&(inode->i_mutex));
->  	handle = ext4_journal_start(inode, 1);
-> +
-> +	ei = EXT4_I(inode);
-> +	i_data = ei->i_data;
-> +	memset(&lb, 0, sizeof(lb));
-> +
-> +	/* 32 bit block address 4 bytes */
-> +	max_entries = inode->i_sb->s_blocksize >> 2;
->  	for (i = 0; i < EXT4_NDIR_BLOCKS; i++, blk_count++) {
->  		if (i_data[i]) {
->  			retval = update_extent_range(handle, tmp_inode,
-> @@ -507,19 +548,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
->  	 */
->  	retval = finish_range(handle, tmp_inode, &lb);
->  err_out:
-> -	/*
-> -	 * We are either freeing extent information or indirect
-> -	 * blocks. During this we touch superblock, group descriptor
-> -	 * and block bitmap. Later we mark the tmp_inode dirty
-> -	 * via ext4_ext_tree_init. So allocate a credit of 4
-> -	 * We may update quota (user and group).
-> -	 *
-> -	 * FIXME!! we may be touching bitmaps in different block groups.
-> -	 */
-> -	if (ext4_journal_extend(handle,
-> -			4 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb)) != 0)
-> -		ext4_journal_restart(handle,
-> -				4 + 2*EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
->  	if (retval)
->  		/*
->  		 * Failure case delete the extent information with the
-> @@ -528,7 +556,11 @@ err_out:
->  		free_ext_block(handle, tmp_inode);
->  	else
->  		retval = ext4_ext_swap_inode_data(handle, inode,
-> -							tmp_inode, retval);
-> +							tmp_inode);
-> +
-> +	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
-> +	if (ext4_journal_extend(handle, 1) != 0)
-> +		ext4_journal_restart(handle, 1);
->  
->  	/*
->  	 * Mark the tmp_inode as of size zero
-> @@ -556,8 +588,7 @@ err_out:
->  	tmp_inode->i_nlink = 0;
->  
->  	ext4_journal_stop(handle);
-> -
-> -	up_write(&EXT4_I(inode)->i_data_sem);
-> +	mutex_unlock(&(inode->i_mutex));
->  
->  	if (tmp_inode)
->  		iput(tmp_inode);
-> -- 
-> 1.5.4.23.gef5b9-dirty
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+From: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
+
+Allows compiling mballoc with:
+#define AGGRESSIVE_CHECK
+#define DOUBLE_CHECK
+#define MB_DEBUG
+
+Signed-off-by: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
+Cc: <linux-ext4@vger.kernel.org>
+
+---
+ fs/ext4/mballoc.c |   22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+Index: linux-2.6.24-git12-ext4-1/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.24-git12-ext4-1.orig/fs/ext4/mballoc.c
++++ linux-2.6.24-git12-ext4-1/fs/ext4/mballoc.c
+@@ -346,14 +346,14 @@
+  */
+ 
+ /*
+- * with AGGRESSIVE_CHECK allocator runs consistency checks over
+- * structures. these checks slow things down a lot
++ * With AGGRESSIVE_CHECK allocator runs consistency checks over
++ * structures. These checks slow things down a lot.
+  */
+ #define AGGRESSIVE_CHECK__
+ 
+ /*
+- * with DOUBLE_CHECK defined mballoc creates persistent in-core
+- * bitmaps, maintains and uses them to check for double allocations
++ * With DOUBLE_CHECK defined, mballoc creates persistent in-core
++ * bitmaps, maintains and uses them to check for double allocations.
+  */
+ #define DOUBLE_CHECK__
+ 
+@@ -881,10 +881,10 @@ static int __mb_check_buddy(struct ext4_
+ 	list_for_each(cur, &grp->bb_prealloc_list) {
+ 		ext4_group_t groupnr;
+ 		struct ext4_prealloc_space *pa;
+-		pa = list_entry(cur, struct ext4_prealloc_space, group_list);
+-		ext4_get_group_no_and_offset(sb, pa->pstart, &groupnr, &k);
++		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
++		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &groupnr, &k);
+ 		MB_CHECK_ASSERT(groupnr == e4b->bd_group);
+-		for (i = 0; i < pa->len; i++)
++		for (i = 0; i < pa->pa_len; i++)
+ 			MB_CHECK_ASSERT(mb_test_bit(k + i, buddy));
+ 	}
+ 	return 0;
+@@ -3097,7 +3097,7 @@ static void ext4_mb_normalize_group_requ
+ 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
+ 	else
+ 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
+-	mb_debug("#%u: goal %lu blocks for locality group\n",
++	mb_debug("#%u: goal %u blocks for locality group\n",
+ 		current->pid, ac->ac_g_ex.fe_len);
+ }
+ 
+@@ -3341,7 +3341,7 @@ static void ext4_mb_use_inode_pa(struct 
+ 	BUG_ON(pa->pa_free < len);
+ 	pa->pa_free -= len;
+ 
+-	mb_debug("use %llu/%lu from inode pa %p\n", start, len, pa);
++	mb_debug("use %llu/%u from inode pa %p\n", start, len, pa);
+ }
+ 
+ /*
+@@ -4060,7 +4060,7 @@ static void ext4_mb_show_ac(struct ext4_
+ 			printk(KERN_ERR "PA:%lu:%d:%u \n", i,
+ 							start, pa->pa_len);
+ 		}
+-		ext4_lock_group(sb, i);
++		ext4_unlock_group(sb, i);
+ 
+ 		if (grp->bb_free == 0)
+ 			continue;
+@@ -4412,7 +4412,7 @@ void ext4_mb_free_blocks(handle_t *handl
+ 			unsigned long block, unsigned long count,
+ 			int metadata, unsigned long *freed)
+ {
+-	struct buffer_head *bitmap_bh = 0;
++	struct buffer_head *bitmap_bh = NULL;
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_allocation_context ac;
+ 	struct ext4_group_desc *gdp;
