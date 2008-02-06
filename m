@@ -1,75 +1,76 @@
 From: akpm@linux-foundation.org
-Subject: [patch 014/260] ext2: change the default behaviour on error
-Date: Wed, 06 Feb 2008 01:36:17 -0800
-Message-ID: <200802060935.m169Zx7i003665@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, aneesh.kumar@linux.vnet.ibm.com,
-	cebbert@redhat.com, davej@codemonkey.org.uk, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, sandeen@redhat.com
+Subject: [patch 255/260] ext[234]: cleanup ext[234]_bg_num_gdb()
+Date: Wed, 06 Feb 2008 01:40:17 -0800
+Message-ID: <200802060939.m169dw7P004807@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, akinobu.mita@gmail.com,
+	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:45315 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:46639 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759900AbYBFJhK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:37:10 -0500
+	by vger.kernel.org with ESMTP id S1754834AbYBFJs5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 04:48:57 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Akinobu Mita <akinobu.mita@gmail.com>
 
-ext2 file system was by default ignoring errors and continuing.  This is
-not a good default as continuing on error could lead to file system
-corruption.  Change the default to mark the file system readonly.  Debian
-and ubuntu already does this as the default in their fstab.
+Use ext[234]_bg_has_super() to remove duplicate code.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: Jan Kara <jack@ucw.cz>
-Cc: Dave Jones <davej@codemonkey.org.uk>
-Cc: Chuck Ebbert <cebbert@redhat.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/super.c |   16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ fs/ext2/balloc.c |    5 +----
+ fs/ext3/balloc.c |    6 +-----
+ fs/ext4/balloc.c |    6 +-----
+ 3 files changed, 3 insertions(+), 14 deletions(-)
 
-diff -puN fs/ext2/super.c~ext2-change-the-default-behaviour-on-error fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-change-the-default-behaviour-on-error
-+++ a/fs/ext2/super.c
-@@ -234,16 +234,16 @@ static int ext2_show_options(struct seq_
- 	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
- 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
- 	}
--	if (test_opt(sb, ERRORS_CONT)) {
-+	if (test_opt(sb, ERRORS_RO)) {
- 		int def_errors = le16_to_cpu(es->s_errors);
+diff -puN fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb
++++ a/fs/ext2/balloc.c
+@@ -1533,9 +1533,6 @@ int ext2_bg_has_super(struct super_block
+  */
+ unsigned long ext2_bg_num_gdb(struct super_block *sb, int group)
+ {
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(sb,EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)&&
+-	    !ext2_group_sparse(group))
+-		return 0;
+-	return EXT2_SB(sb)->s_gdb_count;
++	return ext2_bg_has_super(sb, group) ? EXT2_SB(sb)->s_gdb_count : 0;
+ }
  
- 		if (def_errors == EXT2_ERRORS_PANIC ||
--		    def_errors == EXT2_ERRORS_RO) {
--			seq_puts(seq, ",errors=continue");
-+		    def_errors == EXT2_ERRORS_CONTINUE) {
-+			seq_puts(seq, ",errors=remount-ro");
- 		}
- 	}
--	if (test_opt(sb, ERRORS_RO))
--		seq_puts(seq, ",errors=remount-ro");
-+	if (test_opt(sb, ERRORS_CONT))
-+		seq_puts(seq, ",errors=continue");
- 	if (test_opt(sb, ERRORS_PANIC))
- 		seq_puts(seq, ",errors=panic");
- 	if (test_opt(sb, NO_UID32))
-@@ -820,10 +820,10 @@ static int ext2_fill_super(struct super_
- 	
- 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
- 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
--	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_RO)
--		set_opt(sbi->s_mount_opt, ERRORS_RO);
--	else
-+	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_CONTINUE)
- 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
-+	else
-+		set_opt(sbi->s_mount_opt, ERRORS_RO);
+diff -puN fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb
++++ a/fs/ext3/balloc.c
+@@ -1848,11 +1848,7 @@ static unsigned long ext3_bg_num_gdb_met
  
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+ static unsigned long ext3_bg_num_gdb_nometa(struct super_block *sb, int group)
+ {
+-	if (EXT3_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
+-			!ext3_group_sparse(group))
+-		return 0;
+-	return EXT3_SB(sb)->s_gdb_count;
++	return ext3_bg_has_super(sb, group) ? EXT3_SB(sb)->s_gdb_count : 0;
+ }
+ 
+ /**
+diff -puN fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb
++++ a/fs/ext4/balloc.c
+@@ -2011,11 +2011,7 @@ static unsigned long ext4_bg_num_gdb_met
+ static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
+ 					ext4_group_t group)
+ {
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
+-			!ext4_group_sparse(group))
+-		return 0;
+-	return EXT4_SB(sb)->s_gdb_count;
++	return ext4_bg_has_super(sb, group) ? EXT4_SB(sb)->s_gdb_count : 0;
+ }
+ 
+ /**
 _
