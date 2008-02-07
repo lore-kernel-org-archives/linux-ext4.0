@@ -1,91 +1,149 @@
 From: akpm@linux-foundation.org
-Subject: - bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 16:30:36 -0800
-Message-ID: <200802070030.m170UHuE007374@imap1.linux-foundation.org>
-To: ak@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+Subject: - ext2-add-block-bitmap-validation.patch removed from -mm tree
+Date: Wed, 06 Feb 2008 16:30:28 -0800
+Message-ID: <200802070030.m170U9Tg007358@imap1.linux-foundation.org>
+To: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55791 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:57981 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933893AbYBGAoO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:44:14 -0500
+	by vger.kernel.org with ESMTP id S935033AbYBGAny (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:43:54 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     BKL-removal: remove incorrect comment refering to lock_kernel() from jbd/jbd2
+     ext2: add block bitmap validation
 has been removed from the -mm tree.  Its filename was
-     bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2.patch
+     ext2-add-block-bitmap-validation.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: BKL-removal: remove incorrect comment refering to lock_kernel() from jbd/jbd2
-From: Andi Kleen <ak@suse.de>
+Subject: ext2: add block bitmap validation
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-None of the callers of this function does actually take the BKL as far as I
-can see.  So remove the comment refering to the BKL.
+When a new block bitmap is read from disk in read_block_bitmap() there are a
+few bits that should ALWAYS be set.  In particular, the blocks given
+corresponding to block bitmap, inode bitmap and inode tables.  Validate the
+block bitmap against these blocks.
 
-Signed-off-by: Andi Kleen <ak@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/recovery.c  |    2 +-
- fs/jbd2/recovery.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext2/balloc.c |   81 ++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 72 insertions(+), 9 deletions(-)
 
-diff -puN fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd/recovery.c
---- a/fs/jbd/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
-+++ a/fs/jbd/recovery.c
-@@ -354,7 +354,7 @@ static int do_one_pass(journal_t *journa
- 		struct buffer_head *	obh;
- 		struct buffer_head *	nbh;
+diff -puN fs/ext2/balloc.c~ext2-add-block-bitmap-validation fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c~ext2-add-block-bitmap-validation
++++ a/fs/ext2/balloc.c
+@@ -69,9 +69,53 @@ struct ext2_group_desc * ext2_get_group_
+ 	return desc + offset;
+ }
  
--		cond_resched();		/* We're under lock_kernel() */
-+		cond_resched();
++static int ext2_valid_block_bitmap(struct super_block *sb,
++					struct ext2_group_desc *desc,
++					unsigned int block_group,
++					struct buffer_head *bh)
++{
++	ext2_grpblk_t offset;
++	ext2_grpblk_t next_zero_bit;
++	ext2_fsblk_t bitmap_blk;
++	ext2_fsblk_t group_first_block;
++
++	group_first_block = ext2_group_first_block_no(sb, block_group);
++
++	/* check whether block bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	offset = bitmap_blk - group_first_block;
++	if (!ext2_test_bit(offset, bh->b_data))
++		/* bad block bitmap */
++		goto err_out;
++
++	/* check whether the inode bitmap block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_bitmap);
++	offset = bitmap_blk - group_first_block;
++	if (!ext2_test_bit(offset, bh->b_data))
++		/* bad block bitmap */
++		goto err_out;
++
++	/* check whether the inode table block number is set */
++	bitmap_blk = le32_to_cpu(desc->bg_inode_table);
++	offset = bitmap_blk - group_first_block;
++	next_zero_bit = ext2_find_next_zero_bit(bh->b_data,
++				offset + EXT2_SB(sb)->s_itb_per_group,
++				offset);
++	if (next_zero_bit >= offset + EXT2_SB(sb)->s_itb_per_group)
++		/* good bitmap for inode tables */
++		return 1;
++
++err_out:
++	ext2_error(sb, __FUNCTION__,
++			"Invalid block bitmap - "
++			"block_group = %d, block = %lu",
++			block_group, bitmap_blk);
++	return 0;
++}
++
+ /*
+- * Read the bitmap for a given block_group, reading into the specified 
+- * slot in the superblock's bitmap cache.
++ * Read the bitmap for a given block_group,and validate the
++ * bits for block/inode/inode tables are set in the bitmaps
+  *
+  * Return buffer_head on success or NULL in case of failure.
+  */
+@@ -80,17 +124,36 @@ read_block_bitmap(struct super_block *sb
+ {
+ 	struct ext2_group_desc * desc;
+ 	struct buffer_head * bh = NULL;
+-	
+-	desc = ext2_get_group_desc (sb, block_group, NULL);
++	ext2_fsblk_t bitmap_blk;
++
++	desc = ext2_get_group_desc(sb, block_group, NULL);
+ 	if (!desc)
+-		goto error_out;
+-	bh = sb_bread(sb, le32_to_cpu(desc->bg_block_bitmap));
+-	if (!bh)
+-		ext2_error (sb, "read_block_bitmap",
++		return NULL;
++	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
++	bh = sb_getblk(sb, bitmap_blk);
++	if (unlikely(!bh)) {
++		ext2_error(sb, __FUNCTION__,
+ 			    "Cannot read block bitmap - "
+ 			    "block_group = %d, block_bitmap = %u",
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+-error_out:
++		return NULL;
++	}
++	if (likely(bh_uptodate_or_lock(bh)))
++		return bh;
++
++	if (bh_submit_read(bh) < 0) {
++		brelse(bh);
++		ext2_error(sb, __FUNCTION__,
++			    "Cannot read block bitmap - "
++			    "block_group = %d, block_bitmap = %u",
++			    block_group, le32_to_cpu(desc->bg_block_bitmap));
++		return NULL;
++	}
++	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
++		brelse(bh);
++		return NULL;
++	}
++
+ 	return bh;
+ }
  
- 		/* If we already know where to stop the log traversal,
- 		 * check right now that we haven't gone past the end of
-diff -puN fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2 fs/jbd2/recovery.c
---- a/fs/jbd2/recovery.c~bkl-removal-remove-incorrect-comment-refering-to-lock_kernel-from-jbd-jbd2
-+++ a/fs/jbd2/recovery.c
-@@ -397,7 +397,7 @@ static int do_one_pass(journal_t *journa
- 		struct buffer_head *	obh;
- 		struct buffer_head *	nbh;
- 
--		cond_resched();		/* We're under lock_kernel() */
-+		cond_resched();
- 
- 		/* If we already know where to stop the log traversal,
- 		 * check right now that we haven't gone past the end of
 _
 
-Patches currently in -mm which might be from ak@suse.de are
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
 
 origin.patch
-bkl-removal-convert-cifs-over-to-unlocked_ioctl.patch
-git-jfs.patch
-git-ocfs2.patch
-quirks-set-en-bit-of-msi-mapping-for-devices-onht-based-nvidia-platform.patch
-pci-disable-decoding-during-sizing-of-bars.patch
-x86-validate-against-acpi-motherboard-resources.patch
-git-x86.patch
-x86-amd-thermal-interrupt-support.patch
-x86-clear-pci_mmcfg_virt-when-mmcfg-get-rejected.patch
-x86-mmconf-enable-mcfg-early.patch
-x86_64-check-msr-to-get-mmconfig-for-amd-family-10h-opteron-v3.patch
-x86_64-set-cfg_size-for-amd-family-10h-in-case-mmconfig-is-used.patch
-git-xfs.patch
-modules-handle-symbols-that-have-a-zero-value.patch
-modules-handle-symbols-that-have-a-zero-value-fix.patch
-allow-executables-larger-than-2gb.patch
-bkl-removal-convert-pipe-to-use-unlocked_ioctl-too.patch
-remove-aout-interpreter-support-in-elf-loader.patch
-convert-loglevel-related-kernel-boot-parameters-to-early_param.patch
-profile-likely-unlikely-macros.patch
-profile-likely-unlikely-macros-fix.patch
