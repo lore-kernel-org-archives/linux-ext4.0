@@ -1,90 +1,36 @@
-From: akpm@linux-foundation.org
-Subject: - ext2-change-the-default-behaviour-on-error.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 16:20:50 -0800
-Message-ID: <200802070020.m170KV5A006148@imap1.linux-foundation.org>
-To: aneesh.kumar@linux.vnet.ibm.com, cebbert@redhat.com,
-	davej@codemonkey.org.uk, jack@ucw.cz, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com, mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:60008 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934079AbYBGAWG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:22:06 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Kay Sievers" <kay.sievers-tD+1rO4QERM@public.gmane.org>
+Subject: Re: [PATCH 0/3] Move fsck from e2fsprogs to util-linux-ng
+Date: Thu, 7 Feb 2008 01:37:43 +0100
+Message-ID: <3ae72650802061637t2185aaddt8a921c2fb3e8c097@mail.gmail.com>
+References: <20080206113426.7833.59505.stgit@sor.suse.de>
+	 <20080206125651.GD558@petra.dvoda.cz> <20080206140559.GJ27119@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "Karel Zak" <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, "Matthias Koenig" <mkoenig-l3A5Bk7waGM@public.gmane.org>,
+	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "Theodore Tso" <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20080206140559.GJ27119-3s7WtUTddSA@public.gmane.org>
+Content-Disposition: inline
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Feb 6, 2008 3:05 PM, Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org> wrote:
+> On Wed, Feb 06, 2008 at 01:56:51PM +0100, Karel Zak wrote:
+> > It would be nice to add a note
+> >
+> >     "fsck is deprecated in favor of fsck from util-linux-ng"
+> >
+> > to RELEASE-NOTES in e2fsprogs.
+>
+> I don't want to deprecate fsck quite yet from e2fsprogs, because there
+> are some ext4 issues with fsck (or more accurately, fsck's use of
+> vol_id instead of blkid), where it is more convenient if at least for
+> distros that are being aggressive with ext4 testing, if we don't try
+> to move fsck just now.
 
-The patch titled
-     ext2: change the default behaviour on error
-has been removed from the -mm tree.  Its filename was
-     ext2-change-the-default-behaviour-on-error.patch
+Care to explain what ext4 development has to do with the generic fsck program?
+I don''t see any convincing reason not to move that now.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext2: change the default behaviour on error
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-
-ext2 file system was by default ignoring errors and continuing.  This is
-not a good default as continuing on error could lead to file system
-corruption.  Change the default to mark the file system readonly.  Debian
-and ubuntu already does this as the default in their fstab.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: Jan Kara <jack@ucw.cz>
-Cc: Dave Jones <davej@codemonkey.org.uk>
-Cc: Chuck Ebbert <cebbert@redhat.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/super.c |   16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
-
-diff -puN fs/ext2/super.c~ext2-change-the-default-behaviour-on-error fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-change-the-default-behaviour-on-error
-+++ a/fs/ext2/super.c
-@@ -234,16 +234,16 @@ static int ext2_show_options(struct seq_
- 	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
- 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
- 	}
--	if (test_opt(sb, ERRORS_CONT)) {
-+	if (test_opt(sb, ERRORS_RO)) {
- 		int def_errors = le16_to_cpu(es->s_errors);
- 
- 		if (def_errors == EXT2_ERRORS_PANIC ||
--		    def_errors == EXT2_ERRORS_RO) {
--			seq_puts(seq, ",errors=continue");
-+		    def_errors == EXT2_ERRORS_CONTINUE) {
-+			seq_puts(seq, ",errors=remount-ro");
- 		}
- 	}
--	if (test_opt(sb, ERRORS_RO))
--		seq_puts(seq, ",errors=remount-ro");
-+	if (test_opt(sb, ERRORS_CONT))
-+		seq_puts(seq, ",errors=continue");
- 	if (test_opt(sb, ERRORS_PANIC))
- 		seq_puts(seq, ",errors=panic");
- 	if (test_opt(sb, NO_UID32))
-@@ -820,10 +820,10 @@ static int ext2_fill_super(struct super_
- 	
- 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
- 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
--	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_RO)
--		set_opt(sbi->s_mount_opt, ERRORS_RO);
--	else
-+	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_CONTINUE)
- 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
-+	else
-+		set_opt(sbi->s_mount_opt, ERRORS_RO);
- 
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
-_
-
-Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
-
-origin.patch
+Kay
