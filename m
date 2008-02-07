@@ -1,9 +1,9 @@
 From: akpm@linux-foundation.org
-Subject: - iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 19:34:13 -0800
-Message-ID: <200802070333.m173XsZ0014068@imap1.linux-foundation.org>
+Subject: - iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch removed from -mm tree
+Date: Wed, 06 Feb 2008 19:34:29 -0800
+Message-ID: <200802070334.m173YAGn014078@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-To: akpm@linux-foundation.org, dhowells@redhat.com,
+To: akpm@linux-foundation.org, dhowells@redhat.com, jack@suse.cz,
 	linux-ext4@vger.kernel.org, tytso@mit.edu,
 	mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
@@ -12,31 +12,23 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
+     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
 has been removed from the -mm tree.  Its filename was
-     iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
 
-This patch was dropped because it was folded into iget-stop-ext2-from-using-iget-and-read_inode-try.patch
+This patch was dropped because it was folded into iget-stop-ext3-from-using-iget-and-read_inode-try.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
+Subject: iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
 From: Andrew Morton <akpm@linux-foundation.org>
 
 WARNING: no space between function name and open parenthesis '('
-#31: FILE: fs/ext2/ext2.h:127:
-+extern struct inode *ext2_iget (struct super_block *, unsigned long);
+#370: FILE: include/linux/ext3_fs.h:806:
++extern struct inode *ext3_iget (struct super_block *, unsigned long);
 
-WARNING: no space between function name and open parenthesis '('
-#43: FILE: fs/ext2/inode.c:1188:
-+struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
-
-ERROR: "foo * bar" should be "foo *bar"
-#50: FILE: fs/ext2/inode.c:1192:
-+	struct ext2_inode * raw_inode;
-
-total: 1 errors, 2 warnings, 161 lines checked
+total: 0 errors, 1 warnings, 312 lines checked
 Your patch has style problems, please review.  If any of these errors
 are false positives report them to the maintainer, see
 CHECKPATCH in MAINTAINERS.
@@ -46,24 +38,25 @@ Please run checkpatch prior to sending patches
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: <linux-ext4@vger.kernel.org>
 Cc: David Howells <dhowells@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/inode.c |    2 +-
+ include/linux/ext3_fs.h |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext2/inode.c~iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes fs/ext2/inode.c
---- a/fs/ext2/inode.c~iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
-+++ a/fs/ext2/inode.c
-@@ -1185,7 +1185,7 @@ struct inode *ext2_iget (struct super_bl
- {
- 	struct ext2_inode_info *ei;
- 	struct buffer_head * bh;
--	struct ext2_inode * raw_inode;
-+	struct ext2_inode *raw_inode;
- 	struct inode *inode;
- 	long ret = -EIO;
- 	int n;
+diff -puN include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
++++ a/include/linux/ext3_fs.h
+@@ -823,7 +823,7 @@ int ext3_get_blocks_handle(handle_t *han
+ 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
+ 	int create, int extend_disksize);
+ 
+-extern struct inode *ext3_iget (struct super_block *, unsigned long);
++extern struct inode *ext3_iget(struct super_block *, unsigned long);
+ extern int  ext3_write_inode (struct inode *, int);
+ extern int  ext3_setattr (struct dentry *, struct iattr *);
+ extern void ext3_delete_inode (struct inode *);
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
@@ -90,7 +83,7 @@ introduce-flags-for-reserve_bootmem.patch
 iget-stop-affs-from-using-iget-and-read_inode-try.patch
 iget-stop-efs-from-using-iget-and-read_inode-try.patch
 iget-stop-ext2-from-using-iget-and-read_inode-try.patch
-iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try.patch
 iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
 iget-stop-freevxfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
 iget-stop-the-minix-filesystem-from-using-iget-and-checkpatch-fixes.patch
