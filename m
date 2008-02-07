@@ -1,37 +1,35 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH 0/3] Move fsck from e2fsprogs to util-linux-ng
-Date: Thu, 7 Feb 2008 08:41:05 -0500
-Message-ID: <20080207134105.GU27119@mit.edu>
-References: <20080206113426.7833.59505.stgit@sor.suse.de> <20080206125651.GD558@petra.dvoda.cz> <20080206140559.GJ27119@mit.edu> <3ae72650802061637t2185aaddt8a921c2fb3e8c097@mail.gmail.com>
+From: Theodore Tso <tytso-DPNOqEs/LNQ@public.gmane.org>
+Subject: Re: [PATCH 2/3] fsck: add support for the fsprobe library wrapper
+Date: Thu, 7 Feb 2008 08:49:58 -0500
+Message-ID: <20080207134958.GW27119@mit.edu>
+References: <20080206113426.7833.59505.stgit@sor.suse.de> <20080206113902.7833.57924.stgit@sor.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Karel Zak <kzak@redhat.com>, Matthias Koenig <mkoenig@suse.de>,
-	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Kay Sievers <kay.sievers@vrfy.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:59822 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753192AbYBGNl7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2008 08:41:59 -0500
+Cc: util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	msrex-l3A5Bk7waGM@public.gmane.org
+To: Matthias Koenig <mkoenig-l3A5Bk7waGM@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <3ae72650802061637t2185aaddt8a921c2fb3e8c097@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080206113902.7833.57924.stgit-qv7XSOoqp4Ab1SvskN2V4Q@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 07, 2008 at 01:37:43AM +0100, Kay Sievers wrote:
+On Wed, Feb 06, 2008 at 12:39:02PM +0100, Matthias Koenig wrote:
+> Allows fsck to work with blkid or volume_id as defined
+> by the configure invocation.
 > 
-> Care to explain what ext4 development has to do with the generic
-> fsck program?  I don''t see any convincing reason not to move that
-> now.
+> Signed-off-by: Matthias Koenig <mkoenig-l3A5Bk7waGM@public.gmane.org>
 
-Fsck and mount (and especially mount) needs to be linked against the
-very latest blkid library in order to make sure things work, and when
-we spread out packages across the various different packages, it means
-updating things to assure correct functionality is that much harder.
+The big thing here is there needs to be a BIG FAT WARNING that if you
+want ext4 to work, it's best to make sure fsck is built against the
+very latest blkid library.
 
-It also means getting the right ext4 detection routines into vol_id,
-and in the past I've had real problems getting patches that fix real
-bugs in vol_id past you, and I'm just too busy right now to deal with
-that right now.
+I was thinking about using opensuse for more of testing, based on
+Markus's encouragement, but given that it's using vol_id, and I need
+to make some very specific changes so that mount uses the right
+filesystem for ext4 filesystems (especially since the kernel will be
+changing the filesystem name from ext4dev to ext4 at some point in the
+next few months), and opensuse uses vol_id for mount, that became a
+show-stopper for me.
 
-						- Ted
+							- Ted
