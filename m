@@ -1,29 +1,28 @@
 From: akpm@linux-foundation.org
-Subject: [patch 136/208] iget: stop EXT3 from using iget() and read_inode()
-Date: Thu, 07 Feb 2008 00:15:36 -0800
-Message-ID: <200802070815.m178FHdM024121@imap1.linux-foundation.org>
+Subject: [patch 137/208] iget: stop EXT4 from using iget() and read_inode()
+Date: Thu, 07 Feb 2008 00:15:37 -0800
+Message-ID: <200802070815.m178FI6r024125@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, dhowells@redhat.com, hch@lst.de,
 	jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:34001 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:45336 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754758AbYBGI1P (ORCPT
+	by vger.kernel.org with ESMTP id S1754710AbYBGI1P (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2008 03:27:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: David Howells <dhowells@redhat.com>
 
-Stop the EXT3 filesystem from using iget() and read_inode().  Replace
-ext3_read_inode() with ext3_iget(), and call that instead of iget(). 
-ext3_iget() then uses iget_locked() directly and returns a proper error code
+Stop the EXT4 filesystem from using iget() and read_inode().  Replace
+ext4_read_inode() with ext4_iget(), and call that instead of iget(). 
+ext4_iget() then uses iget_locked() directly and returns a proper error code
 instead of an inode in the event of an error.
 
-ext3_fill_super() returns any error incurred when getting the root inode
+ext4_fill_super() returns any error incurred when getting the root inode
 instead of EINVAL.
 
-[akpm@linux-foundation.org: coding-style fixes]
 Signed-off-by: David Howells <dhowells@redhat.com>
 Acked-by: "Theodore Ts'o" <tytso@mit.edu>
 Acked-by: Jan Kara <jack@suse.cz>
@@ -32,20 +31,20 @@ Acked-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ialloc.c        |   58 ++++++++++++++++++++++----------------
- fs/ext3/inode.c         |   25 ++++++++++++----
- fs/ext3/namei.c         |   29 +++++--------------
- fs/ext3/resize.c        |    7 +---
- fs/ext3/super.c         |   40 ++++++++++++++------------
- include/linux/ext3_fs.h |    2 -
- 6 files changed, 89 insertions(+), 72 deletions(-)
+ fs/ext4/ialloc.c        |   58 ++++++++++++++++++++++----------------
+ fs/ext4/inode.c         |   25 ++++++++++++----
+ fs/ext4/namei.c         |   29 +++++--------------
+ fs/ext4/resize.c        |    7 +---
+ fs/ext4/super.c         |   36 +++++++++++++----------
+ include/linux/ext4_fs.h |    2 -
+ 6 files changed, 87 insertions(+), 70 deletions(-)
 
-diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/fs/ext3/ialloc.c
-@@ -642,14 +642,15 @@ struct inode *ext3_orphan_get(struct sup
- 	unsigned long max_ino = le32_to_cpu(EXT3_SB(sb)->s_es->s_inodes_count);
- 	unsigned long block_group;
+diff -puN fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/ialloc.c
+@@ -782,14 +782,15 @@ struct inode *ext4_orphan_get(struct sup
+ 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
+ 	ext4_group_t block_group;
  	int bit;
 -	struct buffer_head *bitmap_bh = NULL;
 +	struct buffer_head *bitmap_bh;
@@ -54,16 +53,16 @@ diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
  
  	/* Error cases - e2fsck has already cleaned up for us */
  	if (ino > max_ino) {
- 		ext3_warning(sb, __FUNCTION__,
+ 		ext4_warning(sb, __FUNCTION__,
  			     "bad orphan ino %lu!  e2fsck was run?", ino);
 -		goto out;
 +		goto error;
  	}
  
- 	block_group = (ino - 1) / EXT3_INODES_PER_GROUP(sb);
-@@ -658,38 +659,49 @@ struct inode *ext3_orphan_get(struct sup
+ 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
+@@ -798,38 +799,49 @@ struct inode *ext4_orphan_get(struct sup
  	if (!bitmap_bh) {
- 		ext3_warning(sb, __FUNCTION__,
+ 		ext4_warning(sb, __FUNCTION__,
  			     "inode bitmap error for orphan %lu", ino);
 -		goto out;
 +		goto error;
@@ -73,14 +72,14 @@ diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
  	 * is a valid orphan (no e2fsck run on fs).  Orphans also include
  	 * inodes that were being truncated, so we can't check i_nlink==0.
  	 */
--	if (!ext3_test_bit(bit, bitmap_bh->b_data) ||
+-	if (!ext4_test_bit(bit, bitmap_bh->b_data) ||
 -			!(inode = iget(sb, ino)) || is_bad_inode(inode) ||
 -			NEXT_ORPHAN(inode) > max_ino) {
--		ext3_warning(sb, __FUNCTION__,
+-		ext4_warning(sb, __FUNCTION__,
 -			     "bad orphan inode %lu!  e2fsck was run?", ino);
--		printk(KERN_NOTICE "ext3_test_bit(bit=%d, block=%llu) = %d\n",
+-		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
 -		       bit, (unsigned long long)bitmap_bh->b_blocknr,
--		       ext3_test_bit(bit, bitmap_bh->b_data));
+-		       ext4_test_bit(bit, bitmap_bh->b_data));
 -		printk(KERN_NOTICE "inode=%p\n", inode);
 -		if (inode) {
 -			printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
@@ -89,10 +88,10 @@ diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
 -			       NEXT_ORPHAN(inode));
 -			printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
 -		}
-+	if (!ext3_test_bit(bit, bitmap_bh->b_data))
++	if (!ext4_test_bit(bit, bitmap_bh->b_data))
 +		goto bad_orphan;
 +
-+	inode = ext3_iget(sb, ino);
++	inode = ext4_iget(sb, ino);
 +	if (IS_ERR(inode))
 +		goto iget_failed;
 +
@@ -105,11 +104,11 @@ diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
 +	err = PTR_ERR(inode);
 +	inode = NULL;
 +bad_orphan:
-+	ext3_warning(sb, __FUNCTION__,
++	ext4_warning(sb, __FUNCTION__,
 +		     "bad orphan inode %lu!  e2fsck was run?", ino);
-+	printk(KERN_NOTICE "ext3_test_bit(bit=%d, block=%llu) = %d\n",
++	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
 +	       bit, (unsigned long long)bitmap_bh->b_blocknr,
-+	       ext3_test_bit(bit, bitmap_bh->b_data));
++	       ext4_test_bit(bit, bitmap_bh->b_data));
 +	printk(KERN_NOTICE "inode=%p\n", inode);
 +	if (inode) {
 +		printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
@@ -131,21 +130,21 @@ diff -puN fs/ext3/ialloc.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
 +	return ERR_PTR(err);
  }
  
- unsigned long ext3_count_free_inodes (struct super_block * sb)
-diff -puN fs/ext3/inode.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/ext3/inode.c
---- a/fs/ext3/inode.c~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/fs/ext3/inode.c
-@@ -2654,21 +2654,31 @@ void ext3_get_inode_flags(struct ext3_in
- 		ei->i_flags |= EXT3_DIRSYNC_FL;
+ unsigned long ext4_count_free_inodes (struct super_block * sb)
+diff -puN fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/inode.c
+--- a/fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/inode.c
+@@ -2680,21 +2680,31 @@ static blkcnt_t ext4_inode_blocks(struct
+ 	}
  }
  
--void ext3_read_inode(struct inode * inode)
-+struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
+-void ext4_read_inode(struct inode * inode)
++struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
  {
- 	struct ext3_iloc iloc;
- 	struct ext3_inode *raw_inode;
--	struct ext3_inode_info *ei = EXT3_I(inode);
-+	struct ext3_inode_info *ei;
+ 	struct ext4_iloc iloc;
+ 	struct ext4_inode *raw_inode;
+-	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_inode_info *ei;
  	struct buffer_head *bh;
 +	struct inode *inode;
 +	long ret;
@@ -157,39 +156,39 @@ diff -puN fs/ext3/inode.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 +	if (!(inode->i_state & I_NEW))
 +		return inode;
 +
-+	ei = EXT3_I(inode);
- #ifdef CONFIG_EXT3_FS_POSIX_ACL
- 	ei->i_acl = EXT3_ACL_NOT_CACHED;
- 	ei->i_default_acl = EXT3_ACL_NOT_CACHED;
++	ei = EXT4_I(inode);
+ #ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
+ 	ei->i_acl = EXT4_ACL_NOT_CACHED;
+ 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
  #endif
  	ei->i_block_alloc_info = NULL;
  
--	if (__ext3_get_inode_loc(inode, &iloc, 0))
-+	ret = __ext3_get_inode_loc(inode, &iloc, 0);
+-	if (__ext4_get_inode_loc(inode, &iloc, 0))
++	ret = __ext4_get_inode_loc(inode, &iloc, 0);
 +	if (ret < 0)
  		goto bad_inode;
  	bh = iloc.bh;
- 	raw_inode = ext3_raw_inode(&iloc);
-@@ -2699,6 +2709,7 @@ void ext3_read_inode(struct inode * inod
- 		    !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ORPHAN_FS)) {
+ 	raw_inode = ext4_raw_inode(&iloc);
+@@ -2720,6 +2730,7 @@ void ext4_read_inode(struct inode * inod
+ 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
  			/* this inode is deleted */
  			brelse (bh);
 +			ret = -ESTALE;
  			goto bad_inode;
  		}
  		/* The only unlinked inodes we let through here have
-@@ -2742,6 +2753,7 @@ void ext3_read_inode(struct inode * inod
- 		if (EXT3_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 		    EXT3_INODE_SIZE(inode->i_sb)) {
+@@ -2758,6 +2769,7 @@ void ext4_read_inode(struct inode * inod
+ 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
+ 		    EXT4_INODE_SIZE(inode->i_sb)) {
  			brelse (bh);
 +			ret = -EIO;
  			goto bad_inode;
  		}
  		if (ei->i_extra_isize == 0) {
-@@ -2783,11 +2795,12 @@ void ext3_read_inode(struct inode * inod
+@@ -2811,11 +2823,12 @@ void ext4_read_inode(struct inode * inod
  	}
  	brelse (iloc.bh);
- 	ext3_set_inode_flags(inode);
+ 	ext4_set_inode_flags(inode);
 -	return;
 +	unlock_new_inode(inode);
 +	return inode;
@@ -201,13 +200,13 @@ diff -puN fs/ext3/inode.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 +	return ERR_PTR(ret);
  }
  
- /*
-diff -puN fs/ext3/namei.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/ext3/namei.c
---- a/fs/ext3/namei.c~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/fs/ext3/namei.c
-@@ -1037,17 +1037,11 @@ static struct dentry *ext3_lookup(struct
- 		if (!ext3_valid_inum(dir->i_sb, ino)) {
- 			ext3_error(dir->i_sb, "ext3_lookup",
+ static int ext4_inode_blocks_set(handle_t *handle,
+diff -puN fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/namei.c
+--- a/fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/namei.c
+@@ -1039,17 +1039,11 @@ static struct dentry *ext4_lookup(struct
+ 		if (!ext4_valid_inum(dir->i_sb, ino)) {
+ 			ext4_error(dir->i_sb, "ext4_lookup",
  				   "bad inode number: %lu", ino);
 -			inode = NULL;
 -		} else
@@ -221,15 +220,15 @@ diff -puN fs/ext3/namei.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 -			return ERR_PTR(-ENOENT);
 +			return ERR_PTR(-EIO);
  		}
-+		inode = ext3_iget(dir->i_sb, ino);
++		inode = ext4_iget(dir->i_sb, ino);
 +		if (IS_ERR(inode))
 +			return ERR_CAST(inode);
  	}
  	return d_splice_alias(inode, dentry);
  }
-@@ -1076,18 +1070,13 @@ struct dentry *ext3_get_parent(struct de
- 	if (!ext3_valid_inum(child->d_inode->i_sb, ino)) {
- 		ext3_error(child->d_inode->i_sb, "ext3_get_parent",
+@@ -1078,18 +1072,13 @@ struct dentry *ext4_get_parent(struct de
+ 	if (!ext4_valid_inum(child->d_inode->i_sb, ino)) {
+ 		ext4_error(child->d_inode->i_sb, "ext4_get_parent",
  			   "bad inode number: %lu", ino);
 -		inode = NULL;
 -	} else
@@ -244,25 +243,25 @@ diff -puN fs/ext3/namei.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 +		return ERR_PTR(-EIO);
  	}
  
-+	inode = ext3_iget(child->d_inode->i_sb, ino);
++	inode = ext4_iget(child->d_inode->i_sb, ino);
 +	if (IS_ERR(inode))
 +		return ERR_CAST(inode);
 +
  	parent = d_alloc_anon(inode);
  	if (!parent) {
  		iput(inode);
-diff -puN fs/ext3/resize.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/ext3/resize.c
---- a/fs/ext3/resize.c~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/fs/ext3/resize.c
-@@ -795,12 +795,11 @@ int ext3_group_add(struct super_block *s
+diff -puN fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/resize.c
+--- a/fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/resize.c
+@@ -779,12 +779,11 @@ int ext4_group_add(struct super_block *s
  				     "No reserved GDT blocks, can't resize");
  			return -EPERM;
  		}
--		inode = iget(sb, EXT3_RESIZE_INO);
+-		inode = iget(sb, EXT4_RESIZE_INO);
 -		if (!inode || is_bad_inode(inode)) {
-+		inode = ext3_iget(sb, EXT3_RESIZE_INO);
++		inode = ext4_iget(sb, EXT4_RESIZE_INO);
 +		if (IS_ERR(inode)) {
- 			ext3_warning(sb, __FUNCTION__,
+ 			ext4_warning(sb, __FUNCTION__,
  				     "Error opening resize inode");
 -			iput(inode);
 -			return -ENOENT;
@@ -270,10 +269,10 @@ diff -puN fs/ext3/resize.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/
  		}
  	}
  
-diff -puN fs/ext3/super.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/ext3/super.c
---- a/fs/ext3/super.c~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/fs/ext3/super.c
-@@ -649,11 +649,10 @@ static struct inode *ext3_nfs_get_inode(
+diff -puN fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/super.c
+--- a/fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/fs/ext4/super.c
+@@ -777,11 +777,10 @@ static struct inode *ext4_nfs_get_inode(
  	 * Currently we don't know the generation for parent directory, so
  	 * a generation of 0 means "accept any"
  	 */
@@ -282,50 +281,39 @@ diff -puN fs/ext3/super.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 -		return ERR_PTR(-ENOMEM);
 -	if (is_bad_inode(inode) ||
 -	    (generation && inode->i_generation != generation)) {
-+	inode = ext3_iget(sb, ino);
++	inode = ext4_iget(sb, ino);
 +	if (IS_ERR(inode))
 +		return ERR_CAST(inode);
 +	if (generation && inode->i_generation != generation) {
  		iput(inode);
  		return ERR_PTR(-ESTALE);
  	}
-@@ -722,7 +721,6 @@ static struct quotactl_ops ext3_qctl_ope
- static const struct super_operations ext3_sops = {
- 	.alloc_inode	= ext3_alloc_inode,
- 	.destroy_inode	= ext3_destroy_inode,
--	.read_inode	= ext3_read_inode,
- 	.write_inode	= ext3_write_inode,
- 	.dirty_inode	= ext3_dirty_inode,
- 	.delete_inode	= ext3_delete_inode,
-@@ -1378,8 +1376,8 @@ static void ext3_orphan_cleanup (struct 
- 	while (es->s_last_orphan) {
- 		struct inode *inode;
- 
--		if (!(inode =
--		      ext3_orphan_get(sb, le32_to_cpu(es->s_last_orphan)))) {
-+		inode = ext3_orphan_get(sb, le32_to_cpu(es->s_last_orphan));
-+		if (IS_ERR(inode)) {
- 			es->s_last_orphan = 0;
- 			break;
- 		}
-@@ -1508,6 +1506,7 @@ static int ext3_fill_super (struct super
+@@ -850,7 +849,6 @@ static struct quotactl_ops ext4_qctl_ope
+ static const struct super_operations ext4_sops = {
+ 	.alloc_inode	= ext4_alloc_inode,
+ 	.destroy_inode	= ext4_destroy_inode,
+-	.read_inode	= ext4_read_inode,
+ 	.write_inode	= ext4_write_inode,
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.delete_inode	= ext4_delete_inode,
+@@ -1805,6 +1803,7 @@ static int ext4_fill_super (struct super
+ 	unsigned long journal_devnum = 0;
+ 	unsigned long def_mount_opts;
+ 	struct inode *root;
++	int ret = -EINVAL;
+ 	int blocksize;
  	int db_count;
  	int i;
- 	int needs_recovery;
-+	int ret = -EINVAL;
- 	__le32 features;
- 	int err;
- 
-@@ -1877,19 +1876,24 @@ static int ext3_fill_super (struct super
+@@ -2237,19 +2236,24 @@ static int ext4_fill_super (struct super
  	 * so we can safely mount the rest of the filesystem now.
  	 */
  
--	root = iget(sb, EXT3_ROOT_INO);
+-	root = iget(sb, EXT4_ROOT_INO);
 -	sb->s_root = d_alloc_root(root);
 -	if (!sb->s_root) {
-+	root = ext3_iget(sb, EXT3_ROOT_INO);
++	root = ext4_iget(sb, EXT4_ROOT_INO);
 +	if (IS_ERR(root)) {
- 		printk(KERN_ERR "EXT3-fs: get root inode failed\n");
+ 		printk(KERN_ERR "EXT4-fs: get root inode failed\n");
 -		iput(root);
 +		ret = PTR_ERR(root);
  		goto failed_mount4;
@@ -334,20 +322,20 @@ diff -puN fs/ext3/super.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
 -		dput(sb->s_root);
 -		sb->s_root = NULL;
 +		iput(root);
- 		printk(KERN_ERR "EXT3-fs: corrupt root inode, run e2fsck\n");
+ 		printk(KERN_ERR "EXT4-fs: corrupt root inode, run e2fsck\n");
  		goto failed_mount4;
  	}
 +	sb->s_root = d_alloc_root(root);
 +	if (!sb->s_root) {
-+		printk(KERN_ERR "EXT3-fs: get root dentry failed\n");
++		printk(KERN_ERR "EXT4-fs: get root dentry failed\n");
 +		iput(root);
 +		ret = -ENOMEM;
 +		goto failed_mount4;
 +	}
  
- 	ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
- 	/*
-@@ -1941,7 +1945,7 @@ out_fail:
+ 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+ 
+@@ -2330,7 +2334,7 @@ out_fail:
  	sb->s_fs_info = NULL;
  	kfree(sbi);
  	lock_kernel();
@@ -356,36 +344,36 @@ diff -puN fs/ext3/super.c~iget-stop-ext3-from-using-iget-and-read_inode-try fs/e
  }
  
  /*
-@@ -1977,8 +1981,8 @@ static journal_t *ext3_get_journal(struc
+@@ -2366,8 +2370,8 @@ static journal_t *ext4_get_journal(struc
  	 * things happen if we iget() an unused inode, as the subsequent
  	 * iput() will try to delete it. */
  
 -	journal_inode = iget(sb, journal_inum);
 -	if (!journal_inode) {
-+	journal_inode = ext3_iget(sb, journal_inum);
++	journal_inode = ext4_iget(sb, journal_inum);
 +	if (IS_ERR(journal_inode)) {
- 		printk(KERN_ERR "EXT3-fs: no journal found.\n");
+ 		printk(KERN_ERR "EXT4-fs: no journal found.\n");
  		return NULL;
  	}
-@@ -1991,7 +1995,7 @@ static journal_t *ext3_get_journal(struc
+@@ -2380,7 +2384,7 @@ static journal_t *ext4_get_journal(struc
  
  	jbd_debug(2, "Journal inode found at %p: %Ld bytes\n",
  		  journal_inode, journal_inode->i_size);
 -	if (is_bad_inode(journal_inode) || !S_ISREG(journal_inode->i_mode)) {
 +	if (!S_ISREG(journal_inode->i_mode)) {
- 		printk(KERN_ERR "EXT3-fs: invalid journal inode.\n");
+ 		printk(KERN_ERR "EXT4-fs: invalid journal inode.\n");
  		iput(journal_inode);
  		return NULL;
-diff -puN include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try
-+++ a/include/linux/ext3_fs.h
-@@ -823,7 +823,7 @@ int ext3_get_blocks_handle(handle_t *han
- 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
- 	int create, int extend_disksize);
+diff -puN include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try include/linux/ext4_fs.h
+--- a/include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try
++++ a/include/linux/ext4_fs.h
+@@ -1024,7 +1024,7 @@ int ext4_get_blocks_handle(handle_t *han
+ 				struct buffer_head *bh_result,
+ 				int create, int extend_disksize);
  
--extern void ext3_read_inode (struct inode *);
-+extern struct inode *ext3_iget(struct super_block *, unsigned long);
- extern int  ext3_write_inode (struct inode *, int);
- extern int  ext3_setattr (struct dentry *, struct iattr *);
- extern void ext3_delete_inode (struct inode *);
+-extern void ext4_read_inode (struct inode *);
++extern struct inode *ext4_iget(struct super_block *, unsigned long);
+ extern int  ext4_write_inode (struct inode *, int);
+ extern int  ext4_setattr (struct dentry *, struct iattr *);
+ extern void ext4_delete_inode (struct inode *);
 _
