@@ -1,83 +1,89 @@
 From: akpm@linux-foundation.org
-Subject: - ext-fix-comment-for-nonexistent-variable.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 16:30:44 -0800
-Message-ID: <200802070030.m170UPtI007387@imap1.linux-foundation.org>
+Subject: - ext-cleanup-ext_bg_num_gdb.patch removed from -mm tree
+Date: Wed, 06 Feb 2008 16:30:50 -0800
+Message-ID: <200802070030.m170UV0p007398@imap1.linux-foundation.org>
 To: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:43443 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:52919 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934353AbYBGAnh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:43:37 -0500
+	by vger.kernel.org with ESMTP id S1764471AbYBGAni (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:43:38 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext[234]: fix comment for nonexistent variable
+     ext[234]: cleanup ext[234]_bg_num_gdb()
 has been removed from the -mm tree.  Its filename was
-     ext-fix-comment-for-nonexistent-variable.patch
+     ext-cleanup-ext_bg_num_gdb.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext[234]: fix comment for nonexistent variable
+Subject: ext[234]: cleanup ext[234]_bg_num_gdb()
 From: Akinobu Mita <akinobu.mita@gmail.com>
 
-The comment in ext[234]_new_blocks() describes about "i".  But there is no
-local variable called "i" in that scope.  I guess it has been renamed to
-group_no.
+Use ext[234]_bg_has_super() to remove duplicate code.
 
-Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/balloc.c |    4 ++--
- fs/ext3/balloc.c |    2 +-
- fs/ext4/balloc.c |    2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+ fs/ext2/balloc.c |    5 +----
+ fs/ext3/balloc.c |    6 +-----
+ fs/ext4/balloc.c |    6 +-----
+ 3 files changed, 3 insertions(+), 14 deletions(-)
 
-diff -puN fs/ext2/balloc.c~ext-fix-comment-for-nonexistent-variable fs/ext2/balloc.c
---- a/fs/ext2/balloc.c~ext-fix-comment-for-nonexistent-variable
+diff -puN fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb
 +++ a/fs/ext2/balloc.c
-@@ -1315,8 +1315,8 @@ retry_alloc:
- 	smp_rmb();
+@@ -1533,9 +1533,6 @@ int ext2_bg_has_super(struct super_block
+  */
+ unsigned long ext2_bg_num_gdb(struct super_block *sb, int group)
+ {
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(sb,EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)&&
+-	    !ext2_group_sparse(group))
+-		return 0;
+-	return EXT2_SB(sb)->s_gdb_count;
++	return ext2_bg_has_super(sb, group) ? EXT2_SB(sb)->s_gdb_count : 0;
+ }
  
- 	/*
--	 * Now search the rest of the groups.  We assume that 
--	 * i and gdp correctly point to the last group visited.
-+	 * Now search the rest of the groups.  We assume that
-+	 * group_no and gdp correctly point to the last group visited.
- 	 */
- 	for (bgi = 0; bgi < ngroups; bgi++) {
- 		group_no++;
-diff -puN fs/ext3/balloc.c~ext-fix-comment-for-nonexistent-variable fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext-fix-comment-for-nonexistent-variable
+diff -puN fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb
 +++ a/fs/ext3/balloc.c
-@@ -1572,7 +1572,7 @@ retry_alloc:
+@@ -1848,11 +1848,7 @@ static unsigned long ext3_bg_num_gdb_met
  
- 	/*
- 	 * Now search the rest of the groups.  We assume that
--	 * i and gdp correctly point to the last group visited.
-+	 * group_no and gdp correctly point to the last group visited.
- 	 */
- 	for (bgi = 0; bgi < ngroups; bgi++) {
- 		group_no++;
-diff -puN fs/ext4/balloc.c~ext-fix-comment-for-nonexistent-variable fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext-fix-comment-for-nonexistent-variable
+ static unsigned long ext3_bg_num_gdb_nometa(struct super_block *sb, int group)
+ {
+-	if (EXT3_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
+-			!ext3_group_sparse(group))
+-		return 0;
+-	return EXT3_SB(sb)->s_gdb_count;
++	return ext3_bg_has_super(sb, group) ? EXT3_SB(sb)->s_gdb_count : 0;
+ }
+ 
+ /**
+diff -puN fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb
 +++ a/fs/ext4/balloc.c
-@@ -1700,7 +1700,7 @@ retry_alloc:
+@@ -2011,11 +2011,7 @@ static unsigned long ext4_bg_num_gdb_met
+ static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
+ 					ext4_group_t group)
+ {
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-				EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
+-			!ext4_group_sparse(group))
+-		return 0;
+-	return EXT4_SB(sb)->s_gdb_count;
++	return ext4_bg_has_super(sb, group) ? EXT4_SB(sb)->s_gdb_count : 0;
+ }
  
- 	/*
- 	 * Now search the rest of the groups.  We assume that
--	 * i and gdp correctly point to the last group visited.
-+	 * group_no and gdp correctly point to the last group visited.
- 	 */
- 	for (bgi = 0; bgi < ngroups; bgi++) {
- 		group_no++;
+ /**
 _
 
 Patches currently in -mm which might be from akinobu.mita@gmail.com are
