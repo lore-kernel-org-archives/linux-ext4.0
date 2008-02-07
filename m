@@ -1,93 +1,49 @@
-From: akpm@linux-foundation.org
-Subject: - ext-cleanup-ext_bg_num_gdb.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 16:30:50 -0800
-Message-ID: <200802070030.m170UV0p007398@imap1.linux-foundation.org>
-To: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: [RFC] ext3 freeze feature
+Date: Thu, 7 Feb 2008 10:05:12 +0900
+Message-ID: <004901c86925$7e3d1d60$41a8400a@bsd.tnes.nec.co.jp>
+References: <20080125195938t-sato@mail.jp.nec.com> <20080125121851.GA3361@dmon-lap.sw.ru> <20080125133329.GB8184@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	format=flowed;
+	charset="iso-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>
+To: "Theodore Tso" <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:52919 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1764471AbYBGAni (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:43:38 -0500
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:52921 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754686AbYBGBG7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 20:06:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-The patch titled
-     ext[234]: cleanup ext[234]_bg_num_gdb()
-has been removed from the -mm tree.  Its filename was
-     ext-cleanup-ext_bg_num_gdb.patch
+> What you *could* do is to start putting processes to sleep if they
+> attempt to write to the frozen filesystem, and then detect the
+> deadlock case where the process holding the file descriptor used to
+> freeze the filesystem gets frozen because it attempted to write to the
+> filesystem --- at which point it gets some kind of signal (which
+> defaults to killing the process), and the filesystem is unfrozen and
+> as part of the unfreeze you wake up all of the processes that were put
+> to sleep for touching the frozen filesystem.
+> 
+> The other approach would be to say, "oh well, the freeze ioctl is
+> inherently dangerous, and root is allowed to himself in the foot, so
+> who cares".  :-)
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Currently the XFS freezer doesn't solve a deadlock automatically
+and we rely on administrators for ensuring that the freezer will not
+access the filesystem.
+And even if the wrong freezer causes a deadlock, it can be solved
+by other unfreeze process(unfreeze command).
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+So I don't think the freezer itself needs to solve the deadlock.
+I think the timeout is effective for a unexpected deadlock
+and the timeout extending feature is very useful
+as Dmitri proposed.
 
-------------------------------------------------------
-Subject: ext[234]: cleanup ext[234]_bg_num_gdb()
-From: Akinobu Mita <akinobu.mita@gmail.com>
-
-Use ext[234]_bg_has_super() to remove duplicate code.
-
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/balloc.c |    5 +----
- fs/ext3/balloc.c |    6 +-----
- fs/ext4/balloc.c |    6 +-----
- 3 files changed, 3 insertions(+), 14 deletions(-)
-
-diff -puN fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext2/balloc.c
---- a/fs/ext2/balloc.c~ext-cleanup-ext_bg_num_gdb
-+++ a/fs/ext2/balloc.c
-@@ -1533,9 +1533,6 @@ int ext2_bg_has_super(struct super_block
-  */
- unsigned long ext2_bg_num_gdb(struct super_block *sb, int group)
- {
--	if (EXT2_HAS_RO_COMPAT_FEATURE(sb,EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)&&
--	    !ext2_group_sparse(group))
--		return 0;
--	return EXT2_SB(sb)->s_gdb_count;
-+	return ext2_bg_has_super(sb, group) ? EXT2_SB(sb)->s_gdb_count : 0;
- }
- 
-diff -puN fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext-cleanup-ext_bg_num_gdb
-+++ a/fs/ext3/balloc.c
-@@ -1848,11 +1848,7 @@ static unsigned long ext3_bg_num_gdb_met
- 
- static unsigned long ext3_bg_num_gdb_nometa(struct super_block *sb, int group)
- {
--	if (EXT3_HAS_RO_COMPAT_FEATURE(sb,
--				EXT3_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
--			!ext3_group_sparse(group))
--		return 0;
--	return EXT3_SB(sb)->s_gdb_count;
-+	return ext3_bg_has_super(sb, group) ? EXT3_SB(sb)->s_gdb_count : 0;
- }
- 
- /**
-diff -puN fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext-cleanup-ext_bg_num_gdb
-+++ a/fs/ext4/balloc.c
-@@ -2011,11 +2011,7 @@ static unsigned long ext4_bg_num_gdb_met
- static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
- 					ext4_group_t group)
- {
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
--				EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
--			!ext4_group_sparse(group))
--		return 0;
--	return EXT4_SB(sb)->s_gdb_count;
-+	return ext4_bg_has_super(sb, group) ? EXT4_SB(sb)->s_gdb_count : 0;
- }
- 
- /**
-_
-
-Patches currently in -mm which might be from akinobu.mita@gmail.com are
-
-origin.patch
-git-dvb.patch
-modules-handle-symbols-that-have-a-zero-value-fix.patch
+Cheers, Takashi
