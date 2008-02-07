@@ -1,114 +1,102 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch added to -mm tree
-Date: Wed, 06 Feb 2008 17:58:03 -0800
-Message-ID: <200802070157.m171vi00010822@imap1.linux-foundation.org>
+Subject: - iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch removed from -mm tree
+Date: Wed, 06 Feb 2008 19:34:13 -0800
+Message-ID: <200802070333.m173XsZ0014068@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-Cc: neilb@suse.de, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+To: akpm@linux-foundation.org, dhowells@redhat.com,
+	linux-ext4@vger.kernel.org, tytso@mit.edu,
+	mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
-has been added to the -mm tree.  Its filename is
-     ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
+     iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
+has been removed from the -mm tree.  Its filename was
+     iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
-
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+This patch was dropped because it was folded into iget-stop-ext2-from-using-iget-and-read_inode-try.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
-From: Neil Brown <neilb@suse.de>
+Subject: iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
+From: Andrew Morton <akpm@linux-foundation.org>
 
-Some devices - notably dm and md - can change their behaviour in response
-to BIO_RW_BARRIER requests.  They might start out accepting such requests
-but on reconfiguration, they find out that they cannot any more.
+WARNING: no space between function name and open parenthesis '('
+#31: FILE: fs/ext2/ext2.h:127:
++extern struct inode *ext2_iget (struct super_block *, unsigned long);
 
-ext3 (and other filesystems) deal with this by always testing if
-BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
-requests without the barrier (probably after waiting for any pending writes
-to complete).
+WARNING: no space between function name and open parenthesis '('
+#43: FILE: fs/ext2/inode.c:1188:
++struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 
-However there is a bug in the handling for this for ext3.
+ERROR: "foo * bar" should be "foo *bar"
+#50: FILE: fs/ext2/inode.c:1192:
++	struct ext2_inode * raw_inode;
 
-When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request, it
-sets the buffer_ordered flag on the buffer head.  If the request completes
-successfully, the flag STAYS SET.
+total: 1 errors, 2 warnings, 161 lines checked
+Your patch has style problems, please review.  If any of these errors
+are false positives report them to the maintainer, see
+CHECKPATCH in MAINTAINERS.
 
-Other code might then write the same buffer_head after the device has been
-reconfigured to not accept barriers.  This write will then fail, but the
-"other code" is not ready to handle EOPNOTSUPP errors and the error will be
-treated as fatal.
+Please run checkpatch prior to sending patches
 
-This can be seen without having to reconfigure a device at exactly the
-wrong time by putting:
-
-		if (buffer_ordered(bh))
-			printk("OH DEAR, and ordered buffer\n");
-
-in the while loop in "commit phase 5" of journal_commit_transaction.
-
-If it ever prints the "OH DEAR ..." message (as it does sometimes for
-me), then that request could (in different circumstances) have failed
-with EOPNOTSUPP, but that isn't tested for.
-
-My proposed fix is to clear the buffer_ordered flag after it has been
-used, as in the following patch.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: David Howells <dhowells@redhat.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext2/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests fs/jbd/commit.c
---- a/fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests
-+++ a/fs/jbd/commit.c
-@@ -131,6 +131,8 @@ static int journal_write_commit_record(j
- 		barrier_done = 1;
- 	}
- 	ret = sync_dirty_buffer(bh);
-+	if (barrier_done)
-+		clear_buffer_ordered(bh);
- 	/* is it possible for another commit to fail at roughly
- 	 * the same time as this one?  If so, we don't want to
- 	 * trust the barrier flag in the super, but instead want
-@@ -148,7 +150,6 @@ static int journal_write_commit_record(j
- 		spin_unlock(&journal->j_state_lock);
- 
- 		/* And try again, without the barrier */
--		clear_buffer_ordered(bh);
- 		set_buffer_uptodate(bh);
- 		set_buffer_dirty(bh);
- 		ret = sync_dirty_buffer(bh);
+diff -puN fs/ext2/inode.c~iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes fs/ext2/inode.c
+--- a/fs/ext2/inode.c~iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes
++++ a/fs/ext2/inode.c
+@@ -1185,7 +1185,7 @@ struct inode *ext2_iget (struct super_bl
+ {
+ 	struct ext2_inode_info *ei;
+ 	struct buffer_head * bh;
+-	struct ext2_inode * raw_inode;
++	struct ext2_inode *raw_inode;
+ 	struct inode *inode;
+ 	long ret = -EIO;
+ 	int n;
 _
 
-Patches currently in -mm which might be from neilb@suse.de are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
 origin.patch
-one-less-parameter-to-__d_path.patch
-d_path-kerneldoc-cleanup.patch
-d_path-use-struct-path-in-struct-avc_audit_data.patch
-d_path-make-proc_get_link-use-a-struct-path-argument.patch
-d_path-make-get_dcookie-use-a-struct-path-argument.patch
-use-struct-path-in-struct-svc_export.patch
-use-struct-path-in-struct-svc_export-checkpatch-fixes.patch
-use-struct-path-in-struct-svc_expkey.patch
-d_path-make-seq_path-use-a-struct-path-argument.patch
-d_path-make-d_path-use-a-struct-path.patch
-d_path-make-d_path-use-a-struct-path-fix.patch
-ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
+vfs-swap-do_ioctl-and-vfs_ioctl-names.patch
+cgroup-simplify-space-stripping.patch
+memory-controller-memory-accounting-v7.patch
+memory-controller-add-per-container-lru-and-reclaim-v7.patch
+memory-controller-oom-handling-v7.patch
+memory-controller-add-switch-to-control-what-type-of-pages-to-limit-v7.patch
+memcontrol-move-mm_cgroup-to-header-file.patch
+memcontrol-move-oom-task-exclusion-to-tasklist.patch
+memory-cgroup-enhancements-fix-zone-handling-in-try_to_free_mem_cgroup_page.patch
+memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup.patch
+memory-cgroup-enhancements-add-memorystat-file.patch
+per-zone-and-reclaim-enhancements-for-memory-controller-take-3-remember-reclaim-priority-in-memory-cgroup.patch
+per-zone-and-reclaim-enhancements-for-memory-controller-take-3-modifies-vmscanc-for-isolate-globa-cgroup-lru-activity.patch
+cgroups-mechanism-to-process-each-task-in-a-cgroup.patch
+hotplug-cpu-move-tasks-in-empty-cpusets-to-parent.patch
+cpusets-update_cpumask-revision.patch
+drivers-edac-add-marvell-mv64x60-driver.patch
+introduce-flags-for-reserve_bootmem.patch
+iget-stop-affs-from-using-iget-and-read_inode-try.patch
+iget-stop-efs-from-using-iget-and-read_inode-try.patch
+iget-stop-ext2-from-using-iget-and-read_inode-try.patch
+iget-stop-ext2-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-freevxfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-the-minix-filesystem-from-using-iget-and-checkpatch-fixes.patch
+iget-stop-procfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-qnx4-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-romfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+iget-stop-the-sysv-filesystem-from-using-iget-and-checkpatch-fixes.patch
+iget-stop-ufs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+iget-stop-hostfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
