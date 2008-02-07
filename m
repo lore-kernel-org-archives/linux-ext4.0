@@ -1,379 +1,97 @@
-From: akpm@linux-foundation.org
-Subject: [patch 137/208] iget: stop EXT4 from using iget() and read_inode()
-Date: Thu, 07 Feb 2008 00:15:37 -0800
-Message-ID: <200802070815.m178FI6r024125@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, dhowells@redhat.com, hch@lst.de,
-	jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu
-To: torvalds@linux-foundation.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests.
+Date: Thu, 7 Feb 2008 11:58:54 +0100
+Message-ID: <20080207105853.GC26403@atrey.karlin.mff.cuni.cz>
+References: <18346.24466.83745.944149@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:45336 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754710AbYBGI1P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2008 03:27:15 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:39257 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759156AbYBGK6z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2008 05:58:55 -0500
+Content-Disposition: inline
+In-Reply-To: <18346.24466.83745.944149@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: David Howells <dhowells@redhat.com>
+  Hi Neil,
 
-Stop the EXT4 filesystem from using iget() and read_inode().  Replace
-ext4_read_inode() with ext4_iget(), and call that instead of iget(). 
-ext4_iget() then uses iget_locked() directly and returns a proper error code
-instead of an inode in the event of an error.
+> Some devices - notably dm and md - can change their behaviour in
+> response to BIO_RW_BARRIER requests.  They might start out accepting
+> such requests but on reconfiguration, they find out that they cannot
+> any more.
+> 
+> ext3 (and other filesystems) deal with this by always testing if
+> BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
+> requests without the barrier (probably after waiting for any pending
+> writes to complete).
+> 
+> However there is a bug in the handling for this for ext3.
+> 
+> When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request,
+> it sets the buffer_ordered flag on the buffer head.
+> If the request completes successfully, the flag STAYS SET.
+  Yes, I've recently noted this as well :) 
 
-ext4_fill_super() returns any error incurred when getting the root inode
-instead of EINVAL.
+> Other code might then write the same buffer_head after the device has
+> been reconfigured to not accept barriers.  This write will then fail,
+> but the "other code" is not ready to handle EOPNOTSUPP errors and the
+> error will be treated as fatal.
+> 
+> This can be seen without having to reconfigure a device at exactly the
+> wrong time by putting:
+> 
+> 		if (buffer_ordered(bh))
+> 			printk("OH DEAR, and ordered buffer\n");
+> 
+> 
+> in the while loop in "commit phase 5" of journal_commit_transaction.
+> 
+> If it ever prints the "OH DEAR ..." message (as it does sometimes for
+> me), then that request could (in different circumstances) have failed
+> with EOPNOTSUPP, but that isn't tested for.
+> 
+> My proposed fix is to clear the buffer_ordered flag after it has been
+> used, as in the following patch.
+  Yes. Actually, I think there's another bug in there as well - at least
+I have bugreport where we obviously miss that writing ordered buffer
+failed (I see completion function of the buffer return with eopnotsupp
+bit set but barriers aren't disabled). I think someone starts writing
+out the buffer before we call sync_dirty_buffer(bh) but I'm not completely
+sure who can do this when we just do set_buffer_dirty(bh)... Anyway
+before I check that it is indeed happening what I think is happening,
+your fix is fine :).
+  You can add: Acked-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Acked-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> diff .prev/fs/jbd/commit.c ./fs/jbd/commit.c
+> --- .prev/fs/jbd/commit.c	2008-02-07 10:01:57.000000000 +1100
+> +++ ./fs/jbd/commit.c	2008-02-07 10:04:58.000000000 +1100
+> @@ -131,6 +131,8 @@ static int journal_write_commit_record(j
+>  		barrier_done = 1;
+>  	}
+>  	ret = sync_dirty_buffer(bh);
+> +	if (barrier_done)
+> +		clear_buffer_ordered(bh);
+>  	/* is it possible for another commit to fail at roughly
+>  	 * the same time as this one?  If so, we don't want to
+>  	 * trust the barrier flag in the super, but instead want
+> @@ -148,7 +150,6 @@ static int journal_write_commit_record(j
+>  		spin_unlock(&journal->j_state_lock);
+>  
+>  		/* And try again, without the barrier */
+> -		clear_buffer_ordered(bh);
+>  		set_buffer_uptodate(bh);
+>  		set_buffer_dirty(bh);
+>  		ret = sync_dirty_buffer(bh);
 
- fs/ext4/ialloc.c        |   58 ++++++++++++++++++++++----------------
- fs/ext4/inode.c         |   25 ++++++++++++----
- fs/ext4/namei.c         |   29 +++++--------------
- fs/ext4/resize.c        |    7 +---
- fs/ext4/super.c         |   36 +++++++++++++----------
- include/linux/ext4_fs.h |    2 -
- 6 files changed, 87 insertions(+), 70 deletions(-)
 
-diff -puN fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/ialloc.c
-@@ -782,14 +782,15 @@ struct inode *ext4_orphan_get(struct sup
- 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
- 	ext4_group_t block_group;
- 	int bit;
--	struct buffer_head *bitmap_bh = NULL;
-+	struct buffer_head *bitmap_bh;
- 	struct inode *inode = NULL;
-+	long err = -EIO;
- 
- 	/* Error cases - e2fsck has already cleaned up for us */
- 	if (ino > max_ino) {
- 		ext4_warning(sb, __FUNCTION__,
- 			     "bad orphan ino %lu!  e2fsck was run?", ino);
--		goto out;
-+		goto error;
- 	}
- 
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-@@ -798,38 +799,49 @@ struct inode *ext4_orphan_get(struct sup
- 	if (!bitmap_bh) {
- 		ext4_warning(sb, __FUNCTION__,
- 			     "inode bitmap error for orphan %lu", ino);
--		goto out;
-+		goto error;
- 	}
- 
- 	/* Having the inode bit set should be a 100% indicator that this
- 	 * is a valid orphan (no e2fsck run on fs).  Orphans also include
- 	 * inodes that were being truncated, so we can't check i_nlink==0.
- 	 */
--	if (!ext4_test_bit(bit, bitmap_bh->b_data) ||
--			!(inode = iget(sb, ino)) || is_bad_inode(inode) ||
--			NEXT_ORPHAN(inode) > max_ino) {
--		ext4_warning(sb, __FUNCTION__,
--			     "bad orphan inode %lu!  e2fsck was run?", ino);
--		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
--		       bit, (unsigned long long)bitmap_bh->b_blocknr,
--		       ext4_test_bit(bit, bitmap_bh->b_data));
--		printk(KERN_NOTICE "inode=%p\n", inode);
--		if (inode) {
--			printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
--			       is_bad_inode(inode));
--			printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
--			       NEXT_ORPHAN(inode));
--			printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
--		}
-+	if (!ext4_test_bit(bit, bitmap_bh->b_data))
-+		goto bad_orphan;
-+
-+	inode = ext4_iget(sb, ino);
-+	if (IS_ERR(inode))
-+		goto iget_failed;
-+
-+	if (NEXT_ORPHAN(inode) > max_ino)
-+		goto bad_orphan;
-+	brelse(bitmap_bh);
-+	return inode;
-+
-+iget_failed:
-+	err = PTR_ERR(inode);
-+	inode = NULL;
-+bad_orphan:
-+	ext4_warning(sb, __FUNCTION__,
-+		     "bad orphan inode %lu!  e2fsck was run?", ino);
-+	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
-+	       bit, (unsigned long long)bitmap_bh->b_blocknr,
-+	       ext4_test_bit(bit, bitmap_bh->b_data));
-+	printk(KERN_NOTICE "inode=%p\n", inode);
-+	if (inode) {
-+		printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
-+		       is_bad_inode(inode));
-+		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
-+		       NEXT_ORPHAN(inode));
-+		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
- 		/* Avoid freeing blocks if we got a bad deleted inode */
--		if (inode && inode->i_nlink == 0)
-+		if (inode->i_nlink == 0)
- 			inode->i_blocks = 0;
- 		iput(inode);
--		inode = NULL;
- 	}
--out:
- 	brelse(bitmap_bh);
--	return inode;
-+error:
-+	return ERR_PTR(err);
- }
- 
- unsigned long ext4_count_free_inodes (struct super_block * sb)
-diff -puN fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/inode.c
---- a/fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/inode.c
-@@ -2680,21 +2680,31 @@ static blkcnt_t ext4_inode_blocks(struct
- 	}
- }
- 
--void ext4_read_inode(struct inode * inode)
-+struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- {
- 	struct ext4_iloc iloc;
- 	struct ext4_inode *raw_inode;
--	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_inode_info *ei;
- 	struct buffer_head *bh;
-+	struct inode *inode;
-+	long ret;
- 	int block;
- 
-+	inode = iget_locked(sb, ino);
-+	if (!inode)
-+		return ERR_PTR(-ENOMEM);
-+	if (!(inode->i_state & I_NEW))
-+		return inode;
-+
-+	ei = EXT4_I(inode);
- #ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
- 	ei->i_acl = EXT4_ACL_NOT_CACHED;
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
- 	ei->i_block_alloc_info = NULL;
- 
--	if (__ext4_get_inode_loc(inode, &iloc, 0))
-+	ret = __ext4_get_inode_loc(inode, &iloc, 0);
-+	if (ret < 0)
- 		goto bad_inode;
- 	bh = iloc.bh;
- 	raw_inode = ext4_raw_inode(&iloc);
-@@ -2720,6 +2730,7 @@ void ext4_read_inode(struct inode * inod
- 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
- 			/* this inode is deleted */
- 			brelse (bh);
-+			ret = -ESTALE;
- 			goto bad_inode;
- 		}
- 		/* The only unlinked inodes we let through here have
-@@ -2758,6 +2769,7 @@ void ext4_read_inode(struct inode * inod
- 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 		    EXT4_INODE_SIZE(inode->i_sb)) {
- 			brelse (bh);
-+			ret = -EIO;
- 			goto bad_inode;
- 		}
- 		if (ei->i_extra_isize == 0) {
-@@ -2811,11 +2823,12 @@ void ext4_read_inode(struct inode * inod
- 	}
- 	brelse (iloc.bh);
- 	ext4_set_inode_flags(inode);
--	return;
-+	unlock_new_inode(inode);
-+	return inode;
- 
- bad_inode:
--	make_bad_inode(inode);
--	return;
-+	iget_failed(inode);
-+	return ERR_PTR(ret);
- }
- 
- static int ext4_inode_blocks_set(handle_t *handle,
-diff -puN fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/namei.c
---- a/fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/namei.c
-@@ -1039,17 +1039,11 @@ static struct dentry *ext4_lookup(struct
- 		if (!ext4_valid_inum(dir->i_sb, ino)) {
- 			ext4_error(dir->i_sb, "ext4_lookup",
- 				   "bad inode number: %lu", ino);
--			inode = NULL;
--		} else
--			inode = iget(dir->i_sb, ino);
--
--		if (!inode)
--			return ERR_PTR(-EACCES);
--
--		if (is_bad_inode(inode)) {
--			iput(inode);
--			return ERR_PTR(-ENOENT);
-+			return ERR_PTR(-EIO);
- 		}
-+		inode = ext4_iget(dir->i_sb, ino);
-+		if (IS_ERR(inode))
-+			return ERR_CAST(inode);
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1078,18 +1072,13 @@ struct dentry *ext4_get_parent(struct de
- 	if (!ext4_valid_inum(child->d_inode->i_sb, ino)) {
- 		ext4_error(child->d_inode->i_sb, "ext4_get_parent",
- 			   "bad inode number: %lu", ino);
--		inode = NULL;
--	} else
--		inode = iget(child->d_inode->i_sb, ino);
--
--	if (!inode)
--		return ERR_PTR(-EACCES);
--
--	if (is_bad_inode(inode)) {
--		iput(inode);
--		return ERR_PTR(-ENOENT);
-+		return ERR_PTR(-EIO);
- 	}
- 
-+	inode = ext4_iget(child->d_inode->i_sb, ino);
-+	if (IS_ERR(inode))
-+		return ERR_CAST(inode);
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
-diff -puN fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/resize.c
---- a/fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/resize.c
-@@ -779,12 +779,11 @@ int ext4_group_add(struct super_block *s
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
- 		}
--		inode = iget(sb, EXT4_RESIZE_INO);
--		if (!inode || is_bad_inode(inode)) {
-+		inode = ext4_iget(sb, EXT4_RESIZE_INO);
-+		if (IS_ERR(inode)) {
- 			ext4_warning(sb, __FUNCTION__,
- 				     "Error opening resize inode");
--			iput(inode);
--			return -ENOENT;
-+			return PTR_ERR(inode);
- 		}
- 	}
- 
-diff -puN fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/super.c
---- a/fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/super.c
-@@ -777,11 +777,10 @@ static struct inode *ext4_nfs_get_inode(
- 	 * Currently we don't know the generation for parent directory, so
- 	 * a generation of 0 means "accept any"
- 	 */
--	inode = iget(sb, ino);
--	if (inode == NULL)
--		return ERR_PTR(-ENOMEM);
--	if (is_bad_inode(inode) ||
--	    (generation && inode->i_generation != generation)) {
-+	inode = ext4_iget(sb, ino);
-+	if (IS_ERR(inode))
-+		return ERR_CAST(inode);
-+	if (generation && inode->i_generation != generation) {
- 		iput(inode);
- 		return ERR_PTR(-ESTALE);
- 	}
-@@ -850,7 +849,6 @@ static struct quotactl_ops ext4_qctl_ope
- static const struct super_operations ext4_sops = {
- 	.alloc_inode	= ext4_alloc_inode,
- 	.destroy_inode	= ext4_destroy_inode,
--	.read_inode	= ext4_read_inode,
- 	.write_inode	= ext4_write_inode,
- 	.dirty_inode	= ext4_dirty_inode,
- 	.delete_inode	= ext4_delete_inode,
-@@ -1805,6 +1803,7 @@ static int ext4_fill_super (struct super
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
-+	int ret = -EINVAL;
- 	int blocksize;
- 	int db_count;
- 	int i;
-@@ -2237,19 +2236,24 @@ static int ext4_fill_super (struct super
- 	 * so we can safely mount the rest of the filesystem now.
- 	 */
- 
--	root = iget(sb, EXT4_ROOT_INO);
--	sb->s_root = d_alloc_root(root);
--	if (!sb->s_root) {
-+	root = ext4_iget(sb, EXT4_ROOT_INO);
-+	if (IS_ERR(root)) {
- 		printk(KERN_ERR "EXT4-fs: get root inode failed\n");
--		iput(root);
-+		ret = PTR_ERR(root);
- 		goto failed_mount4;
- 	}
- 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
--		dput(sb->s_root);
--		sb->s_root = NULL;
-+		iput(root);
- 		printk(KERN_ERR "EXT4-fs: corrupt root inode, run e2fsck\n");
- 		goto failed_mount4;
- 	}
-+	sb->s_root = d_alloc_root(root);
-+	if (!sb->s_root) {
-+		printk(KERN_ERR "EXT4-fs: get root dentry failed\n");
-+		iput(root);
-+		ret = -ENOMEM;
-+		goto failed_mount4;
-+	}
- 
- 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
- 
-@@ -2330,7 +2334,7 @@ out_fail:
- 	sb->s_fs_info = NULL;
- 	kfree(sbi);
- 	lock_kernel();
--	return -EINVAL;
-+	return ret;
- }
- 
- /*
-@@ -2366,8 +2370,8 @@ static journal_t *ext4_get_journal(struc
- 	 * things happen if we iget() an unused inode, as the subsequent
- 	 * iput() will try to delete it. */
- 
--	journal_inode = iget(sb, journal_inum);
--	if (!journal_inode) {
-+	journal_inode = ext4_iget(sb, journal_inum);
-+	if (IS_ERR(journal_inode)) {
- 		printk(KERN_ERR "EXT4-fs: no journal found.\n");
- 		return NULL;
- 	}
-@@ -2380,7 +2384,7 @@ static journal_t *ext4_get_journal(struc
- 
- 	jbd_debug(2, "Journal inode found at %p: %Ld bytes\n",
- 		  journal_inode, journal_inode->i_size);
--	if (is_bad_inode(journal_inode) || !S_ISREG(journal_inode->i_mode)) {
-+	if (!S_ISREG(journal_inode->i_mode)) {
- 		printk(KERN_ERR "EXT4-fs: invalid journal inode.\n");
- 		iput(journal_inode);
- 		return NULL;
-diff -puN include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try include/linux/ext4_fs.h
---- a/include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/include/linux/ext4_fs.h
-@@ -1024,7 +1024,7 @@ int ext4_get_blocks_handle(handle_t *han
- 				struct buffer_head *bh_result,
- 				int create, int extend_disksize);
- 
--extern void ext4_read_inode (struct inode *);
-+extern struct inode *ext4_iget(struct super_block *, unsigned long);
- extern int  ext4_write_inode (struct inode *, int);
- extern int  ext4_setattr (struct dentry *, struct iattr *);
- extern void ext4_delete_inode (struct inode *);
-_
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
