@@ -1,67 +1,90 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: BUG_ON at mballoc.c:3752
-Date: Wed, 06 Feb 2008 15:59:48 -0600
-Message-ID: <1202335188.6886.15.camel@norville.austin.ibm.com>
-References: <20080131140137.GA20780@alice> <20080131154207.GA22201@alice>
-	 <20080204060055.GC7494@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sesterhenn <snakebyte@gmx.de>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: akpm@linux-foundation.org
+Subject: - ext2-change-the-default-behaviour-on-error.patch removed from -mm tree
+Date: Wed, 06 Feb 2008 16:20:50 -0800
+Message-ID: <200802070020.m170KV5A006148@imap1.linux-foundation.org>
+To: aneesh.kumar@linux.vnet.ibm.com, cebbert@redhat.com,
+	davej@codemonkey.org.uk, jack@ucw.cz, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:44024 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753566AbYBFV7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Feb 2008 16:59:50 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m16M1ida013342
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 17:01:44 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m16Lxo6n228842
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 16:59:50 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m16Lxnc5021759
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Feb 2008 16:59:49 -0500
-In-Reply-To: <20080204060055.GC7494@skywalker>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:60008 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S934079AbYBGAWG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2008 19:22:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2008-02-04 at 11:30 +0530, Aneesh Kumar K.V wrote:
-> On Thu, Jan 31, 2008 at 04:42:07PM +0100, Eric Sesterhenn wrote:
-> > * Eric Sesterhenn (snakebyte@gmx.de) wrote:
-> > > hi,
-> > > 
-> > > while running a modified version of fsfuzzer i triggered the BUG() in
-> > > ext4_mb_release_inode_pa(). Sadly I am not able to reproduce this using
-> > > the generated image, but running the fuzzer will usually trigger this in
-> > > less than 40 attempts. Increasing the JBD2 Debug level didnt give more
-> > > information. The kernel is current git with
-> > > ext4-fix-null-pointer-deref-in-journal_wait_on_commit_record.patch
-> > > applied. 
-> > 
-> > I am now able to reproduce this using this image:
-> > http://www.cccmz.de/~snakebyte/ext4.24.img.bz2
-> > 
-> > the following commands will trigger the oops for me
-> > 
-> > mount cfs/ext4.24.img /media/test -t ext4dev -o extents -o loop
-> > mkdir /media/test/stress
-> > chown snakebyte:snakebyte /media/test/stress && sudo -u snakebyte fstest -n 10 -l 10 -f 5 -s 40000 -p /media/test/stress/
-> > 
-> 
-> The file system is corrupted.
 
-That's what fsfuzzer does.
+The patch titled
+     ext2: change the default behaviour on error
+has been removed from the -mm tree.  Its filename was
+     ext2-change-the-default-behaviour-on-error.patch
 
->  The BUG_ON indicate that the free spcae
-> marked in the prealloc space and found by looking at the bitmap are not
-> same.
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-File systems should not call BUG() due to a corrupt file system.
-Instead the code should fail the operation, possibly marking the file
-system read-only (or panicking) depending on the errors= mount option.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
--- 
-David Kleikamp
-IBM Linux Technology Center
+------------------------------------------------------
+Subject: ext2: change the default behaviour on error
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+
+ext2 file system was by default ignoring errors and continuing.  This is
+not a good default as continuing on error could lead to file system
+corruption.  Change the default to mark the file system readonly.  Debian
+and ubuntu already does this as the default in their fstab.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: Dave Jones <davej@codemonkey.org.uk>
+Cc: Chuck Ebbert <cebbert@redhat.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/super.c |   16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff -puN fs/ext2/super.c~ext2-change-the-default-behaviour-on-error fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-change-the-default-behaviour-on-error
++++ a/fs/ext2/super.c
+@@ -234,16 +234,16 @@ static int ext2_show_options(struct seq_
+ 	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
+ 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
+ 	}
+-	if (test_opt(sb, ERRORS_CONT)) {
++	if (test_opt(sb, ERRORS_RO)) {
+ 		int def_errors = le16_to_cpu(es->s_errors);
+ 
+ 		if (def_errors == EXT2_ERRORS_PANIC ||
+-		    def_errors == EXT2_ERRORS_RO) {
+-			seq_puts(seq, ",errors=continue");
++		    def_errors == EXT2_ERRORS_CONTINUE) {
++			seq_puts(seq, ",errors=remount-ro");
+ 		}
+ 	}
+-	if (test_opt(sb, ERRORS_RO))
+-		seq_puts(seq, ",errors=remount-ro");
++	if (test_opt(sb, ERRORS_CONT))
++		seq_puts(seq, ",errors=continue");
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		seq_puts(seq, ",errors=panic");
+ 	if (test_opt(sb, NO_UID32))
+@@ -820,10 +820,10 @@ static int ext2_fill_super(struct super_
+ 	
+ 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
+ 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+-	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_RO)
+-		set_opt(sbi->s_mount_opt, ERRORS_RO);
+-	else
++	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_CONTINUE)
+ 		set_opt(sbi->s_mount_opt, ERRORS_CONT);
++	else
++		set_opt(sbi->s_mount_opt, ERRORS_RO);
+ 
+ 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+_
+
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+origin.patch
