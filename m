@@ -1,88 +1,125 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: [PATCH] ext4 can fail badly when device stops accepting
-	BIO_RW_BARRIER requests.
-Date: Wed, 06 Feb 2008 22:25:21 -0600
-Message-ID: <1202358321.6497.5.camel@norville.austin.ibm.com>
-References: <18346.24466.83745.944149@notabene.brown>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: Re: [RESEND] [PATCH] ext3,4:fdatasync should skip metadata
+  writeout when overwriting
+Date: Thu, 07 Feb 2008 15:45:07 +0900
+Message-ID: <6.0.0.20.2.20080207154342.03ac7a08@172.19.0.2>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
+ <20071115185919.7df4cda9.akpm@linux-foundation.org>
+ <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
+ <20080206162231.GA23382@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:34789 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755307AbYBGEZ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Feb 2008 23:25:26 -0500
-In-Reply-To: <18346.24466.83745.944149@notabene.brown>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Duplicating Neil Brown's jbd patch for jbd2.  I guess this can go
-through the ext4 queue rather than straight into -mm.
-
-Neil's text:
-
-Some devices - notably dm and md - can change their behaviour in
-response to BIO_RW_BARRIER requests.  They might start out accepting
-such requests but on reconfiguration, they find out that they cannot
-any more.
-
-ext3 (and other filesystems) deal with this by always testing if
-BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
-requests without the barrier (probably after waiting for any pending
-writes to complete).
-
-However there is a bug in the handling for this for ext3.
-
-When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request,
-it sets the buffer_ordered flag on the buffer head.
-If the request completes successfully, the flag STAYS SET.
-
-Other code might then write the same buffer_head after the device has
-been reconfigured to not accept barriers.  This write will then fail,
-but the "other code" is not ready to handle EOPNOTSUPP errors and the
-error will be treated as fatal.
-
-This can be seen without having to reconfigure a device at exactly the
-wrong time by putting:
-
-                if (buffer_ordered(bh))
-                        printk("OH DEAR, and ordered buffer\n");
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	adilger@sun.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20080206162231.GA23382@atrey.karlin.mff.cuni.cz>
+References: <6.0.0.20.2.20071116114652.03b9e4e8@172.19.0.2>
+ <20071115185919.7df4cda9.akpm@linux-foundation.org>
+ <6.0.0.20.2.20080204181941.03f60eb0@172.19.0.2>
+ <20080206162231.GA23382@atrey.karlin.mff.cuni.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-in the while loop in "commit phase 5" of journal_commit_transaction.
+>> Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+>  Yes, the patch looks fine. You can add
+>Acked-by: Jan Kara <jack@suse.cz>
+>  if you wish.
+>								Honza
 
-If it ever prints the "OH DEAR ..." message (as it does sometimes for
-me), then that request could (in different circumstances) have failed
-with EOPNOTSUPP, but that isn't tested for.
+Thank you for your comment.
+Please merge my patch.
 
-My proposed fix is to clear the buffer_ordered flag after it has been
-used, as in the following patch.
+Thanks.
 
-Thanks,
-NeilBrown
+[PATCH] ext3,4:fdatasync should skip metadata writeout when overwriting
 
-Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Currently fdatasync is identical to fsync in ext3,4.
+I think fdatasync should skip journal flush in data=ordered and data=writeback mode
+when it overwrites to already-instantiated blocks on HDD.
+When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal writeout
+because this indicates only atime or/and mtime updates.  
 
-diff -Nurp linux-2.6.24-mm1/fs/jbd2/commit.c linux/fs/jbd2/commit.c
---- linux-2.6.24-mm1/fs/jbd2/commit.c	2008-02-04 09:08:44.000000000 -0600
-+++ linux/fs/jbd2/commit.c	2008-02-06 22:11:14.000000000 -0600
-@@ -148,6 +148,8 @@ static int journal_submit_commit_record(
- 		barrier_done = 1;
+Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+
+I did a performance test using the sysbench.
+
+#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G 
+--file-test-mode=rndwr --file-fsync-mode=fdatasync run
+
+The result was:
+
+	-2.6.24
+	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
+	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
+	  775.45 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          64.5814s
+	    total number of events:              50080
+	    total time taken by event execution: 3713.9836
+	    per-request statistics:
+	         min:                            0.0000s
+	         avg:                            0.0742s
+	         max:                            0.9375s
+	         approx.  95 percentile:         0.2901s
+
+	Threads fairness:
+	    events (avg/stddev):           391.2500/23.26
+	    execution time (avg/stddev):   29.0155/1.99
+
+
+	-2.6.24-patched
+	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
+	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
+	1050.83 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          47.5900s
+	    total number of events:              50009
+	    total time taken by event execution: 2934.5768
+	    per-request statistics:
+ 	         min:                            0.0000s
+	         avg:                            0.0587s
+ 	         max:                            0.8938s
+	         approx.  95 percentile:         0.1993s
+
+	Threads fairness:
+	    events (avg/stddev):           390.6953/22.64
+	    execution time (avg/stddev):   22.9264/1.17
+
+
+Filesystem I/O throughput was improved.
+
+Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Acked-by: Jan Kara <jack@suse.cz>
+
+diff -Nrup linux-2.6.24.org/fs/ext3/fsync.c linux-2.6.24/fs/ext3/fsync.c
+--- linux-2.6.24.org/fs/ext3/fsync.c	2008-01-25 07:58:37.000000000 +0900
++++ linux-2.6.24/fs/ext3/fsync.c	2008-02-04 12:42:42.000000000 +0900
+@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+ 		goto out;
  	}
- 	ret = submit_bh(WRITE, bh);
-+	if (barrier_done)
-+		clear_buffer_ordered(bh);
  
- 	/* is it possible for another commit to fail at roughly
- 	 * the same time as this one?  If so, we don't want to
-@@ -166,7 +168,6 @@ static int journal_submit_commit_record(
- 		spin_unlock(&journal->j_state_lock);
++	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++		goto out;
++
+ 	/*
+ 	* The VFS has written the file data.  If the inode is unaltered
+ 	* then we need not start a commit.
+diff -Nrup linux-2.6.24.org/fs/ext4/fsync.c linux-2.6.24/fs/ext4/fsync.c
+--- linux-2.6.24.org/fs/ext4/fsync.c	2008-01-25 07:58:37.000000000 +0900
++++ linux-2.6.24/fs/ext4/fsync.c	2008-02-04 12:43:37.000000000 +0900
+@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
+ 		goto out;
+ 	}
  
- 		/* And try again, without the barrier */
--		clear_buffer_ordered(bh);
- 		set_buffer_uptodate(bh);
- 		set_buffer_dirty(bh);
- 		ret = submit_bh(WRITE, bh);
++        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++                goto out;
++
+ 	/*
+ 	* The VFS has written the file data.  If the inode is unaltered
+ 	* then we need not start a commit.
+
