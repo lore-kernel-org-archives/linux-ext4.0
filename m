@@ -1,95 +1,88 @@
-From: akpm@linux-foundation.org
-Subject: - iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch removed from -mm tree
-Date: Wed, 06 Feb 2008 19:34:29 -0800
-Message-ID: <200802070334.m173YAGn014078@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: akpm@linux-foundation.org, dhowells@redhat.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, tytso@mit.edu,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: [PATCH] ext4 can fail badly when device stops accepting
+	BIO_RW_BARRIER requests.
+Date: Wed, 06 Feb 2008 22:25:21 -0600
+Message-ID: <1202358321.6497.5.camel@norville.austin.ibm.com>
+References: <18346.24466.83745.944149@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:34789 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755307AbYBGEZ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Feb 2008 23:25:26 -0500
+In-Reply-To: <18346.24466.83745.944149@notabene.brown>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+Duplicating Neil Brown's jbd patch for jbd2.  I guess this can go
+through the ext4 queue rather than straight into -mm.
+
+Neil's text:
+
+Some devices - notably dm and md - can change their behaviour in
+response to BIO_RW_BARRIER requests.  They might start out accepting
+such requests but on reconfiguration, they find out that they cannot
+any more.
+
+ext3 (and other filesystems) deal with this by always testing if
+BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
+requests without the barrier (probably after waiting for any pending
+writes to complete).
+
+However there is a bug in the handling for this for ext3.
+
+When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request,
+it sets the buffer_ordered flag on the buffer head.
+If the request completes successfully, the flag STAYS SET.
+
+Other code might then write the same buffer_head after the device has
+been reconfigured to not accept barriers.  This write will then fail,
+but the "other code" is not ready to handle EOPNOTSUPP errors and the
+error will be treated as fatal.
+
+This can be seen without having to reconfigure a device at exactly the
+wrong time by putting:
+
+                if (buffer_ordered(bh))
+                        printk("OH DEAR, and ordered buffer\n");
 
 
-The patch titled
-     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
-has been removed from the -mm tree.  Its filename was
-     iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
+in the while loop in "commit phase 5" of journal_commit_transaction.
 
-This patch was dropped because it was folded into iget-stop-ext3-from-using-iget-and-read_inode-try.patch
+If it ever prints the "OH DEAR ..." message (as it does sometimes for
+me), then that request could (in different circumstances) have failed
+with EOPNOTSUPP, but that isn't tested for.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+My proposed fix is to clear the buffer_ordered flag after it has been
+used, as in the following patch.
 
-------------------------------------------------------
-Subject: iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
-From: Andrew Morton <akpm@linux-foundation.org>
+Thanks,
+NeilBrown
 
-WARNING: no space between function name and open parenthesis '('
-#370: FILE: include/linux/ext3_fs.h:806:
-+extern struct inode *ext3_iget (struct super_block *, unsigned long);
+Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 
-total: 0 errors, 1 warnings, 312 lines checked
-Your patch has style problems, please review.  If any of these errors
-are false positives report them to the maintainer, see
-CHECKPATCH in MAINTAINERS.
-
-Please run checkpatch prior to sending patches
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: David Howells <dhowells@redhat.com>
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- include/linux/ext3_fs.h |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff -puN include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes
-+++ a/include/linux/ext3_fs.h
-@@ -823,7 +823,7 @@ int ext3_get_blocks_handle(handle_t *han
- 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
- 	int create, int extend_disksize);
+diff -Nurp linux-2.6.24-mm1/fs/jbd2/commit.c linux/fs/jbd2/commit.c
+--- linux-2.6.24-mm1/fs/jbd2/commit.c	2008-02-04 09:08:44.000000000 -0600
++++ linux/fs/jbd2/commit.c	2008-02-06 22:11:14.000000000 -0600
+@@ -148,6 +148,8 @@ static int journal_submit_commit_record(
+ 		barrier_done = 1;
+ 	}
+ 	ret = submit_bh(WRITE, bh);
++	if (barrier_done)
++		clear_buffer_ordered(bh);
  
--extern struct inode *ext3_iget (struct super_block *, unsigned long);
-+extern struct inode *ext3_iget(struct super_block *, unsigned long);
- extern int  ext3_write_inode (struct inode *, int);
- extern int  ext3_setattr (struct dentry *, struct iattr *);
- extern void ext3_delete_inode (struct inode *);
-_
-
-Patches currently in -mm which might be from akpm@linux-foundation.org are
-
-origin.patch
-vfs-swap-do_ioctl-and-vfs_ioctl-names.patch
-cgroup-simplify-space-stripping.patch
-memory-controller-memory-accounting-v7.patch
-memory-controller-add-per-container-lru-and-reclaim-v7.patch
-memory-controller-oom-handling-v7.patch
-memory-controller-add-switch-to-control-what-type-of-pages-to-limit-v7.patch
-memcontrol-move-mm_cgroup-to-header-file.patch
-memcontrol-move-oom-task-exclusion-to-tasklist.patch
-memory-cgroup-enhancements-fix-zone-handling-in-try_to_free_mem_cgroup_page.patch
-memory-cgroup-enhancements-add-status-accounting-function-for-memory-cgroup.patch
-memory-cgroup-enhancements-add-memorystat-file.patch
-per-zone-and-reclaim-enhancements-for-memory-controller-take-3-remember-reclaim-priority-in-memory-cgroup.patch
-per-zone-and-reclaim-enhancements-for-memory-controller-take-3-modifies-vmscanc-for-isolate-globa-cgroup-lru-activity.patch
-cgroups-mechanism-to-process-each-task-in-a-cgroup.patch
-hotplug-cpu-move-tasks-in-empty-cpusets-to-parent.patch
-cpusets-update_cpumask-revision.patch
-drivers-edac-add-marvell-mv64x60-driver.patch
-introduce-flags-for-reserve_bootmem.patch
-iget-stop-affs-from-using-iget-and-read_inode-try.patch
-iget-stop-efs-from-using-iget-and-read_inode-try.patch
-iget-stop-ext2-from-using-iget-and-read_inode-try.patch
-iget-stop-ext3-from-using-iget-and-read_inode-try.patch
-iget-stop-ext3-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
-iget-stop-freevxfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
-iget-stop-the-minix-filesystem-from-using-iget-and-checkpatch-fixes.patch
-iget-stop-procfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
-iget-stop-qnx4-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
-iget-stop-romfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
-iget-stop-the-sysv-filesystem-from-using-iget-and-checkpatch-fixes.patch
-iget-stop-ufs-from-using-iget-and-read_inode-try-checkpatch-fixes.patch
-iget-stop-hostfs-from-using-iget-and-read_inode-checkpatch-fixes.patch
+ 	/* is it possible for another commit to fail at roughly
+ 	 * the same time as this one?  If so, we don't want to
+@@ -166,7 +168,6 @@ static int journal_submit_commit_record(
+ 		spin_unlock(&journal->j_state_lock);
+ 
+ 		/* And try again, without the barrier */
+-		clear_buffer_ordered(bh);
+ 		set_buffer_uptodate(bh);
+ 		set_buffer_dirty(bh);
+ 		ret = submit_bh(WRITE, bh);
