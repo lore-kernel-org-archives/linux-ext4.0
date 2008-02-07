@@ -1,44 +1,62 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [PATCH] ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests.
-Date: Thu, 7 Feb 2008 12:32:02 +1100
-Message-ID: <18346.24466.83745.944149@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759927AbYBGBcW@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch added to -mm tree
+Date: Wed, 06 Feb 2008 17:58:03 -0800
+Message-ID: <200802070157.m171vi00010822@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: neilb@suse.de, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-Some devices - notably dm and md - can change their behaviour in
-response to BIO_RW_BARRIER requests.  They might start out accepting
-such requests but on reconfiguration, they find out that they cannot
-any more.
+The patch titled
+     ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
+has been added to the -mm tree.  Its filename is
+     ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
+
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
+
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
+From: Neil Brown <neilb@suse.de>
+
+Some devices - notably dm and md - can change their behaviour in response
+to BIO_RW_BARRIER requests.  They might start out accepting such requests
+but on reconfiguration, they find out that they cannot any more.
 
 ext3 (and other filesystems) deal with this by always testing if
 BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
-requests without the barrier (probably after waiting for any pending
-writes to complete).
+requests without the barrier (probably after waiting for any pending writes
+to complete).
 
 However there is a bug in the handling for this for ext3.
 
-When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request,
-it sets the buffer_ordered flag on the buffer head.
-If the request completes successfully, the flag STAYS SET.
+When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request, it
+sets the buffer_ordered flag on the buffer head.  If the request completes
+successfully, the flag STAYS SET.
 
-Other code might then write the same buffer_head after the device has
-been reconfigured to not accept barriers.  This write will then fail,
-but the "other code" is not ready to handle EOPNOTSUPP errors and the
-error will be treated as fatal.
+Other code might then write the same buffer_head after the device has been
+reconfigured to not accept barriers.  This write will then fail, but the
+"other code" is not ready to handle EOPNOTSUPP errors and the error will be
+treated as fatal.
 
 This can be seen without having to reconfigure a device at exactly the
 wrong time by putting:
 
 		if (buffer_ordered(bh))
 			printk("OH DEAR, and ordered buffer\n");
-
 
 in the while loop in "commit phase 5" of journal_commit_transaction.
 
@@ -49,14 +67,17 @@ with EOPNOTSUPP, but that isn't tested for.
 My proposed fix is to clear the buffer_ordered flag after it has been
 used, as in the following patch.
 
-Thanks,
-NeilBrown
-
 Signed-off-by: Neil Brown <neilb@suse.de>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-diff .prev/fs/jbd/commit.c ./fs/jbd/commit.c
---- .prev/fs/jbd/commit.c	2008-02-07 10:01:57.000000000 +1100
-+++ ./fs/jbd/commit.c	2008-02-07 10:04:58.000000000 +1100
+ fs/jbd/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff -puN fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests fs/jbd/commit.c
+--- a/fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests
++++ a/fs/jbd/commit.c
 @@ -131,6 +131,8 @@ static int journal_write_commit_record(j
  		barrier_done = 1;
  	}
@@ -74,3 +95,20 @@ diff .prev/fs/jbd/commit.c ./fs/jbd/commit.c
  		set_buffer_uptodate(bh);
  		set_buffer_dirty(bh);
  		ret = sync_dirty_buffer(bh);
+_
+
+Patches currently in -mm which might be from neilb@suse.de are
+
+origin.patch
+one-less-parameter-to-__d_path.patch
+d_path-kerneldoc-cleanup.patch
+d_path-use-struct-path-in-struct-avc_audit_data.patch
+d_path-make-proc_get_link-use-a-struct-path-argument.patch
+d_path-make-get_dcookie-use-a-struct-path-argument.patch
+use-struct-path-in-struct-svc_export.patch
+use-struct-path-in-struct-svc_export-checkpatch-fixes.patch
+use-struct-path-in-struct-svc_expkey.patch
+d_path-make-seq_path-use-a-struct-path-argument.patch
+d_path-make-d_path-use-a-struct-path.patch
+d_path-make-d_path-use-a-struct-path-fix.patch
+ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
