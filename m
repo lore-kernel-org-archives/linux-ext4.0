@@ -1,166 +1,212 @@
 From: akpm@linux-foundation.org
-Subject: [patch 116/233] ext3: replace all adds to little endians variables with le*_add_cpu
-Date: Fri, 08 Feb 2008 04:20:13 -0800
-Message-ID: <200802081219.m18CJsII024121@imap1.linux-foundation.org>
+Subject: [patch 115/233] byteorder: move le32_add_cpu & friends from OCFS2 to core
+Date: Fri, 08 Feb 2008 04:20:12 -0800
+Message-ID: <200802081219.m18CJrO7024117@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, marcin.slusarz@gmail.com, dgc@sgi.com,
 	linux-ext4@vger.kernel.org, mark.fasheh@oracle.com, tes@sgi.com
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:34632 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41602 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757754AbYBHMbQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 07:31:16 -0500
+	by vger.kernel.org with ESMTP id S1757540AbYBHMb3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 07:31:29 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Marcin Slusarz <marcin.slusarz@gmail.com>
 
-replace all:
-	little_endian_variable = cpu_to_leX(leX_to_cpu(little_endian_variable) +
-				expression_in_cpu_byteorder);
-with:
-	leX_add_cpu(&little_endian_variable, expression_in_cpu_byteorder);
-sparse didn't generate any new warning with this patch
+This patchset moves le*_add_cpu and be*_add_cpu functions from OCFS2 to core
+header (1st), converts ext3 filesystem to this API (2nd) and replaces XFS
+different named functions with new ones (3rd).
+
+There are many places where these functions will be useful.  Just look at:
+grep -r 'cpu_to_[ble12346]*([ble12346]*_to_cpu.*[-+]' linux-src/ Patch for
+ext3 is an example how conversions will probably look like.
+
+
+
+This patch:
+
+- move inline functions which add native byte order variable to
+  little/big endian variable to core header
+  * le16_add_cpu(__le16 *var, u16 val)
+  * le32_add_cpu(__le32 *var, u32 val)
+  * le64_add_cpu(__le64 *var, u64 val)
+  * be32_add_cpu(__be32 *var, u32 val)
+- add for completeness:
+  * be16_add_cpu(__be16 *var, u16 val)
+  * be64_add_cpu(__be64 *var, u64 val)
 
 Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
-Cc: Mark Fasheh <mark.fasheh@oracle.com>
+Acked-by: Mark Fasheh <mark.fasheh@oracle.com>
 Cc: David Chinner <dgc@sgi.com>
 Cc: Timothy Shimmin <tes@sgi.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/balloc.c |    7 ++-----
- fs/ext3/ialloc.c |   12 ++++--------
- fs/ext3/resize.c |   12 ++++--------
- fs/ext3/super.c  |    2 +-
- fs/ext3/xattr.c  |    6 ++----
- 5 files changed, 13 insertions(+), 26 deletions(-)
+ fs/ocfs2/cluster/endian.h         |   30 ------------------
+ fs/ocfs2/cluster/nodemanager.c    |    1 
+ fs/ocfs2/dlm/dlmast.c             |    1 
+ fs/ocfs2/endian.h                 |   45 ----------------------------
+ fs/ocfs2/ocfs2.h                  |    1 
+ include/linux/byteorder/generic.h |   30 ++++++++++++++++++
+ 6 files changed, 30 insertions(+), 78 deletions(-)
 
-diff -puN fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/balloc.c
-@@ -630,9 +630,7 @@ do_more:
- 	jbd_unlock_bh_state(bitmap_bh);
+diff -puN fs/ocfs2/cluster/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/cluster/endian.h
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_CLUSTER_ENDIAN_H
+-#define OCFS2_CLUSTER_ENDIAN_H
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_CLUSTER_ENDIAN_H */
+diff -puN fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/cluster/nodemanager.c
+--- a/fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/cluster/nodemanager.c
+@@ -24,7 +24,6 @@
+ #include <linux/sysctl.h>
+ #include <linux/configfs.h>
  
- 	spin_lock(sb_bgl_lock(sbi, block_group));
--	desc->bg_free_blocks_count =
--		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
--			group_freed);
-+	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
- 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+-#include "endian.h"
+ #include "tcp.h"
+ #include "nodemanager.h"
+ #include "heartbeat.h"
+diff -puN fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/dlm/dlmast.c
+--- a/fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/dlm/dlmast.c
+@@ -43,7 +43,6 @@
+ #include "cluster/heartbeat.h"
+ #include "cluster/nodemanager.h"
+ #include "cluster/tcp.h"
+-#include "cluster/endian.h"
  
-@@ -1696,8 +1694,7 @@ allocated:
- 			ret_block, goal_hits, goal_attempts);
+ #include "dlmapi.h"
+ #include "dlmcommon.h"
+diff -puN fs/ocfs2/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/endian.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_ENDIAN_H
+-#define OCFS2_ENDIAN_H
+-
+-static inline void le16_add_cpu(__le16 *var, u16 val)
+-{
+-	*var = cpu_to_le16(le16_to_cpu(*var) + val);
+-}
+-
+-static inline void le32_add_cpu(__le32 *var, u32 val)
+-{
+-	*var = cpu_to_le32(le32_to_cpu(*var) + val);
+-}
+-
+-static inline void le64_add_cpu(__le64 *var, u64 val)
+-{
+-	*var = cpu_to_le64(le64_to_cpu(*var) + val);
+-}
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_ENDIAN_H */
+diff -puN fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/ocfs2.h
+--- a/fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/ocfs2.h
+@@ -43,7 +43,6 @@
+ #include "dlm/dlmapi.h"
  
- 	spin_lock(sb_bgl_lock(sbi, group_no));
--	gdp->bg_free_blocks_count =
--			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)-num);
-+	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
- 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+ #include "ocfs2_fs.h"
+-#include "endian.h"
+ #include "ocfs2_lockid.h"
  
-diff -puN fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/ialloc.c
-@@ -164,11 +164,9 @@ void ext3_free_inode (handle_t *handle, 
+ /* Most user visible OCFS2 inodes will have very few pieces of
+diff -puN include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core include/linux/byteorder/generic.h
+--- a/include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/include/linux/byteorder/generic.h
+@@ -146,6 +146,36 @@
+ #define htons(x) ___htons(x)
+ #define ntohs(x) ___ntohs(x)
  
- 		if (gdp) {
- 			spin_lock(sb_bgl_lock(sbi, block_group));
--			gdp->bg_free_inodes_count = cpu_to_le16(
--				le16_to_cpu(gdp->bg_free_inodes_count) + 1);
-+			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
- 			if (is_directory)
--				gdp->bg_used_dirs_count = cpu_to_le16(
--				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
-+				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
- 			spin_unlock(sb_bgl_lock(sbi, block_group));
- 			percpu_counter_inc(&sbi->s_freeinodes_counter);
- 			if (is_directory)
-@@ -527,11 +525,9 @@ got:
- 	err = ext3_journal_get_write_access(handle, bh2);
- 	if (err) goto fail;
- 	spin_lock(sb_bgl_lock(sbi, group));
--	gdp->bg_free_inodes_count =
--		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
-+	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
- 	if (S_ISDIR(mode)) {
--		gdp->bg_used_dirs_count =
--			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
-+		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
- 	}
- 	spin_unlock(sb_bgl_lock(sbi, group));
- 	BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
-diff -puN fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/resize.c
-@@ -518,8 +518,7 @@ static int add_new_gdb(handle_t *handle,
- 	EXT3_SB(sb)->s_gdb_count++;
- 	kfree(o_group_desc);
++static inline void le16_add_cpu(__le16 *var, u16 val)
++{
++	*var = cpu_to_le16(le16_to_cpu(*var) + val);
++}
++
++static inline void le32_add_cpu(__le32 *var, u32 val)
++{
++	*var = cpu_to_le32(le32_to_cpu(*var) + val);
++}
++
++static inline void le64_add_cpu(__le64 *var, u64 val)
++{
++	*var = cpu_to_le64(le64_to_cpu(*var) + val);
++}
++
++static inline void be16_add_cpu(__be16 *var, u16 val)
++{
++	*var = cpu_to_be16(be16_to_cpu(*var) + val);
++}
++
++static inline void be32_add_cpu(__be32 *var, u32 val)
++{
++	*var = cpu_to_be32(be32_to_cpu(*var) + val);
++}
++
++static inline void be64_add_cpu(__be64 *var, u64 val)
++{
++	*var = cpu_to_be64(be64_to_cpu(*var) + val);
++}
++
+ #endif /* KERNEL */
  
--	es->s_reserved_gdt_blocks =
--		cpu_to_le16(le16_to_cpu(es->s_reserved_gdt_blocks) - 1);
-+	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
- 	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
- 
- 	return 0;
-@@ -890,10 +889,8 @@ int ext3_group_add(struct super_block *s
- 	 * blocks/inodes before the group is live won't actually let us
- 	 * allocate the new space yet.
- 	 */
--	es->s_blocks_count = cpu_to_le32(le32_to_cpu(es->s_blocks_count) +
--		input->blocks_count);
--	es->s_inodes_count = cpu_to_le32(le32_to_cpu(es->s_inodes_count) +
--		EXT3_INODES_PER_GROUP(sb));
-+	le32_add_cpu(&es->s_blocks_count, input->blocks_count);
-+	le32_add_cpu(&es->s_inodes_count, EXT3_INODES_PER_GROUP(sb));
- 
- 	/*
- 	 * We need to protect s_groups_count against other CPUs seeing
-@@ -926,8 +923,7 @@ int ext3_group_add(struct super_block *s
- 
- 	/* Update the reserved block counts only once the new group is
- 	 * active. */
--	es->s_r_blocks_count = cpu_to_le32(le32_to_cpu(es->s_r_blocks_count) +
--		input->reserved_blocks);
-+	le32_add_cpu(&es->s_r_blocks_count, input->reserved_blocks);
- 
- 	/* Update the free space counts */
- 	percpu_counter_add(&sbi->s_freeblocks_counter,
-diff -puN fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/super.c
-@@ -1222,7 +1222,7 @@ static int ext3_setup_super(struct super
- #endif
- 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
- 		es->s_max_mnt_count = cpu_to_le16(EXT3_DFL_MAX_MNT_COUNT);
--	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
-+	le16_add_cpu(&es->s_mnt_count, 1);
- 	es->s_mtime = cpu_to_le32(get_seconds());
- 	ext3_update_dynamic_rev(sb);
- 	EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-diff -puN fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/xattr.c
-@@ -492,8 +492,7 @@ ext3_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		BHDR(bh)->h_refcount = cpu_to_le32(
--				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
-+		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
- 		error = ext3_journal_dirty_metadata(handle, bh);
- 		if (IS_SYNC(inode))
- 			handle->h_sync = 1;
-@@ -780,8 +779,7 @@ inserted:
- 				if (error)
- 					goto cleanup_dquot;
- 				lock_buffer(new_bh);
--				BHDR(new_bh)->h_refcount = cpu_to_le32(1 +
--					le32_to_cpu(BHDR(new_bh)->h_refcount));
-+				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
- 				ea_bdebug(new_bh, "reusing; refcount now=%d",
- 					le32_to_cpu(BHDR(new_bh)->h_refcount));
- 				unlock_buffer(new_bh);
+ #endif /* _LINUX_BYTEORDER_GENERIC_H */
 _
