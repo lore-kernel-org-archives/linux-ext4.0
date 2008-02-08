@@ -1,112 +1,104 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] allocate struct ext4_allocation_context from a kmem
-	cache to save stack space
-Date: Thu, 07 Feb 2008 16:11:53 -0800
-Message-ID: <1202429513.3840.12.camel@localhost.localdomain>
-References: <47A9E8CA.2070404@redhat.com>
+Subject: Re: [PATCH] ext4 can fail badly when device stops accepting
+	BIO_RW_BARRIER requests.
+Date: Thu, 07 Feb 2008 16:22:37 -0800
+Message-ID: <1202430157.3840.14.camel@localhost.localdomain>
+References: <18346.24466.83745.944149@notabene.brown>
+	 <1202358321.6497.5.camel@norville.austin.ibm.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Neil Brown <neilb@suse.de>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:57974 "EHLO e3.ny.us.ibm.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:48890 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758959AbYBHALz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Feb 2008 19:11:55 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m180BrSf025254
-	for <linux-ext4@vger.kernel.org>; Thu, 7 Feb 2008 19:11:53 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m180BqE6232788
-	for <linux-ext4@vger.kernel.org>; Thu, 7 Feb 2008 19:11:52 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m180Bq9J027057
-	for <linux-ext4@vger.kernel.org>; Thu, 7 Feb 2008 19:11:52 -0500
-In-Reply-To: <47A9E8CA.2070404@redhat.com>
+	id S1761402AbYBHAWk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Feb 2008 19:22:40 -0500
+In-Reply-To: <1202358321.6497.5.camel@norville.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-02-06 at 11:05 -0600, Eric Sandeen wrote:
-> struct ext4_allocation_context is rather large, and this bloats
-> the stack of many functions which use it.  Allocating it from
-> a named slab cache will alleviate this.
+On Wed, 2008-02-06 at 22:25 -0600, Dave Kleikamp wrote:
+> Duplicating Neil Brown's jbd patch for jbd2.  I guess this can go
+> through the ext4 queue rather than straight into -mm.
 > 
-> For example, with this change (on top of the noinline patch sent earlier):
-> 
-> -ext4_mb_new_blocks		200
-> +ext4_mb_new_blocks		 40
-> 
-> -ext4_mb_free_blocks		344
-> +ext4_mb_free_blocks		168
-> 
-> -ext4_mb_release_inode_pa	216
-> +ext4_mb_release_inode_pa	 40
-> 
-> -ext4_mb_release_group_pa	192
-> +ext4_mb_release_group_pa	 24
-> 
-> Most of these stack-allocated structs are actually used only for
-> mballoc history; and in those cases often a smaller struct would do.
-> So changing that may be another way around it, at least for those
-> functions, if preferred.  For now, in those cases where the ac
-> is only for history, an allocation failure simply skips the history
-> recording, and does not cause any other failures.
-> 
-> Comments?
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> Index: linux-2.6.24-rc6-mm1/fs/ext4/mballoc.c
-> ===================================================================
-> --- linux-2.6.24-rc6-mm1.orig/fs/ext4/mballoc.c
-> +++ linux-2.6.24-rc6-mm1/fs/ext4/mballoc.c
-> @@ -419,6 +419,7 @@
->  #define MB_DEFAULT_GROUP_PREALLOC	512
-> 
->  static struct kmem_cache *ext4_pspace_cachep;
-> +static struct kmem_cache *ext4_ac_cachep;
-> 
->  #ifdef EXT4_BB_MAX_BLOCKS
->  #undef EXT4_BB_MAX_BLOCKS
-> @@ -2958,11 +2959,18 @@ int __init init_ext4_mballoc(void)
->  	if (ext4_pspace_cachep == NULL)
->  		return -ENOMEM;
-> 
-> -#ifdef CONFIG_PROC_FS
-> +	ext4_ac_cachep =
-> +		kmem_cache_create("ext4_alloc_context",
-> +				     sizeof(struct ext4_allocation_context),
-> +				     0, SLAB_RECLAIM_ACCOUNT, NULL);
-> +	if (ext4_ac_cachep == NULL) {
-> +		kmem_cache_destroy(ext4_pspace_cachep);
-> +		return -ENOMEM;
-> +	}
-> +
->  	proc_root_ext4 = proc_mkdir(EXT4_ROOT, proc_root_fs);
->  	if (proc_root_ext4 == NULL)
->  		printk(KERN_ERR "EXT4-fs: Unable to create %s\n", EXT4_ROOT);
-> -#endif
-> 
->  	return 0;
->  }
-> @@ -2971,9 +2979,8 @@ void exit_ext4_mballoc(void)
->  {
->  	/* XXX: synchronize_rcu(); */
->  	kmem_cache_destroy(ext4_pspace_cachep);
-> -#ifdef CONFIG_PROC_FS
-> +	kmem_cache_destroy(ext4_ac_cachep);
->  	remove_proc_entry(EXT4_ROOT, proc_root_fs);
-> -#endif
->  }
-> 
-> 
+Checked-in.
 
-Do you intend to remove the #ifdef CONFIG_PROC_FS, or it's a accident? I
-think we need keep that to allow ext4 build without procfs configured.
-
-Other than this, the patch looks fine to me.:)
+Thanks Shaggy and Neil.
 
 Mingming
+
+> Neil's text:
+> 
+> Some devices - notably dm and md - can change their behaviour in
+> response to BIO_RW_BARRIER requests.  They might start out accepting
+> such requests but on reconfiguration, they find out that they cannot
+> any more.
+> 
+> ext3 (and other filesystems) deal with this by always testing if
+> BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
+> requests without the barrier (probably after waiting for any pending
+> writes to complete).
+> 
+> However there is a bug in the handling for this for ext3.
+> 
+> When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request,
+> it sets the buffer_ordered flag on the buffer head.
+> If the request completes successfully, the flag STAYS SET.
+> 
+> Other code might then write the same buffer_head after the device has
+> been reconfigured to not accept barriers.  This write will then fail,
+> but the "other code" is not ready to handle EOPNOTSUPP errors and the
+> error will be treated as fatal.
+> 
+> This can be seen without having to reconfigure a device at exactly the
+> wrong time by putting:
+> 
+>                 if (buffer_ordered(bh))
+>                         printk("OH DEAR, and ordered buffer\n");
+> 
+> 
+> in the while loop in "commit phase 5" of journal_commit_transaction.
+> 
+> If it ever prints the "OH DEAR ..." message (as it does sometimes for
+> me), then that request could (in different circumstances) have failed
+> with EOPNOTSUPP, but that isn't tested for.
+> 
+> My proposed fix is to clear the buffer_ordered flag after it has been
+> used, as in the following patch.
+> 
+> Thanks,
+> NeilBrown
+> 
+> Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+> 
+> diff -Nurp linux-2.6.24-mm1/fs/jbd2/commit.c linux/fs/jbd2/commit.c
+> --- linux-2.6.24-mm1/fs/jbd2/commit.c	2008-02-04 09:08:44.000000000 -0600
+> +++ linux/fs/jbd2/commit.c	2008-02-06 22:11:14.000000000 -0600
+> @@ -148,6 +148,8 @@ static int journal_submit_commit_record(
+>  		barrier_done = 1;
+>  	}
+>  	ret = submit_bh(WRITE, bh);
+> +	if (barrier_done)
+> +		clear_buffer_ordered(bh);
+> 
+>  	/* is it possible for another commit to fail at roughly
+>  	 * the same time as this one?  If so, we don't want to
+> @@ -166,7 +168,6 @@ static int journal_submit_commit_record(
+>  		spin_unlock(&journal->j_state_lock);
+> 
+>  		/* And try again, without the barrier */
+> -		clear_buffer_ordered(bh);
+>  		set_buffer_uptodate(bh);
+>  		set_buffer_dirty(bh);
+>  		ret = submit_bh(WRITE, bh);
+> 
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
