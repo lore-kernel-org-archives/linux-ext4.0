@@ -1,418 +1,143 @@
-From: akpm@linux-foundation.org
-Subject: - iget-stop-ext4-from-using-iget-and-read_inode-try.patch removed from -mm tree
-Date: Fri, 08 Feb 2008 00:07:36 -0800
-Message-ID: <200802080807.m1887HvQ014523@imap1.linux-foundation.org>
-To: dhowells@redhat.com, hch@lst.de, jack@suse.cz,
-	linux-ext4@vger.kernel.org, tytso@mit.edu,
-	mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -v2] ext4: Don't panic in case of corrupt bitmap
+Date: Fri,  8 Feb 2008 14:59:28 +0530
+Message-ID: <1202462968-13029-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:36591 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933261AbYBHIVz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 03:21:55 -0500
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:60556 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1759420AbYBHJ3k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 04:29:40 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m189TVUZ014099
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 14:59:31 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m189TVCN1064994
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 14:59:31 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m189TUhv013994
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 09:29:31 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Multiblock allocator calls BUG_ON in many case if the free and used
+blocks count obtained looking at the bitmap is different from what
+the allocator internally accounted for. Use ext4_error in such case
+and don't panic the system.
 
-The patch titled
-     iget: stop EXT4 from using iget() and read_inode()
-has been removed from the -mm tree.  Its filename was
-     iget-stop-ext4-from-using-iget-and-read_inode-try.patch
-
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: iget: stop EXT4 from using iget() and read_inode()
-From: David Howells <dhowells@redhat.com>
-
-Stop the EXT4 filesystem from using iget() and read_inode().  Replace
-ext4_read_inode() with ext4_iget(), and call that instead of iget(). 
-ext4_iget() then uses iget_locked() directly and returns a proper error code
-instead of an inode in the event of an error.
-
-ext4_fill_super() returns any error incurred when getting the root inode
-instead of EINVAL.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Acked-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/ext4/mballoc.c |   49 +++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 35 insertions(+), 14 deletions(-)
 
- fs/ext4/ialloc.c        |   58 ++++++++++++++++++++++----------------
- fs/ext4/inode.c         |   25 ++++++++++++----
- fs/ext4/namei.c         |   29 +++++--------------
- fs/ext4/resize.c        |    7 +---
- fs/ext4/super.c         |   36 +++++++++++++----------
- include/linux/ext4_fs.h |    2 -
- 6 files changed, 87 insertions(+), 70 deletions(-)
-
-diff -puN fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/ialloc.c
-@@ -782,14 +782,15 @@ struct inode *ext4_orphan_get(struct sup
- 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
- 	ext4_group_t block_group;
- 	int bit;
--	struct buffer_head *bitmap_bh = NULL;
-+	struct buffer_head *bitmap_bh;
- 	struct inode *inode = NULL;
-+	long err = -EIO;
- 
- 	/* Error cases - e2fsck has already cleaned up for us */
- 	if (ino > max_ino) {
- 		ext4_warning(sb, __FUNCTION__,
- 			     "bad orphan ino %lu!  e2fsck was run?", ino);
--		goto out;
-+		goto error;
- 	}
- 
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-@@ -798,38 +799,49 @@ struct inode *ext4_orphan_get(struct sup
- 	if (!bitmap_bh) {
- 		ext4_warning(sb, __FUNCTION__,
- 			     "inode bitmap error for orphan %lu", ino);
--		goto out;
-+		goto error;
- 	}
- 
- 	/* Having the inode bit set should be a 100% indicator that this
- 	 * is a valid orphan (no e2fsck run on fs).  Orphans also include
- 	 * inodes that were being truncated, so we can't check i_nlink==0.
- 	 */
--	if (!ext4_test_bit(bit, bitmap_bh->b_data) ||
--			!(inode = iget(sb, ino)) || is_bad_inode(inode) ||
--			NEXT_ORPHAN(inode) > max_ino) {
--		ext4_warning(sb, __FUNCTION__,
--			     "bad orphan inode %lu!  e2fsck was run?", ino);
--		printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
--		       bit, (unsigned long long)bitmap_bh->b_blocknr,
--		       ext4_test_bit(bit, bitmap_bh->b_data));
--		printk(KERN_NOTICE "inode=%p\n", inode);
--		if (inode) {
--			printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
--			       is_bad_inode(inode));
--			printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
--			       NEXT_ORPHAN(inode));
--			printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
--		}
-+	if (!ext4_test_bit(bit, bitmap_bh->b_data))
-+		goto bad_orphan;
-+
-+	inode = ext4_iget(sb, ino);
-+	if (IS_ERR(inode))
-+		goto iget_failed;
-+
-+	if (NEXT_ORPHAN(inode) > max_ino)
-+		goto bad_orphan;
-+	brelse(bitmap_bh);
-+	return inode;
-+
-+iget_failed:
-+	err = PTR_ERR(inode);
-+	inode = NULL;
-+bad_orphan:
-+	ext4_warning(sb, __FUNCTION__,
-+		     "bad orphan inode %lu!  e2fsck was run?", ino);
-+	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
-+	       bit, (unsigned long long)bitmap_bh->b_blocknr,
-+	       ext4_test_bit(bit, bitmap_bh->b_data));
-+	printk(KERN_NOTICE "inode=%p\n", inode);
-+	if (inode) {
-+		printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
-+		       is_bad_inode(inode));
-+		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
-+		       NEXT_ORPHAN(inode));
-+		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
- 		/* Avoid freeing blocks if we got a bad deleted inode */
--		if (inode && inode->i_nlink == 0)
-+		if (inode->i_nlink == 0)
- 			inode->i_blocks = 0;
- 		iput(inode);
--		inode = NULL;
- 	}
--out:
- 	brelse(bitmap_bh);
--	return inode;
-+error:
-+	return ERR_PTR(err);
- }
- 
- unsigned long ext4_count_free_inodes (struct super_block * sb)
-diff -puN fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/inode.c
---- a/fs/ext4/inode.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/inode.c
-@@ -2680,21 +2680,31 @@ static blkcnt_t ext4_inode_blocks(struct
- 	}
- }
- 
--void ext4_read_inode(struct inode * inode)
-+struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 06d1f52..7af22ee 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -680,7 +680,6 @@ static void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
  {
- 	struct ext4_iloc iloc;
- 	struct ext4_inode *raw_inode;
--	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_inode_info *ei;
- 	struct buffer_head *bh;
-+	struct inode *inode;
-+	long ret;
- 	int block;
+ 	char *bb;
  
-+	inode = iget_locked(sb, ino);
-+	if (!inode)
-+		return ERR_PTR(-ENOMEM);
-+	if (!(inode->i_state & I_NEW))
-+		return inode;
-+
-+	ei = EXT4_I(inode);
- #ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
- 	ei->i_acl = EXT4_ACL_NOT_CACHED;
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
- 	ei->i_block_alloc_info = NULL;
+-	/* FIXME!! is this needed */
+ 	BUG_ON(EXT4_MB_BITMAP(e4b) == EXT4_MB_BUDDY(e4b));
+ 	BUG_ON(max == NULL);
  
--	if (__ext4_get_inode_loc(inode, &iloc, 0))
-+	ret = __ext4_get_inode_loc(inode, &iloc, 0);
-+	if (ret < 0)
- 		goto bad_inode;
- 	bh = iloc.bh;
- 	raw_inode = ext4_raw_inode(&iloc);
-@@ -2720,6 +2730,7 @@ void ext4_read_inode(struct inode * inod
- 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
- 			/* this inode is deleted */
- 			brelse (bh);
-+			ret = -ESTALE;
- 			goto bad_inode;
- 		}
- 		/* The only unlinked inodes we let through here have
-@@ -2758,6 +2769,7 @@ void ext4_read_inode(struct inode * inod
- 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 		    EXT4_INODE_SIZE(inode->i_sb)) {
- 			brelse (bh);
-+			ret = -EIO;
- 			goto bad_inode;
- 		}
- 		if (ei->i_extra_isize == 0) {
-@@ -2811,11 +2823,12 @@ void ext4_read_inode(struct inode * inod
- 	}
- 	brelse (iloc.bh);
- 	ext4_set_inode_flags(inode);
--	return;
-+	unlock_new_inode(inode);
-+	return inode;
+@@ -964,9 +963,13 @@ static void ext4_mb_generate_buddy(struct super_block *sb,
+ 	grp->bb_fragments = fragments;
  
- bad_inode:
--	make_bad_inode(inode);
--	return;
-+	iget_failed(inode);
-+	return ERR_PTR(ret);
- }
- 
- static int ext4_inode_blocks_set(handle_t *handle,
-diff -puN fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/namei.c
---- a/fs/ext4/namei.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/namei.c
-@@ -1039,17 +1039,11 @@ static struct dentry *ext4_lookup(struct
- 		if (!ext4_valid_inum(dir->i_sb, ino)) {
- 			ext4_error(dir->i_sb, "ext4_lookup",
- 				   "bad inode number: %lu", ino);
--			inode = NULL;
--		} else
--			inode = iget(dir->i_sb, ino);
--
--		if (!inode)
--			return ERR_PTR(-EACCES);
--
--		if (is_bad_inode(inode)) {
--			iput(inode);
--			return ERR_PTR(-ENOENT);
-+			return ERR_PTR(-EIO);
- 		}
-+		inode = ext4_iget(dir->i_sb, ino);
-+		if (IS_ERR(inode))
-+			return ERR_CAST(inode);
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-@@ -1078,18 +1072,13 @@ struct dentry *ext4_get_parent(struct de
- 	if (!ext4_valid_inum(child->d_inode->i_sb, ino)) {
- 		ext4_error(child->d_inode->i_sb, "ext4_get_parent",
- 			   "bad inode number: %lu", ino);
--		inode = NULL;
--	} else
--		inode = iget(child->d_inode->i_sb, ino);
--
--	if (!inode)
--		return ERR_PTR(-EACCES);
--
--	if (is_bad_inode(inode)) {
--		iput(inode);
--		return ERR_PTR(-ENOENT);
-+		return ERR_PTR(-EIO);
+ 	if (free != grp->bb_free) {
+-		printk(KERN_DEBUG
++		ext4_error(sb, __FUNCTION__,
+ 			"EXT4-fs: group %lu: %u blocks in bitmap, %u in gd\n",
+ 			group, free, grp->bb_free);
++		/*
++		 * If we intent to contine we consider the group descritor
++		 * corrupt and update the bb_free using bitmap value
++		 */
+ 		grp->bb_free = free;
  	}
  
-+	inode = ext4_iget(child->d_inode->i_sb, ino);
-+	if (IS_ERR(inode))
-+		return ERR_CAST(inode);
-+
- 	parent = d_alloc_anon(inode);
- 	if (!parent) {
- 		iput(inode);
-diff -puN fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/resize.c
---- a/fs/ext4/resize.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/resize.c
-@@ -779,12 +779,11 @@ int ext4_group_add(struct super_block *s
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
+@@ -1821,13 +1824,30 @@ static void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 		i = ext4_find_next_zero_bit(bitmap,
+ 						EXT4_BLOCKS_PER_GROUP(sb), i);
+ 		if (i >= EXT4_BLOCKS_PER_GROUP(sb)) {
+-			BUG_ON(free != 0);
++			/*
++			 * IF we have corrupt bitmap  we won't find any
++			 * free blocks even though group info says we
++			 * we have free blocks
++			 */
++			ext4_error(sb, __FUNCTION__, "%d free blocks as per "
++					"group info. But bitmap says 0\n",
++					free);
+ 			break;
  		}
--		inode = iget(sb, EXT4_RESIZE_INO);
--		if (!inode || is_bad_inode(inode)) {
-+		inode = ext4_iget(sb, EXT4_RESIZE_INO);
-+		if (IS_ERR(inode)) {
- 			ext4_warning(sb, __FUNCTION__,
- 				     "Error opening resize inode");
--			iput(inode);
--			return -ENOENT;
-+			return PTR_ERR(inode);
- 		}
- 	}
  
-diff -puN fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try fs/ext4/super.c
---- a/fs/ext4/super.c~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/fs/ext4/super.c
-@@ -777,11 +777,10 @@ static struct inode *ext4_nfs_get_inode(
- 	 * Currently we don't know the generation for parent directory, so
- 	 * a generation of 0 means "accept any"
+ 		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
+ 		BUG_ON(ex.fe_len <= 0);
+-		BUG_ON(free < ex.fe_len);
++		if (free < ex.fe_len) {
++			ext4_error(sb, __FUNCTION__, "%d free blocks as per "
++					"group info. But got %d blocks\n",
++					free, ex.fe_len);
++			/*
++			 * The number of free blocks differs. This mostly
++			 * indicate that the bitmap is corrupt. So exit
++			 * without claiming the space.
++			 */
++			break;
++		}
+ 
+ 		ext4_mb_measure_extent(ac, &ex, e4b);
+ 
+@@ -3354,13 +3374,10 @@ static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
+ 	ac->ac_pa = pa;
+ 
+ 	/* we don't correct pa_pstart or pa_plen here to avoid
+-	 * possible race when tte group is being loaded concurrently
++	 * possible race when the group is being loaded concurrently
+ 	 * instead we correct pa later, after blocks are marked
+-	 * in on-disk bitmap -- see ext4_mb_release_context() */
+-	/*
+-	 * FIXME!! but the other CPUs can look at this particular
+-	 * pa and think that it have enought free blocks if we
+-	 * don't update pa_free here right ?
++	 * in on-disk bitmap -- see ext4_mb_release_context()
++	 * Other CPUs are prevented from allocating from this pa by lg_mutex
  	 */
--	inode = iget(sb, ino);
--	if (inode == NULL)
--		return ERR_PTR(-ENOMEM);
--	if (is_bad_inode(inode) ||
--	    (generation && inode->i_generation != generation)) {
-+	inode = ext4_iget(sb, ino);
-+	if (IS_ERR(inode))
-+		return ERR_CAST(inode);
-+	if (generation && inode->i_generation != generation) {
- 		iput(inode);
- 		return ERR_PTR(-ESTALE);
- 	}
-@@ -850,7 +849,6 @@ static struct quotactl_ops ext4_qctl_ope
- static const struct super_operations ext4_sops = {
- 	.alloc_inode	= ext4_alloc_inode,
- 	.destroy_inode	= ext4_destroy_inode,
--	.read_inode	= ext4_read_inode,
- 	.write_inode	= ext4_write_inode,
- 	.dirty_inode	= ext4_dirty_inode,
- 	.delete_inode	= ext4_delete_inode,
-@@ -1805,6 +1803,7 @@ static int ext4_fill_super (struct super
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
-+	int ret = -EINVAL;
- 	int blocksize;
- 	int db_count;
- 	int i;
-@@ -2237,19 +2236,24 @@ static int ext4_fill_super (struct super
- 	 * so we can safely mount the rest of the filesystem now.
- 	 */
- 
--	root = iget(sb, EXT4_ROOT_INO);
--	sb->s_root = d_alloc_root(root);
--	if (!sb->s_root) {
-+	root = ext4_iget(sb, EXT4_ROOT_INO);
-+	if (IS_ERR(root)) {
- 		printk(KERN_ERR "EXT4-fs: get root inode failed\n");
--		iput(root);
-+		ret = PTR_ERR(root);
- 		goto failed_mount4;
- 	}
- 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
--		dput(sb->s_root);
--		sb->s_root = NULL;
-+		iput(root);
- 		printk(KERN_ERR "EXT4-fs: corrupt root inode, run e2fsck\n");
- 		goto failed_mount4;
- 	}
-+	sb->s_root = d_alloc_root(root);
-+	if (!sb->s_root) {
-+		printk(KERN_ERR "EXT4-fs: get root dentry failed\n");
-+		iput(root);
-+		ret = -ENOMEM;
-+		goto failed_mount4;
-+	}
- 
- 	ext4_setup_super (sb, es, sb->s_flags & MS_RDONLY);
- 
-@@ -2330,7 +2334,7 @@ out_fail:
- 	sb->s_fs_info = NULL;
- 	kfree(sbi);
- 	lock_kernel();
--	return -EINVAL;
-+	return ret;
+ 	mb_debug("use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa);
  }
- 
- /*
-@@ -2366,8 +2370,8 @@ static journal_t *ext4_get_journal(struc
- 	 * things happen if we iget() an unused inode, as the subsequent
- 	 * iput() will try to delete it. */
- 
--	journal_inode = iget(sb, journal_inum);
--	if (!journal_inode) {
-+	journal_inode = ext4_iget(sb, journal_inum);
-+	if (IS_ERR(journal_inode)) {
- 		printk(KERN_ERR "EXT4-fs: no journal found.\n");
- 		return NULL;
+@@ -3743,13 +3760,17 @@ static int ext4_mb_release_inode_pa(struct ext4_buddy *e4b,
+ 		bit = next + 1;
  	}
-@@ -2380,7 +2384,7 @@ static journal_t *ext4_get_journal(struc
+ 	if (free != pa->pa_free) {
+-		printk(KERN_ERR "pa %p: logic %lu, phys. %lu, len %lu\n",
++		printk(KERN_CRIT "pa %p: logic %lu, phys. %lu, len %lu\n",
+ 			pa, (unsigned long) pa->pa_lstart,
+ 			(unsigned long) pa->pa_pstart,
+ 			(unsigned long) pa->pa_len);
+-		printk(KERN_ERR "free %u, pa_free %u\n", free, pa->pa_free);
++		ext4_error(sb, __FUNCTION__, "free %u, pa_free %u\n",
++						free, pa->pa_free);
++		/*
++		 * pa is already deleted so we use the value obtained
++		 * from the bitmap and continue.
++		 */
+ 	}
+-	BUG_ON(free != pa->pa_free);
+ 	atomic_add(free, &sbi->s_mb_discarded);
  
- 	jbd_debug(2, "Journal inode found at %p: %Ld bytes\n",
- 		  journal_inode, journal_inode->i_size);
--	if (is_bad_inode(journal_inode) || !S_ISREG(journal_inode->i_mode)) {
-+	if (!S_ISREG(journal_inode->i_mode)) {
- 		printk(KERN_ERR "EXT4-fs: invalid journal inode.\n");
- 		iput(journal_inode);
- 		return NULL;
-diff -puN include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try include/linux/ext4_fs.h
---- a/include/linux/ext4_fs.h~iget-stop-ext4-from-using-iget-and-read_inode-try
-+++ a/include/linux/ext4_fs.h
-@@ -1024,7 +1024,7 @@ int ext4_get_blocks_handle(handle_t *han
- 				struct buffer_head *bh_result,
- 				int create, int extend_disksize);
- 
--extern void ext4_read_inode (struct inode *);
-+extern struct inode *ext4_iget(struct super_block *, unsigned long);
- extern int  ext4_write_inode (struct inode *, int);
- extern int  ext4_setattr (struct dentry *, struct iattr *);
- extern void ext4_delete_inode (struct inode *);
-_
-
-Patches currently in -mm which might be from dhowells@redhat.com are
-
-origin.patch
-iget-stop-unionfs-from-using-iget-and-read_inode.patch
-iget-stop-unionfs-from-using-iget-and-read_inode-fix-2.patch
-use-path_put-in-a-few-places-instead-of-mntdput.patch
-tty-let-architectures-override-the-user-kernel-macros.patch
-aout-move-stack_top-to-asm-processorh.patch
-aout-mark-arches-that-support-aout-format.patch
-aout-suppress-aout-library-support-if-config_arch_supports_aout.patch
-aout-suppress-aout-library-support-if-config_arch_supports_aout-uml-re-remove-accidentally-restored-code.patch
-aout-remove-unnecessary-inclusions-of-asm-linux-aouth.patch
-aout-remove-unnecessary-inclusions-of-asm-linux-aouth-alpha-fix.patch
-usb-net2280-cant-have-a-function-called-show_registers.patch
-mn10300-allocate-serial-port-uart-ids-for-on-chip-serial-ports.patch
-mn10300-add-the-mn10300-am33-architecture-to-the-kernel.patch
-mn10300-add-the-mn10300-am33-architecture-to-the-kernel-fix.patch
-mn10300-add-platform-mtd-support-for-the-asb2303-board.patch
-fs-afs-securityc-fix-uninitialized-var-warning.patch
-procfs-constify-function-pointer-tables.patch
-avoid-overflows-in-kernel-timec.patch
-mount-options-fix-afs.patch
-remove-aout-interpreter-support-in-elf-loader.patch
-procfs-task-exe-symlink.patch
-procfs-task-exe-symlink-fix.patch
-mutex-subsystem-synchro-test-module.patch
+ 	return err;
+@@ -4405,7 +4426,7 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 			unsigned long block, unsigned long count,
+ 			int metadata, unsigned long *freed)
+ {
+-	struct buffer_head *bitmap_bh = 0;
++	struct buffer_head *bitmap_bh = NULL;
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_allocation_context ac;
+ 	struct ext4_group_desc *gdp;
+-- 
+1.5.4.23.gef5b9-dirty
