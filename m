@@ -1,180 +1,82 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu.patch removed from -mm tree
-Date: Fri, 08 Feb 2008 12:16:23 -0800
-Message-ID: <200802082016.m18KG4C9010675@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: marcin.slusarz@gmail.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
-	mark.fasheh@oracle.com, tes@sgi.com, mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: call for brave ext4 testers in F9 Alpha, with caveats
+Date: Fri, 08 Feb 2008 15:32:36 -0600
+Message-ID: <47ACCA74.50809@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:36941 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754048AbYBHVci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Feb 2008 16:32:38 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m18LWb9C010255
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:37 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m18LWbUF000598
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:37 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m18LWaOK002998
+	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:36 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+(I sent this to fedora-devel, but of course anyone here who would like
+to give it a whirl should also do so!  So far there haven't been any bad
+reports.  :)  See the wiki link at the bottom for a couple of updates,
+caveats & gotchas.)
 
-The patch titled
-     ext3: replace all adds to little endians variables with le*_add_cpu
-has been removed from the -mm tree.  Its filename was
-     ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu.patch
+......
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Hi Gang -
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+The ext4 filesystem is a feature slated for F9, and we (rh, ibm, bull,
+clusterfs, and others) are working feverishly to get it ready for a
+prime-time F9 fs option.
 
-------------------------------------------------------
-Subject: ext3: replace all adds to little endians variables with le*_add_cpu
-From: Marcin Slusarz <marcin.slusarz@gmail.com>
+I'd like to get a bit more exposure if possible, so if you're feeling
+like living on the cutting edge of filesystems, read on:
 
-replace all:
-	little_endian_variable = cpu_to_leX(leX_to_cpu(little_endian_variable) +
-				expression_in_cpu_byteorder);
-with:
-	leX_add_cpu(&little_endian_variable, expression_in_cpu_byteorder);
-sparse didn't generate any new warning with this patch
+Rawhide and the F9 alpha can install onto an ext4dev filesystem root;
+first you need to tell (a.k.a. lie to) the installer with
+"iamanext4developer" on the boot commandline.  This is akin to the "jfs"
+or "reiserfs" options for those filesystems, but a higher hurdle (more
+characters to type!).
 
-Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
-Cc: Mark Fasheh <mark.fasheh@oracle.com>
-Cc: David Chinner <dgc@sgi.com>
-Cc: Timothy Shimmin <tes@sgi.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Then you can do custom partitioning, and select ext4dev for any
+filesystem (except /boot - no grub support (yet)).
 
- fs/ext3/balloc.c |    7 ++-----
- fs/ext3/ialloc.c |   12 ++++--------
- fs/ext3/resize.c |   12 ++++--------
- fs/ext3/super.c  |    2 +-
- fs/ext3/xattr.c  |    6 ++----
- 5 files changed, 13 insertions(+), 26 deletions(-)
+The install should proceed Just Fine(tm).  If not, let me know.
 
-diff -puN fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/balloc.c
---- a/fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/balloc.c
-@@ -630,9 +630,7 @@ do_more:
- 	jbd_unlock_bh_state(bitmap_bh);
- 
- 	spin_lock(sb_bgl_lock(sbi, block_group));
--	desc->bg_free_blocks_count =
--		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
--			group_freed);
-+	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
- 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
- 
-@@ -1696,8 +1694,7 @@ allocated:
- 			ret_block, goal_hits, goal_attempts);
- 
- 	spin_lock(sb_bgl_lock(sbi, group_no));
--	gdp->bg_free_blocks_count =
--			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)-num);
-+	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
- 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
- 
-diff -puN fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/ialloc.c
-@@ -164,11 +164,9 @@ void ext3_free_inode (handle_t *handle, 
- 
- 		if (gdp) {
- 			spin_lock(sb_bgl_lock(sbi, block_group));
--			gdp->bg_free_inodes_count = cpu_to_le16(
--				le16_to_cpu(gdp->bg_free_inodes_count) + 1);
-+			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
- 			if (is_directory)
--				gdp->bg_used_dirs_count = cpu_to_le16(
--				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
-+				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
- 			spin_unlock(sb_bgl_lock(sbi, block_group));
- 			percpu_counter_inc(&sbi->s_freeinodes_counter);
- 			if (is_directory)
-@@ -527,11 +525,9 @@ got:
- 	err = ext3_journal_get_write_access(handle, bh2);
- 	if (err) goto fail;
- 	spin_lock(sb_bgl_lock(sbi, group));
--	gdp->bg_free_inodes_count =
--		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
-+	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
- 	if (S_ISDIR(mode)) {
--		gdp->bg_used_dirs_count =
--			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
-+		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
- 	}
- 	spin_unlock(sb_bgl_lock(sbi, group));
- 	BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
-diff -puN fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/resize.c
-@@ -518,8 +518,7 @@ static int add_new_gdb(handle_t *handle,
- 	EXT3_SB(sb)->s_gdb_count++;
- 	kfree(o_group_desc);
- 
--	es->s_reserved_gdt_blocks =
--		cpu_to_le16(le16_to_cpu(es->s_reserved_gdt_blocks) - 1);
-+	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
- 	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
- 
- 	return 0;
-@@ -890,10 +889,8 @@ int ext3_group_add(struct super_block *s
- 	 * blocks/inodes before the group is live won't actually let us
- 	 * allocate the new space yet.
- 	 */
--	es->s_blocks_count = cpu_to_le32(le32_to_cpu(es->s_blocks_count) +
--		input->blocks_count);
--	es->s_inodes_count = cpu_to_le32(le32_to_cpu(es->s_inodes_count) +
--		EXT3_INODES_PER_GROUP(sb));
-+	le32_add_cpu(&es->s_blocks_count, input->blocks_count);
-+	le32_add_cpu(&es->s_inodes_count, EXT3_INODES_PER_GROUP(sb));
- 
- 	/*
- 	 * We need to protect s_groups_count against other CPUs seeing
-@@ -926,8 +923,7 @@ int ext3_group_add(struct super_block *s
- 
- 	/* Update the reserved block counts only once the new group is
- 	 * active. */
--	es->s_r_blocks_count = cpu_to_le32(le32_to_cpu(es->s_r_blocks_count) +
--		input->reserved_blocks);
-+	le32_add_cpu(&es->s_r_blocks_count, input->reserved_blocks);
- 
- 	/* Update the free space counts */
- 	percpu_counter_add(&sbi->s_freeblocks_counter,
-diff -puN fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/super.c
-@@ -1222,7 +1222,7 @@ static int ext3_setup_super(struct super
- #endif
- 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
- 		es->s_max_mnt_count = cpu_to_le16(EXT3_DFL_MAX_MNT_COUNT);
--	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
-+	le16_add_cpu(&es->s_mnt_count, 1);
- 	es->s_mtime = cpu_to_le32(get_seconds());
- 	ext3_update_dynamic_rev(sb);
- 	EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-diff -puN fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
-+++ a/fs/ext3/xattr.c
-@@ -492,8 +492,7 @@ ext3_xattr_release_block(handle_t *handl
- 		get_bh(bh);
- 		ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
- 	} else {
--		BHDR(bh)->h_refcount = cpu_to_le32(
--				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
-+		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
- 		error = ext3_journal_dirty_metadata(handle, bh);
- 		if (IS_SYNC(inode))
- 			handle->h_sync = 1;
-@@ -780,8 +779,7 @@ inserted:
- 				if (error)
- 					goto cleanup_dquot;
- 				lock_buffer(new_bh);
--				BHDR(new_bh)->h_refcount = cpu_to_le32(1 +
--					le32_to_cpu(BHDR(new_bh)->h_refcount));
-+				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
- 				ea_bdebug(new_bh, "reusing; refcount now=%d",
- 					le32_to_cpu(BHDR(new_bh)->h_refcount));
- 				unlock_buffer(new_bh);
-_
+And now for the (known) caveats:
 
-Patches currently in -mm which might be from marcin.slusarz@gmail.com are
+1) Due to bug 429857: Root inode of ext4dev root filesystem does not get
+selinux label - booting with selinux enabled & enforcing will probably
+fail.  Boot with enforcing=0, and use restorecon or chcon on / to
+(hopefully) properly update the root inode's selinux attrs.  I have a
+fix for this bug, so soon, kernel updates will resolve this and allow it
+to be properly set (and retained).  Please do test w/ selinux enabled
+though, as the new larger inodes and in-inode xattrs could use airtime.
 
-origin.patch
-xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
-xfs-convert-bex_add-to-bex_add_cpu-new-common-api-fix.patch
+2) There is no readily-available e2fsprogs which can repair your shiny
+new ext4dev filesystem.  If something goes badly I'll help out because
+we need to know what went wrong, but so far there is no released
+upstream e2fsprogs which can handle the new ext4 features.  So please
+consider anything you put on ext4dev for now to be disposable, just to
+be on the safe side.  extents-capable e2fsprogs should be available Real
+Soon Now.
+
+3) misc stuff - I've not yet tested ext4 over an encrypted block device,
+or even over an lvm volume.  There may be some stack issues on x86 boxes
+still, I'm working on slimming that down.  I hope that more real-world
+use will shake out any remaining problems.
+
+... and I suppose I should put this into a wiki page:
+http://fedoraproject.org/wiki/FedoraExt4
+
+We can keep it updated with any further issues or resolutions.
+
+Thanks!
+-Eric
