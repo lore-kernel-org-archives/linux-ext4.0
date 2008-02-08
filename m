@@ -1,81 +1,166 @@
 From: akpm@linux-foundation.org
-Subject: [patch 232/233] ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
-Date: Fri, 08 Feb 2008 04:22:13 -0800
-Message-ID: <200802081221.m18CLsLH024624@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, neilb@suse.de,
-	linux-ext4@vger.kernel.org
+Subject: [patch 116/233] ext3: replace all adds to little endians variables with le*_add_cpu
+Date: Fri, 08 Feb 2008 04:20:13 -0800
+Message-ID: <200802081219.m18CJsII024121@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, marcin.slusarz@gmail.com, dgc@sgi.com,
+	linux-ext4@vger.kernel.org, mark.fasheh@oracle.com, tes@sgi.com
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:51104 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:34632 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753777AbYBHM3b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 07:29:31 -0500
+	by vger.kernel.org with ESMTP id S1757754AbYBHMbQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 07:31:16 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Neil Brown <neilb@suse.de>
+From: Marcin Slusarz <marcin.slusarz@gmail.com>
 
-Some devices - notably dm and md - can change their behaviour in response
-to BIO_RW_BARRIER requests.  They might start out accepting such requests
-but on reconfiguration, they find out that they cannot any more.
+replace all:
+	little_endian_variable = cpu_to_leX(leX_to_cpu(little_endian_variable) +
+				expression_in_cpu_byteorder);
+with:
+	leX_add_cpu(&little_endian_variable, expression_in_cpu_byteorder);
+sparse didn't generate any new warning with this patch
 
-ext3 (and other filesystems) deal with this by always testing if
-BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
-requests without the barrier (probably after waiting for any pending writes
-to complete).
-
-However there is a bug in the handling for this for ext3.
-
-When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request, it
-sets the buffer_ordered flag on the buffer head.  If the request completes
-successfully, the flag STAYS SET.
-
-Other code might then write the same buffer_head after the device has been
-reconfigured to not accept barriers.  This write will then fail, but the
-"other code" is not ready to handle EOPNOTSUPP errors and the error will be
-treated as fatal.
-
-This can be seen without having to reconfigure a device at exactly the
-wrong time by putting:
-
-		if (buffer_ordered(bh))
-			printk("OH DEAR, and ordered buffer\n");
-
-in the while loop in "commit phase 5" of journal_commit_transaction.
-
-If it ever prints the "OH DEAR ..." message (as it does sometimes for
-me), then that request could (in different circumstances) have failed
-with EOPNOTSUPP, but that isn't tested for.
-
-My proposed fix is to clear the buffer_ordered flag after it has been
-used, as in the following patch.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Cc: Mark Fasheh <mark.fasheh@oracle.com>
+Cc: David Chinner <dgc@sgi.com>
+Cc: Timothy Shimmin <tes@sgi.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext3/balloc.c |    7 ++-----
+ fs/ext3/ialloc.c |   12 ++++--------
+ fs/ext3/resize.c |   12 ++++--------
+ fs/ext3/super.c  |    2 +-
+ fs/ext3/xattr.c  |    6 ++----
+ 5 files changed, 13 insertions(+), 26 deletions(-)
 
-diff -puN fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests fs/jbd/commit.c
---- a/fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests
-+++ a/fs/jbd/commit.c
-@@ -131,6 +131,8 @@ static int journal_write_commit_record(j
- 		barrier_done = 1;
- 	}
- 	ret = sync_dirty_buffer(bh);
-+	if (barrier_done)
-+		clear_buffer_ordered(bh);
- 	/* is it possible for another commit to fail at roughly
- 	 * the same time as this one?  If so, we don't want to
- 	 * trust the barrier flag in the super, but instead want
-@@ -148,7 +150,6 @@ static int journal_write_commit_record(j
- 		spin_unlock(&journal->j_state_lock);
+diff -puN fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
++++ a/fs/ext3/balloc.c
+@@ -630,9 +630,7 @@ do_more:
+ 	jbd_unlock_bh_state(bitmap_bh);
  
- 		/* And try again, without the barrier */
--		clear_buffer_ordered(bh);
- 		set_buffer_uptodate(bh);
- 		set_buffer_dirty(bh);
- 		ret = sync_dirty_buffer(bh);
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	desc->bg_free_blocks_count =
+-		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
+-			group_freed);
++	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+ 
+@@ -1696,8 +1694,7 @@ allocated:
+ 			ret_block, goal_hits, goal_attempts);
+ 
+ 	spin_lock(sb_bgl_lock(sbi, group_no));
+-	gdp->bg_free_blocks_count =
+-			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)-num);
++	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+ 
+diff -puN fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
++++ a/fs/ext3/ialloc.c
+@@ -164,11 +164,9 @@ void ext3_free_inode (handle_t *handle, 
+ 
+ 		if (gdp) {
+ 			spin_lock(sb_bgl_lock(sbi, block_group));
+-			gdp->bg_free_inodes_count = cpu_to_le16(
+-				le16_to_cpu(gdp->bg_free_inodes_count) + 1);
++			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
+ 			if (is_directory)
+-				gdp->bg_used_dirs_count = cpu_to_le16(
+-				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
++				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
+ 			spin_unlock(sb_bgl_lock(sbi, block_group));
+ 			percpu_counter_inc(&sbi->s_freeinodes_counter);
+ 			if (is_directory)
+@@ -527,11 +525,9 @@ got:
+ 	err = ext3_journal_get_write_access(handle, bh2);
+ 	if (err) goto fail;
+ 	spin_lock(sb_bgl_lock(sbi, group));
+-	gdp->bg_free_inodes_count =
+-		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
++	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
+ 	if (S_ISDIR(mode)) {
+-		gdp->bg_used_dirs_count =
+-			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
++		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
+ 	}
+ 	spin_unlock(sb_bgl_lock(sbi, group));
+ 	BUFFER_TRACE(bh2, "call ext3_journal_dirty_metadata");
+diff -puN fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/resize.c
+--- a/fs/ext3/resize.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
++++ a/fs/ext3/resize.c
+@@ -518,8 +518,7 @@ static int add_new_gdb(handle_t *handle,
+ 	EXT3_SB(sb)->s_gdb_count++;
+ 	kfree(o_group_desc);
+ 
+-	es->s_reserved_gdt_blocks =
+-		cpu_to_le16(le16_to_cpu(es->s_reserved_gdt_blocks) - 1);
++	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+ 	ext3_journal_dirty_metadata(handle, EXT3_SB(sb)->s_sbh);
+ 
+ 	return 0;
+@@ -890,10 +889,8 @@ int ext3_group_add(struct super_block *s
+ 	 * blocks/inodes before the group is live won't actually let us
+ 	 * allocate the new space yet.
+ 	 */
+-	es->s_blocks_count = cpu_to_le32(le32_to_cpu(es->s_blocks_count) +
+-		input->blocks_count);
+-	es->s_inodes_count = cpu_to_le32(le32_to_cpu(es->s_inodes_count) +
+-		EXT3_INODES_PER_GROUP(sb));
++	le32_add_cpu(&es->s_blocks_count, input->blocks_count);
++	le32_add_cpu(&es->s_inodes_count, EXT3_INODES_PER_GROUP(sb));
+ 
+ 	/*
+ 	 * We need to protect s_groups_count against other CPUs seeing
+@@ -926,8 +923,7 @@ int ext3_group_add(struct super_block *s
+ 
+ 	/* Update the reserved block counts only once the new group is
+ 	 * active. */
+-	es->s_r_blocks_count = cpu_to_le32(le32_to_cpu(es->s_r_blocks_count) +
+-		input->reserved_blocks);
++	le32_add_cpu(&es->s_r_blocks_count, input->reserved_blocks);
+ 
+ 	/* Update the free space counts */
+ 	percpu_counter_add(&sbi->s_freeblocks_counter,
+diff -puN fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
++++ a/fs/ext3/super.c
+@@ -1222,7 +1222,7 @@ static int ext3_setup_super(struct super
+ #endif
+ 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT3_DFL_MAX_MNT_COUNT);
+-	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
++	le16_add_cpu(&es->s_mnt_count, 1);
+ 	es->s_mtime = cpu_to_le32(get_seconds());
+ 	ext3_update_dynamic_rev(sb);
+ 	EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+diff -puN fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu fs/ext3/xattr.c
+--- a/fs/ext3/xattr.c~ext3-replace-all-adds-to-little-endians-variables-with-le_add_cpu
++++ a/fs/ext3/xattr.c
+@@ -492,8 +492,7 @@ ext3_xattr_release_block(handle_t *handl
+ 		get_bh(bh);
+ 		ext3_forget(handle, 1, inode, bh, bh->b_blocknr);
+ 	} else {
+-		BHDR(bh)->h_refcount = cpu_to_le32(
+-				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
++		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+ 		error = ext3_journal_dirty_metadata(handle, bh);
+ 		if (IS_SYNC(inode))
+ 			handle->h_sync = 1;
+@@ -780,8 +779,7 @@ inserted:
+ 				if (error)
+ 					goto cleanup_dquot;
+ 				lock_buffer(new_bh);
+-				BHDR(new_bh)->h_refcount = cpu_to_le32(1 +
+-					le32_to_cpu(BHDR(new_bh)->h_refcount));
++				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					le32_to_cpu(BHDR(new_bh)->h_refcount));
+ 				unlock_buffer(new_bh);
 _
