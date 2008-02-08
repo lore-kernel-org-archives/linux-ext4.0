@@ -1,65 +1,104 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH] allocate struct ext4_allocation_context from a kmem
-	cache to save stack space
-Date: Fri, 08 Feb 2008 12:43:14 -0600
-Message-ID: <1202496194.6852.15.camel@norville.austin.ibm.com>
-References: <47A9E8CA.2070404@redhat.com>
-	 <1202429513.3840.12.camel@localhost.localdomain>
-	 <47ABAB29.2060300@redhat.com>
-	 <1202434636.3840.25.camel@localhost.localdomain>
-	 <47ABC00A.9080302@redhat.com>
-	 <1202485537.6852.4.camel@norville.austin.ibm.com>
-	 <1202488793.3936.4.camel@localhost.localdomain> <47AC8986.40409@redhat.com>
-	 <1202495120.15315.3.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: cmm@us.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:50747 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759360AbYBHSnU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Feb 2008 13:43:20 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m18IhF5B016660
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 13:43:15 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m18IhFVA235374
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 13:43:15 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m18IhEOl027557
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 13:43:15 -0500
-In-Reply-To: <1202495120.15315.3.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch removed from -mm tree
+Date: Fri, 08 Feb 2008 12:21:16 -0800
+Message-ID: <200802082020.m18KKvsN011272@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: neilb@suse.de, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-On Fri, 2008-02-08 at 10:25 -0800, Mingming Cao wrote:
-> On Fri, 2008-02-08 at 10:55 -0600, Eric Sandeen wrote:
-> > Mingming Cao wrote:
-> > 
-> > > printk could be removed...so as long as it builds fine. I had looked at
-> > > the history yesterday and find this fix
-> > > http://lists.openwall.net/linux-ext4/2007/10/10/2
-> > > so I was under impression that the ifdefs was added to fix compile
-> > > issue. I did not look more closely. Maybe that's not a issue any more.
-> > 
-> > I guess I should look into it.  For now let's just drop the #ifdef
-> > removal, it's not related anyway.
-> > 
-> > Would you like me to send a fresh patch?
-> > 
-> ah...not necessary, I can edit the patch when merge it to the queue.
-> Yes we could deal with the ifdef in a separate patch, maybe something
-> like suggested by Shaggy.
+The patch titled
+     ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
+has been removed from the -mm tree.  Its filename was
+     ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
 
-The ifdef thing is sounding like a more global thing that could clean up
-code elsewhere, so it's probably more of a kernel-janitors type thing.
-I don't know if anyone wants to pursue it.  It's not a priority for me.
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
+From: Neil Brown <neilb@suse.de>
+
+Some devices - notably dm and md - can change their behaviour in response
+to BIO_RW_BARRIER requests.  They might start out accepting such requests
+but on reconfiguration, they find out that they cannot any more.
+
+ext3 (and other filesystems) deal with this by always testing if
+BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
+requests without the barrier (probably after waiting for any pending writes
+to complete).
+
+However there is a bug in the handling for this for ext3.
+
+When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request, it
+sets the buffer_ordered flag on the buffer head.  If the request completes
+successfully, the flag STAYS SET.
+
+Other code might then write the same buffer_head after the device has been
+reconfigured to not accept barriers.  This write will then fail, but the
+"other code" is not ready to handle EOPNOTSUPP errors and the error will be
+treated as fatal.
+
+This can be seen without having to reconfigure a device at exactly the
+wrong time by putting:
+
+		if (buffer_ordered(bh))
+			printk("OH DEAR, and ordered buffer\n");
+
+in the while loop in "commit phase 5" of journal_commit_transaction.
+
+If it ever prints the "OH DEAR ..." message (as it does sometimes for
+me), then that request could (in different circumstances) have failed
+with EOPNOTSUPP, but that isn't tested for.
+
+My proposed fix is to clear the buffer_ordered flag after it has been
+used, as in the following patch.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/commit.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff -puN fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests fs/jbd/commit.c
+--- a/fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests
++++ a/fs/jbd/commit.c
+@@ -131,6 +131,8 @@ static int journal_write_commit_record(j
+ 		barrier_done = 1;
+ 	}
+ 	ret = sync_dirty_buffer(bh);
++	if (barrier_done)
++		clear_buffer_ordered(bh);
+ 	/* is it possible for another commit to fail at roughly
+ 	 * the same time as this one?  If so, we don't want to
+ 	 * trust the barrier flag in the super, but instead want
+@@ -148,7 +150,6 @@ static int journal_write_commit_record(j
+ 		spin_unlock(&journal->j_state_lock);
+ 
+ 		/* And try again, without the barrier */
+-		clear_buffer_ordered(bh);
+ 		set_buffer_uptodate(bh);
+ 		set_buffer_dirty(bh);
+ 		ret = sync_dirty_buffer(bh);
+_
+
+Patches currently in -mm which might be from neilb@suse.de are
+
+origin.patch
+one-less-parameter-to-__d_path.patch
+d_path-kerneldoc-cleanup.patch
+d_path-use-struct-path-in-struct-avc_audit_data.patch
+d_path-make-proc_get_link-use-a-struct-path-argument.patch
+d_path-make-get_dcookie-use-a-struct-path-argument.patch
+use-struct-path-in-struct-svc_export.patch
+use-struct-path-in-struct-svc_export-checkpatch-fixes.patch
+use-struct-path-in-struct-svc_expkey.patch
+d_path-make-seq_path-use-a-struct-path-argument.patch
+d_path-make-d_path-use-a-struct-path.patch
+d_path-make-d_path-use-a-struct-path-fix.patch
