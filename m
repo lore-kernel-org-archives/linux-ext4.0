@@ -1,212 +1,48 @@
-From: akpm@linux-foundation.org
-Subject: [patch 115/233] byteorder: move le32_add_cpu & friends from OCFS2 to core
-Date: Fri, 08 Feb 2008 04:20:12 -0800
-Message-ID: <200802081219.m18CJrO7024117@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, marcin.slusarz@gmail.com, dgc@sgi.com,
-	linux-ext4@vger.kernel.org, mark.fasheh@oracle.com, tes@sgi.com
-To: torvalds@linux-foundation.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC] ext3 freeze feature
+Date: Fri, 08 Feb 2008 08:26:57 -0500
+Message-ID: <20080208132657.GE3120@webber.adilger.int>
+References: <20080125195938t-sato@mail.jp.nec.com>
+ <20080125121851.GA3361@dmon-lap.sw.ru> <20080125133329.GB8184@mit.edu>
+ <01cd01c86a40$21d49410$41a8400a@bsd.tnes.nec.co.jp>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41602 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757540AbYBHMb3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 07:31:29 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:61386 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752912AbYBHN1M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 08:27:12 -0500
+In-reply-to: <01cd01c86a40$21d49410$41a8400a@bsd.tnes.nec.co.jp>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Marcin Slusarz <marcin.slusarz@gmail.com>
+On Feb 08, 2008  19:48 +0900, Takashi Sato wrote:
+> OK I would like to implement the freeze feature on VFS
+> as the filesystem independent ioctl so that it can be
+> available on filesystems that have already had write_super_lockfs()
+> and unlockfs().
+> The usage for the freeze ioctl is the following.
+>  int ioctl(int fd, int FIFREEZE, long *timeval);
+>    fd:file descriptor of mountpoint
+>    FIFREEZE:request cord for freeze
+>    timeval:timeout period (second)
+>
+> And the unfreeze ioctl is the following.
+>  int ioctl(int fd, int FITHAW, NULL);
+>    fd:file descriptor of mountpoint
+>    FITHAW:Request cord for unfreeze
 
-This patchset moves le*_add_cpu and be*_add_cpu functions from OCFS2 to core
-header (1st), converts ext3 filesystem to this API (2nd) and replaces XFS
-different named functions with new ones (3rd).
+You may as well make the common ioctl the same as the XFS version,
+both by number and parameters, so that applications which already
+understand the XFS ioctl will work on other filesystems.
 
-There are many places where these functions will be useful.  Just look at:
-grep -r 'cpu_to_[ble12346]*([ble12346]*_to_cpu.*[-+]' linux-src/ Patch for
-ext3 is an example how conversions will probably look like.
-
-
-
-This patch:
-
-- move inline functions which add native byte order variable to
-  little/big endian variable to core header
-  * le16_add_cpu(__le16 *var, u16 val)
-  * le32_add_cpu(__le32 *var, u32 val)
-  * le64_add_cpu(__le64 *var, u64 val)
-  * be32_add_cpu(__be32 *var, u32 val)
-- add for completeness:
-  * be16_add_cpu(__be16 *var, u16 val)
-  * be64_add_cpu(__be64 *var, u64 val)
-
-Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
-Acked-by: Mark Fasheh <mark.fasheh@oracle.com>
-Cc: David Chinner <dgc@sgi.com>
-Cc: Timothy Shimmin <tes@sgi.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ocfs2/cluster/endian.h         |   30 ------------------
- fs/ocfs2/cluster/nodemanager.c    |    1 
- fs/ocfs2/dlm/dlmast.c             |    1 
- fs/ocfs2/endian.h                 |   45 ----------------------------
- fs/ocfs2/ocfs2.h                  |    1 
- include/linux/byteorder/generic.h |   30 ++++++++++++++++++
- 6 files changed, 30 insertions(+), 78 deletions(-)
-
-diff -puN fs/ocfs2/cluster/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
---- a/fs/ocfs2/cluster/endian.h
-+++ /dev/null
-@@ -1,30 +0,0 @@
--/* -*- mode: c; c-basic-offset: 8; -*-
-- * vim: noexpandtab sw=8 ts=8 sts=0:
-- *
-- * Copyright (C) 2005 Oracle.  All rights reserved.
-- *
-- * This program is free software; you can redistribute it and/or
-- * modify it under the terms of the GNU General Public
-- * License as published by the Free Software Foundation; either
-- * version 2 of the License, or (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-- * General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public
-- * License along with this program; if not, write to the
-- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-- * Boston, MA 021110-1307, USA.
-- */
--
--#ifndef OCFS2_CLUSTER_ENDIAN_H
--#define OCFS2_CLUSTER_ENDIAN_H
--
--static inline void be32_add_cpu(__be32 *var, u32 val)
--{
--	*var = cpu_to_be32(be32_to_cpu(*var) + val);
--}
--
--#endif /* OCFS2_CLUSTER_ENDIAN_H */
-diff -puN fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/cluster/nodemanager.c
---- a/fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
-+++ a/fs/ocfs2/cluster/nodemanager.c
-@@ -24,7 +24,6 @@
- #include <linux/sysctl.h>
- #include <linux/configfs.h>
- 
--#include "endian.h"
- #include "tcp.h"
- #include "nodemanager.h"
- #include "heartbeat.h"
-diff -puN fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/dlm/dlmast.c
---- a/fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
-+++ a/fs/ocfs2/dlm/dlmast.c
-@@ -43,7 +43,6 @@
- #include "cluster/heartbeat.h"
- #include "cluster/nodemanager.h"
- #include "cluster/tcp.h"
--#include "cluster/endian.h"
- 
- #include "dlmapi.h"
- #include "dlmcommon.h"
-diff -puN fs/ocfs2/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
---- a/fs/ocfs2/endian.h
-+++ /dev/null
-@@ -1,45 +0,0 @@
--/* -*- mode: c; c-basic-offset: 8; -*-
-- * vim: noexpandtab sw=8 ts=8 sts=0:
-- *
-- * Copyright (C) 2005 Oracle.  All rights reserved.
-- *
-- * This program is free software; you can redistribute it and/or
-- * modify it under the terms of the GNU General Public
-- * License as published by the Free Software Foundation; either
-- * version 2 of the License, or (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-- * General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public
-- * License along with this program; if not, write to the
-- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-- * Boston, MA 021110-1307, USA.
-- */
--
--#ifndef OCFS2_ENDIAN_H
--#define OCFS2_ENDIAN_H
--
--static inline void le16_add_cpu(__le16 *var, u16 val)
--{
--	*var = cpu_to_le16(le16_to_cpu(*var) + val);
--}
--
--static inline void le32_add_cpu(__le32 *var, u32 val)
--{
--	*var = cpu_to_le32(le32_to_cpu(*var) + val);
--}
--
--static inline void le64_add_cpu(__le64 *var, u64 val)
--{
--	*var = cpu_to_le64(le64_to_cpu(*var) + val);
--}
--
--static inline void be32_add_cpu(__be32 *var, u32 val)
--{
--	*var = cpu_to_be32(be32_to_cpu(*var) + val);
--}
--
--#endif /* OCFS2_ENDIAN_H */
-diff -puN fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/ocfs2.h
---- a/fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
-+++ a/fs/ocfs2/ocfs2.h
-@@ -43,7 +43,6 @@
- #include "dlm/dlmapi.h"
- 
- #include "ocfs2_fs.h"
--#include "endian.h"
- #include "ocfs2_lockid.h"
- 
- /* Most user visible OCFS2 inodes will have very few pieces of
-diff -puN include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core include/linux/byteorder/generic.h
---- a/include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
-+++ a/include/linux/byteorder/generic.h
-@@ -146,6 +146,36 @@
- #define htons(x) ___htons(x)
- #define ntohs(x) ___ntohs(x)
- 
-+static inline void le16_add_cpu(__le16 *var, u16 val)
-+{
-+	*var = cpu_to_le16(le16_to_cpu(*var) + val);
-+}
-+
-+static inline void le32_add_cpu(__le32 *var, u32 val)
-+{
-+	*var = cpu_to_le32(le32_to_cpu(*var) + val);
-+}
-+
-+static inline void le64_add_cpu(__le64 *var, u64 val)
-+{
-+	*var = cpu_to_le64(le64_to_cpu(*var) + val);
-+}
-+
-+static inline void be16_add_cpu(__be16 *var, u16 val)
-+{
-+	*var = cpu_to_be16(be16_to_cpu(*var) + val);
-+}
-+
-+static inline void be32_add_cpu(__be32 *var, u32 val)
-+{
-+	*var = cpu_to_be32(be32_to_cpu(*var) + val);
-+}
-+
-+static inline void be64_add_cpu(__be64 *var, u64 val)
-+{
-+	*var = cpu_to_be64(be64_to_cpu(*var) + val);
-+}
-+
- #endif /* KERNEL */
- 
- #endif /* _LINUX_BYTEORDER_GENERIC_H */
-_
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
