@@ -1,47 +1,67 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] allocate struct ext4_allocation_context from a	kmem	cache
- to save stack space
-Date: Thu, 07 Feb 2008 20:35:54 -0600
-Message-ID: <47ABC00A.9080302@redhat.com>
-References: <47A9E8CA.2070404@redhat.com>	 <1202429513.3840.12.camel@localhost.localdomain>	 <47ABAB29.2060300@redhat.com> <1202434636.3840.25.camel@localhost.localdomain>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 9911] New: fsync blocks concurrent writes to
+ file
+Date: Thu, 7 Feb 2008 19:14:10 -0800
+Message-ID: <20080207191410.ed694bab.akpm@linux-foundation.org>
+References: <bug-9911-10286@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: cmm@us.ibm.com
+Cc: bugme-daemon@bugzilla.kernel.org, llowrey@nuclearwinter.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34823 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751571AbYBHChE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Feb 2008 21:37:04 -0500
-In-Reply-To: <1202434636.3840.25.camel@localhost.localdomain>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:37599 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755886AbYBHDN5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2008 22:13:57 -0500
+In-Reply-To: <bug-9911-10286@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming Cao wrote:
-> On Thu, 2008-02-07 at 19:06 -0600, Eric Sandeen wrote:
->> Mingming Cao wrote:
->>
->>> Do you intend to remove the #ifdef CONFIG_PROC_FS, or it's a accident? I
->>> think we need keep that to allow ext4 build without procfs configured.
->>>
->>> Other than this, the patch looks fine to me.:)
->> oh, it kind of snuck in.  It actually should still build, as
->> remove_proc_entry is a no-op function w/o the config option.
+On Thu,  7 Feb 2008 17:40:57 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
+
+> http://bugzilla.kernel.org/show_bug.cgi?id=9911
 > 
-> Oh, I mean the proc_mkdir(EXT4_ROOT, proc_root_fs) will complain w/o
-> CONFIG_PROC_FS configured.
+>            Summary: fsync blocks concurrent writes to file
+>            Product: File System
+>            Version: 2.5
+>      KernelVersion: 2.6.23.8
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: ext3
+>         AssignedTo: akpm@osdl.org
+>         ReportedBy: llowrey@nuclearwinter.com
 > 
-> Mingming
+> 
+> Latest working kernel version: none
+> Earliest failing kernel version: 2.6.18
+> Distribution: RHEL 4 & Fedora 8
+> Hardware Environment: Dual Xeon & dual-core Athlon
+> Software Environment: Java 1.5.0_14
+> Problem Description: Multiple threads append transactions to a single file.
+> When fsyncs are issued, no writes complete until the fsync completes. This has
+> the effect of yielding the same write rate regardless of how many threads are
+> writing to the file. Solaris 10 does not exhibit this problem and scales well
+> as additional threads are added.
+> 
+> I have confirmed this by running strace and witnessing that writes block until
+> immediately after the fsync completes.
+> 
+> When using truss on Solaris I have witnessed multiple writes completing while
+> an fsync was in progress.
+> 
+> Steps to reproduce:
+> 
+> Open a file for writing.
+> Launch multiple threads with each one writing data and followed by an fsync,
+> but only if data has been written since the last fsync.
+> 
+> 
+> I have googled this issue substantially and have found no answers.
 > 
 
-it'll build:
-
-static inline struct proc_dir_entry *proc_mkdir(const char *name,
-        struct proc_dir_entry *parent) {return NULL;}
-
-yes, it'll issue a printk though.  *shrug*
-
-I like fewer #ifdefs better than more, but doesn't matter much to me.
-
--Eric
+I supposing teaching java about sync_file_range() would be all too hard.
