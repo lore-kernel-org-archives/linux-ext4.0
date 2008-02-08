@@ -1,82 +1,233 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: call for brave ext4 testers in F9 Alpha, with caveats
-Date: Fri, 08 Feb 2008 15:32:36 -0600
-Message-ID: <47ACCA74.50809@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: [PATCH, E2FSPROGS] blkid: Automatically chose between ext4 and ext4dev as appropriate
+Date: Fri, 08 Feb 2008 17:35:04 -0500
+Message-ID: <E1JNboG-0000IP-8D@closure.thunk.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36941 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754048AbYBHVci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Feb 2008 16:32:38 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m18LWb9C010255
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:37 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m18LWbUF000598
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:37 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m18LWaOK002998
-	for <linux-ext4@vger.kernel.org>; Fri, 8 Feb 2008 16:32:36 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:48373 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1762131AbYBHWfK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 17:35:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(I sent this to fedora-devel, but of course anyone here who would like
-to give it a whirl should also do so!  So far there haven't been any bad
-reports.  :)  See the wiki link at the bottom for a couple of updates,
-caveats & gotchas.)
 
-......
+I plan to release this in an upcoming 1.40.6 release, along with code
+that allows "tune2fs -E test_fs" to work on ext4 filesystems.  The idea
+is that if I can get this into community distro's, it will make it
+easier for them to experiment with ext4/ext4dev, with the appropriate
+forward compatibility when sometime (hopefully 2.6.26 or 2.6.27?) we
+rename ext4dev to ext4.
 
-Hi Gang -
+Any comments before I push this change out to the maint branch?
 
-The ext4 filesystem is a feature slated for F9, and we (rh, ibm, bull,
-clusterfs, and others) are working feverishly to get it ready for a
-prime-time F9 fs option.
+						- Ted
 
-I'd like to get a bit more exposure if possible, so if you're feeling
-like living on the cutting edge of filesystems, read on:
 
-Rawhide and the F9 alpha can install onto an ext4dev filesystem root;
-first you need to tell (a.k.a. lie to) the installer with
-"iamanext4developer" on the boot commandline.  This is akin to the "jfs"
-or "reiserfs" options for those filesystems, but a higher hurdle (more
-characters to type!).
+commit feac6e49211a44ef6f560b3b362fb132a474a471
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Fri Feb 8 16:04:12 2008 -0500
 
-Then you can do custom partitioning, and select ext4dev for any
-filesystem (except /boot - no grub support (yet)).
+    blkid: Automatically chose between ext4 and ext4dev as appropriate
+    
+    Add logic that on Linux systems will check for the presence of the
+    ext4dev filesystem; if it isn't present, fall back to ext4 for
+    filesystems that are marked as being "OK for use on test filesystem
+    code".  If they are OK for use for in-development filesystem code, it
+    should also be fine to use stable filesystem code if there is no test
+    filesystem code (ext4dev) available.
+    
+    The reverse is not true, of course.  We don't ever want to mount a
+    production filesystem using test filesystem code unless the user gives
+    us explicit permission via "tune2fs -E test_fs".
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-The install should proceed Just Fine(tm).  If not, let me know.
-
-And now for the (known) caveats:
-
-1) Due to bug 429857: Root inode of ext4dev root filesystem does not get
-selinux label - booting with selinux enabled & enforcing will probably
-fail.  Boot with enforcing=0, and use restorecon or chcon on / to
-(hopefully) properly update the root inode's selinux attrs.  I have a
-fix for this bug, so soon, kernel updates will resolve this and allow it
-to be properly set (and retained).  Please do test w/ selinux enabled
-though, as the new larger inodes and in-inode xattrs could use airtime.
-
-2) There is no readily-available e2fsprogs which can repair your shiny
-new ext4dev filesystem.  If something goes badly I'll help out because
-we need to know what went wrong, but so far there is no released
-upstream e2fsprogs which can handle the new ext4 features.  So please
-consider anything you put on ext4dev for now to be disposable, just to
-be on the safe side.  extents-capable e2fsprogs should be available Real
-Soon Now.
-
-3) misc stuff - I've not yet tested ext4 over an encrypted block device,
-or even over an lvm volume.  There may be some stack issues on x86 boxes
-still, I'm working on slimming that down.  I hope that more real-world
-use will shake out any remaining problems.
-
-... and I suppose I should put this into a wiki page:
-http://fedoraproject.org/wiki/FedoraExt4
-
-We can keep it updated with any further issues or resolutions.
-
-Thanks!
--Eric
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 492a36a..456e9bb 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -25,6 +25,7 @@
+ #ifdef HAVE_SYS_MKDEV_H
+ #include <sys/mkdev.h>
+ #endif
++#include <sys/utsname.h>
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+ #endif
+@@ -158,6 +159,109 @@ static void get_ext2_info(blkid_dev dev, struct blkid_magic *id,
+ 		blkid_set_tag(dev, "SEC_TYPE", "ext2", sizeof("ext2"));
+ }
+ 
++/*
++ * Check to see if a filesystem is in /proc/filesystems.
++ * Returns 1 if found, 0 if not
++ */
++int fs_proc_check(const char *fs_name)
++{
++	FILE	*f;
++	char	buf[80], *cp, *t;
++
++	f = fopen("/proc/filesystems", "r");
++	if (!f)
++		return (0);
++	while (!feof(f)) {
++		if (!fgets(buf, sizeof(buf), f))
++			break;
++		cp = buf;
++		if (!isspace(*cp)) {
++			while (*cp && !isspace(*cp))
++				cp++;
++		}
++		while (*cp && isspace(*cp))
++			cp++;
++		if ((t = strchr(cp, '\n')) != NULL)
++			*t = 0;
++		if ((t = strchr(cp, '\t')) != NULL)
++			*t = 0;
++		if ((t = strchr(cp, ' ')) != NULL)
++			*t = 0;
++		if (!strcmp(fs_name, cp)) {
++			fclose(f);
++			return (1);
++		}
++	}
++	fclose(f);
++	return (0);
++}
++
++/*
++ * Check to see if a filesystem is available as a module
++ * Returns 1 if found, 0 if not
++ */
++int check_for_modules(const char *fs_name)
++{
++	struct utsname	uts;
++	FILE		*f;
++	char		buf[1024], *cp, *t;
++	int		i;
++
++	if (uname(&uts))
++		return (0);
++	snprintf(buf, sizeof(buf), "/lib/modules/%s/modules.dep", uts.release);
++
++	f = fopen(buf, "r");
++	if (!f)
++		return (0);
++	while (!feof(f)) {
++		if (!fgets(buf, sizeof(buf), f))
++			break;
++		if ((cp = strchr(buf, ':')) != NULL)
++			*cp = 0;
++		else
++			continue;
++		if ((cp = strrchr(buf, '/')) != NULL)
++			cp++;
++		i = strlen(cp);
++		if (i > 3) {
++			t = cp + i - 3;
++			if (!strcmp(t, ".ko"))
++				*t = 0;
++		}
++		if (!strcmp(cp, fs_name))
++			return (1);
++	}
++	fclose(f);
++	return (0);
++}
++
++static int system_supports_ext4()
++{
++	static time_t	last_check = 0;
++	static int	ret = -1;
++	time_t		now = time(0);
++
++	if (ret != -1 || (last_check - now) > 5)
++		return ret;
++	last_check = now;
++	ret = (fs_proc_check("ext4") || check_for_modules("ext4"));
++	return ret;
++}
++
++static int system_supports_ext4dev()
++{
++	static time_t	last_check = 0;
++	static int	ret = -1;
++	time_t		now = time(0);
++
++	if (ret != -1 || (last_check - now) > 5)
++		return ret;
++	last_check = now;
++	ret = (fs_proc_check("ext4dev") || check_for_modules("ext4dev"));
++	return ret;
++}
++
+ static int probe_ext4dev(struct blkid_probe *probe,
+ 			 struct blkid_magic *id,
+ 			 unsigned char *buf)
+@@ -165,10 +269,6 @@ static int probe_ext4dev(struct blkid_probe *probe,
+ 	struct ext2_super_block *es;
+ 	es = (struct ext2_super_block *)buf;
+ 
+-	/* Distinguish between ext4dev and other filesystems */
+-	if ((blkid_le32(es->s_flags) & EXT2_FLAGS_TEST_FILESYS) == 0)
+-		return -BLKID_ERR_PARAM;
+-
+ 	/* Distinguish from jbd */
+ 	if (blkid_le32(es->s_feature_incompat) &
+ 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)
+@@ -179,6 +279,22 @@ static int probe_ext4dev(struct blkid_probe *probe,
+ 	      EXT3_FEATURE_COMPAT_HAS_JOURNAL))
+ 		return -BLKID_ERR_PARAM;
+ 
++	/*
++	 * If the filesystem is marked as OK for use by in-development
++	 * filesystem code, but ext4dev is not supported, and ext4 is,
++	 * then don't call ourselves ext4dev, since we should be
++	 * detected as ext4 in that case.
++	 *
++	 * If the filesystem is marked as in use by production
++	 * filesystem, then it can only be used by ext4 and NOT by
++	 * ext4dev, so always disclaim we are ext4dev in that case.
++	 */
++	if (blkid_le32(es->s_flags) & EXT2_FLAGS_TEST_FILESYS) {
++		if (!system_supports_ext4dev() && system_supports_ext4())
++			return -BLKID_ERR_PARAM;
++	} else
++		return -BLKID_ERR_PARAM;
++
+     	get_ext2_info(probe->dev, id, buf);
+ 	return 0;
+ }
+@@ -189,10 +305,6 @@ static int probe_ext4(struct blkid_probe *probe, struct blkid_magic *id,
+ 	struct ext2_super_block *es;
+ 	es = (struct ext2_super_block *)buf;
+ 
+-	/* Distinguish from ext4dev */
+-	if (blkid_le32(es->s_flags) & EXT2_FLAGS_TEST_FILESYS)
+-		return -BLKID_ERR_PARAM;
+-
+ 	/* Distinguish from jbd */
+ 	if (blkid_le32(es->s_feature_incompat) & 
+ 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)
+@@ -210,6 +322,20 @@ static int probe_ext4(struct blkid_probe *probe, struct blkid_magic *id,
+ 	      EXT3_FEATURE_INCOMPAT_UNSUPPORTED))
+ 		return -BLKID_ERR_PARAM;
+ 
++	/*
++	 * If the filesystem is a OK for use by in-development
++	 * filesystem code, and ext4dev is supported or ext4 is not
++	 * supported, then don't call ourselves ext4, so we can redo
++	 * the detection and mark the filesystem as ext4dev.
++	 *
++	 * If the filesystem is marked as in use by production
++	 * filesystem, then it can only be used by ext4 and NOT by
++	 * ext4dev.
++	 */
++	if (blkid_le32(es->s_flags) & EXT2_FLAGS_TEST_FILESYS) {
++		if (system_supports_ext4dev() || !system_supports_ext4())
++			return -BLKID_ERR_PARAM;
++	}
+     	get_ext2_info(probe->dev, id, buf);
+ 	return 0;
+ }
