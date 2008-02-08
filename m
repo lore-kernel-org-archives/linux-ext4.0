@@ -1,104 +1,229 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch removed from -mm tree
-Date: Fri, 08 Feb 2008 12:21:16 -0800
-Message-ID: <200802082020.m18KKvsN011272@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: neilb@suse.de, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch removed from -mm tree
+Date: Fri, 08 Feb 2008 12:16:20 -0800
+Message-ID: <200802082016.m18KG1YX010671@imap1.linux-foundation.org>
+To: marcin.slusarz@gmail.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
+	mark.fasheh@oracle.com, tes@sgi.com, mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:33821 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756358AbYBHVD3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2008 16:03:29 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
+     byteorder: move le32_add_cpu & friends from OCFS2 to core
 has been removed from the -mm tree.  Its filename was
-     ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests.patch
+     byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3 can fail badly when device stops accepting BIO_RW_BARRIER requests
-From: Neil Brown <neilb@suse.de>
+Subject: byteorder: move le32_add_cpu & friends from OCFS2 to core
+From: Marcin Slusarz <marcin.slusarz@gmail.com>
 
-Some devices - notably dm and md - can change their behaviour in response
-to BIO_RW_BARRIER requests.  They might start out accepting such requests
-but on reconfiguration, they find out that they cannot any more.
+This patchset moves le*_add_cpu and be*_add_cpu functions from OCFS2 to core
+header (1st), converts ext3 filesystem to this API (2nd) and replaces XFS
+different named functions with new ones (3rd).
 
-ext3 (and other filesystems) deal with this by always testing if
-BIO_RW_BARRIER requests fail with EOPNOTSUPP, and retrying the write
-requests without the barrier (probably after waiting for any pending writes
-to complete).
+There are many places where these functions will be useful.  Just look at:
+grep -r 'cpu_to_[ble12346]*([ble12346]*_to_cpu.*[-+]' linux-src/ Patch for
+ext3 is an example how conversions will probably look like.
 
-However there is a bug in the handling for this for ext3.
 
-When ext3 (jbd actually) decides to submit a BIO_RW_BARRIER request, it
-sets the buffer_ordered flag on the buffer head.  If the request completes
-successfully, the flag STAYS SET.
 
-Other code might then write the same buffer_head after the device has been
-reconfigured to not accept barriers.  This write will then fail, but the
-"other code" is not ready to handle EOPNOTSUPP errors and the error will be
-treated as fatal.
+This patch:
 
-This can be seen without having to reconfigure a device at exactly the
-wrong time by putting:
+- move inline functions which add native byte order variable to
+  little/big endian variable to core header
+  * le16_add_cpu(__le16 *var, u16 val)
+  * le32_add_cpu(__le32 *var, u32 val)
+  * le64_add_cpu(__le64 *var, u64 val)
+  * be32_add_cpu(__be32 *var, u32 val)
+- add for completeness:
+  * be16_add_cpu(__be16 *var, u16 val)
+  * be64_add_cpu(__be64 *var, u64 val)
 
-		if (buffer_ordered(bh))
-			printk("OH DEAR, and ordered buffer\n");
-
-in the while loop in "commit phase 5" of journal_commit_transaction.
-
-If it ever prints the "OH DEAR ..." message (as it does sometimes for
-me), then that request could (in different circumstances) have failed
-with EOPNOTSUPP, but that isn't tested for.
-
-My proposed fix is to clear the buffer_ordered flag after it has been
-used, as in the following patch.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Acked-by: Mark Fasheh <mark.fasheh@oracle.com>
+Cc: David Chinner <dgc@sgi.com>
+Cc: Timothy Shimmin <tes@sgi.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ocfs2/cluster/endian.h         |   30 ------------------
+ fs/ocfs2/cluster/nodemanager.c    |    1 
+ fs/ocfs2/dlm/dlmast.c             |    1 
+ fs/ocfs2/endian.h                 |   45 ----------------------------
+ fs/ocfs2/ocfs2.h                  |    1 
+ include/linux/byteorder/generic.h |   30 ++++++++++++++++++
+ 6 files changed, 30 insertions(+), 78 deletions(-)
 
-diff -puN fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests fs/jbd/commit.c
---- a/fs/jbd/commit.c~ext3-can-fail-badly-when-device-stops-accepting-bio_rw_barrier-requests
-+++ a/fs/jbd/commit.c
-@@ -131,6 +131,8 @@ static int journal_write_commit_record(j
- 		barrier_done = 1;
- 	}
- 	ret = sync_dirty_buffer(bh);
-+	if (barrier_done)
-+		clear_buffer_ordered(bh);
- 	/* is it possible for another commit to fail at roughly
- 	 * the same time as this one?  If so, we don't want to
- 	 * trust the barrier flag in the super, but instead want
-@@ -148,7 +150,6 @@ static int journal_write_commit_record(j
- 		spin_unlock(&journal->j_state_lock);
+diff -puN fs/ocfs2/cluster/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/cluster/endian.h
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_CLUSTER_ENDIAN_H
+-#define OCFS2_CLUSTER_ENDIAN_H
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_CLUSTER_ENDIAN_H */
+diff -puN fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/cluster/nodemanager.c
+--- a/fs/ocfs2/cluster/nodemanager.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/cluster/nodemanager.c
+@@ -24,7 +24,6 @@
+ #include <linux/sysctl.h>
+ #include <linux/configfs.h>
  
- 		/* And try again, without the barrier */
--		clear_buffer_ordered(bh);
- 		set_buffer_uptodate(bh);
- 		set_buffer_dirty(bh);
- 		ret = sync_dirty_buffer(bh);
+-#include "endian.h"
+ #include "tcp.h"
+ #include "nodemanager.h"
+ #include "heartbeat.h"
+diff -puN fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/dlm/dlmast.c
+--- a/fs/ocfs2/dlm/dlmast.c~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/dlm/dlmast.c
+@@ -43,7 +43,6 @@
+ #include "cluster/heartbeat.h"
+ #include "cluster/nodemanager.h"
+ #include "cluster/tcp.h"
+-#include "cluster/endian.h"
+ 
+ #include "dlmapi.h"
+ #include "dlmcommon.h"
+diff -puN fs/ocfs2/endian.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core /dev/null
+--- a/fs/ocfs2/endian.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/* -*- mode: c; c-basic-offset: 8; -*-
+- * vim: noexpandtab sw=8 ts=8 sts=0:
+- *
+- * Copyright (C) 2005 Oracle.  All rights reserved.
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this program; if not, write to the
+- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+- * Boston, MA 021110-1307, USA.
+- */
+-
+-#ifndef OCFS2_ENDIAN_H
+-#define OCFS2_ENDIAN_H
+-
+-static inline void le16_add_cpu(__le16 *var, u16 val)
+-{
+-	*var = cpu_to_le16(le16_to_cpu(*var) + val);
+-}
+-
+-static inline void le32_add_cpu(__le32 *var, u32 val)
+-{
+-	*var = cpu_to_le32(le32_to_cpu(*var) + val);
+-}
+-
+-static inline void le64_add_cpu(__le64 *var, u64 val)
+-{
+-	*var = cpu_to_le64(le64_to_cpu(*var) + val);
+-}
+-
+-static inline void be32_add_cpu(__be32 *var, u32 val)
+-{
+-	*var = cpu_to_be32(be32_to_cpu(*var) + val);
+-}
+-
+-#endif /* OCFS2_ENDIAN_H */
+diff -puN fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core fs/ocfs2/ocfs2.h
+--- a/fs/ocfs2/ocfs2.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/fs/ocfs2/ocfs2.h
+@@ -43,7 +43,6 @@
+ #include "dlm/dlmapi.h"
+ 
+ #include "ocfs2_fs.h"
+-#include "endian.h"
+ #include "ocfs2_lockid.h"
+ 
+ /* Most user visible OCFS2 inodes will have very few pieces of
+diff -puN include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core include/linux/byteorder/generic.h
+--- a/include/linux/byteorder/generic.h~byteorder-move-le32_add_cpu-friends-from-ocfs2-to-core
++++ a/include/linux/byteorder/generic.h
+@@ -146,6 +146,36 @@
+ #define htons(x) ___htons(x)
+ #define ntohs(x) ___ntohs(x)
+ 
++static inline void le16_add_cpu(__le16 *var, u16 val)
++{
++	*var = cpu_to_le16(le16_to_cpu(*var) + val);
++}
++
++static inline void le32_add_cpu(__le32 *var, u32 val)
++{
++	*var = cpu_to_le32(le32_to_cpu(*var) + val);
++}
++
++static inline void le64_add_cpu(__le64 *var, u64 val)
++{
++	*var = cpu_to_le64(le64_to_cpu(*var) + val);
++}
++
++static inline void be16_add_cpu(__be16 *var, u16 val)
++{
++	*var = cpu_to_be16(be16_to_cpu(*var) + val);
++}
++
++static inline void be32_add_cpu(__be32 *var, u32 val)
++{
++	*var = cpu_to_be32(be32_to_cpu(*var) + val);
++}
++
++static inline void be64_add_cpu(__be64 *var, u64 val)
++{
++	*var = cpu_to_be64(be64_to_cpu(*var) + val);
++}
++
+ #endif /* KERNEL */
+ 
+ #endif /* _LINUX_BYTEORDER_GENERIC_H */
 _
 
-Patches currently in -mm which might be from neilb@suse.de are
+Patches currently in -mm which might be from marcin.slusarz@gmail.com are
 
 origin.patch
-one-less-parameter-to-__d_path.patch
-d_path-kerneldoc-cleanup.patch
-d_path-use-struct-path-in-struct-avc_audit_data.patch
-d_path-make-proc_get_link-use-a-struct-path-argument.patch
-d_path-make-get_dcookie-use-a-struct-path-argument.patch
-use-struct-path-in-struct-svc_export.patch
-use-struct-path-in-struct-svc_export-checkpatch-fixes.patch
-use-struct-path-in-struct-svc_expkey.patch
-d_path-make-seq_path-use-a-struct-path-argument.patch
-d_path-make-d_path-use-a-struct-path.patch
-d_path-make-d_path-use-a-struct-path-fix.patch
+xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
+xfs-convert-bex_add-to-bex_add_cpu-new-common-api-fix.patch
