@@ -1,94 +1,83 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: What's in e2fsprogs.git (stable)
-Date: Sun, 10 Feb 2008 23:41:08 -0500
-Message-ID: <20080211044108.GA25089@mit.edu>
-References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu>
+Subject: Re: What's cooking in e2fsprogs.git (topics)
+Date: Sun, 10 Feb 2008 23:51:07 -0500
+Message-ID: <20080211045107.GB25089@mit.edu>
+References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64822 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:34140 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752258AbYBKElL (ORCPT
+	by vger.kernel.org with ESMTP id S1753138AbYBKEvK (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Feb 2008 23:41:11 -0500
+	Sun, 10 Feb 2008 23:51:10 -0500
 Content-Disposition: inline
-In-Reply-To: <20080101180128.GB23047@mit.edu>
+In-Reply-To: <20071217171100.GA7070@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Most of the maint branch went into the e2fsprogs 1.40.6 release that
-happened this weekend.
+I'ts been a while since I've pushed one of these out.  This updates pu
+against the latest "next" branch, so we can make sure all of the
+changes that had been folded into "maint" is included on the pu
+branch.  It also includes more work on the tt/extents patches.
+Tune2fs and e2image are now functional with extents, and e2fsck has
+more extents checking added.  Still a bit more work to be done there,
+and I also have to add code to deal with symlinks that have the
+EXTENTS_FL flag set.
 
-						- Ted
+I've dropped the js/flex-bg branch since it had conflicts with the
+on-disk bg flags, and it had conflicts with the exsting patches that
+caused me concern.  Jose, once you regenerate the patch and deal with
+comments, I'll add it back in.
 
-* The 'maint' branch has these fixes since the last announcement.
+My TODO list:
 
-Eric Sandeen (2):
-  Fix the pathname of /var/lib/uuidd/uuidd.pid in uuidd man page.
-  Fix up e2fsprogs.spec file to include a new uuidd package
+   finish e2fsck extents support
+   more flexible mke2fs.conf handling
+   EXT4 -- allow mke2fs 8TB without -f
+   reserve a few extra resize blocks for small filesystems
+   disable metabg/resize combination
+   adjust big, medium, small, thresholds
+         256 inode size
+   flexbg patch from Jose
 
-Pixel (1):
-  blkid: have ntfs's UUID compatible with vol_id
+					- Ted
 
-Theodore Ts'o (41):
-  Add the Meta directory to the .gitignore file
-  debian: use '$(MAKE)' instead of 'make' in debian/rules
-  Fix profile, checker, and shared-library building on non-Linux
-      platforms
-  Fix Makefile race so that "make -j3 distclean" works correctly
-  Use pkg-config to determine where to find the devmapper library
-  debugfs: Change lsdel to use ext2fs_block_iterate2 it can find
-      large files
-  Add sample python bindings for the uuid library
-  If --sbindir, et. al are specified to configure set $root_sbindir,
-      et al.
-  debian: Add "set -e" to postinst scripts
-  debian: Add passwd dependency to libuuid1 and uuid-runtime
-  Define helper functions ext2fs_set_i_{u,g}id_high() for MacOS
-      compatibility
-  resize2fs: Add sanity check for off_t overflow before truncating
-  Explicitly check for ftruncate64() in configure.in
-  Update Swedish translation file from the Translation Project
-  Add support for the test_fs flag
-  Teach the blkid library about ext4/ext4dev
-  Ignore "safe" flag differences when e2fsck compares superblocks
-  Fix minor typo in resize2fs man page
-  blkid: Make sure the blocksize in reiserfs is sane
-  blkid: Add support for HFS+ detection
-  libuuid: Make sure execl() variadic function is properly terminated
-  Use lseek() instead of llseek() of sizeof(long) == sizeof(long
-      long)
-  e2image: Fix potential overflow if the device name is too long
-  debian: Don't use dietlibc on platforms that don't support it
-  Don't build e2fsck statically by default anymore
-  Create new filesystems with 256-byte inodes by default
-  Create filesystems with the ext_attr feature by default
-  Update release notes, version files for 1.40.5 release
-  debian: Fix packaging problem caused by dpkg 1.14.16
-  Fix bug in e2fsck which caused it to core dump if
-      --enable-jbd-debug is used
-  blkid: Automatically chose between ext4 and ext4dev as appropriate
-  Allow tune2fs to set and clear the test_fs flag on ext4 filesystems
-  blkid: Flush cached filesystem information on any error other than
-      EPERM
-  Don't try to create $DESTDIR/etc/init.d as part of make install
-  blkid: Add support for returning labels for UDF filesystems
-  Update e2fsprogs translation template and Vietnamese and Czech
-      translations
-  Document the BLKID_FILE environment variable in the libblkid man
-      page
-  libcom_err: Use thread local storage to fix reentrancy problems
-  Update release notes, version files for 1.40.6 release
-  Fix incorrect distribution name in Debian's Changelog
-  Set the C locale in the tests/test_script driver
+Here are the topics that have been cooking.  Commits prefixed
+with '-' are only in 'pu' while commits prefixed with '+' are
+in 'next'.  The topics list the commits in reverse chronological
+order.
 
-
-* The 'master' branch has these since the last announcement
-  in addition to the above.
-
-Andreas Dilger (1):
-  mke2fs: Make lost+found always have at least 2 blocks
-
-Theodore Ts'o (1):
-  debugfs: Add -p option to ls subcommand.
+* js/uninit (Sun Oct 21 21:04:24 2007 -0500) 14 commits
+ - Add m_uninit test case.
+ - Add new mm_lazy test case.
+ - Fix test cases.
+ - Update uninit block group documetation for some of the utilities.
+ - Make e2fsck uninit block group aware.
+ - Make debugfs uninit block group aware.
+ - Make resize2fs uninit block group aware.
+ - Make dumpe2fs uninit block group aware.
+ - Make tune2fs uninit block group aware.
+ - Add support for creating filesystems using uninit block group.
+ - Rename feature name from gdt_checksum to uninit_groups.
+ - Add uninit block group support on libe2fs.
+ - Add initial checksum support.
+* tt/64bit-bitmaps (Sun Oct 14 22:51:51 2007 -0400) 2 commits
+ - Initial design for 64-bit bitmaps
+* tt/extents (Mon Aug 20 21:31:11 2007 -0400) 8 commits
+ - e2fsck: Add support for extents
+ - Use BLOCK_FLAG_READ_ONLY flag in debugfs, e2image, and tune2fs
+ - Add read-only extents support to ext2fs_block_iterate2()
+ - Add support for extents to libext2fs
+ - e2fsck: factor out code to clear an inode into
+   e2fsck_clear_inode()
+ - Don't byte swap extents information in the inode
+ - Allow debugfs to be extended for use by test programs
+* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 7 commits
+ - e2fsprogs: Add test case for undoe2fs
+ - e2fsprogs: Fix the resize inode test case
+ - e2fsprogs: Support for large inode migration.
+ - e2fsprogs: Make mke2fs use undo I/O manager.
+ - e2fsprogs: Add undoe2fs
+ - e2fsprogs: Add undo I/O manager
