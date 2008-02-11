@@ -1,49 +1,70 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Don't claim block from group which has corrupt
-	bitmap
-Date: Mon, 11 Feb 2008 17:06:52 +0530
-Message-ID: <20080211113652.GA3833@skywalker>
-References: <1202729418-5582-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [PATCH] e2fsprogs: New bitmap and inode table allocation for
+ FLEX_BG
+Date: Mon, 11 Feb 2008 09:05:44 -0600
+Message-ID: <20080211090544.22c749ac@gara>
+References: <20080207110905.7886d170@gara>
+	<20080208051116.GB3120@webber.adilger.int>
+	<20080208113740.11760ee2@gara>
+	<20080211043351.GD26205@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, cmm@us.ibm.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:51913 "EHLO
-	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752084AbYBKLg7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Feb 2008 06:36:59 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1BBavAY020285
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 17:06:57 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1BBavdE815218
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 17:06:57 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1BBauXo023555
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 11:36:57 GMT
-Content-Disposition: inline
-In-Reply-To: <1202729418-5582-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:53721 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756206AbYBKPFu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2008 10:05:50 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1BF5ksm006354
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 10:05:46 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1BF5khm211090
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 10:05:46 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1BF5kWo009676
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 10:05:46 -0500
+In-Reply-To: <20080211043351.GD26205@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 11, 2008 at 05:00:18PM +0530, Aneesh Kumar K.V wrote:
-> In ext4_mb_complex_scan_group, if the extent length of the newly
-> found extentet is greater than than the total free blocks counted
-> in group info, break without claiming the block.
+On Sun, 10 Feb 2008 23:33:51 -0500
+Theodore Tso <tytso@MIT.EDU> wrote:
+
+> On Fri, Feb 08, 2008 at 11:37:40AM -0600, Jose R. Santos wrote:
+> > > >  #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+> > > >  #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+> > > > +#define EXT2_BG_FLEX_METADATA	0x0004 /* FLEX_BG block group contains meta-data */
+> > > 
+> > > Hrm, I thought I had reserved that value in the uninit_groups patch?
+> > > +#define EXT3_BG_INODE_ZEROED   0x0004  /* On-disk itable initialized to zero */
+> > 
+> > I may have been, I just based the patch on the next branch as Ted had
+> > ask for new e2fsprog patches.  The uninit group patch was not part of
+> > the next branch when I pulled.
 > 
-> Document different ext4_error usage, explaining the state with which we
-> continue if we mount with errors=continue
+> Yes, but whenever you start reserving code points that impact the
+> on-disk format, you need to be careful and coordinate.  Exactly is the
+> purpose of this flag, and why is it here?
+
+Will fix.
+
+> And I don't see any patch in the kernel patch queue that uses this
+> flag.  Is this intended for internal use inside e2fsprogs?  If so,
+> this might not be the best place for it.....
 > 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/mballoc.c |   16 +++++++++++++++-
->  1 files changed, 15 insertions(+), 1 deletions(-)
+>      	       	      	   	     - Ted
 
+Currently, this is only used in e2fsprogs to determine which groups to
+avoid when setting the EXT2_BG_BLOCK_UNINIT.  It will be use on
+ext4_init_block_bitmap() to return the right number of free block when
+a block group does not have any meta-data in it.  Eventually, it would
+be nice to accurately and efficiently calculate the number of meta data
+block used for a flexbg and be able to have these block groups
+uninitialized as well.  This flag will be use to determine which groups
+need to have their meta data block usage calculated.
 
-This was actually part of the version 2 of the patch
-ext4_avoid_panic_in_case_of_corrupted_bitmap.patch. But we missed it
-in the last update. So sending it as a separate patch.
-
-
--aneesh
+-JRS
