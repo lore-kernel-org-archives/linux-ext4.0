@@ -1,24 +1,24 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch added to -mm tree
-Date: Tue, 12 Feb 2008 00:04:19 -0800
-Message-ID: <200802120805.m1C85RSn025086@imap1.linux-foundation.org>
+Subject: + ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch added to -mm tree
+Date: Tue, 12 Feb 2008 00:04:42 -0800
+Message-ID: <200802120805.m1C85o7H025095@imap1.linux-foundation.org>
 Cc: hifumi.hisashi@oss.ntt.co.jp, jack@suse.cz,
 	linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:55879 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:41997 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750702AbYBLIFh (ORCPT
+	by vger.kernel.org with ESMTP id S1750740AbYBLIF4 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2008 03:05:37 -0500
+	Tue, 12 Feb 2008 03:05:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3: fdatasync should skip metadata writeout when overwriting
+     ext4: fdatasync should skip metadata writeout when overwriting
 has been added to the -mm tree.  Its filename is
-     ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
+     ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -34,7 +34,7 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: fdatasync should skip metadata writeout when overwriting
+Subject: ext4: fdatasync should skip metadata writeout when overwriting
 From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
 Currently fdatasync is identical to fsync in ext3.
@@ -99,18 +99,18 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/fsync.c |    3 +++
+ fs/ext4/fsync.c |    3 +++
  1 file changed, 3 insertions(+)
 
-diff -puN fs/ext3/fsync.c~ext3-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext3/fsync.c
---- a/fs/ext3/fsync.c~ext3-fdatasync-should-skip-metadata-writeout-when-overwriting
-+++ a/fs/ext3/fsync.c
-@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+diff -puN fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext4/fsync.c
+--- a/fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting
++++ a/fs/ext4/fsync.c
+@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
  		goto out;
  	}
  
-+	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+		goto out;
++        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++                goto out;
 +
  	/*
  	 * The VFS has written the file data.  If the inode is unaltered
