@@ -1,21 +1,18 @@
 From: marcin.slusarz@gmail.com
-Subject: [PATCH] ext2: le*_add_cpu conversion
-Date: Wed, 13 Feb 2008 00:06:14 +0100
-Message-ID: <1202857582-15450-10-git-send-email-marcin.slusarz@gmail.com>
+Subject: [PATCH] ext4: le*_add_cpu conversion
+Date: Wed, 13 Feb 2008 00:06:15 +0100
+Message-ID: <1202857582-15450-11-git-send-email-marcin.slusarz@gmail.com>
 References: <1202857582-15450-1-git-send-email-marcin.slusarz@gmail.com>
 Cc: Marcin Slusarz <marcin.slusarz@gmail.com>,
-	linux-ext4@vger.kernel.org
+	linux-ext4@vger.kernel.org, sct@redhat.com,
+	Andrew Morton <akpm@linux-foundation.org>,
+	adilger@clusterfs.com, "Theodore Ts'o" <tytso@mit.edu>,
+	Mingming Cao <cmm@us.ibm.com>
 To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.155]:8053 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760624AbYBLXJq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 18:09:46 -0500
-Received: by fg-out-1718.google.com with SMTP id e21so4228506fga.17
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 15:09:45 -0800 (PST)
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753369AbYBLXLV@vger.kernel.org>
 In-Reply-To: <1202857582-15450-1-git-send-email-marcin.slusarz@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Marcin Slusarz <marcin.slusarz@gmail.com>
 
@@ -28,92 +25,250 @@ generated with semantic patch
 
 Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
 Cc: linux-ext4@vger.kernel.org
+Cc: sct@redhat.com
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: adilger@clusterfs.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext2/ialloc.c |   12 ++++--------
- fs/ext2/super.c  |    2 +-
- fs/ext2/xattr.c  |    9 +++------
- 3 files changed, 8 insertions(+), 15 deletions(-)
+ fs/ext4/balloc.c  |    7 ++-----
+ fs/ext4/extents.c |   20 +++++++++-----------
+ fs/ext4/ialloc.c  |   12 ++++--------
+ fs/ext4/mballoc.c |    7 ++-----
+ fs/ext4/resize.c  |    6 ++----
+ fs/ext4/super.c   |    2 +-
+ fs/ext4/xattr.c   |    6 ++----
+ 7 files changed, 22 insertions(+), 38 deletions(-)
 
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index 5deb8b7..0f3e3f3 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -75,11 +75,9 @@ static void ext2_release_inode(struct super_block *sb, int group, int dir)
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 0737e05..5d34899 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -752,9 +752,7 @@ do_more:
+ 	jbd_unlock_bh_state(bitmap_bh);
+ 
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	desc->bg_free_blocks_count =
+-		cpu_to_le16(le16_to_cpu(desc->bg_free_blocks_count) +
+-			group_freed);
++	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
+ 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+@@ -1823,8 +1821,7 @@ allocated:
+ 	spin_lock(sb_bgl_lock(sbi, group_no));
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))
+ 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-	gdp->bg_free_blocks_count =
+-			cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)-num);
++	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index bc7081f..ad628ff 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -608,7 +608,7 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+ 
+ 	ix->ei_block = cpu_to_le32(logical);
+ 	ext4_idx_store_pblock(ix, ptr);
+-	curp->p_hdr->eh_entries = cpu_to_le16(le16_to_cpu(curp->p_hdr->eh_entries)+1);
++	le16_add_cpu(&curp->p_hdr->eh_entries, 1);
+ 
+ 	BUG_ON(le16_to_cpu(curp->p_hdr->eh_entries)
+ 			     > le16_to_cpu(curp->p_hdr->eh_max));
+@@ -730,7 +730,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	}
+ 	if (m) {
+ 		memmove(ex, path[depth].p_ext-m, sizeof(struct ext4_extent)*m);
+-		neh->eh_entries = cpu_to_le16(le16_to_cpu(neh->eh_entries)+m);
++		le16_add_cpu(&neh->eh_entries, m);
  	}
  
- 	spin_lock(sb_bgl_lock(EXT2_SB(sb), group));
--	desc->bg_free_inodes_count =
--		cpu_to_le16(le16_to_cpu(desc->bg_free_inodes_count) + 1);
-+	le16_add_cpu(&desc->bg_free_inodes_count, 1);
- 	if (dir)
--		desc->bg_used_dirs_count =
--			cpu_to_le16(le16_to_cpu(desc->bg_used_dirs_count) - 1);
-+		le16_add_cpu(&desc->bg_used_dirs_count, -1);
- 	spin_unlock(sb_bgl_lock(EXT2_SB(sb), group));
- 	if (dir)
- 		percpu_counter_dec(&EXT2_SB(sb)->s_dirs_counter);
-@@ -539,13 +537,11 @@ got:
- 		percpu_counter_inc(&sbi->s_dirs_counter);
+ 	set_buffer_uptodate(bh);
+@@ -747,8 +747,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		err = ext4_ext_get_access(handle, inode, path + depth);
+ 		if (err)
+ 			goto cleanup;
+-		path[depth].p_hdr->eh_entries =
+-		     cpu_to_le16(le16_to_cpu(path[depth].p_hdr->eh_entries)-m);
++		le16_add_cpu(&path[depth].p_hdr->eh_entries, -m);
+ 		err = ext4_ext_dirty(handle, inode, path + depth);
+ 		if (err)
+ 			goto cleanup;
+@@ -811,8 +810,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		if (m) {
+ 			memmove(++fidx, path[i].p_idx - m,
+ 				sizeof(struct ext4_extent_idx) * m);
+-			neh->eh_entries =
+-				cpu_to_le16(le16_to_cpu(neh->eh_entries) + m);
++			le16_add_cpu(&neh->eh_entries, m);
+ 		}
+ 		set_buffer_uptodate(bh);
+ 		unlock_buffer(bh);
+@@ -828,7 +826,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 			err = ext4_ext_get_access(handle, inode, path + i);
+ 			if (err)
+ 				goto cleanup;
+-			path[i].p_hdr->eh_entries = cpu_to_le16(le16_to_cpu(path[i].p_hdr->eh_entries)-m);
++			le16_add_cpu(&path[i].p_hdr->eh_entries, -m);
+ 			err = ext4_ext_dirty(handle, inode, path + i);
+ 			if (err)
+ 				goto cleanup;
+@@ -1363,7 +1361,7 @@ int ext4_ext_try_to_merge(struct inode *inode,
+ 				* sizeof(struct ext4_extent);
+ 			memmove(ex + 1, ex + 2, len);
+ 		}
+-		eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries) - 1);
++		le16_add_cpu(&eh->eh_entries, -1);
+ 		merge_done = 1;
+ 		WARN_ON(eh->eh_entries == 0);
+ 		if (!eh->eh_entries)
+@@ -1554,7 +1552,7 @@ has_space:
+ 		path[depth].p_ext = nearex;
+ 	}
  
- 	spin_lock(sb_bgl_lock(sbi, group));
+-	eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)+1);
++	le16_add_cpu(&eh->eh_entries, 1);
+ 	nearex = path[depth].p_ext;
+ 	nearex->ee_block = newext->ee_block;
+ 	ext4_ext_store_pblock(nearex, ext_pblock(newext));
+@@ -1693,7 +1691,7 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+ 	err = ext4_ext_get_access(handle, inode, path);
+ 	if (err)
+ 		return err;
+-	path->p_hdr->eh_entries = cpu_to_le16(le16_to_cpu(path->p_hdr->eh_entries)-1);
++	le16_add_cpu(&path->p_hdr->eh_entries, -1);
+ 	err = ext4_ext_dirty(handle, inode, path);
+ 	if (err)
+ 		return err;
+@@ -1896,7 +1894,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		if (num == 0) {
+ 			/* this extent is removed; mark slot entirely unused */
+ 			ext4_ext_store_pblock(ex, 0);
+-			eh->eh_entries = cpu_to_le16(le16_to_cpu(eh->eh_entries)-1);
++			le16_add_cpu(&eh->eh_entries, -1);
+ 		}
+ 
+ 		ex->ee_block = cpu_to_le32(block);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index da18a74..843664c 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -223,11 +223,9 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+ 
+ 		if (gdp) {
+ 			spin_lock(sb_bgl_lock(sbi, block_group));
+-			gdp->bg_free_inodes_count = cpu_to_le16(
+-				le16_to_cpu(gdp->bg_free_inodes_count) + 1);
++			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
+ 			if (is_directory)
+-				gdp->bg_used_dirs_count = cpu_to_le16(
+-				  le16_to_cpu(gdp->bg_used_dirs_count) - 1);
++				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi,
+ 							block_group, gdp);
+ 			spin_unlock(sb_bgl_lock(sbi, block_group));
+@@ -664,11 +662,9 @@ got:
+ 				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
+ 	}
+ 
 -	gdp->bg_free_inodes_count =
--                cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
+-		cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
 +	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
  	if (S_ISDIR(mode)) {
- 		if (sbi->s_debts[group] < 255)
- 			sbi->s_debts[group]++;
 -		gdp->bg_used_dirs_count =
 -			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
 +		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
- 	} else {
- 		if (sbi->s_debts[group])
- 			sbi->s_debts[group]--;
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 108f739..7e68673 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -603,7 +603,7 @@ static int ext2_setup_super (struct super_block * sb,
- 			"running e2fsck is recommended\n");
- 	if (!le16_to_cpu(es->s_max_mnt_count))
- 		es->s_max_mnt_count = cpu_to_le16(EXT2_DFL_MAX_MNT_COUNT);
+ 	}
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group));
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index dd0fcfc..586a320 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3074,9 +3074,7 @@ static int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 						ac->ac_b_ex.fe_group,
+ 						gdp));
+ 	}
+-	gdp->bg_free_blocks_count =
+-		cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count)
+-				- ac->ac_b_ex.fe_len);
++	le16_add_cpu(&gdp->bg_free_blocks_count, -ac->ac_b_ex.fe_len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
+@@ -4564,8 +4562,7 @@ do_more:
+ 	}
+ 
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	gdp->bg_free_blocks_count =
+-		cpu_to_le16(le16_to_cpu(gdp->bg_free_blocks_count) + count);
++	le16_add_cpu(&gdp->bg_free_blocks_count, count);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 9477a2b..f9e716a 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -502,8 +502,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	EXT4_SB(sb)->s_gdb_count++;
+ 	kfree(o_group_desc);
+ 
+-	es->s_reserved_gdt_blocks =
+-		cpu_to_le16(le16_to_cpu(es->s_reserved_gdt_blocks) - 1);
++	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+ 	ext4_journal_dirty_metadata(handle, EXT4_SB(sb)->s_sbh);
+ 
+ 	return 0;
+@@ -877,8 +876,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	 */
+ 	ext4_blocks_count_set(es, ext4_blocks_count(es) +
+ 		input->blocks_count);
+-	es->s_inodes_count = cpu_to_le32(le32_to_cpu(es->s_inodes_count) +
+-		EXT4_INODES_PER_GROUP(sb));
++	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb));
+ 
+ 	/*
+ 	 * We need to protect s_groups_count against other CPUs seeing
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6627ee0..5aa0a50 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1391,7 +1391,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ #endif
+ 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT4_DFL_MAX_MNT_COUNT);
 -	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
 +	le16_add_cpu(&es->s_mnt_count, 1);
- 	ext2_write_super(sb);
- 	if (test_opt (sb, DEBUG))
- 		printk ("[EXT II FS %s, %s, bs=%lu, fs=%lu, gc=%lu, "
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 3e8683d..495ec0d 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -646,8 +646,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 					unlock_buffer(new_bh);
- 					goto cleanup;
- 				}
--				HDR(new_bh)->h_refcount = cpu_to_le32(1 +
--					le32_to_cpu(HDR(new_bh)->h_refcount));
-+				le32_add_cpu(&HDR(new_bh)->h_refcount, 1);
- 				ea_bdebug(new_bh, "refcount now=%d",
- 					le32_to_cpu(HDR(new_bh)->h_refcount));
- 			}
-@@ -731,8 +730,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			bforget(old_bh);
- 		} else {
- 			/* Decrement the refcount only. */
--			HDR(old_bh)->h_refcount = cpu_to_le32(
--				le32_to_cpu(HDR(old_bh)->h_refcount) - 1);
-+			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
- 			if (ce)
- 				mb_cache_entry_release(ce);
- 			DQUOT_FREE_BLOCK(inode, 1);
-@@ -789,8 +787,7 @@ ext2_xattr_delete_inode(struct inode *inode)
- 		bforget(bh);
- 		unlock_buffer(bh);
+ 	es->s_mtime = cpu_to_le32(get_seconds());
+ 	ext4_update_dynamic_rev(sb);
+ 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index d796213..fedaa4f 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -484,8 +484,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 		get_bh(bh);
+ 		ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
  	} else {
--		HDR(bh)->h_refcount = cpu_to_le32(
--			le32_to_cpu(HDR(bh)->h_refcount) - 1);
-+		le32_add_cpu(&HDR(bh)->h_refcount, -1);
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 		ea_bdebug(bh, "refcount now=%d",
+-		BHDR(bh)->h_refcount = cpu_to_le32(
+-				le32_to_cpu(BHDR(bh)->h_refcount) - 1);
++		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
+ 		error = ext4_journal_dirty_metadata(handle, bh);
+ 		if (IS_SYNC(inode))
+ 			handle->h_sync = 1;
+@@ -789,8 +788,7 @@ inserted:
+ 				if (error)
+ 					goto cleanup_dquot;
+ 				lock_buffer(new_bh);
+-				BHDR(new_bh)->h_refcount = cpu_to_le32(1 +
+-					le32_to_cpu(BHDR(new_bh)->h_refcount));
++				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					le32_to_cpu(BHDR(new_bh)->h_refcount));
+ 				unlock_buffer(new_bh);
 -- 
 1.5.3.7
