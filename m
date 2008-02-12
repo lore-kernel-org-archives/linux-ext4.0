@@ -1,69 +1,124 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, E2FSPROGS] blkid: Automatically chose between ext4 and
-	ext4dev as appropriate
-Date: Mon, 11 Feb 2008 16:46:43 -0700
-Message-ID: <20080211234643.GL3029@webber.adilger.int>
-References: <E1JNboG-0000IP-8D@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@MIT.EDU>
+From: akpm@linux-foundation.org
+Subject: + ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch added to -mm tree
+Date: Tue, 12 Feb 2008 00:04:19 -0800
+Message-ID: <200802120805.m1C85RSn025086@imap1.linux-foundation.org>
+Cc: hifumi.hisashi@oss.ntt.co.jp, jack@suse.cz,
+	linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:64334 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753773AbYBKXqt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Feb 2008 18:46:49 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1BNkm3E021887
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2008 15:46:48 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JW300601LXC2A00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 11 Feb 2008 15:46:48 -0800 (PST)
-In-reply-to: <E1JNboG-0000IP-8D@closure.thunk.org>
-Content-disposition: inline
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:55879 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750702AbYBLIFh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2008 03:05:37 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 08, 2008  17:35 -0500, Theodore Ts'o wrote:
-> I plan to release this in an upcoming 1.40.6 release, along with code
-> that allows "tune2fs -E test_fs" to work on ext4 filesystems.  The idea
-> is that if I can get this into community distro's, it will make it
-> easier for them to experiment with ext4/ext4dev, with the appropriate
-> forward compatibility when sometime (hopefully 2.6.26 or 2.6.27?) we
-> rename ext4dev to ext4.
-> 
-> Any comments before I push this change out to the maint branch?
-> 
-> 						- Ted
-> 
-> 
-> @@ -158,6 +159,109 @@ static void get_ext2_info(blkid_dev dev, struct blkid_magic *id,
->  		blkid_set_tag(dev, "SEC_TYPE", "ext2", sizeof("ext2"));
->  }
->  
-> +/*
-> + * Check to see if a filesystem is in /proc/filesystems.
-> + * Returns 1 if found, 0 if not
-> + */
-> +int fs_proc_check(const char *fs_name)
-> +{
-> +}
 
-Sure.
+The patch titled
+     ext3: fdatasync should skip metadata writeout when overwriting
+has been added to the -mm tree.  Its filename is
+     ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
 
-> +int check_for_modules(const char *fs_name)
-> +{
-> +}
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-This part is quite fragile IMHO.  Why not blindly do an attempt to load
-this module via the equivalent of system("modprobe %s", fs_name) and then
-call fs_proc_check() to see if it is available?  That removes all of the
-kernel/module knowlege/complexity from blkid.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: fdatasync should skip metadata writeout when overwriting
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+
+Currently fdatasync is identical to fsync in ext3.
+
+I think fdatasync should skip journal flush in data=ordered and
+data=writeback mode when it overwrites to already-instantiated blocks on
+HDD.  When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal
+writeout because this indicates only atime or/and mtime updates.
+
+Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+
+I did a performance test using the sysbench.
+
+#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G
+--file-test-mode=rndwr --file-fsync-mode=fdatasync run
+
+The result on ext3 was:
+
+	-2.6.24
+	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
+	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
+	  775.45 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          64.5814s
+	    total number of events:              50080
+	    total time taken by event execution: 3713.9836
+	    per-request statistics:
+	         min:                            0.0000s
+	         avg:                            0.0742s
+	         max:                            0.9375s
+	         approx.  95 percentile:         0.2901s
+
+	Threads fairness:
+	    events (avg/stddev):           391.2500/23.26
+	    execution time (avg/stddev):   29.0155/1.99
+
+	-2.6.24-patched
+	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
+	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
+	1050.83 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          47.5900s
+	    total number of events:              50009
+	    total time taken by event execution: 2934.5768
+	    per-request statistics:
+ 	         min:                            0.0000s
+	         avg:                            0.0587s
+ 	         max:                            0.8938s
+	         approx.  95 percentile:         0.1993s
+
+	Threads fairness:
+	    events (avg/stddev):           390.6953/22.64
+	    execution time (avg/stddev):   22.9264/1.17
+
+Filesystem I/O throughput was improved.
+
+Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/fsync.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+diff -puN fs/ext3/fsync.c~ext3-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext3/fsync.c
+--- a/fs/ext3/fsync.c~ext3-fdatasync-should-skip-metadata-writeout-when-overwriting
++++ a/fs/ext3/fsync.c
+@@ -72,6 +72,9 @@ int ext3_sync_file(struct file * file, s
+ 		goto out;
+ 	}
+ 
++	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++		goto out;
++
+ 	/*
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
+_
+
+Patches currently in -mm which might be from hifumi.hisashi@oss.ntt.co.jp are
+
+origin.patch
+ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
+ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
