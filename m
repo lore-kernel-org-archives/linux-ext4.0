@@ -1,186 +1,71 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Fix circular locking dependency with fallocate and touch.
-Date: Tue, 12 Feb 2008 14:45:35 +0530
-Message-ID: <1202807735-22670-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu, cmm@us.ibm.com
+Subject: EXT4_FEATURE_RO_COMPAT_DIR_NLINK and the directory size.
+Date: Tue, 12 Feb 2008 18:06:32 +0530
+Message-ID: <20080212123632.GA16634@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:33879 "EHLO
-	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751551AbYBLJPn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 04:15:43 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1C9FcHd031860
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 14:45:38 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1C9FcD0819272
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 14:45:38 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1C9FahR029010
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 09:15:38 GMT
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:48158 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753231AbYBLMgf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 07:36:35 -0500
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1CCaW9R001934
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 18:06:32 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1CCaWRm594066
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 18:06:32 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1CCaWp5010762
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 12:36:32 GMT
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to prevent a circular locking dependency when an ext4_create
-operation is racing with an ext4_fallocate, we acquire and release
-i_data_sem for each multiblock request and use i_mutex to
-prevent writes and truncates during the complete fallocate operation.
+Steps:
+[root]# more /root/largedir 
+i=65000
+mkdir /mnt/tmp/test/
+cd /mnt/tmp/test/
+while [ $i -gt 0 ]
+do 
+        mkdir $i
+        i=$(expr $i - 1)
+done
+
+# /root/largedir
+# cd /mnt/tmp/test
+# rm -rf *
+# cd ..
+# ls -al 
+drwxr-xr-x  1 root root 1380352 Feb 12 07:15 test
+# e2fsck -fv /dev/sda7
+# ls -al 
+drwxr-xr-x  2 root root 1380352 Feb 12 07:15 test
 
 
-=======================================================
-[ INFO: possible circular locking dependency detected ]
-2.6.25-rc1 #4
--------------------------------------------------------
-touch/2347 is trying to acquire lock:
- (&ei->i_data_sem){----}, at: [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
+So e2fsck fix the link count. But the size is not updated. If i try to
+run the script again, i get 
 
-but task is already holding lock:
- (jbd2_handle){--..}, at: [<c01ee43c>] jbd2_journal_start+0xce/0xf0
+EXT4-fs error (device sda7): ext4_find_entry: reading directory #187681
+offset 0
+attempt to access beyond end of device
+sda7: rw=32, want=17582522464, limit=19551042
+attempt to access beyond end of device
+sda7: rw=32, want=32620150800, limit=19551042
+attempt to access beyond end of device
+sda7: rw=32, want=32620150800, limit=19551042
 
-which lock already depends on the new lock.
 
 
-the existing dependency chain (in reverse order) is:
+Also after running fsstress fsck fails with zero size directory on
+powerpc. I am finding directories with 
 
--> #1 (jbd2_handle){--..}:
-       [<c013b2e3>] __lock_acquire+0x960/0xb13
-       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
-       [<c013b502>] lock_acquire+0x6c/0x89
-       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
-       [<c01ee451>] jbd2_journal_start+0xe3/0xf0
-       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
-       [<c01d66c5>] ext4_journal_start_sb+0x40/0x42
-       [<c01dd2bd>] ext4_fallocate+0x156/0x46b
-       [<c01527dd>] __do_fault+0x2ea/0x324
-       [<c0108c60>] native_sched_clock+0x8d/0x9f
-       [<c0108c60>] native_sched_clock+0x8d/0x9f
-       [<c016531a>] fget+0x7d/0x9b
-       [<c016302a>] sys_fallocate+0xcc/0xf0
-       [<c0104992>] sysenter_past_esp+0x5f/0xa5
-       [<ffffffff>] 0xffffffff
+i_links_count == 1
+i_blocks == 0
 
--> #0 (&ei->i_data_sem){----}:
-       [<c013b20a>] __lock_acquire+0x887/0xb13
-       [<c013b502>] lock_acquire+0x6c/0x89
-       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
-       [<c043353b>] down_read+0x30/0x6a
-       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
-       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
-       [<c01d00df>] ext4_getblk+0x49/0x18f
-       [<c01dde4d>] __ext4_journal_dirty_metadata+0x19/0x3c
-       [<c01ceff7>] ext4_mark_iloc_dirty+0x380/0x3e5
-       [<c01d0ed0>] ext4_bread+0x14/0x78
-       [<c01d3b49>] ext4_add_entry+0x483/0x775
-       [<c01ce4d5>] ext4_new_inode+0xa13/0xa3d
-       [<c043418c>] _spin_unlock+0x1d/0x20
-       [<c01ee451>] jbd2_journal_start+0xe3/0xf0
-       [<c01d43e0>] ext4_add_nondir+0x15/0x42
-       [<c01d48a7>] ext4_create+0xab/0xdf
-       [<c01d47fc>] ext4_create+0x0/0xdf
-       [<c016ad14>] vfs_create+0x67/0xad
-       [<c016cfc2>] open_namei+0x15c/0x512
-       [<c0162e35>] do_filp_open+0x1f/0x35
-       [<c0162c08>] get_unused_fd_flags+0xd4/0xde
-       [<c043418c>] _spin_unlock+0x1d/0x20
-       [<c0162e8d>] do_sys_open+0x42/0xbc
-       [<c0162f33>] sys_open+0x16/0x18
-       [<c0104992>] sysenter_past_esp+0x5f/0xa5
-       [<ffffffff>] 0xffffffff
+I missed to check whether the l_i_blocks_hi was having some value.
 
-other info that might help us debug this:
-
-2 locks held by touch/2347:
- #0:  (&type->i_mutex_dir_key#5){--..}, at: [<c016cf35>] open_namei+0xcf/0x512
- #1:  (jbd2_handle){--..}, at: [<c01ee43c>] jbd2_journal_start+0xce/0xf0
-
-stack backtrace:
-Pid: 2347, comm: touch Not tainted 2.6.25-rc1 #4
- [<c01394cd>] print_circular_bug_tail+0x5b/0x66
- [<c013b20a>] __lock_acquire+0x887/0xb13
- [<c013b502>] lock_acquire+0x6c/0x89
- [<c01cffed>] ? ext4_get_blocks_wrap+0x21/0xca
- [<c043353b>] down_read+0x30/0x6a
- [<c01cffed>] ? ext4_get_blocks_wrap+0x21/0xca
- [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
- [<c01d00df>] ext4_getblk+0x49/0x18f
- [<c01dde4d>] ? __ext4_journal_dirty_metadata+0x19/0x3c
- [<c01ceff7>] ? ext4_mark_iloc_dirty+0x380/0x3e5
- [<c01d0ed0>] ext4_bread+0x14/0x78
- [<c01d3b49>] ext4_add_entry+0x483/0x775
- [<c01ce4d5>] ? ext4_new_inode+0xa13/0xa3d
- [<c043418c>] ? _spin_unlock+0x1d/0x20
- [<c01ee451>] ? jbd2_journal_start+0xe3/0xf0
- [<c01d43e0>] ext4_add_nondir+0x15/0x42
- [<c01d48a7>] ext4_create+0xab/0xdf
- [<c01d47fc>] ? ext4_create+0x0/0xdf
- [<c016ad14>] vfs_create+0x67/0xad
- [<c016cfc2>] open_namei+0x15c/0x512
- [<c0162e35>] do_filp_open+0x1f/0x35
- [<c0162c08>] ? get_unused_fd_flags+0xd4/0xde
- [<c043418c>] ? _spin_unlock+0x1d/0x20
- [<c0162e8d>] do_sys_open+0x42/0xbc
- [<c0162f33>] sys_open+0x16/0x18
- [<c0104992>] sysenter_past_esp+0x5f/0xa5
- =======================
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c |   10 +++-------
- 1 files changed, 3 insertions(+), 7 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bc7081f..e856f66 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2623,7 +2623,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
- 	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
- 	 */
- 	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + 3;
--	down_write((&EXT4_I(inode)->i_data_sem));
-+	mutex_lock(&inode->i_mutex);
- retry:
- 	while (ret >= 0 && ret < max_blocks) {
- 		block = block + ret;
-@@ -2634,7 +2634,7 @@ retry:
- 			break;
- 		}
- 
--		ret = ext4_ext_get_blocks(handle, inode, block,
-+		ret = ext4_get_blocks_wrap(handle, inode, block,
- 					  max_blocks, &map_bh,
- 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
- 		WARN_ON(ret <= 0);
-@@ -2680,7 +2680,6 @@ retry:
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
- 
--	up_write((&EXT4_I(inode)->i_data_sem));
- 	/*
- 	 * Time to update the file size.
- 	 * Update only when preallocation was requested beyond the file size.
-@@ -2692,21 +2691,18 @@ retry:
- 			 * if no error, we assume preallocation succeeded
- 			 * completely
- 			 */
--			mutex_lock(&inode->i_mutex);
- 			i_size_write(inode, offset + len);
- 			EXT4_I(inode)->i_disksize = i_size_read(inode);
--			mutex_unlock(&inode->i_mutex);
- 		} else if (ret < 0 && nblocks) {
- 			/* Handle partial allocation scenario */
- 			loff_t newsize;
- 
--			mutex_lock(&inode->i_mutex);
- 			newsize  = (nblocks << blkbits) + i_size_read(inode);
- 			i_size_write(inode, EXT4_BLOCK_ALIGN(newsize, blkbits));
- 			EXT4_I(inode)->i_disksize = i_size_read(inode);
--			mutex_unlock(&inode->i_mutex);
- 		}
- 	}
- 
-+	mutex_unlock(&inode->i_mutex);
- 	return ret > 0 ? ret2 : ret;
- }
--- 
-1.5.4.1.97.g40aab-dirty
+-aneesh
