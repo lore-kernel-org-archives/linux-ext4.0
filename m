@@ -1,124 +1,186 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch added to -mm tree
-Date: Tue, 12 Feb 2008 00:04:42 -0800
-Message-ID: <200802120805.m1C85o7H025095@imap1.linux-foundation.org>
-Cc: hifumi.hisashi@oss.ntt.co.jp, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix circular locking dependency with fallocate and touch.
+Date: Tue, 12 Feb 2008 14:45:35 +0530
+Message-ID: <1202807735-22670-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:41997 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750740AbYBLIF4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2008 03:05:56 -0500
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:33879 "EHLO
+	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751551AbYBLJPn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 04:15:43 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1C9FcHd031860
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 14:45:38 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1C9FcD0819272
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 14:45:38 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1C9FahR029010
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 09:15:38 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+In order to prevent a circular locking dependency when an ext4_create
+operation is racing with an ext4_fallocate, we acquire and release
+i_data_sem for each multiblock request and use i_mutex to
+prevent writes and truncates during the complete fallocate operation.
 
-The patch titled
-     ext4: fdatasync should skip metadata writeout when overwriting
-has been added to the -mm tree.  Its filename is
-     ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+=======================================================
+[ INFO: possible circular locking dependency detected ]
+2.6.25-rc1 #4
+-------------------------------------------------------
+touch/2347 is trying to acquire lock:
+ (&ei->i_data_sem){----}, at: [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+but task is already holding lock:
+ (jbd2_handle){--..}, at: [<c01ee43c>] jbd2_journal_start+0xce/0xf0
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+which lock already depends on the new lock.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-------------------------------------------------------
-Subject: ext4: fdatasync should skip metadata writeout when overwriting
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+the existing dependency chain (in reverse order) is:
 
-Currently fdatasync is identical to fsync in ext3.
+-> #1 (jbd2_handle){--..}:
+       [<c013b2e3>] __lock_acquire+0x960/0xb13
+       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
+       [<c013b502>] lock_acquire+0x6c/0x89
+       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
+       [<c01ee451>] jbd2_journal_start+0xe3/0xf0
+       [<c01ee43c>] jbd2_journal_start+0xce/0xf0
+       [<c01d66c5>] ext4_journal_start_sb+0x40/0x42
+       [<c01dd2bd>] ext4_fallocate+0x156/0x46b
+       [<c01527dd>] __do_fault+0x2ea/0x324
+       [<c0108c60>] native_sched_clock+0x8d/0x9f
+       [<c0108c60>] native_sched_clock+0x8d/0x9f
+       [<c016531a>] fget+0x7d/0x9b
+       [<c016302a>] sys_fallocate+0xcc/0xf0
+       [<c0104992>] sysenter_past_esp+0x5f/0xa5
+       [<ffffffff>] 0xffffffff
 
-I think fdatasync should skip journal flush in data=ordered and
-data=writeback mode when it overwrites to already-instantiated blocks on
-HDD.  When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal
-writeout because this indicates only atime or/and mtime updates.
+-> #0 (&ei->i_data_sem){----}:
+       [<c013b20a>] __lock_acquire+0x887/0xb13
+       [<c013b502>] lock_acquire+0x6c/0x89
+       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
+       [<c043353b>] down_read+0x30/0x6a
+       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
+       [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
+       [<c01d00df>] ext4_getblk+0x49/0x18f
+       [<c01dde4d>] __ext4_journal_dirty_metadata+0x19/0x3c
+       [<c01ceff7>] ext4_mark_iloc_dirty+0x380/0x3e5
+       [<c01d0ed0>] ext4_bread+0x14/0x78
+       [<c01d3b49>] ext4_add_entry+0x483/0x775
+       [<c01ce4d5>] ext4_new_inode+0xa13/0xa3d
+       [<c043418c>] _spin_unlock+0x1d/0x20
+       [<c01ee451>] jbd2_journal_start+0xe3/0xf0
+       [<c01d43e0>] ext4_add_nondir+0x15/0x42
+       [<c01d48a7>] ext4_create+0xab/0xdf
+       [<c01d47fc>] ext4_create+0x0/0xdf
+       [<c016ad14>] vfs_create+0x67/0xad
+       [<c016cfc2>] open_namei+0x15c/0x512
+       [<c0162e35>] do_filp_open+0x1f/0x35
+       [<c0162c08>] get_unused_fd_flags+0xd4/0xde
+       [<c043418c>] _spin_unlock+0x1d/0x20
+       [<c0162e8d>] do_sys_open+0x42/0xbc
+       [<c0162f33>] sys_open+0x16/0x18
+       [<c0104992>] sysenter_past_esp+0x5f/0xa5
+       [<ffffffff>] 0xffffffff
 
-Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+other info that might help us debug this:
 
-I did a performance test using the sysbench.
+2 locks held by touch/2347:
+ #0:  (&type->i_mutex_dir_key#5){--..}, at: [<c016cf35>] open_namei+0xcf/0x512
+ #1:  (jbd2_handle){--..}, at: [<c01ee43c>] jbd2_journal_start+0xce/0xf0
 
-#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G
---file-test-mode=rndwr --file-fsync-mode=fdatasync run
+stack backtrace:
+Pid: 2347, comm: touch Not tainted 2.6.25-rc1 #4
+ [<c01394cd>] print_circular_bug_tail+0x5b/0x66
+ [<c013b20a>] __lock_acquire+0x887/0xb13
+ [<c013b502>] lock_acquire+0x6c/0x89
+ [<c01cffed>] ? ext4_get_blocks_wrap+0x21/0xca
+ [<c043353b>] down_read+0x30/0x6a
+ [<c01cffed>] ? ext4_get_blocks_wrap+0x21/0xca
+ [<c01cffed>] ext4_get_blocks_wrap+0x21/0xca
+ [<c01d00df>] ext4_getblk+0x49/0x18f
+ [<c01dde4d>] ? __ext4_journal_dirty_metadata+0x19/0x3c
+ [<c01ceff7>] ? ext4_mark_iloc_dirty+0x380/0x3e5
+ [<c01d0ed0>] ext4_bread+0x14/0x78
+ [<c01d3b49>] ext4_add_entry+0x483/0x775
+ [<c01ce4d5>] ? ext4_new_inode+0xa13/0xa3d
+ [<c043418c>] ? _spin_unlock+0x1d/0x20
+ [<c01ee451>] ? jbd2_journal_start+0xe3/0xf0
+ [<c01d43e0>] ext4_add_nondir+0x15/0x42
+ [<c01d48a7>] ext4_create+0xab/0xdf
+ [<c01d47fc>] ? ext4_create+0x0/0xdf
+ [<c016ad14>] vfs_create+0x67/0xad
+ [<c016cfc2>] open_namei+0x15c/0x512
+ [<c0162e35>] do_filp_open+0x1f/0x35
+ [<c0162c08>] ? get_unused_fd_flags+0xd4/0xde
+ [<c043418c>] ? _spin_unlock+0x1d/0x20
+ [<c0162e8d>] do_sys_open+0x42/0xbc
+ [<c0162f33>] sys_open+0x16/0x18
+ [<c0104992>] sysenter_past_esp+0x5f/0xa5
+ =======================
 
-The result on ext3 was:
-
-	-2.6.24
-	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
-	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
-	  775.45 Requests/sec executed
-
-	Test execution summary:
-	    total time:                          64.5814s
-	    total number of events:              50080
-	    total time taken by event execution: 3713.9836
-	    per-request statistics:
-	         min:                            0.0000s
-	         avg:                            0.0742s
-	         max:                            0.9375s
-	         approx.  95 percentile:         0.2901s
-
-	Threads fairness:
-	    events (avg/stddev):           391.2500/23.26
-	    execution time (avg/stddev):   29.0155/1.99
-
-	-2.6.24-patched
-	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
-	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
-	1050.83 Requests/sec executed
-
-	Test execution summary:
-	    total time:                          47.5900s
-	    total number of events:              50009
-	    total time taken by event execution: 2934.5768
-	    per-request statistics:
- 	         min:                            0.0000s
-	         avg:                            0.0587s
- 	         max:                            0.8938s
-	         approx.  95 percentile:         0.1993s
-
-	Threads fairness:
-	    events (avg/stddev):           390.6953/22.64
-	    execution time (avg/stddev):   22.9264/1.17
-
-Filesystem I/O throughput was improved.
-
-Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/ext4/extents.c |   10 +++-------
+ 1 files changed, 3 insertions(+), 7 deletions(-)
 
- fs/ext4/fsync.c |    3 +++
- 1 file changed, 3 insertions(+)
-
-diff -puN fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext4/fsync.c
---- a/fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting
-+++ a/fs/ext4/fsync.c
-@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
- 		goto out;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index bc7081f..e856f66 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2623,7 +2623,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ 	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
+ 	 */
+ 	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + 3;
+-	down_write((&EXT4_I(inode)->i_data_sem));
++	mutex_lock(&inode->i_mutex);
+ retry:
+ 	while (ret >= 0 && ret < max_blocks) {
+ 		block = block + ret;
+@@ -2634,7 +2634,7 @@ retry:
+ 			break;
+ 		}
+ 
+-		ret = ext4_ext_get_blocks(handle, inode, block,
++		ret = ext4_get_blocks_wrap(handle, inode, block,
+ 					  max_blocks, &map_bh,
+ 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
+ 		WARN_ON(ret <= 0);
+@@ -2680,7 +2680,6 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ 
+-	up_write((&EXT4_I(inode)->i_data_sem));
+ 	/*
+ 	 * Time to update the file size.
+ 	 * Update only when preallocation was requested beyond the file size.
+@@ -2692,21 +2691,18 @@ retry:
+ 			 * if no error, we assume preallocation succeeded
+ 			 * completely
+ 			 */
+-			mutex_lock(&inode->i_mutex);
+ 			i_size_write(inode, offset + len);
+ 			EXT4_I(inode)->i_disksize = i_size_read(inode);
+-			mutex_unlock(&inode->i_mutex);
+ 		} else if (ret < 0 && nblocks) {
+ 			/* Handle partial allocation scenario */
+ 			loff_t newsize;
+ 
+-			mutex_lock(&inode->i_mutex);
+ 			newsize  = (nblocks << blkbits) + i_size_read(inode);
+ 			i_size_write(inode, EXT4_BLOCK_ALIGN(newsize, blkbits));
+ 			EXT4_I(inode)->i_disksize = i_size_read(inode);
+-			mutex_unlock(&inode->i_mutex);
+ 		}
  	}
  
-+        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+                goto out;
-+
- 	/*
- 	 * The VFS has written the file data.  If the inode is unaltered
- 	 * then we need not start a commit.
-_
-
-Patches currently in -mm which might be from hifumi.hisashi@oss.ntt.co.jp are
-
-origin.patch
-ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
-ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
++	mutex_unlock(&inode->i_mutex);
+ 	return ret > 0 ? ret2 : ret;
+ }
+-- 
+1.5.4.1.97.g40aab-dirty
