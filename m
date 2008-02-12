@@ -1,77 +1,119 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: EXT4_FEATURE_RO_COMPAT_DIR_NLINK and the directory size.
-Date: Tue, 12 Feb 2008 15:56:42 -0700
-Message-ID: <20080212225642.GS3029@webber.adilger.int>
-References: <20080212123632.GA16634@skywalker>
- <20080212135342.GB16634@skywalker> <20080212150516.GC16634@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: marcin.slusarz@gmail.com
+Subject: [PATCH] ext2: le*_add_cpu conversion
+Date: Wed, 13 Feb 2008 00:06:14 +0100
+Message-ID: <1202857582-15450-10-git-send-email-marcin.slusarz@gmail.com>
+References: <1202857582-15450-1-git-send-email-marcin.slusarz@gmail.com>
+Cc: Marcin Slusarz <marcin.slusarz@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42532 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750971AbYBLW5K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 17:57:10 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1CMv9Aw026315
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 14:57:09 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JW500001E9WWT00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 12 Feb 2008 14:57:09 -0800 (PST)
-In-reply-to: <20080212150516.GC16634@skywalker>
-Content-disposition: inline
+Received: from fg-out-1718.google.com ([72.14.220.155]:8053 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760624AbYBLXJq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Feb 2008 18:09:46 -0500
+Received: by fg-out-1718.google.com with SMTP id e21so4228506fga.17
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2008 15:09:45 -0800 (PST)
+In-Reply-To: <1202857582-15450-1-git-send-email-marcin.slusarz@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 12, 2008  20:35 +0530, Aneesh Kumar K.V wrote:
-> On Tue, Feb 12, 2008 at 07:23:42PM +0530, Aneesh Kumar K.V wrote:
-> > On Tue, Feb 12, 2008 at 06:06:32PM +0530, Aneesh Kumar K.V wrote:
-> > > Also after running fsstress fsck fails with zero size directory on
-> > > powerpc. I am finding directories with 
-> > > 
-> > > i_links_count == 1
-> > > i_blocks == 0
+From: Marcin Slusarz <marcin.slusarz@gmail.com>
 
-Is this after some failure to create a subdirectory (e.g. ENOSPC)?
+replace all:
+little_endian_variable = cpu_to_leX(leX_to_cpu(little_endian_variable) +
+					expression_in_cpu_byteorder);
+with:
+	leX_add_cpu(&little_endian_variable, expression_in_cpu_byteorder);
+generated with semantic patch
 
-> > (gdb) p *inode
-> > $1 = {i_mode = 16895, i_uid = 0, i_size = 4096, i_atime = 1202822535, i_ctime = 1202822535, i_mtime = 1202822535, i_dtime = 0,
-> > i_gid = 0, i_links_count = 1, i_blocks = 0, i_flags = 524288, osd1 = {linux1 = {l_i_version = 1}, hurd1 = {h_i_translator = 1},
-> > masix1 = {m_i_reserved1 = 1}}, i_block = {4077518848, 262144, 0 <repeats 13 times>}, i_generation = 2950864834, i_file_acl = 0,
-> > i_dir_acl = 0, i_faddr = 0, osd2 = {linux2 = {l_i_blocks_hi = 0, i_pad1 = 0, l_i_uid_high = 0, l_i_gid_high = 0, l_i_reserved2 = 0},
-> > hurd2 = {h_i_frag = 0 '\0', h_i_fsize = 0 '\0', h_i_mode_high = 0, h_i_uid_high = 0, h_i_gid_high = 0, h_i_author = 0}, masix2 = {
-> > m_i_frag = 0 '\0', m_i_fsize = 0 '\0', m_pad1 = 0, m_i_reserved2 = {0, 0}}}}
+Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext2/ialloc.c |   12 ++++--------
+ fs/ext2/super.c  |    2 +-
+ fs/ext2/xattr.c  |    9 +++------
+ 3 files changed, 8 insertions(+), 15 deletions(-)
 
-This is the subdirectory inode?  The i_block values are the extent magic,
-and i_flags = EXTENT_FL it appears (which is fine).
-
-> Right now waiting for the test to finish with this change.
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index a9347fb..fd3b031 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1805,7 +1805,7 @@ retry:
->  	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
->  	dir_block = ext4_bread (handle, inode, 0, 1, &err);
->  	if (!dir_block) {
-> -		ext4_dec_count(handle, inode); /* is this nlink == 0? */
-> +		drop_nlink(inode);
->  		ext4_mark_inode_dirty(handle, inode);
->  		iput (inode);
->  		goto out_stop;
-
-It's entirely possible this is the right fix.  The code was changed for
-all directory inodes replacing drop_nlink() (or its predecessor) with
-ext4_dec_count().  In most cases this is correct, but it seems here it
-isn't very clear (even with the useless comment) that the intention is
-to drop the nlinks to 0 for the new directory inode.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index 5deb8b7..0f3e3f3 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -75,11 +75,9 @@ static void ext2_release_inode(struct super_block *sb, int group, int dir)
+ 	}
+ 
+ 	spin_lock(sb_bgl_lock(EXT2_SB(sb), group));
+-	desc->bg_free_inodes_count =
+-		cpu_to_le16(le16_to_cpu(desc->bg_free_inodes_count) + 1);
++	le16_add_cpu(&desc->bg_free_inodes_count, 1);
+ 	if (dir)
+-		desc->bg_used_dirs_count =
+-			cpu_to_le16(le16_to_cpu(desc->bg_used_dirs_count) - 1);
++		le16_add_cpu(&desc->bg_used_dirs_count, -1);
+ 	spin_unlock(sb_bgl_lock(EXT2_SB(sb), group));
+ 	if (dir)
+ 		percpu_counter_dec(&EXT2_SB(sb)->s_dirs_counter);
+@@ -539,13 +537,11 @@ got:
+ 		percpu_counter_inc(&sbi->s_dirs_counter);
+ 
+ 	spin_lock(sb_bgl_lock(sbi, group));
+-	gdp->bg_free_inodes_count =
+-                cpu_to_le16(le16_to_cpu(gdp->bg_free_inodes_count) - 1);
++	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
+ 	if (S_ISDIR(mode)) {
+ 		if (sbi->s_debts[group] < 255)
+ 			sbi->s_debts[group]++;
+-		gdp->bg_used_dirs_count =
+-			cpu_to_le16(le16_to_cpu(gdp->bg_used_dirs_count) + 1);
++		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
+ 	} else {
+ 		if (sbi->s_debts[group])
+ 			sbi->s_debts[group]--;
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 108f739..7e68673 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -603,7 +603,7 @@ static int ext2_setup_super (struct super_block * sb,
+ 			"running e2fsck is recommended\n");
+ 	if (!le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT2_DFL_MAX_MNT_COUNT);
+-	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
++	le16_add_cpu(&es->s_mnt_count, 1);
+ 	ext2_write_super(sb);
+ 	if (test_opt (sb, DEBUG))
+ 		printk ("[EXT II FS %s, %s, bs=%lu, fs=%lu, gc=%lu, "
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 3e8683d..495ec0d 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -646,8 +646,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 					unlock_buffer(new_bh);
+ 					goto cleanup;
+ 				}
+-				HDR(new_bh)->h_refcount = cpu_to_le32(1 +
+-					le32_to_cpu(HDR(new_bh)->h_refcount));
++				le32_add_cpu(&HDR(new_bh)->h_refcount, 1);
+ 				ea_bdebug(new_bh, "refcount now=%d",
+ 					le32_to_cpu(HDR(new_bh)->h_refcount));
+ 			}
+@@ -731,8 +730,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 			bforget(old_bh);
+ 		} else {
+ 			/* Decrement the refcount only. */
+-			HDR(old_bh)->h_refcount = cpu_to_le32(
+-				le32_to_cpu(HDR(old_bh)->h_refcount) - 1);
++			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
+ 			if (ce)
+ 				mb_cache_entry_release(ce);
+ 			DQUOT_FREE_BLOCK(inode, 1);
+@@ -789,8 +787,7 @@ ext2_xattr_delete_inode(struct inode *inode)
+ 		bforget(bh);
+ 		unlock_buffer(bh);
+ 	} else {
+-		HDR(bh)->h_refcount = cpu_to_le32(
+-			le32_to_cpu(HDR(bh)->h_refcount) - 1);
++		le32_add_cpu(&HDR(bh)->h_refcount, -1);
+ 		if (ce)
+ 			mb_cache_entry_release(ce);
+ 		ea_bdebug(bh, "refcount now=%d",
+-- 
+1.5.3.7
