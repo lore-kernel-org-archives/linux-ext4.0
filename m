@@ -1,122 +1,60 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: modify block allocation algorithm for the last
-	group
-Date: Wed, 13 Feb 2008 08:50:34 -0800
-Message-ID: <1202921434.3636.0.camel@localhost.localdomain>
-References: <1202919979.3260.6.camel@ext1.frec.bull.fr>
-Reply-To: cmm@us.ibm.com
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: [PATCH] ext4: Fix kernel BUG at fs/ext4/mballoc.c:910!
+Date: Wed, 13 Feb 2008 18:19:32 +0100
+Message-ID: <1202923172.3508.3.camel@ext1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+Cc: "cmm@us.ibm.com" <cmm@us.ibm.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:33783 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933448AbYBMQuk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2008 11:50:40 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1DGqV2Y004716
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2008 11:52:31 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1DGoZoT321284
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2008 11:50:35 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1DGoZbA031816
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2008 11:50:35 -0500
-In-Reply-To: <1202919979.3260.6.camel@ext1.frec.bull.fr>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:35272 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757866AbYBMROD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Feb 2008 12:14:03 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-02-13 at 17:26 +0100, Valerie Clement wrote:
-> Modify the block allocation algorithm for the last group
-> 
-> From: Valerie Clement <valerie.clement@bull.net>
-> 
-> When a directory inode is allocated in the last group and the last group
-> contains less than s_blocks_per_group blocks, the initial block allocated
-> for the directory is not always allocated in the same group as the
-> directory inode, but in one of the first groups of the filesystem (group 1
-> for example).
-> Depending on the current process's pid, ext4_find_near() and 
-> ext4_ext_find_goal() can return a block number greater than the maximum
-> blocks count in the filesystem and in that case the block will be not
-> allocated in the same group as the inode.
-> 
-> The following patch fixes the problem.
-> 
-> Comments?
-Looks sane to me. 
+Fix kernel BUG at fs/ext4/mballoc.c:910!
 
-> Should the modification also be done in ext2/3 code?
-> 
-I think so.
+From: Valerie Clement <valerie.clement@bull.net>
 
-Mingming
-> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
-> ---
-> 
->  fs/ext4/extents.c |    8 +++++++-
->  fs/ext4/inode.c   |    8 +++++++-
->  2 files changed, 14 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 5c4af51..1391ded 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -148,6 +148,7 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
->  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	ext4_fsblk_t bg_start;
-> +	ext4_fsblk_t last_block;
->  	ext4_grpblk_t colour;
->  	int depth;
-> 
-> @@ -169,8 +170,13 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
->  	/* OK. use inode's group */
->  	bg_start = (ei->i_block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
->  		le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_first_data_block);
-> -	colour = (current->pid % 16) *
-> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
-> +
-> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
-> +		colour = (current->pid % 16) *
->  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
-> +	else
-> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
->  	return bg_start + colour + block;
->  }
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 51bf3b5..c4f8ace 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -405,6 +405,7 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
->  	__le32 *start = ind->bh ? (__le32*) ind->bh->b_data : ei->i_data;
->  	__le32 *p;
->  	ext4_fsblk_t bg_start;
-> +	ext4_fsblk_t last_block;
->  	ext4_grpblk_t colour;
-> 
->  	/* Try to find previous block */
-> @@ -422,8 +423,13 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
->  	 * into the same cylinder group then.
->  	 */
->  	bg_start = ext4_group_first_block_no(inode->i_sb, ei->i_block_group);
-> -	colour = (current->pid % 16) *
-> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
-> +
-> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
-> +		colour = (current->pid % 16) *
->  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
-> +	else
-> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
->  	return bg_start + colour;
->  }
-> 
-> 
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+With the flex_bg feature enabled, a large file creation oopses the
+kernel.
+The BUG_ON is:
+	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
+
+As the allocation of the bitmaps and the inode table can be done
+outside the block group with flex_bg, this allows to allocate up to
+EXT4_BLOCKS_PER_GROUP blocks in a group.
+
+This patch fixes the oops.
+
+Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+---
+
+ fs/ext4/mballoc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index b0f84b4..0275150 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -907,7 +907,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
+ 	unsigned short chunk;
+ 	unsigned short border;
+ 
+-	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
++	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
+ 
+ 	border = 2 << sb->s_blocksize_bits;
+ 
+@@ -3286,7 +3286,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	}
+ 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
+ 			start > ac->ac_o_ex.fe_logical);
+-	BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 
+ 	/* now prepare goal request */
+ 
