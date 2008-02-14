@@ -1,210 +1,115 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] reduce mballoc stack usage with noinline
-Date: Thu, 14 Feb 2008 15:19:44 -0800
-Message-ID: <1203031185.3637.41.camel@localhost.localdomain>
-References: <47A377A7.8030302@redhat.com>
+Subject: Re: [PATCH] ext4: modify block allocation algorithm for the last
+	group
+Date: Thu, 14 Feb 2008 15:20:02 -0800
+Message-ID: <1203031202.3637.43.camel@localhost.localdomain>
+References: <1202919979.3260.6.camel@ext1.frec.bull.fr>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:42113 "EHLO e1.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:35668 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765386AbYBNXTx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Feb 2008 18:19:53 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENJom8015530
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:19:50 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENJkwk265684
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:19:50 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENJkek005954
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:19:46 -0500
-In-Reply-To: <47A377A7.8030302@redhat.com>
+	id S1765989AbYBNXUG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Feb 2008 18:20:06 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENK48r010655
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:04 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENK3US223210
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:03 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENK3LV023594
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:03 -0500
+In-Reply-To: <1202919979.3260.6.camel@ext1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Added in patch queue,
-
-Thanks!
-
-On Fri, 2008-02-01 at 13:48 -0600, Eric Sandeen wrote:
-> mballoc.c is a whole lot of static functions, which gcc seems to
-> really like to inline.
+Thanks,
+On Wed, 2008-02-13 at 17:26 +0100, Valerie Clement wrote:
+> Modify the block allocation algorithm for the last group
 > 
-> With the changes below, on x86, I can at least get from:
+> From: Valerie Clement <valerie.clement@bull.net>
 > 
-> 432 ext4_mb_new_blocks
-> 240 ext4_mb_free_blocks
-> 208 ext4_mb_discard_group_preallocations
-> 188 ext4_mb_seq_groups_show
-> 164 ext4_mb_init_cache
-> 152 ext4_mb_release_inode_pa
-> 136 ext4_mb_seq_history_show
-> ...
+> When a directory inode is allocated in the last group and the last group
+> contains less than s_blocks_per_group blocks, the initial block allocated
+> for the directory is not always allocated in the same group as the
+> directory inode, but in one of the first groups of the filesystem (group 1
+> for example).
+> Depending on the current process's pid, ext4_find_near() and 
+> ext4_ext_find_goal() can return a block number greater than the maximum
+> blocks count in the filesystem and in that case the block will be not
+> allocated in the same group as the inode.
 > 
-> to
+> The following patch fixes the problem.
 > 
-> 220 ext4_mb_free_blocks
-> 188 ext4_mb_seq_groups_show
-> 176 ext4_mb_regular_allocator
-> 164 ext4_mb_init_cache
-> 156 ext4_mb_new_blocks
-> 152 ext4_mb_release_inode_pa
-> 136 ext4_mb_seq_history_show
-> 124 ext4_mb_release_group_pa
-> ...
+> Comments?
+> Should the modification also be done in ext2/3 code?
 > 
-> which still has some big functions in there, but not 432 bytes!
-> 
-> I wonder if a zone would make sense for struct ext4_allocation_context,
-> it's 108 bytes by itself.
-> 
-> I haven't honestly done any investigation of any performance
-> impact of the noinlines; FWIW xfs just took control of inlining,
-> and marked almost every non-trivial function as noinline, (although
-> the xfs situation was a little more dire) and I don't think they had
-> any noticeable performance impact.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
+> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
 > ---
 > 
-> Index: linux-2.6.24-git9/fs/ext4/mballoc.c
-> ===================================================================
-> --- linux-2.6.24-git9.orig/fs/ext4/mballoc.c
-> +++ linux-2.6.24-git9/fs/ext4/mballoc.c
-> @@ -1146,7 +1146,7 @@ out:
->  	return err;
+>  fs/ext4/extents.c |    8 +++++++-
+>  fs/ext4/inode.c   |    8 +++++++-
+>  2 files changed, 14 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 5c4af51..1391ded 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -148,6 +148,7 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  {
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	ext4_fsblk_t bg_start;
+> +	ext4_fsblk_t last_block;
+>  	ext4_grpblk_t colour;
+>  	int depth;
+> 
+> @@ -169,8 +170,13 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  	/* OK. use inode's group */
+>  	bg_start = (ei->i_block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
+>  		le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_first_data_block);
+> -	colour = (current->pid % 16) *
+> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> +
+> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+> +		colour = (current->pid % 16) *
+>  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> +	else
+> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+>  	return bg_start + colour + block;
 >  }
 > 
-> -static int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
-> +static noinline int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
->  		struct ext4_buddy *e4b)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> @@ -1926,7 +1926,7 @@ static int ext4_mb_good_group(struct ext
->  	return 0;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 51bf3b5..c4f8ace 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -405,6 +405,7 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	__le32 *start = ind->bh ? (__le32*) ind->bh->b_data : ei->i_data;
+>  	__le32 *p;
+>  	ext4_fsblk_t bg_start;
+> +	ext4_fsblk_t last_block;
+>  	ext4_grpblk_t colour;
+> 
+>  	/* Try to find previous block */
+> @@ -422,8 +423,13 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	 * into the same cylinder group then.
+>  	 */
+>  	bg_start = ext4_group_first_block_no(inode->i_sb, ei->i_block_group);
+> -	colour = (current->pid % 16) *
+> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> +
+> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+> +		colour = (current->pid % 16) *
+>  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> +	else
+> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
+>  	return bg_start + colour;
 >  }
 > 
-> -static int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
-> +static noinline int ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
->  {
->  	ext4_group_t group;
->  	ext4_group_t i;
-> @@ -2433,7 +2433,7 @@ static void ext4_mb_history_init(struct 
->  	/* if we can't allocate history, then we simple won't use it */
->  }
 > 
-> -static void ext4_mb_store_history(struct ext4_allocation_context *ac)
-> +static noinline void ext4_mb_store_history(struct ext4_allocation_context *ac)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
->  	struct ext4_mb_history h;
-> @@ -2769,7 +2769,7 @@ int ext4_mb_release(struct super_block *
->  	return 0;
->  }
 > 
-> -static void ext4_mb_free_committed_blocks(struct super_block *sb)
-> +static noinline void ext4_mb_free_committed_blocks(struct super_block *sb)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	int err;
-> @@ -2982,7 +2982,7 @@ void exit_ext4_mballoc(void)
->   * Check quota and mark choosed space (ac->ac_b_ex) non-free in bitmaps
->   * Returns 0 if success or error code
->   */
-> -static int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
-> +static noinline int ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  				handle_t *handle)
->  {
->  	struct buffer_head *bitmap_bh = NULL;
-> @@ -3099,7 +3099,7 @@ static void ext4_mb_normalize_group_requ
->   * Normalization means making request better in terms of
->   * size and alignment
->   */
-> -static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
-> +static noinline void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
->  				struct ext4_allocation_request *ar)
->  {
->  	int bsbits, max;
-> @@ -3368,7 +3368,7 @@ static void ext4_mb_use_group_pa(struct 
->  /*
->   * search goal blocks in preallocated space
->   */
-> -static int ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
-> +static noinline int ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
->  {
->  	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
->  	struct ext4_locality_group *lg;
-> @@ -3535,7 +3535,7 @@ static void ext4_mb_put_pa(struct ext4_a
->  /*
->   * creates new preallocated space for given inode
->   */
-> -static int ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
-> +static noinline int ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
->  {
->  	struct super_block *sb = ac->ac_sb;
->  	struct ext4_prealloc_space *pa;
-> @@ -3622,7 +3622,7 @@ static int ext4_mb_new_inode_pa(struct e
->  /*
->   * creates new preallocated space for locality group inodes belongs to
->   */
-> -static int ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
-> +static noinline int ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
->  {
->  	struct super_block *sb = ac->ac_sb;
->  	struct ext4_locality_group *lg;
-> @@ -3695,7 +3695,7 @@ static int ext4_mb_new_preallocation(str
->   * the caller MUST hold group/inode locks.
->   * TODO: optimize the case when there are no in-core structures yet
->   */
-> -static int ext4_mb_release_inode_pa(struct ext4_buddy *e4b,
-> +static noinline int ext4_mb_release_inode_pa(struct ext4_buddy *e4b,
->  				struct buffer_head *bitmap_bh,
->  				struct ext4_prealloc_space *pa)
->  {
-> @@ -3755,7 +3755,7 @@ static int ext4_mb_release_inode_pa(stru
->  	return err;
->  }
-> 
-> -static int ext4_mb_release_group_pa(struct ext4_buddy *e4b,
-> +static noinline int ext4_mb_release_group_pa(struct ext4_buddy *e4b,
->  				struct ext4_prealloc_space *pa)
->  {
->  	struct ext4_allocation_context ac;
-> @@ -3791,7 +3791,7 @@ static int ext4_mb_release_group_pa(stru
->   * - how many do we discard
->   *   1) how many requested
->   */
-> -static int ext4_mb_discard_group_preallocations(struct super_block *sb,
-> +static noinline int ext4_mb_discard_group_preallocations(struct super_block *sb,
->  					ext4_group_t group, int needed)
->  {
->  	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-> @@ -4113,7 +4113,7 @@ static void ext4_mb_group_or_file(struct
->  	mutex_lock(&ac->ac_lg->lg_mutex);
->  }
-> 
-> -static int ext4_mb_initialize_context(struct ext4_allocation_context *ac,
-> +static noinline int ext4_mb_initialize_context(struct ext4_allocation_context *ac,
->  				struct ext4_allocation_request *ar)
->  {
->  	struct super_block *sb = ar->inode->i_sb;
-> @@ -4337,7 +4337,7 @@ static void ext4_mb_poll_new_transaction
->  	ext4_mb_free_committed_blocks(sb);
->  }
-> 
-> -static int ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
-> +static noinline int ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
->  			  ext4_group_t group, ext4_grpblk_t block, int count)
->  {
->  	struct ext4_group_info *db = e4b->bd_info;
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
