@@ -1,115 +1,105 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: modify block allocation algorithm for the last
-	group
-Date: Thu, 14 Feb 2008 15:20:02 -0800
-Message-ID: <1203031202.3637.43.camel@localhost.localdomain>
-References: <1202919979.3260.6.camel@ext1.frec.bull.fr>
+Subject: Re: [RFC/PATCH] ext4: Fix the memory leak and buffer head leak
+	with respect to ext4_ext_path
+Date: Thu, 14 Feb 2008 15:21:01 -0800
+Message-ID: <1203031261.3637.46.camel@localhost.localdomain>
+References: <1202985052-15694-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:35668 "EHLO e5.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:43545 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765989AbYBNXUG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Feb 2008 18:20:06 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENK48r010655
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:04 -0500
+	id S1756532AbYBNXV2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Feb 2008 18:21:28 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENL3n3032352
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:03 -0500
 Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENK3US223210
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:03 -0500
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENL3Ti281910
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:03 -0500
 Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENK3LV023594
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:20:03 -0500
-In-Reply-To: <1202919979.3260.6.camel@ext1.frec.bull.fr>
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENL3MT026911
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:03 -0500
+In-Reply-To: <1202985052-15694-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Added in patch queue,
-Thanks,
-On Wed, 2008-02-13 at 17:26 +0100, Valerie Clement wrote:
-> Modify the block allocation algorithm for the last group
+Added in ext4 patch queue,
+Thanks
+
+On Thu, 2008-02-14 at 16:00 +0530, Aneesh Kumar K.V wrote:
+> The path variable returned via ext4_ext_find_extent is a kmalloc variable
+> and need to be freeded. It also contain refrences to buffer_head which need
+> to be dropped.
 > 
-> From: Valerie Clement <valerie.clement@bull.net>
-> 
-> When a directory inode is allocated in the last group and the last group
-> contains less than s_blocks_per_group blocks, the initial block allocated
-> for the directory is not always allocated in the same group as the
-> directory inode, but in one of the first groups of the filesystem (group 1
-> for example).
-> Depending on the current process's pid, ext4_find_near() and 
-> ext4_ext_find_goal() can return a block number greater than the maximum
-> blocks count in the filesystem and in that case the block will be not
-> allocated in the same group as the inode.
-> 
-> The following patch fixes the problem.
-> 
-> Comments?
-> Should the modification also be done in ext2/3 code?
-> 
-> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > ---
-> 
->  fs/ext4/extents.c |    8 +++++++-
->  fs/ext4/inode.c   |    8 +++++++-
->  2 files changed, 14 insertions(+), 2 deletions(-)
+>  fs/ext4/extents.c               |    6 +++---
+>  fs/ext4/migrate.c               |    5 +++++
+>  include/linux/ext4_fs_extents.h |    1 +
+>  3 files changed, 9 insertions(+), 3 deletions(-)
 > 
 > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 5c4af51..1391ded 100644
+> index e856f66..995ac16 100644
 > --- a/fs/ext4/extents.c
 > +++ b/fs/ext4/extents.c
-> @@ -148,6 +148,7 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+> @@ -349,7 +349,7 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
+>  #define ext4_ext_show_leaf(inode,path)
+>  #endif
+> 
+> -static void ext4_ext_drop_refs(struct ext4_ext_path *path)
+> +void ext4_ext_drop_refs(struct ext4_ext_path *path)
 >  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	ext4_fsblk_t bg_start;
-> +	ext4_fsblk_t last_block;
->  	ext4_grpblk_t colour;
->  	int depth;
+>  	int depth = path->p_depth;
+>  	int i;
+> @@ -2200,10 +2200,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		newdepth = ext_depth(inode);
+>  		if (newdepth != depth) {
+>  			depth = newdepth;
+> -			path = ext4_ext_find_extent(inode, iblock, NULL);
+> +			ext4_ext_drop_refs(path);
+> +			path = ext4_ext_find_extent(inode, iblock, path);
+>  			if (IS_ERR(path)) {
+>  				err = PTR_ERR(path);
+> -				path = NULL;
+>  				goto out;
+>  			}
+>  			eh = path[depth].p_hdr;
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 8c6c685..5c1e27d 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -43,6 +43,7 @@ static int finish_range(handle_t *handle, struct inode *inode,
 > 
-> @@ -169,8 +170,13 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
->  	/* OK. use inode's group */
->  	bg_start = (ei->i_block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
->  		le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_first_data_block);
-> -	colour = (current->pid % 16) *
-> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
-> +
-> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
-> +		colour = (current->pid % 16) *
->  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
-> +	else
-> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
->  	return bg_start + colour + block;
+>  	if (IS_ERR(path)) {
+>  		retval = PTR_ERR(path);
+> +		path = NULL;
+>  		goto err_out;
+>  	}
+> 
+> @@ -74,6 +75,10 @@ static int finish_range(handle_t *handle, struct inode *inode,
+>  	}
+>  	retval = ext4_ext_insert_extent(handle, inode, path, &newext);
+>  err_out:
+> +	if (path) {
+> +		ext4_ext_drop_refs(path);
+> +		kfree(path);
+> +	}
+>  	lb->first_pblock = 0;
+>  	return retval;
 >  }
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 51bf3b5..c4f8ace 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -405,6 +405,7 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
->  	__le32 *start = ind->bh ? (__le32*) ind->bh->b_data : ei->i_data;
->  	__le32 *p;
->  	ext4_fsblk_t bg_start;
-> +	ext4_fsblk_t last_block;
->  	ext4_grpblk_t colour;
-> 
->  	/* Try to find previous block */
-> @@ -422,8 +423,13 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
->  	 * into the same cylinder group then.
->  	 */
->  	bg_start = ext4_group_first_block_no(inode->i_sb, ei->i_block_group);
-> -	colour = (current->pid % 16) *
-> +	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
-> +
-> +	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
-> +		colour = (current->pid % 16) *
->  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
-> +	else
-> +		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
->  	return bg_start + colour;
->  }
-> 
-> 
+> diff --git a/include/linux/ext4_fs_extents.h b/include/linux/ext4_fs_extents.h
+> index 697da4b..1285c58 100644
+> --- a/include/linux/ext4_fs_extents.h
+> +++ b/include/linux/ext4_fs_extents.h
+> @@ -227,5 +227,6 @@ extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *,
+>  						ext4_lblk_t *, ext4_fsblk_t *);
+>  extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *,
+>  						ext4_lblk_t *, ext4_fsblk_t *);
+> +extern void ext4_ext_drop_refs(struct ext4_ext_path *);
+>  #endif /* _LINUX_EXT4_EXTENTS */
 > 
