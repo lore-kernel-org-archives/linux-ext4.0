@@ -1,77 +1,67 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [RFC/PATCH] ext4: Request for journal write access early.
-Date: Thu, 14 Feb 2008 15:21:17 -0800
-Message-ID: <1203031277.3637.48.camel@localhost.localdomain>
-References: <1202985052-15694-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1202985052-15694-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH RESEND] ext4: Fix kernel BUG at fs/ext4/mballoc.c:910!
+Date: Thu, 14 Feb 2008 15:33:39 -0800
+Message-ID: <1203032019.3637.51.camel@localhost.localdomain>
+References: <1203006909.8970.20.camel@ext1.frec.bull.fr>
+	 <20080214221317.GP3029@webber.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Valerie Clement <valerie.clement@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:51530 "EHLO e2.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:52349 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757193AbYBNXVa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Feb 2008 18:21:30 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENLKPt025434
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:20 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENLJPn236462
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:19 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENLJXW027671
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:21:19 -0500
-In-Reply-To: <1202985052-15694-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1759155AbYBNXdv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Feb 2008 18:33:51 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1ENXfmt029187
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:33:41 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1ENXfAJ149536
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:33:41 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1ENXega031178
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 18:33:41 -0500
+In-Reply-To: <20080214221317.GP3029@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Added in ext4 patch queue,
-Thanks
-On Thu, 2008-02-14 at 16:00 +0530, Aneesh Kumar K.V wrote:
-> In ext4_ext_convert_to_initialized before we need to request for journal
-> write access before we even modify the extent length.
+On Thu, 2008-02-14 at 15:13 -0700, Andreas Dilger wrote:
+> On Feb 14, 2008  17:35 +0100, Valerie Clement wrote:
+> > From: Valerie Clement <valerie.clement@bull.net>
+> > 
+> > With the flex_bg feature enabled, a large file creation oopses the
+> > kernel.
+> > The BUG_ON is:
+> > 	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
+> > 
+> > As the allocation of the bitmaps and the inode table can be done
+> > outside the block group with flex_bg, this allows to allocate up to
+> > EXT4_BLOCKS_PER_GROUP blocks in a group.
+> > Depending on the group size and the block size, extents might be 
+> > larger than BLOCKS_PER_GROUP(); use EXT_INIT_MAX_LEN instead of 
+> > BLOCKS_PER_GROUP().
 > 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/extents.c |   11 ++++++++---
->  1 files changed, 8 insertions(+), 3 deletions(-)
+> In fact, my earlier review of this patch was incorrect, and Aneesh pointed
+> out the correct answer.  The ext4_mb_mark_free_simple() function is only
+> called from ext4_mb_generate_buddy() to generate the buddy bitmap from the
+> on-disk block bitmap, and in that case the @len parameter should always
+> be <= EXT4_BLOCKS_PER_GROUP().  I think the original patch was correct.
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 995ac16..c4d6f19 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2168,6 +2168,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	newblock = iblock - ee_block + ext_pblock(ex);
->  	ex2 = ex;
+> Sorry about the confusion.  I thought at first glance this was for
+> freeing the blocks from releasing an extent, but that is incorrect.
 > 
-> +	err = ext4_ext_get_access(handle, inode, path + depth);
-> +	if (err)
-> +		goto out;
-> +
->  	/* ex1: ee_block to iblock - 1 : uninitialized */
->  	if (iblock > ee_block) {
->  		ex1 = ex;
-> @@ -2210,6 +2214,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  			ex = path[depth].p_ext;
->  			if (ex2 != &newex)
->  				ex2 = ex;
-> +
-> +			err = ext4_ext_get_access(handle, inode, path + depth);
-> +			if (err)
-> +				goto out;
->  		}
->  		allocated = max_blocks;
->  	}
-> @@ -2230,9 +2238,6 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	ex2->ee_len = cpu_to_le16(allocated);
->  	if (ex2 != ex)
->  		goto insert;
-> -	err = ext4_ext_get_access(handle, inode, path + depth);
-> -	if (err)
-> -		goto out;
->  	/*
->  	 * New (initialized) extent starts from the first block
->  	 * in the current extent. i.e., ex2 == ex
+Ok, I added the revised first patch
+http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=ext4_fix_BUGON_at_mballoc.patch;h=c2d11bd2ec46c8103d4fad7c62cd792b7daec202;hb=067598f1a058a05342afee9720a0538b871c61f4
+
+Mingming
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
