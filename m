@@ -1,58 +1,82 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH RESEND] ext4: Fix kernel BUG at fs/ext4/mballoc.c:910!
-Date: Thu, 14 Feb 2008 15:13:17 -0700
-Message-ID: <20080214221317.GP3029@webber.adilger.int>
-References: <1203006909.8970.20.camel@ext1.frec.bull.fr>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:44575 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758020AbYBNWN2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Feb 2008 17:13:28 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1EMDQUS002262
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 14:13:26 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JW900A011MLP600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 14 Feb 2008 14:13:26 -0800 (PST)
-In-reply-to: <1203006909.8970.20.camel@ext1.frec.bull.fr>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext4-convert-byte-order-of-constant-instead-of-variable.patch added to -mm tree
+Date: Thu, 14 Feb 2008 14:19:52 -0800
+Message-ID: <200802142219.m1EMJqZ7005888@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: marcin.slusarz@gmail.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Feb 14, 2008  17:35 +0100, Valerie Clement wrote:
-> From: Valerie Clement <valerie.clement@bull.net>
-> 
-> With the flex_bg feature enabled, a large file creation oopses the
-> kernel.
-> The BUG_ON is:
-> 	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
-> 
-> As the allocation of the bitmaps and the inode table can be done
-> outside the block group with flex_bg, this allows to allocate up to
-> EXT4_BLOCKS_PER_GROUP blocks in a group.
-> Depending on the group size and the block size, extents might be 
-> larger than BLOCKS_PER_GROUP(); use EXT_INIT_MAX_LEN instead of 
-> BLOCKS_PER_GROUP().
 
-In fact, my earlier review of this patch was incorrect, and Aneesh pointed
-out the correct answer.  The ext4_mb_mark_free_simple() function is only
-called from ext4_mb_generate_buddy() to generate the buddy bitmap from the
-on-disk block bitmap, and in that case the @len parameter should always
-be <= EXT4_BLOCKS_PER_GROUP().  I think the original patch was correct.
+The patch titled
+     ext4: convert byte order of constant instead of variable
+has been added to the -mm tree.  Its filename is
+     ext4-convert-byte-order-of-constant-instead-of-variable.patch
 
-Sorry about the confusion.  I thought at first glance this was for
-freeing the blocks from releasing an extent, but that is incorrect.
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext4: convert byte order of constant instead of variable
+From: Marcin Slusarz <marcin.slusarz@gmail.com>
+
+Convert byte order of constant instead of variable which can be done at
+compile time (vs run time).
+
+Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/super.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -puN fs/ext4/super.c~ext4-convert-byte-order-of-constant-instead-of-variable fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-convert-byte-order-of-constant-instead-of-variable
++++ a/fs/ext4/super.c
+@@ -1399,7 +1399,7 @@ static int ext4_setup_super(struct super
+ 		 * a plain journaled filesystem we can keep it set as
+ 		 * valid forever! :)
+ 		 */
+-	es->s_state = cpu_to_le16(le16_to_cpu(es->s_state) & ~EXT4_VALID_FS);
++	es->s_state &= cpu_to_le16(~EXT4_VALID_FS);
+ #endif
+ 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT4_DFL_MAX_MNT_COUNT);
+_
+
+Patches currently in -mm which might be from marcin.slusarz@gmail.com are
+
+xfs-convert-bex_add-to-bex_add_cpu-new-common-api.patch
+udf-fix-directory-offset-handling.patch
+udf-fix-udf_add_free_space.patch
+git-gfs2-nmw.patch
+jfs-le_add_cpu-conversion.patch
+ntfs-le_add_cpu-conversion.patch
+ocfs2-le_add_cpu-conversion.patch
+scsi-le_add_cpu-conversion.patch
+ipw2200-le_add_cpu-conversion.patch
+ext2-le_add_cpu-conversion.patch
+ufs-e_add_cpu-conversion.patch
+ufs-e_add_cpu-conversion-in-return.patch
+reiserfs-le_add_cpu-conversion.patch
+ext4-le_add_cpu-conversion.patch
+affs-be_add_cpu-conversion.patch
+hfs-hfsplus-be_add_cpu-conversion.patch
+quota-le_add_cpu-conversion.patch
+sysv-e_add_cpu-conversion.patch
+ext2-convert-byte-order-of-constant-instead-of-variable.patch
+ext3-convert-byte-order-of-constant-instead-of-variable.patch
+ext4-convert-byte-order-of-constant-instead-of-variable.patch
