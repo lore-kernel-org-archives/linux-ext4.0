@@ -1,72 +1,86 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC/PATCH] ext4: Request for journal write access early.
-Date: Thu, 14 Feb 2008 16:00:52 +0530
-Message-ID: <1202985052-15694-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1202985052-15694-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu, cmm@us.ibm.com
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [PATCH] ext4: Fix kernel BUG at fs/ext4/mballoc.c:910!
+Date: Thu, 14 Feb 2008 13:34:06 +0100
+Message-ID: <47B4353E.306@bull.net>
+References: <1202923172.3508.3.camel@ext1.frec.bull.fr> <20080213203305.GE3029@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:51226 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753413AbYBNKbx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Feb 2008 05:31:53 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1EAW6L8002502
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 21:32:06 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1EAZTuo235920
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 21:35:29 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1EAVpQ7006255
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2008 21:31:51 +1100
-In-Reply-To: <1202985052-15694-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:46415 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753676AbYBNMdB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Feb 2008 07:33:01 -0500
+In-Reply-To: <20080213203305.GE3029@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_ext_convert_to_initialized before we need to request for journal
-write access before we even modify the extent length.
+Andreas Dilger wrote:
+> On Feb 13, 2008  18:19 +0100, Valerie Clement wrote:
+>> From: Valerie Clement <valerie.clement@bull.net>
+>>
+>> With the flex_bg feature enabled, a large file creation oopses the
+>> kernel.
+>> The BUG_ON is:
+>> 	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
+>>
+>> As the allocation of the bitmaps and the inode table can be done
+>> outside the block group with flex_bg, this allows to allocate up to
+>> EXT4_BLOCKS_PER_GROUP blocks in a group.
+> 
+> Caution is needed here.  In the past we were limited to BLOCKS_PER_GROUP()
+> blocks per extent (32768 blocks at most, regardless of blocksize I think)
+> but now an extent might be larger.
+> 
+> Can you please verify that the extent-length limits for "initialized" vs.
+> "uninitialized" extents are being hit so that extents don't accidentally
+> grow to be > 32768 blocks long and suddenly get marked as short uninitialized
+> extents.
+> 
+> Note that the assertion can still be hit if groups are created with fewer
+> blocks, or with blocksize < 4096.  For example, if we have blocksize = 1024
+> this gives BLOCKS_PER_GROUP=8192, but an extent can be up to 32768 blocks.
+> 
+> I think the right assertion is now:
+> 
+> 	BUG_ON(len > EXT4_INIT_MAX_LEN);
+> 
+> if FLEX_BG is active.  I'm not sure if we want to keep the stricter assertion:
+> 
+> 	BUG_ON(len > EXT4_HAS_INCOMPAT_FEATURE_FLEX_BG(sb) ? EXT4_INIT_MAX_LEN :
+> 						EXT4_BLOCKS_PER_GROUP(sb));
+> 
+> but it might be worthwhile at least initially, and I don't think the CPU cost
+> is very high.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+I agree. I'll do the changes.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 995ac16..c4d6f19 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2168,6 +2168,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	newblock = iblock - ee_block + ext_pblock(ex);
- 	ex2 = ex;
- 
-+	err = ext4_ext_get_access(handle, inode, path + depth);
-+	if (err)
-+		goto out;
-+
- 	/* ex1: ee_block to iblock - 1 : uninitialized */
- 	if (iblock > ee_block) {
- 		ex1 = ex;
-@@ -2210,6 +2214,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 			ex = path[depth].p_ext;
- 			if (ex2 != &newex)
- 				ex2 = ex;
-+
-+			err = ext4_ext_get_access(handle, inode, path + depth);
-+			if (err)
-+				goto out;
- 		}
- 		allocated = max_blocks;
- 	}
-@@ -2230,9 +2238,6 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	ex2->ee_len = cpu_to_le16(allocated);
- 	if (ex2 != ex)
- 		goto insert;
--	err = ext4_ext_get_access(handle, inode, path + depth);
--	if (err)
--		goto out;
- 	/*
- 	 * New (initialized) extent starts from the first block
- 	 * in the current extent. i.e., ex2 == ex
--- 
-1.5.4.1.97.g40aab-dirty
+> 
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index b0f84b4..0275150 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -907,7 +907,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
+>>  	unsigned short chunk;
+>>  	unsigned short border;
+>>  
+>> -	BUG_ON(len >= EXT4_BLOCKS_PER_GROUP(sb));
+>> +	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
+>>  
+>>  	border = 2 << sb->s_blocksize_bits;
+>>  
+>> @@ -3286,7 +3286,7 @@ static void ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>>  	}
+>>  	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
+>>  			start > ac->ac_o_ex.fe_logical);
+>> -	BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+>> +	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+> 
+> Please separate this into two BUG_ON() statements, so it is clear which
+> one is being hit.
+
+OK.
+Thanks for review,
+   Valerie
