@@ -1,81 +1,61 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: Set directory link count to zero if we fail to
-	create the directory.
-Date: Fri, 15 Feb 2008 14:23:30 -0500
-Message-ID: <20080215192329.GA2773@mit.edu>
-References: <1202834708-961-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: When reading from fallocated blocks make sure we
+	return zero.
+Date: Sat, 16 Feb 2008 08:53:34 +0530
+Message-ID: <20080216032334.GA6501@skywalker>
+References: <1203099414-8815-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1203104584.3598.4.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:55928 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757709AbYBPAI1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Feb 2008 19:08:27 -0500
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:50374 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763893AbYBPDXm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2008 22:23:42 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1G3NQiG018583
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 14:23:26 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1G3NeD13383446
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 14:23:40 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1G3Nebg008649
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 14:23:40 +1100
 Content-Disposition: inline
-In-Reply-To: <1202834708-961-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1203104584.3598.4.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've replaced this patch with the following (see attached).  The
-changes to the patch from Aneesh's original one are:
+On Fri, Feb 15, 2008 at 11:43:04AM -0800, Mingming Cao wrote:
+> On Fri, 2008-02-15 at 23:46 +0530, Aneesh Kumar K.V wrote:
+> > fallocate blocks are considered as sparse area and read from them should
+> > return zero. ext4_ext_get_blocks should return zero for read request.
+> > 
+> 
+> The patch itself looks harmless, but I still don't see how this could
+> fix the problem you described at irc: a write hit a BUG_ON() in
+> fs/buffer.c saying the buffer is not mapped. Could you add more details
+> here?
 
-1) Replace the patch description with one that describes what is going
-   on at a higher level.  (Always write with a deep sympathy for the
-   reader, who will be reading the description as part of "git log".
-   So mention that the problem was in ext4_mkdir, and the
-   circumstances in which it would occur.)
+Write will take the below call chain
 
-2) The error handling code was duplicated later in the function
-   (although in a slightly more efficient fashion; since we *know* the
-   newly created inode has an inode->i_nlink of 1, it's easier just to
-   set i_nlink to zero)
+ext4_write_begin
+  block_write_begin
+    __block_prepare_write
+       ext4_getblock
+         ext4_get_blocks_wrap
+(1)	   ext4_ext_get_blocks with create = 0 return allocated
+       ll_rw_block  if buffer not uptodate.
+         submit_bh
+	   BUG_ON(!buffer_mapped(bh))
 
-3) Replace the inode->i_nlink = 0 with the higher level equivalent
-   inline function, clear_nlink(inode).
 
-						- Ted
+ext4_ext_get_blocks at (1) should have returned 0. That would cause
+ext4_get_blocks_wrap to again call ext4_ext_get_blocks with create = 1
+and that would have returned us the buffer head which is mapped. This
+would also result in splitting the extent to initialized and
+uninitialized one.
 
-ext4: Don't leave behind a half-created inode if ext4_mkdir() fails
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-
-If ext4_mkdir() fails to allocate the initial block for the directory,
-don't leave behind a half-created directory inode with the link count
-left at one.  This was caused by an inappropriate call to ext4_dec_count().
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a9347fb..7970e81 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1804,12 +1804,8 @@ retry:
- 	inode->i_fop = &ext4_dir_operations;
- 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
- 	dir_block = ext4_bread (handle, inode, 0, 1, &err);
--	if (!dir_block) {
--		ext4_dec_count(handle, inode); /* is this nlink == 0? */
--		ext4_mark_inode_dirty(handle, inode);
--		iput (inode);
--		goto out_stop;
--	}
-+	if (!dir_block)
-+		goto out_clear_inode;
- 	BUFFER_TRACE(dir_block, "get_write_access");
- 	ext4_journal_get_write_access(handle, dir_block);
- 	de = (struct ext4_dir_entry_2 *) dir_block->b_data;
-@@ -1832,7 +1828,8 @@ retry:
- 	ext4_mark_inode_dirty(handle, inode);
- 	err = ext4_add_entry (handle, dentry, inode);
- 	if (err) {
--		inode->i_nlink = 0;
-+	out_clear_inode:
-+		clear_nlink(inode);
- 		ext4_mark_inode_dirty(handle, inode);
- 		iput (inode);
- 		goto out_stop;
+-aneesh
