@@ -1,33 +1,26 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH 1/3] ext2: improve ext2_readdir() return value
-Date: Sun, 17 Feb 2008 07:09:26 -0500
-Message-ID: <20080217120926.GE8905@mit.edu>
-References: <20080217055612.GA3390@APFDCB5C>
+From: jasperkweru4@seznam.cz
+Subject: =?us-ascii?Q?Your=20Mail=20from=20James?=
+Date: Sun, 17 Feb 2008 16:37:35 +0100 (CET)
+Message-ID: <152.179-6189-961486117-1203262654__33097.108154516$1203262707$gmane$org@seznam.cz>
+Reply-To: jameskweru@yahoo.com.hk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Akinobu Mita <akinobu.mita@gmail.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: recipient list not shown:;
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:63802 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754549AbYBQMJr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Feb 2008 07:09:47 -0500
-Content-Disposition: inline
-In-Reply-To: <20080217055612.GA3390@APFDCB5C>
+Received: from mxl.seznam.cz ([77.75.72.44]:40702 "HELO mxh.seznam.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1757127AbYBQPhj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Feb 2008 10:37:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 17, 2008 at 02:56:13PM +0900, Akinobu Mita wrote:
-> This patch improves ext2_readdir() return value for ext2_get_page() failure
-> by using the actual result of ext2_get_page().
+Your Mail from James
+Hello Dear,
 
-> -			return -EIO;
-> +			return PTR_ERR(page);
+My name is James Kweru from seirra leone but residing in Ivory Coast  in Africa. It is my desire to contact you on honesty and sincerity to  assist me in transferring the sum of $2,350,000 inherited from my father late Mr.Alfred Kweru. I am motivated in contacting you and hope to  gradually build trust, relationship and confidence in you as i get toknow you better. So please i want to know if you will be of assistance but first i want  to get to know you better. I am willing to offer you $235,000 united  state Dollar for your effort input after the successful transfer of this money and investment. Indicate your interest towards assisting me by sending your phone # and address so that i can communicate with you at any time.
 
-The patch is harmless, and maybe even a good thing from an abstract
-point of view, but you realize that EIO is the only thing that
-ext2_get_page() can return, right?
-
-						- Ted
+I will be waiting for your response
+James Kweru
