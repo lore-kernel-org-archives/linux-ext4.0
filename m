@@ -1,39 +1,103 @@
-From: "Akinobu Mita" <akinobu.mita@gmail.com>
-Subject: Re: [PATCH 1/3] ext2: improve ext2_readdir() return value
-Date: Mon, 18 Feb 2008 01:30:54 +0900
-Message-ID: <961aa3350802170830r6c1e314cx1871e00db0e9b690@mail.gmail.com>
-References: <20080217055612.GA3390@APFDCB5C> <20080217120926.GE8905@mit.edu>
+From: Julia Lawall <julia@diku.dk>
+Subject: [PATCH 2/7] fs/ext{2,3,4}: Use BUG_ON
+Date: Sun, 17 Feb 2008 18:55:06 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0802171854270.28055@ask.diku.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Andrew Morton" <akpm@linux-foundation.org>
-To: "Theodore Tso" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.247]:63751 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752452AbYBQQa5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 11:30:57 -0500
-Received: by an-out-0708.google.com with SMTP id d31so308573and.103
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2008 08:30:54 -0800 (PST)
-In-Reply-To: <20080217120926.GE8905@mit.edu>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: sct@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753651AbYBQRzc@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2008/2/17, Theodore Tso <tytso@mit.edu>:
-> On Sun, Feb 17, 2008 at 02:56:13PM +0900, Akinobu Mita wrote:
-> > This patch improves ext2_readdir() return value for ext2_get_page() failure
-> > by using the actual result of ext2_get_page().
->
-> > -                     return -EIO;
-> > +                     return PTR_ERR(page);
->
-> The patch is harmless, and maybe even a good thing from an abstract
-> point of view, but you realize that EIO is the only thing that
-> ext2_get_page() can return, right?
+From: Julia Lawall <julia@diku.dk>
 
-There are some cases that ext2_get_page() returns -ENOMEM logically.
-(--> read_mapping_page --> read_cache_page --> read_cache_page_async -->
-     __read_cache_page --> page_cache_alloc_cold, or add_to_page_cache_lru)
-But this is not likely to happen in reality.
+if (...) BUG(); should be replaced with BUG_ON(...) when the test has no
+side-effects to allow a definition of BUG_ON that drops the code completely.
+
+ fs/ext2/balloc.c |    3 +--
+ fs/ext2/dir.c    |    3 +--
+ fs/ext3/balloc.c |    3 +--
+ fs/ext4/balloc.c |    3 +--
+ 4 files changed, 4 insertions(+), 8 deletions(-)
+
+The semantic patch that makes this change is as follows:
+(http://www.emn.fr/x-info/coccinelle/)
+
+// <smpl>
+@ disable unlikely @ expression E,f; @@
+
+(
+  if (<... f(...) ...>) { BUG(); }
+|
+- if (unlikely(E)) { BUG(); }
++ BUG_ON(E);
+)
+
+@@ expression E,f; @@
+
+(
+  if (<... f(...) ...>) { BUG(); }
+|
+- if (E) { BUG(); }
++ BUG_ON(E);
+)
+// </smpl>
+
+Signed-off-by: Julia Lawall <julia@diku.dk>
+
+---
+
+diff -u -p a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c 2008-02-10 22:34:14.000000000 +0100
++++ b/fs/ext2/balloc.c 2008-02-17 16:39:35.000000000 +0100
+@@ -245,8 +245,7 @@ restart:
+ 		prev = rsv;
+ 	}
+ 	printk("Window map complete.\n");
+-	if (bad)
+-		BUG();
++	BUG_ON(bad);
+ }
+ #define rsv_window_dump(root, verbose) \
+ 	__rsv_window_dump((root), (verbose), __FUNCTION__)
+diff -u -p a/fs/ext2/dir.c b/fs/ext2/dir.c
+--- a/fs/ext2/dir.c 2008-02-10 22:34:14.000000000 +0100
++++ b/fs/ext2/dir.c 2008-02-17 16:39:36.000000000 +0100
+@@ -41,8 +41,8 @@ static inline __le16 ext2_rec_len_to_dis
+ {
+ 	if (len == (1 << 16))
+ 		return cpu_to_le16(EXT2_MAX_REC_LEN);
+-	else if (len > (1 << 16))
+-		BUG();
++	else
++		BUG_ON(len > (1 << 16));
+ 	return cpu_to_le16(len);
+ }
+ 
+diff -u -p a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+--- a/fs/ext3/balloc.c 2008-02-10 22:34:14.000000000 +0100
++++ b/fs/ext3/balloc.c 2008-02-17 16:39:38.000000000 +0100
+@@ -232,8 +232,7 @@ restart:
+ 		prev = rsv;
+ 	}
+ 	printk("Window map complete.\n");
+-	if (bad)
+-		BUG();
++	BUG_ON(bad);
+ }
+ #define rsv_window_dump(root, verbose) \
+ 	__rsv_window_dump((root), (verbose), __FUNCTION__)
+diff -u -p a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c 2008-02-10 22:34:14.000000000 +0100
++++ b/fs/ext4/balloc.c 2008-02-17 16:39:39.000000000 +0100
+@@ -356,8 +356,7 @@ restart:
+ 		prev = rsv;
+ 	}
+ 	printk("Window map complete.\n");
+-	if (bad)
+-		BUG();
++	BUG_ON(bad);
+ }
+ #define rsv_window_dump(root, verbose) \
+ 	__rsv_window_dump((root), (verbose), __FUNCTION__)
