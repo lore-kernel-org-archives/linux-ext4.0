@@ -1,7 +1,7 @@
 From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH 3/4] ext4: use ext4_get_group_desc()
-Date: Sun, 17 Feb 2008 15:13:53 +0900
-Message-ID: <20080217061352.GJ3390@APFDCB5C>
+Subject: [PATCH 4/4] ext4: check ext4_journal_get_write_access() errors
+Date: Sun, 17 Feb 2008 15:15:20 +0900
+Message-ID: <20080217061519.GK3390@APFDCB5C>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-2022-jp
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -9,17 +9,17 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@MIT.EDU>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.176]:10872 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752516AbYBQGUM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 01:20:12 -0500
-Received: by wa-out-1112.google.com with SMTP id v27so2078588wah.23
-        for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 22:20:11 -0800 (PST)
+Received: from rv-out-0910.google.com ([209.85.198.184]:21727 "EHLO
+	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752569AbYBQGVi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 01:21:38 -0500
+Received: by rv-out-0910.google.com with SMTP id k20so923429rvb.1
+        for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 22:21:37 -0800 (PST)
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use ext4_get_group_desc()
+Check ext4_journal_get_write_access() errors.
 
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Cc: Stephen Tweedie <sct@redhat.com>
@@ -28,49 +28,28 @@ Cc: Andrew Morton <akpm@linux-foundation.org>
 Cc: Mingming Cao <cmm@us.ibm.com>
 Cc: Theodore Tso <tytso@MIT.EDU>
 ---
- fs/ext4/inode.c |   20 +++-----------------
- 1 file changed, 3 insertions(+), 17 deletions(-)
+ fs/ext4/namei.c |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-Index: 2.6-rc/fs/ext4/inode.c
+Index: 2.6-rc/fs/ext4/namei.c
 ===================================================================
---- 2.6-rc.orig/fs/ext4/inode.c
-+++ 2.6-rc/fs/ext4/inode.c
-@@ -2455,12 +2455,10 @@ out_stop:
- static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
- 		unsigned long ino, struct ext4_iloc *iloc)
- {
--	unsigned long desc, group_desc;
- 	ext4_group_t block_group;
- 	unsigned long offset;
- 	ext4_fsblk_t block;
--	struct buffer_head *bh;
--	struct ext4_group_desc * gdp;
-+	struct ext4_group_desc *gdp;
+--- 2.6-rc.orig/fs/ext4/namei.c
++++ 2.6-rc/fs/ext4/namei.c
+@@ -57,10 +57,15 @@ static struct buffer_head *ext4_append(h
  
- 	if (!ext4_valid_inum(sb, ino)) {
- 		/*
-@@ -2472,22 +2470,10 @@ static ext4_fsblk_t ext4_get_inode_block
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ 
+-	if ((bh = ext4_bread(handle, inode, *block, 1, err))) {
++	bh = ext4_bread(handle, inode, *block, 1, err);
++	if (bh) {
+ 		inode->i_size += inode->i_sb->s_blocksize;
+ 		EXT4_I(inode)->i_disksize = inode->i_size;
+-		ext4_journal_get_write_access(handle,bh);
++		*err = ext4_journal_get_write_access(handle, bh);
++		if (*err) {
++			brelse(bh);
++			bh = NULL;
++		}
  	}
- 
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
--	if (block_group >= EXT4_SB(sb)->s_groups_count) {
--		ext4_error(sb,"ext4_get_inode_block","group >= groups count");
-+	gdp = ext4_get_group_desc(sb, block_group, NULL);
-+	if (!gdp)
- 		return 0;
--	}
--	smp_rmb();
--	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
--	desc = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
--	bh = EXT4_SB(sb)->s_group_desc[group_desc];
--	if (!bh) {
--		ext4_error (sb, "ext4_get_inode_block",
--			    "Descriptor not loaded");
--		return 0;
--	}
- 
--	gdp = (struct ext4_group_desc *)((__u8 *)bh->b_data +
--		desc * EXT4_DESC_SIZE(sb));
- 	/*
- 	 * Figure out the offset within the block group inode table
- 	 */
+ 	return bh;
+ }
