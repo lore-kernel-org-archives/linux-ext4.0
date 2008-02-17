@@ -1,59 +1,77 @@
 From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH 3/3] ext2: use ext2_fsblk_t type
-Date: Sun, 17 Feb 2008 15:00:03 +0900
-Message-ID: <20080217060002.GC3390@APFDCB5C>
+Subject: [PATCH 1/4] ext3: use ext3_group_first_block_no()
+Date: Sun, 17 Feb 2008 15:02:06 +0900
+Message-ID: <20080217060205.GD3390@APFDCB5C>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-2022-jp
-Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.180]:39968 "EHLO
+Received: from wa-out-1112.google.com ([209.85.146.179]:45040 "EHLO
 	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751922AbYBQGGV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 01:06:21 -0500
-Received: by wa-out-1112.google.com with SMTP id v27so2074201wah.23
-        for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 22:06:20 -0800 (PST)
+	with ESMTP id S1752115AbYBQGIY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 01:08:24 -0500
+Received: by wa-out-1112.google.com with SMTP id v27so2074812wah.23
+        for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 22:08:24 -0800 (PST)
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use ext2_fsblk_t type for filesystem-wide blocks number
+Use ext3_group_first_block_no()
 
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Stephen Tweedie <sct@redhat.com>
+Cc: adilger@clusterfs.com
 ---
- fs/ext2/inode.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/ext3/super.c |    5 ++---
+ fs/ext3/xattr.c |    6 ++----
+ 2 files changed, 4 insertions(+), 7 deletions(-)
 
-Index: 2.6-rc/fs/ext2/inode.c
+Index: 2.6-rc/fs/ext3/super.c
 ===================================================================
---- 2.6-rc.orig/fs/ext2/inode.c
-+++ 2.6-rc/fs/ext2/inode.c
-@@ -254,13 +254,13 @@ no_block:
-  *	Caller must make sure that @ind is valid and will stay that way.
-  */
- 
--static unsigned long ext2_find_near(struct inode *inode, Indirect *ind)
-+static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
+--- 2.6-rc.orig/fs/ext3/super.c
++++ 2.6-rc/fs/ext3/super.c
+@@ -1253,14 +1253,14 @@ static int ext3_setup_super(struct super
+ static int ext3_check_descriptors(struct super_block *sb)
  {
- 	struct ext2_inode_info *ei = EXT2_I(inode);
- 	__le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
- 	__le32 *p;
--	unsigned long bg_start;
--	unsigned long colour;
-+	ext2_fsblk_t bg_start;
-+	ext2_fsblk_t colour;
+ 	struct ext3_sb_info *sbi = EXT3_SB(sb);
+-	ext3_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
+-	ext3_fsblk_t last_block;
+ 	int i;
  
- 	/* Try to find previous block */
- 	for (p = ind->p - 1; p >= start; p--)
-@@ -290,8 +290,8 @@ static unsigned long ext2_find_near(stru
-  *	Returns preferred place for a block (the goal).
-  */
+ 	ext3_debug ("Checking group descriptors");
  
--static inline int ext2_find_goal(struct inode *inode, long block,
--				 Indirect *partial)
-+static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
-+					  Indirect *partial)
- {
- 	struct ext2_block_alloc_info *block_i;
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+ 		struct ext3_group_desc *gdp = ext3_get_group_desc(sb, i, NULL);
++		ext3_fsblk_t first_block = ext3_group_first_block_no(sb, i);
++		ext3_fsblk_t last_block;
  
+ 		if (i == sbi->s_groups_count - 1)
+ 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
+@@ -1299,7 +1299,6 @@ static int ext3_check_descriptors(struct
+ 					le32_to_cpu(gdp->bg_inode_table));
+ 			return 0;
+ 		}
+-		first_block += EXT3_BLOCKS_PER_GROUP(sb);
+ 	}
+ 
+ 	sbi->s_es->s_free_blocks_count=cpu_to_le32(ext3_count_free_blocks(sb));
+Index: 2.6-rc/fs/ext3/xattr.c
+===================================================================
+--- 2.6-rc.orig/fs/ext3/xattr.c
++++ 2.6-rc/fs/ext3/xattr.c
+@@ -797,10 +797,8 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext3_fsblk_t goal = le32_to_cpu(
+-					EXT3_SB(sb)->s_es->s_first_data_block) +
+-				(ext3_fsblk_t)EXT3_I(inode)->i_block_group *
+-				EXT3_BLOCKS_PER_GROUP(sb);
++			ext3_fsblk_t goal = ext3_group_first_block_no(sb,
++						EXT3_I(inode)->i_block_group);
+ 			ext3_fsblk_t block = ext3_new_block(handle, inode,
+ 							goal, &error);
+ 			if (error)
