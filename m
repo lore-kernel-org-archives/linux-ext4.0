@@ -1,55 +1,123 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH 4/4] ext4: check ext4_journal_get_write_access() errors
-Date: Sun, 17 Feb 2008 15:15:20 +0900
-Message-ID: <20080217061519.GK3390@APFDCB5C>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] make ext{3,4}_xattr_list() static
+Date: Sun, 17 Feb 2008 10:18:23 +0200
+Message-ID: <20080217081823.GK3848@cs181133002.pp.htv.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@MIT.EDU>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0910.google.com ([209.85.198.184]:21727 "EHLO
-	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752569AbYBQGVi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2008 01:21:38 -0500
-Received: by rv-out-0910.google.com with SMTP id k20so923429rvb.1
-        for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2008 22:21:37 -0800 (PST)
+Received: from smtp5.pp.htv.fi ([213.243.153.39]:34022 "EHLO smtp5.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756480AbYBQISu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Feb 2008 03:18:50 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check ext4_journal_get_write_access() errors.
+This patch makes the needlessly global ext{3,4}_xattr_list() static.
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: Stephen Tweedie <sct@redhat.com>
-Cc: adilger@clusterfs.com
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: Theodore Tso <tytso@MIT.EDU>
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
+
 ---
- fs/ext4/namei.c |    9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
 
-Index: 2.6-rc/fs/ext4/namei.c
-===================================================================
---- 2.6-rc.orig/fs/ext4/namei.c
-+++ 2.6-rc/fs/ext4/namei.c
-@@ -57,10 +57,15 @@ static struct buffer_head *ext4_append(h
+ fs/ext3/xattr.c |    4 +++-
+ fs/ext3/xattr.h |    7 -------
+ fs/ext4/xattr.c |    4 +++-
+ fs/ext4/xattr.h |    7 -------
+ 4 files changed, 6 insertions(+), 16 deletions(-)
+
+8fb5e610acafcbef4a9980042902c9269abf51b6 diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index fb89c29..4f9f187 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -99,6 +99,8 @@ static struct buffer_head *ext3_xattr_cache_find(struct inode *,
+ 						 struct mb_cache_entry **);
+ static void ext3_xattr_rehash(struct ext3_xattr_header *,
+ 			      struct ext3_xattr_entry *);
++static int ext3_xattr_list(struct inode *inode, char *buffer,
++			   size_t buffer_size);
  
- 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ static struct mb_cache *ext3_xattr_cache;
  
--	if ((bh = ext4_bread(handle, inode, *block, 1, err))) {
-+	bh = ext4_bread(handle, inode, *block, 1, err);
-+	if (bh) {
- 		inode->i_size += inode->i_sb->s_blocksize;
- 		EXT4_I(inode)->i_disksize = inode->i_size;
--		ext4_journal_get_write_access(handle,bh);
-+		*err = ext4_journal_get_write_access(handle, bh);
-+		if (*err) {
-+			brelse(bh);
-+			bh = NULL;
-+		}
- 	}
- 	return bh;
+@@ -427,7 +429,7 @@ cleanup:
+  * Returns a negative error number on failure, or the number of bytes
+  * used / required on success.
+  */
+-int
++static int
+ ext3_xattr_list(struct inode *inode, char *buffer, size_t buffer_size)
+ {
+ 	int i_error, b_error;
+diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
+index 6b1ae1c..148a4df 100644
+--- a/fs/ext3/xattr.h
++++ b/fs/ext3/xattr.h
+@@ -67,7 +67,6 @@ extern struct xattr_handler ext3_xattr_security_handler;
+ extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
+ 
+ extern int ext3_xattr_get(struct inode *, int, const char *, void *, size_t);
+-extern int ext3_xattr_list(struct inode *, char *, size_t);
+ extern int ext3_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+ extern int ext3_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
+ 
+@@ -89,12 +88,6 @@ ext3_xattr_get(struct inode *inode, int name_index, const char *name,
  }
+ 
+ static inline int
+-ext3_xattr_list(struct inode *inode, void *buffer, size_t size)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+ ext3_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	       const void *value, size_t size, int flags)
+ {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index d796213..e62c9b4 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -92,6 +92,8 @@ static struct buffer_head *ext4_xattr_cache_find(struct inode *,
+ 						 struct mb_cache_entry **);
+ static void ext4_xattr_rehash(struct ext4_xattr_header *,
+ 			      struct ext4_xattr_entry *);
++static int ext4_xattr_list(struct inode *inode, char *buffer,
++			   size_t buffer_size);
+ 
+ static struct mb_cache *ext4_xattr_cache;
+ 
+@@ -420,7 +422,7 @@ cleanup:
+  * Returns a negative error number on failure, or the number of bytes
+  * used / required on success.
+  */
+-int
++static int
+ ext4_xattr_list(struct inode *inode, char *buffer, size_t buffer_size)
+ {
+ 	int i_error, b_error;
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index d7f5d6a..5992fe9 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -74,7 +74,6 @@ extern struct xattr_handler ext4_xattr_security_handler;
+ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
+ 
+ extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
+-extern int ext4_xattr_list(struct inode *, char *, size_t);
+ extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+ extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
+ 
+@@ -99,12 +98,6 @@ ext4_xattr_get(struct inode *inode, int name_index, const char *name,
+ }
+ 
+ static inline int
+-ext4_xattr_list(struct inode *inode, void *buffer, size_t size)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	       const void *value, size_t size, int flags)
+ {
