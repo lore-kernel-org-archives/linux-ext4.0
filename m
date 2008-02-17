@@ -1,81 +1,33 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] fs/jbd/journal.c: cleanups
-Date: Sun, 17 Feb 2008 10:19:35 +0200
-Message-ID: <20080217081935.GN3848@cs181133002.pp.htv.fi>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH 1/3] ext2: improve ext2_readdir() return value
+Date: Sun, 17 Feb 2008 07:09:26 -0500
+Message-ID: <20080217120926.GE8905@mit.edu>
+References: <20080217055612.GA3390@APFDCB5C>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Akinobu Mita <akinobu.mita@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6.pp.htv.fi ([213.243.153.40]:36926 "EHLO smtp6.pp.htv.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758826AbYBQIUB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Feb 2008 03:20:01 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:63802 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754549AbYBQMJr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Feb 2008 07:09:47 -0500
 Content-Disposition: inline
+In-Reply-To: <20080217055612.GA3390@APFDCB5C>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch contains the following cleanups:
-- make the following needlessly global function static:
-  - journal_check_used_features()
-- remove the following unused EXPORT_SYMBOL's:
-  - journal_set_features
-  - journal_update_superblock
+On Sun, Feb 17, 2008 at 02:56:13PM +0900, Akinobu Mita wrote:
+> This patch improves ext2_readdir() return value for ext2_get_page() failure
+> by using the actual result of ext2_get_page().
 
-Signed-off-by: Adrian Bunk <bunk@stusta.de>
+> -			return -EIO;
+> +			return PTR_ERR(page);
 
----
+The patch is harmless, and maybe even a good thing from an abstract
+point of view, but you realize that EIO is the only thing that
+ext2_get_page() can return, right?
 
-This patch has been sent on:
-- 16 May 2006
-- 1 May 2006
-- 23 Apr 2006
-
- fs/jbd/journal.c    |    9 ++++-----
- include/linux/jbd.h |    2 --
- 2 files changed, 4 insertions(+), 7 deletions(-)
-
-4b48b0ddcc5e710bbc1e89e219db69000225ee28 diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 3943a89..b230288 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -62,13 +62,10 @@ EXPORT_SYMBOL(journal_revoke);
- EXPORT_SYMBOL(journal_init_dev);
- EXPORT_SYMBOL(journal_init_inode);
- EXPORT_SYMBOL(journal_update_format);
--EXPORT_SYMBOL(journal_check_used_features);
- EXPORT_SYMBOL(journal_check_available_features);
--EXPORT_SYMBOL(journal_set_features);
- EXPORT_SYMBOL(journal_create);
- EXPORT_SYMBOL(journal_load);
- EXPORT_SYMBOL(journal_destroy);
--EXPORT_SYMBOL(journal_update_superblock);
- EXPORT_SYMBOL(journal_abort);
- EXPORT_SYMBOL(journal_errno);
- EXPORT_SYMBOL(journal_ack_err);
-@@ -1174,8 +1171,10 @@ void journal_destroy(journal_t *journal)
-  * features.  Return true (non-zero) if it does.
-  **/
- 
--int journal_check_used_features (journal_t *journal, unsigned long compat,
--				 unsigned long ro, unsigned long incompat)
-+static int journal_check_used_features(journal_t *journal,
-+				       unsigned long compat,
-+				       unsigned long ro,
-+				       unsigned long incompat)
- {
- 	journal_superblock_t *sb;
- 
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index b18fd3b..e8f81ab 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -909,8 +909,6 @@ extern journal_t * journal_init_dev(struct block_device *bdev,
- 				int start, int len, int bsize);
- extern journal_t * journal_init_inode (struct inode *);
- extern int	   journal_update_format (journal_t *);
--extern int	   journal_check_used_features
--		   (journal_t *, unsigned long, unsigned long, unsigned long);
- extern int	   journal_check_available_features
- 		   (journal_t *, unsigned long, unsigned long, unsigned long);
- extern int	   journal_set_features
+						- Ted
