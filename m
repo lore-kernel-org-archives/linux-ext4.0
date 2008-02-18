@@ -1,23 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + ext2-use-ext2_fsblk_t-type.patch added to -mm tree
-Date: Mon, 18 Feb 2008 02:16:15 -0800
-Message-ID: <200802181017.m1IAHDZG019815@imap1.linux-foundation.org>
+Subject: + ext2-use-ext2_group_first_block_no.patch added to -mm tree
+Date: Mon, 18 Feb 2008 02:16:10 -0800
+Message-ID: <200802181017.m1IAH8tF019810@imap1.linux-foundation.org>
 Cc: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:60414 "EHLO
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:59960 "EHLO
 	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756930AbYBRKRo (ORCPT
+	by vger.kernel.org with ESMTP id S1756455AbYBRKRm (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 05:17:44 -0500
+	Mon, 18 Feb 2008 05:17:42 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext2: use ext2_fsblk_t type
+     ext2: use ext2_group_first_block_no()
 has been added to the -mm tree.  Its filename is
-     ext2-use-ext2_fsblk_t-type.patch
+     ext2-use-ext2_group_first_block_no.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -33,50 +33,100 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext2: use ext2_fsblk_t type
+Subject: ext2: use ext2_group_first_block_no()
 From: Akinobu Mita <akinobu.mita@gmail.com>
 
-Use ext2_fsblk_t type for filesystem-wide blocks number
+Use ext2_group_first_block_no() and assign the return values to
+ext2_fsblk_t variables.
 
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/inode.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/ext2/inode.c |    3 +--
+ fs/ext2/super.c |   11 +++++------
+ fs/ext2/xattr.c |    6 ++----
+ 3 files changed, 8 insertions(+), 12 deletions(-)
 
-diff -puN fs/ext2/inode.c~ext2-use-ext2_fsblk_t-type fs/ext2/inode.c
---- a/fs/ext2/inode.c~ext2-use-ext2_fsblk_t-type
+diff -puN fs/ext2/inode.c~ext2-use-ext2_group_first_block_no fs/ext2/inode.c
+--- a/fs/ext2/inode.c~ext2-use-ext2_group_first_block_no
 +++ a/fs/ext2/inode.c
-@@ -254,13 +254,13 @@ no_block:
-  *	Caller must make sure that @ind is valid and will stay that way.
-  */
- 
--static unsigned long ext2_find_near(struct inode *inode, Indirect *ind)
-+static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
+@@ -275,8 +275,7 @@ static unsigned long ext2_find_near(stru
+ 	 * It is going to be refered from inode itself? OK, just put it into
+ 	 * the same cylinder group then.
+ 	 */
+-	bg_start = (ei->i_block_group * EXT2_BLOCKS_PER_GROUP(inode->i_sb)) +
+-		le32_to_cpu(EXT2_SB(inode->i_sb)->s_es->s_first_data_block);
++	bg_start = ext2_group_first_block_no(inode->i_sb, ei->i_block_group);
+ 	colour = (current->pid % 16) *
+ 			(EXT2_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+ 	return bg_start + colour;
+diff -puN fs/ext2/super.c~ext2-use-ext2_group_first_block_no fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-use-ext2_group_first_block_no
++++ a/fs/ext2/super.c
+@@ -621,13 +621,13 @@ static int ext2_check_descriptors(struct
  {
- 	struct ext2_inode_info *ei = EXT2_I(inode);
- 	__le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
- 	__le32 *p;
--	unsigned long bg_start;
--	unsigned long colour;
-+	ext2_fsblk_t bg_start;
-+	ext2_fsblk_t colour;
+ 	int i;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+-	unsigned long first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
+-	unsigned long last_block;
  
- 	/* Try to find previous block */
- 	for (p = ind->p - 1; p >= start; p--)
-@@ -290,8 +290,8 @@ static unsigned long ext2_find_near(stru
-  *	Returns preferred place for a block (the goal).
-  */
+ 	ext2_debug ("Checking group descriptors");
  
--static inline int ext2_find_goal(struct inode *inode, long block,
--				 Indirect *partial)
-+static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
-+					  Indirect *partial)
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+ 		struct ext2_group_desc *gdp = ext2_get_group_desc(sb, i, NULL);
++		ext2_fsblk_t first_block = ext2_group_first_block_no(sb, i);
++		ext2_fsblk_t last_block;
+ 
+ 		if (i == sbi->s_groups_count - 1)
+ 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
+@@ -663,7 +663,6 @@ static int ext2_check_descriptors(struct
+ 				    i, (unsigned long) le32_to_cpu(gdp->bg_inode_table));
+ 			return 0;
+ 		}
+-		first_block += EXT2_BLOCKS_PER_GROUP(sb);
+ 	}
+ 	return 1;
+ }
+@@ -720,10 +719,9 @@ static unsigned long descriptor_loc(stru
+ 				    int nr)
  {
- 	struct ext2_block_alloc_info *block_i;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+-	unsigned long bg, first_data_block, first_meta_bg;
++	unsigned long bg, first_meta_bg;
+ 	int has_super = 0;
+ 	
+-	first_data_block = le32_to_cpu(sbi->s_es->s_first_data_block);
+ 	first_meta_bg = le32_to_cpu(sbi->s_es->s_first_meta_bg);
  
+ 	if (!EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_META_BG) ||
+@@ -732,7 +730,8 @@ static unsigned long descriptor_loc(stru
+ 	bg = sbi->s_desc_per_block * nr;
+ 	if (ext2_bg_has_super(sb, bg))
+ 		has_super = 1;
+-	return (first_data_block + has_super + (bg * sbi->s_blocks_per_group));
++
++	return ext2_group_first_block_no(sb, bg) + has_super;
+ }
+ 
+ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+diff -puN fs/ext2/xattr.c~ext2-use-ext2_group_first_block_no fs/ext2/xattr.c
+--- a/fs/ext2/xattr.c~ext2-use-ext2_group_first_block_no
++++ a/fs/ext2/xattr.c
+@@ -659,10 +659,8 @@ ext2_xattr_set2(struct inode *inode, str
+ 			ext2_xattr_cache_insert(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			int goal = le32_to_cpu(EXT2_SB(sb)->s_es->
+-						           s_first_data_block) +
+-				   EXT2_I(inode)->i_block_group *
+-				   EXT2_BLOCKS_PER_GROUP(sb);
++			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
++						EXT2_I(inode)->i_block_group);
+ 			int block = ext2_new_block(inode, goal, &error);
+ 			if (error)
+ 				goto cleanup;
 _
 
 Patches currently in -mm which might be from akinobu.mita@gmail.com are
