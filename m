@@ -1,71 +1,64 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
-Date: Mon, 18 Feb 2008 13:57:02 +0100
-Message-ID: <20080218125702.GB15044@elte.hu>
-References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu> <20080218114936.GM8905@mit.edu>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [BUG] Linux 2.6.25-rc2 - Kernel Ooops while running dbench
+Date: Mon, 18 Feb 2008 04:59:54 -0800
+Message-ID: <20080218045954.50503fb1.akpm@linux-foundation.org>
+References: <alpine.LFD.1.00.0802151302210.9496@woody.linux-foundation.org>
+	<47B6784E.2090401@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760308AbYBRM56@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080218114936.GM8905@mit.edu>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>,
+	Balbir Singh <balbir@linux.vnet.ibm.com>,
+	Christoph Lameter <clameter@sgi.com>, linux-mm@kvack.org
+To: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:60003 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760307AbYBRNBY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Feb 2008 08:01:24 -0500
+In-Reply-To: <47B6784E.2090401@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, 16 Feb 2008 11:14:46 +0530 Kamalesh Babulal <kamalesh@linux.vnet.ibm.com> wrote:
 
-* Theodore Tso <tytso@MIT.EDU> wrote:
+> The 2.6.25-rc2 kernel oopses while running dbench on ext3 filesystem
+> mounted with mount -o data=writeback,nobh option on the x86_64 box
+> 
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000000
+> IP: [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+> PGD 1f6860067 PUD 1f5d64067 PMD 0 
+> Oops: 0000 [1] SMP 
+> CPU 3 
+> Modules linked in:
+> Pid: 4271, comm: dbench Not tainted 2.6.25-rc2-autotest #1
+> RIP: 0010:[<ffffffff80274972>]  [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+> RSP: 0000:ffff8101fb041dc8  EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: ffff810180033c00 RCX: ffffffff8027b269
+> RDX: 0000000000000000 RSI: 00000000000080d0 RDI: ffffffff80632d70
+> RBP: 00000000000080d0 R08: 0000000000000001 R09: 0000000000000000
+> R10: ffff8101feb36e50 R11: 0000000000000190 R12: 0000000000000001
+> R13: 0000000000000000 R14: ffff8101f8f38000 R15: 00000000ffffff9c
+> FS:  0000000000000000(0000) GS:ffff8101fff0f000(0063) knlGS:00000000f7e41460
+> CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+> CR2: 0000000000000000 CR3: 00000001f5620000 CR4: 00000000000006e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process dbench (pid: 4271, threadinfo ffff8101fb040000, task ffff8101fb180000)
+> Stack:  0000000000000001 ffff8101fb041ea8 0000000000000001 ffffffff8027b269
+>  ffff8101fb041ea8 ffffffff80281fe8 0000000000000001 0000000000000000
+>  ffff8101fb041ea8 00000000ffffff9c 000000000000000b 0000000000000001
+> Call Trace:
+>  [<ffffffff8027b269>] get_empty_filp+0x55/0xf9
+>  [<ffffffff80281fe8>] __path_lookup_intent_open+0x22/0x8f
+>  [<ffffffff80282853>] open_namei+0x86/0x5a7
+>  [<ffffffff8027d019>] vfs_stat_fd+0x3c/0x4a
+>  [<ffffffff80279ab1>] do_filp_open+0x1c/0x3d
+>  [<ffffffff80279c2c>] get_unused_fd_flags+0x79/0x111
+>  [<ffffffff80279dce>] do_sys_open+0x46/0xca
+>  [<ffffffff80221c82>] ia32_sysret+0x0/0xa
+> 
 
-> I'm going to NACK it as well.  This kind of code churn where we make 
-> symbols static only to make them non-static again in an existing ext4 
-> tree is exactly the sort of needless code churn that makes patches 
-> start to conflict and where we need different patches depending on 
-> whether it is intended for -mm or linux-next or mainline.
-
-Resolving a reject due to a line of code difference is about 10 seconds 
-of your or time - and you two already spent 10-100 times more time on 
-just fighting that line of code - which is weird. Yes, "naked" exports 
-are sometimes OK (and i recently defended and NACK-ed an export removal 
-in one such case), but the reason given here, out of tree forks are very 
-much not such a case.
-
-Example: recently i got some scheduler stuff not included in time - and 
-had to remove an unnecessary export. Stupid me for not having planned it 
-right and i deserved looking stupid in the git log. This time you did 
-not get the "journal checksum patch" into 2.6.25 by time: tough luck, it 
-shows that you suck at getting stuff done in time sometimes.
-
-So please deal with it like most other subsystem maintainers do and stop 
-complaining about "code churn" - nobody but you changes the ext3 
-codebase, it's one of the codebases least affected by general kernel 
-flux, it's an ultimate "leaf" subsystem.
-
-In fact, we only had 5300 lines of code flux in ext3 in the past ~3 
-years:
-
-  $ git-log -p -M v2.6.12.. fs/ext3/ | diffstat | tail -1
-    45 files changed, 3205 insertions(+), 2043 deletions(-)
-
-with its 16 KLOC's that's a churn rate of ~10% per year. [and 9% out of 
-that was ext3's own feature churn, nothing externally inflicted]
-
-As a comparison, the core kernel had a churn of 182,000 lines [and this 
-excludes renames] in the past 3 years:
-
-  $ git-log -p -M v2.6.12.. kernel/ | diffstat | tail -1
-    284 files changed, 96256 insertions(+), 45277 deletions(-)
-
-and with it being a 91 KLOC codebase that's a _51%_ churn rate per year.
-
-Or take a look at the networking code, with a ~40% 3-year churn rate in 
-half a million lines of code. _That_ is a high rate of change - but the 
-networking people have learned how to deal with it and Linux has become 
-the best OS on the planet in terms of networking technology.
-
-The whole kernel has 8406491 LOC at the moment, in the past 3 years it 
-had a churn of 9214017 lines of code (excluding renames), which averages 
-to a churn rate of ~35% per year.
-
-	Ingo
+Looks to me like we broke slab.  Christoph is offline until the 27th..
