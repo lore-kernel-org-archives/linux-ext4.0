@@ -1,57 +1,71 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Don't mark the filesystem with errors if we fail to fallocate.
-Date: Mon, 18 Feb 2008 17:23:52 +0530
-Message-ID: <1203335632-24426-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1203335632-24426-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu, cmm@us.ibm.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:37287 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758116AbYBRLyB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 06:54:01 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1IBsi1G002331
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:54:44 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1IBvX6O186812
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:57:33 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1IBrssE000593
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:53:55 +1100
-In-Reply-To: <1203335632-24426-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
+Date: Mon, 18 Feb 2008 13:57:02 +0100
+Message-ID: <20080218125702.GB15044@elte.hu>
+References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu> <20080218114936.GM8905@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760308AbYBRM56@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20080218114936.GM8905@mit.edu>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-IF we fail fallocate don't call ext4_error. Also don't hide errors
-from ext4_get_blocks_wrap
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+* Theodore Tso <tytso@MIT.EDU> wrote:
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 5b22f71..bb01ac6 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2653,13 +2653,14 @@ retry:
- 		ret = ext4_get_blocks_wrap(handle, inode, block,
- 					  max_blocks, &map_bh,
- 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
--		WARN_ON(ret <= 0);
- 		if (ret <= 0) {
-+#ifdef EXT4FS_DEBUG
-+			WARN_ON(ret <= 0);
- 			ext4_error(inode->i_sb, "ext4_fallocate",
- 				    "ext4_ext_get_blocks returned error: "
- 				    "inode#%lu, block=%u, max_blocks=%lu",
- 				    inode->i_ino, block, max_blocks);
--			ret = -EIO;
-+#endif
- 			ext4_mark_inode_dirty(handle, inode);
- 			ret2 = ext4_journal_stop(handle);
- 			break;
--- 
-1.5.4.1.97.g40aab-dirty
+> I'm going to NACK it as well.  This kind of code churn where we make 
+> symbols static only to make them non-static again in an existing ext4 
+> tree is exactly the sort of needless code churn that makes patches 
+> start to conflict and where we need different patches depending on 
+> whether it is intended for -mm or linux-next or mainline.
+
+Resolving a reject due to a line of code difference is about 10 seconds 
+of your or time - and you two already spent 10-100 times more time on 
+just fighting that line of code - which is weird. Yes, "naked" exports 
+are sometimes OK (and i recently defended and NACK-ed an export removal 
+in one such case), but the reason given here, out of tree forks are very 
+much not such a case.
+
+Example: recently i got some scheduler stuff not included in time - and 
+had to remove an unnecessary export. Stupid me for not having planned it 
+right and i deserved looking stupid in the git log. This time you did 
+not get the "journal checksum patch" into 2.6.25 by time: tough luck, it 
+shows that you suck at getting stuff done in time sometimes.
+
+So please deal with it like most other subsystem maintainers do and stop 
+complaining about "code churn" - nobody but you changes the ext3 
+codebase, it's one of the codebases least affected by general kernel 
+flux, it's an ultimate "leaf" subsystem.
+
+In fact, we only had 5300 lines of code flux in ext3 in the past ~3 
+years:
+
+  $ git-log -p -M v2.6.12.. fs/ext3/ | diffstat | tail -1
+    45 files changed, 3205 insertions(+), 2043 deletions(-)
+
+with its 16 KLOC's that's a churn rate of ~10% per year. [and 9% out of 
+that was ext3's own feature churn, nothing externally inflicted]
+
+As a comparison, the core kernel had a churn of 182,000 lines [and this 
+excludes renames] in the past 3 years:
+
+  $ git-log -p -M v2.6.12.. kernel/ | diffstat | tail -1
+    284 files changed, 96256 insertions(+), 45277 deletions(-)
+
+and with it being a 91 KLOC codebase that's a _51%_ churn rate per year.
+
+Or take a look at the networking code, with a ~40% 3-year churn rate in 
+half a million lines of code. _That_ is a high rate of change - but the 
+networking people have learned how to deal with it and Linux has become 
+the best OS on the planet in terms of networking technology.
+
+The whole kernel has 8406491 LOC at the moment, in the past 3 years it 
+had a churn of 9214017 lines of code (excluding renames), which averages 
+to a churn rate of ~35% per year.
+
+	Ingo
