@@ -1,23 +1,19 @@
 From: akpm@linux-foundation.org
-Subject: + ext2-use-ext2_group_first_block_no.patch added to -mm tree
-Date: Mon, 18 Feb 2008 02:16:10 -0800
-Message-ID: <200802181017.m1IAH8tF019810@imap1.linux-foundation.org>
-Cc: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org
+Subject: + use-page_cache_xxx-in-ext2.patch added to -mm tree
+Date: Mon, 18 Feb 2008 02:16:20 -0800
+Message-ID: <200802181017.m1IAHIIt019819@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: clameter@sgi.com, dgc@sgi.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:59960 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756455AbYBRKRm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 05:17:42 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext2: use ext2_group_first_block_no()
+     Use page_cache_xxx in ext2
 has been added to the -mm tree.  Its filename is
-     ext2-use-ext2_group_first_block_no.patch
+     use-page_cache_xxx-in-ext2.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -33,113 +29,197 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext2: use ext2_group_first_block_no()
-From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: Use page_cache_xxx in ext2
+From: Christoph Lameter <clameter@sgi.com>
 
-Use ext2_group_first_block_no() and assign the return values to
-ext2_fsblk_t variables.
+Use page_cache_xxx functions in fs/ext2/*
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Reviewed-by: Dave Chinner <dgc@sgi.com>
+Signed-off-by: Christoph Lameter <clameter@sgi.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/inode.c |    3 +--
- fs/ext2/super.c |   11 +++++------
- fs/ext2/xattr.c |    6 ++----
- 3 files changed, 8 insertions(+), 12 deletions(-)
+ fs/ext2/dir.c |   41 +++++++++++++++++++++++------------------
+ 1 file changed, 23 insertions(+), 18 deletions(-)
 
-diff -puN fs/ext2/inode.c~ext2-use-ext2_group_first_block_no fs/ext2/inode.c
---- a/fs/ext2/inode.c~ext2-use-ext2_group_first_block_no
-+++ a/fs/ext2/inode.c
-@@ -275,8 +275,7 @@ static unsigned long ext2_find_near(stru
- 	 * It is going to be refered from inode itself? OK, just put it into
- 	 * the same cylinder group then.
- 	 */
--	bg_start = (ei->i_block_group * EXT2_BLOCKS_PER_GROUP(inode->i_sb)) +
--		le32_to_cpu(EXT2_SB(inode->i_sb)->s_es->s_first_data_block);
-+	bg_start = ext2_group_first_block_no(inode->i_sb, ei->i_block_group);
- 	colour = (current->pid % 16) *
- 			(EXT2_BLOCKS_PER_GROUP(inode->i_sb) / 16);
- 	return bg_start + colour;
-diff -puN fs/ext2/super.c~ext2-use-ext2_group_first_block_no fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-use-ext2_group_first_block_no
-+++ a/fs/ext2/super.c
-@@ -621,13 +621,13 @@ static int ext2_check_descriptors(struct
+diff -puN fs/ext2/dir.c~use-page_cache_xxx-in-ext2 fs/ext2/dir.c
+--- a/fs/ext2/dir.c~use-page_cache_xxx-in-ext2
++++ a/fs/ext2/dir.c
+@@ -63,7 +63,7 @@ static inline void ext2_put_page(struct 
+ 
+ static inline unsigned long dir_pages(struct inode *inode)
  {
- 	int i;
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
--	unsigned long first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
--	unsigned long last_block;
+-	return (inode->i_size+PAGE_CACHE_SIZE-1)>>PAGE_CACHE_SHIFT;
++	return page_cache_next(inode->i_mapping, inode->i_size);
+ }
  
- 	ext2_debug ("Checking group descriptors");
+ /*
+@@ -74,10 +74,11 @@ static unsigned
+ ext2_last_byte(struct inode *inode, unsigned long page_nr)
+ {
+ 	unsigned last_byte = inode->i_size;
++	struct address_space *mapping = inode->i_mapping;
  
- 	for (i = 0; i < sbi->s_groups_count; i++) {
- 		struct ext2_group_desc *gdp = ext2_get_group_desc(sb, i, NULL);
-+		ext2_fsblk_t first_block = ext2_group_first_block_no(sb, i);
-+		ext2_fsblk_t last_block;
+-	last_byte -= page_nr << PAGE_CACHE_SHIFT;
+-	if (last_byte > PAGE_CACHE_SIZE)
+-		last_byte = PAGE_CACHE_SIZE;
++	last_byte -= page_cache_pos(mapping, page_nr, 0);
++	if (last_byte > page_cache_size(mapping))
++		last_byte = page_cache_size(mapping);
+ 	return last_byte;
+ }
  
- 		if (i == sbi->s_groups_count - 1)
- 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
-@@ -663,7 +663,6 @@ static int ext2_check_descriptors(struct
- 				    i, (unsigned long) le32_to_cpu(gdp->bg_inode_table));
- 			return 0;
+@@ -105,18 +106,19 @@ static int ext2_commit_chunk(struct page
+ 
+ static void ext2_check_page(struct page *page)
+ {
+-	struct inode *dir = page->mapping->host;
++	struct address_space *mapping = page->mapping;
++	struct inode *dir = mapping->host;
+ 	struct super_block *sb = dir->i_sb;
+ 	unsigned chunk_size = ext2_chunk_size(dir);
+ 	char *kaddr = page_address(page);
+ 	u32 max_inumber = le32_to_cpu(EXT2_SB(sb)->s_es->s_inodes_count);
+ 	unsigned offs, rec_len;
+-	unsigned limit = PAGE_CACHE_SIZE;
++	unsigned limit = page_cache_size(mapping);
+ 	ext2_dirent *p;
+ 	char *error;
+ 
+-	if ((dir->i_size >> PAGE_CACHE_SHIFT) == page->index) {
+-		limit = dir->i_size & ~PAGE_CACHE_MASK;
++	if (page_cache_index(mapping, dir->i_size) == page->index) {
++		limit = page_cache_offset(mapping, dir->i_size);
+ 		if (limit & (chunk_size - 1))
+ 			goto Ebadsize;
+ 		if (!limit)
+@@ -168,7 +170,7 @@ Einumber:
+ bad_entry:
+ 	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
+ 		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+-		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
++		dir->i_ino, error, page_cache_pos(mapping, page->index, offs),
+ 		(unsigned long) le32_to_cpu(p->inode),
+ 		rec_len, p->name_len);
+ 	goto fail;
+@@ -177,7 +179,7 @@ Eend:
+ 	ext2_error (sb, "ext2_check_page",
+ 		"entry in directory #%lu spans the page boundary"
+ 		"offset=%lu, inode=%lu",
+-		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
++		dir->i_ino, page_cache_pos(mapping, page->index, offs),
+ 		(unsigned long) le32_to_cpu(p->inode));
+ fail:
+ 	SetPageChecked(page);
+@@ -276,8 +278,9 @@ ext2_readdir (struct file * filp, void *
+ 	loff_t pos = filp->f_pos;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	struct super_block *sb = inode->i_sb;
+-	unsigned int offset = pos & ~PAGE_CACHE_MASK;
+-	unsigned long n = pos >> PAGE_CACHE_SHIFT;
++	struct address_space *mapping = inode->i_mapping;
++	unsigned int offset = page_cache_offset(mapping, pos);
++	unsigned long n = page_cache_index(mapping, pos);
+ 	unsigned long npages = dir_pages(inode);
+ 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
+ 	unsigned char *types = NULL;
+@@ -298,14 +301,14 @@ ext2_readdir (struct file * filp, void *
+ 			ext2_error(sb, __FUNCTION__,
+ 				   "bad page in #%lu",
+ 				   inode->i_ino);
+-			filp->f_pos += PAGE_CACHE_SIZE - offset;
++			filp->f_pos += page_cache_size(mapping) - offset
+ 			return PTR_ERR(page);
  		}
--		first_block += EXT2_BLOCKS_PER_GROUP(sb);
- 	}
- 	return 1;
- }
-@@ -720,10 +719,9 @@ static unsigned long descriptor_loc(stru
- 				    int nr)
+ 		kaddr = page_address(page);
+ 		if (unlikely(need_revalidate)) {
+ 			if (offset) {
+ 				offset = ext2_validate_entry(kaddr, offset, chunk_mask);
+-				filp->f_pos = (n<<PAGE_CACHE_SHIFT) + offset;
++				filp->f_pos = page_cache_pos(mapping, n, offset);
+ 			}
+ 			filp->f_version = inode->i_version;
+ 			need_revalidate = 0;
+@@ -328,7 +331,7 @@ ext2_readdir (struct file * filp, void *
+ 
+ 				offset = (char *)de - kaddr;
+ 				over = filldir(dirent, de->name, de->name_len,
+-						(n<<PAGE_CACHE_SHIFT) | offset,
++						page_cache_pos(mapping, n, offset),
+ 						le32_to_cpu(de->inode), d_type);
+ 				if (over) {
+ 					ext2_put_page(page);
+@@ -354,6 +357,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 			struct dentry *dentry, struct page ** res_page)
  {
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
--	unsigned long bg, first_data_block, first_meta_bg;
-+	unsigned long bg, first_meta_bg;
- 	int has_super = 0;
- 	
--	first_data_block = le32_to_cpu(sbi->s_es->s_first_data_block);
- 	first_meta_bg = le32_to_cpu(sbi->s_es->s_first_meta_bg);
- 
- 	if (!EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_META_BG) ||
-@@ -732,7 +730,8 @@ static unsigned long descriptor_loc(stru
- 	bg = sbi->s_desc_per_block * nr;
- 	if (ext2_bg_has_super(sb, bg))
- 		has_super = 1;
--	return (first_data_block + has_super + (bg * sbi->s_blocks_per_group));
-+
-+	return ext2_group_first_block_no(sb, bg) + has_super;
- }
- 
- static int ext2_fill_super(struct super_block *sb, void *data, int silent)
-diff -puN fs/ext2/xattr.c~ext2-use-ext2_group_first_block_no fs/ext2/xattr.c
---- a/fs/ext2/xattr.c~ext2-use-ext2_group_first_block_no
-+++ a/fs/ext2/xattr.c
-@@ -659,10 +659,8 @@ ext2_xattr_set2(struct inode *inode, str
- 			ext2_xattr_cache_insert(new_bh);
- 		} else {
- 			/* We need to allocate a new block */
--			int goal = le32_to_cpu(EXT2_SB(sb)->s_es->
--						           s_first_data_block) +
--				   EXT2_I(inode)->i_block_group *
--				   EXT2_BLOCKS_PER_GROUP(sb);
-+			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
-+						EXT2_I(inode)->i_block_group);
- 			int block = ext2_new_block(inode, goal, &error);
- 			if (error)
- 				goto cleanup;
+ 	const char *name = dentry->d_name.name;
++	struct address_space *mapping = dir->i_mapping;
+ 	int namelen = dentry->d_name.len;
+ 	unsigned reclen = EXT2_DIR_REC_LEN(namelen);
+ 	unsigned long start, n;
+@@ -395,7 +399,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 		if (++n >= npages)
+ 			n = 0;
+ 		/* next page is past the blocks we've got */
+-		if (unlikely(n > (dir->i_blocks >> (PAGE_CACHE_SHIFT - 9)))) {
++		if (unlikely(n > (dir->i_blocks >> (page_cache_shift(mapping) - 9)))) {
+ 			ext2_error(dir->i_sb, __FUNCTION__,
+ 				"dir %lu size %lld exceeds block count %llu",
+ 				dir->i_ino, dir->i_size,
+@@ -466,6 +470,7 @@ void ext2_set_link(struct inode *dir, st
+ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ {
+ 	struct inode *dir = dentry->d_parent->d_inode;
++	struct address_space *mapping = inode->i_mapping;
+ 	const char *name = dentry->d_name.name;
+ 	int namelen = dentry->d_name.len;
+ 	unsigned chunk_size = ext2_chunk_size(dir);
+@@ -495,7 +500,7 @@ int ext2_add_link (struct dentry *dentry
+ 		kaddr = page_address(page);
+ 		dir_end = kaddr + ext2_last_byte(dir, n);
+ 		de = (ext2_dirent *)kaddr;
+-		kaddr += PAGE_CACHE_SIZE - reclen;
++		kaddr += page_cache_size(mapping) - reclen;
+ 		while ((char *)de <= kaddr) {
+ 			if ((char *)de == dir_end) {
+ 				/* We hit i_size */
+@@ -531,7 +536,7 @@ int ext2_add_link (struct dentry *dentry
+ got_it:
+ 	pos = page_offset(page) +
+ 		(char*)de - (char*)page_address(page);
+-	err = __ext2_write_begin(NULL, page->mapping, pos, rec_len, 0,
++	err = __ext2_write_begin(NULL, mapping, pos, rec_len, 0,
+ 							&page, NULL);
+ 	if (err)
+ 		goto out_unlock;
 _
 
-Patches currently in -mm which might be from akinobu.mita@gmail.com are
+Patches currently in -mm which might be from clameter@sgi.com are
 
-git-dvb.patch
-ext2-improve-ext2_readdir-return-value.patch
-ext2-use-ext2_group_first_block_no.patch
-ext2-use-ext2_fsblk_t-type.patch
-ext3-use-ext3_group_first_block_no.patch
-ext3-add-missing-ext3_journal_stop.patch
-ext3-use-ext3_get_group_desc.patch
-ext3-check-ext3_journal_get_write_access-errors.patch
-ext4-use-ext4_group_first_block_no.patch
-ext4-add-missing-ext4_journal_stop.patch
-ext4-use-ext4_get_group_desc.patch
-ext4-check-ext4_journal_get_write_access-errors.patch
+define-functions-for-page-cache-handling.patch
+gregkh-driver-kset-move-sys-slab-to-sys-kernel-slab-slabinfo-fallback-from-sys-kernel-slab-to-sys-slab.patch
+use-page_cache_xxx-in-fs-splicec.patch
+git-unionfs.patch
+use-page_cache_xxx-for-fs-xfs.patch
+git-slub.patch
+x86-cast-cmpxchg-and-cmpxchg_local-result-for-386-and-486.patch
+remove-set_migrateflags.patch
+use-page_cache_xxx-functions-in-mm-filemapc.patch
+use-page_cache_xxx-in-mm-page-writebackc.patch
+use-page_cache_xxx-in-mm-truncatec.patch
+use-page_cache_xxx-in-mm-rmapc.patch
+use-page_cache_xxx-in-mm-filemap_xipc.patch
+use-page_cache_xxx-in-mm-migratec.patch
+use-page_cache_xxx-in-fs-libfsc.patch
+use-page_cache_xxx-in-fs-sync.patch
+use-page_cache_xxx-in-fs-bufferc.patch
+use-page_cache_xxx-in-mm-mpagec.patch
+use-page_cache_xxx-in-mm-fadvisec.patch
+use-page_cache_xxx-in-ext2.patch
+use-page_cache_xxx-in-fs-ext3.patch
+use-page_cache_xxx-in-fs-reiserfs.patch
+use-page_cache_xxx-in-fs-ext4.patch
+reiser4.patch
+reiser4-portion-of-zero_user-cleanup-patch.patch
+page-owner-tracking-leak-detector.patch
