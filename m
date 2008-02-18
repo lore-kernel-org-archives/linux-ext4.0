@@ -1,59 +1,102 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
-Date: Mon, 18 Feb 2008 06:49:36 -0500
-Message-ID: <20080218114936.GM8905@mit.edu>
-References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, Adrian Bunk <bunk@kernel.org>,
-	sct@redhat.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ingo Molnar <mingo@elte.hu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Use page_mkwrite vma_operations to get mmap write notification.
+Date: Mon, 18 Feb 2008 17:23:51 +0530
+Message-ID: <1203335632-24426-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu, cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:35673 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758024AbYBRLvh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 06:51:37 -0500
-Content-Disposition: inline
-In-Reply-To: <20080218071229.GA1459@elte.hu>
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:57656 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755651AbYBRLx4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 06:53:56 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1IBrVkC013750
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:53:31 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1IBrrri1806430
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:53:53 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1IBrr3R000578
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:53:53 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 18, 2008 at 08:12:29AM +0100, Ingo Molnar wrote:
-> > Nack.  I don't object to un-exporting journal_update_superblock(), 
-> > because that is pretty internal, but the other functions are intended 
-> > specifically for use by code outside of JBD.  For example, the journal 
-> > checksum patch for ext3/4 uses journal_set_features() to turn on 
-> > features in the JBD superblock.
-> > 
-> > Similarly, for 64-bit support in ext4 uses journal_set_features() to 
-> > set a 64-bit feature flag in the journal superblock.
-> 
-> that's an invalid excuse for the benefit of out-of-tree forks: reality 
-> is that you can export those functions in the "journal checksum patch" 
-> just fine. So you cannot 'nack' a sensible patch on that ground and no 
-> maintainer does it on that ground. Once you get your stuff upstream, you 
-> can re-add the export.
+We would like to get notified when we are doing a write on mmap section.
+This is needed with respect to preallocated area. We split the preallocated
+area into initialzed extent and uninitialzed extent in the call back. This
+let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
+that would result in data loss.
 
-I'm going to NACK it as well.  This kind of code churn where we make
-symbols static only to make them non-static again in an existing ext4
-tree is exactly the sort of needless code churn that makes patches
-start to conflict and where we need different patches depending on
-whether it is intended for -mm or linux-next or mainline.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/file.c          |   19 ++++++++++++++++++-
+ fs/ext4/inode.c         |    6 ++++++
+ include/linux/ext4_fs.h |    1 +
+ 3 files changed, 25 insertions(+), 1 deletions(-)
 
-I think we really have gotten WAY to doctrinaire on the if there are
-no in-tree users, it MUST be static.  This is exactly the sort of
-mindless rules that cause the patch conflicts that have been causing
-us so much pain and grief.  In this case, it is an existing symbol
-which is already non-static, and for which we have code in a
-development tree that will be using it.  In the r/o bind case, it is
-the insistence that you can't push an existing patch to expose a new
-interface that must be used later in the r/o bind patchset and which
-sweeps across all trees changing stuff that causes pain and grief.
-
-In both cases, if we expand "in-tree" development users to include
-known development trees that are intended for mainline, it makes all
-of our lives MUCH easier.  
-
-					- Ted
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 20507a2..77341c1 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -123,6 +123,23 @@ force_commit:
+ 	return ret;
+ }
+ 
++static struct vm_operations_struct ext4_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite   = ext4_page_mkwrite,
++};
++
++static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
++{
++	struct address_space *mapping = file->f_mapping;
++
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext4_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
++}
++
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+@@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext4_compat_ioctl,
+ #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext4_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext4_release_file,
+ 	.fsync		= ext4_sync_file,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 34f3eb6..81faa67 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3466,3 +3466,9 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 
+ 	return err;
+ }
++
++int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
++{
++	return block_page_mkwrite(vma, page, ext4_get_block);
++}
++
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 22810b1..8f5a563 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+ 		struct address_space *mapping, loff_t from);
++extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+ 
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+-- 
+1.5.4.1.97.g40aab-dirty
