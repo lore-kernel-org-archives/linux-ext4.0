@@ -1,59 +1,49 @@
 From: Ingo Molnar <mingo@elte.hu>
 Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
-Date: Mon, 18 Feb 2008 14:31:40 +0100
-Message-ID: <20080218133140.GA21635@elte.hu>
-References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu> <20080218114936.GM8905@mit.edu> <20080218131209.GB21080@cs181133002.pp.htv.fi>
+Date: Mon, 18 Feb 2008 14:55:09 +0100
+Message-ID: <20080218135509.GC28851@elte.hu>
+References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu> <20080218114936.GM8905@mit.edu> <20080218125702.GB15044@elte.hu> <20080218133127.GB12568@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	sct@redhat.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Adrian Bunk <bunk@kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:53082 "EHLO mx3.mail.elte.hu"
+Received: from mx2.mail.elte.hu ([157.181.151.9]:39940 "EHLO mx2.mail.elte.hu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760872AbYBRNcY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 08:32:24 -0500
+	id S1751112AbYBRNzt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Feb 2008 08:55:49 -0500
 Content-Disposition: inline
-In-Reply-To: <20080218131209.GB21080@cs181133002.pp.htv.fi>
+In-Reply-To: <20080218133127.GB12568@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-* Adrian Bunk <bunk@kernel.org> wrote:
+* Theodore Tso <tytso@mit.edu> wrote:
 
-> The following was meant 100% seriously:
+> > So please deal with it like most other subsystem maintainers do and 
+> > stop complaining about "code churn" - nobody but you changes the 
+> > ext3 codebase, it's one of the codebases least affected by general 
+> > kernel flux, it's an ultimate "leaf" subsystem.
 > 
-> This patch has been sent on:
-> - 16 May 2006
-> - 1 May 2006
-> - 23 Apr 2006
+> Right, sorry.  I misread the filename; I thought this was against 
+> fs/jbd2, instead of fs/jbd.
 
-ouch ...
+Btw., if people have problems with rejects from trivial patches, the 
+'mpatch' tool does wonders in resolving the easy ones:
 
-i guess this explains what static code metrics already suggest:
+  http://oss.oracle.com/~mason/mpatch/
 
-   $ code-quality fs/ext3/ fs/ext4/
-                                errors   lines of code   errors/KLOC
-   fs/ext3/                        408           16055          25.4
-   fs/ext4/                        394           25169          15.6
+when you get a .rej file, first check whether mpatch can resolve it 
+conflict-free:
 
-compared to:
+  mpatch -d kernel/somefile.c.rej
 
-   $ code-quality kernel/
-                                errors   lines of code   errors/KLOC
-   kernel/                         739           98759           7.4
+if there are no conflicts then:
 
-and i guess our hope is now in:
+  mpatch -a kernel/somefile.c.rej
 
-   $ code-quality fs/btrfs/
-                                errors   lines of code   errors/KLOC
-   fs/btrfs/                       240           20556          11.6
-
-(which hopefully will be a project done in a much more Linux-ish manner: 
-open participation, the easy taking of patches, an inclusive, 
-newbie-friendly contribution atmosphere, etc.)
+quilt refresh, review the result and it's done in the majority of cases.
 
 	Ingo
-
-ps. http://redhat.com/~mingo/x86.git/code-quality
