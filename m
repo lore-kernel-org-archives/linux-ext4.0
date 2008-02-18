@@ -1,30 +1,42 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH 2/7] fs/ext{2,3,4}: Use BUG_ON
-Date: Sun, 17 Feb 2008 15:33:49 -0500
-Message-ID: <20080217203349.GH8905@mit.edu>
-References: <Pine.LNX.4.64.0802171854270.28055@ask.diku.dk>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
+Date: Mon, 18 Feb 2008 00:04:39 -0700
+Message-ID: <20080218070439.GG3029@webber.adilger.int>
+References: <20080217081935.GN3848@cs181133002.pp.htv.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: sct@redhat.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Julia Lawall <julia@diku.dk>
+Content-Transfer-Encoding: 7BIT
+Cc: sct@redhat.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Adrian Bunk <bunk@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60737 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752570AbYBQUen (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Feb 2008 15:34:43 -0500
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0802171854270.28055@ask.diku.dk>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52426 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752899AbYBRHEn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 02:04:43 -0500
+In-reply-to: <20080217081935.GN3848@cs181133002.pp.htv.fi>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 17, 2008 at 06:55:06PM +0100, Julia Lawall wrote:
-> From: Julia Lawall <julia@diku.dk>
-> 
-> if (...) BUG(); should be replaced with BUG_ON(...) when the test has no
-> side-effects to allow a definition of BUG_ON that drops the code completely.
+On Feb 17, 2008  10:19 +0200, Adrian Bunk wrote:
+> This patch contains the following cleanups:
+> - make the following needlessly global function static:
+>   - journal_check_used_features()
+> - remove the following unused EXPORT_SYMBOL's:
+>   - journal_set_features
+>   - journal_update_superblock
 
-Hi, in the future, please separate ext4 changes from ext2/3.  Thanks!!
+Nack.  I don't object to un-exporting journal_update_superblock(), because
+that is pretty internal, but the other functions are intended specifically
+for use by code outside of JBD.  For example, the journal checksum patch for
+ext3/4 uses journal_set_features() to turn on features in the JBD superblock.
 
-       	   	   	  	   - Ted
+Similarly, for 64-bit support in ext4 uses journal_set_features() to set
+a 64-bit feature flag in the journal superblock.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
