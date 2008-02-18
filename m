@@ -1,70 +1,95 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [2.6 patch] fs/jbd/journal.c: cleanups
-Date: Mon, 18 Feb 2008 17:22:26 +0100
-Message-ID: <20080218162226.GB4148@elte.hu>
-References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int> <20080218071229.GA1459@elte.hu> <20080218114936.GM8905@mit.edu> <20080218131209.GB21080@cs181133002.pp.htv.fi> <20080218133140.GA21635@elte.hu> <20080218151119.GC25098@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH e2fsprogs] print "mostly-printable" xattr strings in debugfs
+Date: Mon, 18 Feb 2008 10:35:37 -0600
+Message-ID: <47B9B3D9.4020706@redhat.com>
+References: <479FEF66.6040308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Adrian Bunk <bunk@kernel.org>,
-	Andreas Dilger <adilger@sun.com>, sct@redhat.com,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:35236 "EHLO mx3.mail.elte.hu"
+Received: from mx1.redhat.com ([66.187.233.31]:46361 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751650AbYBRQXS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 11:23:18 -0500
-Content-Disposition: inline
-In-Reply-To: <20080218151119.GC25098@mit.edu>
+	id S1755785AbYBRQfk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Feb 2008 11:35:40 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1IGZbbX009854
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 11:35:37 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1IGZbPX011468
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 11:35:37 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m1IGZbNt019993
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 11:35:37 -0500
+In-Reply-To: <479FEF66.6040308@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Eric Sandeen wrote:
+> Taking a cue from getfattr... if a string is "mostly"
+> printable characters, go ahead & print as a string,
+> and escape what's left over.
 
-* Theodore Tso <tytso@mit.edu> wrote:
+Ted, ping on this?  Since we use selinux a lot, it'd be nice to have
+something readable in debugfs output.
 
-> On Mon, Feb 18, 2008 at 02:31:40PM +0100, Ingo Molnar wrote:
-> > i guess this explains what static code metrics already suggest:
+If there's anything you don't like about the patch I'll be happy to fix
+it up.
+
+Thanks,
+-Eric
+
+> so we get:
 > 
-> Am I right in assuming that code-quality is just a program which runs 
-> checkpatch.pl and measures the number of warnings and calls them 
-> errors?
-
-no, it picks the checkpatch.pl errors and calls them errors. The script 
-ignores checkpatch.pl warnings. (although even the checkpatch.pl 
-warnings tend to be correct in like 90% of the cases - YMMV)
-
-but yes, i'd agree with you if you said this was an arbitrary metric 
-that does not map to the functional qualities of the code in a provable 
-way.
-
-(other than the fact that any of these style errors are valid reasons to 
-reject new code that is being offered into the kernel. I.e. if the ext4 
-codebase was submitted as a new, unknown filesystem right now, it would 
-probably have a hard time getting accepted with all those silly style 
-problems in it. Why should "old" subsystems have a lower threshold to 
-meet than newer subsystems? Isnt that unfair? )
-
-And fact is that i've yet to see really crappy code with an excellent 
-checkpatch score, and really good code with a very poor checkpatch 
-score. So i think you have to accept that there's _some_ correlation.
-
-And i believe this comes from the simple fact that mental carelessness 
-is contagious: lack of attention to details on the thinking level 
-subsconsciously slips over into the style space as well. It's hard 
-(impossible) to measure "true" code quality, but the style space is 
-interrelated with the "true quality" space and is easier to measure. I 
-just had a look at the errors and warnings that checkpatch --file emits 
-on fs/ext3/*.c, and if i was maintaining those files i'd be fixing over 
-50% of them - because they are just style inconsistencies often _within 
-the same function_ which would be constant distraction when adding new 
-code.
-
-In fact, the more critical a piece of code, the more strategic it is to 
-users, the less acceptable it is IMO to have "style noise" and similar 
-visual distractions in it. One unusual indentation or spacing, although 
-silly to even mention in isolation, _can_ trick the human eye into 
-glossing over just one critical piece of information to find or avoid a 
-bug. And as a bonus, consistent source code style is also an attractive 
-aesthetic experience to any first-time visitor of your subsystem. BYMMV.
-
-	Ingo
+> Extended attributes stored in inode body: 
+>   selinux = "system_u:object_r:root_t:s0\000" (28)
+> 
+> instead of:
+> 
+> Extended attributes stored in inode body: 
+>   selinux = "73 79 73 74 65 6d 5f 75 3a 6f 62 6a 65 63 74 5f 72 3a 72 6f 6f 74 5f 74 3a 73 30 00 " (28)
+> 
+> (selinux includes the trailing null in "len" so it
+> never prints as a string today)
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+>  
+> Index: e2fsprogs-1.40.5/debugfs/debugfs.c
+> ===================================================================
+> --- e2fsprogs-1.40.5.orig/debugfs/debugfs.c
+> +++ e2fsprogs-1.40.5/debugfs/debugfs.c
+> @@ -434,19 +434,21 @@ static int list_blocks_proc(ext2_filsys 
+>  
+>  static void dump_xattr_string(FILE *out, const char *str, int len)
+>  {
+> -	int printable = 1;
+> +	int printable = 0;
+>  	int i;
+>  	
+> -	/* check is string printable? */
+> +	/* check: is string "printable enough?" */
+>  	for (i = 0; i < len; i++)
+> -		if (!isprint(str[i])) {
+> -			printable = 0;
+> -			break;
+> -		}
+> +		if (isprint(str[i]))
+> +			printable++;
+> +
+> +	if (printable <= len*7/8)
+> +		printable = 0;
+>  
+>  	for (i = 0; i < len; i++)
+>  		if (printable)
+> -			fprintf(out, "%c", (unsigned char)str[i]);
+> +			fprintf(out, isprint(str[i]) ? "%c" : "\\%03o",
+> +				(unsigned char)str[i]);
+>  		else
+>  			fprintf(out, "%02x ", (unsigned char)str[i]);
+>  }
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
