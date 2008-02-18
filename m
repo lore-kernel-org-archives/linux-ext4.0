@@ -1,57 +1,64 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][7/28] e2fsprogs-extents.patch
-Date: Mon, 18 Feb 2008 17:09:35 -0500
-Message-ID: <20080218220935.GM25098@mit.edu>
-References: <20080202075943.GB23836@webber.adilger.int> <20080202082559.GG31694@webber.adilger.int> <20080202082701.GH31694@webber.adilger.int> <47B9C6E5.2010304@redhat.com> <20080218195332.GK25098@mit.edu> <47B9EF12.5020400@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] don't set extents flag for _any_ symlinks
+Date: Mon, 18 Feb 2008 16:27:52 -0600
+Message-ID: <47BA0668.5020006@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:55863 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752987AbYBRWJo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 17:09:44 -0500
-Content-Disposition: inline
-In-Reply-To: <47B9EF12.5020400@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:36550 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753501AbYBRW1x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Feb 2008 17:27:53 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1IMRrtb005503
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:53 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1IMRq1q002039
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:52 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m1IMRqFZ007173
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 18, 2008 at 02:48:18PM -0600, Eric Sandeen wrote:
-> > I think we need to get kernel patches into mainline ASAP not to set
-> > the EXTENTS_FL 
-> 
-> You mean on devices/fifos/sockets ?  Ok.
+As symlinks are limited to a single block anyway, and e2fsck
+doesn't expect to find it set, don't set the extents flag on 
+any type of symlinks at all: fast/in-inode, or the 
+external-block flavor.
 
-Yes, sorry for not being explicit.
+There are a lot of filesystems out there by now w/ exent-style 
+symlink blocks though, so e2fsck should probably be able to 
+repair that at some point...
 
-> 
-> But today, with 2.6.25-rc1 and e2fsprogs-interim, long (non-fast)
-> symlinks get clobbered by e2fsck, because:
-> 
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 12 has EXTENT_FL set, but is not in extents format
-> Fix? yes
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Yeah, my current development branch of e2fsprogs does the right thing,
-but e2fsprogs-interim doesn't.  We need to add a test to make sure
-ext2fs_inode_has_valid_blocks(inode) before marking the inode bad and
-asking the user if the inode should be cleared.
+---
 
-> and *poof* it's gone.  That one concerns me more...  This *should* be in
-> extents format, right, even though it's limited to one block...
+Index: linux-2.6.24/fs/ext4/namei.c
+===================================================================
+--- linux-2.6.24.orig/fs/ext4/namei.c
++++ linux-2.6.24/fs/ext4/namei.c
+@@ -2223,7 +2226,6 @@ retry:
+ 		inode->i_op = &ext4_fast_symlink_inode_operations;
+ 		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
+ 		inode->i_size = l-1;
+-		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
+ 	}
+ 	EXT4_I(inode)->i_disksize = inode->i_size;
+ 	err = ext4_add_nondir(handle, dentry, inode);
 
-Well, for symlinks, they are only one block, so there is no reason for
-it to be using the extent format.  So storing it as a single block
-number makes a lot more sense.  It should just not be setting the
-EXTENTS_FL flag. 
-
-> well, if any filetypes are not supposed to have the extents flag set,
-> and they're zero-length, I'd say go ahead & clear it, and even complain
-> if you like - it's the design intent after all -  I wouldn't worry about
-> the noise at this stage.  FWIW, I haven't seen a core dump.  :)
-
-The current pu branch core dumps.  My development branch has at least
-that problem fixed.  :-)
-
-						- Ted
+Index: linux-2.6.24/fs/ext4/ialloc.c
+===================================================================
+--- linux-2.6.24.orig/fs/ext4/ialloc.c
++++ linux-2.6.24/fs/ext4/ialloc.c
+@@ -744,7 +744,7 @@ got:
+ 		ext4_std_error(sb, err);
+ 		goto fail_free_drop;
+ 	}
+-	if (test_opt(sb, EXTENTS)) {
++	if (test_opt(sb, EXTENTS) && !S_ISLNK(mode)) {
+ 		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+ 		ext4_ext_tree_init(handle, inode);
+ 		err = ext4_update_incompat_feature(handle, sb,
