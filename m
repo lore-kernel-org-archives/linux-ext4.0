@@ -1,53 +1,35 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: How were some of the lustre e2fsprogs test cases generated?
-Date: Tue, 19 Feb 2008 07:29:25 -0500
-Message-ID: <20080219122925.GW25098@mit.edu>
-References: <E1JRG0g-0001lz-Ur@closure.thunk.org> <20080219114032.GL3029@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH e2fsprogs] - detect LVM2 PVs in libblkid
+Date: Tue, 19 Feb 2008 09:02:30 -0600
+Message-ID: <47BAEF86.8080601@redhat.com>
+References: <47A1074F.8090909@redhat.com> <20080219112731.GV25098@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:56581 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751041AbYBSM31 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 07:29:27 -0500
-Content-Disposition: inline
-In-Reply-To: <20080219114032.GL3029@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:32837 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752172AbYBSPCn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Feb 2008 10:02:43 -0500
+In-Reply-To: <20080219112731.GV25098@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 19, 2008 at 04:40:32AM -0700, Andreas Dilger wrote:
+Theodore Tso wrote:
+
+> The patch works for me, but it would seem the right thing would be
+> print the UUID without the hyphens, i.e.:
 > 
-> No, it hasn't always been true that we cleared the _hi fields in the
-> kernel code.  But, it has been a year or more since we found this bug,
-> and all CFS e2fsprogs releases since then have cleared the _hi fields,
-> and there has not been any other e2fsprogs that supports extents, so
-> we expect that there are no filesystems left in the field with this
-> issue, and even then the current code will prefer to clear the _hi
-> bits instead of considering the whole extent corrupt.
+>         guOQGdcOE3IafCm0190XkPZTy5fCEanQ
 > 
+> instead of
+> 
+> 	guOQGd-cOE3-IafC-m019-0XkP-ZTy5-fCEanQ
 
-I checked again, and it looks like the interim code is indeed clearing
-the _hi bits.  I managed to confuse myself into thinking it didn't for
-index nodes, but I checked again and it seems to be doing the right
-thing.
+But it already does print it without the hyphens.
 
-The reason why I asked is that the extents code in the 'next' branch
-of e2fsprogs *does* consider the whole extent to be corrupt, since in
-the long run once we start 64-bit block number extent blocks, if the
-physical block number (including the high 16 bits) is greater than
-s_blocks_count, simply masking off the high 16 bits of the 48 bit
-extent block is probably not the right way of dealing with the
-problem.
+Or did you mean to say "print the UUID *with* the hyphens?"
 
-I think that's probably a safe thing to do since all of your customers
-who might have had a filesystem with non-zero _hi fields have almost
-certainly run e2fsck to clear the _hi bits at least once; do you
-concur that is a safe assumption?  Or would you prefer that I add some
-code that tries to clear just the _hi bits, perhaps controlled by a
-configuration flag in e2fsck.conf?
-
-Regards,
-
-						- Ted
+-Eric
