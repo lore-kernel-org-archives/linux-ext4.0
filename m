@@ -1,8 +1,8 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] clear extents flag on inodes created in ext4_mknod
-Date: Mon, 18 Feb 2008 21:22:42 -0800
-Message-ID: <1203398562.3612.3.camel@localhost.localdomain>
-References: <47B9F1F1.30604@redhat.com>
+Subject: Re: [PATCH] don't set extents flag for _any_ symlinks
+Date: Mon, 18 Feb 2008 21:22:56 -0800
+Message-ID: <1203398576.3612.5.camel@localhost.localdomain>
+References: <47BA0668.5020006@redhat.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -10,44 +10,64 @@ Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:56815 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750850AbYBSFWr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Feb 2008 00:22:47 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1J5Mjv8031840
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 00:22:45 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1J5Mj2q311188
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 00:22:45 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1J5Mijf021167
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 00:22:44 -0500
-In-Reply-To: <47B9F1F1.30604@redhat.com>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:42194 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751024AbYBSFXE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 00:23:04 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1J5Mwaj017667
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 00:22:58 -0500
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1J5MwCP156804
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:22:58 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1J5MvQG024802
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 22:22:58 -0700
+In-Reply-To: <47BA0668.5020006@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Acked and added to the patch queue.
-On Mon, 2008-02-18 at 15:00 -0600, Eric Sandeen wrote:
-> e2fsck doesn't expect to find char, block, fifo, or socket
-> files with the extent flag set, so clear that in ext4_mknod.
+Thanks, Added to patch queue
+On Mon, 2008-02-18 at 16:27 -0600, Eric Sandeen wrote:
+> As symlinks are limited to a single block anyway, and e2fsck
+> doesn't expect to find it set, don't set the extents flag on 
+> any type of symlinks at all: fast/in-inode, or the 
+> external-block flavor.
+> 
+> There are a lot of filesystems out there by now w/ exent-style 
+> symlink blocks though, so e2fsck should probably be able to 
+> repair that at some point...
 > 
 > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> 
 > ---
 > 
 > Index: linux-2.6.24/fs/ext4/namei.c
 > ===================================================================
 > --- linux-2.6.24.orig/fs/ext4/namei.c
 > +++ linux-2.6.24/fs/ext4/namei.c
-> @@ -1766,6 +1766,7 @@ retry:
->  #ifdef CONFIG_EXT4DEV_FS_XATTR
->  		inode->i_op = &ext4_special_inode_operations;
->  #endif
-> +		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
->  		err = ext4_add_nondir(handle, dentry, inode);
+> @@ -2223,7 +2226,6 @@ retry:
+>  		inode->i_op = &ext4_fast_symlink_inode_operations;
+>  		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
+>  		inode->i_size = l-1;
+> -		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
 >  	}
->  	ext4_journal_stop(handle);
+>  	EXT4_I(inode)->i_disksize = inode->i_size;
+>  	err = ext4_add_nondir(handle, dentry, inode);
 > 
+> Index: linux-2.6.24/fs/ext4/ialloc.c
+> ===================================================================
+> --- linux-2.6.24.orig/fs/ext4/ialloc.c
+> +++ linux-2.6.24/fs/ext4/ialloc.c
+> @@ -744,7 +744,7 @@ got:
+>  		ext4_std_error(sb, err);
+>  		goto fail_free_drop;
+>  	}
+> -	if (test_opt(sb, EXTENTS)) {
+> +	if (test_opt(sb, EXTENTS) && !S_ISLNK(mode)) {
+>  		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+>  		ext4_ext_tree_init(handle, inode);
+>  		err = ext4_update_incompat_feature(handle, sb,
 > 
 > -
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
