@@ -1,65 +1,76 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH e2fsprogs] - detect LVM2 PVs in libblkid
-Date: Tue, 19 Feb 2008 06:27:31 -0500
-Message-ID: <20080219112731.GV25098@mit.edu>
-References: <47A1074F.8090909@redhat.com>
+From: t-sato@yk.jp.nec.com
+Subject: Re: [RFC] ext3 freeze feature
+Date: Tue, 19 Feb 2008 20:27:06 +0900
+Message-ID: <20080219202706t-sato@mail.jp.nec.com>
+References: <47B5A088.6050801@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, Theodore Tso <tytso@MIT.EDU>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:36868 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752823AbYBSL1n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 06:27:43 -0500
-Content-Disposition: inline
-In-Reply-To: <47A1074F.8090909@redhat.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:61226 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761762AbYBSL2U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 06:28:20 -0500
+In-reply-to: <47B5A088.6050801@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 30, 2008 at 05:25:03PM -0600, Eric Sandeen wrote:
-> The anaconda folks are now using blkid instead of hand-rolled
-> tests for filesystem type at install time, but they had one
-> more request:
-> 
-> Bugzilla Bug 409321: RFE: information on blkdevs "formatted" as PVs
-> https://bugzilla.redhat.com/show_bug.cgi?id=409321
-> 
-> The attached patch does the right thing for me on my sample
-> set of exactly 1 PV...
-> 
-> Any issues with reporting back something which is not actually
-> a filesystem ("lvm2pv") ?
-> 
-> [root@host]# misc/blkid -c /dev/null /dev/sda2
-> /dev/sda2: UUID="guOQGdcOE3IafCm0190XkPZTy5fCEanQ" TYPE="lvm2pv" 
-> [root@host]# pvs -o pv_name,pv_uuid
->   PV         PV UUID                               
->   /dev/sda2  guOQGd-cOE3-IafC-m019-0XkP-ZTy5-fCEanQ
 
-The patch works for me, but it would seem the right thing would be
-print the UUID without the hyphens, i.e.:
+Hi,
 
-        guOQGdcOE3IafCm0190XkPZTy5fCEanQ
+>#define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+>#define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+>
+>as generic vfs ioctls.  These ioctls started out as
+>EXT2_IOC_SETFLAGS/EXT2_IOC_GETFLAGS but they were generically useful,
+>other filesystems picked them up, and they were "elevated" to the vfs.
 
-instead of
+Thank you for good information.
+I will elevate XFS_IOC_FREEZE and XFS_IOC_THAW to the VFS.
 
-	guOQGd-cOE3-IafC-m019-0XkP-ZTy5-fCEanQ
+>> And xfs_freeze calls XFS_IOC_FREEZE with a magic number 1, but what is 1?
+>
+>Looks like it's called "level" but it's probably a holdover, it doesn't
+>look like it's used.
 
-After all, pvscan prints it with the hyphens, and blkid returns uuid's
-with the hyphens for other filesystems as well.  And removing the
-hyphens aren't hard; "tr -d -" will do it.
+I see.
 
-It's not that hard to convert from one to the other; this will do it:
+>> Instead, I'd like the sec to timeout on freeze API in order to thaw
+>> the filesystem automatically.  It can prevent a filesystem from staying
+>> frozen forever.
+>> (Because a freezer may cause a deadlock by accessing the frozen filesystem.)
+>
+>I'm still not very comfortable with the timeout; if you un-freeze on a
+>timer, how do you know that the work for which you needed the fileystem
+>frozen is complete?  How would you know if your snapshot was good if
+>there's a possibility that the fs unfroze while it was being taken?
 
-	for (i=0, b=1, p=uuid, q=label->pv_uuid; i <= 32; i++, b = b << 1) {
-		if (b & 0x4444440)
-			*p++ = '-';
-		*p++ = *q++;
-	}
+My following freeze ioctl never perform the timeout when 0 is specified
+as timeval.  So, existent applications which don't expect the timeout
+can stay frozen with 0.
+ int ioctl(int fd, int FIFREEZE, long *timeval);
+    fd:file descriptor of mountpoint
+    FIFREEZE:request cord for freeze
+    timeval:timeout period (second)
 
-This shouldn't screw up the anaconda folks, since they just need to
-know the filesystem type, right?  That's all vol_id seems to return in
-any case.
+And how about adding the new ioctl to reset the timeval like below?
+(Dmitri proposed this idea before.)
+ int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval);
+    fd:file descriptor of mountpoint
+    FIFREEZE_RESET_TIMEOUT:request cord for reset of timeout period 
+    timeval:new timeout period
+This is useful for the application to set the timeval more accurately.
+For example, the freezer resets the timeval to 10 seconds every 5
+seconds.  In this approach, even if the freezer causes a deadlock
+by accessing the frozen filesystem, it will be solved by the timeout
+in 10 seconds and the freezer can recognize that at the next reset
+of timeval.
 
-						- Ted
+Any comments are very welcome.
+
+Cheers, Takashi
