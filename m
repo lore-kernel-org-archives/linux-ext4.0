@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: Error with the latest stable series of the patch queue.
-Date: Tue, 19 Feb 2008 22:52:27 +0530
-Message-ID: <20080219172227.GD7177@skywalker>
+Date: Tue, 19 Feb 2008 22:57:49 +0530
+Message-ID: <20080219172749.GE7177@skywalker>
 References: <20080219152136.GA7177@skywalker> <47BB0E95.1000606@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -9,19 +9,19 @@ Cc: ext4 development <linux-ext4@vger.kernel.org>,
 	Mingming Cao <cmm@us.ibm.com>
 To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:44140 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753945AbYBSRWf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 12:22:35 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1JHMJ0u012225
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Feb 2008 04:22:19 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1JHQBPm276302
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Feb 2008 04:26:11 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1JHMXDa003449
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Feb 2008 04:22:33 +1100
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:34250 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753116AbYBSR1w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 12:27:52 -0500
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1JHRolo029067
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 22:57:50 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1JHRoDR790740
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 22:57:50 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1JHRnkC028378
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 17:27:49 GMT
 Content-Disposition: inline
 In-Reply-To: <47BB0E95.1000606@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -56,12 +56,6 @@ On Tue, Feb 19, 2008 at 06:15:01PM +0100, Valerie Clement wrote:
 >> EXT4-fs error (device sda7): ext4_ext_find_extent: bad header in inode
 >> #204077: invalid magic - 
 >>
-
-The above problem is due to symlink having extent flag set but not
-having extent tree initialized. That was mainly due to inheriting the
-inode i_flag from parent directory. I am right now testing fix for this.
-
-
 > Hi Aneesh,
 >
 > I've got also several issues while running ffsb tests today. The tests
@@ -98,13 +92,66 @@ inode i_flag from parent directory. I am right now testing fix for this.
 > Could you check if your tests allocate inodes in the last group and run
 > also e2fsck to see if it reports errors.
 >
-> For the moment, I have no idea how to fix that problem.
 >
 
-This looks like a completely different problem. Will try to see if i can
-reproduce it here.
+Can you run the test with the below patch on top of stable series.
 
--aneesh
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index d2c2e55..14fb73b 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -794,7 +794,12 @@ got:
+ 	ei->i_dir_start_lookup = 0;
+ 	ei->i_disksize = 0;
+ 
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~EXT4_INDEX_FL;
++	/*
++	 * Don't inherit extent flag from directory. We set extent flag on
++	 * newly created directory and file only if -o extent mount option is
++	 * specfied
++	 */
++	ei->i_flags = EXT4_I(dir)->i_flags & ~ (EXT4_INDEX_FL|EXT4_EXTENTS_FL);
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
+@@ -836,13 +841,16 @@ got:
+ 		ext4_std_error(sb, err);
+ 		goto fail_free_drop;
+ 	}
+-	if (test_opt(sb, EXTENTS) && !S_ISLNK(mode)) {
+-		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+-		ext4_ext_tree_init(handle, inode);
+-		err = ext4_update_incompat_feature(handle, sb,
+-						EXT4_FEATURE_INCOMPAT_EXTENTS);
+-		if (err)
+-			goto fail;
++	if (test_opt(sb, EXTENTS)) {
++		/* set extent flag only for diretory and file */
++		if (S_ISDIR(mode) || S_ISREG(mode)) {
++			EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
++			ext4_ext_tree_init(handle, inode);
++			err = ext4_update_incompat_feature(handle, sb,
++					EXT4_FEATURE_INCOMPAT_EXTENTS);
++			if (err)
++				goto fail;
++		}
+ 	}
+ 
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 23902ba..da942bc 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1771,7 +1771,6 @@ retry:
+ #ifdef CONFIG_EXT4DEV_FS_XATTR
+ 		inode->i_op = &ext4_special_inode_operations;
+ #endif
+-		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
+ 		err = ext4_add_nondir(handle, dentry, inode);
+ 	}
+ 	ext4_journal_stop(handle);
+>
 >
 >
 >
