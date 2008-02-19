@@ -1,103 +1,78 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -v2] ext4: Use page_mkwrite vma_operations to get mmap write notification.
-Date: Tue, 19 Feb 2008 09:13:59 +0530
-Message-ID: <1203392640-14335-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu, cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH][7/28] e2fsprogs-extents.patch
+Date: Mon, 18 Feb 2008 21:35:45 -0700
+Message-ID: <20080219043545.GJ3029@webber.adilger.int>
+References: <20080202075943.GB23836@webber.adilger.int>
+ <20080202082559.GG31694@webber.adilger.int>
+ <20080202082701.GH31694@webber.adilger.int> <47B9C6E5.2010304@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:41337 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751030AbYBSDoG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 22:44:06 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1J3hrpc020283
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 14:43:53 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1J3i2VO3948728
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 14:44:04 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1J3i5JB025106
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 14:44:05 +1100
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:33633 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752053AbYBSEft (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 23:35:49 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1J4ZmRS029838
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 20:35:48 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JWG00M01XZRUC00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 18 Feb 2008 20:35:48 -0800 (PST)
+In-reply-to: <47B9C6E5.2010304@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We would like to get notified when we are doing a write on mmap section.
-This is needed with respect to preallocated area. We split the preallocated
-area into initialzed extent and uninitialzed extent in the call back. This
-let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
-that would result in data loss. The changes are also needed to handle ENOSPC
-when writing to an mmap section of files with holes.
+On Feb 18, 2008  11:56 -0600, Eric Sandeen wrote:
+> > @@ -904,21 +910,75 @@ void e2fsck_pass1(e2fsck_t ctx)
+> > +		eh = (struct ext3_extent_header *)inode->i_block;
+> > +		if ((inode->i_flags & EXT4_EXTENTS_FL)) {
+> > +			if ((LINUX_S_ISREG(inode->i_mode) ||
+> > +			     LINUX_S_ISDIR(inode->i_mode)) &&
+> 
+> So this trips up on things like sockets, fifos, and block & char nodes.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/file.c          |   19 ++++++++++++++++++-
- fs/ext4/inode.c         |    6 ++++++
- include/linux/ext4_fs.h |    1 +
- 3 files changed, 25 insertions(+), 1 deletions(-)
+Hrm, not impossible, since Lustre only uses extent-based filesystems for
+regular file storage.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 20507a2..77341c1 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -123,6 +123,23 @@ force_commit:
- 	return ret;
- }
- 
-+static struct vm_operations_struct ext4_file_vm_ops = {
-+	.fault		= filemap_fault,
-+	.page_mkwrite   = ext4_page_mkwrite,
-+};
-+
-+static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+
-+	if (!mapping->a_ops->readpage)
-+		return -ENOEXEC;
-+	file_accessed(file);
-+	vma->vm_ops = &ext4_file_vm_ops;
-+	vma->vm_flags |= VM_CAN_NONLINEAR;
-+	return 0;
-+}
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
- #endif
--	.mmap		= generic_file_mmap,
-+	.mmap		= ext4_file_mmap,
- 	.open		= generic_file_open,
- 	.release	= ext4_release_file,
- 	.fsync		= ext4_sync_file,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 34f3eb6..81faa67 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3466,3 +3466,9 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 
- 	return err;
- }
-+
-+int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-+{
-+	return block_page_mkwrite(vma, page, ext4_get_block);
-+}
-+
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 22810b1..8f5a563 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
- 		struct address_space *mapping, loff_t from);
-+extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
- 
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
--- 
-1.5.4.1.97.g40aab-dirty
+> Also this is unhappy:
+> 
+> > @@ -137,7 +141,7 @@ int e2fsck_pass1_check_device_inode(ext2
+> >  	 * If the index flag is set, then this is a bogus
+> >  	 * device/fifo/socket
+> >  	 */
+> > -	if (inode->i_flags & EXT2_INDEX_FL)
+> > +	if (inode->i_flags & (EXT2_INDEX_FL | EXT4_EXTENTS_FL))
+> >  		return 0;
+> 
+> Do we really care if these have the extents flag set?  IOW should we
+> make sure the kernel doesn't set the flag, or should we make e2fsck not
+> care...
+
+The Lustre extents patches clear the EXT4_EXTENTS_FL always (i.e. they
+are never set on directories) so we've never seen these problems.
+
+> There are enough checks in e2fsck to show the intent was that these
+> files should not have the extents flag set, but I'm not sure why it
+> matters enough that the kernel needs to run around being sure to clear
+> it....
+> 
+> Or... (rambling on now) it seems odd to me that zero-length files have
+> the extents flag set at all; should we only set extents when we actually
+> get a block allocated to the file?  That would also take care of this
+> from the kernel side I think.
+
+Yes, I'd be for e2fsck clearing this flag, but as I mentioned in the
+concall, I think it is better to have the kernel just stop inheriting
+all flags from the parent directory, or possibly just have a fixed
+range of flags that are being propogated to child inodes.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
