@@ -1,64 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] don't set extents flag for _any_ symlinks
-Date: Mon, 18 Feb 2008 16:27:52 -0600
-Message-ID: <47BA0668.5020006@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: How were some of the lustre e2fsprogs test cases generated?
+Date: Mon, 18 Feb 2008 19:06:58 -0500
+Message-ID: <E1JRG0g-0001lz-Ur@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36550 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753501AbYBRW1x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2008 17:27:53 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1IMRrtb005503
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:53 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1IMRq1q002039
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:52 -0500
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m1IMRqFZ007173
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2008 17:27:52 -0500
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:46112 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752028AbYBSAHB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Feb 2008 19:07:01 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As symlinks are limited to a single block anyway, and e2fsck
-doesn't expect to find it set, don't set the extents flag on 
-any type of symlinks at all: fast/in-inode, or the 
-external-block flavor.
 
-There are a lot of filesystems out there by now w/ exent-style 
-symlink blocks though, so e2fsck should probably be able to 
-repair that at some point...
+I've started testing my in-development extents against the test cases
+found in clusterfs's e2fsprogs patches, and I noticed that with
+f_extents (the first one I tried), some of the inodes had non-zero
+ee_start_hi fields.  (That is to say, they had block numbers in the
+extents fields that were much larger than 1 << 32.)   
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+The clusterfs e2fsprogs code doesn't notice this, because it apparently
+ignores ee_start_hi field entirely.  But when I try running it with my
+version that has (incomplete) 64-bit support, I get the following.
 
----
+e2fsck 1.40.6 (09-Feb-2008)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 12 is in extent format, but superblock is missing EXTENTS feature
+Fix? yes
 
-Index: linux-2.6.24/fs/ext4/namei.c
-===================================================================
---- linux-2.6.24.orig/fs/ext4/namei.c
-+++ linux-2.6.24/fs/ext4/namei.c
-@@ -2223,7 +2226,6 @@ retry:
- 		inode->i_op = &ext4_fast_symlink_inode_operations;
- 		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
- 		inode->i_size = l-1;
--		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
- 	}
- 	EXT4_I(inode)->i_disksize = inode->i_size;
- 	err = ext4_add_nondir(handle, dentry, inode);
+Inode 12 has an invalid extent
+	(logical block 0, invalid physical block 21994527527949, len 17)
+Clear? yes
+...
 
-Index: linux-2.6.24/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.24.orig/fs/ext4/ialloc.c
-+++ linux-2.6.24/fs/ext4/ialloc.c
-@@ -744,7 +744,7 @@ got:
- 		ext4_std_error(sb, err);
- 		goto fail_free_drop;
- 	}
--	if (test_opt(sb, EXTENTS)) {
-+	if (test_opt(sb, EXTENTS) && !S_ISLNK(mode)) {
- 		EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
- 		ext4_ext_tree_init(handle, inode);
- 		err = ext4_update_incompat_feature(handle, sb,
+In contrast, e2fsprogs-interim and the clusterfs patches interpret the
+physical block as 5131, because they don't pretend to have any 48-bit
+block number support at all.  This means the results of the test run are
+quite different.  From the clusterfs f_extents/expect.1 file:
+
+Pass 1B: Rescanning for multiply-claimed blocks
+Multiply-claimed block(s) in inode 12: 5133 5124 5125 5129 5132 5133 5142 5143 5
+144 5145
+
+Anyway, no big deal, I'll just regenerate test cases as necessary, or
+just use them as they with different expect logs.  But this just brings
+up one question --- are we 100% sure that for all deployed versions of
+the clusterfs extents code, that the kernel-side implementation was
+always careful to clear the ee_start_hi and ee_leaf_hi fields?
+
+						- Ted
