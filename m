@@ -1,49 +1,70 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: What's in e2fsprogs.git (stable)
-Date: Tue, 19 Feb 2008 00:03:47 -0500
-Message-ID: <20080219050347.GT25098@mit.edu>
-References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu>
+Subject: Re: What's cooking in e2fsprogs.git (topics)
+Date: Tue, 19 Feb 2008 00:09:45 -0500
+Message-ID: <20080219050945.GU25098@mit.edu>
+References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:50284 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:45185 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1749667AbYBSFDt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 00:03:49 -0500
+	with ESMTP id S1750736AbYBSFJq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 00:09:46 -0500
 Content-Disposition: inline
-In-Reply-To: <20080211044108.GA25089@mit.edu>
+In-Reply-To: <20080211045107.GB25089@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* The 'maint' branch has these fixes since the last announcement.
+The big news here is that extents branch is sufficiently finished that
+I've promoted it to the next branch.
 
-Christophe GRENIER (1):
-  Add portability checks to support DJGPP
+     	      				- Ted
 
-Eric Sandeen (1):
-  print "mostly-printable" xattr strings in debugfs
+Here are the topics that have been cooking.  Commits prefixed
+with '-' are only in 'pu' while commits prefixed with '+' are
+in 'next'.  The topics list the commits in reverse chronological
+order.
 
-Theodore Ts'o (9):
-  Update Czech, Dutch, Polish, Sweedish, and Vietnamese translations
-  libuuid: use fcntl locking instead of lockf
-  uuidd: Fix pid file so it has the correct pid number
-  configure.in: Don't use the dc command unless it is required
-  Make fsck ignore mounted filesystems if given the -M option
-  Update to latest samba tdb library before LGPLv3 change
-  debugfs: Add new superblock fields to the set_super_value command
-  Add support for setting RAID stride and strip-width via mke2fs and
-      tune2fs
-  libe2p: Make list_super2() print the RAID stride and stripe-width
-
-
-* The 'master' branch has these since the last announcement
-  in addition to the above.
-
-Theodore Ts'o (1):
-  libext2: Add BLOCK_FLAG_READ_ONLY flag to ext2fs_block_iterate2()
-
-----
-URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+* tt/64bit-bitmaps (Mon Feb 18 23:54:53 2008 -0500) 1 commit
+ - Initial design for 64-bit bitmaps
+* next (Mon Feb 18 23:01:43 2008 -0500) 3 commits 
+ + e2fsprogs-tests-f_ea_checks.patch
+ + e2fsprogs-tests-f_unsorted_EAs.patch
+ + Improve support for in-inode EA's
+* tt/extents (Mon Feb 18 20:11:07 2008 -0500) 10 commits
+ + Activate basic f_extents test case
+ + e2fsck: Add support for extents
+ + Add read/only support for extents to ext2fs_bmap()
+ + Use BLOCK_FLAG_READ_ONLY flag in debugfs, e2image, and tune2fs
+ + Add read-only extents support to ext2fs_block_iterate2()
+ + Add support for extents to libext2fs
+ + e2fsck: factor out code to clear an inode into
+   e2fsck_clear_inode()
+ + Don't byte swap extents information in the inode
+ + Allow debugfs to be extended for use by test programs
+ + debugfs: Fix error handling in strtoblk() and
+   common_block_args_process()
+* js/flex-bg (Wed Feb 13 20:47:50 2008 -0600) 1 commit
+ - e2fsprogs: New bitmap and inode table allocation for FLEX_BG v2
+* js/uninit (Sun Oct 21 21:04:24 2007 -0500) 13 commits
+ - Add m_uninit test case.
+ - Add new mm_lazy test case.
+ - Fix test cases.
+ - Update uninit block group documetation for some of the utilities.
+ - Make e2fsck uninit block group aware.
+ - Make debugfs uninit block group aware.
+ - Make resize2fs uninit block group aware.
+ - Make dumpe2fs uninit block group aware.
+ - Make tune2fs uninit block group aware.
+ - Add support for creating filesystems using uninit block group.
+ - Rename feature name from gdt_checksum to uninit_groups.
+ - Add uninit block group support on libe2fs.
+ - Add initial checksum support.
+* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
+ - e2fsprogs: Add test case for undoe2fs
+ - e2fsprogs: Fix the resize inode test case
+ - e2fsprogs: Support for large inode migration.
+ - e2fsprogs: Make mke2fs use undo I/O manager.
+ - e2fsprogs: Add undoe2fs
+ - e2fsprogs: Add undo I/O manager
