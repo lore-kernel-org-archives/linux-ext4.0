@@ -1,44 +1,55 @@
-From: Roel Kluin <12o3l@tiscali.nl>
-Subject: Re: [PATCH] fs/ext4/mballoc.c: Convert to list_for_each_entry_rcu()
-Date: Tue, 19 Feb 2008 16:47:06 +0100
-Message-ID: <47BAF9FA.70603@tiscali.nl>
-References: <47BA2356.90203@tiscali.nl> <20080219094945.GA6743@skywalker>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] clear extents flag on inodes created in ext4_mknod
+Date: Tue, 19 Feb 2008 10:39:52 -0600
+Message-ID: <47BB0658.90204@redhat.com>
+References: <47B9F1F1.30604@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
-	linux-ext4@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out2.tiscali.nl ([195.241.79.177]:35678 "EHLO
-	smtp-out2.tiscali.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752111AbYBSPru (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 10:47:50 -0500
-In-Reply-To: <20080219094945.GA6743@skywalker>
+Received: from mx1.redhat.com ([66.187.233.31]:45362 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752842AbYBSQjy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Feb 2008 11:39:54 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1JGdrqQ028346
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 11:39:53 -0500
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1JGdrYp021118
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 11:39:53 -0500
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1JGdq57017759
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 11:39:53 -0500
+In-Reply-To: <47B9F1F1.30604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> On Tue, Feb 19, 2008 at 01:31:18AM +0100, Roel Kluin wrote:
->> Please verify, this patch was not yet tested
->> ---
->> Convert list_for_each_rcu() to list_for_each_entry_rcu()
->>
->> Signed-off-by: Roel Kluin <12o3l@tiscali.nl>
+Eric Sandeen wrote:
+> e2fsck doesn't expect to find char, block, fifo, or socket
+> files with the extent flag set, so clear that in ext4_mknod.
 > 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
 > 
-> NACK. This patch doesn't build. You have extra cur in the conversion.
-> Right changes attached. 
-> 
-> ext4:  Convert list_for_each_rcu() to list_for_each_entry_rcu()
-> 
-> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> The list_for_each_entry_rcu() primitive should be used instead of
-> list_for_each_rcu(), as the former is easier to use and provides
-> better type safety.
+> Index: linux-2.6.24/fs/ext4/namei.c
+> ===================================================================
+> --- linux-2.6.24.orig/fs/ext4/namei.c
+> +++ linux-2.6.24/fs/ext4/namei.c
+> @@ -1766,6 +1766,7 @@ retry:
+>  #ifdef CONFIG_EXT4DEV_FS_XATTR
+>  		inode->i_op = &ext4_special_inode_operations;
+>  #endif
+> +		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
+>  		err = ext4_add_nondir(handle, dentry, inode);
+>  	}
+>  	ext4_journal_stop(handle);
 
+now that I think about it; perhaps it would be better to put this logic
+into ext4_new_inode, rather than setting it by default and clearing it
+here... that way new_inode() has all the logic about whether or not a
+particular type of file is in extents format.
 
-Thanks for your review and correction,
+Think it's worth changing?
 
-Roel
+-Eric
