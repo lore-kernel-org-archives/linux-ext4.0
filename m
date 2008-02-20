@@ -1,69 +1,79 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: How were some of the lustre e2fsprogs test cases generated?
-Date: Tue, 19 Feb 2008 14:13:46 -0700
-Message-ID: <20080219211346.GR3029@webber.adilger.int>
-References: <E1JRG0g-0001lz-Ur@closure.thunk.org>
- <20080219114032.GL3029@webber.adilger.int> <20080219122925.GW25098@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] blkid detection for ZFS
+Date: Wed, 20 Feb 2008 07:57:43 -0500
+Message-ID: <20080220125743.GA29298@mit.edu>
+References: <20080215010740.GZ3029@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58768 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752006AbYBSVN4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Feb 2008 16:13:56 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1JLDuap028148
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2008 13:13:56 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JWI0050187J9M00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 19 Feb 2008 13:13:56 -0800 (PST)
-In-reply-to: <20080219122925.GW25098@mit.edu>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:60404 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1763967AbYBTM5t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Feb 2008 07:57:49 -0500
+Content-Disposition: inline
+In-Reply-To: <20080215010740.GZ3029@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 19, 2008  07:29 -0500, Theodore Ts'o wrote:
-> On Tue, Feb 19, 2008 at 04:40:32AM -0700, Andreas Dilger wrote:
-> > No, it hasn't always been true that we cleared the _hi fields in the
-> > kernel code.  But, it has been a year or more since we found this bug,
-> > and all CFS e2fsprogs releases since then have cleared the _hi fields,
-> > and there has not been any other e2fsprogs that supports extents, so
-> > we expect that there are no filesystems left in the field with this
-> > issue, and even then the current code will prefer to clear the _hi
-> > bits instead of considering the whole extent corrupt.
-> 
-> I checked again, and it looks like the interim code is indeed clearing
-> the _hi bits.  I managed to confuse myself into thinking it didn't for
-> index nodes, but I checked again and it seems to be doing the right
-> thing.
-> 
-> The reason why I asked is that the extents code in the 'next' branch
-> of e2fsprogs *does* consider the whole extent to be corrupt, since in
-> the long run once we start 64-bit block number extent blocks, if the
-> physical block number (including the high 16 bits) is greater than
-> s_blocks_count, simply masking off the high 16 bits of the 48 bit
-> extent block is probably not the right way of dealing with the
-> problem.
-> 
-> I think that's probably a safe thing to do since all of your customers
-> who might have had a filesystem with non-zero _hi fields have almost
-> certainly run e2fsck to clear the _hi bits at least once; do you
-> concur that is a safe assumption?  Or would you prefer that I add some
-> code that tries to clear just the _hi bits, perhaps controlled by a
-> configuration flag in e2fsck.conf?
+On Thu, Feb 14, 2008 at 06:07:40PM -0700, Andreas Dilger wrote:
+> Some input is welcome here also...  There is a UUID (GUID) for the whole
+> "pool" (aggregation of devices that ZFS filesystems might live on), a
+> UUID for the "virtual device" (vdev) (akin to MD RAID set) that a disk
+> is part of and also a separate UUID for each device.  There is a LABEL
+> (pool name) for the whole pool, but not one for an individual filesystem.
 
-I'm OK with either.  We might consider patching e2fsck to return to the
-more permissive CFS behaviour with _hi bits for our own releases, or
-just leave it.  Checking back in our patches, we fixed the kernel code
-in July '06 and the e2fsck code in Jan '07, so I hope people have run
-an e2fsck on their filesystems in the last 1.5 years.
+Are there devices for that are made available for the vdev and the
+pool?  I assume not for the pool since that's a filesystem entity, but
+what about the vdev?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+In general, blkid is all about mapping the UUID of what lives on the
+device to the device filename, for the benefit of programs like mount
+and fsck.
+
+I don't know enough about ZFS in terms of how you would mount a
+filesystem which is part of a pool.  How is the filesystem specified
+to the "mount" command?
+
+> I'm thinking of making the blkid UUID be the GUID of the whole pool, as
+> any device in the pool would be sufficient to locate all of the component
+> devices.  This means all devices in the same pool will return the same
+> UUID, but for identification that should be fine I think...  I haven't
+> checked for pathologies in libblkid regarding that yet.
+
+What I did with the freshly checked in code to identify LVM2 volumes
+is that if /dev/sda1 is part of a physical volume, then blkid returns
+the UUID for the PV for /dev/sda1.  The filesystem UUID's end up
+getting associated via blkid entries for /dev/mapper/FOO, and we don't
+bother trying to associate the UUID for the raidset with anything,
+since it's not really associated with a physical block device.
+
+So it would seem to me that it would be better to make the UUID be for
+a particular ZFS physical disk be the UUID for that disk, and not for
+the whole pool.  The question really, though, is what actually would
+be most useful --- who is going to actually use blkid on a Solaris
+system with ZFS?  It may be that the right answer is to put the pool
+UUID as a separate tag; blkid supports more than just the standard
+LABEL, UUID, TYPE, etc. tags.  You could easily stash the pool UUID in
+a POOL_GUID tag, if it would be useful for some blkid callers.
+
+> On a related note - on Solaris the ZFS filesystems always live in a GPT
+> partition table, and I note that libblkid doesn't identify this.  Is that
+> something we want to start adding to libblkid (e.g. GPT, DOS, LVM, etc)?
+
+What do you mean by not identifying the GPT partition table?  At the
+moment we haven't been identifying the whole disk partition tables,
+mainly becuase there isn't much use for it especially for the DOS MBR
+(no uuid or label to speak of).
+
+I just checked in a patch from Eric to detect LVM2 PV's, because it
+was useful for the Anaconda developers.  I wouldn't have any
+objections accepting a patch which detected the whole-disk device and
+returned the GPT label/UUID information, but I probably wouldn't code
+it myself.  Still, if it someone thought it was *useful* and would use
+it, and thus felt called to write a patch, I'd certainly accept it.
+
+Regards,
+
+						- Ted
