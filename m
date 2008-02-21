@@ -1,129 +1,131 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH -v2] ext4: Use page_mkwrite vma_operations to get mmap
-	write notification.
-Date: Thu, 21 Feb 2008 09:39:20 -0800
-Message-ID: <1203615560.3750.8.camel@localhost.localdomain>
-References: <1203392640-14335-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Reply-To: cmm@us.ibm.com
+From: Hein_Tibosch <hein_tibosch@yahoo.es>
+Subject: Re: Linux 2.6.24.atmel.1 MMC/SD
+Date: Fri, 22 Feb 2008 01:45:41 +0800
+Message-ID: <47BDB8C5.70800@yahoo.es>
+References: <71C39AE3DF382B4A9CD370AD1C63B855EA060C@stervanexmb01.teradici.local>	<47BD1760.9080007@yahoo.es> <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: kernel@avr32linux.org, linux-ext4@vger.kernel.org
+To: James Stewart <jstewart@teradici.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:36159 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752491AbYBURkP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2008 12:40:15 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1LHdUvl000848
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 12:39:30 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1LHdUux240566
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 12:39:30 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1LHdUPr022426
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 12:39:30 -0500
-In-Reply-To: <1203392640-14335-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp-vbr16.xs4all.nl ([194.109.24.36]:1532 "EHLO
+	smtp-vbr16.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751233AbYBURoX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2008 12:44:23 -0500
+In-Reply-To: <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-02-19 at 09:13 +0530, Aneesh Kumar K.V wrote:
-> We would like to get notified when we are doing a write on mmap section.
-> This is needed with respect to preallocated area. We split the preallocated
-> area into initialzed extent and uninitialzed extent in the call back. This
-> let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
-> that would result in data loss. The changes are also needed to handle ENOSPC
-> when writing to an mmap section of files with holes.
-> 
+My email got refused because it contained HTML. Here again:
 
-Hi Aneesh,
+Crashes in ext2 and ext3 filesystem:
 
-I have a concern, it seems we missed journalling the allocation activity
-for the mmaped write. See comments below...
+John's dump shows that PC was in ext2_find_entry while it crashed. I had 
+exactly the same type of OOPS with ext3_find_entry and found it was 
+actually in the static function ext3_dx_find_entry, which was inlined by 
+the compiler. There it got stuck because of an invalid rec_len, which 
+made the pointer decrease (wrap around) in stead of increase.
 
-Another thing, perhaps similar patch should be ported to ext2/3, as this
-also addressed the mmaped write ENOSPC error without
-preallocation/deleyed allocation.
+And so, ext3 looks as vulnerable as ext2, because in both drivers this 
+iteration sometimes takes place without checking the validity of data 
+read from the SD-card.
 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/file.c          |   19 ++++++++++++++++++-
->  fs/ext4/inode.c         |    6 ++++++
->  include/linux/ext4_fs.h |    1 +
->  3 files changed, 25 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 20507a2..77341c1 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -123,6 +123,23 @@ force_commit:
->  	return ret;
->  }
-> 
-> +static struct vm_operations_struct ext4_file_vm_ops = {
-> +	.fault		= filemap_fault,
-> +	.page_mkwrite   = ext4_page_mkwrite,
-> +};
-> +
-> +static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
-> +{
-> +	struct address_space *mapping = file->f_mapping;
-> +
-> +	if (!mapping->a_ops->readpage)
-> +		return -ENOEXEC;
-> +	file_accessed(file);
-> +	vma->vm_ops = &ext4_file_vm_ops;
-> +	vma->vm_flags |= VM_CAN_NONLINEAR;
-> +	return 0;
-> +}
-> +
->  const struct file_operations ext4_file_operations = {
->  	.llseek		= generic_file_llseek,
->  	.read		= do_sync_read,
-> @@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
->  #ifdef CONFIG_COMPAT
->  	.compat_ioctl	= ext4_compat_ioctl,
->  #endif
-> -	.mmap		= generic_file_mmap,
-> +	.mmap		= ext4_file_mmap,
->  	.open		= generic_file_open,
->  	.release	= ext4_release_file,
->  	.fsync		= ext4_sync_file,
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 34f3eb6..81faa67 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3466,3 +3466,9 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
-> 
->  	return err;
->  }
-> +
-> +int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-> +{
-> +	return block_page_mkwrite(vma, page, ext4_get_block);
-> +}
-> +
+Whatever data the Atmel driver delivers, I think it should be checked, 
+also for rec_len values that cause a wrap-around of the pointer. Now 
+that I have it checked it more thoroughly, my NGW100 boots and runs 
+perfect from an SD-card.
 
-I don't see block allocation being journalled here. block_page_mkwrite()
-eventually calling block_prepare_write() which invokes ext4_get_block()
-without starting a new journal handle.
 
-Perhaps call ext4 write_begin() and write_end() inode operations, that
-would taking care of different write_begin and write_end for three
-different journalling mode.
+Hein Tibosch
 
-Mingming
 
-> diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-> index 22810b1..8f5a563 100644
-> --- a/include/linux/ext4_fs.h
-> +++ b/include/linux/ext4_fs.h
-> @@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
->  extern int ext4_writepage_trans_blocks(struct inode *);
->  extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
->  		struct address_space *mapping, loff_t from);
-> +extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-> 
->  /* ioctl.c */
->  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+
+John Voltz wrote:
+ > I believe this might be what he is talking about. I had to reformat 
+my SD card to ext3 to use 2.6.23/24
+ >
+ > John
+ >
+ > Oops: Unhandled exception in kernel mode, sig: 7 [#1]
+ > PREEMPT FRAME_POINTER chip: 0x01f:0x1e82 rev 2
+ > Modules linked in: snd_pcm_oss snd_mixer_oss snd_atmel_ac97 
+snd_ac97_codec =
+ > snd_pcm snd_timer snd soundcore snd_page_alloc ac97_bus
+ > PC is at ext2_find_entry+0x9c/0x16c
+
+Haavard Skinnemoen wrote:
+
+> (Adding the ext2/ext3/ext4 list to Cc)
+>
+> Note that the MMC/SD card driver in question, atmel-mci, is not in
+> mainline, and may be the real cause of this problem. But it looks like
+> there might be a potential problem in the ext3 code as well?
+>
+> Haavard
+>
+> On Thu, 21 Feb 2008 14:17:04 +0800
+> Hein_Tibosch <hein_tibosch@yahoo.es> wrote:
+>
+>   
+>> Hi James,
+>>
+>>
+>> I've had all kinds of problems with the SD-card hooked to an NGW100, just as John Voltz reported earlier:
+>>
+>>     http://www.avr32linux.org/archives/kernel/2007-November/000421.html
+>>     http://www.avr32linux.org/archives/kernel/2007-November/000425.html
+>>
+>> I debugged this problem and my conclusion is: using an SD-card may lead to both BUS-errors and a complete hanging of the system, with 2.6.23.atmel.5 as well as 2.6.24.atmel.1.
+>>
+>> Both the driver for ext2 and ext3 are using this type of function to iterate through a array of inodes:
+>>
+>>     static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
+>>     {
+>>         return (ext2_dirent *)((char*)p + le16_to_cpu(p->rec_len));
+>>     }
+>>
+>>     static inline struct ext3_dir_entry_2 *
+>>         ext3_next_entry(struct ext3_dir_entry_2 *p)
+>>     {
+>>         return (struct ext3_dir_entry_2 *)((char *)p +
+>>             ext3_rec_len_from_disk(p->rec_len));
+>>     }
+>>
+>>
+>> Sometimes, rec_len is checked for a zero-value, sometimes the entry is checked thoroughly for validity (like with ext2_check_page() or ext3_check_dir_entry()), but in other cases rec_len isn't checked at all! This is the case in e.g. fs/ext3/namei.c, function ext3_dx_find_entry(). This function is always enabled since 2.6.24 (CONFIG_EXT3_INDEX not used anymore).
+>>
+>> I had a card on which at one place rec_len turned out to be a small negative number. When iterating, it would either cycle for ever (until WDT) or it could enter invalid memory (OOPS: BUS error).
+>>
+>> ( strange though that the rec_len appeared to have a negative number, I just did a "mkfs -t ext3" on Ubuntu. Could that be caused by the Atmel-driver? )
+>>
+>> I don't yet feel qualified to make a patch for this, I only did it for myself. Maybe someone can pick this up: a validity check should be made before any call to xxx_next_entry().
+>>
+>>
+>> Regards,
+>>
+>> Hein Tibosch (HeinBali at avr32linux)
+>>
+>>
+>>
+>> James Stewart wrote:
+>> Hi,
+>>  
+>> I'm wondering if there are any known issues with booting from SD card on the ATNGW100 using this kernel. I get a bunch of ext2 looking errors and then a stack dump immediately after mounting VFS. 2.6.23.atmel.5 runs perfectly, however.
+>>  
+>> This is just compiling using atngw100_defconfig.
+>>  
+>> Thanks,
+>>  
+>> James
+>>
+>> ------------------------------------------------
+>>
+>> _______________________________________________
+>> Kernel mailing list
+>> Kernel@avr32linux.org
+>> http://duppen.flaskehals.net/cgi-bin/mailman/listinfo/kernel
+>>   
+>>     
+>
+>   
