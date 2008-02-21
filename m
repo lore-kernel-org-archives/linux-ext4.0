@@ -1,271 +1,234 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: [RFC][PATCH] fix journal overflow problem
-Date: Thu, 21 Feb 2008 13:58:55 -0500
-Message-ID: <200802211358.56015.jbacik@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
+	extent in case of file system full
+Date: Fri, 22 Feb 2008 00:47:47 +0530
+Message-ID: <20080221191747.GA8292@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40115 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751768AbYBUTIj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2008 14:08:39 -0500
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:35991 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752318AbYBUTR4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2008 14:17:56 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1LJHWw1004751
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 06:17:32 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1LJHsB21810610
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 06:17:54 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1LJHsBA007277
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 06:17:54 +1100
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+This patch had very minimal testing. I am sending this to get the
+feedback on the approach. The skip_index section in the below patch
+is ugly. Any suggestion to improve ?
 
-This is related to that jbd patch I sent a few weeks ago.  I originally found 
-that the problem where t_nr_buffers would be > than t_outstanding_credits 
-wouldn't happen upstream, but apparently I'm an idiot and I was just missing my 
-messsages, and the problem does exist.  Now for the entirely too long of a 
-description of whats going wrong.
+NOTE: ext4_ext_convert_to_initialized error path have some BUGs. It
+doesn't reset the extent information in case of error. But that is
+another patch.
 
-Say we have a transaction dirty a bitmap buffer and go to flush it to the disk.  
-Then ext3 goes to get write access to that buffer via 
-journal_get_undo_access(), finds out it doesn't need it, and then subsequently 
-does a journal_release_buffer() and then proceeds to never touch that buffer 
-again.  Then the original committing transaction will go through and add its 
-buffers to the checkpointing list, and refile the buffer.  Because we did a 
-journal_get_undo_access(), the jh->b_next_transaction is set to our currently 
-running transaction, and that buffer because it was set BH_JBDDirty by the 
-committing transaction is filed onto the running transactions BJ_Metadata list, 
-which increments our t_nr_buffers counter.  Because we never actually dirtied 
-this buffer ourselves, we never accounted for the credit, and we end up with 
-t_outstanding_credits being less than t_nr_buffers.
 
-This is a problem because while we are writing out the metadata blocks to the 
-journal, we do a t_outstanding_credits-- for each buffer.  If 
-t_outstanding_credits is less than the number of buffers we have then 
-t_outstanding_credits will eventually become negative, which means that 
-jbd_space_needed will eventually start saying it needs way less credits than it 
-actually does, and will allow transactions to grow huge and eventually we'll 
-overflow the journal (albeit this is a bitch to try and reproduce).
+>From 6a73edd4dbb32344e6a83ebdc07edd0e96d376bd Mon Sep 17 00:00:00 2001
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Thu, 21 Feb 2008 23:57:38 +0530
+Subject: [PATCH] ext4: Convert uninitialized extent to initialized extent in case of file system full
 
-So my approach is to have a counter that is incremented each time the 
-transaction calls do_get_write_access (or journal_get_create_access) so we can 
-keep track of how many people are currently trying to modify that buffer.  So 
-in the case where we do a journal_get_undo_access()+journal_release_buffer() 
-and nobody else ever touches the buffer, we can then set jh->b_next_transaction 
-to NULL in journal_release_buffer() and avoid having the buffer filed onto our 
-transaction.  If somebody else is modifying the journal head then we know to 
-leave it alone because chances are it will be dirtied and the credit will be 
-accounted for.
+A write to prealloc area cause the split of unititalized extent into a initialized
+and uninitialized extent. If we don't have space to add new extent information instead
+of returning error convert the existing uninitialized extent to initialized one. We
+need to zero out the blocks corresponding to the extent to prevent wrong data reaching
+userspace.
 
-There is also a slight change to how we reset b_modified.  I originally reset 
-b_nr_access (my access counter) in the same way b_modified was reset, but I 
-didn't really like this because we were only taking the j_list_lock instead of 
-the jbd_buffer lock, so we could race and still end up in the same situation 
-(which is in fact what happened).  So I've changed how we reset b_modified.  
-Instead of looping through all of the buffers for the transaction, which is a 
-little innefficient anyway, we reset it in do_get_write_access in the cases 
-where we know that this is the first time that this transaction has accessed 
-the buffer (ie when b_next_transaction != transaction && b_transaction != 
-transaction).  I reset b_nr_access in the same way.  I ran tests with this 
-patch and verified that we no longer got into the situation where 
-t_outstanding_credits was less than t_nr_buffers.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/extents.c |  135 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 133 insertions(+), 2 deletions(-)
 
-This is just my patch that I was using, I plan on cleaning it up if this is an 
-acceptable way to fix the problem.  I'd also like to put an ASSERT before we 
-process the t_buffers list for the case where t_outstanding_credits is less 
-than t_nr_buffers.  If my particular solution isn't acceptable I'm open to 
-suggestions, however I still think that resetting b_modified should be changed 
-the way I have it as its a potential race condition and innefficient.  Thanks 
-much,
-
-Josef
-
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index a38c718..6cc0a1e 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -407,22 +407,6 @@ void journal_commit_transaction(journal_t *journal)
- 	jbd_debug (3, "JBD: commit phase 2\n");
- 
- 	/*
--	 * First, drop modified flag: all accesses to the buffers
--	 * will be tracked for a new trasaction only -bzzz
--	 */
--	spin_lock(&journal->j_list_lock);
--	if (commit_transaction->t_buffers) {
--		new_jh = jh = commit_transaction->t_buffers->b_tnext;
--		do {
--			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
--					new_jh->b_modified == 0);
--			new_jh->b_modified = 0;
--			new_jh = new_jh->b_tnext;
--		} while (new_jh != jh);
--	}
--	spin_unlock(&journal->j_list_lock);
--
--	/*
- 	 * Now start flushing things to disk, in the order they appear
- 	 * on the transaction lists.  Data blocks go first.
- 	 */
-@@ -490,6 +474,11 @@ void journal_commit_transaction(journal_t *journal)
- 
- 	descriptor = NULL;
- 	bufs = 0;
-+
-+	if (commit_transaction->t_nr_buffers >
-+	    commit_transaction->t_outstanding_credits)
-+		printk(KERN_EMERG "nr buffers greater than outstanding credits\n");
-+
- 	while (commit_transaction->t_buffers) {
- 
- 		/* Find the next buffer to be journaled... */
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 3943a89..5059b79 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1800,6 +1800,7 @@ static void __journal_remove_journal_head(struct 
-buffer_head *bh)
- 				printk(KERN_WARNING "%s: freeing "
- 						"b_committed_data\n",
- 						__FUNCTION__);
-+				dump_stack();
- 				jbd_free(jh->b_committed_data, bh->b_size);
- 			}
- 			bh->b_private = NULL;
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 038ed74..db00d39 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -609,6 +609,13 @@ repeat:
- 		goto done;
- 
- 	/*
-+	 * This is the first time this transaction has touched this buffer
-+	 * reset b_modified and b_nr_access
-+	 */
-+	jh->b_modified = 0;
-+	jh->b_nr_access = 0;
-+
-+	/*
- 	 * If there is already a copy-out version of this buffer, then we don't
- 	 * need to make another one
- 	 */
-@@ -713,6 +720,11 @@ repeat:
- 	}
- 
- done:
-+	/*
-+	 * Ok we got write access, update the access counter
-+	 */
-+	jh->b_nr_access++;
-+
- 	if (need_copy) {
- 		struct page *page;
- 		int offset;
-@@ -819,13 +831,33 @@ int journal_get_create_access(handle_t *handle, struct 
-buffer_head *bh)
- 	J_ASSERT_JH(jh, buffer_locked(jh2bh(jh)));
- 
- 	if (jh->b_transaction == NULL) {
-+		/*
-+		 * first time this transaction has touched this buffer,
-+		 * reset b_modified
-+		 */
-+		jh->b_modified = 0;
-+
- 		jh->b_transaction = transaction;
- 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
- 		__journal_file_buffer(jh, transaction, BJ_Reserved);
- 	} else if (jh->b_transaction == journal->j_committing_transaction) {
- 		JBUFFER_TRACE(jh, "set next transaction");
-+
-+		if (jh->b_next_transaction != transaction) {
-+			/* reset b_modified */
-+			jh->b_modified = 0;
-+		}
-+
- 		jh->b_next_transaction = transaction;
- 	}
-+
-+	/*
-+	 * Nobody who calls journal_get_create_access calls
-+	 * journal_release_buffer, but if at some point somebody decides to
-+	 * we'll need this
-+	 */
-+	jh->b_nr_access++;
-+
- 	spin_unlock(&journal->j_list_lock);
- 	jbd_unlock_bh_state(bh);
- 
-@@ -1190,11 +1222,41 @@ out:
-  * journal_release_buffer: undo a get_write_access without any buffer
-  * updates, if the update decided in the end that it didn't need access.
-  *
-+ * We decrement the b_nr_access as this person no longer requires write
-+ * access to the buffer, and if nobody else requires write access then we want
-+ * to set b_next_transaction to NULL in case this buffer is on the committing
-+ * transaction, as it will get refiled onto this transaction without it being
-+ * counted.  We don't worry about the case where this is the first time this
-+ * jh has been used (ie jh->b_transaction == handle->h_transaction) since the
-+ * beginning of the committing of this transaction will drop the jh.
-  */
- void
- journal_release_buffer(handle_t *handle, struct buffer_head *bh)
- {
-+	struct journal_head *jh = bh2jh(bh);
- 	BUFFER_TRACE(bh, "entry");
-+
-+	jbd_lock_bh_state(bh);
-+	/*
-+	 * if nobody else has requested write access to this jh then set
-+	 * b_next_transaction to NULL to keep it from getting refiled onto
-+	 * this transaction
-+	 */
-+	if (!(--jh->b_nr_access)) {
-+
-+		/*
-+		 * A journal_get_undo_access()+journal_release_buffer() will
-+		 * leave undo-committed data that we no longer need
-+		 */
-+		if (jh->b_next_transaction && jh->b_committed_data) {
-+			jbd_free(jh->b_committed_data, bh->b_size);
-+			jh->b_committed_data = NULL;
-+		}
-+
-+		jh->b_next_transaction = NULL;
-+	}
-+
-+	jbd_unlock_bh_state(bh);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index b179b03..d37c14e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2137,6 +2137,103 @@ void ext4_ext_release(struct super_block *sb)
+ #endif
  }
  
- /**
-@@ -1245,6 +1307,11 @@ int journal_forget (handle_t *handle, struct buffer_head 
-*bh)
- 	 */
- 	jh->b_modified = 0;
- 
-+	/*
-+	 * drop one of our write access credits
-+	 */
-+	jh->b_nr_access--;
++static int ext4_ext_zero_out(handle_t *handle, struct inode *inode,
++				ext4_lblk_t iblock, struct ext4_extent *ex)
++{
++	ext4_lblk_t ee_block;
++	unsigned int ee_len, blkcount, blocksize;
++	loff_t pos;
++	pgoff_t index, skip_index;
++	unsigned long offset;
++	struct page *page;
++	struct address_space *mapping = inode->i_mapping;
++	struct buffer_head *head, *bh;
++	int err = 0;
 +
- 	if (jh->b_transaction == handle->h_transaction) {
- 		J_ASSERT_JH(jh, !jh->b_frozen_data);
- 
-diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
-index 8a62d1e..160f1d1 100644
---- a/include/linux/journal-head.h
-+++ b/include/linux/journal-head.h
-@@ -39,6 +39,13 @@ struct journal_head {
- 	unsigned b_modified;
- 
- 	/*
-+	 * This is a counter of the number of things who have requested write
-+	 * access to this buffer by the current transaction
-+	 * [jbd_lock_bh_state()]
-+	 */
-+	unsigned b_nr_access;
++	ee_block = le32_to_cpu(ex->ee_block);
++	ee_len = blkcount = ext4_ext_get_actual_len(ex);
++	blocksize = inode->i_sb->s_blocksize;
 +
 +	/*
- 	 * Copy of the buffer data frozen for writing to the log.
- 	 * [jbd_lock_bh_state()]
- 	 */
++	 * find the skip index. We can't call __grab_cache_page for this
++	 * because we are in the writeout of this page and we already have
++	 * taken the lock on this page
++	 */
++	pos = iblock <<  inode->i_blkbits;
++	skip_index = pos >> PAGE_CACHE_SHIFT;
++
++	while (blkcount) {
++		pos = (ee_block  + ee_len - blkcount) << inode->i_blkbits;
++		index = pos >> PAGE_CACHE_SHIFT;
++		offset = (pos & (PAGE_CACHE_SIZE - 1));
++		if (index == skip_index) {
++			/* Page will already be locked in the writepage */
++			read_lock_irq(&mapping->tree_lock);
++			page = radix_tree_lookup(&mapping->page_tree, index);
++			read_unlock_irq(&mapping->tree_lock);
++			if (page)
++				page_cache_get(page);
++			else
++				return -ENOMEM;
++		} else {
++			page = __grab_cache_page(mapping, index);
++			if (!page)
++				return -ENOMEM;
++		}
++
++		if (!page_has_buffers(page))
++			create_empty_buffers(page, blocksize, 0);
++
++		head = page_buffers(page);
++		/* Look for the buffer_head which map the block */
++		bh = head;
++		while (offset > 0) {
++			bh = bh->b_this_page;
++			offset -= blocksize;
++		}
++		offset = (pos & (PAGE_CACHE_SIZE - 1));
++
++		/* Now write all the buffer_heads in the page */
++		do {
++			set_buffer_uptodate(bh);
++			if (ext4_should_journal_data(inode)) {
++				err = ext4_journal_get_write_access(handle, bh);
++				/* do we have that many credits ??*/
++				if (err)
++					goto err_out;
++			}
++			zero_user(page, offset, blocksize);
++			offset += blocksize;
++			if (ext4_should_journal_data(inode)) {
++				err = ext4_journal_dirty_metadata(handle, bh);
++				if (err)
++					goto err_out;
++			} else {
++				if (ext4_should_order_data(inode)) {
++					err = ext4_journal_dirty_data(handle,
++									bh);
++					if (err)
++						goto err_out;
++				}
++				mark_buffer_dirty(bh);
++			}
++
++			bh = bh->b_this_page;
++			blkcount--;
++		} while ((bh != head) && (blkcount > 0));
++		/* only unlock if we have locked */
++		if (index != skip_index)
++			unlock_page(page);
++		page_cache_release(page);
++	}
++
++	return 0;
++err_out:
++	unlock_page(page);
++	page_cache_release(page);
++	return err;
++}
++
+ /*
+  * This function is called by ext4_ext_get_blocks() if someone tries to write
+  * to an uninitialized extent. It may result in splitting the uninitialized
+@@ -2153,7 +2250,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 						ext4_lblk_t iblock,
+ 						unsigned long max_blocks)
+ {
+-	struct ext4_extent *ex, newex;
++	struct ext4_extent *ex, newex, zeroout_ex;
+ 	struct ext4_extent *ex1 = NULL;
+ 	struct ext4_extent *ex2 = NULL;
+ 	struct ext4_extent *ex3 = NULL;
+@@ -2172,6 +2269,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	allocated = ee_len - (iblock - ee_block);
+ 	newblock = iblock - ee_block + ext_pblock(ex);
+ 	ex2 = ex;
++	zeroout_ex.ee_block = ex->ee_block;
++	zeroout_ex.ee_len   = cpu_to_le16(ee_len);
++	ext4_ext_store_pblock(&zeroout_ex, ext_pblock(ex));
+ 
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
+@@ -2200,13 +2300,32 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3);
+-		if (err)
++		if (err == -ENOSPC) {
++			err =  ext4_ext_zero_out(handle, inode,
++							iblock, &zeroout_ex);
++			if (err)
++				goto out;
++			/* update the extent length and mark as initialized */
++			ex->ee_block = zeroout_ex.ee_block;
++			ex->ee_len   = zeroout_ex.ee_len;
++			ext4_ext_store_pblock(ex, ext_pblock(&zeroout_ex));
++			ext4_ext_dirty(handle, inode, path + depth);
++			return le16_to_cpu(ex->ee_len);
++
++		} else if (err)
+ 			goto out;
++
+ 		/*
+ 		 * The depth, and hence eh & ex might change
+ 		 * as part of the insert above.
+ 		 */
+ 		newdepth = ext_depth(inode);
++		/*
++		 * update the extent length after successfull insert of the
++		 * split extent
++		 */
++		zeroout_ex.ee_len = cpu_to_le16(ee_len -
++						ext4_ext_get_actual_len(ex3));
+ 		if (newdepth != depth) {
+ 			depth = newdepth;
+ 			ext4_ext_drop_refs(path);
+@@ -2281,6 +2400,18 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
++	if (err == -ENOSPC) {
++		err =  ext4_ext_zero_out(handle, inode, iblock, &zeroout_ex);
++		if (err)
++			goto out;
++		/* update the extent length and mark as initialized */
++		ex->ee_block = zeroout_ex.ee_block;
++		ex->ee_len   = zeroout_ex.ee_len;
++		ext4_ext_store_pblock(ex, ext_pblock(&zeroout_ex));
++		ext4_ext_dirty(handle, inode, path + depth);
++		return le16_to_cpu(ex->ee_len);
++	}
++
+ out:
+ 	return err ? err : allocated;
+ }
+-- 
+1.5.4.1.97.g40aab-dirty
