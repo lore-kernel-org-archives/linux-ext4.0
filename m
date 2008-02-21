@@ -1,131 +1,271 @@
-From: Hein_Tibosch <hein_tibosch@yahoo.es>
-Subject: Re: Linux 2.6.24.atmel.1 MMC/SD
-Date: Fri, 22 Feb 2008 01:45:41 +0800
-Message-ID: <47BDB8C5.70800@yahoo.es>
-References: <71C39AE3DF382B4A9CD370AD1C63B855EA060C@stervanexmb01.teradici.local>	<47BD1760.9080007@yahoo.es> <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [RFC][PATCH] fix journal overflow problem
+Date: Thu, 21 Feb 2008 13:58:55 -0500
+Message-ID: <200802211358.56015.jbacik@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain;
+  charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: kernel@avr32linux.org, linux-ext4@vger.kernel.org
-To: James Stewart <jstewart@teradici.com>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-vbr16.xs4all.nl ([194.109.24.36]:1532 "EHLO
-	smtp-vbr16.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751233AbYBURoX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2008 12:44:23 -0500
-In-Reply-To: <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
+Received: from mx1.redhat.com ([66.187.233.31]:40115 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751768AbYBUTIj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2008 14:08:39 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-My email got refused because it contained HTML. Here again:
+Hello,
 
-Crashes in ext2 and ext3 filesystem:
+This is related to that jbd patch I sent a few weeks ago.  I originally found 
+that the problem where t_nr_buffers would be > than t_outstanding_credits 
+wouldn't happen upstream, but apparently I'm an idiot and I was just missing my 
+messsages, and the problem does exist.  Now for the entirely too long of a 
+description of whats going wrong.
 
-John's dump shows that PC was in ext2_find_entry while it crashed. I had 
-exactly the same type of OOPS with ext3_find_entry and found it was 
-actually in the static function ext3_dx_find_entry, which was inlined by 
-the compiler. There it got stuck because of an invalid rec_len, which 
-made the pointer decrease (wrap around) in stead of increase.
+Say we have a transaction dirty a bitmap buffer and go to flush it to the disk.  
+Then ext3 goes to get write access to that buffer via 
+journal_get_undo_access(), finds out it doesn't need it, and then subsequently 
+does a journal_release_buffer() and then proceeds to never touch that buffer 
+again.  Then the original committing transaction will go through and add its 
+buffers to the checkpointing list, and refile the buffer.  Because we did a 
+journal_get_undo_access(), the jh->b_next_transaction is set to our currently 
+running transaction, and that buffer because it was set BH_JBDDirty by the 
+committing transaction is filed onto the running transactions BJ_Metadata list, 
+which increments our t_nr_buffers counter.  Because we never actually dirtied 
+this buffer ourselves, we never accounted for the credit, and we end up with 
+t_outstanding_credits being less than t_nr_buffers.
 
-And so, ext3 looks as vulnerable as ext2, because in both drivers this 
-iteration sometimes takes place without checking the validity of data 
-read from the SD-card.
+This is a problem because while we are writing out the metadata blocks to the 
+journal, we do a t_outstanding_credits-- for each buffer.  If 
+t_outstanding_credits is less than the number of buffers we have then 
+t_outstanding_credits will eventually become negative, which means that 
+jbd_space_needed will eventually start saying it needs way less credits than it 
+actually does, and will allow transactions to grow huge and eventually we'll 
+overflow the journal (albeit this is a bitch to try and reproduce).
 
-Whatever data the Atmel driver delivers, I think it should be checked, 
-also for rec_len values that cause a wrap-around of the pointer. Now 
-that I have it checked it more thoroughly, my NGW100 boots and runs 
-perfect from an SD-card.
+So my approach is to have a counter that is incremented each time the 
+transaction calls do_get_write_access (or journal_get_create_access) so we can 
+keep track of how many people are currently trying to modify that buffer.  So 
+in the case where we do a journal_get_undo_access()+journal_release_buffer() 
+and nobody else ever touches the buffer, we can then set jh->b_next_transaction 
+to NULL in journal_release_buffer() and avoid having the buffer filed onto our 
+transaction.  If somebody else is modifying the journal head then we know to 
+leave it alone because chances are it will be dirtied and the credit will be 
+accounted for.
 
+There is also a slight change to how we reset b_modified.  I originally reset 
+b_nr_access (my access counter) in the same way b_modified was reset, but I 
+didn't really like this because we were only taking the j_list_lock instead of 
+the jbd_buffer lock, so we could race and still end up in the same situation 
+(which is in fact what happened).  So I've changed how we reset b_modified.  
+Instead of looping through all of the buffers for the transaction, which is a 
+little innefficient anyway, we reset it in do_get_write_access in the cases 
+where we know that this is the first time that this transaction has accessed 
+the buffer (ie when b_next_transaction != transaction && b_transaction != 
+transaction).  I reset b_nr_access in the same way.  I ran tests with this 
+patch and verified that we no longer got into the situation where 
+t_outstanding_credits was less than t_nr_buffers.
 
-Hein Tibosch
+This is just my patch that I was using, I plan on cleaning it up if this is an 
+acceptable way to fix the problem.  I'd also like to put an ASSERT before we 
+process the t_buffers list for the case where t_outstanding_credits is less 
+than t_nr_buffers.  If my particular solution isn't acceptable I'm open to 
+suggestions, however I still think that resetting b_modified should be changed 
+the way I have it as its a potential race condition and innefficient.  Thanks 
+much,
 
+Josef
 
-
-John Voltz wrote:
- > I believe this might be what he is talking about. I had to reformat 
-my SD card to ext3 to use 2.6.23/24
- >
- > John
- >
- > Oops: Unhandled exception in kernel mode, sig: 7 [#1]
- > PREEMPT FRAME_POINTER chip: 0x01f:0x1e82 rev 2
- > Modules linked in: snd_pcm_oss snd_mixer_oss snd_atmel_ac97 
-snd_ac97_codec =
- > snd_pcm snd_timer snd soundcore snd_page_alloc ac97_bus
- > PC is at ext2_find_entry+0x9c/0x16c
-
-Haavard Skinnemoen wrote:
-
-> (Adding the ext2/ext3/ext4 list to Cc)
->
-> Note that the MMC/SD card driver in question, atmel-mci, is not in
-> mainline, and may be the real cause of this problem. But it looks like
-> there might be a potential problem in the ext3 code as well?
->
-> Haavard
->
-> On Thu, 21 Feb 2008 14:17:04 +0800
-> Hein_Tibosch <hein_tibosch@yahoo.es> wrote:
->
->   
->> Hi James,
->>
->>
->> I've had all kinds of problems with the SD-card hooked to an NGW100, just as John Voltz reported earlier:
->>
->>     http://www.avr32linux.org/archives/kernel/2007-November/000421.html
->>     http://www.avr32linux.org/archives/kernel/2007-November/000425.html
->>
->> I debugged this problem and my conclusion is: using an SD-card may lead to both BUS-errors and a complete hanging of the system, with 2.6.23.atmel.5 as well as 2.6.24.atmel.1.
->>
->> Both the driver for ext2 and ext3 are using this type of function to iterate through a array of inodes:
->>
->>     static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
->>     {
->>         return (ext2_dirent *)((char*)p + le16_to_cpu(p->rec_len));
->>     }
->>
->>     static inline struct ext3_dir_entry_2 *
->>         ext3_next_entry(struct ext3_dir_entry_2 *p)
->>     {
->>         return (struct ext3_dir_entry_2 *)((char *)p +
->>             ext3_rec_len_from_disk(p->rec_len));
->>     }
->>
->>
->> Sometimes, rec_len is checked for a zero-value, sometimes the entry is checked thoroughly for validity (like with ext2_check_page() or ext3_check_dir_entry()), but in other cases rec_len isn't checked at all! This is the case in e.g. fs/ext3/namei.c, function ext3_dx_find_entry(). This function is always enabled since 2.6.24 (CONFIG_EXT3_INDEX not used anymore).
->>
->> I had a card on which at one place rec_len turned out to be a small negative number. When iterating, it would either cycle for ever (until WDT) or it could enter invalid memory (OOPS: BUS error).
->>
->> ( strange though that the rec_len appeared to have a negative number, I just did a "mkfs -t ext3" on Ubuntu. Could that be caused by the Atmel-driver? )
->>
->> I don't yet feel qualified to make a patch for this, I only did it for myself. Maybe someone can pick this up: a validity check should be made before any call to xxx_next_entry().
->>
->>
->> Regards,
->>
->> Hein Tibosch (HeinBali at avr32linux)
->>
->>
->>
->> James Stewart wrote:
->> Hi,
->>  
->> I'm wondering if there are any known issues with booting from SD card on the ATNGW100 using this kernel. I get a bunch of ext2 looking errors and then a stack dump immediately after mounting VFS. 2.6.23.atmel.5 runs perfectly, however.
->>  
->> This is just compiling using atngw100_defconfig.
->>  
->> Thanks,
->>  
->> James
->>
->> ------------------------------------------------
->>
->> _______________________________________________
->> Kernel mailing list
->> Kernel@avr32linux.org
->> http://duppen.flaskehals.net/cgi-bin/mailman/listinfo/kernel
->>   
->>     
->
->   
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index a38c718..6cc0a1e 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -407,22 +407,6 @@ void journal_commit_transaction(journal_t *journal)
+ 	jbd_debug (3, "JBD: commit phase 2\n");
+ 
+ 	/*
+-	 * First, drop modified flag: all accesses to the buffers
+-	 * will be tracked for a new trasaction only -bzzz
+-	 */
+-	spin_lock(&journal->j_list_lock);
+-	if (commit_transaction->t_buffers) {
+-		new_jh = jh = commit_transaction->t_buffers->b_tnext;
+-		do {
+-			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
+-					new_jh->b_modified == 0);
+-			new_jh->b_modified = 0;
+-			new_jh = new_jh->b_tnext;
+-		} while (new_jh != jh);
+-	}
+-	spin_unlock(&journal->j_list_lock);
+-
+-	/*
+ 	 * Now start flushing things to disk, in the order they appear
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+@@ -490,6 +474,11 @@ void journal_commit_transaction(journal_t *journal)
+ 
+ 	descriptor = NULL;
+ 	bufs = 0;
++
++	if (commit_transaction->t_nr_buffers >
++	    commit_transaction->t_outstanding_credits)
++		printk(KERN_EMERG "nr buffers greater than outstanding credits\n");
++
+ 	while (commit_transaction->t_buffers) {
+ 
+ 		/* Find the next buffer to be journaled... */
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 3943a89..5059b79 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -1800,6 +1800,7 @@ static void __journal_remove_journal_head(struct 
+buffer_head *bh)
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_committed_data\n",
+ 						__FUNCTION__);
++				dump_stack();
+ 				jbd_free(jh->b_committed_data, bh->b_size);
+ 			}
+ 			bh->b_private = NULL;
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 038ed74..db00d39 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -609,6 +609,13 @@ repeat:
+ 		goto done;
+ 
+ 	/*
++	 * This is the first time this transaction has touched this buffer
++	 * reset b_modified and b_nr_access
++	 */
++	jh->b_modified = 0;
++	jh->b_nr_access = 0;
++
++	/*
+ 	 * If there is already a copy-out version of this buffer, then we don't
+ 	 * need to make another one
+ 	 */
+@@ -713,6 +720,11 @@ repeat:
+ 	}
+ 
+ done:
++	/*
++	 * Ok we got write access, update the access counter
++	 */
++	jh->b_nr_access++;
++
+ 	if (need_copy) {
+ 		struct page *page;
+ 		int offset;
+@@ -819,13 +831,33 @@ int journal_get_create_access(handle_t *handle, struct 
+buffer_head *bh)
+ 	J_ASSERT_JH(jh, buffer_locked(jh2bh(jh)));
+ 
+ 	if (jh->b_transaction == NULL) {
++		/*
++		 * first time this transaction has touched this buffer,
++		 * reset b_modified
++		 */
++		jh->b_modified = 0;
++
+ 		jh->b_transaction = transaction;
+ 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+ 		__journal_file_buffer(jh, transaction, BJ_Reserved);
+ 	} else if (jh->b_transaction == journal->j_committing_transaction) {
+ 		JBUFFER_TRACE(jh, "set next transaction");
++
++		if (jh->b_next_transaction != transaction) {
++			/* reset b_modified */
++			jh->b_modified = 0;
++		}
++
+ 		jh->b_next_transaction = transaction;
+ 	}
++
++	/*
++	 * Nobody who calls journal_get_create_access calls
++	 * journal_release_buffer, but if at some point somebody decides to
++	 * we'll need this
++	 */
++	jh->b_nr_access++;
++
+ 	spin_unlock(&journal->j_list_lock);
+ 	jbd_unlock_bh_state(bh);
+ 
+@@ -1190,11 +1222,41 @@ out:
+  * journal_release_buffer: undo a get_write_access without any buffer
+  * updates, if the update decided in the end that it didn't need access.
+  *
++ * We decrement the b_nr_access as this person no longer requires write
++ * access to the buffer, and if nobody else requires write access then we want
++ * to set b_next_transaction to NULL in case this buffer is on the committing
++ * transaction, as it will get refiled onto this transaction without it being
++ * counted.  We don't worry about the case where this is the first time this
++ * jh has been used (ie jh->b_transaction == handle->h_transaction) since the
++ * beginning of the committing of this transaction will drop the jh.
+  */
+ void
+ journal_release_buffer(handle_t *handle, struct buffer_head *bh)
+ {
++	struct journal_head *jh = bh2jh(bh);
+ 	BUFFER_TRACE(bh, "entry");
++
++	jbd_lock_bh_state(bh);
++	/*
++	 * if nobody else has requested write access to this jh then set
++	 * b_next_transaction to NULL to keep it from getting refiled onto
++	 * this transaction
++	 */
++	if (!(--jh->b_nr_access)) {
++
++		/*
++		 * A journal_get_undo_access()+journal_release_buffer() will
++		 * leave undo-committed data that we no longer need
++		 */
++		if (jh->b_next_transaction && jh->b_committed_data) {
++			jbd_free(jh->b_committed_data, bh->b_size);
++			jh->b_committed_data = NULL;
++		}
++
++		jh->b_next_transaction = NULL;
++	}
++
++	jbd_unlock_bh_state(bh);
+ }
+ 
+ /**
+@@ -1245,6 +1307,11 @@ int journal_forget (handle_t *handle, struct buffer_head 
+*bh)
+ 	 */
+ 	jh->b_modified = 0;
+ 
++	/*
++	 * drop one of our write access credits
++	 */
++	jh->b_nr_access--;
++
+ 	if (jh->b_transaction == handle->h_transaction) {
+ 		J_ASSERT_JH(jh, !jh->b_frozen_data);
+ 
+diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
+index 8a62d1e..160f1d1 100644
+--- a/include/linux/journal-head.h
++++ b/include/linux/journal-head.h
+@@ -39,6 +39,13 @@ struct journal_head {
+ 	unsigned b_modified;
+ 
+ 	/*
++	 * This is a counter of the number of things who have requested write
++	 * access to this buffer by the current transaction
++	 * [jbd_lock_bh_state()]
++	 */
++	unsigned b_nr_access;
++
++	/*
+ 	 * Copy of the buffer data frozen for writing to the log.
+ 	 * [jbd_lock_bh_state()]
+ 	 */
