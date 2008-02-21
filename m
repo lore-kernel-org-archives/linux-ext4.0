@@ -1,90 +1,61 @@
-From: Haavard Skinnemoen <hskinnemoen@atmel.com>
-Subject: Re: Linux 2.6.24.atmel.1 MMC/SD
-Date: Thu, 21 Feb 2008 12:35:43 +0100
-Message-ID: <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
-References: <71C39AE3DF382B4A9CD370AD1C63B855EA060C@stervanexmb01.teradici.local>
-	<47BD1760.9080007@yahoo.es>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
+Date: Thu, 21 Feb 2008 08:35:54 -0500
+Message-ID: <20080221133554.GD14614@mit.edu>
+References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu> <20080221085221.GV3029@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: James Stewart <jstewart@teradici.com>, kernel@avr32linux.org,
-	linux-ext4@vger.kernel.org
-To: Hein_Tibosch <hein_tibosch@yahoo.es>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nat-132.atmel.no ([80.232.32.132]:51926 "EHLO relay.atmel.no"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756544AbYBULgQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2008 06:36:16 -0500
-In-Reply-To: <47BD1760.9080007@yahoo.es>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:39804 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751041AbYBUNgp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2008 08:36:45 -0500
+Content-Disposition: inline
+In-Reply-To: <20080221085221.GV3029@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(Adding the ext2/ext3/ext4 list to Cc)
+On Thu, Feb 21, 2008 at 01:52:21AM -0700, Andreas Dilger wrote:
+> On Feb 20, 2008  17:20 -0500, Theodore Ts'o wrote:
+> > There are only three things which mke2fs will do, in my design:
+> 
+> This should all go into the mke2fs man page...
 
-Note that the MMC/SD card driver in question, atmel-mci, is not in
-mainline, and may be the real cause of this problem. But it looks like
-there might be a potential problem in the ext3 code as well?
+It will be documented; as I said, this was a request for comments
+about the overall design, before I finish polishing it and adding man
+page documentation, etc.  The patch was very much an interim patch,
+including lots and lots of debugging printf's.  :-)
 
-Haavard
+> 
+> > [fs_types]
+> > 	ext3 = {
+> > 		features = has_journal
+> > 	}
+> > 	ext4 = {
+> > 		features = extents,flex_bg
+> > 		inode_size = 256
+> > 	}
+> 
+> Presumably the ext4 feature should also have features = has_journal?
+> If this is the default for ext4, why would it need to be given for ext3?
+> 
+> We should also add "dir_nlink,flexbg" while we are in there.
 
-On Thu, 21 Feb 2008 14:17:04 +0800
-Hein_Tibosch <hein_tibosch@yahoo.es> wrote:
+Yes, of course.  This was an example, not what I plan to check in.
+(And it's flex_bg, not flexbg; we also need to add the uninit_groups
+flags, etc.)
 
-> Hi James,
-> 
-> 
-> I've had all kinds of problems with the SD-card hooked to an NGW100, just as John Voltz reported earlier:
-> 
->     http://www.avr32linux.org/archives/kernel/2007-November/000421.html
->     http://www.avr32linux.org/archives/kernel/2007-November/000425.html
-> 
-> I debugged this problem and my conclusion is: using an SD-card may lead to both BUS-errors and a complete hanging of the system, with 2.6.23.atmel.5 as well as 2.6.24.atmel.1.
-> 
-> Both the driver for ext2 and ext3 are using this type of function to iterate through a array of inodes:
-> 
->     static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
->     {
->         return (ext2_dirent *)((char*)p + le16_to_cpu(p->rec_len));
->     }
-> 
->     static inline struct ext3_dir_entry_2 *
->         ext3_next_entry(struct ext3_dir_entry_2 *p)
->     {
->         return (struct ext3_dir_entry_2 *)((char *)p +
->             ext3_rec_len_from_disk(p->rec_len));
->     }
-> 
-> 
-> Sometimes, rec_len is checked for a zero-value, sometimes the entry is checked thoroughly for validity (like with ext2_check_page() or ext3_check_dir_entry()), but in other cases rec_len isn't checked at all! This is the case in e.g. fs/ext3/namei.c, function ext3_dx_find_entry(). This function is always enabled since 2.6.24 (CONFIG_EXT3_INDEX not used anymore).
-> 
-> I had a card on which at one place rec_len turned out to be a small negative number. When iterating, it would either cycle for ever (until WDT) or it could enter invalid memory (OOPS: BUS error).
-> 
-> ( strange though that the rec_len appeared to have a negative number, I just did a "mkfs -t ext3" on Ubuntu. Could that be caused by the Atmel-driver? )
-> 
-> I don't yet feel qualified to make a patch for this, I only did it for myself. Maybe someone can pick this up: a validity check should be made before any call to xxx_next_entry().
-> 
-> 
-> Regards,
-> 
-> Hein Tibosch (HeinBali at avr32linux)
-> 
-> 
-> 
-> James Stewart wrote:
-> Hi,
->  
-> I'm wondering if there are any known issues with booting from SD card on the ATNGW100 using this kernel. I get a bunch of ext2 looking errors and then a stack dump immediately after mounting VFS. 2.6.23.atmel.5 runs perfectly, however.
->  
-> This is just compiling using atngw100_defconfig.
->  
-> Thanks,
->  
-> James
-> 
-> ------------------------------------------------
-> 
-> _______________________________________________
-> Kernel mailing list
-> Kernel@avr32linux.org
-> http://duppen.flaskehals.net/cgi-bin/mailman/listinfo/kernel
->   
+The other thing which I've been considering is some what to make the
+feature list displayed by dumpe2fs a bit easier to understand.  One
+thought is to bundle a number of features into things like std_ext2,
+std_ext3, std_ext4, etc., with an option to display the full set for
+someone who wants a more verbose/explicit description.  The one caveat
+here is that once a bundle is defined, we don't ever want to change it
+so that when someone e-mail's a dumpe2fs output as part of a bug
+report, there is no question about what a feature bundle means; it
+can't be e2fsprogs version dependent.
+
+     		       	      	       	   	- Ted
