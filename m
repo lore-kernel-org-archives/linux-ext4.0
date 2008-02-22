@@ -1,63 +1,46 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
-	extent in case of file system full
-Date: Fri, 22 Feb 2008 21:12:18 +0530
-Message-ID: <20080222154218.GB6629@skywalker>
-References: <20080221191747.GA8292@skywalker> <1203628037.3638.21.camel@localhost.localdomain> <20080222143128.GA6354@skywalker>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] e2fsprogs: error checking in blkid/devname.c
+Date: Fri, 22 Feb 2008 10:44:04 -0500
+Message-ID: <20080222154404.GP20118@mit.edu>
+References: <47BDF6C9.8090009@redhat.com> <20080222131622.GK20118@mit.edu> <47BEE420.8030105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	pspencer@fields.utoronto.ca
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:52489 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753041AbYBVPmb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Feb 2008 10:42:31 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1MFgTcv001753
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 21:12:29 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1MFgTJS1146946
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 21:12:29 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1MFgXDr004659
-	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 15:42:34 GMT
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:33397 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754142AbYBVPpd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Feb 2008 10:45:33 -0500
 Content-Disposition: inline
-In-Reply-To: <20080222143128.GA6354@skywalker>
+In-Reply-To: <47BEE420.8030105@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 22, 2008 at 08:01:28PM +0530, Aneesh Kumar K.V wrote:
-> > > +
-> > > +		/* Now write all the buffer_heads in the page */
-> > > +		do {
-> > > +			set_buffer_uptodate(bh);
-> > > +			if (ext4_should_journal_data(inode)) {
-> > > +				err = ext4_journal_get_write_access(handle, bh);
-> > > +				/* do we have that many credits ??*/
-> > > +				if (err)
-> > > +					goto err_out;
-> > > +			}
-> > > +			zero_user(page, offset, blocksize);
+On Fri, Feb 22, 2008 at 09:02:56AM -0600, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > This looks good, but I assume that the bug was caused by some race
+> > condition where if you try to call dm_task_get_info() while some other
+> > process is creating or removing a snapshot, dm_task_get_info() is
+> > returning some kind of EAGAIN, or some other "Try again; we're busy"
+> > error, right?
 > > 
-> > Ah oh, you are trying to zero out the pages in the page cache, that's
-> > seems wrong to me. By the time get_block() is called from writepages(),
-> > the pages should have meaningful content that needs to flush to disk,
-> > zero the pages out will lost the data.
-> > 
+> > If that is the case, can you try to find out what error is being
+> > returned?  It may be the right thing to do is to check to see if we
+> > are getting a "resource is locked; try again in a sec" error message,
+> > and retry the dm_task_get_info(), instead of just returning a failure.
 > 
-> It is writebegin.  In case of writebegin the pages doesn't have the content. By the
-> time we reach write begin the page is supposed to have buffer heads that
-> are alreayd mapped. So we won't end up calling get_blk. Even in case of
-> mmap with page_mkwrite change we would have called writebegin equivalent
-> before the writepage.
+> well, dm_task_get_info just returns either 0 or 1; unless there is some
+> other contextual piece of information to use, I don't know if we can
+> differentiate between error types.  I'll ask agk...
 
-I guess the above para is confusing.
+Maybe the right thing is to try 3 times before giving up, maybe with a
+nanosleep in between, or some such?  Hopefully agk can give us some
+hints about what's the right way to handle errors from all of the
+dm_task* calls.
 
-The callback is actually writebegin.In case of writebegin the page
-doesn't have the content. With respect to writepage by the time we call the
-callback the buffer_heads related to the page would already be mapped.
-So we won't end up calling get_blk.
+Thanks!!
 
-
--aneesh
+						- Ted
