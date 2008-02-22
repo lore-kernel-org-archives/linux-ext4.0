@@ -1,48 +1,177 @@
-From: "Bas van Schaik" <bas@tuxes.nl>
-Subject: Re: e2fsck dies with error "this should never happen!!!"
-Date: Fri, 22 Feb 2008 19:06:10 +0100 (CET)
-Message-ID: <21151.81.207.193.3.1203703570.squirrel@guust.tuxes.nl>
-References: <47BEBAF1.4090505@tuxes.nl> <20080222123852.GI20118@mit.edu>
-    <47BECAC0.5010707@tuxes.nl>
-    <20832.81.207.193.3.1203702265.squirrel@guust.tuxes.nl>
-    <47BF0A7B.50902@redhat.com>
-    <20909.81.207.193.3.1203702913.squirrel@guust.tuxes.nl>
-    <47BF0DAC.9080200@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] ext4: Use page_mkwrite vma_operations to get mmap
+	write notification.
+Date: Fri, 22 Feb 2008 10:10:48 -0800
+Message-ID: <1203703848.3639.9.camel@localhost.localdomain>
+References: <1203691158-6788-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Eric Sandeen" <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pollux.sshunet.nl ([145.97.192.42]:37961 "EHLO
-	pollux.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751022AbYBVSGP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Feb 2008 13:06:15 -0500
-In-Reply-To: <47BF0DAC.9080200@redhat.com>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:52725 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754605AbYBVSLP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Feb 2008 13:11:15 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1MICsjI022663
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 13:12:54 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1MIAvYN310928
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 13:10:57 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1MIAvsY015960
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 13:10:57 -0500
+In-Reply-To: <1203691158-6788-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Bas van Schaik wrote:
->>> Bas van Schaik wrote:
->>>
->>>> In a few hours I will hit the road towards France for a holiday, from
->>>> which I will return on the 3rd of March. I would be _really_ grateful
->>>> if
->>>> you could assist me solving this problem.
->>> Providing the compressed e2image would let ted or others look into the
->>> problem.
->>>
->>
->> Should that be a raw image or a 'normal' one?
->
-> Raw, I think; that way you can compress it as well.
->
+On Fri, 2008-02-22 at 20:09 +0530, Aneesh Kumar K.V wrote:
+> We would like to get notified when we are doing a write on mmap section.
+> This is needed with respect to preallocated area. We split the preallocated
+> area into initialzed extent and uninitialzed extent in the call back. This
+> let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
+> that would result in data loss. The changes are also needed to handle ENOSPC
+> when writing to an mmap section of files with holes.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/file.c          |   19 ++++++++++++++-
+>  fs/ext4/inode.c         |   60 +++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/ext4_fs.h |    1 +
+>  3 files changed, 79 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 20507a2..77341c1 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -123,6 +123,23 @@ force_commit:
+>  	return ret;
+>  }
+> 
+> +static struct vm_operations_struct ext4_file_vm_ops = {
+> +	.fault		= filemap_fault,
+> +	.page_mkwrite   = ext4_page_mkwrite,
+> +};
+> +
+> +static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+> +{
+> +	struct address_space *mapping = file->f_mapping;
+> +
+> +	if (!mapping->a_ops->readpage)
+> +		return -ENOEXEC;
+> +	file_accessed(file);
+> +	vma->vm_ops = &ext4_file_vm_ops;
+> +	vma->vm_flags |= VM_CAN_NONLINEAR;
+> +	return 0;
+> +}
+> +
+>  const struct file_operations ext4_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> @@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= ext4_compat_ioctl,
+>  #endif
+> -	.mmap		= generic_file_mmap,
+> +	.mmap		= ext4_file_mmap,
+>  	.open		= generic_file_open,
+>  	.release	= ext4_release_file,
+>  	.fsync		= ext4_sync_file,
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5b5d63d..00af97d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3490,3 +3490,63 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+> 
+>  	return err;
+>  }
+> +
+> +int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> +{
+> +	unsigned long end;
+> +	loff_t size;
+> +	handle_t *handle;
+> +	int ret = -EINVAL, needed_blocks;
+> +	struct file *file   = vma->vm_file;
+> +	struct inode *inode = file->f_path.dentry->d_inode;
+> +
+> +	needed_blocks = ext4_writepage_trans_blocks(inode);
+> +	/* We need to take inode mutex to prevent parallel write */
+> +	mutex_lock(&inode->i_mutex);
+> +	lock_page(page);
+> +	size = i_size_read(inode);
+> +	if ((page->mapping != inode->i_mapping) ||
+> +	    (page_offset(page) > size)) {
+> +		/* page got truncated out from underneath us */
+> +		goto out_unlock;
+> +	}
+> +
+> +	/* page is wholly or partially inside EOF */
+> +	if (((page->index + 1) << PAGE_CACHE_SHIFT) > size)
+> +		end = size & ~PAGE_CACHE_MASK;
+> +	else
+> +		end = PAGE_CACHE_SIZE;
+> +
+> +	handle = ext4_journal_start(inode, needed_blocks);
+> +	if (IS_ERR(handle)) {
+> +		ret = PTR_ERR(handle);
+> +		goto out_unlock;
+> +	}
+> +	/* Will zero out the pages if buffer is marked new */
+> +	ret = block_prepare_write(page, 0, end, ext4_get_block);
+> +
+> +	if (!ret && ext4_should_journal_data(inode)) {
+> +		ret = walk_page_buffers(handle, page_buffers(page),
+> +				0, end, NULL, do_journal_get_write_access);
+> +		if (!ret)
+> +			ret = walk_page_buffers(handle, page_buffers(page),
+> +						0, end, NULL, write_end_fn);
+> +		/*
+> +		 * we don't want to call block_commit_write in journalled mode
+> +		 */
+> +		ext4_journal_stop(handle);
+> +		goto out_unlock;
+> +	}
+> +	if (!ret && ext4_should_order_data(inode)) {
+> +		ret = walk_page_buffers(handle, page_buffers(page),
+> +					0, end, NULL, ext4_journal_dirty_data);
+> +	}
+> +	if (!ret)
+> +		ret = block_commit_write(page, 0, end);
+> +
+Hmm, it seems wired to do commit_write when the page is about becoming
+writable, but maybe that's the way it needs to?
 
-I'm working on it, but it seems that the image creation process is going
-to take a long time... If it will make it before my departure, I will
-publish it somewhere and post the link here. If it takes too long, I will
-publish it in about a week and a half.
+Don't we need to update the i_size somewhere?
 
-Thanks for your support!
+> +	ext4_journal_stop(handle);
+> +out_unlock:
+> +	unlock_page(page);
+> +	mutex_unlock(&inode->i_mutex);
+> +	return ret;
+> +}
 
-  -- Bas
+It seems this combined the three journalling mode prepare_write() code
+here:( 
+
+Since prepare_write() and commit_write() is going to sunset, why not
+simply calling mappings->a_ops->write_begin() and then write_end()? that
+should take care of pretty much the journalling and the page operations,
+no?
+
+Mingming
+> diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+> index 22810b1..8f5a563 100644
+> --- a/include/linux/ext4_fs.h
+> +++ b/include/linux/ext4_fs.h
+> @@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
+>  extern int ext4_writepage_trans_blocks(struct inode *);
+>  extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+>  		struct address_space *mapping, loff_t from);
+> +extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+> 
+>  /* ioctl.c */
+>  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
