@@ -1,39 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: error checking in blkid/devname.c
-Date: Fri, 22 Feb 2008 09:02:56 -0600
-Message-ID: <47BEE420.8030105@redhat.com>
-References: <47BDF6C9.8090009@redhat.com> <20080222131622.GK20118@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Convert uninitialized extent to initialized
+	extent in case of file system full
+Date: Fri, 22 Feb 2008 20:37:28 +0530
+Message-ID: <20080222150728.GA6629@skywalker>
+References: <1203691158-6788-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1203691158-6788-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1203691158-6788-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	pspencer@fields.utoronto.ca
-To: Theodore Tso <tytso@MIT.EDU>
+Cc: linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47409 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107AbYBVPDW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Feb 2008 10:03:22 -0500
-In-Reply-To: <20080222131622.GK20118@mit.edu>
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:60809 "EHLO
+	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752701AbYBVPHc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Feb 2008 10:07:32 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m1MF7UG9018414
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 20:37:30 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1MF7Tpb1147006
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 20:37:29 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m1MF7Tgi030665
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2008 15:07:29 GMT
+Content-Disposition: inline
+In-Reply-To: <1203691158-6788-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> This looks good, but I assume that the bug was caused by some race
-> condition where if you try to call dm_task_get_info() while some other
-> process is creating or removing a snapshot, dm_task_get_info() is
-> returning some kind of EAGAIN, or some other "Try again; we're busy"
-> error, right?
-> 
-> If that is the case, can you try to find out what error is being
-> returned?  It may be the right thing to do is to check to see if we
-> are getting a "resource is locked; try again in a sec" error message,
-> and retry the dm_task_get_info(), instead of just returning a failure.
 
-well, dm_task_get_info just returns either 0 or 1; unless there is some
-other contextual piece of information to use, I don't know if we can
-differentiate between error types.  I'll ask agk...
+Test results for the patch.
 
-> Thanks!!
-> 
-> 						- Ted
+mmaptest simply maps a range and write to it.
+The length of the extent indicate whether it is initialized or not.
+
+There is no space in the file system for another block.
+So the uninitialized extent have to be converted to initialized extent.
+
+root@qemu-image:/ext4# /root/mmaptest testfile 0 100
+mmaping 0 to 100
+[kvaneesh@llm59 linux-2.6.25-rc2]$ ~/ext4migrate --display /home/kvaneesh/test-images/ext3.img  testfile
+extent: block=0-3 len=4 start=1153 start_hi=0
+extent: block=4-32807 len=32804 start=1157 start_hi=0
+
+root@qemu-image:/ext4# dd if=/root/a.c of=testfile  seek=6 bs=4096 conv=notrunc
+[kvaneesh@llm59 linux-2.6.25-rc2]$ ~/ext4migrate --display /home/kvaneesh/test-images/ext3.img  testfile
+extent: block=0-3 len=4 start=1153 start_hi=0
+extent: block=4-32791 len=32788 start=1157 start_hi=0
+extent: block=24-24 len=1 start=1177 start_hi=0
+extent: block=25-32807 len=32783 start=1178 start_hi=0
+
+root@qemu-image:/ext4# dd if=/root/a.c of=testfile  seek=8 bs=4096 conv=notrunc
+[kvaneesh@llm59 linux-2.6.25-rc2]$ ~/ext4migrate --display /home/kvaneesh/test-images/ext3.img  testfile
+extent: block=0-3 len=4 start=1153 start_hi=0
+extent: block=4-32791 len=32788 start=1157 start_hi=0
+extent: block=24-24 len=1 start=1177 start_hi=0
+extent: block=25-39 len=15 start=1178 start_hi=0
+
+root@qemu-image:/ext4# /root/mmaptest testfile 4096 5000
+mmaping 4096 to 5000
+[kvaneesh@llm59 linux-2.6.25-rc2]$ ~/ext4migrate --display /home/kvaneesh/test-images/ext3.img  testfile
+extent: block=0-3 len=4 start=1153 start_hi=0
+extent: block=4-23 len=20 start=1157 start_hi=0
+extent: block=24-24 len=1 start=1177 start_hi=0
+extent: block=25-39 len=15 start=1178 start_hi=0
