@@ -1,200 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: error checking in blkid/devname.c
-Date: Thu, 21 Feb 2008 16:10:17 -0600
-Message-ID: <47BDF6C9.8090009@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH] ext4: remove extra defination of ext4_new_blocks_old()
+Date: Thu, 21 Feb 2008 17:40:12 -0800
+Message-ID: <1203644412.3638.34.camel@localhost.localdomain>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: pspencer@fields.utoronto.ca
-To: ext4 development <linux-ext4@vger.kernel.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:52592 "EHLO mx1.redhat.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:51698 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933522AbYBUWKX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2008 17:10:23 -0500
+	id S1760132AbYBVBkt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2008 20:40:49 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1M1eklx017830
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 20:40:46 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1M1ekLa299360
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 20:40:46 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1M1ekmo024378
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 20:40:46 -0500
+Received: from [9.47.17.70] (w-ming-laptop.beaverton.ibm.com [9.47.17.70])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m1M1ejZw022244
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2008 20:40:45 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is for RH Bugzilla #433857: 
-rpc.mountd segfaults due to uninitialized value in e2fsprogs devname.c
+ext4_new_blocks_old() is already externed in ext4_fs.h, remove the extra
+define from mballoc.c. Trivial cleanup, but this cause extra maintain work
+if later we need to modify this function.
 
-https://bugzilla.redhat.com/show_bug.cgi?id=433857
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/mballoc.c |    2 --
+ 1 file changed, 2 deletions(-)
 
-which did some very helpful analysis & provided a patch.
-
-This patch is based on that, but checks all the devicemapper calls,
-and does some goto error handling / unwrapping, in the same style as
-the device-mapper lib code itself.
-
-Compile-tested only, but seems fine to me.
-
-Thanks,
-
--Eric
-
-
-Index: e2fsprogs-1.40.5/lib/blkid/devname.c
+Index: linux-2.6.25-rc2/fs/ext4/mballoc.c
 ===================================================================
---- e2fsprogs-1.40.5.orig/lib/blkid/devname.c
-+++ e2fsprogs-1.40.5/lib/blkid/devname.c
-@@ -171,37 +171,42 @@ static int dm_device_has_dep(const dev_t
- 	struct dm_deps *deps;
- 	struct dm_info info;
- 	unsigned int i;
-+	int ret = 0;
+--- linux-2.6.25-rc2.orig/fs/ext4/mballoc.c	2008-02-21 17:23:26.000000000 -0800
++++ linux-2.6.25-rc2/fs/ext4/mballoc.c	2008-02-21 17:23:54.000000000 -0800
+@@ -576,8 +576,6 @@ static void ext4_mb_store_history(struct
  
- 	task = dm_task_create(DM_DEVICE_DEPS);
- 	if (!task)
--		return 0;
-+		goto out;
+ static struct proc_dir_entry *proc_root_ext4;
+ struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
+-ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t goal, unsigned long *count, int *errp);
  
--	dm_task_set_name(task, name);
--	dm_task_run(task);
--	dm_task_get_info(task, &info);
-+	if (!dm_task_set_name(task, name))
-+		goto out;
- 
--	if (!info.exists) {
--		dm_task_destroy(task);
--		return 0;
--	}
-+	if (!dm_task_run(task))
-+		goto out;
-+
-+	if (!dm_task_get_info(task, &info))
-+		goto out;
-+
-+	if  (!info.exists)
-+		goto out;
- 
- 	deps = dm_task_get_deps(task);
--	if (!deps || deps->count == 0) {
--		dm_task_destroy(task);
--		return 0;
--	}
-+	if (!deps || deps->count == 0)
-+		goto out;
- 
- 	for (i = 0; i < deps->count; i++) {
- 		dev_t dep_dev = deps->device[i];
- 
- 		if (dev == dep_dev) {
--			dm_task_destroy(task);
--			return 1;
-+			ret = 1;
-+			goto out;
- 		}
- 	}
- 
--	dm_task_destroy(task);
--	return 0;
-+out:
-+	if (task)
-+		dm_task_destroy(task);
-+
-+	return ret;
- }
- 
- static int dm_device_is_leaf(const dev_t dev)
-@@ -214,15 +219,16 @@ static int dm_device_is_leaf(const dev_t
- 	dm_log_init(dm_quiet_log);
- 	task = dm_task_create(DM_DEVICE_LIST);
- 	if (!task)
--		return 1;
-+		goto out;
-+
- 	dm_log_init(0);
- 
--	dm_task_run(task);
-+	if (!dm_task_run(task))
-+		goto out;
-+
- 	names = dm_task_get_names(task);
--	if (!names || !names->dev) {
--		dm_task_destroy(task);
--		return 1;
--	}
-+	if (!names || !names->dev)
-+		goto out;
- 
- 	n = 0;
- 	do {
-@@ -234,7 +240,9 @@ static int dm_device_is_leaf(const dev_t
- 		next = names->next;
- 	} while (next);
- 
--	dm_task_destroy(task);
-+out:
-+	if (task)
-+		dm_task_destroy(task);
- 
- 	return ret;
- }
-@@ -247,20 +255,25 @@ static dev_t dm_get_devno(const char *na
- 
- 	task = dm_task_create(DM_DEVICE_INFO);
- 	if (!task)
--		return ret;
-+		goto out;
- 
--	dm_task_set_name(task, name);
--	dm_task_run(task);
--	dm_task_get_info(task, &info);
-+	if (!dm_task_set_name(task, name))
-+		goto out;
- 
--	if (!info.exists) {
--		dm_task_destroy(task);
--		return ret;
--	}
-+	if (!dm_task_run(task))
-+		goto out;
-+
-+	if (!dm_task_get_info(task, &info))
-+		goto out;
-+
-+	if (!info.exists)
-+		goto out;
- 
- 	ret = makedev(info.major, info.minor);
- 
--	dm_task_destroy(task);
-+out:
-+	if (task)
-+		dm_task_destroy(task);
- 	
- 	return ret;
- }
-@@ -275,15 +288,15 @@ static void dm_probe_all(blkid_cache cac
- 	dm_log_init(dm_quiet_log);
- 	task = dm_task_create(DM_DEVICE_LIST);
- 	if (!task)
--		return;
-+		goto out;
- 	dm_log_init(0);
- 
--	dm_task_run(task);
-+	if (!dm_task_run(task))
-+		goto out;
-+
- 	names = dm_task_get_names(task);
--	if (!names || !names->dev) {
--		dm_task_destroy(task);
--		return;
--	}
-+	if (!names || !names->dev)
-+		goto out;
- 
- 	n = 0;
- 	do {
-@@ -311,7 +324,9 @@ try_next:
- 		next = names->next;
- 	} while (next);
- 
--	dm_task_destroy(task);
-+out:
-+	if (task)
-+		dm_task_destroy(task);
- }
- #endif /* HAVE_DEVMAPPER */
- 
+ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 					ext4_group_t group);
