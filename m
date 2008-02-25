@@ -1,39 +1,63 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: What's cooking in e2fsprogs.git (topics)
-Date: Mon, 25 Feb 2008 15:23:00 -0500
-Message-ID: <20080225202300.GC8386@mit.edu>
-References: <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <47BC75A1.10605@redhat.com> <20080221140546.GF14614@mit.edu> <47BDA978.7060403@redhat.com> <20080222231434.GG3029@webber.adilger.int> <20080223001539.GD20118@mit.edu> <20080225042050.GH3534@webber.adilger.int> <20080225151339.GB8408@mit.edu> <47C2FBB2.30404@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: [GIT PULL] ext4 update
+Date: Mon, 25 Feb 2008 17:47:23 -0500
+Message-ID: <E1JTm6V-00022E-0N@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60547 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52240 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756862AbYBYUYG (ORCPT
+	by vger.kernel.org with ESMTP id S1761292AbYBYWsg (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2008 15:24:06 -0500
-Content-Disposition: inline
-In-Reply-To: <47C2FBB2.30404@redhat.com>
+	Mon, 25 Feb 2008 17:48:36 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 25, 2008 at 11:32:34AM -0600, Eric Sandeen wrote:
-> Are you sure?  This was her patch comment, from
-> [PATCH] ext4: Don't set EXTENTS_FL flag for fast symlinks:
+Hi Linus,
 
-You're right, I confused myself.
+Please pull from:
 
-> > But you do raise a good point that we need to support using the
-> > extents format in order to support blocks > 2**32, so we can't just
-> > arbitrary convert all symlinks to the old-style direct block maps.
-> 
-> ... so I think we really *should* be unconditionally storing *long*
-> symlinks in extent format, on ext4... right?
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-Yes, I think so.  Being liberal in what you receive is probably a good
-idea, but we should only store new symlinks in one standard format,
-and the extents format makes sense since it will allow us to support
-48-bit block numbers.
+To get a number of ext4 bug fixes for 2.6.25.
 
-            	     	    	       	   - Ted
+Thanks,
+
+                                                - Ted
+
+Akinobu Mita (1):
+      ext4: add missing ext4_journal_stop()
+
+Andi Kleen (1):
+      Remove incorrect BKL comments in ext4
+
+Aneesh Kumar K.V (8):
+      ext4: Fix locking hierarchy violation in ext4_fallocate()
+      ext4: Don't leave behind a half-created inode if ext4_mkdir() fails
+      ext4: Fix memory and buffer head leak in callers to ext4_ext_find_extent()
+      ext4: Get journal write access before modifying the extent tree
+      ext4: Don't claim block from group which has corrupt bitmap
+      ext4: Don't mark filesystem error if fallocate fails
+      ext4: set EXT4_EXTENTS_FL only for directory and regular files
+      ext4: ext4_find_next_zero_bit needs an aligned address on some arch
+
+Mingming Cao (1):
+      ext4: Fix BUG when writing to an unitialized extent
+
+Theodore Ts'o (1):
+      ext4: Don't use ext4_dec_count() if not needed
+
+Valerie Clement (2):
+      ext4: Fix kernel BUG at fs/ext4/mballoc.c:910!
+      ext4: modify block allocation algorithm for the last group
+
+ fs/ext4/dir.c                   |    2 +-
+ fs/ext4/extents.c               |   59 +++++++++++++++++++---------
+ fs/ext4/ialloc.c                |   22 +++++++---
+ fs/ext4/inode.c                 |   56 +++++++++++++++++++++++++--
+ fs/ext4/mballoc.c               |   80 +++++++++++++++++++++++++++------------
+ fs/ext4/migrate.c               |    5 ++
+ fs/ext4/namei.c                 |   18 +++-----
+ fs/ext4/resize.c                |    1 +
+ include/linux/ext4_fs_extents.h |    1 +
+ 9 files changed, 177 insertions(+), 67 deletions(-)
