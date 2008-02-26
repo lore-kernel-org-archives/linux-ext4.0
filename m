@@ -1,36 +1,55 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [2.6.25-rc2-mm1] Oops in __kmalloc
-Date: Tue, 26 Feb 2008 10:09:13 -0800
-Message-ID: <20080226100913.9412b41c.akpm@linux-foundation.org>
-References: <47C42DDF.3060506@gmail.com>
+Subject: Re: [Bug 9692] New: journal_data mount option causes filesystem
+ corruption with blocksize != 4096
+Date: Tue, 26 Feb 2008 13:48:52 -0800
+Message-ID: <20080226134852.04ddada7.akpm@linux-foundation.org>
+References: <bug-9692-27@http.bugzilla.kernel.org/>
+	<20080105191552.ee114b6b.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Linux kernel mailing list <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Jan Sonnek <xsonnek@fi.muni.cz>
-To: Jiri Slaby <jirislaby@gmail.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	bugme-daemon@bugzilla.kernel.org, h.judt@gmx.at
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([207.189.120.13]:34667 "EHLO
+Received: from smtp1.linux-foundation.org ([207.189.120.13]:52058 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762787AbYBZSKR (ORCPT
+	by vger.kernel.org with ESMTP id S1764747AbYBZVuM (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Feb 2008 13:10:17 -0500
-In-Reply-To: <47C42DDF.3060506@gmail.com>
+	Tue, 26 Feb 2008 16:50:12 -0500
+In-Reply-To: <20080105191552.ee114b6b.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 26 Feb 2008 16:18:55 +0100 Jiri Slaby <jirislaby@gmail.com> wrote:
+On Sat, 5 Jan 2008 19:15:52 -0800 Andrew Morton <akpm@linux-foundation.org> wrote:
 
-> Hi,
+> On Sat,  5 Jan 2008 09:52:15 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
 > 
-> while booting up a notebook on 32 bit, this oopses appeared on the console
-> after ext3 fsck:
-> http://www.fi.muni.cz/~xslaby/sklad/mem_oops/
+> > http://bugzilla.kernel.org/show_bug.cgi?id=9692
+> >
+> >            Summary: journal_data mount option causes filesystem corruption
+> >                     with blocksize != 4096
+> >            Product: File System
+> >            Version: 2.5
+> >      KernelVersion: 2.6.23.9
+> >           Platform: All
+> >         OS/Version: Linux
+> >               Tree: Mainline
+> >             Status: NEW
+> >           Severity: high
+> >           Priority: P1
+> >          Component: ext3
+> >         AssignedTo: akpm@osdl.org
+> >         ReportedBy: h.judt@gmx.at
+> > 
+> > 
+> > Most recent kernel where this bug did not occur: -
+> > Older kernels have this problem too (I think I noticed this booting >= 2.6.21,
+> > definitely 2.6.22).
 > 
-> It's 2.6.25-rc2-mm1, I can't find similar reports, is this known or hardware
-> issue (unlikely, 2.6.24.2 seems to be OK)?
+> I'm getting the feeling that we should just disable data=journal.  Make it
+> use data=ordered mode instead.  It isn't getting a lot of attention..
+> 
 
-I don't recall seeing a similar report and yes, it'll be a kernel bug.
-
-We've fixed a few things and it could be that this will just go away in
-next -mm.  If it doesn't, a bisection search would be good, thanks.
+As discussed today - this is the bug which makes me wonder how
+useful/popular journalled-data mode is.
