@@ -1,28 +1,39 @@
-From: Jiri Slaby <jirislaby@gmail.com>
-Subject: [2.6.25-rc2-mm1] Oops in __kmalloc
-Date: Tue, 26 Feb 2008 16:18:55 +0100
-Message-ID: <47C42DDF.3060506@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC] ext3 freeze feature ver 0.2
+Date: Tue, 26 Feb 2008 08:39:02 -0800
+Message-ID: <47C440A6.6080202@redhat.com>
+References: <20080219202706t-sato@mail.jp.nec.com> <20080226172014t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-To: Andrew Morton <akpm@linux-foundation.org>,
-	Linux kernel mailing list <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Jan Sonnek <xsonnek@fi.muni.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.186]:38875 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755994AbYBZPST (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Feb 2008 10:18:19 -0500
-Received: by nf-out-0910.google.com with SMTP id g13so1139846nfb.21
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Feb 2008 07:18:17 -0800 (PST)
+Received: from mx1.redhat.com ([66.187.233.31]:59167 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751118AbYBZQjF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Feb 2008 11:39:05 -0500
+In-Reply-To: <20080226172014t-sato@mail.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Takashi Sato wrote:
 
-while booting up a notebook on 32 bit, this oopses appeared on the console
-after ext3 fsck:
-http://www.fi.muni.cz/~xslaby/sklad/mem_oops/
+> o Elevate XFS ioctl numbers (XFS_IOC_FREEZE and XFS_IOC_THAW) to the VFS
+>   As Andreas Dilger and Christoph Hellwig advised me, I have elevated
+>   them to include/linux/fs.h as below.
+>     #define FIFREEZE        _IOWR('X', 119, int)
+> 　  #define FITHAW          _IOWR('X', 120, int)
+>   The ioctl numbers used by XFS applications don't need to be changed.
+>   But my following ioctl for the freeze needs the parameter
+>   as the timeout period.  So if XFS applications don't want the timeout
+>   feature as the current implementation, the parameter needs to be
+>   changed 1 (level?) into 0.
 
-It's 2.6.25-rc2-mm1, I can't find similar reports, is this known or hardware
-issue (unlikely, 2.6.24.2 seems to be OK)?
+So, existing xfs applications calling the xfs ioctl now will behave
+differently, right?  We can only keep the same ioctl number if the
+calling semantics are the same.  Keeping the same number but changing
+the semantics is harmful, IMHO....
+
+-Eric
