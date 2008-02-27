@@ -1,74 +1,64 @@
 From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make ext3_xattr_list() static
-Date: Wed, 27 Feb 2008 23:20:51 +0200
-Message-ID: <20080227212051.GN29269@cs181133002.pp.htv.fi>
+Subject: [2.6 patch] unexport journal_update_superblock
+Date: Wed, 27 Feb 2008 23:20:56 +0200
+Message-ID: <20080227212056.GO29269@cs181133002.pp.htv.fi>
+References: <20080217081935.GN3848@cs181133002.pp.htv.fi> <20080218070439.GG3029@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Cc: sct@redhat.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6.pp.htv.fi ([213.243.153.40]:49156 "EHLO smtp6.pp.htv.fi"
+Received: from smtp4.pp.htv.fi ([213.243.153.38]:41773 "EHLO smtp4.pp.htv.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760330AbYB0VWB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Feb 2008 16:22:01 -0500
+	id S1759681AbYB0VWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Feb 2008 16:22:07 -0500
 Content-Disposition: inline
+In-Reply-To: <20080218070439.GG3029@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch makes the needlessly global ext3_xattr_list() static.
+On Mon, Feb 18, 2008 at 12:04:39AM -0700, Andreas Dilger wrote:
+> On Feb 17, 2008  10:19 +0200, Adrian Bunk wrote:
+> > This patch contains the following cleanups:
+> > - make the following needlessly global function static:
+> >   - journal_check_used_features()
+> > - remove the following unused EXPORT_SYMBOL's:
+> >   - journal_set_features
+> >   - journal_update_superblock
+> 
+> Nack.  I don't object to un-exporting journal_update_superblock(), because
+> that is pretty internal, but the other functions are intended specifically
+> for use by code outside of JBD.  For example, the journal checksum patch for
+> ext3/4 uses journal_set_features() to turn on features in the JBD superblock.
+>...
+
+A patch that only unexports journal_update_superblock is below.
+
+> Cheers, Andreas
+
+cu
+Adrian
+
+
+<--  snip  -->
+
+
+This patch removes the unused EXPORT_SYMBOL(journal_update_superblock).
 
 Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
 ---
-
- fs/ext3/xattr.c |    4 +++-
- fs/ext3/xattr.h |    7 -------
- 2 files changed, 3 insertions(+), 8 deletions(-)
-
-8fb5e610acafcbef4a9980042902c9269abf51b6 diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-index fb89c29..4f9f187 100644
---- a/fs/ext3/xattr.c
-+++ b/fs/ext3/xattr.c
-@@ -99,6 +99,8 @@ static struct buffer_head *ext3_xattr_cache_find(struct inode *,
- 						 struct mb_cache_entry **);
- static void ext3_xattr_rehash(struct ext3_xattr_header *,
- 			      struct ext3_xattr_entry *);
-+static int ext3_xattr_list(struct inode *inode, char *buffer,
-+			   size_t buffer_size);
- 
- static struct mb_cache *ext3_xattr_cache;
- 
-@@ -427,7 +429,7 @@ cleanup:
-  * Returns a negative error number on failure, or the number of bytes
-  * used / required on success.
-  */
--int
-+static int
- ext3_xattr_list(struct inode *inode, char *buffer, size_t buffer_size)
- {
- 	int i_error, b_error;
-diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
-index 6b1ae1c..148a4df 100644
---- a/fs/ext3/xattr.h
-+++ b/fs/ext3/xattr.h
-@@ -67,7 +67,6 @@ extern struct xattr_handler ext3_xattr_security_handler;
- extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
- 
- extern int ext3_xattr_get(struct inode *, int, const char *, void *, size_t);
--extern int ext3_xattr_list(struct inode *, char *, size_t);
- extern int ext3_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
- extern int ext3_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
- 
-@@ -89,12 +88,6 @@ ext3_xattr_get(struct inode *inode, int name_index, const char *name,
- }
- 
- static inline int
--ext3_xattr_list(struct inode *inode, void *buffer, size_t size)
--{
--	return -EOPNOTSUPP;
--}
--
--static inline int
- ext3_xattr_set(struct inode *inode, int name_index, const char *name,
- 	       const void *value, size_t size, int flags)
- {
+66cbc7390d66cdeb83a3f81d7ec1ea71d6f6e2c8 foobar
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 3943a89..5c2ebb7 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -68,7 +68,6 @@ EXPORT_SYMBOL(journal_set_features);
+ EXPORT_SYMBOL(journal_create);
+ EXPORT_SYMBOL(journal_load);
+ EXPORT_SYMBOL(journal_destroy);
+-EXPORT_SYMBOL(journal_update_superblock);
+ EXPORT_SYMBOL(journal_abort);
+ EXPORT_SYMBOL(journal_errno);
+ EXPORT_SYMBOL(journal_ack_err);
