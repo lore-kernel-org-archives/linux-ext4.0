@@ -1,512 +1,155 @@
-From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: Re: [RFC] ext3 freeze feature ver 0.2
-Date: Wed, 27 Feb 2008 17:31:52 +0900
-Message-ID: <20080227173152t-sato@mail.jp.nec.com>
-References: <20080226170807.GE3172@webber.adilger.int>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH 1/2] fix the way jbd/jbd2 clears the b_modified flag
+Date: Wed, 27 Feb 2008 13:46:09 -0500
+Message-ID: <200802271346.10298.jbacik@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
+Content-Type: text/plain;
+  charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>, Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <20080226170807.GE3172@webber.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757566AbYB0S5d@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+Hello,
 
-Andreas Dilger wrote:
->> > o Elevate XFS ioctl numbers (XFS_IOC_FREEZE and XFS_IOC_THAW) to the VFS
->> >   As Andreas Dilger and Christoph Hellwig advised me, I have elevated
->> >   them to include/linux/fs.h as below.
->> >     #define FIFREEZE        _IOWR('X', 119, int)
->> > 　  #define FITHAW          _IOWR('X', 120, int)
->> >   The ioctl numbers used by XFS applications don't need to be changed.
->> >   But my following ioctl for the freeze needs the parameter
->> >   as the timeout period.  So if XFS applications don't want the timeout
->> >   feature as the current implementation, the parameter needs to be
->> >   changed 1 (level?) into 0.
->> 
->> So, existing xfs applications calling the xfs ioctl now will behave
->> differently, right?  We can only keep the same ioctl number if the
->> calling semantics are the same.  Keeping the same number but changing
->> the semantics is harmful, IMHO....
->
->Do we know what this parameter was supposed to mean?
->
->We could special case "1" if needed to keep compatibility (documenting
->this clearly), either making it == 0, or some very long timeout (1h
->or whatever).  A relatively minor wart I think.
+Currently at the start of a journal commit we loop through all of the buffers on 
+the committing transaction and clear the b_modified flag (the flag that is set 
+when a transaction modifies the buffer) under the j_list_lock.  The problem is 
+that everywhere else this flag is modified only under the jbd lock buffer flag, 
+so it will race with a running transaction who could potentially set it, and 
+have it unset by the committing transaction.  This is also a big waste, you can 
+have several thousands of buffers that you are clearing the modified flag on 
+when you may not need to.  This patch removes this code and instead clears the 
+b_modified flag upon entering do_get_write_access/journal_get_create_access, so 
+if that transaction does indeed use the buffer then it will be accounted for 
+properly, and if it does not then we know we didn't use it.  That will be 
+important for the next patch in this series.  Tested thoroughly by myself using 
+postmark/iozone/bonnie++.  Thank you,
 
-I agree.
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
 
-Because the original xfs_freeze doesn't have the timeout feature,
-I think my freeze ioctl had better not do the timeout in case of
-specifying 1 as ioctl's parameter.
-So I have modified my freeze ioctl not to set the timeout in case of
-specifying 1 or 0 as below. 
-(I have attached the modified patch in this mail.)
-  int ioctl(int fd, int FIFREEZE, long *timeval)
-    fd: The file descriptor of the mountpoint
-    FIFREEZE: The request code for the freeze
-    timeval: The timeout value expressed in seconds
-             If it's 0 or 1, the timeout isn't set.
-    Return value: 0 if the operation succeeds. Otherwise, -1
-
-I have tested my attached patch and confirmed that the original
-xfs_freeze could freeze the filesystem without the timeout.
-
-Any comments are very welcome.
-
-I haven't changed the following ioctls from the previous version.
-o Reset the timeout period
-  int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
-    fd:file descriptor of mountpoint
-    FIFREEZE_RESET_TIMEOUT:request code for reset of timeout period
-    timeval:new timeout period
-    Return value: 0 if the operation succeeds. Otherwise, -1
-    Error number: If the filesystem has already been unfrozen,
-                  it sets EINVAL to errno.
-
-o Unfreeze the filesystem
-  int ioctl(int fd, int FITHAW, long *timeval)
-    fd: The file descriptor of the mountpoint
-    FITHAW: request code for unfreeze
-    timeval: Ignored
-    Return value: 0 if the operation succeeds. Otherwise, -1
-
-Cheers, Takashi
-
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
----
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/drivers/md/dm.c linux-2.6.25-rc3-freeze/drivers/
-md/dm.c
---- linux-2.6.25-rc3.org/drivers/md/dm.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/drivers/md/dm.c	2008-02-25 10:50:04.000000000 +0900
-@@ -1407,7 +1407,7 @@ static int lock_fs(struct mapped_device 
+Index: linux-2.6/fs/jbd/commit.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/commit.c
++++ linux-2.6/fs/jbd/commit.c
+@@ -407,22 +407,6 @@ void journal_commit_transaction(journal_
+ 	jbd_debug (3, "JBD: commit phase 2\n");
  
- 	WARN_ON(md->frozen_sb);
- 
--	md->frozen_sb = freeze_bdev(md->suspended_bdev);
-+	md->frozen_sb = freeze_bdev(md->suspended_bdev, 0);
- 	if (IS_ERR(md->frozen_sb)) {
- 		r = PTR_ERR(md->frozen_sb);
- 		md->frozen_sb = NULL;
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/block_dev.c linux-2.6.25-rc3-freeze/fs/block_
-dev.c
---- linux-2.6.25-rc3.org/fs/block_dev.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/block_dev.c	2008-02-25 10:50:04.000000000 +0900
-@@ -284,6 +284,11 @@ static void init_once(struct kmem_cache 
- 	INIT_LIST_HEAD(&bdev->bd_holder_list);
- #endif
- 	inode_init_once(&ei->vfs_inode);
-+
-+	/* Initialize semaphore for freeze. */
-+	sema_init(&bdev->bd_freeze_sem, 1);
-+	/* Setup freeze timeout function. */
-+	INIT_DELAYED_WORK(&bdev->bd_freeze_timeout, freeze_timeout);
- }
- 
- static inline void __bd_forget(struct inode *inode)
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/buffer.c linux-2.6.25-rc3-freeze/fs/buffer.c
---- linux-2.6.25-rc3.org/fs/buffer.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/buffer.c	2008-02-25 10:50:04.000000000 +0900
-@@ -190,17 +190,33 @@ int fsync_bdev(struct block_device *bdev
- 
- /**
-  * freeze_bdev  --  lock a filesystem and force it into a consistent state
-- * @bdev:	blockdevice to lock
-+ * @bdev:		blockdevice to lock
-+ * @timeout_msec:	timeout period
-  *
-  * This takes the block device bd_mount_sem to make sure no new mounts
-  * happen on bdev until thaw_bdev() is called.
-  * If a superblock is found on this device, we take the s_umount semaphore
-  * on it to make sure nobody unmounts until the snapshot creation is done.
-+ * If timeout_msec is bigger than 0, this registers the delayed work for
-+ * timeout of the freeze feature.
-  */
--struct super_block *freeze_bdev(struct block_device *bdev)
-+struct super_block *freeze_bdev(struct block_device *bdev, long timeout_msec)
- {
- 	struct super_block *sb;
- 
-+	down(&bdev->bd_freeze_sem);
-+	sb = get_super_without_lock(bdev);
-+
-+	/* If super_block has been already frozen, return. */
-+	if (sb && sb->s_frozen != SB_UNFROZEN) {
-+		put_super(sb);
-+		up(&bdev->bd_freeze_sem);
-+		return sb;
-+	}
-+
-+	if (sb)
-+		put_super(sb);
-+
- 	down(&bdev->bd_mount_sem);
- 	sb = get_super(bdev);
- 	if (sb && !(sb->s_flags & MS_RDONLY)) {
-@@ -219,6 +235,13 @@ struct super_block *freeze_bdev(struct b
- 	}
- 
- 	sync_blockdev(bdev);
-+
-+	/* Setup unfreeze timer. */
-+	if (timeout_msec > 0)
-+		add_freeze_timeout(bdev, timeout_msec);
-+
-+	up(&bdev->bd_freeze_sem);
-+
- 	return sb;	/* thaw_bdev releases s->s_umount and bd_mount_sem */
- }
- EXPORT_SYMBOL(freeze_bdev);
-@@ -232,6 +255,16 @@ EXPORT_SYMBOL(freeze_bdev);
-  */
- void thaw_bdev(struct block_device *bdev, struct super_block *sb)
- {
-+	down(&bdev->bd_freeze_sem);
-+
-+	if (sb && sb->s_frozen == SB_UNFROZEN) {
-+		up(&bdev->bd_freeze_sem);
-+		return;
-+	}
-+
-+	/* Delete unfreeze timer. */
-+	del_freeze_timeout(bdev);
-+
- 	if (sb) {
- 		BUG_ON(sb->s_bdev != bdev);
- 
-@@ -244,6 +277,8 @@ void thaw_bdev(struct block_device *bdev
- 	}
- 
- 	up(&bdev->bd_mount_sem);
-+
-+	up(&bdev->bd_freeze_sem);
- }
- EXPORT_SYMBOL(thaw_bdev);
- 
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/ioctl.c linux-2.6.25-rc3-freeze/fs/ioctl.c
---- linux-2.6.25-rc3.org/fs/ioctl.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/ioctl.c	2008-02-27 10:30:30.000000000 +0900
-@@ -13,6 +13,7 @@
- #include <linux/security.h>
- #include <linux/module.h>
- #include <linux/uaccess.h>
-+#include <linux/buffer_head.h>
- 
- #include <asm/ioctls.h>
- 
-@@ -181,6 +182,102 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		} else
- 			error = -ENOTTY;
- 		break;
-+
-+	case FIFREEZE: {
-+		long timeout_sec;
-+		long timeout_msec;
-+		struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			error = -EPERM;
-+			break;
-+		}
-+
-+		/* If filesystem doesn't support freeze feature, return. */
-+		if (sb->s_op->write_super_lockfs == NULL) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
-+		/* arg(sec) to tick value. */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error != 0)
-+			break;
-+		/* 
-+		 * If 1 is specified as the timeout period,
-+		 * it will be changed into 0 to keep the compatibility
-+		 * of XFS application(xfs_freeze).
-+		 */
-+		if (timeout_sec < 0) {
-+			error = -EINVAL;
-+			break;
-+		} else if (timeout_sec < 2) {
-+			timeout_sec = 0;	
-+		}
-+
-+		timeout_msec = timeout_sec * 1000;
-+		/* overflow case */
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
-+		/* Freeze. */
-+		freeze_bdev(sb->s_bdev, timeout_msec);
-+
-+		break;
-+	}
-+
-+	case FITHAW: {
-+		struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			error = -EPERM;
-+			break;
-+		}
-+
-+		/* Thaw. */
-+		thaw_bdev(sb->s_bdev, sb);
-+		break;
-+	}
-+
-+	case FIFREEZE_RESET_TIMEOUT: {
-+		long timeout_sec;
-+		long timeout_msec;
-+		struct super_block *sb
-+			= filp->f_path.dentry->d_inode->i_sb;
-+
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			error = -EPERM;
-+			break;
-+		}
-+
-+		/* arg(sec) to tick value */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error)
-+			break;
-+		timeout_msec = timeout_sec * 1000;
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
-+		if (sb) {
-+			down(&sb->s_bdev->bd_freeze_sem);
-+			if (sb->s_frozen == SB_UNFROZEN) {
-+				up(&sb->s_bdev->bd_freeze_sem);
-+				error = -EINVAL;
-+				break;
-+			}
-+			/* setup unfreeze timer */
-+			if (timeout_msec > 0)
-+				add_freeze_timeout(sb->s_bdev,
-+					timeout_msec);
-+			up(&sb->s_bdev->bd_freeze_sem);
-+		}
-+		break;
-+	}
-+
- 	default:
- 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
- 			error = file_ioctl(filp, cmd, arg);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/super.c linux-2.6.25-rc3-freeze/fs/super.c
---- linux-2.6.25-rc3.org/fs/super.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/super.c	2008-02-25 10:50:04.000000000 +0900
-@@ -154,7 +154,7 @@ int __put_super_and_need_restart(struct 
-  *	Drops a temporary reference, frees superblock if there's no
-  *	references left.
-  */
--static void put_super(struct super_block *sb)
-+void put_super(struct super_block *sb)
- {
- 	spin_lock(&sb_lock);
- 	__put_super(sb);
-@@ -507,6 +507,36 @@ rescan:
- 
- EXPORT_SYMBOL(get_super);
-  
-+/*
-+ * get_super_without_lock - Get super_block from block_device without lock.
-+ * @bdev:	block device struct
-+ *
-+ * Scan the superblock list and finds the superblock of the file system
-+ * mounted on the block device given. This doesn't lock anyone.
-+ * %NULL is returned if no match is found.
-+ */
-+struct super_block *get_super_without_lock(struct block_device *bdev)
-+{
-+	struct super_block *sb;
-+
-+	if (!bdev)
-+		return NULL;
-+
-+	spin_lock(&sb_lock);
-+	list_for_each_entry(sb, &super_blocks, s_list) {
-+		if (sb->s_bdev == bdev) {
-+			if (sb->s_root) {
-+				sb->s_count++;
-+				spin_unlock(&sb_lock);
-+				return sb;
-+			}
-+		}
-+	}
-+	spin_unlock(&sb_lock);
-+	return NULL;
-+}
-+EXPORT_SYMBOL(get_super_without_lock);
-+
- struct super_block * user_get_super(dev_t dev)
- {
- 	struct super_block *sb;
-@@ -952,3 +982,56 @@ struct vfsmount *kern_mount_data(struct 
- }
- 
- EXPORT_SYMBOL_GPL(kern_mount_data);
-+
-+/*
-+ * freeze_timeout - Thaw the filesystem.
-+ *
-+ * @work:	work queue (delayed_work.work)
-+ *
-+ * Called by the delayed work when elapsing the timeout period.
-+ * Thaw the filesystem.
-+ */
-+void freeze_timeout(struct work_struct *work)
-+{
-+	struct block_device *bd = container_of(work,
-+			struct block_device, bd_freeze_timeout.work);
-+
-+	struct super_block *sb = get_super_without_lock(bd);
-+
-+	BUG_ON(sb == NULL);
-+
-+	thaw_bdev(bd, sb);
-+
-+	put_super(sb);
-+}
-+EXPORT_SYMBOL_GPL(freeze_timeout);
-+
-+/*
-+ * add_freeze_timeout - Add timeout for freeze.
-+ *
-+ * @bdev:		block device struct
-+ * @timeout_msec:	timeout period
-+ *
-+ * Add the delayed work for freeze timeout to the delayed work queue.
-+ */
-+void add_freeze_timeout(struct block_device *bdev, long timeout_msec)
-+{
-+	s64 timeout_jiffies = msecs_to_jiffies(timeout_msec);
-+
-+	/* Set delayed work queue */
-+	cancel_delayed_work(&bdev->bd_freeze_timeout);
-+	schedule_delayed_work(&bdev->bd_freeze_timeout, timeout_jiffies);
-+}
-+
-+/*
-+ * del_freeze_timeout - Delete timeout for freeze.
-+ *
-+ * @bdev:	block device struct
-+ *
-+ * Delete the delayed work for freeze timeout from the delayed work queue.
-+ */
-+void del_freeze_timeout(struct block_device *bdev)
-+{
-+	if (delayed_work_pending(&bdev->bd_freeze_timeout))
-+		cancel_delayed_work(&bdev->bd_freeze_timeout);
-+}
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/xfs/linux-2.6/xfs_ioctl.c linux-2.6.25-rc3-fr
-eeze/fs/xfs/linux-2.6/xfs_ioctl.c
---- linux-2.6.25-rc3.org/fs/xfs/linux-2.6/xfs_ioctl.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/xfs/linux-2.6/xfs_ioctl.c	2008-02-25 10:50:04.000000000 +0900
-@@ -911,7 +911,7 @@ xfs_ioctl(
- 			return -EPERM;
- 
- 		if (inode->i_sb->s_frozen == SB_UNFROZEN)
--			freeze_bdev(inode->i_sb->s_bdev);
-+			freeze_bdev(inode->i_sb->s_bdev, 0);
- 		return 0;
- 
- 	case XFS_IOC_THAW:
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/fs/xfs/xfs_fsops.c linux-2.6.25-rc3-freeze/fs/xf
-s/xfs_fsops.c
---- linux-2.6.25-rc3.org/fs/xfs/xfs_fsops.c	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/fs/xfs/xfs_fsops.c	2008-02-25 10:50:04.000000000 +0900
-@@ -623,7 +623,7 @@ xfs_fs_goingdown(
- {
- 	switch (inflags) {
- 	case XFS_FSOP_GOING_FLAGS_DEFAULT: {
--		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
-+		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, 0);
- 
- 		if (sb && !IS_ERR(sb)) {
- 			xfs_force_shutdown(mp, SHUTDOWN_FORCE_UMOUNT);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/include/linux/buffer_head.h linux-2.6.25-rc3-fre
-eze/include/linux/buffer_head.h
---- linux-2.6.25-rc3.org/include/linux/buffer_head.h	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/include/linux/buffer_head.h	2008-02-25 10:50:04.000000000 +0900
-@@ -170,7 +170,7 @@ int sync_blockdev(struct block_device *b
- void __wait_on_buffer(struct buffer_head *);
- wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
- int fsync_bdev(struct block_device *);
--struct super_block *freeze_bdev(struct block_device *);
-+struct super_block *freeze_bdev(struct block_device *, long timeout_msec);
- void thaw_bdev(struct block_device *, struct super_block *);
- int fsync_super(struct super_block *);
- int fsync_no_super(struct block_device *);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc3.org/include/linux/fs.h linux-2.6.25-rc3-freeze/inclu
-de/linux/fs.h
---- linux-2.6.25-rc3.org/include/linux/fs.h	2008-02-25 06:25:54.000000000 +0900
-+++ linux-2.6.25-rc3-freeze/include/linux/fs.h	2008-02-25 10:50:04.000000000 +0900
-@@ -8,6 +8,7 @@
- 
- #include <linux/limits.h>
- #include <linux/ioctl.h>
-+#include <linux/workqueue.h>
- 
- /*
-  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
-@@ -223,6 +224,9 @@ extern int dir_notify_enable;
- #define BMAP_IOCTL 1		/* obsolete - kept for compatibility */
- #define FIBMAP	   _IO(0x00,1)	/* bmap access */
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
-+#define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
-+#define FITHAW		_IOWR('X', 120, int)	/* Thaw */
-+#define	FIFREEZE_RESET_TIMEOUT	_IO(0x00, 3)	/* Reset freeze timeout */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -548,6 +552,11 @@ struct block_device {
- 	 * care to not mess up bd_private for that case.
- 	 */
- 	unsigned long		bd_private;
-+
-+	/* Delayed work for freeze */
-+	struct delayed_work	bd_freeze_timeout;
-+	/* Semaphore for freeze */
-+	struct semaphore	bd_freeze_sem;
- };
- 
- /*
-@@ -1926,7 +1935,9 @@ extern int do_vfs_ioctl(struct file *fil
- extern void get_filesystem(struct file_system_type *fs);
- extern void put_filesystem(struct file_system_type *fs);
- extern struct file_system_type *get_fs_type(const char *name);
-+extern void put_super(struct super_block *sb);
- extern struct super_block *get_super(struct block_device *);
-+extern struct super_block *get_super_without_lock(struct block_device *);
- extern struct super_block *user_get_super(dev_t);
- extern void drop_super(struct super_block *sb);
- 
-@@ -2070,7 +2081,6 @@ ssize_t simple_attr_read(struct file *fi
- ssize_t simple_attr_write(struct file *file, const char __user *buf,
- 			  size_t len, loff_t *ppos);
- 
+ 	/*
+-	 * First, drop modified flag: all accesses to the buffers
+-	 * will be tracked for a new trasaction only -bzzz
+-	 */
+-	spin_lock(&journal->j_list_lock);
+-	if (commit_transaction->t_buffers) {
+-		new_jh = jh = commit_transaction->t_buffers->b_tnext;
+-		do {
+-			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
+-					new_jh->b_modified == 0);
+-			new_jh->b_modified = 0;
+-			new_jh = new_jh->b_tnext;
+-		} while (new_jh != jh);
+-	}
+-	spin_unlock(&journal->j_list_lock);
 -
- #ifdef CONFIG_SECURITY
- static inline char *alloc_secdata(void)
- {
-@@ -2097,5 +2107,9 @@ int proc_nr_files(struct ctl_table *tabl
+-	/*
+ 	 * Now start flushing things to disk, in the order they appear
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+Index: linux-2.6/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/transaction.c
++++ linux-2.6/fs/jbd/transaction.c
+@@ -609,6 +609,12 @@ repeat:
+ 		goto done;
  
- int get_filesystem_list(char * buf);
- 
-+extern void add_freeze_timeout(struct block_device *bdev, long timeout_msec);
-+extern void del_freeze_timeout(struct block_device *bdev);
-+extern void freeze_timeout(struct work_struct *work);
+ 	/*
++	 * this is the first time this transaction is touching this buffer,
++	 * reset the modified flag
++	 */
++	jh->b_modified = 0;
 +
- #endif /* __KERNEL__ */
- #endif /* _LINUX_FS_H */
-
++	/*
+ 	 * If there is already a copy-out version of this buffer, then we don't
+ 	 * need to make another one
+ 	 */
+@@ -820,9 +826,16 @@ int journal_get_create_access(handle_t *
+ 
+ 	if (jh->b_transaction == NULL) {
+ 		jh->b_transaction = transaction;
++
++		/* first access by this transaction */
++		jh->b_modified = 0;
++
+ 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+ 		__journal_file_buffer(jh, transaction, BJ_Reserved);
+ 	} else if (jh->b_transaction == journal->j_committing_transaction) {
++		/* first access by this transaction */
++		jh->b_modified = 0;
++
+ 		JBUFFER_TRACE(jh, "set next transaction");
+ 		jh->b_next_transaction = transaction;
+ 	}
+Index: linux-2.6/fs/jbd2/commit.c
+===================================================================
+--- linux-2.6.orig/fs/jbd2/commit.c
++++ linux-2.6/fs/jbd2/commit.c
+@@ -520,22 +520,6 @@ void jbd2_journal_commit_transaction(jou
+ 	jbd_debug (3, "JBD: commit phase 2\n");
+ 
+ 	/*
+-	 * First, drop modified flag: all accesses to the buffers
+-	 * will be tracked for a new trasaction only -bzzz
+-	 */
+-	spin_lock(&journal->j_list_lock);
+-	if (commit_transaction->t_buffers) {
+-		new_jh = jh = commit_transaction->t_buffers->b_tnext;
+-		do {
+-			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
+-					new_jh->b_modified == 0);
+-			new_jh->b_modified = 0;
+-			new_jh = new_jh->b_tnext;
+-		} while (new_jh != jh);
+-	}
+-	spin_unlock(&journal->j_list_lock);
+-
+-	/*
+ 	 * Now start flushing things to disk, in the order they appear
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+Index: linux-2.6/fs/jbd2/transaction.c
+===================================================================
+--- linux-2.6.orig/fs/jbd2/transaction.c
++++ linux-2.6/fs/jbd2/transaction.c
+@@ -618,6 +618,12 @@ repeat:
+ 		goto done;
+ 
+ 	/*
++	 * this is the first time this transaction is touching this buffer,
++	 * reset the modified flag
++	 */
++       jh->b_modified = 0;
++
++	/*
+ 	 * If there is already a copy-out version of this buffer, then we don't
+ 	 * need to make another one
+ 	 */
+@@ -829,9 +835,16 @@ int jbd2_journal_get_create_access(handl
+ 
+ 	if (jh->b_transaction == NULL) {
+ 		jh->b_transaction = transaction;
++
++		/* first access by this transaction */
++		jh->b_modified = 0;
++
+ 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
+ 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
+ 	} else if (jh->b_transaction == journal->j_committing_transaction) {
++		/* first access by this transaction */
++		jh->b_modified = 0;
++
+ 		JBUFFER_TRACE(jh, "set next transaction");
+ 		jh->b_next_transaction = transaction;
+ 	}
