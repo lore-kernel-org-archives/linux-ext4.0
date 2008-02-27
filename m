@@ -1,9 +1,9 @@
 From: akpm@linux-foundation.org
-Subject: - ext4-use-ext4_group_first_block_no.patch removed from -mm tree
-Date: Wed, 27 Feb 2008 14:17:12 -0800
-Message-ID: <200802272217.m1RMHCRV000794@imap1.linux-foundation.org>
+Subject: - jbd2-sparse-warnings-in-revokec-journalc.patch removed from -mm tree
+Date: Wed, 27 Feb 2008 14:17:08 -0800
+Message-ID: <200802272217.m1RMH8u4000788@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-To: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org,
+To: harvey.harrison@gmail.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
@@ -11,81 +11,154 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: use ext4_group_first_block_no()
+     jbd2: sparse warnings in revoke.c, journal.c
 has been removed from the -mm tree.  Its filename was
-     ext4-use-ext4_group_first_block_no.patch
+     jbd2-sparse-warnings-in-revokec-journalc.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: use ext4_group_first_block_no()
-From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: jbd2: sparse warnings in revoke.c, journal.c
+From: Harvey Harrison <harvey.harrison@gmail.com>
 
-Use ext4_group_first_block_no() and assign the return values to
-ext2_fsblk_t variables.
+fs/jbd2/revoke.c:177:34: warning: Using plain integer as NULL pointer
+fs/jbd2/revoke.c:183:33: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:222:2: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:222:2: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:234:3: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:234:3: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:1972:2: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:1979:33: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:2005:13: warning: Using plain integer as NULL pointer
+fs/jbd2/journal.c:2012:17: warning: Using plain integer as NULL pointer
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c |    6 +++---
- fs/ext4/xattr.c  |    6 ++----
- 2 files changed, 5 insertions(+), 7 deletions(-)
+ fs/jbd2/journal.c |   12 ++++++------
+ fs/jbd2/revoke.c  |    4 ++--
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-use-ext4_group_first_block_no fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-use-ext4_group_first_block_no
-+++ a/fs/ext4/balloc.c
-@@ -48,7 +48,6 @@ void ext4_get_group_no_and_offset(struct
- unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 ext4_group_t block_group, struct ext4_group_desc *gdp)
+diff -puN fs/jbd/journal.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd/journal.c
+diff -puN fs/jbd/revoke.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd/revoke.c
+diff -puN fs/jbd2/journal.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd2/journal.c
+--- a/fs/jbd2/journal.c~jbd2-sparse-warnings-in-revokec-journalc
++++ a/fs/jbd2/journal.c
+@@ -219,7 +219,7 @@ static int jbd2_journal_start_thread(jou
+ 	if (IS_ERR(t))
+ 		return PTR_ERR(t);
+ 
+-	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
++	wait_event(journal->j_wait_done_commit, journal->j_task != NULL);
+ 	return 0;
+ }
+ 
+@@ -231,7 +231,7 @@ static void journal_kill_thread(journal_
+ 	while (journal->j_task) {
+ 		wake_up(&journal->j_wait_commit);
+ 		spin_unlock(&journal->j_state_lock);
+-		wait_event(journal->j_wait_done_commit, journal->j_task == 0);
++		wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
+ 		spin_lock(&journal->j_state_lock);
+ 	}
+ 	spin_unlock(&journal->j_state_lock);
+@@ -1974,14 +1974,14 @@ static int journal_init_jbd2_journal_hea
  {
--	unsigned long start;
- 	int bit, bit_max;
- 	unsigned free_blocks, group_blocks;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -106,11 +105,12 @@ unsigned ext4_init_block_bitmap(struct s
- 	free_blocks = group_blocks - bit_max;
+ 	int retval;
  
- 	if (bh) {
-+		ext4_fsblk_t start;
-+
- 		for (bit = 0; bit < bit_max; bit++)
- 			ext4_set_bit(bit, bh->b_data);
+-	J_ASSERT(jbd2_journal_head_cache == 0);
++	J_ASSERT(!jbd2_journal_head_cache);
+ 	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
+ 				sizeof(struct journal_head),
+ 				0,		/* offset */
+ 				SLAB_TEMPORARY,	/* flags */
+ 				NULL);		/* ctor */
+ 	retval = 0;
+-	if (jbd2_journal_head_cache == 0) {
++	if (!jbd2_journal_head_cache) {
+ 		retval = -ENOMEM;
+ 		printk(KERN_EMERG "JBD: no memory for journal_head cache\n");
+ 	}
+@@ -2007,14 +2007,14 @@ static struct journal_head *journal_allo
+ 	atomic_inc(&nr_journal_heads);
+ #endif
+ 	ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
+-	if (ret == 0) {
++	if (!ret) {
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		if (time_after(jiffies, last_warning + 5*HZ)) {
+ 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
+ 			       __FUNCTION__);
+ 			last_warning = jiffies;
+ 		}
+-		while (ret == 0) {
++		while (!ret) {
+ 			yield();
+ 			ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
+ 		}
+diff -puN fs/jbd2/revoke.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd2/revoke.c
+--- a/fs/jbd2/revoke.c~jbd2-sparse-warnings-in-revokec-journalc
++++ a/fs/jbd2/revoke.c
+@@ -174,13 +174,13 @@ int __init jbd2_journal_init_revoke_cach
+ 					   0,
+ 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
+ 					   NULL);
+-	if (jbd2_revoke_record_cache == 0)
++	if (!jbd2_revoke_record_cache)
+ 		return -ENOMEM;
  
--		start = block_group * EXT4_BLOCKS_PER_GROUP(sb) +
--			le32_to_cpu(sbi->s_es->s_first_data_block);
-+		start = ext4_group_first_block_no(sb, block_group);
- 
- 		/* Set bits for block and inode bitmaps, and inode table */
- 		ext4_set_bit(ext4_block_bitmap(sb, gdp) - start, bh->b_data);
-diff -puN fs/ext4/xattr.c~ext4-use-ext4_group_first_block_no fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~ext4-use-ext4_group_first_block_no
-+++ a/fs/ext4/xattr.c
-@@ -808,10 +808,8 @@ inserted:
- 			get_bh(new_bh);
- 		} else {
- 			/* We need to allocate a new block */
--			ext4_fsblk_t goal = le32_to_cpu(
--					EXT4_SB(sb)->s_es->s_first_data_block) +
--				(ext4_fsblk_t)EXT4_I(inode)->i_block_group *
--				EXT4_BLOCKS_PER_GROUP(sb);
-+			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
-+						EXT4_I(inode)->i_block_group);
- 			ext4_fsblk_t block = ext4_new_block(handle, inode,
- 							goal, &error);
- 			if (error)
+ 	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
+ 					   sizeof(struct jbd2_revoke_table_s),
+ 					   0, SLAB_TEMPORARY, NULL);
+-	if (jbd2_revoke_table_cache == 0) {
++	if (!jbd2_revoke_table_cache) {
+ 		kmem_cache_destroy(jbd2_revoke_record_cache);
+ 		jbd2_revoke_record_cache = NULL;
+ 		return -ENOMEM;
 _
 
-Patches currently in -mm which might be from akinobu.mita@gmail.com are
+Patches currently in -mm which might be from harvey.harrison@gmail.com are
 
 origin.patch
-ext2-improve-ext2_readdir-return-value.patch
-ext2-use-ext2_group_first_block_no.patch
-ext2-use-ext2_fsblk_t-type.patch
-ext3-use-ext3_group_first_block_no.patch
-ext3-add-missing-ext3_journal_stop.patch
-ext3-use-ext3_get_group_desc.patch
-ext3-check-ext3_journal_get_write_access-errors.patch
+git-x86.patch
+git-dvb.patch
+git-dlm.patch
+git-kvm.patch
+pata_amd-fix-sparse-warning.patch
+jffs2-include-function-prototype-for-jffs2_ioctl.patch
+jffs2-fix-sparse-warning-in-nodemgmtc.patch
+jffs2-fix-sparse-warning-in-writec.patch
+jffs2-fix-sparse-warnings-in-gcc.patch
+git-ubi.patch
+git-net.patch
+git-nfsd.patch
+remove-sparse-warning-for-mmzoneh.patch
+remove-sparse-warning-for-mmzoneh-checkpatch-fixes.patch
+adfs-work-around-bogus-sparse-warning.patch
+coda-add-static-to-functions-in-dirc.patch
+befs-fix-sparse-warning-in-linuxvfsc.patch
+autofs4-fix-sparse-warning-in-rootc.patch
+ncpfs-add-prototypes-to-ncp_fsh.patch
+ncpfs-fix-sparse-warnings-in-ioctlc.patch
+ncpfs-fix-sparse-warning-in-ncpsign_kernelc.patch
+serial-remove-double-initializer.patch
+char-make-functions-static-in-synclinkmpc.patch
+kprobes-introduce-kprobe_handle_fault.patch
+kprobes-remove-preempt_enable-disable-from-kprobe_handle_fault.patch
+capi-fix-sparse-warnings-using-integer-as-null-pointer.patch
+avm-fix-sparse-warning-using-integer-as-null-pointer.patch
+eicon-fix-sparse-integer-as-null-pointer-warnings.patch
+fbcon-replace-mono_col-macro-with-static-inline.patch
+jbd-sparse-warnings-in-revokec-journalc.patch
+udf-fix-sparse-warning-in-nameic.patch
+reiserfs-fix-sparse-warnings-in-fix_nodec.patch
+reiserfs-fix-sparse-warnings-in-do_balanc.patch
+reiserfs-fix-sparse-warning-in-nameic.patch
+reiserfs-fix-sparse-warnings-in-lbalancec.patch
+reiserfs-fix-sparse-warning-in-journalc.patch
+reiserfs-fix-more-sparse-warnings-in-do_balanc.patch
+cgroup-fix-sparse-warning-of-shadow-symbol-in-cgroupc.patch
