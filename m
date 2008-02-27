@@ -1,98 +1,74 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: 2.6.25-rc3-git1-ext4-1 released
-Date: Wed, 27 Feb 2008 14:59:09 -0500
-Message-ID: <E1JUSQn-0003mN-7U@closure.thunk.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759529AbYB0UAL@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] make ext3_xattr_list() static
+Date: Wed, 27 Feb 2008 23:20:51 +0200
+Message-ID: <20080227212051.GN29269@cs181133002.pp.htv.fi>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp6.pp.htv.fi ([213.243.153.40]:49156 "EHLO smtp6.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760330AbYB0VWB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Feb 2008 16:22:01 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+This patch makes the needlessly global ext3_xattr_list() static.
 
-I've just released 2.6.25-rc3-git1-ext4-1.  It removes the patches that
-have been pulled into mainline by Linus.
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
-As a git tree:
+---
 
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.25-rc3-git1-ext4-1
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.25-rc3-git1-ext4-1
+ fs/ext3/xattr.c |    4 +++-
+ fs/ext3/xattr.h |    7 -------
+ 2 files changed, 3 insertions(+), 8 deletions(-)
 
-As a patchset:
-
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.25-rc3-git1-ext4-1
-
-                                                - Ted
-
-Akinobu Mita (3):
-      ext4: use ext4_group_first_block_no()
-      ext4: use ext4_get_group_desc()
-      ext4: check ext4_journal_get_write_access() errors
-
-Akira Fujita (4):
-      ext4: online defrad header file changes
-      ext4: online defrag-- Allocate new contiguous blocks with mballoc
-      ext4: online defrag -- Move the file data to the new blocks
-      Free space fragmentation functions
-
-Alex Tomas (2):
-      vfs: add basic delayed allocation support
-      ext4: Add basic delayed allocation support
-
-Andi Kleen (1):
-      Convert ext4 to use unlocked_ioctl v2
-
-Aneesh Kumar K.V (5):
-      ext4:  Convert list_for_each_rcu() to list_for_each_entry_rcu()
-      ext4: undo the stable boundary patch changes
-      ext4: Use page_mkwrite vma_operations to get mmap write notification.
-      ext4: Enable delalloc and mballoc by default.
-      ext4: Show delalloc options
-
-Eric Sandeen (1):
-      ext4: reduce mballoc stack usage with noinline
-
-Harvey Harrison (1):
-      jbd2: sparse warnings in revoke.c, journal.c
-
-Hisashi Hifumi (1):
-      ext4: fdatasync should skip metadata writeout when overwriting
-
-Marcin Slusarz (2):
-      ext4: le*_add_cpu conversion
-      ext4: convert byte order of constant instead of variable
-
-Mingming Cao (3):
-      ext4: remove extra define of ext4_new_blocks_old from mballoc.c
-      jbd: blocks reservation fix for large block support
-      jbd2: blocks reservation fix for large block support
-
-Theodore Ts'o (2):
-      ext4: New inode allocation for FLEX_BG meta-data groups.
-      ext4: Stable/Unstable boundary
-
- fs/buffer.c                     |    3 +-
- fs/ext4/Makefile                |    2 +-
- fs/ext4/balloc.c                |   41 +-
- fs/ext4/defrag.c                | 2206 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/dir.c                   |    2 +-
- fs/ext4/extents.c               |   83 +-
- fs/ext4/file.c                  |   21 +-
- fs/ext4/fsync.c                 |    3 +
- fs/ext4/ialloc.c                |  108 ++-
- fs/ext4/inode.c                 |  191 +++-
- fs/ext4/ioctl.c                 |   25 +-
- fs/ext4/mballoc.c               |   70 +-
- fs/ext4/namei.c                 |    9 +-
- fs/ext4/resize.c                |    6 +-
- fs/ext4/super.c                 |   82 ++-
- fs/ext4/xattr.c                 |   12 +-
- fs/jbd/journal.c                |    7 +-
- fs/jbd2/journal.c               |   20 +-
- fs/jbd2/revoke.c                |    4 +-
- fs/mpage.c                      |  406 +++++++
- include/linux/ext4_fs.h         |  101 ++-
- include/linux/ext4_fs_extents.h |   23 +
- include/linux/ext4_fs_sb.h      |    3 +
- include/linux/mpage.h           |    2 +
- 24 files changed, 3283 insertions(+), 147 deletions(-)
- create mode 100644 fs/ext4/defrag.c
+8fb5e610acafcbef4a9980042902c9269abf51b6 diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index fb89c29..4f9f187 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -99,6 +99,8 @@ static struct buffer_head *ext3_xattr_cache_find(struct inode *,
+ 						 struct mb_cache_entry **);
+ static void ext3_xattr_rehash(struct ext3_xattr_header *,
+ 			      struct ext3_xattr_entry *);
++static int ext3_xattr_list(struct inode *inode, char *buffer,
++			   size_t buffer_size);
+ 
+ static struct mb_cache *ext3_xattr_cache;
+ 
+@@ -427,7 +429,7 @@ cleanup:
+  * Returns a negative error number on failure, or the number of bytes
+  * used / required on success.
+  */
+-int
++static int
+ ext3_xattr_list(struct inode *inode, char *buffer, size_t buffer_size)
+ {
+ 	int i_error, b_error;
+diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
+index 6b1ae1c..148a4df 100644
+--- a/fs/ext3/xattr.h
++++ b/fs/ext3/xattr.h
+@@ -67,7 +67,6 @@ extern struct xattr_handler ext3_xattr_security_handler;
+ extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
+ 
+ extern int ext3_xattr_get(struct inode *, int, const char *, void *, size_t);
+-extern int ext3_xattr_list(struct inode *, char *, size_t);
+ extern int ext3_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+ extern int ext3_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
+ 
+@@ -89,12 +88,6 @@ ext3_xattr_get(struct inode *inode, int name_index, const char *name,
+ }
+ 
+ static inline int
+-ext3_xattr_list(struct inode *inode, void *buffer, size_t size)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+ ext3_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	       const void *value, size_t size, int flags)
+ {
