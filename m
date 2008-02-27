@@ -1,164 +1,114 @@
 From: akpm@linux-foundation.org
-Subject: - jbd2-sparse-warnings-in-revokec-journalc.patch removed from -mm tree
-Date: Wed, 27 Feb 2008 14:17:08 -0800
-Message-ID: <200802272217.m1RMH8u4000788@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: harvey.harrison@gmail.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch removed from -mm tree
+Date: Wed, 27 Feb 2008 14:17:03 -0800
+Message-ID: <200802272217.m1RMH3uh000781@imap1.linux-foundation.org>
+To: hifumi.hisashi@oss.ntt.co.jp, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([207.189.120.13]:39748 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760887AbYB0WVG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Feb 2008 17:21:06 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd2: sparse warnings in revoke.c, journal.c
+     ext4: fdatasync should skip metadata writeout when overwriting
 has been removed from the -mm tree.  Its filename was
-     jbd2-sparse-warnings-in-revokec-journalc.patch
+     ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd2: sparse warnings in revoke.c, journal.c
-From: Harvey Harrison <harvey.harrison@gmail.com>
+Subject: ext4: fdatasync should skip metadata writeout when overwriting
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
-fs/jbd2/revoke.c:177:34: warning: Using plain integer as NULL pointer
-fs/jbd2/revoke.c:183:33: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:222:2: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:222:2: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:234:3: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:234:3: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:1972:2: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:1979:33: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:2005:13: warning: Using plain integer as NULL pointer
-fs/jbd2/journal.c:2012:17: warning: Using plain integer as NULL pointer
+Currently fdatasync is identical to fsync in ext3.
 
-Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
+I think fdatasync should skip journal flush in data=ordered and
+data=writeback mode when it overwrites to already-instantiated blocks on
+HDD.  When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal
+writeout because this indicates only atime or/and mtime updates.
+
+Following patch is the same approach of ext2's fsync code(ext2_sync_file).
+
+I did a performance test using the sysbench.
+
+#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G
+--file-test-mode=rndwr --file-fsync-mode=fdatasync run
+
+The result on ext3 was:
+
+	-2.6.24
+	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
+	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
+	  775.45 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          64.5814s
+	    total number of events:              50080
+	    total time taken by event execution: 3713.9836
+	    per-request statistics:
+	         min:                            0.0000s
+	         avg:                            0.0742s
+	         max:                            0.9375s
+	         approx.  95 percentile:         0.2901s
+
+	Threads fairness:
+	    events (avg/stddev):           391.2500/23.26
+	    execution time (avg/stddev):   29.0155/1.99
+
+	-2.6.24-patched
+	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
+	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
+	1050.83 Requests/sec executed
+
+	Test execution summary:
+	    total time:                          47.5900s
+	    total number of events:              50009
+	    total time taken by event execution: 2934.5768
+	    per-request statistics:
+ 	         min:                            0.0000s
+	         avg:                            0.0587s
+ 	         max:                            0.8938s
+	         approx.  95 percentile:         0.1993s
+
+	Threads fairness:
+	    events (avg/stddev):           390.6953/22.64
+	    execution time (avg/stddev):   22.9264/1.17
+
+Filesystem I/O throughput was improved.
+
+Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Acked-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd2/journal.c |   12 ++++++------
- fs/jbd2/revoke.c  |    4 ++--
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ fs/ext4/fsync.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
-diff -puN fs/jbd/journal.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd/journal.c
-diff -puN fs/jbd/revoke.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd/revoke.c
-diff -puN fs/jbd2/journal.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd2-sparse-warnings-in-revokec-journalc
-+++ a/fs/jbd2/journal.c
-@@ -219,7 +219,7 @@ static int jbd2_journal_start_thread(jou
- 	if (IS_ERR(t))
- 		return PTR_ERR(t);
- 
--	wait_event(journal->j_wait_done_commit, journal->j_task != 0);
-+	wait_event(journal->j_wait_done_commit, journal->j_task != NULL);
- 	return 0;
- }
- 
-@@ -231,7 +231,7 @@ static void journal_kill_thread(journal_
- 	while (journal->j_task) {
- 		wake_up(&journal->j_wait_commit);
- 		spin_unlock(&journal->j_state_lock);
--		wait_event(journal->j_wait_done_commit, journal->j_task == 0);
-+		wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
- 		spin_lock(&journal->j_state_lock);
+diff -puN fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext4/fsync.c
+--- a/fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting
++++ a/fs/ext4/fsync.c
+@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
+ 		goto out;
  	}
- 	spin_unlock(&journal->j_state_lock);
-@@ -1974,14 +1974,14 @@ static int journal_init_jbd2_journal_hea
- {
- 	int retval;
  
--	J_ASSERT(jbd2_journal_head_cache == 0);
-+	J_ASSERT(!jbd2_journal_head_cache);
- 	jbd2_journal_head_cache = kmem_cache_create("jbd2_journal_head",
- 				sizeof(struct journal_head),
- 				0,		/* offset */
- 				SLAB_TEMPORARY,	/* flags */
- 				NULL);		/* ctor */
- 	retval = 0;
--	if (jbd2_journal_head_cache == 0) {
-+	if (!jbd2_journal_head_cache) {
- 		retval = -ENOMEM;
- 		printk(KERN_EMERG "JBD: no memory for journal_head cache\n");
- 	}
-@@ -2007,14 +2007,14 @@ static struct journal_head *journal_allo
- 	atomic_inc(&nr_journal_heads);
- #endif
- 	ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
--	if (ret == 0) {
-+	if (!ret) {
- 		jbd_debug(1, "out of memory for journal_head\n");
- 		if (time_after(jiffies, last_warning + 5*HZ)) {
- 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
- 			       __FUNCTION__);
- 			last_warning = jiffies;
- 		}
--		while (ret == 0) {
-+		while (!ret) {
- 			yield();
- 			ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
- 		}
-diff -puN fs/jbd2/revoke.c~jbd2-sparse-warnings-in-revokec-journalc fs/jbd2/revoke.c
---- a/fs/jbd2/revoke.c~jbd2-sparse-warnings-in-revokec-journalc
-+++ a/fs/jbd2/revoke.c
-@@ -174,13 +174,13 @@ int __init jbd2_journal_init_revoke_cach
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
--	if (jbd2_revoke_record_cache == 0)
-+	if (!jbd2_revoke_record_cache)
- 		return -ENOMEM;
- 
- 	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
- 					   sizeof(struct jbd2_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (jbd2_revoke_table_cache == 0) {
-+	if (!jbd2_revoke_table_cache) {
- 		kmem_cache_destroy(jbd2_revoke_record_cache);
- 		jbd2_revoke_record_cache = NULL;
- 		return -ENOMEM;
++        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
++                goto out;
++
+ 	/*
+ 	 * The VFS has written the file data.  If the inode is unaltered
+ 	 * then we need not start a commit.
 _
 
-Patches currently in -mm which might be from harvey.harrison@gmail.com are
+Patches currently in -mm which might be from hifumi.hisashi@oss.ntt.co.jp are
 
-origin.patch
-git-x86.patch
-git-dvb.patch
-git-dlm.patch
-git-kvm.patch
-pata_amd-fix-sparse-warning.patch
-jffs2-include-function-prototype-for-jffs2_ioctl.patch
-jffs2-fix-sparse-warning-in-nodemgmtc.patch
-jffs2-fix-sparse-warning-in-writec.patch
-jffs2-fix-sparse-warnings-in-gcc.patch
-git-ubi.patch
-git-net.patch
-git-nfsd.patch
-remove-sparse-warning-for-mmzoneh.patch
-remove-sparse-warning-for-mmzoneh-checkpatch-fixes.patch
-adfs-work-around-bogus-sparse-warning.patch
-coda-add-static-to-functions-in-dirc.patch
-befs-fix-sparse-warning-in-linuxvfsc.patch
-autofs4-fix-sparse-warning-in-rootc.patch
-ncpfs-add-prototypes-to-ncp_fsh.patch
-ncpfs-fix-sparse-warnings-in-ioctlc.patch
-ncpfs-fix-sparse-warning-in-ncpsign_kernelc.patch
-serial-remove-double-initializer.patch
-char-make-functions-static-in-synclinkmpc.patch
-kprobes-introduce-kprobe_handle_fault.patch
-kprobes-remove-preempt_enable-disable-from-kprobe_handle_fault.patch
-capi-fix-sparse-warnings-using-integer-as-null-pointer.patch
-avm-fix-sparse-warning-using-integer-as-null-pointer.patch
-eicon-fix-sparse-integer-as-null-pointer-warnings.patch
-fbcon-replace-mono_col-macro-with-static-inline.patch
-jbd-sparse-warnings-in-revokec-journalc.patch
-udf-fix-sparse-warning-in-nameic.patch
-reiserfs-fix-sparse-warnings-in-fix_nodec.patch
-reiserfs-fix-sparse-warnings-in-do_balanc.patch
-reiserfs-fix-sparse-warning-in-nameic.patch
-reiserfs-fix-sparse-warnings-in-lbalancec.patch
-reiserfs-fix-sparse-warning-in-journalc.patch
-reiserfs-fix-more-sparse-warnings-in-do_balanc.patch
-cgroup-fix-sparse-warning-of-shadow-symbol-in-cgroupc.patch
+fix-invalidate_inode_pages2_range-to-not-clear-ret.patch
+fix-invalidate_inode_pages2_range-to-not-clear-ret-checkpatch-fixes.patch
+ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
