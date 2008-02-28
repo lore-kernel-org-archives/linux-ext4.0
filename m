@@ -1,240 +1,152 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC][PATCH] ext4: Convert uninitialized extent to initialized extent in case of file system full
-Date: Thu, 28 Feb 2008 23:35:10 +0530
-Message-ID: <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][PATCH] ext4: Use page_mkwrite vma_operations to get mmap write notification.
+Date: Thu, 28 Feb 2008 23:35:08 +0530
+Message-ID: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:59496 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756880AbYB1SFW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Feb 2008 13:05:22 -0500
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:36772 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755737AbYB1SFU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Feb 2008 13:05:20 -0500
 Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1SI58BL009617
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:08 +1100
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1SI5SSw028251
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:28 +1100
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1SI5Lqk4657340
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:21 +1100
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1SI5Grv4657334
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:16 +1100
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1SI5Kuw012573
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:20 +1100
-In-Reply-To: <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1SI5F02012518
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:16 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A write to prealloc area cause the split of unititalized extent into a initialized
-and uninitialized extent. If we don't have space to add new extent information instead
-of returning error convert the existing uninitialized extent to initialized one. We
-need to zero out the blocks corresponding to the extent to prevent wrong data reaching
-userspace.
+We would like to get notified when we are doing a write on mmap section.
+This is needed with respect to preallocated area. We split the preallocated
+area into initialzed extent and uninitialzed extent in the call back. This
+let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
+that would result in data loss. The changes are also needed to handle ENOSPC
+when writing to an mmap section of files with holes.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/extents.c |  164 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 157 insertions(+), 7 deletions(-)
+ fs/ext4/file.c          |   19 +++++++++++++++-
+ fs/ext4/inode.c         |   54 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/ext4_fs.h |    1 +
+ 3 files changed, 73 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d315cc1..39a8beb 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2136,6 +2136,137 @@ void ext4_ext_release(struct super_block *sb)
- #endif
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 20507a2..77341c1 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -123,6 +123,23 @@ force_commit:
+ 	return ret;
  }
  
-+static int extend_credit_for_zeroout(handle_t *handle, struct inode *inode)
++static struct vm_operations_struct ext4_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite   = ext4_page_mkwrite,
++};
++
++static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
 +{
-+	int retval = 0, needed;
++	struct address_space *mapping = file->f_mapping;
 +
-+	if (handle->h_buffer_credits > EXT4_RESERVE_TRANS_BLOCKS)
-+		return 0;
-+
-+	/* number of filesytem blocks in one page */
-+	needed = 1 << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+
-+	if (ext4_journal_extend(handle, needed) != 0)
-+		retval = ext4_journal_restart(handle, needed);
-+
-+	return retval;
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext4_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
 +}
 +
-+/* FIXME!! we need to try to merge to left or right after zerout  */
-+static int ext4_ext_zeroout(handle_t *handle, struct inode *inode,
-+				ext4_lblk_t iblock, struct ext4_extent *ex)
-+{
-+	ext4_lblk_t ee_block;
-+	unsigned int ee_len, blkcount, blocksize;
-+	loff_t pos;
-+	pgoff_t index, skip_index;
-+	unsigned long offset;
-+	struct page *page;
-+	struct address_space *mapping = inode->i_mapping;
-+	struct buffer_head *head, *bh;
-+	int err = 0;
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+@@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext4_compat_ioctl,
+ #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext4_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext4_release_file,
+ 	.fsync		= ext4_sync_file,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5b5d63d..62aafc3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3490,3 +3490,57 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 
+ 	return err;
+ }
 +
-+	ee_block = le32_to_cpu(ex->ee_block);
-+	ee_len = blkcount = ext4_ext_get_actual_len(ex);
-+	blocksize = inode->i_sb->s_blocksize;
++int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
++{
++	unsigned long end;
++	loff_t size;
++	handle_t *handle;
++	int ret = -EINVAL, needed_blocks;
++	struct file *file   = vma->vm_file;
++	struct inode *inode = file->f_path.dentry->d_inode;
++
++	needed_blocks = ext4_writepage_trans_blocks(inode);
++	/* We need to take inode mutex to prevent parallel write */
++	mutex_lock(&inode->i_mutex);
++	lock_page(page);
++	size = i_size_read(inode);
++	if ((page->mapping != inode->i_mapping) ||
++	    (page_offset(page) > size)) {
++		/* page got truncated out from underneath us */
++		goto out_unlock;
++	}
++	/* page is wholly or partially inside EOF */
++	if (((page->index + 1) << PAGE_CACHE_SHIFT) > size)
++		end = size & ~PAGE_CACHE_MASK;
++	else
++		end = PAGE_CACHE_SIZE;
 +
 +	/*
-+	 * find the skip index. We can't call __grab_cache_page for this
-+	 * because we are in the writeout of this page and we already have
-+	 * taken the lock on this page
++	 * if ext4_get_block resulted in a split of an uninitialized extent,
++	 * in file system full case, we will have to take the journal write
++	 * access and zero out the page.
 +	 */
-+	pos = iblock <<  inode->i_blkbits;
-+	skip_index = pos >> PAGE_CACHE_SHIFT;
-+
-+	while (blkcount) {
-+		pos = (ee_block  + ee_len - blkcount) << inode->i_blkbits;
-+		index = pos >> PAGE_CACHE_SHIFT;
-+		offset = (pos & (PAGE_CACHE_SIZE - 1));
-+		if (index == skip_index) {
-+			/* Page will already be locked via
-+			 * write_begin or writepage
-+			 */
-+			read_lock_irq(&mapping->tree_lock);
-+			page = radix_tree_lookup(&mapping->page_tree, index);
-+			read_unlock_irq(&mapping->tree_lock);
-+			if (page)
-+				page_cache_get(page);
-+			else
-+				return -ENOMEM;
-+		} else {
-+			page = __grab_cache_page(mapping, index);
-+			if (!page)
-+				return -ENOMEM;
-+		}
-+
-+		if (!page_has_buffers(page))
-+			create_empty_buffers(page, blocksize, 0);
-+
-+		/* extent the credit in the journal */
-+		extend_credit_for_zeroout(handle, inode);
-+
-+		head = page_buffers(page);
-+		/* Look for the buffer_head which map the block */
-+		bh = head;
-+		while (offset > 0) {
-+			bh = bh->b_this_page;
-+			offset -= blocksize;
-+		}
-+		offset = (pos & (PAGE_CACHE_SIZE - 1));
-+
-+		/* Now write all the buffer_heads in the page */
-+		do {
-+			if (ext4_should_journal_data(inode)) {
-+				err = ext4_journal_get_write_access(handle, bh);
-+				if (err)
-+					goto err_out;
-+			}
-+			if (buffer_new(bh)) {
-+				unmap_underlying_metadata(bh->b_bdev,
-+								bh->b_blocknr);
-+				if (!PageUptodate(page))
-+					zero_user(page, offset, blocksize);
-+				clear_buffer_new(bh);
-+			}
-+			/* Now mark the buffer uptodate. since we
-+			 * have zero out the buffer
-+			 */
-+			set_buffer_uptodate(bh);
-+			offset += blocksize;
-+			if (ext4_should_journal_data(inode)) {
-+				err = ext4_journal_dirty_metadata(handle, bh);
-+				if (err)
-+					goto err_out;
-+			} else {
-+				if (ext4_should_order_data(inode)) {
-+					err = ext4_journal_dirty_data(handle,
-+									bh);
-+					if (err)
-+						goto err_out;
-+				}
-+				mark_buffer_dirty(bh);
-+			}
-+
-+			bh = bh->b_this_page;
-+			blkcount--;
-+		} while ((bh != head) && (blkcount > 0));
-+		/* Now that we zeroed the non uptodate
-+		 * page mark the pge uptodate
-+		 */
-+		SetPageUptodate(page);
-+		/* only unlock if we have locked */
-+		if (index != skip_index)
-+			unlock_page(page);
-+		page_cache_release(page);
++	handle = ext4_journal_start(inode, needed_blocks);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out_unlock;
 +	}
++	/* Will zero out the pages if buffer is marked new */
++	ret = block_prepare_write(page, 0, end, ext4_get_block);
 +
-+	return 0;
-+err_out:
++	/*
++	 * Now call commit_write to mark the buffer dirty and page
++	 * uptodate. page_mkwrite makes the page dirty towards the
++	 * end. We don't want to mark the buffer dirty for
++	 * journalled mode.
++	 */
++	 if (!ext4_should_journal_data(inode))
++		 ret = block_commit_write(page, 0, end);
++
++	ext4_journal_stop(handle);
++out_unlock:
 +	unlock_page(page);
-+	page_cache_release(page);
-+	return err;
++	mutex_unlock(&inode->i_mutex);
++	return ret;
 +}
-+
- /*
-  * This function is called by ext4_ext_get_blocks() if someone tries to write
-  * to an uninitialized extent. It may result in splitting the uninitialized
-@@ -2202,14 +2333,20 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
- 		ext4_ext_mark_uninitialized(ex3);
- 		err = ext4_ext_insert_extent(handle, inode, path, ex3);
--		if (err) {
-+		if (err == -ENOSPC) {
-+			err =  ext4_ext_zeroout(handle, inode,
-+							iblock, &orig_ex);
-+			if (err)
-+				goto fix_extent_len;
-+			/* update the extent length and mark as initialized */
- 			ex->ee_block = orig_ex.ee_block;
- 			ex->ee_len   = orig_ex.ee_len;
- 			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
--			ext4_ext_mark_uninitialized(ex);
- 			ext4_ext_dirty(handle, inode, path + depth);
--			goto out;
--		}
-+			return le16_to_cpu(ex->ee_len);
-+
-+		} else if (err)
-+			goto fix_extent_len;
- 		/*
- 		 * The depth, and hence eh & ex might change
- 		 * as part of the insert above.
-@@ -2295,15 +2432,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	goto out;
- insert:
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
--	if (err) {
-+	if (err == -ENOSPC) {
-+		err =  ext4_ext_zeroout(handle, inode, iblock, &orig_ex);
-+		if (err)
-+			goto fix_extent_len;
-+		/* update the extent length and mark as initialized */
- 		ex->ee_block = orig_ex.ee_block;
- 		ex->ee_len   = orig_ex.ee_len;
- 		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
--		ext4_ext_mark_uninitialized(ex);
- 		ext4_ext_dirty(handle, inode, path + depth);
--	}
-+		return le16_to_cpu(ex->ee_len);
-+	} else if (err)
-+		goto fix_extent_len;
- out:
- 	return err ? err : allocated;
-+
-+fix_extent_len:
-+	ex->ee_block = orig_ex.ee_block;
-+	ex->ee_len   = orig_ex.ee_len;
-+	ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
-+	ext4_ext_mark_uninitialized(ex);
-+	ext4_ext_dirty(handle, inode, path + depth);
-+	return err;
- }
+diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
+index 22810b1..8f5a563 100644
+--- a/include/linux/ext4_fs.h
++++ b/include/linux/ext4_fs.h
+@@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+ 		struct address_space *mapping, loff_t from);
++extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
  
- /*
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
 -- 
 1.5.4.3.325.g6d216.dirty
 
