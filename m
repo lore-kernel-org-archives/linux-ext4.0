@@ -1,114 +1,70 @@
-From: akpm@linux-foundation.org
-Subject: - ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch removed from -mm tree
-Date: Wed, 27 Feb 2008 14:17:03 -0800
-Message-ID: <200802272217.m1RMH3uh000781@imap1.linux-foundation.org>
-To: hifumi.hisashi@oss.ntt.co.jp, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC][PATCH] ext4: Enable extent format for symlink.
+Date: Thu, 28 Feb 2008 23:35:11 +0530
+Message-ID: <1204221911-9753-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([207.189.120.13]:39748 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760887AbYB0WVG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Feb 2008 17:21:06 -0500
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:52790 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755737AbYB1SF0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Feb 2008 13:05:26 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1SI588G018708
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:08 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1SI91kJ276898
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:09:02 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1SI5NJA012621
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 05:05:24 +1100
+In-Reply-To: <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This patch enable extent format for normal symlink. Extent format enables
+to refere file system blocks > 32 bits. Enabling extent format for symlink
+enables to have symlink block beyond 2**32 blocks. We still don't enable
+extent format for fast symlink.
 
-The patch titled
-     ext4: fdatasync should skip metadata writeout when overwriting
-has been removed from the -mm tree.  Its filename was
-     ext4-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
-
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: fdatasync should skip metadata writeout when overwriting
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-
-Currently fdatasync is identical to fsync in ext3.
-
-I think fdatasync should skip journal flush in data=ordered and
-data=writeback mode when it overwrites to already-instantiated blocks on
-HDD.  When I_DIRTY_DATASYNC flag is not set, fdatasync should skip journal
-writeout because this indicates only atime or/and mtime updates.
-
-Following patch is the same approach of ext2's fsync code(ext2_sync_file).
-
-I did a performance test using the sysbench.
-
-#sysbench --num-threads=128 --max-requests=50000 --test=fileio --file-total-size=128G
---file-test-mode=rndwr --file-fsync-mode=fdatasync run
-
-The result on ext3 was:
-
-	-2.6.24
-	Operations performed:  0 Read, 50080 Write, 59600 Other = 109680 Total
-	Read 0b  Written 782.5Mb  Total transferred 782.5Mb  (12.116Mb/sec)
-	  775.45 Requests/sec executed
-
-	Test execution summary:
-	    total time:                          64.5814s
-	    total number of events:              50080
-	    total time taken by event execution: 3713.9836
-	    per-request statistics:
-	         min:                            0.0000s
-	         avg:                            0.0742s
-	         max:                            0.9375s
-	         approx.  95 percentile:         0.2901s
-
-	Threads fairness:
-	    events (avg/stddev):           391.2500/23.26
-	    execution time (avg/stddev):   29.0155/1.99
-
-	-2.6.24-patched
-	Operations performed:  0 Read, 50009 Write, 61596 Other = 111605 Total
-	Read 0b  Written 781.39Mb  Total transferred 781.39Mb  (16.419Mb/sec)
-	1050.83 Requests/sec executed
-
-	Test execution summary:
-	    total time:                          47.5900s
-	    total number of events:              50009
-	    total time taken by event execution: 2934.5768
-	    per-request statistics:
- 	         min:                            0.0000s
-	         avg:                            0.0587s
- 	         max:                            0.8938s
-	         approx.  95 percentile:         0.1993s
-
-	Threads fairness:
-	    events (avg/stddev):           390.6953/22.64
-	    execution time (avg/stddev):   22.9264/1.17
-
-Filesystem I/O throughput was improved.
-
-Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/ext4/ialloc.c |    4 ++--
+ fs/ext4/namei.c  |    2 ++
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
- fs/ext4/fsync.c |    3 +++
- 1 file changed, 3 insertions(+)
-
-diff -puN fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting fs/ext4/fsync.c
---- a/fs/ext4/fsync.c~ext4-fdatasync-should-skip-metadata-writeout-when-overwriting
-+++ a/fs/ext4/fsync.c
-@@ -72,6 +72,9 @@ int ext4_sync_file(struct file * file, s
- 		goto out;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 78d1094..1462189 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -842,8 +842,8 @@ got:
+ 		goto fail_free_drop;
  	}
- 
-+        if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
-+                goto out;
-+
- 	/*
- 	 * The VFS has written the file data.  If the inode is unaltered
- 	 * then we need not start a commit.
-_
+ 	if (test_opt(sb, EXTENTS)) {
+-		/* set extent flag only for diretory and file */
+-		if (S_ISDIR(mode) || S_ISREG(mode)) {
++		/* set extent flag only for diretory, file and normal symlink*/
++		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+ 			EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+ 			ext4_ext_tree_init(handle, inode);
+ 			err = ext4_update_incompat_feature(handle, sb,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index da942bc..63c33e0 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2222,6 +2222,8 @@ retry:
+ 			goto out_stop;
+ 		}
+ 	} else {
++		/* clear the extent format for fast symlink */
++		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
+ 		inode->i_op = &ext4_fast_symlink_inode_operations;
+ 		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
+ 		inode->i_size = l-1;
+-- 
+1.5.4.3.325.g6d216.dirty
 
-Patches currently in -mm which might be from hifumi.hisashi@oss.ntt.co.jp are
-
-fix-invalidate_inode_pages2_range-to-not-clear-ret.patch
-fix-invalidate_inode_pages2_range-to-not-clear-ret-checkpatch-fixes.patch
-ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
