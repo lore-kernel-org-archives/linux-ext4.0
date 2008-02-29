@@ -1,174 +1,227 @@
-From: akpm@linux-foundation.org
-Subject: + use-page_cache_xxx-in-ext2-fix.patch added to -mm tree
-Date: Fri, 29 Feb 2008 01:29:05 -0800
-Message-ID: <200802290938.m1T9cOWo015837@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: akpm@linux-foundation.org, clameter@sgi.com,
-	linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
+	extent in case of file system full
+Date: Fri, 29 Feb 2008 16:39:24 +0530
+Message-ID: <20080229110924.GA16757@skywalker>
+References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204240440.3609.26.camel@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:60426 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752562AbYB2LKp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Feb 2008 06:10:45 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m1TBBO3R031828
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 22:11:24 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1TBAbkS2855040
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 22:10:37 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1TBAb2W026268
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 22:10:37 +1100
+Content-Disposition: inline
+In-Reply-To: <1204240440.3609.26.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+On Thu, Feb 28, 2008 at 03:14:00PM -0800, Mingming Cao wrote:
+> On Thu, 2008-02-28 at 23:35 +0530, Aneesh Kumar K.V wrote:
+> > A write to prealloc area cause the split of unititalized extent into a initialized
+> > and uninitialized extent. If we don't have space to add new extent information instead
+> > of returning error convert the existing uninitialized extent to initialized one. We
+> > need to zero out the blocks corresponding to the extent to prevent wrong data reaching
+> > userspace.
+> > 
+> > +
+
+....
+
+> 
+> The complexity added to the code to handle the corner case seems not
+> worth the effort. 
+> 
+> One simple solution is submit bio directly to zero out the blocks on
+> disk, and wait for that to finish before clear the uninitialized bit. On
+> a 4K block size case, the max size of an uninitialized extents is 128MB,
+> and since the blocks are all contigous on disk, a single IO could done
+> the job, the latency should not be a too big issue. After all when a
+> filesystem is full, it's already performs slowly.
+
+This is the change that i have now. Yet to run the full test on that.
+But seems to be working for simple tests.
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d315cc1..26396e2 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2136,6 +2136,55 @@ void ext4_ext_release(struct super_block *sb)
+ #endif
+ }
+ 
++static void bi_complete(struct bio *bio, int error)
++{
++	complete((struct completion*)bio->bi_private);
++}
++
++/* FIXME!! we need to try to merge to left or right after zerout  */
++static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
++{
++	int ret = -EIO;
++	struct bio *bio;
++	int blkbits, blocksize;
++	ext4_fsblk_t ee_pblock;
++	unsigned int ee_len, i;
++	struct completion event;
++
++
++	blkbits   = inode->i_blkbits;
++	blocksize = inode->i_sb->s_blocksize;
++	ee_len    = ext4_ext_get_actual_len(ex);
++	ee_pblock = ext_pblock(ex);
++
++	bio = bio_alloc(GFP_NOIO, ee_len);
++	if (!bio)
++		return -ENOMEM;
++
++	bio->bi_sector = ee_pblock << (blkbits >> 9);
++	bio->bi_bdev   = inode->i_sb->s_bdev;
++
++	for (i = 0; i < ee_len; i++) {
++		ret = bio_add_page(bio, ZERO_PAGE(0), blocksize, 0);
++		if (ret != blocksize) {
++			ret = -EIO;
++			goto err_out;
++		}
++	}
++
++	init_completion(&event);
++	bio->bi_private = &event;
++	bio->bi_end_io = bi_complete;
++	submit_bio(WRITE, bio);
++	wait_for_completion(&event);
++
++	if (test_bit(BIO_UPTODATE, &bio->bi_flags))
++		ret = 0;
++err_out:
++	bio_put(bio);
++	return ret;
++}
++
+ /*
+  * This function is called by ext4_ext_get_blocks() if someone tries to write
+  * to an uninitialized extent. It may result in splitting the uninitialized
+@@ -2202,14 +2251,19 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3);
+-		if (err) {
++		if (err == -ENOSPC) {
++			err =  ext4_ext_zeroout(inode, &orig_ex);
++			if (err)
++				goto fix_extent_len;
++			/* update the extent length and mark as initialized */
+ 			ex->ee_block = orig_ex.ee_block;
+ 			ex->ee_len   = orig_ex.ee_len;
+ 			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+-			ext4_ext_mark_uninitialized(ex);
+ 			ext4_ext_dirty(handle, inode, path + depth);
+-			goto out;
+-		}
++			return le16_to_cpu(ex->ee_len);
++
++		} else if (err)
++			goto fix_extent_len;
+ 		/*
+ 		 * The depth, and hence eh & ex might change
+ 		 * as part of the insert above.
+@@ -2295,15 +2349,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
+-	if (err) {
++	if (err == -ENOSPC) {
++		err =  ext4_ext_zeroout(inode, &orig_ex);
++		if (err)
++			goto fix_extent_len;
++		/* update the extent length and mark as initialized */
+ 		ex->ee_block = orig_ex.ee_block;
+ 		ex->ee_len   = orig_ex.ee_len;
+ 		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+-		ext4_ext_mark_uninitialized(ex);
+ 		ext4_ext_dirty(handle, inode, path + depth);
+-	}
++		return le16_to_cpu(ex->ee_len);
++	} else if (err)
++		goto fix_extent_len;
+ out:
+ 	return err ? err : allocated;
++
++fix_extent_len:
++	ex->ee_block = orig_ex.ee_block;
++	ex->ee_len   = orig_ex.ee_len;
++	ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
++	ext4_ext_mark_uninitialized(ex);
++	ext4_ext_dirty(handle, inode, path + depth);
++	return err;
+ }
+ 
+ /*
 
 
-The patch titled
-     use-page_cache_xxx-in-ext2-fix
-has been added to the -mm tree.  Its filename is
-     use-page_cache_xxx-in-ext2-fix.patch
+I am not invalidating the inode mapping after zeroing out the block. I
+guess that is the right thing to do considering that pages already
+mapped in via read or mmap would contain same value (zero).
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+> 
+> >  /*
+> >   * This function is called by ext4_ext_get_blocks() if someone tries to write
+> >   * to an uninitialized extent. It may result in splitting the uninitialized
+> > @@ -2202,14 +2333,20 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+> >  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+> >  		ext4_ext_mark_uninitialized(ex3);
+> > +	} else if (err)
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+......
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+> > +		goto fix_extent_len;
+> >  out:
+> >  	return err ? err : allocated;
+> > +
+> > +fix_extent_len:
+> > +	ex->ee_block = orig_ex.ee_block;
+> > +	ex->ee_len   = orig_ex.ee_len;
+> > +	ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+> > +	ext4_ext_mark_uninitialized(ex);
+> > +	ext4_ext_dirty(handle, inode, path + depth);
+> > +	return err;
+> >  }
+> > 
+> It would be nice to detect if fs is full or almost full before convert
+> the uninitialized extents. If the total number of free blocks left are
+> not enough for the split(plan for the worse case, 3 extents adds), just
+> go ahead to do the zero out the one single chunk ahead, in stead of
+> possible zeroing out two chucks later on the error path. I feel it's
+> much cleaner that way.
+> 
 
-------------------------------------------------------
-Subject: use-page_cache_xxx-in-ext2-fix
-From: Andrew Morton <akpm@linux-foundation.org>
+We don't zero out two chunks. The uninit extent can possibly get split
+into three extent.
+[ 1st uninit] [ 2 init ] [ 3rd uninit]
 
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Christoph Lameter <clameter@sgi.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
 
- fs/ext2/dir.c |   12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+Now first we attempt to insert 3. And if we fail due to ENOSPC we
+zero out the full extent [1 2 3]. Now if we are successful in inserting 3 then
+we attempt to insert 2. If we fail, we zero out [1 2]. That should also
+reduce the number blocks that we are zeroing out. For example if we have
+uninit extent len of 32767 blocks and we try to write the third block within
+the extent and failed in the second step above we will zero out only 3
+blocks. If we want to zero out the full extent that would imply zero out
+32767 blocks.
 
-diff -puN fs/ext2/dir.c~use-page_cache_xxx-in-ext2-fix fs/ext2/dir.c
---- a/fs/ext2/dir.c~use-page_cache_xxx-in-ext2-fix
-+++ a/fs/ext2/dir.c
-@@ -170,8 +170,9 @@ Einumber:
- bad_entry:
- 	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
- 		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
--		dir->i_ino, error, page_cache_pos(mapping, page->index, offs),
--		(unsigned long) le32_to_cpu(p->inode),
-+		dir->i_ino, error,
-+		(unsigned long)page_cache_pos(mapping, page->index, offs),
-+		(unsigned long)le32_to_cpu(p->inode),
- 		rec_len, p->name_len);
- 	goto fail;
- Eend:
-@@ -179,8 +180,9 @@ Eend:
- 	ext2_error (sb, "ext2_check_page",
- 		"entry in directory #%lu spans the page boundary"
- 		"offset=%lu, inode=%lu",
--		dir->i_ino, page_cache_pos(mapping, page->index, offs),
--		(unsigned long) le32_to_cpu(p->inode));
-+		dir->i_ino,
-+		(unsigned long)page_cache_pos(mapping, page->index, offs),
-+		(unsigned long)le32_to_cpu(p->inode));
- fail:
- 	SetPageChecked(page);
- 	SetPageError(page);
-@@ -301,7 +303,7 @@ ext2_readdir (struct file * filp, void *
- 			ext2_error(sb, __FUNCTION__,
- 				   "bad page in #%lu",
- 				   inode->i_ino);
--			filp->f_pos += page_cache_size(mapping) - offset
-+			filp->f_pos += page_cache_size(mapping) - offset;
- 			return PTR_ERR(page);
- 		}
- 		kaddr = page_address(page);
-_
+-aneesh
 
-Patches currently in -mm which might be from akpm@linux-foundation.org are
-
-origin.patch
-rtc-add-support-for-the-s-35390a-rtc-chip.patch
-git-x86.patch
-git-acpi-fixup.patch
-acpi-enable-c3-power-state-on-dell-inspiron-8200.patch
-git-alsa-fix-git-conflicts.patch
-git-audit-printk-warning-fix.patch
-git-cifs.patch
-revert-gregkh-driver-video-add-the-go7007-driver.patch
-git-drm.patch
-git-dvb.patch
-git-hwmon.patch
-git-hrt.patch
-drivers-input-touchscreen-ads7846c-fix-uninitialized-var-warning.patch
-maple-add-driver-for-sega-dreamcast-controller-update-checkpatch-fixes.patch
-git-kvm.patch
-pata-i-do-not-think-it-means-what-you-think-it-means-checkpatch-fixes.patch
-git-md-accel.patch
-git-ubi.patch
-3c509-convert-to-isa_driver-and-pnp_driver-v4-cleanup.patch
-update-smc91x-driver-with-arm-versatile-board-info.patch
-git-nfsd.patch
-git-sched.patch
-git-sh.patch
-scsi-aic94xx-cleanups.patch
-git-block-git-rejects.patch
-git-unionfs.patch
-drivers-usb-storage-sddr55c-fix-uninitialized-var-warnings.patch
-usb-remove-unnecessary-type-casting-of-urb-context-checkpatch-fixes.patch
-git-v9fs.patch
-git-semaphore-fixup.patch
-documentation-atomic_add_unless-doesnt-imply-mb-on-failure-fix.patch
-tridentfb-resource-management-fixes-in-probe-function-fix.patch
-add-noinline_for_stack.patch
-ndelay-switch-to-c-function-to-avoid-64-bit-division.patch
-ndelay-switch-to-c-function-to-avoid-64-bit-division-fix.patch
-sm501-add-support-for-the-sm502-programmable-pll-checkpatch-fixes.patch
-markers-dont-risk-null-deref-in-marker-checkpatch-fixes.patch
-kernel-add-clamp-and-clamp_t-macros-checkpatch-fixes.patch
-kernel-add-clamp-and-clamp_t-macros-fix.patch
-drivers-media-video-em28xx-correct-use-of-and-fix.patch
-remove-sparse-warning-for-mmzoneh-checkpatch-fixes.patch
-fix-invalidate_inode_pages2_range-to-not-clear-ret-checkpatch-fixes.patch
-vmscan-give-referenced-active-and-unmapped-pages-a-second-trip-around-the-lru.patch
-vm-dont-run-touch_buffer-during-buffercache-lookups.patch
-capabilities-implement-per-process-securebits-warning-fix.patch
-make-dev-kmem-a-config-option-fix.patch
-misc-phantom-add-compat-ioctl-checkpatch-fixes.patch
-r-o-bind-mounts-elevate-write-count-for-callers-of-vfs_mkdir-fix.patch
-r-o-bind-mounts-elevate-write-count-for-xattr_permission-callers-fix.patch
-r-o-bind-mounts-get-write-access-for-vfs_rename-callers-fix.patch
-r-o-bind-mounts-check-mnt-instead-of-superblock-directly-fix.patch
-r-o-bind-mounts-check-mnt-instead-of-superblock-directly-fix-2.patch
-r-o-bind-mounts-get-callers-of-vfs_mknod-create-fix.patch
-fs-inodec-use-hlist_for_each_entry-checkpatch-fixes.patch
-add-rcu_assign_index-if-ever-needed-fix.patch
-oprofile-change-cpu_buffer-from-array-to-per_cpu-variable-checkpatch-fixes.patch
-vt-notifier-extension-for-accessibility-checkpatch-fixes.patch
-kprobes-prevent-probing-of-preempt_schedule-checkpatch-fixes.patch
-rtc-isl1208-new-style-conversion-and-minor-bug-fixes-checkpatch-fixes.patch
-rtc-pcf8563-new-style-conversion-checkpatch-fixes.patch
-rtc-pcf8563-new-style-conversion-checkpatch-fixes-fix.patch
-rtc-x1205-new-style-conversion-checkpatch-fixes.patch
-fb-add-support-for-foreign-endianness-force-it-on.patch
-fbcon-replace-mono_col-macro-with-static-inline-fix.patch
-use-page_cache_xxx-in-ext2-fix.patch
-cgroup-api-files-update-cpusets-to-use-cgroup-structured-file-api-fix.patch
-workqueues-shrink-cpu_populated_map-when-cpu-dies-fix.patch
-optimise-tick_nohz_stop_sched_tick-a-bit-fix.patch
-ipc-use-ipc_buildid-directly-from-ipc_addid-cleanup.patch
-ipmi-run-to-completion-fixes-checkpatch-fixes.patch
-ipmi-style-fixes-in-the-system-interface-code-checkpatch-fixes.patch
-elf-fix-shadowed-variables-in-fs-binfmt_elfc.patch
-sgi-altix-mmtimer-allow-larger-number-of-timers-per-node-fix.patch
-sgi-altix-mmtimer-allow-larger-number-of-timers-per-node-fix-2.patch
-epcac-static-functions-and-integer-as-null-pointer-fixes-checkpatch-fixes.patch
-procfs-task-exe-symlink-fix.patch
-edd-add-default-mode-config_edd_off=n-override-with-edd=onoff-fix.patch
-reiser4.patch
-jens-broke-reiser4patch-added-to-mm-tree.patch
-page-owner-tracking-leak-detector.patch
-nr_blockdev_pages-in_interrupt-warning.patch
-slab-leaks3-default-y.patch
-profile-likely-unlikely-macros.patch
-put_bh-debug.patch
-shrink_slab-handle-bad-shrinkers.patch
-getblk-handle-2tb-devices.patch
-getblk-handle-2tb-devices-fix.patch
-undeprecate-pci_find_device.patch
-w1-build-fix.patch
 
