@@ -1,30 +1,43 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: What's in e2fsprogs.git (stable)
-Date: Fri, 29 Feb 2008 11:35:12 -0500
-Message-ID: <20080229163512.GD8968@mit.edu>
-References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <47C83079.1050201@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/2] e2fsprogs: fix resize2fs moving inodes with inline
+ xattrs
+Date: Fri, 29 Feb 2008 11:20:00 -0600
+Message-ID: <47C83EC0.4080009@redhat.com>
+References: <47C70A61.4080302@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:35726 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750848AbYB2QgD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Feb 2008 11:36:03 -0500
-Content-Disposition: inline
-In-Reply-To: <47C83079.1050201@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:54568 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752308AbYB2RUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Feb 2008 12:20:12 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1THK1ox014702
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 12:20:06 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1THK0qf019269
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 12:20:00 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m1THK0TM010057
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 12:20:00 -0500
+In-Reply-To: <47C70A61.4080302@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 29, 2008 at 10:19:05AM -0600, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > There have been enough fixups that I've released e2fsprogs 1.40.7.
-> > 
+Eric Sandeen wrote:
+> Addresses RH Bug 434893: resizing leads to missing xattrs
 > 
-> Looks like git still needs a tag?
+> inode_scan_and_fix() in resize2fs needs to do read/write
+> of the full inode to be sure it gets all data from larger
+> (>128 byte) inodes.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
 
-Yep, I forgot to add --tags to the "git push".  Fixed now.
+Well, crud, this isn't working on ppc.  Looking into it now... I guess I
+should use the resources at my disposal to test the "odd arches" before
+sending patches... sorry.
 
-       	      	     	       - Ted
+-Eric
