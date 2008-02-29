@@ -1,114 +1,139 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH-v2] ext4: Handling preallocated blocks in delayed allocation
-Date: Fri, 29 Feb 2008 10:44:35 -0800
-Message-ID: <1204310675.3629.9.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
+	extent in case of file system full
+Date: Fri, 29 Feb 2008 11:21:42 -0800
+Message-ID: <20080229192142.GJ2997@webber.adilger.int>
+References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204240440.3609.26.camel@localhost.localdomain>
+ <20080229110924.GA16757@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:60486 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757822AbYB2SpK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Feb 2008 13:45:10 -0500
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1TIjATC017337
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 13:45:10 -0500
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1TIj6SF219674
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 11:45:06 -0700
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1TIj5h5007613
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 11:45:05 -0700
-Received: from [9.67.8.4] (wecm-9-67-8-4.wecm.ibm.com [9.67.8.4])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m1TIj44k007544
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 11:45:04 -0700
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:37832 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761379AbYB2TV6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Feb 2008 14:21:58 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m1TJLtMj021529
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 11:21:56 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JX000G01LRMGG00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 29 Feb 2008 11:21:55 -0800 (PST)
+In-reply-to: <20080229110924.GA16757@skywalker>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: Handling preallocated blocks in delayed allocation
-From: Mingming Cao <cmm@us.ibm.com>
+On Feb 29, 2008  16:39 +0530, Aneesh Kumar K.V wrote:
+> > One simple solution is submit bio directly to zero out the blocks on
+> > disk, and wait for that to finish before clear the uninitialized bit. On
+> > a 4K block size case, the max size of an uninitialized extents is 128MB,
+> > and since the blocks are all contigous on disk, a single IO could done
+> > the job, the latency should not be a too big issue. After all when a
+> > filesystem is full, it's already performs slowly.
+> 
+> This is the change that i have now. Yet to run the full test on that.
+> But seems to be working for simple tests.
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index d315cc1..26396e2 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2136,6 +2136,55 @@ void ext4_ext_release(struct super_block *sb)
+>  #endif
+>  }
+>  
+> +static void bi_complete(struct bio *bio, int error)
+> +{
+> +	complete((struct completion*)bio->bi_private);
+> +}
 
-This patch fix ext4 delayed allocation that allows it
-avoid doing delayed allocation handling for blocks that
-are already preallocated on disk.
+Note that the completion event can be called multiple times if there are
+block device errors...  Our similar completion code in Lustre is like:
 
-With delayed allocation, at write_begin() time, 
-ext4_get_blocks_wrap() now is only doing block map with create = 0.
-ext4_get_blocks_wrap() returns 0 if the blocks are not allocated
-or preallocated().
+static int dio_complete_routine(struct bio *bio, unsigned int done, int error)
+{
 
-If the blocks are prea-allocated, the resulting buffer head
-is not mapped marked, but ext4_get_blocks_wrap() returns the number of
-blocks are actually being preallocated.
+        /* CAVEAT EMPTOR: possibly in IRQ context  */
+        if (bio->bi_size)                       /* Not complete */
+                return 1;
 
-Right now delayed allocation mistream pre-allocated blocks as
-un-allocated as the buffer head is unmapped.
+	bio->bi_private->data.error = error;
 
-This patch fix this by checking the number of blocks
-returned by ext4_get_blocks_wrap() rather than checking
-if buffer head is mapped or not.
+	return 0;
+}
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/inode.c |   36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
 
-Index: linux-2.6.25-rc3/fs/ext4/inode.c
-===================================================================
---- linux-2.6.25-rc3.orig/fs/ext4/inode.c	2008-02-29 10:17:21.000000000 -0800
-+++ linux-2.6.25-rc3/fs/ext4/inode.c	2008-02-29 10:40:01.000000000 -0800
-@@ -1343,7 +1343,7 @@ static int ext4_journalled_write_end(str
- }
- 
- /*
-- * this is a special callback for ->prepare_write() only
-+ * this is a special callback for ->write_begin() only
-  * it's intention is to return mapped block or reserve space
-  */
- static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
-@@ -1354,24 +1354,24 @@ static int ext4_da_get_block_prep(struct
- 	BUG_ON(create == 0);
- 	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
- 
--	/* first, we need to know whether the block is allocated already
--	 * XXX: when the filesystem has a lot of free blocks, we could
--	 * reserve even allocated blocks to save this lookup */
-+	/*
-+	 * first, we need to know whether the block is allocated already
-+	 * preallocated blocks are unmapped but should treated
-+	 * the same as allocated blocks.
-+	 */
- 	ret = ext4_get_blocks_wrap(NULL, inode, iblock, 1,  bh_result, 0, 0);
--	if (ret >= 0) {
--		if (buffer_mapped(bh_result)) {
--			bh_result->b_size = (ret << inode->i_blkbits);
--		} else {
--			/* the block isn't allocated yet, let's reserve space */
--			/* XXX: call reservation here */
--			/*
--			 * XXX: __block_prepare_write() unmaps passed block,
--			 * is it OK?
--			 */
--			map_bh(bh_result, inode->i_sb, 0);
--			set_buffer_new(bh_result);
--			set_buffer_delay(bh_result);
--		}
-+	if (ret == 0) {
-+		/* the block isn't allocated yet, let's reserve space */
-+		/* XXX: call reservation here */
-+		/*
-+		 * XXX: __block_prepare_write() unmaps passed block,
-+		 * is it OK?
-+		 */
-+		map_bh(bh_result, inode->i_sb, 0);
-+		set_buffer_new(bh_result);
-+		set_buffer_delay(bh_result);
-+	} else if (ret > 0) {
-+		bh_result->b_size = (ret << inode->i_blkbits);
- 		ret = 0;
- 	}
- 
+> +/* FIXME!! we need to try to merge to left or right after zerout  */
+> +static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+> +{
+> +	bio = bio_alloc(GFP_NOIO, ee_len);
+> +	if (!bio)
+> +		return -ENOMEM;
 
+I don't think it will be possible to allocate a bio large enough for a
+maximum-sized unwritten extent.  BIO_MAX_PAGES is only 256 (1MB on x86),
+but an unwritten extent can be up to 128MB.
+
+> +	bio->bi_bdev   = inode->i_sb->s_bdev;
+> +
+> +	for (i = 0; i < ee_len; i++) {
+> +		ret = bio_add_page(bio, ZERO_PAGE(0), blocksize, 0);
+> +		if (ret != blocksize) {
+> +			ret = -EIO;
+> +			goto err_out;
+
+This shouldn't be considered an error.  Rather, it just means that the
+bio is full or is crossing some storage boundary so it should be submitted
+and a new bio created and the zeroing continues.
+
+Please move most of this function into a generic helper that can be used
+elsewhere.  It might even go into the VFS like:
+
+int bio_zero_blocks(struct block_device *bdev, sector_t start, sector_t len,
+		    bio_end_io_t completion);
+
+and then have ext4_ext_zeroout() call that routine after decoding the extent.
+The error case is only when the bio completion routine is called and the
+saved "data.error" value is returned.
+
+> > It would be nice to detect if fs is full or almost full before convert
+> > the uninitialized extents. If the total number of free blocks left are
+> > not enough for the split(plan for the worse case, 3 extents adds), just
+> > go ahead to do the zero out the one single chunk ahead, in stead of
+> > possible zeroing out two chucks later on the error path. I feel it's
+> > much cleaner that way.
+> 
+> We don't zero out two chunks. The uninit extent can possibly get split
+> into three extent.
+> [ 1st uninit] [ 2 init ] [ 3rd uninit]
+> 
+> 
+> Now first we attempt to insert 3. And if we fail due to ENOSPC we
+> zero out the full extent [1 2 3]. Now if we are successful in inserting 3 then
+> we attempt to insert 2. If we fail, we zero out [1 2]. That should also
+> reduce the number blocks that we are zeroing out. For example if we have
+> uninit extent len of 32767 blocks and we try to write the third block within
+> the extent and failed in the second step above we will zero out only 3
+> blocks. If we want to zero out the full extent that would imply zero out
+> 32767 blocks.
+
+A related optimization is to determine the size of the remaining split
+extents.  I propose that if either of the remaining extents are < 7
+blocks long (or whatever, possibly 15 blocks to get a nice 64kB write) we
+should just zero out those blocks and create a single initialized extent.
+This would avoid the "write every alternate block" problem that could
+grow the number of extents dramatically.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
