@@ -1,262 +1,29 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
-	extent in case of file system full
-Date: Thu, 28 Feb 2008 15:14:00 -0800
-Message-ID: <1204240440.3609.26.camel@localhost.localdomain>
-References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Reply-To: cmm@us.ibm.com
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: ext4-mm-delalloc-ext4.patch
+Date: Fri, 29 Feb 2008 01:05:55 -0800
+Message-ID: <20080229010555.21ab9c77.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:38881 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754330AbYB1XOi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Feb 2008 18:14:38 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m1SNEZwI024690
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Feb 2008 18:14:35 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m1SNEPri247684
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Feb 2008 18:14:35 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m1SNEP6O005069
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Feb 2008 18:14:25 -0500
-In-Reply-To: <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp1.linux-foundation.org ([207.189.120.13]:40926 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752497AbYB2JG2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Feb 2008 04:06:28 -0500
+Received: from imap1.linux-foundation.org (imap1.linux-foundation.org [207.189.120.55])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id m1T95tFx019865
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 01:05:56 -0800
+Received: from box (localhost [127.0.0.1])
+	by imap1.linux-foundation.org (8.13.5.20060308/8.13.5/Debian-3ubuntu1.1) with SMTP id m1T95tG9014705
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Feb 2008 01:05:55 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-02-28 at 23:35 +0530, Aneesh Kumar K.V wrote:
-> A write to prealloc area cause the split of unititalized extent into a initialized
-> and uninitialized extent. If we don't have space to add new extent information instead
-> of returning error convert the existing uninitialized extent to initialized one. We
-> need to zero out the blocks corresponding to the extent to prevent wrong data reaching
-> userspace.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/extents.c |  164 ++++++++++++++++++++++++++++++++++++++++++++++++++--
->  1 files changed, 157 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index d315cc1..39a8beb 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2136,6 +2136,137 @@ void ext4_ext_release(struct super_block *sb)
->  #endif
->  }
-> 
-> +static int extend_credit_for_zeroout(handle_t *handle, struct inode *inode)
-> +{
-> +	int retval = 0, needed;
-> +
-> +	if (handle->h_buffer_credits > EXT4_RESERVE_TRANS_BLOCKS)
-> +		return 0;
-> +
-> +	/* number of filesytem blocks in one page */
-> +	needed = 1 << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-> +
-> +	if (ext4_journal_extend(handle, needed) != 0)
-> +		retval = ext4_journal_restart(handle, needed);
-> +
-> +	return retval;
-> +}
-> +
-> +/* FIXME!! we need to try to merge to left or right after zerout  */
-> +static int ext4_ext_zeroout(handle_t *handle, struct inode *inode,
-> +				ext4_lblk_t iblock, struct ext4_extent *ex)
-> +{
-> +	ext4_lblk_t ee_block;
-> +	unsigned int ee_len, blkcount, blocksize;
-> +	loff_t pos;
-> +	pgoff_t index, skip_index;
-> +	unsigned long offset;
-> +	struct page *page;
-> +	struct address_space *mapping = inode->i_mapping;
-> +	struct buffer_head *head, *bh;
-> +	int err = 0;
-> +
-> +	ee_block = le32_to_cpu(ex->ee_block);
-> +	ee_len = blkcount = ext4_ext_get_actual_len(ex);
-> +	blocksize = inode->i_sb->s_blocksize;
-> +
-> +	/*
-> +	 * find the skip index. We can't call __grab_cache_page for this
-> +	 * because we are in the writeout of this page and we already have
-> +	 * taken the lock on this page
-> +	 */
-> +	pos = iblock <<  inode->i_blkbits;
-> +	skip_index = pos >> PAGE_CACHE_SHIFT;
-> +
-> +	while (blkcount) {
-> +		pos = (ee_block  + ee_len - blkcount) << inode->i_blkbits;
-> +		index = pos >> PAGE_CACHE_SHIFT;
-> +		offset = (pos & (PAGE_CACHE_SIZE - 1));
-> +		if (index == skip_index) {
-> +			/* Page will already be locked via
-> +			 * write_begin or writepage
-> +			 */
-> +			read_lock_irq(&mapping->tree_lock);
-> +			page = radix_tree_lookup(&mapping->page_tree, index);
-> +			read_unlock_irq(&mapping->tree_lock);
-> +			if (page)
-> +				page_cache_get(page);
-> +			else
-> +				return -ENOMEM;
-> +		} else {
-> +			page = __grab_cache_page(mapping, index);
-> +			if (!page)
-> +				return -ENOMEM;
-> +		}
-> +
-> +		if (!page_has_buffers(page))
-> +			create_empty_buffers(page, blocksize, 0);
-> +
-> +		/* extent the credit in the journal */
-> +		extend_credit_for_zeroout(handle, inode);
-> +
-> +		head = page_buffers(page);
-> +		/* Look for the buffer_head which map the block */
-> +		bh = head;
-> +		while (offset > 0) {
-> +			bh = bh->b_this_page;
-> +			offset -= blocksize;
-> +		}
-> +		offset = (pos & (PAGE_CACHE_SIZE - 1));
-> +
-> +		/* Now write all the buffer_heads in the page */
-> +		do {
-> +			if (ext4_should_journal_data(inode)) {
-> +				err = ext4_journal_get_write_access(handle, bh);
-> +				if (err)
-> +					goto err_out;
-> +			}
-> +			if (buffer_new(bh)) {
-> +				unmap_underlying_metadata(bh->b_bdev,
-> +								bh->b_blocknr);
-> +				if (!PageUptodate(page))
-> +					zero_user(page, offset, blocksize);
-> +				clear_buffer_new(bh);
-> +			}
-> +			/* Now mark the buffer uptodate. since we
-> +			 * have zero out the buffer
-> +			 */
-> +			set_buffer_uptodate(bh);
-> +			offset += blocksize;
-> +			if (ext4_should_journal_data(inode)) {
-> +				err = ext4_journal_dirty_metadata(handle, bh);
-> +				if (err)
-> +					goto err_out;
-> +			} else {
-> +				if (ext4_should_order_data(inode)) {
-> +					err = ext4_journal_dirty_data(handle,
-> +									bh);
-> +					if (err)
-> +						goto err_out;
-> +				}
-> +				mark_buffer_dirty(bh);
-> +			}
-> +
-> +			bh = bh->b_this_page;
-> +			blkcount--;
-> +		} while ((bh != head) && (blkcount > 0));
-> +		/* Now that we zeroed the non uptodate
-> +		 * page mark the pge uptodate
-> +		 */
-> +		SetPageUptodate(page);
-> +		/* only unlock if we have locked */
-> +		if (index != skip_index)
-> +			unlock_page(page);
-> +		page_cache_release(page);
-> +	}
-> +
-> +	return 0;
-> +err_out:
-> +	unlock_page(page);
-> +	page_cache_release(page);
-> +	return err;
-> +}
-> +
 
-The complexity added to the code to handle the corner case seems not
-worth the effort. 
+generic_commit_write() is scheduled for removal in 2.6.26 and is
+removed already from -mm.
 
-One simple solution is submit bio directly to zero out the blocks on
-disk, and wait for that to finish before clear the uninitialized bit. On
-a 4K block size case, the max size of an uninitialized extents is 128MB,
-and since the blocks are all contigous on disk, a single IO could done
-the job, the latency should not be a too big issue. After all when a
-filesystem is full, it's already performs slowly.
-
->  /*
->   * This function is called by ext4_ext_get_blocks() if someone tries to write
->   * to an uninitialized extent. It may result in splitting the uninitialized
-> @@ -2202,14 +2333,20 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
->  		ext4_ext_mark_uninitialized(ex3);
->  		err = ext4_ext_insert_extent(handle, inode, path, ex3);
-> -		if (err) {
-> +		if (err == -ENOSPC) {
-> +			err =  ext4_ext_zeroout(handle, inode,
-> +							iblock, &orig_ex);
-> +			if (err)
-> +				goto fix_extent_len;
-> +			/* update the extent length and mark as initialized */
->  			ex->ee_block = orig_ex.ee_block;
->  			ex->ee_len   = orig_ex.ee_len;
->  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
-> -			ext4_ext_mark_uninitialized(ex);
->  			ext4_ext_dirty(handle, inode, path + depth);
-> -			goto out;
-> -		}
-> +			return le16_to_cpu(ex->ee_len);
-> +
-> +		} else if (err)
-> +			goto fix_extent_len;
->  		/*
->  		 * The depth, and hence eh & ex might change
->  		 * as part of the insert above.
-> @@ -2295,15 +2432,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	goto out;
->  insert:
->  	err = ext4_ext_insert_extent(handle, inode, path, &newex);
-> -	if (err) {
-> +	if (err == -ENOSPC) {
-> +		err =  ext4_ext_zeroout(handle, inode, iblock, &orig_ex);
-> +		if (err)
-> +			goto fix_extent_len;
-> +		/* update the extent length and mark as initialized */
->  		ex->ee_block = orig_ex.ee_block;
->  		ex->ee_len   = orig_ex.ee_len;
->  		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
-> -		ext4_ext_mark_uninitialized(ex);
->  		ext4_ext_dirty(handle, inode, path + depth);
-> -	}
-> +		return le16_to_cpu(ex->ee_len);
-> +	} else if (err)
-> +		goto fix_extent_len;
->  out:
->  	return err ? err : allocated;
-> +
-> +fix_extent_len:
-> +	ex->ee_block = orig_ex.ee_block;
-> +	ex->ee_len   = orig_ex.ee_len;
-> +	ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
-> +	ext4_ext_mark_uninitialized(ex);
-> +	ext4_ext_dirty(handle, inode, path + depth);
-> +	return err;
->  }
-> 
-It would be nice to detect if fs is full or almost full before convert
-the uninitialized extents. If the total number of free blocks left are
-not enough for the split(plan for the worse case, 3 extents adds), just
-go ahead to do the zero out the one single chunk ahead, in stead of
-possible zeroing out two chucks later on the error path. I feel it's
-much cleaner that way.
-
-Mingming
-
+Please switch to the new write_begin/write_end interface.
