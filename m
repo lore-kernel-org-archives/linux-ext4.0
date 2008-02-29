@@ -1,31 +1,26 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: outstanding e2fsprogs patches
-Date: Fri, 29 Feb 2008 10:44:28 -0500
-Message-ID: <200802291044.28550.jbacik@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: What's in e2fsprogs.git (stable)
+Date: Fri, 29 Feb 2008 10:19:05 -0600
+Message-ID: <47C83079.1050201@redhat.com>
+References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:45501 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:36445 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755509AbYB2P4M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Feb 2008 10:56:12 -0500
-Content-Disposition: inline
+	id S1759866AbYB2QTa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Feb 2008 11:19:30 -0500
+In-Reply-To: <20080229142830.GB8968@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Theodore Tso wrote:
+> There have been enough fixups that I've released e2fsprogs 1.40.7.
+> 
 
-I just updated my e2fsprogs git tree and I see that two of my patches that I 
-sent haven't been included yet.  They are
+Looks like git still needs a tag?
 
-[PATCH] e2fsprogs: report minimal resize size when given size is too small
-[PATCH] e2fsprogs: play with 8TB to 16TB fs's better
-
-the second one is the third attempt which was sent on 1/10.  If they need to be 
-fixed let me know, just want to make sure they don't get lost.  Thanks much,
-
-Josef
+-Eric
