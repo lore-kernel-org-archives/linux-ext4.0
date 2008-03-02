@@ -1,64 +1,77 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: blkid -w is ignored... fix the code or the manpage? :)
-Date: Sun, 02 Mar 2008 10:46:59 -0600
-Message-ID: <47CADA03.2040102@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC][PATCH] ext4: Convert uninitialized extent to initialized
+	extent in case of file system full
+Date: Sun, 02 Mar 2008 10:51:56 -0800
+Message-ID: <20080302185156.GB2908@webber.adilger.int>
+References: <1204221911-9753-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204221911-9753-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1204240440.3609.26.camel@localhost.localdomain>
+ <20080229110924.GA16757@skywalker> <20080229192142.GJ2997@webber.adilger.int>
+ <20080301173059.GA6833@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57671 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753803AbYCBQrD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 2 Mar 2008 11:47:03 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m22Gl1g8010159
-	for <linux-ext4@vger.kernel.org>; Sun, 2 Mar 2008 11:47:01 -0500
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m22Gl0uq001996
-	for <linux-ext4@vger.kernel.org>; Sun, 2 Mar 2008 11:47:01 -0500
-Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m22GkxBE000718
-	for <linux-ext4@vger.kernel.org>; Sun, 2 Mar 2008 11:47:00 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:44748 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751093AbYCBSv7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2008 13:51:59 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m22Ipxka020903
+	for <linux-ext4@vger.kernel.org>; Sun, 2 Mar 2008 10:51:59 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JX4007019IEY600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sun, 02 Mar 2008 10:51:59 -0800 (PST)
+In-reply-to: <20080301173059.GA6833@skywalker>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-the blkid manpage says:
+On Mar 01, 2008  23:00 +0530, Aneesh Kumar K.V wrote:
+> +/* FIXME!! we need to try to merge to left or right after zerout  */
+> +static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+> +{
+> +		done = 0;
+> +		while(done < len) {
+> +			ret = bio_add_page(bio, ZERO_PAGE(0), blocksize, 0);
 
-	-w	<writecachefile>  Write  the  device  cache  to
-		writecachefile instead of writing it to the default
-		cache file /etc/blkid.tab. If you don=92t want to save
-		the cache to the default file,  specify  /dev/null.
-		If  not specified it will be the same file as that
-		given by the -c option.
+Don't we need to set the page offset here?  
 
-and yet, since:
+> Converting it to an API like above doesn't help much. How about 
+> 
+> int bio_zero_blocks(struct block_device *bdev, sector_t start, unsigned
+> long bytes);
+> 
+> Here it implies that we would like to wait for zero out to finish.
+> 
+> Since we don't have another user now i didn't add the helper. But that
+> should be easy.
 
-http://thunk.org/hg/e2fsprogs/?rev/ad62cded89a8 (I think...)
+Yes, this is probably fine too, though at that point you don't need to
+have "bio" in the name since it is an internal implementation detail.
 
-(2003...) it has been completely ignored.
+> > A related optimization is to determine the size of the remaining split
+> > extents.  I propose that if either of the remaining extents are < 7
+> > blocks long (or whatever, possibly 15 blocks to get a nice 64kB write) we
+> > should just zero out those blocks and create a single initialized extent.
+> > This would avoid the "write every alternate block" problem that could
+> > grow the number of extents dramatically.
+> 
+> Why 64KB ?. Also while inserting the extent we try to merge with left or
+> right so the problem may not be that bad. But I agree with you it
+> would be nice to zero out if the split extent have very small size.
 
-I have a bug on this, from before my time at Red Hat,
-https://bugzilla.redhat.com/show_bug.cgi?id=3D200191  Bugzilla Bug 2001=
-91:
-blkid does not rewrite blkid.tab as documented in the man page.
-=2E..filed in 2006.
+I pick 64kB since this is a good size for underlying IDE disks for track
+merging and such.  Smaller IO sizes probably cause internal read-modify-
+write, and if we make it too large it may cause extra overhead.
 
-It'd be easy enough to fix, although this might be a library API change=
-,
-at least if we want to make blkid_get_cache() symmetric with
-blkid_put_cache(), each taking a filename...
-
-But it's been broken so long, with (few) complaints, is the
-functionality worth resurrecting, or should I just submit a patch to
-remove the -w option?  :)
-
-Thanks,
-
--Eric
-
+Cheers, Andreas
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
