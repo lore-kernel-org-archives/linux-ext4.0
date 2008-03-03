@@ -1,170 +1,194 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] fix the way jbd/jbd2 clears the b_modified flag
-Date: Mon, 3 Mar 2008 12:23:47 +0100
-Message-ID: <20080303112347.GA13725@duck.suse.cz>
-References: <200802271346.10298.jbacik@redhat.com>
+Subject: Re: [PATCH 2/2] fix possible journal overflow issues
+Date: Mon, 3 Mar 2008 12:24:20 +0100
+Message-ID: <20080303112420.GB13725@duck.suse.cz>
+References: <200802271351.54026.jbacik@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>
 To: Josef Bacik <jbacik@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:49106 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756073AbYCCLXt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Mar 2008 06:23:49 -0500
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756815AbYCCLYe@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <200802271346.10298.jbacik@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <200802271351.54026.jbacik@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 27-02-08 13:46:09, Josef Bacik wrote:
+On Wed 27-02-08 13:51:53, Josef Bacik wrote:
 > Hello,
 > 
-> Currently at the start of a journal commit we loop through all of the buffers on 
-> the committing transaction and clear the b_modified flag (the flag that is set 
-> when a transaction modifies the buffer) under the j_list_lock.  The problem is 
-> that everywhere else this flag is modified only under the jbd lock buffer flag, 
-> so it will race with a running transaction who could potentially set it, and 
-> have it unset by the committing transaction.  This is also a big waste, you can 
-> have several thousands of buffers that you are clearing the modified flag on 
-> when you may not need to.  This patch removes this code and instead clears the 
-> b_modified flag upon entering do_get_write_access/journal_get_create_access, so 
-> if that transaction does indeed use the buffer then it will be accounted for 
-> properly, and if it does not then we know we didn't use it.  That will be 
-> important for the next patch in this series.  Tested thoroughly by myself using 
-> postmark/iozone/bonnie++.  Thank you,
+> There are several cases where the running transaction can get buffers added to 
+> its BJ_Metadata list which it never dirtied, which makes its t_nr_buffers 
+> counter end up larger than its t_outstanding_credits counter.  This will cause 
+> issues when starting new transactions as while we are logging buffers we 
+> decrement t_outstanding_buffers, so when t_outstanding_buffers goes negative, 
+> we will report that we need less space in the journal than we actually need, so 
+> transactions will be started even though there may not be enough room for them.  
+> In the worst case scenario (which admittedly is almost impossible to reproduce) 
+> this will result in the journal running out of space.  The fix is to only 
+> refile buffers from the committing transaction to the running transactions 
+> BJ_Modified list when b_modified is set on that journal, which is the only way 
+> to be sure if the running transaction has modified that buffer.  This patch 
+> also fixes an accounting error in journal_forget, it is possible that we can 
+> call journal_forget on a buffer without having modified it, only gotten write 
+> access to it, so instead of freeing a credit, we only do so if the buffer was 
+> modified.  The assert will help catch if this problem occurs.  Without these 
+> two patches I could hit this assert within minutes of running postmark, with 
+> them this issue no longer arises.  Thank you,
 > 
 > Signed-off-by: Josef Bacik <jbacik@redhat.com>
-  Nice work. Andrew has already added the patch to his tree but anyway I've
-reviewed the patch and you can add
-
-Acked-by: Jan Kara <jack@suse.cz>
+  Acked-by: Jan Kara <jack@suse.cz>
 
 									Honza
 > 
-> Index: linux-2.6/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd/commit.c
-> +++ linux-2.6/fs/jbd/commit.c
-> @@ -407,22 +407,6 @@ void journal_commit_transaction(journal_
->  	jbd_debug (3, "JBD: commit phase 2\n");
->  
->  	/*
-> -	 * First, drop modified flag: all accesses to the buffers
-> -	 * will be tracked for a new trasaction only -bzzz
-> -	 */
-> -	spin_lock(&journal->j_list_lock);
-> -	if (commit_transaction->t_buffers) {
-> -		new_jh = jh = commit_transaction->t_buffers->b_tnext;
-> -		do {
-> -			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
-> -					new_jh->b_modified == 0);
-> -			new_jh->b_modified = 0;
-> -			new_jh = new_jh->b_tnext;
-> -		} while (new_jh != jh);
-> -	}
-> -	spin_unlock(&journal->j_list_lock);
-> -
-> -	/*
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
 > Index: linux-2.6/fs/jbd/transaction.c
 > ===================================================================
 > --- linux-2.6.orig/fs/jbd/transaction.c
 > +++ linux-2.6/fs/jbd/transaction.c
-> @@ -609,6 +609,12 @@ repeat:
->  		goto done;
+> @@ -1234,6 +1234,7 @@ int journal_forget (handle_t *handle, st
+>  	struct journal_head *jh;
+>  	int drop_reserve = 0;
+>  	int err = 0;
+> +	int was_modified = 0;
 >  
->  	/*
-> +	 * this is the first time this transaction is touching this buffer,
-> +	 * reset the modified flag
-> +	 */
-> +	jh->b_modified = 0;
-> +
-> +	/*
->  	 * If there is already a copy-out version of this buffer, then we don't
->  	 * need to make another one
->  	 */
-> @@ -820,9 +826,16 @@ int journal_get_create_access(handle_t *
+>  	BUFFER_TRACE(bh, "entry");
 >  
->  	if (jh->b_transaction == NULL) {
->  		jh->b_transaction = transaction;
-> +
-> +		/* first access by this transaction */
-> +		jh->b_modified = 0;
-> +
->  		JBUFFER_TRACE(jh, "file as BJ_Reserved");
->  		__journal_file_buffer(jh, transaction, BJ_Reserved);
->  	} else if (jh->b_transaction == journal->j_committing_transaction) {
-> +		/* first access by this transaction */
-> +		jh->b_modified = 0;
-> +
->  		JBUFFER_TRACE(jh, "set next transaction");
->  		jh->b_next_transaction = transaction;
+> @@ -1252,6 +1253,9 @@ int journal_forget (handle_t *handle, st
+>  		goto not_jbd;
 >  	}
-> Index: linux-2.6/fs/jbd2/commit.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd2/commit.c
-> +++ linux-2.6/fs/jbd2/commit.c
-> @@ -520,22 +520,6 @@ void jbd2_journal_commit_transaction(jou
->  	jbd_debug (3, "JBD: commit phase 2\n");
 >  
+> +	/* keep track of wether or not this transaction modified us */
+> +	was_modified = jh->b_modified;
+> +
 >  	/*
-> -	 * First, drop modified flag: all accesses to the buffers
-> -	 * will be tracked for a new trasaction only -bzzz
-> -	 */
-> -	spin_lock(&journal->j_list_lock);
-> -	if (commit_transaction->t_buffers) {
-> -		new_jh = jh = commit_transaction->t_buffers->b_tnext;
-> -		do {
-> -			J_ASSERT_JH(new_jh, new_jh->b_modified == 1 ||
-> -					new_jh->b_modified == 0);
-> -			new_jh->b_modified = 0;
-> -			new_jh = new_jh->b_tnext;
-> -		} while (new_jh != jh);
-> -	}
-> -	spin_unlock(&journal->j_list_lock);
-> -
-> -	/*
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
+>  	 * The buffer's going from the transaction, we must drop
+>  	 * all references -bzzz
+> @@ -1269,7 +1273,12 @@ int journal_forget (handle_t *handle, st
+>  
+>  		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
+>  
+> -		drop_reserve = 1;
+> +		/*
+> +		 * we only want to drop a reference if this transaction
+> +		 * modified the buffer
+> +		 */
+> +		if (was_modified)
+> +			drop_reserve = 1;
+>  
+>  		/*
+>  		 * We are no longer going to journal this buffer.
+> @@ -1309,7 +1318,13 @@ int journal_forget (handle_t *handle, st
+>  		if (jh->b_next_transaction) {
+>  			J_ASSERT(jh->b_next_transaction == transaction);
+>  			jh->b_next_transaction = NULL;
+> -			drop_reserve = 1;
+> +
+> +			/*
+> +			 * only drop a reference if this transaction modified
+> +			 * the buffer
+> +			 */
+> +			if (was_modified)
+> +				drop_reserve = 1;
+>  		}
+>  	}
+>  
+> @@ -2081,7 +2096,7 @@ void __journal_refile_buffer(struct jour
+>  	jh->b_transaction = jh->b_next_transaction;
+>  	jh->b_next_transaction = NULL;
+>  	__journal_file_buffer(jh, jh->b_transaction,
+> -				was_dirty ? BJ_Metadata : BJ_Reserved);
+> +				jh->b_modified ? BJ_Metadata : BJ_Reserved);
+>  	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+>  
+>  	if (was_dirty)
 > Index: linux-2.6/fs/jbd2/transaction.c
 > ===================================================================
 > --- linux-2.6.orig/fs/jbd2/transaction.c
 > +++ linux-2.6/fs/jbd2/transaction.c
-> @@ -618,6 +618,12 @@ repeat:
->  		goto done;
+> @@ -1243,6 +1243,7 @@ int jbd2_journal_forget (handle_t *handl
+>  	struct journal_head *jh;
+>  	int drop_reserve = 0;
+>  	int err = 0;
+> +	int was_modified = 0;
 >  
->  	/*
-> +	 * this is the first time this transaction is touching this buffer,
-> +	 * reset the modified flag
-> +	 */
-> +       jh->b_modified = 0;
-> +
-> +	/*
->  	 * If there is already a copy-out version of this buffer, then we don't
->  	 * need to make another one
->  	 */
-> @@ -829,9 +835,16 @@ int jbd2_journal_get_create_access(handl
+>  	BUFFER_TRACE(bh, "entry");
 >  
->  	if (jh->b_transaction == NULL) {
->  		jh->b_transaction = transaction;
-> +
-> +		/* first access by this transaction */
-> +		jh->b_modified = 0;
-> +
->  		JBUFFER_TRACE(jh, "file as BJ_Reserved");
->  		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
->  	} else if (jh->b_transaction == journal->j_committing_transaction) {
-> +		/* first access by this transaction */
-> +		jh->b_modified = 0;
-> +
->  		JBUFFER_TRACE(jh, "set next transaction");
->  		jh->b_next_transaction = transaction;
+> @@ -1261,6 +1262,9 @@ int jbd2_journal_forget (handle_t *handl
+>  		goto not_jbd;
 >  	}
+>  
+> +	/* keep track of wether or not this transaction modified us */
+> +	was_modified = jh->b_modified;
+> +
+>  	/*
+>  	 * The buffer's going from the transaction, we must drop
+>  	 * all references -bzzz
+> @@ -1278,7 +1282,12 @@ int jbd2_journal_forget (handle_t *handl
+>  
+>  		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
+>  
+> -		drop_reserve = 1;
+> +		/*
+> +		 * we only want to drop a reference if this transaction
+> +		 * modified the buffer
+> +		 */
+> +		if (was_modified)
+> +			drop_reserve = 1;
+>  
+>  		/*
+>  		 * We are no longer going to journal this buffer.
+> @@ -1318,7 +1327,13 @@ int jbd2_journal_forget (handle_t *handl
+>  		if (jh->b_next_transaction) {
+>  			J_ASSERT(jh->b_next_transaction == transaction);
+>  			jh->b_next_transaction = NULL;
+> -			drop_reserve = 1;
+> +
+> +			/*
+> +			 * only drop a reference if this transaction modified
+> +			 * the buffer
+> +			 */
+> +			if (was_modified)
+> +				drop_reserve = 1;
+>  		}
+>  	}
+>  
+> @@ -2090,7 +2105,7 @@ void __jbd2_journal_refile_buffer(struct
+>  	jh->b_transaction = jh->b_next_transaction;
+>  	jh->b_next_transaction = NULL;
+>  	__jbd2_journal_file_buffer(jh, jh->b_transaction,
+> -				was_dirty ? BJ_Metadata : BJ_Reserved);
+> +				jh->b_modified ? BJ_Metadata : BJ_Reserved);
+>  	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+>  
+>  	if (was_dirty)
+> Index: linux-2.6/fs/jbd/commit.c
+> ===================================================================
+> --- linux-2.6.orig/fs/jbd/commit.c
+> +++ linux-2.6/fs/jbd/commit.c
+> @@ -472,6 +472,9 @@ void journal_commit_transaction(journal_
+>  	 */
+>  	commit_transaction->t_state = T_COMMIT;
+>  
+> +	J_ASSERT(commit_transaction->t_nr_buffers <=
+> +		 commit_transaction->t_outstanding_credits);
+> +
+>  	descriptor = NULL;
+>  	bufs = 0;
+>  	while (commit_transaction->t_buffers) {
+> Index: linux-2.6/fs/jbd2/commit.c
+> ===================================================================
+> --- linux-2.6.orig/fs/jbd2/commit.c
+> +++ linux-2.6/fs/jbd2/commit.c
+> @@ -568,6 +568,9 @@ void jbd2_journal_commit_transaction(jou
+>  	stats.u.run.rs_blocks = commit_transaction->t_outstanding_credits;
+>  	stats.u.run.rs_blocks_logged = 0;
+>  
+> +	J_ASSERT(commit_transaction->t_nr_buffers <=
+> +		 commit_transaction->t_outstanding_credits);
+> +
+>  	descriptor = NULL;
+>  	bufs = 0;
+>  	while (commit_transaction->t_buffers) {
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
