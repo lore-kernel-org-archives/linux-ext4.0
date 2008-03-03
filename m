@@ -1,194 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] fix possible journal overflow issues
-Date: Mon, 3 Mar 2008 12:24:20 +0100
-Message-ID: <20080303112420.GB13725@duck.suse.cz>
-References: <200802271351.54026.jbacik@redhat.com>
+From: "Pekka Enberg" <penberg@cs.helsinki.fi>
+Subject: Re: [BUG] Linux 2.6.25-rc2 - Kernel Ooops while running dbench
+Date: Mon, 3 Mar 2008 13:51:19 +0200
+Message-ID: <84144f020803030351l2042e9aaqe656ad1610e5efc5@mail.gmail.com>
+References: <alpine.LFD.1.00.0802151302210.9496@woody.linux-foundation.org>
+	 <47B6784E.2090401@linux.vnet.ibm.com>
+	 <20080218045954.50503fb1.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Josef Bacik <jbacik@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756815AbYCCLYe@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Kamalesh Babulal" <kamalesh@linux.vnet.ibm.com>,
+	"Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, "Andy Whitcroft" <apw@shadowen.org>,
+	"Balbir Singh" <balbir@linux.vnet.ibm.com>,
+	"Christoph Lameter" <clameter@sgi.com>, linux-mm@kvack.org
+To: "Andrew Morton" <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rv-out-0910.google.com ([209.85.198.184]:2174 "EHLO
+	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261AbYCCLvU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Mar 2008 06:51:20 -0500
+Received: by rv-out-0910.google.com with SMTP id k20so3835371rvb.1
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Mar 2008 03:51:19 -0800 (PST)
+In-Reply-To: <20080218045954.50503fb1.akpm@linux-foundation.org>
 Content-Disposition: inline
-In-Reply-To: <200802271351.54026.jbacik@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 27-02-08 13:51:53, Josef Bacik wrote:
-> Hello,
-> 
-> There are several cases where the running transaction can get buffers added to 
-> its BJ_Metadata list which it never dirtied, which makes its t_nr_buffers 
-> counter end up larger than its t_outstanding_credits counter.  This will cause 
-> issues when starting new transactions as while we are logging buffers we 
-> decrement t_outstanding_buffers, so when t_outstanding_buffers goes negative, 
-> we will report that we need less space in the journal than we actually need, so 
-> transactions will be started even though there may not be enough room for them.  
-> In the worst case scenario (which admittedly is almost impossible to reproduce) 
-> this will result in the journal running out of space.  The fix is to only 
-> refile buffers from the committing transaction to the running transactions 
-> BJ_Modified list when b_modified is set on that journal, which is the only way 
-> to be sure if the running transaction has modified that buffer.  This patch 
-> also fixes an accounting error in journal_forget, it is possible that we can 
-> call journal_forget on a buffer without having modified it, only gotten write 
-> access to it, so instead of freeing a credit, we only do so if the buffer was 
-> modified.  The assert will help catch if this problem occurs.  Without these 
-> two patches I could hit this assert within minutes of running postmark, with 
-> them this issue no longer arises.  Thank you,
-> 
-> Signed-off-by: Josef Bacik <jbacik@redhat.com>
-  Acked-by: Jan Kara <jack@suse.cz>
+On Sat, 16 Feb 2008 11:14:46 +0530 Kamalesh Babulal
+<kamalesh@linux.vnet.ibm.com> wrote:
+>  > The 2.6.25-rc2 kernel oopses while running dbench on ext3 filesystem
+>  > mounted with mount -o data=writeback,nobh option on the x86_64 box
+>  >
+>  > BUG: unable to handle kernel NULL pointer dereference at 0000000000000000
+>  > IP: [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+>  > PGD 1f6860067 PUD 1f5d64067 PMD 0
+>  > Oops: 0000 [1] SMP
+>  > CPU 3
+>  > Modules linked in:
+>  > Pid: 4271, comm: dbench Not tainted 2.6.25-rc2-autotest #1
+>  > RIP: 0010:[<ffffffff80274972>]  [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+>  > RSP: 0000:ffff8101fb041dc8  EFLAGS: 00010246
+>  > RAX: 0000000000000000 RBX: ffff810180033c00 RCX: ffffffff8027b269
+>  > RDX: 0000000000000000 RSI: 00000000000080d0 RDI: ffffffff80632d70
+>  > RBP: 00000000000080d0 R08: 0000000000000001 R09: 0000000000000000
+>  > R10: ffff8101feb36e50 R11: 0000000000000190 R12: 0000000000000001
+>  > R13: 0000000000000000 R14: ffff8101f8f38000 R15: 00000000ffffff9c
+>  > FS:  0000000000000000(0000) GS:ffff8101fff0f000(0063) knlGS:00000000f7e41460
+>  > CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+>  > CR2: 0000000000000000 CR3: 00000001f5620000 CR4: 00000000000006e0
+>  > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>  > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>  > Process dbench (pid: 4271, threadinfo ffff8101fb040000, task ffff8101fb180000)
+>  > Stack:  0000000000000001 ffff8101fb041ea8 0000000000000001 ffffffff8027b269
+>  >  ffff8101fb041ea8 ffffffff80281fe8 0000000000000001 0000000000000000
+>  >  ffff8101fb041ea8 00000000ffffff9c 000000000000000b 0000000000000001
+>  > Call Trace:
+>  >  [<ffffffff8027b269>] get_empty_filp+0x55/0xf9
+>  >  [<ffffffff80281fe8>] __path_lookup_intent_open+0x22/0x8f
+>  >  [<ffffffff80282853>] open_namei+0x86/0x5a7
+>  >  [<ffffffff8027d019>] vfs_stat_fd+0x3c/0x4a
+>  >  [<ffffffff80279ab1>] do_filp_open+0x1c/0x3d
+>  >  [<ffffffff80279c2c>] get_unused_fd_flags+0x79/0x111
+>  >  [<ffffffff80279dce>] do_sys_open+0x46/0xca
+>  >  [<ffffffff80221c82>] ia32_sysret+0x0/0xa
 
-									Honza
-> 
-> Index: linux-2.6/fs/jbd/transaction.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd/transaction.c
-> +++ linux-2.6/fs/jbd/transaction.c
-> @@ -1234,6 +1234,7 @@ int journal_forget (handle_t *handle, st
->  	struct journal_head *jh;
->  	int drop_reserve = 0;
->  	int err = 0;
-> +	int was_modified = 0;
->  
->  	BUFFER_TRACE(bh, "entry");
->  
-> @@ -1252,6 +1253,9 @@ int journal_forget (handle_t *handle, st
->  		goto not_jbd;
->  	}
->  
-> +	/* keep track of wether or not this transaction modified us */
-> +	was_modified = jh->b_modified;
-> +
->  	/*
->  	 * The buffer's going from the transaction, we must drop
->  	 * all references -bzzz
-> @@ -1269,7 +1273,12 @@ int journal_forget (handle_t *handle, st
->  
->  		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
->  
-> -		drop_reserve = 1;
-> +		/*
-> +		 * we only want to drop a reference if this transaction
-> +		 * modified the buffer
-> +		 */
-> +		if (was_modified)
-> +			drop_reserve = 1;
->  
->  		/*
->  		 * We are no longer going to journal this buffer.
-> @@ -1309,7 +1318,13 @@ int journal_forget (handle_t *handle, st
->  		if (jh->b_next_transaction) {
->  			J_ASSERT(jh->b_next_transaction == transaction);
->  			jh->b_next_transaction = NULL;
-> -			drop_reserve = 1;
-> +
-> +			/*
-> +			 * only drop a reference if this transaction modified
-> +			 * the buffer
-> +			 */
-> +			if (was_modified)
-> +				drop_reserve = 1;
->  		}
->  	}
->  
-> @@ -2081,7 +2096,7 @@ void __journal_refile_buffer(struct jour
->  	jh->b_transaction = jh->b_next_transaction;
->  	jh->b_next_transaction = NULL;
->  	__journal_file_buffer(jh, jh->b_transaction,
-> -				was_dirty ? BJ_Metadata : BJ_Reserved);
-> +				jh->b_modified ? BJ_Metadata : BJ_Reserved);
->  	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
->  
->  	if (was_dirty)
-> Index: linux-2.6/fs/jbd2/transaction.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd2/transaction.c
-> +++ linux-2.6/fs/jbd2/transaction.c
-> @@ -1243,6 +1243,7 @@ int jbd2_journal_forget (handle_t *handl
->  	struct journal_head *jh;
->  	int drop_reserve = 0;
->  	int err = 0;
-> +	int was_modified = 0;
->  
->  	BUFFER_TRACE(bh, "entry");
->  
-> @@ -1261,6 +1262,9 @@ int jbd2_journal_forget (handle_t *handl
->  		goto not_jbd;
->  	}
->  
-> +	/* keep track of wether or not this transaction modified us */
-> +	was_modified = jh->b_modified;
-> +
->  	/*
->  	 * The buffer's going from the transaction, we must drop
->  	 * all references -bzzz
-> @@ -1278,7 +1282,12 @@ int jbd2_journal_forget (handle_t *handl
->  
->  		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
->  
-> -		drop_reserve = 1;
-> +		/*
-> +		 * we only want to drop a reference if this transaction
-> +		 * modified the buffer
-> +		 */
-> +		if (was_modified)
-> +			drop_reserve = 1;
->  
->  		/*
->  		 * We are no longer going to journal this buffer.
-> @@ -1318,7 +1327,13 @@ int jbd2_journal_forget (handle_t *handl
->  		if (jh->b_next_transaction) {
->  			J_ASSERT(jh->b_next_transaction == transaction);
->  			jh->b_next_transaction = NULL;
-> -			drop_reserve = 1;
-> +
-> +			/*
-> +			 * only drop a reference if this transaction modified
-> +			 * the buffer
-> +			 */
-> +			if (was_modified)
-> +				drop_reserve = 1;
->  		}
->  	}
->  
-> @@ -2090,7 +2105,7 @@ void __jbd2_journal_refile_buffer(struct
->  	jh->b_transaction = jh->b_next_transaction;
->  	jh->b_next_transaction = NULL;
->  	__jbd2_journal_file_buffer(jh, jh->b_transaction,
-> -				was_dirty ? BJ_Metadata : BJ_Reserved);
-> +				jh->b_modified ? BJ_Metadata : BJ_Reserved);
->  	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
->  
->  	if (was_dirty)
-> Index: linux-2.6/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd/commit.c
-> +++ linux-2.6/fs/jbd/commit.c
-> @@ -472,6 +472,9 @@ void journal_commit_transaction(journal_
->  	 */
->  	commit_transaction->t_state = T_COMMIT;
->  
-> +	J_ASSERT(commit_transaction->t_nr_buffers <=
-> +		 commit_transaction->t_outstanding_credits);
-> +
->  	descriptor = NULL;
->  	bufs = 0;
->  	while (commit_transaction->t_buffers) {
-> Index: linux-2.6/fs/jbd2/commit.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd2/commit.c
-> +++ linux-2.6/fs/jbd2/commit.c
-> @@ -568,6 +568,9 @@ void jbd2_journal_commit_transaction(jou
->  	stats.u.run.rs_blocks = commit_transaction->t_outstanding_credits;
->  	stats.u.run.rs_blocks_logged = 0;
->  
-> +	J_ASSERT(commit_transaction->t_nr_buffers <=
-> +		 commit_transaction->t_outstanding_credits);
-> +
->  	descriptor = NULL;
->  	bufs = 0;
->  	while (commit_transaction->t_buffers) {
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On Mon, Feb 18, 2008 at 2:59 PM, Andrew Morton
+<akpm@linux-foundation.org> wrote:
+>  Looks to me like we broke slab.  Christoph is offline until the 27th..
+
+This is probably fixed by:
+
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=00e962c5408b9f2d0bebd2308673fe982cb9a5fe
+
+As this is on the regression list, Kamalesh, can you please confirm
+it's fixed now?
+
+                             Pekka
