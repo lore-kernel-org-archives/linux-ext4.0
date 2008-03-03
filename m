@@ -1,39 +1,55 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: ext4-mm-delalloc-ext4.patch
-Date: Mon, 3 Mar 2008 13:08:23 -0800
-Message-ID: <20080303130823.ed6991a8.akpm@linux-foundation.org>
-References: <20080229010555.21ab9c77.akpm@linux-foundation.org>
-	<1204305996.3629.5.camel@localhost.localdomain>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH] fix mount option parsing for ext3/4
+Date: Mon, 3 Mar 2008 16:10:08 -0500
+Message-ID: <200803031610.09145.jbacik@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36146 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760540AbYCCVIv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Mar 2008 16:08:51 -0500
-In-Reply-To: <1204305996.3629.5.camel@localhost.localdomain>
+Received: from mx1.redhat.com ([66.187.233.31]:41223 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1763041AbYCCVWq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Mar 2008 16:22:46 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 29 Feb 2008 09:26:36 -0800
-Mingming Cao <cmm@us.ibm.com> wrote:
+Hello,
 
-> On Fri, 2008-02-29 at 01:05 -0800, Andrew Morton wrote:
-> > generic_commit_write() is scheduled for removal in 2.6.26 and is
-> > removed already from -mm.
-> > 
-> > Please switch to the new write_begin/write_end interface.
-> 
-> I have a patch for that, sent to linux-ext4 last week. I will merge it
-> to the parent patch and update in ext4 patch queue.
-> 
-> ext4: use write_begin/write_end in delalloc instead of prepare_write()
-> From: Mingming Cao <cmm@us.ibm.com>
+Noticed that the "resize" option won't be noticed as it comes after the NULL 
+option, so if you try to mount (or in this case remount) with that option it 
+won't be recognized.  Both ext3 and ext4 have this problem.  Thank you,
 
-Thanks.  But this change still isn't at
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/LATEST/broken-out/,
-so ext4 is still a no-build for me.
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
 
+Index: linux-2.6/fs/ext3/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext3/super.c
++++ linux-2.6/fs/ext3/super.c
+@@ -806,8 +806,8 @@ static match_table_t tokens = {
+ 	{Opt_quota, "quota"},
+ 	{Opt_usrquota, "usrquota"},
+ 	{Opt_barrier, "barrier=%u"},
+-	{Opt_err, NULL},
+ 	{Opt_resize, "resize"},
++	{Opt_err, NULL},
+ };
+ 
+ static ext3_fsblk_t get_sb_block(void **data)
+Index: linux-2.6/fs/ext4/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/super.c
++++ linux-2.6/fs/ext4/super.c
+@@ -944,8 +944,8 @@ static match_table_t tokens = {
+ 	{Opt_mballoc, "mballoc"},
+ 	{Opt_nomballoc, "nomballoc"},
+ 	{Opt_stripe, "stripe=%u"},
+-	{Opt_err, NULL},
+ 	{Opt_resize, "resize"},
++	{Opt_err, NULL},
+ };
+ 
+ static ext4_fsblk_t get_sb_block(void **data)
