@@ -1,113 +1,180 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH] ext4: Use page_mkwrite vma_operations to get mmap write notification.
-Date: Tue,  4 Mar 2008 18:12:22 +0530
-Message-ID: <1204634542-16599-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Convert uninitialized extent to initialized extent in case of file system full
+Date: Tue,  4 Mar 2008 18:13:50 +0530
+Message-ID: <1204634630-16713-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:35592 "EHLO
+Received: from e28smtp04.in.ibm.com ([59.145.155.4]:36193 "EHLO
 	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755957AbYCDMmY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Mar 2008 07:42:24 -0500
+	with ESMTP id S1759002AbYCDMnw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Mar 2008 07:43:52 -0500
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m24CgMbh012577
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 18:12:22 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m24CgMAO970788
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 18:12:22 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m24CgMLY032341
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 12:42:22 GMT
+	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m24ChpII013528
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 18:13:51 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m24ChpIH581664
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 18:13:51 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m24ChoBb007445
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Mar 2008 12:43:51 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We would like to get notified when we are doing a write on mmap section.
-This is needed with respect to preallocated area. We split the preallocated
-area into initialzed extent and uninitialzed extent in the call back. This
-let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
-that would result in data loss. The changes are also needed to handle ENOSPC
-when writing to an mmap section of files with holes.
+A write to prealloc area cause the split of unititalized extent
+into a initialized and uninitialized extent. If we don't have
+space to add new extent information instead of returning error
+convert the existing uninitialized extent to initialized one. We
+need to zero out the blocks corresponding to the extent to prevent
+wrong data reaching userspace.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/file.c          |   19 ++++++++++++++++++-
- fs/ext4/inode.c         |   15 +++++++++++++++
- include/linux/ext4_fs.h |    1 +
- 3 files changed, 34 insertions(+), 1 deletions(-)
+ fs/ext4/extents.c |  106 +++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 99 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 20507a2..77341c1 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -123,6 +123,23 @@ force_commit:
- 	return ret;
- }
- 
-+static struct vm_operations_struct ext4_file_vm_ops = {
-+	.fault		= filemap_fault,
-+	.page_mkwrite   = ext4_page_mkwrite,
-+};
-+
-+static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+
-+	if (!mapping->a_ops->readpage)
-+		return -ENOEXEC;
-+	file_accessed(file);
-+	vma->vm_ops = &ext4_file_vm_ops;
-+	vma->vm_flags |= VM_CAN_NONLINEAR;
-+	return 0;
-+}
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -133,7 +150,7 @@ const struct file_operations ext4_file_operations = {
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d315cc1..839caf2 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2136,6 +2136,80 @@ void ext4_ext_release(struct super_block *sb)
  #endif
--	.mmap		= generic_file_mmap,
-+	.mmap		= ext4_file_mmap,
- 	.open		= generic_file_open,
- 	.release	= ext4_release_file,
- 	.fsync		= ext4_sync_file,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0f86bbb..42bc666 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3493,3 +3493,18 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 
- 	return err;
  }
-+
-+int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-+{
-+	/*
-+	 * if ext4_get_block resulted in a split of an uninitialized extent,
-+	 * in file system full case, we will have to take the journal write
-+	 * access and zero out the page. The journal handle get initialized
-+	 * in ext4_get_block.
-+	 */
-+	/* FIXME!! should we take inode->i_mutex ? Currently we can't because
-+	 * it has a circular locking dependency with DIO. But migrate expect
-+	 * i_mutex to ensure no i_data changes
-+	 */
-+	return block_page_mkwrite(vma, page, ext4_get_block);
-+}
-diff --git a/include/linux/ext4_fs.h b/include/linux/ext4_fs.h
-index 22810b1..8f5a563 100644
---- a/include/linux/ext4_fs.h
-+++ b/include/linux/ext4_fs.h
-@@ -1059,6 +1059,7 @@ extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
- 		struct address_space *mapping, loff_t from);
-+extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
  
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
++static void bi_complete(struct bio *bio, int error)
++{
++	complete((struct completion *)bio->bi_private);
++}
++
++/* FIXME!! we need to try to merge to left or right after zerout  */
++static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
++{
++	int ret = -EIO;
++	struct bio *bio;
++	int blkbits, blocksize;
++	sector_t ee_pblock;
++	struct completion event;
++	unsigned int ee_len, len, done, offset;
++
++
++	blkbits   = inode->i_blkbits;
++	blocksize = inode->i_sb->s_blocksize;
++	ee_len    = ext4_ext_get_actual_len(ex);
++	ee_pblock = ext_pblock(ex);
++
++	/* convert ee_pblock in 512 byte sector */
++	ee_pblock = ee_pblock << (blkbits >> 9);
++
++
++	while (ee_len > 0) {
++
++		if (ee_len > BIO_MAX_PAGES)
++			len = BIO_MAX_PAGES;
++		else
++			len = ee_len;
++
++		bio = bio_alloc(GFP_NOIO, len);
++		if (!bio)
++			return -ENOMEM;
++		bio->bi_sector = ee_pblock;
++		bio->bi_bdev   = inode->i_sb->s_bdev;
++
++		done = 0;
++		offset = 0;
++		while (done < len) {
++			ret = bio_add_page(bio, ZERO_PAGE(0),
++							blocksize, offset);
++			if (ret != blocksize) {
++				/* We can't add any more page because of
++				 * hardware limitation. Start a new bio
++				 */
++				break;
++			}
++			done++;
++			offset += blocksize;
++			if (offset >= PAGE_CACHE_SIZE)
++				offset = 0;
++		}
++
++		init_completion(&event);
++		bio->bi_private = &event;
++		bio->bi_end_io = bi_complete;
++		submit_bio(WRITE, bio);
++		wait_for_completion(&event);
++
++		if (test_bit(BIO_UPTODATE, &bio->bi_flags))
++			ret = 0;
++		else {
++			ret = -EIO;
++			break;
++		}
++		bio_put(bio);
++		ee_len    -= done;
++		ee_pblock += done  << (blkbits - 9);
++	}
++	return ret;
++}
++
+ /*
+  * This function is called by ext4_ext_get_blocks() if someone tries to write
+  * to an uninitialized extent. It may result in splitting the uninitialized
+@@ -2202,14 +2276,19 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		ex3->ee_len = cpu_to_le16(allocated - max_blocks);
+ 		ext4_ext_mark_uninitialized(ex3);
+ 		err = ext4_ext_insert_extent(handle, inode, path, ex3);
+-		if (err) {
++		if (err == -ENOSPC) {
++			err =  ext4_ext_zeroout(inode, &orig_ex);
++			if (err)
++				goto fix_extent_len;
++			/* update the extent length and mark as initialized */
+ 			ex->ee_block = orig_ex.ee_block;
+ 			ex->ee_len   = orig_ex.ee_len;
+ 			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+-			ext4_ext_mark_uninitialized(ex);
+ 			ext4_ext_dirty(handle, inode, path + depth);
+-			goto out;
+-		}
++			return le16_to_cpu(ex->ee_len);
++
++		} else if (err)
++			goto fix_extent_len;
+ 		/*
+ 		 * The depth, and hence eh & ex might change
+ 		 * as part of the insert above.
+@@ -2295,15 +2374,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	goto out;
+ insert:
+ 	err = ext4_ext_insert_extent(handle, inode, path, &newex);
+-	if (err) {
++	if (err == -ENOSPC) {
++		err =  ext4_ext_zeroout(inode, &orig_ex);
++		if (err)
++			goto fix_extent_len;
++		/* update the extent length and mark as initialized */
+ 		ex->ee_block = orig_ex.ee_block;
+ 		ex->ee_len   = orig_ex.ee_len;
+ 		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+-		ext4_ext_mark_uninitialized(ex);
+ 		ext4_ext_dirty(handle, inode, path + depth);
+-	}
++		return le16_to_cpu(ex->ee_len);
++	} else if (err)
++		goto fix_extent_len;
+ out:
+ 	return err ? err : allocated;
++
++fix_extent_len:
++	ex->ee_block = orig_ex.ee_block;
++	ex->ee_len   = orig_ex.ee_len;
++	ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
++	ext4_ext_mark_uninitialized(ex);
++	ext4_ext_dirty(handle, inode, path + depth);
++	return err;
+ }
+ 
+ /*
 -- 
 1.5.4.3.422.g34cd6.dirty
 
