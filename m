@@ -1,148 +1,212 @@
-From: Hein_Tibosch <hein_tibosch@yahoo.es>
-Subject: Ext2 - ext3 unstable under 2.6.24: now solved (?)
-Date: Wed, 05 Mar 2008 03:42:16 +0800
-Message-ID: <47CDA618.9040007@yahoo.es>
-References: <71C39AE3DF382B4A9CD370AD1C63B855EA060C@stervanexmb01.teradici.local>	<47BD1760.9080007@yahoo.es> <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: James Stewart <jstewart@teradici.com>
+From: akpm@linux-foundation.org
+Subject: - use-page_cache_xxx-in-fs-ext3.patch removed from -mm tree
+Date: Tue, 04 Mar 2008 11:48:07 -0800
+Message-ID: <200803041948.m24Jm7o9025729@imap1.linux-foundation.org>
+To: clameter@sgi.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-vbr14.xs4all.nl ([194.109.24.34]:1755 "EHLO
-	smtp-vbr14.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762405AbYCDTnE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Mar 2008 14:43:04 -0500
-In-Reply-To: <20080221123543.412096f7@dhcp-252-066.norway.atmel.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36018 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753566AbYCDTsj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Mar 2008 14:48:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Could someone please check the following?
 
-The ext2 and ext3 filesystems of 2.6.24 show many Oops and hangups. 
-After debugging I found the following common cause:
+The patch titled
+     Use page_cache_xxx in fs/ext3
+has been removed from the -mm tree.  Its filename was
+     use-page_cache_xxx-in-fs-ext3.patch
 
-In a new 2.6.24 function an unwanted sign-extension takes place in:
+This patch was dropped because it was nacked
 
-fs/ext2/dir.c
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-static inline unsigned ext2_rec_len_from_disk(__le16 dlen)
-{
-   unsigned len = le16_to_cpu(dlen);
+------------------------------------------------------
+Subject: Use page_cache_xxx in fs/ext3
+From: Christoph Lameter <clameter@sgi.com>
 
-   if (len == EXT2_MAX_REC_LEN)
-       return 1 << 16;
-   return len;
-}
+Use page_cache_xxx in fs/ext3
 
-include/ext3_fs.h :
+Reviewed-by: Dave Chinner <dgc@sgi.com>
+Signed-off-by: Christoph Lameter <clameter@sgi.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-static inline unsigned ext3_rec_len_from_disk(__le16 dlen)
-{
-    unsigned len = le16_to_cpu(dlen);
+ fs/ext3/dir.c   |    3 ++-
+ fs/ext3/inode.c |   39 ++++++++++++++++++++-------------------
+ 2 files changed, 22 insertions(+), 20 deletions(-)
 
-    if (len == EXT3_MAX_REC_LEN)
-        return 1 << 16;
-    return len;
-}
+diff -puN fs/ext3/dir.c~use-page_cache_xxx-in-fs-ext3 fs/ext3/dir.c
+--- a/fs/ext3/dir.c~use-page_cache_xxx-in-fs-ext3
++++ a/fs/ext3/dir.c
+@@ -133,7 +133,8 @@ static int ext3_readdir(struct file * fi
+ 						&map_bh, 0, 0);
+ 		if (err > 0) {
+ 			pgoff_t index = map_bh.b_blocknr >>
+-					(PAGE_CACHE_SHIFT - inode->i_blkbits);
++				(page_cache_shift(inode->i_mapping)
++					- inode->i_blkbits);
+ 			if (!ra_has_index(&filp->f_ra, index))
+ 				page_cache_sync_readahead(
+ 					sb->s_bdev->bd_inode->i_mapping,
+diff -puN fs/ext3/inode.c~use-page_cache_xxx-in-fs-ext3 fs/ext3/inode.c
+--- a/fs/ext3/inode.c~use-page_cache_xxx-in-fs-ext3
++++ a/fs/ext3/inode.c
+@@ -1147,8 +1147,8 @@ static int ext3_write_begin(struct file 
+ 	pgoff_t index;
+ 	unsigned from, to;
+ 
+-	index = pos >> PAGE_CACHE_SHIFT;
+-	from = pos & (PAGE_CACHE_SIZE - 1);
++	index = page_cache_index(mapping, pos);
++	from = page_cache_offset(mapping, pos);
+ 	to = from + len;
+ 
+ retry:
+@@ -1244,7 +1244,7 @@ static int ext3_ordered_write_end(struct
+ 	unsigned from, to;
+ 	int ret = 0, ret2;
+ 
+-	from = pos & (PAGE_CACHE_SIZE - 1);
++	from = page_cache_offset(mapping, pos);
+ 	to = from + len;
+ 
+ 	ret = walk_page_buffers(handle, page_buffers(page),
+@@ -1314,7 +1314,7 @@ static int ext3_journalled_write_end(str
+ 	int partial = 0;
+ 	unsigned from, to;
+ 
+-	from = pos & (PAGE_CACHE_SIZE - 1);
++	from = page_cache_offset(mapping, pos);
+ 	to = from + len;
+ 
+ 	if (copied < len) {
+@@ -1477,6 +1477,7 @@ static int ext3_ordered_writepage(struct
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
++	int pagesize = page_cache_size(inode->i_mapping);
+ 
+ 	J_ASSERT(PageLocked(page));
+ 
+@@ -1499,8 +1500,7 @@ static int ext3_ordered_writepage(struct
+ 				(1 << BH_Dirty)|(1 << BH_Uptodate));
+ 	}
+ 	page_bufs = page_buffers(page);
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bget_one);
++	walk_page_buffers(handle, page_bufs, 0, pagesize, NULL, bget_one);
+ 
+ 	ret = block_write_full_page(page, ext3_get_block, wbc);
+ 
+@@ -1517,13 +1517,12 @@ static int ext3_ordered_writepage(struct
+ 	 * and generally junk.
+ 	 */
+ 	if (ret == 0) {
+-		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
+-					NULL, journal_dirty_data_fn);
++		err = walk_page_buffers(handle, page_bufs, 0, pagesize,
++			NULL, journal_dirty_data_fn);
+ 		if (!ret)
+ 			ret = err;
+ 	}
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bput_one);
++	walk_page_buffers(handle, page_bufs, 0, pagesize, NULL, bput_one);
+ 	err = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
+@@ -1571,10 +1570,12 @@ out_fail:
+ static int ext3_journalled_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
++	struct address_space *mapping = page->mapping;
++	struct inode *inode = mapping->host;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
++	int pagesize = page_cache_size(inode->i_mapping);
+ 
+ 	if (ext3_journal_current_handle())
+ 		goto no_write;
+@@ -1591,17 +1592,16 @@ static int ext3_journalled_writepage(str
+ 		 * doesn't seem much point in redirtying the page here.
+ 		 */
+ 		ClearPageChecked(page);
+-		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
+-					ext3_get_block);
++		ret = block_prepare_write(page, 0, pagesize, ext3_get_block);
+ 		if (ret != 0) {
+ 			ext3_journal_stop(handle);
+ 			goto out_unlock;
+ 		}
+ 		ret = walk_page_buffers(handle, page_buffers(page), 0,
+-			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
++			pagesize, NULL, do_journal_get_write_access);
+ 
+ 		err = walk_page_buffers(handle, page_buffers(page), 0,
+-				PAGE_CACHE_SIZE, NULL, write_end_fn);
++			pagesize, NULL, write_end_fn);
+ 		if (ret == 0)
+ 			ret = err;
+ 		EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
+@@ -1824,8 +1824,8 @@ void ext3_set_aops(struct inode *inode)
+ static int ext3_block_truncate_page(handle_t *handle, struct page *page,
+ 		struct address_space *mapping, loff_t from)
+ {
+-	ext3_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+-	unsigned offset = from & (PAGE_CACHE_SIZE-1);
++	ext3_fsblk_t index = page_cache_index(mapping, from);
++	unsigned offset = page_cache_offset(mapping, from);
+ 	unsigned blocksize, iblock, length, pos;
+ 	struct inode *inode = mapping->host;
+ 	struct buffer_head *bh;
+@@ -1833,7 +1833,8 @@ static int ext3_block_truncate_page(hand
+ 
+ 	blocksize = inode->i_sb->s_blocksize;
+ 	length = blocksize - (offset & (blocksize - 1));
+-	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
++	iblock = index <<
++		(page_cache_shift(mapping) - inode->i_sb->s_blocksize_bits);
+ 
+ 	/*
+ 	 * For "nobh" option,  we can only work if we don't need to
+@@ -2312,7 +2313,7 @@ void ext3_truncate(struct inode *inode)
+ 		page = NULL;
+ 	} else {
+ 		page = grab_cache_page(mapping,
+-				inode->i_size >> PAGE_CACHE_SHIFT);
++				page_cache_index(mapping, inode->i_size));
+ 		if (!page)
+ 			return;
+ 	}
+_
 
-00A0 will be returned as 0xFFFFA000 !!
+Patches currently in -mm which might be from clameter@sgi.com are
 
-Many code which iterates through dirent's, uses the above function to 
-determine the start of the next dirent.(ext2_dirent, ext3_dir_entry_2)
-See fs/ext2/dir.c and fs/ext3/namei.c
-
-As a test I replaced "le16_to_cpu()" by a simple:
-
-static inline unsigned my_le16_to_cpu (__le16 value)
-{
-    return ((value & 0x00FF) << 8) | ((value & 0xFF00) >> 8);
-}
-
-It showed no more "negative" rec_len values which cause the crashes, and 
-both ext2/3 now run stable.
-
-Compiler: gcc version 4.1.2 (Ubuntu 4.1.2-0ubuntu4)
-Kernel: 2.6.24.atmel.1
-Platform: Atmel AP7000 CPU, compiling with "ARCH=avr32 
-CROSS_COMPILE=avr32-linux-"
-
-
-Hein Tibosch
-
-
-Haavard Skinnemoen wrote:
-> (Adding the ext2/ext3/ext4 list to Cc)
->
-> Note that the MMC/SD card driver in question, atmel-mci, is not in
-> mainline, and may be the real cause of this problem. But it looks like
-> there might be a potential problem in the ext3 code as well?
->
-> Haavard
->
-> On Thu, 21 Feb 2008 14:17:04 +0800
-> Hein_Tibosch <hein_tibosch@yahoo.es> wrote:
->
->   
->> Hi James,
->>
->>
->> I've had all kinds of problems with the SD-card hooked to an NGW100, just as John Voltz reported earlier:
->>
->>     http://www.avr32linux.org/archives/kernel/2007-November/000421.html
->>     http://www.avr32linux.org/archives/kernel/2007-November/000425.html
->>
->> I debugged this problem and my conclusion is: using an SD-card may lead to both BUS-errors and a complete hanging of the system, with 2.6.23.atmel.5 as well as 2.6.24.atmel.1.
->>
->> Both the driver for ext2 and ext3 are using this type of function to iterate through a array of inodes:
->>
->>     static inline ext2_dirent *ext2_next_entry(ext2_dirent *p)
->>     {
->>         return (ext2_dirent *)((char*)p + le16_to_cpu(p->rec_len));
->>     }
->>
->>     static inline struct ext3_dir_entry_2 *
->>         ext3_next_entry(struct ext3_dir_entry_2 *p)
->>     {
->>         return (struct ext3_dir_entry_2 *)((char *)p +
->>             ext3_rec_len_from_disk(p->rec_len));
->>     }
->>
->>
->> Sometimes, rec_len is checked for a zero-value, sometimes the entry is checked thoroughly for validity (like with ext2_check_page() or ext3_check_dir_entry()), but in other cases rec_len isn't checked at all! This is the case in e.g. fs/ext3/namei.c, function ext3_dx_find_entry(). This function is always enabled since 2.6.24 (CONFIG_EXT3_INDEX not used anymore).
->>
->> I had a card on which at one place rec_len turned out to be a small negative number. When iterating, it would either cycle for ever (until WDT) or it could enter invalid memory (OOPS: BUS error).
->>
->> ( strange though that the rec_len appeared to have a negative number, I just did a "mkfs -t ext3" on Ubuntu. Could that be caused by the Atmel-driver? )
->>
->> I don't yet feel qualified to make a patch for this, I only did it for myself. Maybe someone can pick this up: a validity check should be made before any call to xxx_next_entry().
->>
->>
->> Regards,
->>
->> Hein Tibosch (HeinBali at avr32linux)
->>
->>
->>
->> James Stewart wrote:
->> Hi,
->>  
->> I'm wondering if there are any known issues with booting from SD card on the ATNGW100 using this kernel. I get a bunch of ext2 looking errors and then a stack dump immediately after mounting VFS. 2.6.23.atmel.5 runs perfectly, however.
->>  
->> This is just compiling using atngw100_defconfig.
->>  
->> Thanks,
->>  
->> James
->>
->> ------------------------------------------------
->>
->> _______________________________________________
->> Kernel mailing list
->> Kernel@avr32linux.org
->> http://duppen.flaskehals.net/cgi-bin/mailman/listinfo/kernel
->>   
->>     
->
->   
+origin.patch
+git-unionfs.patch
+git-slub.patch
+hugetlb-fix-pool-shrinking-while-in-restricted-cpuset.patch
+x86-cast-cmpxchg-and-cmpxchg_local-result-for-386-and-486.patch
+ntfs-fix-nommu-build.patch
+slub-fix-possible-null-pointer-dereference.patch
+slub-fix-possible-null-pointer-dereference-fix.patch
+remove-set_migrateflags.patch
+mm-use-zonelists-instead-of-zones-when-direct-reclaiming-pages.patch
+mm-introduce-node_zonelist-for-accessing-the-zonelist-for-a-gfp-mask.patch
+mm-remember-what-the-preferred-zone-is-for-zone_statistics.patch
+mm-use-two-zonelist-that-are-filtered-by-gfp-mask.patch
+mm-have-zonelist-contains-structs-with-both-a-zone-pointer-and-zone_idx.patch
+mm-filter-based-on-a-nodemask-as-well-as-a-gfp_mask.patch
+mm-move-cache_line_size-to-linux-cacheh.patch
+use-page_cache_xxx-in-fs-ext3.patch
+use-page_cache_xxx-in-fs-reiserfs.patch
+use-page_cache_xxx-in-fs-ext4.patch
+reiser4.patch
+reiser4-portion-of-zero_user-cleanup-patch.patch
+page-owner-tracking-leak-detector.patch
 
