@@ -1,150 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] resize2fs vs. large inodes, take 3
-Date: Mon, 03 Mar 2008 21:19:22 -0600
-Message-ID: <47CCBFBA.7040305@redhat.com>
-References: <47CC622F.8030900@redhat.com>
+From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
+Subject: Re: [BUG] Linux 2.6.25-rc2 - Kernel Ooops while running dbench
+Date: Tue, 04 Mar 2008 09:33:02 +0530
+Message-ID: <47CCC9F6.1080601@linux.vnet.ibm.com>
+References: <alpine.LFD.1.00.0802151302210.9496@woody.linux-foundation.org> <47B6784E.2090401@linux.vnet.ibm.com> <20080218045954.50503fb1.akpm@linux-foundation.org> <84144f020803030351l2042e9aaqe656ad1610e5efc5@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Andy Whitcroft <apw@shadowen.org>,
+	Balbir Singh <balbir@linux.vnet.ibm.com>,
+	Christoph Lameter <clameter@sgi.com>, linux-mm@kvack.org
+To: Pekka Enberg <penberg@cs.helsinki.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59214 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752092AbYCDDTZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Mar 2008 22:19:25 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m243JO1i019032
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Mar 2008 22:19:24 -0500
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m243JNf3027347
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Mar 2008 22:19:23 -0500
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m243JMei017800
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Mar 2008 22:19:23 -0500
-In-Reply-To: <47CC622F.8030900@redhat.com>
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:46869 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751803AbYCDED0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Mar 2008 23:03:26 -0500
+In-Reply-To: <84144f020803030351l2042e9aaqe656ad1610e5efc5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(further livecd-creation testing found more problems; this patch
-seems cleaner, survives livecd creations w/o any corruption, and
-passes regression tests.  Comments welcome of course.  Should apply
-on top of e2fsprogs-1.40.7, still).
+Pekka Enberg wrote:
+> On Sat, 16 Feb 2008 11:14:46 +0530 Kamalesh Babulal
+> <kamalesh@linux.vnet.ibm.com> wrote:
+>>  > The 2.6.25-rc2 kernel oopses while running dbench on ext3 filesystem
+>>  > mounted with mount -o data=writeback,nobh option on the x86_64 box
+>>  >
+>>  > BUG: unable to handle kernel NULL pointer dereference at 0000000000000000
+>>  > IP: [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+>>  > PGD 1f6860067 PUD 1f5d64067 PMD 0
+>>  > Oops: 0000 [1] SMP
+>>  > CPU 3
+>>  > Modules linked in:
+>>  > Pid: 4271, comm: dbench Not tainted 2.6.25-rc2-autotest #1
+>>  > RIP: 0010:[<ffffffff80274972>]  [<ffffffff80274972>] kmem_cache_alloc+0x3a/0x6c
+>>  > RSP: 0000:ffff8101fb041dc8  EFLAGS: 00010246
+>>  > RAX: 0000000000000000 RBX: ffff810180033c00 RCX: ffffffff8027b269
+>>  > RDX: 0000000000000000 RSI: 00000000000080d0 RDI: ffffffff80632d70
+>>  > RBP: 00000000000080d0 R08: 0000000000000001 R09: 0000000000000000
+>>  > R10: ffff8101feb36e50 R11: 0000000000000190 R12: 0000000000000001
+>>  > R13: 0000000000000000 R14: ffff8101f8f38000 R15: 00000000ffffff9c
+>>  > FS:  0000000000000000(0000) GS:ffff8101fff0f000(0063) knlGS:00000000f7e41460
+>>  > CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+>>  > CR2: 0000000000000000 CR3: 00000001f5620000 CR4: 00000000000006e0
+>>  > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>  > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>  > Process dbench (pid: 4271, threadinfo ffff8101fb040000, task ffff8101fb180000)
+>>  > Stack:  0000000000000001 ffff8101fb041ea8 0000000000000001 ffffffff8027b269
+>>  >  ffff8101fb041ea8 ffffffff80281fe8 0000000000000001 0000000000000000
+>>  >  ffff8101fb041ea8 00000000ffffff9c 000000000000000b 0000000000000001
+>>  > Call Trace:
+>>  >  [<ffffffff8027b269>] get_empty_filp+0x55/0xf9
+>>  >  [<ffffffff80281fe8>] __path_lookup_intent_open+0x22/0x8f
+>>  >  [<ffffffff80282853>] open_namei+0x86/0x5a7
+>>  >  [<ffffffff8027d019>] vfs_stat_fd+0x3c/0x4a
+>>  >  [<ffffffff80279ab1>] do_filp_open+0x1c/0x3d
+>>  >  [<ffffffff80279c2c>] get_unused_fd_flags+0x79/0x111
+>>  >  [<ffffffff80279dce>] do_sys_open+0x46/0xca
+>>  >  [<ffffffff80221c82>] ia32_sysret+0x0/0xa
+> 
+> On Mon, Feb 18, 2008 at 2:59 PM, Andrew Morton
+> <akpm@linux-foundation.org> wrote:
+>>  Looks to me like we broke slab.  Christoph is offline until the 27th..
+> 
+> This is probably fixed by:
+> 
+> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=00e962c5408b9f2d0bebd2308673fe982cb9a5fe
+> 
+> As this is on the regression list, Kamalesh, can you please confirm
+> it's fixed now?
+> 
+>                              Pekka
 
------------------
+Thanks, I tested the 2.6.25-rc3-git4 kernel and the oops is not reproducible. This commit seems to fix the kernel oops.
 
-Use ext2fs_get_next_inode_full() in resize2fs and clean up large
-inode handling; previous attempt was not properly handling all cases, 
-and was incorrectly setting i_extra_isize.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Index: e2fsprogs-1.40.7/resize/resize2fs.c
-===================================================================
---- e2fsprogs-1.40.7.orig/resize/resize2fs.c
-+++ e2fsprogs-1.40.7/resize/resize2fs.c
-@@ -1109,8 +1109,7 @@ static errcode_t inode_scan_and_fix(ext2
- {
- 	struct process_block_struct	pb;
- 	ext2_ino_t		ino, new_inode;
--	struct ext2_inode 	inode, *buf = NULL;
--	struct ext2_inode_large	*large_inode;
-+	struct ext2_inode 	*inode = NULL;
- 	ext2_inode_scan 	scan = NULL;
- 	errcode_t		retval;
- 	int			group;
-@@ -1154,12 +1153,12 @@ static errcode_t inode_scan_and_fix(ext2
- 	}
- 	ext2fs_set_inode_callback(scan, progress_callback, (void *) rfs);
- 	pb.rfs = rfs;
--	pb.inode = &inode;
-+	pb.inode = inode;
- 	pb.error = 0;
- 	new_inode = EXT2_FIRST_INODE(rfs->new_fs->super);
- 	inode_size = EXT2_INODE_SIZE(rfs->new_fs->super);
--	buf = malloc(inode_size);
--	if (!buf) {
-+	inode = malloc(inode_size);
-+	if (!inode) {
- 		retval = ENOMEM;
- 		goto errout;
- 	}
-@@ -1168,29 +1167,29 @@ static errcode_t inode_scan_and_fix(ext2
- 	 * elsewhere in the inode table
- 	 */
- 	while (1) {
--		retval = ext2fs_get_next_inode(scan, &ino, &inode);
-+		retval = ext2fs_get_next_inode_full(scan, &ino, inode, inode_size);
- 		if (retval) goto errout;
- 		if (!ino)
- 			break;
- 
--		if (inode.i_links_count == 0 && ino != EXT2_RESIZE_INO)
-+		if (inode->i_links_count == 0 && ino != EXT2_RESIZE_INO)
- 			continue; /* inode not in use */
- 
--		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
-+		pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
- 		pb.changed = 0;
- 
--		if (inode.i_file_acl && rfs->bmap) {
-+		if (inode->i_file_acl && rfs->bmap) {
- 			new_block = ext2fs_extent_translate(rfs->bmap, 
--							    inode.i_file_acl);
-+							    inode->i_file_acl);
- 			if (new_block) {
--				inode.i_file_acl = new_block;
--				retval = ext2fs_write_inode(rfs->old_fs, 
--							    ino, &inode);
-+				inode->i_file_acl = new_block;
-+				retval = ext2fs_write_inode_full(rfs->old_fs, 
-+							    ino, inode, inode_size);
- 				if (retval) goto errout;
- 			}
- 		}
- 		
--		if (ext2fs_inode_has_valid_blocks(&inode) &&
-+		if (ext2fs_inode_has_valid_blocks(inode) &&
- 		    (rfs->bmap || pb.is_dir)) {
- 			pb.ino = ino;
- 			retval = ext2fs_block_iterate2(rfs->old_fs,
-@@ -1221,23 +1220,19 @@ static errcode_t inode_scan_and_fix(ext2
- 			}
- 		}
- 		ext2fs_mark_inode_bitmap(rfs->new_fs->inode_map, new_inode);
--		memcpy(buf, &inode, sizeof(struct ext2_inode));
--		large_inode = (struct ext2_inode_large *)buf;
--		large_inode->i_extra_isize = sizeof(struct ext2_inode_large) -
--			EXT2_GOOD_OLD_INODE_SIZE;
- 		if (pb.changed) {
- 			/* Get the new version of the inode */
- 			retval = ext2fs_read_inode_full(rfs->old_fs, ino,
--						buf, inode_size);
-+						inode, inode_size);
- 			if (retval) goto errout;
- 		}
--		inode.i_ctime = time(0);
-+		inode->i_ctime = time(0);
- 		retval = ext2fs_write_inode_full(rfs->old_fs, new_inode,
--						buf, inode_size);
-+						inode, inode_size);
- 		if (retval) goto errout;
- 
- 		group = (new_inode-1) / EXT2_INODES_PER_GROUP(rfs->new_fs->super);
--		if (LINUX_S_ISDIR(inode.i_mode))
-+		if (LINUX_S_ISDIR(inode->i_mode))
- 			rfs->new_fs->group_desc[group].bg_used_dirs_count++;
- 		
- #ifdef RESIZE2FS_DEBUG
-@@ -1263,8 +1258,8 @@ errout:
- 		ext2fs_close_inode_scan(scan);
- 	if (block_buf)
- 		ext2fs_free_mem(&block_buf);
--	if (buf)
--		free(buf);
-+	if (inode)
-+		free(inode);
- 	return retval;
- }
- 
-
+-- 
+Thanks & Regards,
+Kamalesh Babulal,
+Linux Technology Center,
+IBM, ISTL.
