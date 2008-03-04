@@ -1,200 +1,182 @@
 From: akpm@linux-foundation.org
-Subject: - use-page_cache_xxx-in-fs-ext4.patch removed from -mm tree
-Date: Tue, 04 Mar 2008 11:48:12 -0800
-Message-ID: <200803041948.m24JmC23025735@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: clameter@sgi.com, dgc@sgi.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - use-page_cache_xxx-in-ext2-fix.patch removed from -mm tree
+Date: Tue, 04 Mar 2008 11:48:02 -0800
+Message-ID: <200803041948.m24Jm2lH025723@imap1.linux-foundation.org>
+To: akpm@linux-foundation.org, clameter@sgi.com,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37440 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753460AbYCDTsi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Mar 2008 14:48:38 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     Use page_cache_xxx in fs/ext4
+     use-page_cache_xxx-in-ext2-fix
 has been removed from the -mm tree.  Its filename was
-     use-page_cache_xxx-in-fs-ext4.patch
+     use-page_cache_xxx-in-ext2-fix.patch
 
 This patch was dropped because it was nacked
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: Use page_cache_xxx in fs/ext4
-From: Christoph Lameter <clameter@sgi.com>
+Subject: use-page_cache_xxx-in-ext2-fix
+From: Andrew Morton <akpm@linux-foundation.org>
 
-Use page_cache_xxx in fs/ext4
-
-Reviewed-by: Dave Chinner <dgc@sgi.com>
-Signed-off-by: Christoph Lameter <clameter@sgi.com>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Christoph Lameter <clameter@sgi.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/dir.c   |    3 ++-
- fs/ext4/inode.c |   34 +++++++++++++++++-----------------
- 2 files changed, 19 insertions(+), 18 deletions(-)
+ fs/ext2/dir.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff -puN fs/ext4/dir.c~use-page_cache_xxx-in-fs-ext4 fs/ext4/dir.c
---- a/fs/ext4/dir.c~use-page_cache_xxx-in-fs-ext4
-+++ a/fs/ext4/dir.c
-@@ -132,7 +132,8 @@ static int ext4_readdir(struct file * fi
- 		err = ext4_get_blocks_wrap(NULL, inode, blk, 1, &map_bh, 0, 0);
- 		if (err > 0) {
- 			pgoff_t index = map_bh.b_blocknr >>
--					(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+				(page_cache_size(inode->i_mapping)
-+					- inode->i_blkbits);
- 			if (!ra_has_index(&filp->f_ra, index))
- 				page_cache_sync_readahead(
- 					sb->s_bdev->bd_inode->i_mapping,
-diff -puN fs/ext4/inode.c~use-page_cache_xxx-in-fs-ext4 fs/ext4/inode.c
---- a/fs/ext4/inode.c~use-page_cache_xxx-in-fs-ext4
-+++ a/fs/ext4/inode.c
-@@ -1142,8 +1142,8 @@ static int ext4_write_begin(struct file 
-  	pgoff_t index;
-  	unsigned from, to;
- 
-- 	index = pos >> PAGE_CACHE_SHIFT;
-- 	from = pos & (PAGE_CACHE_SIZE - 1);
-+ 	index = page_cache_index(mapping, pos);
-+ 	from = page_cache_offset(mapping, pos);
-  	to = from + len;
- 
- retry:
-@@ -1238,7 +1238,7 @@ static int ext4_ordered_write_end(struct
- 	unsigned from, to;
- 	int ret = 0, ret2;
- 
--	from = pos & (PAGE_CACHE_SIZE - 1);
-+	from = page_cache_offset(mapping, pos);
- 	to = from + len;
- 
- 	ret = walk_page_buffers(handle, page_buffers(page),
-@@ -1308,7 +1308,7 @@ static int ext4_journalled_write_end(str
- 	int partial = 0;
- 	unsigned from, to;
- 
--	from = pos & (PAGE_CACHE_SIZE - 1);
-+	from = page_cache_offset(mapping, pos);
- 	to = from + len;
- 
- 	if (copied < len) {
-@@ -1611,6 +1611,7 @@ static int ext4_ordered_writepage(struct
- 	handle_t *handle = NULL;
- 	int ret = 0;
- 	int err;
-+	int pagesize = page_cache_size(inode->i_mapping);
- 
- 	J_ASSERT(PageLocked(page));
- 
-@@ -1633,8 +1634,7 @@ static int ext4_ordered_writepage(struct
- 				(1 << BH_Dirty)|(1 << BH_Uptodate));
- 	}
- 	page_bufs = page_buffers(page);
--	walk_page_buffers(handle, page_bufs, 0,
--			PAGE_CACHE_SIZE, NULL, bget_one);
-+	walk_page_buffers(handle, page_bufs, 0, pagesize, NULL, bget_one);
- 
- 	ret = block_write_full_page(page, ext4_get_block, wbc);
- 
-@@ -1651,13 +1651,12 @@ static int ext4_ordered_writepage(struct
- 	 * and generally junk.
- 	 */
- 	if (ret == 0) {
--		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
-+		err = walk_page_buffers(handle, page_bufs, 0, pagesize,
- 					NULL, jbd2_journal_dirty_data_fn);
- 		if (!ret)
- 			ret = err;
- 	}
--	walk_page_buffers(handle, page_bufs, 0,
--			PAGE_CACHE_SIZE, NULL, bput_one);
-+	walk_page_buffers(handle, page_bufs, 0, pagesize, NULL, bput_one);
- 	err = ext4_journal_stop(handle);
- 	if (!ret)
- 		ret = err;
-@@ -1709,6 +1708,7 @@ static int ext4_journalled_writepage(str
- 	handle_t *handle = NULL;
- 	int ret = 0;
- 	int err;
-+	int pagesize = page_cache_size(inode->i_mapping);
- 
- 	if (ext4_journal_current_handle())
- 		goto no_write;
-@@ -1725,17 +1725,16 @@ static int ext4_journalled_writepage(str
- 		 * doesn't seem much point in redirtying the page here.
- 		 */
- 		ClearPageChecked(page);
--		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
--					ext4_get_block);
-+		ret = block_prepare_write(page, 0, pagesize, ext4_get_block);
- 		if (ret != 0) {
- 			ext4_journal_stop(handle);
- 			goto out_unlock;
+diff -puN fs/ext2/dir.c~use-page_cache_xxx-in-ext2-fix fs/ext2/dir.c
+--- a/fs/ext2/dir.c~use-page_cache_xxx-in-ext2-fix
++++ a/fs/ext2/dir.c
+@@ -170,8 +170,9 @@ Einumber:
+ bad_entry:
+ 	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
+ 		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+-		dir->i_ino, error, page_cache_pos(mapping, page->index, offs),
+-		(unsigned long) le32_to_cpu(p->inode),
++		dir->i_ino, error,
++		(unsigned long)page_cache_pos(mapping, page->index, offs),
++		(unsigned long)le32_to_cpu(p->inode),
+ 		rec_len, p->name_len);
+ 	goto fail;
+ Eend:
+@@ -179,8 +180,9 @@ Eend:
+ 	ext2_error (sb, "ext2_check_page",
+ 		"entry in directory #%lu spans the page boundary"
+ 		"offset=%lu, inode=%lu",
+-		dir->i_ino, page_cache_pos(mapping, page->index, offs),
+-		(unsigned long) le32_to_cpu(p->inode));
++		dir->i_ino,
++		(unsigned long)page_cache_pos(mapping, page->index, offs),
++		(unsigned long)le32_to_cpu(p->inode));
+ fail:
+ 	SetPageChecked(page);
+ 	SetPageError(page);
+@@ -301,7 +303,7 @@ ext2_readdir (struct file * filp, void *
+ 			ext2_error(sb, __FUNCTION__,
+ 				   "bad page in #%lu",
+ 				   inode->i_ino);
+-			filp->f_pos += page_cache_size(mapping) - offset
++			filp->f_pos += page_cache_size(mapping) - offset;
+ 			return PTR_ERR(page);
  		}
- 		ret = walk_page_buffers(handle, page_buffers(page), 0,
--			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-+			pagesize, NULL, do_journal_get_write_access);
- 
- 		err = walk_page_buffers(handle, page_buffers(page), 0,
--				PAGE_CACHE_SIZE, NULL, write_end_fn);
-+			pagesize, NULL, write_end_fn);
- 		if (ret == 0)
- 			ret = err;
- 		EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
-@@ -1976,8 +1975,8 @@ void ext4_set_aops(struct inode *inode)
- int ext4_block_truncate_page(handle_t *handle, struct page *page,
- 		struct address_space *mapping, loff_t from)
- {
--	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
--	unsigned offset = from & (PAGE_CACHE_SIZE-1);
-+	ext4_fsblk_t index = page_cache_index(mapping, from);
-+	unsigned offset = page_cache_offset(mapping, from);
- 	unsigned blocksize, length, pos;
- 	ext4_lblk_t iblock;
- 	struct inode *inode = mapping->host;
-@@ -1986,7 +1985,8 @@ int ext4_block_truncate_page(handle_t *h
- 
- 	blocksize = inode->i_sb->s_blocksize;
- 	length = blocksize - (offset & (blocksize - 1));
--	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
-+	iblock = index <<
-+		(page_cache_shift(mapping) - inode->i_sb->s_blocksize_bits);
- 
- 	/*
- 	 * For "nobh" option,  we can only work if we don't need to
-@@ -2466,7 +2466,7 @@ void ext4_truncate(struct inode *inode)
- 		page = NULL;
- 	} else {
- 		page = grab_cache_page(mapping,
--				inode->i_size >> PAGE_CACHE_SHIFT);
-+				page_cache_index(mapping, inode->i_size));
- 		if (!page)
- 			return;
- 	}
+ 		kaddr = page_address(page);
 _
 
-Patches currently in -mm which might be from clameter@sgi.com are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
 origin.patch
+rtc-add-support-for-the-s-35390a-rtc-chip.patch
+zlc_setup-handle-jiffies-wraparound-fix.patch
+hda_intel-needs-dma-mappingh.patch
+git-x86.patch
+arch-x86-kernel-ptracec-fix-defined-but-unused-warnings.patch
+git-acpi-fixup.patch
+acpi-enable-c3-power-state-on-dell-inspiron-8200.patch
+git-alsa-fix-git-conflicts.patch
+git-alsa-build-fix.patch
+git-cifs.patch
+revert-gregkh-driver-video-add-the-go7007-driver.patch
+driver-core-debug-for-bad-dev_attr_show-return-value.patch
+git-drm.patch
+git-dvb.patch
+git-hwmon.patch
+git-hrt.patch
+drivers-input-touchscreen-ads7846c-fix-uninitialized-var-warning.patch
+maple-add-driver-for-sega-dreamcast-controller-update-checkpatch-fixes.patch
+git-kvm.patch
+pata-i-do-not-think-it-means-what-you-think-it-means-checkpatch-fixes.patch
+git-md-accel.patch
+git-ubi.patch
+update-smc91x-driver-with-arm-versatile-board-info.patch
+git-nfsd.patch
+fs-ocfs2-dlm-dlmdomainc-fix-printk-warning.patch
+sh-export-copy-page-to-modules.patch
+scsi-aic94xx-cleanups.patch
+git-block-git-rejects.patch
 git-unionfs.patch
-git-slub.patch
-hugetlb-fix-pool-shrinking-while-in-restricted-cpuset.patch
-x86-cast-cmpxchg-and-cmpxchg_local-result-for-386-and-486.patch
-ntfs-fix-nommu-build.patch
-slub-fix-possible-null-pointer-dereference.patch
+drivers-usb-storage-sddr55c-fix-uninitialized-var-warnings.patch
+usb-remove-unnecessary-type-casting-of-urb-context-checkpatch-fixes.patch
+git-v9fs.patch
+git-semaphore-git-rejects.patch
+documentation-atomic_add_unless-doesnt-imply-mb-on-failure-fix.patch
+tridentfb-resource-management-fixes-in-probe-function-fix.patch
+add-noinline_for_stack.patch
+ndelay-switch-to-c-function-to-avoid-64-bit-division.patch
+ndelay-switch-to-c-function-to-avoid-64-bit-division-fix.patch
+sm501-add-support-for-the-sm502-programmable-pll-checkpatch-fixes.patch
+markers-dont-risk-null-deref-in-marker-checkpatch-fixes.patch
+kernel-add-clamp-and-clamp_t-macros-checkpatch-fixes.patch
+kernel-add-clamp-and-clamp_t-macros-fix.patch
+iommu-parisc-pass-struct-device-to-iommu_alloc_range-checkpatch-fixes.patch
+iommu-parisc-make-the-iommus-respect-the-segment-boundary-limits-checkpatch-fixes.patch
+drivers-media-video-em28xx-correct-use-of-and-fix.patch
 slub-fix-possible-null-pointer-dereference-fix.patch
-remove-set_migrateflags.patch
-mm-use-zonelists-instead-of-zones-when-direct-reclaiming-pages.patch
-mm-introduce-node_zonelist-for-accessing-the-zonelist-for-a-gfp-mask.patch
-mm-remember-what-the-preferred-zone-is-for-zone_statistics.patch
-mm-use-two-zonelist-that-are-filtered-by-gfp-mask.patch
-mm-have-zonelist-contains-structs-with-both-a-zone-pointer-and-zone_idx.patch
-mm-filter-based-on-a-nodemask-as-well-as-a-gfp_mask.patch
-mm-move-cache_line_size-to-linux-cacheh.patch
-use-page_cache_xxx-in-fs-ext4.patch
+remove-sparse-warning-for-mmzoneh-checkpatch-fixes.patch
+fix-invalidate_inode_pages2_range-to-not-clear-ret-checkpatch-fixes.patch
+vmscan-give-referenced-active-and-unmapped-pages-a-second-trip-around-the-lru.patch
+vm-dont-run-touch_buffer-during-buffercache-lookups.patch
+capabilities-implement-per-process-securebits-warning-fix.patch
+lsm-introduce-inode_getsecid-and-ipc_getsecid-hooks-checkpatch-fixes.patch
+lsm-audit-introduce-generic-audit-lsm-hooks-checkpatch-fixes.patch
+selinux-use-new-audit-hooks-remove-redundant-exports-checkpatch-fixes.patch
+audit-final-renamings-and-cleanup-checkpatch-fixes.patch
+make-dev-kmem-a-config-option-fix.patch
+misc-phantom-add-compat-ioctl-checkpatch-fixes.patch
+r-o-bind-mounts-elevate-write-count-for-callers-of-vfs_mkdir-fix.patch
+r-o-bind-mounts-elevate-write-count-for-xattr_permission-callers-fix.patch
+r-o-bind-mounts-get-write-access-for-vfs_rename-callers-fix.patch
+r-o-bind-mounts-check-mnt-instead-of-superblock-directly-fix.patch
+r-o-bind-mounts-check-mnt-instead-of-superblock-directly-fix-2.patch
+r-o-bind-mounts-get-callers-of-vfs_mknod-create-fix.patch
+fs-inodec-use-hlist_for_each_entry-checkpatch-fixes.patch
+add-rcu_assign_index-if-ever-needed-fix.patch
+oprofile-change-cpu_buffer-from-array-to-per_cpu-variable-checkpatch-fixes.patch
+vt-notifier-extension-for-accessibility-checkpatch-fixes.patch
+kprobes-prevent-probing-of-preempt_schedule-fix.patch
+kprobes-prevent-probing-of-preempt_schedule-checkpatch-fixes.patch
+rtc-isl1208-new-style-conversion-and-minor-bug-fixes-checkpatch-fixes.patch
+rtc-pcf8563-new-style-conversion-checkpatch-fixes.patch
+rtc-pcf8563-new-style-conversion-checkpatch-fixes-fix.patch
+rtc-x1205-new-style-conversion-checkpatch-fixes.patch
+fb-add-support-for-foreign-endianness-force-it-on.patch
+fbcon-replace-mono_col-macro-with-static-inline-fix.patch
+use-page_cache_xxx-in-ext2-fix.patch
+fat_valid_media-remove-pointless-test.patch
+cgroup-api-files-update-cpusets-to-use-cgroup-structured-file-api-fix.patch
+workqueues-shrink-cpu_populated_map-when-cpu-dies-fix.patch
+ext4-is-broken.patch
+ipc-use-ipc_buildid-directly-from-ipc_addid-cleanup.patch
+ipmi-run-to-completion-fixes-checkpatch-fixes.patch
+ipmi-style-fixes-in-the-system-interface-code-checkpatch-fixes.patch
+elf-fix-shadowed-variables-in-fs-binfmt_elfc.patch
+sgi-altix-mmtimer-allow-larger-number-of-timers-per-node-fix.patch
+sgi-altix-mmtimer-allow-larger-number-of-timers-per-node-fix-2.patch
+epcac-static-functions-and-integer-as-null-pointer-fixes-checkpatch-fixes.patch
+keys-add-keyctl-function-to-get-a-security-label-fix.patch
+procfs-task-exe-symlink-fix.patch
+edd-add-default-mode-config_edd_off=n-override-with-edd=onoff-fix.patch
+mm-bdi-export-bdi-attributes-in-sysfs-ia64-fix.patch
+basic-braille-screen-reader-support-ppc-fix.patch
 reiser4.patch
-reiser4-portion-of-zero_user-cleanup-patch.patch
+jens-broke-reiser4patch-added-to-mm-tree.patch
 page-owner-tracking-leak-detector.patch
+nr_blockdev_pages-in_interrupt-warning.patch
+slab-leaks3-default-y.patch
+profile-likely-unlikely-macros.patch
+put_bh-debug.patch
+shrink_slab-handle-bad-shrinkers.patch
+getblk-handle-2tb-devices.patch
+getblk-handle-2tb-devices-fix.patch
+undeprecate-pci_find_device.patch
+w1-build-fix.patch
 
