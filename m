@@ -1,7 +1,7 @@
 From: Josef Bacik <jbacik@redhat.com>
-Subject: [RFC PATCH 1/1] add a jbd option to force an unclean journal state
-Date: Tue, 4 Mar 2008 13:39:41 -0500
-Message-ID: <200803041339.42544.jbacik@redhat.com>
+Subject: [RFC PATCH 2/2] add a mount option for ext3 to support the unclean jbd option
+Date: Tue, 4 Mar 2008 13:41:41 -0500
+Message-ID: <200803041341.41798.jbacik@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
   charset="us-ascii"
@@ -9,82 +9,86 @@ Content-Transfer-Encoding: 7bit
 Cc: Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48313 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:48405 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759035AbYCDSwC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Mar 2008 13:52:02 -0500
+	id S1764619AbYCDSyB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Mar 2008 13:54:01 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hello,
 
-I'm fixing to go through and muck with some of the transaction handling stuff in 
-jbd and I want a way to verify that I'm not screwing anything up in the 
-process, and this is what I came up with.  Basically this option would only be 
-used in the case where someone mounts an ext3 image or fs, does a specific IO 
-operation (create 100 files, write data to a few files etc), unmounts the fs 
-and remounts so that jbd does its journal recovery and then check the status of 
-the fs to make sure its exactly the way its expected to be.  I'm not entirely 
-sure how usefull of an option like this would be (or if I did it right :) ), 
-but I thought I'd throw it out there in case anybody thinks it may be useful, 
-and in case there is some case that I'm missing so I can fix it and better make 
-sure I don't mess anything up while doing stuff.  Basically this patch keeps us 
-from resetting the journal's tail/transaction sequence when we destroy the 
-journal so when we mount the fs again it will look like we didn't unmount 
-properly and recovery will occur.  Any comments are much appreciated,
+I'm just now realizing i sent the previous patch with 1/1 instead of 1/2 in the 
+subject :(.  This just lets me use "unclean_journal" as a mount option to flip 
+the appropriate flag for the journal in order to make it not reset the journal 
+when we unmount the fs.  Thanks much,
 
 Josef
 
-Index: linux-2.6/fs/jbd/journal.c
+Index: linux-2.6/fs/ext3/super.c
 ===================================================================
---- linux-2.6.orig/fs/jbd/journal.c
-+++ linux-2.6/fs/jbd/journal.c
-@@ -1146,9 +1146,12 @@ void journal_destroy(journal_t *journal)
- 	J_ASSERT(journal->j_checkpoint_transactions == NULL);
- 	spin_unlock(&journal->j_list_lock);
+--- linux-2.6.orig/fs/ext3/super.c
++++ linux-2.6/fs/ext3/super.c
+@@ -625,6 +625,9 @@ static int ext3_show_options(struct seq_
+ 	else if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_WRITEBACK_DATA)
+ 		seq_puts(seq, ",data=writeback");
  
--	/* We can now mark the journal as empty. */
--	journal->j_tail = 0;
--	journal->j_tail_sequence = ++journal->j_transaction_sequence;
-+	if (!(journal->j_flags & JFS_UNCLEAN)) {
-+		/* We can now mark the journal as empty. */
-+		journal->j_tail = 0;
-+		journal->j_tail_sequence = ++journal->j_transaction_sequence;
-+	}
++	if (test_opt(sb, UNCLEAN_JOURNAL))
++		seq_puts(seq, ",unclean_journal");
 +
- 	if (journal->j_sb_buffer) {
- 		journal_update_superblock(journal, 1);
- 		brelse(journal->j_sb_buffer);
-Index: linux-2.6/include/linux/jbd.h
-===================================================================
---- linux-2.6.orig/include/linux/jbd.h
-+++ linux-2.6/include/linux/jbd.h
-@@ -825,6 +825,7 @@ struct journal_s
- #define JFS_FLUSHED	0x008	/* The journal superblock has been flushed */
- #define JFS_LOADED	0x010	/* The journal superblock has been loaded */
- #define JFS_BARRIER	0x020	/* Use IDE barriers */
-+#define JFS_UNCLEAN	0x040	/* Don't clean up the journal on umount */
+ 	ext3_show_quota_options(seq, sb);
  
- /*
-  * Function declarations for the journaling transaction and buffer
-Index: linux-2.6/fs/jbd/checkpoint.c
-===================================================================
---- linux-2.6.orig/fs/jbd/checkpoint.c
-+++ linux-2.6/fs/jbd/checkpoint.c
-@@ -423,10 +423,14 @@ int cleanup_journal_tail(journal_t *jour
- 	} else if ((transaction = journal->j_running_transaction) != NULL) {
- 		first_tid = transaction->t_tid;
- 		blocknr = journal->j_head;
--	} else {
-+	} else if (!(journal->j_flags & JFS_UNCLEAN)) {
- 		first_tid = journal->j_transaction_sequence;
- 		blocknr = journal->j_head;
-+	} else {
-+		first_tid = journal->j_tail_sequence;
-+		blocknr = journal->j_tail;
- 	}
+ 	return 0;
+@@ -756,7 +759,7 @@ enum {
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+ 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+-	Opt_grpquota
++	Opt_grpquota, Opt_unclean_journal,
+ };
+ 
+ static match_table_t tokens = {
+@@ -807,6 +810,7 @@ static match_table_t tokens = {
+ 	{Opt_usrquota, "usrquota"},
+ 	{Opt_barrier, "barrier=%u"},
+ 	{Opt_resize, "resize"},
++	{Opt_unclean_journal, "unclean_journal"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1138,6 +1142,9 @@ clear_qf_name:
+ 		case Opt_bh:
+ 			clear_opt(sbi->s_mount_opt, NOBH);
+ 			break;
++		case Opt_unclean_journal:
++			set_opt(sbi->s_mount_opt, UNCLEAN_JOURNAL);
++			break;
+ 		default:
+ 			printk (KERN_ERR
+ 				"EXT3-fs: Unrecognized mount option \"%s\" "
+@@ -1968,6 +1975,12 @@ static void ext3_init_journal_params(str
+ 		journal->j_flags |= JFS_BARRIER;
+ 	else
+ 		journal->j_flags &= ~JFS_BARRIER;
 +
- 	spin_unlock(&journal->j_list_lock);
- 	J_ASSERT(blocknr != 0);
++	if (test_opt(sb, UNCLEAN_JOURNAL))
++		journal->j_flags |= JFS_UNCLEAN;
++	else
++		journal->j_flags &= ~JFS_UNCLEAN;
++
+ 	spin_unlock(&journal->j_state_lock);
+ }
  
+Index: linux-2.6/include/linux/ext3_fs.h
+===================================================================
+--- linux-2.6.orig/include/linux/ext3_fs.h
++++ linux-2.6/include/linux/ext3_fs.h
+@@ -380,6 +380,7 @@ struct ext3_inode {
+ #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
+ #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+ #define EXT3_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
++#define EXT3_MOUNT_UNCLEAN_JOURNAL	0x400000 /* Leave an unclean journal */
+ 
+ /* Compatibility, for having both ext2_fs.h and ext3_fs.h included at once */
+ #ifndef _LINUX_EXT2_FS_H
