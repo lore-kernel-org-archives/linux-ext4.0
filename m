@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-replace-remaining-__function__-occurrences.patch added to -mm tree
-Date: Wed, 05 Mar 2008 14:20:26 -0800
-Message-ID: <200803052220.m25MKR7s024009@imap1.linux-foundation.org>
+Subject: + jbd-replace-remaining-__function__-occurrences.patch added to -mm tree
+Date: Wed, 05 Mar 2008 14:20:42 -0800
+Message-ID: <200803052220.m25MKguK024033@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: harvey.harrison@gmail.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
@@ -11,9 +11,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: replace remaining __FUNCTION__ occurrences
+     jbd: replace remaining __FUNCTION__ occurrences
 has been added to the -mm tree.  Its filename is
-     ext4-replace-remaining-__function__-occurrences.patch
+     jbd-replace-remaining-__function__-occurrences.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -29,7 +29,7 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: replace remaining __FUNCTION__ occurrences
+Subject: jbd: replace remaining __FUNCTION__ occurrences
 From: Harvey Harrison <harvey.harrison@gmail.com>
 
 __FUNCTION__ is gcc-specific, use __func__
@@ -39,851 +39,126 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/balloc.c    |   14 ++++----
- fs/ext4/ext4_jbd2.c |   12 +++----
- fs/ext4/extents.c   |    2 -
- fs/ext4/ialloc.c    |   10 +++---
- fs/ext4/inode.c     |    8 ++--
- fs/ext4/mballoc.c   |   20 ++++++------
- fs/ext4/namei.c     |   26 +++++++--------
- fs/ext4/resize.c    |   70 +++++++++++++++++++++---------------------
- fs/ext4/super.c     |   16 ++++-----
- fs/ext4/xattr.c     |   16 ++++-----
- 10 files changed, 97 insertions(+), 97 deletions(-)
+ fs/jbd/journal.c     |   18 +++++++++---------
+ fs/jbd/revoke.c      |    2 +-
+ fs/jbd/transaction.c |    4 ++--
+ 3 files changed, 12 insertions(+), 12 deletions(-)
 
-diff -puN fs/ext4/balloc.c~ext4-replace-remaining-__function__-occurrences fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/balloc.c
-@@ -58,7 +58,7 @@ unsigned ext4_init_block_bitmap(struct s
- 		/* If checksum is bad mark all blocks used to prevent allocation
- 		 * essentially implementing a per-group read-only flag. */
- 		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
--			ext4_error(sb, __FUNCTION__,
-+			ext4_error(sb, __func__,
- 				  "Checksum bad for group %lu\n", block_group);
- 			gdp->bg_free_blocks_count = 0;
- 			gdp->bg_free_inodes_count = 0;
-@@ -237,7 +237,7 @@ static int ext4_valid_block_bitmap(struc
- 		return 1;
- 
- err_out:
--	ext4_error(sb, __FUNCTION__,
-+	ext4_error(sb, __func__,
- 			"Invalid block bitmap - "
- 			"block_group = %d, block = %llu",
- 			block_group, bitmap_blk);
-@@ -266,7 +266,7 @@ read_block_bitmap(struct super_block *sb
- 	bitmap_blk = ext4_block_bitmap(sb, desc);
- 	bh = sb_getblk(sb, bitmap_blk);
- 	if (unlikely(!bh)) {
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %llu",
- 			    (int)block_group, (unsigned long long)bitmap_blk);
-@@ -283,7 +283,7 @@ read_block_bitmap(struct super_block *sb
+diff -puN fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/journal.c
+@@ -534,7 +534,7 @@ int log_wait_commit(journal_t *journal, 
+ 	if (!tid_geq(journal->j_commit_request, tid)) {
+ 		printk(KERN_EMERG
+ 		       "%s: error: j_commit_request=%d, tid=%d\n",
+-		       __FUNCTION__, journal->j_commit_request, tid);
++		       __func__, journal->j_commit_request, tid);
  	}
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			    "Cannot read block bitmap - "
- 			    "block_group = %d, block_bitmap = %llu",
- 			    (int)block_group, (unsigned long long)bitmap_blk);
-@@ -361,7 +361,7 @@ restart:
- 	BUG_ON(bad);
- }
- #define rsv_window_dump(root, verbose) \
--	__rsv_window_dump((root), (verbose), __FUNCTION__)
-+	__rsv_window_dump((root), (verbose), __func__)
- #else
- #define rsv_window_dump(root, verbose) do {} while (0)
+ 	spin_unlock(&journal->j_state_lock);
  #endif
-@@ -741,7 +741,7 @@ do_more:
- 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
- 						bit + i, bitmap_bh->b_data)) {
- 			jbd_unlock_bh_state(bitmap_bh);
--			ext4_error(sb, __FUNCTION__,
-+			ext4_error(sb, __func__,
- 				   "bit already cleared for block %llu",
- 				   (ext4_fsblk_t)(block + i));
- 			jbd_lock_bh_state(bitmap_bh);
-@@ -1804,7 +1804,7 @@ allocated:
- 			if (ext4_test_bit(grp_alloc_blk+i,
- 					bh2jh(bitmap_bh)->b_committed_data)) {
- 				printk("%s: block was unexpectedly set in "
--					"b_committed_data\n", __FUNCTION__);
-+					"b_committed_data\n", __func__);
- 			}
- 		}
+@@ -599,7 +599,7 @@ int journal_bmap(journal_t *journal, uns
+ 
+ 			printk(KERN_ALERT "%s: journal block not found "
+ 					"at offset %lu on %s\n",
+-				__FUNCTION__,
++				__func__,
+ 				blocknr,
+ 				bdevname(journal->j_dev, b));
+ 			err = -EIO;
+@@ -727,7 +727,7 @@ journal_t * journal_init_dev(struct bloc
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		journal = NULL;
+ 		goto out;
+@@ -781,7 +781,7 @@ journal_t * journal_init_inode (struct i
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		return NULL;
  	}
-diff -puN fs/ext4/ext4_jbd2.c~ext4-replace-remaining-__function__-occurrences fs/ext4/ext4_jbd2.c
---- a/fs/ext4/ext4_jbd2.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/ext4_jbd2.c
-@@ -9,7 +9,7 @@ int __ext4_journal_get_undo_access(const
- {
- 	int err = jbd2_journal_get_undo_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
- 
-@@ -18,7 +18,7 @@ int __ext4_journal_get_write_access(cons
- {
- 	int err = jbd2_journal_get_write_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
- 
-@@ -27,7 +27,7 @@ int __ext4_journal_forget(const char *wh
- {
- 	int err = jbd2_journal_forget(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
- 
-@@ -36,7 +36,7 @@ int __ext4_journal_revoke(const char *wh
- {
- 	int err = jbd2_journal_revoke(handle, blocknr, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
- 
-@@ -45,7 +45,7 @@ int __ext4_journal_get_create_access(con
- {
- 	int err = jbd2_journal_get_create_access(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
- 
-@@ -54,6 +54,6 @@ int __ext4_journal_dirty_metadata(const 
- {
- 	int err = jbd2_journal_dirty_metadata(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(where, __FUNCTION__, bh, handle,err);
-+		ext4_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
-diff -puN fs/ext4/extents.c~ext4-replace-remaining-__function__-occurrences fs/ext4/extents.c
---- a/fs/ext4/extents.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/extents.c
-@@ -314,7 +314,7 @@ corrupted:
- }
- 
- #define ext4_ext_check_header(inode, eh, depth)	\
--	__ext4_ext_check_header(__FUNCTION__, inode, eh, depth)
-+	__ext4_ext_check_header(__func__, inode, eh, depth)
- 
- #ifdef EXT_DEBUG
- static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
-diff -puN fs/ext4/ialloc.c~ext4-replace-remaining-__function__-occurrences fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/ialloc.c
-@@ -75,7 +75,7 @@ unsigned ext4_init_inode_bitmap(struct s
- 	/* If checksum is bad mark all blocks and inodes use to prevent
- 	 * allocation, essentially implementing a per-group read-only flag. */
- 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
--		ext4_error(sb, __FUNCTION__, "Checksum bad for group %lu\n",
-+		ext4_error(sb, __func__, "Checksum bad for group %lu\n",
- 			   block_group);
- 		gdp->bg_free_blocks_count = 0;
- 		gdp->bg_free_inodes_count = 0;
-@@ -675,7 +675,7 @@ got:
- 	ino++;
- 	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
- 	    ino > EXT4_INODES_PER_GROUP(sb)) {
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			   "reserved inode or inode > inodes count - "
- 			   "block_group = %lu, inode=%lu", group,
- 			   ino + group * EXT4_INODES_PER_GROUP(sb));
-@@ -888,7 +888,7 @@ struct inode *ext4_orphan_get(struct sup
- 
- 	/* Error cases - e2fsck has already cleaned up for us */
- 	if (ino > max_ino) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "bad orphan ino %lu!  e2fsck was run?", ino);
- 		goto error;
- 	}
-@@ -897,7 +897,7 @@ struct inode *ext4_orphan_get(struct sup
- 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
- 	bitmap_bh = read_inode_bitmap(sb, block_group);
- 	if (!bitmap_bh) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "inode bitmap error for orphan %lu", ino);
- 		goto error;
- 	}
-@@ -922,7 +922,7 @@ iget_failed:
- 	err = PTR_ERR(inode);
- 	inode = NULL;
- bad_orphan:
--	ext4_warning(sb, __FUNCTION__,
-+	ext4_warning(sb, __func__,
- 		     "bad orphan inode %lu!  e2fsck was run?", ino);
- 	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
- 	       bit, (unsigned long long)bitmap_bh->b_blocknr,
-diff -puN fs/ext4/inode.c~ext4-replace-remaining-__function__-occurrences fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/inode.c
-@@ -95,7 +95,7 @@ int ext4_forget(handle_t *handle, int is
- 	BUFFER_TRACE(bh, "call ext4_journal_revoke");
- 	err = ext4_journal_revoke(handle, blocknr, bh);
- 	if (err)
--		ext4_abort(inode->i_sb, __FUNCTION__,
-+		ext4_abort(inode->i_sb, __func__,
- 			   "error %d when attempting revoke", err);
- 	BUFFER_TRACE(bh, "exit");
- 	return err;
-@@ -1231,7 +1231,7 @@ int ext4_journal_dirty_data(handle_t *ha
- {
- 	int err = jbd2_journal_dirty_data(handle, bh);
- 	if (err)
--		ext4_journal_abort_handle(__FUNCTION__, __FUNCTION__,
-+		ext4_journal_abort_handle(__func__, __func__,
- 						bh, handle, err);
- 	return err;
- }
-@@ -3519,7 +3519,7 @@ int ext4_mark_inode_dirty(handle_t *hand
- 				EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
- 				if (mnt_count !=
- 					le16_to_cpu(sbi->s_es->s_mnt_count)) {
--					ext4_warning(inode->i_sb, __FUNCTION__,
-+					ext4_warning(inode->i_sb, __func__,
- 					"Unable to expand inode %lu. Delete"
- 					" some EAs or run e2fsck.",
- 					inode->i_ino);
-@@ -3560,7 +3560,7 @@ void ext4_dirty_inode(struct inode *inod
- 		current_handle->h_transaction != handle->h_transaction) {
- 		/* This task has a transaction open against a different fs */
- 		printk(KERN_EMERG "%s: transactions do not match!\n",
+@@ -790,7 +790,7 @@ journal_t * journal_init_inode (struct i
+ 	/* If that failed, give up */
+ 	if (err) {
+ 		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
 -		       __FUNCTION__);
 +		       __func__);
- 	} else {
- 		jbd_debug(5, "marking dirty.  outer handle=%p\n",
- 				current_handle);
-diff -puN fs/ext4/mballoc.c~ext4-replace-remaining-__function__-occurrences fs/ext4/mballoc.c
---- a/fs/ext4/mballoc.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/mballoc.c
-@@ -735,7 +735,7 @@ static void mb_free_blocks_double(struct
- 			blocknr +=
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -876,7 +876,7 @@ int journal_create(journal_t *journal)
+ 		 */
+ 		printk(KERN_EMERG
+ 		       "%s: creation of journal on external device!\n",
+-		       __FUNCTION__);
++		       __func__);
+ 		BUG();
+ 	}
  
--			ext4_error(sb, __FUNCTION__, "double-free of inode"
-+			ext4_error(sb, __func__, "double-free of inode"
- 				   " %lu's block %llu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr,
- 				   first + i, e4b->bd_group);
-@@ -907,7 +907,7 @@ static int __mb_check_buddy(struct ext4_
+@@ -1661,7 +1661,7 @@ static struct journal_head *journal_allo
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		if (time_after(jiffies, last_warning + 5*HZ)) {
+ 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
+-			       __FUNCTION__);
++			       __func__);
+ 			last_warning = jiffies;
+ 		}
+ 		while (ret == NULL) {
+@@ -1798,13 +1798,13 @@ static void __journal_remove_journal_hea
+ 			if (jh->b_frozen_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_frozen_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_frozen_data, bh->b_size);
+ 			}
+ 			if (jh->b_committed_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_committed_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_committed_data, bh->b_size);
+ 			}
+ 			bh->b_private = NULL;
+diff -puN fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences fs/jbd/revoke.c
+--- a/fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/revoke.c
+@@ -138,7 +138,7 @@ repeat:
+ oom:
+ 	if (!journal_oom_retry)
+ 		return -ENOMEM;
+-	jbd_debug(1, "ENOMEM in %s, retrying\n", __FUNCTION__);
++	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
+ 	yield();
+ 	goto repeat;
  }
- #undef MB_CHECK_ASSERT
- #define mb_check_buddy(e4b) __mb_check_buddy(e4b,	\
--					__FILE__, __FUNCTION__, __LINE__)
-+					__FILE__, __func__, __LINE__)
- #else
- #define mb_check_buddy(e4b)
- #endif
-@@ -981,7 +981,7 @@ static void ext4_mb_generate_buddy(struc
- 	grp->bb_fragments = fragments;
- 
- 	if (free != grp->bb_free) {
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			"EXT4-fs: group %lu: %u blocks in bitmap, %u in gd\n",
- 			group, free, grp->bb_free);
- 		/*
-@@ -1367,7 +1367,7 @@ static int mb_free_blocks(struct inode *
- 			blocknr +=
- 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 
--			ext4_error(sb, __FUNCTION__, "double-free of inode"
-+			ext4_error(sb, __func__, "double-free of inode"
- 				   " %lu's block %llu(bit %u in group %lu)\n",
- 				   inode ? inode->i_ino : 0, blocknr, block,
- 				   e4b->bd_group);
-@@ -1848,7 +1848,7 @@ static void ext4_mb_complex_scan_group(s
- 			 * free blocks even though group info says we
- 			 * we have free blocks
- 			 */
--			ext4_error(sb, __FUNCTION__, "%d free blocks as per "
-+			ext4_error(sb, __func__, "%d free blocks as per "
- 					"group info. But bitmap says 0\n",
- 					free);
- 			break;
-@@ -1857,7 +1857,7 @@ static void ext4_mb_complex_scan_group(s
- 		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
- 		BUG_ON(ex.fe_len <= 0);
- 		if (free < ex.fe_len) {
--			ext4_error(sb, __FUNCTION__, "%d free blocks as per "
-+			ext4_error(sb, __func__, "%d free blocks as per "
- 					"group info. But got %d blocks\n",
- 					free, ex.fe_len);
- 			/*
-@@ -3085,7 +3085,7 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 			in_range(block, ext4_inode_table(sb, gdp),
- 				EXT4_SB(sb)->s_itb_per_group)) {
- 
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			   "Allocating block in system zone - block = %llu",
- 			   block);
- 	}
-@@ -3795,7 +3795,7 @@ static noinline int ext4_mb_release_inod
- 			pa, (unsigned long) pa->pa_lstart,
- 			(unsigned long) pa->pa_pstart,
- 			(unsigned long) pa->pa_len);
--		ext4_error(sb, __FUNCTION__, "free %u, pa_free %u\n",
-+		ext4_error(sb, __func__, "free %u, pa_free %u\n",
- 						free, pa->pa_free);
- 		/*
- 		 * pa is already deleted so we use the value obtained
-@@ -4498,7 +4498,7 @@ void ext4_mb_free_blocks(handle_t *handl
- 	if (block < le32_to_cpu(es->s_first_data_block) ||
- 	    block + count < block ||
- 	    block + count > ext4_blocks_count(es)) {
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			    "Freeing blocks not in datazone - "
- 			    "block = %lu, count = %lu", block, count);
- 		goto error_return;
-@@ -4539,7 +4539,7 @@ do_more:
- 	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
- 		      EXT4_SB(sb)->s_itb_per_group)) {
- 
--		ext4_error(sb, __FUNCTION__,
-+		ext4_error(sb, __func__,
- 			   "Freeing blocks in system zone - "
- 			   "Block = %lu, count = %lu", block, count);
- 	}
-diff -puN fs/ext4/namei.c~ext4-replace-remaining-__function__-occurrences fs/ext4/namei.c
---- a/fs/ext4/namei.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/namei.c
-@@ -353,7 +353,7 @@ dx_probe(struct dentry *dentry, struct i
- 	if (root->info.hash_version != DX_HASH_TEA &&
- 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
- 	    root->info.hash_version != DX_HASH_LEGACY) {
--		ext4_warning(dir->i_sb, __FUNCTION__,
-+		ext4_warning(dir->i_sb, __func__,
- 			     "Unrecognised inode hash code %d",
- 			     root->info.hash_version);
- 		brelse(bh);
-@@ -367,7 +367,7 @@ dx_probe(struct dentry *dentry, struct i
- 	hash = hinfo->hash;
- 
- 	if (root->info.unused_flags & 1) {
--		ext4_warning(dir->i_sb, __FUNCTION__,
-+		ext4_warning(dir->i_sb, __func__,
- 			     "Unimplemented inode hash flags: %#06x",
- 			     root->info.unused_flags);
- 		brelse(bh);
-@@ -376,7 +376,7 @@ dx_probe(struct dentry *dentry, struct i
- 	}
- 
- 	if ((indirect = root->info.indirect_levels) > 1) {
--		ext4_warning(dir->i_sb, __FUNCTION__,
-+		ext4_warning(dir->i_sb, __func__,
- 			     "Unimplemented inode hash depth: %#06x",
- 			     root->info.indirect_levels);
- 		brelse(bh);
-@@ -389,7 +389,7 @@ dx_probe(struct dentry *dentry, struct i
- 
- 	if (dx_get_limit(entries) != dx_root_limit(dir,
- 						   root->info.info_length)) {
--		ext4_warning(dir->i_sb, __FUNCTION__,
-+		ext4_warning(dir->i_sb, __func__,
- 			     "dx entry: limit != root limit");
- 		brelse(bh);
- 		*err = ERR_BAD_DX_DIR;
-@@ -401,7 +401,7 @@ dx_probe(struct dentry *dentry, struct i
- 	{
- 		count = dx_get_count(entries);
- 		if (!count || count > dx_get_limit(entries)) {
--			ext4_warning(dir->i_sb, __FUNCTION__,
-+			ext4_warning(dir->i_sb, __func__,
- 				     "dx entry: no count or count > limit");
- 			brelse(bh);
- 			*err = ERR_BAD_DX_DIR;
-@@ -446,7 +446,7 @@ dx_probe(struct dentry *dentry, struct i
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
- 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
--			ext4_warning(dir->i_sb, __FUNCTION__,
-+			ext4_warning(dir->i_sb, __func__,
- 				     "dx entry: limit != node limit");
- 			brelse(bh);
- 			*err = ERR_BAD_DX_DIR;
-@@ -462,7 +462,7 @@ fail2:
- 	}
- fail:
- 	if (*err == ERR_BAD_DX_DIR)
--		ext4_warning(dir->i_sb, __FUNCTION__,
-+		ext4_warning(dir->i_sb, __func__,
- 			     "Corrupt dir inode %ld, running e2fsck is "
- 			     "recommended.", dir->i_ino);
- 	return NULL;
-@@ -919,7 +919,7 @@ restart:
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
- 			/* read error, skip block & hope for the best */
--			ext4_error(sb, __FUNCTION__, "reading directory #%lu "
-+			ext4_error(sb, __func__, "reading directory #%lu "
- 				   "offset %lu", dir->i_ino,
- 				   (unsigned long)block);
- 			brelse(bh);
-@@ -1012,7 +1012,7 @@ static struct buffer_head * ext4_dx_find
- 		retval = ext4_htree_next_block(dir, hash, frame,
- 					       frames, NULL);
- 		if (retval < 0) {
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 			     "error reading index page in directory #%lu",
- 			     dir->i_ino);
- 			*err = retval;
-@@ -1537,7 +1537,7 @@ static int ext4_dx_add_entry(handle_t *h
- 
- 		if (levels && (dx_get_count(frames->entries) ==
- 			       dx_get_limit(frames->entries))) {
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 				     "Directory index full!");
- 			err = -ENOSPC;
- 			goto cleanup;
-@@ -1865,11 +1865,11 @@ static int empty_dir (struct inode * ino
- 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
- 	    !(bh = ext4_bread (NULL, inode, 0, 0, &err))) {
- 		if (err)
--			ext4_error(inode->i_sb, __FUNCTION__,
-+			ext4_error(inode->i_sb, __func__,
- 				   "error %d reading directory #%lu offset 0",
- 				   err, inode->i_ino);
- 		else
--			ext4_warning(inode->i_sb, __FUNCTION__,
-+			ext4_warning(inode->i_sb, __func__,
- 				     "bad directory (dir #%lu) - no data block",
- 				     inode->i_ino);
- 		return 1;
-@@ -1898,7 +1898,7 @@ static int empty_dir (struct inode * ino
- 				offset >> EXT4_BLOCK_SIZE_BITS(sb), 0, &err);
- 			if (!bh) {
- 				if (err)
--					ext4_error(sb, __FUNCTION__,
-+					ext4_error(sb, __func__,
- 						   "error %d reading directory"
- 						   " #%lu offset %lu",
- 						   err, inode->i_ino, offset);
-diff -puN fs/ext4/resize.c~ext4-replace-remaining-__function__-occurrences fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/resize.c
-@@ -50,63 +50,63 @@ static int verify_group_input(struct sup
- 
- 	ext4_get_group_no_and_offset(sb, start, NULL, &offset);
- 	if (group != sbi->s_groups_count)
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Cannot add at group %u (only %lu groups)",
- 			     input->group, sbi->s_groups_count);
- 	else if (offset != 0)
--			ext4_warning(sb, __FUNCTION__, "Last group not full");
-+			ext4_warning(sb, __func__, "Last group not full");
- 	else if (input->reserved_blocks > input->blocks_count / 5)
--		ext4_warning(sb, __FUNCTION__, "Reserved blocks too high (%u)",
-+		ext4_warning(sb, __func__, "Reserved blocks too high (%u)",
- 			     input->reserved_blocks);
- 	else if (free_blocks_count < 0)
--		ext4_warning(sb, __FUNCTION__, "Bad blocks count %u",
-+		ext4_warning(sb, __func__, "Bad blocks count %u",
- 			     input->blocks_count);
- 	else if (!(bh = sb_bread(sb, end - 1)))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Cannot read last block (%llu)",
- 			     end - 1);
- 	else if (outside(input->block_bitmap, start, end))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Block bitmap not in group (block %llu)",
- 			     (unsigned long long)input->block_bitmap);
- 	else if (outside(input->inode_bitmap, start, end))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Inode bitmap not in group (block %llu)",
- 			     (unsigned long long)input->inode_bitmap);
- 	else if (outside(input->inode_table, start, end) ||
- 	         outside(itend - 1, start, end))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Inode table not in group (blocks %llu-%llu)",
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (input->inode_bitmap == input->block_bitmap)
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Block bitmap same as inode bitmap (%llu)",
- 			     (unsigned long long)input->block_bitmap);
- 	else if (inside(input->block_bitmap, input->inode_table, itend))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Block bitmap (%llu) in inode table (%llu-%llu)",
- 			     (unsigned long long)input->block_bitmap,
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->inode_bitmap, input->inode_table, itend))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Inode bitmap (%llu) in inode table (%llu-%llu)",
- 			     (unsigned long long)input->inode_bitmap,
- 			     (unsigned long long)input->inode_table, itend - 1);
- 	else if (inside(input->block_bitmap, start, metaend))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Block bitmap (%llu) in GDT table"
- 			     " (%llu-%llu)",
- 			     (unsigned long long)input->block_bitmap,
- 			     start, metaend - 1);
- 	else if (inside(input->inode_bitmap, start, metaend))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Inode bitmap (%llu) in GDT table"
- 			     " (%llu-%llu)",
- 			     (unsigned long long)input->inode_bitmap,
- 			     start, metaend - 1);
- 	else if (inside(input->inode_table, start, metaend) ||
- 	         inside(itend - 1, start, metaend))
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Inode table (%llu-%llu) overlaps"
- 			     "GDT table (%llu-%llu)",
- 			     (unsigned long long)input->inode_table,
-@@ -368,7 +368,7 @@ static int verify_reserved_gdb(struct su
- 	while ((grp = ext4_list_backups(sb, &three, &five, &seven)) < end) {
- 		if (le32_to_cpu(*p++) !=
- 		    grp * EXT4_BLOCKS_PER_GROUP(sb) + blk){
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 				     "reserved GDT %llu"
- 				     " missing grp %d (%llu)",
- 				     blk, grp,
-@@ -424,7 +424,7 @@ static int add_new_gdb(handle_t *handle,
- 	 */
- 	if (EXT4_SB(sb)->s_sbh->b_blocknr !=
- 	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			"won't resize using backup superblock at %llu",
- 			(unsigned long long)EXT4_SB(sb)->s_sbh->b_blocknr);
- 		return -EPERM;
-@@ -448,7 +448,7 @@ static int add_new_gdb(handle_t *handle,
- 
- 	data = (__le32 *)dind->b_data;
- 	if (le32_to_cpu(data[gdb_num % EXT4_ADDR_PER_BLOCK(sb)]) != gdblock) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "new group %u GDT block %llu not reserved",
- 			     input->group, gdblock);
- 		err = -EINVAL;
-@@ -472,7 +472,7 @@ static int add_new_gdb(handle_t *handle,
- 			GFP_KERNEL);
- 	if (!n_group_desc) {
- 		err = -ENOMEM;
--		ext4_warning (sb, __FUNCTION__,
-+		ext4_warning (sb, __func__,
- 			      "not enough memory for %lu groups", gdb_num + 1);
- 		goto exit_inode;
- 	}
-@@ -570,7 +570,7 @@ static int reserve_backup_gdb(handle_t *
- 	/* Get each reserved primary GDT block and verify it holds backups */
- 	for (res = 0; res < reserved_gdb; res++, blk++) {
- 		if (le32_to_cpu(*data) != blk) {
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 				     "reserved block %llu"
- 				     " not at offset %ld",
- 				     blk,
-@@ -714,7 +714,7 @@ static void update_backups(struct super_
- 	 */
- exit_err:
- 	if (err) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "can't update backup for group %lu (err %d), "
- 			     "forcing fsck on next reboot", group, err);
- 		sbi->s_mount_state &= ~EXT4_VALID_FS;
-@@ -754,33 +754,33 @@ int ext4_group_add(struct super_block *s
- 
- 	if (gdb_off == 0 && !EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "Can't resize non-sparse filesystem further");
- 		return -EPERM;
- 	}
- 
- 	if (ext4_blocks_count(es) + input->blocks_count <
- 	    ext4_blocks_count(es)) {
--		ext4_warning(sb, __FUNCTION__, "blocks_count overflow\n");
-+		ext4_warning(sb, __func__, "blocks_count overflow\n");
- 		return -EINVAL;
- 	}
- 
- 	if (le32_to_cpu(es->s_inodes_count) + EXT4_INODES_PER_GROUP(sb) <
- 	    le32_to_cpu(es->s_inodes_count)) {
--		ext4_warning(sb, __FUNCTION__, "inodes_count overflow\n");
-+		ext4_warning(sb, __func__, "inodes_count overflow\n");
- 		return -EINVAL;
- 	}
- 
- 	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT4_HAS_COMPAT_FEATURE(sb,
- 					     EXT4_FEATURE_COMPAT_RESIZE_INODE)){
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
+diff -puN fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/transaction.c
+@@ -687,7 +687,7 @@ repeat:
+ 				if (!frozen_buffer) {
+ 					printk(KERN_EMERG
+ 					       "%s: OOM for frozen_buffer\n",
+-					       __FUNCTION__);
++					       __func__);
+ 					JBUFFER_TRACE(jh, "oom!");
+ 					error = -ENOMEM;
+ 					jbd_lock_bh_state(bh);
+@@ -904,7 +904,7 @@ repeat:
+ 		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS);
+ 		if (!committed_data) {
+ 			printk(KERN_EMERG "%s: No memory for committed data\n",
+-				__FUNCTION__);
++				__func__);
+ 			err = -ENOMEM;
+ 			goto out;
  		}
- 		inode = ext4_iget(sb, EXT4_RESIZE_INO);
- 		if (IS_ERR(inode)) {
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 				     "Error opening resize inode");
- 			return PTR_ERR(inode);
- 		}
-@@ -809,7 +809,7 @@ int ext4_group_add(struct super_block *s
- 
- 	lock_super(sb);
- 	if (input->group != sbi->s_groups_count) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "multiple resizers run on filesystem!");
- 		err = -EBUSY;
- 		goto exit_journal;
-@@ -975,13 +975,13 @@ int ext4_group_extend(struct super_block
- 			" too large to resize to %llu blocks safely\n",
- 			sb->s_id, n_blocks_count);
- 		if (sizeof(sector_t) < 8)
--			ext4_warning(sb, __FUNCTION__,
-+			ext4_warning(sb, __func__,
- 			"CONFIG_LBD not enabled\n");
- 		return -EINVAL;
- 	}
- 
- 	if (n_blocks_count < o_blocks_count) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "can't shrink FS - resize aborted");
- 		return -EBUSY;
- 	}
-@@ -990,7 +990,7 @@ int ext4_group_extend(struct super_block
- 	ext4_get_group_no_and_offset(sb, o_blocks_count, NULL, &last);
- 
- 	if (last == 0) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "need to use ext2online to resize further");
- 		return -EPERM;
- 	}
-@@ -998,7 +998,7 @@ int ext4_group_extend(struct super_block
- 	add = EXT4_BLOCKS_PER_GROUP(sb) - last;
- 
- 	if (o_blocks_count + add < o_blocks_count) {
--		ext4_warning(sb, __FUNCTION__, "blocks_count overflow");
-+		ext4_warning(sb, __func__, "blocks_count overflow");
- 		return -EINVAL;
- 	}
- 
-@@ -1006,7 +1006,7 @@ int ext4_group_extend(struct super_block
- 		add = n_blocks_count - o_blocks_count;
- 
- 	if (o_blocks_count + add < n_blocks_count)
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "will only finish group (%llu"
- 			     " blocks, %u new)",
- 			     o_blocks_count + add, add);
-@@ -1014,7 +1014,7 @@ int ext4_group_extend(struct super_block
- 	/* See if the device is actually as big as what was requested */
- 	bh = sb_bread(sb, o_blocks_count + add -1);
- 	if (!bh) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "can't read last block, resize aborted");
- 		return -ENOSPC;
- 	}
-@@ -1026,13 +1026,13 @@ int ext4_group_extend(struct super_block
- 	handle = ext4_journal_start_sb(sb, 3);
- 	if (IS_ERR(handle)) {
- 		err = PTR_ERR(handle);
--		ext4_warning(sb, __FUNCTION__, "error %d on journal start",err);
-+		ext4_warning(sb, __func__, "error %d on journal start",err);
- 		goto exit_put;
- 	}
- 
- 	lock_super(sb);
- 	if (o_blocks_count != ext4_blocks_count(es)) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "multiple resizers run on filesystem!");
- 		unlock_super(sb);
- 		ext4_journal_stop(handle);
-@@ -1042,7 +1042,7 @@ int ext4_group_extend(struct super_block
- 
- 	if ((err = ext4_journal_get_write_access(handle,
- 						 EXT4_SB(sb)->s_sbh))) {
--		ext4_warning(sb, __FUNCTION__,
-+		ext4_warning(sb, __func__,
- 			     "error %d on journal write access", err);
- 		unlock_super(sb);
- 		ext4_journal_stop(handle);
-diff -puN fs/ext4/super.c~ext4-replace-remaining-__function__-occurrences fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/super.c
-@@ -135,7 +135,7 @@ handle_t *ext4_journal_start_sb(struct s
- 	 * take the FS itself readonly cleanly. */
- 	journal = EXT4_SB(sb)->s_journal;
- 	if (is_journal_aborted(journal)) {
--		ext4_abort(sb, __FUNCTION__,
-+		ext4_abort(sb, __func__,
- 			   "Detected aborted journal");
- 		return ERR_PTR(-EROFS);
- 	}
-@@ -355,7 +355,7 @@ void ext4_update_dynamic_rev(struct supe
- 	if (le32_to_cpu(es->s_rev_level) > EXT4_GOOD_OLD_REV)
- 		return;
- 
--	ext4_warning(sb, __FUNCTION__,
-+	ext4_warning(sb, __func__,
- 		     "updating to rev %d because of new feature flag, "
- 		     "running e2fsck is recommended",
- 		     EXT4_DYNAMIC_REV);
-@@ -1570,7 +1570,7 @@ static int ext4_check_descriptors(struct
- 			return 0;
- 		}
- 		if (!ext4_group_desc_csum_verify(sbi, i, gdp)) {
--			ext4_error(sb, __FUNCTION__,
-+			ext4_error(sb, __func__,
- 				   "Checksum for group %lu failed (%u!=%u)\n",
- 				    i, le16_to_cpu(ext4_group_desc_csum(sbi, i,
- 				    gdp)), le16_to_cpu(gdp->bg_checksum));
-@@ -1664,7 +1664,7 @@ static void ext4_orphan_cleanup (struct 
- 		if (inode->i_nlink) {
- 			printk(KERN_DEBUG
- 				"%s: truncating inode %lu to %Ld bytes\n",
--				__FUNCTION__, inode->i_ino, inode->i_size);
-+				__func__, inode->i_ino, inode->i_size);
- 			jbd_debug(2, "truncating inode %lu to %Ld bytes\n",
- 				  inode->i_ino, inode->i_size);
- 			ext4_truncate(inode);
-@@ -1672,7 +1672,7 @@ static void ext4_orphan_cleanup (struct 
- 		} else {
- 			printk(KERN_DEBUG
- 				"%s: deleting unreferenced inode %lu\n",
--				__FUNCTION__, inode->i_ino);
-+				__func__, inode->i_ino);
- 			jbd_debug(2, "deleting unreferenced inode %lu\n",
- 				  inode->i_ino);
- 			nr_orphans++;
-@@ -2774,9 +2774,9 @@ static void ext4_clear_journal_err(struc
- 		char nbuf[16];
- 
- 		errstr = ext4_decode_error(sb, j_errno, nbuf);
--		ext4_warning(sb, __FUNCTION__, "Filesystem error recorded "
-+		ext4_warning(sb, __func__, "Filesystem error recorded "
- 			     "from previous mount: %s", errstr);
--		ext4_warning(sb, __FUNCTION__, "Marking fs in need of "
-+		ext4_warning(sb, __func__, "Marking fs in need of "
- 			     "filesystem check.");
- 
- 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
-@@ -2903,7 +2903,7 @@ static int ext4_remount (struct super_bl
- 	}
- 
- 	if (sbi->s_mount_opt & EXT4_MOUNT_ABORT)
--		ext4_abort(sb, __FUNCTION__, "Abort forced by user");
-+		ext4_abort(sb, __func__, "Abort forced by user");
- 
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
- 		((sbi->s_mount_opt & EXT4_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
-diff -puN fs/ext4/xattr.c~ext4-replace-remaining-__function__-occurrences fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~ext4-replace-remaining-__function__-occurrences
-+++ a/fs/ext4/xattr.c
-@@ -227,7 +227,7 @@ ext4_xattr_block_get(struct inode *inode
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
- 	if (ext4_xattr_check_block(bh)) {
--bad_block:	ext4_error(inode->i_sb, __FUNCTION__,
-+bad_block:	ext4_error(inode->i_sb, __func__,
- 			   "inode %lu: bad block %llu", inode->i_ino,
- 			   EXT4_I(inode)->i_file_acl);
- 		error = -EIO;
-@@ -369,7 +369,7 @@ ext4_xattr_block_list(struct inode *inod
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
- 	if (ext4_xattr_check_block(bh)) {
--		ext4_error(inode->i_sb, __FUNCTION__,
-+		ext4_error(inode->i_sb, __func__,
- 			   "inode %lu: bad block %llu", inode->i_ino,
- 			   EXT4_I(inode)->i_file_acl);
- 		error = -EIO;
-@@ -661,7 +661,7 @@ ext4_xattr_block_find(struct inode *inod
- 			atomic_read(&(bs->bh->b_count)),
- 			le32_to_cpu(BHDR(bs->bh)->h_refcount));
- 		if (ext4_xattr_check_block(bs->bh)) {
--			ext4_error(sb, __FUNCTION__,
-+			ext4_error(sb, __func__,
- 				"inode %lu: bad block %llu", inode->i_ino,
- 				EXT4_I(inode)->i_file_acl);
- 			error = -EIO;
-@@ -861,7 +861,7 @@ cleanup_dquot:
- 	goto cleanup;
- 
- bad_block:
--	ext4_error(inode->i_sb, __FUNCTION__,
-+	ext4_error(inode->i_sb, __func__,
- 		   "inode %lu: bad block %llu", inode->i_ino,
- 		   EXT4_I(inode)->i_file_acl);
- 	goto cleanup;
-@@ -1164,7 +1164,7 @@ retry:
- 		if (!bh)
- 			goto cleanup;
- 		if (ext4_xattr_check_block(bh)) {
--			ext4_error(inode->i_sb, __FUNCTION__,
-+			ext4_error(inode->i_sb, __func__,
- 				"inode %lu: bad block %llu", inode->i_ino,
- 				EXT4_I(inode)->i_file_acl);
- 			error = -EIO;
-@@ -1339,14 +1339,14 @@ ext4_xattr_delete_inode(handle_t *handle
- 		goto cleanup;
- 	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
- 	if (!bh) {
--		ext4_error(inode->i_sb, __FUNCTION__,
-+		ext4_error(inode->i_sb, __func__,
- 			"inode %lu: block %llu read error", inode->i_ino,
- 			EXT4_I(inode)->i_file_acl);
- 		goto cleanup;
- 	}
- 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
- 	    BHDR(bh)->h_blocks != cpu_to_le32(1)) {
--		ext4_error(inode->i_sb, __FUNCTION__,
-+		ext4_error(inode->i_sb, __func__,
- 			"inode %lu: bad block %llu", inode->i_ino,
- 			EXT4_I(inode)->i_file_acl);
- 		goto cleanup;
-@@ -1473,7 +1473,7 @@ again:
- 		}
- 		bh = sb_bread(inode->i_sb, ce->e_block);
- 		if (!bh) {
--			ext4_error(inode->i_sb, __FUNCTION__,
-+			ext4_error(inode->i_sb, __func__,
- 				"inode %lu: block %lu read error",
- 				inode->i_ino, (unsigned long) ce->e_block);
- 		} else if (le32_to_cpu(BHDR(bh)->h_refcount) >=
 _
 
 Patches currently in -mm which might be from harvey.harrison@gmail.com are
