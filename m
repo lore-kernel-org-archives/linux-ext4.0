@@ -1,37 +1,45 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto
-	devices
-Date: Thu, 6 Mar 2008 12:42:20 -0500
-Message-ID: <20080306174220.GH18188@mit.edu>
-References: <n7xejaoynp9.fsf@sor.suse.de> <1204813967.8679.28.camel@norville.austin.ibm.com> <n7xzltbwzq3.fsf@sor.suse.de> <1204824227.7964.4.camel@norville.austin.ibm.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: [RFC] JBD ordered mode rewrite
+Date: Thu, 6 Mar 2008 14:05:03 -0500
+Message-ID: <200803061405.03721.jbacik@redhat.com>
+References: <20080306174209.GA14193@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthias Koenig <mkoenig@suse.de>, ludwig.nussel@suse.de,
-	linux-ext4@vger.kernel.org
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:42852 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932339AbYCFRmf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2008 12:42:35 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:59497 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752308AbYCFTFS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2008 14:05:18 -0500
+In-Reply-To: <20080306174209.GA14193@duck.suse.cz>
 Content-Disposition: inline
-In-Reply-To: <1204824227.7964.4.camel@norville.austin.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 06, 2008 at 11:23:47AM -0600, Dave Kleikamp wrote:
-> Zero tells fsck not to check the filesystem during reboot.  It's what
-> tells fsck -A which filesystems to check.  If we don't expect the
-> filesystem to be check-able during that phase, a non-zero value won't
-> have any real meaning.
+On Thursday 06 March 2008 12:42:09 pm Jan Kara wrote:
+>   Hi,
+>
+>   Below is my rewrite of ordered mode in JBD. Now we don't have a list of
+> data buffers that need syncing on transaction commit but a list of inodes
+> that need writeout during commit. This brings all sorts of advantages such
+> as possibility to get rid of journal heads and buffer heads for data
+> buffers in ordered mode, better ordering of writes on transaction commit,
+> simplification of some JBD code, no more anonymous pages when truncate of
+> data being committed happens. The patch has survived some light testing
+> but it still has some potential of eating your data so beware :) I've run
+> dbench to see whether we didn't decrease performance by different handling
+> of truncate and the throughput I'm getting on my machine is the same (OK,
+> is lower by 0.5%) if I disable the code in truncate waiting for commit to
+> finish... Also the throughput of dbench is about 2% better with my patch
+> than with current JBD.
+>   Any comments or testing most welcome.
+>
+> 									Honza
 
-I'm now beginning to understand why SuSE wanted fsck -M/-m (ignore
-mounted filesystems).  Looks like SuSE has a very strange and
-non-standard usage scenario with fsck -A which is *not* just at
-boot-time.
+Just one nit, doesn't compile properly when jbd/ext3 are modules :).  Thanks 
+much,
 
-So before we try to figure out whether Yet Another FSCK option makes
-sense, maybe it would be good to get an explanation exactly *how* SuSE
-is using fsck -A, besides just at boot-time?
-
-						- Ted
+Josef
