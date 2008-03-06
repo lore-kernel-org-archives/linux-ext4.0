@@ -1,175 +1,119 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 1/3] ext4 online defrag (ver 0.7)
-Date: Thu, 06 Mar 2008 09:01:05 +0900
-Message-ID: <200803060001.AA00323@TNESG9526.rs.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: a-fujita@rs.jp.nec.com
-To: tytso@mit.edu, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: 2.6.25-rc4-ext4-1 released
+Date: Wed, 05 Mar 2008 20:18:31 -0500
+Message-ID: <E1JX4kh-0008RT-Lj@closure.thunk.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:55913 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750855AbYCFAEZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Mar 2008 19:04:25 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52554 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933144AbYCFBSt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Mar 2008 20:18:49 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Interchange the data blocks of the target and temporary files
-in an atomic manner.
+I've just released 2.6.25-rc4-ext4-1.  New/modified patches are marked
+with an asterick below.  Use of the soon-to-disappear
+generic_commit_write() has been removed.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
---
- fs/ext4/defrag.c |   55 ++++++++++++++++++++++++++++++++++++-----------------
- 1 files changed, 37 insertions(+), 18 deletions(-)
+						- Ted
 
-diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index d22bec9..d9e01ea 100644
---- a/fs/ext4/defrag.c
-+++ b/fs/ext4/defrag.c
-@@ -392,7 +392,7 @@ static int
- ext4_ext_defrag_reserve(struct inode *inode, ext4_fsblk_t goal, int len)
- {
- 	struct super_block *sb = NULL;
--	handle_t *handle = NULL;
-+	handle_t *handle;
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct ext4_block_alloc_info *block_i;
- 	struct ext4_reserve_window_node *my_rsv = NULL;
-@@ -1301,11 +1301,10 @@ ext4_ext_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
-  * Replace extents for blocks from "from" to "from + count - 1".
-  */
- static int
--ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
--			pgoff_t from_page,  pgoff_t dest_from_page,
--			pgoff_t count_page, int flag)
-+ext4_ext_replace_branches(handle_t *handle, struct inode *org_inode,
-+			struct inode *dest_inode, pgoff_t from_page,
-+			pgoff_t dest_from_page, pgoff_t count_page, int flag)
- {
--	handle_t *handle = NULL;
- 	struct ext4_ext_path *org_path = NULL;
- 	struct ext4_ext_path *dest_path = NULL;
- 	struct ext4_extent *oext, *dext, *swap_ext;
-@@ -1314,7 +1313,6 @@ ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
- 	int err = 0;
- 	int depth;
- 	int replaced_count = 0;
--	unsigned jnum;
- 
- 	from = (ext4_lblk_t)from_page <<
- 			(PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
-@@ -1322,12 +1320,6 @@ ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
- 			(PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
- 	dest_off = (ext4_lblk_t)dest_from_page <<
- 			(PAGE_CACHE_SHIFT - dest_inode->i_blkbits);
--	jnum = ext4_ext_writepage_trans_blocks(org_inode, count) + 3;
--	handle = ext4_journal_start(org_inode, jnum);
--	if (IS_ERR(handle)) {
--		err = PTR_ERR(handle);
--		goto out;
--	}
- 
- 	/* Get the original extent for the block "from" */
- 	org_path = ext4_ext_find_extent(org_inode, from, NULL);
-@@ -1455,8 +1447,6 @@ ext4_ext_replace_branches(struct inode *org_inode, struct inode *dest_inode,
- 	}
- 
- out:
--	if (handle)
--		ext4_journal_stop(handle);
- 	if (org_path) {
- 		ext4_ext_drop_refs(org_path);
- 		kfree(org_path);
-@@ -1686,9 +1676,22 @@ ext4_ext_defrag_partial(struct inode *tmp_inode, struct file *filp,
- 	struct inode *inode = filp->f_dentry->d_inode;
- 	struct address_space *mapping = inode->i_mapping;
- 	struct page *page;
-+	handle_t *handle;
- 	pgoff_t offset_in_page = PAGE_SIZE;
-+	int jblocks;
- 	int ret = 0;
- 
-+	/*
-+	 * It needs twice the amount of ordinary journal buffers because
-+	 * inode and tmp_inode may change each different metadata blocks.
-+	 */
-+	jblocks = ext4_writepage_trans_blocks(inode) * 2;
-+	handle = ext4_journal_start(inode, jblocks);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		return ret;
-+	}
-+
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	page = read_cache_page(inode->i_mapping, org_offset,
- 		(filler_t *)inode->i_mapping->a_ops->readpage, NULL);
-@@ -1713,8 +1716,8 @@ ext4_ext_defrag_partial(struct inode *tmp_inode, struct file *filp,
- 
- 	/* release old bh and drop refs */
- 	try_to_release_page(page, 0);
--	ret = ext4_ext_replace_branches(inode, tmp_inode, org_offset,
--			dest_offset, 1, flag);
-+	ret = ext4_ext_replace_branches(handle, inode, tmp_inode,
-+					org_offset, dest_offset, 1, flag);
- 	if (ret < 0)
- 		goto ERR;
- 
-@@ -1744,6 +1747,7 @@ ext4_ext_defrag_partial(struct inode *tmp_inode, struct file *filp,
- ERR:
- 	unlock_page(page);
- 	page_cache_release(page);
-+	ext4_journal_stop(handle);
- 
- 	return (ret < 0 ? ret : 0);
- }
-@@ -1766,7 +1770,9 @@ ext4_ext_defrag_partial2(struct inode *tmp_inode, struct file *filp,
- 	struct buffer_head *bh;
- 	struct page *page;
- 	const struct address_space_operations *a_ops = mapping->a_ops;
-+	handle_t *handle;
- 	pgoff_t offset_in_page = PAGE_SIZE;
-+	int jblocks;
- 	int ret = 0;
- 	int blocksize = inode->i_sb->s_blocksize;
- 	int blocks_per_page = 0;
-@@ -1776,6 +1782,17 @@ ext4_ext_defrag_partial2(struct inode *tmp_inode, struct file *filp,
- 	unsigned int w_flags = 0;
- 	void *fsdata;
- 
-+	/*
-+	 * It needs twice the amount of ordinary journal buffers because
-+	 * inode and tmp_inode may change each different metadata blocks.
-+	 */
-+	jblocks = ext4_writepage_trans_blocks(inode) * 2;
-+	handle = ext4_journal_start(inode, jblocks);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		return ret;
-+	}
-+
- 	if (segment_eq(get_fs(), KERNEL_DS))
- 		w_flags |= AOP_FLAG_UNINTERRUPTIBLE;
- 
-@@ -1815,8 +1832,8 @@ ext4_ext_defrag_partial2(struct inode *tmp_inode, struct file *filp,
- 
- 	/* release old bh and drop refs */
- 	try_to_release_page(page, 0);
--	ret = ext4_ext_replace_branches(inode, tmp_inode, org_offset,
--			dest_offset, 1, flag);
-+	ret = ext4_ext_replace_branches(handle, inode, tmp_inode,
-+					org_offset, dest_offset, 1, flag);
- 
- 	if (ret < 0)
- 		goto ERR;
-@@ -1849,6 +1866,8 @@ ext4_ext_defrag_partial2(struct inode *tmp_inode, struct file *filp,
- 	if (unlikely(ret < 0))
- 		goto ERR;
- ERR:
-+	ext4_journal_stop(handle);
-+
- 	return (ret < 0 ? ret : 0);
- }
+As a git tree:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.25-rc4-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.25-rc4-ext4-1
+
+As a patchset:
+
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.25-rc4-ext4-1
+
+
+Akinobu Mita (3):
+      ext4: use ext4_group_first_block_no()
+      ext4: use ext4_get_group_desc()
+      ext4: check ext4_journal_get_write_access() errors
+
+Akira Fujita (4):
+      ext4: online defrad header file changes
+      ext4: online defrag-- Allocate new contiguous blocks with mballoc
+      ext4: online defrag -- Move the file data to the new blocks
+      Free space fragmentation functions
+
+Alex Tomas (2):
+      vfs: add basic delayed allocation support
+      ext4: Add basic delayed allocation support
+
+Andi Kleen (1):
+      Convert ext4 to use unlocked_ioctl v2
+
+Aneesh Kumar K.V (9):
+      ext4:  Convert list_for_each_rcu() to list_for_each_entry_rcu()
+    * ext4: Fix fallocate error path
+    * ext4: Enable extent format for symlink.
+    * ext4: ENOSPC error handling for writing to an uninitialized extent
+    * ext4: Use page_mkwrite vma_operations to get mmap write notification.
+    * ext4: zero out small extents when writing to prealloc area.
+    * ext4: undo the stable boundary patch changes
+      ext4: Enable delalloc and mballoc by default.
+      ext4: Show delalloc options
+
+Eric Sandeen (1):
+      ext4: reduce mballoc stack usage with noinline
+
+Harvey Harrison (1):
+      jbd2: sparse warnings in revoke.c, journal.c
+
+Hisashi Hifumi (1):
+      ext4: fdatasync should skip metadata writeout when overwriting
+
+Jose R. Santos (1):
+    * ext4: New inode allocation for FLEX_BG meta-data groups.
+
+Josef Bacik (3):
+    * ext4: fix mount option parsing
+    * jbd2: fix the way the b_modified flag is cleared
+    * jbd2: fix possible journal overflow issues
+
+Marcin Slusarz (2):
+      ext4: le*_add_cpu conversion
+      ext4: convert byte order of constant instead of variable
+
+Mingming Cao (5):
+      ext4: remove extra define of ext4_new_blocks_old from mballoc.c
+    * ext4: make ext4_xattr_list() static
+    * ext4: Handling preallocated blocks in delayed allocation
+      jbd: blocks reservation fix for large block support
+      jbd2: blocks reservation fix for large block support
+
+Theodore Ts'o (1):
+      ext4: Stable/Unstable boundary
+
+ fs/buffer.c                     |    3 +-
+ fs/ext4/Makefile                |    2 +-
+ fs/ext4/balloc.c                |   41 +-
+ fs/ext4/defrag.c                | 2206 +++++++++++++++++++++++++++++++++++++++
+ fs/ext4/dir.c                   |    2 +-
+ fs/ext4/extents.c               |  266 +++++-
+ fs/ext4/file.c                  |   21 +-
+ fs/ext4/fsync.c                 |    3 +
+ fs/ext4/ialloc.c                |  112 ++-
+ fs/ext4/inode.c                 |  216 ++++-
+ fs/ext4/ioctl.c                 |   25 +-
+ fs/ext4/mballoc.c               |   70 +-
+ fs/ext4/namei.c                 |   11 +-
+ fs/ext4/resize.c                |    6 +-
+ fs/ext4/super.c                 |   84 ++-
+ fs/ext4/xattr.c                 |   16 +-
+ fs/ext4/xattr.h                 |    7 -
+ fs/jbd/journal.c                |    7 +-
+ fs/jbd2/commit.c                |   19 +-
+ fs/jbd2/journal.c               |   20 +-
+ fs/jbd2/revoke.c                |    4 +-
+ fs/jbd2/transaction.c           |   34 +-
+ fs/mpage.c                      |  406 +++++++
+ include/linux/ext4_fs.h         |  101 ++-
+ include/linux/ext4_fs_extents.h |   23 +
+ include/linux/ext4_fs_sb.h      |    3 +
+ include/linux/mpage.h           |    2 +
+ 27 files changed, 3530 insertions(+), 180 deletions(-)
