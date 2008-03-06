@@ -1,119 +1,71 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: 2.6.25-rc4-ext4-1 released
-Date: Wed, 05 Mar 2008 20:18:31 -0500
-Message-ID: <E1JX4kh-0008RT-Lj@closure.thunk.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: [RFC, PATCH 0/6] ext3: do not modify data on-disk when mounting read-only filesystem
+Date: Thu,  6 Mar 2008 01:59:08 +0000
+Message-ID: <1204768754-29655-1-git-send-email-duaneg@dghda.com>
+Cc: linux-kernel@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com,
+	Duane Griffin <duaneg@dghda.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52554 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933144AbYCFBSt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Mar 2008 20:18:49 -0500
+Received: from kumera.dghda.com ([80.68.90.171]:1424 "EHLO kumera.dghda.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750838AbYCFCF7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Mar 2008 21:05:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+At present, as discussed in this LKML thread,
+http://marc.info/?l=linux-kernel&m=117607695406580, when a dirty ext3
+filesystem is mounted read-only it writes to the disk while replaying the
+journal log and cleaning up the orphan list. This behaviour may surprise users
+and can potentially cause data corruption/loss (e.g. if a system is suspended,
+booted into a different OS, then resumed).
 
-I've just released 2.6.25-rc4-ext4-1.  New/modified patches are marked
-with an asterick below.  Use of the soon-to-disappear
-generic_commit_write() has been removed.
+This patch series attempts to address this by using a block translation table
+instead of replaying the journal on a read-only filesystem.
 
-						- Ted
+Patches 1-3 are independent cleanups/bug-fixes for things I came across while
+working on this. They could be submitted separately and are not required for
+following patches.
 
-As a git tree:
+Patch 4 is a refactoring change that simplifies the code prior to later
+substantive changes.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.25-rc4-ext4-1
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.25-rc4-ext4-1
+Patch 5 introduces the translation table and support for a truly read-only
+journal into jbd.
 
-As a patchset:
+Patch 6 uses the facility introduced in patch 5 to add support for true
+read-only ext3.
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.25-rc4-ext4-1
+For testing I've been using qemu VMs to create and mount dirtied filesystems. I
+have a set of scripts that fully automates creating a dirty filesystem then
+checking mounting read-only and read-write produces consistent results. On my
+system it can get through around ~30 iteration overnight. If anyone is
+interested in the scripts please let me know. Any suggestions for additional
+tests or enhancements that could be made to the scripts would be gratefully
+received.
 
+TODO:
+ * Add R/W remount support
+ * Port to ext4
 
-Akinobu Mita (3):
-      ext4: use ext4_group_first_block_no()
-      ext4: use ext4_get_group_desc()
-      ext4: check ext4_journal_get_write_access() errors
+Cheers,
+Duane Griffin.
 
-Akira Fujita (4):
-      ext4: online defrad header file changes
-      ext4: online defrag-- Allocate new contiguous blocks with mballoc
-      ext4: online defrag -- Move the file data to the new blocks
-      Free space fragmentation functions
+> git diff --stat origin
+ fs/ext3/balloc.c        |    2 +-
+ fs/ext3/ialloc.c        |    2 +-
+ fs/ext3/inode.c         |    8 +-
+ fs/ext3/resize.c        |    2 +-
+ fs/ext3/super.c         |  123 ++++++++++-----
+ fs/ext3/xattr.c         |    8 +-
+ fs/jbd/checkpoint.c     |    2 +-
+ fs/jbd/commit.c         |    2 +-
+ fs/jbd/journal.c        |   68 +++++---
+ fs/jbd/recovery.c       |  402 +++++++++++++++++++++++++++++++++--------------
+ fs/jbd/revoke.c         |  133 ++++++----------
+ fs/ocfs2/journal.c      |    4 +-
+ include/linux/ext3_fs.h |    7 +
+ include/linux/jbd.h     |   41 +++++-
+ 14 files changed, 516 insertions(+), 288 deletions(-)
 
-Alex Tomas (2):
-      vfs: add basic delayed allocation support
-      ext4: Add basic delayed allocation support
-
-Andi Kleen (1):
-      Convert ext4 to use unlocked_ioctl v2
-
-Aneesh Kumar K.V (9):
-      ext4:  Convert list_for_each_rcu() to list_for_each_entry_rcu()
-    * ext4: Fix fallocate error path
-    * ext4: Enable extent format for symlink.
-    * ext4: ENOSPC error handling for writing to an uninitialized extent
-    * ext4: Use page_mkwrite vma_operations to get mmap write notification.
-    * ext4: zero out small extents when writing to prealloc area.
-    * ext4: undo the stable boundary patch changes
-      ext4: Enable delalloc and mballoc by default.
-      ext4: Show delalloc options
-
-Eric Sandeen (1):
-      ext4: reduce mballoc stack usage with noinline
-
-Harvey Harrison (1):
-      jbd2: sparse warnings in revoke.c, journal.c
-
-Hisashi Hifumi (1):
-      ext4: fdatasync should skip metadata writeout when overwriting
-
-Jose R. Santos (1):
-    * ext4: New inode allocation for FLEX_BG meta-data groups.
-
-Josef Bacik (3):
-    * ext4: fix mount option parsing
-    * jbd2: fix the way the b_modified flag is cleared
-    * jbd2: fix possible journal overflow issues
-
-Marcin Slusarz (2):
-      ext4: le*_add_cpu conversion
-      ext4: convert byte order of constant instead of variable
-
-Mingming Cao (5):
-      ext4: remove extra define of ext4_new_blocks_old from mballoc.c
-    * ext4: make ext4_xattr_list() static
-    * ext4: Handling preallocated blocks in delayed allocation
-      jbd: blocks reservation fix for large block support
-      jbd2: blocks reservation fix for large block support
-
-Theodore Ts'o (1):
-      ext4: Stable/Unstable boundary
-
- fs/buffer.c                     |    3 +-
- fs/ext4/Makefile                |    2 +-
- fs/ext4/balloc.c                |   41 +-
- fs/ext4/defrag.c                | 2206 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/dir.c                   |    2 +-
- fs/ext4/extents.c               |  266 +++++-
- fs/ext4/file.c                  |   21 +-
- fs/ext4/fsync.c                 |    3 +
- fs/ext4/ialloc.c                |  112 ++-
- fs/ext4/inode.c                 |  216 ++++-
- fs/ext4/ioctl.c                 |   25 +-
- fs/ext4/mballoc.c               |   70 +-
- fs/ext4/namei.c                 |   11 +-
- fs/ext4/resize.c                |    6 +-
- fs/ext4/super.c                 |   84 ++-
- fs/ext4/xattr.c                 |   16 +-
- fs/ext4/xattr.h                 |    7 -
- fs/jbd/journal.c                |    7 +-
- fs/jbd2/commit.c                |   19 +-
- fs/jbd2/journal.c               |   20 +-
- fs/jbd2/revoke.c                |    4 +-
- fs/jbd2/transaction.c           |   34 +-
- fs/mpage.c                      |  406 +++++++
- include/linux/ext4_fs.h         |  101 ++-
- include/linux/ext4_fs_extents.h |   23 +
- include/linux/ext4_fs_sb.h      |    3 +
- include/linux/mpage.h           |    2 +
- 27 files changed, 3530 insertions(+), 180 deletions(-)
