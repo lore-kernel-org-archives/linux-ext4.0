@@ -1,49 +1,44 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 2/3] ext4 online defrag (ver 0.7)
-Date: Thu, 06 Mar 2008 15:20:09 +0900
-Message-ID: <47CF8D19.8080703@rs.jp.nec.com>
-References: <200803060001.AA00324@TNESG9526.rs.jp.nec.com> <20080306052552.GL3616@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC, PATCH 6/6] ext3: do not write to the disk when mounting	a
+ dirty read-only filesystem
+Date: Thu, 06 Mar 2008 00:17:34 -0700
+Message-ID: <20080306071734.GN3616@webber.adilger.int>
+References: <a047dfbd7855d5f484ae8a3434f6a073302505be.1204685366.git.duaneg@dghda.com>
+ <f4577a0cc4262de0fbff02cae3858d2e2edfaaea.1204685366.git.duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	akpm@linux-foundation.org
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:48690 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754817AbYCFGZR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2008 01:25:17 -0500
-In-Reply-To: <20080306052552.GL3616@webber.adilger.int>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:51284 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757207AbYCFHSP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2008 02:18:15 -0500
+In-reply-to: <f4577a0cc4262de0fbff02cae3858d2e2edfaaea.1204685366.git.duaneg@dghda.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
-> On Mar 06, 2008  09:01 +0900, Akira Fujita wrote:
->   
->> Change the name of functions (ext4_ext_xxx -> ext4_defrag_xxx)
->> and some cleanups.
->>
->> -int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->> -			ext4_lblk_t num, ext_prepare_callback func,
->> -			void *cbdata)
->> -{
->>     
->
-> We were just going to be using this function for the FIEMAP support.
-> I think there are several other functions which are not specific
-> to defrag, so they shouldn't be renamed to be defrag specific.
->   
+On Mar 06, 2008  01:59 +0000, Duane Griffin wrote:
+> NOTE: For now I'm simply preventing filesystems requiring recovery from being
+> remounted read-write. This breaks booting with an uncleanly mounted root
+> filesystem!
 
-ext4_ext_walk_space is no longer used by ext4 online defrag.
-So I just removed from defrag.c not renamed.
+I was going to ask about this - not being able to remount rw is a serious
+problem because many users have only the root filesystem and this
+limitation basically prevents this patch from being landable.
 
-Shouldn't I remove ext4_ext_walk_space from defrag
-for support FIEMAP?
-I think it should be moved to extents.c
+I'd suggest if the filesystem is going to be remounted read/write that
+the journal mapping be discarded and the journal replayed.  Depending
+on how you do the mapping it may be necessary to invalidate all of the
+pages in the cache so that they don't reference the blocks in the journal.
 
-Regards, Akira
-
--- 
-Akira Fujita <a-fujita@rs.jp.nec.com>
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
