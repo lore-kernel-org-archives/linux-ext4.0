@@ -1,53 +1,58 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 2/3] ext4 online defrag (ver 0.7)
-Date: Fri, 07 Mar 2008 08:46:02 +0900
-Message-ID: <47D0823A.3020209@rs.jp.nec.com>
-References: <200803060001.AA00324@TNESG9526.rs.jp.nec.com> <20080306052552.GL3616@webber.adilger.int> <47CF8D19.8080703@rs.jp.nec.com> <47D01D8C.1000806@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [RFC] JBD ordered mode rewrite
+Date: Thu, 6 Mar 2008 15:53:01 -0800
+Message-ID: <20080306155301.52034da0.akpm@linux-foundation.org>
+References: <20080306174209.GA14193@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, tytso@mit.edu, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:60992 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758271AbYCFXqx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2008 18:46:53 -0500
-In-Reply-To: <47D01D8C.1000806@redhat.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:55627 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756459AbYCFXxG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2008 18:53:06 -0500
+In-Reply-To: <20080306174209.GA14193@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Eric,
+On Thu, 6 Mar 2008 18:42:09 +0100
+Jan Kara <jack@suse.cz> wrote:
 
->>>> Change the name of functions (ext4_ext_xxx -> ext4_defrag_xxx)
->>>> and some cleanups.
->>>>
->>>> -int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->>>> -			ext4_lblk_t num, ext_prepare_callback func,
->>>> -			void *cbdata)
->>>> -{
->>>>     
->>>>         
->>> We were just going to be using this function for the FIEMAP support.
->>> I think there are several other functions which are not specific
->>> to defrag, so they shouldn't be renamed to be defrag specific.
->>>   
->>>       
->> ext4_ext_walk_space is no longer used by ext4 online defrag.
->> So I just removed from defrag.c not renamed.
->>
->> Shouldn't I remove ext4_ext_walk_space from defrag
->> for support FIEMAP?
->> I think it should be moved to extents.c
->>     
->
-> I agree.  I'm working on FIEMAP, and I'll put it back into extents.c
-> along with the FIEMAP patch, if you don't need it for defrag.
->
->   
-OK. Please put ext4_ext_walk_space in extents.c.
-Thank you for coping. :-)
+>   Below is my rewrite of ordered mode in JBD. Now we don't have a list of
+> data buffers that need syncing on transaction commit but a list of inodes
+> that need writeout during commit. This brings all sorts of advantages such
+> as possibility to get rid of journal heads and buffer heads for data
+> buffers in ordered mode, better ordering of writes on transaction commit,
+> simplification of some JBD code, no more anonymous pages when truncate of
+> data being committed happens. The patch has survived some light testing
+> but it still has some potential of eating your data so beware :) I've run
+> dbench to see whether we didn't decrease performance by different handling
+> of truncate and the throughput I'm getting on my machine is the same (OK,
+> is lower by 0.5%) if I disable the code in truncate waiting for commit to
+> finish... Also the throughput of dbench is about 2% better with my patch
+> than with current JBD.
+>   Any comments or testing most welcome.
 
-Cheers Akira
+Thanks for plugging away with this.
 
+Please change your patch preparation tools to always always include a
+diffstat, OK?
+
+ fs/buffer.c               |    3 
+ fs/ext3/ialloc.c          |    1 
+ fs/ext3/inode.c           |  118 +++++++++---------
+ fs/ext3/super.c           |    2 
+ fs/jbd/checkpoint.c       |    1 
+ fs/jbd/commit.c           |  257 +++++++++++++----------------------------
+ fs/jbd/journal.c          |   45 +++++++
+ fs/jbd/transaction.c      |  288 +++++++++++-----------------------------------
+ fs/mpage.c                |    5 
+ include/linux/ext3_fs.h   |    1 
+ include/linux/ext3_fs_i.h |    1 
+ include/linux/jbd.h       |   70 +++++++----
+ include/linux/writeback.h |    2 
+ 13 files changed, 326 insertions(+), 468 deletions(-)
+
+Would it make sense to turn this patch into a patch series sometime?
