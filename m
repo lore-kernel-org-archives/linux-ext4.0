@@ -1,547 +1,78 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: Re: e2fsck dies with error "this should never happen!!!"
-Date: Fri, 07 Mar 2008 19:12:56 +0100
-Message-ID: <47D185A8.2040404@tuxes.nl>
-References: <20909.81.207.193.3.1203702913.squirrel@guust.tuxes.nl> <47BF0DAC.9080200@redhat.com> <21151.81.207.193.3.1203703570.squirrel@guust.tuxes.nl> <20080222182711.GT20118@mit.edu> <21200.81.207.193.3.1203708673.squirrel@guust.tuxes.nl> <20080222194826.GW20118@mit.edu> <47CAFB3F.2010409@tuxes.nl> <47D145F8.3040300@tuxes.nl> <47D16456.6030400@redhat.com> <47D16D7D.9030700@tuxes.nl> <20080307174524.GA2468@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 2/3] jbd2: replace potentially false assertion with if	block
+Date: Fri, 07 Mar 2008 14:23:36 -0700
+Message-ID: <20080307212336.GE1881@webber.adilger.int>
+References: <5e28cd633c71f6354a203a43000cbe5fef045589.1204844851.git.duaneg@dghda.com>
+ <48afbb3a44aa24dc1e31835c14e86c3c6c1c3b0a.1204844851.git.duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	akpm@linux-foundation.org
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pollux.sshunet.nl ([145.97.192.42]:35561 "EHLO
-	pollux.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754278AbYCGSNE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 13:13:04 -0500
-In-Reply-To: <20080307174524.GA2468@mit.edu>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:45585 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758822AbYCGVXr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 16:23:47 -0500
+In-reply-to: <48afbb3a44aa24dc1e31835c14e86c3c6c1c3b0a.1204844851.git.duaneg@dghda.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> Can you send me the full strace output?
->
-> 						- Ted
->   
-Sure (and indeed, it contains some EFBIG output):
-> # strace e2image -I /dev/loop2 e2image-pre-e2fsck-snapshot_2008-03-06
-> execve("/sbin/e2image", ["e2image", "-I", "/dev/loop2",
-> "e2image-pre-e2fsck-snapshot_2008"...], [/* 19 vars */]) = 0
-> uname({sys="Linux", node="infinity", ...}) = 0
-> brk(0)                                  = 0x804c000
-> access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or
-> directory)
-> mmap2(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1,
-> 0) = 0xb7eed000
-> access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or
-> directory)
-> open("/etc/ld.so.cache", O_RDONLY)      = 3
-> fstat64(3, {st_mode=S_IFREG|0644, st_size=20396, ...}) = 0
-> mmap2(NULL, 20396, PROT_READ, MAP_PRIVATE, 3, 0) = 0xb7ee8000
-> close(3)                                = 0
-> access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or
-> directory)
-> open("/lib/libext2fs.so.2", O_RDONLY)   = 3
-> read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\320N\0"...,
-> 512) = 512
-> fstat64(3, {st_mode=S_IFREG|0644, st_size=102892, ...}) = 0
-> mmap2(NULL, 105844, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3,
-> 0) = 0xb7ece000
-> mmap2(0xb7ee7000, 4096, PROT_READ|PROT_WRITE,
-> MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x18) = 0xb7ee7000
-> close(3)                                = 0
-> access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or
-> directory)
-> open("/lib/libcom_err.so.2", O_RDONLY)  = 3
-> read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0 \t\0\000"...,
-> 512) = 512
-> fstat64(3, {st_mode=S_IFREG|0644, st_size=5820, ...}) = 0
-> mmap2(NULL, 8876, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3,
-> 0) = 0xb7ecb000
-> mmap2(0xb7ecd000, 4096, PROT_READ|PROT_WRITE,
-> MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1) = 0xb7ecd000
-> close(3)                                = 0
-> access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or
-> directory)
-> open("/lib/tls/i686/cmov/libc.so.6", O_RDONLY) = 3
-> read(3, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\240O\1"...,
-> 512) = 512
-> fstat64(3, {st_mode=S_IFREG|0644, st_size=1241392, ...}) = 0
-> mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1,
-> 0) = 0xb7eca000
-> mmap2(NULL, 1247388, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE,
-> 3, 0) = 0xb7d99000
-> mmap2(0xb7ec0000, 28672, PROT_READ|PROT_WRITE,
-> MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x127) = 0xb7ec0000
-> mmap2(0xb7ec7000, 10396, PROT_READ|PROT_WRITE,
-> MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0xb7ec7000
-> close(3)                                = 0
-> mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1,
-> 0) = 0xb7d98000
-> mprotect(0xb7ec0000, 20480, PROT_READ)  = 0
-> set_thread_area({entry_number:-1 -> 6, base_addr:0xb7d986c0,
-> limit:1048575, seg_32bit:1, contents:0, read_exec_only:0,
-> limit_in_pages:1, seg_not_present:0, useable:1}) = 0
-> munmap(0xb7ee8000, 20396)               = 0
-> open("/usr/lib/locale/locale-archive", O_RDONLY|O_LARGEFILE) = 3
-> fstat64(3, {st_mode=S_IFREG|0644, st_size=317792, ...}) = 0
-> mmap2(NULL, 317792, PROT_READ, MAP_PRIVATE, 3, 0) = 0xb7d4a000
-> close(3)                                = 0
-> brk(0)                                  = 0x804c000
-> brk(0x806d000)                          = 0x806d000
-> write(2, "e2image 1.40-WIP (14-Nov-2006)\n", 31e2image 1.40-WIP
-> (14-Nov-2006)
-> ) = 31
-> open("e2image-pre-e2fsck-snapshot_2008-03-06", O_RDONLY|O_LARGEFILE) = 3
-> lseek(3, 0, SEEK_SET)                   = 0
-> read(3, "\20\267+\177Ext2 Image 1.0\0\0infinity\0\0\0\0"..., 332) = 332
-> lseek(3, 4096, SEEK_SET)                = 4096
-> read(3, "\0\0h\20\0\0\320 \0\0\0\0F\371\246\4\5\300\214\17\0\0\0"...,
-> 1024) = 1024
-> mmap2(NULL, 544768, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
-> -1, 0) = 0xb7cc5000
-> lseek(3, 8192, SEEK_SET)                = 8192
-> read(3, "\212\0\0\0\213\0\0\0\214\0\0\0\0\0\0\0~\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 12288, SEEK_SET)               = 12288
-> read(3, "\0\0@\0\1\0@\0\2\0@\0\3\0005\7\256\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 16384, SEEK_SET)               = 16384
-> read(3, "\0\0\200\0\1\0\200\0\2\0\200\0\0\0\220>\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 20480, SEEK_SET)               = 20480
-> read(3, "\0\0\300\0\1\0\300\0\2\0\300\0\317\24\307<\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 24576, SEEK_SET)               = 24576
-> read(3, "\0\0\0\1\1\0\0\1\2\0\0\1\273k\0179\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 28672, SEEK_SET)               = 28672
-> read(3, "\0\0@\1\1\0@\1\2\0@\1\277F->\10\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 32768, SEEK_SET)               = 32768
-> read(3, "\0\0\200\1\1\0\200\1\2\0\200\1e\22\260=\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 36864, SEEK_SET)               = 36864
-> read(3, "\0\0\300\1\1\0\300\1\2\0\300\1\332J\213<\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 40960, SEEK_SET)               = 40960
-> read(3, "\0\0\0\2\1\0\0\2\2\0\0\2\202\0040<\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 45056, SEEK_SET)               = 45056
-> read(3, "\0\0@\2\1\0@\2\2\0@\2t4\230>\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 49152, SEEK_SET)               = 49152
-> read(3, "\0\0\200\2\1\0\200\2\2\0\200\2\0\0g<\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 53248, SEEK_SET)               = 53248
-> read(3, "\0\0\300\2\1\0\300\2\2\0\300\2\0\0j:\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 57344, SEEK_SET)               = 57344
-> read(3, "\0\0\0\3\1\0\0\3\2\0\0\3\0\0{?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 61440, SEEK_SET)               = 61440
-> read(3, "\0\0@\3\1\0@\3\2\0@\3\0\0E=\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 65536, SEEK_SET)               = 65536
-> read(3, "\0\0\200\3\1\0\200\3\2\0\200\3\0\0\331:\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 69632, SEEK_SET)               = 69632
-> read(3, "\0\0\300\3\1\0\300\3\2\0\300\3\0\0_>\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 73728, SEEK_SET)               = 73728
-> read(3, "\0\0\0\4\1\0\0\4\2\0\0\4\344%7>\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 77824, SEEK_SET)               = 77824
-> read(3, "\0\0@\4\1\0@\4\2\0@\4\0\0\315?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 81920, SEEK_SET)               = 81920
-> read(3, "\0\0\200\4\1\0\200\4\2\0\200\4\0\0\273?\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 86016, SEEK_SET)               = 86016
-> read(3, "\0\0\300\4\1\0\300\4\2\0\300\4\0\0\264?\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 90112, SEEK_SET)               = 90112
-> read(3, "\0\0\0\5\1\0\0\5\2\0\0\5\0\0\355?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 94208, SEEK_SET)               = 94208
-> read(3, "\0\0@\5\1\0@\5\2\0@\5\2\0a?\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 98304, SEEK_SET)               = 98304
-> read(3, "\0\0\200\5\1\0\200\5\2\0\200\5a\10\3668\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 102400, SEEK_SET)              = 102400
-> read(3, "\0\0\300\5\1\0\300\5\2\0\300\5\1\0w7\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 106496, SEEK_SET)              = 106496
-> read(3, "\0\0\0\6\1\0\0\6\2\0\0\6\0\0\371?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 110592, SEEK_SET)              = 110592
-> read(3, "\0\0@\6\1\0@\6\2\0@\6\0\0\354?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 114688, SEEK_SET)              = 114688
-> read(3, "\0\0\200\6\1\0\200\6\2\0\200\6\0\0Y<\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 118784, SEEK_SET)              = 118784
-> read(3, "\0\0\300\6\1\0\300\6\2\0\300\6\263+\352?\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 122880, SEEK_SET)              = 122880
-> read(3, "\0\0\0\7\1\0\0\7\2\0\0\7\364\0\264?\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 126976, SEEK_SET)              = 126976
-> read(3, "\0\0@\7\1\0@\7\2\0@\7\1\0\235?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 131072, SEEK_SET)              = 131072
-> read(3, "\0\0\200\7\1\0\200\7\2\0\200\7\1\0G=\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 135168, SEEK_SET)              = 135168
-> read(3, "\0\0\300\7\1\0\300\7\2\0\300\7\0\0\25>\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 139264, SEEK_SET)              = 139264
-> read(3, "\0\0\0\10\1\0\0\10\2\0\0\10\3\0r=\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 143360, SEEK_SET)              = 143360
-> read(3, "\0\0@\10\1\0@\10\2\0@\10\2\0\376?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 147456, SEEK_SET)              = 147456
-> read(3, "\0\0\200\10\1\0\200\10\2\0\200\10\0\0\276?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 151552, SEEK_SET)              = 151552
-> read(3, "\0\0\300\10\1\0\300\10\2\0\300\10Po\361?\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 155648, SEEK_SET)              = 155648
-> read(3, "\0\0\0\t\1\0\0\t\2\0\0\t\332t\245>\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 159744, SEEK_SET)              = 159744
-> read(3, "\0\0@\t\1\0@\t\2\0@\t(r\335>\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 163840, SEEK_SET)              = 163840
-> read(3, "\0\0\200\t\1\0\200\t\2\0\200\t&\0\354>\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 167936, SEEK_SET)              = 167936
-> read(3, "\0\0\300\t\1\0\300\t\2\0\300\t\0\0\371?\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 172032, SEEK_SET)              = 172032
-> read(3, "\0\0\0\n\1\0\0\n\2\0\0\n\0\0\310?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 176128, SEEK_SET)              = 176128
-> read(3, "\0\0@\n\1\0@\n\2\0@\n\302\26\364?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 180224, SEEK_SET)              = 180224
-> read(3, "\0\0\200\n\1\0\200\n\2\0\200\n\0\0|>\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 184320, SEEK_SET)              = 184320
-> read(3, "\0\0\300\n\1\0\300\n\2\0\300\n\25\0\261?\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 188416, SEEK_SET)              = 188416
-> read(3, "\0\0\0\v\1\0\0\v\2\0\0\v\0\0\376?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 192512, SEEK_SET)              = 192512
-> read(3, "\0\0@\v\1\0@\v\2\0@\v\0\0\377?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 196608, SEEK_SET)              = 196608
-> read(3, "\0\0\200\v\1\0\200\v\2\0\200\v\0\0\0@\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 200704, SEEK_SET)              = 200704
-> read(3, "\0\0\300\v\1\0\300\v\2\0\300\v\2\0\371?\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 204800, SEEK_SET)              = 204800
-> read(3, "\0\0\0\f\1\0\0\f\2\0\0\f\0\0\377?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 208896, SEEK_SET)              = 208896
-> read(3, "\0\0@\f\1\0@\f\2\0@\f\0\0\374?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 212992, SEEK_SET)              = 212992
-> read(3, "\0\0\200\f\1\0\200\f\2\0\200\f\0\0\323?\5\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 217088, SEEK_SET)              = 217088
-> read(3, "\0\0\300\f\1\0\300\f\2\0\300\f\22\0\214:\367\4\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 221184, SEEK_SET)              = 221184
-> read(3, "\0\0\0\r\1\0\0\r\2\0\0\r\3\0\242,\212\2\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 225280, SEEK_SET)              = 225280
-> read(3, "\0\0@\r\1\0@\r\2\0@\r\0\0\305:\t\5\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 229376, SEEK_SET)              = 229376
-> read(3, "\0\0\200\r\1\0\200\r\2\0\200\ra@\227:\t\5\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 233472, SEEK_SET)              = 233472
-> read(3, "\0\0\300\r\1\0\300\r\2\0\300\r\260`\347:\t\5\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 237568, SEEK_SET)              = 237568
-> read(3, "\0\0\0\16\1\0\0\16\2\0\0\16\0\0\340:\t\5\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 241664, SEEK_SET)              = 241664
-> read(3, "\0\0@\16\1\0@\16\2\0@\16\0\0\246;\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 245760, SEEK_SET)              = 245760
-> read(3, "\0\0\200\16\1\0\200\16\2\0\200\0163\0\236?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 249856, SEEK_SET)              = 249856
-> read(3, "\0\0\300\16\1\0\300\16\2\0\300\16\321bB>\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 253952, SEEK_SET)              = 253952
-> read(3, "\0\0\0\17\1\0\0\17\2\0\0\17\26\0\0109\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 258048, SEEK_SET)              = 258048
-> read(3, "\0\0@\17\1\0@\17\2\0@\17i|\355?\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 262144, SEEK_SET)              = 262144
-> read(3, "\0\0\200\17\1\0\200\17\2\0\200\17\224i\24=\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 266240, SEEK_SET)              = 266240
-> read(3, "\0\0\300\17\1\0\300\17\2\0\300\17r\0175>\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 270336, SEEK_SET)              = 270336
-> read(3, "\0\0\0\20\1\0\0\20\2\0\0\20\0\0\0@\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 274432, SEEK_SET)              = 274432
-> read(3, "\0\0@\20\1\0@\20\2\0@\20\0\0\347?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 278528, SEEK_SET)              = 278528
-> read(3, "\0\0\200\20\1\0\200\20\2\0\200\20\0\0\364?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 282624, SEEK_SET)              = 282624
-> read(3, "\0\0\300\20\1\0\300\20\2\0\300\20\4\0\276?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 286720, SEEK_SET)              = 286720
-> read(3, "\0\0\0\21\1\0\0\21\2\0\0\21\254\0P?\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 290816, SEEK_SET)              = 290816
-> read(3, "\0\0@\21\1\0@\21\2\0@\21\1\0\235?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 294912, SEEK_SET)              = 294912
-> read(3, "\0\0\200\21\1\0\200\21\2\0\200\21\0\0\245?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 299008, SEEK_SET)              = 299008
-> read(3, "\0\0\300\21\1\0\300\21\2\0\300\21\0\0\305?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 303104, SEEK_SET)              = 303104
-> read(3, "\0\0\0\22\1\0\0\22\2\0\0\22\0\0\311?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 307200, SEEK_SET)              = 307200
-> read(3, "\0\0@\22\1\0@\22\2\0@\22\0\0\334<\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 311296, SEEK_SET)              = 311296
-> read(3, "\0\0\200\22\1\0\200\22\2\0\200\22\0\0)=\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 315392, SEEK_SET)              = 315392
-> read(3, "\0\0\300\22\1\0\300\22\2\0\300\22\0\0\371?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 319488, SEEK_SET)              = 319488
-> read(3, "\0\0\0\23\1\0\0\23\2\0\0\23\0\0\321?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 323584, SEEK_SET)              = 323584
-> read(3, "\0\0@\23\1\0@\23\2\0@\23\1^d>\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 327680, SEEK_SET)              = 327680
-> read(3, "\0\0\200\23\1\0\200\23\2\0\200\23\0\0u>\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 331776, SEEK_SET)              = 331776
-> read(3, "\0\0\300\23\1\0\300\23\2\0\300\23\'\0 =\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 335872, SEEK_SET)              = 335872
-> read(3, "\0\0\0\24\1\0\0\24\2\0\0\24\0\0\334?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 339968, SEEK_SET)              = 339968
-> read(3, "\0\0@\24\1\0@\24\2\0@\24\0\0\233<\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 344064, SEEK_SET)              = 344064
-> read(3, "\0\0\200\24\1\0\200\24\2\0\200\24\0\0\311=\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 348160, SEEK_SET)              = 348160
-> read(3, "\0\0\300\24\1\0\300\24\2\0\300\24\0\0\332>\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 352256, SEEK_SET)              = 352256
-> read(3, "\0\0\0\25\1\0\0\25\2\0\0\25\1\0(?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 356352, SEEK_SET)              = 356352
-> read(3, "\0\0@\25\1\0@\25\2\0@\25\0\0\0044\6\5\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 360448, SEEK_SET)              = 360448
-> read(3, "\0\0\200\25\1\0\200\25\2\0\200\25\0\0\3246\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 364544, SEEK_SET)              = 364544
-> read(3, "\0\0\300\25\1\0\300\25\2\0\300\25\0\0\3149\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 368640, SEEK_SET)              = 368640
-> read(3, "\0\0\0\26\1\0\0\26\2\0\0\26\33\v\331$9\4\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 372736, SEEK_SET)              = 372736
-> read(3, "\0\0@\26\1\0@\26\2\0@\26\0\0\3156\6\5\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 376832, SEEK_SET)              = 376832
-> read(3, "\0\0\200\26\1\0\200\26\2\0\200\26\0\0\0047\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 380928, SEEK_SET)              = 380928
-> read(3, "\0\0\300\26\1\0\300\26\2\0\300\26\0\0\3529\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 385024, SEEK_SET)              = 385024
-> read(3, "\0\0\0\27\1\0\0\27\2\0\0\27\0\0\242:\6\5\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 389120, SEEK_SET)              = 389120
-> read(3, "\0\0@\27\1\0@\27\2\0@\27\0\0\n9\375\4\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 393216, SEEK_SET)              = 393216
-> read(3, "\0\0\200\27\1\0\200\27\2\0\200\27\0\0\372?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 397312, SEEK_SET)              = 397312
-> read(3, "\0\0\300\27\1\0\300\27\2\0\300\27\0\0\3:\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 401408, SEEK_SET)              = 401408
-> read(3, "\0\0\0\30\1\0\0\30\2\0\0\30\0\0\274?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 405504, SEEK_SET)              = 405504
-> read(3, "\0\0@\30\1\0@\30\2\0@\30\35\0\326?\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 409600, SEEK_SET)              = 409600
-> read(3, "\0\0\200\30\1\0\200\30\2\0\200\30\0\0q>\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 413696, SEEK_SET)              = 413696
-> read(3, "\0\0\300\30\1\0\300\30\2\0\300\30\0\0\250?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 417792, SEEK_SET)              = 417792
-> read(3, "\0\0\0\31\1\0\0\31\2\0\0\31\356zJ>\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 421888, SEEK_SET)              = 421888
-> read(3, "\0\0@\31\1\0@\31\2\0@\31\0\0C8\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 425984, SEEK_SET)              = 425984
-> read(3, "\0\0\200\31\1\0\200\31\2\0\200\31\0\0\315?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 430080, SEEK_SET)              = 430080
-> read(3, "\0\0\300\31\1\0\300\31\2\0\300\31&k\0207\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 434176, SEEK_SET)              = 434176
-> read(3, "\0\0\0\32\1\0\0\32\2\0\0\32\0\0\356?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 438272, SEEK_SET)              = 438272
-> read(3, "\0\0@\32\1\0@\32\2\0@\32\10\0\323?\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 442368, SEEK_SET)              = 442368
-> read(3, "\0\0\200\32\1\0\200\32\2\0\200\32\0\0\377?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 446464, SEEK_SET)              = 446464
-> read(3, "\0\0\300\32\1\0\300\32\2\0\300\32\0\0:)\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 450560, SEEK_SET)              = 450560
-> read(3, "\0\0\0\33\1\0\0\33\2\0\0\33\4\0\325<\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 454656, SEEK_SET)              = 454656
-> read(3, "\0\0@\33\1\0@\33\2\0@\33D\2\'=\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 458752, SEEK_SET)              = 458752
-> read(3, "\0\0\200\33\1\0\200\33\2\0\200\33\223\25\3678\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 462848, SEEK_SET)              = 462848
-> read(3, "\0\0\300\33\1\0\300\33\2\0\300\33\304c\260<\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 466944, SEEK_SET)              = 466944
-> read(3, "\0\0\0\34\1\0\0\34\2\0\0\34\370h\36>\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 471040, SEEK_SET)              = 471040
-> read(3, "\0\0@\34\1\0@\34\2\0@\34\24A\207?\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 475136, SEEK_SET)              = 475136
-> read(3, "\0\0\200\34\1\0\200\34\2\0\200\34\0\0\231?\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 479232, SEEK_SET)              = 479232
-> read(3, "\0\0\300\34\1\0\300\34\2\0\300\34\26\0\311>\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 483328, SEEK_SET)              = 483328
-> read(3, "\0\0\0\35\1\0\0\35\2\0\0\35x\21\377?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 487424, SEEK_SET)              = 487424
-> read(3, "\0\0@\35\1\0@\35\2\0@\35\0\0\372:\6\5\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 491520, SEEK_SET)              = 491520
-> read(3, "\0\0\200\35\1\0\200\35\2\0\200\35\0\0\314:\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 495616, SEEK_SET)              = 495616
-> read(3, "\0\0\300\35\1\0\300\35\2\0\300\35\0\0\367:\6\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 499712, SEEK_SET)              = 499712
-> read(3, "\0\0\0\36\1\0\0\36\2\0\0\36\0\0>:\6\5\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 503808, SEEK_SET)              = 503808
-> read(3, "\0\0@\36\1\0@\36\2\0@\0364\3q:\7\5\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 507904, SEEK_SET)              = 507904
-> read(3, "\0\0\200\36\1\0\200\36\2\0\200\36\0\0\7:\7\5\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 512000, SEEK_SET)              = 512000
-> read(3, "\0\0\300\36\1\0\300\36\2\0\300\36\273_\327:\7\5\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 516096, SEEK_SET)              = 516096
-> read(3, "\0\0\0\37\1\0\0\37\2\0\0\37\0\0\0338\7\5\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 520192, SEEK_SET)              = 520192
-> read(3, "\0\0@\37\1\0@\37\2\0@\37\0\0\365:\n\5\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 524288, SEEK_SET)              = 524288
-> read(3, "\0\0\200\37\1\0\200\37\2\0\200\37\0\0\1;\377\4\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 528384, SEEK_SET)              = 528384
-> read(3, "\0\0\300\37\1\0\300\37\2\0\300\37\20\0\1;\377\4\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 532480, SEEK_SET)              = 532480
-> read(3, "\0\0\0 \1\0\0 \2\0\0 \230t\1;\377\4\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 536576, SEEK_SET)              = 536576
-> read(3, "\0\0@ \1\0@ \2\0@ \373}\375?\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 540672, SEEK_SET)              = 540672
-> read(3, "\0\0\200 \1\0\200 \2\0\200 \4\0\362?\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> lseek(3, 544768, SEEK_SET)              = 544768
-> read(3, "\0\0\300 \1\0\300 \2\0\300 \0\0\0@\0\0\0\0\0\0\0\0\0\0"...,
-> 4096) = 4096
-> mmap2(NULL, 68816896, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
-> -1, 0) = 0xb3b24000
-> mmap2(NULL, 34410496, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
-> -1, 0) = 0xb1a53000
-> _llseek(3, 4294963200, [4294963200], SEEK_SET) = 0
-> read(3, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 34406400) = 34406400
-> _llseek(3, 4294963200, [4294963200], SEEK_SET) = 0
-> read(3, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"...,
-> 68812800) = 68812800
-> open("e2image-pre-e2fsck-snapshot_2008-03-06", O_RDONLY) = -1 EFBIG
-> (File too large)
-> open("/usr/share/locale/locale.alias", O_RDONLY) = 4
-> fstat64(4, {st_mode=S_IFREG|0644, st_size=2582, ...}) = 0
-> mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1,
-> 0) = 0xb7eec000
-> read(4, "# Locale name alias data base.\n#"..., 4096) = 2582
-> read(4, "", 4096)                       = 0
-> close(4)                                = 0
-> munmap(0xb7eec000, 4096)                = 0
-> open("/usr/share/locale/en_NL/LC_MESSAGES/libc.mo", O_RDONLY) = -1
-> ENOENT (No such file or directory)
-> open("/usr/share/locale/en/LC_MESSAGES/libc.mo", O_RDONLY) = -1 ENOENT
-> (No such file or directory)
-> open("/usr/share/locale/en_US/LC_MESSAGES/libc.mo", O_RDONLY) = -1
-> ENOENT (No such file or directory)
-> open("/usr/share/locale/en_GB/LC_MESSAGES/libc.mo", O_RDONLY) = 4
-> fstat64(4, {st_mode=S_IFREG|0644, st_size=1474, ...}) = 0
-> mmap2(NULL, 1474, PROT_READ, MAP_PRIVATE, 4, 0) = 0xb7eec000
-> close(4)                                = 0
-> open("/usr/lib/gconv/gconv-modules.cache", O_RDONLY) = 4
-> fstat64(4, {st_mode=S_IFREG|0644, st_size=21568, ...}) = 0
-> mmap2(NULL, 21568, PROT_READ, MAP_SHARED, 4, 0) = 0xb1a4d000
-> close(4)                                = 0
-> open("/usr/lib/gconv/ISO8859-1.so", O_RDONLY) = 4
-> read(4, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\200\4\0"...,
-> 512) = 512
-> fstat64(4, {st_mode=S_IFREG|0644, st_size=9436, ...}) = 0
-> mmap2(NULL, 8228, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 4,
-> 0) = 0xb1a4a000
-> mmap2(0xb1a4b000, 8192, PROT_READ|PROT_WRITE,
-> MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x1) = 0xb1a4b000
-> close(4)                                = 0
-> write(2, "e2image-pre-e2fsck-snapshot_2008"...,
-> 55e2image-pre-e2fsck-snapshot_2008-03-06: File too large
-> ) = 55
-> exit_group(1)                           = ?
-> Process 17912 detached
+On Mar 07, 2008  01:31 +0000, Duane Griffin wrote:
+> If an error occurs during jbd2 cache initialisation it is possible for the
+> journal_head_cache to be NULL when jbd2_journal_destroy_journal_head_cache is
+> called. Replace the J_ASSERT with an if block to handle the situation
+> correctly.
+> 
+> Note that even with this fix things will break badly if jbd2 is statically
+> compiled in and cache initialisation fails.
 
+It would probably be prudent to verify that these caches are initialized
+at journal_load() time and either re-try to create the cache, and/or report
+an error in that case and refuse to continue mounting.
+
+Also, I note that journal_init_journal_head_cache() is comparing pointers
+to "0", a style no-no...
+
+> Signed-off-by: Duane Griffin <duaneg@dghda.com>
+
+Acked-by: Andreas Dilger <adilger@sun.com>
+> ---
+>  fs/jbd2/journal.c |    7 ++++---
+>  1 files changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 96ba846..0d8a595 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1985,9 +1985,10 @@ static int journal_init_jbd2_journal_head_cache(void)
+>  
+>  static void jbd2_journal_destroy_jbd2_journal_head_cache(void)
+>  {
+> -	J_ASSERT(jbd2_journal_head_cache != NULL);
+> -	kmem_cache_destroy(jbd2_journal_head_cache);
+> -	jbd2_journal_head_cache = NULL;
+> +	if (jbd2_journal_head_cache) {
+> +		kmem_cache_destroy(jbd2_journal_head_cache);
+> +		jbd2_journal_head_cache = NULL;
+> +	}
+>  }
+>  
+>  /*
+> -- 
+> 1.5.3.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
