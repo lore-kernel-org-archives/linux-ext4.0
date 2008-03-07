@@ -1,79 +1,102 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Fix the locking with respect to ext3 to ext4
-	migrate.
-Date: Fri, 7 Mar 2008 17:01:06 +0530
-Message-ID: <20080307113106.GA9896@skywalker>
-References: <1204887184-9902-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204888653.3627.37.camel@localhost.localdomain>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC PATCH] ext4: Fix fallocate to update the file size in
+	each transaction.
+Date: Fri, 07 Mar 2008 03:30:57 -0800
+Message-ID: <1204889457.3627.43.camel@localhost.localdomain>
+References: <1204887200-9929-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:36112 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757307AbYCGLbM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 06:31:12 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m27BVK2h017543
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:31:20 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m27BYoAW278966
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:34:50 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m27BV9jF003946
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:31:09 +1100
-Content-Disposition: inline
-In-Reply-To: <1204888653.3627.37.camel@localhost.localdomain>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:52264 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758227AbYCGLbh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 06:31:37 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m27BVWo0006660
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 06:31:32 -0500
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m27BVWXg163354
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 04:31:32 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m27BVVq0023313
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 04:31:32 -0700
+In-Reply-To: <1204887200-9929-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 07, 2008 at 03:17:33AM -0800, Mingming Cao wrote:
-> On Fri, 2008-03-07 at 16:23 +0530, Aneesh Kumar K.V wrote:
-> Hi Aneesh,
+On Fri, 2008-03-07 at 16:23 +0530, Aneesh Kumar K.V wrote:
+> ext4_fallocate need to update file size in each transaction. Otherwise
+> ife we crash the file size won't be updated. We were also not marking
+> the inode dirty after updating file size before. Also when we try to
+> retry allocation due to ENOSPC make sure we reset the variable ret so
+> that we actually do a retry.
 > 
-> >  static int init_inodecache(void)
-> > diff --git a/include/linux/ext4_fs_i.h b/include/linux/ext4_fs_i.h
-> > index d5508d3..96c0b4f 100644
-> > --- a/include/linux/ext4_fs_i.h
-> > +++ b/include/linux/ext4_fs_i.h
-> > @@ -162,6 +162,18 @@ struct ext4_inode_info {
-> >  	/* mballoc */
-> >  	struct list_head i_prealloc_list;
-> >  	spinlock_t i_prealloc_lock;
-> > +
-> > +	/* When doing migrate we need to ensure that the i_data field
-> > +	 * doesn't change. With respect to write and truncate we can ensure
-> > +	 * the same by taking inode->i_mutex. But a write to mmap area
-> > +	 * mapping holes doesn't take i_mutex since it doesn't change the
-> > +	 * i_size. We also can't take i_data_sem because we would like to
-> > +	 * extend/restart the journal and locking order prevents us from
-> > +	 * restarting journal within i_data_sem. 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/extents.c |   78 +++++++++++++++++++++--------------------------------
+>  1 files changed, 31 insertions(+), 47 deletions(-)
 > 
-> How about we start a journal with estimated worse case transaction
-> credits  and then take the i_data_sem down? So that we could ensure that
-> whenever the i_data_sem is hold, the i_data is protected. That is what
-> currently DIO does, I think. It would be nice to avoid introducing
-> another semaphore to protect i_data for migration if we could.
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index dcdf92a..09dd3c5 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2783,6 +2783,26 @@ int ext4_ext_writepage_trans_blocks(struct inode *inode, int num)
+>  	return needed;
+>  }
 > 
+> +static void ext4_falloc_update_inode(struct inode *inode,
+> +					int mode, loff_t new_size)
+> +{
+> +	struct timespec now;
+> +
+> +	now = current_fs_time(inode->i_sb);
+> +	if (!timespec_equal(&inode->i_ctime, &now))
+> +		inode->i_ctime = now;
+> +	/*
+> +	 * Update only when preallocation was requested beyond
+> +	 * the file size.
+> +	 */
+> +	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+> +				new_size > i_size_read(inode)) {
+> +		i_size_write(inode, new_size);
+> +		EXT4_I(inode)->i_disksize = i_size_read(inode);
+
+Just a minor thing, we could store new_size directly to i_disksize to
+avoid calling the i_size_read() instead.
 
 
-Estimating transaction for a single page directIO write may be easy. But
-in case of migrate it involves new blocks allocated to carry the extents
-and also we free the indirect blocks of ext3 and that would involve
-update of bitmap from different groups. I am not sure we will be able to
-come up with a value. But if yes and if we can get that many credits
-from journal i agree that would be better than introducing a new
-semaphore.
+> +	}
+> +
+> +}
+> +
+>  /*
+>   * preallocate space for a file. This implements ext4's fallocate inode
+>   * operation, which gets called from sys_fallocate system call.
+> @@ -2794,8 +2814,8 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+>  {
+>  	handle_t *handle;
+>  	ext4_lblk_t block;
+> +	loff_t new_size;
+>  	unsigned long max_blocks;
+> -	ext4_fsblk_t nblocks = 0;
+>  	int ret = 0;
+>  	int ret2 = 0;
+>  	int retries = 0;
+> @@ -2814,8 +2834,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+>  		return -ENODEV;
+> 
+>  	block = offset >> blkbits;
+> -	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
+> -			- block;
+> +	max_blocks = EXT4_BLOCK_ALIGN(len, blkbits) >> blkbits;
+> 
+
+Not sure about this change... Other than this looks fine to me
+
+MIngming
 
 
-> > This will be taken in
-> > +	 * page_mkwrite in the read mode and migrate will take it in the
-> > +	 * write mode.
-> > +	 */
-> > +	struct rw_semaphore i_migrate_sem;
-> >  };
-> > 
-> >  #endif	/* _LINUX_EXT4_FS_I */
-> 
-> Mingming
-> 
