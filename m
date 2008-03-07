@@ -1,107 +1,73 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Fix fallocate to update the file size in
-	each transaction.
-Date: Fri, 7 Mar 2008 17:14:13 +0530
-Message-ID: <20080307114413.GA10824@skywalker>
-References: <1204887200-9929-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204889457.3627.43.camel@localhost.localdomain>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Re: e2fsck dies with error "this should never happen!!!"
+Date: Fri, 07 Mar 2008 14:41:12 +0100
+Message-ID: <47D145F8.3040300@tuxes.nl>
+References: <47BEBAF1.4090505@tuxes.nl> <20080222123852.GI20118@mit.edu> <47BECAC0.5010707@tuxes.nl> <20832.81.207.193.3.1203702265.squirrel@guust.tuxes.nl> <47BF0A7B.50902@redhat.com> <20909.81.207.193.3.1203702913.squirrel@guust.tuxes.nl> <47BF0DAC.9080200@redhat.com> <21151.81.207.193.3.1203703570.squirrel@guust.tuxes.nl> <20080222182711.GT20118@mit.edu> <21200.81.207.193.3.1203708673.squirrel@guust.tuxes.nl> <20080222194826.GW20118@mit.edu> <47CAFB3F.2010409@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:45784 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756017AbYCGLoU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 06:44:20 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m27BiRXn012920
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:44:27 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m27BiGOI3981388
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:44:16 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m27BiLE4019151
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 22:44:21 +1100
-Content-Disposition: inline
-In-Reply-To: <1204889457.3627.43.camel@localhost.localdomain>
+Received: from pollux.sshunet.nl ([145.97.192.42]:33178 "EHLO
+	pollux.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751801AbYCGNlT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 08:41:19 -0500
+In-Reply-To: <47CAFB3F.2010409@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 07, 2008 at 03:30:57AM -0800, Mingming Cao wrote:
-> On Fri, 2008-03-07 at 16:23 +0530, Aneesh Kumar K.V wrote:
-> > ext4_fallocate need to update file size in each transaction. Otherwise
-> > ife we crash the file size won't be updated. We were also not marking
-> > the inode dirty after updating file size before. Also when we try to
-> > retry allocation due to ENOSPC make sure we reset the variable ret so
-> > that we actually do a retry.
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> >  fs/ext4/extents.c |   78 +++++++++++++++++++++--------------------------------
-> >  1 files changed, 31 insertions(+), 47 deletions(-)
-> > 
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index dcdf92a..09dd3c5 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -2783,6 +2783,26 @@ int ext4_ext_writepage_trans_blocks(struct inode *inode, int num)
-> >  	return needed;
-> >  }
-> > 
-> > +static void ext4_falloc_update_inode(struct inode *inode,
-> > +					int mode, loff_t new_size)
-> > +{
-> > +	struct timespec now;
-> > +
-> > +	now = current_fs_time(inode->i_sb);
-> > +	if (!timespec_equal(&inode->i_ctime, &now))
-> > +		inode->i_ctime = now;
-> > +	/*
-> > +	 * Update only when preallocation was requested beyond
-> > +	 * the file size.
-> > +	 */
-> > +	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
-> > +				new_size > i_size_read(inode)) {
-> > +		i_size_write(inode, new_size);
-> > +		EXT4_I(inode)->i_disksize = i_size_read(inode);
-> 
-> Just a minor thing, we could store new_size directly to i_disksize to
-> avoid calling the i_size_read() instead.
-> 
+Bas van Schaik wrote:
+> Theodore Tso wrote:
+>   
+>> On Fri, Feb 22, 2008 at 08:31:13PM +0100, Bas van Schaik wrote:
+>>   
+>>     
+>>>> Yeah, it could be quite big, given that you have a 3TB filesystem.  That's
+>>>> why I suggested the "or given me login access to the system", although
+>>>> understand there could be all sorts of privacy and security issues
+>>>> involved with that request.
+>>>>       
+>>>>         
+>>> The dump is not ready yet...
+>>>
+>>> Whatever we will do, it will have to wait for a week and a half. For now I
+>>> really appreciate all the help.
+>>>     
+>>>       
+>> Ok, when you get back, I should also have a patch for you that will
+>> allow the "XXX should never happen" message to display more
+>> information, so if the dump is too big for us to move over the
+>> network, I'll have another way of doing some remote debugging.
+>>   
+>>     
+> Last night I returned from my holiday trip, so I'm available again. The
+> e2image dump completed somewhere during my absence and has grown to 1.6
+> gigabytes (bzip2), too large to actually publish if you ask me. I think
+> it is okay to provide you access to the system, please contact me
+> (preferably using a GPG-encrypted message) so we can agree on the
+> details. Of course it would be great if you can send a patch which will
+> make e2fsck more verbose.
 
-OK
+Hmmm, it is starting to annoy me that I can't get the filesystem to
+work... I just tried to restore the ext3 metadata from a LVM snapshot
+(taken two weeks ago, before running e2fsck), but that didn't work:
+> # e2image /dev/loop1 e2image-pre-e2fsck-snapshot_2008-03-06
+> e2image 1.40-WIP (14-Nov-2006)
+> # e2image -I /dev/loop2 e2image-pre-e2fsck-snapshot_2008-03-06
+> e2image 1.40-WIP (14-Nov-2006)
+> e2image-pre-e2fsck-snapshot_2008-03-06: File too large
 
-> 
-> > +	}
-> > +
-> > +}
-> > +
-> >  /*
-> >   * preallocate space for a file. This implements ext4's fallocate inode
-> >   * operation, which gets called from sys_fallocate system call.
-> > @@ -2794,8 +2814,8 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
-> >  {
-> >  	handle_t *handle;
-> >  	ext4_lblk_t block;
-> > +	loff_t new_size;
-> >  	unsigned long max_blocks;
-> > -	ext4_fsblk_t nblocks = 0;
-> >  	int ret = 0;
-> >  	int ret2 = 0;
-> >  	int retries = 0;
-> > @@ -2814,8 +2834,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
-> >  		return -ENODEV;
-> > 
-> >  	block = offset >> blkbits;
-> > -	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
-> > -			- block;
-> > +	max_blocks = EXT4_BLOCK_ALIGN(len, blkbits) >> blkbits;
-> > 
-> 
-> Not sure about this change... Other than this looks fine to me
-> 
+(note that loop0 is the real filesystem which is messed up and looks
+unrecoverable, loop1 is the LVM snapshot I took before doing any attempt
+to fix loop0 and loop2 is a LVM snapshot of loop0 which I created a few
+hours ago to test e2image on without making things worse)
 
-max_blocks actually represented the number of blocks that we are
-requesting. The above change makes it simple.
+Why is e2image refusing to restore the metadata, and what does "File too
+large" mean?
 
--aneesh
+I think this is pretty much the moment were I can say "HELP!!!"
+
+  -- Bas
+
+
