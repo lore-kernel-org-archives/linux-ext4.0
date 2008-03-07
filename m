@@ -1,63 +1,55 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Fix fallocate to update the file size in
-	each transaction.
-Date: Fri, 07 Mar 2008 10:03:23 -0600
-Message-ID: <1204905803.7975.17.camel@norville.austin.ibm.com>
-References: <1204887200-9929-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1204889457.3627.43.camel@localhost.localdomain>
-	 <20080307114413.GA10824@skywalker>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Re: e2fsck dies with error "this should never happen!!!"
+Date: Fri, 07 Mar 2008 17:29:49 +0100
+Message-ID: <47D16D7D.9030700@tuxes.nl>
+References: <47BEBAF1.4090505@tuxes.nl> <20080222123852.GI20118@mit.edu> <47BECAC0.5010707@tuxes.nl> <20832.81.207.193.3.1203702265.squirrel@guust.tuxes.nl> <47BF0A7B.50902@redhat.com> <20909.81.207.193.3.1203702913.squirrel@guust.tuxes.nl> <47BF0DAC.9080200@redhat.com> <21151.81.207.193.3.1203703570.squirrel@guust.tuxes.nl> <20080222182711.GT20118@mit.edu> <21200.81.207.193.3.1203708673.squirrel@guust.tuxes.nl> <20080222194826.GW20118@mit.edu> <47CAFB3F.2010409@tuxes.nl> <47D145F8.3040300@tuxes.nl> <47D16456.6030400@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Mingming Cao <cmm@us.ibm.com>, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:42012 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756785AbYCGQDZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2008 11:03:25 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m27G3PYI008791
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 11:03:25 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m27G3Odd237964
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 11:03:24 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m27G3OpV032355
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 11:03:24 -0500
-In-Reply-To: <20080307114413.GA10824@skywalker>
+Received: from castor.sshunet.nl ([145.97.192.41]:42144 "EHLO
+	castor.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750967AbYCGQ35 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2008 11:29:57 -0500
+In-Reply-To: <47D16456.6030400@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-03-07 at 17:14 +0530, Aneesh Kumar K.V wrote:
-> On Fri, Mar 07, 2008 at 03:30:57AM -0800, Mingming Cao wrote:
-> > On Fri, 2008-03-07 at 16:23 +0530, Aneesh Kumar K.V wrote:
+Eric Sandeen wrote:
+> Bas van Schaik wrote:
+>
+>   
+>> Why is e2image refusing to restore the metadata, and what does "File too
+>> large" mean?
+>>     
+> How big are things really?  stracing the command would show you what is
+> returning the error...
+>   
+The image file is 35335922 kbytes (= about 33GB), but is of course
+sparse and actually uses 4218560 kbytes (= about 4 GB). The original
+filesystem is 550502400 blocks long (block size 4096, number of inodes:
+275251200).
 
-> > > @@ -2814,8 +2834,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
-> > >  		return -ENODEV;
-> > > 
-> > >  	block = offset >> blkbits;
-> > > -	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
-> > > -			- block;
-> > > +	max_blocks = EXT4_BLOCK_ALIGN(len, blkbits) >> blkbits;
-> > > 
-> > 
-> > Not sure about this change... Other than this looks fine to me
-> > 
-> 
-> max_blocks actually represented the number of blocks that we are
-> requesting. The above change makes it simple.
+The last few lines of output when using strace:
+> close(4)                                = 0
+> open("/usr/lib/gconv/ISO8859-1.so", O_RDONLY) = 4
+> read(4, "\177ELF\1\1\1\0\0\0\0\0\0\0\0\0\3\0\3\0\1\0\0\0\200\4\0"...,
+> 512) = 512
+> fstat64(4, {st_mode=S_IFREG|0644, st_size=9436, ...}) = 0
+> mmap2(NULL, 8228, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 4,
+> 0) = 0xb1ab3000
+> mmap2(0xb1ab4000, 8192, PROT_READ|PROT_WRITE,
+> MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 4, 0x1) = 0xb1ab4000
+> close(4)                                = 0
+> write(2, "e2image-pre-e2fsck-snapshot_2008"...,
+> 55e2image-pre-e2fsck-snapshot_2008-03-06: File too large
+> ) = 55
+> exit_group(1)                           = ?
+> Process 6218 detached
+I can't see what's going wrong here.
 
-I think it's too simple.  :-(
+  -- Bas
 
-Take an example of an empty file (no allocated blocks), offset=0xC00,
-length = 0x800, block_size = 0x1000.
-
-The existing code will result in max_blocks = 2, accounting for both the
-blocks that the allocation spans, but your new code will result in
-max_blocks = 1.
--- 
-David Kleikamp
-IBM Linux Technology Center
 
