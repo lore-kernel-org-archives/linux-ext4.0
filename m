@@ -1,79 +1,33 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto
-	devices
-Date: Fri, 07 Mar 2008 09:19:47 -0600
-Message-ID: <1204903187.7975.10.camel@norville.austin.ibm.com>
-References: <n7xejaoynp9.fsf@sor.suse.de>
-	 <1204813967.8679.28.camel@norville.austin.ibm.com>
-	 <n7xzltbwzq3.fsf@sor.suse.de>
-	 <1204824227.7964.4.camel@norville.austin.ibm.com>
-	 <n7xiqzywr7u.fsf@sor.suse.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e2fsck dies with error "this should never happen!!!"
+Date: Fri, 07 Mar 2008 09:50:46 -0600
+Message-ID: <47D16456.6030400@redhat.com>
+References: <47BEBAF1.4090505@tuxes.nl> <20080222123852.GI20118@mit.edu> <47BECAC0.5010707@tuxes.nl> <20832.81.207.193.3.1203702265.squirrel@guust.tuxes.nl> <47BF0A7B.50902@redhat.com> <20909.81.207.193.3.1203702913.squirrel@guust.tuxes.nl> <47BF0DAC.9080200@redhat.com> <21151.81.207.193.3.1203703570.squirrel@guust.tuxes.nl> <20080222182711.GT20118@mit.edu> <21200.81.207.193.3.1203708673.squirrel@guust.tuxes.nl> <20080222194826.GW20118@mit.edu> <47CAFB3F.2010409@tuxes.nl> <47D145F8.3040300@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, ludwig.nussel@suse.de,
-	linux-ext4@vger.kernel.org
-To: Matthias Koenig <mkoenig@suse.de>
+Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org
+To: Bas van Schaik <bas@tuxes.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:60909 "EHLO e5.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:50917 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754393AbYCGPTv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2008 10:19:51 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m27FJoEM012177
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 10:19:50 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m27FJoQ2243868
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 10:19:50 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m27FJotL000698
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Mar 2008 10:19:50 -0500
-In-Reply-To: <n7xiqzywr7u.fsf@sor.suse.de>
+	id S1763524AbYCGPvV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Mar 2008 10:51:21 -0500
+In-Reply-To: <47D145F8.3040300@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Bas van Schaik wrote:
 
-On Fri, 2008-03-07 at 15:20 +0100, Matthias Koenig wrote:
-> Dave Kleikamp <shaggy@linux.vnet.ibm.com> writes:
+> Why is e2image refusing to restore the metadata, and what does "File too
+> large" mean?
+
+How big are things really?  stracing the command would show you what is
+returning the error...
+
+-Eric
+
+> I think this is pretty much the moment were I can say "HELP!!!"
 > 
-> > On Thu, 2008-03-06 at 18:04 +0100, Matthias Koenig wrote:
-> >> Dave Kleikamp <shaggy@linux.vnet.ibm.com> writes:
-> >
-> >> > Should field 8 of /etc/fstab (fs_passno) be zero for these mount points?
-> >> > Is there any reason for it to be anything different?
-> >> 
-> >> Why? zero would mean that they should never get checked.
-> >> I think it is reasonable to have the choice to get your crypto
-> >> filesystems checked. Current practise for SuSE has been to allow
-> >> only 0, but checked this filesystem anyway, which has lead to complaints.
-> >> So we want to do this more consistent.
-> >
-> > Zero tells fsck not to check the filesystem during reboot.  It's what
-> > tells fsck -A which filesystems to check.  If we don't expect the
-> > filesystem to be check-able during that phase, a non-zero value won't
-> > have any real meaning.
-> 
-> I see, but what are we doing with crypto filesystems for which the devices
-> simply do not exist at this phase in the boot process?
-
-I don't understand the question.  If the fs_passno field is zero, fsck
-isn't even going to try to check the filesystem, so having no device is
-no problem.
-
-> How should we specify that we want these filesystems to be checked or not 
-> at a later time in the boot process after the crypto devices have been
-> set up?
-
-This is why I asked if fsck was being run with the -A flag in step d.
-If it's not, then I'm not clear on why fs_passno has anything to do with
-it.  Is there some script that looks at this field in /etc/fstab for
-step d?
-
-If that's the case, then I suggest a more general solution.  Either some
-special value for fs_passno that defers the fsck for a later pass, or a
-simplified version of your proposed patch without the crypto-specific
-part.
--- 
-David Kleikamp
-IBM Linux Technology Center
+>   -- Bas
 
