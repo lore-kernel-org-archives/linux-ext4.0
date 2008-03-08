@@ -1,210 +1,355 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 1/3] jbd2: eliminate duplicated code in
-	revocation	table init/destroy functions
-Date: Fri, 07 Mar 2008 16:05:26 -0800
-Message-ID: <1204934726.14884.63.camel@localhost.localdomain>
-References: <5e28cd633c71f6354a203a43000cbe5fef045589.1204844851.git.duaneg@dghda.com>
-	 <20080307215238.GG1881@webber.adilger.int>
+Subject: Re: [RFC] JBD ordered mode rewrite
+Date: Fri, 07 Mar 2008 16:08:20 -0800
+Message-ID: <1204934901.14884.68.camel@localhost.localdomain>
+References: <20080306174209.GA14193@duck.suse.cz>
+	 <20080307235210.GM1881@webber.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Duane Griffin <duaneg@dghda.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:54593 "EHLO e5.ny.us.ibm.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:56061 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752080AbYCHAGD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2008 19:06:03 -0500
-In-Reply-To: <20080307215238.GG1881@webber.adilger.int>
+	id S1753401AbYCHAI5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Mar 2008 19:08:57 -0500
+In-Reply-To: <20080307235210.GM1881@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-03-07 at 14:52 -0700, Andreas Dilger wrote:
-> On Mar 07, 2008  01:31 +0000, Duane Griffin wrote:
-> > The revocation table initialisation/destruction code is repeated for each of
-> > the two revocation tables stored in the journal. Refactoring the duplicated
-> > code into functions is tidier, simplifies the logic in initialisation in
-> > particular, and slightly reduces the code size.
-> > 
-> > There should not be any functional change.
+On Fri, 2008-03-07 at 16:52 -0700, Andreas Dilger wrote:
+> On Mar 06, 2008  18:42 +0100, Jan Kara wrote:
+> >   Below is my rewrite of ordered mode in JBD. Now we don't have a list of
+> > data buffers that need syncing on transaction commit but a list of inodes
+> > that need writeout during commit. This brings all sorts of advantages such
+> > as possibility to get rid of journal heads and buffer heads for data
+> > buffers in ordered mode, better ordering of writes on transaction commit,
+> > simplification of some JBD code, no more anonymous pages when truncate of
+> > data being committed happens. The patch has survived some light testing
+> > but it still has some potential of eating your data so beware :) I've run
+> > dbench to see whether we didn't decrease performance by different handling
+> > of truncate and the throughput I'm getting on my machine is the same (OK,
+> > is lower by 0.5%) if I disable the code in truncate waiting for commit to
+> > finish... Also the throughput of dbench is about 2% better with my patch
+> > than with current JBD.
+> >   Any comments or testing most welcome.
 > 
-> Duane, thanks for doing the cleanup.  Comments inline.
+> Looks like a very good patch - thanks for your effort in moving this
+> beyond the "hand-waving" stage that it's been in for the past few years.
 > 
-> > Signed-off-by: Duane Griffin <duaneg@dghda.com>
-> > ---
-> >  fs/jbd2/revoke.c |  125 +++++++++++++++++++++++-------------------------------
-> >  1 files changed, 53 insertions(+), 72 deletions(-)
-> > 
-> > diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> > index df36f42..1bf4c1f 100644
-> > --- a/fs/jbd2/revoke.c
-> > +++ b/fs/jbd2/revoke.c
-> > @@ -196,108 +196,89 @@ void jbd2_journal_destroy_revoke_caches(void)
-> >  	jbd2_revoke_table_cache = NULL;
-> >  }
-> >  
-> > -/* Initialise the revoke table for a given journal to a given size. */
-> > -
-> > -int jbd2_journal_init_revoke(journal_t *journal, int hash_size)
-> > +static int jbd2_journal_init_revoke_table(struct jbd2_revoke_table_s *table,
-> > +					  int size)
-> >  {
+> I'm looking at what implications this has for delayed allocation in ext4,
+> because the vast majority of file data will be unmapped in that case
+> and a journal commit in ordered mode will no longer cause the data to
+> be flushed to disk.
 > 
-> (minor) calling this "hash_size" would be a bit clearer, and more consistent
-> with the old code.  Not a reason in itself to redo the patch though.
-> 
-> > +	int shift = 0;
-> > +	int tmp = size;
-> >  
-> >  	while((tmp >>= 1UL) != 0UL)
-> >  		shift++;
-> >  
-> > +	table->hash_size = size;
-> > +	table->hash_shift = shift;
-> > +	table->hash_table = kmalloc(
-> > +		size * sizeof(struct list_head), GFP_KERNEL);
-> 
-> (style) could fit on a single line by removing one space somewhere, or follow
-> code style and move only "GFP_KERNEL" to the second line...
-> 
-> > +	if (!table->hash_table)
-> >  		return -ENOMEM;
-> >  
-> > +	for (tmp = 0; tmp < size; tmp++)
-> > +		INIT_LIST_HEAD(&table->hash_table[tmp]);
-> >  
-> > +	return 0;
-> > +}
-> >  
-> > +/* Initialise the revoke table for a given journal to a given size. */
-> > +int jbd2_journal_init_revoke(journal_t *journal, int hash_size)
-> > +{
-> > +	J_ASSERT(journal->j_revoke_table[0] == NULL);
-> >  	J_ASSERT(is_power_of_2(hash_size));
-> >  
-> > +	journal->j_revoke_table[0] = kmem_cache_alloc(
-> > +		jbd2_revoke_table_cache, GFP_KERNEL);
-> 
-> (style) it is preferred to indent continuation lines to the previous '(' like:
-> 
-> 	journal->j_revoke_table[0] = kmem_cache_alloc(jbd2_revoke_table_cache,
-> 						      GFP_KERNEL);
-> 
-> or alternately:
-> 
-> 	journal->j_revoke_table[0] =
-> 		kmem_cache_alloc(jbd2_revoke_table_cache, GFP_KERNEL);
-> 
-> > +	if (!journal->j_revoke_table[0])
-> > +		goto failed_alloc1;
-> > +	if (jbd2_journal_init_revoke_table(journal->j_revoke_table[0], hash_size))
-> 
-> (style) wrap at 80 columns.
-> 
+> I _think_ is OK, because the pdflushd will now be totally in charge of
+> flushing the dirty pages to disk, instead of this previously being done
+> by ordered mode in the journal.
 
-checkpatch.pl catched this...fyi.
+I missed something here, just trying to understand: if a journal commit
+in ordered mode will no longer cause the data to be flushed to disk, how
+could we ensure the ordering? Are you suggesting with delayed allocation
+the journalling mode falls back to writeback mode?
 
-> > +		goto failed_init1;
-> >  
-> > +	journal->j_revoke_table[1] = kmem_cache_alloc(
-> > +		jbd2_revoke_table_cache, GFP_KERNEL);
-> > +	if (!journal->j_revoke_table[1])
-> > +		goto failed_alloc2;
-> > +	if (jbd2_journal_init_revoke_table(journal->j_revoke_table[1], hash_size))
-> > +		goto failed_init2;
+>   I know there have been some bugs in this
+> area in the past, but I guess it isn't much different than running in
+> writeback mode.  That said, I don't know how many users run in writeback
+> mode unless they are running a database, and the database is doing a lot
+> of explicit fsync of file data so there may still be bugs lurking...
 > 
-> (minor) It appears we could reduce some more code duplication by doing
-> the allocation of j_revoke_table[0] and j_revoke_table[1] inside
-> journal_init_revoke_table(), passing back the table pointer or NULL on
-> failure (-ENOMEM is really the only possible error return code here)?
+> Some care is still needed here because with ext4 delayed allocation the
+> common case will be unmapped buffers, while the ext3 implementation will
+> only have this in very rare cases (unmapped mmap writes), but it looks
+> like the right mechanism is already in place for both.
 > 
-> > +	journal->j_revoke = journal->j_revoke_table[1];
-> >  
-> >  	spin_lock_init(&journal->j_revoke_lock);
-> >  
-> >  	return 0;
-> >  
-> > +failed_init2:
-> > +	kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[1]);
-> > +failed_alloc2:
-> > +	kfree(journal->j_revoke_table[0]->hash_table);
-> > +failed_init1:
-> > +	kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[0]);
-> > +failed_alloc1:
-> > +	return -ENOMEM;
+> I'll just put a bunch of comments inline, not necessarily problems, just
+> walking through the code to ensure I understand what is going on...
 > 
-> Doing the table allocation inside journal_init_revoke_table() also
-> simplifies cleanup, because we don't need to handle "init" and "alloc"
-> failures separately here.
+> > @@ -1675,7 +1675,8 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
+> >  			 */
+> >  			clear_buffer_dirty(bh);
+> >  			set_buffer_uptodate(bh);
+> > -		} else if (!buffer_mapped(bh) && buffer_dirty(bh)) {
+> > +		} else if (!buffer_mapped(bh) && buffer_dirty(bh)
+> > +			   && !wbc->skip_unmapped) {
 > 
-> > +static void jbd2_journal_destroy_revoke_table(struct jbd2_revoke_table_s *table)
+> (comment) This is skipping writeout of unmapped pages during journal commit -
+> good, otherwise we would deadlock trying to add block mappings...
+> 
+> > @@ -183,6 +184,8 @@ void ext3_delete_inode (struct inode * inode)
 > >  {
-> >  	int i;
-> > +	struct list_head *hash_list;
+> >  	handle_t *handle;
 > >  
-> > +	for (i = 0; i < table->hash_size; i++) {
-> >  		hash_list = &table->hash_table[i];
-> > +		J_ASSERT(list_empty(hash_list));
+> > +	if (ext3_should_order_data(inode))
+> > +		ext3_begin_ordered_truncate(inode, 0);
+> 
+> (comment) This is flushing out pages allocated in the previous transaction
+> to keep consistent semantics in case of a crash loses the delete...  There
+> is some possibility for optimization here - comments below at
+> journal_begin_ordered_truncate().
+> 
+> > @@ -1487,46 +1462,49 @@ static int ext3_ordered_writepage(struct page *page,
+> > +	if (!wbc->skip_unmapped) {
+> > +		handle = ext3_journal_start(inode,
+> > +				ext3_writepage_trans_blocks(inode));
+> > +		if (IS_ERR(handle)) {
+> > +			ret = PTR_ERR(handle);
+> > +			goto out_fail;
+> > +		}
 > >  	}
+> 
+> I guess the common case here for delalloc is that if someone cares to fsync
+> the file then that inode would be added to the journal list and the pages
+> would be mapped here in the process context and flushed with the journal
+> commit.  This is ideal because it avoids syncing out all of the dirty pages
+> for inodes that were NOT fsync'd and fixes the "one process doing fsync
+> kills performance for streaming writes" problem in ordered mode that was
+> recently discussed on the list.
+> 
+> We in fact win twice because fsync_page_range() will potentially only
+> map and flush the range of pages that the application cares about and
+> does not necessarily have to write out all pages (though that will still
+> happen in ordered mode if the pages had previously been mapped).
+> 
+> > +	else if (!PageMappedToDisk(page))
+> > +		goto out_fail;
+> 
+> (style) } else if (...) {
+> 		goto out_fail;
+> 	}
+> 
+> > +	/* This can go as soon as someone cares about that ;) */
+> >  	if (!page_has_buffers(page)) {
+> >  		create_empty_buffers(page, inode->i_sb->s_blocksize,
+> >  				(1 << BH_Dirty)|(1 << BH_Uptodate));
+> >  	}
+> 
+> Is there any reason to keep this in the non-data-journal case?  Adding
+> buffer heads to every page is a non-trivial amount of RAM usage.
+> 
+> > @@ -2989,7 +2973,14 @@ int ext3_write_inode(struct inode *inode, int wait)
+> >   * be freed, so we have a strong guarantee that no future commit will
+> >   * leave these blocks visible to the user.)
+> >   *
+> > - * Called with inode->sem down.
+> > + * Another thing we have to asure is that if we are in ordered mode
+> 
+> s/asure/assure/
+> 
+> > + * and inode is still attached to the committing transaction, we must
+> > + * we start writeout of all the dirty buffers which are being truncated.
+> 
+> s/buffers/pages/
+> 
+> > @@ -3032,6 +3023,13 @@ int ext3_setattr(struct dentry *dentry, struct iattr *attr)
+> >  	    attr->ia_valid & ATTR_SIZE && attr->ia_size < inode->i_size) {
+> >  		handle_t *handle;
 > >  
-> >  	kfree(table->hash_table);
-> >  	kmem_cache_free(jbd2_revoke_table_cache, table);
-> > +}
+> > +		if (ext3_should_order_data(inode)) {
+> > +			error = ext3_begin_ordered_truncate(inode,
+> > +					attr->ia_size);
 > 
-> (minor) This should be moved above journal_init_revoke_table() and be used
-> to free the first table if allocation/init of the second table fails.
-> That is proper encapsulation of functionality, and by moving the table
-> allocation inside journal_init_revoke_table() as previously suggested,
-> we never have to handle partially-initialized tables (i.e. alloc, but
-> list_heads not init.
+> (style) align "attr->ia_size" with previous '('.
 > 
-> Sure, it is a bit more overhead than just freeing the arrays, but
-> performance isn't critical if the mount just failed due to ENOMEM,
-> and isn't expected to happen very often at all.
+> > @@ -520,6 +520,8 @@ static void ext3_clear_inode(struct inode *inode)
+> >  	EXT3_I(inode)->i_block_alloc_info = NULL;
+> >  	if (unlikely(rsv))
+> >  		kfree(rsv);
+> > +	journal_release_jbd_inode(EXT3_SB(inode->i_sb)->s_journal,
+> > +		&EXT3_I(inode)->jinode);
 > 
-> > +/* Destroy a journal's revoke table.  The table must already be empty! */
-> > +void jbd2_journal_destroy_revoke(journal_t *journal)
+> (style) align with '(' on previous line.
+> 
+> >  /*
+> > - * When an ext3-ordered file is truncated, it is possible that many pages are
+> > - * not sucessfully freed, because they are attached to a committing transaction.
+> > + * When an ext3 file is truncated, it is possible that some pages are not
+> > + * sucessfully freed, because they are attached to a committing transaction.
+> 
+> s/sucessfully/successfully/
+> 
+> > -static int inverted_lock(journal_t *journal, struct buffer_head *bh)
+> > -{
+> > -	if (!jbd_trylock_bh_state(bh)) {
+> > -		spin_unlock(&journal->j_list_lock);
+> > -		schedule();
+> > -		return 0;
+> > -	}
+> > -	return 1;
+> > -}
+> 
+> Always nice to see unpleasant code like this be removed.
+> 
+> > +static int journal_submit_data_buffers(journal_t *journal,
+> > +		transaction_t *commit_transaction)
+> >  {
+> > +	/*
+> > +	 * We are in a committing transaction. Therefore no new inode
+> > +	 * can be added to our inode list. We use JI_COMMIT_RUNNING
+> > +	 * flag to protect inode we currently operate on from being
+> > +	 * released while we write out pages.
+> > +	 */
+> 
+> Should we J_ASSERT() this is true?  Probably better to put this comment
+> before the function instead of inside it.
+> 
+> > +	spin_lock(&journal->j_list_lock);
+> > +	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
+> > +		mapping = jinode->i_vfs_inode->i_mapping;
+> > +		if (!mapping_cap_writeback_dirty(mapping))
+> > +			continue;
+> > +		wbc.nr_to_write = mapping->nrpages * 2;
+> > +		jinode->i_flags |= JI_COMMIT_RUNNING;
+> > +		spin_unlock(&journal->j_list_lock);
+> > +		err = do_writepages(jinode->i_vfs_inode->i_mapping, &wbc);
+> > +		if (!ret)
+> > +			ret = err;
+> > +		spin_lock(&journal->j_list_lock);
+> > +		jinode->i_flags &= ~JI_COMMIT_RUNNING;
+> > +		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+> >  	}
+> > +	spin_unlock(&journal->j_list_lock);
+> 
+> Hmm, this is one area I'm a bit worried about.  In the old code the number
+> of buffers to sync for a transaction are bounded because they can only be
+> added to the transaction while it is open.  With this new inode-list code
+> there could be a process busily adding new dirty + mapped pages to the
+> inode(s) in the running transaction, while we are blocked here writing
+> out the pages in kjournald trying to commit the previous transaction.
+> 
+> At some point we will eventually no longer be able to add new pages to the
+> running transaction (because it is full or was closed due to timeout) and
+> we won't be able to start a new transaction because the committing transaction
+> has not yet committed.  At that point we would be able to finish the commit
+> of the previous transaction, but not until we had reached the point of
+> blocking all operations in the filesystem waiting for the new transaction
+> to open.  This would essentially lead to livelock of the system, with
+> stop-start-stop cycles for the transactions and IO.
+> 
+> What would be needed is some kind of mechanism to separate the dirty pages
+> on the inode into "dirty from current transaction" and "dirty from the
+> previous transaction".  That seems non-trivial, however.  I guess we could
+> also force any process doing writing to flush out all of the dirty and
+> mapped pages on the inode if it detects the inode is in two transactions.
+> 
+> This would at least parallelize the IO submission and also throttle the
+> addition of new pages until the dirty ones on the committing transaction
+> had been flushed but may essentially mean sync IO performance for streaming
+> writes on large files without delalloc (which would not add new pages that
+> are mapped normally).
+> 
+> > +static int journal_finish_data_buffers(journal_t *journal,
+> > +		transaction_t *commit_transaction)
+> >  {
+> > +	/* Now refile inode to proper lists */
+> > +	list_for_each_entry_safe(jinode, next_i,
+> > +			&commit_transaction->t_inode_list, i_list) {
+> 
+> (style) align with '(' on previous line
+> 
+> > +		list_del(&jinode->i_list);
+> > +		if (jinode->i_next_transaction) {
+> > +			jinode->i_transaction = jinode->i_next_transaction;
+> > +			jinode->i_next_transaction = NULL;
+> > +			list_add(&jinode->i_list,
+> > +				&jinode->i_transaction->t_inode_list);
+> >  		}
+> > +		else
+> > +			jinode->i_transaction = NULL;
+> 
+> (style)		} else {
+> 			jinode->i_transaction = NULL;
+> 		}
+> 
+> > @@ -655,7 +565,14 @@ start_journal_io:
+> >  	   so we incur less scheduling load.
+> >  	*/
+> >  
+> > -	jbd_debug(3, "JBD: commit phase 4\n");
+> > +	jbd_debug(3, "JBD: commit phase 3\n");
+> 
+> Rather than numbering these phases, which has little meaning and often
+> means they just get renumbered like here, it is probably more useful to
+> give them descriptive names like "JBD: commit wait for data buffers", etc.
+> 
+> > @@ -1504,10 +1327,10 @@ __blist_del_buffer(struct journal_head **list, struct journal_head *jh)
+> >   * Remove a buffer from the appropriate transaction list.
+> >   *
+> >   * Note that this function can *change* the value of
+> > - * bh->b_transaction->t_sync_datalist, t_buffers, t_forget,
+> > - * t_iobuf_list, t_shadow_list, t_log_list or t_reserved_list.  If the caller
+> > - * is holding onto a copy of one of thee pointers, it could go bad.
+> > - * Generally the caller needs to re-read the pointer from the transaction_t.
+> > + * bh->b_transaction->t_buffers, t_forget, t_iobuf_list, t_shadow_list,
+> > + * t_log_list or t_reserved_list.  If the caller is holding onto a copy of one
+> > + * of thee pointers, it could go bad.  Generally the caller needs to re-read
+> 
+> s/thee/these/
+> 
+> > +/*
+> > + * File inode in the inode list of the handle's transaction
+> > + */
+> > +int journal_file_inode(handle_t *handle, struct jbd_inode *jinode)
 > > +{
-> > +	if (!journal->j_revoke_table[0])
-> >  		return;
+> > +	transaction_t *transaction = handle->h_transaction;
+> > +	journal_t *journal = transaction->t_journal;
+> > +
+> > +	if (is_handle_aborted(handle))
+> > +		return 0;
 > 
-> (style) empty line here.
+> Should we be returning an error back to the caller at this point?
 > 
-> > +	jbd2_journal_destroy_revoke_table(journal->j_revoke_table[0]);
-> > +	journal->j_revoke = NULL;
-> >  
-> > +	if (!journal->j_revoke_table[1])
-> > +		return;
-> > +	jbd2_journal_destroy_revoke_table(journal->j_revoke_table[1]);
-> >  	journal->j_revoke = NULL;
+> > +	jbd_debug(4, "Adding inode %lu, tid:%d\n", jinode->i_vfs_inode->i_ino,
+> > +			transaction->t_tid);
+> > +
+> > +	spin_lock(&journal->j_list_lock);
+> > +
+> > +	if (jinode->i_transaction == transaction ||
+> > +	    jinode->i_next_transaction == transaction)
+> > +		goto done;
 > 
-> (style) I'd probably write this as below, to keep the logic simpler:
+> Is it possible/safe to do the above check outside of the j_list_lock
+> as an optimization?  We will be calling this function for every page
+> that is dirtied and it will likely be quite highly contended.  It used
+> to be that we HAD to get this lock because we were almost certainly
+> adding the new buffers to the transaction list, but in this updated
+> code the common case is that the inode will already be on the list...
 > 
-> 	journal->j_revoke = NULL;
+> > +/*
+> > + * This function must be called when inode is journaled in ordered mode
+> > + * before truncation happens. It starts writeout of truncated part in
+> > + * case it is in the committing transaction so that we stand to ordered
+> > + * mode consistency guarantees.
+> > + */
+> > +int journal_begin_ordered_truncate(struct jbd_inode *inode, loff_t new_size)
+> > +{
+> > +	journal_t *journal;
+> > +	transaction_t *commit_trans;
+> > +	int ret = 0;
+> > +
+> > +	if (!inode->i_transaction && !inode->i_next_transaction)
+> > +		goto out;
+> > +	journal = inode->i_transaction->t_journal;
+> > +	spin_lock(&journal->j_state_lock);
+> > +	commit_trans = journal->j_committing_transaction;
+> > +	spin_unlock(&journal->j_state_lock);
+> > +	if (inode->i_transaction == commit_trans) {
+> > +		ret = __filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
+> > +			new_size, LLONG_MAX, WB_SYNC_ALL);
+> > +		if (ret)
+> > +			journal_abort(journal, ret);
+> > +	}
 > 
-> 	if (journal->j_revoke_table[0])
-> 		jbd2_journal_destroy_revoke_table(journal->j_revoke_table[0]);
-> 	if (journal->j_revoke_table[1])
-> 		jbd2_journal_destroy_revoke_table(journal->j_revoke_table[1]);
+> Is there any way here to entirely avoid writing blocks which were just
+> allocated during the current transaction (e.g. temp files during compile
+> or whatever)?  One possibility is to store the transaction number when
+> the inode was created (or first dirtied?) in ext3_inode_info and if that is
+> equal to the committing transaction then we don't need to write anything
+> at all?
 > 
-> Also, we don't really need to set journal->j_revoke = NULL twice.
-> 
-> Same of course applies to both versions of the patch.  Hopefully once ext4
-> has had some chance to bake in the kernel (when people start using it after
-> the "dev" moniker is removed) and Fedora we can revert back to a single jbd
-> code base.  There are no incompatible format changes in jbd2 that would be
-> forced upon ext3 by consolidating the code base, it was just split during
-> development to avoid destabilizing ext3.
-> 
-
-Thanks for reviewing this Andreas.
-
-The patch is already in ext4 candidate patch queue.  FYI.
-
-Mingming
 > Cheers, Andreas
 > --
 > Andreas Dilger
