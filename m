@@ -1,26 +1,26 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [RFC] JBD ordered mode rewrite
-Date: Mon, 10 Mar 2008 17:30:40 +0100
-Message-ID: <20080310163040.GC30435@duck.suse.cz>
-References: <20080306174209.GA14193@duck.suse.cz> <200803061405.03721.jbacik@redhat.com>
+Date: Mon, 10 Mar 2008 18:38:18 +0100
+Message-ID: <20080310173818.GF30435@duck.suse.cz>
+References: <20080306174209.GA14193@duck.suse.cz> <20080306155301.52034da0.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:37829 "EHLO duck.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:34051 "EHLO duck.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750966AbYCJQam (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Mar 2008 12:30:42 -0400
+	id S1751175AbYCJRiU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2008 13:38:20 -0400
 Content-Disposition: inline
-In-Reply-To: <200803061405.03721.jbacik@redhat.com>
+In-Reply-To: <20080306155301.52034da0.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 06-03-08 14:05:03, Josef Bacik wrote:
-> On Thursday 06 March 2008 12:42:09 pm Jan Kara wrote:
-> >   Hi,
-> >
+On Thu 06-03-08 15:53:01, Andrew Morton wrote:
+> On Thu, 6 Mar 2008 18:42:09 +0100
+> Jan Kara <jack@suse.cz> wrote:
+> 
 > >   Below is my rewrite of ordered mode in JBD. Now we don't have a list of
 > > data buffers that need syncing on transaction commit but a list of inodes
 > > that need writeout during commit. This brings all sorts of advantages such
@@ -35,12 +35,34 @@ On Thu 06-03-08 14:05:03, Josef Bacik wrote:
 > > finish... Also the throughput of dbench is about 2% better with my patch
 > > than with current JBD.
 > >   Any comments or testing most welcome.
-> >
-> > 									Honza
 > 
-> Just one nit, doesn't compile properly when jbd/ext3 are modules :).  Thanks 
-> much,
-  Thanks for spotting this. Will fix :).
+> Thanks for plugging away with this.
+> 
+> Please change your patch preparation tools to always always include a
+> diffstat, OK?
+  Hmm, I mostly submit patches by hand but I'll try to not forget generate
+patches with git-diff --stat ;).
+
+>  fs/buffer.c               |    3 
+>  fs/ext3/ialloc.c          |    1 
+>  fs/ext3/inode.c           |  118 +++++++++---------
+>  fs/ext3/super.c           |    2 
+>  fs/jbd/checkpoint.c       |    1 
+>  fs/jbd/commit.c           |  257 +++++++++++++----------------------------
+>  fs/jbd/journal.c          |   45 +++++++
+>  fs/jbd/transaction.c      |  288 +++++++++++-----------------------------------
+>  fs/mpage.c                |    5 
+>  include/linux/ext3_fs.h   |    1 
+>  include/linux/ext3_fs_i.h |    1 
+>  include/linux/jbd.h       |   70 +++++++----
+>  include/linux/writeback.h |    2 
+>  13 files changed, 326 insertions(+), 468 deletions(-)
+> 
+> Would it make sense to turn this patch into a patch series sometime?
+  We can definitely split out ext3 and JBD changes (although ext3 would not
+compile after JBD changes). I'll have a look at what Mingming suggests -
+whether we could make both modes coexist reasonably easily. In that case also
+patches could change smaller chunks.
 
 									Honza
 -- 
