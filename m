@@ -1,77 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: jbd2_handle and i_data_sem circular locking dependency detected
-Date: Mon, 10 Mar 2008 15:24:26 +0100
-Message-ID: <20080310142426.GH24873@duck.suse.cz>
-References: <20080204101228.GA1939@skywalker> <20080204163156.GC3426@duck.suse.cz> <20080305201234.GA8173@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC PATCH 1/3][e2fsprogs] Add 64-bit IO manager operations to
+	struct_io_manager.
+Date: Mon, 10 Mar 2008 10:40:42 -0400
+Message-ID: <20080310144042.GE26651@mit.edu>
+References: <20080303164113.5557.68102.stgit@gara> <20080303164118.5557.20139.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@sun.com>,
-	Mingming Cao <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:44047 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750855AbYCJOY2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Mar 2008 10:24:28 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42145 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750991AbYCJOky (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Mar 2008 10:40:54 -0400
 Content-Disposition: inline
-In-Reply-To: <20080305201234.GA8173@skywalker>
+In-Reply-To: <20080303164118.5557.20139.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 06-03-08 01:42:34, Aneesh Kumar K.V wrote:
-> On Mon, Feb 04, 2008 at 05:31:56PM +0100, Jan Kara wrote:
-> >   Hi,
-> > 
-> > On Mon 04-02-08 15:42:28, Aneesh Kumar K.V wrote:
-> > > This is with the new ext3 -> ext4 migrate code added. The recently added
-> > > lockdep for jbd2 helped to find this out. We want to hold the i_data_sem
-> > > on the ext3 inode during migration to prevent walking the ext3 inode
-> > > when it is being converted to ext4 format. Also we want to avoid 
-> > > file truncation and new blocks being added while converting to ext4.
-> > > Also we dont want to reserve large number of credits for journal.
-> > > Any idea how to fix this ?
-> >   Hmm, while briefly looking at the code - why do you introduce i_data_sem
-> > and not use i_alloc_sem which is already in VFS inode? That is aimed
-> > exactly at the serialization of truncates, writes and similar users.
-> > That doesn't solve problems with lock ordering but I was just wondering...
-> >   Another problem - ext4_fallocate() has the same lock ordering problem as
-> > the migration code and maybe there are others...
-> >   One (stupid) solution to your problem is to make i_data_sem be
-> > always locked before the transaction is started. It could possibly have
-> > negative performance impact because you'd have to hold the semaphore for
-> > a longer time and thus a writer would block readers for longer time. So one
-> > would have to measure how big difference that would make.
-> >   Another possibility is to start a single transaction for migration and
-> > extend it as long as you can (as truncate does it). And when you can't
-> > extend any more, you drop the i_data_sem and start a new transaction and
-> > acquire the semaphore again. This has the disadvantage that after dropping
-> > the semaphore you have to resync your original inode with the temporary
-> > one your are building which probably ends up being ugly as night... Hmm,
-> > but maybe we could get rid of this - hold i_mutex to protect against all
-> > writes (that ranks outside of transaction start so you can hold it for the
-> > whole migration time - maybe you even hold it if you are called from the
-> > write path...). After dropping i_data_sem you let some readers proceed
-> > but writers still wait on i_mutex so the file shouldn't change under you
-> > (but I suggest adding some BUG_ONs to verify that the file really doesn't
-> > change :).
-> > 
+On Mon, Mar 03, 2008 at 10:41:18AM -0600, Jose R. Santos wrote:
+> From: Jose R. Santos <jrs@us.ibm.com>
 > 
-> This one came up again when i was doing the mmap ENOSPC patch. Now the
-> current code with migrate is taking i_mutex to protech against all
-> writes. But it seems a write to a mmap area mapping a hole can still go
-> through fine. And that path cannot take i_mutex.
+> Add 64-bit IO manager operations to struct_io_manager.
 > 
-> So i guess the migrate locking need to be fixed. Any suggestion ?
-  Hmm, thinking about it a bit more.  One possibility is that we could just
-use i_mutex to protect against ordinary writes, and before swapping blocks
-for extents we'd check whether some holes were not filled in the mean time.
-If yes, we can retry the migrate, or fail it and retry later.
-  Another possibility would be to make ext4 use page_mkwrite to fill in
-holes. There we could safely acquire i_mutex and be done.
+> In order to provide 64-bit block support for IO managers an maintain
+> ABI compatibility with the old API, some new functions need to be
+> added to struct_io_manger.  Luckily, strcut_io_manager has some
+> reserved space that we can use to add these new functions.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Looks good, and I won't NACK this patch just because of this.
+However, be aware that:
+
+> -	int		reserved[14];
+> +	errcode_t (*read_blk64)(io_channel channel, unsigned long long block,
+> +					int count, void *data);
+> +	errcode_t (*write_blk64)(io_channel channel, unsigned long long block,
+> +					int count, const void *data);
+> +	int		reserved[12];
+>  };
+
+... this doesn't really work on x86_64 platforms since int's are 4
+bytes and pointers are 8 bytes.
+
+*Fortunately* it doesn't really matter here since the reserved block
+is mainly to make sure that there are sufficient zero-filled bytes
+after the structure so that there is little or no risk that if new
+code which looks for a new function pointer like read_blk64 tries to
+access that area after the structure, it will find zero's.  
+
+As it turns out we don't ever expect the user to allocate io manager
+structures, and in fact the primary place (and probably the only
+place) where io_managers are defined is in libext2fs --- although if a
+user were to define their own io_manager in their program, we would be
+relying on the reserved fields to provide enough zero-filled slack
+space to avoid problems.
+
+In structures where it you really do need to maintain structure sizes,
+it is very important to have a separate reserved_int[16] and
+reserved_ptr[16] array --- or better yet, make the structure private
+and not visible to the external callers, using accessor functions as
+necessary, and use a callee (as opposed to caller) allocation
+convention, which removes the need for the caller (i.e., calling
+application) to know the size of the structure.
+
+This is all not relevant to the patch at hand, though (although I will
+probably not decrease the size of the reserved array to provide slack
+for future expansions), but is the sort of thing that should go into a
+wiki for e2fsprogs coding/style conventions one of these days.  :-)
+
+     	 	   			    	   - Ted
