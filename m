@@ -1,66 +1,44 @@
-From: akpm@linux-foundation.org
-Subject: - jbd2-replace-potentially-false-assertion-with-if-block.patch removed from -mm tree
-Date: Mon, 10 Mar 2008 12:43:52 -0700
-Message-ID: <200803101943.m2AJhqT6002206@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: jbd/2: eliminate code duplication and gracefully handle cache
+ initialisation failure
+Date: Mon, 10 Mar 2008 12:46:28 -0700
+Message-ID: <20080310124628.44a62466.akpm@linux-foundation.org>
+References: <1205001459-5291-1-git-send-email-duaneg@dghda.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	hch@infradead.org, tytso@mit.edu, sct@redhat.com,
+	adilger@clusterfs.com, duaneg@dghda.com
+To: "Duane Griffin" <duaneg@dghda.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43148 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751048AbYCJTrT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2008 15:47:19 -0400
+In-Reply-To: <1205001459-5291-1-git-send-email-duaneg@dghda.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat,  8 Mar 2008 18:37:33 +0000
+"Duane Griffin" <duaneg@dghda.com> wrote:
 
-The patch titled
-     jbd2: replace potentially false assertion with if block
-has been removed from the -mm tree.  Its filename was
-     jbd2-replace-potentially-false-assertion-with-if-block.patch
+>  fs/jbd/journal.c  |  149 +++++++++++++++++++++++-------------------------
+>  fs/jbd/revoke.c   |  164 +++++++++++++++++++++++------------------------------
+>  fs/jbd2/journal.c |  154 ++++++++++++++++++++++++-------------------------
+>  fs/jbd2/revoke.c  |  164 +++++++++++++++++++++++------------------------------
+>  4 files changed, 291 insertions(+), 340 deletions(-)
+> 
+> This is version 2 of the jdb/2 patches to eliminate code duplication and
+> gracefully handle cace initialisation failure.
+> 
 
-This patch was dropped because an updated version will be merged
+I couldn't get these to apply and I didn't understand the relationship
+between these new patches and your earlier
+jbd[2]-replace-potentially-false-assertion-with-if-block.patch and
+jbd[2]-only-create-debugfs-entries-if-cache-initialisation-is-successful.patch
+so I just dropped everything.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: jbd2: replace potentially false assertion with if block
-From: "Duane Griffin" <duaneg@dghda.com>
-
-If an error occurs during jbd2 cache initialisation it is possible for the
-journal_head_cache to be NULL when jbd2_journal_destroy_journal_head_cache is
-called.  Replace the J_ASSERT with an if block to handle the situation
-correctly.
-
-Note that even with this fix things will break badly if jbd2 is statically
-compiled in and cache initialisation fails.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd2/journal.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
-
-diff -puN fs/jbd2/journal.c~jbd2-replace-potentially-false-assertion-with-if-block fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd2-replace-potentially-false-assertion-with-if-block
-+++ a/fs/jbd2/journal.c
-@@ -1991,9 +1991,10 @@ static int journal_init_jbd2_journal_hea
- 
- static void jbd2_journal_destroy_jbd2_journal_head_cache(void)
- {
--	J_ASSERT(jbd2_journal_head_cache != NULL);
--	kmem_cache_destroy(jbd2_journal_head_cache);
--	jbd2_journal_head_cache = NULL;
-+	if (jbd2_journal_head_cache) {
-+		kmem_cache_destroy(jbd2_journal_head_cache);
-+		jbd2_journal_head_cache = NULL;
-+	}
- }
- 
- /*
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-jbd-only-create-debugfs-entries-if-cache-initialisation-is-successful.patch
-jbd2-replace-potentially-false-assertion-with-if-block.patch
-jbd2-only-create-debugfs-and-stats-entries-if-cache-initialisation-is-successful.patch
-
+Please redo and resend against next -mm or
+http://userweb.kernel.org/~akpm/mmotm/, thanks.
