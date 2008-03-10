@@ -1,140 +1,201 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] JBD ordered mode rewrite
-Date: Mon, 10 Mar 2008 19:29:03 +0100
-Message-ID: <20080310182903.GH30435@duck.suse.cz>
-References: <20080306174209.GA14193@duck.suse.cz> <1204887301.3627.25.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+From: akpm@linux-foundation.org
+Subject: - jbd2-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch removed from -mm tree
+Date: Mon, 10 Mar 2008 12:40:03 -0700
+Message-ID: <200803101940.m2AJe33w002034@imap1.linux-foundation.org>
+To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:45855 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751618AbYCJS3F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Mar 2008 14:29:05 -0400
-Content-Disposition: inline
-In-Reply-To: <1204887301.3627.25.camel@localhost.localdomain>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48320 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752506AbYCJTkY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2008 15:40:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Mingming,
 
-On Fri 07-03-08 02:55:01, Mingming Cao wrote:
-> On Thu, 2008-03-06 at 18:42 +0100, Jan Kara wrote:
-> >   Below is my rewrite of ordered mode in JBD. Now we don't have a list of
-> > data buffers that need syncing on transaction commit but a list of inodes
-> > that need writeout during commit. This brings all sorts of advantages such
-> > as possibility to get rid of journal heads and buffer heads for data
-> > buffers in ordered mode, better ordering of writes on transaction commit,
-> > simplification of some JBD code, no more anonymous pages when truncate of
-> > data being committed happens. The patch has survived some light testing
-> > but it still has some potential of eating your data so beware :) I've run
-> > dbench to see whether we didn't decrease performance by different handling
-> > of truncate and the throughput I'm getting on my machine is the same (OK,
-> > is lower by 0.5%) if I disable the code in truncate waiting for commit to
-> > finish... Also the throughput of dbench is about 2% better with my patch
-> > than with current JBD.
-> 
-> I know ext4 is keep changing that it's a bit hard to create patch
-> against ext4, but I feel features like especially rewrite the default
-> ordered mode should done in ext4/jbd2. I could port to current ext4 and
-> JBD2 if you agrees with this.
-  I definitely agree with you :). This was just the first version of the
-patch, more like a proof-of-concept, and it was easier to code against
-jbd/ext3 for me :) But when I have something more definitive, I'll port it
-against jbd2/ext4.
+The patch titled
+     jbd2: eliminate duplicated code in revocation table init/destroy functions
+has been removed from the -mm tree.  Its filename was
+     jbd2-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
 
-> Also, would it make sense to create a new ordered mode writepage
-> routines, and keep the old ordered mode code there for a while, to allow
-> easy comparison? This could a good transition for people to start
-> experiment this ordered mode without worrying about put data in danger
-> by default.
-  This is an interesting idea. I'll have a look how hard would it be to do
-that. It would be also good because we could separate the patch into
-several chunks and it would still compile / work between them.
+This patch was dropped because an updated version will be merged
 
-> >   Any comments or testing most welcom
-> 
-> [...]
-> >  /*
-> >   * Note that we always start a transaction even if we're not journalling
-> >   * data.  This is to preserve ordering: any hole instantiation within
-> > @@ -1465,15 +1444,11 @@ static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
-> >   * We don't honour synchronous mounts for writepage().  That would be
-> >   * disastrous.  Any write() or metadata operation will sync the fs for
-> >   * us.
-> > - *
-> > - * AKPM2: if all the page's buffers are mapped to disk and !data=journal,
-> > - * we don't need to open a transaction here.
-> >   */
-> >  static int ext3_ordered_writepage(struct page *page,
-> >  				struct writeback_control *wbc)
-> >  {
-> >  	struct inode *inode = page->mapping->host;
-> > -	struct buffer_head *page_bufs;
-> >  	handle_t *handle = NULL;
-> >  	int ret = 0;
-> >  	int err;
-> > @@ -1487,46 +1462,49 @@ static int ext3_ordered_writepage(struct page *page,
-> >  	if (ext3_journal_current_handle())
-> >  		goto out_fail;
-> > 
-> > -	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
-> > -
-> > -	if (IS_ERR(handle)) {
-> > -		ret = PTR_ERR(handle);
-> > -		goto out_fail;
-> > +	/*
-> > +	 * Now there are two different reasons why we can be called:
-> > +	 *   1) write out during commit
-> > +	 *   2) fsync / writeout to free memory
-> > +	 *
-> > +	 * In the first case, we just need to write the buffer to disk, in the
-> > +	 * second case we may need to do hole filling and attach the inode to
-> > +	 * the transaction. Note that even in the first case, we may get an
-> > +	 * unmapped buffer (hole fill with data via mmap) but we don't have to
-> > +	 * write it - actually, we can't because from a transaction commit we
-> > +	 * cannot start a new transaction or we could deadlock.
-> > +	 */
-> 
-> Any thoughts how to handle the unmapped page under case 1)? Right now I
-> see it fails. Your comments here saying that we still have the issue
-> that "can't start a new transaction while commiting", but likely, with
-> delayed allocation, starting a new transaction could to happen a lot to
-> do defered block allocation. 
-> 
-> I really hope this new mode could be easy to add delayed allocation
-> support.  Any thoughts that we could workaround the locking in the JBD2
-> layer?
-  "can't start a new transaction while commiting" is a fundamental problem
-that you cannot add to a journal when you are trying to clean it up. It's
-not just a locking problem :). As Mark pointed out, there's another problem
-with the fact that we cannot afford to take page_lock while committing
-because that's essentially a clasical lock inversion between a transaction
-start and a page lock. How to solve that one, I don't know yet.
-  To your question about delayed allocation - currently, we just skip those
-buffers so as you write in some other email, you basically get the
-guarantees of writeback mode. Actually, I guess the result is the same with
-the old way of ordered-mode handling since you cannot afford to do the block
-allocation from the commit code as well... We could get around this
-limitation (actually easier than in the old code) if we were sure we have
-enough credits in the transaction to really do the allocation - we would
-do the allocation in the writepage() and attach changed buffers to the
-committing transaction.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-> > +	if (!wbc->skip_unmapped) {
-> > +		handle = ext3_journal_start(inode,
-> > +				ext3_writepage_trans_blocks(inode));
-> > +		if (IS_ERR(handle)) {
-> > +			ret = PTR_ERR(handle);
-> > +			goto out_fail;
-> > +		}
-> >  	}
-> > +	else if (!PageMappedToDisk(page))
-> > +		goto out_fail;
-> > 
+------------------------------------------------------
+Subject: jbd2: eliminate duplicated code in revocation table init/destroy functions
+From: "Duane Griffin" <duaneg@dghda.com>
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The revocation table initialisation/destruction code is repeated for each of
+the two revocation tables stored in the journal.  Refactoring the duplicated
+code into functions is tidier, simplifies the logic in initialisation in
+particular, and slightly reduces the code size.
+
+There should not be any functional change.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd2/revoke.c |  127 +++++++++++++++++++--------------------------
+ 1 file changed, 54 insertions(+), 73 deletions(-)
+
+diff -puN fs/jbd2/revoke.c~jbd2-eliminate-duplicated-code-in-revocation-table-init-destroy-functions fs/jbd2/revoke.c
+--- a/fs/jbd2/revoke.c~jbd2-eliminate-duplicated-code-in-revocation-table-init-destroy-functions
++++ a/fs/jbd2/revoke.c
+@@ -196,108 +196,89 @@ void jbd2_journal_destroy_revoke_caches(
+ 	jbd2_revoke_table_cache = NULL;
+ }
+ 
+-/* Initialise the revoke table for a given journal to a given size. */
+-
+-int jbd2_journal_init_revoke(journal_t *journal, int hash_size)
++static int jbd2_journal_init_revoke_table(struct jbd2_revoke_table_s *table,
++					  int size)
+ {
+-	int shift, tmp;
++	int shift = 0;
++	int tmp = size;
+ 
+-	J_ASSERT (journal->j_revoke_table[0] == NULL);
+-
+-	shift = 0;
+-	tmp = hash_size;
+ 	while((tmp >>= 1UL) != 0UL)
+ 		shift++;
+ 
+-	journal->j_revoke_table[0] = kmem_cache_alloc(jbd2_revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[0])
+-		return -ENOMEM;
+-	journal->j_revoke = journal->j_revoke_table[0];
+-
+-	/* Check that the hash_size is a power of two */
+-	J_ASSERT(is_power_of_2(hash_size));
+-
+-	journal->j_revoke->hash_size = hash_size;
+-
+-	journal->j_revoke->hash_shift = shift;
+-
+-	journal->j_revoke->hash_table =
+-		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[0]);
+-		journal->j_revoke = NULL;
++	table->hash_size = size;
++	table->hash_shift = shift;
++	table->hash_table = kmalloc(
++		size * sizeof(struct list_head), GFP_KERNEL);
++	if (!table->hash_table)
+ 		return -ENOMEM;
+-	}
+ 
+-	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++	for (tmp = 0; tmp < size; tmp++)
++		INIT_LIST_HEAD(&table->hash_table[tmp]);
+ 
+-	journal->j_revoke_table[1] = kmem_cache_alloc(jbd2_revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[1]) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[0]);
+-		return -ENOMEM;
+-	}
+-
+-	journal->j_revoke = journal->j_revoke_table[1];
++	return 0;
++}
+ 
+-	/* Check that the hash_size is a power of two */
++/* Initialise the revoke table for a given journal to a given size. */
++int jbd2_journal_init_revoke(journal_t *journal, int hash_size)
++{
++	J_ASSERT(journal->j_revoke_table[0] == NULL);
+ 	J_ASSERT(is_power_of_2(hash_size));
+ 
+-	journal->j_revoke->hash_size = hash_size;
+-
+-	journal->j_revoke->hash_shift = shift;
+-
+-	journal->j_revoke->hash_table =
+-		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[0]);
+-		kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[1]);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
+-	}
++	journal->j_revoke_table[0] = kmem_cache_alloc(
++		jbd2_revoke_table_cache, GFP_KERNEL);
++	if (!journal->j_revoke_table[0])
++		goto failed_alloc1;
++	if (jbd2_journal_init_revoke_table(journal->j_revoke_table[0], hash_size))
++		goto failed_init1;
++
++	journal->j_revoke_table[1] = kmem_cache_alloc(
++		jbd2_revoke_table_cache, GFP_KERNEL);
++	if (!journal->j_revoke_table[1])
++		goto failed_alloc2;
++	if (jbd2_journal_init_revoke_table(journal->j_revoke_table[1], hash_size))
++		goto failed_init2;
+ 
+-	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++	journal->j_revoke = journal->j_revoke_table[1];
+ 
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 
+ 	return 0;
+-}
+ 
+-/* Destoy a journal's revoke table.  The table must already be empty! */
++failed_init2:
++	kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[1]);
++failed_alloc2:
++	kfree(journal->j_revoke_table[0]->hash_table);
++failed_init1:
++	kmem_cache_free(jbd2_revoke_table_cache, journal->j_revoke_table[0]);
++failed_alloc1:
++	return -ENOMEM;
++}
+ 
+-void jbd2_journal_destroy_revoke(journal_t *journal)
++static void jbd2_journal_destroy_revoke_table(struct jbd2_revoke_table_s *table)
+ {
+-	struct jbd2_revoke_table_s *table;
+-	struct list_head *hash_list;
+ 	int i;
++	struct list_head *hash_list;
+ 
+-	table = journal->j_revoke_table[0];
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
++	for (i = 0; i < table->hash_size; i++) {
+ 		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
++		J_ASSERT(list_empty(hash_list));
+ 	}
+ 
+ 	kfree(table->hash_table);
+ 	kmem_cache_free(jbd2_revoke_table_cache, table);
+-	journal->j_revoke = NULL;
++}
+ 
+-	table = journal->j_revoke_table[1];
+-	if (!table)
++/* Destroy a journal's revoke table.  The table must already be empty! */
++void jbd2_journal_destroy_revoke(journal_t *journal)
++{
++	if (!journal->j_revoke_table[0])
+ 		return;
++	jbd2_journal_destroy_revoke_table(journal->j_revoke_table[0]);
++	journal->j_revoke = NULL;
+ 
+-	for (i=0; i<table->hash_size; i++) {
+-		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
+-	}
