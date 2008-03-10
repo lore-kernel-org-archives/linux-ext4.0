@@ -1,119 +1,77 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 0/3] ext4 online defrag (ver 0.7)
-Date: Mon, 10 Mar 2008 19:48:12 +0900
-Message-ID: <47D511EC.6000908@rs.jp.nec.com>
-References: <200803060001.AA00322@TNESG9526.rs.jp.nec.com> <1204934917.14884.70.camel@localhost.localdomain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: jbd2_handle and i_data_sem circular locking dependency detected
+Date: Mon, 10 Mar 2008 15:24:26 +0100
+Message-ID: <20080310142426.GH24873@duck.suse.cz>
+References: <20080204101228.GA1939@skywalker> <20080204163156.GC3426@duck.suse.cz> <20080305201234.GA8173@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: cmm@us.ibm.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Josef Bacik <jbacik@redhat.com>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger@sun.com>,
+	Mingming Cao <cmm@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:64971 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750921AbYCJKug convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Mar 2008 06:50:36 -0400
-In-Reply-To: <1204934917.14884.70.camel@localhost.localdomain>
+Received: from styx.suse.cz ([82.119.242.94]:44047 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750855AbYCJOY2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2008 10:24:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20080305201234.GA8173@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Mingming,
+On Thu 06-03-08 01:42:34, Aneesh Kumar K.V wrote:
+> On Mon, Feb 04, 2008 at 05:31:56PM +0100, Jan Kara wrote:
+> >   Hi,
+> > 
+> > On Mon 04-02-08 15:42:28, Aneesh Kumar K.V wrote:
+> > > This is with the new ext3 -> ext4 migrate code added. The recently added
+> > > lockdep for jbd2 helped to find this out. We want to hold the i_data_sem
+> > > on the ext3 inode during migration to prevent walking the ext3 inode
+> > > when it is being converted to ext4 format. Also we want to avoid 
+> > > file truncation and new blocks being added while converting to ext4.
+> > > Also we dont want to reserve large number of credits for journal.
+> > > Any idea how to fix this ?
+> >   Hmm, while briefly looking at the code - why do you introduce i_data_sem
+> > and not use i_alloc_sem which is already in VFS inode? That is aimed
+> > exactly at the serialization of truncates, writes and similar users.
+> > That doesn't solve problems with lock ordering but I was just wondering...
+> >   Another problem - ext4_fallocate() has the same lock ordering problem as
+> > the migration code and maybe there are others...
+> >   One (stupid) solution to your problem is to make i_data_sem be
+> > always locked before the transaction is started. It could possibly have
+> > negative performance impact because you'd have to hold the semaphore for
+> > a longer time and thus a writer would block readers for longer time. So one
+> > would have to measure how big difference that would make.
+> >   Another possibility is to start a single transaction for migration and
+> > extend it as long as you can (as truncate does it). And when you can't
+> > extend any more, you drop the i_data_sem and start a new transaction and
+> > acquire the semaphore again. This has the disadvantage that after dropping
+> > the semaphore you have to resync your original inode with the temporary
+> > one your are building which probably ends up being ugly as night... Hmm,
+> > but maybe we could get rid of this - hold i_mutex to protect against all
+> > writes (that ranks outside of transaction start so you can hold it for the
+> > whole migration time - maybe you even hold it if you are called from the
+> > write path...). After dropping i_data_sem you let some readers proceed
+> > but writers still wait on i_mutex so the file shouldn't change under you
+> > (but I suggest adding some BUG_ONs to verify that the file really doesn't
+> > change :).
+> > 
+> 
+> This one came up again when i was doing the mmap ENOSPC patch. Now the
+> current code with migrate is taking i_mutex to protech against all
+> writes. But it seems a write to a mmap area mapping a hole can still go
+> through fine. And that path cannot take i_mutex.
+> 
+> So i guess the migrate locking need to be fixed. Any suggestion ?
+  Hmm, thinking about it a bit more.  One possibility is that we could just
+use i_mutex to protect against ordinary writes, and before swapping blocks
+for extents we'd check whether some holes were not filled in the mean time.
+If yes, we can retry the migrate, or fail it and retry later.
+  Another possibility would be to make ext4 use page_mkwrite to fill in
+holes. There we could safely acquire i_mutex and be done.
 
-Thank you for review.  :-)=20
-
->> Next step:
->> Remove the limit of target file size (now 128MB) in -f mode.
->> * Past mail concerning -f mode.
->> http://marc.info/?l=3Dlinux-ext4&m=3D118239067704899&w=3D4
->>
->>    =20
->
-> The old version have many useful high level description, could you
-> preserve that and add to the change logs in this updated series?
->  =20
-All right.  I'll do so next time.
-
-
->> Dependency:
->> My patches depend on the multi-block allocation in ext4 patch queue.
->>
->>    =20
-> mballoc patch already in maintain so this dependency could be removed=
-=2E
->  =20
-We have to set mballoc mount option for ext4 online defrag,
-because it doesn't support single block allocation.
-So I think ext4 online defrag depends on mballoc.
-
-
->> Summary of patches:
->> * These patches are applied on the top of
->>   ext4 git tree(linux-2.6.25-rc3-git4).=20
->>   http://repo.or.cz/r/ext4-patch-queue.git
->>   And attached files are the updated patches.
->>
->>    =20
->
-> I assume the following three patches are diffs against current ext4
-> patch queue
->  =20
-Exactly.  Sorry for the confusion.
-
-
->> [PATCH 1/3]
->>  - Interchange the data blocks of the target and
->>    temporary files in an atomic manner.
->>
->> [PATCH 2/3]
->> =E3=80=80- Change the name of functions.
->> =E3=80=80   ext4_ext_xxx -> ext4_defrag_xxx
->> =E3=80=80- Some cleanups.
->>
->> [PATCH 3/3] ext4 online defrag command
->>  - Change the error handling for ext4_iget().
->>  - Usage is as follows:
->>    o Put the multiple files closer together.
->>      # e4defrag -r directory-name
->>    o Defrag for free space fragmentation.
->>      # e4defrag -f file-name
->>    o Defrag for a single file.
->>      # e4defrag file-name
->>    o Defrag for all files on ext4.
->>      # e4defrag device-name
->>
->> Review and comment are welcome.
->>
->>    =20
->
-> Attempted to do so...
->
-> The updated patch series could not compile one-by-one, could you rewo=
-rk
-> the series so that in the future we could able to bi-search the ext4
-> patch queue?
-OK.
-I'll make my updated patches to compile one-by-one
-then resend them to you.
-
-
-> As a whole, I got compile warning when applied all the
-> updated patches:(
->  =20
-Oops, I'll fix it.  =3D-O=20
-
-> review comments against the 4 updated kernel patches to follow.
->  =20
-I am confirming your review comments.=20
-It will take time a little. :-)=20
-
-Regards, Akira
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
