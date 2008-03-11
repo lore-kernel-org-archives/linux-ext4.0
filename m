@@ -1,169 +1,41 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Fix fallocate to update the file size in each transaction.
-Date: Tue, 11 Mar 2008 11:17:25 +0530
-Message-ID: <1205214445-8328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Export needed symbol for ZERO_PAGE usage in
+	modules.
+Date: Tue, 11 Mar 2008 11:20:15 +0530
+Message-ID: <20080311055015.GA8108@skywalker>
+References: <1205214392-8236-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:52382 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752993AbYCKFrc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:47:32 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5mFIB002226
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:48:15 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5lUgp2469916
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:47:30 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2B5lU8n023051
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:47:30 +1100
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:40590 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753393AbYCKFwy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:52:54 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5r1VY025978
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:53:01 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5s3xL249466
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:54:03 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2B5oLMF028765
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:50:21 +1100
+Content-Disposition: inline
+In-Reply-To: <1205214392-8236-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_fallocate need to update file size in each transaction. Otherwise
-ife we crash the file size won't be updated. We were also not marking
-the inode dirty after updating file size before. Also when we try to
-retry allocation due to ENOSPC make sure we reset the variable ret so
-that we actually do a retry.
+On Tue, Mar 11, 2008 at 11:16:32AM +0530, Aneesh Kumar K.V wrote:
+> ext4 use ZERO_PAGE(0) to zero out blocks. We need to export
+> different symbols in different arch for the usage of ZERO_PAGE
+> in modules.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c |   89 ++++++++++++++++++++++------------------------------
- 1 files changed, 38 insertions(+), 51 deletions(-)
+This should be applied before ext4-fallocate-full-fs-ENOSPC-handling.patch
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0ad0042..69f1dee 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2783,6 +2783,28 @@ int ext4_ext_writepage_trans_blocks(struct inode *inode, int num)
- 	return needed;
- }
- 
-+static void ext4_falloc_update_inode(struct inode *inode,
-+				int mode, loff_t new_size, int update_ctime)
-+{
-+	struct timespec now;
-+
-+	if (update_ctime) {
-+		now = current_fs_time(inode->i_sb);
-+		if (!timespec_equal(&inode->i_ctime, &now))
-+			inode->i_ctime = now;
-+	}
-+	/*
-+	 * Update only when preallocation was requested beyond
-+	 * the file size.
-+	 */
-+	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
-+				new_size > i_size_read(inode)) {
-+		i_size_write(inode, new_size);
-+		EXT4_I(inode)->i_disksize = new_size;
-+	}
-+
-+}
-+
- /*
-  * preallocate space for a file. This implements ext4's fallocate inode
-  * operation, which gets called from sys_fallocate system call.
-@@ -2794,8 +2816,8 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
- {
- 	handle_t *handle;
- 	ext4_lblk_t block;
-+	loff_t new_size;
- 	unsigned long max_blocks;
--	ext4_fsblk_t nblocks = 0;
- 	int ret = 0;
- 	int ret2 = 0;
- 	int retries = 0;
-@@ -2814,9 +2836,12 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
- 		return -ENODEV;
- 
- 	block = offset >> blkbits;
-+	/*
-+	 * We can't just convert len to max_blocks because
-+	 * If blocksize = 4096 offset = 3072 and len = 2048
-+	 */
- 	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
--			- block;
--
-+							- block;
- 	/*
- 	 * credits to insert 1 extent into extent tree + buffers to be able to
- 	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
-@@ -2832,7 +2857,6 @@ retry:
- 			ret = PTR_ERR(handle);
- 			break;
- 		}
--
- 		ret = ext4_get_blocks_wrap(handle, inode, block,
- 					  max_blocks, &map_bh,
- 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
-@@ -2848,61 +2872,24 @@ retry:
- 			ret2 = ext4_journal_stop(handle);
- 			break;
- 		}
--		if (ret > 0) {
--			/* check wrap through sign-bit/zero here */
--			if ((block + ret) < 0 || (block + ret) < block) {
--				ret = -EIO;
--				ext4_mark_inode_dirty(handle, inode);
--				ret2 = ext4_journal_stop(handle);
--				break;
--			}
--			if (buffer_new(&map_bh) && ((block + ret) >
--			    (EXT4_BLOCK_ALIGN(i_size_read(inode), blkbits)
--			    >> blkbits)))
--					nblocks = nblocks + ret;
--		}
--
--		/* Update ctime if new blocks get allocated */
--		if (nblocks) {
--			struct timespec now;
--
--			now = current_fs_time(inode->i_sb);
--			if (!timespec_equal(&inode->i_ctime, &now))
--				inode->i_ctime = now;
--		}
-+		if ((block + ret) >= (EXT4_BLOCK_ALIGN(offset + len,
-+						blkbits) >> blkbits))
-+			new_size = offset + len;
-+		else
-+			new_size = (block + ret) << blkbits;
- 
-+		ext4_falloc_update_inode(inode, mode, new_size,
-+						buffer_new(&map_bh));
- 		ext4_mark_inode_dirty(handle, inode);
- 		ret2 = ext4_journal_stop(handle);
- 		if (ret2)
- 			break;
- 	}
--
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (ret == -ENOSPC &&
-+			ext4_should_retry_alloc(inode->i_sb, &retries)) {
-+		ret = 0;
- 		goto retry;
--
--	/*
--	 * Time to update the file size.
--	 * Update only when preallocation was requested beyond the file size.
--	 */
--	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
--	    (offset + len) > i_size_read(inode)) {
--		if (ret > 0) {
--			/*
--			 * if no error, we assume preallocation succeeded
--			 * completely
--			 */
--			i_size_write(inode, offset + len);
--			EXT4_I(inode)->i_disksize = i_size_read(inode);
--		} else if (ret < 0 && nblocks) {
--			/* Handle partial allocation scenario */
--			loff_t newsize;
--
--			newsize  = (nblocks << blkbits) + i_size_read(inode);
--			i_size_write(inode, EXT4_BLOCK_ALIGN(newsize, blkbits));
--			EXT4_I(inode)->i_disksize = i_size_read(inode);
--		}
- 	}
+
+-aneesh
