@@ -1,138 +1,169 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Fix the locking with respect to ext3 to ext4 migrate.
-Date: Tue, 11 Mar 2008 11:16:53 +0530
-Message-ID: <1205214413-8267-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix fallocate to update the file size in each transaction.
+Date: Tue, 11 Mar 2008 11:17:25 +0530
+Message-ID: <1205214445-8328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:35125 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753089AbYCKFqx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:46:53 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5kq6j030377
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:16:52 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5kq2W1347676
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:16:52 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2B5kwjU022640
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 05:46:58 GMT
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:52382 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752993AbYCKFrc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:47:32 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5mFIB002226
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:48:15 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5lUgp2469916
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:47:30 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2B5lU8n023051
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 16:47:30 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext3 to Ext4 migrate takes inode->i_mutex lock to make sure write
-and truncate of the original inode doesn't happen during the migrate.
-But a write to mmap area mapping holes of the file can still happen.
-Such writes results in new block allocation and changes to the i_data
-field of inode. Add i_migrate_sem read write semaphore to protect against
-this. The semaphore is taken in read mode when trying to write to the
-mmap area. This happens only once via page_mkwrite call back. Taking
-the semaphore in read mode ensures that multiple mmap write can still
-happen. In the migrate code we take the semaphore in write mode.
+ext4_fallocate need to update file size in each transaction. Otherwise
+ife we crash the file size won't be updated. We were also not marking
+the inode dirty after updating file size before. Also when we try to
+retry allocation due to ENOSPC make sure we reset the variable ret so
+that we actually do a retry.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/inode.c           |   17 +++++++++++++----
- fs/ext4/migrate.c         |    7 +++++++
- fs/ext4/super.c           |    1 +
- include/linux/ext4_fs_i.h |   12 ++++++++++++
- 4 files changed, 33 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c |   89 ++++++++++++++++++++++------------------------------
+ 1 files changed, 38 insertions(+), 51 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 059f2fc..4a61ce5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3496,15 +3496,24 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 
- int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
- {
-+	int retval;
-+	struct inode *inode = vma->vm_file->f_path.dentry->d_inode;
- 	/*
- 	 * if ext4_get_block resulted in a split of an uninitialized extent,
- 	 * in file system full case, we will have to take the journal write
- 	 * access and zero out the page. The journal handle get initialized
- 	 * in ext4_get_block.
- 	 */
--	/* FIXME!! should we take inode->i_mutex ? Currently we can't because
--	 * it has a circular locking dependency with DIO. But migrate expect
--	 * i_mutex to ensure no i_data changes
-+	/* we need to make sure we don't allow migrate to happen. This is
-+	 * needed because a write to area mapping holes can result in block
-+	 * allocation and update of i_data field. We can't take inode->i_mutex
-+	 * here because it changes the locking order with rspect to directIO.
-+	 * directIO expect i_mutex -> mmap_sem. We are here already holding
-+	 * mmap_sem
- 	 */
--	return block_page_mkwrite(vma, page, ext4_get_block);
-+	down_read(&(EXT4_I(inode)->i_migrate_sem));
-+	retval =  block_page_mkwrite(vma, page, ext4_get_block);
-+	up_read(&(EXT4_I(inode)->i_migrate_sem));
-+
-+	return retval;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0ad0042..69f1dee 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2783,6 +2783,28 @@ int ext4_ext_writepage_trans_blocks(struct inode *inode, int num)
+ 	return needed;
  }
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 5c1e27d..a3fbd9f 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -508,6 +508,12 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
- 	 * switch the inode format to prevent read.
- 	 */
- 	mutex_lock(&(inode->i_mutex));
+ 
++static void ext4_falloc_update_inode(struct inode *inode,
++				int mode, loff_t new_size, int update_ctime)
++{
++	struct timespec now;
++
++	if (update_ctime) {
++		now = current_fs_time(inode->i_sb);
++		if (!timespec_equal(&inode->i_ctime, &now))
++			inode->i_ctime = now;
++	}
 +	/*
-+	 * prevent a mmap write to holes
-+	 * i_mutex is ranked above i_migrate_sem.
-+	 * The order is i_mutex -> mmap_sem -> i_migrate_sem
++	 * Update only when preallocation was requested beyond
++	 * the file size.
 +	 */
-+	down_write(&(EXT4_I(inode)->i_migrate_sem));
- 	handle = ext4_journal_start(inode, 1);
- 
- 	ei = EXT4_I(inode);
-@@ -593,6 +599,7 @@ err_out:
- 	tmp_inode->i_nlink = 0;
- 
- 	ext4_journal_stop(handle);
-+	up_write(&(EXT4_I(inode)->i_migrate_sem));
- 	mutex_unlock(&(inode->i_mutex));
- 
- 	if (tmp_inode)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bc385c4..5d6e9b2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -599,6 +599,7 @@ static void init_once(struct kmem_cache *cachep, void *foo)
- #endif
- 	init_rwsem(&ei->i_data_sem);
- 	inode_init_once(&ei->vfs_inode);
-+	init_rwsem(&ei->i_migrate_sem);
- }
- 
- static int init_inodecache(void)
-diff --git a/include/linux/ext4_fs_i.h b/include/linux/ext4_fs_i.h
-index d5508d3..96c0b4f 100644
---- a/include/linux/ext4_fs_i.h
-+++ b/include/linux/ext4_fs_i.h
-@@ -162,6 +162,18 @@ struct ext4_inode_info {
- 	/* mballoc */
- 	struct list_head i_prealloc_list;
- 	spinlock_t i_prealloc_lock;
++	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
++				new_size > i_size_read(inode)) {
++		i_size_write(inode, new_size);
++		EXT4_I(inode)->i_disksize = new_size;
++	}
 +
-+	/* When doing migrate we need to ensure that the i_data field
-+	 * doesn't change. With respect to write and truncate we can ensure
-+	 * the same by taking inode->i_mutex. But a write to mmap area
-+	 * mapping holes doesn't take i_mutex since it doesn't change the
-+	 * i_size. We also can't take i_data_sem because we would like to
-+	 * extend/restart the journal and locking order prevents us from
-+	 * restarting journal within i_data_sem. This will be taken in
-+	 * page_mkwrite in the read mode and migrate will take it in the
-+	 * write mode.
-+	 */
-+	struct rw_semaphore i_migrate_sem;
- };
++}
++
+ /*
+  * preallocate space for a file. This implements ext4's fallocate inode
+  * operation, which gets called from sys_fallocate system call.
+@@ -2794,8 +2816,8 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ {
+ 	handle_t *handle;
+ 	ext4_lblk_t block;
++	loff_t new_size;
+ 	unsigned long max_blocks;
+-	ext4_fsblk_t nblocks = 0;
+ 	int ret = 0;
+ 	int ret2 = 0;
+ 	int retries = 0;
+@@ -2814,9 +2836,12 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ 		return -ENODEV;
  
- #endif	/* _LINUX_EXT4_FS_I */
--- 
-1.5.4.4.481.g5075.dirty
-
+ 	block = offset >> blkbits;
++	/*
++	 * We can't just convert len to max_blocks because
++	 * If blocksize = 4096 offset = 3072 and len = 2048
++	 */
+ 	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
+-			- block;
+-
++							- block;
+ 	/*
+ 	 * credits to insert 1 extent into extent tree + buffers to be able to
+ 	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
+@@ -2832,7 +2857,6 @@ retry:
+ 			ret = PTR_ERR(handle);
+ 			break;
+ 		}
+-
+ 		ret = ext4_get_blocks_wrap(handle, inode, block,
+ 					  max_blocks, &map_bh,
+ 					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
+@@ -2848,61 +2872,24 @@ retry:
+ 			ret2 = ext4_journal_stop(handle);
+ 			break;
+ 		}
+-		if (ret > 0) {
+-			/* check wrap through sign-bit/zero here */
+-			if ((block + ret) < 0 || (block + ret) < block) {
+-				ret = -EIO;
+-				ext4_mark_inode_dirty(handle, inode);
+-				ret2 = ext4_journal_stop(handle);
+-				break;
+-			}
+-			if (buffer_new(&map_bh) && ((block + ret) >
+-			    (EXT4_BLOCK_ALIGN(i_size_read(inode), blkbits)
+-			    >> blkbits)))
+-					nblocks = nblocks + ret;
+-		}
+-
+-		/* Update ctime if new blocks get allocated */
+-		if (nblocks) {
+-			struct timespec now;
+-
+-			now = current_fs_time(inode->i_sb);
+-			if (!timespec_equal(&inode->i_ctime, &now))
+-				inode->i_ctime = now;
+-		}
++		if ((block + ret) >= (EXT4_BLOCK_ALIGN(offset + len,
++						blkbits) >> blkbits))
++			new_size = offset + len;
++		else
++			new_size = (block + ret) << blkbits;
+ 
++		ext4_falloc_update_inode(inode, mode, new_size,
++						buffer_new(&map_bh));
+ 		ext4_mark_inode_dirty(handle, inode);
+ 		ret2 = ext4_journal_stop(handle);
+ 		if (ret2)
+ 			break;
+ 	}
+-
+-	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++	if (ret == -ENOSPC &&
++			ext4_should_retry_alloc(inode->i_sb, &retries)) {
++		ret = 0;
+ 		goto retry;
+-
+-	/*
+-	 * Time to update the file size.
+-	 * Update only when preallocation was requested beyond the file size.
+-	 */
+-	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+-	    (offset + len) > i_size_read(inode)) {
+-		if (ret > 0) {
+-			/*
+-			 * if no error, we assume preallocation succeeded
+-			 * completely
+-			 */
+-			i_size_write(inode, offset + len);
+-			EXT4_I(inode)->i_disksize = i_size_read(inode);
+-		} else if (ret < 0 && nblocks) {
+-			/* Handle partial allocation scenario */
+-			loff_t newsize;
+-
+-			newsize  = (nblocks << blkbits) + i_size_read(inode);
+-			i_size_write(inode, EXT4_BLOCK_ALIGN(newsize, blkbits));
+-			EXT4_I(inode)->i_disksize = i_size_read(inode);
+-		}
+ 	}
