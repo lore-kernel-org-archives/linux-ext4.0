@@ -1,55 +1,96 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: jbd2_handle and i_data_sem circular locking dependency detected
-Date: Tue, 11 Mar 2008 11:15:01 +0530
-Message-ID: <20080311054501.GA7360@skywalker>
-References: <20080204101228.GA1939@skywalker> <20080204163156.GC3426@duck.suse.cz> <20080305201234.GA8173@skywalker> <20080310142426.GH24873@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger@sun.com>,
-	Mingming Cao <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Export needed symbol for ZERO_PAGE usage in modules.
+Date: Tue, 11 Mar 2008 11:16:32 +0530
+Message-ID: <1205214392-8236-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:52655 "EHLO
-	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752903AbYCKFpE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:45:04 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5j1px025288
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:15:01 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5j1sZ1368084
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:15:01 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2B5j0Bh028261
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 05:45:01 GMT
-Content-Disposition: inline
-In-Reply-To: <20080310142426.GH24873@duck.suse.cz>
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:44986 "EHLO
+	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756442AbYCKFqd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 01:46:33 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2B5kVl6029991
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:16:31 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B5kVoW1106082
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 11:16:31 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2B5kVl7008602
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 05:46:31 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 10, 2008 at 03:24:26PM +0100, Jan Kara wrote:
-> > This one came up again when i was doing the mmap ENOSPC patch. Now the
-> > current code with migrate is taking i_mutex to protech against all
-> > writes. But it seems a write to a mmap area mapping a hole can still go
-> > through fine. And that path cannot take i_mutex.
-> > 
-> > So i guess the migrate locking need to be fixed. Any suggestion ?
->   Hmm, thinking about it a bit more.  One possibility is that we could just
-> use i_mutex to protect against ordinary writes, and before swapping blocks
-> for extents we'd check whether some holes were not filled in the mean time.
-> If yes, we can retry the migrate, or fail it and retry later.
->   Another possibility would be to make ext4 use page_mkwrite to fill in
-> holes. There we could safely acquire i_mutex and be done.
-> 
+ext4 use ZERO_PAGE(0) to zero out blocks. We need to export
+different symbols in different arch for the usage of ZERO_PAGE
+in modules.
 
-page_mkwrite is called with mmap_sem help and we can't take inode->i_mutex
-in page_mkwrite. The DIO write have inode->i_mutex ->  mmap_sem 
-locking order.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ arch/arm/mm/mmu.c               |    1 +
+ arch/m68k/mm/init.c             |    1 +
+ arch/powerpc/kernel/ppc_ksyms.c |    2 ++
+ arch/sparc/kernel/sparc_ksyms.c |    2 ++
+ arch/sparc64/mm/init.c          |    1 +
+ 5 files changed, 7 insertions(+), 0 deletions(-)
 
-I "fixed" it by introducing i_migrate_sem
+diff --git a/arch/arm/mm/mmu.c b/arch/arm/mm/mmu.c
+index d41a75e..2d6d682 100644
+--- a/arch/arm/mm/mmu.c
++++ b/arch/arm/mm/mmu.c
+@@ -35,6 +35,7 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
+  * zero-initialized data and COW.
+  */
+ struct page *empty_zero_page;
++EXPORT_SYMBOL(empty_zero_page);
+ 
+ /*
+  * The pmd table for the upper-most set of pages.
+diff --git a/arch/m68k/mm/init.c b/arch/m68k/mm/init.c
+index f42caa7..ee27ed2 100644
+--- a/arch/m68k/mm/init.c
++++ b/arch/m68k/mm/init.c
+@@ -69,6 +69,7 @@ void __init m68k_setup_node(int node)
+  */
+ 
+ void *empty_zero_page;
++EXPORT_SYMBOL(empty_zero_page);
+ 
+ void show_mem(void)
+ {
+diff --git a/arch/powerpc/kernel/ppc_ksyms.c b/arch/powerpc/kernel/ppc_ksyms.c
+index aa9ff35..97dab6e 100644
+--- a/arch/powerpc/kernel/ppc_ksyms.c
++++ b/arch/powerpc/kernel/ppc_ksyms.c
+@@ -189,3 +189,5 @@ EXPORT_SYMBOL(intercept_table);
+ EXPORT_SYMBOL(__mtdcr);
+ EXPORT_SYMBOL(__mfdcr);
+ #endif
++
++EXPORT_SYMBOL(empty_zero_page);
+diff --git a/arch/sparc/kernel/sparc_ksyms.c b/arch/sparc/kernel/sparc_ksyms.c
+index c1025e5..e902846 100644
+--- a/arch/sparc/kernel/sparc_ksyms.c
++++ b/arch/sparc/kernel/sparc_ksyms.c
+@@ -295,3 +295,5 @@ EXPORT_SYMBOL(do_BUG);
+ 
+ /* Sun Power Management Idle Handler */
+ EXPORT_SYMBOL(pm_idle);
++
++EXPORT_SYMBOL(empty_zero_page);
+diff --git a/arch/sparc64/mm/init.c b/arch/sparc64/mm/init.c
+index b5c3041..2d15f92 100644
+--- a/arch/sparc64/mm/init.c
++++ b/arch/sparc64/mm/init.c
+@@ -159,6 +159,7 @@ extern unsigned int sparc_ramdisk_image;
+ extern unsigned int sparc_ramdisk_size;
+ 
+ struct page *mem_map_zero __read_mostly;
++EXPORT_SYMBOL(mem_map_zero);
+ 
+ unsigned int sparc64_highest_unlocked_tlb_ent __read_mostly;
+ 
+-- 
+1.5.4.4.481.g5075.dirty
 
-http://article.gmane.org/gmane.comp.file-systems.ext4/5402
-
--aneesh
