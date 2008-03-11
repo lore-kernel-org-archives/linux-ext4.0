@@ -1,52 +1,378 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext3: Return EIO if new block allocation returns block from system zone.
-Date: Tue, 11 Mar 2008 14:57:19 +0530
-Message-ID: <1205227639-14706-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC, PATCH 4/6] jbd: refactor nested journal log recovery loop into separate functions
+Date: Tue, 11 Mar 2008 15:35:50 +0100
+Message-ID: <20080311143550.GB6544@atrey.karlin.mff.cuni.cz>
+References: <a047dfbd7855d5f484ae8a3434f6a073302505be.1204685366.git.duaneg@dghda.com> <8644b32ddec999bbc1da0ac55ad7b66d0b8176de.1204685366.git.duaneg@dghda.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:37441 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751524AbYCKJ20 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 05:28:26 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2B9S8I9002077
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 20:28:08 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2B9W3pr289212
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 20:32:03 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2B9S85C020541
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2008 20:28:26 +1100
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:51326 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752640AbYCKOfv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2008 10:35:51 -0400
+Content-Disposition: inline
+In-Reply-To: <8644b32ddec999bbc1da0ac55ad7b66d0b8176de.1204685366.git.duaneg@dghda.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the block allocator gets blocks out of system zone ext3 calls
-ext3_error. But if the file system is mounted with errors=continue
-return with -EIO.
+> The do_one_pass function iterates through the jbd log operating on blocks
+> depending on the pass. During the replay pass descriptor blocks are processed
+> by an inner loop which replays them. The nesting makes the code difficult to
+> follow or to modify. Splitting the inner loop and replay code into separate
+> functions simplifies matters.
+> 
+> The refactored code no longer unnecessarily reads revoked data blocks, so
+> potential read errors from such blocks will cause differing behaviour. Aside
+> from that there should be no functional effect.
+  Hmm, if I read your patch correctly, previously we aborted journal
+replay when we found a block with unknown block magic but now we
+continue replaying. Why have you done such change? And similarly when
+some error happened when parsing revoke records block...
 
-System zone is the block range mapping block bitmap, inode bitmap and inode
-table.
+									Honza
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext3/balloc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index da0cb2c..6ce7f7d 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -1642,7 +1642,7 @@ allocated:
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
--		goto out;
-+		goto io_error;
- 	}
- 
- 	performed_allocation = 1;
+> 
+> Signed-off-by: Duane Griffin <duaneg@dghda.com>
+> ---
+> 
+> Note the TODO before the block read in the outer loop below. We could possibly
+> attempt to continue after a failed read as we do when replaying descriptor
+> blocks. However if it was a descriptor block we'd likely bomb out on the next
+> iteration anyway, so I'm not sure it would be worth it. Thoughts?
+> 
+>  fs/jbd/recovery.c |  243 ++++++++++++++++++++++++++++-------------------------
+>  1 files changed, 127 insertions(+), 116 deletions(-)
+> 
+> diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+> index 2b8edf4..e2ac78f 100644
+> --- a/fs/jbd/recovery.c
+> +++ b/fs/jbd/recovery.c
+> @@ -307,6 +307,101 @@ int journal_skip_recovery(journal_t *journal)
+>  	return err;
+>  }
+>  
+> +static int replay_data_block(
+> +	journal_t *journal, struct buffer_head *obh, char *data,
+> +	int flags, unsigned long blocknr)
+> +{
+> +	struct buffer_head *nbh;
+> +
+> +	/* Find a buffer for the new data being restored */
+> +	nbh = __getblk(journal->j_fs_dev, blocknr, journal->j_blocksize);
+> +	if (nbh == NULL)
+> +		return -ENOMEM;
+> +
+> +	lock_buffer(nbh);
+> +	memcpy(nbh->b_data, obh->b_data, journal->j_blocksize);
+> +	if (flags & JFS_FLAG_ESCAPE)
+> +		*((__be32 *)data) = cpu_to_be32(JFS_MAGIC_NUMBER);
+> +
+> +	BUFFER_TRACE(nbh, "marking dirty");
+> +	set_buffer_uptodate(nbh);
+> +	mark_buffer_dirty(nbh);
+> +	BUFFER_TRACE(nbh, "marking uptodate");
+> +	/* ll_rw_block(WRITE, 1, &nbh); */
+> +	unlock_buffer(nbh);
+> +	brelse(nbh);
+> +
+> +	return 0;
+> +}
+> +
+> +/* Replay a descriptor block: write all of the data blocks. */
+> +static int replay_descriptor_block(
+> +	journal_t *journal, char *data,
+> +	unsigned int next_commit_ID,
+> +	unsigned long *next_log_block,
+> +	struct recovery_info *info)
+> +{
+> +	int err;
+> +	int success = 0;
+> +	char *tagp;
+> +	unsigned long io_block;
+> +	struct buffer_head *obh;
+> +	unsigned long next = *next_log_block;
+> +
+> +	tagp = &data[sizeof(journal_header_t)];
+> +	while ((tagp - data + sizeof(journal_block_tag_t)) <=
+> +	       journal->j_blocksize) {
+> +		unsigned long blocknr;
+> +		journal_block_tag_t *tag = (journal_block_tag_t *) tagp;
+> +		int flags = be32_to_cpu(tag->t_flags);
+> +
+> +		io_block = next++;
+> +		wrap(journal, next);
+> +		blocknr = be32_to_cpu(tag->t_blocknr);
+> +
+> +		/* If the block has been revoked, then we're all done here. */
+> +		if (journal_test_revoke(journal, blocknr, next_commit_ID)) {
+> +			++info->nr_revoke_hits;
+> +			goto skip_write;
+> +		}
+> +
+> +		err = jread(&obh, journal, io_block);
+> +		if (err) {
+> +
+> +			/* Recover what we can, but
+> +			 * report failure at the end. */
+> +			success = err;
+> +			printk(KERN_ERR "JBD: IO error %d recovering "
+> +			       "block %ld in log\n", err, io_block);
+> +			continue;
+> +		}
+> +		J_ASSERT(obh != NULL);
+> +
+> +		err = replay_data_block(journal, obh, data, flags, blocknr);
+> +		if (err) {
+> +			brelse(obh);
+> +			printk(KERN_ERR "JBD: Out of memory during recovery\n");
+> +			success = err;
+> +			goto failed;
+> +		}
+> +
+> +		++info->nr_replays;
+> +		brelse(obh);
+> +
+> +skip_write:
+> +		tagp += sizeof(journal_block_tag_t);
+> +		if (!(flags & JFS_FLAG_SAME_UUID))
+> +			tagp += 16;
+> +
+> +		if (flags & JFS_FLAG_LAST_TAG)
+> +			break;
+> +	}
+> +
+> +	*next_log_block = next;
+> +failed:
+> +	return success;
+> +}
+> +
+>  static int do_one_pass(journal_t *journal,
+>  			struct recovery_info *info, enum passtype pass)
+>  {
+> @@ -316,8 +411,6 @@ static int do_one_pass(journal_t *journal,
+>  	journal_superblock_t *	sb;
+>  	journal_header_t *	tmp;
+>  	struct buffer_head *	bh;
+> -	unsigned int		sequence;
+> -	int			blocktype;
+>  
+>  	/* Precompute the maximum metadata descriptors in a descriptor block */
+>  	int			MAX_BLOCKS_PER_DESC;
+> @@ -348,11 +441,8 @@ static int do_one_pass(journal_t *journal,
+>  	 */
+>  
+>  	while (1) {
+> -		int			flags;
+> -		char *			tagp;
+> -		journal_block_tag_t *	tag;
+> -		struct buffer_head *	obh;
+> -		struct buffer_head *	nbh;
+> +		int blocktype;
+> +		unsigned int sequence;
+>  
+>  		cond_resched();
+>  
+> @@ -371,10 +461,13 @@ static int do_one_pass(journal_t *journal,
+>  		 * either the next descriptor block or the final commit
+>  		 * record. */
+>  
+> +		/* TODO: Should we continue on error? */
+>  		jbd_debug(3, "JBD: checking block %ld\n", next_log_block);
+>  		err = jread(&bh, journal, next_log_block);
+> -		if (err)
+> +		if (err) {
+> +			success = err;
+>  			goto failed;
+> +		}
+>  
+>  		next_log_block++;
+>  		wrap(journal, next_log_block);
+> @@ -406,137 +499,57 @@ static int do_one_pass(journal_t *journal,
+>  		 * all of the sequence number checks.  What are we going
+>  		 * to do with it?  That depends on the pass... */
+>  
+> -		switch(blocktype) {
+> +		switch (blocktype) {
+>  		case JFS_DESCRIPTOR_BLOCK:
+>  			/* If it is a valid descriptor block, replay it
+>  			 * in pass REPLAY; otherwise, just skip over the
+>  			 * blocks it describes. */
+> -			if (pass != PASS_REPLAY) {
+> +			if (pass == PASS_REPLAY) {
+> +				err = replay_descriptor_block(
+> +					journal,
+> +					bh->b_data,
+> +					next_commit_ID,
+> +					&next_log_block,
+> +					info);
+> +			} else {
+>  				next_log_block +=
+>  					count_tags(bh, journal->j_blocksize);
+>  				wrap(journal, next_log_block);
+> -				brelse(bh);
+> -				continue;
+>  			}
+> -
+> -			/* A descriptor block: we can now write all of
+> -			 * the data blocks.  Yay, useful work is finally
+> -			 * getting done here! */
+> -
+> -			tagp = &bh->b_data[sizeof(journal_header_t)];
+> -			while ((tagp - bh->b_data +sizeof(journal_block_tag_t))
+> -			       <= journal->j_blocksize) {
+> -				unsigned long io_block;
+> -
+> -				tag = (journal_block_tag_t *) tagp;
+> -				flags = be32_to_cpu(tag->t_flags);
+> -
+> -				io_block = next_log_block++;
+> -				wrap(journal, next_log_block);
+> -				err = jread(&obh, journal, io_block);
+> -				if (err) {
+> -					/* Recover what we can, but
+> -					 * report failure at the end. */
+> -					success = err;
+> -					printk (KERN_ERR
+> -						"JBD: IO error %d recovering "
+> -						"block %ld in log\n",
+> -						err, io_block);
+> -				} else {
+> -					unsigned long blocknr;
+> -
+> -					J_ASSERT(obh != NULL);
+> -					blocknr = be32_to_cpu(tag->t_blocknr);
+> -
+> -					/* If the block has been
+> -					 * revoked, then we're all done
+> -					 * here. */
+> -					if (journal_test_revoke
+> -					    (journal, blocknr,
+> -					     next_commit_ID)) {
+> -						brelse(obh);
+> -						++info->nr_revoke_hits;
+> -						goto skip_write;
+> -					}
+> -
+> -					/* Find a buffer for the new
+> -					 * data being restored */
+> -					nbh = __getblk(journal->j_fs_dev,
+> -							blocknr,
+> -							journal->j_blocksize);
+> -					if (nbh == NULL) {
+> -						printk(KERN_ERR
+> -						       "JBD: Out of memory "
+> -						       "during recovery.\n");
+> -						err = -ENOMEM;
+> -						brelse(bh);
+> -						brelse(obh);
+> -						goto failed;
+> -					}
+> -
+> -					lock_buffer(nbh);
+> -					memcpy(nbh->b_data, obh->b_data,
+> -							journal->j_blocksize);
+> -					if (flags & JFS_FLAG_ESCAPE) {
+> -						*((__be32 *)bh->b_data) =
+> -						cpu_to_be32(JFS_MAGIC_NUMBER);
+> -					}
+> -
+> -					BUFFER_TRACE(nbh, "marking dirty");
+> -					set_buffer_uptodate(nbh);
+> -					mark_buffer_dirty(nbh);
+> -					BUFFER_TRACE(nbh, "marking uptodate");
+> -					++info->nr_replays;
+> -					/* ll_rw_block(WRITE, 1, &nbh); */
+> -					unlock_buffer(nbh);
+> -					brelse(obh);
+> -					brelse(nbh);
+> -				}
+> -
+> -			skip_write:
+> -				tagp += sizeof(journal_block_tag_t);
+> -				if (!(flags & JFS_FLAG_SAME_UUID))
+> -					tagp += 16;
+> -
+> -				if (flags & JFS_FLAG_LAST_TAG)
+> -					break;
+> -			}
+> -
+> -			brelse(bh);
+> -			continue;
+> +			break;
+>  
+>  		case JFS_COMMIT_BLOCK:
+>  			/* Found an expected commit block: not much to
+>  			 * do other than move on to the next sequence
+>  			 * number. */
+> -			brelse(bh);
+>  			next_commit_ID++;
+> -			continue;
+> +			break;
+>  
+>  		case JFS_REVOKE_BLOCK:
+>  			/* If we aren't in the REVOKE pass, then we can
+>  			 * just skip over this block. */
+> -			if (pass != PASS_REVOKE) {
+> -				brelse(bh);
+> -				continue;
+> +			if (pass == PASS_REVOKE) {
+> +				err = scan_revoke_records(
+> +					journal, bh, next_commit_ID, info);
+>  			}
+> -
+> -			err = scan_revoke_records(journal, bh,
+> -						  next_commit_ID, info);
+> -			brelse(bh);
+> -			if (err)
+> -				goto failed;
+> -			continue;
+> +			break;
+>  
+>  		default:
+>  			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
+>  				  blocktype);
+> -			brelse(bh);
+> -			goto done;
+> +			break;
+>  		}
+> +
+> +		brelse(bh);
+> +
+> +		/* Immediately fail on OOM; on other errors try to recover
+> +		 * as much as we can, but report the failure at the end. */
+> +		if (err)
+> +			success = err;
+> +		if (err == -ENOMEM)
+> +			goto failed;
+>  	}
+>  
+> - done:
+>  	/*
+>  	 * We broke out of the log scan loop: either we came to the
+>  	 * known end of the log or we found an unexpected block in the
+> @@ -558,10 +571,8 @@ static int do_one_pass(journal_t *journal,
+>  		}
+>  	}
+>  
+> -	return success;
+> -
+>   failed:
+> -	return err;
+> +	return success;
+>  }
+>  
+>  
+> -- 
+> 1.5.3.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-1.5.4.4.481.g5075.dirty
-
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
