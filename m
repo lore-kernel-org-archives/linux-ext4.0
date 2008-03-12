@@ -1,60 +1,80 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Fix the locking with respect to ext3 to ext4
-	migrate.
-Date: Wed, 12 Mar 2008 14:38:11 +0530
-Message-ID: <20080312090811.GA9511@skywalker>
-References: <1204887184-9902-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1204888653.3627.37.camel@localhost.localdomain> <20080307113106.GA9896@skywalker> <20080307234751.GL1881@webber.adilger.int> <20080311152537.GE6544@atrey.karlin.mff.cuni.cz> <20080311165859.GA6490@skywalker> <20080312085629.GR5851@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC, PATCH 4/6] jbd: refactor nested journal log recovery
+	loop into separate functions
+Date: Wed, 12 Mar 2008 11:50:29 +0100
+Message-ID: <20080312105029.GA3090@duck.suse.cz>
+References: <a047dfbd7855d5f484ae8a3434f6a073302505be.1204685366.git.duaneg@dghda.com> <8644b32ddec999bbc1da0ac55ad7b66d0b8176de.1204685366.git.duaneg@dghda.com> <20080311143550.GB6544@atrey.karlin.mff.cuni.cz> <20080312010205.GA14667@dastardly.plus.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Mingming Cao <cmm@us.ibm.com>,
-	tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:40087 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751111AbYCLJIV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2008 05:08:21 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2C97hEd013273
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Mar 2008 20:07:43 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2C98JKV3756236
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Mar 2008 20:08:19 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2C98IXo020135
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Mar 2008 20:08:19 +1100
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com
+To: Duane Griffin <duaneg@dghda.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753475AbYCLKuo@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080312085629.GR5851@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080312010205.GA14667@dastardly.plus.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 12, 2008 at 02:56:29AM -0600, Andreas Dilger wrote:
-> On Mar 11, 2008  22:28 +0530, Aneesh Kumar K.V wrote:
-> > On Tue, Mar 11, 2008 at 04:25:37PM +0100, Jan Kara wrote:
-> > >   I agree here. IMHO the better option would be to just build the
-> > > extent-tree for converted inode on best-effort basis. If we find in
-> > > the end that someone has allocated new block to the file (via mmap
-> > > filling a hole) while we are converting, we can just cancel the
-> > > conversion. Because I think the cost of extra rwsem (both in terms of
-> > > additional memory needed for each inode structure and in time needed for
-> > > rwsem acquisitions) is more than I as a user would like to bear given
-> > > how rare the conversion is.
-> >
-> > Something like the below ??
-> >
-> >  	down_write(&EXT4_I(inode)->i_data_sem);
-> > +	/* check for number of blocks */
-> > +	if (total_blocks  != inode->i_blocks) {
-> > +		retval = -EAGAIN;
-> > +		up_write(&EXT4_I(inode)->i_data_sem);
-> > +		goto err_out;
+On Wed 12-03-08 01:02:05, Duane Griffin wrote:
+> On Tue, Mar 11, 2008 at 03:35:50PM +0100, Jan Kara wrote:
+> >   Hmm, if I read your patch correctly, previously we aborted journal
+> > replay when we found a block with unknown block magic but now we
+> > continue replaying. Why have you done such change? And similarly when
+> > some error happened when parsing revoke records block...
 > 
-> Is this enough, or should we use the inode version instead
+> You are right, that was an error on my part. Thanks for your careful
+> review. Please find below an incremental patch. I'll roll this into the
+> main patch before posting the next version.
+  Yup, looks fine.
 
-We are already holding inode->i_mutex. So the only possible operation is
-adding new blocks via mmap write to holes. Also inode version is tricky
-because it is available only with i_version mount option. We are also
-interested only in new blocks added event.
-
-
--aneesh
+									Honza
+> 
+> Cheers,
+> Duane.
+> 
+> -- 
+> "I never could learn to drink that blood and call it wine" - Bob Dylan
+> 
+> diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+> index 453c5fe..34db55a 100644
+> --- a/fs/jbd/recovery.c
+> +++ b/fs/jbd/recovery.c
+> @@ -673,16 +673,22 @@ static int do_one_pass(journal_t *journal,
+>  		case JFS_REVOKE_BLOCK:
+>  			/* If we aren't in the REVOKE pass, then we can
+>  			 * just skip over this block. */
+> -			if (pass == PASS_REVOKE) {
+> -				err = scan_revoke_records(
+> -					journal, bh, next_commit_ID, info);
+> +			if (pass != PASS_REVOKE)
+> +				break;
+> +
+> +			err = scan_revoke_records(journal, bh,
+> +						  next_commit_ID, info);
+> +			if (err) {
+> +				brelse(bh);
+> +				goto failed;
+>  			}
+>  			break;
+>  
+>  		default:
+>  			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
+>  				  blocktype);
+> -			break;
+> +			brelse(bh);
+> +			goto done;
+>  		}
+>  
+>  		brelse(bh);
+> @@ -695,6 +701,7 @@ static int do_one_pass(journal_t *journal,
+>  			goto failed;
+>  	}
+>  
+> +done:
+>  	/*
+>  	 * We broke out of the log scan loop: either we came to the
+>  	 * known end of the log or we found an unexpected block in the
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
