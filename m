@@ -1,81 +1,85 @@
-From: Matthias Koenig <mkoenig@suse.de>
-Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto devices
-Date: Wed, 12 Mar 2008 16:59:03 +0100
-Message-ID: <n7xr6egkk6w.fsf@sor.suse.de>
-References: <n7xejaoynp9.fsf@sor.suse.de>
-	<1204813967.8679.28.camel@norville.austin.ibm.com>
-	<n7xzltbwzq3.fsf@sor.suse.de>
-	<1204824227.7964.4.camel@norville.austin.ibm.com>
-	<n7xiqzywr7u.fsf@sor.suse.de>
-	<1204903187.7975.10.camel@norville.austin.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto
+	devices
+Date: Wed, 12 Mar 2008 16:02:36 -0400
+Message-ID: <20080312200236.GE15804@mit.edu>
+References: <n7xejaoynp9.fsf@sor.suse.de> <1204813967.8679.28.camel@norville.austin.ibm.com> <n7xzltbwzq3.fsf@sor.suse.de> <1204824227.7964.4.camel@norville.austin.ibm.com> <n7xiqzywr7u.fsf@sor.suse.de> <1204903187.7975.10.camel@norville.austin.ibm.com> <n7xr6egkk6w.fsf@sor.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, ludwig.nussel@suse.de,
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>, ludwig.nussel@suse.de,
 	linux-ext4@vger.kernel.org
-To: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+To: Matthias Koenig <mkoenig@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35259 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750959AbYCLP7I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Mar 2008 11:59:08 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59330 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754331AbYCLUCp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2008 16:02:45 -0400
+Content-Disposition: inline
+In-Reply-To: <n7xr6egkk6w.fsf@sor.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Kleikamp <shaggy@linux.vnet.ibm.com> writes:
+On Wed, Mar 12, 2008 at 04:59:03PM +0100, Matthias Koenig wrote:
+> 1. Do we agree that fstab fs_passno could be used besides fsck -A by a 
+>    separate script to decide if a filesystem (that could not be checked 
+>    in the fsck -A phase) should be checked?
 
-> I don't understand the question.  If the fs_passno field is zero, fsck
-> isn't even going to try to check the filesystem, so having no device is
-> no problem.
+Well, historically there have been /etc/fstab entries which look like
+this:
 
-Agreed, in case of zero there is no problem.
+/dev/zipdrive       /media/zipdisk   ext3 default,noauto 0 0
 
->> How should we specify that we want these filesystems to be checked or not 
->> at a later time in the boot process after the crypto devices have been
->> set up?
->
-> This is why I asked if fsck was being run with the -A flag in step d.
-> If it's not, then I'm not clear on why fs_passno has anything to do with
-> it.  Is there some script that looks at this field in /etc/fstab for
-> step d?
+This is because there might not be a zip disk in the drive at the time
+of the boot.  However, a root user could insert a zip disk, and then
+run the command "fsck /dev/zipdrive" and expect it to work, and the
+follow that up with "mount /dev/zipdrive".
 
-Right, fsck -A is *not* called in step d and the fs_passno is in
-principle unrelated to this.
-There is a boot script for setting up, fscking and mounting the 
-crypto devices. As the crypto fileystems are supposed to be defined in
-/etc/fstab looking at fs_passno by the script to find out if the
-filesystem should be checked or not seems reasonable to me.
+So passno == 0 can't mean "don't mount the filesystem, ever".  All it
+means is "don't mount it at boot".  So I don't think trying to kludge
+new fields into fs_passno is the way to go.
 
-> If that's the case, then I suggest a more general solution.  Either some
-> special value for fs_passno that defers the fsck for a later pass, or a
-> simplified version of your proposed patch without the crypto-specific
-> part.
+------------
 
-1. Do we agree that fstab fs_passno could be used besides fsck -A by a 
-   separate script to decide if a filesystem (that could not be checked 
-   in the fsck -A phase) should be checked?
+So here's another way you could do things that doesn't require any
+patches to fsck at all.  Just add "comment=crypto" into the option
+field of /etc/fstab, like this.  
 
-2. If yes, what would be a proper way?
+/dev/mapper/crypto-frobnitz /crypto1           ext3    comment=crypto  1 1
 
-   a) special value for fs_passno?
-      I don't know if this is reasonable, we already have a "nofail"
-      mount option. We can already call fsck with something like
-      (assuming crypto devices being tagged with the nofail option)
-      fsck -A -t noopts=nofail 
-      So giving either a special fs_passno value or an additional option 
-      seems to be the same: one has to put an additional value into fstab.
+Then you can skip filesystems that have the comment=crypto in the
+options field via:
 
-   b) a general "ignore if device does not exist" option?
-      Still I am not sure if we really *generally* want to ignore
-      devices which are not available at fsck -A phase. The behaviour
-      of fsck to fail in this case is probably on purpose?
+     fsck -AR -t opts=!comment=crypto
 
-Note, the whole discussion applies to crypto filesystems living in a
-container file. Encrypted block devices can be set up earlier so they
-could be checked in the normal fsck -A stage (Suse currently does not
-do this, but I am planning to change this).
-So, since the issue will remain only for file containers, it might be not
-worth adding a new option for fsck. But it would be nice have the
-fsck behaviour on non-existent device failure clarified.
+To check all of the filesystems that have the comment=crypto field
+via:
 
-Thanks,
-Matthias
+     fsck -AR -t opts=comment=crypto
+
+Why did I use "comment=crypto"?  Because if you use "crypto", then
+mount will try to pass crypto to the kernel, and if the kernel doesn't
+understand an option, it will reject the mount.  Mount doesn't send
+"comment" mount options to the kernel, so this works.
+
+Of course, you'll need to modify mount to be able to only mount all
+crypto filesystems, or not to mount any crypto filesystems, so you
+could change it to understand that "crypto" is not to be passed down
+to the kernel, at which point you could just have this in /etc/fstab:
+
+/dev/mapper/crypto-frobnitz /crypto1           ext3    crypto  1 1
+
+And then the fsck invocations would become:
+
+     fsck -AR -t opts=!crypto
+
+and
+
+     fsck -AR -t opts=crypto
+
+Which of course looks much nicer.
+
+I put in the "-t opts=" matching a long time ago (as in 10+ years
+ago), because someone had wanted to do something strange like this.  I
+had completely forgotten about it until now....
+
+							- Ted
