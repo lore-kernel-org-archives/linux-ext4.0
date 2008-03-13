@@ -1,52 +1,36 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 1/4] quota: Quota core changes for quotaon on remount
-Date: Thu, 13 Mar 2008 14:48:02 -0700
-Message-ID: <20080313144802.7397a048.akpm@linux-foundation.org>
-References: <20080313125944.GF12523@duck.suse.cz>
-	<20080313130412.GG12523@duck.suse.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH RESEND] e2fsprogs: reprot minimal resize size when
+	given size is too small
+Date: Thu, 13 Mar 2008 17:56:24 -0400
+Message-ID: <20080313215624.GF28728@mit.edu>
+References: <20080313174610.GF21187@unused.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, jengelh@computergmbh.de,
-	mjt@tls.msk.ru
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080313130412.GG12523@duck.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Josef Bacik <jbacik@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:52698 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753264AbYCMV4g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 17:56:36 -0400
+Content-Disposition: inline
+In-Reply-To: <20080313174610.GF21187@unused.rdu.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 13 Mar 2008 14:04:12 +0100
-Jan Kara <jack@suse.cz> wrote:
+On Thu, Mar 13, 2008 at 01:46:10PM -0400, Josef Bacik wrote:
+> Hello,
+> 
+> This is a resend of a patch I sent a few months ago that hasn't
+> gotten picked up yet.  This will spit out the correctly calculated
+> minimal number of blocks the given fs can be resized to if the given
+> resize size is too small.  This is useful for creating images, you
+> can do the install and then resize the image to the smallest
+> possible size.  Thank you,
 
-> +static inline int DQUOT_ON_REMOUNT(struct super_block *sb)
-> +{
-> +	int cnt;
-> +	int ret = 0, err;
-> +
-> +	if (!sb->s_qcop || !sb->s_qcop->quota_on)
-> +		return -ENOSYS;
-> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-> +		err = sb->s_qcop->quota_on(sb, cnt, 0, NULL, 1);
-> +		if (err < 0 && !ret)
-> +			ret = err;
-> +	}
-> +	return ret;
-> +}
-> +  
+Can you resend one with a Signed-off-by, please?  (Or give me
+permission to add a "Signed-off-by: Josef Bacik <jbacik@redhat.com>" line.)
 
-That's about ten times too large to be inlined.  Oh well.
+Thanks!!
 
-Sometime could you please take a look at uninlining some of the porkier
-functions in quotaops.h, and maybe convert them to lower case?
-
-
-
-For the latter we can do
-
-	#define DQUOT_ON_REMOUNT(sb) dquot_on_remount(sb)
-
-etc, then remove those macros when everything has been converted and we've
-given any out-of-tree filesytem developers time to update, etc.
-
-Thanks.
+						- Ted
