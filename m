@@ -1,40 +1,57 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto
-	devices
-Date: Wed, 12 Mar 2008 16:14:55 -0400
-Message-ID: <20080312201455.GF15804@mit.edu>
-References: <n7xejaoynp9.fsf@sor.suse.de> <1204813967.8679.28.camel@norville.austin.ibm.com> <n7xzltbwzq3.fsf@sor.suse.de> <1204824227.7964.4.camel@norville.austin.ibm.com> <n7xiqzywr7u.fsf@sor.suse.de> <1204903187.7975.10.camel@norville.austin.ibm.com> <n7xr6egkk6w.fsf@sor.suse.de> <20080312200236.GE15804@mit.edu>
+From: Daniel Phillips <phillips@phunq.net>
+Subject: Re: [RFC, PATCH 0/6] ext3: do not modify data on-disk when mounting read-only filesystem
+Date: Wed, 12 Mar 2008 19:22:21 -0800
+Message-ID: <200803122022.22814.phillips@phunq.net>
+References: <1204768754-29655-1-git-send-email-duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>, ludwig.nussel@suse.de,
-	linux-ext4@vger.kernel.org
-To: Matthias Koenig <mkoenig@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47618 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754357AbYCLUO7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2008 16:14:59 -0400
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com
+To: "Duane Griffin" <duaneg@dghda.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752730AbYCMDWj@vger.kernel.org>
+In-Reply-To: <1204768754-29655-1-git-send-email-duaneg@dghda.com>
 Content-Disposition: inline
-In-Reply-To: <20080312200236.GE15804@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 12, 2008 at 04:02:36PM -0400, Theodore Tso wrote:
-> So here's another way you could do things that doesn't require any
-> patches to fsck at all.  Just add "comment=crypto" into the option
-> field of /etc/fstab, like this.  
-> 
-> /dev/mapper/crypto-frobnitz /crypto1           ext3    comment=crypto  1 1
-> 
-> Then you can skip filesystems that have the comment=crypto in the
-> options field via:
-> 
->      fsck -AR -t opts=!comment=crypto
+Hi Duane,
 
-Oh by the way, in case you haven't tried this, the best way to test
-exactly what fsck will do with a set of arguments is by using the -NV
-options, i.e.:
+Thanks for doing this.  Some perhaps not so obvious fallout from the bad 
+old way of doing things is that ddnap (zumastor) hits an issue in 
+replication.  Since ddsnap allows journal replay on the downstream 
+server and also needs to have an unaltered snapshot to apply deltas 
+against, if we do not take special care, Ext3 will come along and 
+modify the downstream snapshot even when told not to.  Our solution: 
+take two snapshots per replication cycle (pretty cheap) so that one can 
+be clean and the other can be stepped on at will by the journal replay.
+Ugh.
 
-      fsck -ARNV -t opts=!comment=crypto
+With your hack, we can eventually drop the double snapshot, provided no 
+other filesystem is similarly badly behaved.
 
-						- Ted
+Re your page translation table: we already have a page translation 
+table, it is called the page cache.  If you could figure out which file 
+(or metadata) each journal block belongs to, you could just load the 
+page table pages back in and presto, done.  No need to replay the 
+journal at all, you are already back to journal+disk = consistent 
+state.
+
+I probably have missed a detail or two since I haven't looked closely at 
+how orphan inodes work, revokes, probably other things, but there is 
+the basic idea.  SCT, does my reasoning hold water?  (In fact, 
+ddsnap "replays" its own journal in exactly this way.  Cache state is 
+reconstructed and no actual journal flush is performed.)
+
+Anyway, this is just a theoretical comment, it is in no way a suggestion 
+for a rewrite.  The reason for that being, you do not have any 
+convenient way to map physical journal blocks back to files and 
+metadata.  Maybe if we do implement reverse mapping for Ext3/4 later 
+(not just a pipe dream) we could revisit this and lose your extra 
+mapping.  As it stands your solution seems well built, after a quick 
+readthrough.  Nice looking code.  I think you added about 250 lines 
+overall, so tight too.  Thanks again.
+
+Daniel
