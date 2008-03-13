@@ -1,123 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [E2FSPROGS PATCH 3/4] e2fsck: Fix directory i_size handling
-Date: Thu, 13 Mar 2008 01:12:26 -0400
-Message-ID: <1205385147-12855-3-git-send-email-tytso@mit.edu>
-References: <1205385147-12855-1-git-send-email-tytso@mit.edu>
- <1205385147-12855-2-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: bas@dev.tetra.nl
+From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
+Subject: Re: [PATCH] [RFC] New fsck option to ignore device-mapper crypto
+	devices
+Date: Thu, 13 Mar 2008 00:37:33 -0500
+Message-ID: <1205386653.17652.7.camel@norville.austin.ibm.com>
+References: <n7xejaoynp9.fsf@sor.suse.de>
+	 <1204813967.8679.28.camel@norville.austin.ibm.com>
+	 <n7xzltbwzq3.fsf@sor.suse.de>
+	 <1204824227.7964.4.camel@norville.austin.ibm.com>
+	 <n7xiqzywr7u.fsf@sor.suse.de>
+	 <1204903187.7975.10.camel@norville.austin.ibm.com>
+	 <n7xr6egkk6w.fsf@sor.suse.de>  <20080312200236.GE15804@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Matthias Koenig <mkoenig@suse.de>, ludwig.nussel@suse.de,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:38329 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751116AbYCMFMi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 01:12:38 -0400
-In-Reply-To: <1205385147-12855-2-git-send-email-tytso@mit.edu>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:54636 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751025AbYCMFPZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 01:15:25 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2D5FNA9002217
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Mar 2008 01:15:23 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2D5FNsb249836
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Mar 2008 01:15:23 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2D5FM1l023326
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Mar 2008 01:15:22 -0400
+In-Reply-To: <20080312200236.GE15804@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a directory's i_size is bigger than the number of blocks, don't try
-to allocate extra empty blocks to the end of the directory; there's no
-real point to do that.  Also, if a directory's i_size is not a
-multiple of the blocksize, flag that as a mistake so it can be fixed.
+This is just a nitpick that doesn't change your argument at all.
 
-This more elegantly addresses the problem which was found on Bas van
-Schaik's filesystem.
+On Wed, 2008-03-12 at 16:02 -0400, Theodore Tso wrote:
+> On Wed, Mar 12, 2008 at 04:59:03PM +0100, Matthias Koenig wrote:
+> > 1. Do we agree that fstab fs_passno could be used besides fsck -A by a 
+> >    separate script to decide if a filesystem (that could not be checked 
+> >    in the fsck -A phase) should be checked?
+> 
+> Well, historically there have been /etc/fstab entries which look like
+> this:
+> 
+> /dev/zipdrive       /media/zipdisk   ext3 default,noauto 0 0
+> 
+> This is because there might not be a zip disk in the drive at the time
+> of the boot.  However, a root user could insert a zip disk, and then
+> run the command "fsck /dev/zipdrive" and expect it to work, and the
+> follow that up with "mount /dev/zipdrive".
+> 
+> So passno == 0 can't mean "don't mount the filesystem, ever".  All it
+> means is "don't mount it at boot".  So I don't think trying to kludge
+> new fields into fs_passno is the way to go.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/pass1.c           |   25 ++++++++++++++++++++++++-
- tests/f_holedir/expect.1 |   13 ++++++++++---
- tests/f_holedir/expect.2 |    2 +-
- 3 files changed, 35 insertions(+), 5 deletions(-)
+s/mount/check/ in the above paragraph.  passno only tells fsck what to
+do.  "noauto" tells mount what to mount at boot time.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index b4db8ef..839f099 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1546,6 +1546,26 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		goto out;
- 	}
- 	
-+	if (pb.is_dir) {
-+		while (1) {
-+			struct ext2_db_entry *entry;
-+
-+			if (ext2fs_dblist_get_last(fs->dblist, &entry) ||
-+			    (entry->ino != ino) ||
-+			    (entry->blk != 0) ||
-+			    (entry->blockcnt == 0))
-+				break;
-+			/* printf("Dropping ino %lu blk %lu blockcnt %d\n", 
-+				  entry->ino, entry->blk, entry->blockcnt); */
-+			ext2fs_dblist_drop_last(fs->dblist);
-+			if (ext2fs_dblist_get_last(fs->dblist, &entry) ||
-+			    (entry->ino != ino))
-+				pb.last_block--;
-+			else
-+				pb.last_block = entry->blockcnt;
-+		}
-+	}
-+
- 	if (inode->i_flags & EXT2_INDEX_FL) {
- 		if (handle_htree(ctx, pctx, ino, inode, block_buf)) {
- 			inode->i_flags &= ~EXT2_INDEX_FL;
-@@ -1583,7 +1603,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- #endif
- 	if (pb.is_dir) {
- 		int nblock = inode->i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
--		if (nblock > (pb.last_block + 1))
-+		if (inode->i_size & (fs->blocksize - 1)) 
-+			bad_size = 5;
-+		else if (nblock > (pb.last_block + 1))
- 			bad_size = 1;
- 		else if (nblock < (pb.last_block + 1)) {
- 			if (((pb.last_block + 1) - nblock) >
-@@ -1745,6 +1767,7 @@ static int process_block(ext2_filsys fs,
- 			printf("Missing block (#%d) in directory inode %lu!\n",
- 			       blockcnt, p->ino);
- #endif
-+			p->last_block = blockcnt;
- 			goto mark_dir;
- 		}
- 		return 0;
-diff --git a/tests/f_holedir/expect.1 b/tests/f_holedir/expect.1
-index 05e0cbb..ad74fa6 100644
---- a/tests/f_holedir/expect.1
-+++ b/tests/f_holedir/expect.1
-@@ -15,12 +15,19 @@ Directory inode 11 has an unallocated block #3.  Allocate? yes
- 
- Directory inode 11 has an unallocated block #6.  Allocate? yes
- 
--Directory inode 11 has an unallocated block #11.  Allocate? yes
--
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
-+Block bitmap differences:  -21
-+Fix? yes
-+
-+Free blocks count wrong for group #0 (78, counted=79).
-+Fix? yes
-+
-+Free blocks count wrong (78, counted=79).
-+Fix? yes
-+
- 
- test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
--test_filesys: 11/32 files (9.1% non-contiguous), 22/100 blocks
-+test_filesys: 11/32 files (9.1% non-contiguous), 21/100 blocks
- Exit status is 1
-diff --git a/tests/f_holedir/expect.2 b/tests/f_holedir/expect.2
-index a821f87..4c0b4f2 100644
---- a/tests/f_holedir/expect.2
-+++ b/tests/f_holedir/expect.2
-@@ -3,5 +3,5 @@ Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Pass 5: Checking group summary information
--test_filesys: 11/32 files (0.0% non-contiguous), 22/100 blocks
-+test_filesys: 11/32 files (0.0% non-contiguous), 21/100 blocks
- Exit status is 0
 -- 
-1.5.4.1.144.gdfee-dirty
+David Kleikamp
+IBM Linux Technology Center
 
