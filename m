@@ -1,88 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] reiserfs: Make reiserfs handle quotaon on remount
-Date: Thu, 13 Mar 2008 14:06:15 +0100
-Message-ID: <20080313130615.GJ12523@duck.suse.cz>
-References: <20080313125944.GF12523@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Fix fallocate to update the file size in each	transaction.
+Date: Thu, 13 Mar 2008 09:04:19 -0500
+Message-ID: <47D93463.9040506@redhat.com>
+References: <1205214445-8328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080311055555.GB8108@skywalker> <20080313075139.GI5851@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, reiserfs-list@namesys.com,
-	Jan Engelhardt <jengelh@computergmbh.de>,
-	Michael Tokarev <mjt@tls.msk.ru>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:35687 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754059AbYCMNGQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Mar 2008 09:06:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20080313125944.GF12523@duck.suse.cz>
+Received: from mx1.redhat.com ([66.187.233.31]:42741 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752189AbYCMOMO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 10:12:14 -0400
+In-Reply-To: <20080313075139.GI5851@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Update reiserfs to handle quotaon on remount RW.
+Andreas Dilger wrote:
+> On Mar 11, 2008  11:25 +0530, Aneesh Kumar K.V wrote:
+>> +	-x: run test after preallocating the area (1|2) 2 to not update size.\n\
+> 
+> The issue with preallocating just a single area in fsx is that this isn't
+> much different than starting the test with a single large write or truncate.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+except that the filesystem does still have to manage the unwritten
+extent splits properly... but I agree that ongoing extending and
+non-extending fallocates of various sizes would be very interesting.
 
----
- super.c |   13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+-Eric
 
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index 3e1972d..f8f9a47 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -304,7 +304,7 @@ static int finish_unfinished(struct super_block *s)
- 	/* Turn quotas off */
- 	for (i = 0; i < MAXQUOTAS; i++) {
- 		if (sb_dqopt(s)->files[i])
--			vfs_quota_off(s, i);
-+			vfs_quota_off(s, i, 0);
- 	}
- 	if (ms_active_set)
- 		/* Restore the flag back */
-@@ -634,7 +634,7 @@ static int reiserfs_acquire_dquot(struct dquot *);
- static int reiserfs_release_dquot(struct dquot *);
- static int reiserfs_mark_dquot_dirty(struct dquot *);
- static int reiserfs_write_info(struct super_block *, int);
--static int reiserfs_quota_on(struct super_block *, int, int, char *);
-+static int reiserfs_quota_on(struct super_block *, int, int, char *, int);
- 
- static struct dquot_operations reiserfs_quota_operations = {
- 	.initialize = reiserfs_dquot_initialize,
-@@ -2015,13 +2015,16 @@ static int reiserfs_quota_on_mount(struct super_block *sb, int type)
-  * Standard function to be called on quota_on
-  */
- static int reiserfs_quota_on(struct super_block *sb, int type, int format_id,
--			     char *path)
-+			     char *path, int remount)
- {
- 	int err;
- 	struct nameidata nd;
- 
- 	if (!(REISERFS_SB(sb)->s_mount_opt & (1 << REISERFS_QUOTA)))
- 		return -EINVAL;
-+	/* No more checks needed? Path and format_id are bogus anyway... */
-+	if (remount)
-+		return vfs_quota_on(sb, type, format_id, path, 1);
- 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
- 	if (err)
- 		return err;
-@@ -2041,7 +2044,7 @@ static int reiserfs_quota_on(struct super_block *sb, int type, int format_id,
- 	if (!REISERFS_SB(sb)->s_qf_names[USRQUOTA] &&
- 	    !REISERFS_SB(sb)->s_qf_names[GRPQUOTA]) {
- 		path_put(&nd.path);
--		return vfs_quota_on(sb, type, format_id, path);
-+		return vfs_quota_on(sb, type, format_id, path, 0);
- 	}
- 	/* Quotafile not of fs root? */
- 	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
-@@ -2049,7 +2052,7 @@ static int reiserfs_quota_on(struct super_block *sb, int type, int format_id,
- 				 "reiserfs: Quota file not on filesystem root. "
- 				 "Journalled quota will not work.");
- 	path_put(&nd.path);
--	return vfs_quota_on(sb, type, format_id, path);
-+	return vfs_quota_on(sb, type, format_id, path, 0);
- }
- 
- /* Read data from quotafile - avoid pagecache and such because we cannot afford
+> What would be a lot more useful is to have fsx continually do fallocate
+> requests of variable sizes during the test.  This would be quite similar
+> to a "write" operation, except that it wouldn't change any existing data
+> and holes would still read back as zero.  The only difference is in the
+> "do not update size" test any fallocate at the end of the file would not
+> increase the file size.
+> 
+> This would exercise the fallocate code a LOT because it would put unwritten
+> extents in the middle of the file, map a single fallocate to multiple
+> discontiguous holes of the file (not overwriting existing allocated data
+> in the middle of the file), verify fallocate of an overlapping unwritten
+> extent works, etc.
+> 
