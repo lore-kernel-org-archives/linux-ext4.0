@@ -1,43 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: The e2fsprogs nlinks-dir patch
-Date: Thu, 13 Mar 2008 16:17:48 -0400
-Message-ID: <20080313201747.GB28728@mit.edu>
-References: <E1JZr6d-0004yL-1m@closure.thunk.org> <20080313190127.GG3217@webber.adilger.int>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: e2fsck -D segfaults in pass 3A
+Date: Thu, 13 Mar 2008 21:23:19 +0100 (CET)
+Message-ID: <alpine.DEB.1.00.0803132116430.7433@sheep.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58933 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754108AbYCMUSF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 16:18:05 -0400
-Content-Disposition: inline
-In-Reply-To: <20080313190127.GG3217@webber.adilger.int>
+Received: from ns2.g-housing.de ([81.169.133.75]:37232 "EHLO mail.g-house.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750814AbYCMUXW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 16:23:22 -0400
+Received: from [89.49.156.246] (helo=[192.168.178.25])
+	by mail.g-house.de with esmtpa (Exim 4.63)
+	(envelope-from <lists@nerdbynature.de>)
+	id 1JZtxQ-0000eI-SB
+	for linux-ext4@vger.kernel.org; Thu, 13 Mar 2008 21:23:21 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 13, 2008 at 12:01:27PM -0700, Andreas Dilger wrote:
-> > So if it is the actual and on-disk count is different, but the inode in
-> > question is an inode and the on-disk count is 1, but the actual count is
->                  ^^^^^ directory?
+After playing around with e2fsck (today's git of the "pu" branch) a bit 
+more, I still cannot use -D on this filesystem. I've tried with earlier 
+version, but it still dumps core in pass 3A (Optimizing directories). I've 
+compiled e2fsprogs with "CFLAGS="-g" ./configure --enable-htree; make", 
+too get a few more results when this happens. Running under gdb gives:
 
-Yes, directory.  Sorry for the typo....
+(gdb) run -Dfv /dev/md4
+Starting program: /opt/e2fsprogs/sbin/e2fsck -Dfv /dev/md4
+e2fsck 1.40.7 (28-Feb-2008)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 3A: Optimizing directories
 
-> > The number 65538 will get masked down to 2.  Hilarity then ensues.
-> 
-> Can you expand?  I tested the kernel and a link count of 2 will still
-> result in the "ext3_is_empty()" function being called prior to doing
-> the unlink and it will be refused.  If a subdirectory is removed at
-> that point nlink will go down to 1 again and all is well?
+Program received signal SIGSEGV, Segmentation fault.
+0x08065bb9 in ino_cmp (a=0x8898fe90, b=0x898feb0) at rehash.c:173
+173	rehash.c: No such file or directory.
+ 	in rehash.c
 
-Hmm, you're right.  It's still results in an incorrect value, but it
-shouldn't totally blow us out of the water if we attempt an rmdir.
-The one problem I can think of is that find and some other directory
-iterators had some optimizations which depended on st_nlink being
-correct.  They've been patched so that the optimizatoins are turned
-off if st_nlink is 1 for directories.  But if st_nlink is both
-incorrect and > 1, it could cause them to terminate their search too
-soon.
+The full backtrace: http://nerdbynature.de/bits/e2fsprogs.pu/e2fsck-1.40.7-Dfv.log
 
-						- Ted
+The filesystem in question has been created in 11/2007 - maybe I missed 
+some on-disk changes since then and have to recreate the fs?
+
+Thanks,
+Christian.
+-- 
+BOFH excuse #86:
+
+Runt packets
