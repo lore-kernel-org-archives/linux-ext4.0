@@ -1,94 +1,53 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: What's cooking in e2fsprogs.git (topics)
-Date: Thu, 13 Mar 2008 14:11:59 -0400
-Message-ID: <20080313181159.GD31653@mit.edu>
-References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <20080229154333.GC8968@mit.edu>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: e2fsck not fixing all corruptions on the first run?
+Date: Thu, 13 Mar 2008 19:34:40 +0100 (CET)
+Message-ID: <alpine.DEB.1.00.0803131923420.7433@sheep.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:41059 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752559AbYCMSMK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 14:12:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20080229154333.GC8968@mit.edu>
+Received: from ns2.g-housing.de ([81.169.133.75]:41997 "EHLO mail.g-house.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754185AbYCMSep (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 14:34:45 -0400
+Received: from [89.49.156.246] (helo=[192.168.178.25])
+	by mail.g-house.de with esmtpa (Exim 4.63)
+	(envelope-from <lists@nerdbynature.de>)
+	id 1JZsGJ-0005DD-5M
+	for linux-ext4@vger.kernel.org; Thu, 13 Mar 2008 19:34:43 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here are the topics that have been cooking.  Commits prefixed
-with '-' are only in 'pu' while commits prefixed with '+' are
-in 'next'.  The topics list the commits in reverse chronological
-order.
+Hi,
 
-* js/64bitio (Mon Mar 3 10:41:29 2008 -0600) 3 commits
- + Add {read,write}_blk64 to inode_io.c
- + Add {read,write}_blk64 to unix_io.c
- + Add 64-bit IO manager operations to struct_io_manager.
+after a few unclean shutdown, I noticed that my ext4 filesystem got 
+mounted with:
 
-	Looks good; I've already put it into the next branch.
+   EXT4-fs warning: mounting fs with errors, running e2fsck is recommended
 
-* tt/mkfs-types (Tue Feb 19 08:32:58 2008 -0500) 1 commit
- - New mke2fs types parsing --- IN PROGRESS
+So I decided to unmount and check it with a fairly current version of 
+e2fsck, git show tells me:
 
-	No change since list time; still needs documentation.
+  # git show
+  commit d6a525282f4b3ece90c271d470b27ef7b6853817
+  Merge: 0ea8aa6... e91c9d4...
+  Author: Theodore Ts'o <tytso@mit.edu>
+  Date:   Fri Feb 29 09:21:29 2008 -0500
 
-* tt/64bit-bitmaps (Mon Feb 18 23:54:53 2008 -0500) 1 commit
- - Initial design for 64-bit bitmaps
+e2fsck indeed does find a few corruptions, fixes them. The next 
+run, e2fsck says "clean" of course. But when I ran with -f, e2fsck did 
+find more (small) corruptions, see the full log here:
 
-	No change since last time.
+http://nerdbynature.de/bits/e2fsprogs.pu/md4.log
+http://nerdbynature.de/bits/e2fsprogs.pu/
 
-* js/flex-bg (Wed Feb 13 20:47:50 2008 -0600) 1 commit
- - e2fsprogs: New bitmap and inode table allocation for FLEX_BG v2
+Q: How comes e2fsck would skip a few things during the first run? If it
+    (technically) has to, couldn't it NOT mark the fs clean so that one
+    knows it has to run fsck again?
 
-	Jose, have you had a chance to sanity check these compared to
-	what is in e2fsprogs-interim?
+Thanks,
+Christian.
+-- 
+BOFH excuse #274:
 
-* ad/nlinks-dir (Sat Feb 2 01:25:03 2008 -0700) 2 commits
- - Add support for the DIR_NLINK feature.
- - libext2fs: Make icount use a 32-bit counter
-
-	This has been reworked per a note to linux-ext4 sent earlier
-	today.  If there are no comments, these should be ready to go
-	in.
-
-* js/uninit (Sun Oct 21 21:04:24 2007 -0500) 11 commits
- - Add m_uninit test case
- - Add new m_lazy test case
- - Make e2fsck uninit block group aware
- - Make debugfs uninit block group aware
- - Make resize2fs uninit block group aware
- - Make dumpe2fs uninit block group aware
- - Make tune2fs uninit block group aware
- - Add support for creating filesystems using uninit block group
- - Rename feature name from gdt_checksum to uninit_groups
- - Add uninit block group support on libe2fs
- - Add initial checksum support
-
-	The pu merge problem seems to have been solved; thanks to Jose
-	for pointing out the missing patch hunk.
-
-	This should be ready to go in soon.  I just need time to do a
-	final audit.
-
-* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
- - e2fsprogs: Add test case for undoe2fs
- - e2fsprogs: Fix the resize inode test case
- - e2fsprogs: Support for large inode migration.
- - e2fsprogs: Make mke2fs use undo I/O manager.
- - e2fsprogs: Add undoe2fs
- - e2fsprogs: Add undo I/O manager
-
-	The test cases are missing an expected file
-
-	Also, we need to chage "mke2fs use undo I/O manager" so it
-	only does it if the uninit group patch is enabled.  So this is
-	blocked on the uninit topic branch getting merged (or at least
-	the mke2fs) changes are so blocked.
-
-	The undoe2fs program is missing a man page.
-
-----
-URL's for the e2fsprogs repository:
-        git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-        http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+It was OK before you touched it.
