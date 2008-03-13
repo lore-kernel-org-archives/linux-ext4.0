@@ -1,46 +1,40 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Fix fallocate to update the file size in each	transaction.
-Date: Thu, 13 Mar 2008 09:04:19 -0500
-Message-ID: <47D93463.9040506@redhat.com>
-References: <1205214445-8328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080311055555.GB8108@skywalker> <20080313075139.GI5851@webber.adilger.int>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 0/4] Automatic quotaon on remount
+Date: Thu, 13 Mar 2008 12:37:34 -0400
+Message-ID: <20080313163734.GA3980@infradead.org>
+References: <20080313125944.GF12523@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, reiserfs-list@namesys.com,
+	Jan Engelhardt <jengelh@computergmbh.de>,
+	Michael Tokarev <mjt@tls.msk.ru>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42741 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752189AbYCMOMO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Mar 2008 10:12:14 -0400
-In-Reply-To: <20080313075139.GI5851@webber.adilger.int>
+Received: from bombadil.infradead.org ([18.85.46.34]:34119 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752216AbYCMQiN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 12:38:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20080313125944.GF12523@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Mar 11, 2008  11:25 +0530, Aneesh Kumar K.V wrote:
->> +	-x: run test after preallocating the area (1|2) 2 to not update size.\n\
+On Thu, Mar 13, 2008 at 01:59:44PM +0100, Jan Kara wrote:
+>   Hi,
 > 
-> The issue with preallocating just a single area in fsx is that this isn't
-> much different than starting the test with a single large write or truncate.
-
-except that the filesystem does still have to manage the unwritten
-extent splits properly... but I agree that ongoing extending and
-non-extending fallocates of various sizes would be very interesting.
-
--Eric
-
-> What would be a lot more useful is to have fsx continually do fallocate
-> requests of variable sizes during the test.  This would be quite similar
-> to a "write" operation, except that it wouldn't change any existing data
-> and holes would still read back as zero.  The only difference is in the
-> "do not update size" test any fallocate at the end of the file would not
-> increase the file size.
+>   the series of patches below implements automatic enabling of quotas on
+> remount read-write when filesystem with quotas enabled has previously been
+> remounted read-only (and thus quotas had to be disabled).
+>   The patches are split logically, but due to interface changes all four
+> patches need to be applied together or ext3, ext4 or reiserfs won't
+> compile.
 > 
-> This would exercise the fallocate code a LOT because it would put unwritten
-> extents in the middle of the file, map a single fallocate to multiple
-> discontiguous holes of the file (not overwriting existing allocated data
-> in the middle of the file), verify fallocate of an overlapping unwritten
-> extent works, etc.
-> 
+> [PATCH 1/4] quota: Quota core changes for quotaon on remount
+> [PATCH 2/4] ext3: Make ext3 handle quotaon on remount
+> [PATCH 3/4] ext4: Make ext4 handle quotaon on remount
+> [PATCH 4/4] reiserfs: Make reiserfs handle quotaon on remount
+
+No need to touch jfs?
+
