@@ -1,261 +1,228 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: The e2fsprogs nlinks-dir patch
-Date: Thu, 13 Mar 2008 13:20:39 -0400
-Message-ID: <E1JZr6d-0004yL-1m@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: adilger@sun.com
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH RESEND] e2fsprogs: reprot minimal resize size when given
+	size is too small
+Date: Thu, 13 Mar 2008 13:46:10 -0400
+Message-ID: <20080313174610.GF21187@unused.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:54018 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752469AbYCMRUw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 13:20:52 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:53507 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752000AbYCMRsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 13:48:18 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hello,
 
-I was just auditing the e2fsprogs nlinks-dir patch, and I think there
-are some problems with it.   First of all, it creates a whole new set of
-icount abstractions so it can count using a 32-bit count.  That's
-strictly not necessary, since all e2fsck cares about is whether the
-count is bigger than EXT2_LINK_MAX, or 65,000.   
+This is a resend of a patch I sent a few months ago that hasn't gotten picked up
+yet.  This will spit out the correctly calculated minimal number of blocks the
+given fs can be resized to if the given resize size is too small.  This is
+useful for creating images, you can do the install and then resize the image to
+the smallest possible size.  Thank you,
 
-The bigger problem is that it fetches the actual number of
-subdirectories (which could be some very large number, like 65538, or
-some number much larger than 2**16):
+Josef
 
-		ext2fs_icount_fetch32(ctx->inode_count, i, &link_counted);
 
-It then tests to see if the on-disk count is OK, which it does this way:
-
-		if (link_counted != link_count &&
-		    !(ext2fs_test_inode_bitmap(ctx->inode_dir_map, i) &&
-		      link_count == 1 && link_counted > EXT2_LINK_MAX)) {
-
-So if it is the actual and on-disk count is different, but the inode in
-question is an inode and the on-disk count is 1, but the actual count is
-greater than EXT2_LINK_MAX, it's OK.  Otherwise, we need to Take Action.
-
-OK, but what if the on-disk count is some number less than EXT2_LINK_MAX
---- say, 64,999?  And what if the actual number of subdiretories is
-somewhat larger and greater than EXT2_LINK_MAX, say, like 65538?   Well,
-then the code blindly assignens the 32-bit link_counted to the 16-bit
-on-disk i_links_count field, and writes it to disk:
-
-				inode->i_links_count = link_counted;
-				e2fsck_write_inode(ctx, i, inode, "pass4");
-
-The number 65538 will get masked down to 2.  Hilarity then ensues.
-
-I've verified this problem exists in the
-e2fsprogs-1.40.2.cfs1-0redhat.src.rpm version of e2fsprogs.  
-
-Since I wasn't very satisfied with the patch.  I proceeded to rewrite
-it.  This is what I've come up with (although I will probably split the
-icount changes to a separate commit).   It's quite a bit shorter than
-the current cfs nlinks patch, as well.   Please comment.
-
-						- Ted
-
-From: "Theodore Ts'o" <tytso@mit.edu>
-Date: Sat, 2 Feb 2008 01:25:03 -0700
-Subject: [PATCH] Add support for the DIR_NLINK feature.
-
-This patch includes the changes required to e2fsck to understand the
-nlink count changes made in the kernel.
-
-In e2fsck pass 4, when we fetch the actual link count, if it is
-exceeds 65,000 we set the link count to 1.  We silently fix the
-situation where the nlink count of the directory is 1, and there are
-fewer than 65,000 subdirectories, since since that can happen
-naturally.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/pass4.c       |   10 +++++++++-
- lib/ext2fs/ext2_fs.h |    1 +
- lib/ext2fs/ext2fs.h  |    4 ++--
- lib/ext2fs/icount.c  |   31 +++++++++++++++++++++----------
- 4 files changed, 33 insertions(+), 13 deletions(-)
-
-diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
-index e6fe604..ebc19a8 100644
---- a/e2fsck/pass4.c
-+++ b/e2fsck/pass4.c
-@@ -155,6 +155,9 @@ void e2fsck_pass4(e2fsck_t ctx)
- 			ext2fs_icount_fetch(ctx->inode_count, i,
- 					    &link_counted);
- 		}
-+		if (ext2fs_test_inode_bitmap(ctx->inode_dir_map, i) &&
-+		    (link_counted > EXT2_LINK_MAX))
-+			link_counted = 1;
- 		if (link_counted != link_count) {
- 			e2fsck_read_inode(ctx, i, inode, "pass4");
- 			pctx.ino = i;
-@@ -165,7 +168,12 @@ void e2fsck_pass4(e2fsck_t ctx)
- 					    PR_4_INCONSISTENT_COUNT, &pctx);
- 			}
- 			pctx.num = link_counted;
--			if (fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx)) {
-+			/* i_link_count was previously exceeded, but no longer
-+			 * is, fix this but don't consider it an error */
-+			if ((LINUX_S_ISDIR(inode->i_mode) && link_counted > 1 &&
-+			     (inode->i_flags & EXT2_INDEX_FL) &&
-+			     link_count == 1 && !(ctx->options & E2F_OPT_NO)) ||
-+			     (fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx))) {
- 				inode->i_links_count = link_counted;
- 				e2fsck_write_inode(ctx, i, inode, "pass4");
- 			}
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 896c590..f13c02f 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -632,6 +632,7 @@ struct ext2_super_block {
- #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
-+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
- 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+diff --git a/resize/main.c b/resize/main.c
+index 7c1d0c1..a9653ee 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -342,11 +342,6 @@ int main (int argc, char ** argv)
+ 	if (new_size_str) {
+ 		new_size = parse_num_blocks(new_size_str, 
+ 					    fs->super->s_log_block_size);
+-		if (!new_size) {
+-			com_err(program_name, 0, _("bad filesystem size - %s"),
+-				new_size_str);
+-			exit(1);
+-		}
+ 	} else {
+ 		new_size = max_size;
+ 		/* Round down to an even multiple of a pagesize */
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 9959671..e2a8fcc 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -48,6 +48,7 @@ static errcode_t inode_ref_fix(ext2_resize_t rfs);
+ static errcode_t move_itables(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
++static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs);
  
  /*
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 15f4352..d52fa34 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -516,7 +516,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
- #endif
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
--					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
-+					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
-+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK)
+  * Some helper CPP macros
+@@ -63,7 +64,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+ 				 ((blk) < (FS_INODE_TB((fs), (i)) + \
+ 					   (fs)->inode_blocks_per_group)))
+ 
+-
++#define META_OVERHEAD(fs) (2 + (fs)->inode_blocks_per_group)
++#define SUPER_OVERHEAD(fs) (1 + (fs)->desc_blocks +\
++			    (fs)->super->s_reserved_gdt_blocks)
  
  /*
-  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
-@@ -525,7 +526,6 @@ typedef struct ext2_icount *ext2_icount_t;
- #define EXT2_LIB_SOFTSUPP_INCOMPAT	(EXT3_FEATURE_INCOMPAT_EXTENTS)
- #define EXT2_LIB_SOFTSUPP_RO_COMPAT	(EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM|\
--					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)
+  * This is the top-level routine which does the dirty deed....
+@@ -75,11 +78,19 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ {
+ 	ext2_resize_t	rfs;
+ 	errcode_t	retval;
++	blk_t		min_size = 0;
  
- /*
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index 2905676..bec0f5f 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -43,7 +43,7 @@
- 
- struct ext2_icount_el {
- 	ext2_ino_t	ino;
--	__u16	count;
-+	__u32		count;
- };
- 
- struct ext2_icount {
-@@ -60,6 +60,15 @@ struct ext2_icount {
- 	TDB_CONTEXT		*tdb;
- };
- 
-+/*
-+ * We now use a 32-bit counter field because it doesn't cost us
-+ * anything extra for the in-memory data structure, due to alignment
-+ * padding.  But there's no point changing the interface if most of
-+ * the time we only care if the number is bigger than 65,000 or not.
-+ * So use the following translation function to return a 16-bit count.
-+ */
-+#define icount_16_xlate(x) (((x) > 65500) ? 65500 : (x))
+ 	retval = ext2fs_read_bitmaps(fs);
+ 	if (retval)
+ 		return retval;
+ 	
++	min_size = ext2fs_calculate_minimum_resize_size(fs);
++	if (min_size > *new_size) {
++		printf("%u blocks is too small, minimum size is %u blocks\n",
++		       *new_size, min_size);
++		return EXT2_ET_TOOSMALL;
++	}
 +
- void ext2fs_free_icount(ext2_icount_t icount)
- {
- 	if (!icount)
-@@ -398,7 +407,7 @@ static struct ext2_icount_el *get_icount_el(ext2_icount_t icount,
- }
- 
- static errcode_t set_inode_count(ext2_icount_t icount, ext2_ino_t ino,
--				 __u16 count)
-+				 __u32 count)
- {
- 	struct ext2_icount_el 	*el;
- 	TDB_DATA key, data;
-@@ -407,7 +416,7 @@ static errcode_t set_inode_count(ext2_icount_t icount, ext2_ino_t ino,
- 		key.dptr = (unsigned char *) &ino;
- 		key.dsize = sizeof(ext2_ino_t);
- 		data.dptr = (unsigned char *) &count;
--		data.dsize = sizeof(__u16);
-+		data.dsize = sizeof(__u32);
- 		if (count) {
- 			if (tdb_store(icount->tdb, key, data, TDB_REPLACE))
- 				return tdb_error(icount->tdb) +
-@@ -429,7 +438,7 @@ static errcode_t set_inode_count(ext2_icount_t icount, ext2_ino_t ino,
- }
- 
- static errcode_t get_inode_count(ext2_icount_t icount, ext2_ino_t ino,
--				 __u16 *count)
-+				 __u32 *count)
- {
- 	struct ext2_icount_el 	*el;
- 	TDB_DATA key, data;
-@@ -444,7 +453,7 @@ static errcode_t get_inode_count(ext2_icount_t icount, ext2_ino_t ino,
- 			return tdb_error(icount->tdb) + EXT2_ET_TDB_SUCCESS;
- 		}
- 
--		*count = *((__u16 *) data.dptr);
-+		*count = *((__u32 *) data.dptr);
- 		free(data.dptr);
- 		return 0;
- 	}
-@@ -483,6 +492,7 @@ errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *out)
- 
- errcode_t ext2fs_icount_fetch(ext2_icount_t icount, ext2_ino_t ino, __u16 *ret)
- {
-+	__u32	val;
- 	EXT2_CHECK_MAGIC(icount, EXT2_ET_MAGIC_ICOUNT);
- 
- 	if (!ino || (ino > icount->num_inodes))
-@@ -497,14 +507,15 @@ errcode_t ext2fs_icount_fetch(ext2_icount_t icount, ext2_ino_t ino, __u16 *ret)
- 		*ret = 0;
- 		return 0;
- 	}
--	get_inode_count(icount, ino, ret);
-+	get_inode_count(icount, ino, &val);
-+	*ret = icount_16_xlate(val);
+ 	/*
+ 	 * Create the data structure
+ 	 */
+@@ -1628,3 +1639,139 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 	ext2fs_mark_super_dirty(fs);
  	return 0;
  }
- 
- errcode_t ext2fs_icount_increment(ext2_icount_t icount, ext2_ino_t ino,
- 				  __u16 *ret)
- {
--	__u16			curr_value;
-+	__u32			curr_value;
- 
- 	EXT2_CHECK_MAGIC(icount, EXT2_ET_MAGIC_ICOUNT);
- 
-@@ -554,14 +565,14 @@ errcode_t ext2fs_icount_increment(ext2_icount_t icount, ext2_ino_t ino,
- 	if (icount->multiple)
- 		ext2fs_mark_inode_bitmap(icount->multiple, ino);
- 	if (ret)
--		*ret = curr_value;
-+		*ret = icount_16_xlate(curr_value);
- 	return 0;
- }
- 
- errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
- 				  __u16 *ret)
- {
--	__u16			curr_value;
-+	__u32			curr_value;
- 
- 	if (!ino || (ino > icount->num_inodes))
- 		return EXT2_ET_INVALID_ARGUMENT;
-@@ -597,7 +608,7 @@ errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
- 		ext2fs_unmark_inode_bitmap(icount->multiple, ino);
- 
- 	if (ret)
--		*ret = curr_value;
-+		*ret = icount_16_xlate(curr_value);
- 	return 0;
- }
- 
--- 
-1.5.4.1.144.gdfee-dirty
-
++
++/*
++ * calcluate the minimum number of blocks the given fs can be resized to
++ */
++static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs)
++{
++	blk_t inode_count, blks_needed, groups, blk, data_blocks;
++	blk_t grp, data_needed, last_start;
++	int overhead = 0, old_group = -1, num_of_superblocks = 0;
++
++	/*
++	 * first figure out how many group descriptors we need to
++	 * handle the number of inodes we have
++	 */
++	inode_count = fs->super->s_inodes_count -
++		fs->super->s_free_inodes_count;
++	blks_needed = ext2fs_div_ceil(inode_count,
++				      fs->super->s_inodes_per_group) *
++		EXT2_BLOCKS_PER_GROUP(fs->super);
++	groups = ext2fs_div_ceil(blks_needed,
++				 EXT2_BLOCKS_PER_GROUP(fs->super));
++
++	/*
++	 * we need to figure out how many backup superblocks we have so we can
++	 * account for that in the metadata
++	 */
++	for (grp = 0; grp < fs->group_desc_count; grp++) {
++		if (ext2fs_bg_has_super(fs, grp))
++			num_of_superblocks++;
++	}
++
++	/* calculate how many blocks are needed for data */
++	data_needed = fs->super->s_blocks_count -
++		fs->super->s_free_blocks_count;
++	data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
++	data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
++
++	/*
++	 * figure out how many data blocks we have given the number of groups
++	 * we need for our inodes
++	 */
++	data_blocks = groups * EXT2_BLOCKS_PER_GROUP(fs->super);
++	last_start = 0;
++	for (grp = 0; grp < groups; grp++) {
++		overhead = META_OVERHEAD(fs);
++
++		if (ext2fs_bg_has_super(fs, grp))
++			overhead += SUPER_OVERHEAD(fs);
++
++		/*
++		 * we want to keep track of how much data we can store in
++		 * the groups leading up to the last group so we can determine
++		 * how big the last group needs to be
++		 */
++		if (grp != (groups - 1))
++			last_start += EXT2_BLOCKS_PER_GROUP(fs->super) -
++				overhead;
++
++		data_blocks -= overhead;
++	}
++
++	/*
++	 * if we need more group descriptors in order to accomodate our data
++	 * then we need to add them here
++	 */
++	while (data_needed > data_blocks) {
++		blk_t remainder = data_needed - data_blocks;
++		blk_t extra_grps;
++
++		/* figure out how many more groups we need for the data */
++		extra_grps = ext2fs_div_ceil(remainder,
++					     EXT2_BLOCKS_PER_GROUP(fs->super));
++
++		data_blocks += extra_grps * EXT2_BLOCKS_PER_GROUP(fs->super);
++
++		/* ok we have to account for the last group */
++		overhead = META_OVERHEAD(fs);
++		if (ext2fs_bg_has_super(fs, groups-1))
++			overhead += SUPER_OVERHEAD(fs);
++		last_start += EXT2_BLOCKS_PER_GROUP(fs->super) - overhead;
++
++		for (grp = groups; grp < groups+extra_grps; grp++) {
++			overhead = META_OVERHEAD(fs);
++			if (ext2fs_bg_has_super(fs, grp))
++				overhead += SUPER_OVERHEAD(fs);
++
++			/*
++			 * again, we need to see how much data we cram into
++			 * all of the groups leading up to the last group
++			 */
++			if (grp != (groups + extra_grps - 1))
++				last_start += EXT2_BLOCKS_PER_GROUP(fs->super)
++					- overhead;
++
++			data_blocks -= overhead;
++		}
++
++		groups += extra_grps;
++	}
++
++	/* now for the fun voodoo */
++	overhead = META_OVERHEAD(fs);
++
++	/*
++	 * if this is the case then the last group is going to have data in it
++	 * so we need to adjust the size of the last group accordingly
++	 */
++	if (last_start < data_needed) {
++		blk_t remainder = data_needed - last_start;
++
++		/*
++		 * 50 is a magic number that mkfs/resize uses to see if its
++		 * even worth making/resizing the fs.  basically you need to
++		 * have at least 50 blocks in addition to the blocks needed
++		 * for the metadata in the last group
++		 */
++		if (remainder > 50)
++			overhead += remainder;
++		else
++			overhead += 50;
++	} else
++		overhead += 50;
++
++	if (ext2fs_bg_has_super(fs, groups-1))
++		overhead += SUPER_OVERHEAD(fs);
++
++	/*
++	 * since our last group doesn't have to be BLOCKS_PER_GROUP large, we
++	 * only do groups-1, and then add the number of blocks needed to
++	 * handle the group descriptor metadata+data that we need
++	 */
++	blks_needed = (groups-1) * EXT2_BLOCKS_PER_GROUP(fs->super);
++	blks_needed += overhead;
++
++	return blks_needed;
++}
