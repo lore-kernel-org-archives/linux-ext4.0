@@ -1,36 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH RESEND] e2fsprogs: reprot minimal resize size when
-	given size is too small
-Date: Thu, 13 Mar 2008 17:56:24 -0400
-Message-ID: <20080313215624.GF28728@mit.edu>
-References: <20080313174610.GF21187@unused.rdu.redhat.com>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: e2fsck not fixing all corruptions on the first run?
+Date: Thu, 13 Mar 2008 22:59:55 +0100 (CET)
+Message-ID: <alpine.DEB.1.00.0803132255230.7433@sheep.housecafe.de>
+References: <alpine.DEB.1.00.0803131923420.7433@sheep.housecafe.de> <20080313205426.GD28728@mit.edu> <alpine.DEB.1.00.0803132219590.7433@sheep.housecafe.de> <20080313214731.GE28728@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Cc: linux-ext4@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:52698 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753264AbYCMV4g (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 17:56:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20080313174610.GF21187@unused.rdu.redhat.com>
+Received: from ns2.g-housing.de ([81.169.133.75]:60109 "EHLO mail.g-house.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757233AbYCMV76 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2008 17:59:58 -0400
+In-Reply-To: <20080313214731.GE28728@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 13, 2008 at 01:46:10PM -0400, Josef Bacik wrote:
-> Hello,
-> 
-> This is a resend of a patch I sent a few months ago that hasn't
-> gotten picked up yet.  This will spit out the correctly calculated
-> minimal number of blocks the given fs can be resized to if the given
-> resize size is too small.  This is useful for creating images, you
-> can do the install and then resize the image to the smallest
-> possible size.  Thank you,
+On Thu, 13 Mar 2008, Theodore Tso wrote:
+> Oh, right.  Sorry, I missed that.  I think I know what's going on.
+> The problem is we're not supporting long symlinks which are in extents
+> format.  That's something which we changed, but we're going to change
+> back (since we need it to support filesystems with > 2**32 blocks).
 
-Can you resend one with a Signed-off-by, please?  (Or give me
-permission to add a "Signed-off-by: Josef Bacik <jbacik@redhat.com>" line.)
+When you say "changed", you mean the on-disk format changed? If so, I 
+could (should?) just mkfs again, since ext4 is in flux anyway and nobody 
+said the on-disk format was frozen. IOW, I don't know if it's wise to put 
+in quirks just because of some old test-environment. When ext4 is 
+(offically) released, everybody will have the "right" format and e2fsck 
+will work as expected, no?
 
-Thanks!!
+thanks,
+C.
+-- 
+BOFH excuse #441:
 
-						- Ted
+Hash table has woodworm
