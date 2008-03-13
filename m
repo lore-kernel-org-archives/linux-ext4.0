@@ -1,90 +1,97 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [E2FSPROGS PATCH 2/4] libext2fs: Add ext2fs_dblist_get_last() and ext2fs_dblist_drop_last()
-Date: Thu, 13 Mar 2008 01:12:25 -0400
-Message-ID: <1205385147-12855-2-git-send-email-tytso@mit.edu>
-References: <1205385147-12855-1-git-send-email-tytso@mit.edu>
+Subject: [E2FSPROGS PATCH 1/4] e2fsck: Handle a pass 2 "should never happen" error gracefully
+Date: Thu, 13 Mar 2008 01:12:24 -0400
+Message-ID: <1205385147-12855-1-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: bas@dev.tetra.nl
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:38332 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:38333 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751335AbYCMFMi (ORCPT
+	with ESMTP id S1751246AbYCMFMi (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 01:12:38 -0400
-In-Reply-To: <1205385147-12855-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add two new functions which allows the caller to examine the last
-directory block entry added to the list, and to drop if it necessary.
+Turns out a "should never happen" error can indeed happen very easily
+if a directory with an htree index has an incorrect, and too-large,
+i_size field.  This patch fixes this so that we handle this situation
+gracefully, allowing filesystems with this error to be fixed.
+
+In another patch I will clean up the specific problem which caused the
+internal "should never happen" error from happening at all, but patch
+will prevent e2fsck from crashing, and prompt the user to remove the
+htree index, so it can be rebuilt again after pass 3.
+
+Thanks to Bas van Schaik at Tetra for giving me access to his system
+so this problem could be debugged.
+
+Addresses-Launchpad-Bug: #129395
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/dblist.c       |   26 ++++++++++++++++++++++++++
- lib/ext2fs/ext2_err.et.in |    3 +++
- lib/ext2fs/ext2fs.h       |    3 +++
- 3 files changed, 32 insertions(+), 0 deletions(-)
+ e2fsck/pass2.c   |   11 +++++++++--
+ e2fsck/problem.c |    4 ++++
+ e2fsck/problem.h |    3 +++
+ 3 files changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
-index 21b36aa..3bf63a0 100644
---- a/lib/ext2fs/dblist.c
-+++ b/lib/ext2fs/dblist.c
-@@ -259,3 +259,29 @@ int ext2fs_dblist_count(ext2_dblist dblist)
- {
- 	return (int) dblist->count;
- }
-+
-+errcode_t ext2fs_dblist_get_last(ext2_dblist dblist, 
-+				 struct ext2_db_entry **entry)
-+{
-+	errcode_t		retval;
-+
-+	EXT2_CHECK_MAGIC(dblist, EXT2_ET_MAGIC_DBLIST);
-+
-+	if (dblist->count == 0)
-+		return EXT2_ET_DBLIST_EMPTY;
-+
-+	if (entry)
-+		*entry = dblist->list + ( (int) dblist->count-1);
-+	return 0;
-+}
-+
-+errcode_t ext2fs_dblist_drop_last(ext2_dblist dblist)
-+{	
-+	EXT2_CHECK_MAGIC(dblist, EXT2_ET_MAGIC_DBLIST);
-+
-+	if (dblist->count == 0)
-+		return EXT2_ET_DBLIST_EMPTY;
-+
-+	dblist->count--;
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index eda4bb4..7451242 100644
---- a/lib/ext2fs/ext2_err.et.in
-+++ b/lib/ext2fs/ext2_err.et.in
-@@ -326,5 +326,8 @@ ec	EXT2_ET_TDB_ERR_NOEXIST,
- ec	EXT2_ET_TDB_ERR_RDONLY,
- 	"TDB: Write not permitted"
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 6fb2ed7..b79461d 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -783,8 +783,14 @@ static int check_dir_block(ext2_filsys fs,
+ 	dx_dir = e2fsck_get_dx_dir_info(ctx, ino);
+ 	if (dx_dir && dx_dir->numblocks) {
+ 		if (db->blockcnt >= dx_dir->numblocks) {
+-			printf("XXX should never happen!!!\n");
+-			abort();
++			if (fix_problem(ctx, PR_2_UNEXPECTED_HTREE_BLOCK, 
++					&pctx)) {
++				clear_htree(ctx, ino);
++				dx_dir->numblocks = 0;
++				dx_db = 0;
++				goto out_htree;
++			}
++			fatal_error(ctx, _("Can not continue."));
+ 		}
+ 		dx_db = &dx_dir->dx_block[db->blockcnt];
+ 		dx_db->type = DX_DIRBLOCK_LEAF;
+@@ -819,6 +825,7 @@ static int check_dir_block(ext2_filsys fs,
+ 			     sizeof(struct ext2_dx_entry))))
+ 			dx_db->type = DX_DIRBLOCK_NODE;
+ 	}
++out_htree:
+ #endif /* ENABLE_HTREE */
  
-+ec	EXT2_ET_DBLIST_EMPTY,
-+	"Ext2fs directory block list is empty"
+ 	dict_init(&de_dict, DICTCOUNT_T_MAX, dict_de_cmp);
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 7c3ebea..418d83b 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1188,6 +1188,10 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("i_blocks_hi @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	/* Unexpected HTREE block */
++	{ PR_2_UNEXPECTED_HTREE_BLOCK,
++	  N_("Unexpected @b in @h %d (%q).\n"), PROMPT_CLEAR_HTREE, 0 },
++		  
+ 	/* Pass 3 errors */
+ 
+ 	/* Pass 3: Checking directory connectivity */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index f5f7212..91a6148 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -708,6 +708,9 @@ struct problem_context {
+ /* i_blocks_hi should be zero */
+ #define PR_2_BLOCKS_HI_ZERO	0x020044
+ 
++/* Unexpected HTREE block */
++#define PR_2_UNEXPECTED_HTREE_BLOCK	0x020045
 +
- 	end
- 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 0b2c321..d098961 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -652,6 +652,9 @@ extern errcode_t ext2fs_set_dir_block(ext2_dblist dblist, ext2_ino_t ino,
- extern errcode_t ext2fs_copy_dblist(ext2_dblist src,
- 				    ext2_dblist *dest);
- extern int ext2fs_dblist_count(ext2_dblist dblist);
-+extern errcode_t ext2fs_dblist_get_last(ext2_dblist dblist, 
-+					struct ext2_db_entry **entry);
-+extern errcode_t ext2fs_dblist_drop_last(ext2_dblist dblist);
- 
- /* dblist_dir.c */
- extern errcode_t
+ /*
+  * Pass 3 errors
+  */
 -- 
 1.5.4.1.144.gdfee-dirty
 
