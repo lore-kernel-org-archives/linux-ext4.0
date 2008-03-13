@@ -1,33 +1,44 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsck -D segfaults in pass 3A
-Date: Thu, 13 Mar 2008 16:49:49 -0400
-Message-ID: <20080313204949.GC28728@mit.edu>
-References: <alpine.DEB.1.00.0803132116430.7433@sheep.housecafe.de>
+Subject: Re: e2fsck not fixing all corruptions on the first run?
+Date: Thu, 13 Mar 2008 16:54:26 -0400
+Message-ID: <20080313205426.GD28728@mit.edu>
+References: <alpine.DEB.1.00.0803131923420.7433@sheep.housecafe.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40503 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58610 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753892AbYCMUuC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 16:50:02 -0400
+	with ESMTP id S1753112AbYCMUyi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 16:54:38 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.00.0803132116430.7433@sheep.housecafe.de>
+In-Reply-To: <alpine.DEB.1.00.0803131923420.7433@sheep.housecafe.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 13, 2008 at 09:23:19PM +0100, Christian Kujau wrote:
-> After playing around with e2fsck (today's git of the "pu" branch) a bit 
-> more, I still cannot use -D on this filesystem. I've tried with earlier 
-> version, but it still dumps core in pass 3A (Optimizing directories). I've 
-> compiled e2fsprogs with "CFLAGS="-g" ./configure --enable-htree; make", too 
-> get a few more results when this happens. 
+On Thu, Mar 13, 2008 at 07:34:40PM +0100, Christian Kujau wrote:
+> e2fsck indeed does find a few corruptions, fixes them. The next run, e2fsck 
+> says "clean" of course. But when I ran with -f, e2fsck did find more 
+> (small) corruptions, see the full log here:
+>
+> http://nerdbynature.de/bits/e2fsprogs.pu/md4.log
+> http://nerdbynature.de/bits/e2fsprogs.pu/
 
-Yeah, thanks for pointing that out.  Pass3A doesn't deal with
-directories stored in extent format yet, and you must have one or more
-directories directories in extent format.   So e2fsck -D won't work.
+Hmm.  What I really need is *first* e2fsck run, to see what it did.
 
-This is a bug; I'll work on getting it fixed.
+> Q: How comes e2fsck would skip a few things during the first run? If it
+>    (technically) has to, couldn't it NOT mark the fs clean so that one
+>    knows it has to run fsck again?
 
-					- Ted
+It's supposed to fix everything in one run.  If it doesn't, it's a
+bug.  It usually means that either it attempted to fix a corruption,
+and didn't fix it correctly, or some corruption confused it enough
+that it didn't spot another corruption in the same run.
+
+But as a result, that's why it's most useful to know what it found and
+fixed in the first e2fsck run.  Seeing both e2fsck logs is most useful
+when trying to determine why it wasn't able to fix everything in one
+go.
+
+						- Ted
