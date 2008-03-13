@@ -1,52 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Reversing order of transaction start and page_lock for ext3/4
-Date: Thu, 13 Mar 2008 19:05:20 +0100
-Message-ID: <20080313180519.GL12523@duck.suse.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: What's in e2fsprogs.git (stable)
+Date: Thu, 13 Mar 2008 14:05:03 -0400
+Message-ID: <20080313180503.GC31653@mit.edu>
+References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:49550 "EHLO duck.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754306AbYCMSFV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Mar 2008 14:05:21 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:46373 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754281AbYCMSFR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2008 14:05:17 -0400
 Content-Disposition: inline
+In-Reply-To: <20080229142830.GB8968@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+* The 'maint' (and 'master') branch has these fixes since the last
+  announcement
 
-  As Mark Fasheh pointed out, we cannot take page_lock inside a transaction
-commit because that could possibly deadlock with other thread holding the
-page_lock and waiting for commit to finish in journal_start. This is
-kind-of blocker for my new approach of handling of ordered mode in JBD.
+Benno Schulenberg (1):
+  po: update nl.po (from translationproject.org)
 
-So first, I'd like to ask what other people think about reversing locking
-order of page_lock and transaction start in ext3/4? I personally find it a
-good thing anyway (I've stumbled on problems with the current locking order
-several times, but so far I could always workaround them), logically it
-simply "makes sence" as transaction handle is naturally more long-lived
-than a lock on one page.
+Clytie Siddall (1):
+  po: update vi.po (from translationproject.org)
 
-For the case that we agree we want to reverse the order, I've looked into
-how hard would it be. Ordinary write path is trivial. If we provide
-page_mkwrite function (which should be quite simple), we don't have to be
-afraid of instantiating holes in writepage so that makes things in
-writepage simpler (although we'd pay the some performance for writing page
-of zeros into the hole and later writing real data in writepage - currently
-we do only the second write together with block allocation). With
-page_mkwrite, we don't have to start transaction at all in writepage in
-writeback and ordered modes. In data=journal mode, we still have to start
-the transaction. So we'd have to do something like unlocking the page,
-starting the transaction, locking the page, then carefully check whether
-the page didn't get truncated etc... It is a question for discussion, whether
-this moment wouldn't be appropriate for substituting journal=data mode with
-an ordered mode but I guess the feature removal will take longer.
+G=F6ran Uddeborg (1):
+  po: update sv.po (from translationproject.org)
 
-And as far as I can see that's all :). Comments, ideas, opinions welcome :).
+Jakub Bogusz (1):
+  po: update pl.po (from translationproject.org)
 
-								Honza
+Petr Pisar (1):
+  po: update cs.po (from translationproject.org)
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Theodore Ts'o (9):
+  Fix mke2fs man page regarding 128-byte default inode size
+  blkid: Fix portability problem caused by using uint instead of
+      unsigned int
+  resize2fs: Fix resizing filesystems with large inodes
+  e2fsck: Fix obvious typo in an "internal error" message
+  e2fsck: Handle a pass 2 "should never happen" error gracefully
+  libext2fs: Add ext2fs_dblist_get_last() and
+      ext2fs_dblist_drop_last()
+  e2fsck: Fix directory i_size handling
+  e2image: Use open64() so that "e2image -I" works on image files >
+      2GB
+  e2fsck: Use "Clear Htree" instead of "Clear" when the Htree is
+      corrupt
+
+----
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
