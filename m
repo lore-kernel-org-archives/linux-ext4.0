@@ -1,46 +1,88 @@
-From: Theodore Tso <tytso@MIT.EDU>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] e2fsprogs- fix ext2fs_swap_inode_full attr test on BE
 	boxes
-Date: Fri, 14 Mar 2008 10:40:21 -0400
-Message-ID: <20080314144021.GE7412@mit.edu>
-References: <47C882CD.3090204@redhat.com> <n7x63vph2q5.fsf@sor.suse.de> <20080314133241.GD7412@mit.edu> <47DA87EF.6040405@redhat.com>
+Date: Fri, 14 Mar 2008 13:14:35 -0400
+Message-ID: <20080314171435.GA13733@mit.edu>
+References: <47C882CD.3090204@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthias Koenig <mkoenig@suse.de>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:54757 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751780AbYCNOlR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Mar 2008 10:41:17 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:60109 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752284AbYCNROl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Mar 2008 13:14:41 -0400
 Content-Disposition: inline
-In-Reply-To: <47DA87EF.6040405@redhat.com>
+In-Reply-To: <47C882CD.3090204@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 14, 2008 at 09:13:03AM -0500, Eric Sandeen wrote:
-> Yep, there were 2 problems.
-> 
-> One was that inode_scan_and_fix() wasn't moving all of large inodes.
-> 
-> The other was that ext2fs_swap_inode_full was doing bad things for
-> in-inode attrs on big endian boxes, that was the patch in this thread
-> which isn't in the repo yet, but is in fact needed.
-> 
-> I suppose that the iterative nature of my fix for this problem didn't
-> help Ted keep things straight, sorry.
+On Fri, Feb 29, 2008 at 04:10:21PM -0600, Eric Sandeen wrote:
+> +
+> +	if (hostorder)
+> +		attr_magic = *eaf;
+>  	*eat = ext2fs_swab32(*eaf);
+> +	if (!hostorder)
+> +		attr_magic = *eat;
+> +
+> +	if (attr_magic != EXT2_EXT_ATTR_MAGIC)
+> +		return; /* it seems no magic here */
 
-I actually *prefer* multiple patches, actually, but what works best
-when there is a series of patches is to resend the whole patch stack
-using git-format-patch or git-send-email --- or set up your own git
-repository on the network (or use repo.or.cz) and send me a pull
-request.  But that requires much more use of git.  :-)
+The problem with this is that if the magic isn't there, we still end
+up writing 4 bytes into the destination.  So I think this is a better
+patch....
 
-In any case, I'll pull in the last change, and this time I promise
-I'll be careful about remembering to use --author.  That *is*
-something I should be doing, but I certainly appreciate people using
-git's facilities to make my life easier, thanks.
+						- Ted
 
-      		    	    	 	 - Ted
+>From 91a2fbe36ff5578c46f637687a56d7a0d169a807 Mon Sep 17 00:00:00 2001
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Fri, 29 Feb 2008 16:10:21 -0600
+Subject: [PATCH] e2fsprogs- fix ext2fs_swap_inode_full attr test on BE boxes
+
+After the fix for resize2fs's inode mover losing in-inode
+extended attributes, the regression test I wrote caught
+that the attrs were still getting lost on powerpc.
+
+Looks like the problem is that ext2fs_swap_inode_full()
+isn't paying attention to whether or not the EA magic is
+in hostorder, so it's not recognized (and not swapped)
+on BE machines.  Patch below seems to fix it.
+
+Yay for regression tests.  ;)
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/ext2fs/swapfs.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index 6576c59..e07e87c 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -133,7 +133,7 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
+ 			    struct ext2_inode_large *f, int hostorder,
+ 			    int bufsize)
+ {
+-	unsigned i, has_data_blocks, extra_isize;
++	unsigned i, has_data_blocks, extra_isize, attr_magic;
+ 	int islnk = 0;
+ 	__u32 *eaf, *eat;
+ 
+@@ -232,7 +232,11 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
+ 	eaf = (__u32 *) (((char *) f) + sizeof(struct ext2_inode) +
+ 					extra_isize);
+ 
+-	if (ext2fs_swab32(*eaf) != EXT2_EXT_ATTR_MAGIC)
++	attr_magic = *eaf;
++	if (!hostorder)
++		attr_magic = ext2fs_swab32(attr_magic);
++
++	if (attr_magic != EXT2_EXT_ATTR_MAGIC)
+ 		return; /* it seems no magic here */
+ 
+ 	eat = (__u32 *) (((char *) t) + sizeof(struct ext2_inode) +
+-- 
+1.5.4.1.144.gdfee-dirty
+
