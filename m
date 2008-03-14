@@ -1,228 +1,49 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: [PATCH] e2fsprogs: report minimal resize size when given size is
-	too small
-Date: Fri, 14 Mar 2008 10:05:06 -0400
-Message-ID: <20080314140506.GD20444@unused.rdu.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs- fix ext2fs_swap_inode_full attr test on BE
+ boxes
+Date: Fri, 14 Mar 2008 09:13:03 -0500
+Message-ID: <47DA87EF.6040405@redhat.com>
+References: <47C882CD.3090204@redhat.com> <n7x63vph2q5.fsf@sor.suse.de> <20080314133241.GD7412@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Matthias Koenig <mkoenig@suse.de>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47146 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57850 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751387AbYCNOHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Mar 2008 10:07:01 -0400
-Content-Disposition: inline
+	id S1751847AbYCNON2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Mar 2008 10:13:28 -0400
+In-Reply-To: <20080314133241.GD7412@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Theodore Tso wrote:
 
-Munged the subject on the last resend and didn't add the Signed-off-by, so
-here's the 3rd try.  This patch will spit out the minimum number of blocks the
-fs can be resized if the resize size it is given is too small.  This is usefull
-for those creating live boot images who create large images to install what they
-need onto, and then resize down to the smalles size that they can.  Thanks much,
+> This patch is in the repo, which I thought superceded the one which
+> Eric sent.  (The authorship is wrong; and that was my fault for not
+> including '--author="Eric Sandeen <sandeen@redhat.com>"' on the commit
+> command-line.  I've already apologized to Eric privately; now I'm
+> apologizing publically.  :-)
 
-Signed-off-by: Josef Back <jbacik@redhat.com>
+And I've realized that I really should start using git to make it easier
+on Ted.  :)
 
+> But looking at it again, I believe I misunderstood, and the two
+> patches are attacking quite separate problems.  OK, i'll get this one
+> in as well in the next go-around.
 
-diff --git a/resize/main.c b/resize/main.c
-index 7c1d0c1..a9653ee 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -342,11 +342,6 @@ int main (int argc, char ** argv)
- 	if (new_size_str) {
- 		new_size = parse_num_blocks(new_size_str, 
- 					    fs->super->s_log_block_size);
--		if (!new_size) {
--			com_err(program_name, 0, _("bad filesystem size - %s"),
--				new_size_str);
--			exit(1);
--		}
- 	} else {
- 		new_size = max_size;
- 		/* Round down to an even multiple of a pagesize */
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 9959671..e2a8fcc 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -48,6 +48,7 @@ static errcode_t inode_ref_fix(ext2_resize_t rfs);
- static errcode_t move_itables(ext2_resize_t rfs);
- static errcode_t fix_resize_inode(ext2_filsys fs);
- static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
-+static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs);
- 
- /*
-  * Some helper CPP macros
-@@ -63,7 +64,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
- 				 ((blk) < (FS_INODE_TB((fs), (i)) + \
- 					   (fs)->inode_blocks_per_group)))
- 
--
-+#define META_OVERHEAD(fs) (2 + (fs)->inode_blocks_per_group)
-+#define SUPER_OVERHEAD(fs) (1 + (fs)->desc_blocks +\
-+			    (fs)->super->s_reserved_gdt_blocks)
- 
- /*
-  * This is the top-level routine which does the dirty deed....
-@@ -75,11 +78,19 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
- {
- 	ext2_resize_t	rfs;
- 	errcode_t	retval;
-+	blk_t		min_size = 0;
- 
- 	retval = ext2fs_read_bitmaps(fs);
- 	if (retval)
- 		return retval;
- 	
-+	min_size = ext2fs_calculate_minimum_resize_size(fs);
-+	if (min_size > *new_size) {
-+		printf("%u blocks is too small, minimum size is %u blocks\n",
-+		       *new_size, min_size);
-+		return EXT2_ET_TOOSMALL;
-+	}
-+
- 	/*
- 	 * Create the data structure
- 	 */
-@@ -1628,3 +1639,139 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
- 	ext2fs_mark_super_dirty(fs);
- 	return 0;
- }
-+
-+/*
-+ * calcluate the minimum number of blocks the given fs can be resized to
-+ */
-+static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs)
-+{
-+	blk_t inode_count, blks_needed, groups, blk, data_blocks;
-+	blk_t grp, data_needed, last_start;
-+	int overhead = 0, old_group = -1, num_of_superblocks = 0;
-+
-+	/*
-+	 * first figure out how many group descriptors we need to
-+	 * handle the number of inodes we have
-+	 */
-+	inode_count = fs->super->s_inodes_count -
-+		fs->super->s_free_inodes_count;
-+	blks_needed = ext2fs_div_ceil(inode_count,
-+				      fs->super->s_inodes_per_group) *
-+		EXT2_BLOCKS_PER_GROUP(fs->super);
-+	groups = ext2fs_div_ceil(blks_needed,
-+				 EXT2_BLOCKS_PER_GROUP(fs->super));
-+
-+	/*
-+	 * we need to figure out how many backup superblocks we have so we can
-+	 * account for that in the metadata
-+	 */
-+	for (grp = 0; grp < fs->group_desc_count; grp++) {
-+		if (ext2fs_bg_has_super(fs, grp))
-+			num_of_superblocks++;
-+	}
-+
-+	/* calculate how many blocks are needed for data */
-+	data_needed = fs->super->s_blocks_count -
-+		fs->super->s_free_blocks_count;
-+	data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
-+	data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
-+
-+	/*
-+	 * figure out how many data blocks we have given the number of groups
-+	 * we need for our inodes
-+	 */
-+	data_blocks = groups * EXT2_BLOCKS_PER_GROUP(fs->super);
-+	last_start = 0;
-+	for (grp = 0; grp < groups; grp++) {
-+		overhead = META_OVERHEAD(fs);
-+
-+		if (ext2fs_bg_has_super(fs, grp))
-+			overhead += SUPER_OVERHEAD(fs);
-+
-+		/*
-+		 * we want to keep track of how much data we can store in
-+		 * the groups leading up to the last group so we can determine
-+		 * how big the last group needs to be
-+		 */
-+		if (grp != (groups - 1))
-+			last_start += EXT2_BLOCKS_PER_GROUP(fs->super) -
-+				overhead;
-+
-+		data_blocks -= overhead;
-+	}
-+
-+	/*
-+	 * if we need more group descriptors in order to accomodate our data
-+	 * then we need to add them here
-+	 */
-+	while (data_needed > data_blocks) {
-+		blk_t remainder = data_needed - data_blocks;
-+		blk_t extra_grps;
-+
-+		/* figure out how many more groups we need for the data */
-+		extra_grps = ext2fs_div_ceil(remainder,
-+					     EXT2_BLOCKS_PER_GROUP(fs->super));
-+
-+		data_blocks += extra_grps * EXT2_BLOCKS_PER_GROUP(fs->super);
-+
-+		/* ok we have to account for the last group */
-+		overhead = META_OVERHEAD(fs);
-+		if (ext2fs_bg_has_super(fs, groups-1))
-+			overhead += SUPER_OVERHEAD(fs);
-+		last_start += EXT2_BLOCKS_PER_GROUP(fs->super) - overhead;
-+
-+		for (grp = groups; grp < groups+extra_grps; grp++) {
-+			overhead = META_OVERHEAD(fs);
-+			if (ext2fs_bg_has_super(fs, grp))
-+				overhead += SUPER_OVERHEAD(fs);
-+
-+			/*
-+			 * again, we need to see how much data we cram into
-+			 * all of the groups leading up to the last group
-+			 */
-+			if (grp != (groups + extra_grps - 1))
-+				last_start += EXT2_BLOCKS_PER_GROUP(fs->super)
-+					- overhead;
-+
-+			data_blocks -= overhead;
-+		}
-+
-+		groups += extra_grps;
-+	}
-+
-+	/* now for the fun voodoo */
-+	overhead = META_OVERHEAD(fs);
-+
-+	/*
-+	 * if this is the case then the last group is going to have data in it
-+	 * so we need to adjust the size of the last group accordingly
-+	 */
-+	if (last_start < data_needed) {
-+		blk_t remainder = data_needed - last_start;
-+
-+		/*
-+		 * 50 is a magic number that mkfs/resize uses to see if its
-+		 * even worth making/resizing the fs.  basically you need to
-+		 * have at least 50 blocks in addition to the blocks needed
-+		 * for the metadata in the last group
-+		 */
-+		if (remainder > 50)
-+			overhead += remainder;
-+		else
-+			overhead += 50;
-+	} else
-+		overhead += 50;
-+
-+	if (ext2fs_bg_has_super(fs, groups-1))
-+		overhead += SUPER_OVERHEAD(fs);
-+
-+	/*
-+	 * since our last group doesn't have to be BLOCKS_PER_GROUP large, we
-+	 * only do groups-1, and then add the number of blocks needed to
-+	 * handle the group descriptor metadata+data that we need
-+	 */
-+	blks_needed = (groups-1) * EXT2_BLOCKS_PER_GROUP(fs->super);
-+	blks_needed += overhead;
-+
-+	return blks_needed;
-+}
+Yep, there were 2 problems.
+
+One was that inode_scan_and_fix() wasn't moving all of large inodes.
+
+The other was that ext2fs_swap_inode_full was doing bad things for
+in-inode attrs on big endian boxes, that was the patch in this thread
+which isn't in the repo yet, but is in fact needed.
+
+I suppose that the iterative nature of my fix for this problem didn't
+help Ted keep things straight, sorry.
+
+-Eric
+
