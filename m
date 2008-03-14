@@ -1,34 +1,91 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: e2fsck not fixing all corruptions on the first run?
-Date: Fri, 14 Mar 2008 08:17:02 +0100 (CET)
-Message-ID: <alpine.DEB.1.00.0803140815520.7433@sheep.housecafe.de>
-References: <alpine.DEB.1.00.0803131923420.7433@sheep.housecafe.de> <20080313205426.GD28728@mit.edu> <alpine.DEB.1.00.0803132219590.7433@sheep.housecafe.de> <20080313214731.GE28728@mit.edu> <alpine.DEB.1.00.0803132255230.7433@sheep.housecafe.de>
- <20080313221657.GJ28728@mit.edu>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 1/5] ext4 online defrag header file changes
+Date: Fri, 14 Mar 2008 21:02:18 +0900
+Message-ID: <200803141202.AA00330@TNESG9526.rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.g-housing.de ([81.169.133.75]:58994 "EHLO mail.g-house.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751491AbYCNHRG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Mar 2008 03:17:06 -0400
-In-Reply-To: <20080313221657.GJ28728@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: cmm@us.ibm.com, tytso@mit.edu
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 13 Mar 2008, Theodore Tso wrote:
-> Technically, I guess you could say the on-disk format changed, but as
-> I mentioned, it's going to change back to the original format.  It's
-> not a big deal.  The question is for long symlinks, where the symlink
-> can't fit in the 60 bytes in the i_block[] array, whether the block
-> number should be encoded as a single integer as i_block[0], as it is
-> under ext3, or whether it should be encoded as an extents structure.
+Hi Mingming,
 
-Thanks again for the explanation (and for the fix, I shall try it soon)!
+> Overall I think the header changes probably should go with the patches
+> that need those changes, that helps explain why we need this header
+> changes and makes the patch compile itself. Right now this patch failed
+> to compile alone.
+I see.
+I will reorganize my patches into meaningful groups.
 
-Christian.
--- 
-BOFH excuse #399:
+>>  /*
+>> @@ -299,6 +300,14 @@ struct ext4_new_group_data {
+>>  #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
+>>  #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+>>  #define EXT4_IOC_MIGRATE		_IO('f', 7)
+>> +#define EXT4_IOC_FIBMAP			_IOW('f', 9, ext4_fsblk_t)
+>> +#define EXT4_IOC_DEFRAG		_IOW('f', 10, struct ext4_ext_defrag_data)
+>> +#define EXT4_IOC_GROUP_INFO	_IOW('f', 11, struct ext4_group_data_info)
+>> +#define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 12, struct ext4_extents_info)
+>> +#define EXT4_IOC_EXTENTS_INFO		_IOW('f', 13, struct ext4_extents_info)
+>> +#define EXT4_IOC_RESERVE_BLOCK		_IOW('f', 14, struct ext4_extents_info)
+>> +#define EXT4_IOC_MOVE_VICTIM		_IOW('f', 15, struct ext4_extents_info)
+>> +#define EXT4_IOC_BLOCK_RELEASE		_IO('f', 8)
+>
+> These should go with the last patch in this series, where the ioctl
+> commands get implemented
+OK.
 
-We are a 100% Microsoft Shop.
+> Could you add more comments about the tunables below? What they are used
+> for?
+>
+>> +/* Used for defrag */
+>> +#define DEFRAG_MAX_ENT         32
+>
+> This means at most 32 free space extents per block group?
+OK.  I will add more comments later.
+
+This means the maximum count of extents(or free space extents) for exchanging 
+between kernel-space and user-space at once.
+For example, EXT4_IOC_EXTENTS_INFO is called multiple times(per DEFRAG_MAX_ENT)
+to get its block distribution if there is a large number of
+extents(or free space extents) in the target block group.
+
+>> +#define DEFRAG_FORCE_TRY       1
+>> +#define DEFRAG_FORCE_VICTIM    2
+>> +#define DEFRAG_FORCE_GATHER    3
+>> +
+>
+> And these tunables are used in the last patch in this series, so it make
+> sense to move there too.
+OK.
+
+>> +struct ext4_extent_data {
+>> +	ext4_lblk_t block;		/* start logical block number */
+>> +	ext4_fsblk_t start;		/* start physical block number */
+>> +	int len;			/* blocks count */
+>> +};
+>> +
+>
+> Not related to defrag, but I would like to consider this as in-core
+> extent structure. Maybe we should use this structure in other extents.c,
+> instead of sharing the same on-disk extent structure, which needs to
+> worry about little endian?
+
+I agree. 
+How about renaming this structure from ext4_extent_data to
+ext4_extent_info which used the extent in-core structure
+and put it into ext4_fs_extents.h? 
+Because in-core super_block is ext4_sb_info.
+
+/*
+ * This is the extent in-core structure.
+ */
+struct ext4_extent_info {
+	ext4_lblk_t	ee_block;	/* first logical block extent covers */
+	int		ee_len;		/* number of blocks covered by extent */
+	ext4_fsblk_t	ee_start;	/* first physical block extent covers */
+};      
+
+Regards, Akira
