@@ -1,187 +1,228 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] e2fsprogs- fix ext2fs_swap_inode_full attr test on BE
-	boxes
-Date: Fri, 14 Mar 2008 09:32:41 -0400
-Message-ID: <20080314133241.GD7412@mit.edu>
-References: <47C882CD.3090204@redhat.com> <n7x63vph2q5.fsf@sor.suse.de>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH] e2fsprogs: report minimal resize size when given size is
+	too small
+Date: Fri, 14 Mar 2008 10:05:06 -0400
+Message-ID: <20080314140506.GD20444@unused.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Matthias Koenig <mkoenig@suse.de>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:62332 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753415AbYCNNdf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Mar 2008 09:33:35 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:47146 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751387AbYCNOHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Mar 2008 10:07:01 -0400
 Content-Disposition: inline
-In-Reply-To: <n7x63vph2q5.fsf@sor.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 14, 2008 at 02:09:06PM +0100, Matthias Koenig wrote:
-> (also the git tag for the 1.40.8 release seems to be missing).
+Hello,
 
-Oops, forgot to do a "git push --tags" again.  Fixed.
+Munged the subject on the last resend and didn't add the Signed-off-by, so
+here's the 3rd try.  This patch will spit out the minimum number of blocks the
+fs can be resized if the resize size it is given is too small.  This is usefull
+for those creating live boot images who create large images to install what they
+need onto, and then resize down to the smalles size that they can.  Thanks much,
 
-> Eric Sandeen <sandeen@redhat.com> writes:
-> 
-> > After the fix for resize2fs's inode mover losing in-inode
-> > extended attributes, the regression test I wrote caught 
-> > that the attrs were still getting lost on powerpc.
-> >
-> > Looks like the problem is that ext2fs_swap_inode_full()
-> > isn't paying attention to whether or not the EA magic is
-> > in hostorder, so it's not recognized (and not swapped)
-> > on BE machines.  Patch below seems to fix it.
->
-> This patch seems to be missing in the current e2fsprogs 1.40.8 release
-> (though announced in the release notes that this issue should be fixed
-> on BE machines).
-> Check r_inline_xattr still fails on ppc and s390 architectures without 
-> this patch. It builds fine with this patch applied.
+Signed-off-by: Josef Back <jbacik@redhat.com>
 
-This patch is in the repo, which I thought superceded the one which
-Eric sent.  (The authorship is wrong; and that was my fault for not
-including '--author="Eric Sandeen <sandeen@redhat.com>"' on the commit
-command-line.  I've already apologized to Eric privately; now I'm
-apologizing publically.  :-)
 
-But looking at it again, I believe I misunderstood, and the two
-patches are attacking quite separate problems.  OK, i'll get this one
-in as well in the next go-around.
-
-						- Ted
-
-commit edfd9b0a9fe7b90f56da981ca26d5233cc3749d6
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Mar 8 20:20:40 2008 -0500
-
-    resize2fs: Fix resizing filesystems with large inodes
-    
-    Use ext2fs_get_next_inode_full() in resize2fs and clean up large inode
-    handling; previous attempt was not properly handling all cases, and
-    was incorrectly setting i_extra_isize.  This caused some extended
-    attributes to get removed or randomly assigned to other inodes as a
-    result of the resize, which can be unfortunate on systems using
-    SELinux.
-    
-    The previous commit didn't fix things completely on big-endian systems
-    like PowerPC.
-    
-    Addresses-Red-Hat-Bugzilla: #434893
-    
-    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
+diff --git a/resize/main.c b/resize/main.c
+index 7c1d0c1..a9653ee 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -342,11 +342,6 @@ int main (int argc, char ** argv)
+ 	if (new_size_str) {
+ 		new_size = parse_num_blocks(new_size_str, 
+ 					    fs->super->s_log_block_size);
+-		if (!new_size) {
+-			com_err(program_name, 0, _("bad filesystem size - %s"),
+-				new_size_str);
+-			exit(1);
+-		}
+ 	} else {
+ 		new_size = max_size;
+ 		/* Round down to an even multiple of a pagesize */
 diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index dd26089..6dec3eb 100644
+index 9959671..e2a8fcc 100644
 --- a/resize/resize2fs.c
 +++ b/resize/resize2fs.c
-@@ -1109,8 +1109,7 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
+@@ -48,6 +48,7 @@ static errcode_t inode_ref_fix(ext2_resize_t rfs);
+ static errcode_t move_itables(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
++static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs);
+ 
+ /*
+  * Some helper CPP macros
+@@ -63,7 +64,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+ 				 ((blk) < (FS_INODE_TB((fs), (i)) + \
+ 					   (fs)->inode_blocks_per_group)))
+ 
+-
++#define META_OVERHEAD(fs) (2 + (fs)->inode_blocks_per_group)
++#define SUPER_OVERHEAD(fs) (1 + (fs)->desc_blocks +\
++			    (fs)->super->s_reserved_gdt_blocks)
+ 
+ /*
+  * This is the top-level routine which does the dirty deed....
+@@ -75,11 +78,19 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
  {
- 	struct process_block_struct	pb;
- 	ext2_ino_t		ino, new_inode;
--	struct ext2_inode 	inode, *buf = NULL;
--	struct ext2_inode_large	*large_inode;
-+	struct ext2_inode 	*inode = NULL;
- 	ext2_inode_scan 	scan = NULL;
- 	errcode_t		retval;
- 	int			group;
-@@ -1154,12 +1153,12 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
- 	}
- 	ext2fs_set_inode_callback(scan, progress_callback, (void *) rfs);
- 	pb.rfs = rfs;
--	pb.inode = &inode;
-+	pb.inode = inode;
- 	pb.error = 0;
- 	new_inode = EXT2_FIRST_INODE(rfs->new_fs->super);
- 	inode_size = EXT2_INODE_SIZE(rfs->new_fs->super);
--	buf = malloc(inode_size);
--	if (!buf) {
-+	inode = malloc(inode_size);
-+	if (!inode) {
- 		retval = ENOMEM;
- 		goto errout;
- 	}
-@@ -1168,29 +1167,29 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
- 	 * elsewhere in the inode table
+ 	ext2_resize_t	rfs;
+ 	errcode_t	retval;
++	blk_t		min_size = 0;
+ 
+ 	retval = ext2fs_read_bitmaps(fs);
+ 	if (retval)
+ 		return retval;
+ 	
++	min_size = ext2fs_calculate_minimum_resize_size(fs);
++	if (min_size > *new_size) {
++		printf("%u blocks is too small, minimum size is %u blocks\n",
++		       *new_size, min_size);
++		return EXT2_ET_TOOSMALL;
++	}
++
+ 	/*
+ 	 * Create the data structure
  	 */
- 	while (1) {
--		retval = ext2fs_get_next_inode(scan, &ino, &inode);
-+		retval = ext2fs_get_next_inode_full(scan, &ino, inode, inode_size);
- 		if (retval) goto errout;
- 		if (!ino)
- 			break;
- 
--		if (inode.i_links_count == 0 && ino != EXT2_RESIZE_INO)
-+		if (inode->i_links_count == 0 && ino != EXT2_RESIZE_INO)
- 			continue; /* inode not in use */
- 
--		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
-+		pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
- 		pb.changed = 0;
- 
--		if (inode.i_file_acl && rfs->bmap) {
-+		if (inode->i_file_acl && rfs->bmap) {
- 			new_block = ext2fs_extent_translate(rfs->bmap, 
--							    inode.i_file_acl);
-+							    inode->i_file_acl);
- 			if (new_block) {
--				inode.i_file_acl = new_block;
--				retval = ext2fs_write_inode(rfs->old_fs, 
--							    ino, &inode);
-+				inode->i_file_acl = new_block;
-+				retval = ext2fs_write_inode_full(rfs->old_fs, 
-+							    ino, inode, inode_size);
- 				if (retval) goto errout;
- 			}
- 		}
- 		
--		if (ext2fs_inode_has_valid_blocks(&inode) &&
-+		if (ext2fs_inode_has_valid_blocks(inode) &&
- 		    (rfs->bmap || pb.is_dir)) {
- 			pb.ino = ino;
- 			retval = ext2fs_block_iterate2(rfs->old_fs,
-@@ -1221,23 +1220,19 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
- 			}
- 		}
- 		ext2fs_mark_inode_bitmap(rfs->new_fs->inode_map, new_inode);
--		memcpy(buf, &inode, sizeof(struct ext2_inode));
--		large_inode = (struct ext2_inode_large *)buf;
--		large_inode->i_extra_isize = sizeof(struct ext2_inode_large) -
--			EXT2_GOOD_OLD_INODE_SIZE;
- 		if (pb.changed) {
- 			/* Get the new version of the inode */
- 			retval = ext2fs_read_inode_full(rfs->old_fs, ino,
--						buf, inode_size);
-+						inode, inode_size);
- 			if (retval) goto errout;
- 		}
--		inode.i_ctime = time(0);
-+		inode->i_ctime = time(0);
- 		retval = ext2fs_write_inode_full(rfs->old_fs, new_inode,
--						buf, inode_size);
-+						inode, inode_size);
- 		if (retval) goto errout;
- 
- 		group = (new_inode-1) / EXT2_INODES_PER_GROUP(rfs->new_fs->super);
--		if (LINUX_S_ISDIR(inode.i_mode))
-+		if (LINUX_S_ISDIR(inode->i_mode))
- 			rfs->new_fs->group_desc[group].bg_used_dirs_count++;
- 		
- #ifdef RESIZE2FS_DEBUG
-@@ -1263,8 +1258,8 @@ errout:
- 		ext2fs_close_inode_scan(scan);
- 	if (block_buf)
- 		ext2fs_free_mem(&block_buf);
--	if (buf)
--		free(buf);
-+	if (inode)
-+		free(inode);
- 	return retval;
+@@ -1628,3 +1639,139 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 	ext2fs_mark_super_dirty(fs);
+ 	return 0;
  }
- 
-
-
++
++/*
++ * calcluate the minimum number of blocks the given fs can be resized to
++ */
++static blk_t ext2fs_calculate_minimum_resize_size(ext2_filsys fs)
++{
++	blk_t inode_count, blks_needed, groups, blk, data_blocks;
++	blk_t grp, data_needed, last_start;
++	int overhead = 0, old_group = -1, num_of_superblocks = 0;
++
++	/*
++	 * first figure out how many group descriptors we need to
++	 * handle the number of inodes we have
++	 */
++	inode_count = fs->super->s_inodes_count -
++		fs->super->s_free_inodes_count;
++	blks_needed = ext2fs_div_ceil(inode_count,
++				      fs->super->s_inodes_per_group) *
++		EXT2_BLOCKS_PER_GROUP(fs->super);
++	groups = ext2fs_div_ceil(blks_needed,
++				 EXT2_BLOCKS_PER_GROUP(fs->super));
++
++	/*
++	 * we need to figure out how many backup superblocks we have so we can
++	 * account for that in the metadata
++	 */
++	for (grp = 0; grp < fs->group_desc_count; grp++) {
++		if (ext2fs_bg_has_super(fs, grp))
++			num_of_superblocks++;
++	}
++
++	/* calculate how many blocks are needed for data */
++	data_needed = fs->super->s_blocks_count -
++		fs->super->s_free_blocks_count;
++	data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
++	data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
++
++	/*
++	 * figure out how many data blocks we have given the number of groups
++	 * we need for our inodes
++	 */
++	data_blocks = groups * EXT2_BLOCKS_PER_GROUP(fs->super);
++	last_start = 0;
++	for (grp = 0; grp < groups; grp++) {
++		overhead = META_OVERHEAD(fs);
++
++		if (ext2fs_bg_has_super(fs, grp))
++			overhead += SUPER_OVERHEAD(fs);
++
++		/*
++		 * we want to keep track of how much data we can store in
++		 * the groups leading up to the last group so we can determine
++		 * how big the last group needs to be
++		 */
++		if (grp != (groups - 1))
++			last_start += EXT2_BLOCKS_PER_GROUP(fs->super) -
++				overhead;
++
++		data_blocks -= overhead;
++	}
++
++	/*
++	 * if we need more group descriptors in order to accomodate our data
++	 * then we need to add them here
++	 */
++	while (data_needed > data_blocks) {
++		blk_t remainder = data_needed - data_blocks;
++		blk_t extra_grps;
++
++		/* figure out how many more groups we need for the data */
++		extra_grps = ext2fs_div_ceil(remainder,
++					     EXT2_BLOCKS_PER_GROUP(fs->super));
++
++		data_blocks += extra_grps * EXT2_BLOCKS_PER_GROUP(fs->super);
++
++		/* ok we have to account for the last group */
++		overhead = META_OVERHEAD(fs);
++		if (ext2fs_bg_has_super(fs, groups-1))
++			overhead += SUPER_OVERHEAD(fs);
++		last_start += EXT2_BLOCKS_PER_GROUP(fs->super) - overhead;
++
++		for (grp = groups; grp < groups+extra_grps; grp++) {
++			overhead = META_OVERHEAD(fs);
++			if (ext2fs_bg_has_super(fs, grp))
++				overhead += SUPER_OVERHEAD(fs);
++
++			/*
++			 * again, we need to see how much data we cram into
++			 * all of the groups leading up to the last group
++			 */
++			if (grp != (groups + extra_grps - 1))
++				last_start += EXT2_BLOCKS_PER_GROUP(fs->super)
++					- overhead;
++
++			data_blocks -= overhead;
++		}
++
++		groups += extra_grps;
++	}
++
++	/* now for the fun voodoo */
++	overhead = META_OVERHEAD(fs);
++
++	/*
++	 * if this is the case then the last group is going to have data in it
++	 * so we need to adjust the size of the last group accordingly
++	 */
++	if (last_start < data_needed) {
++		blk_t remainder = data_needed - last_start;
++
++		/*
++		 * 50 is a magic number that mkfs/resize uses to see if its
++		 * even worth making/resizing the fs.  basically you need to
++		 * have at least 50 blocks in addition to the blocks needed
++		 * for the metadata in the last group
++		 */
++		if (remainder > 50)
++			overhead += remainder;
++		else
++			overhead += 50;
++	} else
++		overhead += 50;
++
++	if (ext2fs_bg_has_super(fs, groups-1))
++		overhead += SUPER_OVERHEAD(fs);
++
++	/*
++	 * since our last group doesn't have to be BLOCKS_PER_GROUP large, we
++	 * only do groups-1, and then add the number of blocks needed to
++	 * handle the group descriptor metadata+data that we need
++	 */
++	blks_needed = (groups-1) * EXT2_BLOCKS_PER_GROUP(fs->super);
++	blks_needed += overhead;
++
++	return blks_needed;
++}
