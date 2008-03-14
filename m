@@ -1,112 +1,80 @@
 From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH, E2FSPROGS] e2fsck: Support long symlinks which use extents
-Date: Thu, 13 Mar 2008 23:20:56 -0400
-Message-ID: <1205464857-6244-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH, E2FSPROGS] e2fsck: Check for fast symlinks that have EXTENTS_FL set
+Date: Thu, 13 Mar 2008 23:20:57 -0400
+Message-ID: <1205464857-6244-2-git-send-email-tytso@mit.edu>
 References: <20080313214731.GE28728@mit.edu>
+ <1205464857-6244-1-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:35192 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:35206 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750783AbYCNDVO (ORCPT
+	by vger.kernel.org with ESMTP id S1751143AbYCNDVQ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Mar 2008 23:21:14 -0400
-In-Reply-To: <20080313214731.GE28728@mit.edu>
+	Thu, 13 Mar 2008 23:21:16 -0400
+In-Reply-To: <1205464857-6244-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+These shouldn't show up in the wild, but if they do, e2fsck will offer
+to clear them.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/e2fsck.h |    2 +-
- e2fsck/pass1.c  |   32 +++++++++++++++++++++++++++++---
- e2fsck/pass2.c  |    2 +-
- 3 files changed, 31 insertions(+), 5 deletions(-)
+ e2fsck/pass1.c   |    8 ++++++++
+ e2fsck/problem.c |    5 +++++
+ e2fsck/problem.h |    3 +++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index be6efe1..21208e0 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -429,7 +429,7 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
- extern void e2fsck_use_inode_shortcuts(e2fsck_t ctx, int bool);
- extern int e2fsck_pass1_check_device_inode(ext2_filsys fs,
- 					   struct ext2_inode *inode);
--extern int e2fsck_pass1_check_symlink(ext2_filsys fs,
-+extern int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
- 				      struct ext2_inode *inode, char *buf);
- extern void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
- 			       struct ext2_inode *inode, int restart_flag,
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c598205..8638989 100644
+index 8638989..50e38e1 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -163,17 +163,42 @@ int e2fsck_pass1_check_device_inode(ext2_filsys fs EXT2FS_ATTR((unused)),
-  * Check to make sure a symlink inode is real.  Returns 1 if the symlink
-  * checks out, 0 if not.
-  */
--int e2fsck_pass1_check_symlink(ext2_filsys fs, struct ext2_inode *inode,
--			       char *buf)
-+int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
-+			       struct ext2_inode *inode, char *buf)
- {
- 	unsigned int len;
- 	int i;
- 	blk_t	blocks;
-+	ext2_extent_handle_t	handle;
-+	struct ext2_extent_info	info;
-+	struct ext2fs_extent	extent;
+@@ -713,6 +713,14 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
+ 		}
  
- 	if ((inode->i_size_high || inode->i_size == 0) ||
- 	    (inode->i_flags & EXT2_INDEX_FL))
- 		return 0;
- 
-+	if (inode->i_flags & EXT4_EXTENTS_FL) {
-+		if (inode->i_size > fs->blocksize)
-+			return 0;
-+		if (ext2fs_extent_open(fs, ino, &handle))
-+			return 0;
-+		i = 0;
-+		if (ext2fs_extent_get_info(handle, &info) ||
-+		    (info.num_entries != 1) ||
-+		    (info.max_depth != 0))
-+			goto exit_extent;
-+		if (ext2fs_extent_get(handle, EXT2_EXTENT_ROOT, &extent) ||
-+		    (extent.e_lblk != 0) ||
-+		    (extent.e_len != 1) ||
-+		    (extent.e_pblk < fs->super->s_first_data_block) ||
-+		    (extent.e_pblk >= fs->super->s_blocks_count))
-+			goto exit_extent;
-+		i = 1;
-+	exit_extent:
-+		ext2fs_extent_free(handle);
-+		return i;
-+	}
++		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL) &&
++		    LINUX_S_ISLNK(inode->i_mode) &&
++		    !ext2fs_inode_has_valid_blocks(inode) &&
++		    fix_problem(ctx, PR_1_FAST_SYMLINK_EXTENT_FL, &pctx)) {
++			inode->i_flags &= ~EXT4_EXTENTS_FL;
++			e2fsck_write_inode(ctx, ino, inode, "pass1");
++		}
 +
- 	blocks = ext2fs_inode_data_blocks(fs, inode);
- 	if (blocks) {
- 		if ((inode->i_size >= fs->blocksize) ||
-@@ -910,7 +935,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			check_size(ctx, &pctx);
- 			ctx->fs_blockdev_count++;
- 		} else if (LINUX_S_ISLNK (inode->i_mode) &&
--			   e2fsck_pass1_check_symlink(fs, inode, block_buf)) {
-+			   e2fsck_pass1_check_symlink(fs, ino, inode, 
-+						      block_buf)) {
- 			check_immutable(ctx, &pctx);
- 			ctx->fs_symlinks_count++;
- 			if (ext2fs_inode_data_blocks(fs, inode) == 0) {
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index a336755..56f352b 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -1218,7 +1218,7 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
- 		 && !e2fsck_pass1_check_device_inode(fs, &inode))
- 		problem = PR_2_BAD_SOCKET;
- 	else if (LINUX_S_ISLNK(inode.i_mode)
--		 && !e2fsck_pass1_check_symlink(fs, &inode, buf)) {
-+		 && !e2fsck_pass1_check_symlink(fs, ino, &inode, buf)) {
- 		problem = PR_2_INVALID_SYMLINK;
- 	}
+ 		if (ino == EXT2_BAD_INO) {
+ 			struct process_block_struct pb;
+ 			
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index afed4fe..d3e2fd7 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -819,6 +819,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i missing EXTENT_FL, but is in extents format\n"),
+ 	  PROMPT_FIX, PR_PREEN_OK },
  
++	/* Fast symlink has EXTENTS_FL set */
++	{ PR_1_FAST_SYMLINK_EXTENT_FL,
++	  N_("Fast symlink %i has EXTENT_FL set.  "),
++	  PROMPT_CLEAR, 0 },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index d5d1a78..48a4a2b 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -476,6 +476,9 @@ struct problem_context {
+ /* inode missing EXTENTS_FL, but is an extent inode */
+ #define PR_1_UNSET_EXTENT_FL		0x01005C
+ 
++/* Fast symlink has EXTENTS_FL set */
++#define PR_1_FAST_SYMLINK_EXTENT_FL	0x01005D
++
+ /*
+  * Pass 1b errors
+  */
 -- 
 1.5.4.1.144.gdfee-dirty
 
