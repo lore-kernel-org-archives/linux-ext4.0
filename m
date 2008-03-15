@@ -1,42 +1,162 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Convert between journal features and strings
-Date: Fri, 14 Mar 2008 16:41:28 -0400
-Message-ID: <20080314204128.GD13733@mit.edu>
-References: <1205519369.3465.23.camel@alpha.linsyssoft.com>
+Subject: Re: [PATCH] e2fsprogs: report minimal resize size when given size
+	is too small
+Date: Fri, 14 Mar 2008 23:08:40 -0400
+Message-ID: <20080315030840.GG13733@mit.edu>
+References: <20080314140506.GD20444@unused.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
+Cc: linux-ext4@vger.kernel.org
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51159 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:52697 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753012AbYCNUlj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Mar 2008 16:41:39 -0400
+	with ESMTP id S1751008AbYCODIu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Mar 2008 23:08:50 -0400
 Content-Disposition: inline
-In-Reply-To: <1205519369.3465.23.camel@alpha.linsyssoft.com>
+In-Reply-To: <20080314140506.GD20444@unused.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 14, 2008 at 11:59:29PM +0530, Girish Shilamkar wrote:
-> Hi Ted,
-> 	e2p_string2feature() and e2p_feature2string() can operate on ext2/3/4
-> features list as there is only one struct feature feature_list[] and no
-> corresponding journal features list. 
-> After introducing journal_checksum and journal_async_commit features, we
-> needed to display the features using debugfs which does it through the
-> two e2p_* functions. A new struct feature jrnl_feature_list[] was added.
-> The e2p_* functions were passed an additional argument so it can decide
-> which feature list to use.
-> Change in the APIs of e2p_* functions might not be acceptable so we have
-> an option to either make e2p_feature2string2() function or add
-> a new e2p_jnl_feature2string()
+On Fri, Mar 14, 2008 at 10:05:06AM -0400, Josef Bacik wrote:
+> Hello,
 > 
-> Would like to know what will be preferred e2p_feature2string2() or
-> e2p_jnl_feature2string() ?
+> Munged the subject on the last resend and didn't add the
+> Signed-off-by, so here's the 3rd try.  This patch will spit out the
+> minimum number of blocks the fs can be resized if the resize size it
+> is given is too small.  This is usefull for those creating live boot
+> images who create large images to install what they need onto, and
+> then resize down to the smalles size that they can.  Thanks much,
+> 
+> Signed-off-by: Josef Back <jbacik@redhat.com>
 
-Two new functions are definitely preferable to changing the ABI's of
-two existing functions.
+Hmm.... so I tried creating a filesystem using a 1k blocksize, to make
+sure that your code does the right thing when the number of block
+group descriptors goes down.  And it doesn't work correctly.
 
-Regards,
+So first, I create a logical volume for doing testing, with a 1024
+blocksize, and populate it with e2fsprogs sources.  The we run e2fsck
+so that reszie2fs will be able to run with it:
 
-					- Ted
+# lvcreate --size 1G --name testresize /dev/closure
+  Logical volume "testresize" created
+# mke2fs -b 1024 -jq /dev/closure/testresize
+Warning: 256-byte inodes not usable on older systems
+# mount /dev/closure/testresize /mnt
+# tar -C /mnt -xzf /usr/projects/e2fsprogs/e2fsprogs-1.40.8.tar.gz 
+# umount /mnt
+# e2fsck -fp /dev/closure/testresize 
+e2fsck 1.40.8 (13-Mar-2008)
+/dev/closure/testresize: 1177/65536 files (0.9% non-contiguous), 72811/1048576 blocks
+
+OK, let's create s snapshot, and then try resizing it using your
+patched resize2fs:
+
+# lvcreate --snapshot --size 1G --name resizesnap /dev/closure/testresize
+  Logical volume "resizesnap" created
+# ./resize/resize2fs /dev/closure/resizesnap 0
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 0 (1k) blocks.
+0 blocks is too small, minimum size is 55254 blocks
+./resize/resize2fs: Not enough space to build proposed filesystem while trying to resize /dev/closure/resizesnap
+# ./resize/resize2fs /dev/closure/resizesnap 55254
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55254 (1k) blocks.
+The filesystem on /dev/closure/resizesnap is now 55254 blocks long.
+
+OK, so we resized it down to 55,254.   Are we done?
+
+# ./resize/resize2fs /dev/closure/resizesnap 0
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 0 (1k) blocks.
+0 blocks is too small, minimum size is 55242 blocks
+# ./resize/resize2fs /dev/closure/resizesnap 55242
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55242 (1k) blocks.
+The filesystem on /dev/closure/resizesnap is now 55242 blocks long.
+# lvremove -f /dev/closure/resizesnap 
+  Logical volume "resizesnap" successfully removed
+
+No wait!  It turns out we can resize it down further, to 55,242
+blocks.
+
+Now let's try to resize it down to 55,242 blocks directly using an
+unpatched resize2fs:
+
+# lvcreate --snapshot --size 1G --name resizesnap /dev/closure/testresize
+  Logical volume "resizesnap" created
+# /sbin/resize2fs /dev/closure/resizesnap 55242
+resize2fs 1.40.8 (13-Mar-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55242 (1k) blocks.
+The filesystem on /dev/closure/resizesnap is now 55242 blocks long.
+# lvremove -f /dev/closure/resizesnap 
+  Logical volume "resizesnap" successfully removed
+
+Gee, look!  It works.
+
+Can we do it with your patched resize2fs?
+
+# lvcreate --snapshot --size 1G --name resizesnap /dev/closure/testresize
+  Logical volume "resizesnap" created
+# ./resize/resize2fs /dev/closure/resizesnap 55242
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55242 (1k) blocks.
+55242 blocks is too small, minimum size is 55254 blocks
+./resize/resize2fs: Not enough space to build proposed filesystem while trying to resize /dev/closure/resizesnap
+
+Nope.  It won't let you resize down to 55,254 blocks in one go,
+although you can do it in two steps.  This is a regression, since with
+the unpatched resize2fs, it works with one step.  The problem is that
+your code assumes that ext2fs_calculate_minimum_resize_size() reliably
+returns the minimum size, and if the user specifies a size smaller
+than returned size, it should bomb out with an error.  Unfortunately,
+it *isn't* the minimum possible size.
+
+# ./resize/resize2fs /dev/closure/resizesnap 55254
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55254 (1k) blocks.
+The filesystem on /dev/closure/resizesnap is now 55254 blocks long.
+# ./resize/resize2fs /dev/closure/resizesnap 55242
+resize2fs 1.40.7 (28-Feb-2008)
+Resizing the filesystem on /dev/closure/resizesnap to 55242 (1k) blocks.
+The filesystem on /dev/closure/resizesnap is now 55242 blocks long.
+# lvremove -f /dev/closure/resizesnap 
+  Logical volume "resizesnap" successfully removed
+
+
+What bothers me with your patch, though is that even though it
+apparently isn't doing the right thing when the filesystem changes the
+number of group descriptor blocks after doing the resize:
+
+# dumpe2fs /dev/closure/testresize | grep "Group descriptors" | head -5
+dumpe2fs 1.40.8 (13-Mar-2008)
+  Primary superblock at 1, Group descriptors at 2-5
+  Backup superblock at 8193, Group descriptors at 8194-8197
+  Backup superblock at 24577, Group descriptors at 24578-24581
+  Backup superblock at 40961, Group descriptors at 40962-40965
+  Backup superblock at 57345, Group descriptors at 57346-57349
+
+# dumpe2fs /dev/closure/resizesnap | grep "Group descriptors" | head -5
+dumpe2fs 1.40.8 (13-Mar-2008)
+  Primary superblock at 1, Group descriptors at 2-2
+  Backup superblock at 8193, Group descriptors at 8194-8194
+  Backup superblock at 24577, Group descriptors at 24578-24578
+  Backup superblock at 40961, Group descriptors at 40962-40962
+
+.... yet when I tried doing the test with 4k blocksizes, where I
+started with a filesystem which is 17 gigabytes (with a 4k blocksize,
+every 16gigs there are 128 block groups, which will occupy a single 4k
+block's worth of block group descriptors), and then shrunk it down,
+expecting it to break --- and it didn't.  The fact it should have
+broken, since the number of group descriptors did go down, and it the
+code didn't take that into account --- and yet it didn't, disturbed
+me.  Not knowing why it works when an inspection seems to indicate
+that it should fails always scares me.
+
+So I can't apply this the way it is.  What I *can* do is set it up so
+that it will only call the calculate minimum size if the specified
+size is 0 blocks.  I'll mention in the known bugs that it can
+sometimes be wrong with its estimates with 1k and 2k block
+filesystems.
+
+						- Ted
