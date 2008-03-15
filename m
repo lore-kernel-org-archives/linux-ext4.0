@@ -1,47 +1,44 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH] jbd2: correctly unescape journal data blocks
-Date: Sat, 15 Mar 2008 18:49:45 +0000
-Message-ID: <1205606985-22645-3-git-send-email-duaneg@dghda.com>
-References: <1205606985-22645-1-git-send-email-duaneg@dghda.com>
- <1205606985-22645-2-git-send-email-duaneg@dghda.com>
-Cc: linux-ext4@vger.kernel.org, duaneg@dghda.com
-To: sct@redhat.com, akpm@linux-foundation.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH][10/28] e2fsprogs-uninit.patch
+Date: Sat, 15 Mar 2008 15:41:20 -0400
+Message-ID: <20080315194120.GI27847@mit.edu>
+References: <20080202075943.GB23836@webber.adilger.int> <20080202083444.GK31694@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:2841 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752248AbYCOStx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Mar 2008 14:49:53 -0400
-In-Reply-To: <1205606985-22645-2-git-send-email-duaneg@dghda.com>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58325 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752291AbYCOTlh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2008 15:41:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20080202083444.GK31694@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a long-standing typo (predating git) that will cause data corruption if a
-journal data block needs unescaping. At the moment the wrong buffer head's data
-is being unescaped.
+What is the intended use of the SF_DO_CSUM flag?  I see where it is
+defined, and where it gets sets, but as far as I can tell nothing
+actually tests for it or uses it.
 
-To test this case mount a filesystem with data=journal, start creating and
-deleting a bunch of files containing only JBD2_MAGIC_NUMBER (0xc03b3998), then
-pull the plug on the device. Without this patch the files will contain zeros
-instead of the correct data after recovery.
+	 				- Ted
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
----
- fs/jbd2/recovery.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 1464113..5d0405a 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -535,7 +535,7 @@ static int do_one_pass(journal_t *journal,
- 					memcpy(nbh->b_data, obh->b_data,
- 							journal->j_blocksize);
- 					if (flags & JBD2_FLAG_ESCAPE) {
--						*((__be32 *)bh->b_data) =
-+						*((__be32 *)nbh->b_data) =
- 						cpu_to_be32(JBD2_MAGIC_NUMBER);
- 					}
- 
--- 
-1.5.3.7
+On Sat, Feb 02, 2008 at 01:34:44AM -0700, Andreas Dilger wrote:
+> Index: e2fsprogs-1.40.5/lib/ext2fs/ext2fs.h
+>
+> +#define EXT2_SF_DO_CSUM		0x0020
+>
+
+> Index: e2fsprogs-1.40.5/lib/ext2fs/inode.c
+> ===================================================================
+> --- e2fsprogs-1.40.5.orig/lib/ext2fs/inode.c
+> +++ e2fsprogs-1.40.5/lib/ext2fs/inode.c
+> @@ -167,6 +167,9 @@ errcode_t ext2fs_open_inode_scan(ext2_fi
+>  	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
+>  				    EXT2_FEATURE_COMPAT_LAZY_BG))
+>  		scan->scan_flags |= EXT2_SF_DO_LAZY;
+> +	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+> +				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+> +		scan->scan_flags |= EXT2_SF_DO_LAZY | EXT2_SF_DO_CSUM;
 
