@@ -1,75 +1,73 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] jbd2: Add commit time into the commit block
-Date: Sun, 16 Mar 2008 23:16:17 +0800
-Message-ID: <20080316151617.GA3542@webber.adilger.int>
-References: <1205629144-25994-1-git-send-email-tytso@mit.edu>
- <20080316012602.GZ3542@webber.adilger.int> <20080316031039.GJ27847@mit.edu>
+Subject: Re: strange ext{3,4}_settattr logic
+Date: Sun, 16 Mar 2008 23:22:37 +0800
+Message-ID: <20080316152237.GB3542@webber.adilger.int>
+References: <20080315160731.GA4186@dmon-lap.sw.ru>
+ <20080315230544.GV3542@webber.adilger.int>
+ <20080315235427.GA26939@webber.adilger.int>
+ <20080316002300.GB26939@webber.adilger.int>
+ <20080316113912.GA3118@dmon-lap.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
+To: Dmitri Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43310 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751881AbYCPPQ6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Mar 2008 11:16:58 -0400
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47030 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751881AbYCPPXS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Mar 2008 11:23:18 -0400
 Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2GFGv2R017376
-	for <linux-ext4@vger.kernel.org>; Sun, 16 Mar 2008 08:16:57 -0700 (PDT)
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2GFNHT1022951
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Mar 2008 08:23:17 -0700 (PDT)
 Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JXT00B01X3E2H00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sun, 16 Mar 2008 08:16:57 -0700 (PDT)
-In-reply-to: <20080316031039.GJ27847@mit.edu>
+ id <0JXT00C01XEJC000@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sun, 16 Mar 2008 08:23:17 -0700 (PDT)
+In-reply-to: <20080316113912.GA3118@dmon-lap.sw.ru>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 15, 2008  23:10 -0400, Theodore Ts'o wrote:
-> On Sun, Mar 16, 2008 at 09:26:02AM +0800, Andreas Dilger wrote:
-> > Note that we'd still be a lot further ahead undelete- and performance-wise
-> > if we avoided overwriting the indirect blocks in the first place...  As
-> > it is, this is only really useful if you pull the plug after the delete.
-> > No harm in doing it, but won't help you recover as much as you could.
+On Mar 16, 2008  14:39 +0300, Dmitri Monakhov wrote:
+> > --- linux-2.6.24/fs/namei.c.orig	2008-02-05 07:29:57.000000000 +0800
+> > +++ linux-2.6.24/fs/namei.c	2008-03-16 08:11:41.000000000 +0800
+> > @@ -233,6 +233,10 @@ int permission(struct inode *inode, int 
+> >  	if (nd)
+> >  		mnt = nd->mnt;
+> >  
+> > +	/* Don't allow direct read, write, or truncate on a swapfile */
+>
+> Your patch disallow expand truncates (#2) which is definitely not good. 
+
+How often is that done though?  Since this is only for a swapfile then
+it isn't needed.
+
+> In fact if file was opened before S_SWAPFILE flag was setted when it is
+> possible to directly read, write from file.
+
+I assume that is even a more rare case.  I was thinking alternately to
+do a "deny_write" on the swapfile during swapon() so that this would
+fail in more cases.
+
+> > +	if (IS_SWAPFILE(inode))
+> > +		return -ETXTBUSY;
+> > +
+> >  	if (mask & MAY_WRITE) {
+> >  		umode_t mode = inode->i_mode;
 > 
-> Yeah, I looked at that at one point, but I never had time to try to
-> code it up.  The concept would is that we only need to zero out the
-> block pointers if we end up dirtying enough bitmap blocks that we've
-> run out of space in the journal and so we need to close the
-> transaction.  Of course, the problem is that we need to either (a)
-> figure out in advance exactly how many bitmap blocks we need to dirty
-> (which means we have to read all the indirect blocks twice to figure
-> it out for ext3; this is easier for ext4) so we know whether it will
-> fit in one transaction,
+> BTW it is impossible to disable swapfile with your patch 
+> [root@ts63 tmp]# swapoff  /vz/swap 
+> swapoff: /vz/swap: Text file busy
 
-While it's true it is a two-pass algorithm, I think it can actually
-improve overall performance.  One major win is that we don't have
-to write out indirect blocks, saving about 32/33 (IIRC) of the IO
-needed for the current truncate.  The second win is that we can do
-async prefetching of all the (d)indirect blocks from the {dt}indirect
-blocks in forward order instead of the current block-at-a-time reads.
-Finally, on the second pass the blocks will normally be in RAM already
-so not nearly so slow.
+I thought some bug like this might appear.
 
-> (b) if we try to do it in a single pass, we
-> need to allow enough safety margin so that when we *do* decide we
-> can't make it fit, we still do have enough space in the journal to
-> zero out the blocks in the indirect blocks and in the inode.
+> IMHO S_SWAPFILE flag must be checked in ext3_setattr, see patch attached:
 
-We'd still have to truncate from the end in this case...
-
-> I guess the third alternative, (c), is that we don't update *any* of
-> the superblock or block group descriptors until the very end of the
-> transaction, and don't update any of the blocks.  So we just update
-> the bitmap blocks first, and then in a second pass update all of the
-> blockgroup descriptors and superblock.  This would require assuring
-> that the update of all of the block group descriptors, superblock, and
-> removing the inode from the orphan linked list, can all fit in a
-> single transaction. If not, this scheme wouldn't work at all.
-
-I'm not sure I understand this.  Wouldn't this possibly lead to those
-blocks being re-allocated after a crash?
+No, that still means every other filesystem is broken.  Since the current
+filesystem code doesn't know anything about IS_SWAPFILE I'd rather keep
+it that way.  I think it is better to move my proposed IS_SWAPFILE() check
+into "MAY_WRITE" and "MAY_EXEC" cases.
 
 Cheers, Andreas
 --
