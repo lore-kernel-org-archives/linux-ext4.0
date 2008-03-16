@@ -1,61 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] jbd2: Add commit time into the commit block
-Date: Sat, 15 Mar 2008 20:59:04 -0400
-Message-ID: <1205629144-25994-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH, RFC] jbd2: Add commit time into the commit block
+Date: Sun, 16 Mar 2008 09:23:31 +0800
+Message-ID: <20080316012331.GY3542@webber.adilger.int>
+References: <1205629144-25994-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33229 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752334AbYCPA7H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2008 20:59:07 -0400
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:37059 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751968AbYCPBYF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2008 21:24:05 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2G1O3JY010650
+	for <linux-ext4@vger.kernel.org>; Sat, 15 Mar 2008 18:24:03 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JXS00F01UH4ST00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 15 Mar 2008 18:24:03 -0700 (PDT)
+In-reply-to: <1205629144-25994-1-git-send-email-tytso@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Carlo Wood has demonstrated that it's possible to recover deleted
-files from the journal.  Something that will make this easier is if we
-can put the time of the commit into commit block.
+On Mar 15, 2008  20:59 -0400, Theodore Ts'o wrote:
+> Carlo Wood has demonstrated that it's possible to recover deleted
+> files from the journal.  Something that will make this easier is if we
+> can put the time of the commit into commit block.
+> 
+> @@ -170,6 +170,8 @@ struct commit_header {
+>  	unsigned char   h_chksum_size;
+>  	unsigned char 	h_padding[2];
+>  	__be32 		h_chksum[JBD2_CHECKSUM_BYTES];
+> +	__be32		h_commit_sec;
+> +	__be32		h_commit_nsec;
+>  };
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/jbd2/commit.c     |    3 +++
- include/linux/jbd2.h |    2 ++
- 2 files changed, 5 insertions(+), 0 deletions(-)
+We should probably use a 64-bit seconds field, after we just told
+someone on #ext4 that it would work until at least 2242 :-).
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index e013978..7c5fbd5 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -112,6 +112,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 	struct buffer_head *bh;
- 	int ret;
- 	int barrier_done = 0;
-+	struct timespec now = current_kernel_time();
- 
- 	if (is_journal_aborted(journal))
- 		return 0;
-@@ -126,6 +127,8 @@ static int journal_submit_commit_record(journal_t *journal,
- 	tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
- 	tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
- 	tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
-+	tmp->h_commit_sec = cpu_to_be32(now->tv_sec);
-+	tmp->h_commit_nsec = cpu_to_be32(now->tv_nsec);
- 
- 	if (JBD2_HAS_COMPAT_FEATURE(journal,
- 				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 2cbf6fd..7cbeb2b 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -170,6 +170,8 @@ struct commit_header {
- 	unsigned char   h_chksum_size;
- 	unsigned char 	h_padding[2];
- 	__be32 		h_chksum[JBD2_CHECKSUM_BYTES];
-+	__be32		h_commit_sec;
-+	__be32		h_commit_nsec;
- };
- 
- /*
--- 
-1.5.4.1.144.gdfee-dirty
+struct commit_header {
+	unsigned char   h_chksum_size;
+	unsigned char 	h_padding[2];
+	__be32 		h_chksum[JBD2_CHECKSUM_BYTES];
+	__be64		h_commit_sec;
+	__be32		h_commit_nsec;
+};
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
