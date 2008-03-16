@@ -1,63 +1,61 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][10/28] e2fsprogs-uninit.patch
-Date: Sun, 16 Mar 2008 08:34:53 +0800
-Message-ID: <20080316003453.GX3542@webber.adilger.int>
-References: <20080202075943.GB23836@webber.adilger.int>
- <20080202083444.GK31694@webber.adilger.int> <20080315194120.GI27847@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH, RFC] jbd2: Add commit time into the commit block
+Date: Sat, 15 Mar 2008 20:59:04 -0400
+Message-ID: <1205629144-25994-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38227 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751937AbYCPAfZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2008 20:35:25 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2G0ZP7X011634
-	for <linux-ext4@vger.kernel.org>; Sat, 15 Mar 2008 17:35:25 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JXS00G01S2JJU00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 15 Mar 2008 17:35:25 -0700 (PDT)
-In-reply-to: <20080315194120.GI27847@mit.edu>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33229 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752334AbYCPA7H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2008 20:59:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 15, 2008  15:41 -0400, Theodore Ts'o wrote:
-> What is the intended use of the SF_DO_CSUM flag?  I see where it is
-> defined, and where it gets sets, but as far as I can tell nothing
-> actually tests for it or uses it.
+Carlo Wood has demonstrated that it's possible to recover deleted
+files from the journal.  Something that will make this easier is if we
+can put the time of the commit into commit block.
 
-Probably a hold-over from a previous version of the code.  It sets the
-SF_DO_LAZY flag if GDT_CSUM is set, causing ext2fs_get_next_inode_full()
-to skip the BG_INODE_UNINT groups.  It's up to you if it would be better
-to keep SF_DO_CSUM and check for it explicitly (possibly using it for
-something else later), or to overload SF_DO_LAZY as we do currently.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/commit.c     |    3 +++
+ include/linux/jbd2.h |    2 ++
+ 2 files changed, 5 insertions(+), 0 deletions(-)
 
-> On Sat, Feb 02, 2008 at 01:34:44AM -0700, Andreas Dilger wrote:
-> > Index: e2fsprogs-1.40.5/lib/ext2fs/ext2fs.h
-> >
-> > +#define EXT2_SF_DO_CSUM		0x0020
-> >
-> 
-> > Index: e2fsprogs-1.40.5/lib/ext2fs/inode.c
-> > ===================================================================
-> > --- e2fsprogs-1.40.5.orig/lib/ext2fs/inode.c
-> > +++ e2fsprogs-1.40.5/lib/ext2fs/inode.c
-> > @@ -167,6 +167,9 @@ errcode_t ext2fs_open_inode_scan(ext2_fi
-> >  	if (EXT2_HAS_COMPAT_FEATURE(fs->super, 
-> >  				    EXT2_FEATURE_COMPAT_LAZY_BG))
-> >  		scan->scan_flags |= EXT2_SF_DO_LAZY;
-> > +	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> > +				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-> > +		scan->scan_flags |= EXT2_SF_DO_LAZY | EXT2_SF_DO_CSUM;
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index e013978..7c5fbd5 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -112,6 +112,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	struct buffer_head *bh;
+ 	int ret;
+ 	int barrier_done = 0;
++	struct timespec now = current_kernel_time();
+ 
+ 	if (is_journal_aborted(journal))
+ 		return 0;
+@@ -126,6 +127,8 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 	tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
+ 	tmp->h_sequence = cpu_to_be32(commit_transaction->t_tid);
++	tmp->h_commit_sec = cpu_to_be32(now->tv_sec);
++	tmp->h_commit_nsec = cpu_to_be32(now->tv_nsec);
+ 
+ 	if (JBD2_HAS_COMPAT_FEATURE(journal,
+ 				    JBD2_FEATURE_COMPAT_CHECKSUM)) {
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 2cbf6fd..7cbeb2b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -170,6 +170,8 @@ struct commit_header {
+ 	unsigned char   h_chksum_size;
+ 	unsigned char 	h_padding[2];
+ 	__be32 		h_chksum[JBD2_CHECKSUM_BYTES];
++	__be32		h_commit_sec;
++	__be32		h_commit_nsec;
+ };
+ 
+ /*
+-- 
+1.5.4.1.144.gdfee-dirty
 
