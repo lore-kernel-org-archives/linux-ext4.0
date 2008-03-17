@@ -1,50 +1,75 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, REWORKED 01/11] Add initial checksum support for the
-	gdt_checksum/uninit_group feature
-Date: Mon, 17 Mar 2008 14:05:05 -0400
-Message-ID: <20080317180505.GG8368@mit.edu>
-References: <1205760527-14858-1-git-send-email-tytso@mit.edu> <1205760527-14858-2-git-send-email-tytso@mit.edu> <20080317172254.GF3542@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
+Date: Mon, 17 Mar 2008 16:29:18 -0500
+Message-ID: <47DEE2AE.1050105@redhat.com>
+References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>,
-	Andreas Dilger <adilger@clusterfs.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43871 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752577AbYCQSF3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2008 14:05:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20080317172254.GF3542@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:49845 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756601AbYCQV3V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2008 17:29:21 -0400
+In-Reply-To: <20080220222019.GG30305@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 18, 2008 at 01:22:54AM +0800, Andreas Dilger wrote:
-> On Mar 17, 2008  09:28 -0400, Theodore Ts'o wrote:
-> > +STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
-  ....
-> > +	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
-> > +		int offset = offsetof(struct ext2_group_desc, bg_checksum);
-> > +
-  ...
-> > +		offset += sizeof(desc->bg_checksum); /* skip checksum */
-> > +		assert(offset == sizeof(*desc));
+Theodore Tso wrote:
+
+> There are only three things which mke2fs will do, in my design:
 > 
-> Note that this assertion needs to be removed when the group descriptor
-> becomes larger, unless ext2_group_desc never changes in the future..
+> #1) If the first type is not one of "ext2", "ext3", "ext4", or
+> "ext4dev", mke2fs will determine a suitable default based on either
+> argv[0] if it is of the form mke2fs.*, or via defaults.fs_type in
+> /etc/mke2fs.conf.  If neither of these is available it will default to "ext2".
+> 
+> #2) If the second type is not one of "small", "floppy" or "default",
+> mke2fs will create a default type by checking the size of the
+> to-be-created filesystem.  If it is less than 3mb, it is "floppy", if
+> it is less than 512mb, it is "small", otherwise it is default.
+> 
+> #3) Once it has the list of types, i.e., "ext3,defaults,squid", or
+> "ext2,floppy,rescue", "ext4,defaults,largefile", etc. it uses this as
+> a search path when mke2fs needs to look up some parameter, such as
+> "base_features", or "inode_size", etc.  
 
-Yeah, I looked at this, and was half tempted to remove it.
+I started to look into updating the man page for this but it led to
+several questions, and a suggestion....
 
-Indeed ext2_group_desc will never change in the future.  Too many
-things would break if we change it.  That's why there is an
-ext4_group_desc which looks exactly like ext2_group_desc for the first
-32 bytes, and adds the high 32-bits for the various fields in the
-second 32-bytes.
+Is this intended to take exactly 1, 2, or 3 arguments?  If so is it
+always "type," "size," "usepattern?"  (ext4,small,news for example)
 
-But if ext2_group_desc is never going to change, then there's no real
-good reason to use a run-time check here.  Better to turn it into a
-compile time check, using #error.  The tricky part is doing it in a
-way which is ANSI-C compliant (or maybe we just wrap it in a #ifdef
-GCC and only do the sanity check if you are compiling with GCC).
+Can I specify ext4,defaults,news as well as ext4,news,defaults or does
+order matter - it seems that it does.
 
-    	     	    	   	    - Ted
+Should it bail out if a stanza is not found (-T foo,bar,baz?)  Today it
+does not.
+
+>From looking at & playing with the code it seems like it is supposed to
+be explicitly type, size, usepattern, although sometimes it doesn't get
+it right, for example this:
+
+misc/mke2fs -T ext5,floppy,news  fsfile
+
+leads to:
+
+fs_types: 'ext2', 'small', 'ext5', 'floppy', 'news'
+
+hmm...
+
+Also if these 3 positions have special meanings and orders, it's odd to
+not have that reflected in the config file stanzas somehow...
+
+It seems to me that perhaps instead of specifying that each
+comma-delimited position has a specific meaning, perhaps it should just
+be: "comma separated list which indicates profiles from least to most
+specific, with values & features from more specific (later) profiles
+trumping less specific (earlier) profiles" - would this be more clear &
+flexible...?
+
+Oh, and encountering an unknown type should probably toss an error...
+
+-Eric
