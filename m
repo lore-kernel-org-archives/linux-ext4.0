@@ -1,745 +1,575 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, REWORKED 09/11] Make e2fsck uninit block group aware
-Date: Mon, 17 Mar 2008 09:28:45 -0400
-Message-ID: <1205760527-14858-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH, REWORKED 01/11] Add initial checksum support for the gdt_checksum/uninit_group feature
+Date: Mon, 17 Mar 2008 09:28:37 -0400
+Message-ID: <1205760527-14858-2-git-send-email-tytso@mit.edu>
 References: <1205760527-14858-1-git-send-email-tytso@mit.edu>
- <1205760527-14858-2-git-send-email-tytso@mit.edu>
- <1205760527-14858-3-git-send-email-tytso@mit.edu>
- <1205760527-14858-4-git-send-email-tytso@mit.edu>
- <1205760527-14858-5-git-send-email-tytso@mit.edu>
- <1205760527-14858-6-git-send-email-tytso@mit.edu>
- <1205760527-14858-7-git-send-email-tytso@mit.edu>
- <1205760527-14858-8-git-send-email-tytso@mit.edu>
- <1205760527-14858-9-git-send-email-tytso@mit.edu>
 Cc: "Jose R. Santos" <jrs@us.ibm.com>,
 	Andreas Dilger <adilger@clusterfs.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:60388 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:60376 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753335AbYCQN3F (ORCPT
+	with ESMTP id S1752765AbYCQN3F (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2008 09:29:05 -0400
-In-Reply-To: <1205760527-14858-9-git-send-email-tytso@mit.edu>
+In-Reply-To: <1205760527-14858-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-This patch has all the necesary pieces to open and fix filesystems created
-with the uninit block group feature.
+- Add support for computing CRC-16 value.
+- Add call to check/verify/set csum on block_groups.
+- Add a test program to verify csum operations.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 Signed-off-by: Andreas Dilger <adilger@clusterfs.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/e2fsck.h            |    2 +
- e2fsck/journal.c           |    1 +
- e2fsck/pass2.c             |   77 ++++++++++++++++++++++++++++++++++++++-----
- e2fsck/pass5.c             |   61 +++++++++++++++++++++++++----------
- e2fsck/problem.c           |   42 +++++++++++++++++++++++-
- e2fsck/problem.h           |   26 ++++++++++++++-
- e2fsck/super.c             |   38 +++++++++++++++++++++
- e2fsck/unix.c              |   11 +++++-
- e2fsck/util.c              |   61 ++++++++++++++++++++++++++++++++++
- tests/f_dupfsblks/expect.1 |    3 +-
- tests/m_raid_opt/expect.1  |   33 ++++++++++++------
- 11 files changed, 313 insertions(+), 42 deletions(-)
+ lib/ext2fs/Makefile.in |   21 ++++++-
+ lib/ext2fs/crc16.c     |   61 ++++++++++++++++++
+ lib/ext2fs/crc16.h     |   45 +++++++++++++
+ lib/ext2fs/csum.c      |  162 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_fs.h   |    1 +
+ lib/ext2fs/ext2fs.h    |    5 ++
+ lib/ext2fs/tst_csum.c  |  130 ++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 423 insertions(+), 2 deletions(-)
+ create mode 100644 lib/ext2fs/crc16.c
+ create mode 100644 lib/ext2fs/crc16.h
+ create mode 100644 lib/ext2fs/csum.c
+ create mode 100644 lib/ext2fs/tst_csum.c
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 21208e0..bd173af 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -471,6 +471,8 @@ extern void e2fsck_read_bitmaps(e2fsck_t ctx);
- extern void e2fsck_write_bitmaps(e2fsck_t ctx);
- extern void preenhalt(e2fsck_t ctx);
- extern char *string_copy(e2fsck_t ctx, const char *str, int len);
-+extern errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
-+				    blk_t *ret_blk, int *ret_count);
- #ifdef RESOURCE_TRACK
- extern void print_resource_track(const char *desc,
- 				 struct resource_track *track,
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index f5f4647..ec0af4b 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -988,6 +988,7 @@ void e2fsck_move_ext3_journal(e2fsck_t ctx)
- 	ext2fs_unmark_inode_bitmap(fs->inode_map, ino);
- 	ext2fs_mark_ib_dirty(fs);
- 	fs->group_desc[group].bg_free_inodes_count++;
-+	ext2fs_group_desc_csum_set(fs, group);
- 	fs->super->s_free_inodes_count++;
- 	return;
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 53b738d..f0f02dc 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -30,6 +30,8 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	bmap.o \
+ 	check_desc.o \
+ 	closefs.o \
++	crc16.o \
++	csum.o \
+ 	dblist.o \
+ 	dblist_dir.o \
+ 	dirblock.o \
+@@ -85,6 +87,8 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/bmap.c \
+ 	$(srcdir)/check_desc.c \
+ 	$(srcdir)/closefs.c \
++	$(srcdir)/crc16.c \
++	$(srcdir)/csum.c \
+ 	$(srcdir)/dblist.c \
+ 	$(srcdir)/dblist_dir.c \
+ 	$(srcdir)/dirblock.c \
+@@ -130,6 +134,7 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/tst_badblocks.c \
+ 	$(srcdir)/tst_bitops.c \
+ 	$(srcdir)/tst_byteswap.c \
++	$(srcdir)/tst_csum.c \
+ 	$(srcdir)/tst_getsize.c \
+ 	$(srcdir)/tst_iscan.c \
+ 	$(srcdir)/unix_io.c \
+@@ -305,17 +310,23 @@ tst_extents: $(srcdir)/extent.c extent_dbg.c $(DEBUG_OBJS) $(LIBSS) $(LIBE2P) $(
+ 		$(LIBUUID) $(STATIC_LIBEXT2FS) $(LIBBLKID) $(LIBCOM_ERR) \
+ 		-I $(top_srcdir)/debugfs
  
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 56f352b..906662d 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -151,7 +151,7 @@ void e2fsck_pass2(e2fsck_t ctx)
- 	
- 	cd.pctx.errcode = ext2fs_dblist_iterate(fs->dblist, check_dir_block,
- 						&cd);
--	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-+	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
- 		return;
- 	if (cd.pctx.errcode) {
- 		fix_problem(ctx, PR_2_DBLIST_ITERATE, &cd.pctx);
-@@ -727,7 +727,7 @@ static int check_dir_block(ext2_filsys fs,
- 	buf = cd->buf;
- 	ctx = cd->ctx;
++tst_csum: tst_csum.c csum.c $(STATIC_LIBEXT2FS)
++	@echo "	LD $@"
++	@$(CC) -o tst_csum $(srcdir)/csum.c $(srcdir)/tst_csum.c -DDEBUG \
++		$(ALL_CFLAGS) $(STATIC_LIBEXT2FS) $(LIBCOM_ERR)
++
+ mkjournal: mkjournal.c $(STATIC_LIBEXT2FS)
+ 	@echo "	LD $@"
+ 	@$(CC) -o mkjournal $(srcdir)/mkjournal.c -DDEBUG $(STATIC_LIBEXT2FS) $(LIBCOM_ERR) $(ALL_CFLAGS)
  
--	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-+	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
- 		return DIRENT_ABORT;
- 	
- 	if (ctx->progress && (ctx->progress)(ctx, 2, cd->count++, cd->max))
-@@ -831,6 +831,9 @@ out_htree:
- 	dict_init(&de_dict, DICTCOUNT_T_MAX, dict_de_cmp);
- 	prev = 0;
- 	do {
-+		int group;
-+		ext2_ino_t first_unused_inode;
-+
- 		problem = 0;
- 		dirent = (struct ext2_dir_entry *) (buf + offset);
- 		cd->pctx.dirent = dirent;
-@@ -880,12 +883,6 @@ out_htree:
- 		     (dirent->inode < EXT2_FIRST_INODE(fs->super))) ||
- 		    (dirent->inode > fs->super->s_inodes_count)) {
- 			problem = PR_2_BAD_INO;
--		} else if (!(ext2fs_test_inode_bitmap(ctx->inode_used_map,
--					       dirent->inode))) {
--			/*
--			 * If the inode is unused, offer to clear it.
--			 */
--			problem = PR_2_UNUSED_INODE;
- 		} else if (ctx->inode_bb_map &&
- 			   (ext2fs_test_inode_bitmap(ctx->inode_bb_map,
- 						     dirent->inode))) {
-@@ -962,6 +959,67 @@ out_htree:
- 				return DIRENT_ABORT;
- 		}
+-check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount tst_super_size
++check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount tst_super_size tst_types tst_csum
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_bitops
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_badblocks
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_iscan
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_types
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_icount
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_super_size
++	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_csum
  
-+		group = ext2fs_group_of_ino(fs, dirent->inode);
-+		first_unused_inode = group * fs->super->s_inodes_per_group +
-+					1 + fs->super->s_inodes_per_group -
-+					fs->group_desc[group].bg_itable_unused;
-+		cd->pctx.group = group;
-+
-+		/*
-+		 * Check if the inode was missed out because _INODE_UNINIT
-+		 * flag was set or bg_itable_unused was incorrect.
-+		 * If that is the case restart e2fsck.
-+		 * XXX Optimisations TODO:
-+		 * 1. only restart e2fsck once
-+		 * 2. only exposed inodes are checked again.
-+		 */
-+		if (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT) {
-+			if (fix_problem(ctx, PR_2_INOREF_BG_INO_UNINIT,
-+					&cd->pctx)){
-+				fs->group_desc[group].bg_flags &=
-+					~EXT2_BG_INODE_UNINIT;
-+				ctx->flags |= E2F_FLAG_RESTART |
-+					E2F_FLAG_SIGNAL_MASK;
-+			} else {
-+				ext2fs_unmark_valid(fs);
-+				if (problem == PR_2_BAD_INO)
-+					goto next;
-+			}
-+		} else if (dirent->inode >= first_unused_inode) {
-+			if (fix_problem(ctx, PR_2_INOREF_IN_UNUSED, &cd->pctx)){
-+				fs->group_desc[group].bg_itable_unused = 0;
-+				fs->group_desc[group].bg_flags &=
-+					~EXT2_BG_INODE_UNINIT;
-+				ext2fs_mark_super_dirty(fs);
-+				ctx->flags |= E2F_FLAG_RESTART;
-+				goto restart_fsck;
-+			} else {
-+				ext2fs_unmark_valid(fs);
-+				if (problem == PR_2_BAD_INO)
-+					goto next;
-+			}
-+		}
-+
-+		if (!(ext2fs_test_inode_bitmap(ctx->inode_used_map,
-+					       dirent->inode))) {
-+			/*
-+			 * If the inode is unused, offer to clear it.
-+			 */
-+			problem = PR_2_UNUSED_INODE;
-+		}
-+
-+		if (problem) {
-+			if (fix_problem(ctx, problem, &cd->pctx)) {
-+				dirent->inode = 0;
-+				dir_modified++;
-+				goto next;
-+			} else {
-+				ext2fs_unmark_valid(fs);
-+				if (problem == PR_2_BAD_INO)
-+					goto next;
-+			}
-+		}
-+
- 		if (check_name(ctx, dirent, ino, &cd->pctx))
- 			dir_modified++;
+ installdirs::
+ 	@echo "	MKINSTALLDIRS $(libdir) $(includedir)/ext2fs"
+@@ -347,7 +358,7 @@ clean::
+ 	$(RM) -f \#* *.s *.o *.a *~ *.bak core profiled/* checker/* \
+ 		tst_badblocks tst_iscan ext2_err.et ext2_err.c ext2_err.h \
+ 		tst_byteswap tst_ismounted tst_getsize tst_sectgetsize \
+-		tst_bitops tst_types tst_icount tst_super_size \
++		tst_bitops tst_types tst_icount tst_super_size tst_csum \
+ 		ext2_tdbtool mkjournal debug_cmds.c \
+ 		../libext2fs.a ../libext2fs_p.a ../libext2fs_chk.a
  
-@@ -1071,8 +1129,9 @@ out_htree:
- 	dict_free_nodes(&de_dict);
- 	return 0;
- abort_free_dict:
--	dict_free_nodes(&de_dict);
- 	ctx->flags |= E2F_FLAG_ABORT;
-+restart_fsck:
-+	dict_free_nodes(&de_dict);
- 	return DIRENT_ABORT;
- }
- 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 8e3794d..b70e8d1 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -121,7 +121,7 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 	struct problem_context	pctx;
- 	int	problem, save_problem, fixit, had_problem;
- 	errcode_t	retval;
--	int		lazy_bg = 0;
-+	int		lazy_flag, csum_flag;
- 	int		skip_group = 0;
- 
- 	clear_problem_context(&pctx);
-@@ -158,15 +158,16 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 		goto errout;
- 	}
- 
--	if (EXT2_HAS_COMPAT_FEATURE(fs->super, EXT2_FEATURE_COMPAT_LAZY_BG))
--		lazy_bg++;
--
-+	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
-+					    EXT2_FEATURE_COMPAT_LAZY_BG);
-+	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
- redo_counts:
- 	had_problem = 0;
- 	save_problem = 0;
- 	pctx.blk = pctx.blk2 = NO_BLK;
--	if (lazy_bg && (fs->group_desc[group].bg_flags &
--			EXT2_BG_BLOCK_UNINIT))
-+	if ((lazy_flag || csum_flag) &&
-+	    (fs->group_desc[group].bg_flags & EXT2_BG_BLOCK_UNINIT))
- 		skip_group++;
- 	super = fs->super->s_first_data_block;
- 	for (i = fs->super->s_first_data_block;
-@@ -206,6 +207,17 @@ redo_counts:
- 			 * Block used, but not marked in use in the bitmap.
- 			 */
- 			problem = PR_5_BLOCK_USED;
+@@ -423,6 +434,10 @@ closefs.o: $(srcdir)/closefs.c $(srcdir)/ext2_fs.h \
+  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
+  $(top_srcdir)/lib/et/com_err.h $(srcdir)/ext2_io.h \
+  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++crc16.o: $(srcdir)/crc16.c $(srcdir)/ext2_fs.h $(srcdir)/crc16.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
++csum.o: $(srcdir)/csum.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h
+ dblist.o: $(srcdir)/dblist.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fsP.h \
+  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
+@@ -637,3 +652,5 @@ tst_iscan.o: $(srcdir)/tst_iscan.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++tst_csum.o: $(srcdir)/tst_csum.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h
+diff --git a/lib/ext2fs/crc16.c b/lib/ext2fs/crc16.c
+new file mode 100644
+index 0000000..1b2b8a1
+--- /dev/null
++++ b/lib/ext2fs/crc16.c
+@@ -0,0 +1,61 @@
++/*
++ *      crc16.c
++ *
++ * This source code is licensed under the GNU General Public License,
++ * Version 2. See the file COPYING for more details.
++ */
 +
-+			if (skip_group) {
-+				struct problem_context pctx2;
-+				pctx2.blk = i;
-+				pctx2.group = group;
-+				if (fix_problem(ctx, PR_5_BLOCK_UNINIT,&pctx2)){
-+					fs->group_desc[group].bg_flags &=
-+						~EXT2_BG_BLOCK_UNINIT;
-+					skip_group = 0;
-+				}
-+			}
- 		}
- 		if (pctx.blk == NO_BLK) {
- 			pctx.blk = pctx.blk2 = i;
-@@ -224,7 +236,7 @@ redo_counts:
- 		had_problem++;
- 
- 	do_counts:
--		if (!bitmap && !skip_group) {
-+		if (!bitmap && (!skip_group || csum_flag)) {
- 			group_free++;
- 			free_blocks++;
- 		}
-@@ -241,7 +253,7 @@ redo_counts:
- 				if ((ctx->progress)(ctx, 5, group,
- 						    fs->group_desc_count*2))
- 					goto errout;
--			if (lazy_bg &&
-+			if ((lazy_flag || csum_flag) &&
- 			    (i != fs->super->s_blocks_count-1) &&
- 			    (fs->group_desc[group].bg_flags &
- 			     EXT2_BG_BLOCK_UNINIT))
-@@ -321,7 +333,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 	errcode_t	retval;
- 	struct problem_context	pctx;
- 	int		problem, save_problem, fixit, had_problem;
--	int		lazy_bg = 0;
-+	int		lazy_flag, csum_flag;
- 	int		skip_group = 0;
- 
- 	clear_problem_context(&pctx);
-@@ -358,16 +370,16 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 		goto errout;
- 	}
- 
--	if (EXT2_HAS_COMPAT_FEATURE(fs->super,
--				    EXT2_FEATURE_COMPAT_LAZY_BG))
--		lazy_bg++;
--
-+	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
-+					    EXT2_FEATURE_COMPAT_LAZY_BG);
-+	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
- redo_counts:
- 	had_problem = 0;
- 	save_problem = 0;
- 	pctx.ino = pctx.ino2 = 0;
--	if (lazy_bg && (fs->group_desc[group].bg_flags &
--			EXT2_BG_INODE_UNINIT))
-+	if ((lazy_flag || csum_flag) &&
-+	    (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT))
- 		skip_group++;
- 
- 	/* Protect loop from wrap-around if inodes_count is maxed */
-@@ -390,6 +402,21 @@ redo_counts:
- 			 * Inode used, but not in bitmap
- 			 */
- 			problem = PR_5_INODE_USED;
++#include "crc16.h"
 +
-+			/* We should never hit this, because it means that
-+			 * inodes were marked in use that weren't noticed
-+			 * in pass1 or pass 2. It is easier to fix the problem
-+			 * than to kill e2fsck and leave the user stuck. */
-+			if (skip_group) {
-+				struct problem_context pctx2;
-+				pctx2.blk = i;
-+				pctx2.group = group;
-+				if (fix_problem(ctx, PR_5_INODE_UNINIT,&pctx2)){
-+					fs->group_desc[group].bg_flags &=
-+						~EXT2_BG_INODE_UNINIT;
-+					skip_group = 0;
-+				}
-+			}
- 		}
- 		if (pctx.ino == 0) {
- 			pctx.ino = pctx.ino2 = i;
-@@ -411,7 +438,7 @@ do_counts:
- 		if (bitmap) {
- 			if (ext2fs_test_inode_bitmap(ctx->inode_dir_map, i))
- 				dirs_count++;
--		} else if (!skip_group) {
-+		} else if (!skip_group || csum_flag) {
- 			group_free++;
- 			free_inodes++;
- 		}
-@@ -430,7 +457,7 @@ do_counts:
- 					    group + fs->group_desc_count,
- 					    fs->group_desc_count*2))
- 					goto errout;
--			if (lazy_bg &&
-+			if ((lazy_flag || csum_flag) &&
- 			    (i != fs->super->s_inodes_count) &&
- 			    (fs->group_desc[group].bg_flags &
- 			     EXT2_BG_INODE_UNINIT))
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index d3e2fd7..b6a3a81 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -351,8 +351,28 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("Adding dirhash hint to @f.\n\n"),
- 	  PROMPT_NONE, 0 },
- 
-+	/* group descriptor N checksum is invalid. */
-+	{ PR_0_GDT_CSUM,
-+	  N_("@g descriptor %g checksum is invalid.  "),
-+	     PROMPT_FIX, PR_PREEN_OK },
++/** CRC table for the CRC-16. The poly is 0x8005 (x16 + x15 + x2 + 1) */
++__u16 const crc16_table[256] = {
++	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
++	0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
++	0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
++	0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
++	0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
++	0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
++	0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
++	0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
++	0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
++	0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
++	0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
++	0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
++	0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
++	0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
++	0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
++	0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
++	0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
++	0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
++	0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
++	0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
++	0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
++	0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
++	0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
++	0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
++	0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
++	0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
++	0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
++	0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
++	0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
++	0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
++	0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
++	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
++};
 +
-+	/* group descriptor N marked uninitialized without feature set. */
-+	{ PR_0_GDT_UNINIT,
-+	  N_("@g descriptor %g marked uninitialized without feature set.\n"),
-+	     PROMPT_FIX, PR_PREEN_OK },
++/**
++ * Compute the CRC-16 for the data buffer
++ *
++ * @param crc     previous CRC value
++ * @param buffer  data pointer
++ * @param len     number of bytes in the buffer
++ * @return        the updated CRC value
++ */
++crc16_t crc16(crc16_t crc, const void *buffer, unsigned int len)
++{
++	const unsigned char *cp = buffer;
 +
-+	/* group N block bitmap uninitialized but inode bitmap in use. */
-+	{ PR_0_BB_UNINIT_IB_INIT,
-+	  N_("@g %g @b @B uninitialized but @i @B in use.\n"),
-+	     PROMPT_FIX, PR_PREEN_OK },
++	while (len--)
++		crc = crc16_byte(crc, *cp++);
++	return crc;
++}
+diff --git a/lib/ext2fs/crc16.h b/lib/ext2fs/crc16.h
+new file mode 100644
+index 0000000..ab3f094
+--- /dev/null
++++ b/lib/ext2fs/crc16.h
+@@ -0,0 +1,45 @@
++/*
++ *	crc16.h - CRC-16 routine
++ *
++ * Implements the standard CRC-16:
++ *   Width 16
++ *   Poly  0x8005 (x16 + x15 + x2 + 1)
++ *   Init  0
++ *
++ * Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>
++ *
++ * This source code is licensed under the GNU General Public License,
++ * Version 2. See the file COPYING for more details.
++ */
 +
-+	/* Group descriptor N has invalid unused inodes count. */
-+	{ PR_0_GDT_ITABLE_UNUSED,
-+	  N_("@g descriptor %g has invalid unused inodes count %b.  "),
-+	     PROMPT_FIX, PR_PREEN_OK },
++#ifndef __CRC16_H
++#define __CRC16_H
 +
- 	/* Pass 1 errors */
--	
++#include <ext2fs/ext2_types.h>
 +
- 	/* Pass 1: Checking inodes, blocks, and sizes */
- 	{ PR_1_PASS_HEADER,
- 	  N_("Pass 1: Checking @is, @bs, and sizes\n"),
-@@ -1232,6 +1252,16 @@ static struct e2fsck_problem problem_table[] = {
- 	{ PR_2_UNEXPECTED_HTREE_BLOCK,
- 	  N_("Unexpected @b in @h %d (%q).\n"), PROMPT_CLEAR_HTREE, 0 },
- 		  
-+	/* Inode found in group where _INODE_UNINIT is set */
-+	{ PR_2_INOREF_BG_INO_UNINIT,
-+	  N_("@i %i found in @g %g where _INODE_UNINIT is set.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
++extern __u16 const crc16_table[256];
 +
-+	/* Inode found in group unused inodes area */
-+	{ PR_2_INOREF_IN_UNUSED,
-+	  N_("@i %i found in @g %g unused inodes area.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
++#ifdef WORDS_BIGENDIAN
++/* for an unknown reason, PPC treats __u16 as signed and keeps doing sign
++ * extension on the value.  Instead, use only the low 16 bits of an
++ * unsigned int for holding the CRC value to avoid this.
++ */
++typedef unsigned crc16_t;
 +
- 	/* Pass 3 errors */
- 
- 	/* Pass 3: Checking directory connectivity */
-@@ -1543,6 +1573,16 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("Recreate journal to make the filesystem ext3 again?\n"),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
- 
-+	/* Group N block(s) in use but group is marked BLOCK_UNINIT */
-+	{ PR_5_BLOCK_UNINIT,
-+	  N_("@g %g @b(s) in use but @g is marked BLOCK_UNINIT\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
++static inline crc16_t crc16_byte(crc16_t crc, const unsigned char data)
++{
++	return (((crc >> 8) & 0xffU) ^ crc16_table[(crc ^ data) & 0xffU]) &
++		0x0000ffffU;
++}
++#else
++typedef __u16 crc16_t;
 +
-+	/* Group N inode(s) in use but group is marked INODE_UNINIT */
-+	{ PR_5_INODE_UNINIT,
-+	  N_("@g %g @i(s) in use but @g is marked INODE_UNINIT\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
- 	{ 0 }
- };
- 
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 48a4a2b..a2bd2b5 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -196,6 +196,18 @@ struct problem_context {
- /* Superblock hint for external journal incorrect */
- #define PR_0_DIRHASH_HINT			0x000034
- 
-+/* Group descriptor N checksum is invalid */
-+#define PR_0_GDT_CSUM				0x000035
-+
-+/* Group descriptor N marked uninitialized without feature set. */
-+#define PR_0_GDT_UNINIT				0x000036
-+
-+/* Block bitmap is not initialised and Inode bitmap is */
-+#define PR_0_BB_UNINIT_IB_INIT			0x000037
-+
-+/* Group descriptor N has invalid unused inodes count. */
-+#define PR_0_GDT_ITABLE_UNUSED			0x000038
-+
- /*
-  * Pass 1 errors
-  */
-@@ -735,6 +747,12 @@ struct problem_context {
- /* Unexpected HTREE block */
- #define PR_2_UNEXPECTED_HTREE_BLOCK	0x020045
- 
-+/* Inode found in group where _INODE_UNINIT is set */
-+#define PR_2_INOREF_BG_INO_UNINIT	0x020046
-+
-+/* Inode found in group unused inodes area */
-+#define PR_2_INOREF_IN_UNUSED		0x020047
-+
- /*
-  * Pass 3 errors
-  */
-@@ -923,10 +941,16 @@ struct problem_context {
- 
- /* Inode range not used, but marked in bitmap */
- #define PR_5_INODE_RANGE_UNUSED		0x050016
--	  
-+
- /* Inode rangeused, but not marked used in bitmap */
- #define PR_5_INODE_RANGE_USED		0x050017
- 
-+/* Block in use but group is marked BLOCK_UNINIT */
-+#define PR_5_BLOCK_UNINIT		0x050018
-+
-+/* Inode in use but group is marked INODE_UNINIT */
-+#define PR_5_INODE_UNINIT		0x050019
-+
- /*
-  * Post-Pass 5 errors
-  */
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index b93ec95..56c3931 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -469,6 +469,7 @@ void check_super_block(e2fsck_t ctx)
- 	struct problem_context	pctx;
- 	blk_t	free_blocks = 0;
- 	ino_t	free_inodes = 0;
-+	int     lazy_flag, csum_flag;
- 
- 	inodes_per_block = EXT2_INODES_PER_BLOCK(fs->super);
- 	ipg_max = inodes_per_block * (blocks_per_group - 4);
-@@ -578,6 +579,10 @@ void check_super_block(e2fsck_t ctx)
- 	first_block = sb->s_first_data_block;
- 	last_block = sb->s_blocks_count-1;
- 
-+	lazy_flag = EXT2_HAS_COMPAT_FEATURE(fs->super,
-+					    EXT2_FEATURE_COMPAT_LAZY_BG);
-+	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
- 	for (i = 0, gd=fs->group_desc; i < fs->group_desc_count; i++, gd++) {
- 		pctx.group = i;
- 
-@@ -626,6 +631,39 @@ void check_super_block(e2fsck_t ctx)
- 		    (gd->bg_used_dirs_count > sb->s_inodes_per_group))
- 			ext2fs_unmark_valid(fs);
- 
-+		if (!ext2fs_group_desc_csum_verify(fs, i)) {
-+			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
-+				gd->bg_flags &=	~(EXT2_BG_BLOCK_UNINIT |
-+				                  EXT2_BG_INODE_UNINIT);
-+				gd->bg_itable_unused = 0;
-+			}
-+			ext2fs_unmark_valid(fs);
-+		}
-+
-+		if (!lazy_flag && !csum_flag &&
-+		    (gd->bg_flags &(EXT2_BG_BLOCK_UNINIT|EXT2_BG_INODE_UNINIT)||
-+		     gd->bg_itable_unused != 0)){
-+			if (fix_problem(ctx, PR_0_GDT_UNINIT, &pctx)) {
-+				gd->bg_flags &= ~(EXT2_BG_BLOCK_UNINIT |
-+						  EXT2_BG_INODE_UNINIT);
-+				gd->bg_itable_unused = 0;
-+			}
-+			ext2fs_unmark_valid(fs);
-+		}
-+		if (gd->bg_flags & EXT2_BG_BLOCK_UNINIT &&
-+		    !(gd->bg_flags & EXT2_BG_INODE_UNINIT)) {
-+			if (fix_problem(ctx, PR_0_BB_UNINIT_IB_INIT, &pctx))
-+				gd->bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
-+			ext2fs_unmark_valid(fs);
-+		}
-+		if (csum_flag &&
-+		    (gd->bg_itable_unused > gd->bg_free_inodes_count ||
-+		     gd->bg_itable_unused > sb->s_inodes_per_group)) {
-+			pctx.blk = gd->bg_itable_unused;
-+			if (fix_problem(ctx, PR_0_GDT_ITABLE_UNUSED, &pctx))
-+				gd->bg_itable_unused = 0;
-+			ext2fs_unmark_valid(fs);
-+		}
- 	}
- 
- 	/*
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 3a5cf47..7b662e4 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -558,7 +558,9 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 		       "and may take an argument which\n"
- 		       "is set off by an equals ('=') sign.  "
- 			"Valid extended options are:\n"
--		       "\tea_ver=<ea_version (1 or 2)>\n\n"), stderr);
-+			"\tea_ver=<ea_version (1 or 2)>\n"
-+			"\tuninit_groups\n"
-+			"\tinit_groups\n\n"), stderr);
- 		exit(1);
- 	}
- }
-@@ -745,6 +747,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 	if ((ctx->options & E2F_OPT_NO) && !bad_blocks_file &&
- 	    !cflag && !(ctx->options & E2F_OPT_COMPRESS_DIRS))
- 		ctx->options |= E2F_OPT_READONLY;
-+
- 	ctx->io_options = strchr(argv[optind], '?');
- 	if (ctx->io_options) 
- 		*ctx->io_options++ = 0;
-@@ -843,7 +846,7 @@ sscanf_err:
- 
- static const char *my_ver_string = E2FSPROGS_VERSION;
- static const char *my_ver_date = E2FSPROGS_DATE;
--					
-+
- int main (int argc, char *argv[])
- {
- 	errcode_t	retval = 0, orig_retval = 0;
-@@ -1336,6 +1339,10 @@ no_journal:
- 		}
- 	}
- 
-+	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM &&
-+	    !(ctx->options & E2F_OPT_READONLY))
-+		ext2fs_set_gdt_csum(ctx->fs);
-+
- 	e2fsck_write_bitmaps(ctx);
- #ifdef RESOURCE_TRACK
- 	io_channel_flush(ctx->fs->io);
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index 27301f0..315a575 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -29,6 +29,10 @@
- #include <malloc.h>
- #endif
- 
-+#ifdef HAVE_ERRNO_H
-+#include <errno.h>
++static inline crc16_t crc16_byte(crc16_t crc, const unsigned char data)
++{
++	return (crc >> 8) ^ crc16_table[(crc ^ data) & 0xff];
++}
 +#endif
 +
- #include "e2fsck.h"
- 
- extern e2fsck_t e2fsck_global_ctx;   /* Try your very best not to use this! */
-@@ -546,3 +550,60 @@ int ext2_file_type(unsigned int mode)
- 	
- 	return 0;
- }
++extern crc16_t crc16(crc16_t crc, const void *buffer, unsigned int len);
 +
-+#define STRIDE_LENGTH 8
++#endif /* __CRC16_H */
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+new file mode 100644
+index 0000000..c35d924
+--- /dev/null
++++ b/lib/ext2fs/csum.c
+@@ -0,0 +1,162 @@
 +/*
-+ * Helper function which zeros out _num_ blocks starting at _blk_.  In
-+ * case of an error, the details of the error is returned via _ret_blk_
-+ * and _ret_count_ if they are non-NULL pointers.  Returns 0 on
-+ * success, and an error code on an error.
++ * csum.c --- checksumming of ext3 structures
 + *
-+ * As a special case, if the first argument is NULL, then it will
-+ * attempt to free the static zeroizing buffer.  (This is to keep
-+ * programs that check for memory leaks happy.)
++ * Copyright (C) 2006 Cluster File Systems, Inc.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
 + */
-+errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
-+			     blk_t *ret_blk, int *ret_count)
-+{
-+	int		j, count, next_update, next_update_incr;
-+	static char	*buf;
-+	errcode_t	retval;
 +
-+	/* If fs is null, clean up the static buffer and return */
-+	if (!fs) {
-+		if (buf) {
-+			free(buf);
-+			buf = 0;
++#include "ext2_fs.h"
++#include "ext2fs.h"
++#include "crc16.h"
++#include <assert.h>
++
++#ifndef offsetof
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++#ifdef DEBUG
++#define STATIC
++#else
++#define STATIC static
++#endif
++
++STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
++{
++	__u16 crc = 0;
++	struct ext2_group_desc *desc;
++
++	desc = &fs->group_desc[group];
++
++	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
++		int offset = offsetof(struct ext2_group_desc, bg_checksum);
++
++#ifdef WORDS_BIGENDIAN
++		struct ext2_group_desc swabdesc = *desc;
++
++		/* Have to swab back to little-endian to do the checksum */
++		ext2fs_swap_group_desc(&swabdesc);
++		desc = &swabdesc;
++
++		group = ext2fs_swab32(group);
++#endif
++		crc = crc16(~0, fs->super->s_uuid, sizeof(fs->super->s_uuid));
++		crc = crc16(crc, &group, sizeof(group));
++		crc = crc16(crc, desc, offset);
++		offset += sizeof(desc->bg_checksum); /* skip checksum */
++		assert(offset == sizeof(*desc));
++		/* for checksum of struct ext4_group_desc do the rest...*/
++		if (offset < fs->super->s_desc_size) {
++			crc = crc16(crc, (char *)desc + offset,
++				    fs->super->s_desc_size - offset);
 +		}
++	}
++
++	return crc;
++}
++
++int ext2fs_group_desc_csum_verify(ext2_filsys fs, dgrp_t group)
++{
++	if (fs->group_desc[group].bg_checksum != 
++	    ext2fs_group_desc_csum(fs, group))
 +		return 0;
++
++	return 1;
++}
++
++void ext2fs_group_desc_csum_set(ext2_filsys fs, dgrp_t group)
++{
++	fs->group_desc[group].bg_checksum = ext2fs_group_desc_csum(fs, group);
++}
++
++static __u32 find_last_inode_ingrp(ext2fs_inode_bitmap bitmap,
++				   __u32 inodes_per_grp, dgrp_t grp_no)
++{
++	ext2_ino_t i, start_ino, end_ino;
++
++	start_ino = grp_no * inodes_per_grp + 1;
++	end_ino = start_ino + inodes_per_grp - 1;
++
++	for (i = end_ino; i >= start_ino; i--) {
++		if (ext2fs_fast_test_inode_bitmap(bitmap, i))
++			return i - start_ino + 1;
 +	}
-+	/* Allocate the zeroizing buffer if necessary */
-+	if (!buf) {
-+		buf = malloc(fs->blocksize * STRIDE_LENGTH);
-+		if (!buf) {
-+			com_err("malloc", ENOMEM,
-+				_("while allocating zeroizing buffer"));
-+			exit(1);
++	return inodes_per_grp;
++}
++
++/* update the bitmap flags, set the itable high watermark, and calculate
++ * checksums for the group descriptors */
++void ext2fs_set_gdt_csum(ext2_filsys fs)
++{
++	struct ext2_super_block *sb = fs->super;
++	struct ext2_group_desc *bg = fs->group_desc;
++	int blks, csum_flag, dirty = 0;
++	dgrp_t i;
++
++	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
++				     EXT2_FEATURE_COMPAT_LAZY_BG) && !csum_flag)
++		return;
++
++	for (i = 0; i < fs->group_desc_count; i++, bg++) {
++		int old_csum = bg->bg_checksum;
++
++		/* Even if it wasn't zeroed, by the time this function is
++		 * called by e2fsck we have already scanned and corrected
++		 * the whole inode table so we may as well not overwrite it.
++		 * This is just a hint to the kernel that it could do lazy
++		 * zeroing of the inode table if mke2fs didn't do it, to help
++		 * out if we need to do a full itable scan sometime later. */
++		if (!(bg->bg_flags & (EXT2_BG_INODE_UNINIT |
++				      EXT2_BG_INODE_ZEROED))) {
++			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
++			dirty = 1;
 +		}
-+		memset(buf, 0, fs->blocksize * STRIDE_LENGTH);
-+	}
-+	/* OK, do the write loop */
-+	next_update = 0;
-+	next_update_incr = num / 100;
-+	if (next_update_incr < 1)
-+		next_update_incr = 1;
-+	for (j = 0; j < num; j += STRIDE_LENGTH, blk += STRIDE_LENGTH) {
-+		count = num - j;
-+		if (count > STRIDE_LENGTH)
-+			count = STRIDE_LENGTH;
-+		retval = io_channel_write_blk(fs->io, blk, count, buf);
-+		if (retval) {
-+			if (ret_count)
-+				*ret_count = count;
-+			if (ret_blk)
-+				*ret_blk = blk;
-+			return retval;
++
++		if (bg->bg_free_inodes_count == sb->s_inodes_per_group &&
++		    i > 0 && (i < fs->group_desc_count - 1 || csum_flag)) {
++			if (!(bg->bg_flags & EXT2_BG_INODE_UNINIT)) {
++				bg->bg_flags |= EXT2_BG_INODE_UNINIT;
++				dirty = 1;
++			}
++			if (csum_flag) {
++				int old_unused = bg->bg_itable_unused;
++				bg->bg_itable_unused = sb->s_inodes_per_group;
++				if (old_unused != bg->bg_itable_unused)
++					dirty = 1;
++			}
++		} else if (csum_flag) {
++			int old_unused = bg->bg_itable_unused;
++			bg->bg_flags &= ~EXT2_BG_INODE_UNINIT;
++			bg->bg_itable_unused = sb->s_inodes_per_group -
++				find_last_inode_ingrp(fs->inode_map,
++						      sb->s_inodes_per_group,i);
++			if (old_unused != bg->bg_itable_unused)
++				dirty = 1;
 +		}
++
++		/* skip first and last groups, or groups with GDT backups
++		 * because the resize inode has blocks allocated in them. */
++		if (i == 0 || (i == fs->group_desc_count - 1 && !csum_flag) ||
++		    (ext2fs_bg_has_super(fs, i) && sb->s_reserved_gdt_blocks))
++			goto checksum;
++
++		blks = ext2fs_super_and_bgd_loc(fs, i, 0, 0, 0, 0);
++		if (bg->bg_free_blocks_count == blks &&
++		    bg->bg_flags & EXT2_BG_INODE_UNINIT &&
++		    !(bg->bg_flags & EXT2_BG_BLOCK_UNINIT)) {
++			bg->bg_flags |= EXT2_BG_BLOCK_UNINIT;
++			dirty = 1;
++		}
++checksum:
++		ext2fs_group_desc_csum_set(fs, i);
++		if (old_csum != bg->bg_checksum)
++			dirty = 1;
 +	}
++	if (dirty)
++		ext2fs_mark_super_dirty(fs);
++}
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 6016b68..1188557 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -173,6 +173,7 @@ struct ext4_group_desc
+ 
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
++#define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
+ 
+ /*
+  * Data structures used by the directory indexing feature
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 15f4352..fbea854 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -706,6 +706,11 @@ extern int ext2fs_super_and_bgd_loc(ext2_filsys fs,
+ 				    int *ret_meta_bg);
+ extern void ext2fs_update_dynamic_rev(ext2_filsys fs);
+ 
++/* csum.c */
++extern void ext2fs_group_desc_csum_set(ext2_filsys fs, dgrp_t group);
++extern int ext2fs_group_desc_csum_verify(ext2_filsys fs, dgrp_t group);
++extern void ext2fs_set_gdt_csum(ext2_filsys fs);
++
+ /* dblist.c */
+ 
+ extern errcode_t ext2fs_get_num_dirs(ext2_filsys fs, ext2_ino_t *ret_num_dirs);
+diff --git a/lib/ext2fs/tst_csum.c b/lib/ext2fs/tst_csum.c
+new file mode 100644
+index 0000000..e3fa9be
+--- /dev/null
++++ b/lib/ext2fs/tst_csum.c
+@@ -0,0 +1,130 @@
++/*
++ * This testing program verifies checksumming operations
++ *
++ * Copyright (C) 2006, 2007 by Andreas Dilger <adilger@clusterfs.com>
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++
++#include "ext2fs/ext2_fs.h"
++#include "ext2fs/ext2fs.h"
++
++#ifndef offsetof
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
++void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
++{
++	__u16 crc1, crc2, crc3;
++	dgrp_t swabgroup;
++	struct ext2_group_desc *desc = &fs->group_desc[group];
++	struct ext2_super_block *sb = fs->super;
++
++#ifdef WORDS_BIGENDIAN
++	struct ext2_group_desc swabdesc = fs->group_desc[group];
++
++	/* Have to swab back to little-endian to do the checksum */
++	ext2fs_swap_group_desc(&swabdesc);
++	desc = &swabdesc;
++
++	swabgroup = ext2fs_swab32(group);
++#else
++	swabgroup = group;
++#endif
++
++	crc1 = crc16(~0, sb->s_uuid, sizeof(fs->super->s_uuid));
++	crc2 = crc16(crc1, &swabgroup, sizeof(swabgroup));
++	crc3 = crc16(crc2, desc, offsetof(struct ext2_group_desc, bg_checksum));
++	printf("%s: UUID %016Lx%016Lx(%04x), grp %u(%04x): %04x=%04x\n",
++	       msg, *(long long *)&sb->s_uuid, *(long long *)&sb->s_uuid[8],
++	       crc1, group, crc2, crc3, ext2fs_group_desc_csum(fs, group));
++}
++
++unsigned char sb_uuid[16] = { 0x4f, 0x25, 0xe8, 0xcf, 0xe7, 0x97, 0x48, 0x23,
++			      0xbe, 0xfa, 0xa7, 0x88, 0x4b, 0xae, 0xec, 0xdb };
++
++main(int argc, char **argv)
++{
++	struct ext2_super_block param;
++	errcode_t		retval;
++	ext2_filsys		fs;
++	int			i;
++	__u16 csum1, csum2, csum_known = 0xd3a4;
++
++	memset(&param, 0, sizeof(param));
++	param.s_blocks_count = 32768;
++
++	retval = ext2fs_initialize("test fs", 0, &param,
++				   test_io_manager, &fs);
++	if (retval) {
++		com_err("setup", retval,
++			"While initializing filesystem");
++		exit(1);
++	}
++	memcpy(fs->super->s_uuid, sb_uuid, 16);
++	fs->super->s_feature_ro_compat = EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
++
++	for (i=0; i < fs->group_desc_count; i++) {
++		fs->group_desc[i].bg_block_bitmap = 124;
++		fs->group_desc[i].bg_inode_bitmap = 125;
++		fs->group_desc[i].bg_inode_table = 126;
++		fs->group_desc[i].bg_free_blocks_count = 31119;
++		fs->group_desc[i].bg_free_inodes_count = 15701;
++		fs->group_desc[i].bg_used_dirs_count = 2;
++		fs->group_desc[i].bg_flags = 0;
++	};
++
++	csum1 = ext2fs_group_desc_csum(fs, 0);
++	print_csum("csum0000", fs, 0);
++
++#ifdef WORDS_BIGENDIAN
++	csum_known = ext2fs_swab16(known);
++#endif
++	if (csum1 != csum_known) {
++		printf("checksum for group 0 should be %04x\n", csum_known);
++		exit(1);
++	}
++	csum2 = ext2fs_group_desc_csum(fs, 1);
++	print_csum("csum0001", fs, 1);
++	if (csum1 == csum2) {
++		printf("checksums for different groups shouldn't match\n");
++		exit(1);
++	}
++	csum2 = ext2fs_group_desc_csum(fs, 2);
++	print_csum("csumffff", fs, 2);
++	if (csum1 == csum2) {
++		printf("checksums for different groups shouldn't match\n");
++		exit(1);
++	}
++	fs->group_desc[0].bg_checksum = csum1;
++	csum2 = ext2fs_group_desc_csum(fs, 0);
++	print_csum("csum_set", fs, 0);
++	if (csum1 != csum2) {
++		printf("checksums should not depend on checksum field\n");
++		exit(1);
++	}
++	if (!ext2fs_group_desc_csum_verify(fs, 0)) {
++		printf("checksums should verify against gd_checksum\n");
++		exit(1);
++	}
++	memset(fs->super->s_uuid, 0x30, sizeof(fs->super->s_uuid));
++	print_csum("new_uuid", fs, 0);
++	if (ext2fs_group_desc_csum_verify(fs, 0) != 0) {
++		printf("checksums for different filesystems shouldn't match\n");
++		exit(1);
++	}
++	csum1 = fs->group_desc[0].bg_checksum = ext2fs_group_desc_csum(fs, 0);
++	print_csum("csum_new", fs, 0);
++	fs->group_desc[0].bg_free_blocks_count = 1;
++	csum2 = ext2fs_group_desc_csum(fs, 0);
++	print_csum("csum_blk", fs, 0);
++	if (csum1 == csum2) {
++		printf("checksums for different data shouldn't match\n");
++		exit(1);
++	}
++
 +	return 0;
 +}
-diff --git a/tests/f_dupfsblks/expect.1 b/tests/f_dupfsblks/expect.1
-index 661e164..32ce89b 100644
---- a/tests/f_dupfsblks/expect.1
-+++ b/tests/f_dupfsblks/expect.1
-@@ -44,7 +44,8 @@ Salvage? yes
- Directory inode 12, block 3, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (12) has deleted/unused inode 32.  Clear? yes
-+Entry '' in ??? (12) has a zero-length name.
-+Clear? yes
- 
- Directory inode 12, block 4, offset 100: directory corrupted
- Salvage? yes
-diff --git a/tests/m_raid_opt/expect.1 b/tests/m_raid_opt/expect.1
-index 9bd7894..25b283a 100644
---- a/tests/m_raid_opt/expect.1
-+++ b/tests/m_raid_opt/expect.1
-@@ -46,57 +46,68 @@ Setting filetype for entry '..' in ??? (11) to 2.
- Directory inode 11, block 1, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1063.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 2, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1064.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 3, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1065.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 4, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1066.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 5, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1067.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 6, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1068.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 7, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1069.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 8, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1070.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 9, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1071.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 10, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1072.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Directory inode 11, block 11, offset 0: directory corrupted
- Salvage? yes
- 
--Entry '' in ??? (11) has deleted/unused inode 1073.  Clear? yes
-+Entry '' in ??? (11) has a zero-length name.
-+Clear? yes
- 
- Pass 3: Checking directory connectivity
- '..' in / (2) is <The NULL inode> (0), should be / (2).
 -- 
 1.5.4.1.144.gdfee-dirty
 
