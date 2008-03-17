@@ -1,52 +1,60 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][10/28] e2fsprogs-uninit.patch
-Date: Mon, 17 Mar 2008 08:33:45 -0400
-Message-ID: <20080317123345.GA7555@mit.edu>
-References: <20080202075943.GB23836@webber.adilger.int> <20080202083444.GK31694@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/4] quota: Quota core changes for quotaon on remount
+Date: Mon, 17 Mar 2008 14:17:56 +0100
+Message-ID: <20080317131756.GC17307@duck.suse.cz>
+References: <20080313125944.GF12523@duck.suse.cz> <20080313130412.GG12523@duck.suse.cz> <20080313144802.7397a048.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, jengelh@computergmbh.de,
+	mjt@tls.msk.ru
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:55488 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752395AbYCQMdv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2008 08:33:51 -0400
+Received: from styx.suse.cz ([82.119.242.94]:39294 "EHLO duck.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752395AbYCQNR5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2008 09:17:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20080202083444.GK31694@webber.adilger.int>
+In-Reply-To: <20080313144802.7397a048.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 02, 2008 at 01:34:44AM -0700, Andreas Dilger wrote:
-> Index: e2fsprogs-1.40.5/e2fsck/super.c
-> ===================================================================
-> @@ -626,6 +631,50 @@ void check_super_block(e2fsck_t ctx)
-	...
-> +		if (!ext2fs_group_desc_csum_verify(sb, i, gd)) {
-> +			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
-> +				gd->bg_flags &=	~(EXT2_BG_BLOCK_UNINIT |
-> +				                  EXT2_BG_INODE_UNINIT);
-> +				gd->bg_itable_unused = 0;
-> +			}
-> +			ext2fs_unmark_valid(fs);
-> +		}
-> +
-	...
-> +
-> +		gd->bg_checksum = ext2fs_group_desc_csum(fs->super, i, gd);
+On Thu 13-03-08 14:48:02, Andrew Morton wrote:
+> On Thu, 13 Mar 2008 14:04:12 +0100
+> Jan Kara <jack@suse.cz> wrote:
+> 
+> > +static inline int DQUOT_ON_REMOUNT(struct super_block *sb)
+> > +{
+> > +	int cnt;
+> > +	int ret = 0, err;
+> > +
+> > +	if (!sb->s_qcop || !sb->s_qcop->quota_on)
+> > +		return -ENOSYS;
+> > +	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+> > +		err = sb->s_qcop->quota_on(sb, cnt, 0, NULL, 1);
+> > +		if (err < 0 && !ret)
+> > +			ret = err;
+> > +	}
+> > +	return ret;
+> > +}
+> > +  
+> 
+> That's about ten times too large to be inlined.  Oh well.
+  Right, will send a cleanup patch. Thanks for spotting this.
 
-This last looks horribly wrong.  check_super_block() is merely
-supposed to check to see if the superblock and block gorup descriptos
-looks OK, and to mark the filesystem as invalid if anything looks
-insane.  It should *not* modifying the block group descriptor, and it
-certainly should not be doing so without first checking to see if the
-filesystem has been opened read/only or calling
-ext2fs_mark_super_dirty(fs) after making a change (that it shouldn't
-do).
+> Sometime could you please take a look at uninlining some of the porkier
+> functions in quotaops.h, and maybe convert them to lower case?
+> 
+> 
+> For the latter we can do
+> 
+> 	#define DQUOT_ON_REMOUNT(sb) dquot_on_remount(sb)
+> 
+> etc, then remove those macros when everything has been converted and we've
+> given any out-of-tree filesytem developers time to update, etc.
+  Good idea. Will do.
 
-In fact there already is a check to see if the checksum has verified
-correctly (see the first part of the patch which I quoted), so I think
-the best thing to do is to remove that last bit.  I'm not sure why
-it's there at all, in fact....
-
-       	       	    	     	      	   - Ted
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
