@@ -1,76 +1,52 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: strange ext{3,4}_settattr logic
-Date: Mon, 17 Mar 2008 09:24:15 +0100
-Message-ID: <20080317082414.GA17940@kernel.dk>
-References: <20080315160731.GA4186@dmon-lap.sw.ru> <20080315230544.GV3542@webber.adilger.int> <20080315235427.GA26939@webber.adilger.int> <20080316002300.GB26939@webber.adilger.int> <20080316113912.GA3118@dmon-lap.sw.ru>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH][10/28] e2fsprogs-uninit.patch
+Date: Mon, 17 Mar 2008 08:33:45 -0400
+Message-ID: <20080317123345.GA7555@mit.edu>
+References: <20080202075943.GB23836@webber.adilger.int> <20080202083444.GK31694@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Dmitri Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([87.55.233.238]:8038 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781AbYCQIYS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2008 04:24:18 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:55488 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752395AbYCQMdv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2008 08:33:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20080316113912.GA3118@dmon-lap.sw.ru>
+In-Reply-To: <20080202083444.GK31694@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 16 2008, Dmitri Monakhov wrote:
-> I've added Jens because he may be also interesting in this topic.
-> On 08:23 Sun 16 Mar     , Andreas Dilger wrote:
-> > On Mar 16, 2008  07:54 +0800, Andreas Dilger wrote:
-> > > A call to  inode_setattr() can fail by trying a shrinking vmtruncate()
-> > > on a swapfile, which returns ETXTBUSY.  This was added after the
-> > > ext3_setattr() code was written.
-> > > 
-> > > We need to handle the IS_SWAPFILE() case properly.
-> > > Granted, it probably isn't a very common problem, but the IS_SWAPFILE()
-> > > check was added explicitly because of clueless users, so it must be hit
-> > > occasionally in real life.
-> > > 
-> > > It would seem that if you have a swapfile, try to truncate it to 0 (which
-> > > will fail with -ETXTBUSY) and then unmount the filesystem the size will
-> > > be truncated to 0.  It is also possible to directly write to a swapfile
-> > > and corrupt memory, or read from a swapfile and access potentially sensitive
-> > > information.
-> In fact i've triggered this issue while working on fast_loop device
-> implementation which was proposed by Jens (http://lkml.org/lkml/2008/1/9/50).
-> In fast_loop device use swapfile approach (submitting bio-s directly to
-> underlying block device). I think this idea will be included in mainstream
-> loop device sooner or later. But approach has several issues:
-> One of the most important is effective control mechanism over truncates for
-> lower file,  this issue was missed in Jens patch set.
-> This mechanism probably have to have following options.
-> #1: Shrink truncates must be denied.
-> #2: Expand truncates may be allowed. This is good because most of non plain 
-> disk image formats (qcow, vmdk, and etc) are growing while adding new data
-> blocks.
-> #3: Allow exclusive owner for file, for example only one user(loop_thread in
-> this case) may truncate file. Provide something similar to bd_claim feature.
-> without this feature on-line shrinking of disk image looks like this:
-> 
->  mutex_lock(&inode->i_mutex);
->  inode->i_flags &= ~S_SWAPFILE;
->  mutex_unlock(&inode->i_mutex);
-> 
->  /* Perform shrinking truncate. This is absolutely racy operation because
->   * some one else also may perform truncate at this time*/
->  do_truncate(inode, size); 
-> 
->  mutex_lock(&inode->i_mutex);
->  inode->i_flags |= S_SWAPFILE;
->  mutex_unlock(&inode->i_mutex);
-> 
-> 
-> S_SWAPFILE inode option currently equals to #1, and #2. What's why i want
-> use this flag for fast_loop devices.
+On Sat, Feb 02, 2008 at 01:34:44AM -0700, Andreas Dilger wrote:
+> Index: e2fsprogs-1.40.5/e2fsck/super.c
+> ===================================================================
+> @@ -626,6 +631,50 @@ void check_super_block(e2fsck_t ctx)
+	...
+> +		if (!ext2fs_group_desc_csum_verify(sb, i, gd)) {
+> +			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
+> +				gd->bg_flags &=	~(EXT2_BG_BLOCK_UNINIT |
+> +				                  EXT2_BG_INODE_UNINIT);
+> +				gd->bg_itable_unused = 0;
+> +			}
+> +			ext2fs_unmark_valid(fs);
+> +		}
+> +
+	...
+> +
+> +		gd->bg_checksum = ext2fs_group_desc_csum(fs->super, i, gd);
 
-Neat, I didn't consider that. Mainly because I had (knowingly) ignored
-the exclusive owner bit so far. I have included your suggestion in the
-loop-fastfs and loop-extent_map branches, thanks.
+This last looks horribly wrong.  check_super_block() is merely
+supposed to check to see if the superblock and block gorup descriptos
+looks OK, and to mark the filesystem as invalid if anything looks
+insane.  It should *not* modifying the block group descriptor, and it
+certainly should not be doing so without first checking to see if the
+filesystem has been opened read/only or calling
+ext2fs_mark_super_dirty(fs) after making a change (that it shouldn't
+do).
 
--- 
-Jens Axboe
+In fact there already is a check to see if the checksum has verified
+correctly (see the first part of the patch which I quoted), so I think
+the best thing to do is to remove that last bit.  I'm not sure why
+it's there at all, in fact....
 
+       	       	    	     	      	   - Ted
