@@ -1,75 +1,78 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
-Date: Mon, 17 Mar 2008 16:29:18 -0500
-Message-ID: <47DEE2AE.1050105@redhat.com>
-References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+From: akpm@linux-foundation.org
+Subject: + jbd-correctly-unescape-journal-data-blocks.patch added to -mm tree
+Date: Mon, 17 Mar 2008 16:54:26 -0700
+Message-ID: <200803172354.m2HNsR8S004736@imap1.linux-foundation.org>
+Cc: duaneg@dghda.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	stable@kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49845 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756601AbYCQV3V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2008 17:29:21 -0400
-In-Reply-To: <20080220222019.GG30305@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:42120 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753702AbYCQXyr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2008 19:54:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
 
-> There are only three things which mke2fs will do, in my design:
-> 
-> #1) If the first type is not one of "ext2", "ext3", "ext4", or
-> "ext4dev", mke2fs will determine a suitable default based on either
-> argv[0] if it is of the form mke2fs.*, or via defaults.fs_type in
-> /etc/mke2fs.conf.  If neither of these is available it will default to "ext2".
-> 
-> #2) If the second type is not one of "small", "floppy" or "default",
-> mke2fs will create a default type by checking the size of the
-> to-be-created filesystem.  If it is less than 3mb, it is "floppy", if
-> it is less than 512mb, it is "small", otherwise it is default.
-> 
-> #3) Once it has the list of types, i.e., "ext3,defaults,squid", or
-> "ext2,floppy,rescue", "ext4,defaults,largefile", etc. it uses this as
-> a search path when mke2fs needs to look up some parameter, such as
-> "base_features", or "inode_size", etc.  
+The patch titled
+     jbd: correctly unescape journal data blocks
+has been added to the -mm tree.  Its filename is
+     jbd-correctly-unescape-journal-data-blocks.patch
 
-I started to look into updating the man page for this but it led to
-several questions, and a suggestion....
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-Is this intended to take exactly 1, 2, or 3 arguments?  If so is it
-always "type," "size," "usepattern?"  (ext4,small,news for example)
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Can I specify ext4,defaults,news as well as ext4,news,defaults or does
-order matter - it seems that it does.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Should it bail out if a stanza is not found (-T foo,bar,baz?)  Today it
-does not.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
->From looking at & playing with the code it seems like it is supposed to
-be explicitly type, size, usepattern, although sometimes it doesn't get
-it right, for example this:
+------------------------------------------------------
+Subject: jbd: correctly unescape journal data blocks
+From: "Duane Griffin" <duaneg@dghda.com>
 
-misc/mke2fs -T ext5,floppy,news  fsfile
+Fix a long-standing typo (predating git) that will cause data corruption if a
+journal data block needs unescaping.  At the moment the wrong buffer head's
+data is being unescaped.
 
-leads to:
+To test this case mount a filesystem with data=journal, start creating and
+deleting a bunch of files containing only JFS_MAGIC_NUMBER (0xc03b3998), then
+pull the plug on the device.  Without this patch the files will contain zeros
+instead of the correct data after recovery.
 
-fs_types: 'ext2', 'small', 'ext5', 'floppy', 'news'
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-hmm...
+ fs/jbd/recovery.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Also if these 3 positions have special meanings and orders, it's odd to
-not have that reflected in the config file stanzas somehow...
+diff -puN fs/jbd/recovery.c~jbd-correctly-unescape-journal-data-blocks fs/jbd/recovery.c
+--- a/fs/jbd/recovery.c~jbd-correctly-unescape-journal-data-blocks
++++ a/fs/jbd/recovery.c
+@@ -478,7 +478,7 @@ static int do_one_pass(journal_t *journa
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JFS_FLAG_ESCAPE) {
+-						*((__be32 *)bh->b_data) =
++						*((__be32 *)nbh->b_data) =
+ 						cpu_to_be32(JFS_MAGIC_NUMBER);
+ 					}
+ 
+_
 
-It seems to me that perhaps instead of specifying that each
-comma-delimited position has a specific meaning, perhaps it should just
-be: "comma separated list which indicates profiles from least to most
-specific, with values & features from more specific (later) profiles
-trumping less specific (earlier) profiles" - would this be more clear &
-flexible...?
+Patches currently in -mm which might be from duaneg@dghda.com are
 
-Oh, and encountering an unknown type should probably toss an error...
+jbd-correctly-unescape-journal-data-blocks.patch
+jbd2-correctly-unescape-journal-data-blocks.patch
+jbd2-only-create-debugfs-and-stats-entries-if-cache-initialisation-is-successful.patch
 
--Eric
