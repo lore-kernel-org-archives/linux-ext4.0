@@ -1,58 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
-Date: Tue, 18 Mar 2008 00:16:53 -0500
-Message-ID: <47DF5045.1000108@redhat.com>
-References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com> <20080318022053.GL8368@mit.edu> <47DF35CC.7020604@redhat.com> <20080318042339.GO8368@mit.edu>
+From: Solofo.Ramangalahy@bull.net
+Subject: [RFC][PATCH 2/3] ext4 online defrag (ver 0.7)
+Date: Tue, 18 Mar 2008 10:39:16 +0100
+Message-ID: <18399.36292.193936.627393@frecb006361.adech.frec.bull.fr>
+References: <200803060001.AA00324@TNESG9526.rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Cc: tytso@mit.edu, cmm@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53978 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752750AbYCRFRQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Mar 2008 01:17:16 -0400
-In-Reply-To: <20080318042339.GO8368@mit.edu>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50162 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752193AbYCRJjE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Mar 2008 05:39:04 -0400
+In-Reply-To: <200803060001.AA00324@TNESG9526.rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
+Hello,
 
-> The question then is what to do when the user specifies something
-> non-sensical, where they put the filesystem type last.  
+Akira Fujita writes:
+ > -			printk(KERN_ERR "defrag: failed ext4_ext_defrag\n");
+ > -			goto ERR;
+ > +			printk(KERN_ERR "ext4 defrag: "
+ > +				"Moving victim file failed. ino [%lu]\n",
+ > +				ext_info->ino);
 
-Well, I'd say do what they asked, treat the [filesystem type] stanza
-just like any other, and anything in it which may override previous
-stanzas, does.
+This triggers this warning:
+fs/ext4/defrag.c: In function 'ext4_defrag_move_victim':
+fs/ext4/defrag.c:458: warning: format '%lu' expects type 'long unsigned int', but argument 2 has type 'long long unsigned int'
 
-> One approach
-> would be to use a two-pass algorithm, where you first scan the list
-> for any filesystem type or size types, and if so, you suppress
-> prefixing the list with the fs_type and size_type.  I think that's
-> what you are suggesting.
+(ext4-online-defrag-free-space-fragmentation.patch from ext4-patch-queue 36c86f09d6ac97c2797a1a94d76e2fc1dc3b03f8)
 
-Not exactly...
-
-> Then there was my approach, which was admittedly partially influenced
-> by what was quicker and easier to code, which only checked the
-> expected position.
-
-Well, I think that what I'm suggesting (but it's late, and I'm tired, so
-it's hard for me to tell for sure... ;) is that there is no special
-anything.  You simply take the specified -T arguments in order, and use
-that as the search/override order for any setting found in the stanzas
-specified.  This would probably be simplest to code, actually, as well
-as simplest to document, and even most powerful/flexible for the user.
-
-But, I suppose I can live with
-
-     -T [fs_type,][size_type,]user_type[,additional_type...]
-
-which is reasonably clear, though... we just need to document that there
-are 7 special stanza names in 2 categories, which the code will put
-there *for* you if you don't put it them the right place, yourself.
-It's just, IMHO, a more complicated and restricted specification for the
-option.
-
--Eric
+-- 
+solofo
