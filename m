@@ -1,83 +1,96 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, REWORKED 01/11] Add initial checksum support for the
-	gdt_checksum/uninit_group feature
-Date: Tue, 18 Mar 2008 08:26:16 +0800
-Message-ID: <20080318002616.GG3542@webber.adilger.int>
-References: <1205760527-14858-1-git-send-email-tytso@mit.edu>
- <1205760527-14858-2-git-send-email-tytso@mit.edu>
- <20080317172254.GF3542@webber.adilger.int> <20080317180505.GG8368@mit.edu>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
+Date: Mon, 17 Mar 2008 22:20:53 -0400
+Message-ID: <20080318022053.GL8368@mit.edu>
+References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:33244 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751388AbYCRA1P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2008 20:27:15 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2I0RE3N014067
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2008 17:27:14 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JXW00L01H6WYN00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 17 Mar 2008 17:27:14 -0700 (PDT)
-In-reply-to: <20080317180505.GG8368@mit.edu>
-Content-disposition: inline
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:35049 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753014AbYCRCVi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2008 22:21:38 -0400
+Content-Disposition: inline
+In-Reply-To: <47DEE2AE.1050105@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 17, 2008  14:05 -0400, Theodore Ts'o wrote:
-> On Tue, Mar 18, 2008 at 01:22:54AM +0800, Andreas Dilger wrote:
-> > On Mar 17, 2008  09:28 -0400, Theodore Ts'o wrote:
-> > > +STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
->   ....
-> > > +	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
-> > > +		int offset = offsetof(struct ext2_group_desc, bg_checksum);
-> > > +
->   ...
-> > > +		offset += sizeof(desc->bg_checksum); /* skip checksum */
-> > > +		assert(offset == sizeof(*desc));
-> > 
-> > Note that this assertion needs to be removed when the group descriptor
-> > becomes larger, unless ext2_group_desc never changes in the future..
+On Mon, Mar 17, 2008 at 04:29:18PM -0500, Eric Sandeen wrote:
+> > #3) Once it has the list of types, i.e., "ext3,defaults,squid", or
+> > "ext2,floppy,rescue", "ext4,defaults,largefile", etc. it uses this as
+> > a search path when mke2fs needs to look up some parameter, such as
+> > "base_features", or "inode_size", etc.  
 > 
-> Yeah, I looked at this, and was half tempted to remove it.
+> I started to look into updating the man page for this but it led to
+> several questions, and a suggestion....
 > 
-> Indeed ext2_group_desc will never change in the future.  Too many
-> things would break if we change it.  That's why there is an
-> ext4_group_desc which looks exactly like ext2_group_desc for the first
-> 32 bytes, and adds the high 32-bits for the various fields in the
-> second 32-bytes.
+> Is this intended to take exactly 1, 2, or 3 arguments?  If so is it
+> always "type," "size," "usepattern?"  (ext4,small,news for example)
+
+No, not necessarily.  The user could specify something like
+
+-T tpc-h,tweak1,tweak2
+
+which would then cause mke2fs to look for the stanza's ext4, large,
+tpc-h, tweak1, tweak2.  What that means would be purely up to the user
+who sets up the configuration file.
+
+> Can I specify ext4,defaults,news as well as ext4,news,defaults or does
+> order matter - it seems that it does.
+
+Order does matter, because in the example above, tunings in tpc-h
+override tunings made the ext4 and large stanza's, while configuration
+tunings in tweak1 will overide those in tpc-h and before, and tweak2
+will override tweak1 and before, etc.
+
+> Should it bail out if a stanza is not found (-T foo,bar,baz?)  Today it
+> does not.
+
+Hmm... good question.  That would be good if someone were to typo a
+type string.
+
+> From looking at & playing with the code it seems like it is supposed to
+> be explicitly type, size, usepattern, although sometimes it doesn't get
+> it right, for example this:
 > 
-> But if ext2_group_desc is never going to change, then there's no real
-> good reason to use a run-time check here.  Better to turn it into a
-> compile time check, using #error.  The tricky part is doing it in a
-> way which is ANSI-C compliant (or maybe we just wrap it in a #ifdef
-> GCC and only do the sanity check if you are compiling with GCC).
+> misc/mke2fs -T ext5,floppy,news  fsfile
+> 
+> leads to:
+> 
+> fs_types: 'ext2', 'small', 'ext5', 'floppy', 'news'
+> 
+> hmm...
 
-We have a compile-time assertion like:
+Well, "ext5" isn't a valid filesystem type.
 
-/*
- * compile-time assertions. @cond has to be constant expression.
- * ISO C Standard:
- *
- *        6.8.4.2  The switch statement
- *
- *       ....
- *
- *       [#3] The expression of each case label shall be  an  integer
- *       constant   expression  and  no  two  of  the  case  constant
- *       expressions in the same switch statement shall have the same
- *       value  after  conversion...
- *       *
- */
-#define CLASSERT(cond) ({ switch(42) { case (cond): case 0: break; } })
+Also, most of the time I don't expect users to actually specify the
+type and size all the time.  Normally they won't do that.  I would
+expect that most of the size will be automated added by mke2fs, based
+on the size of the of the partition.  The filesystem type will be
+added automatically if the user uses /sbin/mkfs.ext3 or
+/sbin/mkfs.ext4, or via defaults.fs_type type in the configuration
+file.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> Also if these 3 positions have special meanings and orders, it's odd to
+> not have that reflected in the config file stanzas somehow...
 
+I'm not sure what you mean by that.
+
+> It seems to me that perhaps instead of specifying that each
+> comma-delimited position has a specific meaning, perhaps it should just
+> be: "comma separated list which indicates profiles from least to most
+> specific, with values & features from more specific (later) profiles
+> trumping less specific (earlier) profiles" - would this be more clear &
+> flexible...?
+
+I'd probably using "overridding" instead of "trumping", but yes.
+
+> Oh, and encountering an unknown type should probably toss an error...
+
+You mean, a type which doesn't have a profile stanza, as mentioned
+above?  Or did you mean something else?
+
+					- Ted
