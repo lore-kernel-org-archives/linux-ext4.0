@@ -1,179 +1,159 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Tso <tytso@MIT.EDU>
 Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
-Date: Mon, 17 Mar 2008 22:23:56 -0500
-Message-ID: <47DF35CC.7020604@redhat.com>
-References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com> <20080318022053.GL8368@mit.edu>
+Date: Tue, 18 Mar 2008 00:23:40 -0400
+Message-ID: <20080318042339.GO8368@mit.edu>
+References: <E1JRpaN-0000Bs-4N@closure.thunk.org> <47BC76A9.307@redhat.com> <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com> <20080318022053.GL8368@mit.edu> <47DF35CC.7020604@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53973 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751558AbYCRDYT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2008 23:24:19 -0400
-In-Reply-To: <20080318022053.GL8368@mit.edu>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:49902 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752550AbYCREYX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Mar 2008 00:24:23 -0400
+Content-Disposition: inline
+In-Reply-To: <47DF35CC.7020604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Mar 17, 2008 at 04:29:18PM -0500, Eric Sandeen wrote:
->>> #3) Once it has the list of types, i.e., "ext3,defaults,squid", or
->>> "ext2,floppy,rescue", "ext4,defaults,largefile", etc. it uses this as
->>> a search path when mke2fs needs to look up some parameter, such as
->>> "base_features", or "inode_size", etc.  
->> I started to look into updating the man page for this but it led to
->> several questions, and a suggestion....
->>
->> Is this intended to take exactly 1, 2, or 3 arguments?  If so is it
->> always "type," "size," "usepattern?"  (ext4,small,news for example)
+On Mon, Mar 17, 2008 at 10:23:56PM -0500, Eric Sandeen wrote:
+> ok... but I think *if* you are going to specify fs type and size, then
+> they must be in the 1st and 2nd positions right?  I'm just going by the
+> stuff like:
+
+Yes, *if* you want to override the default filesystem type and size
+type, then they must be the first and 2nd positions.  Or put another
+way, what is specified by -T is:
+
+     -T [fs_type,][size_type,]user_type[,additional_type...]
+
+Where fs_type may be one of "ext2", "ext3", "ext4", or "ext4dev", and
+size_type may be one of "floppy", "small", or "default".
+
+> IOW if I do a (silly) -T string like ext3,floppy,largefile I get:
 > 
-> No, not necessarily.  The user could specify something like
+> fs_types: 'ext3', 'floppy', 'largefile'
 > 
-> -T tpc-h,tweak1,tweak2
+> but if I do -T floppy,ext3,largefile I get:
 > 
-> which would then cause mke2fs to look for the stanza's ext4, large,
-
-Hm, where did "ext4" and "large" come from?  From being called as
-mkfs.ext4 on a large block device?
-
-> tpc-h, tweak1, tweak2.  What that means would be purely up to the user
-> who sets up the configuration file.
-
-ok... but I think *if* you are going to specify fs type and size, then
-they must be in the 1st and 2nd positions right?  I'm just going by the
-stuff like:
-
-                if (state == 1) {
-                        if (strcmp(cp, "ext2") &&
-                            strcmp(cp, "ext3") &&
-....
-
-which looks like fs type is explicitly checked on the fist pass?
-
-IOW if I do a (silly) -T string like ext3,floppy,largefile I get:
-
-fs_types: 'ext3', 'floppy', 'largefile'
-
-but if I do -T floppy,ext3,largefile I get:
-
-fs_types: 'ext2', 'floppy', 'ext3', 'largefile'
-
-so in this case I guess I have "ext2" overriding defaults before the
-others, when in the first case I did not?  And depending on how [ext2]
-is defined, this might matter.
-
->> Can I specify ext4,defaults,news as well as ext4,news,defaults or does
->> order matter - it seems that it does.
+> fs_types: 'ext2', 'floppy', 'ext3', 'largefile'
 > 
-> Order does matter, because in the example above, tunings in tpc-h
-> override tunings made the ext4 and large stanza's, while configuration
-> tunings in tweak1 will overide those in tpc-h and before, and tweak2
-> will override tweak1 and before, etc.
+> so in this case I guess I have "ext2" overriding defaults before the
+> others, when in the first case I did not?  And depending on how [ext2]
+> is defined, this might matter.
 
-Right, for the named various named stanzas, it does matter in terms of
-what is more specific.  But, I meant "if I want to specify ext3 does it
-have to be first," and I think it does, because otherwise the algorithm
-picks ext2 for me...?
+That's true, but in practice, I think it's highly unlikely most users
+will specify more than a single argument to the -T option.  Most users
+will likely to do:
 
->> Should it bail out if a stanza is not found (-T foo,bar,baz?)  Today it
->> does not.
+	mke2fs -T news
+
+or
+
+	mke2fs -T ext4
+
+or maybe
+
+	mke2fs -T news
+
+etc.
+
+I want something sane to happen if they type
+
+	mke2fs -T ext4,news
+
+and it should be no different than this:
+
+	/sbin/mkfs.ext4 -T news
+
+But truth be told, it's highly unlikely they would do something more
+complicated such as:
+
+	mke2fs -T tpc-h,tweek1,tweek2
+
+...especially since nearly everything can be specified on the command
+line anyway.  
+
+
+> Right, for the named various named stanzas, it does matter in terms of
+> what is more specific.  But, I meant "if I want to specify ext3 does it
+> have to be first," and I think it does, because otherwise the algorithm
+> picks ext2 for me...?
+
+In practice, given that the ext3 filesystem stanza overrides
+everything that is set by ext2, given the ordering rule which says
+that last type wins, in practice
+
+     mke2fs -T news,ext3
+
+which will expand to "ext2,default,ext3,news" in practice probably
+won't be any different than "default,ext3,news", and if there are no
+configuration knobs set by both the "default" and "ext3" stanzas, then
+"default,ext3,news" will end up being equivalent to
+"ext3,default,news".  So in practice I don't expect things to be a
+problem.
+
+> > Hmm... good question.  That would be good if someone were to typo a
+> > type string.
 > 
-> Hmm... good question.  That would be good if someone were to typo a
-> type string.
+> I think so.  Otherwise it's silently dropped/ignored which is probably
+> not as planned.
 
-I think so.  Otherwise it's silently dropped/ignored which is probably
-not as planned.
+The only downside of doing this is if someone overrides
+/etc/mke2fs.conf with a custom /home/tytso/.mke2fs.conf by setting the
+MKE2FS_CONFIG environment variable, and /home/tytso/.mke2fs.conf
+doesn't have all of the system-defined stanzas, you wouldn't want it
+to fail.  So probably the right way of resolving this is to flag an
+error for a non-existent stanza if it was entered by the user on the
+command-line, but not if it was automatically added by e2fsck.
 
->> From looking at & playing with the code it seems like it is supposed to
->> be explicitly type, size, usepattern, although sometimes it doesn't get
->> it right, for example this:
->>
->> misc/mke2fs -T ext5,floppy,news  fsfile
->>
->> leads to:
->>
->> fs_types: 'ext2', 'small', 'ext5', 'floppy', 'news'
->>
->> hmm...
+> I mean that we have a few "special" stanza names:
 > 
-> Well, "ext5" isn't a valid filesystem type.
-
-but it could be a valid name of a stanza, right.  :)  My point is that
-there are a few things treated specially - type and size, I guess -
-which need to be in the right positions, or they will get filled in with
-default values, near as I can tell.
-
-> Also, most of the time I don't expect users to actually specify the
-> type and size all the time.  Normally they won't do that.  I would
-> expect that most of the size will be automated added by mke2fs, based
-> on the size of the of the partition.  The filesystem type will be
-> added automatically if the user uses /sbin/mkfs.ext3 or
-> /sbin/mkfs.ext4, or via defaults.fs_type type in the configuration
-> file.
-
-Sure, but if -T is an option to mke2fs it still has to work clearly &
-consistently.
-
->> Also if these 3 positions have special meanings and orders, it's odd to
->> not have that reflected in the config file stanzas somehow...
+> [ext2], [ext3], [ext4], [ext4dev]
+> [floppy], [small], [default]
 > 
-> I'm not sure what you mean by that.
+> which have some special meaning, (types and sizes), and will get filled
+> in for you if you don't specify them, right?
 
-I mean that we have a few "special" stanza names:
+Right.  Part of the problem was that previously mke2fs supported a
+single argument to -T, and sometimes the argument was a pre-defined
+size type ("floppy", "small") and sometimes the argument was a
+pre-defined usage type (i.e., "news").  
 
-[ext2], [ext3], [ext4], [ext4dev]
-[floppy], [small], [default]
+So I needed to design a system which was backwards compatible with
+existing usage, where -T was used to sometimes specify a size, and
+sometimes a usage type (but not both), and make it more general.
+That's one of the reasons why I designed it the way I did.
 
-which have some special meaning, (types and sizes), and will get filled
-in for you if you don't specify them, right?
+> I guess what I'm driving at is this: should the "if state == 1" and "if
+> state == 2" tests go away, and just handle each comma-separated type
+> completely equally.  I'd thinkg that -T news,largefile,ext4 should work
+> - news should override all defaults, largefile should override anything
+> thus far, and ext4 should have the final say for anything it specifies;
 
-And for all the rest you can make [grandmas_cookies] or whatever you want.
+The problem is that "-T news,largefile,ext4" probably won't do what
+the user wants.  In general the filesystem type (ext2, ext3, ext4),
+etc., are going to define a set of general parameters, which you then
+want to get overriden by the size, and then usage type overrides size
+parameters.  So that's why the only order which makes sense is
+"fs_type,size_type,usage_type".   
 
-But near as I can tell I have to specify type and size in the first two
-slots or I get a different outcome.
+The question then is what to do when the user specifies something
+non-sensical, where they put the filesystem type last.  One approach
+would be to use a two-pass algorithm, where you first scan the list
+for any filesystem type or size types, and if so, you suppress
+prefixing the list with the fs_type and size_type.  I think that's
+what you are suggesting.
 
->> It seems to me that perhaps instead of specifying that each
->> comma-delimited position has a specific meaning, perhaps it should just
->> be: "comma separated list which indicates profiles from least to most
->> specific, with values & features from more specific (later) profiles
->> trumping less specific (earlier) profiles" - would this be more clear &
->> flexible...?
-> 
-> I'd probably using "overridding" instead of "trumping", but yes.
+Then there was my approach, which was admittedly partially influenced
+by what was quicker and easier to code, which only checked the
+expected position.
 
-Details. ;)
+Yours probably does make a bit more sense, although it's a bit more of
+a pain to code.  But either way, it's to deal with a situation that we
+really don't want to train the user to use since it will probably
+surprise him and not do what he wants.
 
-I guess what I'm driving at is this: should the "if state == 1" and "if
-state == 2" tests go away, and just handle each comma-separated type
-completely equally.  I'd thinkg that -T news,largefile,ext4 should work
-- news should override all defaults, largefile should override anything
-thus far, and ext4 should have the final say for anything it specifies;
-but do not fill in "ext2, small" for me first as it does today:
-
-mke2fs -T news,largefile,ext4  fsfile
-
-yields:
-
-fs_types: 'ext2', 'small', 'news', 'largefile', 'ext4'
-
-the above is unclear/unexpected behavior, IMHO.  I'd expect simply:
-
-fs_types: 'news', 'largefile', 'ext4'
-
-because that is what I specified.
-
->> Oh, and encountering an unknown type should probably toss an error...
-> 
-> You mean, a type which doesn't have a profile stanza, as mentioned
-> above?  Or did you mean something else?
-
-right, any comma-delimited type which isn't actually found somewhere
-should probably cause mkfs to stop with an error.
-
-Thanks,
--Eric
-
-> 					- Ted
-
+					- Ted
