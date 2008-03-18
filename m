@@ -1,49 +1,36 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 2/3] ext4 online defrag (ver 0.7)
-Date: Wed, 19 Mar 2008 10:40:59 +0900
-Message-ID: <200803190140.AA00340@TNESG9526.rs.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: A few ext4dev images for which fsck segfaults on the next branch...
+Date: Tue, 18 Mar 2008 13:50:22 -0500
+Message-ID: <47E00EEE.3070305@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:39523 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936347AbYCSVJq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2008 17:09:46 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:44779 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S937280AbYCSV14 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Mar 2008 17:27:56 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2IIoNP6020794
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2008 14:50:23 -0400
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2IIoN8r013834
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2008 14:50:23 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m2IIoM2t024868
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2008 14:50:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Solofo,
-> Hello,
->
-> Akira Fujita writes:
->  > -			printk(KERN_ERR "defrag: failed ext4_ext_defrag\n");
->  > -			goto ERR;
->  > +			printk(KERN_ERR "ext4 defrag: "
->  > +				"Moving victim file failed. ino [%lu]\n",
->  > +				ext_info->ino);
->
-> This triggers this warning:
-> fs/ext4/defrag.c: In function 'ext4_defrag_move_victim':
-> fs/ext4/defrag.c:458: warning: format '%lu' expects type 'long unsigned int', but argument 2 has type 'long long unsigned int'
->
-> (ext4-online-defrag-free-space-fragmentation.patch from ext4-patch-queue 36c86f09d6ac97c2797a1a94d76e2fc1dc3b03f8)
->
-Thank you for notification.
-And sorry for the delay fix, it has already been pointed out by Mingming.
+Just in case anyone is bored... :)
 
-Regards Akira, 
+http://sandeen.fedorapeople.org/ext4/fsck-segfault-images/
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
---- linux-2.6.25-rc5-ext4-org/fs/ext4/defrag.c  2008-03-19 07:16:40.000000000 +0900
-+++ linux-2.6.25-rc5-full/fs/ext4/defrag.c      2008-03-19 08:31:01.000000000 +0900
-@@ -454,7 +454,7 @@ static int ext4_defrag_move_victim(struc
-                        ext_info->ext[i].len, goal, DEFRAG_FORCE_VICTIM, &ext);
-                if (ret < 0) {
-                        printk(KERN_ERR "ext4 defrag: "
--                               "Moving victim file failed. ino [%lu]\n",
-+                               "Moving victim file failed. ino [%llu]\n",
-                                ext_info->ino);
-                        goto err;
-                }
+contains about 6 intentionally-corrupted ext4dev images which each cause
+the e2fsck in the next branch to segfault for me on x86_64.
+
+I'll find some time to look closer, but just thought I'd put them out
+there for now.
+
+-Eric
