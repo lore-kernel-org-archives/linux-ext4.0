@@ -1,82 +1,135 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: fix ext2fs_extent_get for uninit leaf extents
-Date: Wed, 19 Mar 2008 15:20:18 -0500
-Message-ID: <47E17582.2030507@redhat.com>
+From: Benoit Boissinot <benoit.boissinot@ens-lyon.org>
+Subject: [PATCH] [TRIVIAL] ext*: spelling fix prefered -> preferred
+Date: Wed, 19 Mar 2008 21:23:19 +0100
+Message-ID: <20080319202319.GD6935@ens-lyon.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: ext4 development <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	trivial@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46750 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932556AbYCSUVy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Mar 2008 16:21:54 -0400
+Received: from pilet.ens-lyon.fr ([140.77.167.16]:42387 "EHLO
+	pilet.ens-lyon.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763136AbYCSU5U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2008 16:57:20 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix ext2fs_extent_get for uninit leaf extents
+Spelling fix: prefered -> preferred
 
-From: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Benoit Boissinot <benoit.boissinot@ens-lyon.org>
 
-The ext2fs_extent_get() function was not OR-ing together UNINIT
-and LEAF flags in the case where an extent was both; so if we 
-had an extent which was both uniint and leaf, pass1 would bail
-out where depth == max_depth but was not marked as leaf, and
-e2fsck (from the next branch) would abort with:
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext2/ialloc.c
+--- a/fs/ext2/ialloc.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext2/ialloc.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -253,7 +253,7 @@
+  * it has too few free inodes left (min_inodes) or 
+  * it has too few free blocks left (min_blocks) or 
+  * it's already running too large debt (max_debt). 
+- * Parent's group is prefered, if it doesn't satisfy these 
++ * Parent's group is preferred, if it doesn't satisfy these 
+  * conditions we search cyclically through the rest. If none 
+  * of the groups look good we just look for a group with more 
+  * free inodes than average (starting at parent's group). 
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext2/inode.c
+--- a/fs/ext2/inode.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext2/inode.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -239,7 +239,7 @@
+  *	@inode: owner
+  *	@ind: descriptor of indirect block.
+  *
+- *	This function returns the prefered place for block allocation.
++ *	This function returns the preferred place for block allocation.
+  *	It is used when heuristic for sequential allocation fails.
+  *	Rules are:
+  *	  + if there is a block to the left of our position - allocate near it.
+@@ -283,7 +283,7 @@
+ }
+ 
+ /**
+- *	ext2_find_goal - find a prefered place for allocation.
++ *	ext2_find_goal - find a preferred place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+  *	@partial: pointer to the last triple within a chain
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext3/ialloc.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -239,7 +239,7 @@
+  * it has too few free inodes left (min_inodes) or
+  * it has too few free blocks left (min_blocks) or
+  * it's already running too large debt (max_debt).
+- * Parent's group is prefered, if it doesn't satisfy these
++ * Parent's group is preferred, if it doesn't satisfy these
+  * conditions we search cyclically through the rest. If none
+  * of the groups look good we just look for a group with more
+  * free inodes than average (starting at parent's group).
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext3/inode.c
+--- a/fs/ext3/inode.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext3/inode.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -392,7 +392,7 @@
+  *	@inode: owner
+  *	@ind: descriptor of indirect block.
+  *
+- *	This function returns the prefered place for block allocation.
++ *	This function returns the preferred place for block allocation.
+  *	It is used when heuristic for sequential allocation fails.
+  *	Rules are:
+  *	  + if there is a block to the left of our position - allocate near it.
+@@ -436,12 +436,12 @@
+ }
+ 
+ /**
+- *	ext3_find_goal - find a prefered place for allocation.
++ *	ext3_find_goal - find a preferred place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+  *	@partial: pointer to the last triple within a chain
+  *
+- *	Normally this function find the prefered place for block allocation,
++ *	Normally this function find the preferred place for block allocation,
+  *	returns it.
+  */
+ 
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext4/ialloc.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -305,7 +305,7 @@
+  * it has too few free inodes left (min_inodes) or
+  * it has too few free blocks left (min_blocks) or
+  * it's already running too large debt (max_debt).
+- * Parent's group is prefered, if it doesn't satisfy these
++ * Parent's group is preferred, if it doesn't satisfy these
+  * conditions we search cyclically through the rest. If none
+  * of the groups look good we just look for a group with more
+  * free inodes than average (starting at parent's group).
+diff -r 2202c155b8c3 -r ef957e3033e5 fs/ext4/inode.c
+--- a/fs/ext4/inode.c	Tue Mar 18 21:34:48 2008 -0700
++++ b/fs/ext4/inode.c	Wed Mar 19 21:01:45 2008 +0100
+@@ -382,7 +382,7 @@
+  *	@inode: owner
+  *	@ind: descriptor of indirect block.
+  *
+- *	This function returns the prefered place for block allocation.
++ *	This function returns the preferred place for block allocation.
+  *	It is used when heuristic for sequential allocation fails.
+  *	Rules are:
+  *	  + if there is a block to the left of our position - allocate near it.
+@@ -432,12 +432,12 @@
+ }
+ 
+ /**
+- *	ext4_find_goal - find a prefered place for allocation.
++ *	ext4_find_goal - find a preferred place for allocation.
+  *	@inode: owner
+  *	@block:  block we want
+  *	@partial: pointer to the last triple within a chain
+  *
+- *	Normally this function find the prefered place for block allocation,
++ *	Normally this function find the preferred place for block allocation,
+  *	returns it.
+  */
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
 
-e2fsck 1.40.8 (13-Mar-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Error1: No 'down' extent
-Aborted
-
-Also, if the error is encountered again, print the inode number
-to aid debugging until it's properly handled, at least.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-
----
-
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index ab211b1..c616984 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -463,10 +463,10 @@ retry:
- 			((__u64) ext2fs_le16_to_cpu(ex->ee_start_hi) << 32);
- 		extent->e_lblk = ext2fs_le32_to_cpu(ex->ee_block);
- 		extent->e_len = ext2fs_le16_to_cpu(ex->ee_len);
--		extent->e_flags = EXT2_EXTENT_FLAGS_LEAF;
-+		extent->e_flags |= EXT2_EXTENT_FLAGS_LEAF;
- 		if (extent->e_len > EXT_INIT_MAX_LEN) {
- 			extent->e_len -= EXT_INIT_MAX_LEN;
--			extent->e_flags = EXT2_EXTENT_FLAGS_UNINIT;
-+			extent->e_flags |= EXT2_EXTENT_FLAGS_UNINIT;
- 		}
- 	} else {
- 		extent->e_pblk = ext2fs_le32_to_cpu(ix->ei_leaf) +
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 50e38e1..79e9f23 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1622,14 +1622,16 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 			pctx->errcode = ext2fs_extent_get(ehandle,
- 						  EXT2_EXTENT_DOWN, &extent);
- 			if (pctx->errcode) {
--				printf("Error1: %s\n", error_message(pctx->errcode));
-+				printf("Error1: %s on inode %lld\n",
-+					error_message(pctx->errcode), pctx->ino);
- 				abort();
- 			}
- 			scan_extent_node(ctx, pctx, pb, ehandle);
- 			pctx->errcode = ext2fs_extent_get(ehandle,
- 						  EXT2_EXTENT_UP, &extent);
- 			if (pctx->errcode) {
--				printf("Error1: %s\n", error_message(pctx->errcode));
-+				printf("Error1: %s on inode %lld\n",
-+					error_message(pctx->errcode), pctx->ino);
- 				abort();
- 			}
- 			goto next;
-
+-- 
+:wq
