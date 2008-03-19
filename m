@@ -1,34 +1,44 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [Bugme-new] [Bug 10276] New: directory ctime not updated by rename
-Date: Tue, 18 Mar 2008 17:46:09 +0000
-Message-ID: <20080318174608.GH10722@ZenIV.linux.org.uk>
-References: <bug-10276-10286@http.bugzilla.kernel.org/> <20080318100023.1e047627.akpm@linux-foundation.org>
+From: Solofo.Ramangalahy@bull.net
+Subject: Re: [2.6.25-rc5-ext4-36c86] attempt to access beyond end of device
+Date: Wed, 19 Mar 2008 12:56:45 +0100
+Message-ID: <18400.65405.751244.152577@frecb006361.adech.frec.bull.fr>
+References: <18399.36935.640758.796880@frecb006361.adech.frec.bull.fr>
+	<20080319113500.GI2971@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	bugme-daemon@bugzilla.kernel.org,
-	lasse-kernelbug-2008@mail.plastictree.net
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:48863 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762045AbYCSUAT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2008 16:00:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20080318100023.1e047627.akpm@linux-foundation.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:44237 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1765613AbYCSUQg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2008 16:16:36 -0400
+In-Reply-To: <20080319113500.GI2971@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 18, 2008 at 10:00:23AM -0700, Andrew Morton wrote:
+Hi Andreas,
 
-> Do we agree that this is a bug?  If so, is it a VFS thing or a per-fs
-> thing?
+Andreas Dilger writes:
+ > You should print out the page->mapping->host->i_ino in this message
+ > and then you can possibly examine the filesystem to see if it is
+ > a corrupt block allocation, or possibly random garbage in the block.
 
-The latter; all control over timestamps on directory operations is in
-filesystems.  Which filesystem it is, BTW?  E.g. ext2 has
-        dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-in ext2_set_link() (and the same in ext2_add_entry()/ext2_delete_entry()),
-so on all paths in ext2_rename() both parents will get ctime and mtime
-updated; so will the object being moved and the object being unlinked
-(explicitly in ext2_rename()).
+Will do thanks.
+
+ > Hmm, is this filesystem formatted with 64BIT?
+
+I'm using: 
+mke2fs 1.40.8 (13-Mar-2008)
+        Using EXT2FS Library version 1.40.8
+(the one from debian unstable)
+and format like this:
+/sbin/mkfs.ext3 -E test_fs /dev/sdb
+
+Just want to note (because of current vger problems) that Dmitri
+confirmed the symptom (with fsstress+fallocate patch) and offered an
+analysis.
+
+-- 
+solofo
