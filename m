@@ -1,68 +1,78 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: fix ext2fs_extent_get for uninit leaf	extents
-Date: Thu, 20 Mar 2008 16:04:47 -0500
-Message-ID: <47E2D16F.2010407@redhat.com>
-References: <47E17582.2030507@redhat.com> <20080320202025.GM13719@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Theodore Tso <tytso@MIT.EDU>
+From: chrisw@sous-sol.org
+Subject: patch jbd-correctly-unescape-journal-data-blocks.patch queued to 2.6.24-stable tree
+Date: Thu, 20 Mar 2008 16:32:23 -0700
+Message-ID: <200803202332.m2KNWN7o028588@sous-sol.org>
+References: <200803200245.m2K2j6jD024675@hera.kernel.org>
+Cc: stable@kernel.org, stable-commits@vger.kernel.org
+To: duaneg@dghda.com, akpm@linux-foundation.org, chrisw@sous-sol.org,
+	jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org,
+	torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38768 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756562AbYCTVJI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2008 17:09:08 -0400
-In-Reply-To: <20080320202025.GM13719@mit.edu>
+Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:56376 "EHLO
+	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754724AbYCTXcx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Mar 2008 19:32:53 -0400
+In-Reply-To: <200803200245.m2K2j6jD024675@hera.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Mar 19, 2008 at 03:20:18PM -0500, Eric Sandeen wrote:
->> Fix ext2fs_extent_get for uninit leaf extents
->>
->> From: Eric Sandeen <sandeen@redhat.com>
-> 
-> I'm guessing you used git-format-patch but not git-send-mail to send
-> out the patch?  Not a big deal, but it meant I had to do a "git commit
-> --amend" to edit out the aboe two lines after doing a "git am".
-> 
-> Suggested workflow that results in a nice patch series being sent to
-> linux-ext4, as well as making it easy for a maintainer using git to
-> suck it into git:
 
-Thanks... I'm still embarassingly git-illiterate.  Will do better next
-time :)
+This is a note to let you know that we have just queued up the patch titled
 
--Eric
+     Subject: jbd: correctly unescape journal data blocks
 
-> % git-format-patch -n --subject-prefix="PATCH, E2FSPROGS" -o /tmp/to-send master
-> 
-> 	This creates the patch series for all commits starting at the
-> 	branch master (substitute next if you are basing your
-> 	development branch off of next, etc.), and places the results
-> 	in the directory /tmp/to-send, which will be created if it
-> 	doesn't exist.  It will use the first line of the commit log
-> 	as the subject line, prefixed with [I/N PATCH, E2FSPROGS],
-> 	where I/N will be 1/10, 2/10, 3/10, etc.  "Git am" will take
-> 	the subject, strip out what is in square brackets and use that
-> 	as the first line of the commit log.
-> 
-> % git-send-email --to=linux-ext4@vger.kernel.org /tmp/to-send
-> 
-> 	This will send the patches found in /tmp/to-send to
-> 	linux-ext4@vger.kernel.org, appropritaely formated.  If you
-> 	want to add an introductory message, add the option --compose
-> 	to the above command-line.  If you want to make the patch
-> 	series be a reply to some message thread, just note the
-> 	Message-ID of the message you want to reply to, and just copy
-> 	and paste it into git-send-email when it prompts you to do so.
-> 	If you want the patch series to start a new thread, just hit
-> 	return when the program prompts you for a In-Reply-To message-ID.
-> 
-> Anyway, I've applied the patch and it's in the e2fsprogs tree.  Thanks
-> for noticing it!
-> 
-> 						- Ted
+to the 2.6.24-stable tree.  Its filename is
 
+     jbd-correctly-unescape-journal-data-blocks.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From stable-bounces@linux.kernel.org  Thu Mar 20 16:13:23 2008
+Date: Thu, 20 Mar 2008 02:45:06 GMT
+Message-Id: <200803200245.m2K2j6jD024675@hera.kernel.org>
+From: jejb@kernel.org
+To: jejb@kernel.org, stable@kernel.org
+Subject: jbd: correctly unescape journal data blocks
+
+From: Duane Griffin <duaneg@dghda.com>
+commit: 439aeec639d7c57f3561054a6d315c40fd24bb74
+
+Fix a long-standing typo (predating git) that will cause data corruption if a
+journal data block needs unescaping.  At the moment the wrong buffer head's
+data is being unescaped.
+
+To test this case mount a filesystem with data=journal, start creating and
+deleting a bunch of files containing only JFS_MAGIC_NUMBER (0xc03b3998), then
+pull the plug on the device.  Without this patch the files will contain zeros
+instead of the correct data after recovery.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Chris Wright <chrisw@sous-sol.org>
+---
+ fs/jbd/recovery.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/jbd/recovery.c
++++ b/fs/jbd/recovery.c
+@@ -478,7 +478,7 @@ static int do_one_pass(journal_t *journa
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JFS_FLAG_ESCAPE) {
+-						*((__be32 *)bh->b_data) =
++						*((__be32 *)nbh->b_data) =
+ 						cpu_to_be32(JFS_MAGIC_NUMBER);
+ 					}
+ 
+
+
+Patches currently in stable-queue which might be from duaneg@dghda.com are
+
+queue-2.6.24/jbd2-correctly-unescape-journal-data-blocks.patch
+queue-2.6.24/jbd-correctly-unescape-journal-data-blocks.patch
