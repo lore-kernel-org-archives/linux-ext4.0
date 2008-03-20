@@ -1,77 +1,42 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: What's cooking in e2fsprogs.git (topics)
-Date: Thu, 20 Mar 2008 16:32:50 -0400
-Message-ID: <20080320203250.GP13719@mit.edu>
-References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <20080229154333.GC8968@mit.edu> <20080313181159.GD31653@mit.edu>
+Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
+Date: Thu, 20 Mar 2008 16:49:50 -0400
+Message-ID: <20080320204950.GA7991@mit.edu>
+References: <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com> <20080318022053.GL8368@mit.edu> <47DF35CC.7020604@redhat.com> <20080318042339.GO8368@mit.edu> <47DF5045.1000108@redhat.com> <20080318110145.GQ8368@mit.edu> <47DFBF84.5070207@redhat.com> <20080318135254.GA27000@mit.edu> <47E2B850.2080801@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:32773 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:39110 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758594AbYCTUcz (ORCPT
+	by vger.kernel.org with ESMTP id S1753848AbYCTUvX (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2008 16:32:55 -0400
+	Thu, 20 Mar 2008 16:51:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20080313181159.GD31653@mit.edu>
+In-Reply-To: <47E2B850.2080801@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here are the topics that have been cooking.  Commits prefixed
-with '-' are only in 'pu' while commits prefixed with '+' are
-in 'next'.  The topics list the commits in reverse chronological
-order.
+On Thu, Mar 20, 2008 at 02:17:36PM -0500, Eric Sandeen wrote:
+> Rather than *looking* for extN and size type in the magic first and
+> second slots, what if we fill them in there internally, but they will be
+> overridden by any other -T options specified.
+> 
+> Internally, first an extN type is picked up from mkfs.FOO first, or
+> defaults fs type if not specified.  Seond, also internally, a size type
+> is chosen next from the default size breakpoints.
 
-* tt/mkfs-types (Tue Feb 19 08:32:58 2008 -0500) 1 commit
- - New mke2fs types parsing --- IN PROGRESS
+Yes, this works, as long as we make sure every single filesystem and
+size stanza in /etc/mke2fs.conf overrides each other completely.
 
-	Eric is working on the documentation and reworking the way we
-	handle the command parsing.
+Hmm.... Actually, as it's currently specified, it's not completely
+true that a later parameter completely overrides a later one.  The one
+it's not true for is the "features" profile knob, where each specific
+filesystem called e2p_edit_features(), so that one particular features
+knob is cumulative.
 
-* tt/64bit-bitmaps (Mon Feb 18 23:54:53 2008 -0500) 1 commit
- - Initial design for 64-bit bitmaps
+Given that I think my previous proposal of overriding -t is probably
+the better one, and concuptally simpler to understand and document.
 
-	Not touched.
-
-* js/flex-bg (Wed Feb 13 20:47:50 2008 -0600) 1 commit
- - e2fsprogs: New bitmap and inode table allocation for FLEX_BG v2
-
-	Next on my list to audit.
-
-* js/uninit (Sun Oct 21 21:04:24 2007 -0500) 11 commits
- + Add m_uninit test case
- + Add new m_lazy test case
- + Make e2fsck uninit block group aware
- + Make debugfs uninit block group aware
- + Make resize2fs uninit block group aware
- + Make dumpe2fs uninit block group aware
- + Make tune2fs uninit block group aware
- + Add support for creating filesystems using uninit block group
- + Rename feature name from gdt_checksum to uninit_groups
- + Add uninit block group support to various libext2fs functions
- + Add initial checksum support for the gdt_checksum/uninit_group
-   feature
-
-	Merged into next.  At this point e2fsck on the 'next' branch
-	should be able to deal with any valid ext4 filesystem; if it
-	doesn't, that's a bug.
-
-* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
- - e2fsprogs: Add test case for undoe2fs
- - e2fsprogs: Fix the resize inode test case
- - e2fsprogs: Support for large inode migration.
- - e2fsprogs: Make mke2fs use undo I/O manager.
- - e2fsprogs: Add undoe2fs
- - e2fsprogs: Add undo I/O manager
-
-	Unchanged from last time.
-
-        The test cases are missing an expected file.
-
-        Also, we need to chage "mke2fs use undo I/O manager" so it
-        only does it if the uninit group patch is enabled.  
-
-----
-URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+    	   	    			   	      - Ted
