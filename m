@@ -1,78 +1,69 @@
-From: chrisw@sous-sol.org
-Subject: patch jbd2-correctly-unescape-journal-data-blocks.patch queued to 2.6.24-stable tree
-Date: Thu, 20 Mar 2008 16:32:21 -0700
-Message-ID: <200803202332.m2KNWLw9027997@sous-sol.org>
-References: <200803200245.m2K2j5Lw024656@hera.kernel.org>
-Cc: stable@kernel.org, stable-commits@vger.kernel.org
-To: duaneg@dghda.com, akpm@linux-foundation.org, chrisw@sous-sol.org,
-	jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org,
-	torvalds@linux-foundation.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: BUG with delayed allocation
+Date: Fri, 21 Mar 2008 07:55:12 +0800
+Message-ID: <20080320235512.GY2971@webber.adilger.int>
+References: <20080319085235.GA6752@skywalker>
+ <1205974018.3637.9.camel@localhost.localdomain>
+ <20080320053902.GD6967@skywalker>
+ <1206034190.3637.25.camel@localhost.localdomain>
+ <20080320175625.GA6931@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Mingming Cao <cmm@us.ibm.com>, Eric Sandeen <sandeen@redhat.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:56375 "EHLO
-	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751739AbYCTXcv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2008 19:32:51 -0400
-In-Reply-To: <200803200245.m2K2j5Lw024656@hera.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54995 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755486AbYCTXzW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2008 19:55:22 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2KNtHAK022395
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 16:55:18 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JY100A01ZRNT600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 20 Mar 2008 16:55:17 -0700 (PDT)
+In-reply-to: <20080320175625.GA6931@skywalker>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mar 20, 2008  23:26 +0530, Aneesh Kumar K.V wrote:
+> On Thu, Mar 20, 2008 at 10:29:50AM -0700, Mingming Cao wrote:
+> > On Thu, 2008-03-20 at 11:09 +0530, Aneesh Kumar K.V wrote:
+> > > > Could you try the following patch? It updates the i_disksize at the
+> > > > write_end time.
+> > > 
+> > > I will test the patch and update you. BTW shouldn't we update
+> > > i_disksize only after actual block got allocated ?
+> >
+> > Hmm...I am not  100% sure but I think we should not to change the
+> > behavior that the on-disk inode size should be updated when write()
+> > returns to user. Right now the in-memory inode size is updated, user
+> > would expecting the same when they run e2fsck, but e2fsck reads inode
+> > size from disk. Pushing the inode i_disksize update at the writeout
+> > (allocation) time will cause the window that i_size is different than
+> > the i_disksize being enlarged quite big.
+> 
+> If we are updating i_disksize during write_end and if we crash before actually
+> allocating the blocks e2fsck will find errors because the inode doesn't
+> really have that many blocks right ?
 
-This is a note to let you know that we have just queued up the patch titled
+No, it would just think the file is sparse and return \0 for the reads.
 
-     Subject: jbd2: correctly unescape journal data blocks
+That said, I don't agree with Mingming - the i_disksize should only be
+increased at the time the blocks are allocated on disk and not when the
+file is extended in memory.  Even if the window where i_size is different
+than i_disksize is large, this is only important after a crash, and at
+that time ordered mode users want the file to have a shorter i_disksize
+and the file contains only valid data, instead of the extended i_size
+but the file contains \0 bytes at the end.
 
-to the 2.6.24-stable tree.  Its filename is
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-     jbd2-correctly-unescape-journal-data-blocks.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From stable-bounces@linux.kernel.org  Thu Mar 20 16:12:49 2008
-Date: Thu, 20 Mar 2008 02:45:05 GMT
-Message-Id: <200803200245.m2K2j5Lw024656@hera.kernel.org>
-From: jejb@kernel.org
-To: jejb@kernel.org, stable@kernel.org
-Subject: jbd2: correctly unescape journal data blocks
-
-From: Duane Griffin <duaneg@dghda.com>
-commit: d00256766a0b4f1441931a7f569a13edf6c68200
-
-Fix a long-standing typo (predating git) that will cause data corruption if a
-journal data block needs unescaping.  At the moment the wrong buffer head's
-data is being unescaped.
-
-To test this case mount a filesystem with data=journal, start creating and
-deleting a bunch of files containing only JBD2_MAGIC_NUMBER (0xc03b3998), then
-pull the plug on the device.  Without this patch the files will contain zeros
-instead of the correct data after recovery.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: <stable@kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Chris Wright <chrisw@sous-sol.org>
----
- fs/jbd2/recovery.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -488,7 +488,7 @@ static int do_one_pass(journal_t *journa
- 					memcpy(nbh->b_data, obh->b_data,
- 							journal->j_blocksize);
- 					if (flags & JBD2_FLAG_ESCAPE) {
--						*((__be32 *)bh->b_data) =
-+						*((__be32 *)nbh->b_data) =
- 						cpu_to_be32(JBD2_MAGIC_NUMBER);
- 					}
- 
-
-
-Patches currently in stable-queue which might be from duaneg@dghda.com are
-
-queue-2.6.24/jbd2-correctly-unescape-journal-data-blocks.patch
-queue-2.6.24/jbd-correctly-unescape-journal-data-blocks.patch
