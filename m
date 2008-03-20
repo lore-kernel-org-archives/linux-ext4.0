@@ -1,42 +1,68 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [E2FSPROGS, RFC] New mke2fs types parsing
-Date: Thu, 20 Mar 2008 16:49:50 -0400
-Message-ID: <20080320204950.GA7991@mit.edu>
-References: <20080220222019.GG30305@mit.edu> <47DEE2AE.1050105@redhat.com> <20080318022053.GL8368@mit.edu> <47DF35CC.7020604@redhat.com> <20080318042339.GO8368@mit.edu> <47DF5045.1000108@redhat.com> <20080318110145.GQ8368@mit.edu> <47DFBF84.5070207@redhat.com> <20080318135254.GA27000@mit.edu> <47E2B850.2080801@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: fix ext2fs_extent_get for uninit leaf	extents
+Date: Thu, 20 Mar 2008 16:04:47 -0500
+Message-ID: <47E2D16F.2010407@redhat.com>
+References: <47E17582.2030507@redhat.com> <20080320202025.GM13719@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:39110 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753848AbYCTUvX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2008 16:51:23 -0400
-Content-Disposition: inline
-In-Reply-To: <47E2B850.2080801@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:38768 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756562AbYCTVJI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Mar 2008 17:09:08 -0400
+In-Reply-To: <20080320202025.GM13719@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 20, 2008 at 02:17:36PM -0500, Eric Sandeen wrote:
-> Rather than *looking* for extN and size type in the magic first and
-> second slots, what if we fill them in there internally, but they will be
-> overridden by any other -T options specified.
+Theodore Tso wrote:
+> On Wed, Mar 19, 2008 at 03:20:18PM -0500, Eric Sandeen wrote:
+>> Fix ext2fs_extent_get for uninit leaf extents
+>>
+>> From: Eric Sandeen <sandeen@redhat.com>
 > 
-> Internally, first an extN type is picked up from mkfs.FOO first, or
-> defaults fs type if not specified.  Seond, also internally, a size type
-> is chosen next from the default size breakpoints.
+> I'm guessing you used git-format-patch but not git-send-mail to send
+> out the patch?  Not a big deal, but it meant I had to do a "git commit
+> --amend" to edit out the aboe two lines after doing a "git am".
+> 
+> Suggested workflow that results in a nice patch series being sent to
+> linux-ext4, as well as making it easy for a maintainer using git to
+> suck it into git:
 
-Yes, this works, as long as we make sure every single filesystem and
-size stanza in /etc/mke2fs.conf overrides each other completely.
+Thanks... I'm still embarassingly git-illiterate.  Will do better next
+time :)
 
-Hmm.... Actually, as it's currently specified, it's not completely
-true that a later parameter completely overrides a later one.  The one
-it's not true for is the "features" profile knob, where each specific
-filesystem called e2p_edit_features(), so that one particular features
-knob is cumulative.
+-Eric
 
-Given that I think my previous proposal of overriding -t is probably
-the better one, and concuptally simpler to understand and document.
+> % git-format-patch -n --subject-prefix="PATCH, E2FSPROGS" -o /tmp/to-send master
+> 
+> 	This creates the patch series for all commits starting at the
+> 	branch master (substitute next if you are basing your
+> 	development branch off of next, etc.), and places the results
+> 	in the directory /tmp/to-send, which will be created if it
+> 	doesn't exist.  It will use the first line of the commit log
+> 	as the subject line, prefixed with [I/N PATCH, E2FSPROGS],
+> 	where I/N will be 1/10, 2/10, 3/10, etc.  "Git am" will take
+> 	the subject, strip out what is in square brackets and use that
+> 	as the first line of the commit log.
+> 
+> % git-send-email --to=linux-ext4@vger.kernel.org /tmp/to-send
+> 
+> 	This will send the patches found in /tmp/to-send to
+> 	linux-ext4@vger.kernel.org, appropritaely formated.  If you
+> 	want to add an introductory message, add the option --compose
+> 	to the above command-line.  If you want to make the patch
+> 	series be a reply to some message thread, just note the
+> 	Message-ID of the message you want to reply to, and just copy
+> 	and paste it into git-send-email when it prompts you to do so.
+> 	If you want the patch series to start a new thread, just hit
+> 	return when the program prompts you for a In-Reply-To message-ID.
+> 
+> Anyway, I've applied the patch and it's in the e2fsprogs tree.  Thanks
+> for noticing it!
+> 
+> 						- Ted
 
-    	   	    			   	      - Ted
