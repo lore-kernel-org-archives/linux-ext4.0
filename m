@@ -1,108 +1,80 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: BUG with delayed allocation
-Date: Wed, 19 Mar 2008 17:46:58 -0700
-Message-ID: <1205974018.3637.9.camel@localhost.localdomain>
-References: <20080319085235.GA6752@skywalker>
-Reply-To: cmm@us.ibm.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [2.6.25-rc5-ext4-36c86] attempt to access beyond end of device
+Date: Wed, 19 Mar 2008 21:19:19 -0500
+Message-ID: <47E1C9A7.6000200@redhat.com>
+References: <18399.36935.640758.796880@frecb006361.adech.frec.bull.fr> <20080318162301.GA8432@dmon-lap.sw.ru>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Solofo.Ramangalahy@bull.net, linux-ext4@vger.kernel.org
+To: Dmitri Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:52406 "EHLO e6.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:42360 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759099AbYCTArH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Mar 2008 20:47:07 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2K0n5pC032766
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Mar 2008 20:49:06 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2K0l4vc182746
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Mar 2008 20:47:04 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2K0l3N1023487
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Mar 2008 20:47:04 -0400
-In-Reply-To: <20080319085235.GA6752@skywalker>
+	id S1752517AbYCTCTz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Mar 2008 22:19:55 -0400
+In-Reply-To: <20080318162301.GA8432@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-03-19 at 14:22 +0530, Aneesh Kumar K.V wrote:
-> Hi,
+Dmitri Monakhov wrote:
+> On 10:49 Tue 18 Mar     , Solofo.Ramangalahy@bull.net wrote:
+> Content-Description: message body and .signature
+>> Hello,
+>>
+>> During stress testing (workload: racer from ltp + fio/iometer), here
+>> is an error I am encountering:
+> Confirm this issue happens after ~30secs of ltp fsstress.
 > 
-> Eric actually observed it yesterday. I am able to reproduce it locally.
-> With delayed allocation we are observing wrong value of i_size.
-> 
+> This happens because of error in ext4_get_block()
+> ext4_get_block()
+> { 
+> ...
+> 	ret = ext4_get_blocks_wrap(handle, inode, iblock,
+>                                         max_blocks, bh_result, create, 0);
+>         if (ret > 0) {
+>                 r2 = ret;
+>                 bh_result->b_size = (ret << inode->i_blkbits);
+> # Setting b_size, if ret > 1 then bh_result is broken because
+> #  b_size must always be equal to FS logical block size(1<<inode->i_blkbits)
 
-The problem is current delalloc does not update on-disk i_size until
-writeout time, the in-core i_size is updated though. 
+I don't think that's quite right.
 
-Could you try the following patch? It updates the i_disksize at the
-write_end time.
+this bh is a dummy bh, right, which just gives us info on the mapping.
 
+static int ext4_get_block(struct inode *inode, sector_t iblock,
+                        struct buffer_head *bh_result, int create)
+{
+        handle_t *handle = ext4_journal_current_handle();
+        int ret = 0, started = 0;
+        unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/inode.c |   39 ++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 38 insertions(+), 1 deletion(-)
+for starters, ext3 does exactly the same thing.
 
-Index: linux-2.6.25-rc5/fs/ext4/inode.c
-===================================================================
---- linux-2.6.25-rc5.orig/fs/ext4/inode.c	2008-03-19 17:32:44.000000000 -0700
-+++ linux-2.6.25-rc5/fs/ext4/inode.c	2008-03-19 17:43:19.000000000 -0700
-@@ -1355,6 +1355,43 @@ static int ext4_writeback_write_end(stru
- 	return ret ? ret : copied;
- }
- 
-+static int ext4_da_write_end(struct file *file,
-+				struct address_space *mapping,
-+				loff_t pos, unsigned len, unsigned copied,
-+				struct page *page, void *fsdata)
-+{
-+	handle_t *handle;
-+	struct inode *inode = file->f_mapping->host;
-+	int needed_blocks = ext4_writepage_trans_blocks(inode);
-+	int ret = 0, ret2;
-+	loff_t new_i_size;
-+
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle)) {
-+		unlock_page(page);
-+		page_cache_release(page);
-+		ret = PTR_ERR(handle);
-+		return ret;
-+	}
-+
-+	new_i_size = pos + copied;
-+	if (new_i_size > EXT4_I(inode)->i_disksize)
-+		EXT4_I(inode)->i_disksize = new_i_size;
-+
-+	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
-+							page, fsdata);
-+	if (copied < 0)
-+		ret = copied;
-+
-+	ret2 = ext4_journal_stop(handle);
-+	if (!ret)
-+		ret = ret2;
-+	unlock_page(page);
-+	page_cache_release(page);
-+
-+	return ret ? ret : copied;
-+}
-+
- static int ext4_journalled_write_end(struct file *file,
- 				struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned copied,
-@@ -2020,7 +2057,7 @@ static const struct address_space_operat
- 	.writepages	= ext4_da_writepages,
- 	.sync_page	= block_sync_page,
- 	.write_begin	= ext4_da_write_begin,
--	.write_end	= generic_write_end,
-+	.write_end	= ext4_da_write_end,
- 	.bmap		= ext4_bmap,
- 	.invalidatepage	= ext4_da_invalidatepage,
- 	.releasepage	= ext4_releasepage,
+Also look for example at get_more_blocks():
 
+                map_bh->b_state = 0;
+                map_bh->b_size = fs_count << dio->inode->i_blkbits;
+...
+                ret = (*dio->get_block)(dio->inode, fs_startblk,
+                                                map_bh, create);
 
+or do_mpage_readpage():
+
+        nblocks = map_bh->b_size >> blkbits;
+
+....
+
+                if (block_in_file < last_block) {
+                        map_bh->b_size = (last_block-block_in_file) <<
+blkbits;
+                        if (get_block(inode, block_in_file, map_bh, 0))
+                                goto confused;
+                        *first_logical_block = block_in_file;
+                }
+
+the bh->b_size can be more than a block; in this case it's not a problem.
+
+maybe some buffer tracing would be in order?
+
+-Eric
