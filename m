@@ -1,157 +1,123 @@
-From: Dmitri Monakhov <dmonakhov@openvz.org>
-Subject: delayed allocation result in BUG at fs/buffer.c:2880!
-Date: Thu, 20 Mar 2008 17:04:47 +0300
-Message-ID: <20080320140447.GB19995@dmon-lap.sw.ru>
-References: <18399.36935.640758.796880@frecb006361.adech.frec.bull.fr> <47E1CE7F.6050706@redhat.com> <20080320081619.GB13928@dmon-lap.sw.ru> <20080320120957.GB11891@skywalker>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: BUG with delayed allocation
+Date: Thu, 20 Mar 2008 10:29:50 -0700
+Message-ID: <1206034190.3637.25.camel@localhost.localdomain>
+References: <20080319085235.GA6752@skywalker>
+	 <1205974018.3637.9.camel@localhost.localdomain>
+	 <20080320053902.GD6967@skywalker>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, Solofo.Ramangalahy@bull.net,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 <linux-ext4@vger.kernel.org>
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:30074 "EHLO relay.sw.ru"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:50291 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755503AbYCTOdM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2008 10:33:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20080320120957.GB11891@skywalker>
+	id S1758087AbYCTR36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Mar 2008 13:29:58 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2KHVvxF024421
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 13:31:57 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2KHTtfj277400
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 13:29:55 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2KHTs2L024494
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 13:29:55 -0400
+In-Reply-To: <20080320053902.GD6967@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 17:39 Thu 20 Mar     , Aneesh Kumar K.V wrote:
-> On Thu, Mar 20, 2008 at 11:16:19AM +0300, Dmitri Monakhov wrote:
-> > On 21:39 Wed 19 Mar     , Eric Sandeen wrote:
-> > > Solofo.Ramangalahy@bull.net wrote:
-> > > > Hello,
-> > > > 
-> > > > During stress testing (workload: racer from ltp + fio/iometer), here
-> > > > is an error I am encountering:
-> > > > 8<------------------------------------------------------------------------------
-> > > > kernel: WARNING: at fs/buffer.c:1680 __block_write_full_page+0xd4/0x2af()
-> > > 
-> > > So this is WARN_ON(bh->b_size != blocksize);
-> > > 
-> > > What is b_size in this case?
-> > FS block size, because this page pinned bh (it comes from page_buffers(page)), but
-> > not dummy bh which may comes from {write,read}pages or direct_IO. 
-> > Page's bh i_size must always be equal to fs blocksize.
-> > This bh always constructed via following construction
-> > if (!page_has_buffers(page))
-> > 	create_empty_buffers(page, 1<<inode->i_blkbits, flags)
-> > So page's bh->b_size was inited with right value from very beginning, but
-> > apparently somewhere this size was changed 
-> > I guess i've localized buggy place, at least it's looks strange.
-> > ext4_da_get_block_prep ()
-> > {
-> > ...
-> > 	BUG_ON(create == 0);
-> >         BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
-> > 	ret =  ext4_get_blocks_wrap(NULL,  inode, iblock, 1,  bh_result, 0, 0);
-> > #Here ext4_get_block_write called with max_blocks == 1  ^^^^^
-> > 	...
-> > 	if (ret > 0) {
-> >                         bh_result->b_size = (ret << inode->i_blkbits);
-> > 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> > ## I don't understand this place. I hoped what (ret <= max_blocks) must always
-> > ##be true true. But after I've add debug info printing I've got following result.
-> >                 ret = 0;
-> >         }
-> > ...
-> > }
-> > Some times I've seen following ,message 
-> >  bh= {state=0,size=114688, blknr=18446744073709551615 dev=0000000000000000,count=0}, ret=28
-> > And because it was page-cache's bh later this result in WARNING.
+On Thu, 2008-03-20 at 11:09 +0530, Aneesh Kumar K.V wrote:
+
+> > Could you try the following patch? It updates the i_disksize at the
+> > write_end time.
+> > 
 > 
-> Is that a fallocate space ?. For falloc space we can return values
-> greater than max_blocks. ext4_ext_get_blocks was made to return  >0
-> for a read on prealloc space to ensure delalloc doesn't reserve space
-> for the same. I guess we need to make sure we don't return more than
-> max_blocks. Can you try the patch below
-Ok Warning has gone, but resulted bh still incorrectly filled.
-I've found what function ext4_da_get_block_prep() return bh witch 
-is !mapped and !delayed, which is prohibited because it is always called with
-create != 0. BH debug info at the end of this function result in following msg
-
-BH={state=0, size=4096, blknr=18446744073709551615,dev=0000000000000000,
-  count=0} block =288 ret=1
-
-Later this incorrectly filled bh result in BUG_ON triggering
-------------[ cut here ]------------
- kernel BUG at fs/buffer.c:2880!
- invalid opcode: 0000 [1] SMP
- CPU 1
- Modules linked in: ext4dev jbd2 crc16 ipv6 autofs4 hidp hid rfcomm l2cap
-bluetooth sunrpc dm_multipath video output sbs sbshc battery ac parport_pc lp
-parport floppy sg e1000 button ata_generic i6300esb i2c_i801 iTCO_wdt pcspkr
-i2c_core e752x_edac iTCO_vendor_support edac_core dm_snapshot dm_zero dm_mirror
-dm_mod ata_piix libata sd_mod scsi_mod ext3 jbd mbcache ehci_hcd ohci_hcd
-uhci_hcd [last unloaded: microcode]
- Pid: 3291, comm: fsstress-x86_64 Not tainted 2.6.25-rc4 #28
- RIP: 0010:[<ffffffff804a318b>]  [<ffffffff804a318b>] submit_bh+0x18/0xfc
- RSP: 0018:ffff81006cd5ba08  EFLAGS: 00010246
- RAX: 0000000000000004 RBX: ffff810067ce6380 RCX: ffffffff8076a728
- RDX: ffff81006cd5bae0 RSI: ffff810067ce6380 RDI: 0000000000000000
- RBP: 0000000000000000 R08: ffffffff8076a710 R09: ffff810001029060
- R10: 0000000000000000 R11: ffffffff8041e877 R12: 0000000000000000
- R13: 0000000000000000 R14: 0000000000000001 R15: 0000000000000427
- FS:  0000000000691850(0063) GS:ffff81007f80e480(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
- CR2: 00007fca7c019000 CR3: 0000000076d56000 CR4: 00000000000006e0
- DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
- DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
- Process fsstress-x86_64 (pid: 3291, threadinfo ffff81006cd5a000, task
-ffff810076d49220)
- Stack:  ffff810067ce6380 ffff81006cd5bae0 0000000000000000 ffffffff804a434f
-  0000000000001000 0000000000000000 ffffe2000169bac8 0000000000000000
-  0000000000000000 ffffffff804a4905 0000000000000000 0000004400000000
- Call Trace:
-  [<ffffffff804a434f>] ll_rw_block+0x9c/0xbf
-  [<ffffffff804a4905>] __block_prepare_write+0x358/0x434
-  [<ffffffff88238d82>] :ext4dev:ext4_da_get_block_prep+0x0/0xd9
-  [<ffffffff804a4a7e>] block_write_begin+0x78/0xc9
-  [<ffffffff88237160>] :ext4dev:ext4_da_write_begin+0x65/0x78
-  [<ffffffff88238d82>] :ext4dev:ext4_da_get_block_prep+0x0/0xd9
-  [<ffffffff80463667>] generic_file_buffered_write+0x14a/0x642
-  [<ffffffff8049514f>] __d_lookup+0xa8/0x104
-  [<ffffffff80432143>] current_fs_time+0x1e/0x24
-  [<ffffffff80463e9b>] __generic_file_aio_write_nolock+0x33c/0x3a6
-  [<ffffffff80463f66>] generic_file_aio_write+0x61/0xc1
-  [<ffffffff882349eb>] :ext4dev:ext4_file_write+0xa0/0x125
-  [<ffffffff8048532f>] do_sync_write+0xc9/0x10c
-  [<ffffffff8043f5c3>] autoremove_wake_function+0x0/0x2e
-  [<ffffffff80485ad9>] vfs_write+0xad/0x156
-  [<ffffffff8048607b>] sys_write+0x45/0x6e
-  [<ffffffff8040be79>] tracesys+0xdc/0xe1
- Code: 3b 5c 24 08 48 89 df eb eb 5b 5d 5b 5d 44 89 e0 41 5c c3 41 54 55 89 fd
-53 48 8b 06 48 89 f3 a8 04 75 04 0f 0b eb fe a8 20 75 04 <0f> 0b eb fe 48 83 7e
-38 00 75 04 0f 0b eb fe f6 c4 10 74 0b 83
- RIP  [<ffffffff804a318b>] submit_bh+0x18/0xfc
-  RSP <ffff81006cd5ba08>
- ---[ end trace 1b684ef9ec78f248 ]---
-
-
+> I will test the patch and update you. BTW shouldn't we update
+> i_disksize only after actual block got allocated ?
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index d6ae40a..4985fd5 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2600,8 +2600,18 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  			}
->  			if (create == EXT4_CREATE_UNINITIALIZED_EXT)
->  				goto out;
-> -			if (!create)
-> +			if (!create) {
-> +				/*
-> +				 * We have blocks reserved already. We
-> +				 * return allocated blocks so that delalloc
-> +				 * won't do block reservation for us. But
-> +				 * the buffer head will be unmapped so that
-> +				 * a read from the block return 0
-> +				 */
-> +				if (allocated > max_blocks)
-> +					allocated = max_blocks;
->  				goto out2;
-> +			}
->  
->  			ret = ext4_ext_convert_to_initialized(handle, inode,
->  								path, iblock,
+> 
+Hmm...I am not  100% sure but I think we should not to change the
+behavior that the on-disk inode size should be updated when write()
+returns to user. Right now the in-memory inode size is updated, user
+would expecting the same when they run e2fsck, but e2fsck reads inode
+size from disk. Pushing the inode i_disksize update at the writeout
+(allocation) time will cause the window that i_size is different than
+the i_disksize being enlarged quite big.
+
+Mingming
+> > 
+> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> > ---
+> >  fs/ext4/inode.c |   39 ++++++++++++++++++++++++++++++++++++++-
+> >  1 file changed, 38 insertions(+), 1 deletion(-)
+> > 
+> > Index: linux-2.6.25-rc5/fs/ext4/inode.c
+> > ===================================================================
+> > --- linux-2.6.25-rc5.orig/fs/ext4/inode.c	2008-03-19 17:32:44.000000000 -0700
+> > +++ linux-2.6.25-rc5/fs/ext4/inode.c	2008-03-19 17:43:19.000000000 -0700
+> > @@ -1355,6 +1355,43 @@ static int ext4_writeback_write_end(stru
+> >  	return ret ? ret : copied;
+> >  }
+> > 
+> > +static int ext4_da_write_end(struct file *file,
+> > +				struct address_space *mapping,
+> > +				loff_t pos, unsigned len, unsigned copied,
+> > +				struct page *page, void *fsdata)
+> > +{
+> > +	handle_t *handle;
+> > +	struct inode *inode = file->f_mapping->host;
+> > +	int needed_blocks = ext4_writepage_trans_blocks(inode);
+> > +	int ret = 0, ret2;
+> > +	loff_t new_i_size;
+> > +
+> > +	handle = ext4_journal_start(inode, needed_blocks);
+> > +	if (IS_ERR(handle)) {
+> > +		unlock_page(page);
+> > +		page_cache_release(page);
+> > +		ret = PTR_ERR(handle);
+> > +		return ret;
+> > +	}
+> > +
+> > +	new_i_size = pos + copied;
+> > +	if (new_i_size > EXT4_I(inode)->i_disksize)
+> > +		EXT4_I(inode)->i_disksize = new_i_size;
+> > +
+> > +	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
+> > +							page, fsdata);
+> > +	if (copied < 0)
+> > +		ret = copied;
+> > +
+> > +	ret2 = ext4_journal_stop(handle);
+> > +	if (!ret)
+> > +		ret = ret2;
+> > +	unlock_page(page);
+> > +	page_cache_release(page);
+> > +
+> > +	return ret ? ret : copied;
+> > +}
+> > +
+> >  static int ext4_journalled_write_end(struct file *file,
+> >  				struct address_space *mapping,
+> >  				loff_t pos, unsigned len, unsigned copied,
+> > @@ -2020,7 +2057,7 @@ static const struct address_space_operat
+> >  	.writepages	= ext4_da_writepages,
+> >  	.sync_page	= block_sync_page,
+> >  	.write_begin	= ext4_da_write_begin,
+> > -	.write_end	= generic_write_end,
+> > +	.write_end	= ext4_da_write_end,
+> >  	.bmap		= ext4_bmap,
+> >  	.invalidatepage	= ext4_da_invalidatepage,
+> >  	.releasepage	= ext4_releasepage,
+> > 
+> > 
+> 
+> -aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
