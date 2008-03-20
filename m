@@ -1,67 +1,114 @@
-From: hooanon05@yahoo.co.jp
-Subject: Re: [Bugme-new] [Bug 10276] New: directory ctime not updated by rename
-Date: Thu, 20 Mar 2008 12:36:41 +0900
-Message-ID: <7732.1205984201@jrobl>
-References: <bug-10276-10286@http.bugzilla.kernel.org/> <20080318100023.1e047627.akpm@linux-foundation.org> <20080318174608.GH10722@ZenIV.linux.org.uk>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	bugme-daemon@bugzilla.kernel.org,
-	lasse-kernelbug-2008@mail.plastictree.net
-To: Al Viro <viro@ZenIV.linux.org.uk>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: BUG with delayed allocation
+Date: Thu, 20 Mar 2008 09:51:58 +0530
+Message-ID: <20080320042157.GC6967@skywalker>
+References: <20080319085235.GA6752@skywalker> <47E12645.40203@redhat.com> <20080319183255.GA15209@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, Eric Sandeen <sandeen@redhat.com>
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vsmtp02.dti.ne.jp ([202.216.231.137]:57230 "EHLO
-	vsmtp02.dti.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751610AbYCTDrW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2008 23:47:22 -0400
-In-Reply-To: <20080318174608.GH10722@ZenIV.linux.org.uk>
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:33650 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750878AbYCTEWI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2008 00:22:08 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2K4LkqE020804
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:21:46 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2K4Pp9v288334
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:25:51 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2K4MCSF004795
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:22:12 +1100
+Content-Disposition: inline
+In-Reply-To: <20080319183255.GA15209@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This mail didn't seem to reach the list.
 
-Al Viro:
-> The latter; all control over timestamps on directory operations is in
-> filesystems.  Which filesystem it is, BTW?  E.g. ext2 has
->         dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-> in ext2_set_link() (and the same in ext2_add_entry()/ext2_delete_entry()),
-> so on all paths in ext2_rename() both parents will get ctime and mtime
-> updated; so will the object being moved and the object being unlinked
-> (explicitly in ext2_rename()).
+-aneesh
 
-Is it correct to update the mtime of renaming inode?
-When it is a regular file the mtime is not updated, but a directory. I
-have been wondering it for a long time.
-
-$ stat -f .
-  File: "."
-    ID: c39e8aabce296ceb Namelen: 255     Type: ext2/ext3
-Block size: 1024       Fundamental block size: 1024
-Blocks: Total: 124442     Free: 122443     Available: 116018
-Inodes: Total: 32256      Free: 32144
-(actually it is ext2)
-
-$ mkdir d1
-$ stat d1
-  File: `d1'
-  Size: 1024      	Blocks: 2          IO Block: 1024   directory
-Device: 30ah/778d	Inode: 2017        Links: 2
-Access: (0755/drwxr-xr-x)  Uid: ( 1000/     jro)   Gid: ( 1000/     jro)
-Access: 2008-03-20 12:33:57.000000000 +0900
-Modify: 2008-03-20 12:33:57.000000000 +0900
-Change: 2008-03-20 12:33:57.000000000 +0900
-
-$ /tmp/rename d1 d2
-(simply issues rename systemcall.)
-
-$ stat d2
-  File: `d2'
-  Size: 1024      	Blocks: 2          IO Block: 1024   directory
-Device: 30ah/778d	Inode: 2017        Links: 2
-Access: (0755/drwxr-xr-x)  Uid: ( 1000/     jro)   Gid: ( 1000/     jro)
-Access: 2008-03-20 12:33:57.000000000 +0900
-Modify: 2008-03-20 12:34:11.000000000 +0900
-Change: 2008-03-20 12:34:11.000000000 +0900
-$ 
-
-
-Junjiro Okajima
+On Thu, Mar 20, 2008 at 12:02:55AM +0530, Aneesh Kumar K.V wrote:
+> On Wed, Mar 19, 2008 at 09:42:13AM -0500, Eric Sandeen wrote:
+> > Aneesh Kumar K.V wrote:
+> > > Hi,
+> > > 
+> > > Eric actually observed it yesterday. I am able to reproduce it locally.
+> > > With delayed allocation we are observing wrong value of i_size.
+> > > 
+> > > kenrel: 2.6.25-rc5 +
+> > > With all the patches in the patch queue
+> > 
+> > ...
+> > 
+> > I also see this with only:
+> > 
+> > patches/delalloc-vfs.patch
+> > patches/delalloc-ext4.patch
+> > 
+> > applied.
+> 
+> This one seems to work for me. Need to think a bit more about parallel
+> truncate.
+> 
+> -aneesh
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 79930df..b74426d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1488,6 +1488,43 @@ out:
+>  
+>  	return ret;
+>  }
+> +static int ext4_da_writepage(struct page *page,
+> +				struct writeback_control *wbc)
+> +{
+> +	struct inode *inode = page->mapping->host;
+> +	handle_t *handle = NULL;
+> +	int ret = 0;
+> +	int err;
+> +
+> +	if (ext4_journal_current_handle())
+> +		goto out_fail;
+> +
+> +	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+> +	if (IS_ERR(handle)) {
+> +		ret = PTR_ERR(handle);
+> +		goto out_fail;
+> +	}
+> +
+> +	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+> +		ret = nobh_writepage(page, ext4_get_block, wbc);
+> +	else
+> +		ret = block_write_full_page(page, ext4_get_block, wbc);
+> +
+> +	if (!ret && inode->i_size > EXT4_I(inode)->i_disksize) {
+> +		EXT4_I(inode)->i_disksize = inode->i_size;
+> +		ext4_mark_inode_dirty(handle, inode);
+> +	}
+> +
+> +	err = ext4_journal_stop(handle);
+> +	if (!ret)
+> +		ret = err;
+> +	return ret;
+> +
+> +out_fail:
+> +	redirty_page_for_writepage(wbc, page);
+> +	unlock_page(page);
+> +	return ret;
+> +}
+>  
+>  static int ext4_da_writepages(struct address_space *mapping,
+>  				struct writeback_control *wbc)
+> @@ -2015,7 +2052,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+>  static const struct address_space_operations ext4_da_aops = {
+>  	.readpage	= ext4_readpage,
+>  	.readpages	= ext4_readpages,
+> -	.writepage	= ext4_writeback_writepage,
+> +	.writepage	= ext4_da_writepage,
+>  	.writepages	= ext4_da_writepages,
+>  	.sync_page	= block_sync_page,
+>  	.write_begin	= ext4_da_write_begin,
