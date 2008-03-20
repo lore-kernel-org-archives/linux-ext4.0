@@ -1,114 +1,181 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: BUG with delayed allocation
-Date: Thu, 20 Mar 2008 09:51:58 +0530
-Message-ID: <20080320042157.GC6967@skywalker>
-References: <20080319085235.GA6752@skywalker> <47E12645.40203@redhat.com> <20080319183255.GA15209@skywalker>
+Date: Thu, 20 Mar 2008 11:09:02 +0530
+Message-ID: <20080320053902.GD6967@skywalker>
+References: <20080319085235.GA6752@skywalker> <1205974018.3637.9.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, Eric Sandeen <sandeen@redhat.com>
-To: ext4 <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:33650 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750878AbYCTEWI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2008 00:22:08 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2K4LkqE020804
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:21:46 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2K4Pp9v288334
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:25:51 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2K4MCSF004795
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 15:22:12 +1100
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:49644 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752702AbYCTFkB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2008 01:40:01 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2K5dd5f012172
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 16:39:39 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2K5dvrP1065164
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 16:39:57 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2K5dulr013388
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 16:39:57 +1100
 Content-Disposition: inline
-In-Reply-To: <20080319183255.GA15209@skywalker>
+In-Reply-To: <1205974018.3637.9.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This mail didn't seem to reach the list.
+On Wed, Mar 19, 2008 at 05:46:58PM -0700, Mingming Cao wrote:
+> On Wed, 2008-03-19 at 14:22 +0530, Aneesh Kumar K.V wrote:
+> > Hi,
+> > 
+> > Eric actually observed it yesterday. I am able to reproduce it locally.
+> > With delayed allocation we are observing wrong value of i_size.
+> > 
+> 
+> The problem is current delalloc does not update on-disk i_size until
+> writeout time, the in-core i_size is updated though. 
+> 
 
--aneesh
+ext4_da_writepages actually update the i_disksize during writeout time.
+The writepage callback for delalloc was using ext4_writeback_writepage,
+which didn't update the i_disksize. That is why some of the files have
+correct size while some doesn't. I tested the below change and sent this
+to list. But i appears vger dropped the mail to the list.
 
-On Thu, Mar 20, 2008 at 12:02:55AM +0530, Aneesh Kumar K.V wrote:
-> On Wed, Mar 19, 2008 at 09:42:13AM -0500, Eric Sandeen wrote:
-> > Aneesh Kumar K.V wrote:
-> > > Hi,
-> > > 
-> > > Eric actually observed it yesterday. I am able to reproduce it locally.
-> > > With delayed allocation we are observing wrong value of i_size.
-> > > 
-> > > kenrel: 2.6.25-rc5 +
-> > > With all the patches in the patch queue
-> > 
-> > ...
-> > 
-> > I also see this with only:
-> > 
-> > patches/delalloc-vfs.patch
-> > patches/delalloc-ext4.patch
-> > 
-> > applied.
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 79930df..b74426d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1488,6 +1488,43 @@ out:
+ 
+ 	return ret;
+ }
++static int ext4_da_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	struct inode *inode = page->mapping->host;
++	handle_t *handle = NULL;
++	int ret = 0;
++	int err;
++
++	if (ext4_journal_current_handle())
++		goto out_fail;
++
++	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out_fail;
++	}
++
++	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
++		ret = nobh_writepage(page, ext4_get_block, wbc);
++	else
++		ret = block_write_full_page(page, ext4_get_block, wbc);
++
++	if (!ret && inode->i_size > EXT4_I(inode)->i_disksize) {
++		EXT4_I(inode)->i_disksize = inode->i_size;
++		ext4_mark_inode_dirty(handle, inode);
++	}
++
++	err = ext4_journal_stop(handle);
++	if (!ret)
++		ret = err;
++	return ret;
++
++out_fail:
++	redirty_page_for_writepage(wbc, page);
++	unlock_page(page);
++	return ret;
++}
+ 
+ static int ext4_da_writepages(struct address_space *mapping,
+ 				struct writeback_control *wbc)
+@@ -2015,7 +2052,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ static const struct address_space_operations ext4_da_aops = {
+ 	.readpage	= ext4_readpage,
+ 	.readpages	= ext4_readpages,
+-	.writepage	= ext4_writeback_writepage,
++	.writepage	= ext4_da_writepage,
+ 	.writepages	= ext4_da_writepages,
+ 	.sync_page	= block_sync_page,
+ 	.write_begin	= ext4_da_write_begin,
+
+> Could you try the following patch? It updates the i_disksize at the
+> write_end time.
 > 
-> This one seems to work for me. Need to think a bit more about parallel
-> truncate.
+
+I will test the patch and update you. BTW shouldn't we update
+i_disksize only after actual block got allocated ?
+
+
 > 
-> -aneesh
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> ---
+>  fs/ext4/inode.c |   39 ++++++++++++++++++++++++++++++++++++++-
+>  1 file changed, 38 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 79930df..b74426d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1488,6 +1488,43 @@ out:
->  
->  	return ret;
+> Index: linux-2.6.25-rc5/fs/ext4/inode.c
+> ===================================================================
+> --- linux-2.6.25-rc5.orig/fs/ext4/inode.c	2008-03-19 17:32:44.000000000 -0700
+> +++ linux-2.6.25-rc5/fs/ext4/inode.c	2008-03-19 17:43:19.000000000 -0700
+> @@ -1355,6 +1355,43 @@ static int ext4_writeback_write_end(stru
+>  	return ret ? ret : copied;
 >  }
-> +static int ext4_da_writepage(struct page *page,
-> +				struct writeback_control *wbc)
+> 
+> +static int ext4_da_write_end(struct file *file,
+> +				struct address_space *mapping,
+> +				loff_t pos, unsigned len, unsigned copied,
+> +				struct page *page, void *fsdata)
 > +{
-> +	struct inode *inode = page->mapping->host;
-> +	handle_t *handle = NULL;
-> +	int ret = 0;
-> +	int err;
+> +	handle_t *handle;
+> +	struct inode *inode = file->f_mapping->host;
+> +	int needed_blocks = ext4_writepage_trans_blocks(inode);
+> +	int ret = 0, ret2;
+> +	loff_t new_i_size;
 > +
-> +	if (ext4_journal_current_handle())
-> +		goto out_fail;
-> +
-> +	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+> +	handle = ext4_journal_start(inode, needed_blocks);
 > +	if (IS_ERR(handle)) {
+> +		unlock_page(page);
+> +		page_cache_release(page);
 > +		ret = PTR_ERR(handle);
-> +		goto out_fail;
+> +		return ret;
 > +	}
 > +
-> +	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-> +		ret = nobh_writepage(page, ext4_get_block, wbc);
-> +	else
-> +		ret = block_write_full_page(page, ext4_get_block, wbc);
+> +	new_i_size = pos + copied;
+> +	if (new_i_size > EXT4_I(inode)->i_disksize)
+> +		EXT4_I(inode)->i_disksize = new_i_size;
 > +
-> +	if (!ret && inode->i_size > EXT4_I(inode)->i_disksize) {
-> +		EXT4_I(inode)->i_disksize = inode->i_size;
-> +		ext4_mark_inode_dirty(handle, inode);
-> +	}
+> +	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
+> +							page, fsdata);
+> +	if (copied < 0)
+> +		ret = copied;
 > +
-> +	err = ext4_journal_stop(handle);
+> +	ret2 = ext4_journal_stop(handle);
 > +	if (!ret)
-> +		ret = err;
-> +	return ret;
-> +
-> +out_fail:
-> +	redirty_page_for_writepage(wbc, page);
+> +		ret = ret2;
 > +	unlock_page(page);
-> +	return ret;
+> +	page_cache_release(page);
+> +
+> +	return ret ? ret : copied;
 > +}
->  
->  static int ext4_da_writepages(struct address_space *mapping,
->  				struct writeback_control *wbc)
-> @@ -2015,7 +2052,7 @@ static const struct address_space_operations ext4_journalled_aops = {
->  static const struct address_space_operations ext4_da_aops = {
->  	.readpage	= ext4_readpage,
->  	.readpages	= ext4_readpages,
-> -	.writepage	= ext4_writeback_writepage,
-> +	.writepage	= ext4_da_writepage,
+> +
+>  static int ext4_journalled_write_end(struct file *file,
+>  				struct address_space *mapping,
+>  				loff_t pos, unsigned len, unsigned copied,
+> @@ -2020,7 +2057,7 @@ static const struct address_space_operat
 >  	.writepages	= ext4_da_writepages,
 >  	.sync_page	= block_sync_page,
 >  	.write_begin	= ext4_da_write_begin,
+> -	.write_end	= generic_write_end,
+> +	.write_end	= ext4_da_write_end,
+>  	.bmap		= ext4_bmap,
+>  	.invalidatepage	= ext4_da_invalidatepage,
+>  	.releasepage	= ext4_releasepage,
+> 
+> 
+
+-aneesh
