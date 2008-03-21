@@ -1,56 +1,55 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: e2fsprogs and fast symlink
-Date: Fri, 21 Mar 2008 17:12:34 +0530
-Message-ID: <20080321114234.GB6542@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: [PATCH, E2FSPROGS] debugfs, tune2fs: Handle daylight savings time when parsing a time string
+Date: Fri, 21 Mar 2008 09:17:13 -0400
+Message-ID: <1206105433-15636-1-git-send-email-tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:38465 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754934AbYCULmn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Mar 2008 07:42:43 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2LBhYEf016626
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 22:43:34 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2LBkQeI203188
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 22:46:26 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2LBgeUj001931
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 22:42:40 +1100
-Content-Disposition: inline
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60118 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754948AbYCUNRQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Mar 2008 09:17:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+We need to set tm_isdst to -1 so that mktime will automatically
+determine whether or not daylight savings time (DST) is in effect.
+Previously tm_isdst was set to 0, which caused mktime to interpret the
+time as if it was always not using DST.
 
-The below test case fails x86
-#ln -s sfdajsfsdsdfskjdgfkshdfkshdfkgdsjdsjdhsdfdafdsgakfasdgfsjksdsdsdfsd p 
-#sync
-#rm p
-root@elm3b165:~# /usr/local/e2fsprogs/sbin/e2fsck  -f  /dev/sda5
-e2fsck 1.40.8 (13-Mar-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Fast symlink 12 has EXTENT_FL set.  Clear<y>? 
+Addresses-Debian-Bug: #471882
 
-ie because after deleting the file we have
-debugfs:  stat <12>
-Inode: 12   Type: symlink    Mode:  0777   Flags: 0x80000   Generation:
-25346603
-User:     0   Group:     0   Size: 0
-File ACL: 0    Directory ACL: 0
-Links: 0   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x47e39ea3 -- Fri Mar 21 11:40:19 2008
-atime: 0x47e39e9e -- Fri Mar 21 11:40:14 2008
-mtime: 0x47e39e9a -- Fri Mar 21 11:40:10 2008
-dtime: 0x47e39ea3 -- Fri Mar 21 11:40:19 2008
-Size of extra inode fields: 28
-Fast_link_dest: 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ debugfs/util.c |    1 +
+ misc/tune2fs.c |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
 
+diff --git a/debugfs/util.c b/debugfs/util.c
+index 0633960..ebce9d6 100644
+--- a/debugfs/util.c
++++ b/debugfs/util.c
+@@ -231,6 +231,7 @@ extern time_t string_to_time(const char *arg)
+ 	    ts.tm_min > 59 || ts.tm_sec > 61)
+ 		ts.tm_mday = 0;
+ #endif
++	ts.tm_isdst = -1;
+ 	ret = mktime(&ts);
+ 	if (ts.tm_mday == 0 || ret == ((time_t) -1)) {
+ 		/* Try it as an integer... */
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 4f66d42..4e731f5 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -540,6 +540,7 @@ static time_t parse_time(char *str)
+ 			str);
+ 		usage();
+ 	}
++	ts.tm_isdst = -1;
+ 	return (mktime(&ts));
+ }
+ 
+-- 
+1.5.4.1.144.gdfee-dirty
 
-shouldn't e2fsprogs also look at whether the inode is in use ?
-
--aneesh
