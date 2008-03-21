@@ -1,55 +1,67 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH, E2FSPROGS] debugfs, tune2fs: Handle daylight savings time when parsing a time string
-Date: Fri, 21 Mar 2008 09:17:13 -0400
-Message-ID: <1206105433-15636-1-git-send-email-tytso@mit.edu>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - jbd2-correctly-unescape-journal-data-blocks.patch removed from -mm tree
+Date: Fri, 21 Mar 2008 13:29:35 -0700
+Message-ID: <200803212029.m2LKTZRP008884@imap1.linux-foundation.org>
+To: duaneg@dghda.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	stable@kernel.org, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60118 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754948AbYCUNRQ (ORCPT
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:45684 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758694AbYCUU3z (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2008 09:17:16 -0400
+	Fri, 21 Mar 2008 16:29:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to set tm_isdst to -1 so that mktime will automatically
-determine whether or not daylight savings time (DST) is in effect.
-Previously tm_isdst was set to 0, which caused mktime to interpret the
-time as if it was always not using DST.
 
-Addresses-Debian-Bug: #471882
+The patch titled
+     jbd2: correctly unescape journal data blocks
+has been removed from the -mm tree.  Its filename was
+     jbd2-correctly-unescape-journal-data-blocks.patch
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: jbd2: correctly unescape journal data blocks
+From: "Duane Griffin" <duaneg@dghda.com>
+
+Fix a long-standing typo (predating git) that will cause data corruption if a
+journal data block needs unescaping.  At the moment the wrong buffer head's
+data is being unescaped.
+
+To test this case mount a filesystem with data=journal, start creating and
+deleting a bunch of files containing only JBD2_MAGIC_NUMBER (0xc03b3998), then
+pull the plug on the device.  Without this patch the files will contain zeros
+instead of the correct data after recovery.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- debugfs/util.c |    1 +
- misc/tune2fs.c |    1 +
- 2 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/debugfs/util.c b/debugfs/util.c
-index 0633960..ebce9d6 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -231,6 +231,7 @@ extern time_t string_to_time(const char *arg)
- 	    ts.tm_min > 59 || ts.tm_sec > 61)
- 		ts.tm_mday = 0;
- #endif
-+	ts.tm_isdst = -1;
- 	ret = mktime(&ts);
- 	if (ts.tm_mday == 0 || ret == ((time_t) -1)) {
- 		/* Try it as an integer... */
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 4f66d42..4e731f5 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -540,6 +540,7 @@ static time_t parse_time(char *str)
- 			str);
- 		usage();
- 	}
-+	ts.tm_isdst = -1;
- 	return (mktime(&ts));
- }
+ fs/jbd2/recovery.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -puN fs/jbd2/recovery.c~jbd2-correctly-unescape-journal-data-blocks fs/jbd2/recovery.c
+--- a/fs/jbd2/recovery.c~jbd2-correctly-unescape-journal-data-blocks
++++ a/fs/jbd2/recovery.c
+@@ -535,7 +535,7 @@ static int do_one_pass(journal_t *journa
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JBD2_FLAG_ESCAPE) {
+-						*((__be32 *)bh->b_data) =
++						*((__be32 *)nbh->b_data) =
+ 						cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 					}
  
--- 
-1.5.4.1.144.gdfee-dirty
+_
+
+Patches currently in -mm which might be from duaneg@dghda.com are
+
+origin.patch
+jbd2-only-create-debugfs-and-stats-entries-if-cache-initialisation-is-successful.patch
 
