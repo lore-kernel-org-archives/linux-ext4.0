@@ -1,134 +1,104 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-fix-wrong-gfp-type-under-transaction.patch removed from -mm tree
-Date: Fri, 21 Mar 2008 13:29:23 -0700
-Message-ID: <200803212029.m2LKTNXx008862@imap1.linux-foundation.org>
-To: jbacik@redhat.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC PATCH] ext4:  Update i_diskzie during writepage for
+	delayed allocation.
+Date: Fri, 21 Mar 2008 15:08:27 -0700
+Message-ID: <1206137307.3605.29.camel@localhost.localdomain>
+References: <1206080337-8732-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Reply-To: cmm@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, sandeen@redhat.com, Solofo.Ramangalahy@bull.net,
+	dmonakhov@openvz.org, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:47769 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757251AbYCUUaB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2008 16:30:01 -0400
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:40930 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751183AbYCUWIf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Mar 2008 18:08:35 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2LM8Vds017581
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:08:31 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2LM8VOU267800
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:08:31 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2LM8UXX015705
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:08:31 -0400
+In-Reply-To: <1206080337-8732-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, 2008-03-21 at 11:48 +0530, Aneesh Kumar K.V wrote:
+> We need to update i_disksize after allocating blocks. writepages
+> already does this. Update writepage to also  update i_disksize.
+> 
 
-The patch titled
-     ext3: fix wrong gfp type under transaction
-has been removed from the -mm tree.  Its filename was
-     ext3-fix-wrong-gfp-type-under-transaction.patch
+I agree that we should update the i_disk size after the allocation, to
+avoid possible exposing stale data in case of fs crash happened after
+the metadata hit to disk but before data being written out.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: fix wrong gfp type under transaction
-From: Josef Bacik <jbacik@redhat.com>
-
-There are several places where we make allocations with GFP_KERNEL while under
-a transaction, which could lead to an assertion panic or lockup if under
-memory pressure.  This patch switches these problem areas to use GFP_NOFS to
-keep these problems from happening.
-
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/acl.c    |    8 ++++----
- fs/ext3/resize.c |    4 ++--
- fs/ext3/xattr.c  |    4 ++--
- 3 files changed, 8 insertions(+), 8 deletions(-)
-
-diff -puN fs/ext3/acl.c~ext3-fix-wrong-gfp-type-under-transaction fs/ext3/acl.c
---- a/fs/ext3/acl.c~ext3-fix-wrong-gfp-type-under-transaction
-+++ a/fs/ext3/acl.c
-@@ -37,7 +37,7 @@ ext3_acl_from_disk(const void *value, si
- 		return ERR_PTR(-EINVAL);
- 	if (count == 0)
- 		return NULL;
--	acl = posix_acl_alloc(count, GFP_KERNEL);
-+	acl = posix_acl_alloc(count, GFP_NOFS);
- 	if (!acl)
- 		return ERR_PTR(-ENOMEM);
- 	for (n=0; n < count; n++) {
-@@ -91,7 +91,7 @@ ext3_acl_to_disk(const struct posix_acl 
- 
- 	*size = ext3_acl_size(acl->a_count);
- 	ext_acl = kmalloc(sizeof(ext3_acl_header) + acl->a_count *
--			sizeof(ext3_acl_entry), GFP_KERNEL);
-+			sizeof(ext3_acl_entry), GFP_NOFS);
- 	if (!ext_acl)
- 		return ERR_PTR(-ENOMEM);
- 	ext_acl->a_version = cpu_to_le32(EXT3_ACL_VERSION);
-@@ -187,7 +187,7 @@ ext3_get_acl(struct inode *inode, int ty
- 	}
- 	retval = ext3_xattr_get(inode, name_index, "", NULL, 0);
- 	if (retval > 0) {
--		value = kmalloc(retval, GFP_KERNEL);
-+		value = kmalloc(retval, GFP_NOFS);
- 		if (!value)
- 			return ERR_PTR(-ENOMEM);
- 		retval = ext3_xattr_get(inode, name_index, "", value, retval);
-@@ -335,7 +335,7 @@ ext3_init_acl(handle_t *handle, struct i
- 			if (error)
- 				goto cleanup;
- 		}
--		clone = posix_acl_clone(acl, GFP_KERNEL);
-+		clone = posix_acl_clone(acl, GFP_NOFS);
- 		error = -ENOMEM;
- 		if (!clone)
- 			goto cleanup;
-diff -puN fs/ext3/resize.c~ext3-fix-wrong-gfp-type-under-transaction fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-fix-wrong-gfp-type-under-transaction
-+++ a/fs/ext3/resize.c
-@@ -485,7 +485,7 @@ static int add_new_gdb(handle_t *handle,
- 		goto exit_dindj;
- 
- 	n_group_desc = kmalloc((gdb_num + 1) * sizeof(struct buffer_head *),
--			GFP_KERNEL);
-+			GFP_NOFS);
- 	if (!n_group_desc) {
- 		err = -ENOMEM;
- 		ext3_warning (sb, __FUNCTION__,
-@@ -568,7 +568,7 @@ static int reserve_backup_gdb(handle_t *
- 	int res, i;
- 	int err;
- 
--	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_KERNEL);
-+	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_NOFS);
- 	if (!primary)
- 		return -ENOMEM;
- 
-diff -puN fs/ext3/xattr.c~ext3-fix-wrong-gfp-type-under-transaction fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~ext3-fix-wrong-gfp-type-under-transaction
-+++ a/fs/ext3/xattr.c
-@@ -728,7 +728,7 @@ ext3_xattr_block_set(handle_t *handle, s
- 				ce = NULL;
- 			}
- 			ea_bdebug(bs->bh, "cloning");
--			s->base = kmalloc(bs->bh->b_size, GFP_KERNEL);
-+			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
- 			error = -ENOMEM;
- 			if (s->base == NULL)
- 				goto cleanup;
-@@ -740,7 +740,7 @@ ext3_xattr_block_set(handle_t *handle, s
- 		}
- 	} else {
- 		/* Allocate a buffer where we construct the new block. */
--		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
-+		s->base = kzalloc(sb->s_blocksize, GFP_NOFS);
- 		/* assert(header == s->base) */
- 		error = -ENOMEM;
- 		if (s->base == NULL)
-_
-
-Patches currently in -mm which might be from jbacik@redhat.com are
-
-origin.patch
-jbd-fix-the-way-the-b_modified-flag-is-cleared.patch
-jbd-fix-possible-journal-overflow-issues.patch
-ext4-fix-wrong-gfp-type-under-transaction.patch
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/inode.c |   40 +++++++++++++++++++++++++++++++++++++++-
+>  1 files changed, 39 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 79930df..50d700f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1488,6 +1488,44 @@ out:
+> 
+>  	return ret;
+>  }
+> +/* FIXME!! only support data=writeback mode */
+> +static int ext4_da_writepage(struct page *page,
+> +				struct writeback_control *wbc)
+> +{
+> +	struct inode *inode = page->mapping->host;
+> +	handle_t *handle = NULL;
+> +	int ret = 0;
+> +	int err;
+> +
+> +	if (ext4_journal_current_handle())
+> +		goto out_fail;
+> +
+> +	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+> +	if (IS_ERR(handle)) {
+> +		ret = PTR_ERR(handle);
+> +		goto out_fail;
+> +	}
+> +
+> +	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+> +		ret = nobh_writepage(page, ext4_get_block, wbc);
+> +	else
+> +		ret = block_write_full_page(page, ext4_get_block, wbc);
+> +
+> +	if (!ret && inode->i_size > EXT4_I(inode)->i_disksize) {
+> +		EXT4_I(inode)->i_disksize = inode->i_size;
+> +		ext4_mark_inode_dirty(handle, inode);
+> +	}
+> +
+> +	err = ext4_journal_stop(handle);
+> +	if (!ret)
+> +		ret = err;
+> +	return ret;
+> +
+> +out_fail:
+> +	redirty_page_for_writepage(wbc, page);
+> +	unlock_page(page);
+> +	return ret;
+> +}
+> 
+>  static int ext4_da_writepages(struct address_space *mapping,
+>  				struct writeback_control *wbc)
+> @@ -2015,7 +2053,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+>  static const struct address_space_operations ext4_da_aops = {
+>  	.readpage	= ext4_readpage,
+>  	.readpages	= ext4_readpages,
+> -	.writepage	= ext4_writeback_writepage,
+> +	.writepage	= ext4_da_writepage,
+>  	.writepages	= ext4_da_writepages,
+>  	.sync_page	= block_sync_page,
+>  	.write_begin	= ext4_da_write_begin,
 
