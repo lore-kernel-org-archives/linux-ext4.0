@@ -1,69 +1,129 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: BUG with delayed allocation
-Date: Fri, 21 Mar 2008 07:55:12 +0800
-Message-ID: <20080320235512.GY2971@webber.adilger.int>
-References: <20080319085235.GA6752@skywalker>
- <1205974018.3637.9.camel@localhost.localdomain>
- <20080320053902.GD6967@skywalker>
- <1206034190.3637.25.camel@localhost.localdomain>
- <20080320175625.GA6931@skywalker>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [2.6.25-rc5-ext4-36c86] attempt to access beyond end of device
+Date: Thu, 20 Mar 2008 17:49:08 -0700
+Message-ID: <1206060548.3637.53.camel@localhost.localdomain>
+References: <18399.36935.640758.796880@frecb006361.adech.frec.bull.fr>
+	 <47E1CE7F.6050706@redhat.com>  <20080320081619.GB13928@dmon-lap.sw.ru>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Mingming Cao <cmm@us.ibm.com>, Eric Sandeen <sandeen@redhat.com>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, Solofo.Ramangalahy@bull.net,
+	linux-ext4@vger.kernel.org
+To: Dmitri Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54995 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755486AbYCTXzW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2008 19:55:22 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2KNtHAK022395
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 16:55:18 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JY100A01ZRNT600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 20 Mar 2008 16:55:17 -0700 (PDT)
-In-reply-to: <20080320175625.GA6931@skywalker>
-Content-disposition: inline
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:47838 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752077AbYCUAtQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Mar 2008 20:49:16 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2L0pFUf029408
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 20:51:15 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2L0nDTD096830
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 20:49:13 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2L0nCwb029505
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2008 20:49:13 -0400
+In-Reply-To: <20080320081619.GB13928@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 20, 2008  23:26 +0530, Aneesh Kumar K.V wrote:
-> On Thu, Mar 20, 2008 at 10:29:50AM -0700, Mingming Cao wrote:
-> > On Thu, 2008-03-20 at 11:09 +0530, Aneesh Kumar K.V wrote:
-> > > > Could you try the following patch? It updates the i_disksize at the
-> > > > write_end time.
+On Thu, 2008-03-20 at 11:16 +0300, Dmitri Monakhov wrote:
+> On 21:39 Wed 19 Mar     , Eric Sandeen wrote:
+> > Solofo.Ramangalahy@bull.net wrote:
+> > > Hello,
 > > > 
-> > > I will test the patch and update you. BTW shouldn't we update
-> > > i_disksize only after actual block got allocated ?
-> >
-> > Hmm...I am not  100% sure but I think we should not to change the
-> > behavior that the on-disk inode size should be updated when write()
-> > returns to user. Right now the in-memory inode size is updated, user
-> > would expecting the same when they run e2fsck, but e2fsck reads inode
-> > size from disk. Pushing the inode i_disksize update at the writeout
-> > (allocation) time will cause the window that i_size is different than
-> > the i_disksize being enlarged quite big.
-> 
-> If we are updating i_disksize during write_end and if we crash before actually
-> allocating the blocks e2fsck will find errors because the inode doesn't
-> really have that many blocks right ?
+> > > During stress testing (workload: racer from ltp + fio/iometer), here
+> > > is an error I am encountering:
+> > > 8<------------------------------------------------------------------------------
+> > > kernel: WARNING: at fs/buffer.c:1680 __block_write_full_page+0xd4/0x2af()
+> > 
+> > So this is WARN_ON(bh->b_size != blocksize);
+> > 
+> > What is b_size in this case?
+> FS block size, because this page pinned bh (it comes from page_buffers(page)), but
+> not dummy bh which may comes from {write,read}pages or direct_IO. 
+> Page's bh i_size must always be equal to fs blocksize.
+> This bh always constructed via following construction
+> if (!page_has_buffers(page))
+> 	create_empty_buffers(page, 1<<inode->i_blkbits, flags)
+> So page's bh->b_size was inited with right value from very beginning, but
+> apparently somewhere this size was changed 
+> I guess i've localized buggy place, at least it's looks strange.
+> ext4_da_get_block_prep ()
+> {
+> ...
+> 	BUG_ON(create == 0);
+>         BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
+> 	ret =  ext4_get_blocks_wrap(NULL,  inode, iblock, 1,  bh_result, 0, 0);
+> #Here ext4_get_block_write called with max_blocks == 1  ^^^^^
+> 	...
+> 	if (ret > 0) {
+>                         bh_result->b_size = (ret << inode->i_blkbits);
+> 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> ## I don't understand this place. I hoped what (ret <= max_blocks) must always
+> ##be true true. But after I've add debug info printing I've got following result.
+>                 ret = 0;
+>         }
+> ...
+> }
+> Some times I've seen following ,message 
+>  bh= {state=0,size=114688, blknr=18446744073709551615 dev=0000000000000000,count=0}, ret=28
+> And because it was page-cache's bh later this result in WARNING.
 
-No, it would just think the file is sparse and return \0 for the reads.
+I think the root cause is here, ext4_get_block_wrap() could returns
+number of blocks greater than the caller is asking for, and set the
+mapped/allocated bytes in the bh->b_size.
 
-That said, I don't agree with Mingming - the i_disksize should only be
-increased at the time the blocks are allocated on disk and not when the
-file is extended in memory.  Even if the window where i_size is different
-than i_disksize is large, this is only important after a crash, and at
-that time ordered mode users want the file to have a shorter i_disksize
-and the file contains only valid data, instead of the extended i_size
-but the file contains \0 bytes at the end.
+The problem is that the for buffered IO (without delaloc) get_block()
+via ext4_get_block_wrap() at write_begin time makes sure the buffer is
+mapped, so later at the writepage()->block_write_full_page() time, it
+never hits the branch  the  WARN_ON(bh->b_size != blocksize) in
+__block_write_full_page(), even if the b_size is previously changed to
+greater than the blocksize, by ext4_get_block_wrap() at the write_begin
+time.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+This warning is only seen with delayed allocation because we did a
+get_block() (via ext4_da_get_block_prep()) look up with 1 block at a
+time, but the bh->b_size is storing the length of the whole extent,
+since ext4_get_block_wrap() could returns number of blocks greater than
+the caller is asking for.
+
+
+static int __block_write_full_page(struct inode *inode, struct page *page,
+                        get_block_t *get_block, struct writeback_control *wbc)
+{
+	....
+
+	if (!buffer_mapped(bh) && buffer_dirty(bh)) {
+                        WARN_ON(bh->b_size != blocksize);
+                        err = get_block(inode, block, bh, 1);
+                        if (err)
+                                goto recover;
+                        if (buffer_new(bh)) {
+                                /* blockdev mappings never come here */
+                                clear_buffer_new(bh);
+                                unmap_underlying_metadata(bh->b_bdev,
+                                                        bh->b_blocknr);
+                        }
+
+}
+
+I think the fix probabaly should enforce
+ext4_get_blocks_handle()/ext4_ext_get_block() never map/allocate the
+number of blocks that more than what is asking for..
+
+
+Mingming
+> > 
+> > -Eric
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
