@@ -1,7 +1,7 @@
 From: Chris Wright <chrisw@sous-sol.org>
-Subject: [patch 71/76] jbd: correctly unescape journal data blocks
-Date: Fri, 21 Mar 2008 15:44:01 -0700
-Message-ID: <20080321224452.154449336@sous-sol.org>
+Subject: [patch 70/76] jbd2: correctly unescape journal data blocks
+Date: Fri, 21 Mar 2008 15:44:00 -0700
+Message-ID: <20080321224451.150546511@sous-sol.org>
 References: <20080321224250.144333319@sous-sol.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -19,11 +19,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org, jejb@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:41301 "EHLO
+Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:41345 "EHLO
 	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758011AbYCUWwO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2008 18:52:14 -0400
-Content-Disposition: inline; filename=jbd-correctly-unescape-journal-data-blocks.patch
+	id S1762623AbYCUWwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Mar 2008 18:52:32 -0400
+Content-Disposition: inline; filename=jbd2-correctly-unescape-journal-data-blocks.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -37,7 +37,7 @@ journal data block needs unescaping.  At the moment the wrong buffer head's
 data is being unescaped.
 
 To test this case mount a filesystem with data=journal, start creating and
-deleting a bunch of files containing only JFS_MAGIC_NUMBER (0xc03b3998), then
+deleting a bunch of files containing only JBD2_MAGIC_NUMBER (0xc03b3998), then
 pull the plug on the device.  Without this patch the files will contain zeros
 instead of the correct data after recovery.
 
@@ -49,18 +49,18 @@ Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Signed-off-by: Chris Wright <chrisw@sous-sol.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/jbd/recovery.c |    2 +-
+ fs/jbd2/recovery.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
---- a/fs/jbd/recovery.c
-+++ b/fs/jbd/recovery.c
-@@ -478,7 +478,7 @@ static int do_one_pass(journal_t *journa
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -488,7 +488,7 @@ static int do_one_pass(journal_t *journa
  					memcpy(nbh->b_data, obh->b_data,
  							journal->j_blocksize);
- 					if (flags & JFS_FLAG_ESCAPE) {
+ 					if (flags & JBD2_FLAG_ESCAPE) {
 -						*((__be32 *)bh->b_data) =
 +						*((__be32 *)nbh->b_data) =
- 						cpu_to_be32(JFS_MAGIC_NUMBER);
+ 						cpu_to_be32(JBD2_MAGIC_NUMBER);
  					}
  
 
