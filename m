@@ -1,84 +1,67 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Return unwritten buffer head when trying to
-	read from prealloc space.
-Date: Fri, 21 Mar 2008 15:13:58 -0700
-Message-ID: <1206137638.3605.36.camel@localhost.localdomain>
-References: <1206080337-8732-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1206080337-8732-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, sandeen@redhat.com, Solofo.Ramangalahy@bull.net,
-	dmonakhov@openvz.org, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Chris Wright <chrisw@sous-sol.org>
+Subject: [patch 71/76] jbd: correctly unescape journal data blocks
+Date: Fri, 21 Mar 2008 15:44:01 -0700
+Message-ID: <20080321224452.154449336@sous-sol.org>
+References: <20080321224250.144333319@sous-sol.org>
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, Duane Griffin <duaneg@dghda.com>,
+	Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>,
+	Greg Kroah-Hartman <gregkh@suse.de>
+To: linux-kernel@vger.kernel.org, stable@kernel.org, jejb@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:56590 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752612AbYCUWOD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2008 18:14:03 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2LME2ZU017945
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:14:02 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2LME2WV241742
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:14:02 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2LME1vf022923
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2008 18:14:01 -0400
-In-Reply-To: <1206080337-8732-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from 216-99-217-87.dsl.aracnet.com ([216.99.217.87]:41301 "EHLO
+	sous-sol.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758011AbYCUWwO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Mar 2008 18:52:14 -0400
+Content-Disposition: inline; filename=jbd-correctly-unescape-journal-data-blocks.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-03-21 at 11:48 +0530, Aneesh Kumar K.V wrote:
-> ext4_ext_get_blocks  returns number of blocks allocated with buffer head
-> unmapped for a read from prealloc space. This is needed so that delayed
-> allocation doesn't do block reservation for prealloc space since the blocks
-> are already resevred on disk. Fix ext4_ext_get_blocks to not return greater
-> than max_blocks and also mark the buffer head unwritten. Some code path tries
-> to read the block if buffer_head is not new and no uptodate. Marking the buffer
-> head unwritten avoid this reading.
-> 
+-stable review patch.  If anyone has any objections, please let us know.
+---------------------
 
-Seems this patch fixes two bugs together, it would be nice to split to
-two as they cause two different problems.
+From: Duane Griffin <duaneg@dghda.com>
 
-To fix the bh->b_size warning solof founds for delayed allocation, I
-would say we need to fix it in ext4_get_blocks_handle() (for indirect
-files) and ext4_ext_get_blocks()(for extent files) both, not allowing
-returning b_size greater than what the caller asking for. Also, the
-patch below seems only address the preallocation map case, we need to
-fix in in general block lookup case.
+Fix a long-standing typo (predating git) that will cause data corruption if a
+journal data block needs unescaping.  At the moment the wrong buffer head's
+data is being unescaped.
 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/extents.c |   14 +++++++++++++-
->  1 files changed, 13 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index d6ae40a..edd1bf2 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2600,8 +2600,20 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  			}
->  			if (create == EXT4_CREATE_UNINITIALIZED_EXT)
->  				goto out;
-> -			if (!create)
-> +			if (!create) {
-> +				/*
-> +				 * We have blocks reserved already. We
-> +				 * return allocated blocks so that delalloc
-> +				 * won't do block reservation for us. But
-> +				 * the buffer head will be unmapped so that
-> +				 * a read from the block return 0
-> +				 */
-> +				if (allocated > max_blocks)
-> +					allocated = max_blocks;
-> +				/* mark the buffer unwritten */
-> +				__set_bit(BH_Unwritten, &bh_result->b_state);
->  				goto out2;
-> +			}
-> 
->  			ret = ext4_ext_convert_to_initialized(handle, inode,
->  								path, iblock,
+To test this case mount a filesystem with data=journal, start creating and
+deleting a bunch of files containing only JFS_MAGIC_NUMBER (0xc03b3998), then
+pull the plug on the device.  Without this patch the files will contain zeros
+instead of the correct data after recovery.
 
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Chris Wright <chrisw@sous-sol.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+---
+ fs/jbd/recovery.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/jbd/recovery.c
++++ b/fs/jbd/recovery.c
+@@ -478,7 +478,7 @@ static int do_one_pass(journal_t *journa
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JFS_FLAG_ESCAPE) {
+-						*((__be32 *)bh->b_data) =
++						*((__be32 *)nbh->b_data) =
+ 						cpu_to_be32(JFS_MAGIC_NUMBER);
+ 					}
+ 
+
+-- 
