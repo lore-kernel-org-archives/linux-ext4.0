@@ -1,33 +1,48 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH] sparc: Export needed symbol for ZERO_PAGE usage in
- modules.
-Date: Mon, 24 Mar 2008 14:44:32 -0700 (PDT)
-Message-ID: <20080324.144432.12622688.davem@davemloft.net>
-References: <1206381777-12671-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<20080324.133445.229184630.davem@davemloft.net>
-	<20080324210839.GF18661@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH e2fsprogs] Fix parallel builds for lib/ext2fs/extent.o
+Date: Mon, 24 Mar 2008 16:54:20 -0500
+Message-ID: <47E8230C.2030305@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: aneesh.kumar@linux.vnet.ibm.com, cmm@us.ibm.com,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org
-To: tytso@MIT.EDU
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:40508
-	"EHLO sunset.davemloft.net" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1752579AbYCXVod (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 17:44:33 -0400
-In-Reply-To: <20080324210839.GF18661@mit.edu>
+Received: from mx1.redhat.com ([66.187.233.31]:55203 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753136AbYCXVyX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Mar 2008 17:54:23 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2OLsLNU007500
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 17:54:21 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2OLsLif008182
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 17:54:21 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2OLsK1i028584
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 17:54:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Theodore Tso <tytso@MIT.EDU>
-Date: Mon, 24 Mar 2008 17:08:39 -0400
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ lib/ext2fs/Makefile.in |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-> We're happy to carry the patch in the ext4 tree, with an Acked-by with
-> you, and push it to Linus ourselves, if that's OK with everyone.
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 1de037d..b2a8a23 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -477,6 +477,11 @@ ext_attr.o: $(srcdir)/ext_attr.c $(srcdir)/ext2_fs.h \
+  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
+  $(top_srcdir)/lib/et/com_err.h $(srcdir)/ext2_io.h \
+  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
++extent.o: $(srcdir)/extent.c $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2_ext_attr.h \
++ $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
++ $(top_srcdir)/lib/et/com_err.h $(srcdir)/ext2_io.h \
++ $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/bitops.h
+ fileio.o: $(srcdir)/fileio.c $(srcdir)/ext2_fs.h \
+  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+-- 1.5.4.1
 
-I'm perfectly fine with this.
-
-Acked-by: David S. Miller <davem@davemloft.net>
