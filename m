@@ -1,39 +1,57 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [E2FSPROGS, PATCH] e2fsck: Don't object to extents flags on deleted fast symlinks
-Date: Mon, 24 Mar 2008 08:20:09 -0400
-Message-ID: <1206361209-12689-1-git-send-email-tytso@mit.edu>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: e2fsprogs and fast symlink
+Date: Mon, 24 Mar 2008 13:25:33 +0100 (CET)
+Message-ID: <alpine.DEB.1.00.0803241323350.4451@sheep.housecafe.de>
 References: <20080321114234.GB6542@skywalker>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:59361 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754259AbYCXMUM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 08:20:12 -0400
+Received: from ns2.g-housing.de ([81.169.133.75]:42783 "EHLO mail.g-house.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755228AbYCXM0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Mar 2008 08:26:44 -0400
 In-Reply-To: <20080321114234.GB6542@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks to Aneesh Kumar for pointing this out.
+On Fri, 21 Mar 2008, Aneesh Kumar K.V wrote:
+> The below test case fails x86
+> #ln -s sfdajsfsdsdfskjdgfkshdfkshdfkgdsjdsjdhsdfdafdsgakfasdgfsjksdsdsdfsd p
+> #sync
+> #rm p
+> root@elm3b165:~# /usr/local/e2fsprogs/sbin/e2fsck  -f  /dev/sda5
+> e2fsck 1.40.8 (13-Mar-2008)
+> Pass 1: Checking inodes, blocks, and sizes
+> Fast symlink 12 has EXTENT_FL set.  Clear<y>?
+>
+> ie because after deleting the file we have
+> debugfs:  stat <12>
+> Inode: 12   Type: symlink    Mode:  0777   Flags: 0x80000   Generation:
+> 25346603
+> User:     0   Group:     0   Size: 0
+> File ACL: 0    Directory ACL: 0
+> Links: 0   Blockcount: 0
+> Fragment:  Address: 0    Number: 0    Size: 0
+> ctime: 0x47e39ea3 -- Fri Mar 21 11:40:19 2008
+> atime: 0x47e39e9e -- Fri Mar 21 11:40:14 2008
+> mtime: 0x47e39e9a -- Fri Mar 21 11:40:10 2008
+> dtime: 0x47e39ea3 -- Fri Mar 21 11:40:19 2008
+> Size of extra inode fields: 28
+> Fast_link_dest:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/pass1.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+Aneesh, can you elaborate a bit for me (a user, not a developer) what this 
+means? I too had these "Fast symlink 12 has EXTENT_FL set.  Clear<y>?" 
+messages on my ext4 fs and I went on to "Clear" these things. Now I notice 
+some serious performance (or better: load) problems when doing stuff on 
+ext4 and I'm not sure if this could be related to the changes e2fsprogs 
+did.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 79e9f23..67a8370 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -713,14 +713,6 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			}
- 		}
- 
--		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL) &&
--		    LINUX_S_ISLNK(inode->i_mode) &&
--		    !ext2fs_inode_has_valid_blocks(inode) &&
--		    fix_problem(ctx, PR_1_FAST_SYMLINK_EXTENT_FL, &pctx)) {
--			inode->i_flags &= ~EXT4_EXTENTS_FL;
--			e2fsck_write_inode(ctx, ino, inode, "pass1");
--		}
+Thanks,
+Christian.
+-- 
+BOFH excuse #199:
+
+the curls in your keyboard cord are losing electricity.
