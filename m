@@ -1,129 +1,93 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH e2fsprogs-next] Fix extent flag validity tests in pass1 on
- big endian boxes.
-Date: Mon, 24 Mar 2008 17:13:42 -0500
-Message-ID: <47E82796.9050807@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext3: Return EIO if new block is allocated from system
+	zone.
+Date: Mon, 24 Mar 2008 16:32:51 -0600
+Message-ID: <20080324223251.GL2691@webber.adilger.int>
+References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: cmm@us.ibm.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49766 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753138AbYCXWNo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 18:13:44 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2OMDi4v014998
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 18:13:44 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2OMDhdp017677
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 18:13:43 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2OMDgH9000497
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 18:13:43 -0400
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:45819 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752132AbYCXWdD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2008 18:33:03 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2OMX1Av016878
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 15:33:01 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JY900G01AKHU500@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 24 Mar 2008 15:33:01 -0700 (PDT)
+In-reply-to: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Extent data is shared with the i_block[] space in the inode,
-but it is always swapped on access, not when the inode is read.
+On Mar 24, 2008  22:34 +0530, Aneesh Kumar K.V wrote:
+> If the block allocator gets blocks out of system zone ext3 calls
+> ext3_error. But if the file system is mounted with errors=continue
+> return with -EIO.
+> 
+> System zone is the block range mapping block bitmap, inode bitmap and inode
+> table.
 
-In e2fsck/pass1.c we must be careful when checking validity
-of the extents flag on the inode.  If the flag was set when
-the inode was read & swapped, then the extents data itself
-(in ->i_block[]) was NOT swapped, so testing for a valid
-extent header requires some swapping first.  Then, if we
-ultimately set the extents flag, all of i_block[] must be
-re/un-swapped.
+I don't understand this patch.  Surely it has nothing to do with the user,
+and instead the code should re-try the allocation after marking the block
+in-use in the bitmap?
 
-This passes the f_extent regression test on both ppc & x86.
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: Mingming Cao <cmm@us.vnet.ibm.com>
+> ---
+>  fs/ext3/balloc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index da0cb2c..6ce7f7d 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -1642,7 +1642,7 @@ allocated:
+>  			    "Allocating block in system zone - "
+>  			    "blocks from "E3FSBLK", length %lu",
+>  			     ret_block, num);
+> -		goto out;
+> +		goto io_error;
+>  	}
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-(I said I wanted to make it not-ugly... not sure I succeeded)
-(also feel free to edit the comments if too verbose)
+I think the problem here is that this "goto" is simply an in-effective
+method of error handling.  The block HAS to be marked in-use in the
+bitmap, or it will just continue to try and be allocated.  After marking
+the block in-use there should be a "goto retry-alloc" instead of error.
+To be honest, I thought in 2.6 this would invoke the block bitmap checking
+code to revalidate the whole bitmap at this point and then retry the alloc.
 
- e2fsck/pass1.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++++----
- 1 files changed, 48 insertions(+), 4 deletions(-)
+In 2.4 this similar code looks like:
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 79e9f23..0d6307d 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -680,7 +680,22 @@ void e2fsck_pass1(e2fsck_t ctx)
- 				return;
- 			}
- 		}
--		
-+
-+		/*
-+		 * Test for incorrect extent flag settings.
-+		 *
-+		 * On big-endian machines we must be careful:
-+		 * When the inode is read, the i_block array is not swapped
-+		 * if the extent flag is set.  Therefore if we are testing
-+		 * for or fixing a wrongly-set flag, we must potentially
-+		 * (un)swap before testing, or after fixing.
-+		 */
-+
-+		/*
-+		 * In this case the extents flag was set when read, so
-+		 * extent_header_verify is ok.  If the inode is cleared,
-+		 * no need to swap... so no extra swapping here.
-+		 */
- 		if ((inode->i_flags & EXT4_EXTENTS_FL) && !extent_fs && 
- 		    (inode->i_links_count || (ino == EXT2_BAD_INO) ||
- 		     (ino == EXT2_ROOT_INO) || (ino == EXT2_JOURNAL_INO))) {
-@@ -700,19 +716,48 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			}
- 		}
- 
-+		/*
-+		 * For big-endian machines:
-+		 * If the inode didn't have the extents flag set when it
-+		 * was read, then the i_blocks array was swapped.  To test
-+		 * as an extents header, we must swap it back first.
-+		 * IF we then set the extents flag, the entire i_block
-+		 * array must be un/re-swapped to make it proper extents data.
-+		 */
-+
- 		if (extent_fs && !(inode->i_flags & EXT4_EXTENTS_FL) &&
- 		    (inode->i_links_count || (ino == EXT2_BAD_INO) ||
- 		     (ino == EXT2_ROOT_INO) || (ino == EXT2_JOURNAL_INO)) &&
- 		    (LINUX_S_ISREG(inode->i_mode) ||
--		     LINUX_S_ISDIR(inode->i_mode)) &&
--		    (ext2fs_extent_header_verify(inode->i_block, 
--						 sizeof(inode->i_block)) == 0)) {
-+		     LINUX_S_ISDIR(inode->i_mode))) {
-+			void *ehp;
-+#ifdef WORDS_BIGENDIAN
-+			__u32 tmp_block[3];
-+
-+			for (i = 0; i < 3; i++)
-+				tmp_block[i] = ext2fs_swab32(inode->i_block[i]);
-+			ehp = tmp_block;
-+#else
-+			ehp = inode->i_block;
-+#endif
-+		    if (ext2fs_extent_header_verify(ehp,
-+					 sizeof(inode->i_block)) == 0) {
- 			if (fix_problem(ctx, PR_1_UNSET_EXTENT_FL, &pctx)) {
- 				inode->i_flags |= EXT4_EXTENTS_FL;
-+#ifdef WORDS_BIGENDIAN
-+				for (i = 0; i < EXT2_N_BLOCKS; i++)
-+					inode->i_block[i] =
-+					       ext2fs_swab32(inode->i_block[i]);
-+#endif
- 				e2fsck_write_inode(ctx, ino, inode, "pass1");
- 			}
-+		    }
- 		}
- 
-+		/*
-+		 * ext2fs_inode_has_valid_blocks does not actually look
-+		 * at i_block[] values, so not endian-sensitive here.
-+		 */
- 		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL) &&
- 		    LINUX_S_ISLNK(inode->i_mode) &&
- 		    !ext2fs_inode_has_valid_blocks(inode) &&
--- 1.5.4.1
+        if (tmp == le32_to_cpu(gdp->bg_block_bitmap) ||
+            tmp == le32_to_cpu(gdp->bg_inode_bitmap) ||
+            in_range (tmp, le32_to_cpu(gdp->bg_inode_table),
+                      EXT3_SB(sb)->s_itb_per_group)) {
+                ext3_error(sb, __FUNCTION__,
+                           "Allocating block in system zone - block = %u", tmp);
+
+                /* Note: This will potentially use up one of the handle's
+                 * buffer credits.  Normally we have way too many credits,
+                 * so that is OK.  In _very_ rare cases it might not be OK.
+                 * We will trigger an assertion if we run out of credits,
+                 * and we will have to do a full fsck of the filesystem -
+                 * better than randomly corrupting filesystem metadata.
+                 */
+                ext3_set_bit(j, bh->b_data);
+                goto repeat;
+        }
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
