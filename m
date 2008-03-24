@@ -1,61 +1,39 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [E2FSPROGS, PATCH] libext2fs: Fix byte-swap logic for i_block[] in inodes with extents
-Date: Mon, 24 Mar 2008 08:34:15 -0400
-Message-ID: <1206362055-13244-1-git-send-email-tytso@mit.edu>
-References: <47E403F3.3030209@redhat.com>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: e2fsprogs and fast symlink
+Date: Mon, 24 Mar 2008 08:36:41 -0400
+Message-ID: <20080324123641.GH24943@mit.edu>
+References: <20080321114234.GB6542@skywalker> <alpine.DEB.1.00.0803241323350.4451@sheep.housecafe.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:61594 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:61882 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755830AbYCXMfL (ORCPT
+	by vger.kernel.org with ESMTP id S1757363AbYCXMhM (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 08:35:11 -0400
-In-Reply-To: <47E403F3.3030209@redhat.com>
+	Mon, 24 Mar 2008 08:37:12 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.1.00.0803241323350.4451@sheep.housecafe.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+On Mon, Mar 24, 2008 at 01:25:33PM +0100, Christian Kujau wrote:
+> Aneesh, can you elaborate a bit for me (a user, not a developer) what this 
+> means? I too had these "Fast symlink 12 has EXTENT_FL set.  Clear<y>?" 
+> messages on my ext4 fs and I went on to "Clear" these things. Now I notice 
+> some serious performance (or better: load) problems when doing stuff on 
+> ext4 and I'm not sure if this could be related to the changes e2fsprogs 
+> did.
 
-ext2fs_swap_inode_full() was incorrectly swapping the i_block array
-for extents.
+It should make no difference.  The bug which Aneesh was pointing out
+was that e2fsck was complaining about long symlinks in ext4 which got
+deleted, and which thus got mistaken for fast symlinks with the
+EXTENTS_FL flag set, even though said inodes were already deleted.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/swapfs.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
+So this should not make any difference in terms of ext4 performance;
+just noise in terms of needlessly annoying someone running e2fsck.
 
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index 132f6f3..33c7ab3 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -147,6 +147,7 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
- 			    int bufsize)
- {
- 	unsigned i, has_data_blocks, extra_isize, attr_magic;
-+	int has_extents = 0;
- 	int islnk = 0;
- 	__u32 *eaf, *eat;
- 
-@@ -172,12 +173,13 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
- 		has_data_blocks = ext2fs_inode_data_blocks(fs, 
- 					   (struct ext2_inode *) t);
- 	if (hostorder && (f->i_flags & EXT4_EXTENTS_FL))
--		has_data_blocks = 0;
-+		has_extents = 1;
- 	t->i_flags = ext2fs_swab32(f->i_flags);
--	if (hostorder && (t->i_flags & EXT4_EXTENTS_FL))
--		has_data_blocks = 0;
-+	if (!hostorder && (t->i_flags & EXT4_EXTENTS_FL))
-+		has_extents = 1;
- 	t->i_dir_acl = ext2fs_swab32(f->i_dir_acl);
--	if (!islnk || has_data_blocks ) {
-+	/* extent data are swapped on access, not here */
-+	if (!has_extents && (!islnk || has_data_blocks)) {
- 		for (i = 0; i < EXT2_N_BLOCKS; i++)
- 			t->i_block[i] = ext2fs_swab32(f->i_block[i]);
- 	} else if (t != f) {
--- 
-1.5.4.1.144.gdfee-dirty
-
+     	      	       		  	   	   - Ted
