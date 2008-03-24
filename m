@@ -1,43 +1,33 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: e2fsprogs and fast symlink
-Date: Mon, 24 Mar 2008 17:26:39 -0400
-Message-ID: <20080324212639.GC30110@mit.edu>
-References: <20080321114234.GB6542@skywalker> <20080324113747.GA18042@skywalker> <20080324204510.GH2691@webber.adilger.int>
+From: David Miller <davem@davemloft.net>
+Subject: Re: [PATCH] sparc: Export needed symbol for ZERO_PAGE usage in
+ modules.
+Date: Mon, 24 Mar 2008 14:44:32 -0700 (PDT)
+Message-ID: <20080324.144432.12622688.davem@davemloft.net>
+References: <1206381777-12671-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	<20080324.133445.229184630.davem@davemloft.net>
+	<20080324210839.GF18661@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: aneesh.kumar@linux.vnet.ibm.com, cmm@us.ibm.com,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org
+To: tytso@MIT.EDU
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:63375 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752825AbYCXV2m (ORCPT
+Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:40508
+	"EHLO sunset.davemloft.net" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1752579AbYCXVod (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 17:28:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20080324204510.GH2691@webber.adilger.int>
+	Mon, 24 Mar 2008 17:44:33 -0400
+In-Reply-To: <20080324210839.GF18661@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 24, 2008 at 02:45:10PM -0600, Andreas Dilger wrote:
-> Instead I propose that we just use the i_size itself to determine if
-> there is a fast symlink, because there has never (AFAIK) been a kernel
-> that created slow symlinks for files < 60 bytes in length.
+From: Theodore Tso <tytso@MIT.EDU>
+Date: Mon, 24 Mar 2008 17:08:39 -0400
 
-I have a vague memory that at one point (along time ago, over ten
-years ago) there were slow symlinks where the target was < 60 bytes.
-And the kernel has always determined whether or not a symlink was fast
-or slow by looking i_blocks.  (See ext3_inode_is_fast_symlink() in
-fs/ext3/inode.c).
+> We're happy to carry the patch in the ext4 tree, with an Acked-by with
+> you, and push it to Linus ourselves, if that's OK with everyone.
 
-In retrospect, the true clean way to do this would have been an
-explicit i_flags bitfield.  One thing we could do is make a change
-into ext4 (and ext3) so that we silently set an EXT3_SLOW_LINK_FL and
-EXT3_FAST_LINK_FL, and if neither is set, we fall back to a hueristic
-involving i_blocks.  This gives e2fsck one more bit of redundancy to
-make sure it notices problems and to make sure it gets things right.
-I'm not sure it's worth it, but eventually it would allow us to clean
-things up.
+I'm perfectly fine with this.
 
-					- Ted
+Acked-by: David S. Miller <davem@davemloft.net>
