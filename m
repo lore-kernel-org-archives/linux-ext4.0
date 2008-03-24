@@ -1,99 +1,113 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Export needed symbol for ZERO_PAGE usage in modules.
-Date: Mon, 24 Mar 2008 22:34:57 +0530
-Message-ID: <1206378298-10341-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap write notification.
+Date: Mon, 24 Mar 2008 22:34:58 +0530
+Message-ID: <1206378298-10341-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1206378298-10341-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:35350 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754628AbYCXRFP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2008 13:05:15 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2OH4eYD026590
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:04:40 +1100
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:51391 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754700AbYCXRFT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2008 13:05:19 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m2OH4VOB007822
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:04:31 +1100
 Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2OH8tGc267878
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:08:55 +1100
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2OH5BgV4501630
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:05:11 +1100
 Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2OH57Wt002171
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:05:08 +1100
-In-Reply-To: <1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2OH5AIb002368
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 04:05:11 +1100
+In-Reply-To: <1206378298-10341-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4 use ZERO_PAGE(0) to zero out blocks. We need to export
-different symbols in different arch for the usage of ZERO_PAGE
-in modules.
+We would like to get notified when we are doing a write on mmap
+section.  The changes are needed to handle ENOSPC when writing to an
+mmap section of files with holes.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- arch/arm/mm/mmu.c               |    1 +
- arch/m68k/mm/init.c             |    1 +
- arch/powerpc/kernel/ppc_ksyms.c |    2 ++
- arch/sparc/kernel/sparc_ksyms.c |    2 ++
- arch/sparc64/mm/init.c          |    1 +
- 5 files changed, 7 insertions(+), 0 deletions(-)
+ fs/ext2/ext2.h  |    1 +
+ fs/ext2/file.c  |   21 ++++++++++++++++++++-
+ fs/ext2/inode.c |    5 +++++
+ 3 files changed, 26 insertions(+), 1 deletions(-)
 
-diff --git a/arch/arm/mm/mmu.c b/arch/arm/mm/mmu.c
-index d41a75e..2d6d682 100644
---- a/arch/arm/mm/mmu.c
-+++ b/arch/arm/mm/mmu.c
-@@ -35,6 +35,7 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
-  * zero-initialized data and COW.
-  */
- struct page *empty_zero_page;
-+EXPORT_SYMBOL(empty_zero_page);
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 47d88da..cc2e106 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -136,6 +136,7 @@ extern void ext2_get_inode_flags(struct ext2_inode_info *);
+ int __ext2_write_begin(struct file *file, struct address_space *mapping,
+ 		loff_t pos, unsigned len, unsigned flags,
+ 		struct page **pagep, void **fsdata);
++extern int ext2_page_mkwrite(struct vm_area_struct *vma, struct page *page);
  
+ /* ioctl.c */
+ extern long ext2_ioctl(struct file *, unsigned int, unsigned long);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 5f2fa9c..d539dcf 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -18,6 +18,7 @@
+  * 	(jj@sunsite.ms.mff.cuni.cz)
+  */
+ 
++#include <linux/mm.h>
+ #include <linux/time.h>
+ #include "ext2.h"
+ #include "xattr.h"
+@@ -38,6 +39,24 @@ static int ext2_release_file (struct inode * inode, struct file * filp)
+ 	return 0;
+ }
+ 
++static struct vm_operations_struct ext2_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite   = ext2_page_mkwrite,
++};
++
++static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
++{
++	struct address_space *mapping = file->f_mapping;
++
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext2_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
++}
++
++
  /*
-  * The pmd table for the upper-most set of pages.
-diff --git a/arch/m68k/mm/init.c b/arch/m68k/mm/init.c
-index f42caa7..ee27ed2 100644
---- a/arch/m68k/mm/init.c
-+++ b/arch/m68k/mm/init.c
-@@ -69,6 +69,7 @@ void __init m68k_setup_node(int node)
-  */
- 
- void *empty_zero_page;
-+EXPORT_SYMBOL(empty_zero_page);
- 
- void show_mem(void)
- {
-diff --git a/arch/powerpc/kernel/ppc_ksyms.c b/arch/powerpc/kernel/ppc_ksyms.c
-index 9c98424..93fb09a 100644
---- a/arch/powerpc/kernel/ppc_ksyms.c
-+++ b/arch/powerpc/kernel/ppc_ksyms.c
-@@ -192,3 +192,5 @@ EXPORT_SYMBOL(intercept_table);
- EXPORT_SYMBOL(__mtdcr);
- EXPORT_SYMBOL(__mfdcr);
+  * We have mostly NULL's here: the current defaults are ok for
+  * the ext2 filesystem.
+@@ -52,7 +71,7 @@ const struct file_operations ext2_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext2_compat_ioctl,
  #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext2_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext2_release_file,
+ 	.fsync		= ext2_sync_file,
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index c620068..196e063 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1444,3 +1444,8 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
+ 		error = ext2_acl_chmod(inode);
+ 	return error;
+ }
 +
-+EXPORT_SYMBOL(empty_zero_page);
-diff --git a/arch/sparc/kernel/sparc_ksyms.c b/arch/sparc/kernel/sparc_ksyms.c
-index c1025e5..e902846 100644
---- a/arch/sparc/kernel/sparc_ksyms.c
-+++ b/arch/sparc/kernel/sparc_ksyms.c
-@@ -295,3 +295,5 @@ EXPORT_SYMBOL(do_BUG);
- 
- /* Sun Power Management Idle Handler */
- EXPORT_SYMBOL(pm_idle);
-+
-+EXPORT_SYMBOL(empty_zero_page);
-diff --git a/arch/sparc64/mm/init.c b/arch/sparc64/mm/init.c
-index b5c3041..2d15f92 100644
---- a/arch/sparc64/mm/init.c
-+++ b/arch/sparc64/mm/init.c
-@@ -159,6 +159,7 @@ extern unsigned int sparc_ramdisk_image;
- extern unsigned int sparc_ramdisk_size;
- 
- struct page *mem_map_zero __read_mostly;
-+EXPORT_SYMBOL(mem_map_zero);
- 
- unsigned int sparc64_highest_unlocked_tlb_ent __read_mostly;
- 
++int ext2_page_mkwrite(struct vm_area_struct *vma, struct page *page)
++{
++	return block_page_mkwrite(vma, page, ext2_get_block);
++}
 -- 
 1.5.5.rc0.16.g02b00.dirty
 
