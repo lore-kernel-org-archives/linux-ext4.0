@@ -1,39 +1,49 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: e2fsprogs and fast symlink
-Date: Mon, 24 Mar 2008 08:36:41 -0400
-Message-ID: <20080324123641.GH24943@mit.edu>
-References: <20080321114234.GB6542@skywalker> <alpine.DEB.1.00.0803241323350.4451@sheep.housecafe.de>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 1/5] ext4 online defrag header file changes
+Date: Mon, 24 Mar 2008 21:34:51 +0900
+Message-ID: <200803241234.AA00346@TNESG9526.rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Christian Kujau <lists@nerdbynature.de>
+Cc: adilger@sun.com, cmm@us.ibm.com, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	a-fujita@rs.jp.nec.com
+To: aneesh.kumar@linux.vnet.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:61882 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757363AbYCXMhM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 08:37:12 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.00.0803241323350.4451@sheep.housecafe.de>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:36551 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757285AbYCXMhZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2008 08:37:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 24, 2008 at 01:25:33PM +0100, Christian Kujau wrote:
-> Aneesh, can you elaborate a bit for me (a user, not a developer) what this 
-> means? I too had these "Fast symlink 12 has EXTENT_FL set.  Clear<y>?" 
-> messages on my ext4 fs and I went on to "Clear" these things. Now I notice 
-> some serious performance (or better: load) problems when doing stuff on 
-> ext4 and I'm not sure if this could be related to the changes e2fsprogs 
-> did.
+Hi Aneesh,
+> On Mon, Mar 24, 2008 at 08:00:54PM +0900, Akira Fujita wrote:
+>>>   
+>> Is EXT4_IOC_FIEMAP going to be added to the ext4 patch queue?
+>> I will try to use EXT4_IOC_FIEMAP instead of EXT4_IOC_EXTENTS_INFO
+>> in ext4 online defrag when kernel supports it.
+>
+> Can you also look at the sparse warnings with the patches ?
+>
+I have already released the fixed patch before, but it is not in the ext4 patch queue yet.
+Mingming, could you replace new ext4-online-defrag-free-space-fragmentation.patch
+with old one in the ext4 patch queue? 
 
-It should make no difference.  The bug which Aneesh was pointing out
-was that e2fsck was complaining about long symlinks in ext4 which got
-deleted, and which thus got mistaken for fast symlinks with the
-EXTENTS_FL flag set, even though said inodes were already deleted.
+Regards, Akira
 
-So this should not make any difference in terms of ext4 performance;
-just noise in terms of needlessly annoying someone running e2fsck.
-
-     	      	       		  	   	   - Ted
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ defrag.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+diff -Nurp linux-2.6.25-rc6-full/fs/ext4/defrag.c linux-2.6.25-rc6-fix/fs/ext4/defrag.c
+--- linux-2.6.25-rc6-full/fs/ext4/defrag.c    2008-03-24 20:37:10.000000000 +0900
++++ linux-2.6.25-rc6-fix/fs/ext4/defrag.c    2008-03-24 20:40:22.000000000 +0900
+@@ -454,7 +454,7 @@ static int ext4_defrag_move_victim(struc
+             ext_info->ext[i].len, goal, DEFRAG_FORCE_VICTIM, &ext);
+         if (ret < 0) {
+             printk(KERN_ERR "ext4 defrag: "
+-                "Moving victim file failed. ino [%lu]\n",
++                "Moving victim file failed. ino [%llu]\n",
+                 ext_info->ino);
+             goto err;
+         }
