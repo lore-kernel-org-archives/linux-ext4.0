@@ -1,68 +1,73 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH] ext2: Retry block allocation if new blocks are allocated from system zone.
-Date: Wed, 26 Mar 2008 00:26:09 +0530
-Message-ID: <1206471371-9659-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH] ext4: Retry block allocation if new blocks are allocated from system zone.
+Date: Wed, 26 Mar 2008 00:26:11 +0530
+Message-ID: <1206471371-9659-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1206471371-9659-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1206471371-9659-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:42710 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753449AbYCYS4W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2008 14:56:22 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2PIuC1V018607
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 00:26:12 +0530
+Received: from e28smtp04.in.ibm.com ([59.145.155.4]:58355 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755067AbYCYS4X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2008 14:56:23 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2PIuEvJ029068
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 00:26:14 +0530
 Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2PIuCuH1028350
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 00:26:12 +0530
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2PIuEKB1106068
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 00:26:14 +0530
 Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2PIuBfM015873
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 18:56:12 GMT
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2PIuDlx015909
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 18:56:13 GMT
+In-Reply-To: <1206471371-9659-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the block allocator gets blocks out of system zone ext2 calls
-ext2_error. But if the file system is mounted with errors=continue
-retry block allocation. We need to mark the system zone
-blocks as in use to make sure retry don't pick them again
+If the block allocator gets blocks out of system zone ext4 calls
+ext4_error. But if the file system is mounted with errors=continue
+retry block allocation. We need to mark the system zone blocks as
+in use to make sure retry don't pick them again
 
-System zone is the block range mapping block bitmap, inode bitmap
-and inode table.
+System zone is the block range mapping block bitmap, inode bitmap and inode
+table.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext2/balloc.c |   16 +++++++++++-----
- 1 files changed, 11 insertions(+), 5 deletions(-)
+ fs/ext4/balloc.c  |   17 +++++++++++------
+ fs/ext4/mballoc.c |   47 ++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 47 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index e7b2baf..501399e 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -149,11 +149,12 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 1e6c5dc..0a7249b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -289,11 +289,11 @@ read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    (int)block_group, (unsigned long long)bitmap_blk);
  		return NULL;
  	}
--	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
--		brelse(bh);
+-	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
+-		put_bh(bh);
 -		return NULL;
 -	}
- 
-+	ext2_valid_block_bitmap(sb, desc, block_group, bh);
+-
++	ext4_valid_block_bitmap(sb, desc, block_group, bh);
 +	/*
 +	 * file system mounted not to panic on error,
 +	 * continue with corrput bitmap
 +	 */
  	return bh;
  }
- 
-@@ -1381,7 +1382,12 @@ allocated:
+ /*
+@@ -1779,7 +1779,12 @@ allocated:
  			    "Allocating block in system zone - "
- 			    "blocks from "E2FSBLK", length %lu",
- 			    ret_block, num);
+ 			    "blocks from %llu, length %lu",
+ 			     ret_block, num);
 -		goto out;
 +		/*
-+		 * ext2_try_to_allocate marked the blocks we allocated
++		 * claim_block marked the blocks we allocated
 +		 * as in use. So we may want to selectively
 +		 * mark some of the blocks as free
 +		 */
@@ -70,6 +75,95 @@ index e7b2baf..501399e 100644
  	}
  
  	performed_allocation = 1;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 340daae..7718826 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3040,7 +3040,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	struct ext4_sb_info *sbi;
+ 	struct super_block *sb;
+ 	ext4_fsblk_t block;
+-	int err;
++	int err, len;
+ 
+ 	BUG_ON(ac->ac_status != AC_STATUS_FOUND);
+ 	BUG_ON(ac->ac_b_ex.fe_len <= 0);
+@@ -3074,14 +3074,27 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		+ ac->ac_b_ex.fe_start
+ 		+ le32_to_cpu(es->s_first_data_block);
+ 
+-	if (block == ext4_block_bitmap(sb, gdp) ||
+-			block == ext4_inode_bitmap(sb, gdp) ||
+-			in_range(block, ext4_inode_table(sb, gdp),
+-				EXT4_SB(sb)->s_itb_per_group)) {
+-
++	len = ac->ac_b_ex.fe_len;
++	if (in_range(ext4_block_bitmap(sb, gdp), block, len) ||
++	    in_range(ext4_inode_bitmap(sb, gdp), block, len) ||
++	    in_range(block, ext4_inode_table(sb, gdp),
++		     EXT4_SB(sb)->s_itb_per_group) ||
++	    in_range(block + len - 1, ext4_inode_table(sb, gdp),
++		     EXT4_SB(sb)->s_itb_per_group)) {
+ 		ext4_error(sb, __func__,
+ 			   "Allocating block in system zone - block = %llu",
+ 			   block);
++		/* File system mounted not to panic on error
++		 * Fix the bitmap and repeat the block allocation
++		 * We leak some of the blocks here.
++		 */
++		mb_set_bits(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group),
++				bitmap_bh->b_data, ac->ac_b_ex.fe_start,
++				ac->ac_b_ex.fe_len);
++		err = ext4_journal_dirty_metadata(handle, bitmap_bh);
++		if (!err)
++			err = -EAGAIN;
++		goto out_err;
+ 	}
+ #ifdef AGGRESSIVE_CHECK
+ 	{
+@@ -4331,7 +4344,6 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 
+ 		ac->ac_op = EXT4_MB_HISTORY_ALLOC;
+ 		ext4_mb_normalize_request(ac, ar);
+-
+ repeat:
+ 		/* allocate space in core */
+ 		ext4_mb_regular_allocator(ac);
+@@ -4345,10 +4357,21 @@ repeat:
+ 	}
+ 
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+-		ext4_mb_mark_diskspace_used(ac, handle);
+-		*errp = 0;
+-		block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
+-		ar->len = ac->ac_b_ex.fe_len;
++		*errp = ext4_mb_mark_diskspace_used(ac, handle);
++		if (*errp ==  -EAGAIN) {
++			ac->ac_b_ex.fe_group = 0;
++			ac->ac_b_ex.fe_start = 0;
++			ac->ac_b_ex.fe_len = 0;
++			ac->ac_status = AC_STATUS_CONTINUE;
++			goto repeat;
++		} else if (*errp) {
++			ac->ac_b_ex.fe_len = 0;
++			ar->len = 0;
++			ext4_mb_show_ac(ac);
++		} else {
++			block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
++			ar->len = ac->ac_b_ex.fe_len;
++		}
+ 	} else {
+ 		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
+ 		if (freed)
+@@ -4535,6 +4558,8 @@ do_more:
+ 		ext4_error(sb, __func__,
+ 			   "Freeing blocks in system zone - "
+ 			   "Block = %lu, count = %lu", block, count);
++		/* err = 0. ext4_std_error should be a no op */
++		goto error_return;
+ 	}
+ 
+ 	BUFFER_TRACE(bitmap_bh, "getting write access");
 -- 
 1.5.5.rc0.16.g02b00.dirty
 
