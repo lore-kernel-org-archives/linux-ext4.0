@@ -1,103 +1,104 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: [PATCH] ext3: Use page_mkwrite vma_operations to get mmap write notification.
-Date: Tue, 25 Mar 2008 20:21:14 +1100
-Message-ID: <200803252021.15004.nickpiggin@yahoo.com.au>
-References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080324160141.67746905.akpm@linux-foundation.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext3: Return EIO if new block is allocated from system
+	zone.
+Date: Tue, 25 Mar 2008 16:33:11 +0530
+Message-ID: <20080325110311.GA7151@skywalker>
+References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080324223251.GL2691@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.vnet.ibm.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from n56.bullet.mail.sp1.yahoo.com ([98.136.44.52]:23886 "HELO
-	n56.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752455AbYCYJfH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Mar 2008 05:35:07 -0400
-In-Reply-To: <20080324160141.67746905.akpm@linux-foundation.org>
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:51931 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753432AbYCYLDY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2008 07:03:24 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2PB3Bbc008784
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 16:33:11 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2PB3Bgk1167466
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 16:33:11 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2PB3AVl004313
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 11:03:11 GMT
 Content-Disposition: inline
+In-Reply-To: <20080324223251.GL2691@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 25 March 2008 10:01, Andrew Morton wrote:
-> On Mon, 24 Mar 2008 22:34:56 +0530
->
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > We would like to get notified when we are doing a write on mmap section.
-> > The changes are needed to handle ENOSPC when writing to an mmap section
-> > of files with holes.
->
-> umm,
->
-> > diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-> > index acc4913..09e22e4 100644
-> > --- a/fs/ext3/file.c
-> > +++ b/fs/ext3/file.c
-> > @@ -106,6 +106,23 @@ force_commit:
-> >  	return ret;
-> >  }
-> >
-> > +static struct vm_operations_struct ext3_file_vm_ops = {
-> > +	.fault		= filemap_fault,
-> > +	.page_mkwrite   = ext3_page_mkwrite,
-> > +};
-> > +
-> > +static int ext3_file_mmap(struct file *file, struct vm_area_struct *vma)
-> > +{
-> > +	struct address_space *mapping = file->f_mapping;
-> > +
-> > +	if (!mapping->a_ops->readpage)
-> > +		return -ENOEXEC;
-> > +	file_accessed(file);
-> > +	vma->vm_ops = &ext3_file_vm_ops;
-> > +	vma->vm_flags |= VM_CAN_NONLINEAR;
-> > +	return 0;
-> > +}
-> > +
-> >  const struct file_operations ext3_file_operations = {
-> >  	.llseek		= generic_file_llseek,
-> >  	.read		= do_sync_read,
-> > @@ -116,7 +133,7 @@ const struct file_operations ext3_file_operations = {
-> >  #ifdef CONFIG_COMPAT
-> >  	.compat_ioctl	= ext3_compat_ioctl,
-> >  #endif
-> > -	.mmap		= generic_file_mmap,
-> > +	.mmap		= ext3_file_mmap,
-> >  	.open		= generic_file_open,
-> >  	.release	= ext3_release_file,
-> >  	.fsync		= ext3_sync_file,
-> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > index eb95670..2293506 100644
-> > --- a/fs/ext3/inode.c
-> > +++ b/fs/ext3/inode.c
-> > @@ -3306,3 +3306,8 @@ int ext3_change_inode_journal_flag(struct inode
-> > *inode, int val)
-> >
-> >  	return err;
-> >  }
-> > +
-> > +int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-> > +{
-> > +	return block_page_mkwrite(vma, page, ext3_get_block);
-> > +}
->
-> This gets called within the pagefault handler.
->
-> And block_page_mkwrite() does lock_page().
->
-> But the pagefault handler can be called with a page already locked, from
-> generic_perform_write().
->
-> Nick, why are we not vulnerable to A-A or to AB-BA deadlocks here?
+On Mon, Mar 24, 2008 at 04:32:51PM -0600, Andreas Dilger wrote:
+> On Mar 24, 2008  22:34 +0530, Aneesh Kumar K.V wrote:
+> > If the block allocator gets blocks out of system zone ext3 calls
+> > ext3_error. But if the file system is mounted with errors=continue
+> > return with -EIO.
+> > 
+> > System zone is the block range mapping block bitmap, inode bitmap and inode
+> > table.
+> 
+> I don't understand this patch.  Surely it has nothing to do with the user,
+> and instead the code should re-try the allocation after marking the block
+> in-use in the bitmap?
+> 
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > Signed-off-by: Mingming Cao <cmm@us.vnet.ibm.com>
+> > ---
+> >  fs/ext3/balloc.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> > index da0cb2c..6ce7f7d 100644
+> > --- a/fs/ext3/balloc.c
+> > +++ b/fs/ext3/balloc.c
+> > @@ -1642,7 +1642,7 @@ allocated:
+> >  			    "Allocating block in system zone - "
+> >  			    "blocks from "E3FSBLK", length %lu",
+> >  			     ret_block, num);
+> > -		goto out;
+> > +		goto io_error;
+> >  	}
+> 
+> I think the problem here is that this "goto" is simply an in-effective
+> method of error handling.  The block HAS to be marked in-use in the
+> bitmap, or it will just continue to try and be allocated.  After marking
+> the block in-use there should be a "goto retry-alloc" instead of error.
+> To be honest, I thought in 2.6 this would invoke the block bitmap checking
+> code to revalidate the whole bitmap at this point and then retry the alloc.
+> 
+> In 2.4 this similar code looks like:
+> 
+>         if (tmp == le32_to_cpu(gdp->bg_block_bitmap) ||
+>             tmp == le32_to_cpu(gdp->bg_inode_bitmap) ||
+>             in_range (tmp, le32_to_cpu(gdp->bg_inode_table),
+>                       EXT3_SB(sb)->s_itb_per_group)) {
+>                 ext3_error(sb, __FUNCTION__,
+>                            "Allocating block in system zone - block = %u", tmp);
+> 
+>                 /* Note: This will potentially use up one of the handle's
+>                  * buffer credits.  Normally we have way too many credits,
+>                  * so that is OK.  In _very_ rare cases it might not be OK.
+>                  * We will trigger an assertion if we run out of credits,
+>                  * and we will have to do a full fsck of the filesystem -
+>                  * better than randomly corrupting filesystem metadata.
+>                  */
+>                 ext3_set_bit(j, bh->b_data);
+>                 goto repeat;
+>         }
+> 
+> 
 
-Pagefault handler unlocks the page before calling page_mkwrite. This is
-kind of crap, because the caller invariably has to lock the page again
-to check that it has not been truncated away anyway.... I voiced my
-concerns about this page_mkwrite API, but no, as always, people want to
-be really clever first and have understandable locking schemes second ;)
+How about this. Patch is not complete, we leak some of the blocks here.
 
-I'm hoping to one day clean this up and fold it all into ->fault()...
-
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 6d30af2..a9f27c7 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -289,11 +289,11 @@ read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    (int)block_group, (unsigned long long)bitmap_blk);
+ 		return NULL;
+ 	}
+-	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
+-		put_bh(bh);
+-		return NULL;
+-	}
