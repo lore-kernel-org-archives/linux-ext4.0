@@ -1,94 +1,64 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] ext3: Use page_mkwrite vma_operations to get mmap write
- notification.
-Date: Mon, 24 Mar 2008 16:01:41 -0700
-Message-ID: <20080324160141.67746905.akpm@linux-foundation.org>
-References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH e2fsprogs-next] Fix extent flag validity tests in pass1	on
+ big endian boxes.
+Date: Mon, 24 Mar 2008 18:32:51 -0600
+Message-ID: <20080325003250.GM2691@webber.adilger.int>
+References: <47E82796.9050807@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	aneesh.kumar@linux.vnet.ibm.com,
-	Nick Piggin <nickpiggin@yahoo.com.au>, linux-mm@kvack.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59786 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752949AbYCXXBu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 19:01:50 -0400
-In-Reply-To: <1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:46522 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754254AbYCYAdD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2008 20:33:03 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2P0X1Qo024988
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2008 17:33:01 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JY900J01G3HIE00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 24 Mar 2008 17:33:01 -0700 (PDT)
+In-reply-to: <47E82796.9050807@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 24 Mar 2008 22:34:56 +0530
-"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-
-> We would like to get notified when we are doing a write on mmap section.
-> The changes are needed to handle ENOSPC when writing to an mmap section
-> of files with holes.
+On Mar 24, 2008  17:13 -0500, Eric Sandeen wrote:
+> Extent data is shared with the i_block[] space in the inode,
+> but it is always swapped on access, not when the inode is read.
 > 
+> In e2fsck/pass1.c we must be careful when checking validity
+> of the extents flag on the inode.  If the flag was set when
+> the inode was read & swapped, then the extents data itself
+> (in ->i_block[]) was NOT swapped, so testing for a valid
+> extent header requires some swapping first.  Then, if we
+> ultimately set the extents flag, all of i_block[] must be
+> re/un-swapped.
 
-umm,
+This seems pretty awkward for any other users of the library.  Having the
+i_block[] array NOT be swabbed if it is an extent file means that every
+place in the code which is accessing this array also needs to do the
+swabbing itself.  This would break the abstraction that the in-memory
+inode is in host-endian order, and also forces every application to
+understand the difference between extent- and non-extent-mapped inodes,
+and the on-disk byte order.  Ugh.
 
-> 
-> diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-> index acc4913..09e22e4 100644
-> --- a/fs/ext3/file.c
-> +++ b/fs/ext3/file.c
-> @@ -106,6 +106,23 @@ force_commit:
->  	return ret;
->  }
->  
-> +static struct vm_operations_struct ext3_file_vm_ops = {
-> +	.fault		= filemap_fault,
-> +	.page_mkwrite   = ext3_page_mkwrite,
-> +};
-> +
-> +static int ext3_file_mmap(struct file *file, struct vm_area_struct *vma)
-> +{
-> +	struct address_space *mapping = file->f_mapping;
-> +
-> +	if (!mapping->a_ops->readpage)
-> +		return -ENOEXEC;
-> +	file_accessed(file);
-> +	vma->vm_ops = &ext3_file_vm_ops;
-> +	vma->vm_flags |= VM_CAN_NONLINEAR;
-> +	return 0;
-> +}
-> +
->  const struct file_operations ext3_file_operations = {
->  	.llseek		= generic_file_llseek,
->  	.read		= do_sync_read,
-> @@ -116,7 +133,7 @@ const struct file_operations ext3_file_operations = {
->  #ifdef CONFIG_COMPAT
->  	.compat_ioctl	= ext3_compat_ioctl,
->  #endif
-> -	.mmap		= generic_file_mmap,
-> +	.mmap		= ext3_file_mmap,
->  	.open		= generic_file_open,
->  	.release	= ext3_release_file,
->  	.fsync		= ext3_sync_file,
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index eb95670..2293506 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -3306,3 +3306,8 @@ int ext3_change_inode_journal_flag(struct inode *inode, int val)
->  
->  	return err;
->  }
-> +
-> +int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-> +{
-> +	return block_page_mkwrite(vma, page, ext3_get_block);
-> +}
+IMHO, it would be better to swab the i_block[] array in
+ext2fs_swap_inode_full() if the EXTENTS_FL is set, and in the rare
+case of e2fsck needing to clear that flag then it should un-swap (if
+needed), clear the flag, and re-swap (if needed).  This will very rarely
+happen, I think.  Note that the Lustre extents patches did NOT do the
+swap+clear_swap operation when clearing the extents flags because we
+don't have any big-endian server systems (our PPC testing is limited to
+userspace "make check"), though I think that is the right thing to do.
 
-This gets called within the pagefault handler.
 
-And block_page_mkwrite() does lock_page().
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-But the pagefault handler can be called with a page already locked, from
-generic_perform_write().
-
-Nick, why are we not vulnerable to A-A or to AB-BA deadlocks here?
