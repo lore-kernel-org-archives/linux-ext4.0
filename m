@@ -1,60 +1,42 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH e2fsprogs-next] Fix extent flag validity tests in pass1
-	on big endian boxes.
-Date: Mon, 24 Mar 2008 22:19:37 -0400
-Message-ID: <20080325021937.GE30110@mit.edu>
-References: <47E82796.9050807@redhat.com> <20080325003250.GM2691@webber.adilger.int>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 1/5] ext4 online defrag header file changes
+Date: Tue, 25 Mar 2008 11:21:17 +0900
+Message-ID: <47E8619D.9020607@rs.jp.nec.com>
+References: <200803141202.AA00330@TNESG9526.rs.jp.nec.com> <20080314125848.GE3542@webber.adilger.int> <47DE0F8D.2060106@rs.jp.nec.com> <20080317170846.GE3542@webber.adilger.int> <47E789E6.6000806@rs.jp.nec.com> <47E7C21A.10208@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:33765 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755958AbYCYCUT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2008 22:20:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20080325003250.GM2691@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, cmm@us.ibm.com, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <47E7C21A.10208@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 24, 2008 at 06:32:51PM -0600, Andreas Dilger wrote:
-> On Mar 24, 2008  17:13 -0500, Eric Sandeen wrote:
-> > Extent data is shared with the i_block[] space in the inode,
-> > but it is always swapped on access, not when the inode is read.
-> > 
-> > In e2fsck/pass1.c we must be careful when checking validity
-> > of the extents flag on the inode.  If the flag was set when
-> > the inode was read & swapped, then the extents data itself
-> > (in ->i_block[]) was NOT swapped, so testing for a valid
-> > extent header requires some swapping first.  Then, if we
-> > ultimately set the extents flag, all of i_block[] must be
-> > re/un-swapped.
-> 
-> This seems pretty awkward for any other users of the library.  Having the
-> i_block[] array NOT be swabbed if it is an extent file means that every
-> place in the code which is accessing this array also needs to do the
-> swabbing itself.  This would break the abstraction that the in-memory
-> inode is in host-endian order, and also forces every application to
-> understand the difference between extent- and non-extent-mapped inodes,
-> and the on-disk byte order.  Ugh.
+Eric Sandeen wrote:
+> Akira Fujita wrote:
+>
+>   
+>> Is EXT4_IOC_FIEMAP going to be added to the ext4 patch queue?
+>> I will try to use EXT4_IOC_FIEMAP instead of EXT4_IOC_EXTENTS_INFO
+>> in ext4 online defrag when kernel supports it.
+>>     
+>
+> It's not, yet, but I could probably put it there.
+>
+>   
+I see.
 
-I did this design intentionally, because the *only* part of e2fsprogs
-which is supposed to know about byte-swapping is lib/ext2fs/extents.c.
-Well, at least normally unless EXTENTS_FL is wrongly set or unset.  So
-e2fsck needs to have some special case code to undo swapping
-i_blocks[], but that's the only part of the library that will need to
-deal with byte-swapping extents.
+> It is not ready for upstream yet at all, but it does have a good amount
+> of functionality.
+>
+> I'll try to get something submitted for the patch queue soon...
+>
+> (I decided to slow down a bit on the fiemap work, and concentrate on
+> helping to get e2fsprogs ready with ext4 support)
+>
+>   
+No problem since e2fsprogs is one of the most important things for ext4.
 
-The reason why I did that is was because I didn't want to have a lot
-of messy code in lib/ext2fs/swapfs.c that might need to change if we
-needed to support new extents format (some of which might have more
-complicated byte-swapping formats) in order to support 64-bit block
-numbers, for example --- or, if we end up using a bit-packed more
-compressible format so we can fit more extents into i_blocks[].  So
-right now, by *design* the only place that needs to know about extents
-formats is lib/ext2fs/extent.c.
-
-						- Ted
+Regards, Akira
