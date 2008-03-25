@@ -1,144 +1,64 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext3: Return EIO if new block is allocated from system
-	zone.
-Date: Tue, 25 Mar 2008 14:59:22 -0600
-Message-ID: <20080325205922.GT2691@webber.adilger.int>
-References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20080324223251.GL2691@webber.adilger.int> <20080325110311.GA7151@skywalker>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [PATCH] e2fsprogs: New bitmap and inode table allocation for
+ FLEX_BG v2
+Date: Tue, 25 Mar 2008 17:12:02 -0500
+Message-ID: <20080325171202.1dce62a6@gara>
+References: <20080213204750.5666a560@gara>
+	<20080324134650.GA13621@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: cmm@us.ibm.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.vnet.ibm.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:51691 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754261AbYCYU7r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2008 16:59:47 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2PKxkmp016432
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 13:59:47 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JYB003010HJF100@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 25 Mar 2008 13:59:46 -0700 (PDT)
-In-reply-to: <20080325110311.GA7151@skywalker>
-Content-disposition: inline
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:45098 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753720AbYCYWMG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Mar 2008 18:12:06 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2PME8t3022622
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 18:14:08 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2PMC5BW223350
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 18:12:05 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2PMC5nU029065
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 18:12:05 -0400
+In-Reply-To: <20080324134650.GA13621@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 25, 2008  16:33 +0530, Aneesh Kumar K.V wrote:
-> On Mon, Mar 24, 2008 at 04:32:51PM -0600, Andreas Dilger wrote:
-> > I think the problem here is that this "goto" is simply an in-effective
-> > method of error handling.  The block HAS to be marked in-use in the
-> > bitmap, or it will just continue to try and be allocated.  After marking
-> > the block in-use there should be a "goto retry-alloc" instead of error.
-> > To be honest, I thought in 2.6 this would invoke the block bitmap checking
-> > code to revalidate the whole bitmap at this point and then retry the alloc.
-> > 
-> > In 2.4 this similar code looks like:
-> > 
-> >         if (tmp == le32_to_cpu(gdp->bg_block_bitmap) ||
-> >             tmp == le32_to_cpu(gdp->bg_inode_bitmap) ||
-> >             in_range (tmp, le32_to_cpu(gdp->bg_inode_table),
-> >                       EXT3_SB(sb)->s_itb_per_group)) {
-> >                 ext3_error(sb, __FUNCTION__,
-> >                            "Allocating block in system zone - block = %u", tmp);
-> > 
-> >                 /* Note: This will potentially use up one of the handle's
-> >                  * buffer credits.  Normally we have way too many credits,
-> >                  * so that is OK.  In _very_ rare cases it might not be OK.
-> >                  * We will trigger an assertion if we run out of credits,
-> >                  * and we will have to do a full fsck of the filesystem -
-> >                  * better than randomly corrupting filesystem metadata.
-> >                  */
-> >                 ext3_set_bit(j, bh->b_data);
-> >                 goto repeat;
-> >         }
-> > 
-> > 
-> 
-> How about this. Patch is not complete, we leak some of the blocks here.
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 6d30af2..a9f27c7 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -289,11 +289,11 @@ read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
->  			    (int)block_group, (unsigned long long)bitmap_blk);
->  		return NULL;
->  	}
-> -	if (!ext4_valid_block_bitmap(sb, desc, block_group, bh)) {
-> -		put_bh(bh);
-> -		return NULL;
-> -	}
-> -
-> +	ext4_valid_block_bitmap(sb, desc, block_group, bh);
-> +	/*
-> +	 * file system mounted to not panic on error.
-> +	 * continue with corrput bitmap
-> +	 */
->  	return bh;
->  }
+On Mon, 24 Mar 2008 09:46:50 -0400
+Theodore Tso <tytso@MIT.EDU> wrote:
+> Just looking at it quickly, it seems like the right thing to do is
+> split setup_lazy_bg() into two parts.  The first part sets
+> EXT2_BG_BLOCK_UNINIT for all block groups, and then we modify the
+> block allocation functions in lib/ext2fs to clear the BLOCK_UNINIT
+> flag --- and then later on, we update the bg_free_blocks_count and
+> s_free_blocks_count for the lazy_bg case.  
 
-Part of the problem here is that ext4_valid_block_bitmap() only reports if
-the bitmap is good or bad.  It doesn't actually try to fix the problems it
-finds.  Instead of changing read_block_bitmap() to return an invalid bitmap
-to the caller on error, it makes more sense to keep this code as-is and
-change ext4_new_blocks_old() to change the bg_free_blocks_count = 0 for
-this group and then continue to find a different group to allocate in:
+Hi Ted,
 
-        if (free_blocks > 0) {
-                 bitmap_bh = read_block_bitmap(sb, group_no);
-                 if (bitmap_bh != NULL) {
-			 grp_alloc_blk =
-				ext4_try_to_allocate_with_rsv(sb, handle,
-							      group_no,
-							      bitmap_bh,
-							      grp_target_blk,
-							      my_rsv, &num,
-							      &fatal);
-			 if (fatal)
-				 goto out;
-			 if (grp_alloc_blk >= 0)
-				 goto allocated;
-		} else {
-			/* on error skip this group in future allocations */
-			ext4_journal_get_write_access(handle, gdp_bh);
-			gdp->bg_free_blocks_count = 0;
-			ext4_journal_dirty_metadata(handle, gdp_bh);
-		}
-         }
+As I started looking at implementing this, I noticed that patch in pu
+has some chunks that don't belong to the flex_bg patch.  These are the
+offending lines at the end on the commit:
 
-> @@ -1779,7 +1779,12 @@ allocated:
->  			    "Allocating block in system zone - "
->  			    "blocks from %llu, length %lu",
->  			     ret_block, num);
-> -		goto io_error;
-> +		/*
-> +		 * claim_block marked the buffer we allocated
-> +		 * as in use. So we may want to selectively
-> +		 * mark some of the blocks as free
-> +		 */
-> +		goto retry_alloc;
++       if (!force && fs_param.s_blocks_count >= ((unsigned) 1 << 31)) {
++               com_err(program_name, 0,
++                       _("Filesystem too large.  No more than 2**31-1 blocks\n"
++                         "\t (8TB using a blocksize of 4k) are currently supported."));
++             exit(1);
++       }
++
++       if ((blocksize > 4096) &&
++           (fs_param.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
++               fprintf(stderr, _("\nWarning: some 2.4 kernels do not support "
++                       "blocksizes greater than 4096\n\tusing ext3.  "
++                       "Use -b 4096 if this is an issue for you.\n\n"));
++
 
-However, the above is only half of the story (though the most important
-half).  If the bitmap has been loaded into memory read_block_bitmap()
-will not check the validity of the bitmap anymore.  What 2.4 did here is
-actually mark the system zone bits in use and continue on.  We could either
-do that directly, or have a flag to ext4_valid_block_bitmap() to tell it
-to set the bits, or just skip the group entirely.
+These line probably got damaged during one of the merges.  You probably
+want to fix this so that the changes are not lost when rebasing to a
+newer flex_bg patch.
 
-Probably skipping the group entirely is safest and easiest because who
-knows what else is wrong with the bitmap, and this is what is done
-above (set bg_free_blocks_count = 0, write it to disk and the ext4_error()
-call will have already marked the filesystem as needing a check.
-
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+-JRS
