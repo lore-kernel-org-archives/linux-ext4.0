@@ -1,56 +1,103 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Respin of the uninit_group patches
-Date: Tue, 25 Mar 2008 03:15:45 -0600
-Message-ID: <20080325091545.GA10906@webber.adilger.int>
-References: <1205760527-14858-1-git-send-email-tytso@mit.edu>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [PATCH] ext3: Use page_mkwrite vma_operations to get mmap write notification.
+Date: Tue, 25 Mar 2008 20:21:14 +1100
+Message-ID: <200803252021.15004.nickpiggin@yahoo.com.au>
+References: <1206378298-10341-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1206378298-10341-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080324160141.67746905.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:57080 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751377AbYCYJQF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2008 05:16:05 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m2P9G3be011565
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2008 02:16:03 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JYA00M01480EO00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 25 Mar 2008 02:16:03 -0700 (PDT)
-In-reply-to: <1205760527-14858-1-git-send-email-tytso@mit.edu>
-Content-disposition: inline
+Received: from n56.bullet.mail.sp1.yahoo.com ([98.136.44.52]:23886 "HELO
+	n56.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752455AbYCYJfH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Mar 2008 05:35:07 -0400
+In-Reply-To: <20080324160141.67746905.akpm@linux-foundation.org>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 17, 2008  09:28 -0400, Theodore Ts'o wrote:
-> I've reworked this patch series to clean them up a bit.  In
-> particular, an unused ext2fs_scan_inode flag (EXT2_SF_DO_CSUM) was
-> removed, and I made ext2fs_group_desc_csum() static, and added
-> ext2fs_group_desc_csum_set().  In addition, ext2fs_group_desc_set()
-> and ext2fs_group_desc_verify() take an ext2_filsys argument instead of
-> a superblock and a pointer to a group descriptor, in order to simplify
-> the calling code.
-> 
-> If this looks good, this should be the next set of patches to move
-> into the 'next' branch.
+On Tuesday 25 March 2008 10:01, Andrew Morton wrote:
+> On Mon, 24 Mar 2008 22:34:56 +0530
+>
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > We would like to get notified when we are doing a write on mmap section.
+> > The changes are needed to handle ENOSPC when writing to an mmap section
+> > of files with holes.
+>
+> umm,
+>
+> > diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+> > index acc4913..09e22e4 100644
+> > --- a/fs/ext3/file.c
+> > +++ b/fs/ext3/file.c
+> > @@ -106,6 +106,23 @@ force_commit:
+> >  	return ret;
+> >  }
+> >
+> > +static struct vm_operations_struct ext3_file_vm_ops = {
+> > +	.fault		= filemap_fault,
+> > +	.page_mkwrite   = ext3_page_mkwrite,
+> > +};
+> > +
+> > +static int ext3_file_mmap(struct file *file, struct vm_area_struct *vma)
+> > +{
+> > +	struct address_space *mapping = file->f_mapping;
+> > +
+> > +	if (!mapping->a_ops->readpage)
+> > +		return -ENOEXEC;
+> > +	file_accessed(file);
+> > +	vma->vm_ops = &ext3_file_vm_ops;
+> > +	vma->vm_flags |= VM_CAN_NONLINEAR;
+> > +	return 0;
+> > +}
+> > +
+> >  const struct file_operations ext3_file_operations = {
+> >  	.llseek		= generic_file_llseek,
+> >  	.read		= do_sync_read,
+> > @@ -116,7 +133,7 @@ const struct file_operations ext3_file_operations = {
+> >  #ifdef CONFIG_COMPAT
+> >  	.compat_ioctl	= ext3_compat_ioctl,
+> >  #endif
+> > -	.mmap		= generic_file_mmap,
+> > +	.mmap		= ext3_file_mmap,
+> >  	.open		= generic_file_open,
+> >  	.release	= ext3_release_file,
+> >  	.fsync		= ext3_sync_file,
+> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> > index eb95670..2293506 100644
+> > --- a/fs/ext3/inode.c
+> > +++ b/fs/ext3/inode.c
+> > @@ -3306,3 +3306,8 @@ int ext3_change_inode_journal_flag(struct inode
+> > *inode, int val)
+> >
+> >  	return err;
+> >  }
+> > +
+> > +int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> > +{
+> > +	return block_page_mkwrite(vma, page, ext3_get_block);
+> > +}
+>
+> This gets called within the pagefault handler.
+>
+> And block_page_mkwrite() does lock_page().
+>
+> But the pagefault handler can be called with a page already locked, from
+> generic_perform_write().
+>
+> Nick, why are we not vulnerable to A-A or to AB-BA deadlocks here?
 
-I note in our bugzilla that we still have an open bug against the
-uninit_groups patch related to resize2fs, related to the fact that
-resize2fs allocating new inodes or blocks will likely not clear
-the UNINIT flags from the groups it is working on:
+Pagefault handler unlocks the page before calling page_mkwrite. This is
+kind of crap, because the caller invariably has to lock the page again
+to check that it has not been truncated away anyway.... I voiced my
+concerns about this page_mkwrite API, but no, as always, people want to
+be really clever first and have understandable locking schemes second ;)
 
-https://bugzilla.lustre.org/show_bug.cgi?id=12002
+I'm hoping to one day clean this up and fold it all into ->fault()...
 
-I verified that the code to disable resize2fs is still in the "next"
-branch, so there is no immediate danger, but it also means that
-filesystems with uninit_groups enabled can not be resized.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
 
