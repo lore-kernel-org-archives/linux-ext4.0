@@ -1,289 +1,38 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 3/3] ext4 fiemap implementation
-Date: Wed, 26 Mar 2008 10:44:21 -0500
-Message-ID: <47EA6F55.2040407@redhat.com>
-References: <47EA6DA9.4010103@redhat.com>
+Subject: mballoc errors
+Date: Wed, 26 Mar 2008 16:41:22 -0500
+Message-ID: <47EAC302.5040109@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42662 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:52070 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753851AbYCZPoX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Mar 2008 11:44:23 -0400
+	id S1760763AbYCZVlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Mar 2008 17:41:23 -0400
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2QFiNFV019004
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 11:44:23 -0400
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2QLfN1r009133
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 17:41:23 -0400
 Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2QFiM9j014409
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 11:44:22 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2QLfNii031688
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 17:41:23 -0400
 Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m2QFiLw7016004
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 11:44:22 -0400
-In-Reply-To: <47EA6DA9.4010103@redhat.com>
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m2QLfMoQ002680
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2008 17:41:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here is ext4_fiemap() itself.  This still needs a bit of testing & work,
-but is correct for most file layouts.... I still hit occasional problems
-with interesting mappings such as sparse/preallocated/etc.
+This report just came in on the fedora list...
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-... again also probably signed-off-by Andreas & Kalpak as well.
+EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 717:
+23410 blocks in bitmap, 23411 in gd
 
+EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 721:
+19309 blocks in bitmap, 19333 in gd
+
+has anyone else seen this problem in testing?  I guess it means
+freespace accounting got out of sync...?
+
+Thanks,
 -Eric
-
-Index: linux-2.6.25-rc1/fs/ext4/extents.c
-===================================================================
---- linux-2.6.25-rc1.orig/fs/ext4/extents.c
-+++ linux-2.6.25-rc1/fs/ext4/extents.c
-@@ -42,6 +42,7 @@
- #include <linux/slab.h>
- #include <linux/falloc.h>
- #include <linux/ext4_fs_extents.h>
-+#include <linux/fiemap.h>
- #include <asm/uaccess.h>
- 
- 
-@@ -1665,7 +1666,7 @@ int ext4_ext_walk_space(struct inode *in
- 		}
- 
- 		BUG_ON(cbex.ec_len == 0);
--		err = func(inode, path, &cbex, cbdata);
-+		err = func(inode, path, &cbex, ex, cbdata);
- 		ext4_ext_drop_refs(path);
- 
- 		if (err < 0)
-@@ -3000,3 +3001,183 @@ retry:
- 	mutex_unlock(&inode->i_mutex);
- 	return ret > 0 ? ret2 : ret;
- }
-+
-+struct fiemap_internal {
-+	struct fiemap		*fiemap_s;
-+	struct fiemap_extent	fm_extent;
-+	size_t			tot_mapping_len;
-+	char			*cur_ext_ptr;
-+	int			current_extent;
-+	int			err;
-+};
-+
-+/*
-+ * Callback function called for each extent to gather FIEMAP information.
-+ */
-+int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
-+		       void *data)
-+{
-+	struct fiemap_internal *fiemap_i = data;
-+	struct fiemap *fiemap_s = fiemap_i->fiemap_s;
-+	struct fiemap_extent *fm_extent = &fiemap_i->fm_extent;
-+	int current_extent = fiemap_i->current_extent;
-+	unsigned long blksize_bits = inode->i_sb->s_blocksize_bits;
-+
-+	/*
-+	 * ext4_ext_walk_space returns a hole for extents that have not been
-+	 * allocated yet.
-+	 */
-+	if (((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+	     inode->i_size) && newex->ec_type == EXT4_EXT_CACHE_GAP) {
-+		if (((u64)newex->ec_block << blksize_bits) < inode->i_size)
-+			newex->ec_len = (inode->i_size - ((u64)newex->ec_block<<
-+						blksize_bits)) >> blksize_bits;
-+		else
-+			return EXT_BREAK;
-+	}
-+
-+	/*
-+	 * We only need to return number of extents and total length of mapping
-+	 */
-+	if (fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS) {
-+		fiemap_i->tot_mapping_len += ((__u64)newex->ec_len <<
-+						 blksize_bits);
-+		goto count_extents;
-+	}
-+
-+	if (current_extent >= fiemap_s->fm_extent_count)
-+		return EXT_BREAK;
-+
-+	/* caller's start should be set to the start of the first extent (or hole...?) */
-+	if (newex->ec_block << blksize_bits < fiemap_s->fm_start)
-+		fiemap_s->fm_start = newex->ec_block << blksize_bits;
-+
-+	memset(fm_extent, 0, sizeof(*fm_extent));
-+	fm_extent->fe_offset = (__u64)newex->ec_start << blksize_bits;
-+	fm_extent->fe_length = (__u64)newex->ec_len << blksize_bits;
-+	fiemap_i->tot_mapping_len += fm_extent->fe_length;  /* move this above the goto? */
-+
-+	if (newex->ec_type == EXT4_EXT_CACHE_GAP)
-+		fm_extent->fe_flags |= FIEMAP_EXTENT_HOLE;
-+	else if (ex && ext4_ext_is_uninitialized(ex))
-+		fm_extent->fe_flags |= FIEMAP_EXTENT_UNWRITTEN;
-+
-+	/*
-+	 * Mark this fiemap_extent as FIEMAP_EXTENT_EOF if it's past the end
-+	 * of file.
-+	 */
-+		/* block + len to bytes... >= size? check off by one */
-+	if ((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+								inode->i_size)
-+		fm_extent->fe_flags |= FIEMAP_EXTENT_EOF;
-+		// XXX ERS HACK AROUND _LAST problem
-+		//fm_extent->fe_flags |= (FIEMAP_EXTENT_EOF|FIEMAP_EXTENT_LAST);
-+
-+	if (!copy_to_user(fiemap_i->cur_ext_ptr, fm_extent,
-+			  sizeof(struct fiemap_extent))) {
-+		/* c_t_u succeeded, advance current exent ptr to next */
-+		fiemap_i->cur_ext_ptr += sizeof(struct fiemap_extent);
-+	} else {
-+		fiemap_i->err = -EFAULT;
-+		return EXT_BREAK;
-+	}
-+
-+count_extents:
-+	/*
-+	 * Don't count holes when only returning number of extents
-+	 * XXX ERS hm, ok if that's how it's defined...
-+	 */
-+	if (!((fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS) &&
-+	      (newex->ec_type == EXT4_EXT_CACHE_GAP)))
-+		fiemap_i->current_extent++; /* hmm why? oh, advance count */
-+
-+	/*
-+	 * Stop if we are beyond requested mapping size but return complete last
-+	 * extent.
-+	 */
-+
-+	/* is this extent's last byte >= length of mapping?
-+	 * (XXX really?  not start+length of mapping? */
-+	if ((u64)(newex->ec_block + newex->ec_len) << blksize_bits >=
-+	    fiemap_s->fm_length)
-+		return EXT_BREAK;
-+
-+	return EXT_CONTINUE;
-+}
-+
-+int ext4_fiemap(struct inode *inode, unsigned long arg)
-+{
-+	struct fiemap *fiemap_s;
-+	struct fiemap_internal fiemap_i;
-+	struct fiemap_extent *last_extent;
-+	ext4_lblk_t start_blk;
-+	int fm_extent_size = sizeof(struct fiemap_extent);
-+	int err = 0;
-+
-+	/* could use getblock here for non-extent files? */
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+		return -EOPNOTSUPP;
-+
-+	fiemap_s = kmalloc(sizeof(*fiemap_s), GFP_KERNEL);
-+	if (fiemap_s == NULL)
-+		return -ENOMEM;
-+
-+	if (copy_from_user(fiemap_s, (struct fiemap __user *)arg,
-+			   sizeof(*fiemap_s))) {
-+		err = -EFAULT;
-+		goto out_free;
-+	}
-+
-+	/* bail on unsupported flags for this fs */
-+	if (fiemap_s->fm_flags & EXT4_FIEMAP_FLAG_INCOMPAT_UNSUPP) {
-+		err = -EOPNOTSUPP;
-+		goto out_free;
-+	}
-+
-+	start_blk = fiemap_s->fm_start >> inode->i_sb->s_blocksize_bits;
-+	fiemap_i.fiemap_s = fiemap_s;
-+	fiemap_i.tot_mapping_len = 0;
-+	fiemap_i.cur_ext_ptr = (char *)(arg + sizeof(*fiemap_s));
-+	fiemap_i.current_extent = 0;
-+	fiemap_i.err = 0;
-+
-+	start_blk = fiemap_s->fm_start >> inode->i_sb->s_blocksize_bits;
-+
-+	/*
-+	 * Walk the extent tree gathering extent information
-+	 */
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	err = ext4_ext_walk_space(inode, start_blk, EXT_MAX_BLOCK - start_blk,
-+				  ext4_ext_fiemap_cb, &fiemap_i);
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+	if (err)
-+		goto out_free;
-+
-+	fiemap_s->fm_extent_count = fiemap_i.current_extent;
-+	fiemap_s->fm_length = fiemap_i.tot_mapping_len;
-+	/*
-+	 * Mark last extent as EXTENT_LAST and copy the extent to userspace.`
-+	 * XXX ERS fixme, this isn't always working.
-+	 */
-+	if (fiemap_i.current_extent != 0 &&
-+	    fiemap_i.current_extent < fiemap_s->fm_extent_count &&
-+	    !(fiemap_s->fm_flags & FIEMAP_FLAG_NUM_EXTENTS)) {
-+		char *dest;
-+
-+		last_extent = &fiemap_i.fm_extent;
-+		last_extent->fe_flags |= FIEMAP_EXTENT_LAST;
-+		dest = (char *)arg + sizeof(*fiemap_s) + fm_extent_size *
-+						(fiemap_s->fm_extent_count - 1);
-+		err = copy_to_user(dest, last_extent, fm_extent_size);
-+		if (err)
-+			goto out_free;
-+	}
-+
-+	err = copy_to_user((void *)arg, fiemap_s, sizeof(*fiemap_s));
-+
-+out_free:
-+	kfree(fiemap_s);
-+	return err;
-+}
-+
-Index: linux-2.6.25-rc1/fs/ext4/file.c
-===================================================================
---- linux-2.6.25-rc1.orig/fs/ext4/file.c
-+++ linux-2.6.25-rc1/fs/ext4/file.c
-@@ -140,6 +140,9 @@ static int ext4_file_mmap(struct file *f
- 	return 0;
- }
- 
-+/* XXX ERS should this go into this file? */
-+extern int ext4_fiemap(struct inode *inode, unsigned long arg);
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -169,5 +172,6 @@ const struct inode_operations ext4_file_
- #endif
- 	.permission	= ext4_permission,
- 	.fallocate	= ext4_fallocate,
-+	.fiemap		= ext4_fiemap,
- };
- 
-Index: linux-2.6.25-rc1/include/linux/ext4_fs.h
-===================================================================
---- linux-2.6.25-rc1.orig/include/linux/ext4_fs.h
-+++ linux-2.6.25-rc1/include/linux/ext4_fs.h
-@@ -317,6 +317,8 @@ struct ext4_new_group_data {
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
- 
-+#define EXT4_FIEMAP_FLAG_INCOMPAT_UNSUPP (FIEMAP_FLAG_INCOMPAT &	\
-+					  ~(FIEMAP_FLAG_LUN_OFFSET))
- 
- /*
-  *  Mount options
-Index: linux-2.6.25-rc1/include/linux/ext4_fs_extents.h
-===================================================================
---- linux-2.6.25-rc1.orig/include/linux/ext4_fs_extents.h
-+++ linux-2.6.25-rc1/include/linux/ext4_fs_extents.h
-@@ -132,7 +132,7 @@ struct ext4_ext_path {
-  */
- typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
- 					struct ext4_ext_cache *,
--					void *);
-+					struct ext4_extent *, void *);
- 
- #define EXT_CONTINUE   0
- #define EXT_BREAK      1
-
