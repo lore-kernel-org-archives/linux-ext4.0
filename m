@@ -1,46 +1,45 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: mballoc errors
-Date: Thu, 27 Mar 2008 09:18:05 +0530
-Message-ID: <20080327034805.GA7137@skywalker>
-References: <47EAC302.5040109@redhat.com>
+From: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
+Subject: Entries in feature_list[]
+Date: Thu, 27 Mar 2008 13:10:34 +0530
+Message-ID: <1206603634.3379.4.camel@alpha.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>
+To: Ext4 Mailing List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:38394 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753730AbYC0DsL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Mar 2008 23:48:11 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m2R3m7Tf029219
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Mar 2008 09:18:07 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2R3m6R61229040
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Mar 2008 09:18:06 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m2R3mDfC006813
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Mar 2008 03:48:13 GMT
-Content-Disposition: inline
-In-Reply-To: <47EAC302.5040109@redhat.com>
+Received: from sineb-mail-2.sun.com ([192.18.19.7]:35570 "EHLO
+	sineb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754101AbYC0Haz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Mar 2008 03:30:55 -0400
+Received: from fe-apac-06.sun.com (fe-apac-06.sun.com [192.18.19.177] (may be forged))
+	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m2R7VCfs009743
+	for <linux-ext4@vger.kernel.org>; Thu, 27 Mar 2008 07:31:15 GMT
+Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
+ (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+ id <0JYD00001OHM9S00@mail-apac.sun.com>
+ (original mail from Girish.Shilamkar@Sun.COM) for linux-ext4@vger.kernel.org;
+ Thu, 27 Mar 2008 15:30:31 +0800 (SGT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 26, 2008 at 04:41:22PM -0500, Eric Sandeen wrote:
-> This report just came in on the fedora list...
-> 
-> EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 717:
-> 23410 blocks in bitmap, 23411 in gd
-> 
-> EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 721:
-> 19309 blocks in bitmap, 19333 in gd
-> 
-> has anyone else seen this problem in testing?  I guess it means
-> freespace accounting got out of sync...?
-> 
+Hi,
+In e2fsprogs/lib/e2p/feature.c 
+struct feature feature_list[] contains:
+        ... 
+	{       E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS,
+                        "extents" },
+        {       E2P_FEATURE_INCOMPAT, EXT2_FEATURE_INCOMPAT_META_BG,
+                        "meta_bg" }
+        {       E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS,
+                        "extent" },
+        ...
 
-The bitmap or group desc is corrupt. The number of free blocks counted
-via bitmap and found via desc->bg_free_blocks_count are not same. We
-fall back to one calculated the bitmap.
+Is the { E2P_*, EXT3_*, "extent"} entry correct one, if yes, what is the purpose behind having two
+{E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS, *} entries, unless we want "extent" to be 
+correct feature ?
 
--aneesh
+
+Thanks,
+Girish
+
