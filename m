@@ -1,67 +1,68 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: Re: mballoc errors
-Date: Fri, 28 Mar 2008 15:03:51 +0100
-Message-ID: <47ECFAC7.3050404@bull.net>
-References: <47EAC302.5040109@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Pietro Gagliardi <pietro10@mac.com>
+Subject: Kernel patch: ext2 creators list update
+Date: Fri, 28 Mar 2008 17:54:07 -0400
+Message-ID: <B897C02B-AB2F-4888-960A-2B72546BD5C1@mac.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: multipart/mixed; boundary=Apple-Mail-1-800781226
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:45049 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752270AbYC1ODT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Mar 2008 10:03:19 -0400
-In-Reply-To: <47EAC302.5040109@redhat.com>
+Received: from smtpoutm.mac.com ([17.148.16.66]:56417 "EHLO smtpoutm.mac.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755662AbYC1WBC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Mar 2008 18:01:02 -0400
+Received: from mac.com (asmtp006-s [10.150.69.69])
+	by smtpoutm.mac.com (Xserve/smtpout003/MantshX 4.0) with ESMTP id m2SLsDWY004299
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Mar 2008 14:54:13 -0700 (PDT)
+Received: from [24.185.117.0] (ool-18b97500.dyn.optonline.net [24.185.117.0])
+	(authenticated bits=0)
+	by mac.com (Xserve/asmtp006/MantshX 4.0) with ESMTP id m2SLsBWs016689
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Mar 2008 14:54:12 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> This report just came in on the fedora list...
-> 
-> EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 717:
-> 23410 blocks in bitmap, 23411 in gd
-> 
-> EXT4-fs error (device dm-0): ext4_mb_generate_buddy: EXT4-fs: group 721:
-> 19309 blocks in bitmap, 19333 in gd
-> 
-> has anyone else seen this problem in testing?  I guess it means
-> freespace accounting got out of sync...?
-> 
-I've got no problem running tests on filesystems with a 4K blocksize.
-But since I work on FS with 1K blocksize, I've got the following errors
-while running fsstress:
 
-EXT4-fs error (device sdc1): ext4_ext_find_extent: bad header in inode #4407333: 
-invalid magic - magic dada, entries 56026, max 56026(0), depth 56026(0)
+--Apple-Mail-1-800781226
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=US-ASCII;
+	delsp=yes;
+	format=flowed
 
-or
-
-EXT4-fs error (device sdc1): ext4_valid_block_bitmap: Invalid block bitmap - 
-block_group = 6767, block = 55435267
-
-I already found a bug in the patch ext4-fallocate-full-fs-ENOSPC-handling.
-In the function, ext4_ext_zeroout()
-       /* convert ee_pblock in 512 byte sector */
-       ee_pblock = ee_pblock << (blkbits >> 9);
-should be
-       ee_pblock = ee_pblock << (blkbits - 9);
-
-But after doing this change, the problems occur more quickly.
-I'm not sure that the function ext4_ext_zeroout() is correct if
-blocksize < pagesize.
-Aneesh, could you check that please?
-Thanks,
-   Valerie
+Hello. I'm working on a new OS that will have ext2 as the primary  
+filesystem. I'm adding my OS to the list of creators, for the  
+superblock item s_creator_os. I know the kernel doesn't use these  
+values; I don't know if any user programs do, though.
 
 
-How I reproduce the problem:
-# mkfs.ext3 -I256 -E test_fs -b 1024 /dev/sdc1
-# mount -t ext4dev /dev/sdc1 /mnt/test
-# fsstress -d /mnt/test -n1000 -p1000
+--Apple-Mail-1-800781226
+Content-Transfer-Encoding: 7bit
+Content-Type: application/octet-stream;
+	x-unix-mode=0644;
+	name=linux.patch
+Content-Disposition: attachment;
+	filename=linux.patch
+
+--- linux-2.6.24.4/include/linux/ext2_fs.h.orig	2008-03-24 14:49:18.000000000 -0400
++++ linux-2.6.24.4/include/linux/ext2_fs.h	2008-03-28 17:36:55.000000000 -0400
+@@ -426,6 +426,7 @@ struct ext2_super_block {
+ #define EXT2_OS_MASIX		2
+ #define EXT2_OS_FREEBSD		3
+ #define EXT2_OS_LITES		4
++#define EXT2_OS_PGOS        5
+ 
+ /*
+  * Revision levels
+
+--Apple-Mail-1-800781226
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=US-ASCII;
+	format=flowed
 
 
 
+Enjoy!
+- Pietro Gagliardi
 
+
+--Apple-Mail-1-800781226--
