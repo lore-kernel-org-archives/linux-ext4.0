@@ -1,39 +1,63 @@
-From: "Robert P. J. Day" <rpjday@crashcourse.ca>
-Subject: all that __KERNEL__ checking in <linux/ext*.h> files
-Date: Sat, 29 Mar 2008 19:19:14 -0400 (EDT)
-Message-ID: <alpine.LFD.1.00.0803291917010.7878@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix a couple implicit function declarations
+Date: Sat, 29 Mar 2008 23:01:52 -0500
+Message-ID: <47EF10B0.2070804@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from astoria.ccjclearline.com ([64.235.106.9]:42903 "EHLO
-	astoria.ccjclearline.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750727AbYC2XTU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Mar 2008 19:19:20 -0400
-Received: from cpe00142a336e11-cm001ac318e826.cpe.net.cable.rogers.com ([72.140.150.221] helo=crashcourse.ca)
-	by astoria.ccjclearline.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.68)
-	(envelope-from <rpjday@crashcourse.ca>)
-	id 1JfkKV-0001Yd-Dz
-	for linux-ext4@vger.kernel.org; Sat, 29 Mar 2008 19:19:19 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:48376 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750719AbYC3ECF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 30 Mar 2008 00:02:05 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m2U41seT015911
+	for <linux-ext4@vger.kernel.org>; Sun, 30 Mar 2008 00:01:54 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2U41rqp028242
+	for <linux-ext4@vger.kernel.org>; Sun, 30 Mar 2008 00:01:53 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m2U41qd9014497
+	for <linux-ext4@vger.kernel.org>; Sun, 30 Mar 2008 00:01:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Fedora seems to be gearing up to add 
+-Werror-implicit-function-declaration
+to the standard build flags, so I thought I'd get out ahead 
+of this one...
 
-  there's a pile of __KERNEL__ preprocessor testing in the ext[234].h
-files in include/linux, but only ext2_fs.h is being exported to
-userspace.  given the amount of checking, i'm reluctant to just toss
-it all since it might be there for future considerations or something.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-  is there a reason for it?
+ e2fsck/unix.c       |    1 +
+ lib/ext2fs/bitops.h |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
 
-rday
---
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 7b662e4..cadd025 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -47,6 +47,7 @@ extern int optind;
+ #endif
+ 
+ #include "et/com_err.h"
++#include "e2p/e2p.h"
+ #include "e2fsck.h"
+ #include "problem.h"
+ #include "../version.h"
+diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
+index d83ce8e..00bc4ab 100644
+--- a/lib/ext2fs/bitops.h
++++ b/lib/ext2fs/bitops.h
+@@ -332,6 +332,7 @@ _INLINE_ __u32 ext2fs_swab32(__u32 val)
+ #endif /* !_EXT2_HAVE_ASM_SWAB */
+ 
+ #if !defined(_EXT2_HAVE_ASM_FINDBIT_)
++#include <strings.h>
+ _INLINE_ int ext2fs_find_first_bit_set(void * addr, unsigned size)
+ {
+ 	char	*cp = (char *) addr;
+-- 1.5.4.1
 
-========================================================================
-Robert P. J. Day
-Linux Consulting, Training and Annoying Kernel Pedantry:
-    Have classroom, will lecture.
-
-http://crashcourse.ca                          Waterloo, Ontario, CANADA
-========================================================================
