@@ -1,8 +1,8 @@
 From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC PATCH 2/2] Add timeout feature
-Date: Mon, 31 Mar 2008 10:00:57 +1000
-Message-ID: <20080331000057.GI108924158@sgi.com>
-References: <20080328180736t-sato@mail.jp.nec.com>
+Subject: Re: [RFC PATCH 1/2] Implement generic freeze feature
+Date: Mon, 31 Mar 2008 10:06:35 +1000
+Message-ID: <20080331000635.GJ108924158@sgi.com>
+References: <20080328180522t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: David Chinner <dgc@sgi.com>,
@@ -12,55 +12,89 @@ Cc: David Chinner <dgc@sgi.com>,
 	"dm-devel@redhat.com" <dm-devel@redhat.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 To: Takashi Sato <t-sato@yk.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:58231 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752650AbYCaAEK (ORCPT
-	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
-	Sun, 30 Mar 2008 20:04:10 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080328180736t-sato@mail.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080328180522t-sato@mail.jp.nec.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 28, 2008 at 06:07:36PM +0900, Takashi Sato wrote:
-> The timeout feature is added to freeze ioctl.  And new ioctl
-> to reset the timeout period is added.
+On Fri, Mar 28, 2008 at 06:05:22PM +0900, Takashi Sato wrote:
+> The ioctls for the generic freeze feature are below.
 > o Freeze the filesystem
->   int ioctl(int fd, int FIFREEZE, long *timeval)
->   fd: The file descriptor of the mountpoint
->   FIFREEZE: request code for the freeze
->   timeval: the timeout period in seconds
->            If it's 0 or 1, the timeout isn't set.
->            This special case of "1" is implemented to keep
->            the compatibility with XFS applications.
->   Return value: 0 if the operation succeeds. Otherwise, -1
+>   int ioctl(int fd, int FIFREEZE, arg)
+>     fd: The file descriptor of the mountpoint
+>     FIFREEZE: request code for the freeze
+>     arg: Ignored
+>     Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+> o Unfreeze the filesystem
+>   int ioctl(int fd, int FITHAW, arg)
+>     fd: The file descriptor of the mountpoint
+>     FITHAW: request code for unfreeze
+>     arg: Ignored
+>     Return value: 0 if the operation succeeds. Otherwise, -1
 
-The timeout is not for the freeze operation - the timeout is
-only set up once the freeze is complete. i.e:
+Patch below to remove the XFS specific ioctl interfaces for this
+functionality.
 
-$ time sudo ~/test_src/xfs_io -f -x -c 'gfreeze 10' /mnt/scratch/test
-freezing with level = 10
+Signed-off-by: Dave Chinner <dgc@sgi.com>
+---
+ fs/xfs/linux-2.6/xfs_ioctl.c   |   15 ---------------
+ fs/xfs/linux-2.6/xfs_ioctl32.c |    2 --
+ fs/xfs/xfs_fs.h                |    4 ++--
+ 3 files changed, 2 insertions(+), 19 deletions(-)
 
-real    0m23.204s
-user    0m0.008s
-sys     0m0.012s
-
-The freeze takes 23s, and then the 10s timeout is started. So
-this timeout does not protect against freeze_bdev() hangs at all.
-All it does is introduce silent unfreezing of the block device that
-can not be synchronised with the application that is operating
-on the frozen device.
-
-FWIW, resetting this timeout from userspace is unreliable - there's
-no guarantee that under load your userspace process will get to run
-again inside the timeout to reset it, hence leaving you with a
-unfrozen filesystem when you really want it frozen...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl.c
+===================================================================
+--- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_ioctl.c	2008-03-31 08:33:19.000000000 +1000
++++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl.c	2008-03-31 09:06:08.531294896 +1000
+@@ -1228,21 +1228,6 @@ xfs_ioctl(
+ 		return -error;
+ 	}
+ 
+-	case XFS_IOC_FREEZE:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-
+-		if (inode->i_sb->s_frozen == SB_UNFROZEN)
+-			freeze_bdev(inode->i_sb->s_bdev, 0);
+-		return 0;
+-
+-	case XFS_IOC_THAW:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-		if (inode->i_sb->s_frozen != SB_UNFROZEN)
+-			thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
+-		return 0;
+-
+ 	case XFS_IOC_GOINGDOWN: {
+ 		__uint32_t in;
+ 
+Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl32.c
+===================================================================
+--- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_ioctl32.c	2007-11-20 16:12:45.000000000 +1100
++++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl32.c	2008-03-31 09:06:38.011484411 +1000
+@@ -398,8 +398,6 @@ xfs_compat_ioctl(
+ 	case XFS_IOC_FSGROWFSDATA:
+ 	case XFS_IOC_FSGROWFSLOG:
+ 	case XFS_IOC_FSGROWFSRT:
+-	case XFS_IOC_FREEZE:
+-	case XFS_IOC_THAW:
+ 	case XFS_IOC_GOINGDOWN:
+ 	case XFS_IOC_ERROR_INJECTION:
+ 	case XFS_IOC_ERROR_CLEARALL:
+Index: 2.6.x-xfs-new/fs/xfs/xfs_fs.h
+===================================================================
+--- 2.6.x-xfs-new.orig/fs/xfs/xfs_fs.h	2007-11-20 18:38:49.000000000 +1100
++++ 2.6.x-xfs-new/fs/xfs/xfs_fs.h	2008-03-31 09:09:54.902040723 +1000
+@@ -473,8 +473,8 @@ typedef struct xfs_handle {
+ #define XFS_IOC_ERROR_INJECTION	     _IOW ('X', 116, struct xfs_error_injection)
+ #define XFS_IOC_ERROR_CLEARALL	     _IOW ('X', 117, struct xfs_error_injection)
+ /*	XFS_IOC_ATTRCTL_BY_HANDLE -- deprecated 118	 */
+-#define XFS_IOC_FREEZE		     _IOWR('X', 119, int)
+-#define XFS_IOC_THAW		     _IOWR('X', 120, int)
++/*	XFS_IOC_FREEZE		  -- FIFREEZE   119	 */
++/*	XFS_IOC_THAW		  -- FITHAW     120	 */
+ #define XFS_IOC_FSSETDM_BY_HANDLE    _IOW ('X', 121, struct xfs_fsop_setdm_handlereq)
+ #define XFS_IOC_ATTRLIST_BY_HANDLE   _IOW ('X', 122, struct xfs_fsop_attrlist_handlereq)
+ #define XFS_IOC_ATTRMULTI_BY_HANDLE  _IOW ('X', 123, struct xfs_fsop_attrmulti_handlereq)
