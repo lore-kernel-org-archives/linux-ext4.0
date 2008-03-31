@@ -1,70 +1,663 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH] e2fsprogs: New bitmap and inode table allocation for
- FLEX_BG v2
-Date: Mon, 31 Mar 2008 11:41:08 -0500
-Message-ID: <20080331114108.5710ab1e@gara.konoha.net>
-References: <20080213204750.5666a560@gara>
-	<20080324134650.GA13621@mit.edu>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH] mballoc headers cleanup
+Date: Mon, 31 Mar 2008 11:28:32 -0700
+Message-ID: <1206988112.3653.0.camel@localhost.localdomain>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@MIT.EDU>, Andreas Dilger <adilger@sun.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:60922 "EHLO e1.ny.us.ibm.com"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:48704 "EHLO e6.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751787AbYCaQlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Mar 2008 12:41:19 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2VGfHKc019988
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 12:41:17 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2VGfH5E247820
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 12:41:17 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2VGfGDw023115
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 12:41:16 -0400
-In-Reply-To: <20080324134650.GA13621@mit.edu>
+	id S1754488AbYCaS2b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Mar 2008 14:28:31 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m2VIUYMa010627
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 14:30:34 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m2VISUTa269684
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 14:28:30 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m2VISUps006230
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 14:28:30 -0400
+Received: from [9.47.17.70] (w-ming-laptop.beaverton.ibm.com [9.47.17.70])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m2VIST3K006169
+	for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 14:28:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 24 Mar 2008 09:46:50 -0400
-Theodore Tso <tytso@MIT.EDU> wrote:
-> This turns out to be a kludge whose short comings show other problems.
-> The real problem is that most of the libext2fs isn't BLOCK_UNINIT
-> aware.  So for example, if debugfs is used to write a file into the
-> filesystem, and the block group doesn't have an initialized bitmap,
-> the Wrong Thing will happen.  More to the point, if you use mke2fs to
-> a 1k blocksize filesystem, and the journal is bigger than 16 megs, (or
-> with a 4k blocksize filesystem, if the journal is bigger than 512
-> megs), you could easily end up allocating the journal into a block
-> group with BG_BLOCK_UNINIT.  Oops.
-> 
-> This wasn't that much of a big deal since up until now lazy_bg was
-> only used for debugging really big filesystems, and not much else.  It
-> was a quick hack for debugging purposes only.  But given that
-> uninititalized blockgroups are intended for more general use, we have
-> to make sure all of these corner cases are handled correctly.
-> 
-> Just looking at it quickly, it seems like the right thing to do is
-> split setup_lazy_bg() into two parts.  The first part sets
-> EXT2_BG_BLOCK_UNINIT for all block groups, and then we modify the
-> block allocation functions in lib/ext2fs to clear the BLOCK_UNINIT
-> flag --- and then later on, we update the bg_free_blocks_count and
-> s_free_blocks_count for the lazy_bg case.  
+Move function and structure definiations out of mballoc.c and put it under
+a new header file mballoc.h
 
-It seems that libext2fs is BLOCK_UNINIT aware since the only time we
-would need to update the BLOCK_UNINIT flag is if we update the group
-descriptors bg_free_blocks_count.  In ext2fs_block_alloc_stats(), the
-EXT2_BG_BLOCK_UNINIT flag is unset when this happens.  Having said
-that, I think there is a bug in this code if we do not use GDT_CSUM
-since setup_lazy_bg() would set bg_free_block_count to zero and this
-routine does nothing to set the right number of free blocks.  If
-GDT_CSUM is not used, s_free_blocks_count would also need to be updated
-as well.
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/mballoc.c |  296 ----------------------------------------------------
+ fs/ext4/mballoc.h |  304 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 305 insertions(+), 295 deletions(-)
 
-Other than fixing ext2fs_block_alloc_stats(), I don't see anywhere else
-in libext2fs where we would need to add awareness to unset the 
-BLOCK_UNINIT flag.
+Index: linux-2.6.25-rc7/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.25-rc7.orig/fs/ext4/mballoc.c	2008-03-31 10:53:06.000000000 -0700
++++ linux-2.6.25-rc7/fs/ext4/mballoc.c	2008-03-31 11:20:41.000000000 -0700
+@@ -21,21 +21,7 @@
+  * mballoc.c contains the multiblocks allocation routines
+  */
+ 
+-#include <linux/time.h>
+-#include <linux/fs.h>
+-#include <linux/namei.h>
+-#include <linux/quotaops.h>
+-#include <linux/buffer_head.h>
+-#include <linux/module.h>
+-#include <linux/swap.h>
+-#include <linux/proc_fs.h>
+-#include <linux/pagemap.h>
+-#include <linux/seq_file.h>
+-#include <linux/version.h>
+-#include "ext4_jbd2.h"
+-#include "ext4.h"
+-#include "group.h"
+-
++#include "mballoc.h"
+ /*
+  * MUSTDO:
+  *   - test ext4_ext_search_left() and ext4_ext_search_right()
+@@ -345,286 +331,6 @@
+  *
+  */
+ 
+-/*
+- * with AGGRESSIVE_CHECK allocator runs consistency checks over
+- * structures. these checks slow things down a lot
+- */
+-#define AGGRESSIVE_CHECK__
+-
+-/*
+- * with DOUBLE_CHECK defined mballoc creates persistent in-core
+- * bitmaps, maintains and uses them to check for double allocations
+- */
+-#define DOUBLE_CHECK__
+-
+-/*
+- */
+-#define MB_DEBUG__
+-#ifdef MB_DEBUG
+-#define mb_debug(fmt, a...)	printk(fmt, ##a)
+-#else
+-#define mb_debug(fmt, a...)
+-#endif
+-
+-/*
+- * with EXT4_MB_HISTORY mballoc stores last N allocations in memory
+- * and you can monitor it in /proc/fs/ext4/<dev>/mb_history
+- */
+-#define EXT4_MB_HISTORY
+-#define EXT4_MB_HISTORY_ALLOC		1	/* allocation */
+-#define EXT4_MB_HISTORY_PREALLOC	2	/* preallocated blocks used */
+-#define EXT4_MB_HISTORY_DISCARD		4	/* preallocation discarded */
+-#define EXT4_MB_HISTORY_FREE		8	/* free */
+-
+-#define EXT4_MB_HISTORY_DEFAULT		(EXT4_MB_HISTORY_ALLOC | \
+-					 EXT4_MB_HISTORY_PREALLOC)
+-
+-/*
+- * How long mballoc can look for a best extent (in found extents)
+- */
+-#define MB_DEFAULT_MAX_TO_SCAN		200
+-
+-/*
+- * How long mballoc must look for a best extent
+- */
+-#define MB_DEFAULT_MIN_TO_SCAN		10
+-
+-/*
+- * How many groups mballoc will scan looking for the best chunk
+- */
+-#define MB_DEFAULT_MAX_GROUPS_TO_SCAN	5
+-
+-/*
+- * with 'ext4_mb_stats' allocator will collect stats that will be
+- * shown at umount. The collecting costs though!
+- */
+-#define MB_DEFAULT_STATS		1
+-
+-/*
+- * files smaller than MB_DEFAULT_STREAM_THRESHOLD are served
+- * by the stream allocator, which purpose is to pack requests
+- * as close each to other as possible to produce smooth I/O traffic
+- * We use locality group prealloc space for stream request.
+- * We can tune the same via /proc/fs/ext4/<parition>/stream_req
+- */
+-#define MB_DEFAULT_STREAM_THRESHOLD	16	/* 64K */
+-
+-/*
+- * for which requests use 2^N search using buddies
+- */
+-#define MB_DEFAULT_ORDER2_REQS		2
+-
+-/*
+- * default group prealloc size 512 blocks
+- */
+-#define MB_DEFAULT_GROUP_PREALLOC	512
+-
+-static struct kmem_cache *ext4_pspace_cachep;
+-static struct kmem_cache *ext4_ac_cachep;
+-
+-#ifdef EXT4_BB_MAX_BLOCKS
+-#undef EXT4_BB_MAX_BLOCKS
+-#endif
+-#define EXT4_BB_MAX_BLOCKS	30
+-
+-struct ext4_free_metadata {
+-	ext4_group_t group;
+-	unsigned short num;
+-	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
+-	struct list_head list;
+-};
+-
+-struct ext4_group_info {
+-	unsigned long	bb_state;
+-	unsigned long	bb_tid;
+-	struct ext4_free_metadata *bb_md_cur;
+-	unsigned short	bb_first_free;
+-	unsigned short	bb_free;
+-	unsigned short	bb_fragments;
+-	struct		list_head bb_prealloc_list;
+-#ifdef DOUBLE_CHECK
+-	void		*bb_bitmap;
+-#endif
+-	unsigned short	bb_counters[];
+-};
+-
+-#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
+-#define EXT4_GROUP_INFO_LOCKED_BIT	1
+-
+-#define EXT4_MB_GRP_NEED_INIT(grp)	\
+-	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+-
+-
+-struct ext4_prealloc_space {
+-	struct list_head	pa_inode_list;
+-	struct list_head	pa_group_list;
+-	union {
+-		struct list_head pa_tmp_list;
+-		struct rcu_head	pa_rcu;
+-	} u;
+-	spinlock_t		pa_lock;
+-	atomic_t		pa_count;
+-	unsigned		pa_deleted;
+-	ext4_fsblk_t		pa_pstart;	/* phys. block */
+-	ext4_lblk_t		pa_lstart;	/* log. block */
+-	unsigned short		pa_len;		/* len of preallocated chunk */
+-	unsigned short		pa_free;	/* how many blocks are free */
+-	unsigned short		pa_linear;	/* consumed in one direction
+-						 * strictly, for grp prealloc */
+-	spinlock_t		*pa_obj_lock;
+-	struct inode		*pa_inode;	/* hack, for history only */
+-};
+-
+-
+-struct ext4_free_extent {
+-	ext4_lblk_t fe_logical;
+-	ext4_grpblk_t fe_start;
+-	ext4_group_t fe_group;
+-	int fe_len;
+-};
+-
+-/*
+- * Locality group:
+- *   we try to group all related changes together
+- *   so that writeback can flush/allocate them together as well
+- */
+-struct ext4_locality_group {
+-	/* for allocator */
+-	struct mutex		lg_mutex;	/* to serialize allocates */
+-	struct list_head	lg_prealloc_list;/* list of preallocations */
+-	spinlock_t		lg_prealloc_lock;
+-};
+-
+-struct ext4_allocation_context {
+-	struct inode *ac_inode;
+-	struct super_block *ac_sb;
+-
+-	/* original request */
+-	struct ext4_free_extent ac_o_ex;
+-
+-	/* goal request (after normalization) */
+-	struct ext4_free_extent ac_g_ex;
+-
+-	/* the best found extent */
+-	struct ext4_free_extent ac_b_ex;
+-
+-	/* copy of the bext found extent taken before preallocation efforts */
+-	struct ext4_free_extent ac_f_ex;
+-
+-	/* number of iterations done. we have to track to limit searching */
+-	unsigned long ac_ex_scanned;
+-	__u16 ac_groups_scanned;
+-	__u16 ac_found;
+-	__u16 ac_tail;
+-	__u16 ac_buddy;
+-	__u16 ac_flags;		/* allocation hints */
+-	__u8 ac_status;
+-	__u8 ac_criteria;
+-	__u8 ac_repeats;
+-	__u8 ac_2order;		/* if request is to allocate 2^N blocks and
+-				 * N > 0, the field stores N, otherwise 0 */
+-	__u8 ac_op;		/* operation, for history only */
+-	struct page *ac_bitmap_page;
+-	struct page *ac_buddy_page;
+-	struct ext4_prealloc_space *ac_pa;
+-	struct ext4_locality_group *ac_lg;
+-};
+-
+-#define AC_STATUS_CONTINUE	1
+-#define AC_STATUS_FOUND		2
+-#define AC_STATUS_BREAK		3
+-
+-struct ext4_mb_history {
+-	struct ext4_free_extent orig;	/* orig allocation */
+-	struct ext4_free_extent goal;	/* goal allocation */
+-	struct ext4_free_extent result;	/* result allocation */
+-	unsigned pid;
+-	unsigned ino;
+-	__u16 found;	/* how many extents have been found */
+-	__u16 groups;	/* how many groups have been scanned */
+-	__u16 tail;	/* what tail broke some buddy */
+-	__u16 buddy;	/* buddy the tail ^^^ broke */
+-	__u16 flags;
+-	__u8 cr:3;	/* which phase the result extent was found at */
+-	__u8 op:4;
+-	__u8 merged:1;
+-};
+-
+-struct ext4_buddy {
+-	struct page *bd_buddy_page;
+-	void *bd_buddy;
+-	struct page *bd_bitmap_page;
+-	void *bd_bitmap;
+-	struct ext4_group_info *bd_info;
+-	struct super_block *bd_sb;
+-	__u16 bd_blkbits;
+-	ext4_group_t bd_group;
+-};
+-#define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+-#define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+-
+-#ifndef EXT4_MB_HISTORY
+-static inline void ext4_mb_store_history(struct ext4_allocation_context *ac)
+-{
+-	return;
+-}
+-#else
+-static void ext4_mb_store_history(struct ext4_allocation_context *ac);
+-#endif
+-
+-#define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
+-
+-static struct proc_dir_entry *proc_root_ext4;
+-struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
+-
+-static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+-					ext4_group_t group);
+-static void ext4_mb_poll_new_transaction(struct super_block *, handle_t *);
+-static void ext4_mb_free_committed_blocks(struct super_block *);
+-static void ext4_mb_return_to_preallocation(struct inode *inode,
+-					struct ext4_buddy *e4b, sector_t block,
+-					int count);
+-static void ext4_mb_put_pa(struct ext4_allocation_context *,
+-			struct super_block *, struct ext4_prealloc_space *pa);
+-static int ext4_mb_init_per_dev_proc(struct super_block *sb);
+-static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
+-
+-
+-static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
+-}
+-
+-static inline void ext4_unlock_group(struct super_block *sb,
+-					ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
+-}
+-
+-static inline int ext4_is_group_locked(struct super_block *sb,
+-					ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
+-						&(grinfo->bb_state));
+-}
+-
+-static ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
+-					struct ext4_free_extent *fex)
+-{
+-	ext4_fsblk_t block;
+-
+-	block = (ext4_fsblk_t) fex->fe_group * EXT4_BLOCKS_PER_GROUP(sb)
+-			+ fex->fe_start
+-			+ le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+-	return block;
+-}
+-
+ static inline void *mb_correct_addr_and_bit(int *bit, void *addr)
+ {
+ #if BITS_PER_LONG == 64
+Index: linux-2.6.25-rc7/fs/ext4/mballoc.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ linux-2.6.25-rc7/fs/ext4/mballoc.h	2008-03-31 11:20:41.000000000 -0700
+@@ -0,0 +1,304 @@
++/*
++ *  fs/ext4/mballoc.h
++ *
++ *  Written by: Alex Tomas <alex@clusterfs.com>
++ *  
++ */
++#include <linux/time.h>
++#include <linux/fs.h>
++#include <linux/namei.h>
++#include <linux/quotaops.h>
++#include <linux/buffer_head.h>
++#include <linux/module.h>
++#include <linux/swap.h>
++#include <linux/proc_fs.h>
++#include <linux/pagemap.h>
++#include <linux/seq_file.h>
++#include <linux/version.h>
++#include "ext4_jbd2.h"
++#include "ext4.h"
++#include "group.h"
++
++#ifndef _EXT4_MBALLOC_H
++#define _EXT4_MBALLOC_H
++
++/*
++ * with AGGRESSIVE_CHECK allocator runs consistency checks over
++ * structures. these checks slow things down a lot
++ */
++#define AGGRESSIVE_CHECK__
++
++/*
++ * with DOUBLE_CHECK defined mballoc creates persistent in-core
++ * bitmaps, maintains and uses them to check for double allocations
++ */
++#define DOUBLE_CHECK__
++
++/*
++ */
++#define MB_DEBUG__
++#ifdef MB_DEBUG
++#define mb_debug(fmt, a...)	printk(fmt, ##a)
++#else
++#define mb_debug(fmt, a...)
++#endif
++
++/*
++ * with EXT4_MB_HISTORY mballoc stores last N allocations in memory
++ * and you can monitor it in /proc/fs/ext4/<dev>/mb_history
++ */
++#define EXT4_MB_HISTORY
++#define EXT4_MB_HISTORY_ALLOC		1	/* allocation */
++#define EXT4_MB_HISTORY_PREALLOC	2	/* preallocated blocks used */
++#define EXT4_MB_HISTORY_DISCARD		4	/* preallocation discarded */
++#define EXT4_MB_HISTORY_FREE		8	/* free */
++
++#define EXT4_MB_HISTORY_DEFAULT		(EXT4_MB_HISTORY_ALLOC | \
++					 EXT4_MB_HISTORY_PREALLOC)
++
++/*
++ * How long mballoc can look for a best extent (in found extents)
++ */
++#define MB_DEFAULT_MAX_TO_SCAN		200
++
++/*
++ * How long mballoc must look for a best extent
++ */
++#define MB_DEFAULT_MIN_TO_SCAN		10
++
++/*
++ * How many groups mballoc will scan looking for the best chunk
++ */
++#define MB_DEFAULT_MAX_GROUPS_TO_SCAN	5
++
++/*
++ * with 'ext4_mb_stats' allocator will collect stats that will be
++ * shown at umount. The collecting costs though!
++ */
++#define MB_DEFAULT_STATS		1
++
++/*
++ * files smaller than MB_DEFAULT_STREAM_THRESHOLD are served
++ * by the stream allocator, which purpose is to pack requests
++ * as close each to other as possible to produce smooth I/O traffic
++ * We use locality group prealloc space for stream request.
++ * We can tune the same via /proc/fs/ext4/<parition>/stream_req
++ */
++#define MB_DEFAULT_STREAM_THRESHOLD	16	/* 64K */
++
++/*
++ * for which requests use 2^N search using buddies
++ */
++#define MB_DEFAULT_ORDER2_REQS		2
++
++/*
++ * default group prealloc size 512 blocks
++ */
++#define MB_DEFAULT_GROUP_PREALLOC	512
++
++static struct kmem_cache *ext4_pspace_cachep;
++static struct kmem_cache *ext4_ac_cachep;
++
++#ifdef EXT4_BB_MAX_BLOCKS
++#undef EXT4_BB_MAX_BLOCKS
++#endif
++#define EXT4_BB_MAX_BLOCKS	30
++
++struct ext4_free_metadata {
++	ext4_group_t group;
++	unsigned short num;
++	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
++	struct list_head list;
++};
++
++struct ext4_group_info {
++	unsigned long	bb_state;
++	unsigned long	bb_tid;
++	struct ext4_free_metadata *bb_md_cur;
++	unsigned short	bb_first_free;
++	unsigned short	bb_free;
++	unsigned short	bb_fragments;
++	struct		list_head bb_prealloc_list;
++#ifdef DOUBLE_CHECK
++	void		*bb_bitmap;
++#endif
++	unsigned short	bb_counters[];
++};
++
++#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
++#define EXT4_GROUP_INFO_LOCKED_BIT	1
++
++#define EXT4_MB_GRP_NEED_INIT(grp)	\
++	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
++
++
++struct ext4_prealloc_space {
++	struct list_head	pa_inode_list;
++	struct list_head	pa_group_list;
++	union {
++		struct list_head pa_tmp_list;
++		struct rcu_head	pa_rcu;
++	} u;
++	spinlock_t		pa_lock;
++	atomic_t		pa_count;
++	unsigned		pa_deleted;
++	ext4_fsblk_t		pa_pstart;	/* phys. block */
++	ext4_lblk_t		pa_lstart;	/* log. block */
++	unsigned short		pa_len;		/* len of preallocated chunk */
++	unsigned short		pa_free;	/* how many blocks are free */
++	unsigned short		pa_linear;	/* consumed in one direction
++						 * strictly, for grp prealloc */
++	spinlock_t		*pa_obj_lock;
++	struct inode		*pa_inode;	/* hack, for history only */
++};
++
++
++struct ext4_free_extent {
++	ext4_lblk_t fe_logical;
++	ext4_grpblk_t fe_start;
++	ext4_group_t fe_group;
++	int fe_len;
++};
++
++/*
++ * Locality group:
++ *   we try to group all related changes together
++ *   so that writeback can flush/allocate them together as well
++ */
++struct ext4_locality_group {
++	/* for allocator */
++	struct mutex		lg_mutex;	/* to serialize allocates */
++	struct list_head	lg_prealloc_list;/* list of preallocations */
++	spinlock_t		lg_prealloc_lock;
++};
++
++struct ext4_allocation_context {
++	struct inode *ac_inode;
++	struct super_block *ac_sb;
++
++	/* original request */
++	struct ext4_free_extent ac_o_ex;
++
++	/* goal request (after normalization) */
++	struct ext4_free_extent ac_g_ex;
++
++	/* the best found extent */
++	struct ext4_free_extent ac_b_ex;
++
++	/* copy of the bext found extent taken before preallocation efforts */
++	struct ext4_free_extent ac_f_ex;
++
++	/* number of iterations done. we have to track to limit searching */
++	unsigned long ac_ex_scanned;
++	__u16 ac_groups_scanned;
++	__u16 ac_found;
++	__u16 ac_tail;
++	__u16 ac_buddy;
++	__u16 ac_flags;		/* allocation hints */
++	__u8 ac_status;
++	__u8 ac_criteria;
++	__u8 ac_repeats;
++	__u8 ac_2order;		/* if request is to allocate 2^N blocks and
++				 * N > 0, the field stores N, otherwise 0 */
++	__u8 ac_op;		/* operation, for history only */
++	struct page *ac_bitmap_page;
++	struct page *ac_buddy_page;
++	struct ext4_prealloc_space *ac_pa;
++	struct ext4_locality_group *ac_lg;
++};
++
++#define AC_STATUS_CONTINUE	1
++#define AC_STATUS_FOUND		2
++#define AC_STATUS_BREAK		3
++
++struct ext4_mb_history {
++	struct ext4_free_extent orig;	/* orig allocation */
++	struct ext4_free_extent goal;	/* goal allocation */
++	struct ext4_free_extent result;	/* result allocation */
++	unsigned pid;
++	unsigned ino;
++	__u16 found;	/* how many extents have been found */
++	__u16 groups;	/* how many groups have been scanned */
++	__u16 tail;	/* what tail broke some buddy */
++	__u16 buddy;	/* buddy the tail ^^^ broke */
++	__u16 flags;
++	__u8 cr:3;	/* which phase the result extent was found at */
++	__u8 op:4;
++	__u8 merged:1;
++};
++
++struct ext4_buddy {
++	struct page *bd_buddy_page;
++	void *bd_buddy;
++	struct page *bd_bitmap_page;
++	void *bd_bitmap;
++	struct ext4_group_info *bd_info;
++	struct super_block *bd_sb;
++	__u16 bd_blkbits;
++	ext4_group_t bd_group;
++};
++#define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
++#define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
++
++#ifndef EXT4_MB_HISTORY
++static inline void ext4_mb_store_history(struct ext4_allocation_context *ac)
++{
++	return;
++}
++#else
++static void ext4_mb_store_history(struct ext4_allocation_context *ac);
++#endif
++
++#define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
++
++static struct proc_dir_entry *proc_root_ext4;
++struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
++
++static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
++					ext4_group_t group);
++static void ext4_mb_poll_new_transaction(struct super_block *, handle_t *);
++static void ext4_mb_free_committed_blocks(struct super_block *);
++static void ext4_mb_return_to_preallocation(struct inode *inode,
++					struct ext4_buddy *e4b, sector_t block,
++					int count);
++static void ext4_mb_put_pa(struct ext4_allocation_context *,
++			struct super_block *, struct ext4_prealloc_space *pa);
++static int ext4_mb_init_per_dev_proc(struct super_block *sb);
++static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
++
++
++static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
++}
++
++static inline void ext4_unlock_group(struct super_block *sb,
++					ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
++}
++
++static inline int ext4_is_group_locked(struct super_block *sb,
++					ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
++						&(grinfo->bb_state));
++}
++
++static ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
++					struct ext4_free_extent *fex)
++{
++	ext4_fsblk_t block;
++
++	block = (ext4_fsblk_t) fex->fe_group * EXT4_BLOCKS_PER_GROUP(sb)
++			+ fex->fe_start
++			+ le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
++	return block;
++}
++
 
--JRS
+
