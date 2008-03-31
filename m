@@ -1,100 +1,92 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [RFC PATCH 1/2] Implement generic freeze feature
-Date: Mon, 31 Mar 2008 10:06:35 +1000
-Message-ID: <20080331000635.GJ108924158@sgi.com>
-References: <20080328180522t-sato@mail.jp.nec.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [PATCH 1/5] ext4 online defrag header file changes
+Date: Mon, 31 Mar 2008 17:46:47 +0900
+Message-ID: <200803310846.AA00351@TNESG9526.rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Chinner <dgc@sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Takashi Sato <t-sato@yk.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080328180522t-sato@mail.jp.nec.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andreas Dilger <adilger@sun.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	a-fujita@rs.jp.nec.com
+To: cmm@us.ibm.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:42275 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756453AbYCaIsx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Mar 2008 04:48:53 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 28, 2008 at 06:05:22PM +0900, Takashi Sato wrote:
-> The ioctls for the generic freeze feature are below.
-> o Freeze the filesystem
->   int ioctl(int fd, int FIFREEZE, arg)
->     fd: The file descriptor of the mountpoint
->     FIFREEZE: request code for the freeze
->     arg: Ignored
->     Return value: 0 if the operation succeeds. Otherwise, -1
-> 
-> o Unfreeze the filesystem
->   int ioctl(int fd, int FITHAW, arg)
->     fd: The file descriptor of the mountpoint
->     FITHAW: request code for unfreeze
->     arg: Ignored
->     Return value: 0 if the operation succeeds. Otherwise, -1
+Mingming Cao wrote:
+> On Thu, 2008-03-27 at 19:15 +0900, Akira Fujita wrote:
+>> Aneesh Kumar K.V wrote:
+>>> On Mon, Mar 24, 2008 at 09:31:03PM +0900, Akira Fujita wrote:
+>>>   
+>>>> Hi Aneesh,
+>>>>     
+>>>>> On Mon, Mar 24, 2008 at 08:00:54PM +0900, Akira Fujita wrote:
+>>>>>       
+>>>>>>>   
+>>>>>>>           
+>>>>>> Is EXT4_IOC_FIEMAP going to be added to the ext4 patch queue?
+>>>>>> I will try to use EXT4_IOC_FIEMAP instead of EXT4_IOC_EXTENTS_INFO
+>>>>>> in ext4 online defrag when kernel supports it.
+>>>>>>         
+>>>>> Can you also look at the sparse warnings with the patches ?
+>>>>>
+>>>>>       
+>>>> I have already released the fixed patch before, but it is not in the ext4 patch queue yet.
+>>>> Mingming, could you replace new ext4-online-defrag-free-space-fragmentation.patch
+>>>> with old one in the ext4 patch queue? 
+>>>>
+>>>>     
+>>>   CHECK   fs/ext4/defrag.c
+>>>   fs/ext4/defrag.c:181:7: warning: cast to restricted type
+>>>   fs/ext4/defrag.c:181:7: warning: cast from restricted type
+>>>   fs/ext4/defrag.c:613:21: warning: incorrect type in argument 1
+>>>   (different address spaces)
+>>>   fs/ext4/defrag.c:613:21:    expected void [noderef] <asn:1>*to
+>>>   fs/ext4/defrag.c:613:21:    got struct ext4_group_data_info *<noident>
+>>>   fs/ext4/defrag.c:629:24: warning: incorrect type in argument 1
+>>>   (different address spaces)
+>>>   fs/ext4/defrag.c:629:24:    expected void [noderef] <asn:1>*to
+>>>   fs/ext4/defrag.c:629:24:    got struct ext4_extents_info *<noident>
+>>>   fs/ext4/defrag.c:849:29: warning: potentially expensive pointer
+>>>   subtraction
+>>>   fs/ext4/defrag.c:912:22: warning: potentially expensive pointer
+>>>   subtraction
+>>>
+>>> you would need http://www.kernel.org/pub/software/devel/sparse/
+>>> to find and fix these warnings.
+>>>
+>>>   
+>> Oops, there are a lot of warnings. =-O
+>> Thank you for letting me know.
+>> I will release fixed defrag patches in a few days.
+>
+> As part of transition to move ext4 related header files out of
+> include/linux, and move to fs/ext4, I also updated the defrag patches to
+> adapt this change. You might want to checkout the defrag patches in
+> patch queue and merge the updates before release the new version.
+>
+I see.
+I'll use the latest patches in the ext4 patch queue to fix warnings.
 
-Patch below to remove the XFS specific ioctl interfaces for this
-functionality.
+BTW, I have a slight question about this warning fix.
+The compiler with sparse outputs the warning for the following line.
 
-Signed-off-by: Dave Chinner <dgc@sgi.com>
----
- fs/xfs/linux-2.6/xfs_ioctl.c   |   15 ---------------
- fs/xfs/linux-2.6/xfs_ioctl32.c |    2 --
- fs/xfs/xfs_fs.h                |    4 ++--
- 3 files changed, 2 insertions(+), 19 deletions(-)
+	slots_range = o_end - o_start + 1;
 
-Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl.c
-===================================================================
---- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_ioctl.c	2008-03-31 08:33:19.000000000 +1000
-+++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl.c	2008-03-31 09:06:08.531294896 +1000
-@@ -1228,21 +1228,6 @@ xfs_ioctl(
- 		return -error;
- 	}
- 
--	case XFS_IOC_FREEZE:
--		if (!capable(CAP_SYS_ADMIN))
--			return -EPERM;
--
--		if (inode->i_sb->s_frozen == SB_UNFROZEN)
--			freeze_bdev(inode->i_sb->s_bdev, 0);
--		return 0;
--
--	case XFS_IOC_THAW:
--		if (!capable(CAP_SYS_ADMIN))
--			return -EPERM;
--		if (inode->i_sb->s_frozen != SB_UNFROZEN)
--			thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
--		return 0;
--
- 	case XFS_IOC_GOINGDOWN: {
- 		__uint32_t in;
- 
-Index: 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl32.c
-===================================================================
---- 2.6.x-xfs-new.orig/fs/xfs/linux-2.6/xfs_ioctl32.c	2007-11-20 16:12:45.000000000 +1100
-+++ 2.6.x-xfs-new/fs/xfs/linux-2.6/xfs_ioctl32.c	2008-03-31 09:06:38.011484411 +1000
-@@ -398,8 +398,6 @@ xfs_compat_ioctl(
- 	case XFS_IOC_FSGROWFSDATA:
- 	case XFS_IOC_FSGROWFSLOG:
- 	case XFS_IOC_FSGROWFSRT:
--	case XFS_IOC_FREEZE:
--	case XFS_IOC_THAW:
- 	case XFS_IOC_GOINGDOWN:
- 	case XFS_IOC_ERROR_INJECTION:
- 	case XFS_IOC_ERROR_CLEARALL:
-Index: 2.6.x-xfs-new/fs/xfs/xfs_fs.h
-===================================================================
---- 2.6.x-xfs-new.orig/fs/xfs/xfs_fs.h	2007-11-20 18:38:49.000000000 +1100
-+++ 2.6.x-xfs-new/fs/xfs/xfs_fs.h	2008-03-31 09:09:54.902040723 +1000
-@@ -473,8 +473,8 @@ typedef struct xfs_handle {
- #define XFS_IOC_ERROR_INJECTION	     _IOW ('X', 116, struct xfs_error_injection)
- #define XFS_IOC_ERROR_CLEARALL	     _IOW ('X', 117, struct xfs_error_injection)
- /*	XFS_IOC_ATTRCTL_BY_HANDLE -- deprecated 118	 */
--#define XFS_IOC_FREEZE		     _IOWR('X', 119, int)
--#define XFS_IOC_THAW		     _IOWR('X', 120, int)
-+/*	XFS_IOC_FREEZE		  -- FIFREEZE   119	 */
-+/*	XFS_IOC_THAW		  -- FITHAW     120	 */
- #define XFS_IOC_FSSETDM_BY_HANDLE    _IOW ('X', 121, struct xfs_fsop_setdm_handlereq)
- #define XFS_IOC_ATTRLIST_BY_HANDLE   _IOW ('X', 122, struct xfs_fsop_attrlist_handlereq)
- #define XFS_IOC_ATTRMULTI_BY_HANDLE  _IOW ('X', 123, struct xfs_fsop_attrmulti_handlereq)
+<warning>
+fs/ext4/defrag.c:912:22: warning: potentially expensive pointer subtraction
+
+Then I tried to fix this line as follows.
+
+	slots_range = ((unsigned long)o_end - (unsigned long)o_start + 1)
+					/ sizeof(struct ext4_extent);
+
+There is no warning but it seems hard to read a bit.
+I have no idea whether I should fix this line or not in this case.  :-\ 
+
+Regards,
+Akira
