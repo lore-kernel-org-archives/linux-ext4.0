@@ -1,56 +1,79 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: [RFC PATCH 2/2] Add timeout feature
-Date: Tue, 1 Apr 2008 19:54:42 +0900
-Message-ID: <2530BB4B166747659C8F65C9C3DE7CFB@nsl.ad.nec.co.jp>
-References: <20080328180736t-sato@mail.jp.nec.com> <20080331000057.GI108924158@sgi.com>
+From: Takashi Sato <t-sato@yk.jp.nec.com>
+Subject: [RFC PATCH 0/3] freeze feature ver 1.1
+Date: Tue, 1 Apr 2008 21:16:14 +0900
+Message-ID: <20080401211614t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: "David Chinner" <dgc@sgi.com>, <linux-ext4@vger.kernel.org>,
-	<linux-fsdevel@vger.kernel.org>, <xfs@oss.sgi.com>,
-	<dm-devel@redhat.com>, <linux-kernel@vger.kernel.org>
-To: "David Chinner" <dgc@sgi.com>
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"dm-devel@redhat.com" <dm-devel@redhat.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: David Chinner <dgc@sgi.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080331000057.GI108924158@sgi.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 Hi,
 
 David Chinner wrote:
-> The timeout is not for the freeze operation - the timeout is
-> only set up once the freeze is complete. i.e:
->
-> $ time sudo ~/test_src/xfs_io -f -x -c 'gfreeze 10' /mnt/scratch/test
-> freezing with level = 10
->
-> real    0m23.204s
-> user    0m0.008s
-> sys     0m0.012s
->
-> The freeze takes 23s, and then the 10s timeout is started. So
-> this timeout does not protect against freeze_bdev() hangs at all.
-> All it does is introduce silent unfreezing of the block device that
-> can not be synchronised with the application that is operating
-> on the frozen device.
+> Patch below to remove the XFS specific ioctl interfaces for this
+> functionality.
 
-Exactly my timeout feature is only for an application, not for freeze_bdev().
-I think it is needed for the situation we can't unfreeze from userspace.
-(e.g. Freezing the root filesystem)
+Thank you very much for your patch to remove the XFS specific code.
+I have merged your patch into 2.6.25-rc7 and included it in the
+freeze patch-set as the following [PATCH 2/3].
 
-> FWIW, resetting this timeout from userspace is unreliable - there's
-> no guarantee that under load your userspace process will get to run
-> again inside the timeout to reset it, hence leaving you with a
-> unfrozen filesystem when you really want it frozen...
+[PATCH 1/3] Implement generic freeze feature
+  The ioctls for the generic freeze feature are below.
+  o Freeze the filesystem
+    int ioctl(int fd, int FIFREEZE, arg)
+      fd: The file descriptor of the mountpoint
+      FIFREEZE: request code for the freeze
+      arg: Ignored
+      Return value: 0 if the operation succeeds. Otherwise, -1
 
-The timeout period specified to the reset ioctl should be much larger than
-the interval for calling the reset ioctl repeatedly.
-(e.g timeout period = 2 minutes, calling interval = 5 seconds)
-The reset ioctl will work under such setting.
-If a timeout still occurs before a reset, it would imply that an unexpected
-problem (e.g. deadlock) occur in an application.
+  o Unfreeze the filesystem
+    int ioctl(int fd, int FITHAW, arg)
+      fd: The file descriptor of the mountpoint
+      FITHAW: request code for unfreeze
+      arg: Ignored
+      Return value: 0 if the operation succeeds. Otherwise, -1
 
-Cheers, Takashi 
+[PATCH 2/3] Remove XFS specific ioctl interfaces for freeze feature
+  It removes XFS specific ioctl interfaces and request codes
+  for freeze feature.
+  This patch has been supplied by David Chinner.
+
+[PATCH 3/3] Add timeout feature
+  The timeout feature is added to freeze ioctl.  And new ioctl
+  to reset the timeout period is added.
+  o Freeze the filesystem
+    int ioctl(int fd, int FIFREEZE, long *timeval)
+    fd: The file descriptor of the mountpoint
+    FIFREEZE: request code for the freeze
+    timeval: the timeout period in seconds
+             If it's 0 or 1, the timeout isn't set.
+             This special case of "1" is implemented to keep
+             the compatibility with XFS applications.
+    Return value: 0 if the operation succeeds. Otherwise, -1
+
+  o Reset the timeout period
+    This is useful for the application to set the timeval more accurately.
+    For example, the freezer resets the timeval to 10 seconds every 5
+    seconds.  In this approach, even if the freezer causes a deadlock
+    by accessing the frozen filesystem, it will be solved by the timeout
+    in 10 seconds and the freezer can recognize that at the next reset
+    of timeval.
+    int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
+      fd:file descriptor of mountpoint
+      FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
+      timeval: new timeout period in seconds
+      Return value: 0 if the operation succeeds. Otherwise, -1
+      Error number: If the filesystem has already been unfrozen,
+                    errno is set to EINVAL.
+
+Any comments are very welcome.
+
+Cheers, Takashi
