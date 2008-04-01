@@ -1,334 +1,179 @@
-From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [RFC PATCH 3/3] Add timeout feature
-Date: Tue, 1 Apr 2008 21:22:04 +0900
-Message-ID: <20080401212204t-sato@mail.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: David Chinner <dgc@sgi.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Erez Zadok <ezk@cs.sunysb.edu>
+Subject: Re: ext3 lockdep warning in 2.6.25-rc6
+Date: Tue, 1 Apr 2008 17:23:34 -0400
+Message-ID: <200804012123.m31LNY3T012962@agora.fsl.cs.sunysb.edu>
+References: <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>
+Cc: Erez Zadok <ezk@cs.sunysb.edu>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2]:47393 "EHLO
+	filer.fsl.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759726AbYDAV1O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2008 17:27:14 -0400
+In-reply-to: Your message of "Tue, 25 Mar 2008 19:29:09 BST."
+             <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The timeout feature is added to freeze ioctl.  And new ioctl
-to reset the timeout period is added.
-o Freeze the filesystem
-  int ioctl(int fd, int FIFREEZE, long *timeval)
-  fd: The file descriptor of the mountpoint
-  FIFREEZE: request code for the freeze
-  timeval: the timeout period in seconds
-           If it's 0 or 1, the timeout isn't set.
-           This special case of "1" is implemented to keep
-           the compatibility with XFS applications.
-  Return value: 0 if the operation succeeds. Otherwise, -1
+In message <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>, Jan Kara writes:
+> 
+> --sdtB3X0nJg68CQEu
+> Content-Type: text/plain; charset=us-ascii
+> Content-Disposition: inline
+> 
+> > I was building a kernel using "make -j 4" inside a unionfs, mounted on top
+> > of ext3.  The kernel is vanilla 2.6.25-rc6 plus unionfs patches.  At some
+> > point I forced a cache flush using "echo 3 > /proc/sys/vm/drop_caches" and I
+> > got the lockdep warning below.  Note that unionfs doesn't appear to be
+> > involved in this lockdep warning at all, so I suspect this is probably an
+> > issue between jbd and ext3 directly.
+> > 
+> > Let me know if I can be of more help.
+>   Actually, I have a fix for that - attached. Can you try it? Thanks.
+> 									Honza
+> 
+> > [31270.749254] =======================================================
+> > [31270.749473] [ INFO: possible circular locking dependency detected ]
+> > [31270.749720] 2.6.25-rc6-unionfs2 #69
+> > [31270.749831] -------------------------------------------------------
+> > [31270.749958] flush-caches.sh/9702 is trying to acquire lock:
+> > [31270.750171]  (&journal->j_list_lock){--..}, at: [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
+> > [31270.751607] 
+> > [31270.751607] but task is already holding lock:
+> > [31270.751607]  (inode_lock){--..}, at: [<c02718bb>] drop_pagecache+0x45/0xd3
+> > [31270.751607] 
+> > [31270.751607] which lock already depends on the new lock.
+> > [31270.751607] 
+> > [31270.751607] 
+> > [31270.751607] the existing dependency chain (in reverse order) is:
+> > [31270.751607] 
+> > [31270.751607] -> #1 (inode_lock){--..}:
+> > [31270.751607]        [<c0231e01>] __lock_acquire+0x934/0xab8
+> > [31270.751607]        [<c0232307>] lock_acquire+0x4e/0x6a
+> > [31270.751607]        [<c0395e33>] _spin_lock+0x23/0x32
+> > [31270.751607]        [<c02713d2>] __mark_inode_dirty+0xbe/0x134
+> > [31270.751607]        [<c0274b3a>] __set_page_dirty+0xdd/0xec
+> > [31270.751607]        [<c0274ba9>] mark_buffer_dirty+0x60/0x63
+> > [31270.751607]        [<c029d2f6>] __journal_temp_unlink_buffer+0xc9/0xce
+> > [31270.751607]        [<c029d43b>] __journal_unfile_buffer+0xb/0x15
+> > [31270.751607]        [<c029d487>] __journal_refile_buffer+0x42/0x8c
+> > [31270.751607]        [<c029fdd1>] journal_commit_transaction+0xc59/0xe64
+> > [31270.751607]        [<c02a29f1>] kjournald+0xae/0x1b0
+> > [31270.751607]        [<c0228833>] kthread+0x3b/0x64
+> > [31270.751607]        [<c02039d3>] kernel_thread_helper+0x7/0x10
+> > [31270.751607]        [<ffffffff>] 0xffffffff
+> > [31270.751607] 
+> > [31270.751607] -> #0 (&journal->j_list_lock){--..}:
+> > [31270.751607]        [<c0231d28>] __lock_acquire+0x85b/0xab8
+> > [31270.751607]        [<c0232307>] lock_acquire+0x4e/0x6a
+> > [31270.751607]        [<c0395e33>] _spin_lock+0x23/0x32
+> > [31270.751607]        [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
+> > [31270.751607]        [<c02925fe>] ext3_releasepage+0x53/0x5c
+> > [31270.751607]        [<c023e4bd>] try_to_release_page+0x32/0x3f
+> > [31270.751607]        [<c0243f59>] __invalidate_mapping_pages+0x69/0xc6
+> > [31270.751607]        [<c02718de>] drop_pagecache+0x68/0xd3
+> > [31270.751607]        [<c0271972>] drop_caches_sysctl_handler+0x29/0x3f
+> > [31270.751607]        [<c0289383>] proc_sys_write+0x61/0x7e
+> > [31270.751607]        [<c02594a1>] vfs_write+0x8c/0x108
+> > [31270.751607]        [<c0259a2b>] sys_write+0x3b/0x60
+> > [31270.751607]        [<c0202cee>] sysenter_past_esp+0x5f/0xa5
+> > [31270.751607]        [<ffffffff>] 0xffffffff
+> > [31270.751607] 
+> > [31270.751607] other info that might help us debug this:
+> > [31270.751607] 
+> > [31270.751607] 2 locks held by flush-caches.sh/9702:
+> > [31270.751607]  #0:  (&type->s_umount_key#12){----}, at: [<c02718ab>] drop_pagecache+0x35/0xd3
+> > [31270.751607]  #1:  (inode_lock){--..}, at: [<c02718bb>] drop_pagecache+0x45/0xd3
+> > [31270.751608] 
+> > [31270.751608] stack backtrace:
+> > [31270.751608] Pid: 9702, comm: flush-caches.sh Not tainted 2.6.25-rc6-unionfs2 #69
+> > [31270.751608]  [<c0230687>] print_circular_bug_tail+0x5b/0x66
+> > [31270.751608]  [<c0231d28>] __lock_acquire+0x85b/0xab8
+> > [31270.751608]  [<c0232307>] lock_acquire+0x4e/0x6a
+> > [31270.751608]  [<c029ef6a>] ? journal_try_to_free_buffers+0xa5/0x158
+> > [31270.751608]  [<c0395e33>] _spin_lock+0x23/0x32
+> > [31270.751608]  [<c029ef6a>] ? journal_try_to_free_buffers+0xa5/0x158
+> > [31270.751608]  [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
+> > [31270.751608]  [<c02925fe>] ext3_releasepage+0x53/0x5c
+> > [31270.751608]  [<c023e4bd>] try_to_release_page+0x32/0x3f
+> > [31270.751608]  [<c0243f59>] __invalidate_mapping_pages+0x69/0xc6
+> > [31270.751608]  [<c02718de>] drop_pagecache+0x68/0xd3
+> > [31270.751608]  [<c0271972>] drop_caches_sysctl_handler+0x29/0x3f
+> > [31270.751608]  [<c0289383>] proc_sys_write+0x61/0x7e
+> > [31270.751608]  [<c0289322>] ? proc_sys_write+0x0/0x7e
+> > [31270.751608]  [<c02594a1>] vfs_write+0x8c/0x108
+> > [31270.751608]  [<c0259a2b>] sys_write+0x3b/0x60
+> > [31270.751608]  [<c0202cee>] sysenter_past_esp+0x5f/0xa5
+> > [31270.751608]  =======================
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> -- 
+> Jan Kara <jack@suse.cz>
+> SuSE CR Labs
+> 
+> --sdtB3X0nJg68CQEu
+> Content-Type: text/x-diff; charset=us-ascii
+> Content-Disposition: attachment; filename="vfs-2.6.25-drop_pagecache_sb_fix.diff"
+> 
+> From f5e41087e345fa5c3b46ac36e6e4a654d2f7f624 Mon Sep 17 00:00:00 2001
+> From: Jan Kara <jack@suse.cz>
+> Date: Tue, 18 Mar 2008 14:38:06 +0100
+> Subject: [PATCH] Fix drop_pagecache_sb() to not call __invalidate_mapping_pages() under
+> inode_lock.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/drop_caches.c |    8 +++++++-
+>  1 files changed, 7 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/drop_caches.c b/fs/drop_caches.c
+> index 59375ef..f5aae26 100644
+> --- a/fs/drop_caches.c
+> +++ b/fs/drop_caches.c
+> @@ -14,15 +14,21 @@ int sysctl_drop_caches;
+>  
+>  static void drop_pagecache_sb(struct super_block *sb)
+>  {
+> -	struct inode *inode;
+> +	struct inode *inode, *toput_inode = NULL;
+>  
+>  	spin_lock(&inode_lock);
+>  	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+>  		if (inode->i_state & (I_FREEING|I_WILL_FREE))
+>  			continue;
+> +		__iget(inode);
+> +		spin_unlock(&inode_lock);
+>  		__invalidate_mapping_pages(inode->i_mapping, 0, -1, true);
+> +		iput(toput_inode);
+> +		toput_inode = inode;
+> +		spin_lock(&inode_lock);
+>  	}
+>  	spin_unlock(&inode_lock);
+> +	iput(toput_inode);
+>  }
 
-o Reset the timeout period
-  int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
-    fd:file descriptor of mountpoint
-    FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
-    timeval: new timeout period in seconds
-    Return value: 0 if the operation succeeds. Otherwise, -1
-    Error number: If the filesystem has already been unfrozen,
-                  errno is set to EINVAL.
+Jan, I'll be happy to test this, but I don't understand two things about
+this patch:
 
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
-Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
----
- drivers/md/dm.c             |    2 -
- fs/block_dev.c              |    2 +
- fs/buffer.c                 |   14 ++++++++-
- fs/ioctl.c                  |   64 +++++++++++++++++++++++++++++++++++++++++++-
- fs/super.c                  |   52 +++++++++++++++++++++++++++++++++++
- fs/xfs/xfs_fsops.c          |    2 -
- include/linux/buffer_head.h |    2 -
- include/linux/fs.h          |    8 +++++
- 8 files changed, 140 insertions(+), 6 deletions(-)
+1. Is it safe to unlock and re-lock inode_lock temporarily within the loop?
 
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/drivers/md/dm.c linux-2.6.25-rc7-timeout/drivers
-/md/dm.c
---- linux-2.6.25-rc7-xfs/drivers/md/dm.c	2008-04-01 14:21:37.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/drivers/md/dm.c	2008-04-01 13:25:11.000000000 +0900
-@@ -1407,7 +1407,7 @@ static int lock_fs(struct mapped_device 
- 
- 	WARN_ON(md->frozen_sb);
- 
--	md->frozen_sb = freeze_bdev(md->suspended_bdev);
-+	md->frozen_sb = freeze_bdev(md->suspended_bdev, 0);
- 	if (IS_ERR(md->frozen_sb)) {
- 		r = PTR_ERR(md->frozen_sb);
- 		md->frozen_sb = NULL;
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/fs/block_dev.c linux-2.6.25-rc7-timeout/fs/block
-_dev.c
---- linux-2.6.25-rc7-xfs/fs/block_dev.c	2008-04-01 14:22:34.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/fs/block_dev.c	2008-04-01 13:27:38.000000000 +0900
-@@ -287,6 +287,8 @@ static void init_once(struct kmem_cache 
- 
- 	/* Initialize semaphore for freeze. */
- 	sema_init(&bdev->bd_freeze_sem, 1);
-+	/* Setup freeze timeout function. */
-+	INIT_DELAYED_WORK(&bdev->bd_freeze_timeout, freeze_timeout);
- }
- 
- static inline void __bd_forget(struct inode *inode)
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/fs/buffer.c linux-2.6.25-rc7-timeout/fs/buffer.c
---- linux-2.6.25-rc7-xfs/fs/buffer.c	2008-04-01 14:22:26.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/fs/buffer.c	2008-04-01 13:27:14.000000000 +0900
-@@ -190,14 +190,17 @@ int fsync_bdev(struct block_device *bdev
- 
- /**
-  * freeze_bdev  --  lock a filesystem and force it into a consistent state
-- * @bdev:	blockdevice to lock
-+ * @bdev:		blockdevice to lock
-+ * @timeout_msec:	timeout period
-  *
-  * This takes the block device bd_mount_sem to make sure no new mounts
-  * happen on bdev until thaw_bdev() is called.
-  * If a superblock is found on this device, we take the s_umount semaphore
-  * on it to make sure nobody unmounts until the snapshot creation is done.
-+ * If timeout_msec is bigger than 0, this registers the delayed work for
-+ * timeout of the freeze feature.
-  */
--struct super_block *freeze_bdev(struct block_device *bdev)
-+struct super_block *freeze_bdev(struct block_device *bdev, long timeout_msec)
- {
- 	struct super_block *sb;
- 
-@@ -233,6 +236,10 @@ struct super_block *freeze_bdev(struct b
- 
- 	sync_blockdev(bdev);
- 
-+	/* Setup unfreeze timer. */
-+	if (timeout_msec > 0)
-+		add_freeze_timeout(bdev, timeout_msec);
-+
- 	up(&bdev->bd_freeze_sem);
- 
- 	return sb;	/* thaw_bdev releases s->s_umount and bd_mount_sem */
-@@ -255,6 +262,9 @@ void thaw_bdev(struct block_device *bdev
- 		return;
- 	}
- 
-+	/* Delete unfreeze timer. */
-+	del_freeze_timeout(bdev);
-+
- 	if (sb) {
- 		BUG_ON(sb->s_bdev != bdev);
- 
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/fs/ioctl.c linux-2.6.25-rc7-timeout/fs/ioctl.c
---- linux-2.6.25-rc7-xfs/fs/ioctl.c	2008-04-01 14:22:38.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/fs/ioctl.c	2008-04-01 13:27:46.000000000 +0900
-@@ -184,6 +184,8 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		break;
- 
- 	case FIFREEZE: {
-+		long timeout_sec;
-+		long timeout_msec;
- 		struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
- 
- 		if (!capable(CAP_SYS_ADMIN)) {
-@@ -197,8 +199,31 @@ int do_vfs_ioctl(struct file *filp, unsi
- 			break;
- 		}
- 
-+		/* arg(sec) to tick value. */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error != 0)
-+			break;
-+		/*
-+		 * If 1 is specified as the timeout period,
-+		 * it will be changed into 0 to keep the compatibility
-+		 * of XFS application(xfs_freeze).
-+		 */
-+		if (timeout_sec < 0) {
-+			error = -EINVAL;
-+			break;
-+		} else if (timeout_sec < 2) {
-+			timeout_sec = 0;
-+		}
-+
-+		timeout_msec = timeout_sec * 1000;
-+		/* overflow case */
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
- 		/* Freeze. */
--		freeze_bdev(sb->s_bdev);
-+		freeze_bdev(sb->s_bdev, timeout_msec);
- 
- 		break;
- 	}
-@@ -216,6 +241,43 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		break;
- 	}
- 
-+	case FIFREEZE_RESET_TIMEOUT: {
-+		long timeout_sec;
-+		long timeout_msec;
-+		struct super_block *sb
-+			= filp->f_path.dentry->d_inode->i_sb;
-+
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			error = -EPERM;
-+			break;
-+		}
-+
-+		/* arg(sec) to tick value */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error)
-+			break;
-+		timeout_msec = timeout_sec * 1000;
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
-+		if (sb) {
-+			down(&sb->s_bdev->bd_freeze_sem);
-+			if (sb->s_frozen == SB_UNFROZEN) {
-+				up(&sb->s_bdev->bd_freeze_sem);
-+				error = -EINVAL;
-+				break;
-+			}
-+			/* setup unfreeze timer */
-+			if (timeout_msec > 0)
-+				add_freeze_timeout(sb->s_bdev,
-+					timeout_msec);
-+			up(&sb->s_bdev->bd_freeze_sem);
-+		}
-+		break;
-+	}
-+
- 	default:
- 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
- 			error = file_ioctl(filp, cmd, arg);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/fs/super.c linux-2.6.25-rc7-timeout/fs/super.c
---- linux-2.6.25-rc7-xfs/fs/super.c	2008-04-01 14:22:34.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/fs/super.c	2008-04-01 13:27:41.000000000 +0900
-@@ -983,3 +983,55 @@ struct vfsmount *kern_mount_data(struct 
- }
- 
- EXPORT_SYMBOL_GPL(kern_mount_data);
-+
-+/*
-+ * freeze_timeout - Thaw the filesystem.
-+ *
-+ * @work:	work queue (delayed_work.work)
-+ *
-+ * Called by the delayed work when elapsing the timeout period.
-+ * Thaw the filesystem.
-+ */
-+void freeze_timeout(struct work_struct *work)
-+{
-+	struct block_device *bd = container_of(work,
-+			struct block_device, bd_freeze_timeout.work);
-+
-+	struct super_block *sb = get_super_without_lock(bd);
-+
-+	thaw_bdev(bd, sb);
-+
-+	if (sb)
-+		put_super(sb);
-+}
-+EXPORT_SYMBOL_GPL(freeze_timeout);
-+
-+/*
-+ * add_freeze_timeout - Add timeout for freeze.
-+ *
-+ * @bdev:		block device struct
-+ * @timeout_msec:	timeout period
-+ *
-+ * Add the delayed work for freeze timeout to the delayed work queue.
-+ */
-+void add_freeze_timeout(struct block_device *bdev, long timeout_msec)
-+{
-+	s64 timeout_jiffies = msecs_to_jiffies(timeout_msec);
-+
-+	/* Set delayed work queue */
-+	cancel_delayed_work(&bdev->bd_freeze_timeout);
-+	schedule_delayed_work(&bdev->bd_freeze_timeout, timeout_jiffies);
-+}
-+
-+/*
-+ * del_freeze_timeout - Delete timeout for freeze.
-+ *
-+ * @bdev:	block device struct
-+ *
-+ * Delete the delayed work for freeze timeout from the delayed work queue.
-+ */
-+void del_freeze_timeout(struct block_device *bdev)
-+{
-+	if (delayed_work_pending(&bdev->bd_freeze_timeout))
-+		cancel_delayed_work(&bdev->bd_freeze_timeout);
-+}
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/fs/xfs/xfs_fsops.c linux-2.6.25-rc7-timeout/fs/x
-fs/xfs_fsops.c
---- linux-2.6.25-rc7-xfs/fs/xfs/xfs_fsops.c	2008-04-01 14:22:33.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/fs/xfs/xfs_fsops.c	2008-04-01 13:27:35.000000000 +0900
-@@ -623,7 +623,7 @@ xfs_fs_goingdown(
- {
- 	switch (inflags) {
- 	case XFS_FSOP_GOING_FLAGS_DEFAULT: {
--		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
-+		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, 0);
- 
- 		if (sb && !IS_ERR(sb)) {
- 			xfs_force_shutdown(mp, SHUTDOWN_FORCE_UMOUNT);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/include/linux/buffer_head.h linux-2.6.25-rc7-tim
-eout/include/linux/buffer_head.h
---- linux-2.6.25-rc7-xfs/include/linux/buffer_head.h	2008-04-01 14:22:39.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/include/linux/buffer_head.h	2008-04-01 13:27:53.000000000 +0900
-@@ -170,7 +170,7 @@ int sync_blockdev(struct block_device *b
- void __wait_on_buffer(struct buffer_head *);
- wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
- int fsync_bdev(struct block_device *);
--struct super_block *freeze_bdev(struct block_device *);
-+struct super_block *freeze_bdev(struct block_device *, long timeout_msec);
- void thaw_bdev(struct block_device *, struct super_block *);
- int fsync_super(struct super_block *);
- int fsync_no_super(struct block_device *);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-rc7-xfs/include/linux/fs.h linux-2.6.25-rc7-timeout/incl
-ude/linux/fs.h
---- linux-2.6.25-rc7-xfs/include/linux/fs.h	2008-04-01 14:22:39.000000000 +0900
-+++ linux-2.6.25-rc7-timeout/include/linux/fs.h	2008-04-01 13:27:53.000000000 +0900
-@@ -8,6 +8,7 @@
- 
- #include <linux/limits.h>
- #include <linux/ioctl.h>
-+#include <linux/workqueue.h>
- 
- /*
-  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
-@@ -225,6 +226,7 @@ extern int dir_notify_enable;
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
- #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
- #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
-+#define	FIFREEZE_RESET_TIMEOUT	_IO(0x00, 3)	/* Reset freeze timeout */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -551,6 +553,8 @@ struct block_device {
- 	 */
- 	unsigned long		bd_private;
- 
-+	/* Delayed work for freeze */
-+	struct delayed_work	bd_freeze_timeout;
- 	/* Semaphore for freeze */
- 	struct semaphore	bd_freeze_sem;
- };
-@@ -2104,5 +2108,9 @@ int proc_nr_files(struct ctl_table *tabl
- 
- int get_filesystem_list(char * buf);
- 
-+extern void add_freeze_timeout(struct block_device *bdev, long timeout_msec);
-+extern void del_freeze_timeout(struct block_device *bdev);
-+extern void freeze_timeout(struct work_struct *work);
-+
- #endif /* __KERNEL__ */
- #endif /* _LINUX_FS_H */
+2. What's the motivation behind having the second toput_inode pointer?  It
+   appears that the first iteration through the loop, toput_inode will be
+   NULL, so we'll be iput'ing a NULL pointer (which is ok).  So you're
+   trying to iput the previous inode pointer that the list iterated over,
+   right?  Is that intended?
+
+Peter's post:
+
+	http://lkml.org/lkml/2008/3/23/202
+
+includes a reference to a mail by Andrew which implies that the fix may be
+much more involved than what you outlined above, no?
+
+Thanks,
+Erez.
