@@ -1,63 +1,122 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH e2fsprogs-1.40.8] logdump : Add the missing option in usage of logdump.
-Date: Tue, 1 Apr 2008 09:20:56 +0530
-Message-ID: <ea11fea30803312050s79c50a4euc072e027a5300af@mail.gmail.com>
-References: <ea11fea30803302122x76ad0a70w5e41dc685fe7e6fa@mail.gmail.com>
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Re: [PATCH] fix file system corruption [ was Re: mballoc errors ]
+Date: Tue, 01 Apr 2008 10:38:50 +0200
+Message-ID: <47F1F49A.7020102@bull.net>
+References: <47EAC302.5040109@redhat.com> <47ECFAC7.3050404@bull.net> <20080331065802.GA19456@skywalker> <47F0FBFE.7060404@bull.net> <20080331201819.GA30646@skywalker> <20080331205030.GB30646@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.171]:16618 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753476AbYDADu5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Mar 2008 23:50:57 -0400
-Received: by ug-out-1314.google.com with SMTP id z38so24612ugc.16
-        for <linux-ext4@vger.kernel.org>; Mon, 31 Mar 2008 20:50:56 -0700 (PDT)
-In-Reply-To: <ea11fea30803302122x76ad0a70w5e41dc685fe7e6fa@mail.gmail.com>
-Content-Disposition: inline
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:52274 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753204AbYDAIib (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2008 04:38:31 -0400
+In-Reply-To: <20080331205030.GB30646@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Aneesh Kumar K.V wrote:
+> I found one case where it could fail. We are returning total extent size
+> in case of converting from uninitialized extent to initialized one. 
+> Now if we have the below layout
+> 
+> [p --------x--------]
+> 
+> where p is the start block and x is the location where we intent to
+> write. If converting the above uninit extent resulted in 
+> 
+> [p zeroed-out][uninit].
+> 
+> We should not be returning the size of
+> zeroed-out-extent. That is because in ext4_ext_get_blocks we cache
+> the extent information as below
+> 
+> out_new:
+> 		....
+> /* Cache only when it is _not_ an uninitialized extent */
+> if (create != EXT4_CREATE_UNINITIALIZED_EXT)
+> 	ext4_ext_put_in_cache(inode, iblock, allocated, newblock,
+> 						EXT4_EXT_CACHE_EXTENT);
+> out:
+> 
+> 
+> That would mean we are caching an extent starting from newblock of
+> size allocated where allocated would be the size of zeroout extent,
+> which is actually wrong.
+> 
+> I am yet to test the patch. If you have time can you test the below
+> change
 
- logdump code currently accepts an option "-s" to use journal from the
- superblock backup. However this option is not getting printed in the
- usage which means user will not be aware of this option unless he
- reads the code.
+Hi Aneesh,
+I tested your patch but unfortunately I still reproduced the problem with it:
+EXT4-fs error (device sdc1): ext4_valid_block_bitmap: Invalid block bitmap - 
+block_group = 6233, block = 51060737
 
- =========================================================================
- Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Is there another thing I could do to help debugging the problem?
+   Valerie
 
- diff -Naur a/debugfs/logdump.c b/debugfs/logdump.c
- --- a/debugfs/logdump.c 2008-03-14 03:50:46.000000000 +0530
- +++ b/debugfs/logdump.c 2008-03-31 09:51:14.000000000 +0530
- @@ -88,7 +88,7 @@
-        struct journal_source journal_source;
-        struct ext2_super_block *es = NULL;
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 964d2c1..91f8f72 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2264,7 +2264,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		ex->ee_len   = orig_ex.ee_len;
+>  		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  		ext4_ext_dirty(handle, inode, path + depth);
+> -		return le16_to_cpu(ex->ee_len);
+> +		/* zeroed the full extent */
+> +		return allocated;
+>  	}
+>  
+>  	/* ex1: ee_block to iblock - 1 : uninitialized */
+> @@ -2309,11 +2310,13 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  				ex->ee_len   = orig_ex.ee_len;
+>  				ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  				ext4_ext_dirty(handle, inode, path + depth);
+> -				return le16_to_cpu(ex->ee_len);
+> +				/* zeroed the full extent */
+> +				return allocated;
+>  
+>  			} else if (err)
+>  				goto fix_extent_len;
+>  
+> +			/* zeroed the second half */
+>  			return allocated;
+>  		}
+>  		ex3 = &newex;
+> @@ -2331,7 +2334,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  			ex->ee_len   = orig_ex.ee_len;
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+> -			return le16_to_cpu(ex->ee_len);
+> +			/* zeroed the full extent */
+> +			return allocated;
+>  
+>  		} else if (err)
+>  			goto fix_extent_len;
+> @@ -2379,7 +2383,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  			ex->ee_len   = orig_ex.ee_len;
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+> -			return le16_to_cpu(ex->ee_len);
+> +			/* zero out the first half */
+> +			return allocated;
+>  		}
+>  	}
+>  	/*
+> @@ -2446,7 +2451,8 @@ insert:
+>  		ex->ee_len   = orig_ex.ee_len;
+>  		ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  		ext4_ext_dirty(handle, inode, path + depth);
+> -		return le16_to_cpu(ex->ee_len);
+> +		/* zero out the first half */
+> +		return allocated;
+>  	} else if (err)
+>  		goto fix_extent_len;
+>  out:
+> 
+> 
 
- -       journal_source.where = 0;
- +       journal_source.where = JOURNAL_IS_INTERNAL;
-        journal_source.fd = 0;
-        journal_source.file = 0;
-        dump_all = 0;
- @@ -264,7 +264,7 @@
-        return;
-
-  print_usage:
- -       fprintf(stderr, "%s: Usage: logdump [-ac] [-b<block>] [-i<inode>]\n\t"
- +       fprintf(stderr, "%s: Usage: logdump [-acs] [-b<block>] [-i<inode>]\n\t"
-                "[-f<journal_file>] [output_file]\n", argv[0]);
-  }
-
- ==============================================================================
-
- --
- Thanks & Regards,
- ********************************************
- Manish Katiyar ( http://mkatiyar.googlepages.com )
- 3rd Floor, Fair Winds Block
- EGL Software Park
- Off Intermediate Ring Road
- Bangalore 560071, India
- ***********************************************
