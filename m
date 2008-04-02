@@ -1,92 +1,124 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: 2.6.25-rc8-mm1 - BUG in fs/jbd/transaction.c
-Date: Wed, 2 Apr 2008 15:41:32 -0400
-Message-ID: <20080402194132.GA32549@unused.rdu.redhat.com>
-References: <20080401213214.8fbb6d6b.akpm@linux-foundation.org> <6495.1207163569@turing-police.cc.vt.edu> <20080402192715.GA32454@unused.rdu.redhat.com> <20080402123905.386c56f8.akpm@linux-foundation.org>
+From: Szabolcs Szakacsits <szaka@ntfs-3g.com>
+Subject: [ANNOUNCEMENT] Linux POSIX file system test suite (fwd)
+Date: Thu, 3 Apr 2008 00:47:37 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0804030034200.664@tamago.serverit.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, Valdis.Kletnieks@vt.edu,
-	sct@redhat.com, jack@suse.cz, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, eparis@redhat.com,
-	Stephen Smalley <sds@tycho.nsa.gov>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:58451 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758564AbYDBTuz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Apr 2008 15:50:55 -0400
-Content-Disposition: inline
-In-Reply-To: <20080402123905.386c56f8.akpm@linux-foundation.org>
+Received: from tamago.serverit.net ([91.189.209.155]:43937 "EHLO
+	mail.hosting2.serverit.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1758241AbYDBWGh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Apr 2008 18:06:37 -0400
+Received: from szaka (helo=localhost)
+	by mail.hosting2.serverit.net with local-esmtp (Exim 4.63)
+	(envelope-from <szaka@ntfs-3g.org>)
+	id 1JhAnx-0001vv-2a
+	for linux-ext4@vger.kernel.org; Thu, 03 Apr 2008 00:47:37 +0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 02, 2008 at 12:39:05PM -0700, Andrew Morton wrote:
-> On Wed, 2 Apr 2008 15:27:15 -0400
-> Josef Bacik <jbacik@redhat.com> wrote:
-> 
-> > On Wed, Apr 02, 2008 at 03:12:49PM -0400, Valdis.Kletnieks@vt.edu wrote:
-> > > On Tue, 01 Apr 2008 21:32:14 PDT, Andrew Morton said:
-> > > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.25-rc8/2.6.25-rc8-mm1/
-> > > 
-> > > (Yes, I know the kernel is tainted.  Hopefully the traceback will make
-> > > enough sense that it won't matter.  I think I cc'd most everybody who is
-> > > listed in MAINTAINERS or had a non-trivial jbd, quota, or ext3 patch in the broken-out/)
-> > > 
-> > > So I was running a 'yum update' on my laptop, walked away to ask a cow-orker
-> > > a question, and came back to find it had BUG'ed twice...  Amazingly
-> > > enough, although it died in ext3 code, it apparently only nuked whatever
-> > > filesystem it was handling, as syslog was still able to log the gory details
-> > > into a file in /var. Given that a kernel rpm was the one it failed on, the
-> > > I/O was almost certainly on either / or /boot - both ext3. / is mounted
-> > > with quotas, /boot isn't, so I'm betting on /
-> > > 
-> > > Apr  2 13:48:07 turing-police yum: Updated: texlive-texmf-latex-2007-18.fc9.noarch
-> > > Apr  2 13:48:08 turing-police yum: Updated: 1:openoffice.org-xsltfilter-2.4.0-12.4.fc9.x86_64
-> > > Apr  2 13:48:09 turing-police yum: Updated: 1:openoffice.org-javafilter-2.4.0-12.4.fc9.x86_64
-> > > Apr  2 13:48:12 turing-police yum: Updated: kernel-headers-2.6.25-0.185.rc7.git6.fc9.x86_64
-> > > 
-> > > (here, it started updating kernel-2.6.25-0.185.rc7.git6 and died while I wasn't looking)
-> > 
-> > <snip>
-> > 
-> > Try this patch, it will keep us from re-entering the fs when we aren't supposed
-> > to.  cc'ing Eric Paris since he's the only selinux guy I know :).  I don't think
-> > any of the other allocations in here need to be fixed, but I didn't look too
-> > carefully.
-> > 
-> > Signed-off-by: Josef Bacik <jbacik@redhat.com>
-> > 
-> > 
-> > diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> > index c2fef7b..820d07a 100644
-> > --- a/security/selinux/hooks.c
-> > +++ b/security/selinux/hooks.c
-> > @@ -180,7 +180,7 @@ static int inode_alloc_security(struct inode *inode)
-> >  	struct task_security_struct *tsec = current->security;
-> >  	struct inode_security_struct *isec;
-> >  
-> > -	isec = kmem_cache_zalloc(sel_inode_cache, GFP_KERNEL);
-> > +	isec = kmem_cache_zalloc(sel_inode_cache, GFP_NOFS);
-> >  	if (!isec)
-> >  		return -ENOMEM;
-> >  
-> > @@ -2429,7 +2429,7 @@ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
-> >  		return -EOPNOTSUPP;
-> >  
-> >  	if (name) {
-> > -		namep = kstrdup(XATTR_SELINUX_SUFFIX, GFP_KERNEL);
-> > +		namep = kstrdup(XATTR_SELINUX_SUFFIX, GFP_NOFS);
-> >  		if (!namep)
-> >  			return -ENOMEM;
-> >  		*name = namep;
-> 
-> Might fix it.  But 2.6.24's inode_alloc_security() also uses GFP_KERNEL and
-> doesn't have this bug.  What changed?
-> 
->
 
-I don't see why the problem couldn't happen in 2.6.24, I'm sure if I generate
-enough memory pressure and start creating a bunch of files I could reproduce the
-same thing.  /me wanders off to try,
+Hi extX developers,
 
-Josef 
+This is a resend as a consequence of the ext3 home page at 
+http://ext2.sourceforge.net/ referring to 
+http://fedoraproject.org/wiki/ext3-devel which is referring to 
+ext2-devel@lists.sourceforge.net which asked me to resend here.
+
+---------- Forwarded message ----------
+Date: Thu, 3 Apr 2008 00:29:47 +0300 (EEST)
+From: Szabolcs Szakacsits <szaka@ntfs-3g.org>
+Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.sourceforge.net,
+    ext2-devel@lists.sourceforge.net, zfs-fuse@googlegroups.com,
+    Marc Andre Tanner <mat@brain-dump.org>,
+    Jean-Pierre ANDRE <jean-pierre.andre@wanadoo.fr>
+To: ntfs-3g-devel@lists.sf.net
+Subject: [ANNOUNCEMENT] Linux POSIX file system test suite
+
+
+Hello file system developers,
+
+There are several POSIX file system test suites: closed source, commercial, 
+one which needs reading 174 pages installation guide, etc. Because of these 
+frustrations when Pawel Jakub Dawidek ported ZFS to FreeBSD, he also wrote 
+such a test suite quickly.
+
+Last year the NTFS-3G team ported it to Linux/ext3 and Linux/NTFS-3G to 
+validate Jean-Pierre Andre's full file permissions and ownership support 
+for NTFS-3G. We sent our patches to Pawel for integration but this doesn't 
+seem to happen him (he didn't see problems but is busy).
+
+Since this topic regularly appears on several lists, we are also often 
+asked about it and NTFS-3G does need it to be maintained, hence we decided 
+to release it and if nobody else would like to maintain it then we will do 
+so.
+
+The test suite mostly checks POSIX compliance and works for FreeBSD, 
+Solaris, and Linux with UFS, ZFS, ext3, and NTFS-3G file systems. The list 
+of system calls tested is: chmod, chown, link, mkdir, mkfifo, open, rename, 
+rmdir, symlink, truncate, unlink. There are currently 1950 regression 
+tests.
+
+Availability:
+
+	http://ntfs3g.org/sw/qa/pjd-fstest-20080402.tgz
+
+  and in the NTFS-3G CVS as pjd-fstest module:
+
+	http://sourceforge.net/cvs/?group_id=181143
+
+The usage is extremely simple:
+
+  # tar czf pjd-fstest-20080402.tgz
+  # cd pjd-fstest-20080402
+  # vi tests/conf
+  Change 'fs' to file system type you want to test (UFS, ZFS, ext3, ntfs-3g).
+  # make
+  It will compile fstest utility which is used by regression tests.
+  # cd /path/to/file/system/you/want/to/test/
+  The test must be run as root user and requires a few basic Perl modules.
+  # prove -r /path/to/fstest/
+
+It's also possible to run individual set of tests:
+
+  # /path/to/fstest/tests/chown/00.t
+
+Or make single system call tests:
+
+  # fstest mkdir foo 0750
+  0
+  # fstest mkdir foo 0750
+  mkdir returned -1
+  EEXIST
+
+The test suite is easy to understand, modify and extend. For instance doing 
+a test cases for the above examples is only
+
+  expect 0 fstest mkdir foo 0750
+  expect EEXIST fstest mkdir foo 0750
+
+The default file system type is ext3 and it passes all tests.
+
+NTFS-3G also passes all the tests if the latest PERMISSION_HANDLING_BRANCH 
+CVS branch is used with the below UserMapping file placed in the .NTFS-3G 
+control directory:
+
+--------------------------------------------------------------->
+:500:S-1-5-21-2271520284-214583110-2989893066-513
+500::S-1-5-21-2271520284-214583110-2989893066-1007
+# default mapping pattern
+::S-1-5-21-2271520284-214583110-2989893066-10000
+<--------------------------------------------------------------
+
+Many thanks to Pawel Jakub Dawidek for writing this fantastic test suite, 
+to Jean-Pierre Andre for tirelessly working on the port and fixing 
+countless file system problems over the last half year and to Szeredi 
+Miklos for his exceptionally rapid FUSE fixes.
+
+Enjoy,
+	    Szaka
+
+--
+NTFS-3G:  http://ntfs-3g.org
+
