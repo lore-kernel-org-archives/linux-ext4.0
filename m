@@ -1,179 +1,77 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: Re: ext3 lockdep warning in 2.6.25-rc6
-Date: Tue, 1 Apr 2008 17:23:34 -0400
-Message-ID: <200804012123.m31LNY3T012962@agora.fsl.cs.sunysb.edu>
-References: <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>
-Cc: Erez Zadok <ezk@cs.sunysb.edu>, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@clusterfs.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: What's in e2fsprogs.git (stable)
+Date: Tue, 1 Apr 2008 20:06:26 -0400
+Message-ID: <20080402000626.GB302@mit.edu>
+References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <20080313180503.GC31653@mit.edu> <20080320202243.GO13719@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2]:47393 "EHLO
-	filer.fsl.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759726AbYDAV1O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2008 17:27:14 -0400
-In-reply-to: Your message of "Tue, 25 Mar 2008 19:29:09 BST."
-             <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:41038 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756660AbYDBAGc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2008 20:06:32 -0400
+Content-Disposition: inline
+In-Reply-To: <20080320202243.GO13719@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In message <20080325182909.GD21732@atrey.karlin.mff.cuni.cz>, Jan Kara writes:
-> 
-> --sdtB3X0nJg68CQEu
-> Content-Type: text/plain; charset=us-ascii
-> Content-Disposition: inline
-> 
-> > I was building a kernel using "make -j 4" inside a unionfs, mounted on top
-> > of ext3.  The kernel is vanilla 2.6.25-rc6 plus unionfs patches.  At some
-> > point I forced a cache flush using "echo 3 > /proc/sys/vm/drop_caches" and I
-> > got the lockdep warning below.  Note that unionfs doesn't appear to be
-> > involved in this lockdep warning at all, so I suspect this is probably an
-> > issue between jbd and ext3 directly.
-> > 
-> > Let me know if I can be of more help.
->   Actually, I have a fix for that - attached. Can you try it? Thanks.
-> 									Honza
-> 
-> > [31270.749254] =======================================================
-> > [31270.749473] [ INFO: possible circular locking dependency detected ]
-> > [31270.749720] 2.6.25-rc6-unionfs2 #69
-> > [31270.749831] -------------------------------------------------------
-> > [31270.749958] flush-caches.sh/9702 is trying to acquire lock:
-> > [31270.750171]  (&journal->j_list_lock){--..}, at: [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
-> > [31270.751607] 
-> > [31270.751607] but task is already holding lock:
-> > [31270.751607]  (inode_lock){--..}, at: [<c02718bb>] drop_pagecache+0x45/0xd3
-> > [31270.751607] 
-> > [31270.751607] which lock already depends on the new lock.
-> > [31270.751607] 
-> > [31270.751607] 
-> > [31270.751607] the existing dependency chain (in reverse order) is:
-> > [31270.751607] 
-> > [31270.751607] -> #1 (inode_lock){--..}:
-> > [31270.751607]        [<c0231e01>] __lock_acquire+0x934/0xab8
-> > [31270.751607]        [<c0232307>] lock_acquire+0x4e/0x6a
-> > [31270.751607]        [<c0395e33>] _spin_lock+0x23/0x32
-> > [31270.751607]        [<c02713d2>] __mark_inode_dirty+0xbe/0x134
-> > [31270.751607]        [<c0274b3a>] __set_page_dirty+0xdd/0xec
-> > [31270.751607]        [<c0274ba9>] mark_buffer_dirty+0x60/0x63
-> > [31270.751607]        [<c029d2f6>] __journal_temp_unlink_buffer+0xc9/0xce
-> > [31270.751607]        [<c029d43b>] __journal_unfile_buffer+0xb/0x15
-> > [31270.751607]        [<c029d487>] __journal_refile_buffer+0x42/0x8c
-> > [31270.751607]        [<c029fdd1>] journal_commit_transaction+0xc59/0xe64
-> > [31270.751607]        [<c02a29f1>] kjournald+0xae/0x1b0
-> > [31270.751607]        [<c0228833>] kthread+0x3b/0x64
-> > [31270.751607]        [<c02039d3>] kernel_thread_helper+0x7/0x10
-> > [31270.751607]        [<ffffffff>] 0xffffffff
-> > [31270.751607] 
-> > [31270.751607] -> #0 (&journal->j_list_lock){--..}:
-> > [31270.751607]        [<c0231d28>] __lock_acquire+0x85b/0xab8
-> > [31270.751607]        [<c0232307>] lock_acquire+0x4e/0x6a
-> > [31270.751607]        [<c0395e33>] _spin_lock+0x23/0x32
-> > [31270.751607]        [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
-> > [31270.751607]        [<c02925fe>] ext3_releasepage+0x53/0x5c
-> > [31270.751607]        [<c023e4bd>] try_to_release_page+0x32/0x3f
-> > [31270.751607]        [<c0243f59>] __invalidate_mapping_pages+0x69/0xc6
-> > [31270.751607]        [<c02718de>] drop_pagecache+0x68/0xd3
-> > [31270.751607]        [<c0271972>] drop_caches_sysctl_handler+0x29/0x3f
-> > [31270.751607]        [<c0289383>] proc_sys_write+0x61/0x7e
-> > [31270.751607]        [<c02594a1>] vfs_write+0x8c/0x108
-> > [31270.751607]        [<c0259a2b>] sys_write+0x3b/0x60
-> > [31270.751607]        [<c0202cee>] sysenter_past_esp+0x5f/0xa5
-> > [31270.751607]        [<ffffffff>] 0xffffffff
-> > [31270.751607] 
-> > [31270.751607] other info that might help us debug this:
-> > [31270.751607] 
-> > [31270.751607] 2 locks held by flush-caches.sh/9702:
-> > [31270.751607]  #0:  (&type->s_umount_key#12){----}, at: [<c02718ab>] drop_pagecache+0x35/0xd3
-> > [31270.751607]  #1:  (inode_lock){--..}, at: [<c02718bb>] drop_pagecache+0x45/0xd3
-> > [31270.751608] 
-> > [31270.751608] stack backtrace:
-> > [31270.751608] Pid: 9702, comm: flush-caches.sh Not tainted 2.6.25-rc6-unionfs2 #69
-> > [31270.751608]  [<c0230687>] print_circular_bug_tail+0x5b/0x66
-> > [31270.751608]  [<c0231d28>] __lock_acquire+0x85b/0xab8
-> > [31270.751608]  [<c0232307>] lock_acquire+0x4e/0x6a
-> > [31270.751608]  [<c029ef6a>] ? journal_try_to_free_buffers+0xa5/0x158
-> > [31270.751608]  [<c0395e33>] _spin_lock+0x23/0x32
-> > [31270.751608]  [<c029ef6a>] ? journal_try_to_free_buffers+0xa5/0x158
-> > [31270.751608]  [<c029ef6a>] journal_try_to_free_buffers+0xa5/0x158
-> > [31270.751608]  [<c02925fe>] ext3_releasepage+0x53/0x5c
-> > [31270.751608]  [<c023e4bd>] try_to_release_page+0x32/0x3f
-> > [31270.751608]  [<c0243f59>] __invalidate_mapping_pages+0x69/0xc6
-> > [31270.751608]  [<c02718de>] drop_pagecache+0x68/0xd3
-> > [31270.751608]  [<c0271972>] drop_caches_sysctl_handler+0x29/0x3f
-> > [31270.751608]  [<c0289383>] proc_sys_write+0x61/0x7e
-> > [31270.751608]  [<c0289322>] ? proc_sys_write+0x0/0x7e
-> > [31270.751608]  [<c02594a1>] vfs_write+0x8c/0x108
-> > [31270.751608]  [<c0259a2b>] sys_write+0x3b/0x60
-> > [31270.751608]  [<c0202cee>] sysenter_past_esp+0x5f/0xa5
-> > [31270.751608]  =======================
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> -- 
-> Jan Kara <jack@suse.cz>
-> SuSE CR Labs
-> 
-> --sdtB3X0nJg68CQEu
-> Content-Type: text/x-diff; charset=us-ascii
-> Content-Disposition: attachment; filename="vfs-2.6.25-drop_pagecache_sb_fix.diff"
-> 
-> From f5e41087e345fa5c3b46ac36e6e4a654d2f7f624 Mon Sep 17 00:00:00 2001
-> From: Jan Kara <jack@suse.cz>
-> Date: Tue, 18 Mar 2008 14:38:06 +0100
-> Subject: [PATCH] Fix drop_pagecache_sb() to not call __invalidate_mapping_pages() under
-> inode_lock.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/drop_caches.c |    8 +++++++-
->  1 files changed, 7 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/drop_caches.c b/fs/drop_caches.c
-> index 59375ef..f5aae26 100644
-> --- a/fs/drop_caches.c
-> +++ b/fs/drop_caches.c
-> @@ -14,15 +14,21 @@ int sysctl_drop_caches;
->  
->  static void drop_pagecache_sb(struct super_block *sb)
->  {
-> -	struct inode *inode;
-> +	struct inode *inode, *toput_inode = NULL;
->  
->  	spin_lock(&inode_lock);
->  	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
->  		if (inode->i_state & (I_FREEING|I_WILL_FREE))
->  			continue;
-> +		__iget(inode);
-> +		spin_unlock(&inode_lock);
->  		__invalidate_mapping_pages(inode->i_mapping, 0, -1, true);
-> +		iput(toput_inode);
-> +		toput_inode = inode;
-> +		spin_lock(&inode_lock);
->  	}
->  	spin_unlock(&inode_lock);
-> +	iput(toput_inode);
->  }
+* The 'maint' branch has these fixes since the last announcement.
 
-Jan, I'll be happy to test this, but I don't understand two things about
-this patch:
+Andreas Dilger (1):
+  Use -E instead of the deprecated -R option in the mke2fs man page
 
-1. Is it safe to unlock and re-lock inode_lock temporarily within the loop?
+Michael Spang (1):
+  debian: Use UID/GID ranges from adduser.conf, if present
 
-2. What's the motivation behind having the second toput_inode pointer?  It
-   appears that the first iteration through the loop, toput_inode will be
-   NULL, so we'll be iput'ing a NULL pointer (which is ok).  So you're
-   trying to iput the previous inode pointer that the list iterated over,
-   right?  Is that intended?
+Theodore Ts'o (9):
+  debugfs, tune2fs: Handle daylight savings time when parsing a time
+      string
+  mke2fs: Clarify man page that -T is interpreted using the current
+      timezone
+  fsck: Fix -C handling so that subsequent progress bars are enabled
+  e2fsck: Support a negative argument to -C to suppress progress
+      information
+  fsck: Make -Cn work correctly where n != 0
+  fsck: Treat "ext4" and "ext4dev" as ext* filesystems
+  e2fsck: Include the device name in the progress information
+  logsave: Pass any SIGTERM or SIGINT signals to child process
+  e2fsck: Avoid core dump when using the -N option
 
-Peter's post:
 
-	http://lkml.org/lkml/2008/3/23/202
+* The 'master' branch has these since the last announcement
+  in addition to the above.
 
-includes a reference to a mail by Andrew which implies that the fix may be
-much more involved than what you outlined above, no?
+Andreas Dilger (2):
+  Improve ext4 feature descriptions in mke2fs and tune2fs man pages
+  Fix the copyright notice in lib/ext2fs/tst_csum.c to be GPLv2 only
 
-Thanks,
-Erez.
+Eric Sandeen (3):
+  Fix ext2fs_extent_get for uninit leaf extents
+  libext2fs: Fix byte-swap logic for i_block[] in inodes with extents
+  Fix parallel builds for lib/ext2fs/extent.o
+
+Jose R. Santos (11):
+  Add initial checksum support for the gdt_checksum/uninit_group
+      feature
+  Add uninit block group support to various libext2fs functions
+  Rename feature name from gdt_checksum to uninit_groups
+  Add support for creating filesystems using uninit block group
+  Make tune2fs uninit block group aware
+  Make dumpe2fs uninit block group aware
+  Make resize2fs uninit block group aware
+  Make debugfs uninit block group aware
+  Make e2fsck uninit block group aware
+  Add new m_lazy test case
+  Add m_uninit test case
+
+Theodore Ts'o (2):
+  e2fsck: Don't object to extents flags on deleted fast symlinks
+  Add new test case to check e2fsck's response to fast symlinks w/
+      EXTENTS_FL
+
+----
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+
