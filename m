@@ -1,86 +1,89 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: What's cooking in e2fsprogs.git (topics)
-Date: Tue, 1 Apr 2008 20:09:56 -0400
-Message-ID: <20080402000956.GC302@mit.edu>
-References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <20080229154333.GC8968@mit.edu>
+From: David Chinner <dgc@sgi.com>
+Subject: Re: [RFC PATCH 2/2] Add timeout feature
+Date: Wed, 2 Apr 2008 16:21:47 +1000
+Message-ID: <20080402062147.GH103491721@sgi.com>
+References: <20080328180736t-sato@mail.jp.nec.com> <20080331000057.GI108924158@sgi.com> <2530BB4B166747659C8F65C9C3DE7CFB@nsl.ad.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: David Chinner <dgc@sgi.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	dm-devel@redhat.com, linux-kernel@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:41075 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757079AbYDBAJ6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2008 20:09:58 -0400
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:54150 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751628AbYDBGWG (ORCPT
+	<rfc822;@relay.sgi.com:linux-ext4@vger.kernel.org>);
+	Wed, 2 Apr 2008 02:22:06 -0400
 Content-Disposition: inline
-In-Reply-To: <20080229154333.GC8968@mit.edu>
+In-Reply-To: <2530BB4B166747659C8F65C9C3DE7CFB@nsl.ad.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here are the topics that have been cooking.  Commits prefixed
-with '-' are only in 'pu' while commits prefixed with '+' are
-in 'next'.  The topics list the commits in reverse chronological
-order.
+On Tue, Apr 01, 2008 at 07:54:42PM +0900, Takashi Sato wrote:
+> Hi,
+> 
+> David Chinner wrote:
+> >The timeout is not for the freeze operation - the timeout is
+> >only set up once the freeze is complete. i.e:
+> >
+> >$ time sudo ~/test_src/xfs_io -f -x -c 'gfreeze 10' /mnt/scratch/test
+> >freezing with level = 10
+> >
+> >real    0m23.204s
+> >user    0m0.008s
+> >sys     0m0.012s
+> >
+> >The freeze takes 23s, and then the 10s timeout is started. So
+> >this timeout does not protect against freeze_bdev() hangs at all.
+> >All it does is introduce silent unfreezing of the block device that
+> >can not be synchronised with the application that is operating
+> >on the frozen device.
+> 
+> Exactly my timeout feature is only for an application, not for 
+> freeze_bdev().
+> I think it is needed for the situation we can't unfreeze from userspace.
+> (e.g. Freezing the root filesystem)
 
-* js/flex-bg (Mon Mar 31 22:13:11 2008 -0500) 1 commit
- - mke2fs: New bitmap and inode table allocation for FLEX_BG
+Ummm - why can't you unfreeze the root fs from userspace? freezing
+only prevents modification to the filesystem. A frozen filesystem is
+effectively a read-only filesystem...
 
-	Updated with Jose's latest patch.
+On XFS:
 
-* tt/mkfs-types (Tue Feb 19 08:32:58 2008 -0500) 1 commit
- - New mke2fs types parsing --- IN PROGRESS
+# xfs_freeze -f /
+# echo $?
+0
+# xfs_freeze -u /
+# echo $?
+0
 
-	I'm taking this back, will work on this soon.
+The underlying filesystem is broken w.r.t. freezing if you can't
+read from it successfully once it's been frozen....
 
-* tt/64bit-bitmaps (Mon Feb 18 23:54:53 2008 -0500) 1 commit
- - Initial design for 64-bit bitmaps
+> >FWIW, resetting this timeout from userspace is unreliable - there's
+> >no guarantee that under load your userspace process will get to run
+> >again inside the timeout to reset it, hence leaving you with a
+> >unfrozen filesystem when you really want it frozen...
+> 
+> The timeout period specified to the reset ioctl should be much larger than
+> the interval for calling the reset ioctl repeatedly.
+> (e.g timeout period = 2 minutes, calling interval = 5 seconds)
 
-	Unchanged since last iteration.
+What application developer will ever use this?
 
-* ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
- - e2fsprogs: Add test case for undoe2fs
- - e2fsprogs: Fix the resize inode test case
- - e2fsprogs: Support for large inode migration.
- - e2fsprogs: Make mke2fs use undo I/O manager.
- - e2fsprogs: Add undoe2fs
- - e2fsprogs: Add undo I/O manager
+> The reset ioctl will work under such setting.
+> If a timeout still occurs before a reset, it would imply that an unexpected
+> problem (e.g. deadlock) occur in an application.
 
-	Unchanged since last iteration; previously remarked defects:
+Right - the application is broken and needs fixing.  We don't need
+to supply a crutch in a "new" API to support hypothetically broken
+applications that don't actually exist yet.
 
-        The test cases are missing an expected file
+Cheers,
 
-        Also, we need to chage "mke2fs use undo I/O manager" so it
-        only does it if the uninit group patch is enabled.  So this is
-        blocked on the uninit topic branch getting merged (or at least
-        the mke2fs) changes are so blocked.
-
-
-In addition, the following changes were added to the "next" branch.
-
-At this point, I believe all of the Lustre code changes (not including
-the new test cases; that's still on the todo list) have been accounted
-for.
-
-Andreas Dilger (8):
-      debugfs: Add support for "set_block_group <bg_num> checksum calc"
-      ext2fs_set_gdt_csum(): Clean up superblock dirty flag handling
-      ext2fs_set_gdt_csum(): Force the last block group to have a valid block bitmap
-      ext2fs_set_gdt_csum(): Return an error code on errors instead of void
-      libext2fs: Micro-optimization in inode scan code
-      Split the m_lazy test case into two cases: m_lazy and m_lazy_resize
-      e2fsck: Add check to enforce a valid block bitmap in last block group
-      Add new regression test: f_uninit_last_uninit
-
-Eric Sandeen (1):
-      e2fsck: Fix extent flag validity tests in pass1 on big endian boxes.
-
-Theodore Ts'o (5):
-      Fix trailing whitespace in e2fsck/problem.[ch]
-      dumpe2fs: Print the group checksum and the block options in a nicer way
-      libext2fs: Make all test programs link only against the static library
-      Add dependency rule so that static library when necessary for "make check"
-      libext2fs: Fix big-endian bug in tst_csum.c
-
-----
-URL's for the e2fsprogs repository:
-        git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-        http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+Dave.
+-- 
+Dave Chinner
+Principal Engineer
+SGI Australian Software Group
