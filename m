@@ -1,99 +1,55 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][e2fsprogs] New bitmap and inode table allocation for
-	FLEX_BG
-Date: Thu, 3 Apr 2008 09:12:40 -0400
-Message-ID: <20080403131240.GA13486@mit.edu>
-References: <20080401031311.10442.12267.stgit@gara.konoha.net>
+Subject: Re: Bug in ext2fs_set_gdt_csum() and uninit_groups handling
+Date: Thu, 3 Apr 2008 10:17:45 -0400
+Message-ID: <20080403141745.GB13486@mit.edu>
+References: <E1JhOy1-0006g8-Oy@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>, Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:55406 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:54913 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754732AbYDCNNF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2008 09:13:05 -0400
+	with ESMTP id S1756821AbYDCORy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2008 10:17:54 -0400
 Content-Disposition: inline
-In-Reply-To: <20080401031311.10442.12267.stgit@gara.konoha.net>
+In-Reply-To: <E1JhOy1-0006g8-Oy@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 31, 2008 at 10:13:11PM -0500, Jose R. Santos wrote:
-> From: Jose R. Santos <jrs@us.ibm.com>
-> 
-> New bitmap and inode table allocation for FLEX_BG
-> 
-> Change the way we allocate bitmaps and inode tables if the FLEX_BG
-> feature is used at mke2fs time.  It places calculates a new offset for
-> bitmaps and inode table base on the number of groups that the user
-> wishes to pack together using the new "-G" option.  Creating a
-> filesystem with 64 block groups in a flex group can be done by:
+So after looking at this some more, I think I understand what had
+happened.  The code as currently written is OK, because we are
+initializing the inode table even if the uninit_group feature is
+enabled.  There is a new COMPAT feature, lazy_bg, which causes mke2fs
+to skip initializing the inode table --- but since it's not in the
+allowed set of filesystem features, we're not in any danger since
+currently zeroing of the inode table can't be skipped.
 
-I was just testing out this patch, and it looks like it creates a
-filesystem with an incorrect free blocks count when creating a
-filesystem with both uninit_groups and flex_bg.  Can you look at this,
-please?
+HOWEVER, the code in ext2fs_set_gdt_csum() which I pointed out in my
+earlier message is a ticking time bomb that will go off if we ever
+enable lazy_bg.
 
-						- Ted
+Given that uninit_groups has only recently hit the e2fsprosg mainline,
+and as far as I know, no one is currently using it in production ---
+and those that might be, such as CFS, are zero'ing out the entire
+inode table anyway (since the feature was originally called gdt_cksum)
+--- and it would seem HIGHLY uninituitive that uninit_groups, or
+uninit_bg doesn't actually prevent the slow step of zeroing the inode
+table, I propose that we do the following:
 
-<tytso.root@closure> {/usr/projects/e2fsprogs/e2fsprogs/build/misc}, level 2  [js/flex-bg]
-550# ./mke2fs -O uninit_groups,flex_bg /dev/closure/testext4 
-mke2fs 1.40.8 (13-Mar-2008)
-Filesystem label=
-OS type: Linux
-Block size=4096 (log=2)
-Fragment size=4096 (log=2)
-65536 inodes, 262144 blocks
-13107 blocks (5.00%) reserved for the super user
-First data block=0
-Maximum filesystem blocks=268435456
-8 block groups
-32768 blocks per group, 32768 fragments per group
-8192 inodes per group
-Superblock backups stored on blocks: 
-        32768, 98304, 163840, 229376
+*)  Remove lazy_bg feature flag entirely
 
-Writing inode tables: done                            
-Writing superblocks and filesystem accounting information: done
+*)  Remove the bogus code in ext2fs_set_gdt_csum()
 
-This filesystem will be automatically checked every 27 mounts or
-180 days, whichever comes first.  Use tune2fs -c or -i to override.
-<tytso.root@closure> {/usr/projects/e2fsprogs/e2fsprogs/build/misc}, level 2  [js/flex-bg]
-551# ../e2fsck/e2fsck -fy /dev/closure/testext4
-e2fsck 1.40.8 (13-Mar-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong for group #0 (31669, counted=32183).
-Fix? yes
+*)  Change mke2fs to skip initializing the inode tables if
+    uninit_groups is set.
 
-Free blocks count wrong for group #1 (31675, counted=32189).
-Fix? yes
+*)  Implement the kernel code for ext4 so it will zero out the inode
+    table in the background.
 
-Free blocks count wrong for group #2 (31740, counted=32254).
-Fix? yes
+Does this make sense?  I believe it is safe, given that all existing
+filesystems using uninit_groups (what few of them exist) have the
+inode table completely zero'ed out, so there is no danger in making
+this change in the deifnition of what uninit_groups (or uninit_bg) means.
 
-Free blocks count wrong for group #3 (31675, counted=32189).
-Fix? yes
-
-Free blocks count wrong for group #4 (31740, counted=32254).
-Fix? yes
-
-Free blocks count wrong for group #5 (31675, counted=32189).
-Fix? yes
-
-Free blocks count wrong for group #6 (31740, counted=32254).
-Fix? yes
-
-Free blocks count wrong for group #7 (31675, counted=32189).
-Fix? yes
-
-Free blocks count wrong (253589, counted=257701).
-Fix? yes
-
-
-/dev/closure/testext4: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/closure/testext4: 11/65536 files (9.1% non-contiguous), 4443/262144 blocks
-
+     	       	   	      	      		    - Ted
