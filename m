@@ -1,87 +1,171 @@
-From: Paul Slootman <paul@wurtel.net>
-Subject: #blocks per group too big: 37265
-Date: Thu, 3 Apr 2008 18:19:04 +0200
-Message-ID: <20080403161904.GA31670@msgid.wurtel.net>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [RFC] [PATCH] Inverse locking order of page_lock and
+	transaction start
+Date: Thu, 3 Apr 2008 22:19:20 +0530
+Message-ID: <20080403164920.GA7960@skywalker>
+References: <20080327162742.GC32534@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lw.wurtel.net ([82.192.92.211]:1409 "EHLO lw.wurtel.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754044AbYDCQeo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Apr 2008 12:34:44 -0400
-Received: from wurtel.local ([192.168.1.1]:58272 helo=wurtel-ws.wurtel.net)
-	by mx.wurtel.net with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <paul@wurtel.net>)
-	id 1JhS9c-0002vF-HX
-	for linux-ext4@vger.kernel.org; Thu, 03 Apr 2008 18:19:08 +0200
-Received: from paul by wurtel-ws.wurtel.net with local (Exim 4.69)
-	(envelope-from <paul@wurtel-ws.wurtel.net>)
-	id 1JhS9Y-00006n-M2
-	for linux-ext4@vger.kernel.org; Thu, 03 Apr 2008 18:19:04 +0200
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:35994 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750783AbYDCQtb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2008 12:49:31 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m33GnSVY021547
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Apr 2008 22:19:28 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m33GnQCW929994
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Apr 2008 22:19:26 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m33GnadA026645
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Apr 2008 16:49:36 GMT
 Content-Disposition: inline
+In-Reply-To: <20080327162742.GC32534@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I wanted to try out ext4 on my shiny new 9+TB RAID5 device
-(11 x 1TB disks in md raid5).
+On Thu, Mar 27, 2008 at 05:27:42PM +0100, Jan Kara wrote:
+>   Hi,
+> 
+>   below is the first version of the patch that reverses locking order of
+> page_lock and transaction start. I have tested it with fsx-linux, ltp DIO
+> tests etc. and lockdep didn't complain so hopefully I got it mostly right
+> but review is definitely needed. Especially I'd like to know what people
+> think about the way I've implemented ext3_page_mkwrite() - ext4 has
+> an incorrect code AFAICT because in ordered and journaled modes we should
+> write block of zeros and properly journal it (and no, block_page_mkwrite()
+> doesn't do it). We could implement ext3/4_page_mkwrite() in a similar way
+> we currently implement writepage calls but calling write_begin + write_end
+> does the job and should be only a tiny bit slower...
+>   If nobody finds a serious flaw in the approach, I'll rediff the patch
+> against ext4 (I'll also try to convert delayed-alloc path - from a quick
+> look converting da_writepages path is going to be interesting).
+>   I'm looking forward to your comments :)
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> 
+> ---
+> 
+> Reverse locking order of page lock and transaction start in ext3  (i.e., page
+> lock now comes after the transaction start). Needed changes are:
+>   1) Simply swap the order in ext3_write_begin() and ext3_..._write_end()
+>      (allows removal of ext3_generic_write_end())
+>   2) Implement ext3_page_mkwrite() to fill holes.
+>   3) Change ext3_writeback_writepage() not to start a transaction at all,
+>      ext3_ordered_writepage() starts a transaction only after unlocking
+>      the page in block_write_full_page() (to attach buffers to the transaction),
+>      ext3_journaled_writepage() gets references to buffers in the page, unlocks
+>      the page and then starts a transaction.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> ---
+>  fs/ext3/file.c          |   19 ++++-
+>  fs/ext3/inode.c         |  236 +++++++++++++++++++++++++----------------------
+>  include/linux/ext3_fs.h |    1 +
+>  3 files changed, 145 insertions(+), 111 deletions(-)
+> 
 
-I obtained the 1.39-tyt3 version of e2fsprogs, and did:
+....
 
-./mkfs.ext3 -j -m 0 -N 1000000000 -O dir_index,filetype,resize_inode -E stride=65536,resize=5120000000 -J device=/dev/mapper/vg11-md15--journal -L data2 /dev/md15
+> +
+> +static int ext3_bh_mapped(handle_t *handle, struct buffer_head *bh)
+> +{
+> +	return !buffer_mapped(bh);
+> +}
+> +
+> +int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> +{
+> +	struct file *file = vma->vm_file;
+> +	struct inode *inode = file->f_path.dentry->d_inode;
+> +	struct address_space *mapping = inode->i_mapping;
+> +	unsigned long len;
+> +	loff_t size;
+> +	int ret = -EINVAL;
+> +
+> +	/*
+> +	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+> +	 * get i_mutex because we are already holding mmap_sem. This makes
+> +	 * it possible for write_begin and write_end to run concurrently
+> +	 * on a single file (not on a single page because of page_lock).
+> +	 * We seem to handle this just fine...
+> +	 */
+> +	down_read(&inode->i_alloc_sem);
+> +	size = i_size_read(inode);
+> +	if (page->mapping != mapping || size <= page_offset(page)
+> +	    || !PageUptodate(page)) {
+> +		/* page got truncated from under us? */
+> +		goto out_unlock;
+> +	}
+> +	ret = 0;
+> +	if (PageMappedToDisk(page))
+> +		goto out_unlock;
+> +
+> +	if (page->index == size >> PAGE_CACHE_SHIFT)
+> +		len = size & ~PAGE_CACHE_MASK;
+> +	else
+> +		len = PAGE_CACHE_SIZE;
+> +
+> +	if (page_has_buffers(page)) {
+> +		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> +				       ext3_bh_mapped))
+> +			goto out_unlock;
+> +	}
+> +
+> +	/* OK, we need to fill the hole... We simply write the page. */
+> +	printk(KERN_INFO "Writing page %lu of ino %lu\n", page->index, inode->i_ino);
+> +	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+> +		len, AOP_FLAG_UNINTERRUPTIBLE, &page, NULL);
+> +	if (ret < 0)
+> +		goto out_unlock;
+> +	ret = mapping->a_ops->write_end(file, mapping, page_offset(page), len,
+> +		len, page, NULL);
+> +	if (ret < 0)
+> +		goto out_unlock;
+> +	ret = 0;
+> +out_unlock:
+> +	up_read(&inode->i_alloc_sem);
+> +	return ret;
+> +}
+> diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+> index 36c5403..715c35e 100644
+> --- a/include/linux/ext3_fs.h
+> +++ b/include/linux/ext3_fs.h
+> @@ -836,6 +836,7 @@ extern void ext3_truncate (struct inode *);
+>  extern void ext3_set_inode_flags(struct inode *);
+>  extern void ext3_get_inode_flags(struct ext3_inode_info *);
+>  extern void ext3_set_aops(struct inode *inode);
+> +extern int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+> 
+>  /* ioctl.c */
+>  extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
 
-(If using a separate device for the journal is inadvisable, please let
-me know; this is on a different set of spindles that md15 is running on.)
+The comments on block_page_mkwrite says taking a lock on page protect it
+against truncate. Why do we need to take i_alloc_sem ? Is it because
+after changing the locking order we can't any more take the page lock
+here because we need to take it after the transaction is started ?
 
-The stride was calculated from the 64k chunk of the raid5 device.
-Mainly a guess, as I couldn't find any clear reference on how to plug in
-the values to fill this in.
+My patch to use page_mkwrite on ext3 resulted in this discussion.
+http://article.gmane.org/gmane.comp.file-systems.ext4/5731
 
-Anyway, that did:
+Does the above means that it will call page_mkwrite with page lock held.
+That would imply that we can't start transaction inside page_mkwrite
 
-| mke2fs 1.38 (30-Jun-2005)
-| Filesystem label=data2
-| OS type: Linux
-| Block size=4096 (log=2)
-| Fragment size=4096 (log=2)
-| 1000204128 inodes, 2441859680 blocks
-| 0 blocks (0.00%) reserved for the super user
-| First data block=0
-| Maximum filesystem blocks=5485408000
-| 65527 block groups
-| 37265 blocks per group, 37265 fragments per group
-| 15264 inodes per group
-| Superblock backups stored on blocks: 
-|     37265, 111795, 186325, 260855, 335385, 931625, 1006155, 1825985, 
-|     3018465, 4658125, 9055395, 12781895, 23290625, 27166185, 81498555, 
-|     89473265, 116453125, 244495665, 582265625, 626312855, 733486995, 
-|     2200460985
-| 
-| Writing inode tables: done                            
-| Adding journal to device /dev/mapper/vg11-md15--journal: done
-| Writing superblocks and filesystem accounting information: done
-| 
-| This filesystem will be automatically checked every 27 mounts or
-| 180 days, whichever comes first.  Use tune2fs -c or -i to override.
+Why do you think that current Ext4 code page_mkwrite is wrong ?
+We just need to reserve space for the page we are dirtying right.
 
+I have tried a similar change and later dropped it because we didn't
+had much anything to journal 
+http://article.gmane.org/gmane.comp.file-systems.ext4/5201
+This had the inode_lock taken which lockdep complained about.
 
-Note the "37265 blocks per group".
-Trying to mount this (after of course "tune2fs -E test_fs /dev/md15",
-which BTW didn't work with the 1.39-tyt3 version) gave a kernel error:
+ext4_get_blocks create a journal handle for all meta update if we don't
+have one.
 
-| EXT4-fs: #blocks per group too big: 37265
-
-I then tried adding "-g 16384" to the mkfs.ext3 invocation, but that
-apparently got ignored and still showed "37265 blocks per group".
-Removing the stride option didn't help. Removing all options didn't
-help...
-
-Is it impossible to create ext4 on such a device? I must be overlooking
-something... the Documentation/filesystems/ext4.txt file doesn't help
-(2.6.25-rc8).
-
-
-thanks,
-Paul Slootman
+-aneesh
