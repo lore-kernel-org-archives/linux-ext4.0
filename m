@@ -1,114 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: 2.6.25-rc8-mm1 - BUG in fs/jbd/transaction.c
-Date: Thu, 3 Apr 2008 10:57:49 +0200
-Message-ID: <20080403085748.GA25980@duck.suse.cz>
-References: <20080401213214.8fbb6d6b.akpm@linux-foundation.org> <6495.1207163569@turing-police.cc.vt.edu> <20080402123030.67b18bb6.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Valdis.Kletnieks@vt.edu, sct@redhat.com, jbacik@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Bug in ext2fs_set_gdt_csum() and uninit_groups handling
+Date: Thu, 03 Apr 2008 08:54:57 -0400
+Message-ID: <E1JhOy1-0006g8-Oy@closure.thunk.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>, Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:53364 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751797AbYDCI5v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Apr 2008 04:57:51 -0400
-Content-Disposition: inline
-In-Reply-To: <20080402123030.67b18bb6.akpm@linux-foundation.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43721 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751457AbYDCMzZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2008 08:55:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 02-04-08 12:30:30, Andrew Morton wrote:
-> On Wed, 02 Apr 2008 15:12:49 -0400
-> Valdis.Kletnieks@vt.edu wrote:
-> 
-> > On Tue, 01 Apr 2008 21:32:14 PDT, Andrew Morton said:
-> > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.25-rc8/2.6.25-rc8-mm1/
-> > 
-> > (Yes, I know the kernel is tainted.  Hopefully the traceback will make
-> > enough sense that it won't matter.  I think I cc'd most everybody who is
-> > listed in MAINTAINERS or had a non-trivial jbd, quota, or ext3 patch in the broken-out/)
-> > 
-> > So I was running a 'yum update' on my laptop, walked away to ask a cow-orker
-> > a question, and came back to find it had BUG'ed twice...  Amazingly
-> > enough, although it died in ext3 code, it apparently only nuked whatever
-> > filesystem it was handling, as syslog was still able to log the gory details
-> > into a file in /var. Given that a kernel rpm was the one it failed on, the
-> > I/O was almost certainly on either / or /boot - both ext3. / is mounted
-> > with quotas, /boot isn't, so I'm betting on /
-> > 
-> > Apr  2 13:48:07 turing-police yum: Updated: texlive-texmf-latex-2007-18.fc9.noarch
-> > Apr  2 13:48:08 turing-police yum: Updated: 1:openoffice.org-xsltfilter-2.4.0-12.4.fc9.x86_64
-> > Apr  2 13:48:09 turing-police yum: Updated: 1:openoffice.org-javafilter-2.4.0-12.4.fc9.x86_64
-> > Apr  2 13:48:12 turing-police yum: Updated: kernel-headers-2.6.25-0.185.rc7.git6.fc9.x86_64
-> > 
-> > (here, it started updating kernel-2.6.25-0.185.rc7.git6 and died while I wasn't looking)
-> > 
-> > [34895.379293] ------------[ cut here ]------------
-> > [34895.379299] kernel BUG at fs/jbd/transaction.c:275!
-> > [34895.379302] invalid opcode: 0000 [1] PREEMPT SMP 
-> > [34895.379306] last sysfs file: /sys/devices/platform/coretemp.1/temp1_input
-> > [34895.379309] CPU 0 
-> > [34895.379311] Modules linked in: gspca(U) compat_ioctl32 videodev v4l1_compat irnet ppp_generic slhc irtty_sir sir_dev ircomm_tty ircomm irda crc_ccitt coretemp vmnet(P)(U) vmmon(P)(U) nf_conntrack_ftp xt_pkttype ipt_REJECT ipt_osf nf_conntrack_ipv4 xt_ipisforif ipt_recent ipt_LOG xt_u32 iptable_filter ip_tables xt_tcpudp nf_conntrack_ipv6 xt_state nf_conntrack ip6t_LOG xt_limit ip6table_filter ip6_tables x_tables sha256_generic aes_generic acpi_cpufreq tpm_tis arc4 pcmcia ecb iwl3945 yenta_socket nvidia(P)(U) iTCO_wdt firmware_class iTCO_vendor_support rsrc_nonstatic mac80211 video watchdog_core thermal ohci1394 pcmcia_core output ieee1394 watchdog_dev processor intel_agp snd_hda_intel(U) battery bay button ac cfg80211 [last unloaded: microcode]
-> > [34895.379371] Pid: 24617, comm: yum Tainted: P          2.6.25-rc8-mm1 #3
-> > [34895.379373] RIP: 0010:[<ffffffff80300ba7>]  [<ffffffff80300ba7>] journal_start+0x57/0xef
-> > [34895.379381] RSP: 0018:ffff81000cc49918  EFLAGS: 00010202
-> > [34895.379383] RAX: 0000000000000001 RBX: ffff81007f6bbf00 RCX: ffff8100347db970
-> > [34895.379386] RDX: ffff8100347b7d00 RSI: 0000000000000001 RDI: ffffffff806f3530
-> > [34895.379388] RBP: ffff81000cc49938 R08: 8000000000000000 R09: ffff8100347dbeb8
-> > [34895.379390] R10: 0000000000000004 R11: ffff8100347d9b58 R12: ffff81007e67d400
-> > [34895.379393] R13: 0000000000000012 R14: ffff81000cc499d8 R15: 0000000000000080
-> > [34895.379396] FS:  00007fe4468356f0(0000) GS:ffffffff8073f000(0000) knlGS:0000000000000000
-> > [34895.379398] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > [34895.379401] CR2: 00007f9921d00000 CR3: 000000000cdc3000 CR4: 00000000000006e0
-> > [34895.379403] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > [34895.379405] DR3: 0000000000000000 DR6: 00000000ffff4ff0 DR7: 0000000000000400
-> > [34895.379408] Process yum (pid: 24617, threadinfo ffff81000cc48000, task ffff81000cc7c580)
-> > [34895.379410] Stack:  0000000000000292 ffff8100347dbd30 ffff8100347dbd30 ffff8100347dbd30
-> > [34895.379417]  ffff81000cc49948 ffffffff802f9659 ffff81000cc49978 ffffffff802f9912
-> > [34895.379422]  ffff8100347dbd30 ffff8100347dbd30 ffff8100347dbd30 0000000000000004
-> > [34895.379427] Call Trace:
-> > [34895.379433]  [<ffffffff802f9659>] ext3_journal_start_sb+0x4a/0x4c
-> > [34895.379437]  [<ffffffff802f9912>] ext3_dquot_drop+0x37/0x81
-> > [34895.379443]  [<ffffffff802aa757>] clear_inode+0xe1/0x153
-> > [34895.379448]  [<ffffffff802aa86f>] dispose_list+0x43/0xf8
-> > [34895.379453]  [<ffffffff802aaaec>] shrink_icache_memory+0x1c8/0x1fe
-> > [34895.379459]  [<ffffffff8027a231>] shrink_slab+0x111/0x1cf
-> > [34895.379466]  [<ffffffff8027ae60>] try_to_free_pages+0x26d/0x35e
-> > [34895.379473]  [<ffffffff80278e67>] ? isolate_pages_global+0x0/0x34
-> > [34895.379479]  [<ffffffff8027537b>] __alloc_pages_internal+0x297/0x421
-> > [34895.379488]  [<ffffffff8027551b>] __alloc_pages+0xb/0xd
-> > [34895.379493]  [<ffffffff802920e3>] cache_alloc_refill+0x2d3/0x533
-> > [34895.379499]  [<ffffffff80555548>] ? _spin_unlock+0x38/0x43
-> > [34895.379505]  [<ffffffff80291dd0>] kmem_cache_alloc+0x5d/0x9d
-> > [34895.379512]  [<ffffffff8033af82>] selinux_inode_alloc_security+0x31/0x8a
-> > [34895.379517]  [<ffffffff80331f47>] security_inode_alloc+0x1c/0x1e
-> > [34895.379521]  [<ffffffff802aa4f2>] alloc_inode+0xe1/0x1da
-> > [34895.379526]  [<ffffffff802aa60c>] new_inode+0x21/0x8b
-> > [34895.379531]  [<ffffffff802ed5f7>] ext3_new_inode+0x55/0xa2a
-> > [34895.379539]  [<ffffffff80300c07>] ? journal_start+0xb7/0xef
-> > [34895.379545]  [<ffffffff802f48c8>] ext3_mkdir+0xc7/0x2e6
-> > [34895.379551]  [<ffffffff8029eb02>] vfs_mkdir+0xe6/0x17b
-> > [34895.379556]  [<ffffffff802a1305>] sys_mkdirat+0xf3/0x149
-> > [34895.379566]  [<ffffffff80213511>] ? syscall_trace_enter+0xa4/0xa9
-> > [34895.379571]  [<ffffffff802a136e>] sys_mkdir+0x13/0x15
-> > [34895.379574]  [<ffffffff8020c3c2>] tracesys+0xd5/0xda
-> > [34895.379581] 
-> 
-> The backtrace tells it all - we were inside a transaction for filesystem A,
-> went into page reclaim, reclaimed an inode for filesystem B and then
-> DQUOT_DROP() tried to start a transaction on filesystem B.  JBD doesn't
-> like cross-fs nested transactions (it'll corrupt task_struct.journal_info,
-> and will cause ab/ba deadlocks).  So it went BUG.
-> 
-> Presumably something in the quota updates in -mm caused this.
-  I think quota is innocent in this ;). We start a transaction in
-ext3_dquot_drop() for quite some time already. The problem is really in
-inode_alloc_security() and Josef pointed out. We really aren't allowed to
-allocate with GFP_KERNEL there because the reclaim code could as well
-decide to just write an inode on a different filesystem...
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Unfortunately, this has already been merged into the mainline branch
+before I noticed this, but we have a nasty bug right now in the
+uninit_groups handling.   Note this code here in ext2fs_set_gdt_csum():
+
+		/* Even if it wasn't zeroed, by the time this function is
+		 * called by e2fsck we have already scanned and corrected
+		 * the whole inode table so we may as well not overwrite it.
+		 * This is just a hint to the kernel that it could do lazy
+		 * zeroing of the inode table if mke2fs didn't do it, to help
+		 * out if we need to do a full itable scan sometime later. */
+		if (!(bg->bg_flags & (EXT2_BG_INODE_UNINIT |
+				      EXT2_BG_INODE_ZEROED)))
+			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
+
+
+There's only one problem.   ext2fs_set_gdt_csum() is also called by
+mke2fs, so all of the block groups are having the EXT2_BG_INODE_ZEROED
+bit set.
+
+I'm also not entirely sure this is safe for e2fsck, since as far as I
+can tell, e2fsck does *not* currently scan zero uninitialized portions
+of the inode table.  It uses the ext2fs_get_next_inode() function, which
+will skip uninitialized inodes.
+
+So, I think what needs to happen is that the above fragment in
+csum.c:ext2fs_set_gdt_csum() needs to disappear.
+
+Is there a kernel patch that will zero out the inode tables in the
+background?  I remember hearing discussions of this, but it doesn't seem
+to be in the kernel tree or in the ext4 patch queue.
+
+Eventually, we might want to add a feature to e2fsck (probably
+controlled by e2fsck.conf or a command-line option?) to zero out the
+inode table, and then we can clear the INODE_ZERO'ed bg_flags.
+
+Jose, Andreas, does this make sense?
+
+							- Ted
+
+P.S.  I noticed this because I had added to dumpe2fs the ability to show
+the INODE_ZEROED flag, and noticed it was set when I was *not* expecting
+it to be set.
