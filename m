@@ -1,99 +1,194 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: 2.6.25-rc8-mm1 - BUG in fs/jbd/transaction.c
-Date: Fri, 4 Apr 2008 12:15:09 +0200
-Message-ID: <20080404101509.GB477@atrey.karlin.mff.cuni.cz>
-References: <20080401213214.8fbb6d6b.akpm@linux-foundation.org> <6495.1207163569@turing-police.cc.vt.edu> <20080402192715.GA32454@unused.rdu.redhat.com> <20080402123905.386c56f8.akpm@linux-foundation.org> <1207246695.27710.292.camel@moss-spartans.epoch.ncsc.mil>
+Subject: Re: [RFC] [PATCH] Inverse locking order of page_lock and transaction start
+Date: Fri, 4 Apr 2008 13:03:19 +0200
+Message-ID: <20080404110319.GD477@atrey.karlin.mff.cuni.cz>
+References: <20080327162742.GC32534@duck.suse.cz> <20080403164920.GA7960@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Josef Bacik <jbacik@redhat.com>, Valdis.Kletnieks@vt.edu,
-	sct@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, eparis@redhat.com,
-	James Morris <jmorris@namei.org>
-To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:53795 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:37994 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752031AbYDDKPL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Apr 2008 06:15:11 -0400
+	with ESMTP id S1752463AbYDDLDU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Apr 2008 07:03:20 -0400
 Content-Disposition: inline
-In-Reply-To: <1207246695.27710.292.camel@moss-spartans.epoch.ncsc.mil>
+In-Reply-To: <20080403164920.GA7960@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 
-> On Wed, 2008-04-02 at 12:39 -0700, Andrew Morton wrote:
-> > On Wed, 2 Apr 2008 15:27:15 -0400
-> > Josef Bacik <jbacik@redhat.com> wrote:
+  Hello,
+
+> On Thu, Mar 27, 2008 at 05:27:42PM +0100, Jan Kara wrote:
+> >   Hi,
 > > 
-> > > On Wed, Apr 02, 2008 at 03:12:49PM -0400, Valdis.Kletnieks@vt.edu wrote:
-> > > > On Tue, 01 Apr 2008 21:32:14 PDT, Andrew Morton said:
-> > > > > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.25-rc8/2.6.25-rc8-mm1/
-> > > > 
-> > > > (Yes, I know the kernel is tainted.  Hopefully the traceback will make
-> > > > enough sense that it won't matter.  I think I cc'd most everybody who is
-> > > > listed in MAINTAINERS or had a non-trivial jbd, quota, or ext3 patch in the broken-out/)
-> > > > 
-> > > > So I was running a 'yum update' on my laptop, walked away to ask a cow-orker
-> > > > a question, and came back to find it had BUG'ed twice...  Amazingly
-> > > > enough, although it died in ext3 code, it apparently only nuked whatever
-> > > > filesystem it was handling, as syslog was still able to log the gory details
-> > > > into a file in /var. Given that a kernel rpm was the one it failed on, the
-> > > > I/O was almost certainly on either / or /boot - both ext3. / is mounted
-> > > > with quotas, /boot isn't, so I'm betting on /
-> > > > 
-> > > > Apr  2 13:48:07 turing-police yum: Updated: texlive-texmf-latex-2007-18.fc9.noarch
-> > > > Apr  2 13:48:08 turing-police yum: Updated: 1:openoffice.org-xsltfilter-2.4.0-12.4.fc9.x86_64
-> > > > Apr  2 13:48:09 turing-police yum: Updated: 1:openoffice.org-javafilter-2.4.0-12.4.fc9.x86_64
-> > > > Apr  2 13:48:12 turing-police yum: Updated: kernel-headers-2.6.25-0.185.rc7.git6.fc9.x86_64
-> > > > 
-> > > > (here, it started updating kernel-2.6.25-0.185.rc7.git6 and died while I wasn't looking)
-> > > 
-> > > <snip>
-> > > 
-> > > Try this patch, it will keep us from re-entering the fs when we aren't supposed
-> > > to.  cc'ing Eric Paris since he's the only selinux guy I know :).  I don't think
-> > > any of the other allocations in here need to be fixed, but I didn't look too
-> > > carefully.
-> > > 
-> > > Signed-off-by: Josef Bacik <jbacik@redhat.com>
-> > > 
-> > > 
-> > > diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> > > index c2fef7b..820d07a 100644
-> > > --- a/security/selinux/hooks.c
-> > > +++ b/security/selinux/hooks.c
-> > > @@ -180,7 +180,7 @@ static int inode_alloc_security(struct inode *inode)
-> > >  	struct task_security_struct *tsec = current->security;
-> > >  	struct inode_security_struct *isec;
-> > >  
-> > > -	isec = kmem_cache_zalloc(sel_inode_cache, GFP_KERNEL);
-> > > +	isec = kmem_cache_zalloc(sel_inode_cache, GFP_NOFS);
-> > >  	if (!isec)
-> > >  		return -ENOMEM;
-> > >  
-> > > @@ -2429,7 +2429,7 @@ static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
-> > >  		return -EOPNOTSUPP;
-> > >  
-> > >  	if (name) {
-> > > -		namep = kstrdup(XATTR_SELINUX_SUFFIX, GFP_KERNEL);
-> > > +		namep = kstrdup(XATTR_SELINUX_SUFFIX, GFP_NOFS);
-> > >  		if (!namep)
-> > >  			return -ENOMEM;
-> > >  		*name = namep;
+> >   below is the first version of the patch that reverses locking order of
+> > page_lock and transaction start. I have tested it with fsx-linux, ltp DIO
+> > tests etc. and lockdep didn't complain so hopefully I got it mostly right
+> > but review is definitely needed. Especially I'd like to know what people
+> > think about the way I've implemented ext3_page_mkwrite() - ext4 has
+> > an incorrect code AFAICT because in ordered and journaled modes we should
+> > write block of zeros and properly journal it (and no, block_page_mkwrite()
+> > doesn't do it). We could implement ext3/4_page_mkwrite() in a similar way
+> > we currently implement writepage calls but calling write_begin + write_end
+> > does the job and should be only a tiny bit slower...
+> >   If nobody finds a serious flaw in the approach, I'll rediff the patch
+> > against ext4 (I'll also try to convert delayed-alloc path - from a quick
+> > look converting da_writepages path is going to be interesting).
+> >   I'm looking forward to your comments :)
 > > 
-> > Might fix it.  But 2.6.24's inode_alloc_security() also uses GFP_KERNEL and
-> > doesn't have this bug.  What changed?
+> > 								Honza
+> > -- 
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> > 
+> > ---
+> > 
+> > Reverse locking order of page lock and transaction start in ext3  (i.e., page
+> > lock now comes after the transaction start). Needed changes are:
+> >   1) Simply swap the order in ext3_write_begin() and ext3_..._write_end()
+> >      (allows removal of ext3_generic_write_end())
+> >   2) Implement ext3_page_mkwrite() to fill holes.
+> >   3) Change ext3_writeback_writepage() not to start a transaction at all,
+> >      ext3_ordered_writepage() starts a transaction only after unlocking
+> >      the page in block_write_full_page() (to attach buffers to the transaction),
+> >      ext3_journaled_writepage() gets references to buffers in the page, unlocks
+> >      the page and then starts a transaction.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > 
+> > ---
+> >  fs/ext3/file.c          |   19 ++++-
+> >  fs/ext3/inode.c         |  236 +++++++++++++++++++++++++----------------------
+> >  include/linux/ext3_fs.h |    1 +
+> >  3 files changed, 145 insertions(+), 111 deletions(-)
+> > 
 > 
-> Looks legitimate, although we've been doing that since Linux 2.6.0-test3
-> (selinux merge) for inode_alloc_security and d_instantiate, and since
-> Linux 2.6.14 for inode_init_security, so something is at least
-> triggering it more easily now.  inode_doinit_with_dentry looks like
-> another instance and security_context_to_sid_core as well.
-  I guess it is just the combination of someone using SELinux + quota
-(or several journaling filesystems) + being unlucky under memory
-pressure that makes this happen only rarely. Josef, have you been
-successful in reproducing the problem under older kernel?
+> ....
+> 
+> > +
+> > +static int ext3_bh_mapped(handle_t *handle, struct buffer_head *bh)
+> > +{
+> > +	return !buffer_mapped(bh);
+> > +}
+> > +
+> > +int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> > +{
+> > +	struct file *file = vma->vm_file;
+> > +	struct inode *inode = file->f_path.dentry->d_inode;
+> > +	struct address_space *mapping = inode->i_mapping;
+> > +	unsigned long len;
+> > +	loff_t size;
+> > +	int ret = -EINVAL;
+> > +
+> > +	/*
+> > +	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+> > +	 * get i_mutex because we are already holding mmap_sem. This makes
+> > +	 * it possible for write_begin and write_end to run concurrently
+> > +	 * on a single file (not on a single page because of page_lock).
+> > +	 * We seem to handle this just fine...
+> > +	 */
+> > +	down_read(&inode->i_alloc_sem);
+> > +	size = i_size_read(inode);
+> > +	if (page->mapping != mapping || size <= page_offset(page)
+> > +	    || !PageUptodate(page)) {
+> > +		/* page got truncated from under us? */
+> > +		goto out_unlock;
+> > +	}
+> > +	ret = 0;
+> > +	if (PageMappedToDisk(page))
+> > +		goto out_unlock;
+> > +
+> > +	if (page->index == size >> PAGE_CACHE_SHIFT)
+> > +		len = size & ~PAGE_CACHE_MASK;
+> > +	else
+> > +		len = PAGE_CACHE_SIZE;
+> > +
+> > +	if (page_has_buffers(page)) {
+> > +		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> > +				       ext3_bh_mapped))
+> > +			goto out_unlock;
+> > +	}
+> > +
+> > +	/* OK, we need to fill the hole... We simply write the page. */
+> > +	printk(KERN_INFO "Writing page %lu of ino %lu\n", page->index, inode->i_ino);
+> > +	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+> > +		len, AOP_FLAG_UNINTERRUPTIBLE, &page, NULL);
+> > +	if (ret < 0)
+> > +		goto out_unlock;
+> > +	ret = mapping->a_ops->write_end(file, mapping, page_offset(page), len,
+> > +		len, page, NULL);
+> > +	if (ret < 0)
+> > +		goto out_unlock;
+> > +	ret = 0;
+> > +out_unlock:
+> > +	up_read(&inode->i_alloc_sem);
+> > +	return ret;
+> > +}
+> > diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+> > index 36c5403..715c35e 100644
+> > --- a/include/linux/ext3_fs.h
+> > +++ b/include/linux/ext3_fs.h
+> > @@ -836,6 +836,7 @@ extern void ext3_truncate (struct inode *);
+> >  extern void ext3_set_inode_flags(struct inode *);
+> >  extern void ext3_get_inode_flags(struct ext3_inode_info *);
+> >  extern void ext3_set_aops(struct inode *inode);
+> > +extern int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+> > 
+> >  /* ioctl.c */
+> >  extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+> 
+> The comments on block_page_mkwrite says taking a lock on page protect it
+> against truncate. Why do we need to take i_alloc_sem ? Is it because
+> after changing the locking order we can't any more take the page lock
+> here because we need to take it after the transaction is started ?
+  Well, there are few things which lead to the locking I do:
+1) We need to issue data write - actually comments in
+http://article.gmane.org/gmane.comp.file-systems.ext4/5201 are partly
+incorrect. For ordered and journal data mode we must write zeros to the
+file if we fill in holes (which is what should be in the page) -
+otherwise if we crash before the writepage call (which can go to the
+next transaction), we would see uninitialized data in the file.
+2) I didn't want to reimplement writepage calls for writeback, ordered
+and journal so I've used write_begin and write_end calls. These calls
+take page_lock themselves so we cannot take it in page_mkwrite().
+3) We need to be protected against truncate (normally, i_mutex does this
+but we cannot take it in page_mkwrite() due to lock ordering issues). So
+we use i_alloc_sem for this.
+
+  But looking at the code with a fresh look (it's always good to look at
+the code a week after you've written it whether you still like it ;),
+I think I could try to move writepage() code into helper functions
+and use these functions from writepage() and page_mkwrite(). That
+wouldn't have problems with code duplication and the result would be
+hopefully nicer than it is now.
+
+> My patch to use page_mkwrite on ext3 resulted in this discussion.
+> http://article.gmane.org/gmane.comp.file-systems.ext4/5731
+  Thanks for the pointer.
+
+> Does the above means that it will call page_mkwrite with page lock held.
+> That would imply that we can't start transaction inside page_mkwrite
+  We could always unlock the page and then lock it again. But other
+journaling filesystems (e.g. OCFS2) also need to start a transaction in
+page_mkwrite so I'm not sure the change Nick suggests will ever happen.
+
+> Why do you think that current Ext4 code page_mkwrite is wrong ?
+> We just need to reserve space for the page we are dirtying right.
+  Well, that gets rid of the ENOSPC problem but as I explain above, you
+also need to write zeros to the file in can you allocate a new block.
+
+> I have tried a similar change and later dropped it because we didn't
+> had much anything to journal 
+> http://article.gmane.org/gmane.comp.file-systems.ext4/5201
+> This had the inode_lock taken which lockdep complained about.
+> 
+> ext4_get_blocks create a journal handle for all meta update if we don't
+> have one.
+  Yes, but when we reverse the lock ordering of page_lock and
+transaction start, we have to start a transaction before we take the
+page_lock... So ext4_get_blocks() is too late to start a transaction at
+least for page_mkwrite().
 
 								Honza
 -- 
