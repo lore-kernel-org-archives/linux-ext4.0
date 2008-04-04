@@ -1,78 +1,69 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH][e2fsprogs] New bitmap and inode table allocation for
- FLEX_BG
-Date: Fri, 4 Apr 2008 00:37:57 -0500
-Message-ID: <20080404003757.0894cce1@gara.konoha.net>
-References: <20080401031311.10442.12267.stgit@gara.konoha.net>
-	<20080403131240.GA13486@mit.edu>
-	<20080403092858.5e3a7bb2@gara.konoha.net>
-	<20080404032443.GA362@mit.edu>
+From: Paul Slootman <paul@wurtel.net>
+Subject: Re: #blocks per group too big: 37265
+Date: Fri, 4 Apr 2008 11:21:20 +0200
+Message-ID: <20080404092120.GA28403@msgid.wurtel.net>
+References: <20080403161904.GA31670@msgid.wurtel.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:42440 "EHLO e3.ny.us.ibm.com"
+Received: from lw.wurtel.net ([82.192.92.211]:2925 "EHLO lw.wurtel.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751485AbYDDFiL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 4 Apr 2008 01:38:11 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m345c95E023350
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Apr 2008 01:38:09 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m345c9SZ1080424
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Apr 2008 01:38:09 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m345c9pB022350
-	for <linux-ext4@vger.kernel.org>; Fri, 4 Apr 2008 01:38:09 -0400
-In-Reply-To: <20080404032443.GA362@mit.edu>
+	id S1751580AbYDDJVZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Apr 2008 05:21:25 -0400
+Received: from wurtel.local ([192.168.1.1]:40162 helo=wurtel-ws.wurtel.net)
+	by mx.wurtel.net with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.63)
+	(envelope-from <paul@wurtel.net>)
+	id 1Jhi6t-0003wm-Bj
+	for linux-ext4@vger.kernel.org; Fri, 04 Apr 2008 11:21:23 +0200
+Received: from paul by wurtel-ws.wurtel.net with local (Exim 4.69)
+	(envelope-from <paul@wurtel-ws.wurtel.net>)
+	id 1Jhi6q-0007hU-EI
+	for linux-ext4@vger.kernel.org; Fri, 04 Apr 2008 11:21:20 +0200
+Content-Disposition: inline
+In-Reply-To: <20080403183929.GE13486@40mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 3 Apr 2008 23:24:43 -0400
-Theodore Tso <tytso@MIT.EDU> wrote:
+> The stride parameter is the problem.  Newer versions of e2fsprogs
+> don't allow a stride parameter which is too big.  If you want to do
+> the perfect calculation, you take the 64k chunk size, and divide it by
+> the 4k blocksize to yield a stride parameter of 16.  Actually, though,
+> simply using a non-zero stride size is actually good enough --- and if
+> you have a even number of RAID-5 disks, you might not need this
+> parameter at all.  (It's only purpose is to perturb the location of
+> the block bitmaps so that all of the bitmaps don't end up on a single
+> hard drive.)
 
-> On Thu, Apr 03, 2008 at 09:28:58AM -0500, Jose R. Santos wrote:
-> > I blame Undo Manager for being so slow that cause me to skip some of
-> > the testing needed to be done.  
-> 
-> If that means we need a patch to disable the undo manager, via a
-> command-line option, feel free.  :-)
+Actually, as I wrote:
 
-Im sufficiently annoyed that I may just do that.
- 
-> > I was incorrectly checking the feature
-> > flag instead of checking the value of fs->super->s_log_groups_per_flex.
-> 
-> Actually, you should check both, and we need to make mke2fs have an
-> intelligent default, which can be overridden via mke2fs.conf.
+>> Removing the stride option didn't help. Removing all options didn't
+>> help...
 
-Yes it should check both(will fix).  I was expecting more people to
-give flexbg a test before trying to determined an intelligent default
-though.
+I still end up with a "blocks per group" of 37265, and when mounted I'm
+greeted with the message "EXT4-fs: #blocks per group too big: 37265".
+Is the ext4 code in the 2.6.25-rc8 kernel too old? According to the
+source the number of block per group must be <= 8 * blocksize; with 4k
+blocks that would mean 32768, not 37265.
 
-> Also, it looks like this patch doesn't create a valid filesystem in
-> combination with meta_bg:
-> 
-> mke2fs G 32 -O meta_bg,flex_bg,uninit_groups,^resize_inode /tmp/foo.img
-> 
-> Then try running "e2fsck -f /tmp/foo.img" with the patch applied.
+Even passing the -g option to explicitly set the blocks per group gets
+ignored.
 
-Wow, it really breaks.  Throws e2fsck into an infinite loop.
 
-> One obvious question is why is this patch so fragile....?  Is there
-> some way we can make it more likely not to break given other changes
-> to e2fsprogs in the future.
+> BTW, we will be making a new snapshot for people who want to test ext4
+> soon....
 
-Getting the right free block count for every group descriptor seems to
-be the tricky part since libe2fs make all sort of assumptions about
-number of used blocks that break when meta-data is no longer on the
-same block group.  Seems like I forgot a check for the adjusted flexbg
-block group size in meta_bg since the first place it barfs is in group
-127 which is the last group of the meta_bg with a group descriptor
-block being used.  This should be easy to find and fix.
+Kernel code and userspace utils? Or just kernel code?
+Where can I find the most recent version of both? I looked at
+Documentation/filesystems/ext4.txt, but I feel that's a bit outdated:
 
-> 						- Ted
+  - It's still mke2fs -j /dev/hda1
 
--JRS
+  - mount /dev/hda1 /wherever -t ext4dev
+
+This ignores the fact you need to set the testing option...
+
+
+Thanks,
+Paul Slootman
