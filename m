@@ -1,135 +1,90 @@
 From: Szabolcs Szakacsits <szaka-IyvsvuGDJ8VAfugRpC6u6w@public.gmane.org>
-Subject: Re: [ANNOUNCEMENT] Linux POSIX file system test suite
-Date: Mon, 7 Apr 2008 02:34:16 +0300 (EEST)
-Message-ID: <Pine.LNX.4.62.0804070207160.25240@tamago.serverit.net>
+Subject: Re: [ANNOUNCEMENT] Linux POSIX file system test
+	suite
+Date: Mon, 7 Apr 2008 02:51:15 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0804070234350.25240@tamago.serverit.net>
 References: <Pine.LNX.4.62.0804022313390.664@tamago.serverit.net>
-	<1207247251.30407.59.camel@dyn9047017100.beaverton.ibm.com>
+	<20080404003330.GW103491721@sgi.com>
+	<20080404065109.GW108924158@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: shaggy-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	zfs-fuse-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	ntfs-3g-devel-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
-To: Badari Pulavarty <pbadari-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-In-Reply-To: <1207247251.30407.59.camel-Tq0y/nC7FQqofirLTBlK79w6IDGaBKkJqyM6JfAXOaQ@public.gmane.org>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
-	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=fuse-devel>
-List-Post: <mailto:fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-List-Help: <mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
-	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
-Sender: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-Errors-To: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zfs-fuse-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org,
+	ntfs-3g-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+To: David Chinner <dgc-sJ/iWh9BUns@public.gmane.org>
+Return-path: <ntfs-3g-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+In-Reply-To: <20080404065109.GW108924158-sJ/iWh9BUns@public.gmane.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ntfs-3g-devel>,
+	<mailto:ntfs-3g-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=ntfs-3g-devel>
+List-Post: <mailto:ntfs-3g-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+List-Help: <mailto:ntfs-3g-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ntfs-3g-devel>,
+	<mailto:ntfs-3g-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
+Sender: ntfs-3g-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+Errors-To: ntfs-3g-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-On Thu, 3 Apr 2008, Badari Pulavarty wrote:
-> On Thu, 2008-04-03 at 00:29 +0300, Szabolcs Szakacsits wrote:
->
-> > The default file system type is ext3 and it passes all tests.
+On Fri, 4 Apr 2008, David Chinner wrote:
+> On Fri, Apr 04, 2008 at 10:33:30AM +1000, David Chinner wrote:
+> > On Thu, Apr 03, 2008 at 12:29:47AM +0300, Szabolcs Szakacsits wrote:
+> > >   The test must be run as root user and requires a few basic Perl modules.
+> > 
+> > And openssl, it appears.
+
+Openssl is replaced with md5sum+cut in the CVS. 
+
+It would be also nice to eliminate the Perl dependency ...
+
+> > The current xfs-dev tree:
+> > 
+> > Failed Test                    Stat Wstat Total Fail  Failed  List of Failed
+> > -------------------------------------------------------------------------------
+> > /root/posix/tests/chown/00.t                171    2   1.17%  84 88
+> > /root/posix/tests/symlink/02.t                7    2  28.57%  6-7
+> > Failed 2/184 test scripts, 98.91% okay. 4/1950 subtests failed, 99.79% okay.
 > 
-> Hmm.. I ran it against ext2, ext3, jfs, btrfs. I don't see all "pass"
-> on ext3. What am I missing ?
+> Symlink tests 6 and 7:
+> 
+> expect 0 symlink ${name256} ${n0}
+> expect 0 unlink ${n0}
+> 
+> Test 6 is failing with ENAMETOOLONG
+> Test 7 is failing (correctly) with ENOENT because test 6 failed.
+> 
+> So there's only one failure here, and that is that that we're rejecting
+> ${name256} as too long. I think that getname() is doing this. Seems sane
+> to me to disallow symlinking to pathnames that can't be constructed,
+> even if POSIX apparently allows it.
 
-Your unique, consistently failing test cases for all file systems suggest 
-that you have a buggy private kernel or some other individual issue in your 
-test environment.
+As Christoph noted, I also noticed XFS is unique in this behavior.
 
-You could use the -x debug shell option in the test scripts, rerun the 
-failing ones and they will show why these test cases exactly fail.
+> Chown tests 84 and 88:
+[...] 
+> So, either result is valid. Hence i suggest that test 84 and test 88
+> (same failure) are special cased to "ext3" behaviour.
+
+Done in the CVS.
+
+> That means XFS is not failing any tests at all.
+
+I added the xfs target but left the symlink Test 6 fail because POSIX says
+
+ "The string pointed to by path1 shall be treated only as a character 
+  string and shall not be validated as a pathname" 
+
+and 
  
-> btrfs seems to have little more failures.
+ "the length of the path1 argument is longer than {SYMLINK_MAX}" 
 
-If you find the reason for the unexpected failures then the btrfs result 
-will be quite good. Apparently it has only a few link, truncate, and unlink 
-ctimes update problems. I think that's quite impressive in its state of 
-development.
+where {SYMLINK_MAX} is typically not defined on Linux or it's {PATH_MAX}.
 
 	Szaka
 
-
-> ext2:
-> ====
-> 
-> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
-> -------------------------------------------------------------------------------
-> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
-> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
-> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
-> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
-> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
->                                                                39 42
-> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
-> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
-> /root/posix/tests/truncate/12.t                3    1  33.33%  2
-> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
-> Failed 9/184 test scripts, 95.11% okay. 33/1950 subtests failed, 98.31% okay.
-> 
-> 
-> ext3:
-> ====
-> 
-> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
-> -------------------------------------------------------------------------------
-> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
-> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
-> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
-> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
->                                                                39 42
-> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
-> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
-> /root/posix/tests/truncate/12.t                3    1  33.33%  2
-> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
-> Failed 8/184 test scripts, 95.65% okay. 29/1950 subtests failed, 98.51% okay.
-> 
-> 
-> jfs:
-> ===
-> 
-> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
-> -------------------------------------------------------------------------------
-> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
-> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
-> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
-> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
-> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
->                                                                39 42
-> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
-> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
-> /root/posix/tests/truncate/12.t                3    1  33.33%  2
-> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
-> Failed 9/184 test scripts, 95.11% okay. 33/1950 subtests failed, 98.31% okay.
-> 
-> 
-> btrfs:
-> =====
-> 
-> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
-> -------------------------------------------------------------------------------
-> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
-> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
-> /root/posix/tests/link/00.t                   82    8   9.76%  3 5-6 8-10 56 63
-> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
-> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
->                                                                39 42
-> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
-> /root/posix/tests/truncate/00.t               21    1   4.76%  15
-> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
-> /root/posix/tests/truncate/12.t                3    1  33.33%  2
-> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
-> /root/posix/tests/unlink/00.t                 55    3   5.45%  17 22 53
-> Failed 11/184 test scripts, 94.02% okay. 39/1950 subtests failed, 98.00% okay.
->
->
->
-
 --
 NTFS-3G:  http://ntfs-3g.org
-
 
 
 -------------------------------------------------------------------------
