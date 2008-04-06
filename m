@@ -1,152 +1,139 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][e2fsprogs] Allow user to disable Undo manager through
-	MKE2FS_SCRATCH_DIR
-Date: Sun, 6 Apr 2008 18:19:47 -0400
-Message-ID: <20080406221947.GA13284@mit.edu>
-References: <20080404140235.28080.97243.stgit@gara.konoha.net>
+From: Szabolcs Szakacsits <szaka-IyvsvuGDJ8VAfugRpC6u6w@public.gmane.org>
+Subject: Re: [ANNOUNCEMENT] Linux POSIX file system test suite
+Date: Mon, 7 Apr 2008 02:34:16 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0804070207160.25240@tamago.serverit.net>
+References: <Pine.LNX.4.62.0804022313390.664@tamago.serverit.net>
+	<1207247251.30407.59.camel@dyn9047017100.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:53220 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754240AbYDFXMP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Apr 2008 19:12:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20080404140235.28080.97243.stgit@gara.konoha.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Fri, Apr 04, 2008 at 09:02:35AM -0500, Jose R. Santos wrote:
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index c8170f0..3f9cbe2 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1802,6 +1802,13 @@ static int filesystem_exist(const char *name)
->  	__u16	s_magic;
->  	struct ext2_super_block super;
->  	io_manager manager = unix_io_manager;
-> +	char *tdb_dir;
-> +
-> +	tdb_dir = getenv("MKE2FS_SCRATCH_DIR");
-> +	if (tdb_dir && !strcmp(tdb_dir, "disable")) {
-> +		retval = 0;
-> +		goto open_err_out;
-> +	}
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: shaggy-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	zfs-fuse-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	ntfs-3g-devel-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+To: Badari Pulavarty <pbadari-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+In-Reply-To: <1207247251.30407.59.camel-Tq0y/nC7FQqofirLTBlK79w6IDGaBKkJqyM6JfAXOaQ@public.gmane.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=fuse-devel>
+List-Post: <mailto:fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+List-Help: <mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
+Sender: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+Errors-To: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-Yuck.  Yuck, Yuck, Yuck, Yuck.
+On Thu, 3 Apr 2008, Badari Pulavarty wrote:
+> On Thu, 2008-04-03 at 00:29 +0300, Szabolcs Szakacsits wrote:
+>
+> > The default file system type is ext3 and it passes all tests.
+> 
+> Hmm.. I ran it against ext2, ext3, jfs, btrfs. I don't see all "pass"
+> on ext3. What am I missing ?
 
-This functionality has nothing to do with filesystem_exist() and
-putting this kind of magic (a) means you have to read the environment
-variable twice, and (b) makes the code less maintainable in the
-long run.
+Your unique, consistently failing test cases for all file systems suggest 
+that you have a buggy private kernel or some other individual issue in your 
+test environment.
 
-While I was looking at the code, I also realized that the way the undo
-code was written it also wasn't compatible with configure
---enable-testio-deug.
-
-So here's a much better patch that does the right thing.
-
-Looking over the undo code more closely, there's much I find that's
-ugly about this patch, including the fact that after you make a
-filesystem at some device, say /dev/sda1, you have to manually go and
-rm the file /var/lib/e2fsprogs/mke2fs-sda1 or you get the
-non-intuitive error message "File exist /var/lib/e2fsprogs/mke2fs-sda1".  
-This made me reach for the barf bag; the undo-mgr patch branch needs
-cleanup before it's going into mainline.  In any case, here's a much
-better patch which co-exists with testio-debugging, and which actually
-decreases the number of lines of the code to support the undo feature.
-
-(This will be merged into the patch "e2fsprogs: Make mke2fs use undo
-I/O manager" before the whole branch gets integrated into the next or
-master branches, using the magic that is git rebase --interactive.
-Also needing fixing is the code to hook into the profile lookup.)
-
-	  	      	     	      	     - Ted
-
-commit 11079defe6c4bc3577381a8669f9944408d77023
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Apr 6 18:08:12 2008 -0400
-
-    Allow user to disable Undo manager through MKE2FS_SCRATCH_DIR
-    
-    Undo manager is a bit annoying when doing e2fsprogs testing since it
-    makes mke2fs significatly slower.  Use the MKE2FS_SCRATCH_DIR=disable
-    enviroment value to disable undo manager for those of us that blow up
-    filesystems on a regular basis.
-    
-    Also fix so that the undo manager doesn't conflict with configure
-    --enable-testio-debug.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index a23d841..06558d8 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1605,7 +1605,7 @@ open_err_out:
- 	return retval;
- }
+You could use the -x debug shell option in the test scripts, rerun the 
+failing ones and they will show why these test cases exactly fail.
  
--static int mke2fs_setup_tdb(const char *name)
-+static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
- {
- 	errcode_t retval = 0;
- 	char *tdb_dir, tdb_file[PATH_MAX];
-@@ -1620,24 +1620,24 @@ static int mke2fs_setup_tdb(const char *name)
- 			"directory", 0, 0,
- 			&tdb_dir);
- #endif
--	tmp_name = strdup(name);
--	device_name = basename(tmp_name);
--
- 	tdb_dir = getenv("MKE2FS_SCRATCH_DIR");
- 	if (!tdb_dir) {
- 		printf(_("MKE2FS_SCRATCH_DIR not configured\n"));
- 		printf(_("Using /var/lib/e2fsprogs\n"));
- 		tdb_dir="/var/lib/e2fsprogs";
- 	}
-+	if (!strcmp(tdb_dir, "disable"))
-+		return 0;
-+
- 	if (access(tdb_dir, W_OK)) {
- 		fprintf(stderr,
- 			_("Cannot create file under %s\n"),
- 			tdb_dir);
--		retval = EXT2_ET_INVALID_ARGUMENT;
--		goto err_out;
--
-+		return (EXT2_ET_INVALID_ARGUMENT);
- 	}
- 
-+	tmp_name = strdup(name);
-+	device_name = basename(tmp_name);
- 	sprintf(tdb_file, "%s/mke2fs-%s", tdb_dir, device_name);
- 
- 	if (!access(tdb_file, F_OK)) {
-@@ -1647,6 +1647,8 @@ static int mke2fs_setup_tdb(const char *name)
- 		goto err_out;
- 	}
- 
-+	set_undo_io_backing_manager(*io_ptr);
-+	*io_ptr = undo_io_manager;
- 	set_undo_io_backup_file(tdb_file);
- 	printf(_("previous filesystem detected; to undo "
- 		"the mke2fs operation, please run the "
-@@ -1679,18 +1681,14 @@ int main (int argc, char *argv[])
- 	io_ptr = test_io_manager;
- 	test_io_backing_manager = unix_io_manager;
- #else
--	if (filesystem_exist(device_name)) {
-+	io_ptr = unix_io_manager;
-+#endif
- 
--		io_ptr = undo_io_manager;
--		set_undo_io_backing_manager(unix_io_manager);
--		retval = mke2fs_setup_tdb(device_name);
-+	if (filesystem_exist(device_name)) {
-+		retval = mke2fs_setup_tdb(device_name, &io_ptr);
- 		if (retval)
- 			exit(1);
+> btrfs seems to have little more failures.
+
+If you find the reason for the unexpected failures then the btrfs result 
+will be quite good. Apparently it has only a few link, truncate, and unlink 
+ctimes update problems. I think that's quite impressive in its state of 
+development.
+
+	Szaka
+
+
+> ext2:
+> ====
+> 
+> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
+> -------------------------------------------------------------------------------
+> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
+> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
+> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
+> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
+> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
+>                                                                39 42
+> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
+> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
+> /root/posix/tests/truncate/12.t                3    1  33.33%  2
+> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
+> Failed 9/184 test scripts, 95.11% okay. 33/1950 subtests failed, 98.31% okay.
+> 
+> 
+> ext3:
+> ====
+> 
+> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
+> -------------------------------------------------------------------------------
+> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
+> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
+> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
+> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
+>                                                                39 42
+> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
+> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
+> /root/posix/tests/truncate/12.t                3    1  33.33%  2
+> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
+> Failed 8/184 test scripts, 95.65% okay. 29/1950 subtests failed, 98.51% okay.
+> 
+> 
+> jfs:
+> ===
+> 
+> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
+> -------------------------------------------------------------------------------
+> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
+> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
+> /root/posix/tests/link/00.t                   82    6   7.32%  3 5-6 8-10
+> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
+> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
+>                                                                39 42
+> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
+> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
+> /root/posix/tests/truncate/12.t                3    1  33.33%  2
+> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
+> Failed 9/184 test scripts, 95.11% okay. 33/1950 subtests failed, 98.31% okay.
+> 
+> 
+> btrfs:
+> =====
+> 
+> Failed Test                     Stat Wstat Total Fail  Failed  List of Failed
+> -------------------------------------------------------------------------------
+> /root/posix/tests/chmod/00.t                  58    2   3.45%  3 19
+> /root/posix/tests/chown/00.t                 171    4   2.34%  141 145 149 153
+> /root/posix/tests/link/00.t                   82    8   9.76%  3 5-6 8-10 56 63
+> /root/posix/tests/open/05.t                   12    2  16.67%  5 9
+> /root/posix/tests/rename/00.t                 79    9  11.39%  3 6 8-9 11 13 37
+>                                                                39 42
+> /root/posix/tests/symlink/00.t                14    2  14.29%  2 5
+> /root/posix/tests/truncate/00.t               21    1   4.76%  15
+> /root/posix/tests/truncate/05.t               15    5  33.33%  5-6 10-12
+> /root/posix/tests/truncate/12.t                3    1  33.33%  2
+> /root/posix/tests/truncate/13.t                4    2  50.00%  2-3
+> /root/posix/tests/unlink/00.t                 55    3   5.45%  17 22 53
+> Failed 11/184 test scripts, 94.02% okay. 39/1950 subtests failed, 98.00% okay.
+>
+>
+>
+
+--
+NTFS-3G:  http://ntfs-3g.org
+
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Register now and save $200. Hurry, offer ends at 11:59 p.m., 
+Monday, April 7! Use priority code J8TLD2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
