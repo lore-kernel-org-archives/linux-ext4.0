@@ -1,7 +1,7 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: e2fsck (git) on ext4: unsupported feature(s): huge_file
-Date: Tue, 08 Apr 2008 13:36:03 -0500
-Message-ID: <47FBBB13.7060501@redhat.com>
+Date: Tue, 08 Apr 2008 13:37:13 -0500
+Message-ID: <47FBBB59.3020506@redhat.com>
 References: <47FBB24D.90807@yahoo.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -9,10 +9,10 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: supersud501 <supersud501@yahoo.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35010 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:35064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751948AbYDHSgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2008 14:36:07 -0400
+	id S1751669AbYDHShP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Apr 2008 14:37:15 -0400
 In-Reply-To: <47FBB24D.90807@yahoo.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -30,6 +30,7 @@ supersud501 wrote:
 > 
 > what can i do?
 
-Do you in fact have any very large files on the disk?
+Oh, and for what it's worth, fsck support for ext4 is incomplete, even
+in git.  That accounts for lots of the "dev" part in "ext4dev."
 
 -Eric
