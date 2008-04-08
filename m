@@ -1,109 +1,58 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Problem with fsstress on powerpc
-Date: Tue, 8 Apr 2008 20:54:55 +0530
-Message-ID: <20080408152455.GA10827@skywalker>
+From: Badari Pulavarty <pbadari@gmail.com>
+Subject: ext4 not updating ctime on truncate ?
+Date: Tue, 08 Apr 2008 08:37:49 -0700
+Message-ID: <1207669069.18386.6.camel@badari-desktop>
+References: <Pine.LNX.4.62.0804022313390.664@tamago.serverit.net>
+	 <1207247251.30407.59.camel@dyn9047017100.beaverton.ibm.com>
+	 <Pine.LNX.4.62.0804070207160.25240@tamago.serverit.net>
+	 <1207587843.31073.3.camel@badari-desktop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>, Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Szabolcs Szakacsits <szaka@ntfs-3g.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:38699 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751035AbYDHP03 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2008 11:26:29 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m38FQUmf019180
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Apr 2008 01:26:30 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m38FPAW84296744
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Apr 2008 01:25:10 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m38FPBKv009216
-	for <linux-ext4@vger.kernel.org>; Wed, 9 Apr 2008 01:25:11 +1000
-Content-Disposition: inline
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:51458 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751676AbYDHPhu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Apr 2008 11:37:50 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m38Fbn4V000379
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Apr 2008 11:37:49 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m38Fbnck235224
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Apr 2008 11:37:49 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m38Fbnap009463
+	for <linux-ext4@vger.kernel.org>; Tue, 8 Apr 2008 11:37:49 -0400
+In-Reply-To: <1207587843.31073.3.camel@badari-desktop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
 
-Test case: fsstress with fallocate test case added.
+Hi,
 
-Inode 8170, i_size is 0, should be 839680.  Fix? no
+I ran Linux POSIX filesystem test suite released by  Szabolcs Szakacsits
+on ext4. I get one failure on ext4.
 
-tst_extents:  stat <8170>
-header: magic=af3 entries=512 max=1024 depth=0 generation=0
-(Left 1)
-(Left 0)
-Inode: 8170   Type: regular    Mode:  0666   Flags: 0x80000
-Generation: 3214836894
-User:     0   Group:     0   Size: 0
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 96
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x47fb705f -- Tue Apr  8 09:17:19 2008
-atime: 0x47fb6d1b -- Tue Apr  8 09:03:23 2008
-mtime: 0x47fb705f -- Tue Apr  8 09:17:19 2008
-Size of extra inode fields: 28
-BLOCKS:
-(193-198):1275331-1275336, (199-204):747341-747346
-TOTAL: 12
+Failed Test                     Stat Wstat Total Fail  Failed  List of
+Failed
+-------------------------------------------------------------------------------
+/root/posix/tests/truncate/00.t               21    1   4.76%  15
 
-tst_extents:  inode <8170>
-header: magic=af3 entries=512 max=1024 depth=0 generation=0
-Loaded inode 8170
-tst_extents:  root
-(Left 1)
-extent: lblk 193--198, len 6, pblk 1275331, flags: LEAF 
-tst_extents:  nl
-(Left 0)
-extent: lblk 199--204, len 6, pblk 747341, flags: LEAF 
-tst_extents:  nl
-nl: No 'next' extent 
-tst_extents:  
+Looking at the test, its complaining that ext4 is not updating ctime
+for truncate. Is this a known issue ?
 
-[root@gekko-lp2 tmp]# ls -ali fsstress/p1b8/d0/da/d26/fc5
-8170 -rw-rw-rw-  1 root root 0 Apr  8 09:17 fsstress/p1b8/d0/da/d26/fc5
+# successful truncate(2) updates ctime.
+expect 0 create ${n0} 0644
+ctime1=`${fstest} stat ${n0} ctime`
+sleep 1
+expect 0 truncate ${n0} 123
+ctime2=`${fstest} stat ${n0} ctime`
+test_check $ctime1 -lt $ctime2
 
 
-Inode 179868, i_size is 724992, should be 868352.  Fix? no
-
-tst_extents:  stat <179868>
-header: magic=af3 entries=512 max=1024 depth=0 generation=0
-(Left 1)
-(Left 0)
-Inode: 179868   Type: regular    Mode:  0666   Flags: 0x80000
-Generation: 3214716167
-User: 122091   Group:     0   Size: 724992
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 32
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x47fb7009 -- Tue Apr  8 09:15:53 2008
-atime: 0x47fb6cd8 -- Tue Apr  8 09:02:16 2008
-mtime: 0x47fb6f74 -- Tue Apr  8 09:13:24 2008
-Size of extra inode fields: 28
-BLOCKS:
-(176):746755, (209-211):945533-945535
-TOTAL: 4
-
-tst_extents:  inode <179868>
-header: magic=af3 entries=512 max=1024 depth=0 generation=0
-Loaded inode 179868
-tst_extents:  root
-(Left 1)
-extent: lblk 176--176, len 1, pblk 746755, flags: LEAF 
-tst_extents:  nl
-(Left 0)
-extent: lblk 209--211, len 3, pblk 945533, flags: LEAF 
-tst_extents:  nl
-nl: No 'next' extent 
-tst_extents:  
-
-[root@gekko-lp2 tmp]# ls -alhi  fsstress/p98/d3/d12/d1b/d20/d11e/df1/f5b
-179868 -rw-rw-rw-  1 122091 root 708K Apr  8 09:13
-fsstress/p98/d3/d12/d1b/d20/d11e/df1/f5b
-
-The file system is 100% full
-/dev/sda7             9.2G  9.2G     0 100% /mnt/tmp
+Thanks,
+Badari
 
 
--aneesh
