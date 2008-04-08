@@ -1,36 +1,49 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: e2fsck (git) on ext4: unsupported feature(s): huge_file
-Date: Tue, 08 Apr 2008 13:37:13 -0500
-Message-ID: <47FBBB59.3020506@redhat.com>
-References: <47FBB24D.90807@yahoo.de>
+From: Nathan Grennan <jack@cygnusx-1.org>
+Subject: Re: Ordered mode rewrite patch
+Date: Tue, 08 Apr 2008 13:12:20 -0700
+Message-ID: <47FBD1A4.80606@cygnusx-1.org>
+References: <20080408121149.GB6901@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: supersud501 <supersud501@yahoo.de>
+Cc: Marcelo Tosatti <mtosatti@redhat.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35064 "EHLO mx1.redhat.com"
+Received: from okcforum.org ([69.17.49.173]:51050 "EHLO mail.okcforum.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751669AbYDHShP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2008 14:37:15 -0400
-In-Reply-To: <47FBB24D.90807@yahoo.de>
+	id S1752437AbYDHUV3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Apr 2008 16:21:29 -0400
+In-Reply-To: <20080408121149.GB6901@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-supersud501 wrote:
-> i get this when trying to run e2fsck on my ext4dev filesystem (kernel 
-> 2.6.25-rc8), extents enabled:
-> 
-> e2fsck 1.40.8 (13-Mar-2008)
-> /dev/loop2 has unsupported feature(s): huge_file
-> e2fsck: Get a newer version of e2fsck!
-> 
-> just updated to the git-version of e2fsprogs, same error. i know e2fsck 
-> worked once with the drive (~2 months ago).
-> 
-> what can i do?
+Jan Kara wrote:
+>   Hello,
+>
+>   attached is a jumbo patch that reverses locking order of transaction
+> start and page lock in ext3 and rewrites handling of ordered data mode in
+> JBD and ext3. Note that the patch will break compilation of ext4 and OCFS2.
+> The patch survives LTP run on my test machine so it shouldn't eat your data
+> immediately but bugs are of course possible...
+>   I'm very interested in any results (both positive and negative) you could
+> get with it :). Thanks for testing it.
+>
+> 									Honza
+>
+> PS: CCing also linux-ext4 list in case there are some other interested
+> testers. Next on my todo list is to port this for ext4...
+>   
+I am trying to apply the patch to Fedora 8's kernel-2.6.24.4-64, and it 
+fails on all the files.
 
-Oh, and for what it's worth, fsck support for ext4 is incomplete, even
-in git.  That accounts for lots of the "dev" part in "ext4dev."
++ '[' '!' -f 
+/home/builder/rpmbuild/SOURCES/kernel-2.6.24.4/ext3-jbd-2.6.25-ordered_mode.patch 
+']'
++ case "$patch" in
++ patch -p1 -F1 -s
+1 out of 26 hunks FAILED -- saving rejects to file fs/ext3/inode.c.rej
+1 out of 11 hunks FAILED -- saving rejects to file fs/jbd/commit.c.rej
+1 out of 12 hunks FAILED -- saving rejects to file fs/jbd/transaction.c.rej
+1 out of 1 hunk FAILED -- saving rejects to file 
+include/linux/writeback.h.rej
 
--Eric
