@@ -1,46 +1,31 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: Ordered mode rewrite patch
-Date: Tue, 8 Apr 2008 11:47:04 -0400
-Message-ID: <20080408154704.GO22429@unused.rdu.redhat.com>
-References: <20080408121149.GB6901@duck.suse.cz>
+From: supersud501 <supersud501@yahoo.de>
+Subject: e2fsck (git) on ext4: unsupported feature(s): huge_file
+Date: Tue, 08 Apr 2008 19:58:37 +0200
+Message-ID: <47FBB24D.90807@yahoo.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nathan Grennan <jack@cygnusx-1.org>,
-	Marcelo Tosatti <mtosatti@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:58629 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757311AbYDHP7X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2008 11:59:23 -0400
-Content-Disposition: inline
-In-Reply-To: <20080408121149.GB6901@duck.suse.cz>
+Received: from n38.bullet.mail.ukl.yahoo.com ([87.248.110.171]:44701 "HELO
+	n38.bullet.mail.ukl.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751894AbYDHSOe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2008 14:14:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 08, 2008 at 02:11:49PM +0200, Jan Kara wrote:
->   Hello,
-> 
->   attached is a jumbo patch that reverses locking order of transaction
-> start and page lock in ext3 and rewrites handling of ordered data mode in
-> JBD and ext3. Note that the patch will break compilation of ext4 and OCFS2.
-> The patch survives LTP run on my test machine so it shouldn't eat your data
-> immediately but bugs are of course possible...
->   I'm very interested in any results (both positive and negative) you could
-> get with it :). Thanks for testing it.
-> 
-> 									Honza
-> 
-> PS: CCing also linux-ext4 list in case there are some other interested
-> testers. Next on my todo list is to port this for ext4...
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+i get this when trying to run e2fsck on my ext4dev filesystem (kernel 
+2.6.25-rc8), extents enabled:
 
-Just glancing over it everything looks to be ok, but I still can't compile with
-ext3/jbd being modules :).  I had to EXPORT_SYMBOL do_writepages,
-__filemap_fdatawrite_range and all the jbd things you added to make it build
-properly.  I will do some testing with it while I'm in class.
+e2fsck 1.40.8 (13-Mar-2008)
+/dev/loop2 has unsupported feature(s): huge_file
+e2fsck: Get a newer version of e2fsck!
 
-Josef
+just updated to the git-version of e2fsprogs, same error. i know e2fsck 
+worked once with the drive (~2 months ago).
+
+what can i do?
+
+regards,
+supersud501
+
