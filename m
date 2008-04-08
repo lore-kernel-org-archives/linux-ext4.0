@@ -1,59 +1,36 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Ordered mode rewrite patch
-Date: Tue, 8 Apr 2008 23:16:41 +0200
-Message-ID: <20080408211641.GD21869@duck.suse.cz>
-References: <20080408121149.GB6901@duck.suse.cz> <47FBD1A4.80606@cygnusx-1.org>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: e2fsck (git) on ext4: unsupported feature(s): huge_file
+Date: Wed, 9 Apr 2008 00:40:07 +0200 (CEST)
+Message-ID: <alpine.DEB.1.10.0804090032480.3869@sheep.housecafe.de>
+References: <47FBB24D.90807@yahoo.de> <47FBBB59.3020506@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Marcelo Tosatti <mtosatti@redhat.com>, linux-ext4@vger.kernel.org
-To: Nathan Grennan <jack@cygnusx-1.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: supersud501 <supersud501@yahoo.de>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:53600 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752635AbYDHVQm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2008 17:16:42 -0400
-Content-Disposition: inline
-In-Reply-To: <47FBD1A4.80606@cygnusx-1.org>
+Received: from ns2.g-housing.de ([81.169.133.75]:43214 "EHLO mail.g-house.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751758AbYDHWkQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Apr 2008 18:40:16 -0400
+In-Reply-To: <47FBBB59.3020506@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 08-04-08 13:12:20, Nathan Grennan wrote:
-> Jan Kara wrote:
->>   Hello,
->>
->>   attached is a jumbo patch that reverses locking order of transaction
->> start and page lock in ext3 and rewrites handling of ordered data mode in
->> JBD and ext3. Note that the patch will break compilation of ext4 and 
->> OCFS2.
->> The patch survives LTP run on my test machine so it shouldn't eat your 
->> data
->> immediately but bugs are of course possible...
->>   I'm very interested in any results (both positive and negative) you 
->> could
->> get with it :). Thanks for testing it.
->>
->> 									Honza
->>
->> PS: CCing also linux-ext4 list in case there are some other interested
->> testers. Next on my todo list is to port this for ext4...
->>   
-> I am trying to apply the patch to Fedora 8's kernel-2.6.24.4-64, and it 
-> fails on all the files.
->
-> + '[' '!' -f 
-> /home/builder/rpmbuild/SOURCES/kernel-2.6.24.4/ext3-jbd-2.6.25-ordered_mode.patch 
-> ']'
-> + case "$patch" in
-> + patch -p1 -F1 -s
-> 1 out of 26 hunks FAILED -- saving rejects to file fs/ext3/inode.c.rej
-> 1 out of 11 hunks FAILED -- saving rejects to file fs/jbd/commit.c.rej
-> 1 out of 12 hunks FAILED -- saving rejects to file fs/jbd/transaction.c.rej
-> 1 out of 1 hunk FAILED -- saving rejects to file 
-> include/linux/writeback.h.rej
-  Hmm, strange so many chunks failed but anyway, the patch is against
-recent Linus's git - I think 2.6.25-rc7 will do just fine.
+On Tue, 8 Apr 2008, Eric Sandeen wrote:
+> Oh, and for what it's worth, fsck support for ext4 is incomplete, even
+> in git.
 
-								Honza
+"Incomplete", but usable I may add. I've had a few (I/O related) crashes 
+and ext4 told me that running e2fsck was recommended. I did several times 
+and it went ok.
+
+> That accounts for lots of the "dev" part in "ext4dev."
+
+Yeah, I won't argue with that statement :)
+
+my 2 cents...
+C.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+BOFH excuse #24:
+
+network packets travelling uphill (use a carrier pigeon)
