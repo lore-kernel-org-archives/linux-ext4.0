@@ -1,105 +1,110 @@
-From: Solofo.Ramangalahy@bull.net
-Subject: [PATCH RESENT] ext4: cleanup for compiling mballoc with verification and debugging #defines
-Date: Wed, 9 Apr 2008 09:08:04 +0200
-Message-ID: <18428.27476.805658.391244@frecb006361.adech.frec.bull.fr>
+From: Dmitri Monakhov <dmonakhov@openvz.org>
+Subject: Re: Problem with fsstress on powerpc
+Date: Wed, 9 Apr 2008 11:44:57 +0400
+Message-ID: <20080409074457.GB944@dmon-lap.sw.ru>
+References: <20080408152455.GA10827@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>, Mingming Cao <cmm@us.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:32958 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753549AbYDIHHr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Apr 2008 03:07:47 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 979691A18E3
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Apr 2008 09:08:08 +0200 (CEST)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 01224-10 for <linux-ext4@vger.kernel.org>;
- Wed,  9 Apr 2008 09:08:05 +0200 (CEST)
-Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 6753D1A18F2
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Apr 2008 09:08:05 +0200 (CEST)
-Received: from frecb006361.adech.frec.bull.fr.bull.net (frecb006361.frec.bull.fr [129.183.101.70])
-	by cyclope.frec.bull.fr (Postfix) with ESMTP id 010DE27289
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Apr 2008 09:08:01 +0200 (CEST)
+Received: from mailhub.sw.ru ([195.214.232.25]:34574 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752469AbYDIHzU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Apr 2008 03:55:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20080408152455.GA10827@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: cleanup for compiling mballoc with verification and debugging #defines
-
-From: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-
-This patch allows compiling mballoc with:
-#define AGGRESSIVE_CHECK
-#define DOUBLE_CHECK
-#define MB_DEBUG
-
-It fixes:
-Compilation errors:
-fs/ext4/mballoc.c: In function '__mb_check_buddy':
-fs/ext4/mballoc.c:605: error: 'struct ext4_prealloc_space' has no member named 'group_list'
-fs/ext4/mballoc.c:606: error: 'struct ext4_prealloc_space' has no member named 'pstart'
-fs/ext4/mballoc.c:608: error: 'struct ext4_prealloc_space' has no member named 'len'
-
-Compilation warnings:
-fs/ext4/mballoc.c: In function 'ext4_mb_normalize_group_request':
-fs/ext4/mballoc.c:2863: warning: format '%lu' expects type 'long unsigned int', but argument 3 has type 'int'
-fs/ext4/mballoc.c: In function 'ext4_mb_use_inode_pa':
-fs/ext4/mballoc.c:3103: warning: format '%lu' expects type 'long unsigned int', but argument 3 has type 'int'
-
-Sparse check:
-fs/ext4/mballoc.c:3818:2: warning: context imbalance in 'ext4_mb_show_ac' - different lock contexts for basic block
-
-Signed-off-by: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-
----
- fs/ext4/mballoc.c |   12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
-Index: linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d.orig/fs/ext4/mballoc.c
-+++ linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/mballoc.c
-@@ -602,10 +602,10 @@ static int __mb_check_buddy(struct ext4_
- 	list_for_each(cur, &grp->bb_prealloc_list) {
- 		ext4_group_t groupnr;
- 		struct ext4_prealloc_space *pa;
--		pa = list_entry(cur, struct ext4_prealloc_space, group_list);
--		ext4_get_group_no_and_offset(sb, pa->pstart, &groupnr, &k);
-+		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
-+		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &groupnr, &k);
- 		MB_CHECK_ASSERT(groupnr == e4b->bd_group);
--		for (i = 0; i < pa->len; i++)
-+		for (i = 0; i < pa->pa_len; i++)
- 			MB_CHECK_ASSERT(mb_test_bit(k + i, buddy));
- 	}
- 	return 0;
-@@ -2860,7 +2860,7 @@ static void ext4_mb_normalize_group_requ
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_stripe;
- 	else
- 		ac->ac_g_ex.fe_len = EXT4_SB(sb)->s_mb_group_prealloc;
--	mb_debug("#%u: goal %lu blocks for locality group\n",
-+	mb_debug("#%u: goal %u blocks for locality group\n",
- 		current->pid, ac->ac_g_ex.fe_len);
- }
- 
-@@ -3100,7 +3100,7 @@ static void ext4_mb_use_inode_pa(struct 
- 	BUG_ON(pa->pa_free < len);
- 	pa->pa_free -= len;
- 
--	mb_debug("use %llu/%lu from inode pa %p\n", start, len, pa);
-+	mb_debug("use %llu/%u from inode pa %p\n", start, len, pa);
- }
- 
- /*
-@@ -3831,7 +3831,7 @@ static void ext4_mb_show_ac(struct ext4_
- 			printk(KERN_ERR "PA:%lu:%d:%u \n", i,
- 							start, pa->pa_len);
- 		}
--		ext4_lock_group(sb, i);
-+		ext4_unlock_group(sb, i);
- 
- 		if (grp->bb_free == 0)
- 			continue;
+On 20:54 Tue 08 Apr     , Aneesh Kumar K.V wrote:
+> Hi All,
+> 
+> Test case: fsstress with fallocate test case added.
+This may happens because of direct write.
+Please add  exact fsstess command and options.
+> 
+> Inode 8170, i_size is 0, should be 839680.  Fix? no
+> 
+> tst_extents:  stat <8170>
+> header: magic=af3 entries=512 max=1024 depth=0 generation=0
+> (Left 1)
+> (Left 0)
+> Inode: 8170   Type: regular    Mode:  0666   Flags: 0x80000
+> Generation: 3214836894
+> User:     0   Group:     0   Size: 0
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 96
+> Fragment:  Address: 0    Number: 0    Size: 0
+> ctime: 0x47fb705f -- Tue Apr  8 09:17:19 2008
+> atime: 0x47fb6d1b -- Tue Apr  8 09:03:23 2008
+> mtime: 0x47fb705f -- Tue Apr  8 09:17:19 2008
+> Size of extra inode fields: 28
+> BLOCKS:
+> (193-198):1275331-1275336, (199-204):747341-747346
+> TOTAL: 12
+> 
+> tst_extents:  inode <8170>
+> header: magic=af3 entries=512 max=1024 depth=0 generation=0
+> Loaded inode 8170
+> tst_extents:  root
+> (Left 1)
+> extent: lblk 193--198, len 6, pblk 1275331, flags: LEAF 
+> tst_extents:  nl
+> (Left 0)
+> extent: lblk 199--204, len 6, pblk 747341, flags: LEAF 
+> tst_extents:  nl
+> nl: No 'next' extent 
+> tst_extents:  
+> 
+> [root@gekko-lp2 tmp]# ls -ali fsstress/p1b8/d0/da/d26/fc5
+> 8170 -rw-rw-rw-  1 root root 0 Apr  8 09:17 fsstress/p1b8/d0/da/d26/fc5
+> 
+> 
+> Inode 179868, i_size is 724992, should be 868352.  Fix? no
+> 
+> tst_extents:  stat <179868>
+> header: magic=af3 entries=512 max=1024 depth=0 generation=0
+> (Left 1)
+> (Left 0)
+> Inode: 179868   Type: regular    Mode:  0666   Flags: 0x80000
+> Generation: 3214716167
+> User: 122091   Group:     0   Size: 724992
+> File ACL: 0    Directory ACL: 0
+> Links: 1   Blockcount: 32
+> Fragment:  Address: 0    Number: 0    Size: 0
+> ctime: 0x47fb7009 -- Tue Apr  8 09:15:53 2008
+> atime: 0x47fb6cd8 -- Tue Apr  8 09:02:16 2008
+> mtime: 0x47fb6f74 -- Tue Apr  8 09:13:24 2008
+> Size of extra inode fields: 28
+> BLOCKS:
+> (176):746755, (209-211):945533-945535
+> TOTAL: 4
+> 
+> tst_extents:  inode <179868>
+> header: magic=af3 entries=512 max=1024 depth=0 generation=0
+> Loaded inode 179868
+> tst_extents:  root
+> (Left 1)
+> extent: lblk 176--176, len 1, pblk 746755, flags: LEAF 
+> tst_extents:  nl
+> (Left 0)
+> extent: lblk 209--211, len 3, pblk 945533, flags: LEAF 
+> tst_extents:  nl
+> nl: No 'next' extent 
+> tst_extents:  
+> 
+> [root@gekko-lp2 tmp]# ls -alhi  fsstress/p98/d3/d12/d1b/d20/d11e/df1/f5b
+> 179868 -rw-rw-rw-  1 122091 root 708K Apr  8 09:13
+> fsstress/p98/d3/d12/d1b/d20/d11e/df1/f5b
+> 
+> The file system is 100% full
+> /dev/sda7             9.2G  9.2G     0 100% /mnt/tmp
+> 
+> 
+> -aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
