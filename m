@@ -1,97 +1,75 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: update ctime and mtime for truncate with extents.
-Date: Thu, 10 Apr 2008 07:14:47 -0700
-Message-ID: <1207836888.6172.2.camel@localhost.localdomain>
-References: <Pine.LNX.4.62.0804030034200.664@tamago.serverit.net>
-	 <18425.57003.125097.61814@frecb006361.adech.frec.bull.fr>
-	 <1207802397.3616.4.camel@localhost.localdomain>
-	 <18430.4635.195999.326984@frecb006361.adech.frec.bull.fr>
-Reply-To: cmm@us.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Szabolcs Szakacsits <szaka@ntfs-3g.com>
-To: Solofo.Ramangalahy@bull.net
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext2: Retry block allocation if new blocks are allocated from system zone.
+Date: Thu, 10 Apr 2008 21:20:22 +0530
+Message-ID: <1207842623-15330-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:59630 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755332AbYDJOOs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2008 10:14:48 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3AEGqr4029075
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 10:16:52 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3AEElUd114564
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 10:14:47 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3AEElC3021912
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 10:14:47 -0400
-In-Reply-To: <18430.4635.195999.326984@frecb006361.adech.frec.bull.fr>
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:52433 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756684AbYDJPu1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 11:50:27 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m3AFoPKQ030688
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 21:20:25 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3AFoNoh1310806
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 21:20:23 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m3AFoWwB023574
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 15:50:32 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-04-10 at 15:11 +0200, Solofo.Ramangalahy@bull.net wrote:
-> Mingming Cao writes:
->  > Shouldn't we mark inode dirty after the ctime and and mtime is changed?
-> 
-> I should have been more careful when mimicing the non-extent case or
-> examine more closely the patch queue (I am just noticing
-> ext4-update-mtime-and-ctime-on-rename.patch). I honestly do not have
-> a definitive answer now, but I trust you and Jan more than me.
-> 
-> ... so, yes, we should.
-> 
-> Looking back at the code, there is actually a pattern
-> ext4_current_time() followed by ext4_mark_inode_dirty(), but I do not
-> think it is worth a refactoring.
-> 
-> Attached the updated patch.
-> 
-> Thanks and sorry for the trouble,
+If the block allocator gets blocks out of system zone ext2 calls
+ext2_error. But if the file system is mounted with errors=continue
+retry block allocation. We need to mark the system zone
+blocks as in use to make sure retry don't pick them again
 
-Np, I updated the patch in the patch queue. BTW, it would be nice to
-generate the patch with -p next time to show which function the changes
-are modifying.
+System zone is the block range mapping block bitmap, inode bitmap
+and inode table.
 
-Mingming
-> --
-> solofo
-> 
-> ext4: update ctime and mtime for truncate with extents.
-> 
-> From: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-> 
-> The recently announced "Linux POSIX file system test suite"
-> http://ntfs3g.org/sw/qa/pjd-fstest-20080402.tgz catched a truncate
-> issue when using extents:
-> mtime and ctime are not updated despite truncate being successful.
-> 
-> This is the single issue catched with "default" ext4 (mkfs and mount
-> with minimal options).
-> The testsuite does not report failure with -o noextents.
-> 
-> With the following patch, all tests of the testsuite passes:
-> 
-> Signed-off-by: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-> 
-> ---
->  fs/ext4/extents.c |    2 ++
->  1 file changed, 2 insertions(+)
-> 
-> Index: linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/extents.c
-> ===================================================================
-> --- linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d.orig/fs/ext4/extents.c
-> +++ linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/extents.c
-> @@ -2947,6 +2947,8 @@ out_stop:
->                 ext4_orphan_del(handle, inode);
-> 
->         up_write(&EXT4_I(inode)->i_data_sem);
-> +       inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-> +       ext4_mark_inode_dirty(handle, inode);
->         ext4_journal_stop(handle);
->  }
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext2/balloc.c |   16 +++++++++++-----
+ 1 files changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index e7b2baf..501399e 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -149,11 +149,12 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+ 		return NULL;
+ 	}
+-	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
+-		brelse(bh);
+-		return NULL;
+-	}
+ 
++	ext2_valid_block_bitmap(sb, desc, block_group, bh);
++	/*
++	 * file system mounted not to panic on error,
++	 * continue with corrput bitmap
++	 */
+ 	return bh;
+ }
+ 
+@@ -1381,7 +1382,12 @@ allocated:
+ 			    "Allocating block in system zone - "
+ 			    "blocks from "E2FSBLK", length %lu",
+ 			    ret_block, num);
+-		goto out;
++		/*
++		 * ext2_try_to_allocate marked the blocks we allocated
++		 * as in use. So we may want to selectively
++		 * mark some of the blocks as free
++		 */
++		goto retry_alloc;
+ 	}
+ 
+ 	performed_allocation = 1;
+-- 
+1.5.5.23.g2a5fe.dirty
 
