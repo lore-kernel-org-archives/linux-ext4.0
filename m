@@ -1,40 +1,70 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: ext4 compile error on m68k
-Date: Thu, 10 Apr 2008 10:01:42 -0400
-Message-ID: <20080410140142.GA18896@infradead.org>
-References: <20080405102408.GB30987@cs181133002.pp.htv.fi> <Pine.LNX.4.64.0804051345180.7216@anakin> <20080410104059.GA23116@skywalker> <je7if69bh4.fsf@sykes.suse.de> <20080410135807.GA7526@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Schwab <schwab@suse.de>,
-	Geert Uytterhoeven <geert@linux-m68k.org>,
-	Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@clusterfs.com,
-	zippel@linux-m68k.org, linux-ext4@vger.kernel.org,
-	linux-m68k@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: mark inode dirty after initializing the extent tree
+Date: Thu, 10 Apr 2008 19:36:34 +0530
+Message-ID: <1207836394-9027-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:51279 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755371AbYDJOCm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 10:02:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20080410135807.GA7526@skywalker>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:44176 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755149AbYDJOGm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 10:06:42 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m3AE5uxZ015783
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 00:05:56 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3AE6csD4337806
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 00:06:38 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3AE6mfJ025549
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 00:06:48 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Should be same  ext2_find_next_zero_bit except that it find the next
-> set bit rather than the zero bit. The API is used to find the set bit
-> in bitmap. To explain the little endian dependency, what we have is
-> 
-> 0	x	n
-> [.......1.......]
-> 
-> Now we read this as (char *) and try to find the first set bit which
-> in the above example is x. To speed up most of the architectures would
-> like to consider it as an array of long. That implies that the value
-> in the array should be considered as a little endian long, hence the
-> *_le_bit.
+We should mark inode dirty only after initializing the extent
+tree. Also if we fail during extent initialization we need
+to call DQUOT_FREE_INODE.
 
-This kind of documentation should be in the kernel tree somewhere.
-And while we're at it all the routines should be renamed from extN_*
-to *_le_bit because that describes what they do.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/ialloc.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4ee44fa..4fc0db5 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -835,11 +835,6 @@ got:
+ 	if (err)
+ 		goto fail_free_drop;
+ 
+-	err = ext4_mark_inode_dirty(handle, inode);
+-	if (err) {
+-		ext4_std_error(sb, err);
+-		goto fail_free_drop;
+-	}
+ 	if (test_opt(sb, EXTENTS)) {
+ 		/* set extent flag only for diretory, file and normal symlink*/
+ 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+@@ -848,10 +843,16 @@ got:
+ 			err = ext4_update_incompat_feature(handle, sb,
+ 					EXT4_FEATURE_INCOMPAT_EXTENTS);
+ 			if (err)
+-				goto fail;
++				goto fail_free_drop;
+ 		}
+ 	}
+ 
++	err = ext4_mark_inode_dirty(handle, inode);
++	if (err) {
++		ext4_std_error(sb, err);
++		goto fail_free_drop;
++	}
++
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
+ 	goto really_out;
+ fail:
+-- 
+1.5.5.23.g2a5fe.dirty
+
