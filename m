@@ -1,76 +1,64 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext3: Retry block allocation if new blocks are allocated from system zone.
-Date: Thu, 10 Apr 2008 21:20:23 +0530
-Message-ID: <1207842623-15330-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1207842623-15330-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: akpm@linux-foundation.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH][TRIVIAL][e2fsprogs] Rename uninit_groups to uninit_bg.
+Date: Thu, 10 Apr 2008 10:33:14 -0600
+Message-ID: <20080410163314.GA5693@webber.adilger.int>
+References: <20080402140221.30632.62083.stgit@gara.konoha.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:55609 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756704AbYDJPu1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 11:50:27 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m3AFoPuQ030017
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 21:20:25 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3AFoOuA1310810
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 21:20:24 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m3AFoXr9023595
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 15:50:33 GMT
-In-Reply-To: <1207842623-15330-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:46926 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753055AbYDJQhF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 12:37:05 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3AGb3Sk021713
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2008 09:37:03 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZ400E01AFCRD00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 10 Apr 2008 09:37:03 -0700 (PDT)
+In-reply-to: <20080402140221.30632.62083.stgit@gara.konoha.net>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the block allocator gets blocks out of system zone ext3 calls
-ext3_error. But if the file system is mounted with errors=continue
-retry block allocation. We need to mark the system zone blocks as
-in use to make sure retry don't pick them again
+On Apr 02, 2008  09:03 -0500, Jose R. Santos wrote:
+> Rename uninit_groups to uninit_bg.
+> 
+> <meta_bg> <flex_bg> <uninit_groups> <lazy_bg>
+> 
+> One of these things is not like the others,
+> One of these things just doesn't belong,
+> Can you tell which thing is not like the others
+> By the time I finish my song?
+>        	    by Joe Raposo
 
-System zone is the block range mapping block bitmap, inode bitmap and inode
-table.
+Jose,
+I don't disagree with this change, but can you please keep compatibility
+with the old name for some time, as we have been using the "uninit_groups"
+name for some time already.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext3/balloc.c |   16 +++++++++++-----
- 1 files changed, 11 insertions(+), 5 deletions(-)
+> diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
+> index cf37447..3fc4f91 100644
+> --- a/lib/e2p/feature.c
+> +++ b/lib/e2p/feature.c
+> @@ -45,7 +45,7 @@ static struct feature feature_list[] = {
+>  	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HUGE_FILE,
+>  			"huge_file" },
+>  	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_GDT_CSUM,
+> -			"uninit_groups" },
+> +			"uninit_bg" },
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index da0cb2c..874362e 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -164,10 +164,11 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
- 		return NULL;
- 	}
--	if (!ext3_valid_block_bitmap(sb, desc, block_group, bh)) {
--		brelse(bh);
--		return NULL;
--	}
-+	ext3_valid_block_bitmap(sb, desc, block_group, bh);
-+	/*
-+	 * file system mounted not to panic on error,
-+	 * continue with corrput bitmap
-+	 */
- 	return bh;
- }
- /*
-@@ -1642,7 +1643,12 @@ allocated:
- 			    "Allocating block in system zone - "
- 			    "blocks from "E3FSBLK", length %lu",
- 			     ret_block, num);
--		goto out;
-+		/*
-+		 * claim_block marked the blocks we allocated
-+		 * as in use. So we may want to selectively
-+		 * mark some of the blocks as free
-+		 */
-+		goto retry_alloc;
- 	}
- 
- 	performed_allocation = 1;
--- 
-1.5.5.23.g2a5fe.dirty
+I think we just need an additional stanza here after this one which has
+the old name in it.  That way lookup-by-value will find uninit_bg, and
+lookup-by-name will still work.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
