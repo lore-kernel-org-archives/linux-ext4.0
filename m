@@ -1,74 +1,49 @@
-From: Solofo.Ramangalahy@bull.net
-Subject: Re: [PATCH] ext4: update ctime and mtime for truncate with extents.
-Date: Thu, 10 Apr 2008 15:11:55 +0200
-Message-ID: <18430.4635.195999.326984@frecb006361.adech.frec.bull.fr>
-References: <Pine.LNX.4.62.0804030034200.664@tamago.serverit.net>
-	<18425.57003.125097.61814@frecb006361.adech.frec.bull.fr>
-	<1207802397.3616.4.camel@localhost.localdomain>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: ext4 compile error on m68k
+Date: Thu, 10 Apr 2008 19:28:07 +0530
+Message-ID: <20080410135807.GA7526@skywalker>
+References: <20080405102408.GB30987@cs181133002.pp.htv.fi> <Pine.LNX.4.64.0804051345180.7216@anakin> <20080410104059.GA23116@skywalker> <je7if69bh4.fsf@sykes.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Szabolcs Szakacsits <szaka@ntfs-3g.com>
-To: cmm@us.ibm.com
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
+	Adrian Bunk <bunk@kernel.org>, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com,
+	zippel@linux-m68k.org, linux-ext4@vger.kernel.org,
+	linux-m68k@vger.kernel.org
+To: Andreas Schwab <schwab@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58641 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756925AbYDJNLi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 09:11:38 -0400
-In-Reply-To: <1207802397.3616.4.camel@localhost.localdomain>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:37374 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755305AbYDJN6b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2008 09:58:31 -0400
+Content-Disposition: inline
+In-Reply-To: <je7if69bh4.fsf@sykes.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming Cao writes:
- > Shouldn't we mark inode dirty after the ctime and and mtime is changed?
+On Thu, Apr 10, 2008 at 01:48:55PM +0200, Andreas Schwab wrote:
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
+> 
+> > But m68k doesn't want to use the GENERIC_FIND_NEXT_BIT. Can I request
+> > somebody knowledgeable about m68k to give a try in implementing
+> > generic_find_next_le_bit  equivalent on m68k ?
+> 
+> What's the exact semantic of generic_find_next_le_bit?  Why is it not
+> documented?
+> 
 
-I should have been more careful when mimicing the non-extent case or
-examine more closely the patch queue (I am just noticing
-ext4-update-mtime-and-ctime-on-rename.patch). I honestly do not have
-a definitive answer now, but I trust you and Jan more than me.
+Should be same  ext2_find_next_zero_bit except that it find the next
+set bit rather than the zero bit. The API is used to find the set bit
+in bitmap. To explain the little endian dependency, what we have is
 
-... so, yes, we should.
+0	x	n
+[.......1.......]
 
-Looking back at the code, there is actually a pattern
-ext4_current_time() followed by ext4_mark_inode_dirty(), but I do not
-think it is worth a refactoring.
+Now we read this as (char *) and try to find the first set bit which
+in the above example is x. To speed up most of the architectures would
+like to consider it as an array of long. That implies that the value
+in the array should be considered as a little endian long, hence the
+*_le_bit.
 
-Attached the updated patch.
 
-Thanks and sorry for the trouble,
---
-solofo
-
-ext4: update ctime and mtime for truncate with extents.
-
-From: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-
-The recently announced "Linux POSIX file system test suite"
-http://ntfs3g.org/sw/qa/pjd-fstest-20080402.tgz catched a truncate
-issue when using extents:
-mtime and ctime are not updated despite truncate being successful.
-
-This is the single issue catched with "default" ext4 (mkfs and mount
-with minimal options).
-The testsuite does not report failure with -o noextents.
-
-With the following patch, all tests of the testsuite passes:
-
-Signed-off-by: Solofo Ramangalahy <Solofo.Ramangalahy@bull.net>
-
----
- fs/ext4/extents.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-Index: linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/extents.c
-===================================================================
---- linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d.orig/fs/ext4/extents.c
-+++ linux-2.6.25-rc8-git5-ext4-52c7a8013ad2c452551a68ff4daab4bacbe28f9d/fs/ext4/extents.c
-@@ -2947,6 +2947,8 @@ out_stop:
-                ext4_orphan_del(handle, inode);
-
-        up_write(&EXT4_I(inode)->i_data_sem);
-+       inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+       ext4_mark_inode_dirty(handle, inode);
-        ext4_journal_stop(handle);
- }
+-aneesh
