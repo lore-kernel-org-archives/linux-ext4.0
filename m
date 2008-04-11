@@ -1,60 +1,45 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] check return of ext4_orphan_get properly
-Date: Fri, 11 Apr 2008 13:23:32 -0700
-Message-ID: <1207945412.3639.7.camel@localhost.localdomain>
-References: <20080411193208.GB2757@unused.rdu.redhat.com>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 0/3] fiemap patches (RFC/testing)
+Date: Fri, 11 Apr 2008 17:29:13 -0600
+Message-ID: <20080411232913.GT5693@webber.adilger.int>
+References: <47EA6DA9.4010103@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Kalpak Shah <Kalpak.Shah@sun.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:52118 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761382AbYDKUXd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Apr 2008 16:23:33 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3BKNWm0010173
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 16:23:32 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3BKNWNh246974
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 16:23:32 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3BKNVXa025884
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 16:23:31 -0400
-In-Reply-To: <20080411193208.GB2757@unused.rdu.redhat.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:44409 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756142AbYDKX3R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Apr 2008 19:29:17 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3BNTGbo006501
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2008 16:29:16 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZ600M01P6UIP00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 11 Apr 2008 16:29:16 -0700 (PDT)
+In-reply-to: <47EA6DA9.4010103@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-04-11 at 15:32 -0400, Josef Bacik wrote:
-> Hello,
+On Mar 26, 2008  10:37 -0500, Eric Sandeen wrote:
+> Since Akira would like to use the fiemap ioctl for defrag, I thought I should
+> put what I have so far out on the list, at least.  This could go in the unstable
+> part of the tree if you like, though I need to do more testing etc before it's 
+> really ready to go.
 > 
-> Hit a panic while running fsfuzzer, seems we are improperly checking the return
-> of ext4_orphan_get.  This patch fixes the problem, thank you
-> 
-> Signed-off-by: Josef Bacik <jbacik@redhat.com>
-> 
+> Also, below is a quick test application I was using with the ioctl.
 
-Thanks, added to the patch queue.
-> 
-> Index: linux-2.6/fs/ext4/super.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext4/super.c
-> +++ linux-2.6/fs/ext4/super.c
-> @@ -1652,8 +1652,8 @@ static void ext4_orphan_cleanup (struct 
->  	while (es->s_last_orphan) {
->  		struct inode *inode;
-> 
-> -		if (!(inode =
-> -		      ext4_orphan_get(sb, le32_to_cpu(es->s_last_orphan)))) {
-> +		inode = ext4_orphan_get(sb, le32_to_cpu(es->s_last_orphan));
-> +		if (IS_ERR(inode)) {
->  			es->s_last_orphan = 0;
->  			break;
->  		}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Note that we have a patch for the e2fsprogs filefrag tool to use FIEMAP
+ioctl first, and fall back to FIBMAP if that returns -EOPNOTSUPP or -ENOTTY.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
