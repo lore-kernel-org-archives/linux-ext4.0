@@ -1,42 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/1] only check PR_1_EXTENT_ENDS_BEYOND for leaf nodes
-Date: Tue,  1 Apr 2008 20:38:58 -0500
-Message-ID: <1207100338-2308-1-git-send-email-sandeen@redhat.com>
-Cc: Eric Sandeen <sandeen@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: Ordered mode rewrite patch
+Date: Fri, 11 Apr 2008 14:42:58 -0400
+Message-ID: <20080411184258.GA2757@unused.rdu.redhat.com>
+References: <20080408121149.GB6901@duck.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Nathan Grennan <jack@cygnusx-1.org>,
+	Marcelo Tosatti <mtosatti@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47133 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:39464 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759030AbYDKSS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Apr 2008 14:18:28 -0400
+	id S1758817AbYDKSvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Apr 2008 14:51:10 -0400
+Content-Disposition: inline
+In-Reply-To: <20080408121149.GB6901@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-pass1 was checking that an "extent's" start+len did not extend
-past the last filesystem block, but unless we are at a leaf
-block, the physical block is that of a node in the tree, and
-the length may include sparseness.  The test is only valid
-for leaf blocks.
+On Tue, Apr 08, 2008 at 02:11:49PM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   attached is a jumbo patch that reverses locking order of transaction
+> start and page lock in ext3 and rewrites handling of ordered data mode in
+> JBD and ext3. Note that the patch will break compilation of ext4 and OCFS2.
+> The patch survives LTP run on my test machine so it shouldn't eat your data
+> immediately but bugs are of course possible...
+>   I'm very interested in any results (both positive and negative) you could
+> get with it :). Thanks for testing it.
+> 
+> 									Honza
+>
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
- e2fsck/pass1.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Hey Jan,
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 67a8370..4f21c3f 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1593,7 +1593,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 		if (extent.e_pblk < ctx->fs->super->s_first_data_block ||
- 		    extent.e_pblk >= ctx->fs->super->s_blocks_count)
- 			problem = PR_1_EXTENT_BAD_START_BLK;
--		else if ((extent.e_pblk + extent.e_len) >
-+		else if (is_leaf &&
-+			 (extent.e_pblk + extent.e_len) >
- 			 ctx->fs->super->s_blocks_count)
- 			problem = PR_1_EXTENT_ENDS_BEYOND;
- 
--- 
-1.5.4.1
+I just hit a problem with your patch.  In journal_destroy() we do a
+iput(journal->j_inode) and then kfree the journal, so when the iput comes back
+into journal_release_jbd_inode we are doing a use after free which in my case
+resulted in a panic.  I was going to fix it but I figure since this is still in
+transit you would have to just rewrite it so I'm not going to attach one, just
+giving you a heads up.  Let me know if my explanation wasn't clear enough.
+Thanks much,
 
+Josef 
