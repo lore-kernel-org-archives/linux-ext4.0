@@ -1,54 +1,33 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Entries in feature_list[]
-Date: Sat, 12 Apr 2008 21:49:57 -0600
-Message-ID: <20080413034957.GA8058@webber.adilger.int>
-References: <1206603634.3379.4.camel@alpha.linsyssoft.com>
+From: Michael Schmitz <schmitz@zirkon.biophys.uni-duesseldorf.de>
+Subject: Re: 2.6.25-rc8-mm2
+Date: Sun, 13 Apr 2008 09:45:52 +0200 (CEST)
+Message-ID: <alpine.DEB.1.00.0804130944380.1190@zirkon.biophys.uni-duesseldorf.de>
+References: <20080410203354.f0a6f464.akpm@linux-foundation.org>
+ <20080411134036.GB3821@cs181133002.pp.htv.fi>
+ <20080411212222.b3c1177e.akpm@linux-foundation.org>
+ <20080412184317.GB18122@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 Content-Transfer-Encoding: 7BIT
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>
-To: Girish Shilamkar <Girish.Shilamkar@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:62421 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753944AbYDMDuG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2008 23:50:06 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3D3o5wv016077
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2008 20:50:05 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JZ800M01VX2O800@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 12 Apr 2008 20:50:05 -0700 (PDT)
-In-reply-to: <1206603634.3379.4.camel@alpha.linsyssoft.com>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Adrian Bunk <bunk@kernel.org>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-m68k@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754480AbYDMHqQ@vger.kernel.org>
+In-reply-to: <20080412184317.GB18122@skywalker>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mar 27, 2008  13:10 +0530, Girish Shilamkar wrote:
-> In e2fsprogs/lib/e2p/feature.c 
-> struct feature feature_list[] contains:
->         ... 
-> 	{       E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS,
->                         "extents" },
->         {       E2P_FEATURE_INCOMPAT, EXT2_FEATURE_INCOMPAT_META_BG,
->                         "meta_bg" }
->         {       E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS,
->                         "extent" },
->         ...
-> 
-> Is the { E2P_*, EXT3_*, "extent"} entry correct one, if yes, what is the purpose behind having two
-> {E2P_FEATURE_INCOMPAT, EXT3_FEATURE_INCOMPAT_EXTENTS, *} entries, unless we want "extent" to be 
-> correct feature ?
+>> I saw some related linux-ext4 email float past yesterday, so something
+>> might be happening.
+>>
+>
+> It would really help if we can get some m68k people to look at patch
+> i posted.
+>
+> http://article.gmane.org/gmane.comp.file-systems.ext4/5944
 
-This is probably a merge error, or maybe a convenice measure to allow both
-"extent" and "extents"?  We need something similar for "uninit_groups"
-and the new "uninit_bg".
+I'd love to - only I can't seem to compile 2.6.25 at all. What's the 
+minimum gcc version I should use?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+ 	Michael
