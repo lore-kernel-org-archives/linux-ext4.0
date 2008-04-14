@@ -1,48 +1,84 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: 2.6.25-rc8-mm2
-Date: Sun, 13 Apr 2008 10:11:46 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0804131010090.28304@anakin>
-References: <20080410203354.f0a6f464.akpm@linux-foundation.org>
- <20080411134036.GB3821@cs181133002.pp.htv.fi> <20080411212222.b3c1177e.akpm@linux-foundation.org>
- <20080412184317.GB18122@skywalker> <alpine.DEB.1.00.0804130944380.1190@zirkon.biophys.uni-duesseldorf.de>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] Add regression test for clearing an xattr block
+Date: Sun, 13 Apr 2008 21:27:55 -0600
+Message-ID: <20080414032755.GF8058@webber.adilger.int>
+References: <47FF8A50.2030800@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Adrian Bunk <bunk@kernel.org>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-m68k@vger.kernel.org
-To: Michael Schmitz <schmitz@zirkon.biophys.uni-duesseldorf.de>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from edna.telenet-ops.be ([195.130.132.58]:57781 "EHLO
-	edna.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751601AbYDMILu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Apr 2008 04:11:50 -0400
-In-Reply-To: <alpine.DEB.1.00.0804130944380.1190@zirkon.biophys.uni-duesseldorf.de>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:34311 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753642AbYDND16 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Apr 2008 23:27:58 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3E3RvQi013240
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Apr 2008 20:27:57 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZA00801PGDZM00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sun, 13 Apr 2008 20:27:57 -0700 (PDT)
+In-reply-to: <47FF8A50.2030800@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 13 Apr 2008, Michael Schmitz wrote:
-> > > I saw some related linux-ext4 email float past yesterday, so something
-> > > might be happening.
-> > 
-> > It would really help if we can get some m68k people to look at patch
-> > i posted.
-> > 
-> > http://article.gmane.org/gmane.comp.file-systems.ext4/5944
+On Apr 11, 2008  10:57 -0500, Eric Sandeen wrote:
+> I got burned by the bug at:
+> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=86bc90f4f11df090f86dc764a4ea2d6dd5c13ffe
 > 
-> I'd love to - only I can't seem to compile 2.6.25 at all. What's the minimum
-> gcc version I should use?
+> so figured maybe a testcase was in order... 
+> 20/20 hindsight I guess!
 
-My cross-compiler is gcc version 4.1.2 20061115 (prerelease) (Debian 4.1.1-21).
+Is the "ea_checks" patch and respective test in the upstream e2fsprogs?
+We had added additional checks to e2fsck for xattr blocks/large inodes.
 
-Gr{oetje,eeting}s,
+The test output looks like below - there are a number of different types
+of EA corruption, though the error message is always the same.  The patch
+was in the series I previously sent "e2fsprogs-ea_check.patch", and the
+patch + test image are in the tarball at
+http://downloads.lustre.org/people/adilger/e2fsprogs-1.40.5-patches.tar.gz
+though I could re-send one or both to the list if desired.
 
-						Geert
+=================================
++Pass 1: Checking inodes, blocks, and sizes
++Inode 13 has a bad extended attribute block 26.  Clear? yes
++
++Inode 13, i_blocks is 4, should be 2.  Fix? yes
++
++Extended attribute in inode 14 has a hash (1649340189) which is invalid
++Clear? yes
++
++Inode 14, i_blocks is 2, should be 0.  Fix? yes
++
++Inode 17 has a bad extended attribute block 28.  Clear? yes
++
++Inode 17, i_blocks is 4, should be 2.  Fix? yes
++
++Inode 16 has a bad extended attribute block 29.  Clear? yes
++
++Inode 16, i_blocks is 2, should be 0.  Fix? yes
++
++Inode 19 has a bad extended attribute block 33.  Clear? yes
++
++Inode 19, i_blocks is 2, should be 0.  Fix? yes
++
++Inode 12 has a bad extended attribute block 55.  Clear? yes
++
++Inode 12, i_blocks is 2, should be 0.  Fix? yes
++
++Inode 15, i_blocks is 2, should be 0.  Fix? yes
++
++Pass 2: Checking directory structure
++Extended attribute block for inode 15 (/far) is invalid (999).
++Clear? yes
 
-P.S. I'll look into it when I find some time, but you may beat me to it...
+
+Cheers, Andreas
 --
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-							    -- Linus Torvalds
