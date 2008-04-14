@@ -1,36 +1,40 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] unexport journal_update_superblock
-Date: Mon, 14 Apr 2008 21:13:27 +0300
-Message-ID: <20080414181327.GC6695@cs181133002.pp.htv.fi>
+From: Mark Lord <lkml@rtr.ca>
+Subject: ext3: Freeing blocks not in datazone
+Date: Mon, 14 Apr 2008 14:23:05 -0400
+Message-ID: <4803A109.5080800@rtr.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1765547AbYDNSQ0@vger.kernel.org>
-Content-Disposition: inline
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933877AbYDNSYd@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch removes the unused EXPORT_SYMBOL(journal_update_superblock).
+One of my test systems here, running 2.6.25-rc8-git*,
+just now crapped out with this in the tail end of dmesg:
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+[   20.927780] EXT3-fs error (device sda1): ext3_free_blocks: Freeing blocks not in datazone - block
+[   20.928756] Aborting journal on device sda1.
+[    7.336461] ext3_abort called.
+[   20.930208] Remounting filesystem read-only
+[    7.336925] EXT3-fs error (device sda1): ext3_journal_start_sb: Detected aborted journal
+[    7.336930] Remounting filesystem read-only
+[   20.930847] EXT3-fs error (device sda1) in ext3_reserve_inode_write: Journal has aborted
+[   20.930960] EXT3-fs error (device sda1) in ext3_truncate: Journal has aborted
+[   20.931037] EXT3-fs error (device sda1) in ext3_reserve_inode_write: Journal has aborted
+[   20.931148] EXT3-fs error (device sda1) in ext3_orphan_del: Journal has aborted
+[   20.931257] EXT3-fs error (device sda1) in ext3_reserve_inode_write: Journal has aborted
+[   20.932057] __journal_remove_journal_head: freeing b_committed_data
+[   20.932071] __journal_remove_journal_head: freeing b_committed_data
+[   20.932165] __journal_remove_journal_head: freeing b_committed_data
+[   20.932185] __journal_remove_journal_head: freeing b_committed_data
+[   20.932197] __journal_remove_journal_head: freeing b_committed_data
 
----
+I had just booted the system, and was simultaneously doing "rm -r" on an old kernel tree
+while also doing mirrordir to refressh a different kernel tree from a master copy off NFS.
 
-This patch has been sent on:
-- 31 Mar 2008
-- 27 Feb 2008
+Not much else to say.  e2fsck seems to have recovered things,
+and I've repeated the commands successfully after rebooting.
 
-66cbc7390d66cdeb83a3f81d7ec1ea71d6f6e2c8 foobar
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 3943a89..5c2ebb7 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -68,7 +68,6 @@ EXPORT_SYMBOL(journal_set_features);
- EXPORT_SYMBOL(journal_create);
- EXPORT_SYMBOL(journal_load);
- EXPORT_SYMBOL(journal_destroy);
--EXPORT_SYMBOL(journal_update_superblock);
- EXPORT_SYMBOL(journal_abort);
- EXPORT_SYMBOL(journal_errno);
- EXPORT_SYMBOL(journal_ack_err);
+-ml
