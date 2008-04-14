@@ -1,84 +1,57 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] Add regression test for clearing an xattr block
-Date: Sun, 13 Apr 2008 21:27:55 -0600
-Message-ID: <20080414032755.GF8058@webber.adilger.int>
-References: <47FF8A50.2030800@redhat.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 0/8] ext4 online defrag (ver 0.8)
+Date: Mon, 14 Apr 2008 13:14:05 +0900
+Message-ID: <4802DA0D.4060502@rs.jp.nec.com>
+References: <47F60EA7.1050604@rs.jp.nec.com> <1207945113.3639.5.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:34311 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753642AbYDND16 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Apr 2008 23:27:58 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3E3RvQi013240
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Apr 2008 20:27:57 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JZA00801PGDZM00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sun, 13 Apr 2008 20:27:57 -0700 (PDT)
-In-reply-to: <47FF8A50.2030800@redhat.com>
-Content-disposition: inline
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:36868 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750711AbYDNEQE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Apr 2008 00:16:04 -0400
+In-Reply-To: <1207945113.3639.5.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 11, 2008  10:57 -0500, Eric Sandeen wrote:
-> I got burned by the bug at:
-> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=86bc90f4f11df090f86dc764a4ea2d6dd5c13ffe
+Hello,
+
+Mingming Cao wrote:
+>> Summary of patches:
+>> * These patches are replaced with ext4 online defrag patches
+>>   which are already in the ext4 git tree (linux-2.6.26-rc8).
+>>
+>> [PATCH 1/8]  Exchange the blocks between two inodes
+>> - Exchange the data blocks between the temporary inode and
+>>   the original inode.
+>>
+>> [PATCH 2/8] Read and write file data with memory page
+>> - Read the file data from the old blocks to the page and
+>>   write the file data on the page into the new blocks.
+>>
+>> [PATCH 3/8] Allocate new contiguous blocks with mballoc
+>> - Search contiguous free blocks with mutil-block allocation
+>>   and allocate them for the temporary inode.
+>>
+>> [PATCH 4/8] Main function of ext4 online defrag and ioctl implementation
+>> - Create the temporary inode and do defrag per
+>>   defrag_size (defalut 64MB).
+>>
 > 
-> so figured maybe a testcase was in order... 
-> 20/20 hindsight I guess!
+> I am curious about the ordering here. It seems reverse the order of the
+> first 4 patches make the logic more clear to me, start from patch 4,
+> then 3, then 2 and last 1?  At lease when I read the describtion of the
+> first patch I was puzzled by a minute what is this coming from
+> 
+> Just share my thoughts.
+> 
 
-Is the "ea_checks" patch and respective test in the upstream e2fsprogs?
-We had added additional checks to e2fsck for xattr blocks/large inodes.
+Ah, as you said, the ordering the patches is confusing.
+I'll reconstruct my patches order(4-3-2-1-5-6-7-8) to be clear
+in the future release.
 
-The test output looks like below - there are a number of different types
-of EA corruption, though the error message is always the same.  The patch
-was in the series I previously sent "e2fsprogs-ea_check.patch", and the
-patch + test image are in the tarball at
-http://downloads.lustre.org/people/adilger/e2fsprogs-1.40.5-patches.tar.gz
-though I could re-send one or both to the list if desired.
-
-=================================
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 13 has a bad extended attribute block 26.  Clear? yes
-+
-+Inode 13, i_blocks is 4, should be 2.  Fix? yes
-+
-+Extended attribute in inode 14 has a hash (1649340189) which is invalid
-+Clear? yes
-+
-+Inode 14, i_blocks is 2, should be 0.  Fix? yes
-+
-+Inode 17 has a bad extended attribute block 28.  Clear? yes
-+
-+Inode 17, i_blocks is 4, should be 2.  Fix? yes
-+
-+Inode 16 has a bad extended attribute block 29.  Clear? yes
-+
-+Inode 16, i_blocks is 2, should be 0.  Fix? yes
-+
-+Inode 19 has a bad extended attribute block 33.  Clear? yes
-+
-+Inode 19, i_blocks is 2, should be 0.  Fix? yes
-+
-+Inode 12 has a bad extended attribute block 55.  Clear? yes
-+
-+Inode 12, i_blocks is 2, should be 0.  Fix? yes
-+
-+Inode 15, i_blocks is 2, should be 0.  Fix? yes
-+
-+Pass 2: Checking directory structure
-+Extended attribute block for inode 15 (/far) is invalid (999).
-+Clear? yes
-
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Thanks,
+Akira
