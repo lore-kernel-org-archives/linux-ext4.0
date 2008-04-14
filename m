@@ -1,103 +1,36 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [E2FSPROGS, PATCH] Fix "make docs" rule in Makefile for doc folder.
-Date: Mon, 14 Apr 2008 17:20:03 +0530
-Message-ID: <ea11fea30804140450l5ee0a0f5o4b18f7fd6e7b6a1d@mail.gmail.com>
-References: <ea11fea30804101255g4d4c772eh2016563954802713@mail.gmail.com>
-	 <20080413212126.GA18156@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] Add regression test for clearing an xattr block
+Date: Mon, 14 Apr 2008 08:46:05 -0500
+Message-ID: <4803601D.9090802@redhat.com>
+References: <47FF8A50.2030800@redhat.com> <20080414032755.GF8058@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Tso" <tytso@mit.edu>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.170]:35819 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753104AbYDNLuH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Apr 2008 07:50:07 -0400
-Received: by ug-out-1314.google.com with SMTP id z38so439162ugc.16
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Apr 2008 04:50:04 -0700 (PDT)
-In-Reply-To: <20080413212126.GA18156@mit.edu>
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:33339 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751103AbYDNNqI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Apr 2008 09:46:08 -0400
+In-Reply-To: <20080414032755.GF8058@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Andreas Dilger wrote:
+> On Apr 11, 2008  10:57 -0500, Eric Sandeen wrote:
+>> I got burned by the bug at:
+>> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=86bc90f4f11df090f86dc764a4ea2d6dd5c13ffe
+>>
+>> so figured maybe a testcase was in order... 
+>> 20/20 hindsight I guess!
+> 
+> Is the "ea_checks" patch and respective test in the upstream e2fsprogs?
+> We had added additional checks to e2fsck for xattr blocks/large inodes.
 
-diff --git a/configure.in b/configure.in
-index 5243549..e64d817 100644
---- a/configure.in
-+++ b/configure.in
-@@ -595,6 +595,20 @@ AC_PATH_PROG(LDCONFIG, ldconfig, :)
- AC_CHECK_TOOL(AR, ar, ar)
- AC_CHECK_TOOL(RANLIB, ranlib, :)
- AC_CHECK_TOOL(STRIP, strip, :)
-+AC_CHECK_PROG(MAKEINFO, makeinfo, makeinfo, )
-+if test "_$MAKEINFO" = "_"; then
-+    MAKEINFO="@echo Makeinfo is missing. Info documentation will not
-be built.;true"
-+else
-+    case "$MAKEINFO" in
-+      */missing.*)
-+        AC_MSG_WARN([
-+*** Makeinfo is missing. Info documentation will not be built.])
-+        ;;
-+      *)
-+        ;;
-+    esac
-+fi
-+AC_SUBST(MAKEINFO)
- AC_PROG_INSTALL
- # See if we need a separate native compiler.
- if test $cross_compiling = no; then
-diff --git a/doc/Makefile.in b/doc/Makefile.in
-index 5494cf0..9c961f3 100644
---- a/doc/Makefile.in
-+++ b/doc/Makefile.in
-@@ -13,7 +13,7 @@ INSTALL = @INSTALL@
+Ah, it is in git, I had missed that.  Looks like it does cover the case
+I sent and much more, so... never mind.
 
- DVI=texi2dvi
- DVIPS=dvips -o "$@"
--INFO=makeinfo
-+INFO=@MAKEINFO@
- HTML=texi2html
+Thanks,
+-Eric
 
- all:: libext2fs.info libext2fs.dvi
-
-
-
-
-
-
-
-On Mon, Apr 14, 2008 at 2:51 AM, Theodore Tso <tytso@mit.edu> wrote:
-> On Fri, Apr 11, 2008 at 01:25:47AM +0530, Manish Katiyar wrote:
->  > On systems which don't have makeinfo installed by default, "make" or
->  > "make docs" fails with the following error
->  > /home/mkatiyar/e2fs-git> make docs
->  > make[1]: Entering directory `/home/mkatiyar/e2fs-git/doc'
->  >         MAKEINFO libext2fs.info
->  > make[1]: makeinfo: Command not found
->  > make[1]: [libext2fs.info] Error 127 (ignored)
->  >
->  > This patch makes it to bail out with proper error message when
->  > makeinfo is not present.
->
->  Can you send me a Signed-off-by for your patch, per the
->  SUBMITTING-PATCHES file in the e2fsprogs sources?
->
->  Many thanks,
->
->                                          - Ted
->
-
-
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
