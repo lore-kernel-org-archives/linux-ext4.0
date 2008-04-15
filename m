@@ -1,150 +1,61 @@
-From: akpm@linux-foundation.org
-Subject: + vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs.patch added to -mm tree
-Date: Tue, 15 Apr 2008 11:04:21 -0700
-Message-ID: <200804151804.m3FI4LYW007948@imap1.linux-foundation.org>
-Cc: jack@suse.cz, davej@redhat.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: Delayed allocation and page_lock vs transaction start ordering
+Date: Tue, 15 Apr 2008 11:08:52 -0700
+Message-ID: <1208282932.3636.9.camel@localhost.localdomain>
+References: <20080415161430.GC28699@duck.suse.cz>
+Reply-To: cmm@us.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50072 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752176AbYDOSEy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2008 14:04:54 -0400
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:57966 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752009AbYDOSI5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2008 14:08:57 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3FI8uMD029177
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 14:08:56 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3FI8ur0314930
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 14:08:56 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3FI8uLT001212
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 14:08:56 -0400
+In-Reply-To: <20080415161430.GC28699@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, 2008-04-15 at 18:14 +0200, Jan Kara wrote:
+>   Hi,
+> 
+>   I've ported my patch inversing locking ordering of page_lock and
+> transaction start to ext4 (on top of ext4 patch queue). Everything except
+> delayed allocation is converted (the patch is below for interested
+> readers). The question is how to proceed with delayed allocation. Its
+> current implementation in VFS is designed to work well with the old
+> ordering (page lock first, then start a transaction). We could bend it to
+> work with the new locking ordering but I really see no point since ext4 is
+> the only user. 
 
-The patch titled
-     vfs: fix possible deadlock in ext2, ext3, ext4 when using xattrs
-has been added to the -mm tree.  Its filename is
-     vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs.patch
+I think the plan is port the changes to ext2/3/JFS and support delayed
+allocation on those filesystems. 
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+> Also XFS has AFAIK ordering first start transaction, then
+> lock pages so if we should ever merge delayed alloc implementations the new
+> ordering would make it easier.
+>   So what do people think here? Do you agree with reimplementing current
+> mpage_da_... functions?
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+It worth a try, but I could not see how to bend delayed allocation to
+work the new ordering:( With delayed allocation Ext4 gets into
+writepage() directly with page locked, but we need to start transaction
+to do block allocation...:(
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+I guess this reserve locking ordering allows support writepages() for
+ext3/4? What other the benefits?
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: vfs: fix possible deadlock in ext2, ext3, ext4 when using xattrs
-From: Jan Kara <jack@suse.cz>
-
-mb_cache_entry_alloc() was allocating cache entries with GFP_KERNEL.  But
-filesystems are calling this function while holding xattr_sem so possible
-recursion into the fs violates locking ordering of xattr_sem and transaction
-start / i_mutex for ext2-4.  Change mb_cache_entry_alloc() so that filesystems
-can specify desired gfp mask and use GFP_NOFS from all of them.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Reported-by: Dave Jones <davej@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/xattr.c         |    2 +-
- fs/ext3/xattr.c         |    2 +-
- fs/ext4/xattr.c         |    2 +-
- fs/mbcache.c            |    4 ++--
- include/linux/mbcache.h |    2 +-
- 5 files changed, 6 insertions(+), 6 deletions(-)
-
-diff -puN fs/ext2/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs fs/ext2/xattr.c
---- a/fs/ext2/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs
-+++ a/fs/ext2/xattr.c
-@@ -835,7 +835,7 @@ ext2_xattr_cache_insert(struct buffer_he
- 	struct mb_cache_entry *ce;
- 	int error;
- 
--	ce = mb_cache_entry_alloc(ext2_xattr_cache);
-+	ce = mb_cache_entry_alloc(ext2_xattr_cache, GFP_NOFS);
- 	if (!ce)
- 		return -ENOMEM;
- 	error = mb_cache_entry_insert(ce, bh->b_bdev, bh->b_blocknr, &hash);
-diff -puN fs/ext3/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs fs/ext3/xattr.c
---- a/fs/ext3/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs
-+++ a/fs/ext3/xattr.c
-@@ -1126,7 +1126,7 @@ ext3_xattr_cache_insert(struct buffer_he
- 	struct mb_cache_entry *ce;
- 	int error;
- 
--	ce = mb_cache_entry_alloc(ext3_xattr_cache);
-+	ce = mb_cache_entry_alloc(ext3_xattr_cache, GFP_NOFS);
- 	if (!ce) {
- 		ea_bdebug(bh, "out of memory");
- 		return;
-diff -puN fs/ext4/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs fs/ext4/xattr.c
---- a/fs/ext4/xattr.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs
-+++ a/fs/ext4/xattr.c
-@@ -1386,7 +1386,7 @@ ext4_xattr_cache_insert(struct buffer_he
- 	struct mb_cache_entry *ce;
- 	int error;
- 
--	ce = mb_cache_entry_alloc(ext4_xattr_cache);
-+	ce = mb_cache_entry_alloc(ext4_xattr_cache, GFP_NOFS);
- 	if (!ce) {
- 		ea_bdebug(bh, "out of memory");
- 		return;
-diff -puN fs/mbcache.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs fs/mbcache.c
---- a/fs/mbcache.c~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs
-+++ a/fs/mbcache.c
-@@ -399,11 +399,11 @@ mb_cache_destroy(struct mb_cache *cache)
-  * if no more memory was available.
-  */
- struct mb_cache_entry *
--mb_cache_entry_alloc(struct mb_cache *cache)
-+mb_cache_entry_alloc(struct mb_cache *cache, gfp_t gfp_flags)
- {
- 	struct mb_cache_entry *ce;
- 
--	ce = kmem_cache_alloc(cache->c_entry_cache, GFP_KERNEL);
-+	ce = kmem_cache_alloc(cache->c_entry_cache, gfp_flags);
- 	if (ce) {
- 		atomic_inc(&cache->c_entry_count);
- 		INIT_LIST_HEAD(&ce->e_lru_list);
-diff -puN include/linux/mbcache.h~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs include/linux/mbcache.h
---- a/include/linux/mbcache.h~vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs
-+++ a/include/linux/mbcache.h
-@@ -34,7 +34,7 @@ void mb_cache_destroy(struct mb_cache *)
- 
- /* Functions on cache entries */
- 
--struct mb_cache_entry *mb_cache_entry_alloc(struct mb_cache *);
-+struct mb_cache_entry *mb_cache_entry_alloc(struct mb_cache *, gfp_t);
- int mb_cache_entry_insert(struct mb_cache_entry *, struct block_device *,
- 			  sector_t, unsigned int[]);
- void mb_cache_entry_release(struct mb_cache_entry *);
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-vfs-fix-possible-deadlock-in-ext2-ext3-ext4-when-using-xattrs.patch
-v4l-fix-concurrent-read-from-proc-videocodecs.patch
-git-udf.patch
-git-ocfs2.patch
-vfs-fix-lock-inversion-in-drop_pagecache_sb.patch
-vfs-skip-inodes-without-pages-to-free-in-drop_pagecache_sb.patch
-quota-do-not-allow-setting-of-quota-limits-to-too-high-values.patch
-quota-remove-superfluous-dquot_off-in-fs-namespacec.patch
-quota-various-style-cleanups.patch
-quota-various-style-cleanups-checkpatch-fixes.patch
-quota-quota-core-changes-for-quotaon-on-remount.patch
-quota-quota-core-changes-for-quotaon-on-remount-quota-ext3-make-ext3-handle-quotaon-on-remount.patch
-quota-quota-core-changes-for-quotaon-on-remount-quota-ext3-make-ext3-handle-quotaon-on-remount-checkpatch-fixes.patch
-quota-quota-core-changes-for-quotaon-on-remount-quota-ext4-make-ext4-handle-quotaon-on-remount.patch
-quota-quota-core-changes-for-quotaon-on-remount-quota-ext4-make-ext4-handle-quotaon-on-remount-checkpatch-fixes.patch
-quota-quota-core-changes-for-quotaon-on-remount-quota-reiserfs-make-reiserfs-handle-quotaon-on-remount.patch
-ext3-fdatasync-should-skip-metadata-writeout-when-overwriting.patch
-ext3-fix-update-of-mtime-and-ctime-on-rename.patch
-ext3-fix-hang-on-umount-with-quotas-when-journal-is-aborted.patch
-reiserfs-fix-hang-on-umount-with-quotas-when-journal-is-aborted.patch
-ext4-fix-update-of-mtime-and-ctime-on-rename.patch
-ext4-fix-hang-on-umount-with-quotas-when-journal-is-aborted.patch
-quota-le_add_cpu-conversion.patch
+Regards,
+Mingming
 
