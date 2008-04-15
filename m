@@ -1,64 +1,95 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: fsck errors with fsstress
-Date: Tue, 15 Apr 2008 12:17:33 +0530
-Message-ID: <20080415064733.GA8099@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>
+From: akpm@linux-foundation.org
+Subject: + ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch added to -mm tree
+Date: Tue, 15 Apr 2008 01:17:08 -0700
+Message-ID: <200804150817.m3F8H85V018638@imap1.linux-foundation.org>
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:39004 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752766AbYDOGs1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Apr 2008 02:48:27 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m3F6lkvA006523
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:47:46 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3F6mG6O1196106
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:48:16 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3F6mImD009559
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:48:19 +1000
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35604 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755252AbYDOIRr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2008 04:17:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
 
-On x86_64 after fsstress with fallocate is run with 
+The patch titled
+     ext2: retry block allocation if new blocks are allocated from system zone
+has been added to the -mm tree.  Its filename is
+     ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch
 
-fsstress -c -n1000 -p1000 -d /mnt/tmp/fsstress -f dwrite=0
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-e2fsprogs from next branch with HEAD at v1.40.8-163-g60dc00b
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-/usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda5
-e2fsck 1.40.8 (13-Mar-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 401326 has an invalid extent
-	(logical block 76, physical block 2441549, invalid len 711)
-Clear? no
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Inode 401326, i_blocks is 1112, should be 0.  Fix? no
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-Inode 475743 has an invalid extent
-	(logical block 226, physical block 2441673, invalid len 245)
-Clear? no
+------------------------------------------------------
+Subject: ext2: retry block allocation if new blocks are allocated from system zone
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Inode 475743, i_blocks is 328, should be 0.  Fix? no
+If the block allocator gets blocks out of system zone ext2 calls ext2_error. 
+But if the file system is mounted with errors=continue retry block allocation.
+ We need to mark the system zone blocks as in use to make sure retry don't
+pick them again
 
-Inode 603723 has an invalid extent
-	(logical block 34, physical block 2441671, invalid len 316)
-Clear? no
+System zone is the block range mapping block bitmap, inode bitmap and inode
+table.
 
-Inode 603723, i_blocks is 456, should be 0.  Fix? no
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -(118168--118173) -(174537--174541) -(371445--371462) -(592857--592859) -937329 -(961360--961363) -(968529--968547) -(1238135--1238143) -(1285426--1285432) -(1415800--1415801) -(1576655--1576681) -(2075764--2075776) -(2364415--2364420) -(2368402--2368410) -(2432102--2432111) -2432247 -(2433343--2433346) -(2435405--2435432) -(2441075--2441105) -(2441265--2441289) -(2441348--2441353) -2441549 -2441671 -2441673
-Fix? no
+ fs/ext2/balloc.c |   16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
 
+diff -puN fs/ext2/balloc.c~ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone fs/ext2/balloc.c
+--- a/fs/ext2/balloc.c~ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone
++++ a/fs/ext2/balloc.c
+@@ -149,11 +149,12 @@ read_block_bitmap(struct super_block *sb
+ 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
+ 		return NULL;
+ 	}
+-	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
+-		brelse(bh);
+-		return NULL;
+-	}
+ 
++	ext2_valid_block_bitmap(sb, desc, block_group, bh);
++	/*
++	 * file system mounted not to panic on error,
++	 * continue with corrput bitmap
++	 */
+ 	return bh;
+ }
+ 
+@@ -1380,7 +1381,12 @@ allocated:
+ 			    "Allocating block in system zone - "
+ 			    "blocks from "E2FSBLK", length %lu",
+ 			    ret_block, num);
+-		goto out;
++		/*
++		 * ext2_try_to_allocate marked the blocks we allocated
++		 * as in use. So we may want to selectively
++		 * mark some of the blocks as free
++		 */
++		goto retry_alloc;
+ 	}
+ 
+ 	performed_allocation = 1;
+_
 
-/dev/sda5: ********** WARNING: Filesystem still has errors **********
+Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch
+ext3-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch
+
