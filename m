@@ -1,20 +1,24 @@
 From: akpm@linux-foundation.org
-Subject: + jbd2-use-non-racy-method-for-proc-entries-creation.patch added to -mm tree
-Date: Tue, 15 Apr 2008 16:56:07 -0700
-Message-ID: <200804152356.m3FNu7Lf022506@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: + ext4-use-non-racy-method-for-proc-entries-creation.patch added to -mm tree
+Date: Tue, 15 Apr 2008 16:56:03 -0700
+Message-ID: <200804152356.m3FNu3ih022500@imap1.linux-foundation.org>
 Cc: den@openvz.org, adobriyan@gmail.com, ebiederm@xmission.com,
 	linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58426 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751456AbYDOX4J (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2008 19:56:09 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd2: use non-racy method for proc entries creation
+     ext4: use non-racy method for proc entries creation
 has been added to the -mm tree.  Its filename is
-     jbd2-use-non-racy-method-for-proc-entries-creation.patch
+     ext4-use-non-racy-method-for-proc-entries-creation.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -30,7 +34,7 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd2: use non-racy method for proc entries creation
+Subject: ext4: use non-racy method for proc entries creation
 From: "Denis V. Lunev" <den@openvz.org>
 
 Use proc_create()/proc_create_data() to make sure that ->proc_fops and ->data
@@ -43,36 +47,34 @@ Cc: "Eric W. Biederman" <ebiederm@xmission.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd2/journal.c |   17 ++++-------------
- 1 file changed, 4 insertions(+), 13 deletions(-)
+ fs/ext4/mballoc.c |   15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
 
-diff -puN fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation
-+++ a/fs/jbd2/journal.c
-@@ -904,19 +904,10 @@ static void jbd2_stats_proc_init(journal
- 	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
- 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
- 	if (journal->j_proc_entry) {
--		struct proc_dir_entry *p;
--		p = create_proc_entry("history", S_IRUGO,
--				journal->j_proc_entry);
--		if (p) {
--			p->proc_fops = &jbd2_seq_history_fops;
--			p->data = journal;
--			p = create_proc_entry("info", S_IRUGO,
--						journal->j_proc_entry);
--			if (p) {
--				p->proc_fops = &jbd2_seq_info_fops;
--				p->data = journal;
--			}
--		}
-+		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
-+				 &jbd2_seq_history_fops, journal);
-+		proc_create_data("info", S_IRUGO, journal->j_proc_entry,
-+				 &jbd2_seq_info_fops, journal);
- 	}
- }
+diff -puN fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation fs/ext4/mballoc.c
+--- a/fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation
++++ a/fs/ext4/mballoc.c
+@@ -2455,17 +2455,10 @@ static void ext4_mb_history_init(struct 
+ 	int i;
  
+ 	if (sbi->s_mb_proc != NULL) {
+-		struct proc_dir_entry *p;
+-		p = create_proc_entry("mb_history", S_IRUGO, sbi->s_mb_proc);
+-		if (p) {
+-			p->proc_fops = &ext4_mb_seq_history_fops;
+-			p->data = sb;
+-		}
+-		p = create_proc_entry("mb_groups", S_IRUGO, sbi->s_mb_proc);
+-		if (p) {
+-			p->proc_fops = &ext4_mb_seq_groups_fops;
+-			p->data = sb;
+-		}
++		proc_create_data("mb_history", S_IRUGO, sbi->s_mb_proc,
++				 &ext4_mb_seq_history_fops, sb);
++		proc_create_data("mb_groups", S_IRUGO, sbi->s_mb_proc,
++				 &ext4_mb_seq_groups_fops, sb);
+ 	}
+ 
+ 	sbi->s_mb_history_max = 1000;
 _
 
 Patches currently in -mm which might be from den@openvz.org are
