@@ -1,27 +1,64 @@
-From: "=?BIG5?B?pEK2rrlh?=" <q59s3zp208m@gmail.com>
-Subject: =?BIG5?B?snumYrX5pVW0TrBlMSwwMDDCSbX5pVU=?= =?BIG5?B?qvcorNu37anzpXi59CQxLDAwMLPhKQ==?=
-Date: Tue, 15 Apr 2008 14:28:33 +0800
-Message-ID: <212d1a8f0804142328s5290dfc5pc071acf16b67c78c__32462.9795192324$1208240975$gmane$org@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: fsck errors with fsstress
+Date: Tue, 15 Apr 2008 12:17:33 +0530
+Message-ID: <20080415064733.GA8099@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=BIG5
-Content-Transfer-Encoding: base64
-To: linn@tantalum.com.tw
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qb-out-0506.google.com ([72.14.204.231]:4124 "EHLO
-	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752127AbYDOG2l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Apr 2008 02:28:41 -0400
-Received: by qb-out-0506.google.com with SMTP id e11so2272734qbe.15
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Apr 2008 23:28:40 -0700 (PDT)
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:39004 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752766AbYDOGs1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Apr 2008 02:48:27 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m3F6lkvA006523
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:47:46 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3F6mG6O1196106
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:48:16 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3F6mImD009559
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 16:48:19 +1000
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-oeE/ofWh7qG7ofeh4aH1Cgqh0VNBTa7Vtum69Lj0pEek4q7RqbEtxXeq76dBqNO0TcRfodEKCmh0
-dHA6Ly90dy53cnMueWFob28uY29tL195bHQ9QTh0VXpLZElKQVJJWnBrQTdDaHIxZ3QuO195bHU9
-WDNvRE1URXhiemR6Tm1KdkJITmxZd056Y2dSd2IzTURNUVJqYjJ4dkEzUndZd1IyZEdsa0F3Unhk
-QU5rY1EtLS9TSUc9MTFiOGY1cnBhL0VYUD0xMjA4MzE3Mzg0LyoqaHR0cCUzQS8vYm9vay5zYW0u
-Y29tLnR3LwoKs2+sT6RArdOnuaX+p0u2T7Z9qfGquqRHpOKu0bZSvealraV4CrJ7pmK1+aVVwdmw
-ZTEsMDAwwkm1+aVVqvcorNu37anzpXi59CQxLDAwMLPhKQoKprOu0a1upViyTaq6xXeq71BPpFeo
-073mp2FeLl4KCrfttU23UbZSrtGquqRIpF3Fd6rvpFeo07RNxF+q/F5eCgqmcKpHs3Oko6RXuvSn
-faZis2+hR6FAYm9vay5zYW0uY29tLnR3Cgqh0aHuP6Hwoe+h86H0ofAK
+Hi,
+
+On x86_64 after fsstress with fallocate is run with 
+
+fsstress -c -n1000 -p1000 -d /mnt/tmp/fsstress -f dwrite=0
+
+e2fsprogs from next branch with HEAD at v1.40.8-163-g60dc00b
+
+/usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda5
+e2fsck 1.40.8 (13-Mar-2008)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 401326 has an invalid extent
+	(logical block 76, physical block 2441549, invalid len 711)
+Clear? no
+
+Inode 401326, i_blocks is 1112, should be 0.  Fix? no
+
+Inode 475743 has an invalid extent
+	(logical block 226, physical block 2441673, invalid len 245)
+Clear? no
+
+Inode 475743, i_blocks is 328, should be 0.  Fix? no
+
+Inode 603723 has an invalid extent
+	(logical block 34, physical block 2441671, invalid len 316)
+Clear? no
+
+Inode 603723, i_blocks is 456, should be 0.  Fix? no
+
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Block bitmap differences:  -(118168--118173) -(174537--174541) -(371445--371462) -(592857--592859) -937329 -(961360--961363) -(968529--968547) -(1238135--1238143) -(1285426--1285432) -(1415800--1415801) -(1576655--1576681) -(2075764--2075776) -(2364415--2364420) -(2368402--2368410) -(2432102--2432111) -2432247 -(2433343--2433346) -(2435405--2435432) -(2441075--2441105) -(2441265--2441289) -(2441348--2441353) -2441549 -2441671 -2441673
+Fix? no
+
+
+/dev/sda5: ********** WARNING: Filesystem still has errors **********
