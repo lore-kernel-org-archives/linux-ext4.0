@@ -1,160 +1,91 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Delayed allocation and page_lock vs transaction start ordering
-Date: Tue, 15 Apr 2008 16:33:17 -0700
-Message-ID: <1208302397.3636.49.camel@localhost.localdomain>
-References: <20080415161430.GC28699@duck.suse.cz>
-	 <1208282932.3636.9.camel@localhost.localdomain>
-	 <1208302106.3636.47.camel@localhost.localdomain>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Ininitial e2fsprogs TODO list (please expand)
+Date: Tue, 15 Apr 2008 21:30:02 -0600
+Message-ID: <20080416033002.GZ3106@webber.adilger.int>
+References: <20080415115216.1f6868de@gara.konoha.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:33237 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753462AbYDOXdU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2008 19:33:20 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3FNXJEW032554
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 19:33:19 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3FNXJtn282706
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 19:33:19 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3FNXJ2H025465
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 19:33:19 -0400
-In-Reply-To: <1208302106.3636.47.camel@localhost.localdomain>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50897 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755288AbYDPDaF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Apr 2008 23:30:05 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3G3U46e028732
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2008 20:30:04 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZE00K01F07OA00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 15 Apr 2008 20:30:04 -0700 (PDT)
+In-reply-to: <20080415115216.1f6868de@gara.konoha.net>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-04-15 at 16:28 -0700, Mingming Cao wrote:
-> On Tue, 2008-04-15 at 11:08 -0700, Mingming Cao wrote:
-> > On Tue, 2008-04-15 at 18:14 +0200, Jan Kara wrote:
-> > >   Hi,
-> > > 
-> > >   I've ported my patch inversing locking ordering of page_lock and
-> > > transaction start to ext4 (on top of ext4 patch queue). Everything except
-> > > delayed allocation is converted (the patch is below for interested
-> > > readers). The question is how to proceed with delayed allocation. Its
-> > > current implementation in VFS is designed to work well with the old
-> > > ordering (page lock first, then start a transaction). We could bend it to
-> > > work with the new locking ordering but I really see no point since ext4 is
-> > > the only user. 
-> > 
-> > I think the plan is port the changes to ext2/3/JFS and support delayed
-> > allocation on those filesystems. 
-> > 
-> > > Also XFS has AFAIK ordering first start transaction, then
-> > > lock pages so if we should ever merge delayed alloc implementations the new
-> > > ordering would make it easier.
-> > >   So what do people think here? Do you agree with reimplementing current
-> > > mpage_da_... functions?
-> > 
-> > It worth a try, but I could not see how to bend delayed allocation to
-> > work the new ordering:( With delayed allocation Ext4 gets into
-> > writepage() directly with page locked, but we need to start transaction
-> > to do block allocation...:(
+On Apr 15, 2008  11:52 -0500, Jose R. Santos wrote:
+> As discuss on the call yesterday, some folks (my self included) really
+> want a TODO list to help them keep track of what things are left undone
+> in e2fsprogs as we try to get ext4 out the door.  Here is my initial
+> list of items that still need addressing.  Hopefully we can expand this
+> list and document it somewhere like the ext4 wiki or the SourceForge
+> bug tracker.
 > 
-> Looked again it seems possible to reservse the order with delayed
-> allocation. with ext3_da_writepgaes() we could start the journal before
-> calling mpage_da_writepages()(which will lock the pages), instead of
-> start the journal inside ext4_da_get_block_write(). So that we could get
-> the locking order right. Just need to taking care of the estimated
-> credits right.
+> - Rename uninit_groups to uninit_bg to be consistent with other
+> defined features.  Retain the old name for historical purpose.
 > 
-> How about this? (untested, just throw out for comment)
+> - The return value of ext2fs_super_and_bgd_loc() is not to be trusted.
+> Document this in the source code.
+> 
+> - Make sure ext2fs_super_and_bgd_loc() does not get used anywhere where
+> the return value is expected to be accurate (aside from mke2fs).
+> 
+> - Remove lazy_bg feature from being set in mke2fs.  Feature has been
+> declare a dangerous hack by its creator, remove it to avoid people
+> building on top of it.
+> 
+> - Add flex_bg meta-data grouping support.
+> 
+> - Remove support for not zeroing the inode tables from the
+> uninit_groups patches.  This support is dangerous without a proper
+> kernel thread that zeros them in the background when the filesystem is
+> mounted.  Depends on the lazy_bg removal.
 
-Seems sent out an old version, this version compiles
+Something was lost in translation here.  The uninit_groups feature DOES
+zero the inode tables by default, and marks the groups with ITABLE_ZEROED.
+It is only if "-O uninit_groups,lazy_bg" are both given at the same time
+that the itable is not initialized.  That is no different than if lazy_bg
+was given by itself.
 
----
- fs/ext4/inode.c |   53 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 40 insertions(+), 13 deletions(-)
+So nothing needs to be done in e2fsprogs until some time after the kernel
+is updated to do the zeroing.
 
-Index: linux-2.6.25-rc9/fs/ext4/inode.c
-===================================================================
---- linux-2.6.25-rc9.orig/fs/ext4/inode.c	2008-04-15 15:40:33.000000000 -0700
-+++ linux-2.6.25-rc9/fs/ext4/inode.c	2008-04-15 16:32:10.000000000 -0700
-@@ -1437,18 +1437,12 @@ static int ext4_da_get_block_prep(struct
- static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 				   struct buffer_head *bh_result, int create)
- {
--	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
-+	int ret;
- 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
- 	loff_t disksize = EXT4_I(inode)->i_disksize;
- 	handle_t *handle = NULL;
- 
--	if (create) {
--		handle = ext4_journal_start(inode, needed_blocks);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			goto out;
--		}
--	}
-+	handle = ext4_journal_current_handle();
- 
- 	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
- 				   bh_result, create, 0);
-@@ -1483,17 +1477,51 @@ static int ext4_da_get_block_write(struc
- 		ret = 0;
- 	}
- 
--out:
--	if (handle && !IS_ERR(handle))
--		ext4_journal_stop(handle);
--
- 	return ret;
- }
- 
-+/*
-+ * For now just follow the DIO way to estimate the max credits
-+ * needed to write out EXT4_MAX_BUF_BLOCKS pages.
-+ * todo: need to calculate the max credits need for
-+ * extent based files, currently the DIO credits is based on
-+ * indirect-blocks mapping way.
-+ *
-+ * Probably should have a generic way to calculate credits
-+ * for DIO, writepages, and truncate
-+ */
-+#define EXT4_MAX_BUF_BLOCKS	DIO_MAX_BLOCKS
-+#define EXT4_MAX_BUF_CREDITS	DIO_CREDITS
-+
- static int ext4_da_writepages(struct address_space *mapping,
- 				struct writeback_control *wbc)
- {
--	return mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
-+	struct inode *inode = mapping->host;
-+	handle_t *handle = NULL;
-+	int needed_blocks;
-+	int ret;
-+
-+	/*
-+	 * Estimate the worse case needed credits to write out
-+	 * EXT4_MAX_BUF_BLOCKS pages
-+	 */
-+	needed_blocks = EXT4_MAX_BUF_CREDITS;
-+
-+	/* start the transaction with credits*/
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		return ret;
-+	}
-+
-+	/* set the max pages could be write-out at a time */
-+	wbc->range_end = wbc->range_start +
-+			EXT4_MAX_BUF_BLOCKS << PAGE_CACHE_SHIFT - 1;
-+
-+	ret = mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
-+	ext4_journal_stop(handle);
-+
-+	return ret;
- }
- 
- static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+> - Activate undo-manager in mke2fs only when inode tables are not being
+> zeroed.  Undo-manager is horribly slow if we need to store the
+> information of all the blocks that have been zeroed during mke2fs.  The
+> amount of storage needed for the undo on a 16TB filesystem could be
+> problematic.  Depends on kernel thread inode table zeroing.
+> 
+> - Make a 64-bit clean API that extends the existing one.  The current
+> API can not support larger than 32-bit blocks so a new set API calls is
+> need in order to provide large filesystem support and retain backwards
+> compatibility with the old API.
+> 
+> - 64-bit bitmap interface.  In order to support larger than 32-bit
+> blocks, a new bitmap interface is needed that can retain ABI
+> compatibility with the old one.
 
+There are some notes on implementing more efficient bitmaps in
+https://bugzilla.lustre.org/show_bug.cgi?id=12202
 
+Even without 64-bit filesystems the memory consumption of e2fsck
+can be quite high (2^32 blocks ~= 2^32 bytes of RAM for e2fsck).
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
