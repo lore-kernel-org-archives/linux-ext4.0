@@ -1,57 +1,73 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Ininitial e2fsprogs TODO list (please expand)
-Date: Wed, 16 Apr 2008 23:36:16 -0400
-Message-ID: <20080417033616.GA2850@mit.edu>
-References: <20080415115216.1f6868de@gara.konoha.net> <20080416033002.GZ3106@webber.adilger.int> <20080415115216.1f6868de@gara.konoha.net>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC] FIEMAP on ext3
+Date: Wed, 16 Apr 2008 21:40:24 -0600
+Message-ID: <20080417034024.GF3473@webber.adilger.int>
+References: <20080416191030.GE15668@unused.rdu.redhat.com>
+ <48065391.10603@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>, Andreas Dilger <adilger@sun.com>
+Content-Transfer-Encoding: 7BIT
+Cc: Josef Bacik <jbacik@redhat.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47984 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750822AbYDQDgY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2008 23:36:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20080416033002.GZ3106@webber.adilger.int> <20080415115216.1f6868de@gara.konoha.net>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:60484 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752629AbYDQDk2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2008 23:40:28 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3H3eR2H028250
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2008 20:40:27 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZG00A01A01I700@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 16 Apr 2008 20:40:27 -0700 (PDT)
+In-reply-to: <48065391.10603@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 15, 2008 at 11:52:16AM -0500, Jose R. Santos wrote:
-> As discuss on the call yesterday, some folks (my self included) really
-> want a TODO list to help them keep track of what things are left undone
-> in e2fsprogs as we try to get ext4 out the door.  Here is my initial
-> list of items that still need addressing.  Hopefully we can expand this
-> list and document it somewhere like the ext4 wiki or the SourceForge
-> bug tracker.
+On Apr 16, 2008  14:29 -0500, Eric Sandeen wrote:
+> Josef Bacik wrote:
+> > Obviously ext3 doesn't have extents, however it would still be usefull to use it
+> > on sparse files in order to find data/holes within a file.  What I'm thinking is
+> > treat contigous allocated blocks as an extent, and contiguous non-allocated
+> > blocks as extents.  So for example, with Eric's fiemap test program, on a normal
+> > non-sparse file you would only see one large extent for the entire file.  In the
+> > case of a file that has data, hole and then data you would see 3 extents, two
+> > for the two spans of data and one for the span of holes.
+> > FIEMAP_FLAG_NUM_EXTENTS would in that case return 3.  Does this sound like an
+> > acceptable thing to do?  If not, are there any other suggestions on how to do
+> > fiemap in ext3?  Thanks much,
+
+Well, this is already somewhat possible with "filefrag" though if you
+want an API to do FIEMAP from applications (easier to program) I'd suggest
+just having the fallback in glibc doing a loop of bmap ioctls.
+
+Note that the updated filefrag tool we have for FIEMAP also allows a much
+more useful output even for block-mapped files with the "-e" option.
+
+> Yes, regardless of whether the fs itself manages blocks as "extents" you
+> would just return contiguous ranges of blocks, allocated or unallocated,
+> in the structures...
 > 
-> - Rename uninit_groups to uninit_bg to be consistent with other
-> defined features.  Retain the old name for historical purpose.
+> FWIW I think currently the definition says FLAG_NUM_EXTENTS only returns
+> data extents not holes, so in your case above it'd be "2" (this bugs me
+> a little)  :)
 
-Yes.  Although until we actually don't do lazy initialization of the
-inode table, I still think the name is a bit of a misnomer.  It really
-is more about checksuming the block group descriptors and a faster
-fsck, but whether or not we initialize the block groups or not is
-pretty much a non-issue.
+Well, if you really think that is important, feel free to complain now
+rather than later.  We haven't landed the patch into Lustre yet, and I
+agree it is inconsistent that we return 3 extents when we do a full scan
+but 2 when we do NUM_EXTENTS...
 
-> - The return value of ext2fs_super_and_bgd_loc() is not to be trusted.
-> Document this in the source code.
-> 
-> - Make sure ext2fs_super_and_bgd_loc() does not get used anywhere where
-> the return value is expected to be accurate (aside from mke2fs).
-> 
-> - Remove lazy_bg feature from being set in mke2fs.  Feature has been
-> declare a dangerous hack by its creator, remove it to avoid people
-> building on top of it.
+> The current FIEMAP definition has enough other bells and whistles
+> (flags), ext3 won't support most of them but that's ok; you won't have
+> to mark blocks delalloc or unwritten or offline or ....
 
-.... and to replace it, add a configuration parameter to
-/etc/e2fsck.conf which controls whether or not the inode table and
-bitmap blocks should be uninitialized when using uninit groups.  It
-will default to off for now, until the kernel support can be
-implemented.
+Right, for simple filesystem most of the flags can be ignored.
 
-> - Add flex_bg meta-data grouping support.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-Once it is demonstrated to work correctly in all circumstances.  :-)
-
-     	   		   		     - Ted
