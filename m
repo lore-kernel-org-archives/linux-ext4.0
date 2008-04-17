@@ -1,79 +1,55 @@
-From: Roel Kluin <12o3l@tiscali.nl>
-Subject: [PATCH v2] mballoc: fix hot spins after err_freebuddy and err_freemeta
-Date: Thu, 17 Apr 2008 20:29:18 +0200
-Message-ID: <480796FE.2010707@tiscali.nl>
-References: <4807762A.9090202@tiscali.nl> <20080417175843.GA7517@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: alex@clusterfs.com, sct@redhat.com, akpm@linux-foundation.org,
-	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
-	lkml <linux-kernel@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934099AbYDQS3z@vger.kernel.org>
-In-Reply-To: <20080417175843.GA7517@skywalker>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] blkid: more sanity checks for swap v1
+Date: Thu, 17 Apr 2008 16:55:53 -0500
+Message-ID: <1208469353-14762-1-git-send-email-sandeen@redhat.com>
+To: sandeen@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:55813 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753264AbYDQV5M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Apr 2008 17:57:12 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
+mkswap followed by pvcreate on a block device
+will still turn up as "swap" in blkid, because
+pvcreate isn't particularly careful about zeroing
+old signatures.  (neither is mkswap, for that matter).
 
-> The function needs more changes. For ex:
-> 
-> 2279     if (meta_group_info[j] == NULL) {
-> 2280               printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
-> 2281               i--;
-> 2282               goto err_freebuddy;
-> 2283     }
-> 
-> That decrement  i--; could result in bad value if i == 0;.
+Testing for appropriate version and page counts
+gives us a bit more confidence that we have a
+real swap (v1) partition.
 
-Thanks Aneesh,
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
-Signed-off-by: Roel Kluin <12o3l@tiscali.nl>
-ext4_mb_init_backend() has a variable i of type ext4_group_t. which is typedefined
-in include/linux/ext4_fs_i.h:34 to unsigned long. Since unsigned, i >= 0 is always
-true, so fix hot spins after err_freebuddy and err_freemeta.
-Also when meta_group_info cannot be allocated prevent a decrement of i when zero.
+ lib/blkid/probe.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-Signed-off-by: Roel Kluin <12o3l@tiscali.nl>
----
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ef97f19..2c13dca 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2572,8 +2572,13 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 		meta_group_info[j] = kzalloc(len, GFP_KERNEL);
- 		if (meta_group_info[j] == NULL) {
- 			printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
--			i--;
--			goto err_freebuddy;
-+			if (i != 0) {
-+				i--;
-+				goto err_freebuddy;
-+			} else {
-+				i = num_meta_group_infos - 1;
-+				goto err_freemeta;
-+			}
- 		}
- 		desc = ext4_get_group_desc(sb, i, NULL);
- 		if (desc == NULL) {
-@@ -2618,14 +2623,14 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	return 0;
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 45885c3..a070201 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -827,7 +827,7 @@ static int probe_swap0(struct blkid_probe *probe,
+ }
  
- err_freebuddy:
--	while (i >= 0) {
-+	do {
- 		kfree(ext4_get_group_info(sb, i));
--		i--;
--	}
--	i = num_meta_group_infos;
-+	} while (i-- != 0);
-+	i = num_meta_group_infos - 1;
- err_freemeta:
--	while (--i >= 0)
-+	do {
- 		kfree(sbi->s_group_info[i]);
-+	} while (i-- != 0);
- 	iput(sbi->s_buddy_cache);
- err_freesgi:
- 	kfree(sbi->s_group_info);
+ static int probe_swap1(struct blkid_probe *probe,
+-		       struct blkid_magic *id __BLKID_ATTR((unused)),
++		       struct blkid_magic *id,
+ 		       unsigned char *buf __BLKID_ATTR((unused)))
+ {
+ 	struct swap_id_block *sws;
+@@ -843,6 +843,11 @@ static int probe_swap1(struct blkid_probe *probe,
+ 	if (!sws)
+ 		return 1;
+ 
++	/* check for wrong version or zeroed pagecount, for sanity */
++	if (!memcmp(id->bim_magic, "SWAPSPACE2", id->bim_len) &&
++			(sws->sws_version != 1 || sws->sws_lastpage == 0))
++		return 1;
++
+ 	/* arbitrary sanity check.. is there any garbage down there? */
+ 	if (sws->sws_pad[32] == 0 && sws->sws_pad[33] == 0)  {
+ 		if (sws->sws_volume[0])
+-- 
+1.5.4.1
+
