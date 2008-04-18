@@ -1,35 +1,46 @@
-From: "Alexey Zaytsev" <alexey.zaytsev@gmail.com>
-Subject: Mentor for a GSoC application wanted (Online ext2/3 filesystem checker)
-Date: Fri, 18 Apr 2008 18:20:14 +0400
-Message-ID: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: [PATCH 0/4] jbd: possible filesystem corruption fixes
+Date: Fri, 18 Apr 2008 10:09:46 -0400
+Message-ID: <20080418140946.GA26062@unused.rdu.redhat.com>
+References: <48089B86.5020108@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdev@vger.kernel.org, "Rik van Riel" <riel@surriel.com>,
-	"Theodore Tso" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.179]:55915 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755265AbYDROUQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Apr 2008 10:20:16 -0400
-Received: by wa-out-1112.google.com with SMTP id m16so933703waf.23
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2008 07:20:14 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755085AbYDROUE@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <48089B86.5020108@hitachi.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello, guys.
+On Fri, Apr 18, 2008 at 10:00:54PM +0900, Hidehiro Kawai wrote:
+> Subject: [PATCH 0/4] jbd: possible filesystem corruption fixes
+> 
+> The current JBD is not sufficient for I/O error handling.  It can
+> cause filesystem corruption.   An example scenario:
+> 
+> 1. fail to write a metadata buffer to block B in the journal
+> 2. succeed to write the commit record
+> 3. the system crashes, reboots and mount the filesystem
+> 4. in the recovery phase, succeed to read data from block B
+> 5. write back the read data to the filesystem, but it is a stale
+>    metadata
+> 6. lose some files and directories!
+> 
+> This scenario is a rare case, but it (temporal I/O error)
+> can occur.  If we abort the journal between 1. and 2., this
+> tragedy can be avoided.
+> 
+> This patch set fixes several error handling problems to protect
+> from filesystem corruption caused by I/O errors.  It has been
+> done only for JBD and ext3 parts.
+>
 
-It seems like the Linux-fountation was not able to find a mentor for
-my project. If somebody is willing to mentor this project through the
-Google Summer of Code, please contact Rik and me now, as little
-time is left.
+There doesn't seem like much point in taking these patches as Jan is rewriting
+the ordered mode path and most of these functions will be going away soon.
+Those patches seem like they will be coming soon and will obsolete these.
 
-A link to the application:
-http://rom.etherboot.org/share/xl0/gsoc2008/application-linux-foundation.txt
-
-P.S:
-I've also applied for two other project for this summer of code, and one of
-them I would prefer over this one. But I'm still not sure I'll get accepted
-there, through I see my chances as good.
+Josef 
