@@ -1,7 +1,7 @@
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Subject: [PATCH 0/4] jbd: possible filesystem corruption fixes
-Date: Fri, 18 Apr 2008 22:00:54 +0900
-Message-ID: <48089B86.5020108@hitachi.com>
+Date: Fri, 18 Apr 2008 22:29:57 +0900
+Message-ID: <4808A255.1050008@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -9,7 +9,7 @@ Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	jack@suse.cz, sugita <yumiko.sugita.yf@hitachi.com>,
 	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
 To: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756010AbYDRNbN@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755766AbYDRNa0@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
