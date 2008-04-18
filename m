@@ -1,54 +1,58 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Delayed allocation and page_lock vs transaction start ordering
-Date: Fri, 18 Apr 2008 12:54:47 -0600
-Message-ID: <20080418185447.GA3424@webber.adilger.int>
-References: <20080415161430.GC28699@duck.suse.cz>
- <1208282932.3636.9.camel@localhost.localdomain>
- <20080416093803.GB6116@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] blkid: more sanity checks for swap v1 (updated)
+Date: Fri, 18 Apr 2008 10:28:44 -0500
+Message-ID: <1208532524-4741-1-git-send-email-sandeen@redhat.com>
+To: sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:62373 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753454AbYDRSy6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Apr 2008 14:54:58 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3IIsuxn013182
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2008 11:54:57 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JZJ00001AKE6T00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 18 Apr 2008 11:54:56 -0700 (PDT)
-In-reply-to: <20080416093803.GB6116@duck.suse.cz>
-Content-disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:56404 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752225AbYDRP3Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Apr 2008 11:29:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 16, 2008  11:38 +0200, Jan Kara wrote:
-> On Tue 15-04-08 11:08:52, Mingming Cao wrote:
-> > I guess this reserve locking ordering allows support writepages() for
-> > ext3/4? What other the benefits?
->
->   Yes, that is one advantage. The other one (which I care about the most)
-> is that transaction commit code can take page_lock in the new locking order
-> which is necessary for the new ordered mode rewrite.
+(updated for endian issue)
 
-My understanding is that the main reason for the ordered mode rewrite is
-specifically to allow delalloc to still support ordered mode semantics.
-If the lock ordering is changed, and the jbd ordered mode is changed, but
-we don't support that with delalloc then we will have made a lot of changes
-(and likely introduced some bugs) with little benefit.
+mkswap followed by pvcreate on a block device
+will still turn up as "swap" in blkid, because
+pvcreate isn't particularly careful about zeroing
+old signatures.  (neither is mkswap, for that matter).
 
-My apologies in advance if I misunderstand, and delalloc will be supported
-with these changes.
+Testing for appropriate version and page counts
+gives us a bit more confidence that we have a
+real swap (v1) partition.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ lib/blkid/probe.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 45885c3..4347ae1 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -827,7 +827,7 @@ static int probe_swap0(struct blkid_probe *probe,
+ }
+ 
+ static int probe_swap1(struct blkid_probe *probe,
+-		       struct blkid_magic *id __BLKID_ATTR((unused)),
++		       struct blkid_magic *id,
+ 		       unsigned char *buf __BLKID_ATTR((unused)))
+ {
+ 	struct swap_id_block *sws;
+@@ -843,6 +843,12 @@ static int probe_swap1(struct blkid_probe *probe,
+ 	if (!sws)
+ 		return 1;
+ 
++	/* check for wrong version or zeroed pagecount, for sanity */
++	if (!memcmp(id->bim_magic, "SWAPSPACE2", id->bim_len) &&
++			(blkid_le32(sws->sws_version) != 1 ||
++			 sws->sws_lastpage == 0))
++		return 1;
++
+ 	/* arbitrary sanity check.. is there any garbage down there? */
+ 	if (sws->sws_pad[32] == 0 && sws->sws_pad[33] == 0)  {
+ 		if (sws->sws_volume[0])
+-- 
+1.5.4.1
 
