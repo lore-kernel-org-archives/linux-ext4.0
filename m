@@ -1,63 +1,43 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 0/4] jbd: possible filesystem corruption fixes
-Date: Fri, 18 Apr 2008 12:26:47 -0700
-Message-ID: <1208546807.9475.4.camel@localhost.localdomain>
-References: <48089B86.5020108@hitachi.com>
-	 <20080418140946.GA26062@unused.rdu.redhat.com>
-Reply-To: cmm@us.ibm.com
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: fsck errors with fsstress
+Date: Fri, 18 Apr 2008 15:24:47 -0400
+Message-ID: <20080418192447.GC25797@mit.edu>
+References: <20080415064733.GA8099@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Josef Bacik <jbacik@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761046AbYDRT1A@vger.kernel.org>
-In-Reply-To: <20080418140946.GA26062@unused.rdu.redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:42486 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757082AbYDRT0S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Apr 2008 15:26:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20080415064733.GA8099@skywalker>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-04-18 at 10:09 -0400, Josef Bacik wrote:
-> On Fri, Apr 18, 2008 at 10:00:54PM +0900, Hidehiro Kawai wrote:
-> > Subject: [PATCH 0/4] jbd: possible filesystem corruption fixes
-> > 
-> > The current JBD is not sufficient for I/O error handling.  It can
-> > cause filesystem corruption.   An example scenario:
-> > 
-> > 1. fail to write a metadata buffer to block B in the journal
-> > 2. succeed to write the commit record
-> > 3. the system crashes, reboots and mount the filesystem
-> > 4. in the recovery phase, succeed to read data from block B
-> > 5. write back the read data to the filesystem, but it is a stale
-> >    metadata
-> > 6. lose some files and directories!
-> > 
-> > This scenario is a rare case, but it (temporal I/O error)
-> > can occur.  If we abort the journal between 1. and 2., this
-> > tragedy can be avoided.
-> > 
-> > This patch set fixes several error handling problems to protect
-> > from filesystem corruption caused by I/O errors.  It has been
-> > done only for JBD and ext3 parts.
-> >
+On Tue, Apr 15, 2008 at 12:17:33PM +0530, Aneesh Kumar K.V wrote:
 > 
-
-Could you sent Ext4/JBD2 version patches? Thanks!
-
-> There doesn't seem like much point in taking these patches as Jan is rewriting
-> the ordered mode path and most of these functions will be going away soon.
-> Those patches seem like they will be coming soon and will obsolete these.
+> On x86_64 after fsstress with fallocate is run with 
 > 
+> fsstress -c -n1000 -p1000 -d /mnt/tmp/fsstress -f dwrite=0
+> 
+> e2fsprogs from next branch with HEAD at v1.40.8-163-g60dc00b
+> 
+> /usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda5
+> e2fsck 1.40.8 (13-Mar-2008)
+> Pass 1: Checking inodes, blocks, and sizes
+> Inode 401326 has an invalid extent
+> 	(logical block 76, physical block 2441549, invalid len 711)
+> Clear? no
 
-I hope we have a better ordered mode very soon too. Just thought it's
-still valid to fix the current ordered mode for people who uses
-linux-2.6.25 kernel today. 
+I think this was fixed by Eric's patch:
 
-Mingming
-> Josef 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+    e2fsck: Only check PR_1_EXTENT_ENDS_BEYOND for leaf nodes
+
+I've integrated this and pushed it out into the latest 'pu' branch.
+
+          		     	 	   - Ted
