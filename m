@@ -1,48 +1,84 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH 0/4] jbd: possible filesystem corruption fixes
-Date: Fri, 18 Apr 2008 22:29:57 +0900
-Message-ID: <4808A255.1050008@hitachi.com>
+From: Roel Kluin <12o3l@tiscali.nl>
+Subject: Re: [PATCH v2] mballoc: fix hot spins after err_freebuddy and	err_freemeta
+Date: Fri, 18 Apr 2008 14:13:20 +0200
+Message-ID: <48089060.70603@tiscali.nl>
+References: <4807762A.9090202@tiscali.nl> <20080417175843.GA7517@skywalker> <480796FE.2010707@tiscali.nl> <20080418051414.GA10568@skywalker> <20080418052103.GB10568@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755766AbYDRNa0@vger.kernel.org>
+Cc: alex@clusterfs.com, sct@redhat.com, akpm@linux-foundation.org,
+	adilger@clusterfs.com, linux-ext4@vger.kernel.org,
+	lkml <linux-kernel@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755762AbYDRMNr@vger.kernel.org>
+In-Reply-To: <20080418052103.GB10568@skywalker>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Subject: [PATCH 0/4] jbd: possible filesystem corruption fixes
+Aneesh Kumar K.V wrote:
+> On Fri, Apr 18, 2008 at 10:44:14AM +0530, Aneesh Kumar K.V wrote:
+>> On Thu, Apr 17, 2008 at 08:29:18PM +0200, Roel Kluin wrote:
+>>> Aneesh Kumar K.V wrote:
+>>>
+>>>> The function needs more changes. For ex:
+>>>>
+>>>> 2279     if (meta_group_info[j] == NULL) {
+>>>> 2280               printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
+>>>> 2281               i--;
+>>>> 2282               goto err_freebuddy;
+>>>> 2283     }
+>>>>
+>>>> That decrement  i--; could result in bad value if i == 0;.
 
-The current JBD is not sufficient for I/O error handling.  It can
-cause filesystem corruption.   An example scenario:
+>> Won't this also have a memory corruption ?  Let's say we fail in the first
+>> loop itslef. That's with i = 0, and since we are using kmalloc.
+>> we may find sbi->s_group_info[0] having some random values. So the
+>> kfree can crash. Why not a simple change like below ?
+>>
+> 
+> Updated one.
+> 
 
-1. fail to write a metadata buffer to block B in the journal
-2. succeed to write the commit record
-3. the system crashes, reboots and mount the filesystem
-4. in the recovery phase, succeed to read data from block B
-5. write back the read data to the filesystem, but it is a stale
-   metadata
-6. lose some files and directories!
+Won't this work as well?
+---
+In ext4_mb_init_backend() 'i' is of type ext4_group_t. Since unsigned, i >= 0 is
+always true, so fix hot spins after err_freebuddy: and -meta: and prevent
+decrements when zero.
 
-This scenario is a rare case, but it (temporal I/O error)
-can occur.  If we abort the journal between 1. and 2., this
-tragedy can be avoided.
-
-This patch set fixes several error handling problems to protect
-from filesystem corruption caused by I/O errors.  It has been
-done only for JBD and ext3 parts.
-
-This patch is against 2.6.25
-
-[PATCH 1/4] jbd: strictly check for write errors on data buffers
-[PATCH 2/4] jbd: ordered data integrity fix
-[PATCH 3/4] jbd: abort when failed to log metadata buffers
-[PATCH 4/4] jbd: fix error handling for checkpoint io
-
-Regards,
--- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
+Signed-off-by: Roel Kluin <12o3l@tiscali.nl>
+---
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ef97f19..054cd33 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2572,13 +2572,13 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 		meta_group_info[j] = kzalloc(len, GFP_KERNEL);
+ 		if (meta_group_info[j] == NULL) {
+ 			printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
+-			i--;
+ 			goto err_freebuddy;
+ 		}
+ 		desc = ext4_get_group_desc(sb, i, NULL);
+ 		if (desc == NULL) {
+ 			printk(KERN_ERR
+ 				"EXT4-fs: can't read descriptor %lu\n", i);
++			i++;
+ 			goto err_freebuddy;
+ 		}
+ 		memset(meta_group_info[j], 0, len);
+@@ -2618,13 +2618,11 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	return 0;
+ 
+ err_freebuddy:
+-	while (i >= 0) {
++	while (i-- > 0)
+ 		kfree(ext4_get_group_info(sb, i));
+-		i--;
+-	}
+ 	i = num_meta_group_infos;
+ err_freemeta:
+-	while (--i >= 0)
++	while (i-- > 0)
+ 		kfree(sbi->s_group_info[i]);
+ 	iput(sbi->s_buddy_cache);
+ err_freesgi:
