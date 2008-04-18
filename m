@@ -1,97 +1,58 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: What's in e2fsprogs.git (stable)
-Date: Fri, 18 Apr 2008 14:39:35 -0400
-Message-ID: <20080418183935.GA25797@mit.edu>
-References: <E1IooC9-0006TJ-Q6@closure.thunk.org> <20071217171135.GB7070@thunk.org> <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <20080313180503.GC31653@mit.edu> <20080320202243.GO13719@mit.edu> <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu>
+Subject: Re: What's cooking in e2fsprogs.git (topics)
+Date: Fri, 18 Apr 2008 14:43:29 -0400
+Message-ID: <20080418184329.GB25797@mit.edu>
+References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <20080229154333.GC8968@mit.edu> <20080402000956.GC302@mit.edu> <20080407171230.GE11997@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:32816 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:65439 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757403AbYDRTDX (ORCPT
+	by vger.kernel.org with ESMTP id S1757043AbYDRTC6 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Apr 2008 15:03:23 -0400
+	Fri, 18 Apr 2008 15:02:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20080407165505.GD11997@mit.edu>
+In-Reply-To: <20080407171230.GE11997@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* The 'maint' branch has these fixes since the last announcement.
+Here are the topics that have been cooking.  Commits prefixed
+with '-' are only in 'pu' while commits prefixed with '+' are
+in 'next'.  The topics list the commits in reverse chronological
+order.
 
-Benno Schulenberg (1):
-  po: update nl.po (from translationproject.org)
+* tt/huge_file (Wed Apr 9 11:39:11 2008 -0400) 1 commit
+ + Add support for the HUGE_FILE feature
+* ak/undo-mgr (Sun Apr 6 18:08:12 2008 -0400) 7 commits
+ - Allow user to disable Undo manager through MKE2FS_SCRATCH_DIR
+ - e2fsprogs: Add test case for undoe2fs
+ - e2fsprogs: Fix the resize inode test case
+ - e2fsprogs: Support for large inode migration.
+ - e2fsprogs: Make mke2fs use undo I/O manager.
+ - e2fsprogs: Add undoe2fs
+ - e2fsprogs: Add undo I/O manager
+* js/flex-bg (Mon Mar 31 22:13:11 2008 -0500) 1 commit
+ - mke2fs: New bitmap and inode table allocation for FLEX_BG
+* tt/64bit-bitmaps (Mon Feb 18 23:54:53 2008 -0500) 1 commit
+ - Initial design for 64-bit bitmaps
 
-Clytie Siddall (1):
-  po: update vi.po (from translationproject.org)
+In addition, the folllowing changes were dropped into the 'next' branch:
 
-G=F6ran Uddeborg (1):
-  po: update sv.po (from translationproject.org)
-
-Jakub Bogusz (1):
-  po: update pl.po (from translationproject.org)
-
-Matthias Koenig (1):
-  e2fsck: avoid double free of ctx->filesystem_name
-
-Petr Pisar (1):
-  po: update cs.po (from translationproject.org)
-
-Philipp Thomas (1):
-  po: update de.po (from translationproject.org)
-
-Samuel Thibault (2):
-  po: update fr.po (from translationproject.org)
-  po: update fr.po (from translationproject.org)
+Eric Sandeen (5):
+      print a bit more info for the tst_extents info command
+      Fix ext2fs_extent_insert when at last extent in node
+      Make extent_goto() deterministic when logical block not found
+      e2fsck: Only check PR_1_EXTENT_ENDS_BEYOND for leaf nodes
+      blkid: more sanity checks for swap v1
 
 Theodore Ts'o (4):
-  Remove bashism from configure script
-  libext2fs: Fix resize inode creation with non-standard
-      s_first_data_block
-  Fix m_no_opt regression test
-  Fix non-POSIX ">&" in the Makefile for lib/ss's "make check" rule
-
-
-* The 'master' branch has these since the last announcement
-  in addition to the above.
-
-Andreas Dilger (8):
-  debugfs: Add support for "set_block_group <bg_num> checksum calc"
-  ext2fs_set_gdt_csum(): Clean up superblock dirty flag handling
-  ext2fs_set_gdt_csum(): Force the last block group to have a valid
-      block bitmap
-  ext2fs_set_gdt_csum(): Return an error code on errors instead of
-      void
-  libext2fs: Micro-optimization in inode scan code
-  Split the m_lazy test case into two cases: m_lazy and m_lazy_resize
-  e2fsck: Add check to enforce a valid block bitmap in last block
-      group
-  Add new regression test: f_uninit_last_uninit
-
-Eric Sandeen (2):
-  e2fsck: Fix extent flag validity tests in pass1 on big endian
-      boxes.
-  Fix a couple of implicit function declarations
-
-Theodore Ts'o (6):
-  Fix trailing whitespace in e2fsck/problem.[ch]
-  dumpe2fs: Print the group checksum and the block options in a nicer
-      way
-  libext2fs: Make all test programs link only against the static
-      library
-  Add dependency rule so that static library when necessary for "make
-      check"
-  libext2fs: Fix big-endian bug in tst_csum.c
-  New mke2fs filesystem and usage types support
+      Fix tst_extents build when building w/o dynamic libraries
+      Rename the feature uninit_groups to uninit_bg
+      Change the primary name of the extents feature to be 'extent'
+      mke2fs: Disentangle lazy_bg from uninit_bg's lazy inode table initialization
 
 ----
 URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+        git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+        http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
