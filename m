@@ -1,43 +1,74 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: fsck errors with fsstress
-Date: Fri, 18 Apr 2008 15:24:47 -0400
-Message-ID: <20080418192447.GC25797@mit.edu>
-References: <20080415064733.GA8099@skywalker>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] libext2fs: swap in extent header macros
+Date: Fri, 18 Apr 2008 14:20:59 -0500
+Message-ID: <4808F49B.5020009@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:42486 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757082AbYDRT0S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Apr 2008 15:26:18 -0400
-Content-Disposition: inline
-In-Reply-To: <20080415064733.GA8099@skywalker>
+Received: from mx1.redhat.com ([66.187.233.31]:43609 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756547AbYDRTVA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Apr 2008 15:21:00 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m3IJKxLm008680
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2008 15:20:59 -0400
+Received: from file.rdu.redhat.com (file.rdu.redhat.com [10.11.255.147])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m3IJKxES010735
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2008 15:20:59 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by file.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id m3IJKxbC008368
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Apr 2008 15:20:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 15, 2008 at 12:17:33PM +0530, Aneesh Kumar K.V wrote:
-> 
-> On x86_64 after fsstress with fallocate is run with 
-> 
-> fsstress -c -n1000 -p1000 -d /mnt/tmp/fsstress -f dwrite=0
-> 
-> e2fsprogs from next branch with HEAD at v1.40.8-163-g60dc00b
-> 
-> /usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda5
-> e2fsck 1.40.8 (13-Mar-2008)
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 401326 has an invalid extent
-> 	(logical block 76, physical block 2441549, invalid len 711)
-> Clear? no
+Resend... with some I missed last time.
 
-I think this was fixed by Eric's patch:
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-    e2fsck: Only check PR_1_EXTENT_ENDS_BEYOND for leaf nodes
+diff --git a/lib/ext2fs/ext3_extents.h b/lib/ext2fs/ext3_extents.h
+index ba980e4..f7c3832 100644
+--- a/lib/ext2fs/ext3_extents.h
++++ b/lib/ext2fs/ext3_extents.h
+@@ -154,24 +154,31 @@ struct ext3_ext_path {
+ 	((struct ext3_extent_idx *) (((char *) (__hdr__)) +	\
+ 				     sizeof(struct ext3_extent_header)))
+ #define EXT_HAS_FREE_INDEX(__path__) \
+-	((__path__)->p_hdr->eh_entries < (__path__)->p_hdr->eh_max)
++	(ext2fs_le16_to_cpu((__path__)->p_hdr->eh_entries) <  \
++		ext2fs_le16_to_cpu((__path__)->p_hdr->eh_max))
+ #define EXT_LAST_EXTENT(__hdr__) \
+-	(EXT_FIRST_EXTENT((__hdr__)) + (__hdr__)->eh_entries - 1)
++	(EXT_FIRST_EXTENT((__hdr__)) + \
++		ext2fs_le16_to_cpu((__hdr__)->eh_entries) - 1)
+ #define EXT_LAST_INDEX(__hdr__) \
+-	(EXT_FIRST_INDEX((__hdr__)) + (__hdr__)->eh_entries - 1)
++	(EXT_FIRST_INDEX((__hdr__)) + \
++		ext2fs_le16_to_cpu((__hdr__)->eh_entries) - 1)
+ #define EXT_MAX_EXTENT(__hdr__) \
+-	(EXT_FIRST_EXTENT((__hdr__)) + (__hdr__)->eh_max - 1)
++	(EXT_FIRST_EXTENT((__hdr__)) + \
++		ext2fs_le16_to_cpu((__hdr__)->eh_max) - 1)
+ #define EXT_MAX_INDEX(__hdr__) \
+-	(EXT_FIRST_INDEX((__hdr__)) + (__hdr__)->eh_max - 1)
++	(EXT_FIRST_INDEX((__hdr__)) + \
++		ext2fs_le16_to_cpu((__hdr__)->eh_max) - 1)
+ 
+ #define EXT_ROOT_HDR(tree) \
+ 	((struct ext3_extent_header *) (tree)->root)
+ #define EXT_BLOCK_HDR(bh) \
+ 	((struct ext3_extent_header *) (bh)->b_data)
+ #define EXT_DEPTH(_t_)	\
+-	(((struct ext3_extent_header *)((_t_)->root))->eh_depth)
++	(ext2fs_le16_to_cpu(	\
++		((struct ext3_extent_header *)((_t_)->root))->eh_depth))
+ #define EXT_GENERATION(_t_)	\
+-	(((struct ext3_extent_header *)((_t_)->root))->eh_generation)
++	(ext2fs_le32_to_cpu(	\
++		((struct ext3_extent_header *)((_t_)->root))->eh_generation))
+ 
+ 
+ #define EXT_ASSERT(__x__) if (!(__x__)) BUG();
 
-I've integrated this and pushed it out into the latest 'pu' branch.
-
-          		     	 	   - Ted
