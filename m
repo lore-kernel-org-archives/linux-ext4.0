@@ -1,187 +1,71 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: script to find incorrect tests on unsigneds
-Date: Sat, 19 Apr 2008 08:49:52 -0600
-Message-ID: <20080419144952.GM20637@parisc-linux.org>
-References: <4808C90A.5040600@tiscali.nl> <Pine.LNX.4.64.0804182101200.14832@ask.diku.dk>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
+	checker)
+Date: Sat, 19 Apr 2008 14:56:03 -0400
+Message-ID: <20080419185603.GA30449@mit.edu>
+References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Roel Kluin <12o3l@tiscali.nl>, kernel-janitors@vger.kernel.org,
-	kernelnewbies-bounce@nl.linux.org
-To: Julia Lawall <julia@diku.dk>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Rik van Riel <riel@surriel.com>
+To: Alexey Zaytsev <alexey.zaytsev@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:39842 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753825AbYDSOtx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2008 10:49:53 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:53633 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752129AbYDSS5E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2008 14:57:04 -0400
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0804182101200.14832@ask.diku.dk>
+In-Reply-To: <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 18, 2008 at 09:08:55PM +0200, Julia Lawall wrote:
-> I found 63 occurrences of this problem with the following semantic match
-> (http://www.emn.fr/x-info/coccinelle/):
-> 
-> @@ unsigned int i; @@
-> 
-> * i < 0
-> 
-> I looked through all of the results by hand, and they all seem to be 
-> problems.  In many cases, it seems like the variable should not be 
-> unsigned as it is used to hold the return value of a function that might 
-> return a negative error code, but I haven't looked into this in detail.
-> 
-> In the output below, the lines that begin with a single start contain a 
-> test of whether an unsigned variable or structure field is less than 0.
-> The output is actually generated with diff, but I converted the -s to *s 
-> to avoid confusion.
+On Sat, Apr 19, 2008 at 01:44:51PM +0400, Alexey Zaytsev wrote:
+> If it is a block containing a metadata object fsck has already read,
+> than we already know what kind of object it is (there must be a way
+> to quickly find all cached objects derived from a given block), and
+> can update the cached version. And if fsck has not yet read the
+> block, it can just be ignored, no matter what kind of data it
+> contains. If it contains metadata and fsck is intrested in it, it
+> will read it sooner or later anyway. If it contains file data, why
+> should fsck even care?
 
-> diff -u -p a/fs/ext3/inode.c b/fs/ext3/inode.c
-> *** a/fs/ext3/inode.c 2008-03-12 14:13:14.000000000 +0100
-> @@ -1263,7 +1263,7 @@ static int ext3_ordered_write_end(struct
->  			EXT3_I(inode)->i_disksize = new_i_size;
->  		copied = ext3_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
-> *		if (copied < 0)
->  			ret = copied;
->  	}
->  	ret2 = ext3_journal_stop(handle);
-> @@ -1291,7 +1291,7 @@ static int ext3_writeback_write_end(stru
->  
->  	copied = ext3_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
-> *	if (copied < 0)
->  		ret = copied;
->  
->  	ret2 = ext3_journal_stop(handle);
-> diff -u -p a/fs/ext4/inode.c b/fs/ext4/inode.c
-> *** a/fs/ext4/inode.c 2008-03-12 14:13:14.000000000 +0100
-> @@ -1303,7 +1303,7 @@ static int ext4_ordered_write_end(struct
->  			EXT4_I(inode)->i_disksize = new_i_size;
->  		copied = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
-> *		if (copied < 0)
->  			ret = copied;
->  	}
->  	ret2 = ext4_journal_stop(handle);
-> @@ -1331,7 +1331,7 @@ static int ext4_writeback_write_end(stru
->  
->  	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
-> *	if (copied < 0)
->  		ret = copied;
->  
->  	ret2 = ext4_journal_stop(handle);
+The problem is that e2fsck makes calculations on the filesystem data
+read out from the disk and stores that in a highly compressed format.
+So it doesn't remember that block #12345 was an indirect block for
+inode #123, and that it contained data block numbers 17, 42, and 45.
+Instead it just marks blocks #12345, #17, #42, and #45 as in use, and
+then moves on.
 
-Fix comparisons of an unsigned int against 0
+If you are going to store all of the cached objects then you will need
+to effectively store *all* of the filesystem metatdata in memory at
+the same time.  For a large filesystem, you won't have enough *room*
+in memory store all of the cached objects.  That's one of the reasons
+why e2fsck has a lot of very clever design so that summary information
+can be stored in a very compressed form in memory so that things can
+be fast (by avoid re-reading objects from disk) as well as not
+requiring vast amounts of memory.
 
-It's not really feasible to change 'copied' into a signed int, and while
-we could cast it for the purposes of this comparison, I think this
-rearrangement of the tests is actually clearer than the original.
+Even if you *do* store all of the cached objects, it still takes time
+to examine all of the objects and in the mean time, more changes will
+have come rolling in, and you will either need to add a huge amount of
+dependency to figure out what internal data structures need to be
+updated based on the changes in some of the cached objects --- or you
+will end up restarting the e2fsck checking process from scratch.
 
-Reported-by: Julia Lawall <julia@diku.dk>
-Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
+In either case, there is still the issue of knowing exactly whether a
+particular read happened before or after some change in the
+filesystem.  This race condition is a really hard one to deal with,
+especially on a multiple CPU system and the filesystem checker is
+running in userspace.
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index eb95670..60f504b 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1261,18 +1261,16 @@ static int ext3_ordered_write_end(struct file *file,
- 		new_i_size = pos + copied;
- 		if (new_i_size > EXT3_I(inode)->i_disksize)
- 			EXT3_I(inode)->i_disksize = new_i_size;
--		copied = ext3_generic_write_end(file, mapping, pos, len, copied,
-+		ret = ext3_generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
--		if (copied < 0)
--			ret = copied;
- 	}
- 	ret2 = ext3_journal_stop(handle);
--	if (!ret)
-+	if (ret >= 0 && ret2)
- 		ret = ret2;
- 	unlock_page(page);
- 	page_cache_release(page);
- 
--	return ret ? ret : copied;
-+	return ret;
- }
- 
- static int ext3_writeback_write_end(struct file *file,
-@@ -1289,18 +1287,15 @@ static int ext3_writeback_write_end(struct file *file,
- 	if (new_i_size > EXT3_I(inode)->i_disksize)
- 		EXT3_I(inode)->i_disksize = new_i_size;
- 
--	copied = ext3_generic_write_end(file, mapping, pos, len, copied,
-+	ret = ext3_generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
--	if (copied < 0)
--		ret = copied;
--
- 	ret2 = ext3_journal_stop(handle);
--	if (!ret)
-+	if (ret >= 0 && ret2)
- 		ret = ret2;
- 	unlock_page(page);
- 	page_cache_release(page);
- 
--	return ret ? ret : copied;
-+	return ret;
- }
- 
- static int ext3_journalled_write_end(struct file *file,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 945cbf6..69b29c6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1301,18 +1301,16 @@ static int ext4_ordered_write_end(struct file *file,
- 		new_i_size = pos + copied;
- 		if (new_i_size > EXT4_I(inode)->i_disksize)
- 			EXT4_I(inode)->i_disksize = new_i_size;
--		copied = ext4_generic_write_end(file, mapping, pos, len, copied,
-+		ret = ext4_generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
--		if (copied < 0)
--			ret = copied;
- 	}
- 	ret2 = ext4_journal_stop(handle);
--	if (!ret)
-+	if (ret >= 0 && ret2)
- 		ret = ret2;
- 	unlock_page(page);
- 	page_cache_release(page);
- 
--	return ret ? ret : copied;
-+	return ret;
- }
- 
- static int ext4_writeback_write_end(struct file *file,
-@@ -1329,18 +1327,16 @@ static int ext4_writeback_write_end(struct file *file,
- 	if (new_i_size > EXT4_I(inode)->i_disksize)
- 		EXT4_I(inode)->i_disksize = new_i_size;
- 
--	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
-+	ret = ext4_generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
--	if (copied < 0)
--		ret = copied;
- 
- 	ret2 = ext4_journal_stop(handle);
--	if (!ret)
-+	if (ret >= 0 && ret2)
- 		ret = ret2;
- 	unlock_page(page);
- 	page_cache_release(page);
- 
--	return ret ? ret : copied;
-+	return ret;
- }
- 
- static int ext4_journalled_write_end(struct file *file,
+> But you are probably right, this project may be not doable in just three
+> months. The changes on the kernel side probably are, but there is a
+> huge e2fsck work.
 
--- 
-Intel are signing my paycheques ... these opinions are still mine
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+Yes, that is the concern.  And without implementing the user-space
+side, you'll never besure whether you completely got the kernel side
+changes right!
+
+Regards,
+
+						- Ted
