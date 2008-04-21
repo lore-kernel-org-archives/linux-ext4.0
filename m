@@ -1,78 +1,165 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC][PATCH] fiemap support for ext3
-Date: Mon, 21 Apr 2008 17:16:24 -0500
-Message-ID: <480D1238.8080000@redhat.com>
-References: <20080418210913.GB13973@unused.rdu.redhat.com> <20080421220851.GP2775@webber.adilger.int>
+From: Jiri Slaby <jirislaby@gmail.com>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Tue, 22 Apr 2008 00:26:04 +0200
+Message-ID: <480D147C.90602@gmail.com>
+References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org>	<200804211812.16994.rjw@sisk.pl>	<alpine.LFD.1.10.0804210934190.2779@woody.linux-foundation.org> <20080421.133940.52972455.davem@davemloft.net> <480D04A2.5000006@gmail.com> <480D0E14.1040306@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Josef Bacik <jbacik@redhat.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: torvalds@linux-foundation.org, rjw@sisk.pl,
+	linux-kernel@vger.kernel.org, mingo@elte.hu,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	herbert@gondor.apana.org.au, paulmck@us.ibm.com,
+	Zdenek Kabelac <zdenek.kabelac@gmail.com>
+To: David Miller <davem@davemloft.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39462 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753584AbYDUWQ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 18:16:27 -0400
-In-Reply-To: <20080421220851.GP2775@webber.adilger.int>
+Received: from fk-out-0910.google.com ([209.85.128.189]:53297 "EHLO
+	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752793AbYDUW0S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Apr 2008 18:26:18 -0400
+Received: by fk-out-0910.google.com with SMTP id 19so2725630fkr.5
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Apr 2008 15:26:16 -0700 (PDT)
+In-Reply-To: <480D0E14.1040306@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Apr 18, 2008  17:09 -0400, Josef Bacik wrote:
->> Here is my patch for fiemap support on ext3.  The main reason for doing this is
->> because it will make it easier for application developers who are wanting to
->> take advantage of fiemap on extent based fs's to be able to use the same
->> interface for ext3 as well without having to fallback onto something like
->> fibmap.  Fibmap also means you are calling ext3_get_block for _every_ block in
->> the file, which is ineffecient when ext3_get_blocks can map multiple contiguous
->> blocks all at once, reducing the number of times you have to call
->> ext3_get_blocks.  Tested this with sandeens fiemap test program and verified it
->> with filefrag.  Thanks much,
+On 04/21/2008 11:58 PM, Jiri Slaby wrote:
+> Leaving untouched.
+> 
+> On 04/21/2008 11:18 PM, Jiri Slaby wrote:
+>> On 04/21/2008 10:39 PM, David Miller wrote:
+>>> From: Linus Torvalds <torvalds@linux-foundation.org>
+>>> Date: Mon, 21 Apr 2008 09:54:07 -0700 (PDT)
+>>>
+>>>> What I find interesting is that at least for me, I have the SLAB 
+>>>> bucket size for nf_conntrack_expect being 208 bytes. And the 
+>>>> *biggest* merge by far after 2.6.25 so far has been networking (and 
+>>>> conntrack in particular)
+>>>>
+>>>> Is that a smoking gun? Not necessarily. But it *is* intriguing. But 
+>>>> there are other possible clashes (the 192-byte bucket has several 
+>>>> different suspects, and not all of them are in networking).1
+>>>
+>>> I think you might be onto something here.
+>>>
+>>> The "mask" member of struct nf_conntrack_expect could be reasonably
+>>> all 1's like the value reported in the crash that begins this
+>>> thread.
+>>>
+>>> Do we know the offset within the object at which this all 1's
+>>> value is found?
+>>>
+>>> My rough calculations show that on 32-bit that expect->mask member is
+>>> at offset 56 and on 64-bit it should be at offset 72.  Does that
+>>> match up to the offset of the filp or whatever bit being corrupted?
 >>
->> Signed-off-by: Josef Bacik <jbacik@redhat.com>
+>> dentry.d_name.name is 56 on 64-bit (my memcmp crashes)
+>> dentry.d_hash.next is 24 (crashed at least 3 times here, rafael's one)
+>> dentry.d_op is 136 (crash below)
 > 
-> Josef, thanks for doing this work.  Having more than a single filesystem
-> implement FIEMAP (especially a block-mapped one) is very useful.  
-
-I have an xfs patch too if anyone wants it ;)
-
-So hopefully we can roll out at least 3 fs's when it goes upstream.
-
-> Did you
-> look at all at making a "generic_fiemap()" function?  It seems very little
-> of ext3_fiemap() is ext3 specific, only the call to ext3_force_commit()
-> (which could just be a sync on the inode), ext3_block_map() (generic for
-> all block-based filesystems), and truncate_mutex (would i_sem be enough?).
-
-Yep, I agree, it'd be good if ! ->fiemap then go the generic route.
-
-Although my only question/worry is do all filesystems behave sanely in
-the face of large b_size for getblocks?  All that can handle direct IO
-do anyway.
-
->> +int ext3_fiemap(struct inode *inode, unsigned long arg)
->> +{
->> +	/*
->> +	 * if fm_start is in the middle of the current block, get the next
->> +	 * block so we don't end up returning a start thats before the given
->> +	 * fm_start
->> +	 */
->> +	start_blk = (fiemap_s->fm_start + (1 << inode->i_blkbits) - 1) >>
->> +		inode->i_blkbits;
+> file.f_mapping is 176 (the another one from -rc8-mm2)
 > 
-> Hmm, I'd think that if someone is requesting the mapping for bytes [50-5000]
-> they wouldn't be very happy with the mapping returned being [4096-8191],
-> because it is missing part of the requested range.  Instead, the fm_start
-> should be rounded down to the start of the first block and up to the end
-> of the last block to return [0-8191] (fm_start = 0, fm_length = 8192).
+> the one at:
+> http://www.opensubscriber.com/message/linux-kernel@vger.kernel.org/9008289.html 
+> 
+> 
+> Having slub_debug enabled, tomorrow will be results, I guess...
 
-In fact that should be part of the interface definition, right.  Should
-the returned mapping start at the beginning of the block that contains
-the requsted offset, or at the requested offset itself?  I'd vote for
-the former.
+Sorry, one more entry:
 
-At some point I should probably write some QA for this thing to test
-various file layouts and make sure we get the "right" answers on all
-filesystems...
+00000000000000f0 dentry.d_op (Zdenek, offset ? around 136)
+00f0000000000000 dentry.d_hash.next (me, offset 24)
+ffff81f02003f16c dentry.d_name.name (me, offset 56)
+         memory ORed by 000000f000000000
+fffff0002004c1b0 file.f_mapping (me, offset 176)
+         memory hole, it was something like
+         (ffff81002004c1b0 & ~00000f0000000000) | 0000f00000000000?
+ffffffffffffffff dentry.d_hash.next (Rafael, offset ? around 24)
+         -1, ~0ULL
 
--Eric
+What are these nibble plays?
+
+>> It's spreading :/.
+>>
+>> ---------- Forwarded message ----------
+>> From: Zdenek Kabelac <zdenek.kabelac@gmail.com>
+>> Date: 21.4.2008 11:14
+>> Subject: BUG: unable to handle kernel NULL pointer at d_free+0x18/0x80
+>> To: Kernel development list <linux-kernel@vger.kernel.org>
+>>
+>>
+>> Hello
+>>
+>>  This oops appeared in my log - unsure how it is related to my DVB-T
+>>  tuner test before.
+>>  But I've also seen another weird resume with some similar crash.
+>>
+>>  Happens with 2.6.25 - commit 48a86f548fb74928f9a466f52527e83fecdb4575
+>>  (T61, 2GB)
+>>
+>>
+>>  BUG: unable to handle kernel NULL pointer dereference at 
+>> 0000000000000110
+>>  IP: [d_free+24/128] d_free+0x18/0x80
+>>  PGD 0
+>>  Oops: 0000 [1] PREEMPT SMP
+>>  CPU 0
+>>  Modules linked in: usb_storage dvb_usb_af9015 dvb_usb_dibusb_common
+>>  dib3000mc dibx000_common dvb_usb dvb_core tun nls_iso8859_2 nls_cp852
+>>  vfat fat i915 drm ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4
+>>  xt_state nf_conntrack ipt_REJECT xt_tcpudp iptable_filter ip_tables
+>>  x_tables bridge llc nfsd lockd nfs_acl auth_rpcgss exportfs autofs4
+>>  sunrpc binfmt_misc dm_mirror dm_log dm_multipath dm_mod uinput
+>>  kvm_intel kvm snd_hda_intel arc4 ecb snd_seq_oss crypto_blkcipher
+>>  snd_seq_midi_event snd_seq cryptomgr snd_seq_device snd_pcm_oss
+>>  crypto_algapi iwl3945 mac80211 e1000e psmouse snd_mixer_oss rtc_cmos
+>>  evdev rtc_core thinkpad_acpi video snd_pcm mmc_block sdhci mmc_core
+>>  snd_timer iTCO_wdt iTCO_vendor_support battery backlight nvram rtc_lib
+>>  i2c_i801 i2c_core ac snd soundcore snd_page_alloc intel_agp output
+>>  serio_raw cfg80211 button uhci_hcd ohci_hcd ehci_hcd usbcore [last
+>>  unloaded: dvb_core]
+>>  Pid: 210, comm: kswapd0 Not tainted 2.6.25 #56
+>>  RIP: 0010:[d_free+24/128]  [d_free+24/128] d_free+0x18/0x80
+>>  RSP: 0018:ffff81007ced9cf0  EFLAGS: 00010206
+>>  RAX: 00000000000000f0 RBX: ffff8100202723d8 RCX: 0000000000000132
+>>  RDX: 0000000000005e5d RSI: ffff81007ced4048 RDI: ffff8100202723d8
+>>  RBP: ffff81007ced9d00 R08: 0000000000000002 R09: d37a6f4de9bd37a7
+>>  R10: 0000000000000000 R11: 0000000000000000 R12: ffff8100202723d8
+>>  R13: ffff81007c9329d8 R14: ffff8100202723e0 R15: 0000000000000029
+>>  FS:  0000000000000000(0000) GS:ffffffff81486000(0000) 
+>> knlGS:0000000000000000
+>>  CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+>>  CR2: 0000000000000110 CR3: 0000000001001000 CR4: 00000000000026e0
+>>  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>  Process kswapd0 (pid: 210, threadinfo ffff81007ced8000, task 
+>> ffff81007ced4000)
+>>  Stack:  ffff8100202723d8 ffff81007b7e73d8 ffff81007ced9d20 
+>> ffffffff810cb3eb
+>>   ffff8100202723d8 0000000000000000 ffff81007ced9d40 ffffffff810cb4d5
+>>   ffff8100202723d8 ffff8100202723d8 ffff81007ced9d80 ffffffff810cb642
+>>  Call Trace:
+>>   [d_kill+59/96] d_kill+0x3b/0x60
+>>   [prune_one_dentry+197/240] prune_one_dentry+0xc5/0xf0
+>>   [prune_dcache+322/512] prune_dcache+0x142/0x200
+>>   [shrink_dcache_memory+65/80] shrink_dcache_memory+0x41/0x50
+>>   [shrink_slab+274/480] shrink_slab+0x112/0x1e0
+>>   [kswapd+1232/1552] kswapd+0x4d0/0x610
+>>   [isolate_pages_global+0/64] ? isolate_pages_global+0x0/0x40
+>>   [autoremove_wake_function+0/64] ? autoremove_wake_function+0x0/0x40
+>>   [_spin_unlock_irqrestore+69/144] ? _spin_unlock_irqrestore+0x45/0x90
+>>   [kswapd+0/1552] ? kswapd+0x0/0x610
+>>   [kthread+73/144] kthread+0x49/0x90
+>>   [child_rip+10/18] child_rip+0xa/0x12
+>>   [restore_args+0/48] ? restore_args+0x0/0x30
+>>   [kthread+0/144] ? kthread+0x0/0x90
+>>   [child_rip+0/18] ? child_rip+0x0/0x12
+>>
+>>
+>>  Code: 95 49 81 e8 ab ff 21 00 5b 41 5c c9 c3 66 0f 1f 44 00 00 55 48
+>>  89 e5 53 48 89 fb 48 83 ec 08 48 8b 87 b8 00 00 00 48 85 c0 74 0b <48>
+>>  8b 40 20 48 85 c0 74 02 ff d0 48 83 7b 50 00 74 1e 48 8d bb
+>>  RIP  [d_free+24/128] d_free+0x18/0x80
+>>   RSP <ffff81007ced9cf0>
+>>  CR2: 0000000000000110
+>>  ---[ end trace ca143223eefdc828 ]---
