@@ -1,63 +1,135 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem checker)
-Date: Mon, 21 Apr 2008 12:51:58 +0100
-Message-ID: <20080421115158.GB4193@shareable.org>
-References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com> <20080419220432.GB30449@mit.edu> <87iqyc85q7.fsf@basil.nowhere.org> <20080420234241.GB23292@shareable.org> <20080421080111.GD14446@one.firstfloor.org>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
+	ffffffffffffffff
+Date: Mon, 21 Apr 2008 15:00:22 +0200
+Message-ID: <20080421130022.GH9554@elte.hu>
+References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com> <20080421045911.GA1812@linux.vnet.ibm.com> <20080421054729.GA19864@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Alexey Zaytsev <alexey.zaytsev@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Rik van Riel <riel@surriel.com>
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Herbert Xu <herbert@gondor.apana.org.au>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758637AbYDUNBM@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080421080111.GD14446@one.firstfloor.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20080421054729.GA19864@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andi Kleen wrote:
-> On Mon, Apr 21, 2008 at 12:42:42AM +0100, Jamie Lokier wrote:
-> > Andi Kleen wrote:
-> > > [LVM] always disables barriers if you don't apply a so far unmerged
-> > > patch that enables them in some special circumstances (only single
-> > > backing device)
-> > 
-> > (I continue to be surprised at the un-safety of Linux fsync)
+
+* Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
+
+> On Sun, Apr 20, 2008 at 09:59:11PM -0700, Paul E. McKenney wrote:
+> > And here is an update with one bug fixed -- testing continues.
+> > This is an update of http://lkml.org/lkml/2008/4/20/217, deleting
+> > list_for_each_safe_rcu() and fixing hlist_for_each_entry_rcu().
+> > Testing continues...
 > 
-> Note barrier less does not necessarily always mean unsafe fsync,
-> it just often means that.
-> 
-> Also surprisingly lot more syncs or write cache off tend to lower the MTBF 
-> of your disk significantly, so "unsafer" fsync might actually be more safe
-> for your unbackuped data.
+> And it passes.
 
-That's really interesting, thanks.  Do you have something to cite
-about syncs reducing the MTBF?
+i have queued up your patch in its form below. (but Linus might beat me 
+at applying it)
 
-( I'm really glad I added barriers instead of write cache off to my
-2.4.26 based disk using devices now ;-) )
+	Ingo
 
-> > > Not having barriers sometimes makes your workloads faster (and less
-> > > safe) and in other cases slower.
-> > 
-> > I'm curious, how does it make them slower?  Merely not issuing barrier
-> > calls seems like it will always be the same speed or faster.
-> 
-> Some setups detect the no barrier case and switch to full sync +
-> wait (or write cache off) which depending on the disk supporting NCQ
-> can be slower.
+-------------------->
+Subject: RCU, list.h: fix list iterators
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Date: Sun, 20 Apr 2008 21:59:13 -0700
 
-But to issue full syncs, that's implemented as barrier calls in the
-block request layers isn't it?  The filesystem isn't given a facility
-to request the block device do full syncs or disable the write cache.
+RCU list iterators: should prefetch ever be optimised out with no
+side-effects, the current version will lose the barrier completely.
 
-So when a blockdev doesn't offer barriers to the filesystem, it means
-the driver doesn't support full syncs or cache disabling either, since
-if it did, the request layer would expose them to the fs as barriers.
-
-What am I missing from this picture?  Do you mean that manual setup
-(such as by a DBA) tends to disable the write cache?
-
-Thanks,
--- Jamie
+Pointed-out-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+---
+ include/linux/list.h |   48 +++++++++++++++---------------------------------
+ 1 file changed, 15 insertions(+), 33 deletions(-)
+ 
+Index: linux/include/linux/list.h
+===================================================================
+--- linux.orig/include/linux/list.h
++++ linux/include/linux/list.h
+@@ -631,31 +631,14 @@ static inline void list_splice_init_rcu(
+  * as long as the traversal is guarded by rcu_read_lock().
+  */
+ #define list_for_each_rcu(pos, head) \
+-	for (pos = (head)->next; \
+-		prefetch(rcu_dereference(pos)->next), pos != (head); \
+-        	pos = pos->next)
++	for (pos = rcu_dereference((head)->next); \
++		prefetch(pos->next), pos != (head); \
++        	pos = rcu_dereference(pos->next))
+ 
+ #define __list_for_each_rcu(pos, head) \
+-	for (pos = (head)->next; \
+-		rcu_dereference(pos) != (head); \
+-        	pos = pos->next)
+-
+-/**
+- * list_for_each_safe_rcu
+- * @pos:	the &struct list_head to use as a loop cursor.
+- * @n:		another &struct list_head to use as temporary storage
+- * @head:	the head for your list.
+- *
+- * Iterate over an rcu-protected list, safe against removal of list entry.
+- *
+- * This list-traversal primitive may safely run concurrently with
+- * the _rcu list-mutation primitives such as list_add_rcu()
+- * as long as the traversal is guarded by rcu_read_lock().
+- */
+-#define list_for_each_safe_rcu(pos, n, head) \
+-	for (pos = (head)->next; \
+-		n = rcu_dereference(pos)->next, pos != (head); \
+-		pos = n)
++	for (pos = rcu_dereference((head)->next); \
++		pos != (head); \
++        	pos = rcu_dereference(pos->next))
+ 
+ /**
+  * list_for_each_entry_rcu	-	iterate over rcu list of given type
+@@ -668,10 +651,9 @@ static inline void list_splice_init_rcu(
+  * as long as the traversal is guarded by rcu_read_lock().
+  */
+ #define list_for_each_entry_rcu(pos, head, member) \
+-	for (pos = list_entry((head)->next, typeof(*pos), member); \
+-		prefetch(rcu_dereference(pos)->member.next), \
+-			&pos->member != (head); \
+-		pos = list_entry(pos->member.next, typeof(*pos), member))
++	for (pos = list_entry(rcu_dereference((head)->next), typeof(*pos), member); \
++		prefetch(pos->member.next), &pos->member != (head); \
++		pos = list_entry(rcu_dereference(pos->member.next), typeof(*pos), member))
+ 
+ 
+ /**
+@@ -686,9 +668,9 @@ static inline void list_splice_init_rcu(
+  * as long as the traversal is guarded by rcu_read_lock().
+  */
+ #define list_for_each_continue_rcu(pos, head) \
+-	for ((pos) = (pos)->next; \
+-		prefetch(rcu_dereference((pos))->next), (pos) != (head); \
+-        	(pos) = (pos)->next)
++	for ((pos) = rcu_dereference((pos)->next); \
++		prefetch((pos)->next), (pos) != (head); \
++        	(pos) = rcu_dereference((pos)->next))
+ 
+ /*
+  * Double linked lists with a single pointer list head.
+@@ -986,10 +968,10 @@ static inline void hlist_add_after_rcu(s
+  * as long as the traversal is guarded by rcu_read_lock().
+  */
+ #define hlist_for_each_entry_rcu(tpos, pos, head, member)		 \
+-	for (pos = (head)->first;					 \
+-	     rcu_dereference(pos) && ({ prefetch(pos->next); 1;}) &&	 \
++	for (pos = rcu_dereference((head)->first);			 \
++	        pos && ({ prefetch(pos->next); 1;}) &&			 \
+ 		({ tpos = hlist_entry(pos, typeof(*tpos), member); 1;}); \
+-	     pos = pos->next)
++	     pos = rcu_dereference(pos->next))
+ 
+ #else
+ #warning "don't include kernel headers in userspace"
