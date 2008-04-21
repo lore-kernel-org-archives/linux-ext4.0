@@ -1,60 +1,52 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
- ffffffffffffffff
-Date: Mon, 21 Apr 2008 10:30:19 -0700 (PDT)
-Message-ID: <alpine.LFD.1.10.0804211023090.2779@woody.linux-foundation.org>
-References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com>
- <alpine.LFD.1.10.0804210810180.2779@woody.linux-foundation.org> <20080421170526.GC9153@linux.vnet.ibm.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
+ checker)
+Date: Mon, 21 Apr 2008 19:40:31 +0200
+Message-ID: <480CD18F.7000108@firstfloor.org>
+References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com> <20080419220432.GB30449@mit.edu> <87iqyc85q7.fsf@basil.nowhere.org> <20080420234241.GB23292@shareable.org> <20080421080111.GD14446@one.firstfloor.org> <1208798974.14123.28.camel@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Herbert Xu <herbert@gondor.apana.org.au>,
-	"Rafael J. Wysocki" <rjw@sisk.pl>,
-	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Alexey Zaytsev <alexey.zaytsev@gmail.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Rik van Riel <riel@surriel.com>
+To: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41310 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755851AbYDURbn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 13:31:43 -0400
-In-Reply-To: <20080421170526.GC9153@linux.vnet.ibm.com>
+Received: from one.firstfloor.org ([213.235.205.2]:58493 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752678AbYDURki (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Apr 2008 13:40:38 -0400
+In-Reply-To: <1208798974.14123.28.camel@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
+> Am I correct that the Linux fsync(), when used =EF=BB=BF(from userspa=
+ce)
+> directly on file descriptors associated with block devices doesn't
+> actually flush the disk write cache and wait for the data to reach th=
+e
+> disk before returning?
 
-On Mon, 21 Apr 2008, Paul E. McKenney wrote:
-> 
-> I did take a quick look for improperly freeing dentries -- unhashed
-> dentries are freed directly, so if there is a code path that somehow
-> unhashes dentries and then d_free()s them without a grace period, we
-> have a problem.
+Not quite. It depends. Sometimes it does this and sometimes it doesn't,
+depending on the disk and the controller and the file system and the
+kernel version and the distribution default.
 
-No, not even then.
+=46or details search the archives of linux-kernel/linux-fsdevel. This
+has been discussed many times.
 
-We *always* unhash the dentries before freeing them, but we very 
-consciously use "hlist_del_rcu()" on them, not "hlist_del_init()".
+> Is there a reason why this isn't being done other than performance?
 
-That, in turn, will mean that the "pprev" pointer will still be set, so 
-the "hlist_unhashed()" thing will *not* trigger.
+One reason against it is that in many (but not all) setups to guarantee
+reaching the platter you have to disable the write cache, and at least
+for consumer level hard disks disk vendors generally do not recommend
+doing this because it significantly lowers the MTBF of the disk.
 
-IOW, when we do that direct-free with:
+-Andi
 
-	if (hlist_unhashed(&dentry->d_hash))
-		__d_free(dentry);
-
-the "hlist_unhashed()" will literally guarantee that i has *never* been on 
-a hash-list at all!
-
-(If you want to test whether it is currently unhashed or not, you actually 
-have to use "d_unhashed()" on the dentry under the dentry lock, which 
-tests the DCACHE_UNHASHED bit).
-
-Of course, there could be some bug in there, but the thing is, none of 
-this has even changed in a long time, certainly not since 2.6.25. Which is 
-why I think the dcache code is all fine, and the bug comes from somewhere 
-else corrupting the data structures.
-
-		Linus
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
