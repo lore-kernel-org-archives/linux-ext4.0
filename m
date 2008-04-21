@@ -1,42 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Delayed allocation and page_lock vs transaction start ordering
-Date: Mon, 21 Apr 2008 19:13:12 +0200
-Message-ID: <20080421171312.GJ6119@duck.suse.cz>
-References: <20080415161430.GC28699@duck.suse.cz> <1208282932.3636.9.camel@localhost.localdomain> <20080416093803.GB6116@duck.suse.cz> <20080418185447.GA3424@webber.adilger.int>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Mon, 21 Apr 2008 19:19:01 +0200
+Message-ID: <200804211919.03070.rjw@sisk.pl>
+References: <200804191522.54334.rjw@sisk.pl> <alpine.LFD.1.10.0804210934190.2779@woody.linux-foundation.org> <480CC9A4.9090503@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	"Paul E. McKenney" <paulmck@us.ibm.com>,
+	"David S. Miller" <davem@davemloft.net>
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36247 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755070AbYDURNO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 13:13:14 -0400
+Received: from ogre.sisk.pl ([217.79.144.158]:35846 "EHLO ogre.sisk.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754856AbYDURSv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 13:18:51 -0400
+In-Reply-To: <480CC9A4.9090503@gmail.com>
 Content-Disposition: inline
-In-Reply-To: <20080418185447.GA3424@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 18-04-08 12:54:47, Andreas Dilger wrote:
-> On Apr 16, 2008  11:38 +0200, Jan Kara wrote:
-> > On Tue 15-04-08 11:08:52, Mingming Cao wrote:
-> > > I guess this reserve locking ordering allows support writepages() for
-> > > ext3/4? What other the benefits?
-> >
-> >   Yes, that is one advantage. The other one (which I care about the most)
-> > is that transaction commit code can take page_lock in the new locking order
-> > which is necessary for the new ordered mode rewrite.
+On Monday, 21 of April 2008, Jiri Slaby wrote:
+> On 04/21/2008 06:54 PM, Linus Torvalds wrote:
+> > Jiri - could you also confirm whether you are usign SLUB (which is not 
+> > necessarily at all indicative of a SLUB bug itself - it's just that SLAB 
+> > won't ever even merge different allocations of the same size into the same 
+> > buckets, so if it's a cross-slab corruption, you'd simply never see it 
+> > with SLAB).
 > 
-> My understanding is that the main reason for the ordered mode rewrite is
-> specifically to allow delalloc to still support ordered mode semantics.
-> If the lock ordering is changed, and the jbd ordered mode is changed, but
-> we don't support that with delalloc then we will have made a lot of changes
-> (and likely introduced some bugs) with little benefit.
-  Yes, with ordered mode rewrite, handling of data=ordered,delalloc is
-going to be much simpler. But not that it would be my main motivation...
+> Yeah, I'm using slub. Going to boot to slub_debug.
+> 
+> Thanks so far.
+> 
+> BTW. I haven't see this without suspend/resume cycle, do you, Rafael?
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Well, I've seen it only once so far. :-)
+
+> It doesn't mean anything, since it needs longer time to trigger, but anyway,
+> it might be a clue.
+
+I think we need some more data anyway.
+
+Thanks,
+Rafael
