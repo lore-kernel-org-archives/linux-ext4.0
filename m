@@ -1,135 +1,87 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
-	ffffffffffffffff
-Date: Mon, 21 Apr 2008 15:00:22 +0200
-Message-ID: <20080421130022.GH9554@elte.hu>
-References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com> <20080421045911.GA1812@linux.vnet.ibm.com> <20080421054729.GA19864@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
+	checker)
+Date: Mon, 21 Apr 2008 08:53:58 -0400
+Message-ID: <20080421125358.GD9700@mit.edu>
+References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <f19298770804201723v12b78da6w187984debf8ef97c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Herbert Xu <herbert@gondor.apana.org.au>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	"Rafael J. Wysocki" <rjw@sisk.pl>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758637AbYDUNBM@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Rik van Riel <riel@surriel.com>
+To: Alexey Zaytsev <alexey.zaytsev@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:45342 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756915AbYDUNRu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 09:17:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20080421054729.GA19864@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <f19298770804201723v12b78da6w187984debf8ef97c@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Apr 21, 2008 at 04:23:42AM +0400, Alexey Zaytsev wrote:
+> Not really. In my application I propose some changes to the fsck pass
+> order to avoid the need to rerun it. And I don't get what dependency you
+> are talking about. The only one I see is between the directory entries and
+> the directory inode. Should not be hard to solve.
+> (Or do I miss something? Could you give more examples maybe?)
 
-* Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
+And *this* is why I ultimately decided I didn't have the time to
+mentor you.  There are large numbers of other dependencies.
 
-> On Sun, Apr 20, 2008 at 09:59:11PM -0700, Paul E. McKenney wrote:
-> > And here is an update with one bug fixed -- testing continues.
-> > This is an update of http://lkml.org/lkml/2008/4/20/217, deleting
-> > list_for_each_safe_rcu() and fixing hlist_for_each_entry_rcu().
-> > Testing continues...
+For example, between the direct and indirect blocks in the inode, and
+the block allocation bitmaps.  (Note that e2fsck keeps up to 3
+different block bitmaps and 6 different inofr bitmaps.)  
+
+You need to know which inodes are directories and which inodes are
+regular files.  E2fsck currently keeps these bitmaps so we don't have
+the cache the entire 128 byte inode for all inodes.  (Instead, we
+cache a single bit for every single inode.  There's a ***reason*** for
+all of these bitmaps.)
+
+You also need to know which blocks are being used to store extended
+attributes, which may potentially be shared across multiple inodes.  
+
+That's just *three* additional dependencis, and there are many more.
+If you can't think of them, how much time would it take for me as
+mentor to explain all of this to you?
+
+> >  In either case, there is still the issue of knowing exactly whether a
+> >  particular read happened before or after some change in the
+> >  filesystem.  This race condition is a really hard one to deal with,
+> >  especially on a multiple CPU system and the filesystem checker is
+> >  running in userspace.
 > 
-> And it passes.
+> I don't see why should fsck care about this. The notification is always sent
+> after the write happened, so fsck should just re-read the data. No problem
+> if it already read the (half-)updated version just before the notification.
 
-i have queued up your patch in its form below. (but Linus might beat me 
-at applying it)
+Keep in mind that when a file gets deleted, a *large* number of
+metadata blocks will potentially get updated.  So while e2fsck is
+handling these reads, a bunch more can start coming in from other
+filesystem transactions, and since the kernel doesn't know what
+userspace has already cached, it will have to send them again... and
+again...  
 
-	Ingo
+In fact if the filesystem is being very quickly updated, the
+notifications could easily overrun whatever buffers has been set up to
+transfer this information from userspace to the kernel side.  Worse
+yet, unless you also send down transaction boundaries, the userspace
+won't know when the filesystem has reached a "stable state" which
+would be internally consistent.
 
--------------------->
-Subject: RCU, list.h: fix list iterators
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Date: Sun, 20 Apr 2008 21:59:13 -0700
+There are ways that this could be solved, but at the end of the day,
+the $1,000,000 question is why not just do a kernel-side snapshot?
+Then you don't have to completely rewrite e2fsck --- and given that
+you've claimed the e2fsck code is "hard to understand", it seems
+especially audacious that you would have thought you could do this in
+3 months.  If you really don't want to use LVM, you could have
+proposed a snapshot solution which didn't involve devicemapper.  It's
+not clear it would have entered mainline, but at least there would
+have been some non-zero chance that you would complete the project
+successfully.
 
-RCU list iterators: should prefetch ever be optimised out with no
-side-effects, the current version will lose the barrier completely.
+Regards,
 
-Pointed-out-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-Signed-off-by: Ingo Molnar <mingo@elte.hu>
----
- include/linux/list.h |   48 +++++++++++++++---------------------------------
- 1 file changed, 15 insertions(+), 33 deletions(-)
- 
-Index: linux/include/linux/list.h
-===================================================================
---- linux.orig/include/linux/list.h
-+++ linux/include/linux/list.h
-@@ -631,31 +631,14 @@ static inline void list_splice_init_rcu(
-  * as long as the traversal is guarded by rcu_read_lock().
-  */
- #define list_for_each_rcu(pos, head) \
--	for (pos = (head)->next; \
--		prefetch(rcu_dereference(pos)->next), pos != (head); \
--        	pos = pos->next)
-+	for (pos = rcu_dereference((head)->next); \
-+		prefetch(pos->next), pos != (head); \
-+        	pos = rcu_dereference(pos->next))
- 
- #define __list_for_each_rcu(pos, head) \
--	for (pos = (head)->next; \
--		rcu_dereference(pos) != (head); \
--        	pos = pos->next)
--
--/**
-- * list_for_each_safe_rcu
-- * @pos:	the &struct list_head to use as a loop cursor.
-- * @n:		another &struct list_head to use as temporary storage
-- * @head:	the head for your list.
-- *
-- * Iterate over an rcu-protected list, safe against removal of list entry.
-- *
-- * This list-traversal primitive may safely run concurrently with
-- * the _rcu list-mutation primitives such as list_add_rcu()
-- * as long as the traversal is guarded by rcu_read_lock().
-- */
--#define list_for_each_safe_rcu(pos, n, head) \
--	for (pos = (head)->next; \
--		n = rcu_dereference(pos)->next, pos != (head); \
--		pos = n)
-+	for (pos = rcu_dereference((head)->next); \
-+		pos != (head); \
-+        	pos = rcu_dereference(pos->next))
- 
- /**
-  * list_for_each_entry_rcu	-	iterate over rcu list of given type
-@@ -668,10 +651,9 @@ static inline void list_splice_init_rcu(
-  * as long as the traversal is guarded by rcu_read_lock().
-  */
- #define list_for_each_entry_rcu(pos, head, member) \
--	for (pos = list_entry((head)->next, typeof(*pos), member); \
--		prefetch(rcu_dereference(pos)->member.next), \
--			&pos->member != (head); \
--		pos = list_entry(pos->member.next, typeof(*pos), member))
-+	for (pos = list_entry(rcu_dereference((head)->next), typeof(*pos), member); \
-+		prefetch(pos->member.next), &pos->member != (head); \
-+		pos = list_entry(rcu_dereference(pos->member.next), typeof(*pos), member))
- 
- 
- /**
-@@ -686,9 +668,9 @@ static inline void list_splice_init_rcu(
-  * as long as the traversal is guarded by rcu_read_lock().
-  */
- #define list_for_each_continue_rcu(pos, head) \
--	for ((pos) = (pos)->next; \
--		prefetch(rcu_dereference((pos))->next), (pos) != (head); \
--        	(pos) = (pos)->next)
-+	for ((pos) = rcu_dereference((pos)->next); \
-+		prefetch((pos)->next), (pos) != (head); \
-+        	(pos) = rcu_dereference((pos)->next))
- 
- /*
-  * Double linked lists with a single pointer list head.
-@@ -986,10 +968,10 @@ static inline void hlist_add_after_rcu(s
-  * as long as the traversal is guarded by rcu_read_lock().
-  */
- #define hlist_for_each_entry_rcu(tpos, pos, head, member)		 \
--	for (pos = (head)->first;					 \
--	     rcu_dereference(pos) && ({ prefetch(pos->next); 1;}) &&	 \
-+	for (pos = rcu_dereference((head)->first);			 \
-+	        pos && ({ prefetch(pos->next); 1;}) &&			 \
- 		({ tpos = hlist_entry(pos, typeof(*tpos), member); 1;}); \
--	     pos = pos->next)
-+	     pos = rcu_dereference(pos->next))
- 
- #else
- #warning "don't include kernel headers in userspace"
+						- Ted
