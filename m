@@ -1,87 +1,53 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
-	checker)
-Date: Mon, 21 Apr 2008 08:53:58 -0400
-Message-ID: <20080421125358.GD9700@mit.edu>
-References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <f19298770804201723v12b78da6w187984debf8ef97c@mail.gmail.com>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
+	ffffffffffffffff
+Date: Mon, 21 Apr 2008 15:17:43 +0200
+Message-ID: <20080421131741.GI9554@elte.hu>
+References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Rik van Riel <riel@surriel.com>
-To: Alexey Zaytsev <alexey.zaytsev@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:45342 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756915AbYDUNRu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 09:17:50 -0400
+Received: from mx2.mail.elte.hu ([157.181.151.9]:45234 "EHLO mx2.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756424AbYDUNSJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 09:18:09 -0400
 Content-Disposition: inline
-In-Reply-To: <f19298770804201723v12b78da6w187984debf8ef97c@mail.gmail.com>
+In-Reply-To: <200804202104.24037.rjw@sisk.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 21, 2008 at 04:23:42AM +0400, Alexey Zaytsev wrote:
-> Not really. In my application I propose some changes to the fsck pass
-> order to avoid the need to rerun it. And I don't get what dependency you
-> are talking about. The only one I see is between the directory entries and
-> the directory inode. Should not be hard to solve.
-> (Or do I miss something? Could you give more examples maybe?)
 
-And *this* is why I ultimately decided I didn't have the time to
-mentor you.  There are large numbers of other dependencies.
+* Rafael J. Wysocki <rjw@sisk.pl> wrote:
 
-For example, between the direct and indirect blocks in the inode, and
-the block allocation bitmaps.  (Note that e2fsck keeps up to 3
-different block bitmaps and 6 different inofr bitmaps.)  
-
-You need to know which inodes are directories and which inodes are
-regular files.  E2fsck currently keeps these bitmaps so we don't have
-the cache the entire 128 byte inode for all inodes.  (Instead, we
-cache a single bit for every single inode.  There's a ***reason*** for
-all of these bitmaps.)
-
-You also need to know which blocks are being used to store extended
-attributes, which may potentially be shared across multiple inodes.  
-
-That's just *three* additional dependencis, and there are many more.
-If you can't think of them, how much time would it take for me as
-mentor to explain all of this to you?
-
-> >  In either case, there is still the issue of knowing exactly whether a
-> >  particular read happened before or after some change in the
-> >  filesystem.  This race condition is a really hard one to deal with,
-> >  especially on a multiple CPU system and the filesystem checker is
-> >  running in userspace.
+> Hi,
 > 
-> I don't see why should fsck care about this. The notification is always sent
-> after the write happened, so fsck should just re-read the data. No problem
-> if it already read the (half-)updated version just before the notification.
+> I've just got the following traces from 2.6.25-git2 on HP nx6325 
+> (64-bit). I think they are related to the hang I described yesterday:
 
-Keep in mind that when a file gets deleted, a *large* number of
-metadata blocks will potentially get updated.  So while e2fsck is
-handling these reads, a bunch more can start coming in from other
-filesystem transactions, and since the kernel doesn't know what
-userspace has already cached, it will have to send them again... and
-again...  
+> [12844.112673]  [<ffffffff8029e236>] do_lookup+0x2c/0x1b2
+> [12844.112683]  [<ffffffff802a04b4>] __link_path_walk+0x8e6/0xdbd
+> [12844.112707]  [<ffffffffa004deb4>] ? :ext3:ext3_xattr_get_acl_default+0x18/0x1a
+> [12844.112714]  [<ffffffff802b0869>] ? generic_getxattr+0x4e/0x5c
 
-In fact if the filesystem is being very quickly updated, the
-notifications could easily overrun whatever buffers has been set up to
-transfer this information from userspace to the kernel side.  Worse
-yet, unless you also send down transaction boundaries, the userspace
-won't know when the filesystem has reached a "stable state" which
-would be internally consistent.
+so you've got ext3. Nothing changed in the VFS or in ext3 in -git yet.
 
-There are ways that this could be solved, but at the end of the day,
-the $1,000,000 question is why not just do a kernel-side snapshot?
-Then you don't have to completely rewrite e2fsck --- and given that
-you've claimed the e2fsck code is "hard to understand", it seems
-especially audacious that you would have thought you could do this in
-3 months.  If you really don't want to use LVM, you could have
-proposed a snapshot solution which didn't involve devicemapper.  It's
-not clear it would have entered mainline, but at least there would
-have been some non-zero chance that you would complete the project
-successfully.
+the instruction pattern:
 
-Regards,
+Code: f6 43 04 10 75 06 f0 ff 03 48 89 d8 fe 43 08 eb 31 fe 43 08 48 8b 
+45 d0 48 8b 00 48 89 45 d0 48 8b 45 d0 48 85 c0 74 18 48 89 c2 <48> 8b 
+00 48 8d 5a e8 44 39 73 30 0f 18 08 75 d9 e9 6a ff ff ff
+                           ========
 
-						- Ted
+shows that you've got "prefetchnta (%esi)" indirect:
+
+   0f 18 00                prefetcht0 (%eax)
+
+so the prefetch instructions are patched in, neither the compiler nor 
+the CPU should ignore them.
+
+	Ingo
