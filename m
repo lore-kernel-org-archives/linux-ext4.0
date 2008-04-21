@@ -1,119 +1,63 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] fix up thinko in jbd2 revoke code
-Date: Mon, 21 Apr 2008 15:24:08 +0530
-Message-ID: <20080421095408.GA4212@skywalker>
-References: <1206979062.3192.26.camel@localhost.localdomain> <1206988258.3653.2.camel@localhost.localdomain> <20080403161727.GA627@infradead.org>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem checker)
+Date: Mon, 21 Apr 2008 12:51:58 +0100
+Message-ID: <20080421115158.GB4193@shareable.org>
+References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com> <20080419220432.GB30449@mit.edu> <87iqyc85q7.fsf@basil.nowhere.org> <20080420234241.GB23292@shareable.org> <20080421080111.GD14446@one.firstfloor.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	James Bottomley <James.Bottomley@HansenPartnership.com>,
-	linux-fsdevel@vger.kernel.org, Duane Griffin <duaneg@dghda.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:56582 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750814AbYDUJy1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Apr 2008 05:54:27 -0400
+Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Alexey Zaytsev <alexey.zaytsev@gmail.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Rik van Riel <riel@surriel.com>
+To: Andi Kleen <andi@firstfloor.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080403161727.GA627@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080421080111.GD14446@one.firstfloor.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 03, 2008 at 12:17:27PM -0400, Christoph Hellwig wrote:
-> On Mon, Mar 31, 2008 at 11:30:58AM -0700, Mingming Cao wrote:
-> > On Mon, 2008-03-31 at 10:57 -0500, James Bottomley wrote:
-> > > This commit:
-> > > 
-> > > commit e898f3154d78d1520265aade0992981866d827fb
-> > > Author: Duane Griffin <duaneg@dghda.com>
-> > > Date:   Tue Mar 25 19:47:39 2008 -0400
-> > > 
-> > >     jbd2: tidy up revoke cache initialisation and destruction
-> > > 
-> > > Introduced a thinko (it doesn't check whether jbd2_revoke_record cache
-> > > is null, it checks jbd2_revoke_table_cache twice).
-> > > 
-> > > Signed-off-by: James Bottomley <James.Bottomley@HansenPartnership.com>
-> > > 
-> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Andi Kleen wrote:
+> On Mon, Apr 21, 2008 at 12:42:42AM +0100, Jamie Lokier wrote:
+> > Andi Kleen wrote:
+> > > [LVM] always disables barriers if you don't apply a so far unmerged
+> > > patch that enables them in some special circumstances (only single
+> > > backing device)
 > > 
-> > Thanks, I picked this up in ext4 patch queue.
+> > (I continue to be surprised at the un-safety of Linux fsync)
 > 
-> anyone care to convert this function to proper goto-based error
-> unwinding?
+> Note barrier less does not necessarily always mean unsafe fsync,
+> it just often means that.
+> 
+> Also surprisingly lot more syncs or write cache off tend to lower the MTBF 
+> of your disk significantly, so "unsafer" fsync might actually be more safe
+> for your unbackuped data.
 
-Like below. ?
+That's really interesting, thanks.  Do you have something to cite
+about syncs reducing the MTBF?
 
-Mingming,
+( I'm really glad I added barriers instead of write cache off to my
+2.4.26 based disk using devices now ;-) )
 
-I folded jbd2-tidy-up-revoe-cache-intialisation-and-destruction.patch
-jbd2-fix-up-thinko-in-jbd2-revoke-code.patch in the patch queue to 
-this.
+> > > Not having barriers sometimes makes your workloads faster (and less
+> > > safe) and in other cases slower.
+> > 
+> > I'm curious, how does it make them slower?  Merely not issuing barrier
+> > calls seems like it will always be the same speed or faster.
+> 
+> Some setups detect the no barrier case and switch to full sync +
+> wait (or write cache off) which depending on the disk supporting NCQ
+> can be slower.
 
--aneesh
+But to issue full syncs, that's implemented as barrier calls in the
+block request layers isn't it?  The filesystem isn't given a facility
+to request the block device do full syncs or disable the write cache.
 
+So when a blockdev doesn't offer barriers to the filesystem, it means
+the driver doesn't support full syncs or cache disabling either, since
+if it did, the request layer would expose them to the fs as barriers.
 
-jbd2: tidy up revoke cache initialisation and destruction
+What am I missing from this picture?  Do you mean that manual setup
+(such as by a DBA) tends to disable the write cache?
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-Make revocation cache destruction safe to call if initialisation fails
-partially or entirely.  This allows it to be used to cleanup in the case of
-initialisation failure, simplifying the code slightly.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-
- fs/jbd2/revoke.c |   36 ++++++++++++++++++++++--------------
- 1 files changed, 22 insertions(+), 14 deletions(-)
-
-
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 2e1453a..72b2608 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -167,33 +167,41 @@ static struct jbd2_revoke_record_s *find_revoke_record(journal_t *journal,
- 	return NULL;
- }
- 
-+void jbd2_journal_destroy_revoke_caches(void)
-+{
-+	if (jbd2_revoke_record_cache) {
-+		kmem_cache_destroy(jbd2_revoke_record_cache);
-+		jbd2_revoke_record_cache = NULL;
-+	}
-+	if (jbd2_revoke_table_cache) {
-+		kmem_cache_destroy(jbd2_revoke_table_cache);
-+		jbd2_revoke_table_cache = NULL;
-+	}
-+}
-+
- int __init jbd2_journal_init_revoke_caches(void)
- {
-+	J_ASSERT(!jbd2_revoke_record_cache);
-+	J_ASSERT(!jbd2_revoke_table_cache);
-+
- 	jbd2_revoke_record_cache = kmem_cache_create("jbd2_revoke_record",
- 					   sizeof(struct jbd2_revoke_record_s),
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
- 	if (!jbd2_revoke_record_cache)
--		return -ENOMEM;
-+		goto record_cache_failure;
- 
- 	jbd2_revoke_table_cache = kmem_cache_create("jbd2_revoke_table",
- 					   sizeof(struct jbd2_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (!jbd2_revoke_table_cache) {
--		kmem_cache_destroy(jbd2_revoke_record_cache);
--		jbd2_revoke_record_cache = NULL;
--		return -ENOMEM;
--	}
-+	if (!jbd2_revoke_table_cache)
-+		goto table_cache_failure;
- 	return 0;
--}
+Thanks,
+-- Jamie
