@@ -1,42 +1,34 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] unexport journal_update_superblock
-Date: Tue, 22 Apr 2008 00:32:06 +0300
-Message-ID: <20080421213206.GM2633@cs181133002.pp.htv.fi>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Ininitial e2fsprogs TODO list (please expand)
+Date: Mon, 21 Apr 2008 16:29:42 -0500
+Message-ID: <480D0746.6040105@redhat.com>
+References: <20080415115216.1f6868de@gara.konoha.net> <20080420234707.GB9700@mit.edu> <20080421131117.GE9700@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Jose R. Santos" <jrs@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp5.pp.htv.fi ([213.243.153.39]:49755 "EHLO smtp5.pp.htv.fi"
+Received: from mx1.redhat.com ([66.187.233.31]:60651 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757061AbYDUVch (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 17:32:37 -0400
-Content-Disposition: inline
+	id S1760426AbYDUVhZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 17:37:25 -0400
+In-Reply-To: <20080421131117.GE9700@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch removes the unused EXPORT_SYMBOL(journal_update_superblock).
+Theodore Tso wrote:
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+> Unfortunately I haven't made any progress on doing quality checking
+> the patches in the patch queue, since I found so much new code that
+> just screamed out for fixing in e2fsprogs.  Eric, if you have time,
+> could you look through the patch queue and help out with
+> sanity-checking the patches and making sure the patch descriptions are
+> suitably well-written without version control logs, XXX FIXME
+> comments, or other things that would make Linus vomit?  If you could,
+> I'd really appreciate it.  Thanks!!
 
----
+I'll put it on the list :)  spent today doing more RHEL-related stuff...
 
-This patch has been sent on:
-- 14 Apr 2008
-- 31 Mar 2008
-- 27 Feb 2008
-
-66cbc7390d66cdeb83a3f81d7ec1ea71d6f6e2c8 foobar
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 3943a89..5c2ebb7 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -68,7 +68,6 @@ EXPORT_SYMBOL(journal_set_features);
- EXPORT_SYMBOL(journal_create);
- EXPORT_SYMBOL(journal_load);
- EXPORT_SYMBOL(journal_destroy);
--EXPORT_SYMBOL(journal_update_superblock);
- EXPORT_SYMBOL(journal_abort);
- EXPORT_SYMBOL(journal_errno);
- EXPORT_SYMBOL(journal_ack_err);
-
+-Eric
