@@ -1,58 +1,92 @@
-From: "Alexey Zaytsev" <alexey.zaytsev@gmail.com>
-Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem checker)
-Date: Mon, 21 Apr 2008 04:27:19 +0400
-Message-ID: <f19298770804201727w37d4f37fs91940caca5d24ad3@mail.gmail.com>
-References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com>
-	 <20080419012952.GE25797@mit.edu>
-	 <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com>
-	 <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com>
+From: Herbert Xu <herbert@gondor.apana.org.au>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Mon, 21 Apr 2008 09:18:55 +0800
+Message-ID: <20080421011855.GA6243@gondor.apana.org.au>
+References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, "Rik van Riel" <riel@surriel.com>
-To: "Eric Sandeen" <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
+	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, "Paul E. McKenney" <paulmck@us.ibm.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.179]:39703 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553AbYDUA1U (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Apr 2008 20:27:20 -0400
-Received: by wa-out-1112.google.com with SMTP id m16so2692934waf.23
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Apr 2008 17:27:19 -0700 (PDT)
-In-Reply-To: <480A42F6.2030005@redhat.com>
+Received: from rhun.apana.org.au ([64.62.148.172]:48179 "EHLO
+	arnor.apana.org.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753702AbYDUBUK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Apr 2008 21:20:10 -0400
 Content-Disposition: inline
+In-Reply-To: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 19, 2008 at 11:07 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> Theodore Tso wrote:
->  > On Sat, Apr 19, 2008 at 01:44:51PM +0400, Alexey Zaytsev wrote:
->  >> If it is a block containing a metadata object fsck has already read,
->  >> than we already know what kind of object it is (there must be a way
->  >> to quickly find all cached objects derived from a given block), and
->  >> can update the cached version. And if fsck has not yet read the
->  >> block, it can just be ignored, no matter what kind of data it
->  >> contains. If it contains metadata and fsck is intrested in it, it
->  >> will read it sooner or later anyway. If it contains file data, why
->  >> should fsck even care?
->
->  It seems to me that what the proposed project really does, in essence,
->  is a read-only check of a filesystem snapshot.  It's just that the
->  snapshot is proposed to be constructed in a complex and non-generic (and
->  maybe impossible) way.
+Hi Linus:
 
-Maybe complex and non-generic, but also quite efficient. Only the actually used
-matadata is cached, and everything is done in userspace.
-
+On Sun, Apr 20, 2008 at 02:31:48PM -0700, Linus Torvalds wrote:
 >
->  If you really just want to verify a snapshot of the fs at a point in
->  time, surely there are simpler ways.  If the device is on lvm, there's
->  already a script floating around to do it in automated fasion.  (I'd
->  pondered the idea of introducing META_WRITE (to go with META_READ) and
->  maybe lvm could do a "metadata-only" snapshot to be lighter weight?)
+> Talking about RCU I also think that whoever did those "rcu_dereference()" 
+> macros in <linux/list.h> was insane. It's totally pointless to do 
+> "rcu_dereference()" on a local variable. It simply *cannot* make sense. 
+> Herbert, Paul, you guys should look at it.
 
-How do you tell data from metadata on this level?
+Since I made the macros look this way I'm obliged to defend it :)
 
->
->  -Eric
->
+>  #define list_for_each_rcu(pos, head) \
+> -	for (pos = (head)->next; \
+> -		prefetch(rcu_dereference(pos)->next), pos != (head); \
+> -        	pos = pos->next)
+> +	for (pos = rcu_dereference((head)->next); \
+> +		prefetch(pos->next), pos != (head); \
+> +        	pos = rcu_dereference(pos->next))
+
+Semantically there should be no difference between the two versions.
+The purpose of rcu_dereference is really similar to smp_rmb, i.e.,
+it adds a (conditional) read barrier between what has been read so
+far (including its argument), and what will be read subsequently.
+
+So if we expand out the current code it would look like
+
+	fetch (head)->next
+	store into pos
+again:
+	smp_read_barrier_depends()
+	prefetch(pos->next)
+	pos != (head)
+
+	...loop body...
+
+	fetch pos->next
+	store into pos
+	goto again
+
+Yours looks like
+
+	fetch (head)->next
+	smp_read_barrier_depends()
+	store into pos
+again:
+	prefetch(pos->next)
+	pos != (head)
+
+	...loop body...
+
+	fetch pos->next
+	smp_read_barrier_depends()
+	store into pos
+	goto again
+
+As the objective here is to insert a barrier before dereferencing
+pos (e.g., reading pos->next or using it in the loop body), these
+two should be identical.
+
+But I do concede that your version looks clearer, and has the
+benefit that should prefetch ever be optimised out with no side-
+effects, yours would still be correct while the current one will
+lose the barrier completely.
+
+Thanks,
+-- 
+Visit Openswan at http://www.openswan.org/
+Email: Herbert Xu ~{PmV>HI~} <herbert@gondor.apana.org.au>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
