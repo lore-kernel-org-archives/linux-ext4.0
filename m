@@ -1,78 +1,60 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
-	checker)
-Date: Sun, 20 Apr 2008 22:33:42 -0400
-Message-ID: <20080421023342.GC9700@mit.edu>
-References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <87ej9085dq.fsf@basil.nowhere.org>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Mon, 21 Apr 2008 15:35:20 +0200
+Message-ID: <200804211535.21694.rjw@sisk.pl>
+References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <20080421131741.GI9554@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexey Zaytsev <alexey.zaytsev@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Rik van Riel <riel@surriel.com>
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Ingo Molnar <mingo@elte.hu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ogre.sisk.pl ([217.79.144.158]:34432 "EHLO ogre.sisk.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932348AbYDUNee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 09:34:34 -0400
+In-Reply-To: <20080421131741.GI9554@elte.hu>
 Content-Disposition: inline
-In-Reply-To: <87ej9085dq.fsf@basil.nowhere.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 21, 2008 at 01:37:37AM +0200, Andi Kleen wrote:
-> Are you sure about all data? I think he would just need some lookup table from 
-> metadata block numbers to inode numbers and then when a hit occurs on a block
-> in  the table somehow invalidate all data related to that inode
-> and restart that part. And the same thing for bitmap blocks. That lookup
-> table should be much smaller than the full metadata.
+On Monday, 21 of April 2008, Ingo Molnar wrote:
+> 
+> * Rafael J. Wysocki <rjw@sisk.pl> wrote:
+> 
+> > Hi,
+> > 
+> > I've just got the following traces from 2.6.25-git2 on HP nx6325 
+> > (64-bit). I think they are related to the hang I described yesterday:
+> 
+> > [12844.112673]  [<ffffffff8029e236>] do_lookup+0x2c/0x1b2
+> > [12844.112683]  [<ffffffff802a04b4>] __link_path_walk+0x8e6/0xdbd
+> > [12844.112707]  [<ffffffffa004deb4>] ? :ext3:ext3_xattr_get_acl_default+0x18/0x1a
+> > [12844.112714]  [<ffffffff802b0869>] ? generic_getxattr+0x4e/0x5c
+> 
+> so you've got ext3. Nothing changed in the VFS or in ext3 in -git yet.
+> 
+> the instruction pattern:
+> 
+> Code: f6 43 04 10 75 06 f0 ff 03 48 89 d8 fe 43 08 eb 31 fe 43 08 48 8b 
+> 45 d0 48 8b 00 48 89 45 d0 48 8b 45 d0 48 85 c0 74 18 48 89 c2 <48> 8b 
+> 00 48 8d 5a e8 44 39 73 30 0f 18 08 75 d9 e9 6a ff ff ff
+>                            ========
+> 
+> shows that you've got "prefetchnta (%esi)" indirect:
+> 
+>    0f 18 00                prefetcht0 (%eax)
+> 
+> so the prefetch instructions are patched in, neither the compiler nor 
+> the CPU should ignore them.
 
-Yeah, unfortunately it's close to all of the metadata.  Consider that
-e2fsck also has to deal with changes in the directory, and there can
-be multiple hard links in a directory, so it's not just a simple
-lookup table.  You could try to condense the directory into a list of
-inodes numbers and the number of times they were counted in a
-directory, but then any time the directory changed, you'd have to
-rescan the *entire* directory.
+Well, I don't really know what that means ...
 
-Also, consider that the lookup table might not be enough, if the
-filesystem is actually corrupted, and there are multiple blocks
-claimed by an inode.  How you "invalidate all data" in that case
-becomes less obvious.
+Besides, that's 64-bit code, but I guess that doesn't matter here.
 
-It would be possible to condense the metdata somewhat by taking the
-omitting unused inodes, and storing the indirect blocks as extents.
-But there would still be a huge amount of metadata that would have to
-be stored in memory.  If you're willing to completely rewrite e2fsck
-(which the on-line resize would need anyway, because the updated data
-could invalidate the previously done work at any point anywhere in the
-e2fsck processing), maybe the extra cached data structures won't be on
-completely additive on top of the other intermediate data kept by
-e2fsck, but it once again points out it would be insane for a student
-to try to do this in 3 months.
-
-> Anyways my favourite fsck wish list feature would be a way to record the 
-> changes a read-only fsck would want to do and then some quick way
-> to apply them to a writable version of the file system without 
-> doing a full rescan. Then you could regularly do a background check
-> and if it finds something wrong just remount and apply the changes
-> quickly.
-
-This is a read-only fsck while the filesystem is changing out from
-underneath it, and the hope is that you can take the instructions
-gathered from the read-only fsck (presumably run on a snapshot) and
-then apply them to filesystem that has since been modified after the
-snaphot was taken.  Even if it has been remounted read-only at this
-point, this gets really dicey.  Consider that with certain types of
-corruption, if the filesystem continues to get modified, the
-corruption can get worse.
-
-> Or perhaps just tell the kernel which objects is suspicious and
-> should be EIOed.
-
-Yeah; you could do that, as long as it's not a guarantee that all of
-the objects which were suspicious were found.  It would also be
-possible to isolate the objects, perhaps with some potential inode and
-block leakage that would get fixed at the next off-line fsck.  Still,
-it would be a lot of work.  Let me know if someone is willing to pay
-for this, and I could probably work with someone like Val to execute
-this.  But otherwise, it probably falls in the "we'd all like a pony"
-sort of wishlist.....
-
-							- Ted
+Thanks,
+Rafael
