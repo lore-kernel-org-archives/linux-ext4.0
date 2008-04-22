@@ -1,60 +1,50 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
-Date: Tue, 22 Apr 2008 06:36:31 -0700
-Message-ID: <20080422133631.GA28594@linux.vnet.ibm.com>
-References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com> <alpine.LFD.1.10.0804210810180.2779@woody.linux-foundation.org> <20080422010304.GA14994@gondor.apana.org.au>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext3: Freeing blocks not in datazone
+Date: Tue, 22 Apr 2008 08:41:10 -0500
+Message-ID: <480DEAF6.4020005@redhat.com>
+References: <4803A109.5080800@rtr.ca> <4803AF3B.2020702@redhat.com> <4803BF54.4040205@rtr.ca> <4803C5E4.3030804@redhat.com> <20080422093145.GB21922@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	"Rafael J. Wysocki" <rjw@sisk.pl>,
-	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Herbert Xu <herbert@gondor.apana.org.au>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Mark Lord <lkml@rtr.ca>, linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:41097 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761845AbYDVNgj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 09:36:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20080422010304.GA14994@gondor.apana.org.au>
+Received: from mx1.redhat.com ([66.187.233.31]:44055 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1765032AbYDVNlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Apr 2008 09:41:19 -0400
+In-Reply-To: <20080422093145.GB21922@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 22, 2008 at 09:03:04AM +0800, Herbert Xu wrote:
-> On Mon, Apr 21, 2008 at 08:49:58AM -0700, Linus Torvalds wrote:
-> >
-> > That is *not* the main problem.
-> > 
-> > If you use "rcu_dereference()" on the wrong access, it not only loses the 
-> > "smp_read_barrier_depends()" (which is a no-op on all sane architectures 
-> > anyway), but it loses the ACCESS_ONCE() thing *entirely*.
-> 
-> Actually rcu_dereference didn't have ACCESS_ONCE when I did this.
-> That only appearaed later with the preemptible RCU work.
+Jan Kara wrote:
+>> Mark Lord wrote:
+>>> Eric Sandeen wrote:
+>>>> Mark Lord wrote:
+>>>>> One of my test systems here, running 2.6.25-rc8-git*,
+>>>>> just now crapped out with this in the tail end of dmesg:
+>>>>>
+>>>>> [   20.927780] EXT3-fs error (device sda1): ext3_free_blocks: Freeing blocks not in datazone - block
+>>>>> [   20.928756] Aborting journal on device sda1.
+>>>> I've got a similar report from the F9 installer, also on 2.6.25-rc8* ...
+>>>>  trying to reproduce locally.
+>>> ..
+>>>
+>>> Well, if it's of any help, here it was on a 2.4GHz Intel QuadCore,
+>>> 32-bit kernel/userspace, 4GB RAM, PAE-enabled.
+>> Any chance you had done a resize2fs, online or offline, before this?
+>> Just a guess based on the installer thing I'm looking at...
+>   Hmm, Eric, how exactly did the corruption looked like? Are you running
+> SLUB allocator? I'm just wondering whether it doesn't have something in
+> common with the memory corruption as discussed in the thread starting at
+> http://lkml.org/lkml/2008/4/19/85
 
-Yep, ACCESS_ONCE() is quite recent -- within the last year.  So I should
-have modified the list_for_each.*rcu() macros when I made that change.
+It turns out that that problem (sorry, should have followed up) was due
+to the installer not copying the last bit of a filesystem image onto the
+device, and the fs was then trying to use whatever it found on the
+un-copied portion of the disk as metadata.
 
-> The original purpose of rcu_dereference was exactly to replace the
-> explicit barriers that people were using for RCU, nothing more,
-> nothing less.
-> 
-> Oh and I totally agree that the compiler is going to generate insane
-> code whenever ACCESS_ONCE is used.  In this case we may have avoided
-> it by rearranging the code, but in general the introduction of ACCESS_ONCE
-> in rcu_dereference is likely to have a negative impact on the code
-> generated.
-> 
-> Remember that "volatile" discussion? I think this is where it all came
-> from.
+So not an ext3 bug in that case.
 
-And I still have the bug in to gcc:
-
-	http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33102
-
-Interesting, currently in status "unconfirmed"...  I guess I should
-supply a test case.
-
-							Thanx, Paul
+-Eric
