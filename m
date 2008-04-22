@@ -1,50 +1,92 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext3: Freeing blocks not in datazone
-Date: Tue, 22 Apr 2008 08:41:10 -0500
-Message-ID: <480DEAF6.4020005@redhat.com>
-References: <4803A109.5080800@rtr.ca> <4803AF3B.2020702@redhat.com> <4803BF54.4040205@rtr.ca> <4803C5E4.3030804@redhat.com> <20080422093145.GB21922@atrey.karlin.mff.cuni.cz>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [E2FSPROGS, RFC] Basic flexible block group support
+Date: Tue, 22 Apr 2008 08:47:32 -0500
+Message-ID: <20080422084732.3e4ad0b9@gara>
+References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
+	<1208868379-17580-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Mark Lord <lkml@rtr.ca>, linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Valerie Clement <valerie.clement@bull.net>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44055 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765032AbYDVNlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Apr 2008 09:41:19 -0400
-In-Reply-To: <20080422093145.GB21922@atrey.karlin.mff.cuni.cz>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:47891 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758715AbYDVNrk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 09:47:40 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3MDldOl006072
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 09:47:39 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3MDla81083866
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 07:47:38 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3MDlZcM005380
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 07:47:35 -0600
+In-Reply-To: <1208868379-17580-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara wrote:
->> Mark Lord wrote:
->>> Eric Sandeen wrote:
->>>> Mark Lord wrote:
->>>>> One of my test systems here, running 2.6.25-rc8-git*,
->>>>> just now crapped out with this in the tail end of dmesg:
->>>>>
->>>>> [   20.927780] EXT3-fs error (device sda1): ext3_free_blocks: Freeing blocks not in datazone - block
->>>>> [   20.928756] Aborting journal on device sda1.
->>>> I've got a similar report from the F9 installer, also on 2.6.25-rc8* ...
->>>>  trying to reproduce locally.
->>> ..
->>>
->>> Well, if it's of any help, here it was on a 2.4GHz Intel QuadCore,
->>> 32-bit kernel/userspace, 4GB RAM, PAE-enabled.
->> Any chance you had done a resize2fs, online or offline, before this?
->> Just a guess based on the installer thing I'm looking at...
->   Hmm, Eric, how exactly did the corruption looked like? Are you running
-> SLUB allocator? I'm just wondering whether it doesn't have something in
-> common with the memory corruption as discussed in the thread starting at
-> http://lkml.org/lkml/2008/4/19/85
+On Tue, 22 Apr 2008 08:46:18 -0400
+"Theodore Ts'o" <tytso@mit.edu> wrote:
 
-It turns out that that problem (sorry, should have followed up) was due
-to the installer not copying the last bit of a filesystem image onto the
-device, and the fs was then trying to use whatever it found on the
-un-copied portion of the disk as metadata.
+> Add superblock definition, and dumpe2fs and debugfs support.
 
-So not an ext3 bug in that case.
+Looks good.
+ 
+> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  debugfs/set_fields.c |    1 +
+>  lib/e2p/ls.c         |    3 +++
+>  lib/ext2fs/ext2_fs.h |    5 ++++-
+>  3 files changed, 8 insertions(+), 1 deletions(-)
+> 
+> diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+> index ee51c45..25343f0 100644
+> --- a/debugfs/set_fields.c
+> +++ b/debugfs/set_fields.c
+> @@ -132,6 +132,7 @@ static struct field_set_info super_fields[] = {
+>  	{ "mmp_interval", &set_sb.s_mmp_interval, 2, parse_uint },
+>  	{ "mmp_block", &set_sb.s_mmp_block, 8, parse_uint },
+>  	{ "raid_stripe_width", &set_sb.s_raid_stripe_width, 4, parse_uint },
+> +	{ "log_groups_per_flex", &set_sb.s_log_groups_per_flex, 1, parse_uint },
+>  	{ 0, 0, 0, 0 }
+>  };
+> 
+> diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+> index b119606..c211dce 100644
+> --- a/lib/e2p/ls.c
+> +++ b/lib/e2p/ls.c
+> @@ -242,6 +242,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
+>  	if (sb->s_first_meta_bg)
+>  		fprintf(f, "First meta block group:   %u\n",
+>  			sb->s_first_meta_bg);
+> +	if (sb->s_log_groups_per_flex)
+> +		fprintf(f, "Flex block group size:    %u\n",
+> +			1 << sb->s_log_groups_per_flex);
+>  	if (sb->s_mkfs_time) {
+>  		tm = sb->s_mkfs_time;
+>  		fprintf(f, "Filesystem created:       %s", ctime(&tm));
+> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+> index ad42cf8..f23c8fd 100644
+> --- a/lib/ext2fs/ext2_fs.h
+> +++ b/lib/ext2fs/ext2_fs.h
+> @@ -564,7 +564,10 @@ struct ext2_super_block {
+>  	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
+>  	__u64   s_mmp_block;            /* Block for multi-mount protection */
+>  	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+> -	__u32   s_reserved[163];        /* Padding to the end of the block */
+> +	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
+> +	__u8    s_reserved_char_pad;
+> +	__u16	s_reserved_pad;		/* Padding to next 32bits */
+> +	__u32   s_reserved[162];        /* Padding to the end of the block */
+>  };
+> 
+>  /*
 
--Eric
+
+
+-JRS
