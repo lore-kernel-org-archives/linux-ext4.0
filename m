@@ -1,54 +1,70 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
-	for FLEX_BG
-Date: Tue, 22 Apr 2008 14:57:28 -0400
-Message-ID: <20080422185728.GC20668@mit.edu>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu> <1208868379-17580-2-git-send-email-tytso@mit.edu> <1208868379-17580-3-git-send-email-tytso@mit.edu> <20080422091847.50708436@gara> <20080422145125.GB12836@mit.edu> <20080422103212.1c974bd9@gara>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
+	ffffffffffffffff
+Date: Tue, 22 Apr 2008 21:09:01 +0200
+Message-ID: <20080422190901.GA1104@elte.hu>
+References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <480D1CF1.7010300@gmail.com> <480D208A.9050909@gmail.com> <200804220254.45251.rjw@sisk.pl> <alpine.LFD.1.10.0804211759030.2779@woody.linux-foundation.org> <480DB493.6080004@gmail.com> <20080422095315.GA28014@elte.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Valerie Clement <valerie.clement@bull.net>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>, paulmck@linux.vnet.ibm.com,
+	David Miller <davem@davemloft.net>,
+	linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
+	Zdenek Kabelac <zdenek.kabelac@gmail.com>,
+	"H. Peter Anvin" <hpa@zytor.com>
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42407 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1764535AbYDVS6H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 14:58:07 -0400
+Received: from mx2.mail.elte.hu ([157.181.151.9]:34453 "EHLO mx2.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1764023AbYDVTKI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Apr 2008 15:10:08 -0400
 Content-Disposition: inline
-In-Reply-To: <20080422103212.1c974bd9@gara>
+In-Reply-To: <20080422095315.GA28014@elte.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 22, 2008 at 10:32:12AM -0500, Jose R. Santos wrote:
-> I see that now, guess I should not read code with out having
-> breakfast.  I think 8 is a very safe and conservative number, maybe to
-> conservative. The 64 group packing was the number I found to be a
-> overall improvement with the limited number of drives that I had to
-> test with.  Haven't done any testing on old drives or laptop drive with
-> slow spindle speed but I would think 16 or 32 would be safe here unless
-> the drive is really old and small.
 
-Let's stay with 16 then for now.  Spindle speed doesn't actually
-matter here; what matters is seek speed, and the density of the disk
-drive.  The other thing which worries me though is that the size of
-each flex_bg block group cluster is dependent on the size of the block
-group, which in turn is related to the square of the filesystem
-blocksize.   i.e., assuming a fs blockgroup size of 16, then:
+* Ingo Molnar <mingo@elte.hu> wrote:
 
-Blocksize    Blocks/blockgroup  Blockgroup Size   Flex_BG cluster size
+> > Yesterday I did 2 suspend/resumes after 1 hour of uptime and ran 
+> > git-status for a fraction of a second until it was killed. So I can 
+> > perfectly reproduce it when I suspend, resume and produce some io 
+> > load. I guess it's time to bisect 2.6.25-rc8-mm2 as I'm able to 
+> > reproduce it the best and haven't seen that bug in -rc8-mm1 for over 
+> > week of suspending and working.
+> 
+> the most dangerous x86 change we added was the PAT stuff. Does it 
+> influence the crashes in any way if you boot with 'nopat' or if you 
+> disable CONFIG_X86_PAT=y into the .config?
 
-   1k	         8192             8 Meg	              128 Meg
-   2k           16384             32 Meg              512 Meg
-   4k           32768		  128 Meg	      2 Gig
-   8k		65536             512 Meg	      8 Gig
-  16k          131072             2 Gig		      32 Gig
-  32k	       262144		  8 Gig		      128 Gig
-  64k	       524288		  32 Gig	      512 Gig
+note that full PAT (where in essence Linux takes over control of the 
+cache attributes via PTEs, instead of relying on the BIOS initialized 
+MTRRs alone) you should only get with -mm or with x86.git applied.
 
-So using a fixed default of 16, the flexible blockgroup size can range
-anything from 128 megs to half a terabyte!
+I.e. x86 PAT might explain any -mm issue but not the upstream -git 
+issue.
 
-How much a difference in your numbers are you seeing, anyway?  Is it
-big enough that we really need to worry about it?
+In upstream -git we dont have the second wave of the PAT changes applied 
+yet (the /dev/mem bits) so CONFIG_X86_PAT is not yet activated. (it's 
+only safe to enable if we have all the changes together and perfectly 
+control all cache attributes in the system)
 
-    	   	   	       	  	- Ted
+i.e. PAT complications here would not happen in form of real cache 
+attribute conflicts [i.e. the lockups and corruptions cannot be due to 
+that] - but as side-effects to other code it changes.
+
+and most of the PAT failures we ever saw had different patterns anyway: 
+the leading failure was API rejections and hence non-working Xorg or 
+non-working ioremap() in certain drivers. The worst-case scenario, early 
+in the PAT code's cycle, was a spontaneous triple fault - months ago.
+
+the basis for the PAT changes was the hardening of the CPA code and its 
+general use for everything (such as DEBUG_PAGEALLOC). And much of that 
+happened and was finished in v2.6.25. Nothing conceptually new really 
+happened there - and even where we touched the code in .26 it happened 
+long ago and would have surfaced by now.
+
+... but ... nothing can be excluded.
+
+	Ingo
