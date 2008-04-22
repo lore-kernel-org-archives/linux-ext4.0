@@ -1,87 +1,93 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
- for FLEX_BG
-Date: Tue, 22 Apr 2008 10:32:12 -0500
-Message-ID: <20080422103212.1c974bd9@gara>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
-	<1208868379-17580-2-git-send-email-tytso@mit.edu>
-	<1208868379-17580-3-git-send-email-tytso@mit.edu>
-	<20080422091847.50708436@gara>
-	<20080422145125.GB12836@mit.edu>
+From: "Peter Teoh" <htmldeveloper@gmail.com>
+Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem checker)
+Date: Wed, 23 Apr 2008 00:54:28 +0800
+Message-ID: <804dabb00804220954s67d56cacj89098d88697565aa@mail.gmail.com>
+References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com>
+	 <20080419012952.GE25797@mit.edu>
+	 <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com>
+	 <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	Valerie Clement <valerie.clement@bull.net>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:38967 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756846AbYDVPcU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 11:32:20 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3MFWKUF015061
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 11:32:20 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3MFWGt9186042
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 09:32:16 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3MFWFIS007776
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 09:32:16 -0600
-In-Reply-To: <20080422145125.GB12836@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Theodore Tso" <tytso@mit.edu>,
+	"Alexey Zaytsev" <alexey.zaytsev@gmail.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	"Rik van Riel" <riel@surriel.com>
+To: "Eric Sandeen" <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <480A42F6.2030005@redhat.com>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 22 Apr 2008 10:51:25 -0400
-Theodore Tso <tytso@mit.edu> wrote:
+On Sun, Apr 20, 2008 at 3:07 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+> Theodore Tso wrote:
+>  > On Sat, Apr 19, 2008 at 01:44:51PM +0400, Alexey Zaytsev wrote:
+>  >> If it is a block containing a metadata object fsck has already read,
+>  >> than we already know what kind of object it is (there must be a way
+>  >> to quickly find all cached objects derived from a given block), and
+>  >> can update the cached version. And if fsck has not yet read the
+>  >> block, it can just be ignored, no matter what kind of data it
+>  >> contains. If it contains metadata and fsck is intrested in it, it
+>  >> will read it sooner or later anyway. If it contains file data, why
+>  >> should fsck even care?
+>
+>  It seems to me that what the proposed project really does, in essence,
+>  is a read-only check of a filesystem snapshot.  It's just that the
+>  snapshot is proposed to be constructed in a complex and non-generic (and
+>  maybe impossible) way.
+>
+>  If you really just want to verify a snapshot of the fs at a point in
+>  time, surely there are simpler ways.  If the device is on lvm, there's
+>  already a script floating around to do it in automated fasion.  (I'd
+>  pondered the idea of introducing META_WRITE (to go with META_READ) and
+>  maybe lvm could do a "metadata-only" snapshot to be lighter weight?)
+>
 
-> On Tue, Apr 22, 2008 at 09:18:47AM -0500, Jose R. Santos wrote:
-> > > @@ -1638,6 +1654,19 @@ static void PRS(int argc, char *argv[])
-> > > 
-> > >  	if (inode_size == 0)
-> > >  		inode_size = get_int_from_profile(fs_types, "inode_size", 0);
-> > > +	if (!flex_bg_size && (fs_param.s_feature_incompat &
-> > > +			      EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> > > +		get_int_from_profile(fs_types, "flex_bg_size", 8);
-> > 
-> > A default of 256 block groups to pack seems a bit high base on some of
-> > the performance testing that I've done.  At some point having the inodes
-> > too far away from the data blocks begins to affect performance
-> > (especially on read operations).  The optimum number of groups depends
-> > a lot on platter density of the hard drive so I expect that we can
-> > increase the default grouping size as time goes by.  Using 128 groups
-> > as already showing performance degradation on read operations on some
-> > of my smaller disks (147GB).  For now, I would change this to 6 (64
-> > groups) as this is a good balance for both big an small disks.
-> 
-> Actually this is 8 (as in 2**3), which was intentionally very small,
-> because I was being conservative.  I could change it to be 64 if you
-> think it is a better balance.  As you can see, it gets set later on
-> down here.
+Can I know where is this script?   Or if u cannot locate it, does it
+have any resemblance to all the stuff mentioned below?.
 
-I see that now, guess I should not read code with out having
-breakfast.  I think 8 is a very safe and conservative number, maybe to
-conservative. The 64 group packing was the number I found to be a
-overall improvement with the limited number of drives that I had to
-test with.  Haven't done any testing on old drives or laptop drive with
-slow spindle speed but I would think 16 or 32 would be safe here unless
-the drive is really old and small.
+Apologizing for the regression of discussion back to this part again,
+(and pardon my superficial knowledge of filesystem, just brainstorming
+and eager to learn :-)), I think the idea of "online checker" can be
+developed further, taking into consideration all that have been said
+in this threads - morphing into "semi-online" (real online is not
+feasible eg what have been fscked can be immediately be invalidated by
+another subsequent corrupted writes, so the idea of fsck on read-only
+snapshot is best we could achieved, and then mark the fsck results
+with the timestamp, so that all writes beyond this timestamp may
+invalidate the earlier fsck results.   This idea has its equivalence
+in the Oracle database world - "online datafile backup" feature, where
+all transactions goes to memory + journal logs (a physical file
+itself), and datafile is frozen for writing, enabling it to be
+physically copied):
 
-> 
-> > > +		fs_param.s_log_groups_per_flex = int_log2(flex_bg_size);
-> 
-> And, in fact the biggest bug which both you and I missed was that this:
-> 
-> > > +		get_int_from_profile(fs_types, "flex_bg_size", 8);
-> 
-> Should have been this:
-> 
->        	    flex_bg_size = get_int_from_profile(fs_types, "flex_bg_size", 8);
-> 
-> <Dons paper bag>
-> 
-> 						- Ted
+a.   First, integrity of the filesystem must be treated as a WHOLE,
+and therefore, all WRITES must somehow be frozen at THE SAME TIME,
+and, after that point in time, all writes will then go direct to
+memory only.   So the permanent storage will be readonly.    This I
+guessed is the readonly snapshot part, correct?
 
+b.   Concerning all the different infinite combination of race
+condition that can happened, it should not happen here.   This is
+because now the entire filesystem's integrity is maintained as a
+whole.
 
+c.   The only difficulty i can see is that updates to the journal logs
+- can this part of online updates just go to memory temporarily, while
+the frozen image is being fsck?
 
--JRS
+d.   When ALL fsck is done, everything in memory will get resync with
+the filesystem.   and during this short period of resyncing, all
+writing should be completely frozen - no writing to disk nor memory,
+as race condition may arise.   after syncing, all read/writing to go
+direct to the disk.
+
+Complexity of cache interaction is beyond my understanding.   Some are
+rephrasing or adaptation of what I have read in this thread, so is my
+understanding correct?
+
+Thank you for sharing.
+-- 
+Regards,
+Peter Teoh
