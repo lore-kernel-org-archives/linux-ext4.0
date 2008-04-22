@@ -1,54 +1,38 @@
-From: Whoi Support Team <support@whoi.edu>
-Subject: Account Update
-Date: Tue, 22 Apr 2008 14:26:37 +0300
-Message-ID: <20080422142637.7rn98aji5hr4g04c@webmail.jct.ac.il>
-Reply-To: acct.helpdesk@y7mail.com
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=UTF-8;
-	format="flowed"
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [RFC] Modified flex_bg patches
+Date: Tue, 22 Apr 2008 08:46:17 -0400
+Message-ID: <1208868379-17580-1-git-send-email-tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.jct.ac.il ([147.161.1.247]:35139 "EHLO enosh.jct.ac.il"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751652AbYDVLxp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Apr 2008 07:53:45 -0400
-Content-Disposition: inline
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40892 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753193AbYDVMq0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 08:46:26 -0400
+Received: from root (helo=closure.thunk.org)
+	by thunker.thunk.org with local-esmtp   (Exim 4.50 #1 (Debian))
+	id 1JoHvI-00048j-AK
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Apr 2008 08:48:36 -0400
+Received: from tytso by closure.thunk.org with local (Exim 4.67)
+	(envelope-from <tytso@mit.edu>)
+	id 1JoHt5-0004a9-FS
+	for linux-ext4@vger.kernel.org; Tue, 22 Apr 2008 08:46:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This is a broken up set of patches replacing the js/flex-bg branch
+that I've been including in the pu series.
 
+The main way that they have been simplified is that the BLOCK_UNINIT
+flag only gets set on block groups which only contains their own
+metadata and nothing else.  That is, if the block group contains
+another block group's inode table, et. al, then the BLOCK_UNINIT flag
+is disabled.  This is *much* simpler since it means that e2fsck pass 5
+isn't forced to try to synthesize the block bitmap for the initial
+block groups containing foreign block group's metadata.
 
-Dear User,
+I've done basic tests and it seems to do the right thing, but Jose,
+please look it over and see what you think.
 
-   We wrote to you on 29th March 2008 advising that you change the
-   password on your account in order to prevent any unauthorised
-   account access following the network intrusion we previously
-   communicated.
-
-   we have found the vulnerability that caused this issue, and have
-   instigated a system wide security audit to improve and enhance our
-   current security, in order to continue using our services you are
-   require
-   to update you account details below.
-
-   To complete your account verification, you must reply to this email
-   immediately and enter your account details below.
-
-   Username: (**************)
-
-   password: (**************)
-
-   Failure to do this will immediately render your account
-   deactivated from our database.
-
-   We apologise for the inconvenience that this will cause you during
-   this
-   period, but trust you understand that our primary concern is for our
-   customers and for the security of their data.
-   our customers are totally secure
-
-   Whoi Support Team
+              	       	    	    	     - Ted
 
 
