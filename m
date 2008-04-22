@@ -1,53 +1,95 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
 Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
-Date: Tue, 22 Apr 2008 09:03:04 +0800
-Message-ID: <20080422010304.GA14994@gondor.apana.org.au>
-References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com> <alpine.LFD.1.10.0804210810180.2779@woody.linux-foundation.org>
+Date: Tue, 22 Apr 2008 03:15:00 +0200
+Message-ID: <200804220315.02147.rjw@sisk.pl>
+References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <480D147C.90602@gmail.com> <20080421225452.GF9153@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	"Rafael J. Wysocki" <rjw@sisk.pl>,
-	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Jiri Slaby <jirislaby@gmail.com>,
+	David Miller <davem@davemloft.net>,
+	torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+	mingo@elte.hu, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
+	Zdenek Kabelac <zdenek.kabelac@gmail.com>
+To: paulmck@linux.vnet.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rhun.apana.org.au ([64.62.148.172]:39614 "EHLO
-	arnor.apana.org.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757693AbYDVBDl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Apr 2008 21:03:41 -0400
+Received: from ogre.sisk.pl ([217.79.144.158]:38043 "EHLO ogre.sisk.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932165AbYDVBON (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 21:14:13 -0400
+In-Reply-To: <20080421225452.GF9153@linux.vnet.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.1.10.0804210810180.2779@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 21, 2008 at 08:49:58AM -0700, Linus Torvalds wrote:
->
-> That is *not* the main problem.
+On Tuesday, 22 of April 2008, Paul E. McKenney wrote:
+> On Tue, Apr 22, 2008 at 12:26:04AM +0200, Jiri Slaby wrote:
+> > On 04/21/2008 11:58 PM, Jiri Slaby wrote:
+> > >Leaving untouched.
+> > >
+> > >On 04/21/2008 11:18 PM, Jiri Slaby wrote:
+> > >>On 04/21/2008 10:39 PM, David Miller wrote:
+> > >>>From: Linus Torvalds <torvalds@linux-foundation.org>
+> > >>>Date: Mon, 21 Apr 2008 09:54:07 -0700 (PDT)
+> > >>>
+> > >>>>What I find interesting is that at least for me, I have the SLAB 
+> > >>>>bucket size for nf_conntrack_expect being 208 bytes. And the 
+> > >>>>*biggest* merge by far after 2.6.25 so far has been networking (and 
+> > >>>>conntrack in particular)
+> > >>>>
+> > >>>>Is that a smoking gun? Not necessarily. But it *is* intriguing. But 
+> > >>>>there are other possible clashes (the 192-byte bucket has several 
+> > >>>>different suspects, and not all of them are in networking).1
+> > >>>
+> > >>>I think you might be onto something here.
+> > >>>
+> > >>>The "mask" member of struct nf_conntrack_expect could be reasonably
+> > >>>all 1's like the value reported in the crash that begins this
+> > >>>thread.
+> > >>>
+> > >>>Do we know the offset within the object at which this all 1's
+> > >>>value is found?
+> > >>>
+> > >>>My rough calculations show that on 32-bit that expect->mask member is
+> > >>>at offset 56 and on 64-bit it should be at offset 72.  Does that
+> > >>>match up to the offset of the filp or whatever bit being corrupted?
+> > >>
+> > >>dentry.d_name.name is 56 on 64-bit (my memcmp crashes)
+> > >>dentry.d_hash.next is 24 (crashed at least 3 times here, rafael's one)
+> > >>dentry.d_op is 136 (crash below)
+> > >
+> > >file.f_mapping is 176 (the another one from -rc8-mm2)
+> > >
+> > >the one at:
+> > >http://www.opensubscriber.com/message/linux-kernel@vger.kernel.org/9008289.html 
+> > >
+> > >
+> > >Having slub_debug enabled, tomorrow will be results, I guess...
+> > 
+> > Sorry, one more entry:
+> > 
+> > 00000000000000f0 dentry.d_op (Zdenek, offset ? around 136)
+> > 00f0000000000000 dentry.d_hash.next (me, offset 24)
+> > ffff81f02003f16c dentry.d_name.name (me, offset 56)
+> >         memory ORed by 000000f000000000
+> > fffff0002004c1b0 file.f_mapping (me, offset 176)
+> >         memory hole, it was something like
+> >         (ffff81002004c1b0 & ~00000f0000000000) | 0000f00000000000?
+> > ffffffffffffffff dentry.d_hash.next (Rafael, offset ? around 24)
+> >         -1, ~0ULL
 > 
-> If you use "rcu_dereference()" on the wrong access, it not only loses the 
-> "smp_read_barrier_depends()" (which is a no-op on all sane architectures 
-> anyway), but it loses the ACCESS_ONCE() thing *entirely*.
+> Are these running with CONFIG_PREEMPT_RCU?  Grasping at straws, but
+> there are a couple of patches that need to move from -rt to mainline,
+> but mostly related to SELinux.  So if both PREEMPT_RCU and SELinux
+> were in use, we might be missing "rcu-various-fixups.patch" from:
+> 
+> http://www.kernel.org/pub/linux/kernel/projects/rt/patch-2.6.24.4-rt4-broken-out.tar.bz2
 
-Actually rcu_dereference didn't have ACCESS_ONCE when I did this.
-That only appearaed later with the preemptible RCU work.
+My kernel is only voluntarily preemptible (ie. CONFIG_PREEMPT_VOLUNTARY=y).
 
-The original purpose of rcu_dereference was exactly to replace the
-explicit barriers that people were using for RCU, nothing more,
-nothing less.
+It is an SMP one, however.
 
-Oh and I totally agree that the compiler is going to generate insane
-code whenever ACCESS_ONCE is used.  In this case we may have avoided
-it by rearranging the code, but in general the introduction of ACCESS_ONCE
-in rcu_dereference is likely to have a negative impact on the code
-generated.
-
-Remember that "volatile" discussion? I think this is where it all came
-from.
-
-Cheers,
--- 
-Visit Openswan at http://www.openswan.org/
-Email: Herbert Xu ~{PmV>HI~} <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Thanks,
+Rafael
