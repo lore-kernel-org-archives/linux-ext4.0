@@ -1,73 +1,60 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [E2FSPROGS, RFC] Basic flexible block group support
-Date: Tue, 22 Apr 2008 08:46:18 -0400
-Message-ID: <1208868379-17580-2-git-send-email-tytso@mit.edu>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, "Jose R. Santos" <jrs@us.ibm.com>,
-	Valerie Clement <valerie.clement@bull.net>
-To: linux-ext4@vger.kernel.org
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Tue, 22 Apr 2008 06:36:31 -0700
+Message-ID: <20080422133631.GA28594@linux.vnet.ibm.com>
+References: <200804191522.54334.rjw@sisk.pl> <200804202104.24037.rjw@sisk.pl> <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <20080421011855.GA6243@gondor.apana.org.au> <20080421020806.GL20138@linux.vnet.ibm.com> <alpine.LFD.1.10.0804210810180.2779@woody.linux-foundation.org> <20080422010304.GA14994@gondor.apana.org.au>
+Reply-To: paulmck@linux.vnet.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Herbert Xu <herbert@gondor.apana.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40893 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753303AbYDVMqe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 08:46:34 -0400
-In-Reply-To: <1208868379-17580-1-git-send-email-tytso@mit.edu>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:41097 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761845AbYDVNgj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 09:36:39 -0400
+Content-Disposition: inline
+In-Reply-To: <20080422010304.GA14994@gondor.apana.org.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add superblock definition, and dumpe2fs and debugfs support.
+On Tue, Apr 22, 2008 at 09:03:04AM +0800, Herbert Xu wrote:
+> On Mon, Apr 21, 2008 at 08:49:58AM -0700, Linus Torvalds wrote:
+> >
+> > That is *not* the main problem.
+> > 
+> > If you use "rcu_dereference()" on the wrong access, it not only loses the 
+> > "smp_read_barrier_depends()" (which is a no-op on all sane architectures 
+> > anyway), but it loses the ACCESS_ONCE() thing *entirely*.
+> 
+> Actually rcu_dereference didn't have ACCESS_ONCE when I did this.
+> That only appearaed later with the preemptible RCU work.
 
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-Signed-off-by: Valerie Clement <valerie.clement@bull.net>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- debugfs/set_fields.c |    1 +
- lib/e2p/ls.c         |    3 +++
- lib/ext2fs/ext2_fs.h |    5 ++++-
- 3 files changed, 8 insertions(+), 1 deletions(-)
+Yep, ACCESS_ONCE() is quite recent -- within the last year.  So I should
+have modified the list_for_each.*rcu() macros when I made that change.
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index ee51c45..25343f0 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -132,6 +132,7 @@ static struct field_set_info super_fields[] = {
- 	{ "mmp_interval", &set_sb.s_mmp_interval, 2, parse_uint },
- 	{ "mmp_block", &set_sb.s_mmp_block, 8, parse_uint },
- 	{ "raid_stripe_width", &set_sb.s_raid_stripe_width, 4, parse_uint },
-+	{ "log_groups_per_flex", &set_sb.s_log_groups_per_flex, 1, parse_uint },
- 	{ 0, 0, 0, 0 }
- };
- 
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index b119606..c211dce 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -242,6 +242,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 	if (sb->s_first_meta_bg)
- 		fprintf(f, "First meta block group:   %u\n",
- 			sb->s_first_meta_bg);
-+	if (sb->s_log_groups_per_flex)
-+		fprintf(f, "Flex block group size:    %u\n",
-+			1 << sb->s_log_groups_per_flex);
- 	if (sb->s_mkfs_time) {
- 		tm = sb->s_mkfs_time;
- 		fprintf(f, "Filesystem created:       %s", ctime(&tm));
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index ad42cf8..f23c8fd 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -564,7 +564,10 @@ struct ext2_super_block {
- 	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
- 	__u64   s_mmp_block;            /* Block for multi-mount protection */
- 	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
--	__u32   s_reserved[163];        /* Padding to the end of the block */
-+	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
-+	__u8    s_reserved_char_pad;
-+	__u16	s_reserved_pad;		/* Padding to next 32bits */
-+	__u32   s_reserved[162];        /* Padding to the end of the block */
- };
- 
- /*
--- 
-1.5.4.1.144.gdfee-dirty
+> The original purpose of rcu_dereference was exactly to replace the
+> explicit barriers that people were using for RCU, nothing more,
+> nothing less.
+> 
+> Oh and I totally agree that the compiler is going to generate insane
+> code whenever ACCESS_ONCE is used.  In this case we may have avoided
+> it by rearranging the code, but in general the introduction of ACCESS_ONCE
+> in rcu_dereference is likely to have a negative impact on the code
+> generated.
+> 
+> Remember that "volatile" discussion? I think this is where it all came
+> from.
 
+And I still have the bug in to gcc:
+
+	http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33102
+
+Interesting, currently in status "unconfirmed"...  I guess I should
+supply a test case.
+
+							Thanx, Paul
