@@ -1,69 +1,53 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: [RFC][PATCH] fiemap support for ext3
-Date: Mon, 21 Apr 2008 20:16:07 -0400
-Message-ID: <20080422001607.GB14775@unused.rdu.redhat.com>
-References: <20080418210913.GB13973@unused.rdu.redhat.com> <20080421220851.GP2775@webber.adilger.int>
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at ffffffffffffffff
+Date: Tue, 22 Apr 2008 02:54:43 +0200
+Message-ID: <200804220254.45251.rjw@sisk.pl>
+References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org> <480D1CF1.7010300@gmail.com> <480D208A.9050909@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: paulmck@linux.vnet.ibm.com, David Miller <davem@davemloft.net>,
+	torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+	mingo@elte.hu, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
+	Zdenek Kabelac <zdenek.kabelac@gmail.com>
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47122 "EHLO mx1.redhat.com"
+Received: from ogre.sisk.pl ([217.79.144.158]:37979 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758907AbYDVA0Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Apr 2008 20:26:16 -0400
+	id S1760468AbYDVAyR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2008 20:54:17 -0400
+In-Reply-To: <480D208A.9050909@gmail.com>
 Content-Disposition: inline
-In-Reply-To: <20080421220851.GP2775@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 21, 2008 at 04:08:51PM -0600, Andreas Dilger wrote:
-> On Apr 18, 2008  17:09 -0400, Josef Bacik wrote:
-> > Here is my patch for fiemap support on ext3.  The main reason for doing this is
-> > because it will make it easier for application developers who are wanting to
-> > take advantage of fiemap on extent based fs's to be able to use the same
-> > interface for ext3 as well without having to fallback onto something like
-> > fibmap.  Fibmap also means you are calling ext3_get_block for _every_ block in
-> > the file, which is ineffecient when ext3_get_blocks can map multiple contiguous
-> > blocks all at once, reducing the number of times you have to call
-> > ext3_get_blocks.  Tested this with sandeens fiemap test program and verified it
-> > with filefrag.  Thanks much,
+On Tuesday, 22 of April 2008, Jiri Slaby wrote:
+> On 04/22/2008 01:02 AM, Jiri Slaby wrote:
+> > On 04/22/2008 12:54 AM, Paul E. McKenney wrote:
+> >> On Tue, Apr 22, 2008 at 12:26:04AM +0200, Jiri Slaby wrote:
+> >>>> Having slub_debug enabled, tomorrow will be results, I guess...
+> 
+> OK, methinks it's tomorrow yet, at least here.
+> 
+> >>> Sorry, one more entry:
+> >>>
+> >>> 00000000000000f0 dentry.d_op (Zdenek, offset ? around 136)
 > > 
-> > Signed-off-by: Josef Bacik <jbacik@redhat.com>
+> > Zdenek's is at offset 184.
+> > 
+> >>> 00f0000000000000 dentry.d_hash.next (me, offset 24)
+> >>> ffff81f02003f16c dentry.d_name.name (me, offset 56)
+> >>>         memory ORed by 000000f000000000
+> >>> fffff0002004c1b0 file.f_mapping (me, offset 176)
+> >>>         memory hole, it was something like
+> >>>         (ffff81002004c1b0 & ~00000f0000000000) | 0000f00000000000?
+> >>> ffffffffffffffff dentry.d_hash.next (Rafael, offset ? around 24)
+> >>>         -1, ~0ULL
 > 
-> Josef, thanks for doing this work.  Having more than a single filesystem
-> implement FIEMAP (especially a block-mapped one) is very useful.  Did you
-> look at all at making a "generic_fiemap()" function?  It seems very little
-> of ext3_fiemap() is ext3 specific, only the call to ext3_force_commit()
-> (which could just be a sync on the inode), ext3_block_map() (generic for
-> all block-based filesystems), and truncate_mutex (would i_sem be enough?).
->
+> The same place, dentry.d_hash.next is 1. No slub debug clues... I think, I'll 
+> give slab a try. Any other clues?
 
-Like Eric points out I wasn't sure if other fs's would handle the case where
-b_size > blocksize properly and map contiguous blocks together until it hit an
-unallocated block.  If that is a safe assumption to take then I'll do it
-generically.  I thought i_sem would be a bit heavy handed, but if you would
-prefer it that way I can change it.
- 
-> > +int ext3_fiemap(struct inode *inode, unsigned long arg)
-> > +{
-> > +	/*
-> > +	 * if fm_start is in the middle of the current block, get the next
-> > +	 * block so we don't end up returning a start thats before the given
-> > +	 * fm_start
-> > +	 */
-> > +	start_blk = (fiemap_s->fm_start + (1 << inode->i_blkbits) - 1) >>
-> > +		inode->i_blkbits;
-> 
-> Hmm, I'd think that if someone is requesting the mapping for bytes [50-5000]
-> they wouldn't be very happy with the mapping returned being [4096-8191],
-> because it is missing part of the requested range.  Instead, the fm_start
-> should be rounded down to the start of the first block and up to the end
-> of the last block to return [0-8191] (fm_start = 0, fm_length = 8192).
-> 
-
-Ok I will change it, just wasn't sure if returning a start value before the
-given start value would be appreciated or not.  I guess we can say what it will
-do in the man page :).  Thanks much,
-
-Josef
+Well, SLUB uses some per CPU data structures.  Is it possible that they get
+corrupted and which leads to the observed symptoms?
