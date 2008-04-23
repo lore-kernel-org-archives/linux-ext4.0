@@ -1,68 +1,88 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation	for
- FLEX_BG
-Date: Wed, 23 Apr 2008 15:01:56 -0600
-Message-ID: <20080423210156.GB3095@webber.adilger.int>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
+ for FLEX_BG
+Date: Wed, 23 Apr 2008 16:05:18 -0500
+Message-ID: <20080423160518.5c7fad2e@gara>
 References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
- <1208868379-17580-2-git-send-email-tytso@mit.edu>
- <1208868379-17580-3-git-send-email-tytso@mit.edu>
+	<1208868379-17580-2-git-send-email-tytso@mit.edu>
+	<1208868379-17580-3-git-send-email-tytso@mit.edu>
+	<20080423203955.GH2775@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>,
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Valerie Clement <valerie.clement@bull.net>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:37356 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751812AbYDWVCO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2008 17:02:14 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3NL2EjS005604
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 14:02:14 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JZS00801OAMX400@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 23 Apr 2008 14:02:14 -0700 (PDT)
-In-reply-to: <1208868379-17580-3-git-send-email-tytso@mit.edu>
-Content-disposition: inline
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:55688 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750999AbYDWVFo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Apr 2008 17:05:44 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3NL5faj000816
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:05:41 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3NL5fbu249404
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:05:41 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3NL5UHD028213
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:05:31 -0400
+In-Reply-To: <20080423203955.GH2775@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 22, 2008  08:46 -0400, Theodore Ts'o wrote:
-> Change the way we allocate bitmaps and inode tables if the FLEX_BG
-> feature is used at mke2fs time.  It places calculates a new offset for
-> bitmaps and inode table base on the number of groups that the user
-> wishes to pack together using the new "-G" option.  Creating a
-> filesystem with 64 block groups in a flex group can be done by:
+On Wed, 23 Apr 2008 14:39:55 -0600
+Andreas Dilger <adilger@sun.com> wrote:
+
+> On Apr 22, 2008  08:46 -0400, Theodore Ts'o wrote:
+> > Change the way we allocate bitmaps and inode tables if the FLEX_BG
+> > feature is used at mke2fs time.  It places calculates a new offset for
+> > bitmaps and inode table base on the number of groups that the user
+> > wishes to pack together using the new "-G" option.  Creating a
+> > filesystem with 64 block groups in a flex group can be done by:
+> > 
+> > mke2fs -j -I 256 -O flex_bg -G 32 /dev/sdX
 > 
-> mke2fs -j -I 256 -O flex_bg -G 32 /dev/sdX
+> Presumably you mean "-G 64" based on your description of 64 groups/flex_bg?
+
+Thanks for catching.
+ 
+> > @@ -66,6 +137,22 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+> > +		if (flexbg_size) {
+> > +			dgrp_t gr = ext2fs_group_of_blk(fs, new_blk);
+> > +			fs->group_desc[gr].bg_free_blocks_count--;
+> > +			fs->super->s_free_blocks_count--;
+> > +			fs->group_desc[gr].bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
+> > +			ext2fs_group_desc_csum_set(fs, gr);
+> > +		}
 > 
-> @@ -1638,6 +1654,19 @@ static void PRS(int argc, char *argv[])
->  
->  	if (inode_size == 0)
->  		inode_size = get_int_from_profile(fs_types, "inode_size", 0);
-> +	if (!flex_bg_size && (fs_param.s_feature_incompat &
-> +			      EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> +		flex_bg_size = get_int_from_profile(fs_types, "flex_bg_size",8);
-> +	if (flex_bg_size) {
-> +		if (!(fs_param.s_feature_incompat &
-> +		      EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-> +			com_err(program_name, 0,
-> +				_("Flex_bg feature not enabled, so "
-> +				  "flex_bg size may not be specified"));
-> +			exit(1);
-> +		}
-> +		fs_param.s_log_groups_per_flex = int_log2(flex_bg_size);
-> +	}
+> It makes total sense to me that the BG_BLOCK_UNINIT flag would not be set
+> on a group that does not have the default bitmap layouts, so I agree with
+> this change.  I might suggest that we add a new flag BG_BLOCK_EMPTY or
+> similar (which is really part of the FLEXBG feature so it doesn't affect
+> the existing uninit_groups code) that indicates that the block bitmap
+> contains NO allocated blocks, so that the kernel can know immediately
+> when reconstructing the bitmap that there are no bitmaps or itable in
+> that group (i.e. the bitmap is all zero).
 
-Should specifying "-G" enable FLEX_BG, like specifying "-j" or "-J size"
-will enable HAS_JOURNAL instead of requiring that "-O has_journal" needs
-to be explicitly given?
+I originally had a similar idea but was vetoed because there was no
+kernel user on the flag.  The flag that I used was set if the block
+group had meta-data as opposed to just being empty since there are still
+block groups out there that can have no meta-data but still have bgd or
+backup super blocks.  Would BG_BLOCK_EMPTY mean no bitmaps/inode tables
+or does it imply completely empty block group?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+
+
+-JRS
