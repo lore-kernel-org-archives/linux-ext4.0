@@ -1,8 +1,8 @@
-From: Christoph Lameter <clameter@sgi.com>
+From: Pekka J Enberg <penberg@cs.helsinki.fi>
 Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
  ffffffffffffffff
-Date: Wed, 23 Apr 2008 12:05:01 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0804231202250.15173@schroedinger.engr.sgi.com>
+Date: Wed, 23 Apr 2008 22:19:22 +0300 (EEST)
+Message-ID: <Pine.LNX.4.64.0804232217290.5444@sbz-30.cs.Helsinki.FI>
 References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org>
   <480D1CF1.7010300@gmail.com> <480D208A.9050909@gmail.com>
  <200804220254.45251.rjw@sisk.pl>  <alpine.LFD.1.10.0804211759030.2779@woody.linux-foundation.org>
@@ -11,9 +11,10 @@ References: <alpine.LFD.1.10.0804201410090.2779@woody.linux-foundation.org>
  <alpine.LFD.1.10.0804221144130.2779@woody.linux-foundation.org>
  <c4e36d110804230150n796c2733x5880b8e24ebc9da8@mail.gmail.com>
  <alpine.LFD.1.10.0804230746480.2779@woody.linux-foundation.org>
- <480F857A.3090503@cs.helsinki.fi>
+ <480F857A.3090503@cs.helsinki.fi> <Pine.LNX.4.64.0804231202250.15173@schroedinger.engr.sgi.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Zdenek Kabelac <zdenek.kabelac@gmail.com>,
 	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
@@ -22,34 +23,67 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au
-To: Pekka Enberg <penberg@cs.helsinki.fi>
+To: Christoph Lameter <clameter@sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:57886 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752205AbYDWTFD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2008 15:05:03 -0400
-In-Reply-To: <480F857A.3090503@cs.helsinki.fi>
+Received: from courier.cs.helsinki.fi ([128.214.9.1]:49505 "EHLO
+	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752821AbYDWTTs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2008 15:19:48 -0400
+In-Reply-To: <Pine.LNX.4.64.0804231202250.15173@schroedinger.engr.sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 23 Apr 2008, Pekka Enberg wrote:
+On Wed, 23 Apr 2008, Christoph Lameter wrote:
+> We should have returned from the function and not printed this message. If 
+> we somehow skipped the test for !fault then end could have wrapped around 
+> which gets us to 4GB.
 
->     fault = check_bytes(start + length, POISON_INUSE, remainder);
+Aah, looks like it's just a silly bug in slab_fix(). If this looks ok to 
+Christoph, can you re-test with this patch applied Zdenek? That way we'll 
+actually know where SLUB expected to see POISON_INUSE.
 
-fault == NULL if the check was successful. Otherwise it contains the first
-address that does not match our expectations.
+Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
+---
 
->     if (!fault)
->             return 1;
->     while (end > fault && end[-1] == POISON_INUSE)
->             end--;
-> 
->     slab_err(s, page, "Padding overwritten. 0x%p-0x%p", fault, end - 1);
-> 
-> So how come we're printing out 'fault' as zero and 'end' at 4 GB? Christoph?
-
-We should have returned from the function and not printed this message. If 
-we somehow skipped the test for !fault then end could have wrapped around 
-which gets us to 4GB.
-
-
+diff --git a/mm/slub.c b/mm/slub.c
+index 7f8aaa2..dac50e3 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -456,6 +456,15 @@ static void print_page_info(struct page *page)
+ 
+ }
+ 
++static void __slab_bug(struct kmem_cache *s, char *buf)
++{
++	printk(KERN_ERR "========================================"
++			"=====================================\n");
++	printk(KERN_ERR "BUG %s: %s\n", s->name, buf);
++	printk(KERN_ERR "----------------------------------------"
++			"-------------------------------------\n\n");
++}
++
+ static void slab_bug(struct kmem_cache *s, char *fmt, ...)
+ {
+ 	va_list args;
+@@ -464,11 +473,7 @@ static void slab_bug(struct kmem_cache *s, char *fmt, ...)
+ 	va_start(args, fmt);
+ 	vsnprintf(buf, sizeof(buf), fmt, args);
+ 	va_end(args);
+-	printk(KERN_ERR "========================================"
+-			"=====================================\n");
+-	printk(KERN_ERR "BUG %s: %s\n", s->name, buf);
+-	printk(KERN_ERR "----------------------------------------"
+-			"-------------------------------------\n\n");
++	__slab_bug(s, buf);
+ }
+ 
+ static void slab_fix(struct kmem_cache *s, char *fmt, ...)
+@@ -533,7 +538,7 @@ static void slab_err(struct kmem_cache *s, struct page *page, char *fmt, ...)
+ 	va_start(args, fmt);
+ 	vsnprintf(buf, sizeof(buf), fmt, args);
+ 	va_end(args);
+-	slab_bug(s, fmt);
++	__slab_bug(s, buf);
+ 	print_page_info(page);
+ 	dump_stack();
+ }
