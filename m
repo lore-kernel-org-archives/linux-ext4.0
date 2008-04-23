@@ -1,107 +1,88 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
- for FLEX_BG
-Date: Wed, 23 Apr 2008 00:48:43 -0500
-Message-ID: <20080423004843.72f65d2b@gara>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
-	<1208868379-17580-2-git-send-email-tytso@mit.edu>
-	<1208868379-17580-3-git-send-email-tytso@mit.edu>
-	<20080422091847.50708436@gara>
-	<20080422145125.GB12836@mit.edu>
-	<20080422103212.1c974bd9@gara>
-	<20080422185728.GC20668@mit.edu>
-	<20080422172751.22d5aef9@gara>
-	<20080423012149.GF20668@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: What's cooking in e2fsprogs.git (topics)
+Date: Wed, 23 Apr 2008 13:02:31 +0530
+Message-ID: <20080423073231.GC10003@skywalker>
+References: <E1IooAl-0006SJ-Ki@closure.thunk.org> <20071217171100.GA7070@thunk.org> <20080211045107.GB25089@mit.edu> <20080219050945.GU25098@mit.edu> <20080229154333.GC8968@mit.edu> <20080402000956.GC302@mit.edu> <20080407171230.GE11997@mit.edu> <20080418184329.GB25797@mit.edu> <20080421164144.GG9700@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	Valerie Clement <valerie.clement@bull.net>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:39286 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751528AbYDWFtE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Apr 2008 01:49:04 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3N5n1ZA003920
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 01:49:01 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3N5n1fp254742
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 01:49:01 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3N5mplX017088
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 01:48:51 -0400
-In-Reply-To: <20080423012149.GF20668@mit.edu>
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:41317 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750856AbYDWHe3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2008 03:34:29 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m3N7ZD3U022339
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:35:13 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3N7X7Y04710430
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:33:07 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3N7XC4f015724
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2008 17:33:12 +1000
+Content-Disposition: inline
+In-Reply-To: <20080421164144.GG9700@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 22 Apr 2008 21:21:49 -0400
-Theodore Tso <tytso@mit.edu> wrote:
-
-> On Tue, Apr 22, 2008 at 05:27:51PM -0500, Jose R. Santos wrote:
-> > > Let's stay with 16 then for now.  Spindle speed doesn't actually
-> > > matter here; what matters is seek speed, and the density of the disk
-> > 
-> > Well higher spindle speed affect cylinder seek times which affect
-> > overall seek time, which is why I think it should be tested as well.
+On Mon, Apr 21, 2008 at 12:41:44PM -0400, Theodore Tso wrote:
 > 
-> Well, I looked at some laptop drives with spindle speeds of 4200rpm,
-> 5400rpm, and 7200rpm, and they have an average read/write seek time of
-> of 10.5/12.5ms.
+> * ak/undo-mgr (Mon Aug 13 15:56:26 2007 +0530) 6 commits
+>  - Add test cases for undoe2fs: u_undoe2fs_mke2fs and
+>    u_undoe2fs_tune2fs
+>  - Fix the resize inode test case
+>  - tune2fs: Support for large inode migration.
+>  - mke2fs: Add support for the undo I/O manager.
+>  - Add undoe2fs command
+>  - libext2fs: Add undo I/O manager
 > 
-> Comparing Western Digital's current enterprise disk drives (the RE-2)
-> which are 7200rpm, and their Enterprise "Green Power" drives (the
-> RE2-GP) which try to hide the fact that their disks are 5400RPM, but
-> which web sites have outed by using doing a frequency analysis of its
-> acoustic output --- both have the same read/write seek time of 8.9ms.
-
-Well, these Green Power drives from Western Digital dont have constant
-spindle speed and I believe that they run at 7200 rpm under load and
-5400 when mostly idle.  Makes sense why the seek times would be the
-same.  On the other hand, the VelociRaptor drives with 10k rpm have a
-latency of 5.5ms.
-
-Looking at the specs of Seagate Savvio and Cheetah family of drives, a
-33% increase in spindle speed from 10k to 15K rpms give out around 25%
-improvement in average seek latency.  Also note that benchmark
-publishes that are sensitive to IO latencies tend to use smaller 15k
-rpm disk than their larger but slower counter parts.  RPM speeds
-usually beats density when it comes to seek time improvements.
-
+> 	These patches have been *significantly* rototilled.
 > 
-> Interestingly, some of the older disks have faster seek times (i.e.,
-> 4ms), at the same disk platters, and I doubt it's because hard drive
-> head positioning motors have gotten slower; rather, it's probably that
-> as the platter density has increased, the time to position the hard
-> drive heads is what's taking longer.  
-
-Or it could be that hard drive manufactures in the digital media age
-care more about capacity at a cheaper price than tuning a drive for
-best seek performance.  For those user that demand speed, there are
-options available like the VelociRaptor family of drives but those come
-at a cost of both capacity and price.
-
-I got to say 4ms is really good.  Was this on IDE?  Most drive I've
-seen in this category have been stuck in the 7-8ms barrier.  Dont
-recall seeing them lower than this, but I have not been paying much
-attention in the last couple of years.
-
-> Something that would be interesting to do is to do some experiments
-> measuring small seeks (i.e., within a 1 gigabyte or so), and long
-> seeks (i.e., across 10-20% and 50% of the disk drive).  The difference
-> between those two times is what's probably driving your flex_bg
-> performance numbers, and it might be easier simply to measure that
-> directly.
-
-I may have some data related to that since I did run blktrace on
-some of my runs.  Need check if I still have the data so that I can run
-seekwatcher on them.  I had to erase most of them since the traces where
-huge. :(
-
+> 	* The test cases weren't correctly setting and deleting the
+> 	  test_name.ok and test_name.failed files
 > 
-> 							- Ted
+> 	* mke2fs would bomb out with an incomprehensible error message
+> 	  if run twice in a row, or if the user didn't have write access
+> 	  to /var/lib/e2fsprogs (some users run mke2fs as a non-root
+> 	  user!)
+> 
+> 	* the undoe2fs program was calling com_err and passing
+> 	  in uninitialized retval values, and was otherwise confused
+> 	  about how to do proper error handling, resulting in garbage
+> 	  getting printed if the file passed in didn't exist
+> 
+> 	* there was a terrible performance problem because in the
+> 	  mke2fs case, the undo manager was using a tdb_data_size of
+> 	  512.
+> 
+> 	* I added the ability to configure the location of the scratch
+>           dirctory via mke2fs.conf for mk2efs.  What we should do for
+>           tune2fs is less clear, and still needs to be addressed.  It
+>           is also possible to force an undo file to be always created,
+>           and not just when doing a lazy inode table initialization.
+>           By using a 4k instead of 512 tdb_data_size, the time to
+>           speed up an mke2fs was cut in half, while still using an
+>           undo file.  I suspect if we force the tdb_data_size to be
+>           even larger, say 32k or 64k the overhead would shrink even
+>           more.
+> 
+> 	Unfortunately, there appears to be some kind of data
+> 	corruption bug if I force a tdb_data_size of 32768, so I'm not
+> 	entirely sure I trust the undo manager to be working
+> 	correctly.  The undo_manager code itself needs a pretty
+> 	serious auditing and checking to make sure it's doing the
+> 	right thing with large tdb_data_sizes.
+> 
 
+undo-mgr is using the first blocks size used to write. This was done as
+per the discussion at
 
+http://thread.gmane.org/gmane.comp.file-systems.ext4/1942
+http://thread.gmane.org/gmane.comp.file-systems.ext4/2056
 
--JRS
+I am not sure how you are forcing larger tdb_data_size. Can you send me
+the changes so that I can test it and see what is wrong.
+
+-aneesh
+
