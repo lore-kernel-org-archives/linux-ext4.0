@@ -1,48 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Mentor for a GSoC application wanted (Online ext2/3 filesystem
- checker)
-Date: Tue, 22 Apr 2008 19:52:29 -0500
-Message-ID: <480E884D.7010602@redhat.com>
-References: <f19298770804180720w2e72b821j95b709c1dd1b1c25@mail.gmail.com> <20080419012952.GE25797@mit.edu> <f19298770804190244y5d6a8502p39f98d1c420135a@mail.gmail.com> <20080419185603.GA30449@mit.edu> <480A42F6.2030005@redhat.com> <804dabb00804220954s67d56cacj89098d88697565aa@mail.gmail.com> <480E1A3F.9030103@redhat.com> <20080422213144.GW2775@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
+	for FLEX_BG
+Date: Tue, 22 Apr 2008 21:21:49 -0400
+Message-ID: <20080423012149.GF20668@mit.edu>
+References: <1208868379-17580-1-git-send-email-tytso@mit.edu> <1208868379-17580-2-git-send-email-tytso@mit.edu> <1208868379-17580-3-git-send-email-tytso@mit.edu> <20080422091847.50708436@gara> <20080422145125.GB12836@mit.edu> <20080422103212.1c974bd9@gara> <20080422185728.GC20668@mit.edu> <20080422172751.22d5aef9@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Peter Teoh <htmldeveloper@gmail.com>, Theodore Tso <tytso@mit.edu>,
-	Alexey Zaytsev <alexey.zaytsev@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Rik van Riel <riel@surriel.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Valerie Clement <valerie.clement@bull.net>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46716 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755179AbYDWAyi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Apr 2008 20:54:38 -0400
-In-Reply-To: <20080422213144.GW2775@webber.adilger.int>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51277 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753403AbYDWBW1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Apr 2008 21:22:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20080422172751.22d5aef9@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Apr 22, 2008  12:02 -0500, Eric Sandeen wrote:
->> Peter Teoh wrote:
->>> On Sun, Apr 20, 2008 at 3:07 AM, Eric Sandeen <sandeen@redhat.com> wrote:
->>>>  If you really just want to verify a snapshot of the fs at a point in
->>>>  time, surely there are simpler ways.  If the device is on lvm, there's
->>>>  already a script floating around to do it in automated fasion.  (I'd
->>>>  pondered the idea of introducing META_WRITE (to go with META_READ) and
->>>>  maybe lvm could do a "metadata-only" snapshot to be lighter weight?)
->>> Can I know where is this script?   Or if u cannot locate it, does it
->>> have any resemblance to all the stuff mentioned below?.
->> Google for "lvcheck" and find it buried in a thread "forced fsck
->> (again?)" on the ext3-users list - I'm not sure if it has an upstream
->> home anywhere yet...
+On Tue, Apr 22, 2008 at 05:27:51PM -0500, Jose R. Santos wrote:
+> > Let's stay with 16 then for now.  Spindle speed doesn't actually
+> > matter here; what matters is seek speed, and the density of the disk
 > 
-> We thought the best place to put it would be in the lvm2 utilities, since
-> it is tied to LVM snapshots (and not really a particular filesystem).
-> 
-> Eric, any chance you could pass the script over to the LVM folks at RH?
-> AFAIK, they are the official LVM/DM maintainers still (adopted as part of
-> Sistina and GFS).
+> Well higher spindle speed affect cylinder seek times which affect
+> overall seek time, which is why I think it should be tested as well.
 
-Sure, I'll see who I can bug :)
+Well, I looked at some laptop drives with spindle speeds of 4200rpm,
+5400rpm, and 7200rpm, and they have an average read/write seek time of
+of 10.5/12.5ms.
 
--Eric
+Comparing Western Digital's current enterprise disk drives (the RE-2)
+which are 7200rpm, and their Enterprise "Green Power" drives (the
+RE2-GP) which try to hide the fact that their disks are 5400RPM, but
+which web sites have outed by using doing a frequency analysis of its
+acoustic output --- both have the same read/write seek time of 8.9ms.
+
+Interestingly, some of the older disks have faster seek times (i.e.,
+4ms), at the same disk platters, and I doubt it's because hard drive
+head positioning motors have gotten slower; rather, it's probably that
+as the platter density has increased, the time to position the hard
+drive heads is what's taking longer.  
+
+Something that would be interesting to do is to do some experiments
+measuring small seeks (i.e., within a 1 gigabyte or so), and long
+seeks (i.e., across 10-20% and 50% of the disk drive).  The difference
+between those two times is what's probably driving your flex_bg
+performance numbers, and it might be easier simply to measure that
+directly.
+
+							- Ted
