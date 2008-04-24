@@ -1,50 +1,48 @@
-From: Josef Bacik <jbacik@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
 Subject: Re: [PATCH] fiemap support for ext3
-Date: Thu, 24 Apr 2008 08:46:44 -0400
-Message-ID: <20080424124644.GC25173@unused.rdu.redhat.com>
-References: <20080423193914.GA25173@unused.rdu.redhat.com> <20080423232725.GK3095@webber.adilger.int> <20080424025803.GM3095@webber.adilger.int> <20080424123600.GB25173@unused.rdu.redhat.com> <4810827C.2020706@redhat.com>
+Date: Thu, 24 Apr 2008 08:59:57 -0600
+Message-ID: <20080424145957.GO3095@webber.adilger.int>
+References: <20080423193914.GA25173@unused.rdu.redhat.com>
+ <20080423232725.GK3095@webber.adilger.int>
+ <20080424025803.GM3095@webber.adilger.int>
+ <20080424123600.GB25173@unused.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35960 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759602AbYDXM50 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Apr 2008 08:57:26 -0400
-Content-Disposition: inline
-In-Reply-To: <4810827C.2020706@redhat.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:33842 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753278AbYDXPAK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Apr 2008 11:00:10 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3OF094Y001559
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Apr 2008 08:00:09 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0JZU000013ZEL600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 24 Apr 2008 08:00:09 -0700 (PDT)
+In-reply-to: <20080424123600.GB25173@unused.rdu.redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 24, 2008 at 07:52:12AM -0500, Eric Sandeen wrote:
-> Josef Bacik wrote:
-> > On Wed, Apr 23, 2008 at 08:58:03PM -0600, Andreas Dilger wrote:
-> >> On Apr 23, 2008  15:39 -0400, Josef Bacik wrote:
-> >>> Here is my reworked fiemap patch for ext3.  The generic fiemap handler
-> >>> takes the get_block_t from the filesystem and does the fiemap that way,
-> >>> so then adding ext2 support should be a snap, as well as any other fs
-> >>> that wants to use this.
-> >> Ah, one other point is that this should also be used by ext4 to map inodes
-> >> that are not in extents format, replacing the -EOPNOTSUPP return in that
-> >> case.
-> >>
-> > 
-> > Sounds good, but I'm wondering if we should add a flag to the FIEMAP stuff to
-> > specify wether the inode you are mapping does truly have extents or if its just
-> > more of a block map.  Do you think something like that would be usefull?  Thank
-> > you,
-> > 
-> > Josef 
-> 
-> I don't see that in itself as useful; you care about file layout, but
-> why would you care about the filesystem's mechanism for tracking that
-> layout?
->
+On Apr 24, 2008  08:36 -0400, Josef Bacik wrote:
+> I'm wondering if we should add a flag to the FIEMAP stuff to specify
+> wether the inode you are mapping does truly have extents or if its just
+> more of a block map.  Do you think something like that would be usefull?
 
-idk, just thought it may be usefull in the case of ext4 where you potentially
-have both formats.  Mostly thinking out loud while we can still change things.
-Thanks,
+You can already do lsattr (EXT*_IOC_GETFLAGS) on a file to determine if
+it is using extents:
 
-Josef 
+# lsattr /mnt/tmp/O/0/d0/459808 
+-------------e /mnt/tmp/O/0/d0/459808
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
