@@ -1,51 +1,71 @@
-From: Ingo Molnar <mingo@elte.hu>
+From: "H. Peter Anvin" <hpa@zytor.com>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 20:56:03 +0200
-Message-ID: <20080425185603.GA22261@elte.hu>
-References: <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425162215.GA16273@elte.hu> <alpine.LFD.1.10.0804250925341.2779@woody.linux-foundation.org> <20080425164509.GB19962@elte.hu> <alpine.LFD.1.10.0804250950360.2779@woody.linux-foundation.org> <20080425170237.GA24472@elte.hu> <alpine.LFD.1.10.0804251009340.2779@woody.linux-foundation.org> <20080425175333.GA25276@elte.hu> <alpine.LFD.1.10.0804251108370.2779@woody.linux-foundation.org> <20080425181924.GA6076@elte.hu>
+Date: Fri, 25 Apr 2008 11:47:42 -0700
+Message-ID: <4812274E.9000001@zytor.com>
+References: <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andi Kleen <andi@firstfloor.org>, Jiri Slaby <jirislaby@gmail.com>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
+	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:35738 "EHLO mx2.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932265AbYDYS5K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 14:57:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20080425181924.GA6076@elte.hu>
+Received: from terminus.zytor.com ([198.137.202.10]:39518 "EHLO
+	terminus.zytor.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933593AbYDYTMt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 15:12:49 -0400
+In-Reply-To: <20080425183748.GB16180@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-* Ingo Molnar <mingo@elte.hu> wrote:
-
-> > Ok, fair enough. Without the IPI, I don't think there's a big deal. 
-> > And you have the numbers to prove it. Consider me convinced.
+Mathieu Desnoyers wrote:
 > 
-> great - i've lined up all the fixes into this git tree which you can 
-> pull from:
+> Thinking about it, there could be a way to insure limited ZF and %al
+> liveliness: adding an epilogue to the expected instruction sequence
+> formed by an asm statement which clobbers the flags (flags are clobbered
+> in any asm statement on x86) and clobbers %al.
 > 
->    git://git.kernel.org/pub/scm/linux/kernel/git/mingo/linux-2.6-x86-fixes4.git for-linus
+> From that point, we just have to find a specific signature that gcc
+> could not imitate to put in this asm statement, so we can detect if
+> other instructions have been placed in the middle of our sequence by
+> gcc. Actually, I think the best thing to do with this asm statement is
+> to put the instruction pointer in a special section, so we know that
+> this code location marks the end of ZF and %al liveliness. There would
+> be therefore no added code, just asm constraints.
 > 
-> this has Jiri's fix followed by Mathieu's vmap logic cleanups, plus a 
-> bit of extra checks and the API extensions for set_fixmap (we didnt 
-> end up using them but they make sense nevertheless).
+> This epilogue should then be used on both branches of the condition,
+> like this :
 > 
-> Lightly tested though, so even if you agree with the changes you might 
-> want to wait an hour with the pull just in case some trivial build 
-> issue slipped in. Shortlog and diff below.
+> if (unlikely(imv_cond(var))) {
+>   imv_cond_end();
+>   ...
+> } else {
+>   imv_cond_end();
+>    ...
+> }
+> 
 
-ok, it's better tested now - 10 random bootups, amongst them 64/32-bit 
-allyesconfig bootups, and some targeted testing as well with 
-offlining/onlining CPUs and no problems found so far. Please pull.
+[...]
 
-	Ingo
+> 
+> Does it make sense ?
+> 
+
+I don't think so.  You're making way too many assumptions about the code 
+generated by gcc.
+
+This kind of stuff absolutely can be done, *BUT* it requires the 
+cooperation of the compiler.  The right way to do this is to negotiate a 
+set of appropriate builtins with the gcc people, and use them.  This 
+means this optimization will only work when compiled with the new gcc, 
+so there is a substantial lag, but it's the only sane way to do this 
+kind of stuff.
+
+	-hpa
