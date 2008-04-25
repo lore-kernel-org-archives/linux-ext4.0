@@ -1,10 +1,10 @@
-From: Ingo Molnar <mingo@elte.hu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 17:32:07 +0200
-Message-ID: <20080425153207.GA2280@elte.hu>
+Date: Fri, 25 Apr 2008 08:33:53 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org>
 References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
@@ -15,84 +15,35 @@ Cc: Jiri Slaby <jirislaby@gmail.com>,
 	Andi Kleen <andi@firstfloor.org>, pageexec@freemail.hu,
 	"H. Peter Anvin" <hpa@zytor.com>,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:34184 "EHLO mx2.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750976AbYDYPcw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 11:32:52 -0400
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:60863 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755825AbYDYPk4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 11:40:56 -0400
 In-Reply-To: <20080425152650.GA894@elte.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-* Ingo Molnar <mingo@elte.hu> wrote:
 
-> > > > The 0xf0 pattern comes from alternatives_smp_lock: text_poke(*ptr, 
-> > > > ((unsigned char []){0xf0}), 1);
-> > > 
-> > > And we should really add a lot more sanity checking there.
+On Fri, 25 Apr 2008, Ingo Molnar wrote:
 > 
 > something like the patch below? (untested)
 
-the one below even builds and boots.
+No. That whole code sequence is total and utter crap. It needs to be 
+rewritten.
 
-this assumes that all modules areas are allocated via PAGE_KERNEL_EXEC - 
-but that is generally true on x86 due to NX. 32-bit uses vmalloc_exec(), 
-64-bit uses __vmalloc_area(..., PAGE_KERNEL_EXEC).
+It first does a BUG_ON() if it's not naturally aligned (because that 
+wouldn't be atomic), and then it has code for page crossing! What a TOTAL 
+PIECE OF SH*T!
 
-Jiri ... if you have any desire/stamina to still test this code - does 
-the patch below produce any warnings if you unapply your fix as well, 
-during suspend/resume?
+Hint:
+ - if it's naturally aligned, it couldn't be page crossing ANYWAY
+ - and if it was a page-crosser, it sure as hell couldn't be atomic!
 
-	Ingo
+The code is just crap, crap, crap. It needs to be rewritten from scratch. 
+I'll have a patch soonish.
 
---------------->
-Subject: x86: harden kernel code patching
-From: Ingo Molnar <mingo@elte.hu>
-Date: Fri Apr 25 17:07:03 CEST 2008
-
-Signed-off-by: Ingo Molnar <mingo@elte.hu>
----
- arch/x86/kernel/alternative.c |    5 +++++
- mm/vmalloc.c                  |    3 +++
- 2 files changed, 8 insertions(+)
-
-Index: linux/arch/x86/kernel/alternative.c
-===================================================================
---- linux.orig/arch/x86/kernel/alternative.c
-+++ linux/arch/x86/kernel/alternative.c
-@@ -518,6 +518,11 @@ void *__kprobes text_poke(void *addr, co
- 	if (core_kernel_text((unsigned long)addr)) {
- 		struct page *pages[2] = { virt_to_page(addr),
- 			virt_to_page(addr + PAGE_SIZE) };
-+		/*
-+		 * Module text pages are PageReserved:
-+		 */
-+		WARN_ON(pages[0] && !PageReserved(pages[0]));
-+		WARN_ON(pages[1] && !PageReserved(pages[1]));
- 		if (!pages[1])
- 			nr_pages = 1;
- 		vaddr = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
-Index: linux/mm/vmalloc.c
-===================================================================
---- linux.orig/mm/vmalloc.c
-+++ linux/mm/vmalloc.c
-@@ -391,6 +391,7 @@ static void __vunmap(const void *addr, i
- 			struct page *page = area->pages[i];
- 
- 			BUG_ON(!page);
-+			ClearPageReserved(page);
- 			__free_page(page);
- 		}
- 
-@@ -507,6 +508,8 @@ static void *__vmalloc_area_node(struct 
- 			area->nr_pages = i;
- 			goto fail;
- 		}
-+		if (pgprot_val(prot) == pgprot_val(PAGE_KERNEL_EXEC))
-+			SetPageReserved(page);
- 		area->pages[i] = page;
- 	}
- 
+		Linus
