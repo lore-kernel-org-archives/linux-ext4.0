@@ -1,8 +1,8 @@
 From: Ingo Molnar <mingo@elte.hu>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 20:13:13 +0200
-Message-ID: <20080425181313.GA4286@elte.hu>
-References: <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425162215.GA16273@elte.hu> <alpine.LFD.1.10.0804250925341.2779@woody.linux-foundation.org> <20080425164509.GB19962@elte.hu> <alpine.LFD.1.10.0804250950360.2779@woody.linux-foundation.org> <20080425170237.GA24472@elte.hu> <alpine.LFD.1.10.0804251009340.2779@woody.linux-foundation.org> <20080425175333.GA25276@elte.hu>
+Date: Fri, 25 Apr 2008 20:19:24 +0200
+Message-ID: <20080425181924.GA6076@elte.hu>
+References: <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425162215.GA16273@elte.hu> <alpine.LFD.1.10.0804250925341.2779@woody.linux-foundation.org> <20080425164509.GB19962@elte.hu> <alpine.LFD.1.10.0804250950360.2779@woody.linux-foundation.org> <20080425170237.GA24472@elte.hu> <alpine.LFD.1.10.0804251009340.2779@woody.linux-foundation.org> <20080425175333.GA25276@elte.hu> <alpine.LFD.1.10.0804251108370.2779@woody.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andi Kleen <andi@firstfloor.org>, Jiri Slaby <jirislaby@gmail.com>,
@@ -16,77 +16,186 @@ Cc: Andi Kleen <andi@firstfloor.org>, Jiri Slaby <jirislaby@gmail.com>,
 	Jeremy Fitzhardinge <jeremy@goop.org>
 To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:38277 "EHLO mx2.mail.elte.hu"
+Received: from mx3.mail.elte.hu ([157.181.1.138]:40050 "EHLO mx3.mail.elte.hu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932717AbYDYSN7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 14:13:59 -0400
+	id S1755528AbYDYSUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 14:20:17 -0400
 Content-Disposition: inline
-In-Reply-To: <20080425175333.GA25276@elte.hu>
+In-Reply-To: <alpine.LFD.1.10.0804251108370.2779@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-* Ingo Molnar <mingo@elte.hu> wrote:
+* Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-> * Linus Torvalds <torvalds@linux-foundation.org> wrote:
-> 
-> > > performance i dont think we should be too worried about at this 
-> > > moment - this code is so rarely used that it should be driven by 
-> > > robustness i think.
+> On Fri, 25 Apr 2008, Ingo Molnar wrote:
 > > 
-> > That really isn't true. This isn't done just once. It's done many 
-> > thousands of times.
-> > 
-> > I agree that it has to be robust, but if we want to make 
-> > suspend/resume be instantaneous (and we do), performance does 
-> > actually matter. Yes, this is probably much less of a problem than 
-> > waiting for devices, and no, I haven't timed it, but if I counted 
-> > right, we'll literally be going almost ten thousand of these calls 
-> > over a suspend/resume cycle.
-> > 
-> > That's not "rarely used".
+> > no strong feeling either way - but i dont think there's any 
+> > cross-CPU TLB flush done in this case within vmap()/vunmap(). Why? 
+> > Because when alternative_instructions() runs then we have just a 
+> > single CPU in cpu_online_map.
 > 
-> yeah, it's done 2800 times on my box with a distro .config.
-> 
-> no strong feeling either way - but i dont think there's any cross-CPU 
-> TLB flush done in this case within vmap()/vunmap(). Why? Because when 
-> alternative_instructions() runs then we have just a single CPU in 
-> cpu_online_map.
-> 
-> So i think it's only direct vmap()/vunmap() overhead, on a single CPU. 
-> We do a kmalloc/kfree which is rather fast - sub-microsecond. We 
-> install the pages in the pte's - this is rather fast as well - 
-> sub-microsecond. Even assuming cache-cold lines (which they are most 
-> of the time) and taken thousands of times that's at most a few 
-> milliseconds IMO.
-> 
-> In fact, most of the actual vmap() related overhead should be 
-> well-cached (the kmalloc bits) - the main cost should come from 
-> trashing through all the instruction sites and modifying them.
+> Ok, fair enough. Without the IPI, I don't think there's a big deal. 
+> And you have the numbers to prove it. Consider me convinced.
 
-i just did some direct measurements of alternatives_smp_switch() itself:
+great - i've lined up all the fixes into this git tree which you can 
+pull from:
 
- alternatives took: 7374 usecs
- alternatives took: 8775 usecs
- alternatives took: 7498 usecs
- alternatives took: 8776 usecs
+   git://git.kernel.org/pub/scm/linux/kernel/git/mingo/linux-2.6-x86-fixes4.git for-linus
 
-that's on a ~2GHz Athlon64 X2 - so not the latest hw.
+this has Jiri's fix followed by Mathieu's vmap logic cleanups, plus a 
+bit of extra checks and the API extensions for set_fixmap (we didnt end
+up using them but they make sense nevertheless).
 
-i also added a sysctl to turn alternatives patching on/off, and the CPU 
-offline+online cycle:
-
-  # alternatives on:
-  real    0m0.152s
-  real    0m0.172s
-
-  # alternatives off:
-  real    0m0.146s
-  real    0m0.168s
-
-so it's measurable and it is in the few milliseconds range. (But there 
-seems to be strong dependency on the kernel image layout or some other 
-detail - compare these timings to my previous timings - they were 
-radically different.)
+Lightly tested though, so even if you agree with the changes you might 
+want to wait an hour with the pull just in case some trivial build issue 
+slipped in. Shortlog and diff below.
 
 	Ingo
+
+------------------>
+Ingo Molnar (4):
+      x86: make clear_fixmap() available on 64-bit as well
+      x86: make __set_fixmap() non-init
+      x86: remove set_fixmap() warning
+      x86: harden kernel code patching
+
+Jiri Slaby (1):
+      x86: fix text_poke()
+
+Mathieu Desnoyers (1):
+      x86: clean up text_poke()
+
+ arch/x86/kernel/alternative.c |   39 +++++++++++++++++++--------------------
+ arch/x86/mm/init_64.c         |    7 +++----
+ include/asm-x86/fixmap.h      |    8 ++++++++
+ include/asm-x86/fixmap_32.h   |    7 ++-----
+ include/asm-x86/fixmap_64.h   |    4 ++--
+ 5 files changed, 34 insertions(+), 31 deletions(-)
+
+diff --git a/arch/x86/kernel/alternative.c b/arch/x86/kernel/alternative.c
+index df4099d..65c7857 100644
+--- a/arch/x86/kernel/alternative.c
++++ b/arch/x86/kernel/alternative.c
+@@ -511,31 +511,30 @@ void *__kprobes text_poke(void *addr, const void *opcode, size_t len)
+ 	unsigned long flags;
+ 	char *vaddr;
+ 	int nr_pages = 2;
++	struct page *pages[2];
++	int i;
+ 
+-	BUG_ON(len > sizeof(long));
+-	BUG_ON((((long)addr + len - 1) & ~(sizeof(long) - 1))
+-		- ((long)addr & ~(sizeof(long) - 1)));
+-	if (kernel_text_address((unsigned long)addr)) {
+-		struct page *pages[2] = { virt_to_page(addr),
+-			virt_to_page(addr + PAGE_SIZE) };
+-		if (!pages[1])
+-			nr_pages = 1;
+-		vaddr = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
+-		BUG_ON(!vaddr);
+-		local_irq_save(flags);
+-		memcpy(&vaddr[(unsigned long)addr & ~PAGE_MASK], opcode, len);
+-		local_irq_restore(flags);
+-		vunmap(vaddr);
++	if (!core_kernel_text((unsigned long)addr)) {
++		pages[0] = vmalloc_to_page(addr);
++		pages[1] = vmalloc_to_page(addr + PAGE_SIZE);
+ 	} else {
+-		/*
+-		 * modules are in vmalloc'ed memory, always writable.
+-		 */
+-		local_irq_save(flags);
+-		memcpy(addr, opcode, len);
+-		local_irq_restore(flags);
++		pages[0] = virt_to_page(addr);
++		WARN_ON(!PageReserved(pages[0]));
++		pages[1] = virt_to_page(addr + PAGE_SIZE);
+ 	}
++	BUG_ON(!pages[0]);
++	if (!pages[1])
++		nr_pages = 1;
++	vaddr = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
++	BUG_ON(!vaddr);
++	local_irq_save(flags);
++	memcpy(&vaddr[(unsigned long)addr & ~PAGE_MASK], opcode, len);
++	local_irq_restore(flags);
++	vunmap(vaddr);
+ 	sync_core();
+ 	/* Could also do a CLFLUSH here to speed up CPU recovery; but
+ 	   that causes hangs on some VIA CPUs. */
++	for (i = 0; i < len; i++)
++		BUG_ON(((char *)addr)[i] != ((char *)opcode)[i]);
+ 	return addr;
+ }
+diff --git a/arch/x86/mm/init_64.c b/arch/x86/mm/init_64.c
+index 1ff7906..b798e7b 100644
+--- a/arch/x86/mm/init_64.c
++++ b/arch/x86/mm/init_64.c
+@@ -135,7 +135,7 @@ static __init void *spp_getpage(void)
+ 	return ptr;
+ }
+ 
+-static __init void
++static void
+ set_pte_phys(unsigned long vaddr, unsigned long phys, pgprot_t prot)
+ {
+ 	pgd_t *pgd;
+@@ -173,7 +173,7 @@ set_pte_phys(unsigned long vaddr, unsigned long phys, pgprot_t prot)
+ 	new_pte = pfn_pte(phys >> PAGE_SHIFT, prot);
+ 
+ 	pte = pte_offset_kernel(pmd, vaddr);
+-	if (!pte_none(*pte) &&
++	if (!pte_none(*pte) && pte_val(new_pte) &&
+ 	    pte_val(*pte) != (pte_val(new_pte) & __supported_pte_mask))
+ 		pte_ERROR(*pte);
+ 	set_pte(pte, new_pte);
+@@ -214,8 +214,7 @@ void __init cleanup_highmap(void)
+ }
+ 
+ /* NOTE: this is meant to be run only at boot */
+-void __init
+-__set_fixmap(enum fixed_addresses idx, unsigned long phys, pgprot_t prot)
++void __set_fixmap(enum fixed_addresses idx, unsigned long phys, pgprot_t prot)
+ {
+ 	unsigned long address = __fix_to_virt(idx);
+ 
+diff --git a/include/asm-x86/fixmap.h b/include/asm-x86/fixmap.h
+index 382eb27..5bd2069 100644
+--- a/include/asm-x86/fixmap.h
++++ b/include/asm-x86/fixmap.h
+@@ -1,5 +1,13 @@
++#ifndef _ASM_FIXMAP_H
++#define _ASM_FIXMAP_H
++
+ #ifdef CONFIG_X86_32
+ # include "fixmap_32.h"
+ #else
+ # include "fixmap_64.h"
+ #endif
++
++#define clear_fixmap(idx)			\
++	__set_fixmap(idx, 0, __pgprot(0))
++
++#endif
+diff --git a/include/asm-x86/fixmap_32.h b/include/asm-x86/fixmap_32.h
+index eb16651..4b96148 100644
+--- a/include/asm-x86/fixmap_32.h
++++ b/include/asm-x86/fixmap_32.h
+@@ -10,8 +10,8 @@
+  * Support of BIGMEM added by Gerhard Wichert, Siemens AG, July 1999
+  */
+ 
+-#ifndef _ASM_FIXMAP_H
+-#define _ASM_FIXMAP_H
++#ifndef _ASM_FIXMAP_32_H
++#define _ASM_FIXMAP_32_H
+ 
+ 
+ /* used by vmalloc.c, vsyscall.lds.S.
+@@ -121,9 +121,6 @@ extern void reserve_top_address(unsigned long reserve);
+ #define set_fixmap_nocache(idx, phys)			\
+ 	__set_fixmap(idx, phys, PAGE_KERNEL_NOCACHE)
+ 
+-#define clear_fixmap(idx)			\
+-	__set_fixmap(idx, 0, __pgprot(0))
