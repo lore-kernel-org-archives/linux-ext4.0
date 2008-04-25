@@ -1,84 +1,81 @@
-From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+From: Ingo Molnar <mingo@elte.hu>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 12:30:35 -0400
-Message-ID: <20080425163035.GE9503@Krystal>
-References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org>
+Date: Fri, 25 Apr 2008 18:33:09 +0200
+Message-ID: <20080425163309.GA17792@elte.hu>
+References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <alpine.LFD.1.10.0804250915340.2779@woody.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
+Cc: Andi Kleen <andi@firstfloor.org>, Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
-	"H. Peter Anvin" <hpa@zytor.com>,
+	linux-kernel@vger.kernel.org,
+	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
+	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Andi Kleen <andi@firstfloor.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts13.bellnexxia.net ([209.226.175.34]:43633 "EHLO
-	tomts13-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759524AbYDYQak (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 12:30:40 -0400
+Received: from mx2.mail.elte.hu ([157.181.151.9]:44842 "EHLO mx2.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758478AbYDYQfD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 12:35:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20080425161916.GD3265@one.firstfloor.org>
+In-Reply-To: <alpine.LFD.1.10.0804250915340.2779@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Andi Kleen (andi@firstfloor.org) wrote:
-> On Fri, Apr 25, 2008 at 09:06:37AM -0700, Linus Torvalds wrote:
-> > 
-> > 
-> > On Fri, 25 Apr 2008, Andi Kleen wrote:
-> > > 
-> > > So all these checks can be just removed.
-> > 
-> > Quite frankly, I'd rather tighten them up. All the callers actually seem 
-> > to do just a single-byte one.
+
+* Linus Torvalds <torvalds@linux-foundation.org> wrote:
+
+> > Not sure how the fixmap is better. It's pretty much equivalent, 
+> > isn't it? Perhaps a little cheaper, but the code shouldn't be 
+> > performance critical.
 > 
-> I think Mathieu did them to prepare for his immediate values which
-> need to write more bytes (although actually it would be quite
-> possible to have immediate values only for byte immediates too)
+> I have no really strong opinions. However, we do have a *lot* of lock 
+> prefixes in the kernel, and fixmaps are a lot cheaper than vmap(). It 
+> may not be performance-critical, but for me the "locks" section for 
+> the kernel is 0x8060 bytes long, which would seem to say that this is 
+> called four thousand times for each suspend and resume.
 > 
-> But that code needs much more infrastructure anyways.
-> 
+> With each invocation being thousands of instructions and a cross-CPU 
+> IPI for the tlb flush, that kind of stuff adds up. We're likely 
+> talking real fractions of a second, rather than milliseconds.
 
-Yes, the immediate values, in general, only need to do atomic writes,
-because I have taken care of placing the mov instruction in the correct
-alignment so its immediate value happens to be aligned in memory.
-However, the latest optimisation I did to change a conditional branch
-into a jump when the correct code pattern is detected :
+the other thing is atomicity - your new version of text_poke() is 
+evidently atomic - while vmap() does a kmalloc which might sleep. 
+Atomicity for something as fragile as code-patching never hurts, so i 
+definitely like your version more.
 
-mov, test, bne short
-into a
-nop2, nop2, nop1, jmp short
+it's also the more familar API - set_fixmap() is used more frequently 
+than vmap() - hence less danger of doing something wrong.
 
-or
+in fact i'd do the extra sanity check below as well on top of your patch 
+- all core kernel text pages are PageReserved so the one below would 
+have caught the memory corruption right at its source.
 
-mov, test, bne near
-into a
-nop2, nop2, nop1, jmp near
+	Ingo
 
-"replace_instruction_safe" is used for that. It puts a breakpoint in
-lieue of each instruction's first byte before changing the rest of the
-(potentially non aligned) instruction non atomically, and only then,
-after issuing a sync_core on every CPUs to flush the trace cache, does
-it put back the first byte, so it's done safely wrt intel's erratas
-regarding code modification on SMP. Also note that it changes a 6 bytes
-branch instruction into a 1 byte nop + 5 byte jump in the near jump
-case, which is ok : you can split an instruction in multiple smaller
-instructions safely on a live system wrt any execution context, but the
-opposite is _not_ ok, since there could be a return address pointing in
-the middle of the grouped instructions sitting on some other kernel
-thread or interrupt stack (we should also take into account hypervisor
-interaction here).
+---------------->
+Subject: x86: harden kernel code patching
+From: Ingo Molnar <mingo@elte.hu>
+Date: Fri Apr 25 17:07:03 CEST 2008
 
-Mathieu
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+---
+ arch/x86/kernel/alternative.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-
--- 
-Mathieu Desnoyers
-Computer Engineering Ph.D. Student, Ecole Polytechnique de Montreal
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+Index: linux/arch/x86/kernel/alternative.c
+===================================================================
+--- linux.orig/arch/x86/kernel/alternative.c
++++ linux/arch/x86/kernel/alternative.c
+@@ -522,6 +522,8 @@ void *__kprobes text_poke(void *addr, co
+ 		unsigned long virt = fix_to_virt(FIX_POKE);
+ 		phys &= PAGE_MASK;
+ 
++		WARN_ON(!PageReserved(virt_to_page(addr)));
++
+ 		spin_lock_irqsave(&poke_lock, flags);
+ 		set_fixmap(FIX_POKE, phys);
+ 		memcpy((void *)(virt + offset), opcode, len);
