@@ -1,62 +1,52 @@
-From: Andi Kleen <andi@firstfloor.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 18:19:17 +0200
-Message-ID: <20080425161916.GD3265@one.firstfloor.org>
-References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org>
+Date: Fri, 25 Apr 2008 09:11:59 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0804250908570.2779@woody.linux-foundation.org>
+References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu>
+ <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425155000.GA4438@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andi Kleen <andi@firstfloor.org>, Ingo Molnar <mingo@elte.hu>,
-	Jiri Slaby <jirislaby@gmail.com>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
 	linux-kernel@vger.kernel.org,
 	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
+	Andi Kleen <andi@firstfloor.org>, pageexec@freemail.hu,
+	"H. Peter Anvin" <hpa@zytor.com>,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:49494 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755704AbYDYQNX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 12:13:23 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46314 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758128AbYDYQOI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 12:14:08 -0400
+In-Reply-To: <20080425155000.GA4438@elte.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 25, 2008 at 09:06:37AM -0700, Linus Torvalds wrote:
+
+
+On Fri, 25 Apr 2008, Ingo Molnar wrote:
 > 
-> 
-> On Fri, 25 Apr 2008, Andi Kleen wrote:
-> > 
-> > So all these checks can be just removed.
-> 
-> Quite frankly, I'd rather tighten them up. All the callers actually seem 
-> to do just a single-byte one.
+> text_poke() itself only applies/unapplies the LOCK prefix - a single 
+> byte. We shouldnt be doing that at all: the cost of LOCK is 
+> insignificant (a few cycles) and most systems are SMP anyway.
 
-I think Mathieu did them to prepare for his immediate values which
-need to write more bytes (although actually it would be quite
-possible to have immediate values only for byte immediates too)
+No, the cost of LOCK is quite high on a lot of systems.
 
-But that code needs much more infrastructure anyways.
+On P4's in particular, since LOCK is serializing, it's about 140 cycles or 
+so (and breaks all speculation). So we definitely want to remove it for 
+any generic kernels.
 
-> 
-> So I'd suggest really tightening it up to require total natural alignment 
+(lock is fairly cheap on AMD K8's, and reportedly on Intel's upcoming 
+Nehalem too, but on Core 2 it's about 35 cycles - quite noticeable, 
+although not nearly the disaster that netburst is)
 
-For the common (everything but kprobes) "other code not running"
-it doesn't matter and I don't think natural alignment works for the
-other cases anyways.
+Oh, and text_poke() is also used for inserting the debug instruction for 
+kprobes (and restoring the original byte), but yes, that is always just a 
+single byte too.
 
-FWIW the original text_poke I started long ago only did bytes
-
-> (rather than the weaker version that required that it fit in an aligned 
-> unsigned long or whatever). And I'd suggest using FIXMAP's instead of 
-> vmap. Maybe something like the appended (TOTALLY UNTESTED!)
-
-Not sure how the fixmap is better. It's pretty much equivalent, isn't it?
-Perhaps a little cheaper, but the code shouldn't be performance critical.
-
--Andi
-
+			Linus
