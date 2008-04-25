@@ -1,201 +1,167 @@
-From: Ingo Molnar <mingo@elte.hu>
+From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 20:19:24 +0200
-Message-ID: <20080425181924.GA6076@elte.hu>
-References: <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425162215.GA16273@elte.hu> <alpine.LFD.1.10.0804250925341.2779@woody.linux-foundation.org> <20080425164509.GB19962@elte.hu> <alpine.LFD.1.10.0804250950360.2779@woody.linux-foundation.org> <20080425170237.GA24472@elte.hu> <alpine.LFD.1.10.0804251009340.2779@woody.linux-foundation.org> <20080425175333.GA25276@elte.hu> <alpine.LFD.1.10.0804251108370.2779@woody.linux-foundation.org>
+Date: Fri, 25 Apr 2008 14:37:48 -0400
+Message-ID: <20080425183748.GB16180@Krystal>
+References: <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andi Kleen <andi@firstfloor.org>, Jiri Slaby <jirislaby@gmail.com>,
+Content-Transfer-Encoding: 8BIT
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
+	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: "H. Peter Anvin" <hpa@zytor.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:40050 "EHLO mx3.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755528AbYDYSUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 14:20:17 -0400
+Received: from tomts43-srv.bellnexxia.net ([209.226.175.110]:33341 "EHLO
+	tomts43-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1762207AbYDYShv convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 14:37:51 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.1.10.0804251108370.2779@woody.linux-foundation.org>
+In-Reply-To: <20080425170929.GA16180@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-* Linus Torvalds <torvalds@linux-foundation.org> wrote:
-
-> On Fri, 25 Apr 2008, Ingo Molnar wrote:
-> > 
-> > no strong feeling either way - but i dont think there's any 
-> > cross-CPU TLB flush done in this case within vmap()/vunmap(). Why? 
-> > Because when alternative_instructions() runs then we have just a 
-> > single CPU in cpu_online_map.
+* Mathieu Desnoyers (mathieu.desnoyers@polymtl.ca) wrote:
+> * H. Peter Anvin (hpa@zytor.com) wrote:
+> > Mathieu Desnoyers wrote:
+> >> Yes, the immediate values, in general, only need to do atomic writes,
+> >> because I have taken care of placing the mov instruction in the correct
+> >> alignment so its immediate value happens to be aligned in memory.
+> >> However, the latest optimisation I did to change a conditional branch
+> >> into a jump when the correct code pattern is detected :
+> >> mov, test, bne short
+> >> into a
+> >> nop2, nop2, nop1, jmp short
+> >> or
+> >> mov, test, bne near
+> >> into a
+> >> nop2, nop2, nop1, jmp near
+> >
+> > And how, pray tell, do you deal with the fact that:
+> >
+> > a) the EFLAGS may be live on exit;
 > 
-> Ok, fair enough. Without the IPI, I don't think there's a big deal. 
-> And you have the numbers to prove it. Consider me convinced.
+> Actually, not only EFLAGS can be live on exit, but also the immediate
+> value itself.
+> 
+> If we take the mov, test, jne short case into account, I force the mov
+> to populate the %al register with some immediate value. Then, this value
+> is extracted from the inline assembly and feeded to an if() c statement
+> under the form of a variable. So, I check precisely for a mov %al,0,
+> followed by test and bne. If I don't find it (due to gcc optimizations),
+> then I leave the original immediate value there. I start the pattern
+> matching from the address of the movb instruction, which I extract from
+> the inline assembly. So, about the EFLAGS : given that I first change
+> the jne for an unconditional jump, I just don't care about the status of
+> the ZF : jump does not change the EFLAGS, and it does not depend on any.
+> However, it is still valid to leave the mov and test instructions there,
+> because ZF is considered "live" by gcc across the test+jne instructions.
+> 
+> Then, I patch mov and test in any order, because we just don't care
+> about the status of the ZF, or do we... ? The only limitation is that a
+> given imv_cond(var) should only be used in the following pattern :
+> 
+> if (imv_cond(var)) ...
+> 
+> Trying to save the result of imv_cond(var) and use it in multiple if()
+> statements would cause the compiler to duplicate tests and branches on
+> that variable and the pattern matching would not see that. I think it's
+> what you fear. Now that you speak of it, it might be better to leave the
+> movb and test instruction there to make sure we don't kill the ZF which
+> might be needed by some other code.
+> 
 
-great - i've lined up all the fixes into this git tree which you can 
-pull from:
+Thinking about it, there could be a way to insure limited ZF and %al
+liveliness: adding an epilogue to the expected instruction sequence
+formed by an asm statement which clobbers the flags (flags are clobbered
+in any asm statement on x86) and clobbers %al.
 
-   git://git.kernel.org/pub/scm/linux/kernel/git/mingo/linux-2.6-x86-fixes4.git for-linus
+>From that point, we just have to find a specific signature that gcc
+could not imitate to put in this asm statement, so we can detect if
+other instructions have been placed in the middle of our sequence by
+gcc. Actually, I think the best thing to do with this asm statement is
+to put the instruction pointer in a special section, so we know that
+this code location marks the end of ZF and %al liveliness. There would
+be therefore no added code, just asm constraints.
 
-this has Jiri's fix followed by Mathieu's vmap logic cleanups, plus a 
-bit of extra checks and the API extensions for set_fixmap (we didnt end
-up using them but they make sense nevertheless).
+This epilogue should then be used on both branches of the condition,
+like this :
 
-Lightly tested though, so even if you agree with the changes you might 
-want to wait an hour with the pull just in case some trivial build issue 
-slipped in. Shortlog and diff below.
+if (unlikely(imv_cond(var))) {
+  imv_cond_end();
+  ...
+} else {
+  imv_cond_end();
+   ...
+}
 
-	Ingo
+Where imv_cond_end() would look like this :
 
------------------->
-Ingo Molnar (4):
-      x86: make clear_fixmap() available on 64-bit as well
-      x86: make __set_fixmap() non-init
-      x86: remove set_fixmap() warning
-      x86: harden kernel code patching
-
-Jiri Slaby (1):
-      x86: fix text_poke()
-
-Mathieu Desnoyers (1):
-      x86: clean up text_poke()
-
- arch/x86/kernel/alternative.c |   39 +++++++++++++++++++--------------------
- arch/x86/mm/init_64.c         |    7 +++----
- include/asm-x86/fixmap.h      |    8 ++++++++
- include/asm-x86/fixmap_32.h   |    7 ++-----
- include/asm-x86/fixmap_64.h   |    4 ++--
- 5 files changed, 34 insertions(+), 31 deletions(-)
-
-diff --git a/arch/x86/kernel/alternative.c b/arch/x86/kernel/alternative.c
-index df4099d..65c7857 100644
---- a/arch/x86/kernel/alternative.c
-+++ b/arch/x86/kernel/alternative.c
-@@ -511,31 +511,30 @@ void *__kprobes text_poke(void *addr, const void *opcode, size_t len)
- 	unsigned long flags;
- 	char *vaddr;
- 	int nr_pages = 2;
-+	struct page *pages[2];
-+	int i;
- 
--	BUG_ON(len > sizeof(long));
--	BUG_ON((((long)addr + len - 1) & ~(sizeof(long) - 1))
--		- ((long)addr & ~(sizeof(long) - 1)));
--	if (kernel_text_address((unsigned long)addr)) {
--		struct page *pages[2] = { virt_to_page(addr),
--			virt_to_page(addr + PAGE_SIZE) };
--		if (!pages[1])
--			nr_pages = 1;
--		vaddr = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
--		BUG_ON(!vaddr);
--		local_irq_save(flags);
--		memcpy(&vaddr[(unsigned long)addr & ~PAGE_MASK], opcode, len);
--		local_irq_restore(flags);
--		vunmap(vaddr);
-+	if (!core_kernel_text((unsigned long)addr)) {
-+		pages[0] = vmalloc_to_page(addr);
-+		pages[1] = vmalloc_to_page(addr + PAGE_SIZE);
- 	} else {
--		/*
--		 * modules are in vmalloc'ed memory, always writable.
--		 */
--		local_irq_save(flags);
--		memcpy(addr, opcode, len);
--		local_irq_restore(flags);
-+		pages[0] = virt_to_page(addr);
-+		WARN_ON(!PageReserved(pages[0]));
-+		pages[1] = virt_to_page(addr + PAGE_SIZE);
- 	}
-+	BUG_ON(!pages[0]);
-+	if (!pages[1])
-+		nr_pages = 1;
-+	vaddr = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
-+	BUG_ON(!vaddr);
-+	local_irq_save(flags);
-+	memcpy(&vaddr[(unsigned long)addr & ~PAGE_MASK], opcode, len);
-+	local_irq_restore(flags);
-+	vunmap(vaddr);
- 	sync_core();
- 	/* Could also do a CLFLUSH here to speed up CPU recovery; but
- 	   that causes hangs on some VIA CPUs. */
-+	for (i = 0; i < len; i++)
-+		BUG_ON(((char *)addr)[i] != ((char *)opcode)[i]);
- 	return addr;
- }
-diff --git a/arch/x86/mm/init_64.c b/arch/x86/mm/init_64.c
-index 1ff7906..b798e7b 100644
---- a/arch/x86/mm/init_64.c
-+++ b/arch/x86/mm/init_64.c
-@@ -135,7 +135,7 @@ static __init void *spp_getpage(void)
- 	return ptr;
- }
- 
--static __init void
-+static void
- set_pte_phys(unsigned long vaddr, unsigned long phys, pgprot_t prot)
- {
- 	pgd_t *pgd;
-@@ -173,7 +173,7 @@ set_pte_phys(unsigned long vaddr, unsigned long phys, pgprot_t prot)
- 	new_pte = pfn_pte(phys >> PAGE_SHIFT, prot);
- 
- 	pte = pte_offset_kernel(pmd, vaddr);
--	if (!pte_none(*pte) &&
-+	if (!pte_none(*pte) && pte_val(new_pte) &&
- 	    pte_val(*pte) != (pte_val(new_pte) & __supported_pte_mask))
- 		pte_ERROR(*pte);
- 	set_pte(pte, new_pte);
-@@ -214,8 +214,7 @@ void __init cleanup_highmap(void)
- }
- 
- /* NOTE: this is meant to be run only at boot */
--void __init
--__set_fixmap(enum fixed_addresses idx, unsigned long phys, pgprot_t prot)
-+void __set_fixmap(enum fixed_addresses idx, unsigned long phys, pgprot_t prot)
- {
- 	unsigned long address = __fix_to_virt(idx);
- 
-diff --git a/include/asm-x86/fixmap.h b/include/asm-x86/fixmap.h
-index 382eb27..5bd2069 100644
---- a/include/asm-x86/fixmap.h
-+++ b/include/asm-x86/fixmap.h
-@@ -1,5 +1,13 @@
-+#ifndef _ASM_FIXMAP_H
-+#define _ASM_FIXMAP_H
++/*
++ * Puts a test and branch make sure the %al register and ZF are not live
++ * anymore.
++ * All asm statements clobbers the flags, but add "cc" clobber just to be sure.
++ * Clobbers %al.
++ */
++#define imv_cond_end()                                                 \
++       do {                                                            \
++               asm (".section __imv_cond_end,\"a\",@progbits\n\t"      \
++                               _ASM_PTR "1f\n\t"                       \
++                               ".previous\n\t"                         \
++                               "1:\n\t"                                \
++                               : : : "a", "cc");                       \
++       } while (0)
 +
- #ifdef CONFIG_X86_32
- # include "fixmap_32.h"
- #else
- # include "fixmap_64.h"
- #endif
-+
-+#define clear_fixmap(idx)			\
-+	__set_fixmap(idx, 0, __pgprot(0))
-+
-+#endif
-diff --git a/include/asm-x86/fixmap_32.h b/include/asm-x86/fixmap_32.h
-index eb16651..4b96148 100644
---- a/include/asm-x86/fixmap_32.h
-+++ b/include/asm-x86/fixmap_32.h
-@@ -10,8 +10,8 @@
-  * Support of BIGMEM added by Gerhard Wichert, Siemens AG, July 1999
-  */
- 
--#ifndef _ASM_FIXMAP_H
--#define _ASM_FIXMAP_H
-+#ifndef _ASM_FIXMAP_32_H
-+#define _ASM_FIXMAP_32_H
- 
- 
- /* used by vmalloc.c, vsyscall.lds.S.
-@@ -121,9 +121,6 @@ extern void reserve_top_address(unsigned long reserve);
- #define set_fixmap_nocache(idx, phys)			\
- 	__set_fixmap(idx, phys, PAGE_KERNEL_NOCACHE)
- 
--#define clear_fixmap(idx)			\
--	__set_fixmap(idx, 0, __pgprot(0))
+
+The pattern to test for will therefore become :
+
+mov, test, branch, address following branch should be in the
+__imv_cond_end table.
+The address of the branch target site would also have to be in the
+__imv_cond_end table.
+
+
+> > b) there might be a jump into the middle of this instruction sequence?
+> >
+> 
+> If we change that, as discussed above, so the liveliness of ZF and of
+> the %al register is still insured by leaving the mov and test
+> instructions in place, we end up only modifying a single instruction and
+> the problem fades away. We would end up changing a jne for a jmp.
+> 
+
+So, if we do is I propose here, we have to take into account this
+question too. Any jump that jumps in the middle of this instruction
+sequence would have to insure correct liveliness of %al and ZF. However,
+since we just limited the scope of their liveliness, there are no other
+code paths which can jump in the middle of our instruction sequence and
+insure correct ZF and %al liveliness.
+
+Does it make sense ?
+
+Thanks,
+
+Mathieu
+
+
+> Thanks,
+> 
+> Mathieu
+> 
+> > 	-hpa
+> 
+> -- 
+> Mathieu Desnoyers
+> Computer Engineering Ph.D. Student, Ecole Polytechnique de Montreal
+> OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+
+-- 
+Mathieu Desnoyers
+Computer Engineering Ph.D. Student, Ecole Polytechnique de Montreal
+OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
