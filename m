@@ -1,13 +1,14 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
+From: "H. Peter Anvin" <hpa@zytor.com>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 15:04:51 -0700 (PDT)
-Message-ID: <alpine.LFD.1.10.0804251456410.2779@woody.linux-foundation.org>
-References: <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal>
- <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal>
+Date: Fri, 25 Apr 2008 15:07:49 -0700
+Message-ID: <48125635.3060303@zytor.com>
+References: <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal> <481249FB.8070204@zytor.com> <20080425214704.GD25950@Krystal>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
-	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Andi Kleen <andi@firstfloor.org>, Ingo Molnar <mingo@elte.hu>,
+	Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
@@ -16,56 +17,56 @@ Cc: "H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
 	Jeremy Fitzhardinge <jeremy@goop.org>
 To: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:39970 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755322AbYDYWHT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 18:07:19 -0400
-In-Reply-To: <20080425211205.GC25950@Krystal>
+Received: from terminus.zytor.com ([198.137.202.10]:38841 "EHLO
+	terminus.zytor.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761654AbYDYWOJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 18:14:09 -0400
+In-Reply-To: <20080425214704.GD25950@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On Fri, 25 Apr 2008, Mathieu Desnoyers wrote:
+Mathieu Desnoyers wrote:
 > 
-> The point is to provide a way to dynamically enable code at runtime
-> without noticeable performance impact on the system.
+> Yes, this is the case. Using breakpoints for markers quickly becomes
+> noticeable for thing such as scheduler instrumentation, page fault
+> handler instrumentation, etc. And yes, I have developed kernel tracer,
+> LTTng, which takes care of writing the data to trace buffers
+> efficiently. The last time I took performance measurements, it was
+> performing locking and writing to the memory buffer in about 270ns on a
+> 3GHz Pentium 4. It might be a tiny bit slower now that it parses the
+> markers format strings dynamically, but nothing very significant.
+> 
+> But there is another point that markers do which the breakpoint won't
+> give you : they extract local variables from functions and they identify
+> them with field names which separates the instrumentation from the
+> actual kernel implementation details. In order to do that, I rely on gcc
+> building a stack frame for a function call, which I don't want to build
+> unnecessarity when the marker is disabled. This is why I use a jump to
+> skip passing the arguments on the stack and the function call.
+> 
 
-Quite frankly, maybe I'm a bit dense, but why don't you just recompile the 
-whole original function (at run-time), load that new version of a function 
-as a mini-module, and then insert a marker at the top of the old function 
-that just does a "jmp replacementfunction".
+Well, debuggers do it, and that's ultimately what why we have debugging 
+annotation formats like DWARF2 - to be able to take an arbitrary state 
+and decode local variables from the combined register-memory state. 
+This is often done by an interpreter, but that's not necessary; a 
+compiler can use the debugging information and build appropriate capture 
+code, which would be able to execute very quickly.  Not only is this 
+capable of extracting arbitrary information, but it also guarantees that 
+the extraction code is out of line.
 
-That has _zero_ cost for the non-marker case, and allows you to do pretty 
-much any arbitrary code changes for the marker case.
+The act of building a stack frame not only preturbs the generated code 
+(gcc has to guarantee liveness, which you can see as a pro or a con), 
+but it also puts a fair amount of code in the icache path of the function.
 
-It's also a much simpler replacement.
+Now, if a breakpoint is too expensive, one can do exactly the same trick 
+with a naked call instruction, with a higher icache impact in the unused 
+case (five bytes instead of one or two).  However, the key to low impact 
+is to use the debugging information to recover state.
 
-Yeah, that "jmp replacementfunction" is five or more bytes, but you can 
-trivially do the actual _replacement_ write by writing it first as a 
-single-byte debug trap, and after that has been written, write the target 
-address after it, and then write the first byte of the "jmp" instruction 
-last. In the (very unlikely) case that another CPU hits that debug trap, 
-you just fix it up in the debug handler - you only need a single datum of 
-"this is where that debug trap should relocate", because you simply create 
-a triial spinlock around the code-sequence that does the instruction 
-rewrite.
+(Liveness at the probe point is still possible to enforce with this 
+technique: give gcc a "g" read constraint as part of the probe 
+instruction.  That makes gcc ensure the information is *somewhere*.  The 
+debugging information will tell you where to pick it up from. 
+Obviously, any time liveness is enforce you suffer a potential cost.)
 
-When undoing it, just do the same thing in reverse.
-
-Yeah, this requires you to basically recompile some function snippet when 
-you insert a probe, but if that scares people, you could basically do it 
-using the old code and inserting the markers and "relinking" it - avoiding 
-the C compiler, and just basically have an "assembly recompiler".
-
-And yeah, maybe you want to do without the use of modules, and you'd just 
-have a memory area that is kept free for these kinds of code replacement 
-issues. And you can optimize it to not recompile the whole function, but 
-do it on a finer granularity if you want.
-
-And sure, you want to really make sure that there is security in place so 
-that this isn't used for rootkits, but isn't that true of pretty much 
-*any* trace facility?
-
-			Linus
+	-hpa
