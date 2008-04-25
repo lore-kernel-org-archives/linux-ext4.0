@@ -1,79 +1,40 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation	for
- FLEX_BG
-Date: Fri, 25 Apr 2008 14:10:26 -0600
-Message-ID: <20080425201026.GB3444@webber.adilger.int>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu>
- <1208868379-17580-2-git-send-email-tytso@mit.edu>
- <1208868379-17580-3-git-send-email-tytso@mit.edu>
- <20080423203955.GH2775@webber.adilger.int> <20080423160518.5c7fad2e@gara>
+From: David Miller <davem@davemloft.net>
+Subject: Re: [PATCH 1/1] x86: fix text_poke
+Date: Fri, 25 Apr 2008 13:18:23 -0700 (PDT)
+Message-ID: <20080425.131823.109945389.davem@davemloft.net>
+References: <20080425.021301.193689806.davem@davemloft.net>
+	<1209343883-7991-1-git-send-email-jirislaby@gmail.com>
+	<alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Valerie Clement <valerie.clement@bull.net>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: jirislaby@gmail.com, zdenek.kabelac@gmail.com, rjw@sisk.pl,
+	paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
+	penberg@cs.helsinki.fi, clameter@sgi.com,
+	linux-kernel@vger.kernel.org, mathieu.desnoyers@polymtl.ca,
+	andi@firstfloor.org, pageexec@freemail.hu, hpa@zytor.com,
+	jeremy@goop.org, mingo@elte.hu
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:41784 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763107AbYDYUOk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 16:14:40 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m3PKEdDv023541
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Apr 2008 13:14:39 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0JZW00J01DAZ5P00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 25 Apr 2008 13:14:39 -0700 (PDT)
-In-reply-to: <20080423160518.5c7fad2e@gara>
-Content-disposition: inline
+Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:59662
+	"EHLO sunset.davemloft.net" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1764355AbYDYUSY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 16:18:24 -0400
+In-Reply-To: <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 23, 2008  16:05 -0500, Jose R. Santos wrote:
-> On Wed, 23 Apr 2008 14:39:55 -0600
-> Andreas Dilger <adilger@sun.com> wrote:
-> > It makes total sense to me that the BG_BLOCK_UNINIT flag would not be set
-> > on a group that does not have the default bitmap layouts, so I agree with
-> > this change.  I might suggest that we add a new flag BG_BLOCK_EMPTY or
-> > similar (which is really part of the FLEXBG feature so it doesn't affect
-> > the existing uninit_groups code) that indicates that the block bitmap
-> > contains NO allocated blocks, so that the kernel can know immediately
-> > when reconstructing the bitmap that there are no bitmaps or itable in
-> > that group (i.e. the bitmap is all zero).
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 25 Apr 2008 08:03:27 -0700 (PDT)
+
+> On Mon, 28 Apr 2008, Jiri Slaby wrote:
+> > 
+> > Thanks. Bisected mm down to git-x86.patch, bisected git-x86-latest down to
+> > x86: enhance DEBUG_RODATA support - alternatives
+> > The patch below fixes the problem for me. Comments welcome.
 > 
-> I originally had a similar idea but was vetoed because there was no
-> kernel user on the flag.  The flag that I used was set if the block
-> group had meta-data as opposed to just being empty since there are still
-> block groups out there that can have no meta-data but still have bgd or
-> backup super blocks.  Would BG_BLOCK_EMPTY mean no bitmaps/inode tables
-> or does it imply completely empty block group?
+> You're a hero, Jiri.
 
-It could mean either...  What is important is if that is useful it should
-be done before FLEXBG goes into the field.
-
-The kernel can already determine somewhat efficiently whether a group
-has sb or gdt backups, though it can't hurt to flag this also.  What
-seems to be quite difficult is to know in the presence of FLEXBG whether
-a group has an itable or bitmap in it.
-
-I'd HOPE (and I believe this is what Ted's recent patch did) is that any
-group which is being used to store flexbg data will have an initialized
-block bitmap in it, because it is "non-standard".
-
-What is more tricky is if a group has BLOCK_UNINIT and/or INODE_UNINIT
-set what should happen when that group's block bitmap is initialized.
-Should it assume there is a block + inode bitmap and an itable, or is
-it enough to check its own group descriptor to determine if the bitmap
-and itable are not in the group itself.
-
-Maybe I'm being paranoid, and we don't need the flag(s), but better to
-think the issues through now and decide we don't need them, than to
-decide later that we do.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Indeed, what a heroic effort to fix a bug, thanks Jiri!!
