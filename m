@@ -1,40 +1,64 @@
-From: David Miller <davem@davemloft.net>
+From: "H. Peter Anvin" <hpa@zytor.com>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 13:18:23 -0700 (PDT)
-Message-ID: <20080425.131823.109945389.davem@davemloft.net>
-References: <20080425.021301.193689806.davem@davemloft.net>
-	<1209343883-7991-1-git-send-email-jirislaby@gmail.com>
-	<alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
+Date: Fri, 25 Apr 2008 13:18:35 -0700
+Message-ID: <48123C9B.9020306@zytor.com>
+References: <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151931.GA25510@elte.hu> <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: jirislaby@gmail.com, zdenek.kabelac@gmail.com, rjw@sisk.pl,
-	paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
+	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
+	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, mathieu.desnoyers@polymtl.ca,
-	andi@firstfloor.org, pageexec@freemail.hu, hpa@zytor.com,
-	jeremy@goop.org, mingo@elte.hu
-To: torvalds@linux-foundation.org
+	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
+	Jeremy Fitzhardinge <jeremy@goop.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:59662
-	"EHLO sunset.davemloft.net" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1764355AbYDYUSY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 16:18:24 -0400
-In-Reply-To: <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
+Received: from terminus.zytor.com ([198.137.202.10]:42872 "EHLO
+	terminus.zytor.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1765167AbYDYU34 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 16:29:56 -0400
+In-Reply-To: <20080425183748.GB16180@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 25 Apr 2008 08:03:27 -0700 (PDT)
-
-> On Mon, 28 Apr 2008, Jiri Slaby wrote:
-> > 
-> > Thanks. Bisected mm down to git-x86.patch, bisected git-x86-latest down to
-> > x86: enhance DEBUG_RODATA support - alternatives
-> > The patch below fixes the problem for me. Comments welcome.
+Mathieu Desnoyers wrote:
 > 
-> You're a hero, Jiri.
+> This epilogue should then be used on both branches of the condition,
+> like this :
+> 
+> if (unlikely(imv_cond(var))) {
+>   imv_cond_end();
+>   ...
+> } else {
+>   imv_cond_end();
+>    ...
+> }
+> 
+> Where imv_cond_end() would look like this :
+> 
+> +/*
+> + * Puts a test and branch make sure the %al register and ZF are not live
+> + * anymore.
+> + * All asm statements clobbers the flags, but add "cc" clobber just to be sure.
+> + * Clobbers %al.
+> + */
+> +#define imv_cond_end()                                                 \
+> +       do {                                                            \
+> +               asm (".section __imv_cond_end,\"a\",@progbits\n\t"      \
+> +                               _ASM_PTR "1f\n\t"                       \
+> +                               ".previous\n\t"                         \
+> +                               "1:\n\t"                                \
+> +                               : : : "a", "cc");                       \
+> +       } while (0)
+> +
+> 
 
-Indeed, what a heroic effort to fix a bug, thanks Jiri!!
+As far as this is concerned, all you accomplish here is that gcc, if it 
+wants to re-use the %al value, will copy it into another register before 
+doing your imv_conv_end().
+
+	-hpa
