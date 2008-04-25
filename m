@@ -1,68 +1,56 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
-	ffffffffffffffff
-Date: Fri, 25 Apr 2008 16:09:36 +0200
-Message-ID: <20080425140936.GA19602@elf.ucw.cz>
-References: <20080422095315.GA28014@elte.hu> <c4e36d110804221135v1dbfaf1bn4557052d1ead6060@mail.gmail.com> <alpine.LFD.1.10.0804221144130.2779@woody.linux-foundation.org> <c4e36d110804230150n796c2733x5880b8e24ebc9da8@mail.gmail.com> <alpine.LFD.1.10.0804230746480.2779@woody.linux-foundation.org> <4811090A.9030809@gmail.com> <alpine.LFD.1.10.0804241539150.2779@woody.linux-foundation.org> <48112C74.8000405@gmail.com> <alpine.LFD.1.10.0804241633040.2779@woody.linux-foundation.org> <481189E2.9050005@gmail.com>
+From: Marcelo Tosatti <mtosatti@redhat.com>
+Subject: Re: Ordered mode rewrite patch
+Date: Fri, 25 Apr 2008 11:23:21 -0300
+Message-ID: <20080425142321.GA6843@dmt>
+References: <20080408121149.GB6901@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Zdenek Kabelac <zdenek.kabelac@gmail.com>,
-	Ingo Molnar <mingo@elte.hu>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	paulmck@linux.vnet.ibm.com, David Miller <davem@davemloft.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	Pekka Enberg <penberg@cs.helsinki.fi>,
-	Christoph Lameter <clameter@sgi.com>
-To: Jiri Slaby <jirislaby@gmail.com>
+Cc: Nathan Grennan <jack@cygnusx-1.org>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:59555 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754444AbYDYOJD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 10:09:03 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:35931 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756653AbYDYOUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 10:20:30 -0400
 Content-Disposition: inline
-In-Reply-To: <481189E2.9050005@gmail.com>
+In-Reply-To: <20080408121149.GB6901@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Hi Jan,
 
-> core 2 duo, 2gigs of mem, 2 sata II disks, raid0, raid1 (both 0.9), lvm2, 
-> ext3 above all of it.
->
-> Modules:
-> Module                  Size  Used by
-> tun                    11012  1 	<----- Using vpn!
-> bitrev                  2240  1 tun
-> ipv6                  269736  36
-> arc4                    2432  2
-> ecb                     3584  2
-> crypto_blkcipher       18052  1 ecb
-> cryptomgr               3712  0
-> crypto_algapi          15872  4 arc4,ecb,crypto_blkcipher,cryptomgr
-> ath5k                 104640  0
-> mac80211              140240  1 ath5k
-> crc32                   4416  2 tun,mac80211
-> sr_mod                 15748  0
-> rtc_cmos               10232  0
-> rtc_core               17220  1 rtc_cmos
-> floppy                 64488  0
-> cfg80211               27920  2 ath5k,mac80211
-> cdrom                  37800  1 sr_mod
-> ohci1394               31412  0
-> rtc_lib                 3328  1 rtc_core
-> ieee1394               90808  1 ohci1394
-> evdev                  11584  5
-> usbhid                 49952  0
-> hid                    73664  1 usbhid
-> ff_memless              6088  1 usbhid
-> ehci_hcd               37388  0
+On Tue, Apr 08, 2008 at 02:11:49PM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   attached is a jumbo patch that reverses locking order of transaction
+> start and page lock in ext3 and rewrites handling of ordered data mode in
+> JBD and ext3. Note that the patch will break compilation of ext4 and OCFS2.
+> The patch survives LTP run on my test machine so it shouldn't eat your data
+> immediately but bugs are of course possible...
+>   I'm very interested in any results (both positive and negative) you could
+> get with it :). Thanks for testing it.
+> 
+> 									Honza
+> 
+> PS: CCing also linux-ext4 list in case there are some other interested
+> testers. Next on my todo list is to port this for ext4...
 
-One useful trick is trying to boot with init=/bin/bash, and see if the
-problem persists. If it is gone, it is likely one of the modules, and
-those may be binary-searched -- which is often easier than bisect.
-									Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+No luck for my testcase, similar fsync behaviour taking several seconds:
+
+vim           D 0000000000000000     0  4088   4036
+ ffff81017a143da8 0000000000000086 0000000000000000 ffffffff80236808
+ ffff81022f272830 ffff81022f1ca730 ffff81022f272a70 0000000600000001
+ 00000000ffffffff 0000000000000003 0000000000000000 0000000000000000
+Call Trace:
+ [<ffffffff80236808>] lock_timer_base+0x26/0x4b
+ [<ffffffff802f8c00>] log_wait_commit+0x9f/0xed
+ [<ffffffff8023f7b1>] autoremove_wake_function+0x0/0x2e
+ [<ffffffff802f4dbf>] journal_stop+0x165/0x18d
+ [<ffffffff8029a7d9>] __writeback_single_inode+0x17f/0x29d
+ [<ffffffff8023f7b1>] autoremove_wake_function+0x0/0x2e
+ [<ffffffff8029b10a>] sync_inode+0x24/0x32
+ [<ffffffff802e5602>] ext3_sync_file+0x8a/0x9c
+ [<ffffffff8029d532>] do_fsync+0x52/0xa4
+ [<ffffffff8029d5a7>] __do_fsync+0x23/0x36
+ [<ffffffff8020b0ab>] system_call_after_swapgs+0x7b/0x80
+
