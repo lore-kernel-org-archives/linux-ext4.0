@@ -1,10 +1,10 @@
-From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+From: "H. Peter Anvin" <hpa@zytor.com>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 16:37:17 -0400
-Message-ID: <20080425203717.GB25950@Krystal>
-References: <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48123C9B.9020306@zytor.com>
+Date: Fri, 25 Apr 2008 13:41:00 -0700
+Message-ID: <481241DC.3070601@zytor.com>
+References: <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: Andi Kleen <andi@firstfloor.org>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
@@ -15,61 +15,36 @@ Cc: Andi Kleen <andi@firstfloor.org>,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
 	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
 	Jeremy Fitzhardinge <jeremy@goop.org>
-To: "H. Peter Anvin" <hpa@zytor.com>
+To: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts16.bellnexxia.net ([209.226.175.4]:60173 "EHLO
-	tomts16-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1764695AbYDYUhU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 16:37:20 -0400
-Content-Disposition: inline
-In-Reply-To: <48123C9B.9020306@zytor.com>
+Received: from terminus.zytor.com ([198.137.202.10]:38560 "EHLO
+	terminus.zytor.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932209AbYDYUpi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 16:45:38 -0400
+In-Reply-To: <20080425203717.GB25950@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* H. Peter Anvin (hpa@zytor.com) wrote:
-> Mathieu Desnoyers wrote:
->> This epilogue should then be used on both branches of the condition,
->> like this :
->> if (unlikely(imv_cond(var))) {
->>   imv_cond_end();
->>   ...
->> } else {
->>   imv_cond_end();
->>    ...
->> }
->> Where imv_cond_end() would look like this :
->> +/*
->> + * Puts a test and branch make sure the %al register and ZF are not live
->> + * anymore.
->> + * All asm statements clobbers the flags, but add "cc" clobber just to be 
->> sure.
->> + * Clobbers %al.
->> + */
->> +#define imv_cond_end()                                                 \
->> +       do {                                                            \
->> +               asm (".section __imv_cond_end,\"a\",@progbits\n\t"      \
->> +                               _ASM_PTR "1f\n\t"                       \
->> +                               ".previous\n\t"                         \
->> +                               "1:\n\t"                                \
->> +                               : : : "a", "cc");                       \
->> +       } while (0)
->> +
->
-> As far as this is concerned, all you accomplish here is that gcc, if it 
-> wants to re-use the %al value, will copy it into another register before 
-> doing your imv_conv_end().
->
+Mathieu Desnoyers wrote:
+>>> +
+>> As far as this is concerned, all you accomplish here is that gcc, if it 
+>> wants to re-use the %al value, will copy it into another register before 
+>> doing your imv_conv_end().
+>>
+> 
+> Exactly, and by doing so, it will have to add instructions (mov, push..)
+> in the instruction pattern I am looking for and therefore I will detect
+> this and fall back on standard immediate values.
+> 
 
-Exactly, and by doing so, it will have to add instructions (mov, push..)
-in the instruction pattern I am looking for and therefore I will detect
-this and fall back on standard immediate values.
+So what you're saying is you'll follow all the branches of code until 
+you detect an immediate value (and eflags) kill.
 
-Mathieu
+Yes, that should work.  It's still ugly, and I have to say I find the 
+complexity rather distasteful.  I am willing to be convinced it's worth 
+it, but I would really like to see hard numbers.
 
-> 	-hpa
+Personally, I wouldn't be all that surprised if you lost more in 
+constraining gcc scheduling than you gain.
 
--- 
-Mathieu Desnoyers
-Computer Engineering Ph.D. Student, Ecole Polytechnique de Montreal
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+	-hpa
