@@ -1,41 +1,123 @@
-From: Christoph Lameter <clameter@sgi.com>
+From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 12:36:33 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0804251235550.6337@schroedinger.engr.sgi.com>
-References: <20080425.021301.193689806.davem@davemloft.net>
- <1209343883-7991-1-git-send-email-jirislaby@gmail.com>
- <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
- <20080425151747.GA3265@one.firstfloor.org>
+Date: Fri, 25 Apr 2008 16:04:23 -0400
+Message-ID: <20080425200423.GA25950@Krystal>
+References: <20080425152650.GA894@elte.hu> <alpine.LFD.1.10.0804250830200.2779@woody.linux-foundation.org> <20080425154854.GC3265@one.firstfloor.org> <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48122ECF.405@zytor.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jiri Slaby <jirislaby@gmail.com>,
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	penberg@cs.helsinki.fi, linux-kernel@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
-	Jeremy Fitzhardinge <jeremy@goop.org>,
-	Ingo Molnar <mingo@elte.hu>
-To: Andi Kleen <andi@firstfloor.org>
+	penberg@cs.helsinki.fi, clameter@sgi.com,
+	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
+	Jeremy Fitzhardinge <jeremy@goop.org>
+To: "H. Peter Anvin" <hpa@zytor.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.171.29]:36093 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753380AbYDYTgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Apr 2008 15:36:35 -0400
-In-Reply-To: <20080425151747.GA3265@one.firstfloor.org>
+Received: from tomts40.bellnexxia.net ([209.226.175.97]:50582 "EHLO
+	tomts40-srv.bellnexxia.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1758800AbYDYUE0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 16:04:26 -0400
+Content-Disposition: inline
+In-Reply-To: <48122ECF.405@zytor.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 25 Apr 2008, Andi Kleen wrote:
+* H. Peter Anvin (hpa@zytor.com) wrote:
+> Mathieu Desnoyers wrote:
+>>>> b) there might be a jump into the middle of this instruction sequence?
+>>>>
+>>> If we change that, as discussed above, so the liveliness of ZF and of
+>>> the %al register is still insured by leaving the mov and test
+>>> instructions in place, we end up only modifying a single instruction and
+>>> the problem fades away. We would end up changing a jne for a jmp.
+>> So, if we do is I propose here, we have to take into account this
+>> question too. Any jump that jumps in the middle of this instruction
+>> sequence would have to insure correct liveliness of %al and ZF. However,
+>> since we just limited the scope of their liveliness, there are no other
+>> code paths which can jump in the middle of our instruction sequence and
+>> insure correct ZF and %al liveliness.
+>
+> I wanted to point out that this, in particular, is utter nonsense. Consider 
+> a sequence that looks something like this:
+>
+> if (foo ? bar : imv_cond(var)) {
+> 	blah();
+> }
+>
+> An entirely sane transformation of this (as far as gcc is concerned), is 
+> something like:
+>
+> 	cmpl $0,foo
+> 	je 1f
+> 	cmpl $0,bar
+> 	jmp 2f
+> 1:
+> #APP
+> 	movb var,%al	/* This is your imv */
+> #NO_APP
+> 	testb %al,%al
+> 2:
+> 	je 3f
+> 	call blah
+> 3:
+>
+> Your code would take the movb-testb-je sequence and combine them, then we 
+> jump into the middle of the new instruction when jumping at 2!
+>
 
-> > And we should really add a lot more sanity checking there.
-> 
-> A debug mode for virt_to_page(),__pa,__va et.al. would probably make sense
-> and would have caught it.
-> 
-> I used to have that partly in the x86-64 port with VIRTUAL_BUG_ON.
+I am glad you come up with a counter argument. Let's look at what would
+happen here with my modified code :
 
-Good idea! Do you have a patch?
+	cmpl $0,foo
+	je 1f
+	cmpl $0,bar
+	jmp 2f
+1:
+#APP
+	mov %esi, %esi /* nop 2 bytes */
+#NO_APP
+	mov %esi, %esi /* nop 2 bytes */
+2:
+	jmp 3f         /* 2 bytes short jump */
+	call blah
+3:
 
+First of all, I do not "combine" the instructions.. that would be really
+dangerous (and bug-prone, since any interrupt could iret to an invalid
+instruction). No, all I do is to swap instructions for other
+instructions of the same size (or smaller in the case of jne 6 bytes ->
+nop1 + jmp 5 bytes).
+
+I see the problem you show here : it's dangerous to change an
+instruction generated by gcc because it can be re-used for other
+purposes, as in your example.
+
+Then, what I propose is the following : instead of modifying the
+conditional branch instruction, I prefix my inline assembly with a 5
+bytes jump. I can then have the exact same behavior as the original
+conditional branch; I either jump at the address following the
+conditional branch or at the target address. I would still have to check
+for ZF and %al liveliness as I proposed earlier, because I would skip
+the movb and test instructions.
+
+> There are only two ways to deal with this - extensive analysis of the 
+> entire flow of control, or telling the compiler exactly what is *actually* 
+> going on.  The latter is the preferred way, obviously.
+>
+
+Yes, in an ideal world, gcc would help here.
+
+Mathieu
+
+> 	-hpa
+>
+
+-- 
+Mathieu Desnoyers
+Computer Engineering Ph.D. Student, Ecole Polytechnique de Montreal
+OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
