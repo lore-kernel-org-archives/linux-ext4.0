@@ -1,47 +1,43 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: Re: 2.6.25-git2: BUG: unable to handle kernel paging request at
- ffffffffffffffff
-Date: Fri, 25 Apr 2008 08:47:40 -0700
-Message-ID: <20080425084740.cab1cdf8.randy.dunlap@oracle.com>
-References: <48118B73.6000700@gmail.com>
-	<20080425.004943.148536408.davem@davemloft.net>
-	<48118EAB.5040004@gmail.com>
-	<20080425.005816.249606540.davem@davemloft.net>
-	<48118F85.4060703@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] Clustering indirect blocks in Ext3 (was Ext2)
+Date: Fri, 25 Apr 2008 10:54:30 -0500
+Message-ID: <4811FEB6.60209@redhat.com>
+References: <d9885f0f0710261658p218050d9mdf64714ddb8d47f1@mail.gmail.com> <4810F749.7000802@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: David Miller <davem@davemloft.net>, torvalds@linux-foundation.org,
-	zdenek.kabelac@gmail.com, mingo@elte.hu, rjw@sisk.pl,
-	paulmck@linux.vnet.ibm.com, linux-kernel@vger.kernel.org,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	herbert@gondor.apana.org.au, penberg@cs.helsinki.fi,
-	clameter@sgi.com
-To: Jiri Slaby <jirislaby@gmail.com>
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Abhishek Rai <abhishekrai@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:60989 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761714AbYDYPvl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Apr 2008 11:51:41 -0400
-In-Reply-To: <48118F85.4060703@gmail.com>
+Received: from mx1.redhat.com ([66.187.233.31]:58590 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755862AbYDYPyg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Apr 2008 11:54:36 -0400
+In-Reply-To: <4810F749.7000802@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 25 Apr 2008 10:00:05 +0200 Jiri Slaby wrote:
-
-> On 04/25/2008 09:58 AM, David Miller wrote:
-> >>> If so that could match up to the pattern.  It is just one theory
-> >>> though.  The wireless possibility holds just as much weight.
-> >> The mac80211 is theory too so far :).
-> > 
-> > I'll try to do some commit mining of my own.
+Eric Sandeen wrote:
+> Abhishek Rai wrote:
+>> This patch modifies the block allocation strategy in ext3 in order to
+>> improve fsck performance. This was initially sent out as a patch for
+>> ext2, but given the lack of ongoing development on ext2, I have
+>> crossported it to ext3 instead. Slow fsck is not a serious problem on
+>> ext3 due to journaling, but once in a while users do need to run full
+>> fsck on their ext3 file systems. This can be due to several reasons:
+>> (1) bad disk, bad crash, etc, (2) bug in jbd/ext3, and (3) every few
+>> reboots, it's good to run fsck anyway. This patch will help reduce
+>> full fsck time for ext3. I've seen 50-65% reduction in fsck time when
+>> using this patch on a near-full file system. With some fsck
+>> optimizations, this figure becomes 80%.
 > 
-> BTW Doesn't exist any tool to compare diffs? Particularly 
-> 2.6.28-rc8-mm1..2.6.28-rc8-mm2 with 2.6.25..2.6.25-git2... I would just give it 
-> a try.
+> For what it's worth, this speeds large file removals, too:
+> 
+> http://people.redhat.com/esandeen/rm_test/ext3_metacluster_rm.png
+> http://people.redhat.com/esandeen/rm_test/ext3_rm.png
 
-'interdiff', part of the patchutils package:
-http://cyberelk.net/tim/software/patchutils/
+Or, for more direct comparison:
 
----
-~Randy
+http://people.redhat.com/esandeen/rm_test/ext3_rm_stock_vs_metacluster.png
+
+-Eric
