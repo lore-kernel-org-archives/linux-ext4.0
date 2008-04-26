@@ -1,59 +1,94 @@
-From: Jeremy Fitzhardinge <jeremy@goop.org>
+From: Andi Kleen <andi@firstfloor.org>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Fri, 25 Apr 2008 23:50:05 -0700
-Message-ID: <4812D09D.6010901@goop.org>
-References: <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal>
+Date: Sat, 26 Apr 2008 11:59:38 +0200
+Message-ID: <20080426095938.GB17905@one.firstfloor.org>
+References: <20080425.021301.193689806.davem@davemloft.net> <1209343883-7991-1-git-send-email-jirislaby@gmail.com> <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org> <20080425151747.GA3265@one.firstfloor.org> <Pine.LNX.4.64.0804251235550.6337@schroedinger.engr.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	"H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
-	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, pageexec@freemail.hu
-To: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+	penberg@cs.helsinki.fi, linux-kernel@vger.kernel.org,
+	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
+	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
+	Jeremy Fitzhardinge <jeremy@goop.org>,
+	Ingo Molnar <mingo@elte.hu>
+To: Christoph Lameter <clameter@sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw.goop.org ([64.81.55.164]:46999 "EHLO mail.goop.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751990AbYDZGuN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Apr 2008 02:50:13 -0400
-In-Reply-To: <20080425211205.GC25950@Krystal>
+Received: from one.firstfloor.org ([213.235.205.2]:46205 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750967AbYDZJxl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Apr 2008 05:53:41 -0400
+Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.0804251235550.6337@schroedinger.engr.sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mathieu Desnoyers wrote:
-> * Linus Torvalds (torvalds@linux-foundation.org) wrote:
->   
->> On Fri, 25 Apr 2008, H. Peter Anvin wrote:
->>     
->>> Yes, that should work.  It's still ugly, and I have to say I find the
->>> complexity rather distasteful.  I am willing to be convinced it's worth it,
->>> but I would really like to see hard numbers.
->>>       
->> I really cannot imagine that this kind of pain is *ever* worth it. 
->>
->> Please give an example of something so important that we'd want to do 
->> complex code rewriting on the fly. What _is_ the point of imv_cond()?
->>
->> 		Linus
->>     
->
-> The point is to provide a way to dynamically enable code at runtime
-> without noticeable performance impact on the system. It's principally
-> useful to control the markers in the kernel, which can be placed in very
-> frequently executed code paths. The original markers add a memory read,
-> test and conditional branch at each marker site. By using the immediate
-> values patchset, it goes down to a load immediate value, test and branch.
->
-> However, Ingo was still unhappy with the conditional branch, so I cooked
-> this jump patching optimization on top of the immediate values. 
+On Fri, Apr 25, 2008 at 12:36:33PM -0700, Christoph Lameter wrote:
+> On Fri, 25 Apr 2008, Andi Kleen wrote:
+> 
+> > > And we should really add a lot more sanity checking there.
+> > 
+> > A debug mode for virt_to_page(),__pa,__va et.al. would probably make sense
+> > and would have caught it.
+> > 
+> > I used to have that partly in the x86-64 port with VIRTUAL_BUG_ON.
+> 
+> Good idea! Do you have a patch?
 
-I think all this demonstrates that the conditional branch is a bearable 
-cost compared to the alternative.  A conditional branch which almost 
-always branches the same way is very predictable, and really shouldn't 
-cost very much.
+Yes. Appended. But it just enables the old NUMA VIRTUAL_BUG_ON()s, more 
+work could be done e.g. by instrumenting pa/va and the non NUMA and i386 
+case too.
 
-    J
+-Andi
+
+---
+
+
+Add CONFIG option to enable VIRTUAL_BUG_ON()
+
+VIRTUAL_BUG_ON was used in the early days of x86-64 NUMA to debug the 
+virtual address to struct page code.
+
+Later it was noped, but the call kept intact.
+
+Add a CONFIG option to enable it as a BUG_ON again. This would have
+likely caught the recent text_poke bug.
+
+Signed-off-by: Andi Kleen <andi@firstfloor.org>
+
+Index: linux/arch/x86/Kconfig.debug
+===================================================================
+--- linux.orig/arch/x86/Kconfig.debug
++++ linux/arch/x86/Kconfig.debug
+@@ -245,4 +245,11 @@ config CPA_DEBUG
+ 	help
+ 	  Do change_page_attr() self-tests every 30 seconds.
+ 
++config DEBUG_VIRTUAL
++	bool "Virtual memory translation debugging"
++	depends on DEBUG_KERNEL && NUMA && X86_64
++	help
++	  Enable some costly sanity checks in the NUMA virtual to page
++          code.  This can catch mistakes with virt_to_page() and friends.
++
+ endmenu
+Index: linux/include/asm-x86/mmzone_64.h
+===================================================================
+--- linux.orig/include/asm-x86/mmzone_64.h
++++ linux/include/asm-x86/mmzone_64.h
+@@ -7,7 +7,11 @@
+ 
+ #ifdef CONFIG_NUMA
+ 
++#ifdef CONFIG_DEBUG_VIRTUAL
++#define VIRTUAL_BUG_ON(x) BUG_ON(x)
++#else
+ #define VIRTUAL_BUG_ON(x)
++#endif
+ 
+ #include <asm/smp.h>
+ 
