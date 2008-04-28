@@ -1,73 +1,82 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Mon, 28 Apr 2008 22:21:30 +0200
-Message-ID: <20080428202130.GF15840@elte.hu>
-References: <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal> <481249FB.8070204@zytor.com> <20080425214704.GD25950@Krystal> <48125635.3060303@zytor.com> <20080425223015.GB31226@Krystal> <alpine.LFD.1.10.0804251534420.2779@woody.linux-foundation.org>
+From: Christoph Lameter <clameter@sgi.com>
+Subject: VIRTUAL_BUG_ON()
+Date: Mon, 28 Apr 2008 13:24:42 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com>
+References: <20080425.021301.193689806.davem@davemloft.net>
+ <1209343883-7991-1-git-send-email-jirislaby@gmail.com>
+ <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
+ <20080425151747.GA3265@one.firstfloor.org> <Pine.LNX.4.64.0804251235550.6337@schroedinger.engr.sgi.com>
+ <20080426095938.GB17905@one.firstfloor.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	"H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
-	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+	penberg@cs.helsinki.fi, linux-kernel@vger.kernel.org,
+	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
+	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
+	Jeremy Fitzhardinge <jeremy@goop.org>,
+	Ingo Molnar <mingo@elte.hu>
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:54349 "EHLO mx2.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932718AbYD1UWo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 16:22:44 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.1.10.0804251534420.2779@woody.linux-foundation.org>
+Received: from relay2.sgi.com ([192.48.171.30]:37283 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S935326AbYD1UYo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2008 16:24:44 -0400
+In-Reply-To: <20080426095938.GB17905@one.firstfloor.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, 26 Apr 2008, Andi Kleen wrote:
 
-* Linus Torvalds <torvalds@linux-foundation.org> wrote:
+> > Good idea! Do you have a patch?
+> 
+> Yes. Appended. But it just enables the old NUMA VIRTUAL_BUG_ON()s, more 
+> work could be done e.g. by instrumenting pa/va and the non NUMA and i386 
+> case too.
 
-> I'd much rather see something truly generic that doesn't need any 
-> pre-inserted "markers" at all that disable optimizations, and that 
-> allows just about anything. Including live system bug-fixes etc 
-> (imagine finding a bug - and not at somethign that was previously 
-> already "marked" - and just replacing the buggy function with a 
-> non-buggy one).
+Hmmmm.. No hooks yet? I have some pieces here that do something similar:
 
-Ob'plug: with the pending dyn-ftrace function tracer feature we do 
-something rather close to that already: we have a 5 byte NOP in the 
-prologue of every function that can be used as a non-destructive 'branch 
-away' place.
+Subject: Add checks for virtual addresses
 
-Right now we use that to trace a (regex-ish pattern identified) set of 
-functions. The regex pattern can be configured runtime via 
-/debug/tracing/function_filter is not parsed runtime in any fastpath - 
-it is used to activate/deactivate the tracepoints and patches them from 
-NOPs into CALLs.
+Add checks to insure that virtual addresses are not used in invalid contexts.
 
-_But_ the same mechanism could perhaps be used to patch the function as 
-well.
+Signed-off-by: Christoph Lameter <clameter@sgi.com>
 
-The cost is +5 bytes of NOP for every function in the system, but in 
-practice we've not been able to measure any actual runtime costs of 
-these NOPs - neither in micro-benchmarks nor in macro-benchmarks. (the 
-only real cost here is the +5 bytes of I$ cost - otherwise the NOP will 
-just be skipped by the decoder.)
+---
+ arch/x86/mm/ioremap.c     |    1 +
+ include/asm-x86/page_32.h |    7 ++++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-the patching of these NOPs is inherently safe because they are inserted 
-at build time. There's no negative impact to gcc optimizations at all. 
-We get a nice selection of 75,000 tracepoints in an allmodconfig kernel 
-- without _any_ source code level impact in the functions.
-
-On the other hand, i'm not opposed to a handful of static markers either 
-- i think the best model is to have both of these facilities. There are 
-a couple of 'core events' that are not expressed via function calls, and 
-even where they are expressed via function calls the function call 
-layout is not stable while markers are stable across kernel versions. 
-The notion of "a context-switch happened from task X to task Y" or "task 
-X woke up task Y" is not going to change anytime soon so i'm not opposed 
-to exposing that kind of information. And once we accept the static 
-markers, we might as well make them as cheap as possible.
-
-	Ingo
+Index: linux-2.6.25-mm1/arch/x86/mm/ioremap.c
+===================================================================
+--- linux-2.6.25-mm1.orig/arch/x86/mm/ioremap.c	2008-04-25 23:17:31.872390404 -0700
++++ linux-2.6.25-mm1/arch/x86/mm/ioremap.c	2008-04-25 23:37:43.202391820 -0700
+@@ -25,6 +25,7 @@
+ 
+ unsigned long __phys_addr(unsigned long x)
+ {
++	VM_BUG_ON(is_vmalloc_addr((void *)x));
+ 	if (x >= __START_KERNEL_map)
+ 		return x - __START_KERNEL_map + phys_base;
+ 	return x - PAGE_OFFSET;
+Index: linux-2.6.25-mm1/include/asm-x86/page_32.h
+===================================================================
+--- linux-2.6.25-mm1.orig/include/asm-x86/page_32.h	2008-04-25 23:17:31.882389317 -0700
++++ linux-2.6.25-mm1/include/asm-x86/page_32.h	2008-04-25 23:37:43.202391820 -0700
+@@ -64,7 +64,12 @@ typedef struct page *pgtable_t;
+ #endif
+ 
+ #ifndef __ASSEMBLY__
+-#define __phys_addr(x)		((x) - PAGE_OFFSET)
++static inline unsigned long __phys_addr(unsigned long x)
++{
++	VM_BUG_ON(is_vmalloc_addr((void *)x));
++	return x - PAGE_OFFSET;
++}
++
+ #define __phys_reloc_hide(x)	RELOC_HIDE((x), 0)
+ 
+ #ifdef CONFIG_FLATMEM
