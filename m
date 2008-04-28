@@ -1,86 +1,93 @@
 From: akpm@linux-foundation.org
-Subject: - ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch removed from -mm tree
-Date: Mon, 28 Apr 2008 15:00:26 -0700
-Message-ID: <200804282200.m3SM0QVC018696@imap1.linux-foundation.org>
-To: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org,
+Subject: - ext3-use-ext3_group_first_block_no.patch removed from -mm tree
+Date: Mon, 28 Apr 2008 15:00:35 -0700
+Message-ID: <200804282200.m3SM0ZqC018719@imap1.linux-foundation.org>
+To: akinobu.mita@gmail.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36767 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54622 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S965615AbYD1WAv (ORCPT
+	by vger.kernel.org with ESMTP id S965193AbYD1WAh (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 18:00:51 -0400
+	Mon, 28 Apr 2008 18:00:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext2: retry block allocation if new blocks are allocated from system zone
+     ext3: use ext3_group_first_block_no()
 has been removed from the -mm tree.  Its filename was
-     ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone.patch
+     ext3-use-ext3_group_first_block_no.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext2: retry block allocation if new blocks are allocated from system zone
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: ext3: use ext3_group_first_block_no()
+From: Akinobu Mita <akinobu.mita@gmail.com>
 
-If the block allocator gets blocks out of system zone ext2 calls ext2_error. 
-But if the file system is mounted with errors=continue retry block allocation.
- We need to mark the system zone blocks as in use to make sure retry don't
-pick them again
+Use ext3_group_first_block_no()
 
-System zone is the block range mapping block bitmap, inode bitmap and inode
-table.
-
-[akpm@linux-foundation.org: fix typo in comment]
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/balloc.c |   16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+ fs/ext3/super.c |    5 ++---
+ fs/ext3/xattr.c |    6 ++----
+ 2 files changed, 4 insertions(+), 7 deletions(-)
 
-diff -puN fs/ext2/balloc.c~ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone fs/ext2/balloc.c
---- a/fs/ext2/balloc.c~ext2-retry-block-allocation-if-new-blocks-are-allocated-from-system-zone
-+++ a/fs/ext2/balloc.c
-@@ -149,11 +149,12 @@ read_block_bitmap(struct super_block *sb
- 			    block_group, le32_to_cpu(desc->bg_block_bitmap));
- 		return NULL;
- 	}
--	if (!ext2_valid_block_bitmap(sb, desc, block_group, bh)) {
--		brelse(bh);
--		return NULL;
--	}
+diff -puN fs/ext3/super.c~ext3-use-ext3_group_first_block_no fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-use-ext3_group_first_block_no
++++ a/fs/ext3/super.c
+@@ -1254,14 +1254,14 @@ static int ext3_setup_super(struct super
+ static int ext3_check_descriptors(struct super_block *sb)
+ {
+ 	struct ext3_sb_info *sbi = EXT3_SB(sb);
+-	ext3_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
+-	ext3_fsblk_t last_block;
+ 	int i;
  
-+	ext2_valid_block_bitmap(sb, desc, block_group, bh);
-+	/*
-+	 * file system mounted not to panic on error, continue with corrupt
-+	 * bitmap
-+	 */
- 	return bh;
- }
+ 	ext3_debug ("Checking group descriptors");
  
-@@ -1380,7 +1381,12 @@ allocated:
- 			    "Allocating block in system zone - "
- 			    "blocks from "E2FSBLK", length %lu",
- 			    ret_block, num);
--		goto out;
-+		/*
-+		 * ext2_try_to_allocate marked the blocks we allocated as in
-+		 * use.  So we may want to selectively mark some of the blocks
-+		 * as free
-+		 */
-+		goto retry_alloc;
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+ 		struct ext3_group_desc *gdp = ext3_get_group_desc(sb, i, NULL);
++		ext3_fsblk_t first_block = ext3_group_first_block_no(sb, i);
++		ext3_fsblk_t last_block;
+ 
+ 		if (i == sbi->s_groups_count - 1)
+ 			last_block = le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
+@@ -1300,7 +1300,6 @@ static int ext3_check_descriptors(struct
+ 					le32_to_cpu(gdp->bg_inode_table));
+ 			return 0;
+ 		}
+-		first_block += EXT3_BLOCKS_PER_GROUP(sb);
  	}
  
- 	performed_allocation = 1;
+ 	sbi->s_es->s_free_blocks_count=cpu_to_le32(ext3_count_free_blocks(sb));
+diff -puN fs/ext3/xattr.c~ext3-use-ext3_group_first_block_no fs/ext3/xattr.c
+--- a/fs/ext3/xattr.c~ext3-use-ext3_group_first_block_no
++++ a/fs/ext3/xattr.c
+@@ -799,10 +799,8 @@ inserted:
+ 			get_bh(new_bh);
+ 		} else {
+ 			/* We need to allocate a new block */
+-			ext3_fsblk_t goal = le32_to_cpu(
+-					EXT3_SB(sb)->s_es->s_first_data_block) +
+-				(ext3_fsblk_t)EXT3_I(inode)->i_block_group *
+-				EXT3_BLOCKS_PER_GROUP(sb);
++			ext3_fsblk_t goal = ext3_group_first_block_no(sb,
++						EXT3_I(inode)->i_block_group);
+ 			ext3_fsblk_t block = ext3_new_block(handle, inode,
+ 							goal, &error);
+ 			if (error)
 _
 
-Patches currently in -mm which might be from aneesh.kumar@linux.vnet.ibm.com are
+Patches currently in -mm which might be from akinobu.mita@gmail.com are
 
 origin.patch
+idr-create-idr_layer_cache-at-boot-time.patch
+idr-create-idr_layer_cache-at-boot-time-fix.patch
+idr-create-idr_layer_cache-at-boot-time-fix-fix.patch
 
