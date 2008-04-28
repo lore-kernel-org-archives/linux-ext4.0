@@ -1,82 +1,47 @@
-From: Christoph Lameter <clameter@sgi.com>
-Subject: VIRTUAL_BUG_ON()
-Date: Mon, 28 Apr 2008 13:24:42 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com>
-References: <20080425.021301.193689806.davem@davemloft.net>
- <1209343883-7991-1-git-send-email-jirislaby@gmail.com>
- <alpine.LFD.1.10.0804250759260.2779@woody.linux-foundation.org>
- <20080425151747.GA3265@one.firstfloor.org> <Pine.LNX.4.64.0804251235550.6337@schroedinger.engr.sgi.com>
- <20080426095938.GB17905@one.firstfloor.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: jbd2 patches in stable queue
+Date: Mon, 28 Apr 2008 13:25:00 -0700
+Message-ID: <1209414300.13477.10.camel@localhost.localdomain>
+References: <48162E6B.8010607@redhat.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jiri Slaby <jirislaby@gmail.com>,
-	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
-	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	penberg@cs.helsinki.fi, linux-kernel@vger.kernel.org,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	pageexec@freemail.hu, "H. Peter Anvin" <hpa@zytor.com>,
-	Jeremy Fitzhardinge <jeremy@goop.org>,
-	Ingo Molnar <mingo@elte.hu>
-To: Andi Kleen <andi@firstfloor.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.171.30]:37283 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S935326AbYD1UYo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 16:24:44 -0400
-In-Reply-To: <20080426095938.GB17905@one.firstfloor.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:40327 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S936946AbYD1UZE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2008 16:25:04 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m3SKP3hM018172
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2008 16:25:03 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m3SKP3MS189896
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2008 14:25:03 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m3SKOxwP002847
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2008 14:25:00 -0600
+In-Reply-To: <48162E6B.8010607@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 26 Apr 2008, Andi Kleen wrote:
-
-> > Good idea! Do you have a patch?
+On Mon, 2008-04-28 at 15:07 -0500, Eric Sandeen wrote:
+> Ted et al:
 > 
-> Yes. Appended. But it just enables the old NUMA VIRTUAL_BUG_ON()s, more 
-> work could be done e.g. by instrumenting pa/va and the non NUMA and i386 
-> case too.
+> these 3 patches in the stable queue:
+> 
+> patches/jbd2-tidy-up-revoke-cache-initialization-and-destruction.patch
+> patches/jbd2-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
+> patches/jbd2-replace-potentially-false-assertion-with-if-block.patch
+> 
+> don't seem to have their jbd counterparts merged anywhere, -mm or Linus'
+> tree.
+> 
+As far as I remember, they(at least the first 2) used to be in mm tree
+then later when the author submit updated patches, Andrew got confused
+with the relationship with previous patches so he took them all out. 
 
-Hmmmm.. No hooks yet? I have some pieces here that do something similar:
+Mingming
 
-Subject: Add checks for virtual addresses
-
-Add checks to insure that virtual addresses are not used in invalid contexts.
-
-Signed-off-by: Christoph Lameter <clameter@sgi.com>
-
----
- arch/x86/mm/ioremap.c     |    1 +
- include/asm-x86/page_32.h |    7 ++++++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
-
-Index: linux-2.6.25-mm1/arch/x86/mm/ioremap.c
-===================================================================
---- linux-2.6.25-mm1.orig/arch/x86/mm/ioremap.c	2008-04-25 23:17:31.872390404 -0700
-+++ linux-2.6.25-mm1/arch/x86/mm/ioremap.c	2008-04-25 23:37:43.202391820 -0700
-@@ -25,6 +25,7 @@
- 
- unsigned long __phys_addr(unsigned long x)
- {
-+	VM_BUG_ON(is_vmalloc_addr((void *)x));
- 	if (x >= __START_KERNEL_map)
- 		return x - __START_KERNEL_map + phys_base;
- 	return x - PAGE_OFFSET;
-Index: linux-2.6.25-mm1/include/asm-x86/page_32.h
-===================================================================
---- linux-2.6.25-mm1.orig/include/asm-x86/page_32.h	2008-04-25 23:17:31.882389317 -0700
-+++ linux-2.6.25-mm1/include/asm-x86/page_32.h	2008-04-25 23:37:43.202391820 -0700
-@@ -64,7 +64,12 @@ typedef struct page *pgtable_t;
- #endif
- 
- #ifndef __ASSEMBLY__
--#define __phys_addr(x)		((x) - PAGE_OFFSET)
-+static inline unsigned long __phys_addr(unsigned long x)
-+{
-+	VM_BUG_ON(is_vmalloc_addr((void *)x));
-+	return x - PAGE_OFFSET;
-+}
-+
- #define __phys_reloc_hide(x)	RELOC_HIDE((x), 0)
- 
- #ifdef CONFIG_FLATMEM
