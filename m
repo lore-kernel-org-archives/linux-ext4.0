@@ -1,54 +1,56 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
-	for FLEX_BG
-Date: Mon, 28 Apr 2008 08:01:38 -0400
-Message-ID: <20080428120138.GE30840@mit.edu>
-References: <1208868379-17580-1-git-send-email-tytso@mit.edu> <1208868379-17580-2-git-send-email-tytso@mit.edu> <1208868379-17580-3-git-send-email-tytso@mit.edu> <20080423203955.GH2775@webber.adilger.int> <20080423160518.5c7fad2e@gara> <20080425201026.GB3444@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Possible race between direct IO and JBD?
+Date: Mon, 28 Apr 2008 14:26:26 +0200
+Message-ID: <20080428122626.GC17054@duck.suse.cz>
+References: <20080306174209.GA14193@duck.suse.cz> <1209166706.6040.20.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Valerie Clement <valerie.clement@bull.net>
-To: Andreas Dilger <adilger@sun.com>
+Cc: akpm@linux-foundation.org, pbadari@us.ibm.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51211 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1765702AbYD1MBu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2008 08:01:50 -0400
+Received: from styx.suse.cz ([82.119.242.94]:39282 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1763297AbYD1M02 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2008 08:26:28 -0400
 Content-Disposition: inline
-In-Reply-To: <20080425201026.GB3444@webber.adilger.int>
+In-Reply-To: <1209166706.6040.20.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 25, 2008 at 02:10:26PM -0600, Andreas Dilger wrote:
-> I'd HOPE (and I believe this is what Ted's recent patch did) is that any
-> group which is being used to store flexbg data will have an initialized
-> block bitmap in it, because it is "non-standard".
+  Hi,
 
-Correct.  If there are *any* blocks allocated other than the block's
-own metadata, BLOCK_UNINIT will never be set.  And that's precisely to
-avoid the tricky case described in your next paragraph:
+On Fri 25-04-08 16:38:23, Mingming Cao wrote:
+> While looking at a bug related to direct IO returns to EIO, after
+> looking at the code, I found there is a window that
+> try_to_free_buffers() from direct IO could race with JBD, which holds
+> the reference to the data buffers before journal_commit_transaction()
+> ensures the data buffers has reached to the disk.
+> 
+> A little more detail: to prepare for direct IO, generic_file_direct_IO()
+> calls invalidate_inode_pages2_range() to invalidate the pages in the
+> cache before performaning direct IO.  invalidate_inode_pages2_range()
+> tries to free the buffers via try_to free_buffers(), but sometimes it
+> can't, due to the buffers is possible still on some transaction's
+> t_sync_datalist or t_locked_list waiting for
+> journal_commit_transaction() to process it. 
+> 
+> Currently Direct IO simply returns EIO if try_to_free_buffers() finds
+> the buffer is busy, as it has no clue that JBD is referencing it.
+> 
+> Is this a known issue and expected behavior? Any thoughts?
+  Are you seeing this in data=ordered mode? As Andrew pointed out we do
+filemap_write_and_wait() so all the relevant data buffers of the inode
+should be already on disk. In __journal_try_to_free_buffer() we check
+whether the buffer is already-written-out data buffer and unfile and free
+it in that case. It shouldn't happen that a data buffer has
+b_next_transaction set so really the only idea why try_to_free_buffers()
+could fail is that somebody manages to write to a page via mmap before
+invalidate_inode_pages2_range() gets to it. Under which kind of load do you
+observe the problem? Do you know exactly because of which condition does
+journal_try_to_free_buffers() fail?
 
-> What is more tricky is if a group has BLOCK_UNINIT and/or INODE_UNINIT
-> set what should happen when that group's block bitmap is initialized.
-> Should it assume there is a block + inode bitmap and an itable, or is
-> it enough to check its own group descriptor to determine if the bitmap
-> and itable are not in the group itself.
-
-In the kernel, it should be enough only to check bg_inode_bitmp,
-bg_block_bitmap, and bg_inode_table to construct the block bitmap.
-The point was to keep things simple.  
-
-The cost of doing this is that you will end up needing to initialize
-the block bitmaps for every an extra 1 out of every flex_bg_size block
-groups, but that's not a major cost.  It also means that BLOCK_UNINIT
-and BLOCK_BG_EMPTY as defined by Andreas are the same thing.  This was
-a Keep It Simple, Stupid design point; I don't think the complexity is
-worth it.
-
-If someone wants to convince me that the benefits of forcing the
-kernel and e2fsck pass5 to paw through all of the block group
-descriptors to construct the block bitmap outweighs the costs (and
-more importantly, volunteers to write the code :-), I'm willing to be
-convinced otherwise....
-
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
