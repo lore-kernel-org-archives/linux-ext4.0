@@ -1,89 +1,146 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: What's in e2fsprogs.git (stable)
-Date: Sun, 27 Apr 2008 22:53:02 -0400
-Message-ID: <20080428025302.GC30840@mit.edu>
-References: <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <20080313180503.GC31653@mit.edu> <20080320202243.GO13719@mit.edu> <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu> <20080418183935.GA25797@mit.edu> <20080421162726.GF9700@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: [patch 282/307] jbd: replace remaining __FUNCTION__ occurrences
+Date: Mon, 28 Apr 2008 02:16:16 -0700
+Message-ID: <200804280916.m3S9GGuQ019188@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, harvey.harrison@gmail.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43299 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1761485AbYD1CxE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Apr 2008 22:53:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20080421162726.GF9700@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:39008 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753079AbYD1JQp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2008 05:16:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've cut a release of e2fsprogs 1.41-WIP-0427, as a tarball, just so
-that people have something outside of git that they can play with.
+From: Harvey Harrison <harvey.harrison@gmail.com>
 
-I made a lot of changes to the undo manager before finally merging it,
-including rename undoe2fs to e2undo, and speeding it up substantially.
-It is now roughly 4 times faster than before when we force the
-creation of an undo file while running mke2fs on a filesystem with a
-journal file enabled.
+__FUNCTION__ is gcc-specific, use __func__
 
-We still have some cleanup work to do, which is being kept up to date here;
+Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-http://ext4.wiki.kernel.org/index.php/E2fsprogs_features_and_patches
+ fs/jbd/journal.c     |   18 +++++++++---------
+ fs/jbd/revoke.c      |    2 +-
+ fs/jbd/transaction.c |    4 ++--
+ 3 files changed, 12 insertions(+), 12 deletions(-)
 
-							- Ted
-
-* The 'maint' branch has these fixes since the last announcement.
-
-Makoto Dei (1):
-  fsck does not accept 'j' with German locale
-
-Manish Katiyar (1):
-  Fix "make docs" rule in Makefile for doc folder.
-
-Theodore Ts'o (6):
-  blkid: Keep cached filesystem information on EACCES and ENOENT
-      errors
-  libext2fs.texinfo: Fix @deftypefun definitions so they are all on
-      one line
-  Update texinfo.tex file newer version from the FSF
-  mke2fs: Don't allow the combination of the meta_bg and resize_inode
-      features
-  Update release notes and debian changelog for 1.40.9 release
-  debian: The doc-base section should be Programming, not
-      Apps/Programming
-
-
-* The 'master' branch has these since the last announcement
-  in addition to the above.
-
-Aneesh Kumar K.V (6):
-  libext2fs: Add undo I/O manager
-  Add e2undo command
-  mke2fs: Add support for the undo I/O manager.
-  tune2fs: Support for large inode migration.
-  Fix the resize inode test case
-  Add test cases for undoe2fs: u_undoe2fs_mke2fs and
-      u_undoe2fs_tune2fs
-
-Theodore Ts'o (15):
-  libext2fs: Initialize s_min_extra_isize and s_wanted_extra_isize
-  libe2p: Print the s_min_extra_isize and s_wanted_extra_isize fields
-  ext2fs_set_gdt_csum: Remove bogus setting of ITABLE_ZEROED
-  ext2fs_set_gdt_csum: Remove setting of BLOCK_UNINIT
-  e2fsck: Fix pass5 handling of meta_bg and uninit_bg combination
-  Add comments documenting ext2fs_[reserve_]super_and_bgd_loc()
-  Remove LAZY_BG feature
-  Transfer responsibility of setting the *_UNINIT flags to libext2fs
-  mke2fs/libext2fs: Fix lazy inode table initialization
-  ext2fs_open_inode_scan: Handle an non-zero bg_itable_used in block
-      group 0
-  Basic flexible block group support
-  mke2fs: New bitmap and inode table allocation for FLEX_BG
-  mke2fs: Make argument to the extended option lazy_itable_init
-      optional
-  ext2fs_add_journal_inode: Optimize writing the journal data blocks
-  Update version.h and README for 1.41-WIP-0427 release
-
-------
-URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+diff -puN fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/journal.c
+@@ -534,7 +534,7 @@ int log_wait_commit(journal_t *journal, 
+ 	if (!tid_geq(journal->j_commit_request, tid)) {
+ 		printk(KERN_EMERG
+ 		       "%s: error: j_commit_request=%d, tid=%d\n",
+-		       __FUNCTION__, journal->j_commit_request, tid);
++		       __func__, journal->j_commit_request, tid);
+ 	}
+ 	spin_unlock(&journal->j_state_lock);
+ #endif
+@@ -599,7 +599,7 @@ int journal_bmap(journal_t *journal, uns
+ 
+ 			printk(KERN_ALERT "%s: journal block not found "
+ 					"at offset %lu on %s\n",
+-				__FUNCTION__,
++				__func__,
+ 				blocknr,
+ 				bdevname(journal->j_dev, b));
+ 			err = -EIO;
+@@ -728,7 +728,7 @@ journal_t * journal_init_dev(struct bloc
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		journal = NULL;
+ 		goto out;
+@@ -782,7 +782,7 @@ journal_t * journal_init_inode (struct i
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -791,7 +791,7 @@ journal_t * journal_init_inode (struct i
+ 	/* If that failed, give up */
+ 	if (err) {
+ 		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
+-		       __FUNCTION__);
++		       __func__);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -877,7 +877,7 @@ int journal_create(journal_t *journal)
+ 		 */
+ 		printk(KERN_EMERG
+ 		       "%s: creation of journal on external device!\n",
+-		       __FUNCTION__);
++		       __func__);
+ 		BUG();
+ 	}
+ 
+@@ -1657,7 +1657,7 @@ static struct journal_head *journal_allo
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		if (time_after(jiffies, last_warning + 5*HZ)) {
+ 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
+-			       __FUNCTION__);
++			       __func__);
+ 			last_warning = jiffies;
+ 		}
+ 		while (ret == NULL) {
+@@ -1794,13 +1794,13 @@ static void __journal_remove_journal_hea
+ 			if (jh->b_frozen_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_frozen_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_frozen_data, bh->b_size);
+ 			}
+ 			if (jh->b_committed_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_committed_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_committed_data, bh->b_size);
+ 			}
+ 			bh->b_private = NULL;
+diff -puN fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences fs/jbd/revoke.c
+--- a/fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/revoke.c
+@@ -138,7 +138,7 @@ repeat:
+ oom:
+ 	if (!journal_oom_retry)
+ 		return -ENOMEM;
+-	jbd_debug(1, "ENOMEM in %s, retrying\n", __FUNCTION__);
++	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
+ 	yield();
+ 	goto repeat;
+ }
+diff -puN fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/transaction.c
+@@ -687,7 +687,7 @@ repeat:
+ 				if (!frozen_buffer) {
+ 					printk(KERN_EMERG
+ 					       "%s: OOM for frozen_buffer\n",
+-					       __FUNCTION__);
++					       __func__);
+ 					JBUFFER_TRACE(jh, "oom!");
+ 					error = -ENOMEM;
+ 					jbd_lock_bh_state(bh);
+@@ -904,7 +904,7 @@ repeat:
+ 		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS);
+ 		if (!committed_data) {
+ 			printk(KERN_EMERG "%s: No memory for committed data\n",
+-				__FUNCTION__);
++				__func__);
+ 			err = -ENOMEM;
+ 			goto out;
+ 		}
+_
