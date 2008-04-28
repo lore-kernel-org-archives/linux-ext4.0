@@ -1,71 +1,48 @@
-From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+From: Jeremy Fitzhardinge <jeremy@goop.org>
 Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Mon, 28 Apr 2008 16:43:42 -0400
-Message-ID: <20080428204342.GD27154@Krystal>
-References: <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal> <481249FB.8070204@zytor.com> <20080425214704.GD25950@Krystal> <48125635.3060303@zytor.com> <20080425223015.GB31226@Krystal> <alpine.LFD.1.10.0804251534420.2779@woody.linux-foundation.org>
+Date: Mon, 28 Apr 2008 13:55:46 -0700
+Message-ID: <481639D2.7040306@goop.org>
+References: <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal> <481249FB.8070204@zytor.com> <20080425214704.GD25950@Krystal> <48125635.3060303@zytor.com> <20080425223015.GB31226@Krystal> <alpine.LFD.1.10.0804251534420.2779@woody.linux-foundation.org> <20080428202130.GF15840@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
-	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
+	"H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
+	Jiri Slaby <jirislaby@gmail.com>,
 	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
 	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
 	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
 	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, pageexec@freemail.hu,
-	Jeremy Fitzhardinge <jeremy@goop.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+	linux-kernel@vger.kernel.org, pageexec@freemail.hu
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts20.bellnexxia.net ([209.226.175.74]:62422 "EHLO
-	tomts20-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933038AbYD1Uss (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 16:48:48 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.1.10.0804251534420.2779@woody.linux-foundation.org>
+Received: from gw.goop.org ([64.81.55.164]:60306 "EHLO mail.goop.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935588AbYD1U4E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2008 16:56:04 -0400
+In-Reply-To: <20080428202130.GF15840@elte.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Linus Torvalds (torvalds@linux-foundation.org) wrote:
-> 
-> 
-> On Fri, 25 Apr 2008, Mathieu Desnoyers wrote:
-> > 
-> > DWARF2 is capable of extracting information only when not optimized away
-> > by the compiler. That's the whole point of markers : liveness is good in
-> > this case because we make sure the variable is there, not that it
-> > *might* be there. The latter case might be good enough for a debugger,
-> > but not for a production system tracer.
-> 
-> This is why you really do want to recompile the function entirely if 
-> you're debugging it. Because it might simply not be debuggable in its 
-> normal state.
-> 
-> I'd much rather see something truly generic that doesn't need any 
-> pre-inserted "markers" at all that disable optimizations, and that allows 
+Ingo Molnar wrote:
+> And once we accept the static 
+> markers, we might as well make them as cheap as possible.
 
-Markers, with immediate values, only clobbers the eax register and the
-ZF. It does not restrain inlining nor loop unrolling. It also requires
-gcc to leave the variables in which the marker is interested "live". Are
-you referring to other optimizations I wouldn't have though of ?
+Sure, so long as you take "as cheap as possible" to mean cheap in both 
+implementation complexity as well as runtime cost.
 
-> just about anything. Including live system bug-fixes etc (imagine finding 
-> a bug - and not at somethign that was previously already "marked" - and 
-> just replacing the buggy function with a non-buggy one).
-> 
-> 		Linus
+I don't have any specific objections to any of the stuff that Mathieu is 
+working on, but it does worry me that each time a problem is addressed 
+it ends up being an even more subtle piece of code.  I just haven't seen 
+enough concrete justification to make me feel comfortable with it all.
 
-kprobes is already doing a good job at probing a live system without
-rebooting. Markers are best suited to export information about kernel
-events which stays stable between releases so the information is readily
-available in the kernel, with low overhead even when tracing is enabled
-(which kprobes doesn't provide) which allows a user to flip the "on"
-switch and get a trace of all system calls, scheduling, traps,
-interrupts that happen on the system.
+It seems to me that a relatively simple implementation which allows the 
+desired tracing/marking functionality is the first step.  If that proves 
+to cause a significant performance deficit then enabled then we can work 
+out how to address it in due course.  But doing it all at once before 
+merging anything seems like overkill, particularly when we're talking 
+about specifics of gcc's codegen patterns, disassembling code fragments, 
+etc.
 
-Mathieu
-
-
--- 
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+    J
