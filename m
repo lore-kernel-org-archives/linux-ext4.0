@@ -1,141 +1,231 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-fix-possible-journal-overflow-issues.patch removed from -mm tree
-Date: Mon, 28 Apr 2008 15:00:48 -0700
-Message-ID: <200804282200.m3SM0mGu018771@imap1.linux-foundation.org>
-To: jbacik@redhat.com, jack@ucw.cz, linux-ext4@vger.kernel.org,
+Subject: - jbd-replace-remaining-__function__-occurrences.patch removed from -mm tree
+Date: Mon, 28 Apr 2008 15:01:01 -0700
+Message-ID: <200804282201.m3SM11Os018800@imap1.linux-foundation.org>
+To: harvey.harrison@gmail.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57083 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49799 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S965706AbYD1WBJ (ORCPT
+	by vger.kernel.org with ESMTP id S965684AbYD1WBE (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 18:01:09 -0400
+	Mon, 28 Apr 2008 18:01:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd: fix possible journal overflow issues
+     jbd: replace remaining __FUNCTION__ occurrences
 has been removed from the -mm tree.  Its filename was
-     jbd-fix-possible-journal-overflow-issues.patch
+     jbd-replace-remaining-__function__-occurrences.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: fix possible journal overflow issues
-From: Josef Bacik <jbacik@redhat.com>
+Subject: jbd: replace remaining __FUNCTION__ occurrences
+From: Harvey Harrison <harvey.harrison@gmail.com>
 
-There are several cases where the running transaction can get buffers added to
-its BJ_Metadata list which it never dirtied, which makes its t_nr_buffers
-counter end up larger than its t_outstanding_credits counter.
+__FUNCTION__ is gcc-specific, use __func__
 
-This will cause issues when starting new transactions as while we are logging
-buffers we decrement t_outstanding_buffers, so when t_outstanding_buffers goes
-negative, we will report that we need less space in the journal than we
-actually need, so transactions will be started even though there may not be
-enough room for them.  In the worst case scenario (which admittedly is almost
-impossible to reproduce) this will result in the journal running out of space.
-
-The fix is to only
-refile buffers from the committing transaction to the running transactions
-BJ_Modified list when b_modified is set on that journal, which is the only way
-to be sure if the running transaction has modified that buffer.
-
-This patch also fixes an accounting error in journal_forget, it is possible
-that we can call journal_forget on a buffer without having modified it, only
-gotten write access to it, so instead of freeing a credit, we only do so if
-the buffer was modified.  The assert will help catch if this problem occurs. 
-Without these two patches I could hit this assert within minutes of running
-postmark, with them this issue no longer arises.  Thank you,
-
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
-Acked-by: Jan Kara <jack@ucw.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c      |    3 +++
- fs/jbd/transaction.c |   21 ++++++++++++++++++---
- 2 files changed, 21 insertions(+), 3 deletions(-)
+ fs/jbd/journal.c     |   18 +++++++++---------
+ fs/jbd/revoke.c      |    2 +-
+ fs/jbd/transaction.c |    4 ++--
+ 3 files changed, 12 insertions(+), 12 deletions(-)
 
-diff -puN fs/jbd/commit.c~jbd-fix-possible-journal-overflow-issues fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-fix-possible-journal-overflow-issues
-+++ a/fs/jbd/commit.c
-@@ -472,6 +472,9 @@ void journal_commit_transaction(journal_
- 	 */
- 	commit_transaction->t_state = T_COMMIT;
+diff -puN fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/journal.c
+@@ -534,7 +534,7 @@ int log_wait_commit(journal_t *journal, 
+ 	if (!tid_geq(journal->j_commit_request, tid)) {
+ 		printk(KERN_EMERG
+ 		       "%s: error: j_commit_request=%d, tid=%d\n",
+-		       __FUNCTION__, journal->j_commit_request, tid);
++		       __func__, journal->j_commit_request, tid);
+ 	}
+ 	spin_unlock(&journal->j_state_lock);
+ #endif
+@@ -599,7 +599,7 @@ int journal_bmap(journal_t *journal, uns
  
-+	J_ASSERT(commit_transaction->t_nr_buffers <=
-+		 commit_transaction->t_outstanding_credits);
-+
- 	descriptor = NULL;
- 	bufs = 0;
- 	while (commit_transaction->t_buffers) {
-diff -puN fs/jbd/transaction.c~jbd-fix-possible-journal-overflow-issues fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~jbd-fix-possible-journal-overflow-issues
-+++ a/fs/jbd/transaction.c
-@@ -1235,6 +1235,7 @@ int journal_forget (handle_t *handle, st
- 	struct journal_head *jh;
- 	int drop_reserve = 0;
- 	int err = 0;
-+	int was_modified = 0;
- 
- 	BUFFER_TRACE(bh, "entry");
- 
-@@ -1253,6 +1254,9 @@ int journal_forget (handle_t *handle, st
- 		goto not_jbd;
+ 			printk(KERN_ALERT "%s: journal block not found "
+ 					"at offset %lu on %s\n",
+-				__FUNCTION__,
++				__func__,
+ 				blocknr,
+ 				bdevname(journal->j_dev, b));
+ 			err = -EIO;
+@@ -728,7 +728,7 @@ journal_t * journal_init_dev(struct bloc
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		journal = NULL;
+ 		goto out;
+@@ -782,7 +782,7 @@ journal_t * journal_init_inode (struct i
+ 	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+-			__FUNCTION__);
++			__func__);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -791,7 +791,7 @@ journal_t * journal_init_inode (struct i
+ 	/* If that failed, give up */
+ 	if (err) {
+ 		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
+-		       __FUNCTION__);
++		       __func__);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -877,7 +877,7 @@ int journal_create(journal_t *journal)
+ 		 */
+ 		printk(KERN_EMERG
+ 		       "%s: creation of journal on external device!\n",
+-		       __FUNCTION__);
++		       __func__);
+ 		BUG();
  	}
  
-+	/* keep track of wether or not this transaction modified us */
-+	was_modified = jh->b_modified;
-+
- 	/*
- 	 * The buffer's going from the transaction, we must drop
- 	 * all references -bzzz
-@@ -1270,7 +1274,12 @@ int journal_forget (handle_t *handle, st
- 
- 		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
- 
--		drop_reserve = 1;
-+		/*
-+		 * we only want to drop a reference if this transaction
-+		 * modified the buffer
-+		 */
-+		if (was_modified)
-+			drop_reserve = 1;
- 
- 		/*
- 		 * We are no longer going to journal this buffer.
-@@ -1310,7 +1319,13 @@ int journal_forget (handle_t *handle, st
- 		if (jh->b_next_transaction) {
- 			J_ASSERT(jh->b_next_transaction == transaction);
- 			jh->b_next_transaction = NULL;
--			drop_reserve = 1;
-+
-+			/*
-+			 * only drop a reference if this transaction modified
-+			 * the buffer
-+			 */
-+			if (was_modified)
-+				drop_reserve = 1;
+@@ -1657,7 +1657,7 @@ static struct journal_head *journal_allo
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		if (time_after(jiffies, last_warning + 5*HZ)) {
+ 			printk(KERN_NOTICE "ENOMEM in %s, retrying.\n",
+-			       __FUNCTION__);
++			       __func__);
+ 			last_warning = jiffies;
  		}
- 	}
- 
-@@ -2082,7 +2097,7 @@ void __journal_refile_buffer(struct jour
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
- 	__journal_file_buffer(jh, jh->b_transaction,
--				was_dirty ? BJ_Metadata : BJ_Reserved);
-+				jh->b_modified ? BJ_Metadata : BJ_Reserved);
- 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
- 
- 	if (was_dirty)
+ 		while (ret == NULL) {
+@@ -1794,13 +1794,13 @@ static void __journal_remove_journal_hea
+ 			if (jh->b_frozen_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_frozen_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_frozen_data, bh->b_size);
+ 			}
+ 			if (jh->b_committed_data) {
+ 				printk(KERN_WARNING "%s: freeing "
+ 						"b_committed_data\n",
+-						__FUNCTION__);
++						__func__);
+ 				jbd_free(jh->b_committed_data, bh->b_size);
+ 			}
+ 			bh->b_private = NULL;
+diff -puN fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences fs/jbd/revoke.c
+--- a/fs/jbd/revoke.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/revoke.c
+@@ -138,7 +138,7 @@ repeat:
+ oom:
+ 	if (!journal_oom_retry)
+ 		return -ENOMEM;
+-	jbd_debug(1, "ENOMEM in %s, retrying\n", __FUNCTION__);
++	jbd_debug(1, "ENOMEM in %s, retrying\n", __func__);
+ 	yield();
+ 	goto repeat;
+ }
+diff -puN fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-replace-remaining-__function__-occurrences
++++ a/fs/jbd/transaction.c
+@@ -687,7 +687,7 @@ repeat:
+ 				if (!frozen_buffer) {
+ 					printk(KERN_EMERG
+ 					       "%s: OOM for frozen_buffer\n",
+-					       __FUNCTION__);
++					       __func__);
+ 					JBUFFER_TRACE(jh, "oom!");
+ 					error = -ENOMEM;
+ 					jbd_lock_bh_state(bh);
+@@ -904,7 +904,7 @@ repeat:
+ 		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS);
+ 		if (!committed_data) {
+ 			printk(KERN_EMERG "%s: No memory for committed data\n",
+-				__FUNCTION__);
++				__func__);
+ 			err = -ENOMEM;
+ 			goto out;
+ 		}
 _
 
-Patches currently in -mm which might be from jbacik@redhat.com are
+Patches currently in -mm which might be from harvey.harrison@gmail.com are
 
 origin.patch
-ext4-fix-wrong-gfp-type-under-transaction.patch
+cifs-remove-global_extern-macro.patch
+input-replace-remaining-__function__-occurrences.patch
+git-kvm.patch
+git-mips.patch
+git-nfsd.patch
+nfs-replace-remaining-__function__-occurrences.patch
+parisc-replace-remaining-__function__-occurences.patch
+drivers-parisc-replace-remaining-__function__-occurrences.patch
+pcmcia-replace-remaining-__function__-occurrences.patch
+scsi-replace-remaining-__function__-occurrences.patch
+fusion-replace-remaining-__function__-occurrences.patch
+scsi-replace-__inline-with-inline.patch
+git-watchdog.patch
+git-xfs.patch
+xtensa-replace-remaining-__function__-occurences.patch
+power-replace-remaining-__function__-occurrences.patch
+adfs-work-around-bogus-sparse-warning.patch
+coda-add-static-to-functions-in-dirc.patch
+befs-fix-sparse-warning-in-linuxvfsc.patch
+autofs4-fix-sparse-warning-in-rootc.patch
+firmware-replace-remaining-__function__-occurrences.patch
+drivers-misc-replace-remaining-__function__-occurrences.patch
+xen-make-blkif_getgeo-static.patch
+ecryptfs-replace-remaining-__function__-occurrences.patch
+cgroup-fix-sparse-warning-of-shadow-symbol-in-cgroupc.patch
+ext4-replace-remaining-__function__-occurrences.patch
+jdb2-replace-remaining-__function__-occurrences.patch
+char-fix-sparse-shadowed-variable-warnings-in-espc.patch
+char-espc-fix-possible-double-unlock.patch
+char-rocketc-fix-sparse-variable-shadowing-and-int-as-null-pointer.patch
+cycladesc-fix-sparse-shadowed-variable-warnings.patch
+epcac-static-functions-and-integer-as-null-pointer-fixes.patch
+epcac-static-functions-and-integer-as-null-pointer-fixes-checkpatch-fixes.patch
+add-macros-similar-to-min-max-min_t-max_t.patch
+add-macros-similar-to-min-max-min_t-max_t-doc.patch
+ide-eliminate-fit-macro.patch
+ata-remove-fit-macro.patch
+b43-replace-limit_value-macro-with-clamp_val.patch
+b43legacy-replace-limit_value-macro-with-clamp_val.patch
+fuse-use-clamp-rather-than-nested-min-max.patch
+ide-tape-use-clamp_t-rather-than-nested-min_t-max_t.patch
+input-ff-memlessc-use-clamp_val-macro.patch
+dccp-ccid2c-ccid3c-use-clamp-clamp_t.patch
+drivers-replace-remaining-__function__-occurrences.patch
+kernel-add-common-infrastructure-for-unaligned-access.patch
+kernel-move-arches-to-use-common-unaligned-access.patch
+drivers-block-use-get_unaligned_-helpers.patch
+hid-core-use-get_unaligned_-helpers.patch
+char-use-get_unaligned_-helpers.patch
+input-use-get_unaligned_-helpers.patch
+mmc-use-get-put_unaligned_-helpers.patch
+net-use-get-put_unaligned_-helpers.patch
+wireless-use-get-put_unaligned_-helpers.patch
+pcmcia-use-get-put_unaligned_-helpers.patch
+usb-use-get-put_unaligned_-helpers.patch
+video-use-get-put_unaligned_-helpers.patch
+fat-use-get-put_unaligned_-helpers.patch
+hfsplus-use-get-put_unaligned_-helpers.patch
+isofs-use-get-put_unaligned_-helpers.patch
+ncpfs-use-get-put_unaligned_-helpers.patch
+ncpfs-use-get-put_unaligned_-helpers-checkpatch-fixes.patch
+mm-remove-remaining-__function__-occurances.patch
+block-remove-remaining-__function__-occurances.patch
+kernel-replace-remaining-__function__-occurances.patch
+lib-replace-remaining-__function__-occurances.patch
+afs-replace-remaining-__function__-occurrences.patch
+fs-replace-remaining-__function__-occurrences.patch
+drivers-char-replace-remaining-__function__-occurrences.patch
+serial-replace-remaining-__function__-occurrences.patch
 
