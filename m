@@ -1,56 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Possible race between direct IO and JBD?
-Date: Mon, 28 Apr 2008 14:26:26 +0200
-Message-ID: <20080428122626.GC17054@duck.suse.cz>
-References: <20080306174209.GA14193@duck.suse.cz> <1209166706.6040.20.camel@localhost.localdomain>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: [RFC PATCH 1/3] Implement generic freeze feature
+Date: Mon, 28 Apr 2008 21:59:55 +0900
+Message-ID: <2E042A67F72447F6AAA0CC0605DBFA84@nsl.ad.nec.co.jp>
+References: <20080428193123t-sato@mail.jp.nec.com>
+	<20080428103719.GA16030@infradead.org>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, pbadari@us.ibm.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:39282 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1763297AbYD1M02 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 08:26:28 -0400
-Content-Disposition: inline
-In-Reply-To: <1209166706.6040.20.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; format=flowed; charset="iso-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, dm-devel@redhat.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+To: "Christoph Hellwig" <hch@infradead.org>
+Return-path: <dm-devel-bounces@redhat.com>
+In-Reply-To: <20080428103719.GA16030@infradead.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+Hi,
 
-On Fri 25-04-08 16:38:23, Mingming Cao wrote:
-> While looking at a bug related to direct IO returns to EIO, after
-> looking at the code, I found there is a window that
-> try_to_free_buffers() from direct IO could race with JBD, which holds
-> the reference to the data buffers before journal_commit_transaction()
-> ensures the data buffers has reached to the disk.
-> 
-> A little more detail: to prepare for direct IO, generic_file_direct_IO()
-> calls invalidate_inode_pages2_range() to invalidate the pages in the
-> cache before performaning direct IO.  invalidate_inode_pages2_range()
-> tries to free the buffers via try_to free_buffers(), but sometimes it
-> can't, due to the buffers is possible still on some transaction's
-> t_sync_datalist or t_locked_list waiting for
-> journal_commit_transaction() to process it. 
-> 
-> Currently Direct IO simply returns EIO if try_to_free_buffers() finds
-> the buffer is busy, as it has no clue that JBD is referencing it.
-> 
-> Is this a known issue and expected behavior? Any thoughts?
-  Are you seeing this in data=ordered mode? As Andrew pointed out we do
-filemap_write_and_wait() so all the relevant data buffers of the inode
-should be already on disk. In __journal_try_to_free_buffer() we check
-whether the buffer is already-written-out data buffer and unfile and free
-it in that case. It shouldn't happen that a data buffer has
-b_next_transaction set so really the only idea why try_to_free_buffers()
-could fail is that somebody manages to write to a page via mmap before
-invalidate_inode_pages2_range() gets to it. Under which kind of load do you
-observe the problem? Do you know exactly because of which condition does
-journal_try_to_free_buffers() fail?
+> On Mon, Apr 28, 2008 at 07:31:23PM +0900, Takashi Sato wrote:
+>> + /* Initialize semaphore for freeze. */
+>> + sema_init(&bdev->bd_freeze_sem, 1);
+>
+> The freezing process is already protected by bd_mount_sem, so I don't
+> think there's need for another one.
+>
+[...]
+>>  down(&bdev->bd_mount_sem);
+>>  sb = get_super(bdev);
+>
+> I think the protection against double freezes would be better done by
+> using a trylock on bd_mount_sem.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+bd_mount_sem can protect against only freezes and cannot protect against
+unfreezes.  If multiple unfreezes run in parallel,  the multiple up() for
+bd_mount_sem might occur incorrectly.
+
+> In fact after that it could be changed
+> from a semaphore to a simple test_and_set_bit.
+
+I will consider using test_and_set_bit.
+
+>>  error = -ENOTTY;
+>>  break;
+>> +
+>> + case FIFREEZE: {
+>
+> This would be better to split intot a small helper ala ioctl_fibmap()
+>
+>> + case FITHAW: {
+>
+> Same here.
+
+OK.  I will split small helper functions.
+
+Cheers, Takashi 
