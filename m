@@ -1,340 +1,54 @@
-From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [RFC PATCH 3/3] Add timeout feature
-Date: Mon, 28 Apr 2008 19:39:08 +0900
-Message-ID: <20080428193908t-sato@mail.jp.nec.com>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [E2FSPROGS, RFC] mke2fs: New bitmap and inode table allocation
+	for FLEX_BG
+Date: Mon, 28 Apr 2008 08:01:38 -0400
+Message-ID: <20080428120138.GE30840@mit.edu>
+References: <1208868379-17580-1-git-send-email-tytso@mit.edu> <1208868379-17580-2-git-send-email-tytso@mit.edu> <1208868379-17580-3-git-send-email-tytso@mit.edu> <20080423203955.GH2775@webber.adilger.int> <20080423160518.5c7fad2e@gara> <20080425201026.GB3444@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"dm-devel@redhat.com"
-Return-path: <dm-devel-bounces@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Valerie Clement <valerie.clement@bull.net>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51211 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1765702AbYD1MBu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2008 08:01:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20080425201026.GB3444@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The timeout feature is added to freeze ioctl.  And new ioctl
-to reset the timeout period is added.
-o Freeze the filesystem
-  int ioctl(int fd, int FIFREEZE, long *timeval)
-  fd: The file descriptor of the mountpoint
-  FIFREEZE: request code for the freeze
-  timeval: the timeout period in seconds
-           If it's 0 or 1, the timeout isn't set.
-           This special case of "1" is implemented to keep
-           the compatibility with XFS applications.
-  Return value: 0 if the operation succeeds. Otherwise, -1
+On Fri, Apr 25, 2008 at 02:10:26PM -0600, Andreas Dilger wrote:
+> I'd HOPE (and I believe this is what Ted's recent patch did) is that any
+> group which is being used to store flexbg data will have an initialized
+> block bitmap in it, because it is "non-standard".
 
-o Reset the timeout period
-  int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
-    fd:file descriptor of mountpoint
-    FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
-    timeval: new timeout period in seconds
-    Return value: 0 if the operation succeeds. Otherwise, -1
-    Error number: If the filesystem has already been unfrozen,
-                  errno is set to EINVAL.
+Correct.  If there are *any* blocks allocated other than the block's
+own metadata, BLOCK_UNINIT will never be set.  And that's precisely to
+avoid the tricky case described in your next paragraph:
 
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
-Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
----
- drivers/md/dm.c             |    2 -
- fs/block_dev.c              |    2 +
- fs/buffer.c                 |   14 ++++++++-
- fs/ioctl.c                  |   64 +++++++++++++++++++++++++++++++++++++++++++-
- fs/super.c                  |   52 +++++++++++++++++++++++++++++++++++
- fs/xfs/xfs_fsops.c          |    2 -
- include/linux/buffer_head.h |    2 -
- include/linux/fs.h          |    8 +++++
- 8 files changed, 140 insertions(+), 6 deletions(-)
+> What is more tricky is if a group has BLOCK_UNINIT and/or INODE_UNINIT
+> set what should happen when that group's block bitmap is initialized.
+> Should it assume there is a block + inode bitmap and an itable, or is
+> it enough to check its own group descriptor to determine if the bitmap
+> and itable are not in the group itself.
 
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/drivers/md/dm.c linux-2.6.25-timeout/drivers/md/dm.c
---- linux-2.6.25-xfs/drivers/md/dm.c	2008-04-24 20:43:48.000000000 +0900
-+++ linux-2.6.25-timeout/drivers/md/dm.c	2008-04-24 20:45:54.000000000 +0900
-@@ -1407,7 +1407,7 @@ static int lock_fs(struct mapped_device 
- 
- 	WARN_ON(md->frozen_sb);
- 
--	md->frozen_sb = freeze_bdev(md->suspended_bdev);
-+	md->frozen_sb = freeze_bdev(md->suspended_bdev, 0);
- 	if (IS_ERR(md->frozen_sb)) {
- 		r = PTR_ERR(md->frozen_sb);
- 		md->frozen_sb = NULL;
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/fs/block_dev.c linux-2.6.25-timeout/fs/block_dev.c
---- linux-2.6.25-xfs/fs/block_dev.c	2008-04-24 20:44:03.000000000 +0900
-+++ linux-2.6.25-timeout/fs/block_dev.c	2008-04-24 20:45:54.000000000 +0900
-@@ -287,6 +287,8 @@ static void init_once(struct kmem_cache 
- 
- 	/* Initialize semaphore for freeze. */
- 	sema_init(&bdev->bd_freeze_sem, 1);
-+	/* Setup freeze timeout function. */
-+	INIT_DELAYED_WORK(&bdev->bd_freeze_timeout, freeze_timeout);
- }
- 
- static inline void __bd_forget(struct inode *inode)
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/fs/buffer.c linux-2.6.25-timeout/fs/buffer.c
---- linux-2.6.25-xfs/fs/buffer.c	2008-04-24 20:43:59.000000000 +0900
-+++ linux-2.6.25-timeout/fs/buffer.c	2008-04-24 20:45:54.000000000 +0900
-@@ -190,14 +190,17 @@ int fsync_bdev(struct block_device *bdev
- 
- /**
-  * freeze_bdev  --  lock a filesystem and force it into a consistent state
-- * @bdev:	blockdevice to lock
-+ * @bdev:		blockdevice to lock
-+ * @timeout_msec:	timeout period
-  *
-  * This takes the block device bd_mount_sem to make sure no new mounts
-  * happen on bdev until thaw_bdev() is called.
-  * If a superblock is found on this device, we take the s_umount semaphore
-  * on it to make sure nobody unmounts until the snapshot creation is done.
-+ * If timeout_msec is bigger than 0, this registers the delayed work for
-+ * timeout of the freeze feature.
-  */
--struct super_block *freeze_bdev(struct block_device *bdev)
-+struct super_block *freeze_bdev(struct block_device *bdev, long timeout_msec)
- {
- 	struct super_block *sb;
- 
-@@ -233,6 +236,10 @@ struct super_block *freeze_bdev(struct b
- 
- 	sync_blockdev(bdev);
- 
-+	/* Setup unfreeze timer. */
-+	if (timeout_msec > 0)
-+		add_freeze_timeout(bdev, timeout_msec);
-+
- 	up(&bdev->bd_freeze_sem);
- 
- 	return sb;	/* thaw_bdev releases s->s_umount and bd_mount_sem */
-@@ -255,6 +262,9 @@ void thaw_bdev(struct block_device *bdev
- 		return;
- 	}
- 
-+	/* Delete unfreeze timer. */
-+	del_freeze_timeout(bdev);
-+
- 	if (sb) {
- 		BUG_ON(sb->s_bdev != bdev);
- 
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/fs/ioctl.c linux-2.6.25-timeout/fs/ioctl.c
---- linux-2.6.25-xfs/fs/ioctl.c	2008-04-24 20:44:03.000000000 +0900
-+++ linux-2.6.25-timeout/fs/ioctl.c	2008-04-24 20:45:54.000000000 +0900
-@@ -184,6 +184,8 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		break;
- 
- 	case FIFREEZE: {
-+		long timeout_sec;
-+		long timeout_msec;
- 		struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
- 
- 		if (!capable(CAP_SYS_ADMIN)) {
-@@ -197,8 +199,31 @@ int do_vfs_ioctl(struct file *filp, unsi
- 			break;
- 		}
- 
-+		/* arg(sec) to tick value. */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error != 0)
-+			break;
-+		/*
-+		 * If 1 is specified as the timeout period,
-+		 * it will be changed into 0 to keep the compatibility
-+		 * of XFS application(xfs_freeze).
-+		 */
-+		if (timeout_sec < 0) {
-+			error = -EINVAL;
-+			break;
-+		} else if (timeout_sec < 2) {
-+			timeout_sec = 0;
-+		}
-+
-+		timeout_msec = timeout_sec * 1000;
-+		/* overflow case */
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
- 		/* Freeze. */
--		freeze_bdev(sb->s_bdev);
-+		freeze_bdev(sb->s_bdev, timeout_msec);
- 
- 		break;
- 	}
-@@ -216,6 +241,43 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		break;
- 	}
- 
-+	case FIFREEZE_RESET_TIMEOUT: {
-+		long timeout_sec;
-+		long timeout_msec;
-+		struct super_block *sb
-+			= filp->f_path.dentry->d_inode->i_sb;
-+
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			error = -EPERM;
-+			break;
-+		}
-+
-+		/* arg(sec) to tick value */
-+		error = get_user(timeout_sec, (long __user *) arg);
-+		if (error)
-+			break;
-+		timeout_msec = timeout_sec * 1000;
-+		if (timeout_msec < 0) {
-+			error = -EINVAL;
-+			break;
-+		}
-+
-+		if (sb) {
-+			down(&sb->s_bdev->bd_freeze_sem);
-+			if (sb->s_frozen == SB_UNFROZEN) {
-+				up(&sb->s_bdev->bd_freeze_sem);
-+				error = -EINVAL;
-+				break;
-+			}
-+			/* setup unfreeze timer */
-+			if (timeout_msec > 0)
-+				add_freeze_timeout(sb->s_bdev,
-+					timeout_msec);
-+			up(&sb->s_bdev->bd_freeze_sem);
-+		}
-+		break;
-+	}
-+
- 	default:
- 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
- 			error = file_ioctl(filp, cmd, arg);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/fs/super.c linux-2.6.25-timeout/fs/super.c
---- linux-2.6.25-xfs/fs/super.c	2008-04-24 20:44:03.000000000 +0900
-+++ linux-2.6.25-timeout/fs/super.c	2008-04-24 20:45:54.000000000 +0900
-@@ -983,3 +983,55 @@ struct vfsmount *kern_mount_data(struct 
- }
- 
- EXPORT_SYMBOL_GPL(kern_mount_data);
-+
-+/*
-+ * freeze_timeout - Thaw the filesystem.
-+ *
-+ * @work:	work queue (delayed_work.work)
-+ *
-+ * Called by the delayed work when elapsing the timeout period.
-+ * Thaw the filesystem.
-+ */
-+void freeze_timeout(struct work_struct *work)
-+{
-+	struct block_device *bd = container_of(work,
-+			struct block_device, bd_freeze_timeout.work);
-+
-+	struct super_block *sb = get_super_without_lock(bd);
-+
-+	thaw_bdev(bd, sb);
-+
-+	if (sb)
-+		put_super(sb);
-+}
-+EXPORT_SYMBOL_GPL(freeze_timeout);
-+
-+/*
-+ * add_freeze_timeout - Add timeout for freeze.
-+ *
-+ * @bdev:		block device struct
-+ * @timeout_msec:	timeout period
-+ *
-+ * Add the delayed work for freeze timeout to the delayed work queue.
-+ */
-+void add_freeze_timeout(struct block_device *bdev, long timeout_msec)
-+{
-+	s64 timeout_jiffies = msecs_to_jiffies(timeout_msec);
-+
-+	/* Set delayed work queue */
-+	cancel_delayed_work(&bdev->bd_freeze_timeout);
-+	schedule_delayed_work(&bdev->bd_freeze_timeout, timeout_jiffies);
-+}
-+
-+/*
-+ * del_freeze_timeout - Delete timeout for freeze.
-+ *
-+ * @bdev:	block device struct
-+ *
-+ * Delete the delayed work for freeze timeout from the delayed work queue.
-+ */
-+void del_freeze_timeout(struct block_device *bdev)
-+{
-+	if (delayed_work_pending(&bdev->bd_freeze_timeout))
-+		cancel_delayed_work(&bdev->bd_freeze_timeout);
-+}
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/fs/xfs/xfs_fsops.c linux-2.6.25-timeout/fs/xfs/xfs_f
-sops.c
---- linux-2.6.25-xfs/fs/xfs/xfs_fsops.c	2008-04-24 20:43:59.000000000 +0900
-+++ linux-2.6.25-timeout/fs/xfs/xfs_fsops.c	2008-04-24 20:45:54.000000000 +0900
-@@ -623,7 +623,7 @@ xfs_fs_goingdown(
- {
- 	switch (inflags) {
- 	case XFS_FSOP_GOING_FLAGS_DEFAULT: {
--		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
-+		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, 0);
- 
- 		if (sb && !IS_ERR(sb)) {
- 			xfs_force_shutdown(mp, SHUTDOWN_FORCE_UMOUNT);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/include/linux/buffer_head.h linux-2.6.25-timeout/inc
-lude/linux/buffer_head.h
---- linux-2.6.25-xfs/include/linux/buffer_head.h	2008-04-24 20:44:04.000000000 +0900
-+++ linux-2.6.25-timeout/include/linux/buffer_head.h	2008-04-24 20:45:54.000000000 +0900
-@@ -170,7 +170,7 @@ int sync_blockdev(struct block_device *b
- void __wait_on_buffer(struct buffer_head *);
- wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
- int fsync_bdev(struct block_device *);
--struct super_block *freeze_bdev(struct block_device *);
-+struct super_block *freeze_bdev(struct block_device *, long timeout_msec);
- void thaw_bdev(struct block_device *, struct super_block *);
- int fsync_super(struct super_block *);
- int fsync_no_super(struct block_device *);
-diff -uprN -X /home/sho/pub/MC/freeze-set/dontdiff linux-2.6.25-xfs/include/linux/fs.h linux-2.6.25-timeout/include/linu
-x/fs.h
---- linux-2.6.25-xfs/include/linux/fs.h	2008-04-24 20:44:04.000000000 +0900
-+++ linux-2.6.25-timeout/include/linux/fs.h	2008-04-24 20:45:54.000000000 +0900
-@@ -8,6 +8,7 @@
- 
- #include <linux/limits.h>
- #include <linux/ioctl.h>
-+#include <linux/workqueue.h>
- 
- /*
-  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
-@@ -225,6 +226,7 @@ extern int dir_notify_enable;
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
- #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
- #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
-+#define	FIFREEZE_RESET_TIMEOUT	_IO(0x00, 3)	/* Reset freeze timeout */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -551,6 +553,8 @@ struct block_device {
- 	 */
- 	unsigned long		bd_private;
- 
-+	/* Delayed work for freeze */
-+	struct delayed_work	bd_freeze_timeout;
- 	/* Semaphore for freeze */
- 	struct semaphore	bd_freeze_sem;
- };
-@@ -2104,5 +2108,9 @@ int proc_nr_files(struct ctl_table *tabl
- 
- int get_filesystem_list(char * buf);
- 
-+extern void add_freeze_timeout(struct block_device *bdev, long timeout_msec);
-+extern void del_freeze_timeout(struct block_device *bdev);
-+extern void freeze_timeout(struct work_struct *work);
-+
- #endif /* __KERNEL__ */
- #endif /* _LINUX_FS_H */
+In the kernel, it should be enough only to check bg_inode_bitmp,
+bg_block_bitmap, and bg_inode_table to construct the block bitmap.
+The point was to keep things simple.  
+
+The cost of doing this is that you will end up needing to initialize
+the block bitmaps for every an extra 1 out of every flex_bg_size block
+groups, but that's not a major cost.  It also means that BLOCK_UNINIT
+and BLOCK_BG_EMPTY as defined by Andreas are the same thing.  This was
+a Keep It Simple, Stupid design point; I don't think the complexity is
+worth it.
+
+If someone wants to convince me that the benefits of forcing the
+kernel and e2fsck pass5 to paw through all of the block group
+descriptors to construct the block bitmap outweighs the costs (and
+more importantly, volunteers to write the code :-), I'm willing to be
+convinced otherwise....
+
+						- Ted
