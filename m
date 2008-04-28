@@ -1,84 +1,89 @@
-From: Masami Hiramatsu <mhiramat@redhat.com>
-Subject: Re: [PATCH 1/1] x86: fix text_poke
-Date: Sun, 27 Apr 2008 20:49:25 -0400
-Message-ID: <48151F15.7050606@redhat.com>
-References: <alpine.LFD.1.10.0804250904560.2779@woody.linux-foundation.org> <20080425161916.GD3265@one.firstfloor.org> <20080425163035.GE9503@Krystal> <481209F2.4050908@zytor.com> <20080425170929.GA16180@Krystal> <20080425183748.GB16180@Krystal> <48123C9B.9020306@zytor.com> <20080425203717.GB25950@Krystal> <481241DC.3070601@zytor.com> <alpine.LFD.1.10.0804251349510.2779@woody.linux-foundation.org> <20080425211205.GC25950@Krystal> <4812D09D.6010901@goop.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: What's in e2fsprogs.git (stable)
+Date: Sun, 27 Apr 2008 22:53:02 -0400
+Message-ID: <20080428025302.GC30840@mit.edu>
+References: <20080101180128.GB23047@mit.edu> <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <20080313180503.GC31653@mit.edu> <20080320202243.GO13719@mit.edu> <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu> <20080418183935.GA25797@mit.edu> <20080421162726.GF9700@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	"H. Peter Anvin" <hpa@zytor.com>, Andi Kleen <andi@firstfloor.org>,
-	Ingo Molnar <mingo@elte.hu>, Jiri Slaby <jirislaby@gmail.com>,
-	David Miller <davem@davemloft.net>, zdenek.kabelac@gmail.com,
-	rjw@sisk.pl, paulmck@linux.vnet.ibm.com, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, herbert@gondor.apana.org.au,
-	penberg@cs.helsinki.fi, clameter@sgi.com,
-	linux-kernel@vger.kernel.org, pageexec@freemail.hu
-To: Jeremy Fitzhardinge <jeremy@goop.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40137 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751274AbYD1Axm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Apr 2008 20:53:42 -0400
-In-Reply-To: <4812D09D.6010901@goop.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43299 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1761485AbYD1CxE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Apr 2008 22:53:04 -0400
+Content-Disposition: inline
+In-Reply-To: <20080421162726.GF9700@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jeremy Fitzhardinge wrote:
-> Mathieu Desnoyers wrote:
->> * Linus Torvalds (torvalds@linux-foundation.org) wrote:
->>   
->>> On Fri, 25 Apr 2008, H. Peter Anvin wrote:
->>>     
->>>> Yes, that should work.  It's still ugly, and I have to say I find the
->>>> complexity rather distasteful.  I am willing to be convinced it's worth it,
->>>> but I would really like to see hard numbers.
->>>>       
->>> I really cannot imagine that this kind of pain is *ever* worth it. 
->>>
->>> Please give an example of something so important that we'd want to do 
->>> complex code rewriting on the fly. What _is_ the point of imv_cond()?
->>>
->>> 		Linus
->>>     
->> The point is to provide a way to dynamically enable code at runtime
->> without noticeable performance impact on the system. It's principally
->> useful to control the markers in the kernel, which can be placed in very
->> frequently executed code paths. The original markers add a memory read,
->> test and conditional branch at each marker site. By using the immediate
->> values patchset, it goes down to a load immediate value, test and branch.
->>
->> However, Ingo was still unhappy with the conditional branch, so I cooked
->> this jump patching optimization on top of the immediate values. 
-> 
-> I think all this demonstrates that the conditional branch is a bearable 
-> cost compared to the alternative.  A conditional branch which almost 
-> always branches the same way is very predictable, and really shouldn't 
-> cost very much.
+I've cut a release of e2fsprogs 1.41-WIP-0427, as a tarball, just so
+that people have something outside of git that they can play with.
 
-I agree with you.
+I made a lot of changes to the undo manager before finally merging it,
+including rename undoe2fs to e2undo, and speeding it up substantially.
+It is now roughly 4 times faster than before when we force the
+creation of an undo file while running mke2fs on a filesystem with a
+journal file enabled.
 
-When I measured the performance of a tracer (LKST) which used conditional
-branches, the overhead of the conditional branch itself was very small
-(less than 1%).
-Moreover, some benchmarks showed the performance of the patched kernel
-became ~1% faster than before :-) (I guessed that came from changing of
-memory access pattern and timing.)
+We still have some cleanup work to do, which is being kept up to date here;
 
-I think, if someone is considering about the actual performance impacts,
-we'd better discuss the effects of the individual trace points, based
-on the actual results of some benchmarks.
-Thus, we can improve it step by step.
+http://ext4.wiki.kernel.org/index.php/E2fsprogs_features_and_patches
 
-Thank you,
+							- Ted
 
--- 
-Masami Hiramatsu
+* The 'maint' branch has these fixes since the last announcement.
 
-Software Engineer
-Hitachi Computer Products (America) Inc.
-Software Solutions Division
+Makoto Dei (1):
+  fsck does not accept 'j' with German locale
 
-e-mail: mhiramat@redhat.com
+Manish Katiyar (1):
+  Fix "make docs" rule in Makefile for doc folder.
 
+Theodore Ts'o (6):
+  blkid: Keep cached filesystem information on EACCES and ENOENT
+      errors
+  libext2fs.texinfo: Fix @deftypefun definitions so they are all on
+      one line
+  Update texinfo.tex file newer version from the FSF
+  mke2fs: Don't allow the combination of the meta_bg and resize_inode
+      features
+  Update release notes and debian changelog for 1.40.9 release
+  debian: The doc-base section should be Programming, not
+      Apps/Programming
+
+
+* The 'master' branch has these since the last announcement
+  in addition to the above.
+
+Aneesh Kumar K.V (6):
+  libext2fs: Add undo I/O manager
+  Add e2undo command
+  mke2fs: Add support for the undo I/O manager.
+  tune2fs: Support for large inode migration.
+  Fix the resize inode test case
+  Add test cases for undoe2fs: u_undoe2fs_mke2fs and
+      u_undoe2fs_tune2fs
+
+Theodore Ts'o (15):
+  libext2fs: Initialize s_min_extra_isize and s_wanted_extra_isize
+  libe2p: Print the s_min_extra_isize and s_wanted_extra_isize fields
+  ext2fs_set_gdt_csum: Remove bogus setting of ITABLE_ZEROED
+  ext2fs_set_gdt_csum: Remove setting of BLOCK_UNINIT
+  e2fsck: Fix pass5 handling of meta_bg and uninit_bg combination
+  Add comments documenting ext2fs_[reserve_]super_and_bgd_loc()
+  Remove LAZY_BG feature
+  Transfer responsibility of setting the *_UNINIT flags to libext2fs
+  mke2fs/libext2fs: Fix lazy inode table initialization
+  ext2fs_open_inode_scan: Handle an non-zero bg_itable_used in block
+      group 0
+  Basic flexible block group support
+  mke2fs: New bitmap and inode table allocation for FLEX_BG
+  mke2fs: Make argument to the extended option lazy_itable_init
+      optional
+  ext2fs_add_journal_inode: Optimize writing the journal data blocks
+  Update version.h and README for 1.41-WIP-0427 release
+
+------
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
