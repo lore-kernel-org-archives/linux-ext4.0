@@ -1,63 +1,62 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-convert-byte-order-of-constant-instead-of-variable.patch removed from -mm tree
-Date: Mon, 28 Apr 2008 15:00:31 -0700
-Message-ID: <200804282200.m3SM0V69018708@imap1.linux-foundation.org>
-To: marcin.slusarz@gmail.com, linux-ext4@vger.kernel.org,
+Subject: - ext3-fix-update-of-mtime-and-ctime-on-rename.patch removed from -mm tree
+Date: Mon, 28 Apr 2008 15:00:51 -0700
+Message-ID: <200804282200.m3SM0pZV018779@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: jack@suse.cz, linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk,
 	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:44544 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S965608AbYD1WAd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2008 18:00:33 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: convert byte order of constant instead of variable
+     ext3: fix update of mtime and ctime on rename
 has been removed from the -mm tree.  Its filename was
-     ext3-convert-byte-order-of-constant-instead-of-variable.patch
+     ext3-fix-update-of-mtime-and-ctime-on-rename.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: convert byte order of constant instead of variable
-From: Marcin Slusarz <marcin.slusarz@gmail.com>
+Subject: ext3: fix update of mtime and ctime on rename
+From: Jan Kara <jack@suse.cz>
 
-Convert byte order of constant instead of variable which can be done at
-compile time (vs run time).
+Make ext3 update mtime and ctime of the directory into which we move file even
+if the directory entry already exists.
 
-Signed-off-by: Marcin Slusarz <marcin.slusarz@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext3/namei.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-diff -puN fs/ext3/super.c~ext3-convert-byte-order-of-constant-instead-of-variable fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-convert-byte-order-of-constant-instead-of-variable
-+++ a/fs/ext3/super.c
-@@ -1219,7 +1219,7 @@ static int ext3_setup_super(struct super
-                    inconsistencies, to force a fsck at reboot.  But for
-                    a plain journaled filesystem we can keep it set as
-                    valid forever! :) */
--	es->s_state = cpu_to_le16(le16_to_cpu(es->s_state) & ~EXT3_VALID_FS);
-+	es->s_state &= cpu_to_le16(~EXT3_VALID_FS);
- #endif
- 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
- 		es->s_max_mnt_count = cpu_to_le16(EXT3_DFL_MAX_MNT_COUNT);
+diff -puN fs/ext3/namei.c~ext3-fix-update-of-mtime-and-ctime-on-rename fs/ext3/namei.c
+--- a/fs/ext3/namei.c~ext3-fix-update-of-mtime-and-ctime-on-rename
++++ a/fs/ext3/namei.c
+@@ -2323,6 +2323,8 @@ static int ext3_rename (struct inode * o
+ 					      EXT3_FEATURE_INCOMPAT_FILETYPE))
+ 			new_de->file_type = old_de->file_type;
+ 		new_dir->i_version++;
++		new_dir->i_ctime = new_dir->i_mtime = CURRENT_TIME_SEC;
++		ext3_mark_inode_dirty(handle, new_dir);
+ 		BUFFER_TRACE(new_bh, "call ext3_journal_dirty_metadata");
+ 		ext3_journal_dirty_metadata(handle, new_bh);
+ 		brelse(new_bh);
 _
 
-Patches currently in -mm which might be from marcin.slusarz@gmail.com are
+Patches currently in -mm which might be from jack@suse.cz are
 
 origin.patch
-ntfs-le_add_cpu-conversion.patch
-affs-be_add_cpu-conversion.patch
-hfs-hfsplus-be_add_cpu-conversion.patch
+vfs-fix-lock-inversion-in-drop_pagecache_sb.patch
+vfs-skip-inodes-without-pages-to-free-in-drop_pagecache_sb.patch
+ext4-fix-update-of-mtime-and-ctime-on-rename.patch
+ext4-fix-hang-on-umount-with-quotas-when-journal-is-aborted.patch
+ext4-fix-mount-messages-when-quota-disabled.patch
 quota-le_add_cpu-conversion.patch
-sysv-e_add_cpu-conversion.patch
+isofs-use-get-put_unaligned_-helpers.patch
 
