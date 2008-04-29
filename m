@@ -1,14 +1,14 @@
 From: akpm@linux-foundation.org
-Subject: [patch 214/311] jbd2: use non-racy method for proc entries creation
-Date: Tue, 29 Apr 2008 01:02:11 -0700
-Message-ID: <200804290802.m3T82BOs009555@imap1.linux-foundation.org>
+Subject: [patch 212/311] ext4: use non-racy method for proc entries creation
+Date: Tue, 29 Apr 2008 01:02:08 -0700
+Message-ID: <200804290802.m3T828lC009547@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, den@openvz.org, adobriyan@gmail.com,
 	ebiederm@xmission.com, linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59923 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50564 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753221AbYD2IKT (ORCPT
+	by vger.kernel.org with ESMTP id S1752948AbYD2IKT (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 29 Apr 2008 04:10:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
@@ -26,34 +26,32 @@ Cc: "Eric W. Biederman" <ebiederm@xmission.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd2/journal.c |   17 ++++-------------
- 1 file changed, 4 insertions(+), 13 deletions(-)
+ fs/ext4/mballoc.c |   15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
 
-diff -puN fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation fs/jbd2/journal.c
---- a/fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation
-+++ a/fs/jbd2/journal.c
-@@ -904,19 +904,10 @@ static void jbd2_stats_proc_init(journal
- 	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
- 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
- 	if (journal->j_proc_entry) {
--		struct proc_dir_entry *p;
--		p = create_proc_entry("history", S_IRUGO,
--				journal->j_proc_entry);
--		if (p) {
--			p->proc_fops = &jbd2_seq_history_fops;
--			p->data = journal;
--			p = create_proc_entry("info", S_IRUGO,
--						journal->j_proc_entry);
--			if (p) {
--				p->proc_fops = &jbd2_seq_info_fops;
--				p->data = journal;
--			}
--		}
-+		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
-+				 &jbd2_seq_history_fops, journal);
-+		proc_create_data("info", S_IRUGO, journal->j_proc_entry,
-+				 &jbd2_seq_info_fops, journal);
- 	}
- }
+diff -puN fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation fs/ext4/mballoc.c
+--- a/fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation
++++ a/fs/ext4/mballoc.c
+@@ -2449,17 +2449,10 @@ static void ext4_mb_history_init(struct 
+ 	int i;
  
+ 	if (sbi->s_mb_proc != NULL) {
+-		struct proc_dir_entry *p;
+-		p = create_proc_entry("mb_history", S_IRUGO, sbi->s_mb_proc);
+-		if (p) {
+-			p->proc_fops = &ext4_mb_seq_history_fops;
+-			p->data = sb;
+-		}
+-		p = create_proc_entry("mb_groups", S_IRUGO, sbi->s_mb_proc);
+-		if (p) {
+-			p->proc_fops = &ext4_mb_seq_groups_fops;
+-			p->data = sb;
+-		}
++		proc_create_data("mb_history", S_IRUGO, sbi->s_mb_proc,
++				 &ext4_mb_seq_history_fops, sb);
++		proc_create_data("mb_groups", S_IRUGO, sbi->s_mb_proc,
++				 &ext4_mb_seq_groups_fops, sb);
+ 	}
+ 
+ 	sbi->s_mb_history_max = 1000;
 _
