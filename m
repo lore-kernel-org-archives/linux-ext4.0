@@ -1,57 +1,85 @@
-From: akpm@linux-foundation.org
-Subject: [patch 212/311] ext4: use non-racy method for proc entries creation
-Date: Tue, 29 Apr 2008 01:02:08 -0700
-Message-ID: <200804290802.m3T828lC009547@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, den@openvz.org, adobriyan@gmail.com,
-	ebiederm@xmission.com, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext3: Fix synchronization of quota files in journal=data mode
+Date: Tue, 29 Apr 2008 11:58:21 +0200
+Message-ID: <12094631011110-git-send-email-jack@suse.cz>
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	gentuu@gmail.com, Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50564 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752948AbYD2IKT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Apr 2008 04:10:19 -0400
+Received: from styx.suse.cz ([82.119.242.94]:57233 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750991AbYD2J6X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Apr 2008 05:58:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Denis V. Lunev" <den@openvz.org>
+In journal=data mode, it is not enough to do write_inode_now as done in
+vfs_quota_on() to write all data to their final location (which is needed
+for quota_read to work correctly). Calling journal_flush() does its job.
 
-Use proc_create()/proc_create_data() to make sure that ->proc_fops and ->data
-be setup before gluing PDE to main tree.
-
-Signed-off-by: Denis V. Lunev <den@openvz.org>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Alexey Dobriyan <adobriyan@gmail.com>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Reported-by: Nick <gentuu@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
+ fs/ext3/super.c |   42 +++++++++++++++++++++++++++++-------------
+ 1 files changed, 29 insertions(+), 13 deletions(-)
 
- fs/ext4/mballoc.c |   15 ++++-----------
- 1 file changed, 4 insertions(+), 11 deletions(-)
-
-diff -puN fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation fs/ext4/mballoc.c
---- a/fs/ext4/mballoc.c~ext4-use-non-racy-method-for-proc-entries-creation
-+++ a/fs/ext4/mballoc.c
-@@ -2449,17 +2449,10 @@ static void ext4_mb_history_init(struct 
- 	int i;
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 77e9702..412c8c5 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2756,23 +2756,39 @@ static int ext3_quota_on(struct super_block *sb, int type, int format_id,
  
- 	if (sbi->s_mb_proc != NULL) {
--		struct proc_dir_entry *p;
--		p = create_proc_entry("mb_history", S_IRUGO, sbi->s_mb_proc);
--		if (p) {
--			p->proc_fops = &ext4_mb_seq_history_fops;
--			p->data = sb;
--		}
--		p = create_proc_entry("mb_groups", S_IRUGO, sbi->s_mb_proc);
--		if (p) {
--			p->proc_fops = &ext4_mb_seq_groups_fops;
--			p->data = sb;
--		}
-+		proc_create_data("mb_history", S_IRUGO, sbi->s_mb_proc,
-+				 &ext4_mb_seq_history_fops, sb);
-+		proc_create_data("mb_groups", S_IRUGO, sbi->s_mb_proc,
-+				 &ext4_mb_seq_groups_fops, sb);
+ 	if (!test_opt(sb, QUOTA))
+ 		return -EINVAL;
+-	/* Not journalling quota? */
+-	if (!EXT3_SB(sb)->s_qf_names[USRQUOTA] &&
+-	    !EXT3_SB(sb)->s_qf_names[GRPQUOTA])
+-		return vfs_quota_on(sb, type, format_id, path);
++
+ 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
+ 	if (err)
+ 		return err;
+-	/* Quotafile not on the same filesystem? */
+-	if (nd.path.mnt->mnt_sb != sb) {
+-		path_put(&nd.path);
+-		return -EXDEV;
++
++	/* Journaling quota? */
++	if (EXT3_SB(sb)->s_qf_names[type]) {
++		/* Quotafile not on the same filesystem? */
++		if (nd.path.mnt->mnt_sb != sb) {
++			path_put(&nd.path);
++			return -EXDEV;
++		}
++		/* Quotafile not of fs root? */
++		if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
++			printk(KERN_WARNING
++				"EXT3-fs: Quota file not on filesystem root. "
++				"Journaled quota will not work.\n");
  	}
- 
- 	sbi->s_mb_history_max = 1000;
-_
+-	/* Quotafile not of fs root? */
+-	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
+-		printk(KERN_WARNING
+-			"EXT3-fs: Quota file not on filesystem root. "
+-			"Journalled quota will not work.\n");
++
++	/*
++	 * When we journal data on quota file, we have to flush journal to see
++	 * all updates to the file when we bypass pagecache...
++	 */
++	if (ext3_should_journal_data(nd.path.dentry->d_inode)) {
++		/*
++		 * We don't need to lock updates but journal_flush() could
++		 * otherwise be livelocked...
++		 */
++		journal_lock_updates(EXT3_SB(sb)->s_journal);
++		journal_flush(EXT3_SB(sb)->s_journal);
++		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++	}
++
+ 	path_put(&nd.path);
+ 	return vfs_quota_on(sb, type, format_id, path);
+ }
+-- 
+1.5.2.4
+
