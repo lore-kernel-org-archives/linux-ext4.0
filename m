@@ -1,73 +1,59 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: Using tgid instead of pid in ext3_find_near()
-Date: Tue, 29 Apr 2008 09:53:57 +0530
-Message-ID: <ea11fea30804282123n65475715w1ead16f7b9cdbde8@mail.gmail.com>
-References: <ea11fea30804281207u5fe9e96bod992dc2bb2d3fc79@mail.gmail.com>
-	 <f284c33d0804281757x7433465h8828eb90a8d762ef@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Kernel Newbies" <kernelnewbies@nl.linux.org>,
-	linux-ext4@vger.kernel.org
-To: "Mulyadi Santosa" <mulyadi.santosa@gmail.com>
+From: akpm@linux-foundation.org
+Subject: [patch 214/311] jbd2: use non-racy method for proc entries creation
+Date: Tue, 29 Apr 2008 01:02:11 -0700
+Message-ID: <200804290802.m3T82BOs009555@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, den@openvz.org, adobriyan@gmail.com,
+	ebiederm@xmission.com, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.173]:40403 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750781AbYD2EX7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Apr 2008 00:23:59 -0400
-Received: by ug-out-1314.google.com with SMTP id z38so1021086ugc.16
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2008 21:23:58 -0700 (PDT)
-In-Reply-To: <f284c33d0804281757x7433465h8828eb90a8d762ef@mail.gmail.com>
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59923 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753221AbYD2IKT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Apr 2008 04:10:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 29, 2008 at 6:27 AM, Mulyadi Santosa
-<mulyadi.santosa@gmail.com> wrote:
-> Ehmmm....
->
->
->  On Tue, Apr 29, 2008 at 2:07 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
->  > Hi,
->  >
->  >  In the function ext*_find_near() we are using pid to have the locality
->  >  of the blocks for the files which have same functionality. Shouldn't
->  >  we be using "current->tgid" here instead ??
->  >
->  >  410 static ext3_fsblk_t ext3_find_near(struct inode *inode, Indirect *ind)
->  >   411 {
->  >  .........
->  >  ........
->  >  433  colour = (current->pid % 16) *
->  >   434    (EXT3_BLOCKS_PER_GROUP(inode->i_sb) / 16);
->  >  ........
->
->  Because each threads even on same thread group doesn't need to share
->  open file descriptors?
+From: "Denis V. Lunev" <den@openvz.org>
 
-Hi Mulyadi,
+Use proc_create()/proc_create_data() to make sure that ->proc_fops and ->data
+be setup before gluing PDE to main tree.
 
-It's not about the open file descriptors. The idea behind putting this
-is to put all the blocks of same process (which may be functionally
-related) nearby in the blockgroup for locality. So I think we should
-be using tgid instead of pid.
+Signed-off-by: Denis V. Lunev <den@openvz.org>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Alexey Dobriyan <adobriyan@gmail.com>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Thanks
+ fs/jbd2/journal.c |   17 ++++-------------
+ 1 file changed, 4 insertions(+), 13 deletions(-)
 
->
->  regards,
->
->  Mulyadi.
->
-
-
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
+diff -puN fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation fs/jbd2/journal.c
+--- a/fs/jbd2/journal.c~jbd2-use-non-racy-method-for-proc-entries-creation
++++ a/fs/jbd2/journal.c
+@@ -904,19 +904,10 @@ static void jbd2_stats_proc_init(journal
+ 	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
+ 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
+ 	if (journal->j_proc_entry) {
+-		struct proc_dir_entry *p;
+-		p = create_proc_entry("history", S_IRUGO,
+-				journal->j_proc_entry);
+-		if (p) {
+-			p->proc_fops = &jbd2_seq_history_fops;
+-			p->data = journal;
+-			p = create_proc_entry("info", S_IRUGO,
+-						journal->j_proc_entry);
+-			if (p) {
+-				p->proc_fops = &jbd2_seq_info_fops;
+-				p->data = journal;
+-			}
+-		}
++		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
++				 &jbd2_seq_history_fops, journal);
++		proc_create_data("info", S_IRUGO, journal->j_proc_entry,
++				 &jbd2_seq_info_fops, journal);
+ 	}
+ }
+ 
+_
