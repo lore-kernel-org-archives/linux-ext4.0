@@ -1,108 +1,44 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Correct mount option parsing to detect when quota options can be changed
-Date: Wed, 30 Apr 2008 17:06:19 +0200
-Message-ID: <12095679822696-git-send-email-jack@suse.cz>
-References: y
- <12095679813226-git-send-email-jack@suse.cz>
- <12095679812375-git-send-email-jack@suse.cz>
- <12095679812452-git-send-email-jack@suse.cz>
- <1209567981639-git-send-email-jack@suse.cz>
- <1209567981323-git-send-email-jack@suse.cz>
- <12095679812717-git-send-email-jack@suse.cz>
- <12095679824183-git-send-email-jack@suse.cz>
-Cc: LKML <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext3: Fix typos in messages and comments (journalled ->
+ journaled)
+Date: Wed, 30 Apr 2008 10:43:30 -0700
+Message-ID: <20080430104330.66c44d4f.akpm@linux-foundation.org>
+References: <12095679813226-git-send-email-jack@suse.cz>
+	<12095679812375-git-send-email-jack@suse.cz>
+	<12095679812452-git-send-email-jack@suse.cz>
+	<1209567981639-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, jack@suse.cz,
 	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36444 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1762178AbYD3PGY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Apr 2008 11:06:24 -0400
-In-Reply-To: <12095679824183-git-send-email-jack@suse.cz>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36285 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1761843AbYD3Rnf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Apr 2008 13:43:35 -0400
+In-Reply-To: <1209567981639-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We should not allow user to change quota mount options when quota is just
-suspended. I would make mount options and internal quota state inconsistent.
-Also we should not allow user to change quota format when quota is turned on.
-On the other hand we can just silently ignore when some option is set to the
-value it already has (mount does this on remount).
+On Wed, 30 Apr 2008 17:06:15 +0200
+Jan Kara <jack@suse.cz> wrote:
 
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/super.c |   29 ++++++++++++++++++++++-------
- 1 files changed, 22 insertions(+), 7 deletions(-)
+> -					"EXT3-fs: Cannot change journalled "
+> +					"EXT3-fs: Cannot change journaled "
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 890e72f..0b6f924 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -842,7 +842,7 @@ static int parse_options (char *options, struct super_block *sb,
- 	int data_opt = 0;
- 	int option;
- #ifdef CONFIG_QUOTA
--	int qtype;
-+	int qtype, qfmt;
- 	char *qname;
- #endif
- 
-@@ -1018,7 +1018,9 @@ static int parse_options (char *options, struct super_block *sb,
- 		case Opt_grpjquota:
- 			qtype = GRPQUOTA;
- set_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    !sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR
- 					"EXT3-fs: Cannot change journaled "
- 					"quota options when quota turned on.\n");
-@@ -1056,7 +1058,9 @@ set_qf_name:
- 		case Opt_offgrpjquota:
- 			qtype = GRPQUOTA;
- clear_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR "EXT3-fs: Cannot change "
- 					"journaled quota options when "
- 					"quota turned on.\n");
-@@ -1069,10 +1073,20 @@ clear_qf_name:
- 			sbi->s_qf_names[qtype] = NULL;
- 			break;
- 		case Opt_jqfmt_vfsold:
--			sbi->s_jquota_fmt = QFMT_VFS_OLD;
--			break;
-+			qfmt = QFMT_VFS_OLD;
-+			goto set_qf_format;
- 		case Opt_jqfmt_vfsv0:
--			sbi->s_jquota_fmt = QFMT_VFS_V0;
-+			qfmt = QFMT_VFS_V0;
-+set_qf_format:
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_jquota_fmt != qfmt) {
-+				printk(KERN_ERR "EXT3-fs: Cannot change "
-+					"journaled quota options when "
-+					"quota turned on.\n");
-+				return 0;
-+			}
-+			sbi->s_jquota_fmt = qfmt;
- 			break;
- 		case Opt_quota:
- 		case Opt_usrquota:
-@@ -1084,7 +1098,8 @@ clear_qf_name:
- 			set_opt(sbi->s_mount_opt, GRPQUOTA);
- 			break;
- 		case Opt_noquota:
--			if (sb_any_quota_enabled(sb)) {
-+			if (sb_any_quota_enabled(sb) ||
-+			    sb_any_quota_suspended(sb)) {
- 				printk(KERN_ERR "EXT3-fs: Cannot change quota "
- 					"options when quota turned on.\n");
- 				return 0;
--- 
-1.5.2.4
+hrm, who said?
+
+Dictionary.com recognises neither.
+
+google(journalled) = 520,000
+google(journaled) = 652,000
+
+akpm:/usr/src/25> grep journalled fs/ext3/*.c|wc -l
+17
+akpm:/usr/src/25> grep journaled fs/ext3/*.c|wc -l 
+6
+
 
