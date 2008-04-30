@@ -1,116 +1,97 @@
-From: Valerie Clement <valerie.clement@bull.net>
-Subject: [PATCH] ext4: mballoc: fix mb_normalize_request algorithm for 1KB
-	block size filesystems
-Date: Wed, 30 Apr 2008 15:41:10 +0200
-Message-ID: <1209562870.5307.12.camel@ext1.frec.bull.fr>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>,
-	sandeen@redhat.com
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix typos in messages and comments (journalled -> journaled)
+Date: Wed, 30 Apr 2008 17:06:16 +0200
+Message-ID: <1209567981323-git-send-email-jack@suse.cz>
+References: y
+ <12095679813226-git-send-email-jack@suse.cz>
+ <12095679812375-git-send-email-jack@suse.cz>
+ <12095679812452-git-send-email-jack@suse.cz>
+ <1209567981639-git-send-email-jack@suse.cz>
+Cc: LKML <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58710 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755586AbYD3NcT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Apr 2008 09:32:19 -0400
+Received: from styx.suse.cz ([82.119.242.94]:36432 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1762134AbYD3PGX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Apr 2008 11:06:23 -0400
+In-Reply-To: <1209567981639-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-mballoc: fix mb_normalize_request algorithm for 1KB block size filesystems
-
-From: Valerie Clement <valerie.clement@bull.net>
-
-In case of inode preallocation, the number of blocks to allocate depends
-on the file size and it is calculated in ext4_mb_normalize_group_request().
-Each group in the filesystem is then checked to find one that can be used
-for allocation; this is done in ext4_mb_good_group().
-
-When a file bigger than 4MB is created, the requested number of blocks to
-preallocate, calculated by ext4_mb_normalize_group_request is 4096.
-However for a filesystem with 1KB block size, the maximum size of the
-block buddies used by the multiblock allocator is 2048, so none of
-groups in the filesystem satisfies the search criteria in
-ext4_mb_good_group(). Scanning all the filesystem groups impacts
-performance.
-
-The following numbers show that:
-- on an ext4 FS with 1KB block size mounted with nodelalloc option:
-# dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
-1024+0 records in
-1024+0 records out
-8388608 bytes (8.4 MB) copied, 35.5091 seconds, 236 kB/s
-
-- on an ext4 FS with 1KB block size mounted with nodelalloc and nomballoc
-options:
-# dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
-1024+0 records in
-1024+0 records out
-8388608 bytes (8.4 MB) copied, 0.233754 seconds, 35.9 MB/s
-
-In the two cases, dd is done after creating the FS with -b1024 option,
-mounting the FS with the options specified before and flushing all caches
-using echo 3 > /proc/sys/vm/drop_caches.
-The partition size is 70GB.
-I did the same test on a 1TB partition, it took several minutes to write
-8MB!
-
-This patch modifies the algorithm in ext4_mb_normalize_group_request to
-calculate the number of blocks to allocate by taking into account the
-maximum size of free blocks chunks handled by the multiblock allocator.
-
-It has also been tested for filesystems with 2KB and 4KB block sizes to
-ensure that those cases don't regress.
-
-Signed-off-by: Valerie Clement <valerie.clement@bull.net>
-
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
+ fs/ext4/super.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
- mballoc.c |   19 +++++++++----------
- 1 file changed, 9 insertions(+), 10 deletions(-)
-
-Index: linux-2.6.25/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.25.orig/fs/ext4/mballoc.c	2008-04-25 16:19:32.000000000 +0200
-+++ linux-2.6.25/fs/ext4/mballoc.c	2008-04-25 16:49:34.000000000 +0200
-@@ -2905,12 +2905,11 @@ ext4_mb_normalize_request(struct ext4_al
- 	if (size < i_size_read(ac->ac_inode))
- 		size = i_size_read(ac->ac_inode);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f6ab164..49099e4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1164,7 +1164,7 @@ static int parse_options (char *options, struct super_block *sb,
+ set_qf_name:
+ 			if (sb_any_quota_enabled(sb)) {
+ 				printk(KERN_ERR
+-					"EXT4-fs: Cannot change journalled "
++					"EXT4-fs: Cannot change journaled "
+ 					"quota options when quota turned on.\n");
+ 				return 0;
+ 			}
+@@ -1202,7 +1202,7 @@ set_qf_name:
+ clear_qf_name:
+ 			if (sb_any_quota_enabled(sb)) {
+ 				printk(KERN_ERR "EXT4-fs: Cannot change "
+-					"journalled quota options when "
++					"journaled quota options when "
+ 					"quota turned on.\n");
+ 				return 0;
+ 			}
+@@ -1248,7 +1248,7 @@ clear_qf_name:
+ 		case Opt_jqfmt_vfsold:
+ 		case Opt_jqfmt_vfsv0:
+ 			printk(KERN_ERR
+-				"EXT4-fs: journalled quota options not "
++				"EXT4-fs: journaled quota options not "
+ 				"supported.\n");
+ 			break;
+ 		case Opt_noquota:
+@@ -1333,14 +1333,14 @@ clear_qf_name:
+ 		}
  
--	/* max available blocks in a free group */
--	max = EXT4_BLOCKS_PER_GROUP(ac->ac_sb) - 1 - 1 -
--				EXT4_SB(ac->ac_sb)->s_itb_per_group;
-+	/* max size of free chunks */
-+	max = 2 << bsbits;
+ 		if (!sbi->s_jquota_fmt) {
+-			printk(KERN_ERR "EXT4-fs: journalled quota format "
++			printk(KERN_ERR "EXT4-fs: journaled quota format "
+ 					"not specified.\n");
+ 			return 0;
+ 		}
+ 	} else {
+ 		if (sbi->s_jquota_fmt) {
+-			printk(KERN_ERR "EXT4-fs: journalled quota format "
+-					"specified with no journalling "
++			printk(KERN_ERR "EXT4-fs: journaled quota format "
++					"specified with no journaling "
+ 					"enabled.\n");
+ 			return 0;
+ 		}
+@@ -1581,7 +1581,7 @@ static void ext4_orphan_cleanup (struct super_block * sb,
+ 			int ret = ext4_quota_on_mount(sb, i);
+ 			if (ret < 0)
+ 				printk(KERN_ERR
+-					"EXT4-fs: Cannot turn on journalled "
++					"EXT4-fs: Cannot turn on journaled "
+ 					"quota: error %d\n", ret);
+ 		}
+ 	}
+@@ -3106,7 +3106,7 @@ static int ext4_release_dquot(struct dquot *dquot)
  
--#define NRL_CHECK_SIZE(req, size, max,bits)	\
--		(req <= (size) || max <= ((size) >> bits))
-+#define NRL_CHECK_SIZE(req, size, max, chunk_size)	\
-+		(req <= (size) || max <= (chunk_size))
- 
- 	/* first, try to predict filesize */
- 	/* XXX: should this table be tunable? */
-@@ -2929,16 +2928,16 @@ ext4_mb_normalize_request(struct ext4_al
- 		size = 512 * 1024;
- 	} else if (size <= 1024 * 1024) {
- 		size = 1024 * 1024;
--	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
-+	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, 2 * 1024)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
--						(20 - bsbits)) << 20;
--		size = 1024 * 1024;
--	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
-+						(21 - bsbits)) << 21;
-+		size = 2* 1024 * 1024;
-+	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, 4 * 1024)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
- 							(22 - bsbits)) << 22;
- 		size = 4 * 1024 * 1024;
- 	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
--					(8<<20)>>bsbits, max, bsbits)) {
-+					(8<<20)>>bsbits, max, 8 * 1024)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
- 							(23 - bsbits)) << 23;
- 		size = 8 * 1024 * 1024;
-
+ static int ext4_mark_dquot_dirty(struct dquot *dquot)
+ {
+-	/* Are we journalling quotas? */
++	/* Are we journaling quotas? */
+ 	if (EXT4_SB(dquot->dq_sb)->s_qf_names[USRQUOTA] ||
+ 	    EXT4_SB(dquot->dq_sb)->s_qf_names[GRPQUOTA]) {
+ 		dquot_mark_dquot_dirty(dquot);
+-- 
+1.5.2.4
 
