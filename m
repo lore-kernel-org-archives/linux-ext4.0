@@ -1,86 +1,108 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Fix synchronization of quota files in journal=data mode
-Date: Wed, 30 Apr 2008 17:06:12 +0200
-Message-ID: <12095679813226-git-send-email-jack@suse.cz>
+Subject: [PATCH] ext3: Correct mount option parsing to detect when quota options can be changed
+Date: Wed, 30 Apr 2008 17:06:19 +0200
+Message-ID: <12095679822696-git-send-email-jack@suse.cz>
+References: y
+ <12095679813226-git-send-email-jack@suse.cz>
+ <12095679812375-git-send-email-jack@suse.cz>
+ <12095679812452-git-send-email-jack@suse.cz>
+ <1209567981639-git-send-email-jack@suse.cz>
+ <1209567981323-git-send-email-jack@suse.cz>
+ <12095679812717-git-send-email-jack@suse.cz>
+ <12095679824183-git-send-email-jack@suse.cz>
 Cc: LKML <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
 	linux-ext4@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36416 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:36444 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1762102AbYD3PGW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Apr 2008 11:06:22 -0400
-In-Reply-To: y
-References: y
+	id S1762178AbYD3PGY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Apr 2008 11:06:24 -0400
+In-Reply-To: <12095679824183-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In journal=data mode, it is not enough to do write_inode_now as done in
-vfs_quota_on() to write all data to their final location (which is needed
-for quota_read to work correctly). Calling journal_flush() does its job.
+We should not allow user to change quota mount options when quota is just
+suspended. I would make mount options and internal quota state inconsistent.
+Also we should not allow user to change quota format when quota is turned on.
+On the other hand we can just silently ignore when some option is set to the
+value it already has (mount does this on remount).
 
-Reported-by: Nick <gentuu@gmail.com>
 Cc: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext3/super.c |   35 +++++++++++++++++++++++++++--------
- 1 files changed, 27 insertions(+), 8 deletions(-)
+ fs/ext3/super.c |   29 ++++++++++++++++++++++-------
+ 1 files changed, 22 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index fe3119a..1c7b0fc 100644
+index 890e72f..0b6f924 100644
 --- a/fs/ext3/super.c
 +++ b/fs/ext3/super.c
-@@ -2759,23 +2759,42 @@ static int ext3_quota_on(struct super_block *sb, int type, int format_id,
+@@ -842,7 +842,7 @@ static int parse_options (char *options, struct super_block *sb,
+ 	int data_opt = 0;
+ 	int option;
+ #ifdef CONFIG_QUOTA
+-	int qtype;
++	int qtype, qfmt;
+ 	char *qname;
+ #endif
  
- 	if (!test_opt(sb, QUOTA))
- 		return -EINVAL;
--	/* Not journalling quota or remount? */
--	if ((!EXT3_SB(sb)->s_qf_names[USRQUOTA] &&
--	    !EXT3_SB(sb)->s_qf_names[GRPQUOTA]) || remount)
-+	/* When remounting, no checks are needed and in fact, path is NULL */
-+	if (remount)
- 		return vfs_quota_on(sb, type, format_id, path, remount);
-+
- 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
- 	if (err)
- 		return err;
-+
- 	/* Quotafile not on the same filesystem? */
- 	if (nd.path.mnt->mnt_sb != sb) {
- 		path_put(&nd.path);
- 		return -EXDEV;
- 	}
--	/* Quotafile not in fs root? */
--	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
--		printk(KERN_WARNING
--			"EXT3-fs: Quota file not on filesystem root. "
--			"Journalled quota will not work.\n");
-+	/* Journaling quota? */
-+	if (EXT3_SB(sb)->s_qf_names[type]) {
-+		/* Quotafile not of fs root? */
-+		if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
-+			printk(KERN_WARNING
-+				"EXT3-fs: Quota file not on filesystem root. "
-+				"Journaled quota will not work.\n");
-+	}
-+
-+	/*
-+	 * When we journal data on quota file, we have to flush journal to see
-+	 * all updates to the file when we bypass pagecache...
-+	 */
-+	if (ext3_should_journal_data(nd.path.dentry->d_inode)) {
-+		/*
-+		 * We don't need to lock updates but journal_flush() could
-+		 * otherwise be livelocked...
-+		 */
-+		journal_lock_updates(EXT3_SB(sb)->s_journal);
-+		journal_flush(EXT3_SB(sb)->s_journal);
-+		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+	}
-+
- 	path_put(&nd.path);
- 	return vfs_quota_on(sb, type, format_id, path, remount);
- }
+@@ -1018,7 +1018,9 @@ static int parse_options (char *options, struct super_block *sb,
+ 		case Opt_grpjquota:
+ 			qtype = GRPQUOTA;
+ set_qf_name:
+-			if (sb_any_quota_enabled(sb)) {
++			if ((sb_any_quota_enabled(sb) ||
++			     sb_any_quota_suspended(sb)) &&
++			    !sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR
+ 					"EXT3-fs: Cannot change journaled "
+ 					"quota options when quota turned on.\n");
+@@ -1056,7 +1058,9 @@ set_qf_name:
+ 		case Opt_offgrpjquota:
+ 			qtype = GRPQUOTA;
+ clear_qf_name:
+-			if (sb_any_quota_enabled(sb)) {
++			if ((sb_any_quota_enabled(sb) ||
++			     sb_any_quota_suspended(sb)) &&
++			    sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change "
+ 					"journaled quota options when "
+ 					"quota turned on.\n");
+@@ -1069,10 +1073,20 @@ clear_qf_name:
+ 			sbi->s_qf_names[qtype] = NULL;
+ 			break;
+ 		case Opt_jqfmt_vfsold:
+-			sbi->s_jquota_fmt = QFMT_VFS_OLD;
+-			break;
++			qfmt = QFMT_VFS_OLD;
++			goto set_qf_format;
+ 		case Opt_jqfmt_vfsv0:
+-			sbi->s_jquota_fmt = QFMT_VFS_V0;
++			qfmt = QFMT_VFS_V0;
++set_qf_format:
++			if ((sb_any_quota_enabled(sb) ||
++			     sb_any_quota_suspended(sb)) &&
++			    sbi->s_jquota_fmt != qfmt) {
++				printk(KERN_ERR "EXT3-fs: Cannot change "
++					"journaled quota options when "
++					"quota turned on.\n");
++				return 0;
++			}
++			sbi->s_jquota_fmt = qfmt;
+ 			break;
+ 		case Opt_quota:
+ 		case Opt_usrquota:
+@@ -1084,7 +1098,8 @@ clear_qf_name:
+ 			set_opt(sbi->s_mount_opt, GRPQUOTA);
+ 			break;
+ 		case Opt_noquota:
+-			if (sb_any_quota_enabled(sb)) {
++			if (sb_any_quota_enabled(sb) ||
++			    sb_any_quota_suspended(sb)) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change quota "
+ 					"options when quota turned on.\n");
+ 				return 0;
 -- 
 1.5.2.4
 
