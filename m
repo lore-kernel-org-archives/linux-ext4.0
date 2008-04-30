@@ -1,129 +1,66 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch added to -mm tree
-Date: Wed, 30 Apr 2008 10:50:15 -0700
-Message-ID: <200804301750.m3UHoFj1026688@imap1.linux-foundation.org>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Subject: Re: [PATCH] ext3: Fix typos in messages and comments (journalled ->
+ journaled)
+Date: Wed, 30 Apr 2008 21:27:11 +0100
+Message-ID: <20080430212711.168bdcc0@core>
+References: <12095679813226-git-send-email-jack@suse.cz>
+	<12095679812375-git-send-email-jack@suse.cz>
+	<12095679812452-git-send-email-jack@suse.cz>
+	<1209567981639-git-send-email-jack@suse.cz>
+	<20080430104330.66c44d4f.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56721 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762411AbYD3R7Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Apr 2008 13:59:24 -0400
+Received: from outpipe-village-512-1.bc.nu ([81.2.110.250]:55145 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760899AbYD3Ue6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Apr 2008 16:34:58 -0400
+In-Reply-To: <20080430104330.66c44d4f.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, 30 Apr 2008 10:43:30 -0700
+Andrew Morton <akpm@linux-foundation.org> wrote:
 
-The patch titled
-     ext4: correct mount option parsing to detect when quota options can be changed
-has been added to the -mm tree.  Its filename is
-     ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
+> On Wed, 30 Apr 2008 17:06:15 +0200
+> Jan Kara <jack@suse.cz> wrote:
+> 
+> > -					"EXT3-fs: Cannot change journalled "
+> > +					"EXT3-fs: Cannot change journaled "
+> 
+> hrm, who said?
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+This has come up several times before so I thought it might be time to
+finally dig to the bottom of the pile and end it forever.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+I put on my library hat and went for a dig: the verb is in fact "to
+journalize", which according to the OED means
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
+"enter (notes or information) in a journal"
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+Journal itself is strictly a noun. Thus in English it would be correct
+for a file system to have a journal (from the latin diurnalis if anyone
+cares) but it would appear that it is a journalizing file system.
 
-------------------------------------------------------
-Subject: ext4: correct mount option parsing to detect when quota options can be changed
-From: Jan Kara <jack@suse.cz>
+The American dictionaries appear to agree with this viewpoint.
 
-We should not allow user to change quota mount options when quota is just
-suspended.  I would make mount options and internal quota state inconsistent. 
-Also we should not allow user to change quota format when quota is turned on. 
-On the other hand we can just silently ignore when some option is set to the
-value it already has (mount does this on remount).
+If we regard "journalizing" as incorrect then the natural way to end the
+word would be -lled for British English and -led would certainly sound
+and feel wrong. Indeed the search for the OED turns journalled into
+journal when guessing near words but refuses to consider journaled. Our
+existing policy is not to mess with US v UK v AU v CA v .. spelling
+and that is probably wise. 
 
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+A search of the ACM literature finds "journalized", "journalled" and
+"journaled" are all in use for this operation.
 
- fs/ext4/super.c |   26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
+I would submit the correct patch is to change the words to journalizing
+and journalized. That would put Linux in agreement with the dictionary,
+avoid US v UK meaning differences and not pose a problem linguistically
+as all forms are currently in use.
 
-diff -puN fs/ext4/super.c~ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed
-+++ a/fs/ext4/super.c
-@@ -982,7 +982,7 @@ static int parse_options (char *options,
- 	int data_opt = 0;
- 	int option;
- #ifdef CONFIG_QUOTA
--	int qtype;
-+	int qtype, qfmt;
- 	char *qname;
- #endif
- 
-@@ -1165,7 +1165,9 @@ static int parse_options (char *options,
- 		case Opt_grpjquota:
- 			qtype = GRPQUOTA;
- set_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    !sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR
- 					"EXT4-fs: Cannot change journaled "
- 					"quota options when quota turned on.\n");
-@@ -1203,7 +1205,9 @@ set_qf_name:
- 		case Opt_offgrpjquota:
- 			qtype = GRPQUOTA;
- clear_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR "EXT4-fs: Cannot change "
- 					"journaled quota options when "
- 					"quota turned on.\n");
-@@ -1216,10 +1220,20 @@ clear_qf_name:
- 			sbi->s_qf_names[qtype] = NULL;
- 			break;
- 		case Opt_jqfmt_vfsold:
--			sbi->s_jquota_fmt = QFMT_VFS_OLD;
--			break;
-+			qfmt = QFMT_VFS_OLD;
-+			goto set_qf_format;
- 		case Opt_jqfmt_vfsv0:
--			sbi->s_jquota_fmt = QFMT_VFS_V0;
-+			qfmt = QFMT_VFS_V0;
-+set_qf_format:
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_jquota_fmt != qfmt) {
-+				printk(KERN_ERR "EXT4-fs: Cannot change "
-+					"journaled quota options when "
-+					"quota turned on.\n");
-+				return 0;
-+			}
-+			sbi->s_jquota_fmt = qfmt;
- 			break;
- 		case Opt_quota:
- 		case Opt_usrquota:
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-origin.patch
-isofs-fix-access-to-unallocated-memory-when-reading-corrupted-filesystem.patch
-quota-le_add_cpu-conversion.patch
-ext4-fix-mount-messages-when-quota-disabled.patch
-ext3-fix-synchronization-of-quota-files-in-journal=data-mode.patch
-ext4-fix-synchronization-of-quota-files-in-journal=data-mode.patch
-reiserfs-fix-synchronization-of-quota-files-in-journal=data-mode.patch
-ext3-fix-typos-in-messages-and-comments-journalled-journaled.patch
-ext4-fix-typos-in-messages-and-comments-journalled-journaled.patch
-reiserfs-fix-typos-in-messages-and-comments-journalled-journaled.patch
-quota-add-a-convenience-macro-for-filesystems.patch
-ext3-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
-ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
-reiserfs-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
-
+Alan
