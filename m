@@ -1,73 +1,137 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: start seraching for the right extent from the
-	goal group.
-Date: Thu, 1 May 2008 21:18:24 +0530
-Message-ID: <20080501154824.GB7005@skywalker>
-References: <1209554186-6251-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <48187EEF.8000101@bull.net>
+Subject: Re: [PATCH] ext4: mballoc: fix mb_normalize_request algorithm for
+	1KB block size filesystems
+Date: Thu, 1 May 2008 22:44:10 +0530
+Message-ID: <20080501171410.GC7005@skywalker>
+References: <1209562870.5307.12.camel@ext1.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, sandeen@redhat.com
 To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:38566 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758336AbYEAPst (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2008 11:48:49 -0400
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:35804 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761310AbYEAROp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2008 13:14:45 -0400
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m41FmOqv015293
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 01:48:24 +1000
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m41HDuR6007154
+	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:13:56 +1000
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m41FqlYQ263944
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 01:52:47 +1000
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m41HIfE4287230
+	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:18:43 +1000
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m41Fml6c030809
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 01:48:47 +1000
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m41HEeUk017131
+	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:14:40 +1000
 Content-Disposition: inline
-In-Reply-To: <48187EEF.8000101@bull.net>
+In-Reply-To: <1209562870.5307.12.camel@ext1.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 30, 2008 at 04:15:11PM +0200, Valerie Clement wrote:
-> Aneesh Kumar K.V wrote:
->> With mballoc we search for the best extent using different
->> criteria. We should always use the goal group when we are
->> starting with a new criteria.
->
-> Hi Aneesh,
->
-> as you are working on the mballoc code, there is another thing
-> which is not clear for me: why skipping uninitialized groups in  
-> ext4_mb_good_group() when criteria is 0.
-> I'm doing tests on large partition (~2TB) and on FS with 1KB
-> block size and it impacts the performance when the number of
-> groups is great (and the uninit_groups feature is used of course).
-> For which reason we skip these groups ?
->
+On Wed, Apr 30, 2008 at 03:41:10PM +0200, Valerie Clement wrote:
+> mballoc: fix mb_normalize_request algorithm for 1KB block size filesystems
+> 
+> From: Valerie Clement <valerie.clement@bull.net>
+> 
+> In case of inode preallocation, the number of blocks to allocate depends
+> on the file size and it is calculated in ext4_mb_normalize_group_request().
+> Each group in the filesystem is then checked to find one that can be used
+> for allocation; this is done in ext4_mb_good_group().
+> 
+> When a file bigger than 4MB is created, the requested number of blocks to
+> preallocate, calculated by ext4_mb_normalize_group_request is 4096.
+> However for a filesystem with 1KB block size, the maximum size of the
+> block buddies used by the multiblock allocator is 2048, so none of
+> groups in the filesystem satisfies the search criteria in
+> ext4_mb_good_group(). Scanning all the filesystem groups impacts
+> performance.
 
-The reason is to avoid initializing block group. We would like to make
-sure when we are allocating blocks we allocate them from already
-initialized group. Otherwise we would end up initializing multiple block
-group with in turn decrease the performance advantage of uninit_group.
-
-The current logic is.
-
-If request len is order of 2 we start with cr=0.
-
-If we are cr=0 skip the uninit block group and search for the right
-count of blocks in other initialized block group using simple_scan
-logic.
-
-If we don't find the right count of blocks then cr++;
-
-if cr != 0 don't skip uninit block group.
-
-if group is uninit and the request size is order of 2 use the
-simple_scan logic which use buddy cache to search for the right count of
-block group.
-
-That way we avoid allocating blocks out of uninit group in the first
-loop. We allocate blocks only after we looked at all the other
-initialized block group.
+s/ext4_mb_normalize_group_request/ext4_mb_normalize_request/
 
 
--aneesh
+That's true the max order is block_size_bits + 1
+Can you update the commit message with the above information ?
+
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+
+
+> 
+> The following numbers show that:
+> - on an ext4 FS with 1KB block size mounted with nodelalloc option:
+> # dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
+> 1024+0 records in
+> 1024+0 records out
+> 8388608 bytes (8.4 MB) copied, 35.5091 seconds, 236 kB/s
+> 
+> - on an ext4 FS with 1KB block size mounted with nodelalloc and nomballoc
+> options:
+> # dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
+> 1024+0 records in
+> 1024+0 records out
+> 8388608 bytes (8.4 MB) copied, 0.233754 seconds, 35.9 MB/s
+> 
+> In the two cases, dd is done after creating the FS with -b1024 option,
+> mounting the FS with the options specified before and flushing all caches
+> using echo 3 > /proc/sys/vm/drop_caches.
+> The partition size is 70GB.
+> I did the same test on a 1TB partition, it took several minutes to write
+> 8MB!
+> 
+> This patch modifies the algorithm in ext4_mb_normalize_group_request to
+> calculate the number of blocks to allocate by taking into account the
+> maximum size of free blocks chunks handled by the multiblock allocator.
+> 
+> It has also been tested for filesystems with 2KB and 4KB block sizes to
+> ensure that those cases don't regress.
+> 
+> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+> 
+> ---
+> 
+>  mballoc.c |   19 +++++++++----------
+>  1 file changed, 9 insertions(+), 10 deletions(-)
+> 
+> Index: linux-2.6.25/fs/ext4/mballoc.c
+> ===================================================================
+> --- linux-2.6.25.orig/fs/ext4/mballoc.c	2008-04-25 16:19:32.000000000 +0200
+> +++ linux-2.6.25/fs/ext4/mballoc.c	2008-04-25 16:49:34.000000000 +0200
+> @@ -2905,12 +2905,11 @@ ext4_mb_normalize_request(struct ext4_al
+>  	if (size < i_size_read(ac->ac_inode))
+>  		size = i_size_read(ac->ac_inode);
+> 
+> -	/* max available blocks in a free group */
+> -	max = EXT4_BLOCKS_PER_GROUP(ac->ac_sb) - 1 - 1 -
+> -				EXT4_SB(ac->ac_sb)->s_itb_per_group;
+> +	/* max size of free chunks */
+> +	max = 2 << bsbits;
+> 
+> -#define NRL_CHECK_SIZE(req, size, max,bits)	\
+> -		(req <= (size) || max <= ((size) >> bits))
+> +#define NRL_CHECK_SIZE(req, size, max, chunk_size)	\
+> +		(req <= (size) || max <= (chunk_size))
+> 
+>  	/* first, try to predict filesize */
+>  	/* XXX: should this table be tunable? */
+> @@ -2929,16 +2928,16 @@ ext4_mb_normalize_request(struct ext4_al
+>  		size = 512 * 1024;
+>  	} else if (size <= 1024 * 1024) {
+>  		size = 1024 * 1024;
+> -	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
+> +	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, 2 * 1024)) {
+>  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+> -						(20 - bsbits)) << 20;
+> -		size = 1024 * 1024;
+> -	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
+> +						(21 - bsbits)) << 21;
+> +		size = 2* 1024 * 1024;
+> +	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, 4 * 1024)) {
+>  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+>  							(22 - bsbits)) << 22;
+>  		size = 4 * 1024 * 1024;
+>  	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
+> -					(8<<20)>>bsbits, max, bsbits)) {
+> +					(8<<20)>>bsbits, max, 8 * 1024)) {
+>  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+>  							(23 - bsbits)) << 23;
+>  		size = 8 * 1024 * 1024;
+> 
+> 
