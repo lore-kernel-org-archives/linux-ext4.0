@@ -1,137 +1,68 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: mballoc: fix mb_normalize_request algorithm for
-	1KB block size filesystems
-Date: Thu, 1 May 2008 22:44:10 +0530
-Message-ID: <20080501171410.GC7005@skywalker>
-References: <1209562870.5307.12.camel@ext1.frec.bull.fr>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH, RFC] ext3: move headers out of include/linux
+Date: Thu, 1 May 2008 11:39:38 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0805011134520.5994@woody.linux-foundation.org>
+References: <E1JrZxd-0004c8-7E@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, sandeen@redhat.com
-To: Valerie Clement <valerie.clement@bull.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:35804 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761310AbYEAROp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2008 13:14:45 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m41HDuR6007154
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:13:56 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m41HIfE4287230
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:18:43 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m41HEeUk017131
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 03:14:40 +1000
-Content-Disposition: inline
-In-Reply-To: <1209562870.5307.12.camel@ext1.frec.bull.fr>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35931 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1764727AbYEASjv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2008 14:39:51 -0400
+In-Reply-To: <E1JrZxd-0004c8-7E@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 30, 2008 at 03:41:10PM +0200, Valerie Clement wrote:
-> mballoc: fix mb_normalize_request algorithm for 1KB block size filesystems
-> 
-> From: Valerie Clement <valerie.clement@bull.net>
-> 
-> In case of inode preallocation, the number of blocks to allocate depends
-> on the file size and it is calculated in ext4_mb_normalize_group_request().
-> Each group in the filesystem is then checked to find one that can be used
-> for allocation; this is done in ext4_mb_good_group().
-> 
-> When a file bigger than 4MB is created, the requested number of blocks to
-> preallocate, calculated by ext4_mb_normalize_group_request is 4096.
-> However for a filesystem with 1KB block size, the maximum size of the
-> block buddies used by the multiblock allocator is 2048, so none of
-> groups in the filesystem satisfies the search criteria in
-> ext4_mb_good_group(). Scanning all the filesystem groups impacts
-> performance.
-
-s/ext4_mb_normalize_group_request/ext4_mb_normalize_request/
 
 
-That's true the max order is block_size_bits + 1
-Can you update the commit message with the above information ?
+On Thu, 1 May 2008, Theodore Ts'o wrote:
+>
+>  fs/ext3/acl.c              |    4 +-
+>  fs/ext3/balloc.c           |    5 +-
+>  fs/ext3/bitmap.c           |    2 +-
+>  fs/ext3/dir.c              |    3 +-
+>  fs/ext3/ext3.h             |  897 ++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext3/ext3_i.h           |  147 ++++++++
+>  fs/ext3/ext3_jbd.c         |    7 +-
+>  fs/ext3/ext3_jbd.h         |  225 +++++++++++
+>  fs/ext3/ext3_sb.h          |   86 +++++
+>  fs/ext3/file.c             |    5 +-
+>  fs/ext3/fsync.c            |    5 +-
+>  fs/ext3/hash.c             |    3 +-
+>  fs/ext3/ialloc.c           |    5 +-
+>  fs/ext3/inode.c            |    4 +-
+>  fs/ext3/ioctl.c            |    5 +-
+>  fs/ext3/namei.c            |    5 +-
+>  fs/ext3/resize.c           |    6 +-
+>  fs/ext3/super.c            |    5 +-
+>  fs/ext3/symlink.c          |    3 +-
+>  fs/ext3/xattr.c            |    4 +-
+>  fs/ext3/xattr_security.c   |    4 +-
+>  fs/ext3/xattr_trusted.c    |    4 +-
+>  fs/ext3/xattr_user.c       |    5 +-
+>  include/linux/ext3_fs.h    |  896 -------------------------------------------
+>  include/linux/ext3_fs_i.h  |  147 --------
+>  include/linux/ext3_fs_sb.h |   86 -----
+>  include/linux/ext3_jbd.h   |  226 -----------
 
-Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+I'd suggest not sending out patches like this.
 
+If the patch is largely a rename one, and sent out for review, just use 
+"git diff -M -p --stat --summary", because it's going to be a *lot* more 
+reviewable that way.
 
-> 
-> The following numbers show that:
-> - on an ext4 FS with 1KB block size mounted with nodelalloc option:
-> # dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
-> 1024+0 records in
-> 1024+0 records out
-> 8388608 bytes (8.4 MB) copied, 35.5091 seconds, 236 kB/s
-> 
-> - on an ext4 FS with 1KB block size mounted with nodelalloc and nomballoc
-> options:
-> # dd if=/dev/zero of=/mnt/test/foo bs=8k count=1k conv=fsync
-> 1024+0 records in
-> 1024+0 records out
-> 8388608 bytes (8.4 MB) copied, 0.233754 seconds, 35.9 MB/s
-> 
-> In the two cases, dd is done after creating the FS with -b1024 option,
-> mounting the FS with the options specified before and flushing all caches
-> using echo 3 > /proc/sys/vm/drop_caches.
-> The partition size is 70GB.
-> I did the same test on a 1TB partition, it took several minutes to write
-> 8MB!
-> 
-> This patch modifies the algorithm in ext4_mb_normalize_group_request to
-> calculate the number of blocks to allocate by taking into account the
-> maximum size of free blocks chunks handled by the multiblock allocator.
-> 
-> It has also been tested for filesystems with 2KB and 4KB block sizes to
-> ensure that those cases don't regress.
-> 
-> Signed-off-by: Valerie Clement <valerie.clement@bull.net>
-> 
-> ---
-> 
->  mballoc.c |   19 +++++++++----------
->  1 file changed, 9 insertions(+), 10 deletions(-)
-> 
-> Index: linux-2.6.25/fs/ext4/mballoc.c
-> ===================================================================
-> --- linux-2.6.25.orig/fs/ext4/mballoc.c	2008-04-25 16:19:32.000000000 +0200
-> +++ linux-2.6.25/fs/ext4/mballoc.c	2008-04-25 16:49:34.000000000 +0200
-> @@ -2905,12 +2905,11 @@ ext4_mb_normalize_request(struct ext4_al
->  	if (size < i_size_read(ac->ac_inode))
->  		size = i_size_read(ac->ac_inode);
-> 
-> -	/* max available blocks in a free group */
-> -	max = EXT4_BLOCKS_PER_GROUP(ac->ac_sb) - 1 - 1 -
-> -				EXT4_SB(ac->ac_sb)->s_itb_per_group;
-> +	/* max size of free chunks */
-> +	max = 2 << bsbits;
-> 
-> -#define NRL_CHECK_SIZE(req, size, max,bits)	\
-> -		(req <= (size) || max <= ((size) >> bits))
-> +#define NRL_CHECK_SIZE(req, size, max, chunk_size)	\
-> +		(req <= (size) || max <= (chunk_size))
-> 
->  	/* first, try to predict filesize */
->  	/* XXX: should this table be tunable? */
-> @@ -2929,16 +2928,16 @@ ext4_mb_normalize_request(struct ext4_al
->  		size = 512 * 1024;
->  	} else if (size <= 1024 * 1024) {
->  		size = 1024 * 1024;
-> -	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, bsbits)) {
-> +	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, 2 * 1024)) {
->  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
-> -						(20 - bsbits)) << 20;
-> -		size = 1024 * 1024;
-> -	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, bsbits)) {
-> +						(21 - bsbits)) << 21;
-> +		size = 2* 1024 * 1024;
-> +	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, 4 * 1024)) {
->  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
->  							(22 - bsbits)) << 22;
->  		size = 4 * 1024 * 1024;
->  	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
-> -					(8<<20)>>bsbits, max, bsbits)) {
-> +					(8<<20)>>bsbits, max, 8 * 1024)) {
->  		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
->  							(23 - bsbits)) << 23;
->  		size = 8 * 1024 * 1024;
-> 
-> 
+Yeah, it means that people need git to apply it, but by now we can 
+probably take that for granted - and more importantly, even if they don't 
+have git installed: when you send out of RFC, aren't you looking for 
+commentary more than people to apply and test it?
+
+And then the patch saying that it's a rename (with perhaps changes to the 
+guard #ifdef thing) would be a lot more clear. Nobody is going to read a 
+patch that is 2800 lines of mostly create/delete with presumably almost no 
+actual changes?
+
+		Linus
