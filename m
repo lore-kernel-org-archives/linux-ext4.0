@@ -1,52 +1,60 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] ext4: Group meta-data blocks together.
-Date: Fri, 2 May 2008 23:42:33 +0530
-Message-ID: <20080502181233.GA12049@skywalker>
-References: <1209466647-26681-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080502174901.GC2950@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: start seraching for the right extent from the	goal
+ group.
+Date: Fri, 02 May 2008 11:53:19 -0700
+Message-ID: <20080502185319.GG2950@webber.adilger.int>
+References: <1209554186-6251-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <48186CFB.8050206@redhat.com> <20080501153747.GA7005@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Transfer-Encoding: 7BIT
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	cmm@us.ibm.com, tytso@mit.edu
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:54308 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750755AbYEBSMp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 May 2008 14:12:45 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m42ICgmw027950
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 23:42:42 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m42ICZYY1380378
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 23:42:35 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m42ICfF2016563
-	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 18:12:42 GMT
-Content-Disposition: inline
-In-Reply-To: <20080502174901.GC2950@webber.adilger.int>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62361 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756751AbYEBSxX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 May 2008 14:53:23 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m42IrMtU002431
+	for <linux-ext4@vger.kernel.org>; Fri, 2 May 2008 11:53:22 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K0900M018C2O800@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 02 May 2008 11:53:22 -0700 (PDT)
+In-reply-to: <20080501153747.GA7005@skywalker>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 02, 2008 at 10:49:01AM -0700, Andreas Dilger wrote:
-> On Apr 29, 2008  16:27 +0530, Aneesh Kumar K.V wrote:
-> > I haven't yet tested this. Let me know what you think.
+On May 01, 2008  21:07 +0530, Aneesh Kumar K.V wrote:
+> On Wed, Apr 30, 2008 at 07:58:35AM -0500, Eric Sandeen wrote:
+> > Aneesh Kumar K.V wrote:
+> > > With mballoc we search for the best extent using different
+> > > criteria. We should always use the goal group when we are
+> > > starting with a new criteria.
 > > 
-> > -aneesh
+> > Aneesh, is there any testcase etc that will demonstrate the resulting
+> > difference in layout?
 > > 
-> > This adds a per inode meta-block prealloc space from which
-> > meta-data block requests are served. This help in making
-> > sure meta-data block are closer. This is needed to speedup
-> > unlink of the file. Any new prealloc space is allocated near
-> > the goal block specified. The goal block is the last block
-> > allocated for the file. So we don't keep the data-block and
-> > meta-data block far apart.
+> > It's not clear to me from this changelog (without looking at a lot more
+> > context) exactly what you're changing and why...
 > 
-> Does this code use the mballoc "group allocator" mechanism that it
-> already uses for small files?  It would be convenient to re-use
-> this code by creating a "metadata allocation group" instead of creating
-> another mechanism to aggregate small IO allocations.
-> 
+> I don't have any specific test case.  With mballoc depending on the
+> request size we follow different criteria to allocate blocks. For
+> example if the size is stripe size multiple we use criteria 1 and start
+> searching for the right blocks from block group starting with goal
+> group. If we don't find right count of blocks, we use criteria 2 and start
+> searching from the group block 0. I guess with criteria 2 also, we should start
+> searching from the goal group so that when we find the right count of
+> blocks we find them close to the goal group.
 
-That is mostly what it does. Except that the allocation space is hanging
-from the inode rather than per-cpu.
+This makes sense to me.
 
--aneesh
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
