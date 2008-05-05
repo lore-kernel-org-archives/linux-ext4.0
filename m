@@ -1,136 +1,43 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] jbd_commit_transaction() races with
-	journal_try_to_drop_buffers() causing DIO failures
-Date: Mon, 05 May 2008 10:53:38 -0700
-Message-ID: <1210010018.9747.7.camel@localhost.localdomain>
-References: <20080306174209.GA14193@duck.suse.cz>
-	 <1209166706.6040.20.camel@localhost.localdomain>
-	 <20080428122626.GC17054@duck.suse.cz>
-	 <1209402694.23575.5.camel@badari-desktop>
-	 <20080428180932.GI17054@duck.suse.cz>
-	 <1209409764.11872.6.camel@localhost.localdomain>
-	 <20080429124321.GD1987@duck.suse.cz>
-	 <1209654981.27240.19.camel@badari-desktop>
-	 <20080505170636.GK25722@duck.suse.cz>
-Reply-To: cmm@us.ibm.com
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] unexport journal_update_superblock
+Date: Mon, 5 May 2008 21:26:36 +0300
+Message-ID: <20080505182636.GA17139@cs181133002.pp.htv.fi>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Badari Pulavarty <pbadari@us.ibm.com>, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:52252 "EHLO e3.ny.us.ibm.com"
+Received: from smtp5.pp.htv.fi ([213.243.153.39]:32945 "EHLO smtp5.pp.htv.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751649AbYEERxr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2008 13:53:47 -0400
-In-Reply-To: <20080505170636.GK25722@duck.suse.cz>
+	id S1760858AbYEES1n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2008 14:27:43 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2008-05-05 at 19:06 +0200, Jan Kara wrote:
-> On Thu 01-05-08 08:16:21, Badari Pulavarty wrote:
-> > Hi Andrew & Jan,
-> > 
-> > I was able to reproduce the customer problem involving DIO
-> > (invalidate_inode_pages2) problem by writing simple testcase
-> > to keep writing to a file using buffered writes and DIO writes
-> > forever in a loop. I see DIO writes fail with -EIO.
-> > 
-> > After a long debug, found 2 cases how this could happen.
-> > These are race conditions with journal_try_to_free_buffers()
-> > and journal_commit_transaction().
-> > 
-> > 1) journal_submit_data_buffers() tries to get bh_state lock. If
-> > try lock fails, it drops the j_list_lock and sleeps for
-> > bh_state lock, while holding a reference on the buffer.
-> > In the meanwhile, journal_try_to_free_buffers() can clean up the
-> > journal head could call try_to_free_buffers(). try_to_free_buffers()
-> > would fail due to the reference held by journal_submit_data_buffers()
-> > - which in turn causes failues for DIO (invalidate_inode_pages2()).
-> > 
-> > 2) When the buffer is on t_locked_list waiting for IO to finish,
-> > we hold a reference and give up the cpu, if we can't get
-> > bh_state lock. This causes try_to_free_buffers() to fail.
-> > 
-> > Fix is to drop the reference on the buffer if we can't get
-> > bh_state lock, give up the cpu and re-try the whole operation -
-> > instead of waiting for the vh_state lock.
-> > 
-> > Does this look like a resonable fix ?
->   As Mingming pointed out there are few other places where we could hold
-> the bh reference. 
+This patch removes the unused EXPORT_SYMBOL(journal_update_superblock).
 
-Actually there is one more place that journal_try_to_free_buffers
-(calling from DIO path) could race with journal_submit_data_buffers(),
-the DIO and buffered IO test still returns EIO with the fix which should
-fixed the first 3 race cases.
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
-I could not figure out how this could happen with Badari's fix to
-inverted_lock().
+---
 
-This time the debug shows that the one who release put_bh() after the
-journal_try_to_free_buffers() failed is from this code path:
+This patch has been sent on:
+- 22 Apr 2008
+- 14 Apr 2008
+- 31 Mar 2008
+- 27 Feb 2008
 
-journal_submit_data_buffers() {
-
-...
-
- } else if (!locked && buffer_locked(bh)) {
-                        __journal_file_buffer(jh, commit_transaction,
-                                                BJ_Locked);
-                        jbd_unlock_bh_state(bh);
-                        put_bh(bh);
-
-}
-
-But when we get here we should already making sure the bh is on the
-t_syncdata_list with badari's fix...
-
-> Note also that we accumulate references to buffers in the
-> wbuf[] list and we need that for submit_bh() which consumes one bh
-> reference. 
-
-It seems to me it's safe in this case. When
-journal_try_to_free_buffers() called from DIO path,
-filemap_fdatawrite_and_wait() already making sure that the IO submitted
-by kjournald is already finished by waiting for buffer unlocked.
-
-> Generally, it seems to me as a too fragile and impractical
-> rule "nobody can hold bh reference when not holding page lock" which is
-> basically what it comes down to if you really want to be sure that
-> journal_try_to_free_buffers() succeeds. And also note that in principle
-> there are other places which hold references to buffers without holding the
-> page lock - for example writepage() in ordered mode (although this one is
-> in practice hardly triggerable). So how we could fix at least the races
-> with commit code is to implement launder_page() callback for ext3/4 which
-> would wait for the previous transaction commit in case the page has buffers
-> that are part of that commit (I don't want this logic in
-> journal_try_to_free_buffers() as that is called also on memory-reclaim
-> path, but journal_launder_page() is fine with me). This would be correct
-> but could considerably slow down O_DIRECT writes in cases they're mixed
-> with buffered writes so I'm not sure if this is acceptable.
->   OTOH with the ordered mode rewrite patch, the problem with commit code
-> also goes away since there we don't need extra references to data buffers
-> (we use just filemap_fdatawrite).
-> 
-> > 1) journal_submit_data_buffers() tries to get bh_state lock. If
-> > try lock fails, it drops the j_list_lock and sleeps for
-> > bh_state lock, while holding a reference on the buffer head.
-> > In the meanwhile, journal_try_to_free_buffers() can clean up the
-> > journal head could call try_to_free_buffers(). try_to_free_buffers()
-> > would fail due to the reference held by journal_submit_data_buffers()
-> > - which inturn causes failues for DIO (invalidate_inode_pages2()).
-> > 
-> > 2) When the buffer is on t_locked_list waiting for IO to finish,
-> > we hold a reference and give up the cpu, if we can't get 
-> > bh_state lock. This causes try_to_free_buffers() to fail.
-> > 
-> > Fix is to drop the reference on the buffer, give up the cpu
-> > and re-try the whole operation.
-> > 
-> > Signed-off-by: Badari Pulavarty <pbadari@us.ibm.com>
-> > Reviewed-by: Mingming Cao <mcao@us.ibm.com>
-> 
-> 							Honza
+66cbc7390d66cdeb83a3f81d7ec1ea71d6f6e2c8 foobar
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 3943a89..5c2ebb7 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -68,7 +68,6 @@ EXPORT_SYMBOL(journal_set_features);
+ EXPORT_SYMBOL(journal_create);
+ EXPORT_SYMBOL(journal_load);
+ EXPORT_SYMBOL(journal_destroy);
+-EXPORT_SYMBOL(journal_update_superblock);
+ EXPORT_SYMBOL(journal_abort);
+ EXPORT_SYMBOL(journal_errno);
+ EXPORT_SYMBOL(journal_ack_err);
 
