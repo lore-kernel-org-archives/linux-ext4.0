@@ -1,43 +1,37 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: Problem mounting ext2 using ext3?
-Date: Tue, 6 May 2008 13:20:28 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0805061319390.10091@anakin>
-References: <Pine.LNX.4.64.0805052304280.3160@anakin> <20080505222623.GA8357@mit.edu>
- <20080506100216.GB1409@duck.suse.cz>
+From: Matthias Koenig <mkoenig@suse.de>
+Subject: [PATCH] libuuid: don't use unitialized variable
+Date: Tue, 06 May 2008 13:38:31 +0200
+Message-ID: <n7xhcdbd5mw.fsf@sor.suse.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Linux Kernel Development <linux-kernel@vger.kernel.org>,
-	Linux/m68k <linux-m68k@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from monty.telenet-ops.be ([195.130.132.56]:48895 "EHLO
-	monty.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752128AbYEFLUa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2008 07:20:30 -0400
-In-Reply-To: <20080506100216.GB1409@duck.suse.cz>
+Received: from ns.suse.de ([195.135.220.2]:60210 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751490AbYEFLfY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2008 07:35:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 6 May 2008, Jan Kara wrote:
->   Thanks Ted for looking into this. Yes, the problem is caused by my
-> modifications to quota code... The patch below fixes it for me and I've
-> also added a comment so that someone does not remove the check again in
-> future ;).
+Hi,
 
-I'll try to give it a try this evening...
+tv is not initialized before the assigment to last.
 
-> +	 * Skip everything if there's nothing to do. We have to do this becase
-                                                                        ^^^^^^
-									because
+Signed-Off-By: Matthias Koenig <mkoenig@suse.de>
 
-Gr{oetje,eeting}s,
+Index: e2fsprogs-1.40.8/lib/uuid/gen_uuid.c
+===================================================================
+--- e2fsprogs-1.40.8.orig/lib/uuid/gen_uuid.c
++++ e2fsprogs-1.40.8/lib/uuid/gen_uuid.c
+@@ -316,7 +316,7 @@ static int get_clock(uint32_t *clock_hig
+ 	if ((last.tv_sec == 0) && (last.tv_usec == 0)) {
+ 		get_random_bytes(&clock_seq, sizeof(clock_seq));
+ 		clock_seq &= 0x3FFF;
+-		last = tv;
++		gettimeofday(&last, 0);
+ 		last.tv_sec--;
+ 	}
+ 
 
-						Geert
 
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-							    -- Linus Torvalds
