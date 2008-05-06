@@ -1,80 +1,328 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: Problem mounting ext2 using ext3?
-Date: Tue, 6 May 2008 21:05:01 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0805062104370.6341@anakin>
-References: <Pine.LNX.4.64.0805052304280.3160@anakin> <20080505222623.GA8357@mit.edu>
- <20080506100216.GB1409@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH (interim)] set_bmap for libext2
+Date: Tue, 06 May 2008 16:50:53 -0500
+Message-ID: <4820D2BD.90706@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Linux Kernel Development <linux-kernel@vger.kernel.org>,
-	Linux/m68k <linux-m68k@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wilson.telenet-ops.be ([195.130.132.42]:42971 "EHLO
-	wilson.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758729AbYEFTFH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2008 15:05:07 -0400
-In-Reply-To: <20080506100216.GB1409@duck.suse.cz>
+Received: from mx1.redhat.com ([66.187.233.31]:37932 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753950AbYEFVvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2008 17:51:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 6 May 2008, Jan Kara wrote:
-> On Mon 05-05-08 18:26:23, Theodore Tso wrote:
-> > On Mon, May 05, 2008 at 11:11:46PM +0200, Geert Uytterhoeven wrote:
-> > > when mounting the root file system, which is ext2 (has_journal is not set).
-> > > Apparently it crashes in ext3_sync_fs because EXT3_SB(sb)->s_journal is NULL.
-> > > 
-> > > At first I thought it was an issue with the byteswapped IDE bus on Atari (a
-> > > new and different solution to handle this just went into mainline), but if I
-> > > disable CONFIG_EXT3 support, it boots up fine.
-> > > 
-> > > Is this a known problem?
-> > 
-> > I can confirm this as a regression.  You don't even need to mount it
-> > as a root filesystem, or do this on an 68k system.  On my x86 system,
-> > using a kernel based off of git commit: afa26be8 (6 commits after
-> > 2.6.26-rc1), mounting an ext3 filesystem, you can cause an oops by
-> > taking an ext2 filesystem and forcing a mount as ext3, "mount -t ext3
-> > /dev/closure/textext2fs /mnt").  (see below for my oops).  This does
-> > not occur with a kernel based off of 2.6.25, so it's a definite
-> > regression.
-> > 
-> > Looks like the problem is some of the recent quota cleanups.  The
-> > problem is that ext3_fill_super is returning an error, because the
-> > journal is missing.  get_sb_dev() calls ext3_fill_super, and upon
-> > receiving an error, it is calling deactivate_super(), which calls:
-> > 
-> > 	     DQUOT_OFF(s, 0);
-> > 
-> > (line 182 in fs/super.c, in deactivate_super(), recently modified just
-> > after 2.6.25, at comment 0ff5af8340aa6be44220d7237ef4a654314cf795,
-> > although I'm not sure this is actually the problem commit)).  
-> > 
-> > The blow up is happening because the because superblock was not fully
-> > set up, and the comment in the commit involved mentioned cleaning up
-> > what is supposed to happen when remounting a filesystem turning quota
-> > on or off.  I'm guessing that the changes didn't take into account
-> > that DQUOT_OFF() can get called with a partially set-up superblock,
-> > which will happen when the filesystme specific get_sb() code refuses a
-> > mount and returns an error.
-> > 
-> > Jan, can you take a look at this and confirm whether or not this is
-> > the root cause of the crash?
->   Thanks Ted for looking into this. Yes, the problem is caused by my
-> modifications to quota code... The patch below fixes it for me and I've
-> also added a comment so that someone does not remove the check again in
-> future ;).
+Lest Ted think I'm completely ignoring this.. ;)
 
-Thanks Jan! Your patch fixed my problem.
+This version can remap or unmap the first or last block in 
+an extent, and can map an unmapped block.
 
-Gr{oetje,eeting}s,
+ * TODO:
+ * Handle remapping block in middle of extent (requires splitting node)
+ * Handle case where parent is full (requires splitting parent)
 
-						Geert
+I still have to make the split function recurse up to the root, as well.
 
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+-Eric
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-							    -- Linus Torvalds
+Index: e2fsprogs/lib/ext2fs/extent.c
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/extent.c	2008-04-29 16:47:09.609482537 -0500
++++ e2fsprogs/lib/ext2fs/extent.c	2008-05-06 16:48:05.453775768 -0500
+@@ -628,6 +628,64 @@ errcode_t ext2fs_extent_goto(ext2_extent
+ 	return extent_goto(handle, 0, blk);
+ }
+ 
++/*
++ * Traverse back up to root fixing parents of current node as needed.
++ *
++ * If we changed start of first entry in a node, fix parent index start
++ * and so on.
++ *
++ * Safe to call for any position in node; if not at the first entry,
++ * will  simply return.
++ */
++errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
++{
++	int				retval = 0;
++	blk64_t				start;
++	struct extent_path		*path;
++	struct ext2fs_extent		extent;
++
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
++
++	if (!(handle->fs->flags & EXT2_FLAG_RW))
++		return EXT2_ET_RO_FILSYS;
++
++	if (!handle->path)
++		return EXT2_ET_NO_CURRENT_NODE;
++
++	path = handle->path + handle->level;
++	if (!path->curr)
++		return EXT2_ET_NO_CURRENT_NODE;
++
++	retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT, &extent);
++	if (retval)
++		goto done;
++
++	/* modified node's start block */
++	start = extent.e_lblk;
++
++	/* traverse up until index not first, or startblk matches, or top */
++	while (handle->level > 0 &&
++	       (path->left == path->entries - 1)) {
++		retval = ext2fs_extent_get(handle, EXT2_EXTENT_UP, &extent);
++		if (retval)
++			goto done;
++		if (extent.e_lblk == start)
++			break;
++		path = handle->path + handle->level;
++		extent.e_len += (extent.e_lblk - start);
++		extent.e_lblk = start;
++		retval = ext2fs_extent_replace(handle, 0, &extent);
++		if (retval)
++			goto done;
++		update_path(handle);
++	}
++
++	/* put handle back to where we started */
++	retval = ext2fs_extent_goto(handle, start);
++done:
++	return retval;
++}
++
+ errcode_t ext2fs_extent_replace(ext2_extent_handle_t handle, 
+ 				int flags EXT2FS_ATTR((unused)),
+ 				struct ext2fs_extent *extent)
+@@ -859,6 +917,161 @@ done:
+ 	return retval;
+ }
+ 
++/*
++ * Sets the physical block for a logical file block in the extent tree.
++ *
++ * May: map unmapped, unmap mapped, or remap mapped blocks.
++ *
++ * Mapping an unmapped block adds a single-block extent.
++ *
++ * Unmapping first or last block modifies extent in-place
++ *  - But may need to fix parent's starts too in first-block case
++ *
++ * Mapping any unmapped block requires adding a (single-block) extent
++ * and inserting into proper point in tree.
++ *
++ * Modifying (unmapping or remapping) a block in the middle
++ * of an extent requires splitting the extent.
++ *  - Remapping case requres new single-block extent.
++ *
++ * Remapping first or last block adds an extent
++ *
++ * We really need extent adding to be smart about merging.
++ *
++ * TODO:
++ * Handle remapping block in middle of extent (requires splitting node)
++ * Handle case where parent is full (requires splitting parent)
++ */
++
++/* NB: if unmapping or mapping an unmapped block, does not change i_count */
++errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
++				 blk64_t logical, blk64_t physical)
++{
++	int			retval = 0;
++	int			mapped = 1; /* logical is mapped? */
++	struct extent_path	*path;
++	struct ext2fs_extent	extent;
++	struct ext2fs_extent	newextent;
++
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
++
++	if (!(handle->fs->flags & EXT2_FLAG_RW))
++		return EXT2_ET_RO_FILSYS;
++
++	/* go to the logical spot we want to (re/un)map */
++	retval = ext2fs_extent_goto(handle, logical);
++	if (retval) {
++		if (retval == EXT2_ET_EXTENT_NOT_FOUND) {
++			retval = 0;
++			mapped = 0;
++			if (!physical) {
++				dbg_printf("block already unmapped\n");
++				goto done;
++			}
++		} else
++			goto done;
++	}
++
++	if (!handle->path)
++		return EXT2_ET_NO_CURRENT_NODE;
++
++	path = handle->path + handle->level;
++	if (!path->curr)
++		return EXT2_ET_NO_CURRENT_NODE;
++
++	/*
++	 * This may be the extent *before* the requested logical,
++	 * if it's currently unmapped.
++	 */
++	retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT, &extent);
++	if (retval)
++		goto done;
++
++	/* check if already pointing to the requested physical */
++	if (mapped && extent.e_pblk + (logical - extent.e_lblk) == physical) {
++		dbg_printf("physical block unchanged\n");
++		goto done;
++	}
++
++	/* if (re)mapping, set up new extent, we'll insert it later */
++	if (physical) {
++		newextent.e_len = 1;
++		newextent.e_pblk = physical;
++		newextent.e_lblk = logical;
++		newextent.e_flags = EXT2_EXTENT_FLAGS_LEAF;
++	}
++
++	if (!mapped) {
++		dbg_printf("mapping unmapped logical block\n");
++		retval = ext2fs_extent_insert(handle,
++				EXT2_EXTENT_INSERT_AFTER, &newextent);
++		if (retval)
++			goto done;
++		retval = ext2fs_extent_fix_parents(handle);
++		if (retval)
++			goto done;
++	} else if (logical == extent.e_lblk + extent.e_len - 1 &&
++		   extent.e_len == 1)  {
++		dbg_printf("(re/un)mapping only block in extent\n");
++		if (physical) {
++			extent.e_pblk = physical;
++			retval = ext2fs_extent_replace(handle, 0, &extent);
++		} else {
++			retval = ext2fs_extent_delete(handle, 0);
++			if (retval)
++				goto done;
++			retval = ext2fs_extent_fix_parents(handle);
++		}
++
++		if (retval)
++			goto done;
++	} else if (logical == extent.e_lblk + extent.e_len - 1)  {
++		dbg_printf("(re/un)mapping last block in extent\n");
++		extent.e_len--;
++		retval = ext2fs_extent_replace(handle, 0, &extent);
++		if (retval)
++			goto done;
++		if (physical) {
++			retval = ext2fs_extent_insert(handle,
++					EXT2_EXTENT_INSERT_AFTER, &newextent);
++			if (retval)
++				goto done;
++		} else {
++			printf("fixing parents\n");
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
++		}
++	} else if (logical == extent.e_lblk) {
++		dbg_printf("(re/un)mapping first block in extent\n");
++		extent.e_pblk++;
++		extent.e_lblk++;
++		extent.e_len--;
++		retval = ext2fs_extent_replace(handle, 0, &extent);
++		if (retval)
++			goto done;
++		if (physical) {
++			/* insert new extent ahead of current */
++			retval = ext2fs_extent_insert(handle,
++					0, &newextent);
++			if (retval)
++				goto done;
++		} else {
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
++		}
++	} else {
++		dbg_printf("(re/un)mapping in middle of extent\n");
++		/* need to split this extent; later */
++		retval = EXT2_ET_OP_NOT_SUPPORTED;
++		goto done;
++	}
++
++done:
++	return retval;
++}
++
+ errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, 
+ 			       int flags EXT2FS_ATTR((unused)))
+ {
+@@ -1163,7 +1376,7 @@ void do_insert_node(int argc, char *argv
+ 	}
+ 
+ 	if (argc != 4) {
+-		fprintf(stderr, "usage: %s <lblk> <len> <pblk>\n", cmd);
++		fprintf(stderr, "usage: %s [--after] <lblk> <len> <pblk>\n", cmd);
+ 		return;
+ 	}
+ 
+@@ -1190,6 +1403,42 @@ void do_insert_node(int argc, char *argv
+ 	do_current_node(argc, argv);
+ }
+ 
++void do_set_bmap(int argc, char **argv)
++{
++	errcode_t	retval;
++	blk_t		logical;
++	blk_t		physical;
++	char *cmd;
++	int err;
++
++	if (check_fs_read_write(argv[0]))
++		return;
++
++	cmd = argv[0];
++
++	if (argc != 3) {
++		fprintf(stderr, "usage: %s <lblk> <pblk>\n", cmd);
++		return;
++	}
++
++	logical = parse_ulong(argv[1], cmd,
++				    "logical block", &err);
++	if (err)
++		return;
++
++	physical = parse_ulong(argv[2], cmd,
++				    "physical block", &err);
++	if (err)
++		return;
++
++	retval = ext2fs_extent_set_bmap(current_handle, logical, (blk64_t) physical);
++	if (retval) {
++		com_err(cmd, retval, 0);
++		return;
++	}
++	do_current_node(argc, argv);
++}
++
+ void do_print_all(int argc, char **argv)
+ {
+ 	struct ext2fs_extent	extent;
+Index: e2fsprogs/lib/ext2fs/extent_dbg.ct
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/extent_dbg.ct	2008-04-29 16:39:13.204659932 -0500
++++ e2fsprogs/lib/ext2fs/extent_dbg.ct	2008-05-05 14:37:52.801892887 -0500
+@@ -55,6 +55,9 @@ request do_insert_node, "Insert node",
+ request do_split_node, "Split node",
+ 	split_node, split;
+ 
++request do_set_bmap, "Set block mapping",
++	set_bmap;
++
+ request do_replace_node, "Insert node",
+ 	replace_node, replace;
+ 
+
