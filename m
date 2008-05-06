@@ -1,37 +1,41 @@
-From: Matthias Koenig <mkoenig@suse.de>
-Subject: [PATCH] libuuid: don't use unitialized variable
-Date: Tue, 06 May 2008 13:38:31 +0200
-Message-ID: <n7xhcdbd5mw.fsf@sor.suse.de>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Problem mounting ext2 using ext3?
+Date: Tue, 6 May 2008 08:05:44 -0400
+Message-ID: <20080506120544.GB6918@mit.edu>
+References: <Pine.LNX.4.64.0805052304280.3160@anakin> <20080505222623.GA8357@mit.edu> <19f34abd0805060026m138bf3dfo87dbf303362d69ca@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel Development <linux-kernel@vger.kernel.org>,
+	Linux/m68k <linux-m68k@vger.kernel.org>, Jan Kara <jack@suse.cz>
+To: Vegard Nossum <vegard.nossum@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.suse.de ([195.135.220.2]:60210 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751490AbYEFLfY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2008 07:35:24 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:52040 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751123AbYEFMGD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2008 08:06:03 -0400
+Content-Disposition: inline
+In-Reply-To: <19f34abd0805060026m138bf3dfo87dbf303362d69ca@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Tue, May 06, 2008 at 09:26:30AM +0200, Vegard Nossum wrote:
+> 
+> I posted a very similar problem a couple of days ago:
+> http://www.nabble.com/BUG-in-ext3_sync_fs-td16999997.html
+> 
+> to which I got zero replies. Can I close this in my internal bugzilla
+> as dup/"not my fault"? The stacktrace looks very similar. This was
+> also ext2 fs mounted (apparently) by ext3 code.
 
-tv is not initialized before the assigment to last.
+Yeah, sorry, I didn't have network access when I looked at your
+e-mail, and so I didn't see the stack trace until you pointed at the
+mail message again.  Because you mentioned a USB stick, I assumed it
+was the problem with a USB stick getting pulled or being loose causing
+an I/O error leading to an oops problem, and I missed the hint of the
+problem occurring in the ext3 code when you were using an ext2
+formattem.  Fortunately when Geert reported the bug a second time, I
+was less dense at the time, and figured it out quickly.  :-)
 
-Signed-Off-By: Matthias Koenig <mkoenig@suse.de>
-
-Index: e2fsprogs-1.40.8/lib/uuid/gen_uuid.c
-===================================================================
---- e2fsprogs-1.40.8.orig/lib/uuid/gen_uuid.c
-+++ e2fsprogs-1.40.8/lib/uuid/gen_uuid.c
-@@ -316,7 +316,7 @@ static int get_clock(uint32_t *clock_hig
- 	if ((last.tv_sec == 0) && (last.tv_usec == 0)) {
- 		get_random_bytes(&clock_seq, sizeof(clock_seq));
- 		clock_seq &= 0x3FFF;
--		last = tv;
-+		gettimeofday(&last, 0);
- 		last.tv_sec--;
- 	}
- 
-
-
+							- Ted
