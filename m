@@ -1,11 +1,13 @@
-From: Jiri Slaby <jirislaby@gmail.com>
+From: Christoph Lameter <clameter@sgi.com>
 Subject: Re: [RFC 1/1] mm: add virt to phys debug
-Date: Tue, 06 May 2008 23:54:38 +0200
-Message-ID: <4820D39E.3090109@gmail.com>
-References: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com> <1209669740-10493-1-git-send-email-jirislaby@gmail.com> <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
+Date: Wed, 7 May 2008 10:30:44 -0700 (PDT)
+Message-ID: <Pine.LNX.4.64.0805071030180.3173@schroedinger.engr.sgi.com>
+References: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com>
+ <1209669740-10493-1-git-send-email-jirislaby@gmail.com>
+ <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
+ <4820D39E.3090109@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-mm@kvack.org, Ingo Molnar <mingo@elte.hu>,
 	"H. Peter Anvin" <hpa@zytor.com>,
 	Jeremy Fitzhardinge <jeremy@goop.org>, pageexec@freemail.hu,
@@ -16,34 +18,22 @@ Cc: linux-mm@kvack.org, Ingo Molnar <mingo@elte.hu>,
 	David Miller <davem@davemloft.net>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-kernel@vger.kernel.org, Andi Kleen <andi@firstfloor.org>
-To: Christoph Lameter <clameter@sgi.com>
+To: Jiri Slaby <jirislaby@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fk-out-0910.google.com ([209.85.128.189]:36884 "EHLO
-	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751318AbYEFVyz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2008 17:54:55 -0400
-Received: by fk-out-0910.google.com with SMTP id 18so9918fkq.5
-        for <linux-ext4@vger.kernel.org>; Tue, 06 May 2008 14:54:53 -0700 (PDT)
-In-Reply-To: <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:57763 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1764695AbYEGRax (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2008 13:30:53 -0400
+In-Reply-To: <4820D39E.3090109@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/01/2008 10:18 PM, Christoph Lameter wrote:
-> On Thu, 1 May 2008, Jiri Slaby wrote:
->> Add some (configurable) expensive sanity checking to catch wrong address
->> translations on x86.
->>
->> - create linux/mmdebug.h file to be able include this file in
->>   asm headers to not get unsolvable loops in header files
->> - __phys_addr on x86_32 became a function in ioremap.c since
->>   PAGE_OFFSET and is_vmalloc_addr is undefined if declared in
->>   page_32.h (again circular dependencies)
->> - add __phys_addr_const for initializing doublefault_tss.__cr3
-> 
-> Hmmm.. We could use include/linux/bounds.h to make 
-> VMALLOC_START/VMALLOC_END (or whatever you need for checking the memory 
-> boundaries) a cpp constant which may allow the use in page_32.h without 
-> circular dependencies.
+On Tue, 6 May 2008, Jiri Slaby wrote:
 
-I like the idea, I'll get back with a patch in few days (sorry, too busy). 
-Anyway bounds.h should be include/asm/ thing though.
+> I like the idea, I'll get back with a patch in few days (sorry, too busy).
+> Anyway bounds.h should be include/asm/ thing though.
+
+For arch specific stuff use asm-offsets.h. It would have to be included in 
+page_xx.h.
+
+ 
