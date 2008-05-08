@@ -1,39 +1,47 @@
-From: Christoph Lameter <clameter@sgi.com>
-Subject: Re: [RFC 1/1] mm: add virt to phys debug
-Date: Wed, 7 May 2008 10:30:44 -0700 (PDT)
-Message-ID: <Pine.LNX.4.64.0805071030180.3173@schroedinger.engr.sgi.com>
-References: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com>
- <1209669740-10493-1-git-send-email-jirislaby@gmail.com>
- <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
- <4820D39E.3090109@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: commit a4b69b7f1809898c87bdc11502ca258a8f16a220 breaks parallel builds
+Date: Wed, 07 May 2008 21:58:03 -0500
+Message-ID: <48226C3B.5060007@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-mm@kvack.org, Ingo Molnar <mingo@elte.hu>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Jeremy Fitzhardinge <jeremy@goop.org>, pageexec@freemail.hu,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	herbert@gondor.apana.org.au, penberg@cs.helsinki.fi,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	paulmck@linux.vnet.ibm.com, rjw@sisk.pl, zdenek.kabelac@gmail.com,
-	David Miller <davem@davemloft.net>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, Andi Kleen <andi@firstfloor.org>
-To: Jiri Slaby <jirislaby@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:57763 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1764695AbYEGRax (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2008 13:30:53 -0400
-In-Reply-To: <4820D39E.3090109@gmail.com>
+Received: from mx1.redhat.com ([66.187.233.31]:54064 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754883AbYEHC6G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 May 2008 22:58:06 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 6 May 2008, Jiri Slaby wrote:
+	CC unpack.c
+	CC unparse.c
+	CC uuid_time.c
+	GEN_LIB libuuid.a
+	GEN_LIB ../../lib/libuuid.a
+/bin/ln: creating hard link `../../../lib/libuuid.a' to
+`../../lib/libuuid.a': No such file or directory
+make[2]: *** [../../lib/libuuid.a] Error 1
+make[2]: Leaving directory `/tmp/e2fsprogs-1.41/lib/uuid'
+make[1]: *** [all-libs-recursive] Error 1
+make[1]: Leaving directory `/tmp/e2fsprogs-1.41'
+make: *** [all] Error 2
 
-> I like the idea, I'll get back with a patch in few days (sorry, too busy).
-> Anyway bounds.h should be include/asm/ thing though.
 
-For arch specific stuff use asm-offsets.h. It would have to be included in 
-page_xx.h.
+I tried looking into this, but I'm at a bit of a loss as to what the
+change was trying to do, so not sure how to fix it... but from
+e2fsprogs/lib/uuid/ it would appear that the addition of
+$(LIB)/$(LIBRARY).a here has got us backing up one ".." too far :)
 
- 
+$(LIB)/$(LIBRARY).a $(LIBRARY).a: $(OBJS)
+        @echo " GEN_LIB $@"
+        @(if test -r $@; then $(RM) -f $@.bak && $(MV) $@ $@.bak; fi)
+        @$(ARGEN) $@ $(OBJS)
+        -@$(RANLIB) $@
+        @$(RM) -f ../$@
+        @$(LN) $@ ../$@
+
+
+
+-Eric
