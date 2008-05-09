@@ -1,7 +1,7 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [RFC PATCH 1/9][e2fsprogs] Add ext2_off64_t type.
-Date: Fri, 09 May 2008 11:39:34 -0500
-Message-ID: <20080509163934.15484.77567.stgit@gara>
+Subject: [RFC PATCH 3/9][e2fsprogs] Add 64-bit dirblock interface.
+Date: Fri, 09 May 2008 11:39:46 -0500
+Message-ID: <20080509163946.15484.75181.stgit@gara>
 References: <20080509163928.15484.22146.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,46 +9,125 @@ Content-Transfer-Encoding: 7bit
 To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:57626 "EHLO e6.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:50936 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754913AbYEIQjK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 May 2008 12:39:10 -0400
+	id S1757390AbYEIQjS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 May 2008 12:39:18 -0400
 Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m49GfFxr003595
-	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:41:15 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m49Gd55B120480
-	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:39:05 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m49Gd417006327
-	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:39:05 -0400
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m49GdHkE019602
+	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:39:17 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m49GdHER120498
+	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:39:17 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m49GdGel028053
+	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 12:39:16 -0400
 In-Reply-To: <20080509163928.15484.22146.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add ext2_off64_t type.
+Add 64-bit dirblock interface.
 
-The ext2_off_t is u32.  Creating a new 64-bit ext2_off64_t for 64bit
-offsets.
+Add new ext2fs_(read|write)_dir_block3() routines that take blk64_t as
+an input.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/ext2fs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ lib/ext2fs/dirblock.c |   23 +++++++++++++++++------
+ lib/ext2fs/ext2fs.h   |    4 ++++
+ 2 files changed, 21 insertions(+), 6 deletions(-)
 
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index fb20fa0..c45c6ce 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -19,7 +19,7 @@
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+ 
+-errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
++errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
+ 				 void *buf, int flags EXT2FS_ATTR((unused)))
+ {
+ 	errcode_t	retval;
+@@ -28,7 +28,7 @@ errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+ 	unsigned int	name_len, rec_len;
+ 	
+ 
+- 	retval = io_channel_read_blk(fs->io, block, 1, buf);
++	retval = io_channel_read_blk64(fs->io, block, 1, buf);
+ 	if (retval)
+ 		return retval;
+ 
+@@ -58,14 +58,20 @@ errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+ 	return retval;
+ }
+ 
++errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
++				 void *buf, int flags EXT2FS_ATTR((unused)))
++{
++	return ext2fs_read_dir_block3(fs, block, buf, flags);
++}
++
+ errcode_t ext2fs_read_dir_block(ext2_filsys fs, blk_t block,
+ 				 void *buf)
+ {
+-	return ext2fs_read_dir_block2(fs, block, buf, 0);
++	return ext2fs_read_dir_block3(fs, block, buf, 0);
+ }
+ 
+ 
+-errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
++errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
+ 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
+ {
+ #ifdef WORDS_BIGENDIAN
+@@ -95,7 +101,7 @@ errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
+ 		if (flags & EXT2_DIRBLOCK_V2_STRUCT)
+ 			dirent->name_len = ext2fs_swab16(dirent->name_len);
+ 	}
+- 	retval = io_channel_write_blk(fs->io, block, 1, buf);
++	retval = io_channel_write_blk64(fs->io, block, 1, buf);
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+ #else
+@@ -103,10 +109,15 @@ errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
+ #endif
+ }
+ 
++errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
++				 void *inbuf, int flags EXT2FS_ATTR((unused)))
++{
++	return ext2fs_write_dir_block3(fs, block, inbuf, flags);
++}
+ 
+ errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
+ 				 void *inbuf)
+ {
+-	return ext2fs_write_dir_block2(fs, block, inbuf, 0);
++	return ext2fs_write_dir_block3(fs, block, inbuf, 0);
+ }
+ 
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 7a1d966..4eb14d4 100644
+index 4eb14d4..3f640cf 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -68,6 +68,7 @@ typedef __u32		blk_t;
- typedef __u64		blk64_t;
- typedef __u32		dgrp_t;
- typedef __u32		ext2_off_t;
-+typedef __u64		ext2_off64_t;
- typedef __s64		e2_blkcnt_t;
- typedef __u32		ext2_dirhash_t;
+@@ -752,10 +752,14 @@ extern errcode_t ext2fs_read_dir_block(ext2_filsys fs, blk_t block,
+ 				       void *buf);
+ extern errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+ 					void *buf, int flags);
++extern errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
++					void *buf, int flags);
+ extern errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
+ 					void *buf);
+ extern errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
+ 					 void *buf, int flags);
++extern errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
++					 void *buf, int flags);
  
+ /* dirhash.c */
+ extern errcode_t ext2fs_dirhash(int version, const char *name, int len,
 
