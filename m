@@ -1,84 +1,102 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: mke2fs and lazy_itable_init
-Date: Fri, 09 May 2008 02:19:30 -0600
-Message-ID: <20080509081929.GD3627@webber.adilger.int>
-References: <20080508224847.GR3627@webber.adilger.int>
- <20080509021827.GA8871@mit.edu>
+From: Jean Delvare <khali@linux-fr.org>
+Subject: [PATCH] Fix misuses of bdevname()
+Date: Fri, 9 May 2008 13:20:14 +0200
+Message-ID: <20080509132014.3379ae2f@hyperion.delvare>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Stephen Tweedie <sct@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jens Axboe <axboe@kernel.dk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:33963 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751342AbYEIIT5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 May 2008 04:19:57 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m498JutR005053
-	for <linux-ext4@vger.kernel.org>; Fri, 9 May 2008 01:19:57 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K0L00801DJG0200@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 09 May 2008 01:19:56 -0700 (PDT)
-In-reply-to: <20080509021827.GA8871@mit.edu>
-Content-disposition: inline
+Received: from zone0.gcu-squad.org ([212.85.147.21]:40709 "EHLO
+	services.gcu-squad.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750937AbYEILU0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 May 2008 07:20:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 08, 2008  22:18 -0400, Theodore Ts'o wrote:
-> On Thu, May 08, 2008 at 04:48:47PM -0600, Andreas Dilger wrote:
-> > I just noticed lazy_itable_init in the mke2fs.8.in man page.  I think
-> > a warning needs to be added there that this is not currently safe to
-> > use, because the kernel does not yet do the background zeroing.  There
-> > is nothing in the man page to indicate that this is unsafe...
-> 
-> Yeah, I was hoping we would actually get this fixed before 1.41 was
-> released....  (i.e., implement the background zeroing).
+bdevname() fills the buffer that it is given as a parameter, so
+calling strcpy() or snprintf() on the returned value is redundant (and
+probably not guaranteed to work - I don't think strcpy and snprintf
+support overlapping buffers.)
 
-It would still be an issue for 2.6.24 and 2.6.25 kernels, so I think
-it at least deserves a warning until there is a specific kernel that
-can be referenced that has this functionality.
+Signed-off-by: Jean Delvare <khali@linux-fr.org>
+Cc: Stephen Tweedie <sct@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+---
+ block/blktrace.c     |    2 +-
+ block/compat_ioctl.c |    2 +-
+ fs/ext4/mballoc.c    |    6 ++----
+ fs/jbd2/journal.c    |    4 ++--
+ 4 files changed, 6 insertions(+), 8 deletions(-)
 
-> One of the
-> things I was thinking about was whether we could avoid needing to go
-> through the jbd layer when zeroing out an entire inode table block,
-> and then in the completion callback function when the block group was
-> completely initiaized, we could clear the ITABLE_UNINIT flag.
-> 
-> It doesn't need to go through the journal, because if we crash without
-> having the flag set, its not a big deal; the inode table will just not
-> be marked initialized.  The only thing which might require a little
-> care is if buffer head referencing part of the inode table which is
-> getting zero'ed out is in flight when an inode allocation happens, an
-> inode gets marked dirty, and fs/ext4/inode.c wants to write out an
-> inode table block that is in the middle of being zero'ed.  Given that
-> we've bypassed the jbd layer for efficiency's sake, something bad
-> could happy unless we protect it with some kind of lock.
-> 
-> Or we could just say that this initialization pass is relatively rare,
-> so do it the cheap cheasy way, even if the blocks end up going through
-> the journal.  The upside is that it should be pretty quick and easy to
-> code it this way.
+--- linux-2.6.26-rc1.orig/block/blktrace.c	2008-05-09 12:52:51.000000000 +0200
++++ linux-2.6.26-rc1/block/blktrace.c	2008-05-09 12:55:04.000000000 +0200
+@@ -476,7 +476,7 @@ int blk_trace_ioctl(struct block_device 
+ 
+ 	switch (cmd) {
+ 	case BLKTRACESETUP:
+-		strcpy(b, bdevname(bdev, b));
++		bdevname(bdev, b);
+ 		ret = blk_trace_setup(q, b, bdev->bd_dev, arg);
+ 		break;
+ 	case BLKTRACESTART:
+--- linux-2.6.26-rc1.orig/block/compat_ioctl.c	2008-05-09 12:52:51.000000000 +0200
++++ linux-2.6.26-rc1/block/compat_ioctl.c	2008-05-09 12:55:04.000000000 +0200
+@@ -555,7 +555,7 @@ static int compat_blk_trace_setup(struct
+ 	if (copy_from_user(&cbuts, arg, sizeof(cbuts)))
+ 		return -EFAULT;
+ 
+-	strcpy(b, bdevname(bdev, b));
++	bdevname(bdev, b);
+ 
+ 	buts = (struct blk_user_trace_setup) {
+ 		.act_mask = cbuts.act_mask,
+--- linux-2.6.26-rc1.orig/fs/ext4/mballoc.c	2008-05-09 12:52:51.000000000 +0200
++++ linux-2.6.26-rc1/fs/ext4/mballoc.c	2008-05-09 12:55:04.000000000 +0200
+@@ -2639,8 +2639,7 @@ static int ext4_mb_init_per_dev_proc(str
+ 	struct proc_dir_entry *proc;
+ 	char devname[64];
+ 
+-	snprintf(devname, sizeof(devname) - 1, "%s",
+-		bdevname(sb->s_bdev, devname));
++	bdevname(sb->s_bdev, devname);
+ 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
+ 
+ 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
+@@ -2674,8 +2673,7 @@ static int ext4_mb_destroy_per_dev_proc(
+ 	if (sbi->s_mb_proc == NULL)
+ 		return -EINVAL;
+ 
+-	snprintf(devname, sizeof(devname) - 1, "%s",
+-		bdevname(sb->s_bdev, devname));
++	bdevname(sb->s_bdev, devname);
+ 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
+ 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+--- linux-2.6.26-rc1.orig/fs/jbd2/journal.c	2008-05-09 12:52:51.000000000 +0200
++++ linux-2.6.26-rc1/fs/jbd2/journal.c	2008-05-09 12:55:04.000000000 +0200
+@@ -901,7 +901,7 @@ static void jbd2_stats_proc_init(journal
+ {
+ 	char name[BDEVNAME_SIZE];
+ 
+-	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
++	bdevname(journal->j_dev, name);
+ 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
+ 	if (journal->j_proc_entry) {
+ 		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
+@@ -915,7 +915,7 @@ static void jbd2_stats_proc_exit(journal
+ {
+ 	char name[BDEVNAME_SIZE];
+ 
+-	snprintf(name, sizeof(name) - 1, "%s", bdevname(journal->j_dev, name));
++	bdevname(journal->j_dev, name);
+ 	remove_proc_entry("info", journal->j_proc_entry);
+ 	remove_proc_entry("history", journal->j_proc_entry);
+ 	remove_proc_entry(name, proc_jbd2_stats);
 
-It is only a once-per-filesystem-lifetime operation, and while it is
-a fair amount of IO, it could be done efficient because of sequential IO.
-I believe that the unwritten extent code added a function "ext4_zero_blocks"
-or similar that maps the ZERO_PAGE into a bio and submits that for IO
-to zero out the extent.  This could be used for the inode tables also,
-avoiding the major problem of dirtying thousands of blocks in memory.
-
-The risk, as you write, is the locking, and the only locks I see on the
-inode table are the bh locks on the itable blocks in __ext4_get_inode_loc().
-We can't hold the per-group hashed spinlock for this IO.  We might consider
-adding an rw semaphore, and in the very common case there will only ever
-be readers on this lock.  If there is a zeroing happening then there can
-be a "trylock" operation and the entire group skipped to avoid blocking
-the caller for a long time.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+-- 
+Jean Delvare
