@@ -1,103 +1,38 @@
-From: akpm@linux-foundation.org
-Subject: - jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch removed from -mm tree
-Date: Fri, 09 May 2008 17:34:09 -0700
-Message-ID: <200805100045.m4A0j45l001106@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: e2fsprogs 1.40.9?
+Date: Sat, 10 May 2008 15:26:19 -0500
+Message-ID: <482604EB.8040002@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:59044 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754911AbYEJU0W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 10 May 2008 16:26:22 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m4AKQLaj023843
+	for <linux-ext4@vger.kernel.org>; Sat, 10 May 2008 16:26:21 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4AKQLma006137
+	for <linux-ext4@vger.kernel.org>; Sat, 10 May 2008 16:26:21 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4AKQJcu019955
+	for <linux-ext4@vger.kernel.org>; Sat, 10 May 2008 16:26:20 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+So I see e2fsprogs-1.40.9 at:
 
-The patch titled
-     jbd: tidy up revoke cache initialisation and destruction
-has been removed from the -mm tree.  Its filename was
-     jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+http://sourceforge.net/project/showfiles.php?group_id=2406
 
-This patch was dropped because it had testing failures
+but I don't see it advertised on e2fsprogs.sf.net, or tagged in git.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+Oversight?
 
-------------------------------------------------------
-Subject: jbd: tidy up revoke cache initialisation and destruction
-From: "Duane Griffin" <duaneg@dghda.com>
+Does 1.40.9 really exist?  :)
 
-Make revoke cache destruction safe to call if initialisation fails partially
-or entirely.  This allows it to be used to cleanup in the case of
-initialisation failure, simplifying that code slightly.
+Thanks,
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/revoke.c |   36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
-
-diff -puN fs/jbd/revoke.c~jbd-tidy-up-revoke-cache-initialisation-and-destruction fs/jbd/revoke.c
---- a/fs/jbd/revoke.c~jbd-tidy-up-revoke-cache-initialisation-and-destruction
-+++ a/fs/jbd/revoke.c
-@@ -166,33 +166,41 @@ static struct jbd_revoke_record_s *find_
- 	return NULL;
- }
- 
-+void journal_destroy_revoke_caches(void)
-+{
-+	if (revoke_record_cache) {
-+		kmem_cache_destroy(revoke_record_cache);
-+		revoke_record_cache = NULL;
-+	}
-+	if (revoke_table_cache) {
-+		kmem_cache_destroy(revoke_table_cache);
-+		revoke_table_cache = NULL;
-+	}
-+}
-+
- int __init journal_init_revoke_caches(void)
- {
-+	J_ASSERT(!revoke_record_cache);
-+	J_ASSERT(!revoke_table_cache);
-+
- 	revoke_record_cache = kmem_cache_create("revoke_record",
- 					   sizeof(struct jbd_revoke_record_s),
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
- 	if (!revoke_record_cache)
--		return -ENOMEM;
-+		goto record_cache_failure;
- 
- 	revoke_table_cache = kmem_cache_create("revoke_table",
- 					   sizeof(struct jbd_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (!revoke_table_cache) {
--		kmem_cache_destroy(revoke_record_cache);
--		revoke_record_cache = NULL;
--		return -ENOMEM;
--	}
--	return 0;
--}
-+	if (!revoke_table_cache)
-+		goto table_cache_failure;
- 
--void journal_destroy_revoke_caches(void)
--{
--	kmem_cache_destroy(revoke_record_cache);
--	revoke_record_cache = NULL;
--	kmem_cache_destroy(revoke_table_cache);
--	revoke_table_cache = NULL;
-+table_cache_failure:
-+	journal_destroy_revoke_caches();
-+record_cache_failure:
-+	return -ENOMEM;
- }
- 
- static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
-jbd-replace-potentially-false-assertion-with-if-block.patch
-
+-Eric
