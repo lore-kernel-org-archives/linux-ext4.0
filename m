@@ -1,38 +1,30 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC PATCH 7/9][e2fsprogs] Add new blk64_t handling inline
-	functions
-Date: Mon, 12 May 2008 10:49:03 -0400
-Message-ID: <20080512144903.GE7029@mit.edu>
-References: <20080509163928.15484.22146.stgit@gara> <20080509164012.15484.60952.stgit@gara>
+From: Martin Michlmayr <tbm@cyrius.com>
+Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
+Date: Mon, 12 May 2008 16:58:36 +0200
+Message-ID: <20080512145836.GE15866@deprecation.cyrius.com>
+References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
+	linux-mips@linux-mips.org, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:45063 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751897AbYELOtE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 10:49:04 -0400
+Received: from sorrow.cyrius.com ([65.19.161.204]:2966 "EHLO sorrow.cyrius.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752208AbYELO6k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2008 10:58:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20080509164012.15484.60952.stgit@gara>
+In-Reply-To: <20080512143426.GB7029@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 09, 2008 at 11:40:12AM -0500, Jose R. Santos wrote:
-> From: Jose R. Santos <jrs@us.ibm.com>
-> 
-> Add new blk64_t handling inline functions
-> 
-> Introduce inline fuctions to handle blk64_t and low/high values in
-> super blocks and inodes.
+* Theodore Tso <tytso@mit.edu> [2008-05-12 10:34]:
+> What is the Linux-mips' team preference for feeding this patch to
+> Linus?  This technically isn't a regression, since it was broken in
+> 2.6.25, but it would be nice to get this to Linus sooner rather than
 
-If you do this patch first, then you can address some of the FIXME's
-earlier in the patch series...
+Actually, it built just fine with 2.6.25.
 
-And as I mentioned, we probably want to avoid making them INLINE
-functions.  It's always easier to inline a function later if we find
-that it shows up on profiles for performance reasons, but if we find
-out we need to make changes and it is inline already, it's much harder
-to deal with the backwards compatibility issues.
-
-						- Ted
+-- 
+Martin Michlmayr
+http://www.cyrius.com/
