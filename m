@@ -1,91 +1,105 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH 2/3][v2] jbd: tidy up revoke cache initialisation and destruction
-Date: Mon, 12 May 2008 17:57:40 +0100
-Message-ID: <1210611461-8526-3-git-send-email-duaneg@dghda.com>
-References: <1210611461-8526-1-git-send-email-duaneg@dghda.com>
- <1210611461-8526-2-git-send-email-duaneg@dghda.com>
-Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com, sct@redhat.com,
-	linux-ext4@vger.kernel.org, Duane Griffin <duaneg@dghda.com>
-To: akpm@linux-foundation.org
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Soft lockups in mballoc code
+Date: Mon, 12 May 2008 13:21:35 -0400
+Message-ID: <25037.1210612895@alphaville.zko.hp.com>
+Reply-To: nicholas.dokos@hp.com
+Cc: nicholas.dokos@hp.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:1949 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751588AbYELQ5t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2008 12:57:49 -0400
-In-Reply-To: <1210611461-8526-2-git-send-email-duaneg@dghda.com>
+Received: from g5t0008.atlanta.hp.com ([15.192.0.45]:32506 "EHLO
+	g5t0008.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754666AbYELRVV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 13:21:21 -0400
+Received: from smtp2.fc.hp.com (smtp.cnd.hp.com [15.11.136.114])
+	by g5t0008.atlanta.hp.com (Postfix) with ESMTP id 169AC24825
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 17:21:20 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make revocation cache destruction safe to call if initialisation fails
-partially or entirely. This allows it to be used to cleanup in the case of
-initialisation failure, simplifying that code slightly.
+I keep getting soft lockups in mballoc code, running fsstress.
+I'm running a 2.6.25.2 kernel, with 1.40.8 e2fsprogs. Here
+is sample console output on a 2-cpu Opteron box with a 2Tb filesystem -
+the two stack traces keep repeating every minute or so and the only
+way to get out is to reset the box:
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
----
- fs/jbd/revoke.c |   36 +++++++++++++++++++++++-------------
- 1 files changed, 23 insertions(+), 13 deletions(-)
+---------------------------------------------------------------------------
+[root@dl385 fsstress]# /home/nick/src/fsstress/fsstress -d /mnt2/fsstress -l 10 -n 100 -p 20
+seed = 1211090909
+BUG: soft lockup - CPU#1 stuck for 61s! [fsstress:3974]
+CPU 1:
+Modules linked in: qla2xxx ext4dev jbd2 crc16 ipv6 autofs4 hidp rfcomm l2cap bluetooth sunrpc cpufreq_ondemand dm_mirror dm_multipath dm_mod sbs sbshc battery acpi_memhotplug ac parport_pc lp parport sg floppy ide_cd_mod serio_raw cdrom button tg3 amd_rng k8temp shpchp i2c_amd756 pcspkr hwmon i2c_core scsi_transport_fc mptspi mptscsih scsi_transport_spi mptbase cciss sd_mod scsi_mod ext3 jbd ehci_hcd ohci_hcd uhci_hcd [last unloaded: qla2xxx]
+Pid: 3974, comm: fsstress Not tainted 2.6.25.2 #1
+RIP: 0010:[<ffffffff88412790>]  [<ffffffff88412790>] :ext4dev:ext4_mb_new_blocks+0x7bd/0x1618
+RSP: 0018:ffff8101f304b898  EFLAGS: 00000202
+RAX: 00000000ffffffff RBX: ffff8101f4c86918 RCX: 0000000000000007
+RDX: ffff8100f31d35c0 RSI: 00000000000029fd RDI: ffffe200034f6548
+RBP: 00000000000014fe R08: 0000000000000000 R09: ffff8101f4cbd280
+R10: 0000000000000001 R11: ffffffff884174c0 R12: 0000000000000f00
+R13: ffff8100f2de8b58 R14: ffffffff883feadd R15: ffff8101f4c622b8
+FS:  00007f78917726f0(0000) GS:ffff8101ff6b3f40(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000003dca80b9a0 CR3: 00000001f3036000 CR4: 00000000000006e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
 
-diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-index 8ff5a7b..c7bd649 100644
---- a/fs/jbd/revoke.c
-+++ b/fs/jbd/revoke.c
-@@ -166,33 +166,43 @@ static struct jbd_revoke_record_s *find_revoke_record(journal_t *journal,
- 	return NULL;
- }
- 
-+void journal_destroy_revoke_caches(void)
-+{
-+	if (revoke_record_cache) {
-+		kmem_cache_destroy(revoke_record_cache);
-+		revoke_record_cache = NULL;
-+	}
-+	if (revoke_table_cache) {
-+		kmem_cache_destroy(revoke_table_cache);
-+		revoke_table_cache = NULL;
-+	}
-+}
-+
- int __init journal_init_revoke_caches(void)
- {
-+	J_ASSERT(!revoke_record_cache);
-+	J_ASSERT(!revoke_table_cache);
-+
- 	revoke_record_cache = kmem_cache_create("revoke_record",
- 					   sizeof(struct jbd_revoke_record_s),
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
- 	if (!revoke_record_cache)
--		return -ENOMEM;
-+		goto record_cache_failure;
- 
- 	revoke_table_cache = kmem_cache_create("revoke_table",
- 					   sizeof(struct jbd_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (!revoke_table_cache) {
--		kmem_cache_destroy(revoke_record_cache);
--		revoke_record_cache = NULL;
--		return -ENOMEM;
--	}
-+	if (!revoke_table_cache)
-+		goto table_cache_failure;
-+
- 	return 0;
--}
- 
--void journal_destroy_revoke_caches(void)
--{
--	kmem_cache_destroy(revoke_record_cache);
--	revoke_record_cache = NULL;
--	kmem_cache_destroy(revoke_table_cache);
--	revoke_table_cache = NULL;
-+table_cache_failure:
-+	journal_destroy_revoke_caches();
-+record_cache_failure:
-+	return -ENOMEM;
- }
- 
- static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
--- 
-1.5.3.7
+Call Trace:
+ [<ffffffff8841274d>] ? :ext4dev:ext4_mb_new_blocks+0x77a/0x1618
+ [<ffffffff8022779f>] ? set_next_entity+0x23/0x73
+ [<ffffffff8026000c>] ? compat_irq_chip_set_default_handler+0x5/0x11
+ [<ffffffff883fbd99>] ? :ext4dev:ext4_new_blocks+0x6a/0x88
+ [<ffffffff883fefb5>] ? :ext4dev:ext4_get_blocks_handle+0x355/0x84f
+ [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
+ [<ffffffff802aa74d>] ? __find_get_block+0x148/0x158
+ [<ffffffff883ff5c0>] ? :ext4dev:ext4_get_blocks_wrap+0x111/0x135
+ [<ffffffff883ff82d>] ? :ext4dev:ext4_get_block+0xba/0xf9
+ [<ffffffff802ab509>] ? __block_prepare_write+0x19d/0x36c
+ [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
+ [<ffffffff802ab775>] ? block_write_begin+0x78/0xc9
+ [<ffffffff88400d67>] ? :ext4dev:ext4_write_begin+0xeb/0x1b1
+ [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
+ [<ffffffff80292ab5>] ? __page_symlink+0x44/0xf7
+ [<ffffffff8840491d>] ? :ext4dev:ext4_symlink+0x136/0x1db
+ [<ffffffff80293915>] ? vfs_symlink+0xbf/0x12e
+ [<ffffffff80295d27>] ? sys_symlinkat+0x87/0xd4
+ [<ffffffff8025cbdf>] ? audit_syscall_exit+0x2e4/0x303
+ [<ffffffff8020bdae>] ? tracesys+0x71/0xe1
+ [<ffffffff8020be19>] ? tracesys+0xdc/0xe1
 
+BUG: soft lockup - CPU#0 stuck for 61s! [fsstress:3984]
+CPU 0:
+Modules linked in: qla2xxx ext4dev jbd2 crc16 ipv6 autofs4 hidp rfcomm l2cap bluetooth sunrpc cpufreq_ondemand dm_mirror dm_multipath dm_mod sbs sbshc battery acpi_memhotplug ac parport_pc lp parport sg floppy ide_cd_mod serio_raw cdrom button tg3 amd_rng k8temp shpchp i2c_amd756 pcspkr hwmon i2c_core scsi_transport_fc mptspi mptscsih scsi_transport_spi mptbase cciss sd_mod scsi_mod ext3 jbd ehci_hcd ohci_hcd uhci_hcd [last unloaded: qla2xxx]
+Pid: 3984, comm: fsstress Not tainted 2.6.25.2 #1
+RIP: 0010:[<ffffffff884145e0>]  [<ffffffff884145e0>] :ext4dev:ext4_mb_discard_inode_preallocations+0x1c6/0x27b
+RSP: 0018:ffff8101f3521e18  EFLAGS: 00000202
+RAX: 00000000ffffffff RBX: ffff8100f2def470 RCX: 0000000000000007
+RDX: ffff8100f31d35c0 RSI: 00000000000014fe RDI: ffff8100f2dbd470
+RBP: 0000000000000000 R08: ffff81000900ec80 R09: 0000000000001000
+R10: ffff8100f2debae8 R11: ffff8101fc9d8000 R12: ffff8101f4c8bcc0
+R13: 0000000000001000 R14: 0000000000000000 R15: 000000000a7f0000
+FS:  00007f78917726f0(0000) GS:ffffffff805b9000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000003dca8c2200 CR3: 00000001f4023000 CR4: 00000000000006e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+
+Call Trace:
+ [<ffffffff88414591>] :ext4dev:ext4_mb_discard_inode_preallocations+0x177/0x27b
+ [<ffffffff883fbe50>] :ext4dev:ext4_discard_reservation+0x24/0x68
+ [<ffffffff883fc872>] :ext4dev:ext4_release_file+0x2d/0x6f
+ [<ffffffff8028d243>] __fput+0xb1/0x17e
+ [<ffffffff8028ab77>] filp_close+0x5d/0x65
+ [<ffffffff8028bcee>] sys_close+0x7e/0xb7
+ [<ffffffff8020be19>] tracesys+0xdc/0xe1
+
+
+
+...
+
+---------------------------------------------------------------------------
+
+Known bug? Is there a fix somewhere?
+
+Let me know if more information is needed.
+
+Thanks very much,
+Nick
