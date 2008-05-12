@@ -1,105 +1,75 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Soft lockups in mballoc code
-Date: Mon, 12 May 2008 13:21:35 -0400
-Message-ID: <25037.1210612895@alphaville.zko.hp.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com
-To: linux-ext4@vger.kernel.org
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC PATCH 8/9][e2fsprogs] Add 64-bit closefs interface.
+Date: Mon, 12 May 2008 12:24:43 -0500
+Message-ID: <20080512122443.7ef72b19@gara>
+References: <20080509163928.15484.22146.stgit@gara>
+	<20080509164018.15484.53983.stgit@gara>
+	<20080512150550.GF7029@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g5t0008.atlanta.hp.com ([15.192.0.45]:32506 "EHLO
-	g5t0008.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754666AbYELRVV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 13:21:21 -0400
-Received: from smtp2.fc.hp.com (smtp.cnd.hp.com [15.11.136.114])
-	by g5t0008.atlanta.hp.com (Postfix) with ESMTP id 169AC24825
-	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 17:21:20 +0000 (UTC)
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:38635 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753916AbYELRXs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2008 13:23:48 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4CHNlbA019690
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 13:23:48 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4CHNjls124194
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 13:23:45 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4CHNjWC022709
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 13:23:45 -0400
+In-Reply-To: <20080512150550.GF7029@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I keep getting soft lockups in mballoc code, running fsstress.
-I'm running a 2.6.25.2 kernel, with 1.40.8 e2fsprogs. Here
-is sample console output on a 2-cpu Opteron box with a 2Tb filesystem -
-the two stack traces keep repeating every minute or so and the only
-way to get out is to reset the box:
+On Mon, 12 May 2008 11:05:50 -0400
+Theodore Tso <tytso@mit.edu> wrote:
 
----------------------------------------------------------------------------
-[root@dl385 fsstress]# /home/nick/src/fsstress/fsstress -d /mnt2/fsstress -l 10 -n 100 -p 20
-seed = 1211090909
-BUG: soft lockup - CPU#1 stuck for 61s! [fsstress:3974]
-CPU 1:
-Modules linked in: qla2xxx ext4dev jbd2 crc16 ipv6 autofs4 hidp rfcomm l2cap bluetooth sunrpc cpufreq_ondemand dm_mirror dm_multipath dm_mod sbs sbshc battery acpi_memhotplug ac parport_pc lp parport sg floppy ide_cd_mod serio_raw cdrom button tg3 amd_rng k8temp shpchp i2c_amd756 pcspkr hwmon i2c_core scsi_transport_fc mptspi mptscsih scsi_transport_spi mptbase cciss sd_mod scsi_mod ext3 jbd ehci_hcd ohci_hcd uhci_hcd [last unloaded: qla2xxx]
-Pid: 3974, comm: fsstress Not tainted 2.6.25.2 #1
-RIP: 0010:[<ffffffff88412790>]  [<ffffffff88412790>] :ext4dev:ext4_mb_new_blocks+0x7bd/0x1618
-RSP: 0018:ffff8101f304b898  EFLAGS: 00000202
-RAX: 00000000ffffffff RBX: ffff8101f4c86918 RCX: 0000000000000007
-RDX: ffff8100f31d35c0 RSI: 00000000000029fd RDI: ffffe200034f6548
-RBP: 00000000000014fe R08: 0000000000000000 R09: ffff8101f4cbd280
-R10: 0000000000000001 R11: ffffffff884174c0 R12: 0000000000000f00
-R13: ffff8100f2de8b58 R14: ffffffff883feadd R15: ffff8101f4c622b8
-FS:  00007f78917726f0(0000) GS:ffff8101ff6b3f40(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000003dca80b9a0 CR3: 00000001f3036000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> On Fri, May 09, 2008 at 11:40:19AM -0500, Jose R. Santos wrote:
+> > From: Jose R. Santos <jrs@us.ibm.com>
+> > 
+> > Add 64-bit closefs interface.
+> > 
+> > Add new ext2fs_super_and_bgd_loc2() that returns blk64_t pointers.
+> > The function now returns the number of blocks used by super block and
+> > group descriptors since with flex_bg, it can no longer be assumed that
+> > bitmaps and inode tables still resided within the block group.
+> 
+> This change makes me nervous, because (a) I need to assure myself that
+> ext2fs_super_and_bgd_loc() is going to always do the right thing, and
+> (b) the changes to the callers of ext2fs_super_and_bgd_loc2() aren't
+> also described.
 
-Call Trace:
- [<ffffffff8841274d>] ? :ext4dev:ext4_mb_new_blocks+0x77a/0x1618
- [<ffffffff8022779f>] ? set_next_entity+0x23/0x73
- [<ffffffff8026000c>] ? compat_irq_chip_set_default_handler+0x5/0x11
- [<ffffffff883fbd99>] ? :ext4dev:ext4_new_blocks+0x6a/0x88
- [<ffffffff883fefb5>] ? :ext4dev:ext4_get_blocks_handle+0x355/0x84f
- [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
- [<ffffffff802aa74d>] ? __find_get_block+0x148/0x158
- [<ffffffff883ff5c0>] ? :ext4dev:ext4_get_blocks_wrap+0x111/0x135
- [<ffffffff883ff82d>] ? :ext4dev:ext4_get_block+0xba/0xf9
- [<ffffffff802ab509>] ? __block_prepare_write+0x19d/0x36c
- [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
- [<ffffffff802ab775>] ? block_write_begin+0x78/0xc9
- [<ffffffff88400d67>] ? :ext4dev:ext4_write_begin+0xeb/0x1b1
- [<ffffffff883ff773>] ? :ext4dev:ext4_get_block+0x0/0xf9
- [<ffffffff80292ab5>] ? __page_symlink+0x44/0xf7
- [<ffffffff8840491d>] ? :ext4dev:ext4_symlink+0x136/0x1db
- [<ffffffff80293915>] ? vfs_symlink+0xbf/0x12e
- [<ffffffff80295d27>] ? sys_symlinkat+0x87/0xd4
- [<ffffffff8025cbdf>] ? audit_syscall_exit+0x2e4/0x303
- [<ffffffff8020bdae>] ? tracesys+0x71/0xe1
- [<ffffffff8020be19>] ? tracesys+0xdc/0xe1
+I thought that we concluded that ext2fs_super_and_bgd_loc() would not
+do the right thing which is the reason that ext2fs_super_and_bgd_loc2()
+returns just the number of groups used by super block and group
+descriptors.  Right now, ext2fs_super_and_bgd_loc() works the same as
+it has before, and the new ext2fs_super_and_bgd_loc2() would do the
+right thing here by not assuming inode tables and bitmaps are located
+in the block group.
 
-BUG: soft lockup - CPU#0 stuck for 61s! [fsstress:3984]
-CPU 0:
-Modules linked in: qla2xxx ext4dev jbd2 crc16 ipv6 autofs4 hidp rfcomm l2cap bluetooth sunrpc cpufreq_ondemand dm_mirror dm_multipath dm_mod sbs sbshc battery acpi_memhotplug ac parport_pc lp parport sg floppy ide_cd_mod serio_raw cdrom button tg3 amd_rng k8temp shpchp i2c_amd756 pcspkr hwmon i2c_core scsi_transport_fc mptspi mptscsih scsi_transport_spi mptbase cciss sd_mod scsi_mod ext3 jbd ehci_hcd ohci_hcd uhci_hcd [last unloaded: qla2xxx]
-Pid: 3984, comm: fsstress Not tainted 2.6.25.2 #1
-RIP: 0010:[<ffffffff884145e0>]  [<ffffffff884145e0>] :ext4dev:ext4_mb_discard_inode_preallocations+0x1c6/0x27b
-RSP: 0018:ffff8101f3521e18  EFLAGS: 00000202
-RAX: 00000000ffffffff RBX: ffff8100f2def470 RCX: 0000000000000007
-RDX: ffff8100f31d35c0 RSI: 00000000000014fe RDI: ffff8100f2dbd470
-RBP: 0000000000000000 R08: ffff81000900ec80 R09: 0000000000001000
-R10: ffff8100f2debae8 R11: ffff8101fc9d8000 R12: ffff8101f4c8bcc0
-R13: 0000000000001000 R14: 0000000000000000 R15: 000000000a7f0000
-FS:  00007f78917726f0(0000) GS:ffffffff805b9000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000003dca8c2200 CR3: 00000001f4023000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> So this requires more thought.  One change I would make is to return
+> the number of blocks via a pointer rather than through a straight
+> return value.  And also, if I recall correctly, nothing is actually
+> using the ret_meta_bg pointer, so we might be able to drop that in the
+> _2 version. of the interface.
 
-Call Trace:
- [<ffffffff88414591>] :ext4dev:ext4_mb_discard_inode_preallocations+0x177/0x27b
- [<ffffffff883fbe50>] :ext4dev:ext4_discard_reservation+0x24/0x68
- [<ffffffff883fc872>] :ext4dev:ext4_release_file+0x2d/0x6f
- [<ffffffff8028d243>] __fput+0xb1/0x17e
- [<ffffffff8028ab77>] filp_close+0x5d/0x65
- [<ffffffff8028bcee>] sys_close+0x7e/0xb7
- [<ffffffff8020be19>] tracesys+0xdc/0xe1
+I will make these two changes.
+
+> We should probably include in this patch series the callers of
+> ext2fs_super_and_bgd_loc() and assure ourselves that the new interface
+> actually works correctly and is clean for the users before we finalize
+> the interface change.
+
+Fair enough.  I'll add a patch for this.
+ 
+> 						- Ted
 
 
-
-...
-
----------------------------------------------------------------------------
-
-Known bug? Is there a fix somewhere?
-
-Let me know if more information is needed.
-
-Thanks very much,
-Nick
+-JRS
