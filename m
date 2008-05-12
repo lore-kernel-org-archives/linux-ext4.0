@@ -1,39 +1,34 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Mon, 12 May 2008 13:35:38 -0400
-Message-ID: <20080512173537.GG7029@mit.edu>
-References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <20080512145836.GE15866@deprecation.cyrius.com> <90edad820805120814l7ee3f5d3h7f9939854bccf0@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: barriers off by default?
+Date: Mon, 12 May 2008 12:53:01 -0500
+Message-ID: <482883FD.8060001@redhat.com>
+References: <482868A5.1000102@redhat.com> <72c5d9a0805121030y709de9cehc01df8aeb5b1b8d3@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Martin Michlmayr <tbm@cyrius.com>, linux-mips@linux-mips.org,
-	linux-ext4@vger.kernel.org
-To: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric A <erpo41@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:45086 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753996AbYELRfw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 13:35:52 -0400
-Content-Disposition: inline
-In-Reply-To: <90edad820805120814l7ee3f5d3h7f9939854bccf0@mail.gmail.com>
+Received: from mx1.redhat.com ([66.187.233.31]:55195 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753384AbYELRxE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2008 13:53:04 -0400
+In-Reply-To: <72c5d9a0805121030y709de9cehc01df8aeb5b1b8d3@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 12, 2008 at 07:14:23PM +0400, Dmitri Vorobiev wrote:
+Eric A wrote:
+> On Mon, May 12, 2008 at 9:56 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+>> As I look at my shiny new 500G disks with 32MB of cache, I find myself
+>>  wondering why the default for ext3 and ext4 is to have barriers disabled.
+>>
+>>  This is a pretty dangerous default w.r.t. filesystem integrity on power
+>>  loss, no?
 > 
-> It was April 29th 2008 when commit
-> 093a088b76352e0a6fdca84eb78b3aa65fbe6dd1 where the ext4_ext_zeroout()
-> routine was introduced (it is this routine that makes use of the
-> ZERO_PAGE macro expanding to an expression that contains a reference
-> to the empty_zero_page global symbol). After this commit, the patches
-> similar to the one found in this thread were made for several
-> architectures. Apparently, MIPS has been overlooked.
-> 
+> From reading the documentation, I was under the impression that write
+> barriers don't always do what they're supposed to do.
 
-Yeah, I guess no one is currently doing test builds of linux-next on
-the mips architecture.  It's likely Stephen Rothwell doesn't have
-access to one.
+Which documentation?
 
-(The patch itself has been around for a while, both in the -mm tree,
-the ext4 patches, and in Linux-next.)
-
-						- Ted
+Thanks,
+-Eric
