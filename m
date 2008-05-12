@@ -1,55 +1,41 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC PATCH 8/9][e2fsprogs] Add 64-bit closefs interface.
-Date: Mon, 12 May 2008 15:29:35 -0400
-Message-ID: <20080512192935.GJ7029@mit.edu>
-References: <20080509163928.15484.22146.stgit@gara> <20080509164018.15484.53983.stgit@gara> <20080512150550.GF7029@mit.edu> <20080512122443.7ef72b19@gara>
+From: "Dmitri Vorobiev" <dmitri.vorobiev@gmail.com>
+Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
+Date: Mon, 12 May 2008 23:37:46 +0400
+Message-ID: <90edad820805121237r7f4b6e16g135df49cfe27499a@mail.gmail.com>
+References: <20080512130604.GA15008@deprecation.cyrius.com>
+	 <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com>
+	 <20080512143426.GB7029@mit.edu>
+	 <20080512145836.GE15866@deprecation.cyrius.com>
+	 <90edad820805120814l7ee3f5d3h7f9939854bccf0@mail.gmail.com>
+	 <20080512173537.GG7029@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Martin Michlmayr" <tbm@cyrius.com>, linux-mips@linux-mips.org,
+	linux-ext4@vger.kernel.org, sfr@canb.auug.org.au
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:42124 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751226AbYELT3r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 15:29:47 -0400
+Received: from yw-out-2324.google.com ([74.125.46.30]:19345 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754165AbYELTiB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 15:38:01 -0400
+Received: by yw-out-2324.google.com with SMTP id 9so1385632ywe.1
+        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 12:37:47 -0700 (PDT)
+In-Reply-To: <20080512173537.GG7029@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <20080512122443.7ef72b19@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 12, 2008 at 12:24:43PM -0500, Jose R. Santos wrote:
-> 
-> I thought that we concluded that ext2fs_super_and_bgd_loc() would not
-> do the right thing which is the reason that ext2fs_super_and_bgd_loc2()
-> returns just the number of groups used by super block and group
-> descriptors.  Right now, ext2fs_super_and_bgd_loc() works the same as
-> it has before, and the new ext2fs_super_and_bgd_loc2() would do the
-> right thing here by not assuming inode tables and bitmaps are located
-> in the block group.
-> 
+>
+>  Yeah, I guess no one is currently doing test builds of linux-next on
+>  the mips architecture.  It's likely Stephen Rothwell doesn't have
+>  access to one.
+>
 
-I dealt with the situation by having ext2fs_initialize back out the
-inode table accounting, which worked around the problem, and indeed
-that's the only place where the numblocks value is even used.  So my
-point is that if you make the change in ext2fs_super_and_bgd_loc2(),
-it will have ripple effects to at least ext2fs_initialize() --- it
-would not be safe to just change ext2fs_super_and_bgd_loc to
-ext2fs_super_and_bgd_loc2, since you're making semantic change to what
-the function actually returns.  
+I do that sometimes. Obviously, not frequently enough. Sorry.
 
-So by not including the change in ext2fs_initialize(), and because
-ext2fs_initialize() doesn't call ext2fs_super_and_bgd_loc2() directly,
-but indirectly through ext2fs_reserve_super_and_bgd(), we're setting
-ourselves up to forget to make this change, and thus introduce a bug.
-This is *especially* true since ext2fs_reserve_super_and_bgd() would
-apparently not need to be changed since it doesn't return a blk_t ---
-so it would be a case where the function wouldn't change, but its
-behaviour (via its return code) would be changing, which is dangerous.
+If Stephen wants, I, in principle, could set up a MIPS toolchain for
+him, similar to the one I use myself in my small test farm. Or assist
+in doing that somehow. Stephen, what do you think of that?
 
-Practicing defensive programming is a good thing here, which is why I
-suggested making it return numblocks via a pointer, and then very
-carefully *documenting* what the new parameter contains, and then
-documenting the change in ext2fs_reserve_super_and_bgd2(), and then in
-turn to ext2fs_initialize(), is just a much safer way to go.  
-
-     			     	       	    - Ted
+Dmitri
