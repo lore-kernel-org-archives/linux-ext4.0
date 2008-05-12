@@ -1,35 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC PATCH 4/9][e2fsprogs] Add 64-bit alloc_stats interface.
-Date: Mon, 12 May 2008 10:43:53 -0400
-Message-ID: <20080512144353.GC7029@mit.edu>
-References: <20080509163928.15484.22146.stgit@gara> <20080509163952.15484.56168.stgit@gara>
+From: "Dmitri Vorobiev" <dmitri.vorobiev@gmail.com>
+Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
+Date: Mon, 12 May 2008 18:46:21 +0400
+Message-ID: <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com>
+References: <20080512130604.GA15008@deprecation.cyrius.com>
+	 <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com>
+	 <20080512143426.GB7029@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Martin Michlmayr" <tbm@cyrius.com>, linux-mips@linux-mips.org,
+	linux-ext4@vger.kernel.org, ralf@linux-mips.org
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:45044 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751309AbYELOoR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 10:44:17 -0400
+Received: from gv-out-0910.google.com ([216.239.58.188]:65118 "EHLO
+	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201AbYELOqX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 10:46:23 -0400
+Received: by gv-out-0910.google.com with SMTP id e6so275362gvc.37
+        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 07:46:21 -0700 (PDT)
+In-Reply-To: <20080512143426.GB7029@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <20080509163952.15484.56168.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 09, 2008 at 11:39:52AM -0500, Jose R. Santos wrote:
-> +	/*FIXME: Not blk64_t clean */
+2008/5/12 Theodore Tso <tytso@mit.edu>:
+> On Mon, May 12, 2008 at 05:54:24PM +0400, Dmitri Vorobiev wrote:
+>  >
+>  > Yep. The export is missing. Attached patch was build-tested for a
+>  > Malta config with ext4 enabled as a module.
+>
+>  Thanks, Dmitri!
+>
+>  What is the Linux-mips' team preference for feeding this patch to
+>  Linus?  This technically isn't a regression, since it was broken in
+>  2.6.25, but it would be nice to get this to Linus sooner rather than
+>  later.  Should I push it with a batch of ext4 fixes, or do you want to
+>  push it via the mips tree?  (Davem asked me to push the sparc export
+>  via ext4, while the ppc arch, it went via the ppc tree.  So whichever
+>  is your preference; I'm easy.  :-)
+>
+>                                             - Ted
 
-Suggestion, please use "FIXME-64" instead of fixme so it's easier to
-clean this up later.
+Hi Ted,
 
->  	int	group = ext2fs_group_of_blk(fs, blk);
+Normally I push my patches via the mips tree, and now I'm Cc:ing Ralf for that.
 
-Might as well fix this in the initial patch series, earlier --- and
-let's *not* make it be an inline function.  Yeah, we call
-ext2fs_group_of_blk and ext2fs_group_of_ino a fair amount, but #1, on
-32-bit machines, the 64 bit arithmemtic makes the function bigger, and
-#2, modern CPU's have greatly reduced the cost of procedure
-activations.
+Hopefully Ralf will react quickly. :)
 
-						- Ted
+Dmitri
