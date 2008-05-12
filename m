@@ -1,75 +1,53 @@
-From: Tiger Yang <tiger.yang@oracle.com>
-Subject: [PATCH] ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
-Date: Mon, 12 May 2008 11:24:40 +0800
-Message-ID: <4827B878.50903@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] JBD:need hold j_state_lock to updates to transaction
+	t_state to T_COMMIT
+Date: Mon, 12 May 2008 11:34:27 +0200
+Message-ID: <20080512093427.GA15856@duck.suse.cz>
+References: <1209166706.6040.20.camel@localhost.localdomain> <20080428122626.GC17054@duck.suse.cz> <1209402694.23575.5.camel@badari-desktop> <20080428180932.GI17054@duck.suse.cz> <1209409764.11872.6.camel@localhost.localdomain> <20080429124321.GD1987@duck.suse.cz> <1209654981.27240.19.camel@badari-desktop> <20080505170636.GK25722@duck.suse.cz> <1210372072.3639.52.camel@localhost.localdomain> <1210372783.3639.63.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------090404060705000207050604"
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:20896 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754906AbYELD24 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 May 2008 23:28:56 -0400
+Received: from styx.suse.cz ([82.119.242.94]:47307 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756777AbYELJe2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2008 05:34:28 -0400
+Content-Disposition: inline
+In-Reply-To: <1210372783.3639.63.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------090404060705000207050604
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri 09-05-08 15:39:43, Mingming Cao wrote:
+> Updating the current transaction's t_state is being protected by j_state_lock.
+> We need to do the same when updating the t_state to T_COMMIT.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+  Thanks for the fix. You can add
+Acked-by: Jan Kara <jack@suse.cz>
+(and also to the JBD2 patch)
 
-Hi,
-I met a bug when I try to replace a xattr entry in ibody with a big size 
-value. But in ibody there has no space for the new value. So it should 
-set new xattr entry in block and remove the old xattr entry in ibody.
-
-Best regards,
-tiger
-
---------------090404060705000207050604
-Content-Type: text/x-patch;
- name="xattr.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="xattr.patch"
-
-This fix the uninitialized bs when we try to replace a xattr entry in ibody with the new value which require more than free space.
-
-Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
-
-diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-index a6ea4d6..e1af9bd 100644
---- a/fs/ext3/xattr.c
-+++ b/fs/ext3/xattr.c
-@@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 			i.value = NULL;
- 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
- 		} else if (error == -ENOSPC) {
-+			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
-+				error = ext3_xattr_block_find(inode, &i, &bs);
-+				if (error)
-+					goto cleanup;
-+			}
- 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
- 			if (error)
- 				goto cleanup;
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index d796213..182a7a2 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1011,6 +1011,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 			i.value = NULL;
- 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
- 		} else if (error == -ENOSPC) {
-+			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
-+				error = ext4_xattr_block_find(inode, &i, &bs);
-+				if (error)
-+					goto cleanup;
-+			}
- 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
- 			if (error)
- 				goto cleanup;
-
---------------090404060705000207050604--
+										Honza
+> ---
+>  fs/jbd/commit.c |    2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> Index: linux-2.6.26-rc1/fs/jbd/commit.c
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/fs/jbd/commit.c	2008-05-09 14:46:25.000000000 -0700
+> +++ linux-2.6.26-rc1/fs/jbd/commit.c	2008-05-09 15:11:00.000000000 -0700
+> @@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
+>  	 * transaction!  Now comes the tricky part: we need to write out
+>  	 * metadata.  Loop over the transaction's entire buffer list:
+>  	 */
+> +	spin_lock(&journal->j_state_lock);
+>  	commit_transaction->t_state = T_COMMIT;
+> +	spin_unlock(&journal->j_state_lock);
+>  
+>  	J_ASSERT(commit_transaction->t_nr_buffers <=
+>  		 commit_transaction->t_outstanding_credits);
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
