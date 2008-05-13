@@ -1,98 +1,53 @@
-From: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Subject: Re: [PATCH] ext3/4: fix uninitialized bs in	ext3/4_xattr_set_handle()
-Date: Tue, 13 May 2008 14:18:12 +0530
-Message-ID: <1210668492.4016.6.camel@localhost>
-References: <4827B878.50903@oracle.com> <4828DE73.2070001@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH e2fsprogs] - fix swap sanity tests in blkid, and blkid
+ tests
+Date: Tue, 13 May 2008 07:47:19 -0500
+Message-ID: <48298DD7.7060502@redhat.com>
+References: <48288BEB.6090005@redhat.com> <20080513063212.GF3627@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_YnBUVn67hUeuQDlRERYT1A)"
-Cc: Tiger Yang <tiger.yang@oracle.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <4828DE73.2070001@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:44706 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756108AbYEMMrW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 May 2008 08:47:22 -0400
+In-Reply-To: <20080513063212.GF3627@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
---Boundary_(ID_YnBUVn67hUeuQDlRERYT1A)
-Content-type: text/plain
-Content-transfer-encoding: 7BIT
-
-Hi Eric,
-
-On Mon, 2008-05-12 at 19:18 -0500, Eric Sandeen wrote:
-> Tiger Yang wrote:
-> > Hi,
-> > I met a bug when I try to replace a xattr entry in ibody with a big size 
-> > value. But in ibody there has no space for the new value. So it should 
-> > set new xattr entry in block and remove the old xattr entry in ibody.
-> > 
-> > Best regards,
-> > tiger
-> > 
+Andreas Dilger wrote:
+> On May 12, 2008  13:26 -0500, Eric Sandeen wrote:
+>> One one other required change, though; mkswap requires at least
+>> 10 pages of swap, so the image needs to be increased to 10x64k
+>> if mkswap is to succeed...
+>>
+>> Maybe it'd be better to just dd it out on the fly?
 > 
-> Tiger, do you have a testcase handy to demonstrate this?
+> Probably, yes.  Little point in bunzipping bytes that you are just
+> going to overwrite...
 
-Attached is a simple script to reproduce the problem.
+It's just that right now it iterates over existing files, so that's how
+it finds swap0 and swap1 to test...
 
+*shrug*
+
+Could make them bzipped sparse files... :)
+
+>>  	bunzip2 < $SRCDIR/tests/$i.img.bz2 > tests/tmp/test.img.$$
+>> +	# swap is native-endian, so regenerate before testing
+>> +	if [ "$i" == "swap0" ]; then
+>> +		mkswap -v0 tests/tmp/test.img.$$ > /dev/null
+>> +	elif [ "$i" == "swap1" ]; then
+>> +		mkswap -v1 -L SWAP-TEST -U 8ff8e77f-8553-485e-8656-58be67a81666 tests/tmp/test.img.$$ >/dev/null
+>> +	fi
 > 
-> Is the new, large out-of-inode xattr unique so that it does not match
-> any existing attribute block, I assume?
-
-I don't quite understand what you mean but the problem is that in
-ext3_xattr_set_handle(), the EA being replaced is found in the
-inode-body (by function ext3_xattr_ibody_find) and hence
-ext3_xattr_block_find() is not called initially. So in this test-case
-when we have to delete an EA from the inode and add it into the external
-block, bs turns out to be uninitialized and therefore a new EA block
-gets allocated instead of the existing one being used.
-
-Thanks,
-Kalpak
-
-> 
-> Thanks,
-> 
-> -Eric
+> Cheers, Andreas
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
 
---Boundary_(ID_YnBUVn67hUeuQDlRERYT1A)
-Content-type: application/x-shellscript; name=reproducer.sh
-Content-transfer-encoding: 7BIT
-Content-disposition: attachment; filename=reproducer.sh
-
-MNTPT=/mnt/temp
-
-#format test fs
-touch img
-mkfs.ext3 -F -b 4096 -I 512 img 50000 > /dev/null
-mount -t ext3 -o loop,user_xattr img  $MNTPT
-touch $MNTPT/foo
-
-# create EAs so that extra space in inode is filled and external block is needed
-for (( i = 0; i < 20; i++ )); do 
-	setfattr -n user.foobar$i -v foobar $MNTPT/foo
-done
-
-umount $MNTPT
-# note EA block no
-old_blk=`debugfs -R "stat foo" img 2>&1 | grep "ACL" | cut -d' ' -f3`
-echo "Old xattr block no: $old_blk"
-
-mount -t ext3 -o loop,user_xattr img  $MNTPT
-# replace in-inode EA such that it should "overflow" into external EA blok
-setfattr -n user.foobar1 -v foobarfoobarfoobarfoobarfoobarfoobarfoobar $MNTPT/foo
-
-getfattr -d $MNTPT/foo # shows that EAs from external block are lost
-umount $MNTPT
-# EA block no should not change with these operations - but it does
-new_blk=`debugfs -R "stat foo" img 2>&1 | grep "ACL" | cut -d' ' -f3`
-
-if [ $old_blk -ne $new_blk ]; then
-	echo "new xattr block no: $new_blk - old xattr's except the one being replaced are lost"
-fi
-
---Boundary_(ID_YnBUVn67hUeuQDlRERYT1A)--
