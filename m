@@ -1,53 +1,130 @@
-From: Jiri Slaby <jirislaby@gmail.com>
-Subject: Re: [RFC 1/1] mm: add virt to phys debug
-Date: Tue, 13 May 2008 16:38:51 +0200
-Message-ID: <4829A7FB.5070507@gmail.com>
-References: <Pine.LNX.4.64.0804281322510.31163@schroedinger.engr.sgi.com> <1209669740-10493-1-git-send-email-jirislaby@gmail.com> <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd_commit_transaction() races with
+	journal_try_to_drop_buffers() causing DIO failures
+Date: Tue, 13 May 2008 16:54:49 +0200
+Message-ID: <20080513145449.GC20806@duck.suse.cz>
+References: <20080428122626.GC17054@duck.suse.cz> <1209402694.23575.5.camel@badari-desktop> <20080428180932.GI17054@duck.suse.cz> <1209409764.11872.6.camel@localhost.localdomain> <20080429124321.GD1987@duck.suse.cz> <1209654981.27240.19.camel@badari-desktop> <20080505170636.GK25722@duck.suse.cz> <1210372072.3639.52.camel@localhost.localdomain> <20080512155419.GD15856@duck.suse.cz> <1210639184.3661.43.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, Ingo Molnar <mingo@elte.hu>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Jeremy Fitzhardinge <jeremy@goop.org>, pageexec@freemail.hu,
-	Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>,
-	herbert@gondor.apana.org.au, penberg@cs.helsinki.fi,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	paulmck@linux.vnet.ibm.com, linux-kernel@vger.kernel.org,
-	Andi Kleen <andi@firstfloor.org>
-To: Christoph Lameter <clameter@sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Badari Pulavarty <pbadari@us.ibm.com>, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.231]:39893 "EHLO
-	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757607AbYEMOi6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2008 10:38:58 -0400
-Received: by wx-out-0506.google.com with SMTP id h29so2297014wxd.4
-        for <linux-ext4@vger.kernel.org>; Tue, 13 May 2008 07:38:57 -0700 (PDT)
-In-Reply-To: <Pine.LNX.4.64.0805011310390.9288@schroedinger.engr.sgi.com>
+Received: from styx.suse.cz ([82.119.242.94]:46465 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753267AbYEMOyu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 May 2008 10:54:50 -0400
+Content-Disposition: inline
+In-Reply-To: <1210639184.3661.43.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Lameter napsal(a):
-> On Thu, 1 May 2008, Jiri Slaby wrote:
->> Add some (configurable) expensive sanity checking to catch wrong address
->> translations on x86.
->>
->> - create linux/mmdebug.h file to be able include this file in
->>   asm headers to not get unsolvable loops in header files
->> - __phys_addr on x86_32 became a function in ioremap.c since
->>   PAGE_OFFSET and is_vmalloc_addr is undefined if declared in
->>   page_32.h (again circular dependencies)
->> - add __phys_addr_const for initializing doublefault_tss.__cr3
+On Mon 12-05-08 17:39:43, Mingming Cao wrote:
+> On Mon, 2008-05-12 at 17:54 +0200, Jan Kara wrote:
+> Does this match what you are thinking? It certainly slow down the DIO
+> path, but the positive side is it doesn't disturb the other code path...
+> thanks for your feedback!
 > 
-> Hmmm.. We could use include/linux/bounds.h to make 
-> VMALLOC_START/VMALLOC_END (or whatever you need for checking the memory 
-> boundaries) a cpp constant which may allow the use in page_32.h without 
-> circular dependencies.
+> --------------------------------------------
+> 
+> An unexpected EIO error gets returned when writing to a file
+> using buffered writes and DIO writes at the same time.
+> 
+> We found there are a number of places where journal_try_to_free_buffers()
+> could race with journal_commit_transaction(), the later still
+> helds the reference to the buffers on the t_syncdata_list or t_locked_list
+> , while journal_try_to_free_buffers() tries to free them, which resulting an EIO
+> error returns back to the dio caller. 
+> 
+> The logic fix is to retry freeing if journal_try_to_free_buffers() to failed
+> to free those data buffers while journal_commit_transaction() is still
+> reference those buffers.
+> This is done via implement ext3 launder_page() callback, instead of inside
+> journal_try_to_free_buffers() itself, so that it doesn't affecting other code
+> path calling journal_try_to_free_buffers and only dio path get affected.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> Index: linux-2.6.26-rc1/fs/ext3/inode.c
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/fs/ext3/inode.c	2008-05-03 11:59:44.000000000 -0700
+> +++ linux-2.6.26-rc1/fs/ext3/inode.c	2008-05-12 12:41:27.000000000 -0700
+> @@ -1766,6 +1766,23 @@ static int ext3_journalled_set_page_dirt
+>  	return __set_page_dirty_nobuffers(page);
+>  }
+>  
+> +static int ext3_launder_page(struct page *page)
+> +{
+> +        int ret;
+> +	int retry = 5;
+> +
+> +	while (retry --) {
+> +		ret = ext3_releasepage(page, GFP_KERNEL);
+> +		if (ret == 1)
+> +			break;
+> +		else
+> +			schedule();
+> +	}
+> +
+> +        return ret;
+> +}
+> +
+> +
+  Yes, I meant something like this. We could be more clever and do:
 
-Hrm, not that easy. I ended up in splitting fixmap_32.h (VMALLOC constants 
-depends on it on 32-bit), moving around constants from over all the tree 
-(NR_CPUS, FIX_ACPI_PAGES...) to not include files which would create loops, 
-but still not having e.g. PMD_MASK available on all configurations. I think 
-it's not worth it. Objections to merging the patch as was 
-(http://lkml.org/lkml/2008/5/1/300)?
+	head = bh = page_buffers(page);
+	do {
+		wait_on_buffer(bh);
+		bh = bh->b_this_page;
+	} while (bh != head);
+	/*
+	 * Now commit code should have been able to proceed and release
+         * those buffers
+	 */
+        schedule();
 
-Thanks.
+or we could do simple:
+	log_wait_commit(...);
+
+That would impose larger perf. penalty but on the other hand you shouldn't
+hit this path too often. But maybe the code above would be fine and would
+handle most cases. Also please add a big comment to that function to explain
+why this magic is needed.
+
+>  static const struct address_space_operations ext3_ordered_aops = {
+>  	.readpage	= ext3_readpage,
+>  	.readpages	= ext3_readpages,
+> @@ -1778,6 +1795,7 @@ static const struct address_space_operat
+>  	.releasepage	= ext3_releasepage,
+>  	.direct_IO	= ext3_direct_IO,
+>  	.migratepage	= buffer_migrate_page,
+> +	.launder_page	= ext3_launder_page,
+>  };
+>  
+>  static const struct address_space_operations ext3_writeback_aops = {
+> @@ -1792,6 +1810,7 @@ static const struct address_space_operat
+>  	.releasepage	= ext3_releasepage,
+>  	.direct_IO	= ext3_direct_IO,
+>  	.migratepage	= buffer_migrate_page,
+> +	.launder_page	= ext3_launder_page,
+>  };
+>  
+>  static const struct address_space_operations ext3_journalled_aops = {
+> @@ -1805,6 +1824,7 @@ static const struct address_space_operat
+>  	.bmap		= ext3_bmap,
+>  	.invalidatepage	= ext3_invalidatepage,
+>  	.releasepage	= ext3_releasepage,
+> +	.launder_page	= ext3_launder_page,
+>  };
+>  
+>  void ext3_set_aops(struct inode *inode)
+  Actually, we need .launder_page callback only in data=order mode.
+data=writeback mode doesn't need it at all (journal code doesn't touch data
+buffers there) and for data=journal mode DIO could have never worked
+reasonably when mixed with buffered IO and it would have to do a different
+and much more expensive trickery (like flushing the journal, or at least
+forcing current transaction to commit).
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
