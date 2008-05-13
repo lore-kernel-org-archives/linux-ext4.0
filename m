@@ -1,62 +1,77 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Tue, 13 May 2008 11:42:44 +1000
-Message-ID: <20080513114244.736cf625.sfr@canb.auug.org.au>
-References: <20080512130604.GA15008@deprecation.cyrius.com>
-	<90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com>
-	<20080512143426.GB7029@mit.edu>
-	<20080512145836.GE15866@deprecation.cyrius.com>
-	<90edad820805120814l7ee3f5d3h7f9939854bccf0@mail.gmail.com>
-	<20080512173537.GG7029@mit.edu>
-	<90edad820805121237r7f4b6e16g135df49cfe27499a@mail.gmail.com>
-	<20080513105549.bb1563f8.sfr@canb.auug.org.au>
+From: Tiger Yang <tiger.yang@oracle.com>
+Subject: Re: [PATCH] ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+Date: Tue, 13 May 2008 10:31:04 +0800
+Message-ID: <4828FD68.40608@oracle.com>
+References: <4827B878.50903@oracle.com> <20080512170254.f79fe869.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Tue__13_May_2008_11_42_44_+1000_D4xdJbk8zH./C2Qr"
-Cc: "Theodore Tso" <tytso@mit.edu>,
-	"Martin Michlmayr" <tbm@cyrius.com>, linux-mips@linux-mips.org,
-	linux-ext4@vger.kernel.org, ralf@linux-mips.org
-To: "Dmitri Vorobiev" <dmitri.vorobiev@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>,
+	stable@kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from chilli.pcug.org.au ([203.10.76.44]:58338 "EHLO smtps.tip.net.au"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756829AbYEMBnA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2008 21:43:00 -0400
-In-Reply-To: <20080513105549.bb1563f8.sfr@canb.auug.org.au>
+Received: from rgminet01.oracle.com ([148.87.113.118]:51898 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753583AbYEMCjR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2008 22:39:17 -0400
+In-Reply-To: <20080512170254.f79fe869.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Signature=_Tue__13_May_2008_11_42_44_+1000_D4xdJbk8zH./C2Qr
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Hi, Andrew
 
-On Tue, 13 May 2008 10:55:49 +1000 Stephen Rothwell <sfr@canb.auug.org.au> =
-wrote:
+This situation only happens we format ext3/4 with inode size more than 
+128 and we have put xattr entries both in ibody and block.
+The consequences about this bug is we will lost the xattr block which 
+pointed by i_file_acl with all xattr entires in it. We will alloc a new 
+xattr block and put that large value entry in it. The old xattr block 
+will become orphan block.
+
+Best regards,
+tiger
+
+Andrew Morton wrote:
+> On Mon, 12 May 2008 11:24:40 +0800
+> Tiger Yang <tiger.yang@oracle.com> wrote:
 >
-> That would be great.  However, let us try with crosstool first. We
-> haven't actually tried using crosstool to build a mips cross compiler.
-> For a start, do we need mips or mipsel?  (My tame minion is trying to
-> build both now.  :-))  Our host arch is powerpc64.
-
-Also, the only compiler version that crosstool seems to know about for
-mips is 3.4.5.  Is this version ok for building mips kernels?
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
-
---Signature=_Tue__13_May_2008_11_42_44_+1000_D4xdJbk8zH./C2Qr
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFIKPIgTgG2atn1QN8RAlbPAKCLH9Yh2Ofm9Jk0tDqpavAOTZTkowCfbqkn
-whC5LVgC8CjZ8HhpONd0yEE=
-=lbVq
------END PGP SIGNATURE-----
-
---Signature=_Tue__13_May_2008_11_42_44_+1000_D4xdJbk8zH./C2Qr--
+>   
+>> I met a bug when I try to replace a xattr entry in ibody with a big size 
+>> value. But in ibody there has no space for the new value. So it should 
+>> set new xattr entry in block and remove the old xattr entry in ibody.
+>>
+>> Best regards,
+>> tiger
+>>
+>>
+>> [xattr.patch  text/x-patch (1.3KB)]
+>> This fix the uninitialized bs when we try to replace a xattr entry in ibody with the new value which require more than free space.
+>>
+>> Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
+>>
+>> diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+>> index a6ea4d6..e1af9bd 100644
+>> --- a/fs/ext3/xattr.c
+>> +++ b/fs/ext3/xattr.c
+>> @@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>>  			i.value = NULL;
+>>  			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+>>  		} else if (error == -ENOSPC) {
+>> +			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
+>> +				error = ext3_xattr_block_find(inode, &i, &bs);
+>> +				if (error)
+>> +					goto cleanup;
+>> +			}
+>>  			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+>>  			if (error)
+>>  				goto cleanup;
+>>     
+>
+> That sounds fairly bad.
+>
+> What are the consequences of this bug, when someone hits it?
+>
+> It appears that we should backport this fix into 2.6.25.x (and perhaps
+> earlier).  What do you think?
+>
+>   
