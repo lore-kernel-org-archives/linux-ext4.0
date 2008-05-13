@@ -1,130 +1,108 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] jbd_commit_transaction() races with
-	journal_try_to_drop_buffers() causing DIO failures
-Date: Tue, 13 May 2008 09:37:37 -0700
-Message-ID: <1210696657.3638.7.camel@localhost.localdomain>
-References: <20080428122626.GC17054@duck.suse.cz>
-	 <1209402694.23575.5.camel@badari-desktop>
-	 <20080428180932.GI17054@duck.suse.cz>
-	 <1209409764.11872.6.camel@localhost.localdomain>
-	 <20080429124321.GD1987@duck.suse.cz>
-	 <1209654981.27240.19.camel@badari-desktop>
-	 <20080505170636.GK25722@duck.suse.cz>
-	 <1210372072.3639.52.camel@localhost.localdomain>
-	 <20080512155419.GD15856@duck.suse.cz>
-	 <1210639184.3661.43.camel@localhost.localdomain>
-	 <20080513145449.GC20806@duck.suse.cz>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext3/4: fix uninitialized bs in	ext3/4_xattr_set_handle()
+Date: Tue, 13 May 2008 14:00:23 -0600
+Message-ID: <20080513200023.GA31179@webber.adilger.int>
+References: <4827B878.50903@oracle.com>
+ <20080512170254.f79fe869.akpm@linux-foundation.org> <4828FD68.40608@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Badari Pulavarty <pbadari@us.ibm.com>, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760101AbYEMQiA@vger.kernel.org>
-In-Reply-To: <20080513145449.GC20806@duck.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>,
+	stable@kernel.org
+To: Tiger Yang <tiger.yang@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49202 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756189AbYEMUAq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2008 16:00:46 -0400
+In-reply-to: <4828FD68.40608@oracle.com>
+Content-disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-05-13 at 16:54 +0200, Jan Kara wrote:
-> On Mon 12-05-08 17:39:43, Mingming Cao wrote:
-> > Index: linux-2.6.26-rc1/fs/ext3/inode.c
-> > ===================================================================
-> > --- linux-2.6.26-rc1.orig/fs/ext3/inode.c	2008-05-03 11:59:44.000000000 -0700
-> > +++ linux-2.6.26-rc1/fs/ext3/inode.c	2008-05-12 12:41:27.000000000 -0700
-> > @@ -1766,6 +1766,23 @@ static int ext3_journalled_set_page_dirt
-> >  	return __set_page_dirty_nobuffers(page);
-> >  }
-> >  
-> > +static int ext3_launder_page(struct page *page)
-> > +{
-> > +        int ret;
-> > +	int retry = 5;
-> > +
-> > +	while (retry --) {
-> > +		ret = ext3_releasepage(page, GFP_KERNEL);
-> > +		if (ret == 1)
-> > +			break;
-> > +		else
-> > +			schedule();
-> > +	}
-> > +
-> > +        return ret;
-> > +}
-> > +
-> > +
->   Yes, I meant something like this. We could be more clever and do:
-> 
-> 	head = bh = page_buffers(page);
-> 	do {
-> 		wait_on_buffer(bh);
-> 		bh = bh->b_this_page;
-> 	} while (bh != head);
-> 	/*
-> 	 * Now commit code should have been able to proceed and release
->          * those buffers
-> 	 */
->         schedule();
-> 
-Thanks.
-We could recheck if buffer_busy() before calling wait_on_buffer(bh) to
-wait for buffer unlocked. This will handles the mapped IO re-dirty race
-case, but still need the schedule() and retry to handle the buffered IO
-race.
+On May 13, 2008  10:31 +0800, Tiger Yang wrote:
+> This situation only happens we format ext3/4 with inode size more than 128 
+> and we have put xattr entries both in ibody and block.
+> The consequences about this bug is we will lost the xattr block which 
+> pointed by i_file_acl with all xattr entires in it. We will alloc a new 
+> xattr block and put that large value entry in it. The old xattr block will 
+> become orphan block.
 
-> 
-> or we could do simple:
-> 	log_wait_commit(...);
-> 
-> That would impose larger perf. penalty but on the other hand you shouldn't
-> hit this path too often.
+Tiger, thanks for finding this bug, and the patch (which fixes the
+problem in our testing).
 
-My concern with doing log_wait_commit() here is the perf penalty. In the
-case the buffers is at the end of the queue to commit, we have to wait
-for all other previous transactions to finish committing before we could
-continue...
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
->  But maybe the code above would be fine and would
-> handle most cases. Also please add a big comment to that function to explain
-> why this magic is needed.
-> 
-Will do.
-> >  static const struct address_space_operations ext3_ordered_aops = {
-> >  	.readpage	= ext3_readpage,
-> >  	.readpages	= ext3_readpages,
-> > @@ -1778,6 +1795,7 @@ static const struct address_space_operat
-> >  	.releasepage	= ext3_releasepage,
-> >  	.direct_IO	= ext3_direct_IO,
-> >  	.migratepage	= buffer_migrate_page,
-> > +	.launder_page	= ext3_launder_page,
-> >  };
-> >  
-> >  static const struct address_space_operations ext3_writeback_aops = {
-> > @@ -1792,6 +1810,7 @@ static const struct address_space_operat
-> >  	.releasepage	= ext3_releasepage,
-> >  	.direct_IO	= ext3_direct_IO,
-> >  	.migratepage	= buffer_migrate_page,
-> > +	.launder_page	= ext3_launder_page,
-> >  };
-> >  
-> >  static const struct address_space_operations ext3_journalled_aops = {
-> > @@ -1805,6 +1824,7 @@ static const struct address_space_operat
-> >  	.bmap		= ext3_bmap,
-> >  	.invalidatepage	= ext3_invalidatepage,
-> >  	.releasepage	= ext3_releasepage,
-> > +	.launder_page	= ext3_launder_page,
-> >  };
-> >  
-> >  void ext3_set_aops(struct inode *inode)
->   Actually, we need .launder_page callback only in data=order mode.
-> data=writeback mode doesn't need it at all (journal code doesn't touch data
-> buffers there) and for data=journal mode DIO could have never worked
-> reasonably when mixed with buffered IO and it would have to do a different
-> and much more expensive trickery (like flushing the journal, or at least
-> forcing current transaction to commit).
-> 
+> Andrew Morton wrote:
+>> On Mon, 12 May 2008 11:24:40 +0800
+>> Tiger Yang <tiger.yang@oracle.com> wrote:
+>>
+>>   
+>>> I met a bug when I try to replace a xattr entry in ibody with a big size 
+>>> value. But in ibody there has no space for the new value. So it should 
+>>> set new xattr entry in block and remove the old xattr entry in ibody.
+>>>
+>>> Best regards,
+>>> tiger
+>>>
+>>>
+>>> [xattr.patch  text/x-patch (1.3KB)]
+>>> This fix the uninitialized bs when we try to replace a xattr entry in ibody with the new value which require more than free space.
+>>>
+>>> Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
+>>>
+>>> diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+>>> index a6ea4d6..e1af9bd 100644
+>>> --- a/fs/ext3/xattr.c
+>>> +++ b/fs/ext3/xattr.c
+>>> @@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>>>  			i.value = NULL;
+>>>  			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+>>>  		} else if (error == -ENOSPC) {
+>>> +			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
+>>> +				error = ext3_xattr_block_find(inode, &i, &bs);
+>>> +				if (error)
+>>> +					goto cleanup;
+>>> +			}
+>>>  			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+>>>  			if (error)
+>>>  				goto cleanup;
+>>>     
+>>
+>> That sounds fairly bad.
+>>
+>> What are the consequences of this bug, when someone hits it?
 
-You are right, thanks for pointing this out.
-Will post an updated patch.
+The EAs in the external block (except the one being added) are lost, and
+some blocks (or shared EA block references) are leaked.  In most cases
+this is not fatal, but for Lustre I developed a test case where this
+causes the file data to be lost (because the file layout is stored in
+the external block if it is too large to store in the inode).
 
-Mingming
+>> It appears that we should backport this fix into 2.6.25.x (and perhaps
+>> earlier).  What do you think?
+
+Code inspection shows this bug goes back to when the fast EA-in-inode
+support was added to the vanilla kernel, at least 2.6.12 (when Git
+history begins).
+
+Sadly, the bug was NOT in the original CFS EA-in-inode patches that we
+made for kernels 2.6.5 (SLES 9) and 2.6.9 (RHEL 4) (and still use today)
+that were in 2.6.11-rc1-mm1, but were added during the later rewrite of
+this code.
+
+I suspect the reasons this bug hasn't been reported even when large inodes
+are enabled (which is the default for newer e2fsprogs) are:
+- it uncommon to have multiple EAs on a file (usually SELinux is the
+  only common one and it is relatively small)
+- one of the EAs must already be too large to fit in the inode 
+- increasing the size of any EA after it is created is rare
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
