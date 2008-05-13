@@ -1,53 +1,34 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] - fix swap sanity tests in blkid, and blkid
- tests
-Date: Tue, 13 May 2008 07:47:19 -0500
-Message-ID: <48298DD7.7060502@redhat.com>
-References: <48288BEB.6090005@redhat.com> <20080513063212.GF3627@webber.adilger.int>
+Subject: Re: [PATCH] ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+Date: Tue, 13 May 2008 07:48:49 -0500
+Message-ID: <48298E31.7050205@redhat.com>
+References: <4827B878.50903@oracle.com> <4828DE73.2070001@redhat.com> <482947C3.9040601@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44706 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756108AbYEMMrW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 May 2008 08:47:22 -0400
-In-Reply-To: <20080513063212.GF3627@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Tiger Yang <tiger.yang@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <482947C3.9040601@oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Andreas Dilger wrote:
-> On May 12, 2008  13:26 -0500, Eric Sandeen wrote:
->> One one other required change, though; mkswap requires at least
->> 10 pages of swap, so the image needs to be increased to 10x64k
->> if mkswap is to succeed...
->>
->> Maybe it'd be better to just dd it out on the fly?
+Tiger Yang wrote:
+> Hi, Eric,
 > 
-> Probably, yes.  Little point in bunzipping bytes that you are just
-> going to overwrite...
+> I don't have tesecase about this bug. I did the test manually. I use 
+> khexedit to confirm the attributes whether in inody or block.
+> The problem about this bug is we want to replace an existing attribute 
+> in ibody with big size value which larger than free space in ibody.
+> Because we didn't do block_find(), so the struct bs have not been 
+> initialized. Then when we try to set attribute in block by block_set(), 
+> we find bs->base is empty, we need alloc a new block for attributes. The 
+> old block pointed by i_file_acl will lost with attributes in it.
 
-It's just that right now it iterates over existing files, so that's how
-it finds swap0 and swap1 to test...
+Thanks, I'll go for a reproducer.  We use xattrs a lot for selinux in
+Red Hat and Fedora, so a little surprised I haven't seen this bug... or
+maybe it explains some bugs I haven't yet figured out ... :)
 
-*shrug*
-
-Could make them bzipped sparse files... :)
-
->>  	bunzip2 < $SRCDIR/tests/$i.img.bz2 > tests/tmp/test.img.$$
->> +	# swap is native-endian, so regenerate before testing
->> +	if [ "$i" == "swap0" ]; then
->> +		mkswap -v0 tests/tmp/test.img.$$ > /dev/null
->> +	elif [ "$i" == "swap1" ]; then
->> +		mkswap -v1 -L SWAP-TEST -U 8ff8e77f-8553-485e-8656-58be67a81666 tests/tmp/test.img.$$ >/dev/null
->> +	fi
-> 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
-> 
-
+Thanks,
+-Eric
