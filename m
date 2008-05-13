@@ -1,43 +1,51 @@
-From: Ralf Baechle <ralf@linux-mips.org>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Tue, 13 May 2008 06:12:52 +0100
-Message-ID: <20080513051252.GA20575@linux-mips.org>
-References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH e2fsprogs] - fix swap sanity tests in blkid, and blkid	tests
+Date: Tue, 13 May 2008 00:32:12 -0600
+Message-ID: <20080513063212.GF3627@webber.adilger.int>
+References: <48288BEB.6090005@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Martin Michlmayr <tbm@cyrius.com>,
-	linux-mips@linux-mips.org, linux-ext4@vger.kernel.org
-To: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vigor.karmaclothing.net ([217.169.26.28]:51606 "EHLO
-	dl5rb.ham-radio-op.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753487AbYEMFNV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2008 01:13:21 -0400
-Content-Disposition: inline
-In-Reply-To: <20080513045028.GC22226@linux-mips.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:45787 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756350AbYEMGck (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2008 02:32:40 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m4D6Wc3R004889
+	for <linux-ext4@vger.kernel.org>; Mon, 12 May 2008 23:32:39 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K0S00K01NE4S600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 12 May 2008 23:32:38 -0700 (PDT)
+In-reply-to: <48288BEB.6090005@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 13, 2008 at 05:50:29AM +0100, Ralf Baechle wrote:
-
-> > Normally I push my patches via the mips tree, and now I'm Cc:ing Ralf for that.
-> > 
-> > Hopefully Ralf will react quickly. :)
+On May 12, 2008  13:26 -0500, Eric Sandeen wrote:
+> One one other required change, though; mkswap requires at least
+> 10 pages of swap, so the image needs to be increased to 10x64k
+> if mkswap is to succeed...
 > 
-> I prefer to do it myself so I can apply it at the same time to the MIPS
-> -stable branches.
-> 
-> I'm a little irriated that this thread seems to be only about
-> empty_zero_page but apparently not zero_page_mask?  empty_zero_page is
-> actualy an array of pages on MIPS and ZERO_PAGE() will pick the right one
-> for a particular user space mapping based on the virtual address but
-> ZERO_PAGE() also references zero_page_mask.  So I sense more brokenness
-> here.
+> Maybe it'd be better to just dd it out on the fly?
 
-The ZERO_PAGE(0) call in ext4_ext_zeroout is the culprit.  Using a zero
-argument allows the compiler to eleminate the reference to zero_page_mask.
+Probably, yes.  Little point in bunzipping bytes that you are just
+going to overwrite...
 
-Am I reading this right that ZERO_PAGE() is being used without any
-mappings to userspace being involved?
+>  	bunzip2 < $SRCDIR/tests/$i.img.bz2 > tests/tmp/test.img.$$
+> +	# swap is native-endian, so regenerate before testing
+> +	if [ "$i" == "swap0" ]; then
+> +		mkswap -v0 tests/tmp/test.img.$$ > /dev/null
+> +	elif [ "$i" == "swap1" ]; then
+> +		mkswap -v1 -L SWAP-TEST -U 8ff8e77f-8553-485e-8656-58be67a81666 tests/tmp/test.img.$$ >/dev/null
+> +	fi
 
-  Ralf
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
