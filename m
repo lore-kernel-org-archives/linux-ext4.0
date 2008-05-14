@@ -1,9 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/4] jbd: strictly check for write errors on data
-	buffers (rebased)
-Date: Wed, 14 May 2008 14:56:13 +0200
-Message-ID: <20080514125613.GC24363@duck.suse.cz>
-References: <482A6E00.6080303@hitachi.com> <482A6EE3.90901@hitachi.com>
+Subject: Re: [PATCH 2/4] jbd: ordered data integrity fix (rebased)
+Date: Wed, 14 May 2008 15:10:07 +0200
+Message-ID: <20080514131007.GD24363@duck.suse.cz>
+References: <482A6E00.6080303@hitachi.com> <482A6F2B.3020605@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
@@ -14,101 +13,83 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
 	sugita <yumiko.sugita.yf@hitachi.com>
 To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:59268 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:59869 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1758685AbYENM4P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 May 2008 08:56:15 -0400
+	id S1762679AbYENNKJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 May 2008 09:10:09 -0400
 Content-Disposition: inline
-In-Reply-To: <482A6EE3.90901@hitachi.com>
+In-Reply-To: <482A6F2B.3020605@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
-
-On Wed 14-05-08 13:47:31, Hidehiro Kawai wrote:
-> Subject: [PATCH 1/4] jbd: strictly check for write errors on data buffers
+On Wed 14-05-08 13:48:43, Hidehiro Kawai wrote:
+> Subject: [PATCH 2/4] jbd: ordered data integrity fix
 > 
-> In ordered mode, we should abort journaling when an I/O error has
-> occurred on a file data buffer in the committing transaction.  But
-> there can be data buffers which are not checked for error:
-> 
->   (a) the buffer which has already been written out by pdflush
->   (b) the buffer which has been unlocked before scanned in the
->       t_locked_list loop
-> 
-> This patch adds missing error checks and aborts journaling
-> appropriately.
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitacih.com>
-  Acked-by: Jan Kara <jack@suse.cz>
+> In ordered mode, if a buffer being dirtied exists in the committing
+> transaction, we write the buffer to the disk, move it from the
+> committing transaction to the running transaction, then dirty it.
+> But we don't have to remove the buffer from the committing
+> transaction when the buffer couldn't be written out, otherwise it
+> breaks the ordered mode rule.
+  Hmm, could you elaborate a bit more what exactly is broken and how does
+this help to fix it? Because even if we find EIO happened on data buffer,
+we currently don't do anything else than just remove the buffer from the
+transaction and abort the journal. And even if we later managed to write
+the data buffer from other process before the journal is aborted, ordered
+mode guarantees are satisfied - we only guarantee that too old data cannot
+be seen, newer can be seen easily... Thanks.
 
 								Honza
-> ---
->  fs/jbd/commit.c |   14 +++++++++-----
->  1 file changed, 9 insertions(+), 5 deletions(-)
+
 > 
-> Index: linux-2.6.26-rc2/fs/jbd/commit.c
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> ---
+>  fs/jbd/transaction.c |   16 +++++++++++++---
+>  1 file changed, 13 insertions(+), 3 deletions(-)
+> 
+> Index: linux-2.6.26-rc2/fs/jbd/transaction.c
 > ===================================================================
-> --- linux-2.6.26-rc2.orig/fs/jbd/commit.c
-> +++ linux-2.6.26-rc2/fs/jbd/commit.c
-> @@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
->  /*
->   *  Submit all the data buffers to disk
->   */
-> -static void journal_submit_data_buffers(journal_t *journal,
-> +static int journal_submit_data_buffers(journal_t *journal,
->  				transaction_t *commit_transaction)
->  {
+> --- linux-2.6.26-rc2.orig/fs/jbd/transaction.c
+> +++ linux-2.6.26-rc2/fs/jbd/transaction.c
+> @@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
+>  	journal_t *journal = handle->h_transaction->t_journal;
+>  	int need_brelse = 0;
 >  	struct journal_head *jh;
-> @@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
->  	int locked;
->  	int bufs = 0;
->  	struct buffer_head **wbuf = journal->j_wbuf;
-> +	int err = 0;
+> +	int ret = 0;
 >  
->  	/*
->  	 * Whenever we unlock the journal and sleep, things can get added
-> @@ -253,6 +254,8 @@ write_out_data:
->  			put_bh(bh);
->  		} else {
->  			BUFFER_TRACE(bh, "writeout complete: unfile");
-> +			if (unlikely(!buffer_uptodate(bh)))
-> +				err = -EIO;
->  			__journal_unfile_buffer(jh);
->  			jbd_unlock_bh_state(bh);
->  			if (locked)
-> @@ -271,6 +274,8 @@ write_out_data:
->  	}
->  	spin_unlock(&journal->j_list_lock);
->  	journal_do_submit_data(wbuf, bufs);
+>  	if (is_handle_aborted(handle))
+> -		return 0;
+> +		return ret;
+>  
+>  	jh = journal_add_journal_head(bh);
+>  	JBUFFER_TRACE(jh, "entry");
+> @@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
+>  				   time if it is redirtied */
+>  			}
+>  
+> -			/* journal_clean_data_list() may have got there first */
+> +			/*
+> +			 * We shouldn't remove the buffer from the committing
+> +			 * transaction if it has failed to be written.
+> +			 * Otherwise, it breaks the ordered mode rule.
+> +			 */
+> +			if (unlikely(!buffer_uptodate(bh))) {
+> +				ret = -EIO;
+> +				goto no_journal;
+> +			}
 > +
-> +	return err;
+>  			if (jh->b_transaction != NULL) {
+>  				JBUFFER_TRACE(jh, "unfile from commit");
+>  				__journal_temp_unlink_buffer(jh);
+> @@ -1108,7 +1118,7 @@ no_journal:
+>  	}
+>  	JBUFFER_TRACE(jh, "exit");
+>  	journal_put_journal_head(jh);
+> -	return 0;
+> +	return ret;
 >  }
 >  
->  /*
-> @@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
-> -	err = 0;
-> -	journal_submit_data_buffers(journal, commit_transaction);
-> +	err = journal_submit_data_buffers(journal, commit_transaction);
->  
->  	/*
->  	 * Wait for all previously submitted IO to complete.
-> @@ -426,10 +430,10 @@ void journal_commit_transaction(journal_
->  		if (buffer_locked(bh)) {
->  			spin_unlock(&journal->j_list_lock);
->  			wait_on_buffer(bh);
-> -			if (unlikely(!buffer_uptodate(bh)))
-> -				err = -EIO;
->  			spin_lock(&journal->j_list_lock);
->  		}
-> +		if (unlikely(!buffer_uptodate(bh)))
-> +			err = -EIO;
->  		if (!inverted_lock(journal, bh)) {
->  			put_bh(bh);
->  			spin_lock(&journal->j_list_lock);
+>  /**
 > 
 > 
 -- 
