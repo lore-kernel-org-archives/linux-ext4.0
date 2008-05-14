@@ -1,40 +1,70 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [stable] [PATCH] ext3/4: fix uninitialized bs in
- ext3/4_xattr_set_handle()
-Date: Wed, 14 May 2008 15:54:30 -0700
-Message-ID: <20080514155430.a6b7da8f.akpm@linux-foundation.org>
-References: <4827B878.50903@oracle.com>
-	<20080512170254.f79fe869.akpm@linux-foundation.org>
-	<4828FD68.40608@oracle.com>
-	<200805141256.43272.agruen@suse.de>
-	<20080514160035.GD28594@kroah.com>
-	<20080514102809.3fc190f0.akpm@linux-foundation.org>
-	<20080514223003.GJ7054@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: greg@kroah.com, agruen@suse.de, tiger.yang@oracle.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080514223003.GJ7054@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: [patch 15/25] ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+Date: Wed, 14 May 2008 16:05:47 -0700
+Message-ID: <200805142305.m4EN5lp2025801@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, tiger.yang@oracle.com, adilger@sun.com,
+	agruen@suse.de, linux-ext4@vger.kernel.org, stable@kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54840 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751539AbYENXM5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 May 2008 19:12:57 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 14 May 2008 18:30:03 -0400
-Theodore Tso <tytso@mit.edu> wrote:
+From: Tiger Yang <tiger.yang@oracle.com>
 
-> On Wed, May 14, 2008 at 10:28:09AM -0700, Andrew Morton wrote:
-> > 
-> > It's in -mm and I just added the "Cc:stable" tag to it.
-> 
-> This patch has both ext3 and ext4 changes in it, so Andrew, I'm
-> assuming that you'll push it directly to Linus in the near future?
+This fix the uninitialized bs when we try to replace a xattr entry in
+ibody with the new value which require more than free space.
 
-Yes, today.
+This situation only happens we format ext3/4 with inode size more than 128 and
+we have put xattr entries both in ibody and block.  The consequences about
+this bug is we will lost the xattr block which pointed by i_file_acl with all
+xattr entires in it.  We will alloc a new xattr block and put that large value
+entry in it.  The old xattr block will become orphan block.
 
-> That's why I didn't suck it into the ext4 tree....
+Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Andreas Gruenbacher <agruen@suse.de>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <stable@kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Yup.  Usually I have to split these things up but this time I decided
-to leave it as a single patch.  Not sure why, really.
+ fs/ext3/xattr.c |    5 +++++
+ fs/ext4/xattr.c |    5 +++++
+ 2 files changed, 10 insertions(+)
+
+diff -puN fs/ext3/xattr.c~ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle fs/ext3/xattr.c
+--- a/fs/ext3/xattr.c~ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle
++++ a/fs/ext3/xattr.c
+@@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext3_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
+diff -puN fs/ext4/xattr.c~ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle fs/ext4/xattr.c
+--- a/fs/ext4/xattr.c~ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle
++++ a/fs/ext4/xattr.c
+@@ -1009,6 +1009,11 @@ ext4_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext4_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
+_
