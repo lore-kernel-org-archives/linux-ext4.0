@@ -1,7 +1,7 @@
-From: Josef Bacik <jbacik@redhat.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 4/4] jbd: fix error handling for checkpoint io (rebased)
-Date: Wed, 14 May 2008 09:16:22 -0400
-Message-ID: <20080514131621.GB20256@unused.rdu.redhat.com>
+Date: Wed, 14 May 2008 16:32:17 +0200
+Message-ID: <20080514143217.GF24363@duck.suse.cz>
 References: <482A6E00.6080303@hitachi.com> <482A6FA3.9000104@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -13,16 +13,18 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
 	sugita <yumiko.sugita.yf@hitachi.com>
 To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57740 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758918AbYENNcj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 May 2008 09:32:39 -0400
+Received: from styx.suse.cz ([82.119.242.94]:35696 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754481AbYENOcT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 May 2008 10:32:19 -0400
 Content-Disposition: inline
 In-Reply-To: <482A6FA3.9000104@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 14, 2008 at 01:50:43PM +0900, Hidehiro Kawai wrote:
+  Hello,
+
+On Wed 14-05-08 13:50:43, Hidehiro Kawai wrote:
 > Subject: [PATCH 4/4] jbd: fix error handling for checkpoint io
 > 
 > When a checkpointing IO fails, current JBD code doesn't check the
@@ -44,7 +46,8 @@ On Wed, May 14, 2008 at 01:50:43PM +0900, Hidehiro Kawai wrote:
 >    otherwise the journalled contents are ignored and cleaned in the
 >    recovery phase
 > 5. if the recovery fails, keep the needs_recovery flag
-> 
+  I have a few comments below..
+
 > Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 > ---
 >  fs/ext3/ioctl.c     |   12 ++++----
@@ -241,6 +244,11 @@ On Wed, May 14, 2008 at 01:50:43PM +0900, Hidehiro Kawai wrote:
 > +	return journal->j_flags & JFS_CP_ABORT;
 > +}
 > +
+  Actually, I don't think this new flag is needed (not that it would really
+harm anything). At least at the places where you check it you can as well
+check whether the journal is aborted (maybe except for journal_destroy()
+but see my comment there).
+
 >  static inline int is_handle_aborted(handle_t *handle)
 >  {
 >  	if (handle->h_aborted)
@@ -289,8 +297,10 @@ On Wed, May 14, 2008 at 01:50:43PM +0900, Hidehiro Kawai wrote:
 > -		return err;
 > +		return (err) ? err : err2;
 >  	}
->  
->  
+  Please split ext3 changes into a separate patch. There's no reason
+why they should be together with JBD fixes (i.e. JBD fixes don't depend on
+ext3 being fixed). Thanks.
+
 > Index: linux-2.6.26-rc2/fs/ext3/super.c
 > ===================================================================
 > --- linux-2.6.26-rc2.orig/fs/ext3/super.c
@@ -304,16 +314,13 @@ On Wed, May 14, 2008 at 01:50:43PM +0900, Hidehiro Kawai wrote:
 > +			EXT3_CLEAR_INCOMPAT_FEATURE(sb,
 > +				EXT3_FEATURE_INCOMPAT_RECOVER);
 > +		}
+  I think you should test here whether the journal is aborted (and
+EXT3_MOUNT_ABORT isn't set) and if so, call ext3_abort() and just
+completely avoid updating super block...
+
 >  		es->s_state = cpu_to_le16(sbi->s_mount_state);
 >  		BUFFER_TRACE(sbi->s_sbh, "marking dirty");
 >  		mark_buffer_dirty(sbi->s_sbh);
-
-Is this bit here really needed?  If we abort the journal the fs will be mounted
-read only and we should never get in here.  Is there a case where we could abort
-the journal and not be flipped to being read-only?  If there is such a case I
-would think that we should fix that by making the fs read-only, and not have
-this check.
-
 > @@ -2373,7 +2376,13 @@ static void ext3_write_super_lockfs(stru
 >  
 >  		/* Now we set up the journal barrier. */
@@ -360,7 +367,10 @@ this check.
 > +			journal_update_superblock(journal, 1);
 >  		brelse(journal->j_sb_buffer);
 >  	}
->  
+  I don't like this much. I'd rather completely avoid updating j_tail and
+j_tail_sequence above in case the journal is aborted but I'd write the
+journal superblock so that information about abortion gets written...
+
 > @@ -1333,7 +1334,6 @@ static int journal_convert_superblock_v1
 >  
 >  int journal_flush(journal_t *journal)
@@ -389,6 +399,9 @@ this check.
 > +	if (is_checkpoint_aborted(journal))
 > +		return -EIO;
 > +
+  Why do you change the loop? If we fail to checkpoint some buffer, we stop
+journaling anyway and so journal will be replayed when fsck is run...
+
 >  	cleanup_journal_tail(journal);
 >  
 >  	/* Finally, mark the journal as really needing no recovery.
@@ -426,9 +439,8 @@ this check.
 >  	return err;
 >  }
 >  
-> 
->
 
-Other than that one question it looks good to me.  Thanks much,
-
-Josef 
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
