@@ -1,46 +1,107 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [PATCH] ext3/4: fix uninitialized bs in
-	ext3/4_xattr_set_handle()
-Date: Wed, 14 May 2008 09:00:36 -0700
-Message-ID: <20080514160035.GD28594@kroah.com>
-References: <4827B878.50903@oracle.com> <20080512170254.f79fe869.akpm@linux-foundation.org> <4828FD68.40608@oracle.com> <200805141256.43272.agruen@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd_commit_transaction() races with
+	journal_try_to_drop_buffers() causing DIO failures
+Date: Wed, 14 May 2008 19:08:56 +0200
+Message-ID: <20080514170856.GH24363@duck.suse.cz>
+References: <20080428180932.GI17054@duck.suse.cz> <1209409764.11872.6.camel@localhost.localdomain> <20080429124321.GD1987@duck.suse.cz> <1209654981.27240.19.camel@badari-desktop> <20080505170636.GK25722@duck.suse.cz> <1210372072.3639.52.camel@localhost.localdomain> <20080512155419.GD15856@duck.suse.cz> <1210639184.3661.43.camel@localhost.localdomain> <20080513145449.GC20806@duck.suse.cz> <1210717389.3638.24.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tiger Yang <tiger.yang@oracle.com>, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@kernel.org
-To: Andreas Gruenbacher <agruen@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Badari Pulavarty <pbadari@us.ibm.com>,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from styx.suse.cz ([82.119.242.94]:42426 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752226AbYENRI7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 May 2008 13:08:59 -0400
 Content-Disposition: inline
-In-Reply-To: <200805141256.43272.agruen@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1210717389.3638.24.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 14, 2008 at 12:56:42PM +0200, Andreas Gruenbacher wrote:
-> On Tuesday 13 May 2008 04:31:04 Tiger Yang wrote:
-> > Hi, Andrew
-> >
-> > This situation only happens we format ext3/4 with inode size more than
-> > 128 and we have put xattr entries both in ibody and block.
-> > The consequences about this bug is we will lost the xattr block which
-> > pointed by i_file_acl with all xattr entires in it. We will alloc a new
-> > xattr block and put that large value entry in it. The old xattr block
-> > will become orphan block.
+On Tue 13-05-08 15:23:09, Mingming Cao wrote:
+> On Tue, 2008-05-13 at 16:54 +0200, Jan Kara wrote:
+> > On Mon 12-05-08 17:39:43, Mingming Cao wrote:
+> > > On Mon, 2008-05-12 at 17:54 +0200, Jan Kara wrote:
+> > > Does this match what you are thinking? It certainly slow down the DIO
+> > > path, but the positive side is it doesn't disturb the other code path...
+> > > thanks for your feedback!
+> > > 
+> > > --------------------------------------------
+> > > 
+> > > An unexpected EIO error gets returned when writing to a file
+> > > using buffered writes and DIO writes at the same time.
+> > > 
+> > > We found there are a number of places where journal_try_to_free_buffers()
+> > > could race with journal_commit_transaction(), the later still
+> > > helds the reference to the buffers on the t_syncdata_list or t_locked_list
+> > > , while journal_try_to_free_buffers() tries to free them, which resulting an EIO
+> > > error returns back to the dio caller. 
+> > > 
+> > > The logic fix is to retry freeing if journal_try_to_free_buffers() to failed
+> > > to free those data buffers while journal_commit_transaction() is still
+> > > reference those buffers.
+> > > This is done via implement ext3 launder_page() callback, instead of inside
+> > > journal_try_to_free_buffers() itself, so that it doesn't affecting other code
+> > > path calling journal_try_to_free_buffers and only dio path get affected.
+> > > 
+> > > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> > > Index: linux-2.6.26-rc1/fs/ext3/inode.c
+> > > ===================================================================
+> > > --- linux-2.6.26-rc1.orig/fs/ext3/inode.c	2008-05-03 11:59:44.000000000 -0700
+> > > +++ linux-2.6.26-rc1/fs/ext3/inode.c	2008-05-12 12:41:27.000000000 -0700
+> > > @@ -1766,6 +1766,23 @@ static int ext3_journalled_set_page_dirt
+> > >  	return __set_page_dirty_nobuffers(page);
+> > >  }
+> > >  
+> > > +static int ext3_launder_page(struct page *page)
+> > > +{
+> > > +        int ret;
+> > > +	int retry = 5;
+> > > +
+> > > +	while (retry --) {
+> > > +		ret = ext3_releasepage(page, GFP_KERNEL);
+> > > +		if (ret == 1)
+> > > +			break;
+> > > +		else
+> > > +			schedule();
+> > > +	}
+> > > +
+> > > +        return ret;
+> > > +}
+> > > +
+> > > +
+> >   Yes, I meant something like this. We could be more clever and do:
+> > 
+> > 	head = bh = page_buffers(page);
+> > 	do {
+> > 		wait_on_buffer(bh);
+> > 		bh = bh->b_this_page;
+> > 	} while (bh != head);
+> > 	/*
+> > 	 * Now commit code should have been able to proceed and release
+> >          * those buffers
+> > 	 */
+> >         schedule();
+> > 
 > 
-> The patch looks good, and it obviously fixes the described problem. Thanks!
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-> 
-> 
-> Could it please be added to -stable?
+> Bummer, we can't free buffers in ext3_launder_page() before calling
+> try_to_free_page, as later
+> invalidate_complete_page2()->try_to_free_page() expecting the page
+> buffers are still here, and will return EIO if it launder_page() has
+> already freed those buffers.:(
+  Are you sure? Because if bufferes are released in ext3_launder_page(),
+PagePrivate() has been set to 0 and we should directly fall through to
+releasing the page without ever calling try_to_release_page()... So I'd
+want to find out why PagePrivate is still set in
+invalidate_complete_page2().
 
-Can someone actually _send_ the patch to stable@kernel.org?  I haven't
-seen it yet :)
+> Doing wait_on_buffer() alone in launder_page() is not enough as it
+> doesn't wait for buffer reference drop to 0.
+  Yes, this would not be enough.
 
-And is it in Linus's tree?  We need to wait until it is there before we
-can add it to -stable.
-
-thanks,
-
-greg k-h
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
