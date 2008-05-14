@@ -1,50 +1,32 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [stable] [PATCH] ext3/4: fix uninitialized bs in
- ext3/4_xattr_set_handle()
-Date: Wed, 14 May 2008 10:28:09 -0700
-Message-ID: <20080514102809.3fc190f0.akpm@linux-foundation.org>
-References: <4827B878.50903@oracle.com>
-	<20080512170254.f79fe869.akpm@linux-foundation.org>
-	<4828FD68.40608@oracle.com>
-	<200805141256.43272.agruen@suse.de>
-	<20080514160035.GD28594@kroah.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH e2fsprogs] fix extent_goto for non-0 leaf levels
+Date: Wed, 14 May 2008 13:32:30 -0400
+Message-ID: <20080514173230.GB7054@mit.edu>
+References: <4828CF2D.9010804@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Gruenbacher <agruen@suse.de>,
-	Tiger Yang <tiger.yang@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@kernel.org
-To: Greg KH <greg@kroah.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080514160035.GD28594@kroah.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59663 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751614AbYENRcg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 May 2008 13:32:36 -0400
+Content-Disposition: inline
+In-Reply-To: <4828CF2D.9010804@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 14 May 2008 09:00:36 -0700 Greg KH <greg@kroah.com> wrote:
-
-> On Wed, May 14, 2008 at 12:56:42PM +0200, Andreas Gruenbacher wrote:
-> > On Tuesday 13 May 2008 04:31:04 Tiger Yang wrote:
-> > > Hi, Andrew
-> > >
-> > > This situation only happens we format ext3/4 with inode size more than
-> > > 128 and we have put xattr entries both in ibody and block.
-> > > The consequences about this bug is we will lost the xattr block which
-> > > pointed by i_file_acl with all xattr entires in it. We will alloc a new
-> > > xattr block and put that large value entry in it. The old xattr block
-> > > will become orphan block.
-> > 
-> > The patch looks good, and it obviously fixes the described problem. Thanks!
-> > 
-> > Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-> > 
-> > 
-> > Could it please be added to -stable?
+On Mon, May 12, 2008 at 06:13:49PM -0500, Eric Sandeen wrote:
+> The logic for stopping at the right level in extent_goto was wrong,
+> so if you asked it to go to any level other than 0 (the leaf
+> level) it would fail.
 > 
-> Can someone actually _send_ the patch to stable@kernel.org?  I haven't
-> seen it yet :)
+> Also add this argument to the tst_extents goto command to test it.
 > 
-> And is it in Linus's tree?  We need to wait until it is there before we
-> can add it to -stable.
+> (I thought this was a failure in my split code but it was this
+> helper that was causing problems...)
 
-It's in -mm and I just added the "Cc:stable" tag to it.
+Oops, thanks for catching this.  Applied.
+
+							- Ted
