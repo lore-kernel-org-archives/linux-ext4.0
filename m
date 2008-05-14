@@ -1,113 +1,28 @@
-From: akpm@linux-foundation.org
-Subject: - ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch removed from -mm tree
-Date: Wed, 14 May 2008 14:22:24 -0700
-Message-ID: <200805142122.m4ELMOlu021594@imap1.linux-foundation.org>
-To: jack@suse.cz, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58146 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754080AbYENVW2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 May 2008 17:22:28 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [stable] [PATCH] ext3/4: fix uninitialized bs in
+	ext3/4_xattr_set_handle()
+Date: Wed, 14 May 2008 18:30:03 -0400
+Message-ID: <20080514223003.GJ7054@mit.edu>
+References: <4827B878.50903@oracle.com> <20080512170254.f79fe869.akpm@linux-foundation.org> <4828FD68.40608@oracle.com> <200805141256.43272.agruen@suse.de> <20080514160035.GD28594@kroah.com> <20080514102809.3fc190f0.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg KH <greg@kroah.com>, Andreas Gruenbacher <agruen@suse.de>,
+	Tiger Yang <tiger.yang@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, stable@kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20080514102809.3fc190f0.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed, May 14, 2008 at 10:28:09AM -0700, Andrew Morton wrote:
+> 
+> It's in -mm and I just added the "Cc:stable" tag to it.
 
-The patch titled
-     ext4: correct mount option parsing to detect when quota options can be changed
-has been removed from the -mm tree.  Its filename was
-     ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
+This patch has both ext3 and ext4 changes in it, so Andrew, I'm
+assuming that you'll push it directly to Linus in the near future?
+That's why I didn't suck it into the ext4 tree....
 
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: correct mount option parsing to detect when quota options can be changed
-From: Jan Kara <jack@suse.cz>
-
-We should not allow user to change quota mount options when quota is just
-suspended.  I would make mount options and internal quota state inconsistent. 
-Also we should not allow user to change quota format when quota is turned on. 
-On the other hand we can just silently ignore when some option is set to the
-value it already has (mount does this on remount).
-
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/super.c |   26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
-
-diff -puN fs/ext4/super.c~ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed
-+++ a/fs/ext4/super.c
-@@ -985,7 +985,7 @@ static int parse_options (char *options,
- 	int data_opt = 0;
- 	int option;
- #ifdef CONFIG_QUOTA
--	int qtype;
-+	int qtype, qfmt;
- 	char *qname;
- #endif
- 
-@@ -1168,7 +1168,9 @@ static int parse_options (char *options,
- 		case Opt_grpjquota:
- 			qtype = GRPQUOTA;
- set_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    !sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR
- 					"EXT4-fs: Cannot change journaled "
- 					"quota options when quota turned on.\n");
-@@ -1206,7 +1208,9 @@ set_qf_name:
- 		case Opt_offgrpjquota:
- 			qtype = GRPQUOTA;
- clear_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR "EXT4-fs: Cannot change "
- 					"journaled quota options when "
- 					"quota turned on.\n");
-@@ -1219,10 +1223,20 @@ clear_qf_name:
- 			sbi->s_qf_names[qtype] = NULL;
- 			break;
- 		case Opt_jqfmt_vfsold:
--			sbi->s_jquota_fmt = QFMT_VFS_OLD;
--			break;
-+			qfmt = QFMT_VFS_OLD;
-+			goto set_qf_format;
- 		case Opt_jqfmt_vfsv0:
--			sbi->s_jquota_fmt = QFMT_VFS_V0;
-+			qfmt = QFMT_VFS_V0;
-+set_qf_format:
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_jquota_fmt != qfmt) {
-+				printk(KERN_ERR "EXT4-fs: Cannot change "
-+					"journaled quota options when "
-+					"quota turned on.\n");
-+				return 0;
-+			}
-+			sbi->s_jquota_fmt = qfmt;
- 			break;
- 		case Opt_quota:
- 		case Opt_usrquota:
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-origin.patch
-ext3-fix-synchronization-of-quota-files-in-journal=data-mode.patch
-ext3-fix-typos-in-messages-and-comments-journalled-journaled.patch
-ext3-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
-reiserfs-fix-synchronization-of-quota-files-in-journal=data-mode.patch
-reiserfs-fix-typos-in-messages-and-comments-journalled-journaled.patch
-reiserfs-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed.patch
-
+       	     	    	    	     - Ted
