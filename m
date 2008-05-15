@@ -1,51 +1,44 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: printk stack trace on ext4_error, ext4_abort and
-	ext4_warning.
-Date: Thu, 15 May 2008 09:55:29 +0530
-Message-ID: <20080515042529.GB15128@skywalker>
-References: <1210790832-20680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <482B3862.6040809@redhat.com>
+Subject: Re: Soft lockups in mballoc code
+Date: Thu, 15 May 2008 15:08:06 +0530
+Message-ID: <20080515093806.GA23507@skywalker>
+References: <25037.1210612895@alphaville.zko.hp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Nick Dokos <nicholas.dokos@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:55597 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750759AbYEOE0H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 May 2008 00:26:07 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m4F4PM9o015473
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 14:25:22 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4F4Pp8S3764398
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 14:25:51 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4F4Q24D005136
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 14:26:02 +1000
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:51210 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751803AbYEOJi1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 May 2008 05:38:27 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m4F9cAmY025491
+	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:10 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4F9c0Ro888844
+	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:00 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m4F9cAwJ000747
+	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:10 +0530
 Content-Disposition: inline
-In-Reply-To: <482B3862.6040809@redhat.com>
+In-Reply-To: <25037.1210612895@alphaville.zko.hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 14, 2008 at 02:07:14PM -0500, Eric Sandeen wrote:
-> Aneesh Kumar K.V wrote:
-> > This helps in better debugging of the problem reported.
-> 
-> ext4_error happens potentially often in some scenarios, and if I chose
-> errors=continue I'm not sure I'd want to dump this much.
-> 
-> Would it be worth limiting how often this goes off (maybe just once per fs?)
-> 
+On Mon, May 12, 2008 at 01:21:35PM -0400, Nick Dokos wrote:
+> I keep getting soft lockups in mballoc code, running fsstress.
+> I'm running a 2.6.25.2 kernel, with 1.40.8 e2fsprogs. Here
+> is sample console output on a 2-cpu Opteron box with a 2Tb filesystem -
+> the two stack traces keep repeating every minute or so and the only
+> way to get out is to reset the box:
 
-I actually thought of doing that. But won't rate limiting hide different
-scenarios in which we can hit the error ? What we would like to know is
-what system call actually caused the file system error. So that we can
-try to reproduce the same. Rate limiting would prevent multiple possible
-errors.
+What is the block size with which the file system is created. I would
+also suggest testing with the latest kernel and see if you can
+reproduce the same. While testing with the latest kernel please also
+use the below patch.
 
-As Ted mentioned the right fix would be audit all the
-ext4_error/warning/abort call sites and add a WARN_ON or WARN_ON_ONCE
-where ever we find it useful.
+http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=ext4-mballoc-fix-mb-_nornalize_request-for-1K-blksz.patch;h=f7b91a6186b7b469ad798ddc95e76ece69b47c24;hb=HEAD
+
 
 -aneesh
-
