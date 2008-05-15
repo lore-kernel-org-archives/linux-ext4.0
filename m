@@ -1,43 +1,56 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Thu, 15 May 2008 09:39:04 -0400
-Message-ID: <20080515133904.GE18825@mit.edu>
-References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org> <20080513051252.GA20575@linux-mips.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: BUG in ext3_sync_fs
+Date: Thu, 15 May 2008 16:35:50 +0200
+Message-ID: <20080515143550.GA19325@atrey.karlin.mff.cuni.cz>
+References: <19f34abd0805010433x7634666bpf7de34248a394480@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
-	Martin Michlmayr <tbm@cyrius.com>, linux-mips@linux-mips.org,
-	linux-ext4@vger.kernel.org
-To: Ralf Baechle <ralf@linux-mips.org>
-Return-path: <linux-mips-bounce@linux-mips.org>
+Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@clusterfs.com
+To: Vegard Nossum <vegard.nossum@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:38370 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754851AbYEOOfv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 May 2008 10:35:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20080513051252.GA20575@linux-mips.org>
-Sender: linux-mips-bounce@linux-mips.org
-Errors-to: linux-mips-bounce@linux-mips.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <19f34abd0805010433x7634666bpf7de34248a394480@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 13, 2008 at 06:12:52AM +0100, Ralf Baechle wrote:
-> The ZERO_PAGE(0) call in ext4_ext_zeroout is the culprit.  Using a zero
-> argument allows the compiler to eleminate the reference to zero_page_mask.
+  Hi,
+
+> With current git (+ kmemcheck, see below) patches I get the following
+> during boot:
 > 
-> Am I reading this right that ZERO_PAGE() is being used without any
-> mappings to userspace being involved?
+> BUG: unable to handle kernel paging request at 00001108
+> IP: [<c04effcf>] ext3_sync_fs+0x3f/+x80
+> 
+> I inserted some printks in ext3_sync_fs():
+>         printk(KERN_EMERG "sb = %p\n", sb);
+>         printk(KERN_EMERG "sb->s_fs_info = %p\n", sb->s_fs_info);
+> 
+> And they show:
+> sb = f7f61e00
+> sb->s_fs_info = 00000000
+> 
+> Monitorshot: http://folk.uio.no/vegardno/linux/DSCF2905.JPG
+> Config: http://folk.uio.no/vegardno/linux/config-20080501.txt
+> 
+> I am booting a USB stick with an ext2 filesystem as root partition. It
+> mounts fine in other machines.
+> 
+> It could of course be my kmemcheck patches that are causing this
+> (though I find it unlikely as they are disabled on boot => no-op, and
+> everything was fine a couple of days ago), but recompiling this config
+> takes a few hours, and I thought I'd just post early in case the
+> problem is really with ext3.
+> 
+> I can send vmlinux image and/or disk image if necessary.
+  Looks like a bug introduced by quota change - it should be fixed in
+the current Linus's kernel. Thanks for report anyway.
 
-Correct.  Ext4 supports unitialized extents; this is useful in DVR's,
-for example, where there is a desire to allocate contiguous blocks
-for, say, a 60 minute TV show, without having to pay the cost of
-zero'ing the blocks.  But in some cases where someone seeks a few
-blocks ahead, and writes into the middle of the unitialized region,
-instead of splitting the unitialized extent into 3 pieces, for short
-regions we will simply zero out a few blocks and then write the
-requested block.  
-
-This is better in the case of binutils, for example, where it will
-write out blocks in a random order using a few close-range seeks, and
-it's more efficient to do this than to bloat out the extent tree only
-to have to recombine extents later.
-
-Anyway, yes, we just need to use the zero page without any user
-mapping being involved.
-
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
