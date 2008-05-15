@@ -1,50 +1,97 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: barriers off by default?
-Date: Thu, 15 May 2008 13:34:25 -0500
-Message-ID: <482C8231.2090609@redhat.com>
-References: <482868A5.1000102@redhat.com> <20080515144355.GB19325@atrey.karlin.mff.cuni.cz> <482C5E14.9030004@redhat.com> <20080515162135.GB3098@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@sun.com>
+From: <gregkh@suse.de>
+Subject: patch ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch added to 2.6.25-stable tree
+Date: Thu, 15 May 2008 12:04:45 -0700
+Message-ID: <20080515195017.8C4AD14540CB@imap.suse.de>
+References: <200805150245.m4F2jI8E020348@hera.kernel.org>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: tiger.yang@oracle.com, adilger@sun.com, agruen@suse.de,
+	akpm@linux-foundation.org, gregkh@suse.de,
+	linux-ext4@vger.kernel.org, torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35354 "EHLO mx1.redhat.com"
+Received: from mail.suse.de ([195.135.220.2]:48501 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754263AbYEOSeb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 May 2008 14:34:31 -0400
-In-Reply-To: <20080515162135.GB3098@webber.adilger.int>
+	id S1758148AbYEOTuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2008 15:50:20 -0400
+In-Reply-To: <200805150245.m4F2jI8E020348@hera.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On May 15, 2008  11:00 -0500, Eric Sandeen wrote:
->> ... the fsync change seems sane too...
->>
->> @@ -85,7 +86,10 @@ int ext3_sync_file(struct file * file, s
->>                         .sync_mode = WB_SYNC_ALL,
->>                         .nr_to_write = 0, /* sys_fsync did this */
->>                 };
->> +               journal_t *journal = EXT3_SB(inode->i_sb)->s_journal;
->>                 ret = sync_inode(inode, &wbc);
->> +               if (journal && (journal->j_flags & JFS_BARRIER))
->> +                       blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
->>         }
->>  out:
->>
->> I assume we need that for some power-plug-pull scenarios ... in fact I
->> had just been meaning to do something similar after reading an old
->> thread on barriers.  reiserfs & xfs do this already in their sync paths.
-> 
-> Wouldn't it make more sense to add this into the generic do_fsync()
-> routine?
 
-blkdev_issue_flush() depends on barrier support:
+This is a note to let you know that we have just queued up the patch titled
 
-        submit_bio(1 << BIO_RW_BARRIER, bio);
+     Subject: ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
 
-and I think only the filesystem can know for sure if it has barriers
-currently in use and available?
+to the 2.6.25-stable tree.  Its filename is
 
--Eric
+     ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From stable-bounces@linux.kernel.org Wed May 14 19:45:26 2008
+From: Tiger Yang <tiger.yang@oracle.com>
+Date: Thu, 15 May 2008 02:45:18 GMT
+Subject: ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+To: jejb@kernel.org, stable@kernel.org
+Message-ID: <200805150245.m4F2jI8E020348@hera.kernel.org>
+
+From: Tiger Yang <tiger.yang@oracle.com>
+
+commit 7e01c8e5420b6c7f9d85d34c15d8c7a15c9fc720 upstream
+
+This fix the uninitialized bs when we try to replace a xattr entry in
+ibody with the new value which require more than free space.
+
+This situation only happens we format ext3/4 with inode size more than 128 and
+we have put xattr entries both in ibody and block.  The consequences about
+this bug is we will lost the xattr block which pointed by i_file_acl with all
+xattr entires in it.  We will alloc a new xattr block and put that large value
+entry in it.  The old xattr block will become orphan block.
+
+Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Andreas Gruenbacher <agruen@suse.de>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/ext3/xattr.c |    5 +++++
+ fs/ext4/xattr.c |    5 +++++
+ 2 files changed, 10 insertions(+)
+
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext3_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1011,6 +1011,11 @@ ext4_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext4_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
+
+
+Patches currently in stable-queue which might be from tiger.yang@oracle.com are
+
+queue-2.6.25/ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch
