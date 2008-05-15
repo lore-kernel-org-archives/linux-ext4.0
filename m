@@ -1,44 +1,43 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Soft lockups in mballoc code
-Date: Thu, 15 May 2008 15:08:06 +0530
-Message-ID: <20080515093806.GA23507@skywalker>
-References: <25037.1210612895@alphaville.zko.hp.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
+Date: Thu, 15 May 2008 09:39:04 -0400
+Message-ID: <20080515133904.GE18825@mit.edu>
+References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org> <20080513051252.GA20575@linux-mips.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Nick Dokos <nicholas.dokos@hp.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:51210 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751803AbYEOJi1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 May 2008 05:38:27 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m4F9cAmY025491
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:10 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4F9c0Ro888844
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:00 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m4F9cAwJ000747
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2008 15:08:10 +0530
+Cc: Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
+	Martin Michlmayr <tbm@cyrius.com>, linux-mips@linux-mips.org,
+	linux-ext4@vger.kernel.org
+To: Ralf Baechle <ralf@linux-mips.org>
+Return-path: <linux-mips-bounce@linux-mips.org>
 Content-Disposition: inline
-In-Reply-To: <25037.1210612895@alphaville.zko.hp.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080513051252.GA20575@linux-mips.org>
+Sender: linux-mips-bounce@linux-mips.org
+Errors-to: linux-mips-bounce@linux-mips.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 12, 2008 at 01:21:35PM -0400, Nick Dokos wrote:
-> I keep getting soft lockups in mballoc code, running fsstress.
-> I'm running a 2.6.25.2 kernel, with 1.40.8 e2fsprogs. Here
-> is sample console output on a 2-cpu Opteron box with a 2Tb filesystem -
-> the two stack traces keep repeating every minute or so and the only
-> way to get out is to reset the box:
+On Tue, May 13, 2008 at 06:12:52AM +0100, Ralf Baechle wrote:
+> The ZERO_PAGE(0) call in ext4_ext_zeroout is the culprit.  Using a zero
+> argument allows the compiler to eleminate the reference to zero_page_mask.
+> 
+> Am I reading this right that ZERO_PAGE() is being used without any
+> mappings to userspace being involved?
 
-What is the block size with which the file system is created. I would
-also suggest testing with the latest kernel and see if you can
-reproduce the same. While testing with the latest kernel please also
-use the below patch.
+Correct.  Ext4 supports unitialized extents; this is useful in DVR's,
+for example, where there is a desire to allocate contiguous blocks
+for, say, a 60 minute TV show, without having to pay the cost of
+zero'ing the blocks.  But in some cases where someone seeks a few
+blocks ahead, and writes into the middle of the unitialized region,
+instead of splitting the unitialized extent into 3 pieces, for short
+regions we will simply zero out a few blocks and then write the
+requested block.  
 
-http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=ext4-mballoc-fix-mb-_nornalize_request-for-1K-blksz.patch;h=f7b91a6186b7b469ad798ddc95e76ece69b47c24;hb=HEAD
+This is better in the case of binutils, for example, where it will
+write out blocks in a random order using a few close-range seeks, and
+it's more efficient to do this than to bloat out the extent tree only
+to have to recombine extents later.
 
+Anyway, yes, we just need to use the zero page without any user
+mapping being involved.
 
--aneesh
+						- Ted
