@@ -1,47 +1,39 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: (unknown)
-Date: Thu, 15 May 2008 18:24:04 -0400
-Message-ID: <E1Jwlro-0000lF-1g@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: =?UTF-8?Q?=EF=BC=BBPATCH]?= ext4: fix error ext number comments
+Date: Thu, 15 May 2008 16:38:31 -0700
+Message-ID: <20080515163831.8221e33d.akpm@linux-foundation.org>
+References: <482B9E27.60100@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Shen Feng <shen@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:58316 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751687AbYEOWYG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 May 2008 18:24:06 -0400
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:55517 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754852AbYEOXig (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2008 19:38:36 -0400
+In-Reply-To: <482B9E27.60100@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+On Thu, 15 May 2008 10:21:27 +0800
+Shen Feng <shen@cn.fujitsu.com> wrote:
 
-Please pull from:
+> Subject: =EF=BC=BBPATCH] ext4: fix error ext number comments
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+Oh dear.  When my eail client (sylpheed) saves this email to a file I g=
+et
 
-These are all cleanups and bug fixes for 2.6.26.
+Subject: =3D?GB2312?B?o9tQQVRDSF0gZXh0NDogZml4IGVycm9yIGV4dCBudW1iZXIgY=
+29tbQ=3D=3D?=3D
+ =3D?GB2312?B?ZW50cw=3D=3D?=3D
 
-Many thanks,
 
-						- Ted
-
- fs/ext4/balloc.c  |   17 +++++++----
- fs/ext4/mballoc.c |   66 +++++++++++++++++++++++++++++--------------
- fs/ext4/super.c   |   80 ++++++++++++++++++++++++++++++++++++++--------------
- fs/jbd2/commit.c  |    2 +
- 4 files changed, 116 insertions(+), 49 deletions(-)
-
-Aneesh Kumar K.V (1):
-      ext4: Retry block allocation if new blocks are allocated from system zone.
-
-Jan Kara (4):
-      ext4: correct mount option parsing to detect when quota options can be changed
-      ext4: Fix mount messages when quota disabled
-      ext4: fix synchronization of quota files in journal=data mode
-      ext4: fix typos in messages and comments (journalled -> journaled)
-
-Mingming Cao (1):
-      jbd2: update transaction t_state to T_COMMIT fix
-
-Valerie Clement (1):
-      ext4: mballoc fix mb_normalize_request algorithm for 1KB block size filesystems
-
+This can only increase.  Sigh, life used to be simple.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
