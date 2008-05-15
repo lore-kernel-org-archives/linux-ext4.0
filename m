@@ -1,97 +1,104 @@
-From: <gregkh@suse.de>
-Subject: patch ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch added to 2.6.25-stable tree
-Date: Thu, 15 May 2008 12:04:45 -0700
-Message-ID: <20080515195017.8C4AD14540CB@imap.suse.de>
-References: <200805150245.m4F2jI8E020348@hera.kernel.org>
-Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: tiger.yang@oracle.com, adilger@sun.com, agruen@suse.de,
-	akpm@linux-foundation.org, gregkh@suse.de,
-	linux-ext4@vger.kernel.org, torvalds@linux-foundation.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: barriers off by default?
+Date: Thu, 15 May 2008 15:44:04 -0500
+Message-ID: <482CA094.20703@redhat.com>
+References: <482868A5.1000102@redhat.com> <20080515144355.GB19325@atrey.karlin.mff.cuni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:48501 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([66.187.233.31]:38228 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758148AbYEOTuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 May 2008 15:50:20 -0400
-In-Reply-To: <200805150245.m4F2jI8E020348@hera.kernel.org>
+	id S1751546AbYEOUoN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2008 16:44:13 -0400
+In-Reply-To: <20080515144355.GB19325@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Jan Kara wrote:
 
-This is a note to let you know that we have just queued up the patch titled
+>> As I look at my shiny new 500G disks with 32MB of cache, I find myself
+>> wondering why the default for ext3 and ext4 is to have barriers disabled.
+>>
+>> This is a pretty dangerous default w.r.t. filesystem integrity on power
+>> loss, no?
+>>     
+>   JFYI: SUSE kernel carries for ages a patch which changes this default.
+> I'd be more than happy to drop it ;).
+>
+> 								Honza
+>   
+What do folks think of this?
 
-     Subject: ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+the show_options change is a little funky since jbd may do a test 
+write and fail... (actually I was thinking maybe at fill_super we 
+should do a test barrier write and get it out of the way early...)
 
-to the 2.6.25-stable tree.  Its filename is
-
-     ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From stable-bounces@linux.kernel.org Wed May 14 19:45:26 2008
-From: Tiger Yang <tiger.yang@oracle.com>
-Date: Thu, 15 May 2008 02:45:18 GMT
-Subject: ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
-To: jejb@kernel.org, stable@kernel.org
-Message-ID: <200805150245.m4F2jI8E020348@hera.kernel.org>
-
-From: Tiger Yang <tiger.yang@oracle.com>
-
-commit 7e01c8e5420b6c7f9d85d34c15d8c7a15c9fc720 upstream
-
-This fix the uninitialized bs when we try to replace a xattr entry in
-ibody with the new value which require more than free space.
-
-This situation only happens we format ext3/4 with inode size more than 128 and
-we have put xattr entries both in ibody and block.  The consequences about
-this bug is we will lost the xattr block which pointed by i_file_acl with all
-xattr entires in it.  We will alloc a new xattr block and put that large value
-entry in it.  The old xattr block will become orphan block.
-
-Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Andreas Gruenbacher <agruen@suse.de>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext3/xattr.c |    5 +++++
- fs/ext4/xattr.c |    5 +++++
- 2 files changed, 10 insertions(+)
-
---- a/fs/ext3/xattr.c
-+++ b/fs/ext3/xattr.c
-@@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, 
- 			i.value = NULL;
- 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
- 		} else if (error == -ENOSPC) {
-+			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
-+				error = ext3_xattr_block_find(inode, &i, &bs);
-+				if (error)
-+					goto cleanup;
-+			}
- 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
- 			if (error)
- 				goto cleanup;
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1011,6 +1011,11 @@ ext4_xattr_set_handle(handle_t *handle, 
- 			i.value = NULL;
- 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
- 		} else if (error == -ENOSPC) {
-+			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
-+				error = ext4_xattr_block_find(inode, &i, &bs);
-+				if (error)
-+					goto cleanup;
-+			}
- 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
- 			if (error)
- 				goto cleanup;
+-Eric
 
 
-Patches currently in stable-queue which might be from tiger.yang@oracle.com are
+diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
+index b45f3c1..daab1f5 100644
+--- a/Documentation/filesystems/ext3.txt
++++ b/Documentation/filesystems/ext3.txt
+@@ -52,8 +52,16 @@ commit=nrsec	(*)	Ext3 can be told to sync all its data and metadata
+ 			Setting it to very large values will improve
+ 			performance.
+ 
+-barrier=1		This enables/disables barriers.  barrier=0 disables
+-			it, barrier=1 enables it.
++barrier=<0|1(*)>	This enables/disables the use of write barriers in
++			the jbd code.  barrier=0 disables, barrier=1 enables.
++			This also requires an IO stack which can support
++			barriers, and if jbd gets an error on a barrier
++			write, it will disable again with a warning.
++			Write barriers enforce proper on-disk ordering
++			of journal commits, making volatile disk write caches
++			safe to use, at some performance penalty.  If
++			your disks are battery-backed in one way or another,
++			disabling barriers may safely improve performance.
+ 
+ orlov		(*)	This enables the new Orlov block allocator. It is
+ 			enabled by default.
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index fe3119a..d06e0f3 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -555,6 +555,7 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	struct super_block *sb = vfs->mnt_sb;
+ 	struct ext3_sb_info *sbi = EXT3_SB(sb);
+ 	struct ext3_super_block *es = sbi->s_es;
++	journal_t *journal = EXT3_SB(sb)->s_journal;
+ 	unsigned long def_mount_opts;
+ 
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+@@ -613,8 +614,16 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_printf(seq, ",commit=%u",
+ 			   (unsigned) (sbi->s_commit_interval / HZ));
+ 	}
+-	if (test_opt(sb, BARRIER))
+-		seq_puts(seq, ",barrier=1");
++	if (!test_opt(sb, BARRIER)) {
++		seq_puts(seq, ",barrier=0");
++	} else {
++		/*
++	 	* jbd inherits the barrier flag from ext3, and jbd may actually
++	 	* turn off barriers if a write fails, so it's the real test.
++	 	*/
++		if (journal && !(journal->j_flags & JFS_BARRIER))
++			seq_puts(seq, ",barrier=1(failed)");
++	}
+ 	if (test_opt(sb, NOBH))
+ 		seq_puts(seq, ",nobh");
+ 
+@@ -1589,6 +1598,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
+ 
+ 	set_opt(sbi->s_mount_opt, RESERVATION);
++	set_opt(sbi->s_mount_opt, BARRIER);
+ 
+ 	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
+ 			    NULL, 0))
 
-queue-2.6.25/ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch
