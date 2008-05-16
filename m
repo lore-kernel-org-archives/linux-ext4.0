@@ -1,54 +1,124 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 2/4] ext3: call blkdev_issue_flush on fsync
-Date: Fri, 16 May 2008 23:15:06 +0100
-Message-ID: <20080516221506.GD15334@shareable.org>
-References: <482DDA56.6000301@redhat.com> <482DDB5E.4030404@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Fri, 16 May 2008 17:21:26 -0500
+Message-ID: <482E08E6.4030507@redhat.com>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:36595 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753945AbYEPWPI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 May 2008 18:15:08 -0400
-Content-Disposition: inline
-In-Reply-To: <482DDB5E.4030404@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Eric Sandeen <sandeen@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20080516220315.GB15334@shareable.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> To ensure that bits are truly on-disk after an fsync,
-> ext3 should call blkdev_issue_flush if barriers are supported.
+Jamie Lokier wrote:
+> Eric Sandeen wrote:
+>>> If we were seeing a significant number of "hey, my disk got wrecked"
+>>> reports which attributable to this then yes, perhaps we should change
+>>> the default.  But I've never seen _any_, although I've seen claims that
+>>> others have seen reports.
+>> Hm, how would we know, really?  What does it look like?  It'd totally
+>> depend on what got lost...  When do you find out?  Again depends what
+>> you're doing, I think.  I'll admit that I don't have any good evidence
+>> of my own.  I'll go off and do some plug-pull-testing and a benchmark or
+>> two.
 > 
-> Inspired by an old thread on barriers, by reiserfs & xfs
-> which do the same, and by a patch SuSE ships with their kernel
+> You have to pull the plug quite a lot, while there is data in write
+> cache, and when the data is something you will notice later.
+> 
+> Checking filesystem is hard.  Something systematic would be good - for
+> which you will want an electronically controlled power switch.
 
-blkdev_issue_flush uses BIO_RW_BARRIER, which becomes REQ_HARDBARRIER.
-REQ_HARDBARRIER does _not_ mean force the data to disk.
+Right, that was the plan.  I wasn't really going to stand there and pull
+the plug.  :)  I'd like to get to "out of $NUMBER power-loss events
+under this usage, I saw $THIS corruption $THISMANY times ..."
 
-It is a barrier request, which when optimised for the highest
-performance can return a long time before the data is physically on
-the disk.  (It can even do nothing, correctly).
+> I have seen corruption which I believe is from lack of barriers, and
+> hasn't occurred since I implemented them (or disabled write cache).
+> But it's hard to be sure that was the real cause.
+> 
+> If you just want to test the block I/O layer and drive itself, don't
+> use the filesystem, but write a program which just access the block
+> device, continuously writing with/without barriers every so often, and
+> after power cycle read back to see what was and wasn't written.
 
-In many cases, block drivers implement a barrier using a hardware
-flush command, so it turns out the same.  Then your patch is effective.
+Well, I think it is worth testing through the filesystem, different
+journaling mechanisms will probably react^wcorrupt in different ways.
 
-(It is however sending unnecessary hardware commands sometimes,
-because fsync's journal write (when there is one) will also issue a
-flush command, and another is not required; it may reduce performance.)
+> I think there may be drives which won't show any effect - if they have
+> enough internal power (from platter inertia) to write everything in
+> the cache before losing it.
 
-But that is not what REQ_HARDBARRIER means: block drivers are allowed
-to implement barriers in other ways which are more efficient.
+... and those with flux capacitors.  ;)  I've heard of this mechanism
+but I'm  not sure I believe it is present in any modern drive.  Not sure
+the seagates of the world will tell us, either ....
 
-I'm not sure if this problem is theoretical only, or if any block
-drivers actually do take advantage of this.
+> If you want to test, the worst case is to queue many small writes at
+> seek positions acrosss the disk, so that flushing the disk's write
+> cache takes the longest time.  A good pattern might be take numbers
+> 0..2^N-1 (e.g. 0..255), for each number reverse the bit order (0, 128,
+> 64, 192...) and do writes at those block positions, scaling up to the
+> range of the whole disk.  The idea is if the disk just caches the last
+> few queued, they will always be quite spread out.
 
-A good fix would be to add REQ_HARDFLUSH, with a precise meaning:
-don't return until the hardware reports the data safely committed.  It
-would be very little change to most (if not all) current drivers.
+I suppose we could go about it 2 ways; come up with something diabolical
+and  try very hard to break it (I think we know that we can) or do
+something more realistic (like untarring & building a kernel?) and see
+what happens in that case...
 
--- Jamie
+> The MacOS X folks decided that speed is most important for fsync().
+> fsync() does not guarantee commit to platter.  *But* they added an
+> fcntl() for applications to request a commit to platter, which SQLite
+> at least uses.  I don't know if MacOS X uses barriers for filesystem
+> operations.
+
+heh,  reminds me of xfs's "osyncisosync" option ;)
+
+>> and install by default on lvm which won't pass barriers anyway.
+> 
+> Considering how many things depend on LVM not passing barriers, that
+> is scary.  People use software RAID assuming integrity.  They are
+> immune to many hardware faults.  But it turns out, on Linux, that a
+> single disk can have higher integrity against power failure than a
+> RAID.
+
+FWIW...  md also only does it on raid1... but lvm with a single device
+or mirror underneath really *should* IMHO...
+
+>> So maybe it's hypocritical to send this patch from redhat.com :)
+> 
+> So send the patch to fix LVM too :-)
+
+hehe, I'll try ... ;)
+
+>> And as another "who uses barriers" datapoint, reiserfs & xfs both have
+>> them on by default.
+> 
+> Are they noticably slower than ext3?  If not, it suggests ext3 can be
+> fixed to keep its performance with barriers enabled.
+
+Well it all depends on what you're testing (and the hardware you're
+testing it on).  Between ext3 & xfs you can find plenty of tests which
+will show either one or the other as faster.  And most benchmark results
+out there probably don't state whether barriers were in force or not.
+
+> Specifically: under some workloads, batching larger changes into the
+> journal between commit blocks might compensate.  Maybe the journal has
+> been tuned for barriers off because they are by default?
+> 
+>> I suppose alternately I could send another patch to remove "remember
+>> that ext3/4 by default offers higher data integrity guarantees than
+>> most." from Documentation/filesystems/ext4.txt  ;)
+> 
+> It would be fair.  I suspect a fair number of people are under the
+> impression ext3 uses barriers with no special options, prior to this
+> thread.  It was advertised as a feature in development during the 2.5
+> series.
+
+It certainly does come into play in benchmarking scenarios...
+
+-Eric
