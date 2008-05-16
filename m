@@ -1,97 +1,137 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/4] ext3: enable barriers by default
-Date: Fri, 16 May 2008 09:37:19 -0500
-Message-ID: <1210948642-12171-2-git-send-email-sandeen__16232.0313429975$1210950069$gmane$org@redhat.com>
-References: <1210948642-12171-1-git-send-email-sandeen@redhat.com>
-Cc: Eric Sandeen <sandeen@redhat.com>
-To: sandeen@redhat.com
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: [PATCH] Fix DIO EIO error caused by race between
+	jbd_commit_transaction() and journal_try_to_drop_buffers()
+Date: Fri, 16 May 2008 11:01:46 -0400
+Message-ID: <20080516150146.GA21018@unused.rdu.redhat.com>
+References: <20080505170636.GK25722@duck.suse.cz> <1210372072.3639.52.camel@localhost.localdomain> <20080512155419.GD15856@duck.suse.cz> <1210639184.3661.43.camel@localhost.localdomain> <20080513145449.GC20806@duck.suse.cz> <1210717389.3638.24.camel@localhost.localdomain> <20080514170856.GH24363@duck.suse.cz> <1210786872.3657.48.camel@localhost.localdomain> <20080514181444.GI24363@duck.suse.cz> <1210947250.3608.18.camel@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Badari Pulavarty <pbadari@us.ibm.com>,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38517 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:49488 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760683AbYEPO4X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 May 2008 10:56:23 -0400
-In-Reply-To: <1210948642-12171-1-git-send-email-sandeen@redhat.com>
+	id S1758901AbYEPPTx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 May 2008 11:19:53 -0400
+Content-Disposition: inline
+In-Reply-To: <1210947250.3608.18.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I can't think of any valid reason for ext3 to not use barriers when
-they are available;  I believe this is necessary for filesystem
-integrity in the face of a volatile write cache on storage.
+On Fri, May 16, 2008 at 07:14:10AM -0700, Mingming Cao wrote:
+> This patch fixed a few races between direct IO and kjournld commit transaction.
+> An unexpected EIO error gets returned to direct IO caller when it failed to
+> free those data buffers. This could be reproduced easily with parallel 
+> direct write and buffered write to the same file
+> 
+> More specific, those races could cause journal_try_to_free_buffers()
+> fail to free the data buffers, when jbd is committing the transaction that has
+> those data buffers on its t_syncdata_list or t_locked_list. 
+> journal_commit_transaction() still holds the reference to those buffers
+>  before data reach to disk and buffers are removed from the 
+> t_syncdata_list of t_locked_list. This prevent the concurrent 
+> journal_try_to_free_buffers() to free those buffers at the same time, and cause
+> EIO error returns back to direct IO.
+> 
+> With this patch, in case of direct IO and when try_to_free_buffers() failed,
+> let's waiting for journal_commit_transaction() to finish
+> flushing the current committing transaction's data buffers to disk, 
+> then try to free those buffers again.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
+> ---
+>  fs/jbd/commit.c      |    1 +
+>  fs/jbd/journal.c     |    1 +
+>  fs/jbd/transaction.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/jbd.h  |    3 +++
+>  4 files changed, 51 insertions(+)
+> 
+> Index: linux-2.6.26-rc1/include/linux/jbd.h
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/include/linux/jbd.h	2008-05-14 16:36:41.000000000 -0700
+> +++ linux-2.6.26-rc1/include/linux/jbd.h	2008-05-15 14:12:10.000000000 -0700
+> @@ -667,6 +667,9 @@ struct journal_s
+>  	 */
+>  	wait_queue_head_t	j_wait_transaction_locked;
+>  
+> +	/* Wait queu for waiting for data buffers to flushed to disk*/
+> +	wait_queue_head_t	j_wait_data_flushed;
+> +
+>  	/* Wait queue for waiting for checkpointing to complete */
+>  	wait_queue_head_t	j_wait_logspace;
+>  
+> Index: linux-2.6.26-rc1/fs/jbd/commit.c
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/fs/jbd/commit.c	2008-05-03 11:59:44.000000000 -0700
+> +++ linux-2.6.26-rc1/fs/jbd/commit.c	2008-05-15 14:12:46.000000000 -0700
+> @@ -462,6 +462,7 @@ void journal_commit_transaction(journal_
+>  	 * clean by now, so check that it is in fact empty.
+>  	 */
+>  	J_ASSERT (commit_transaction->t_sync_datalist == NULL);
+> +	wake_up(&journal->j_wait_data_flushed)
+>  
+>  	jbd_debug (3, "JBD: commit phase 3\n");
+>  
+> Index: linux-2.6.26-rc1/fs/jbd/journal.c
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/fs/jbd/journal.c	2008-05-14 16:36:41.000000000 -0700
+> +++ linux-2.6.26-rc1/fs/jbd/journal.c	2008-05-15 14:13:02.000000000 -0700
+> @@ -660,6 +660,7 @@ static journal_t * journal_init_common (
+>  		goto fail;
+>  
+>  	init_waitqueue_head(&journal->j_wait_transaction_locked);
+> +	init_waitqueue_head(&journal->j_wait_data_flushed);
+>  	init_waitqueue_head(&journal->j_wait_logspace);
+>  	init_waitqueue_head(&journal->j_wait_done_commit);
+>  	init_waitqueue_head(&journal->j_wait_checkpoint);
+> Index: linux-2.6.26-rc1/fs/jbd/transaction.c
+> ===================================================================
+> --- linux-2.6.26-rc1.orig/fs/jbd/transaction.c	2008-05-03 11:59:44.000000000 -0700
+> +++ linux-2.6.26-rc1/fs/jbd/transaction.c	2008-05-16 06:42:30.000000000 -0700
+> @@ -1648,12 +1648,47 @@ out:
+>  	return;
+>  }
+>  
+> +/*
+> + * Journal_try_to_free_buffers() will call this function to w
+> + * waiting for the current transaction finishing syncing data buffers, before
+> + * try to free that buffer.
+> + *
+> + * journal_try_to_free_buffers() could race with journal_commit_transaction()
+> + * The later might still hold the reference count to the buffers when inspecting
+> + * them on t_syncdata_list or t_locked_list.
+> + */
+> +static void journal_wait_for_transaction_sync_data(journal_t *journal)
+> +{
+> +        transaction_t *transaction = NULL;
+> +
+> +        transaction = journal->j_committing_transaction;
+> +
+> +        if (!transaction)
+> +                return;
+> +
+> +        /*
+> +         * If the current transaction is flushing and waiting for data buffers
+> +	 * (t_state is T_FLUSH), wait for the j_wait_data_flushed event
+> +         */
+> +        if (transaction->t_state == T_FLUSH) {
+> +                DEFINE_WAIT(wait);
+> +
+> +                prepare_to_wait(&journal->j_wait_data_flushed,
+> +                                        &wait, TASK_UNINTERRUPTIBLE);
+> +                spin_unlock(&journal->j_state_lock);
+> +                schedule();
+> +                finish_wait(&journal->j_wait_data_flushed, &wait);
+> +        	spin_lock(&journal->j_state_lock);
+> +        }
+> +	return;
+> +}
+> 
 
-An administrator who trusts that the cache is sufficiently battery-
-backed (and power supplies are sufficiently redundant, etc...)
-can always turn it back off again.
+Got a couple of whitespace problems above it looks like.  Thanks,
 
-SuSE has carried such a patch for quite some time now.
-
-Also document the mount option while we're at it.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Acked-by: Jan Kara <jack@suse.cz>
----
- Documentation/filesystems/ext3.txt |   12 ++++++++++--
- fs/ext3/super.c                    |   11 +++++++++--
- 2 files changed, 19 insertions(+), 4 deletions(-)
-
-diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-index b45f3c1..daab1f5 100644
---- a/Documentation/filesystems/ext3.txt
-+++ b/Documentation/filesystems/ext3.txt
-@@ -52,8 +52,16 @@ commit=nrsec	(*)	Ext3 can be told to sync all its data and metadata
- 			Setting it to very large values will improve
- 			performance.
- 
--barrier=1		This enables/disables barriers.  barrier=0 disables
--			it, barrier=1 enables it.
-+barrier=<0|1(*)>	This enables/disables the use of write barriers in
-+			the jbd code.  barrier=0 disables, barrier=1 enables.
-+			This also requires an IO stack which can support
-+			barriers, and if jbd gets an error on a barrier
-+			write, it will disable again with a warning.
-+			Write barriers enforce proper on-disk ordering
-+			of journal commits, making volatile disk write caches
-+			safe to use, at some performance penalty.  If
-+			your disks are battery-backed in one way or another,
-+			disabling barriers may safely improve performance.
- 
- orlov		(*)	This enables the new Orlov block allocator. It is
- 			enabled by default.
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index fe3119a..9c30dc7 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -555,6 +555,7 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	struct super_block *sb = vfs->mnt_sb;
- 	struct ext3_sb_info *sbi = EXT3_SB(sb);
- 	struct ext3_super_block *es = sbi->s_es;
-+	journal_t *journal = sbi->s_journal;
- 	unsigned long def_mount_opts;
- 
- 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
-@@ -613,8 +614,13 @@ static int ext3_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_printf(seq, ",commit=%u",
- 			   (unsigned) (sbi->s_commit_interval / HZ));
- 	}
--	if (test_opt(sb, BARRIER))
--		seq_puts(seq, ",barrier=1");
-+	/*
-+ 	 * jbd inherits the barrier flag from ext3, and may actually
-+ 	 * turn off barriers if a write fails, so it's the real test.
-+ 	 */
-+	if (!test_opt(sb, BARRIER) ||
-+	    (journal && !(journal->j_flags & JFS_BARRIER)))
-+		seq_puts(seq, ",barrier=0");
- 	if (test_opt(sb, NOBH))
- 		seq_puts(seq, ",nobh");
- 
-@@ -1589,6 +1595,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
- 
- 	set_opt(sbi->s_mount_opt, RESERVATION);
-+	set_opt(sbi->s_mount_opt, BARRIER);
- 
- 	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
- 			    NULL, 0))
--- 
-1.5.3.6
+Josef
 
