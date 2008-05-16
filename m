@@ -1,60 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 4/4] ext4: call blkdev_issue_flush on fsync
-Date: Fri, 16 May 2008 14:09:56 -0500
-Message-ID: <482DDC04.7020706@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Fri, 16 May 2008 13:05:45 -0700
+Message-ID: <20080516130545.845a3be9.akpm@linux-foundation.org>
 References: <482DDA56.6000301@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Jamie Lokier <jamie@shareable.org>
-To: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, jamie@shareable.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43003 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752197AbYEPUG4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 May 2008 16:06:56 -0400
 In-Reply-To: <482DDA56.6000301@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-To ensure that bits are truly on-disk after an fsync,
-we should call blkdev_issue_flush if barriers are supported.
+On Fri, 16 May 2008 14:02:46 -0500
+Eric Sandeen <sandeen@redhat.com> wrote:
 
-Inspired by an old thread on barriers, by reiserfs & xfs
-which do the same, and by a patch SuSE ships with their kernel
+> A collection of patches to make ext3 & 4 use barriers by
+> default, and to call blkdev_issue_flush on fsync if they
+> are enabled.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
- fs/ext4/fsync.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+Last time this came up lots of workloads slowed down by 30% so I
+dropped the patches in horror.
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 1c8ba48..a45c373 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -27,6 +27,7 @@
- #include <linux/sched.h>
- #include <linux/writeback.h>
- #include <linux/jbd2.h>
-+#include <linux/blkdev.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
- 
-@@ -45,6 +46,7 @@
- int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
- {
- 	struct inode *inode = dentry->d_inode;
-+	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 	int ret = 0;
- 
- 	J_ASSERT(ext4_journal_current_handle() == NULL);
-@@ -85,6 +87,8 @@ int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
- 			.nr_to_write = 0, /* sys_fsync did this */
- 		};
- 		ret = sync_inode(inode, &wbc);
-+		if (journal && (journal->j_flags & JBD2_BARRIER))
-+			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
- 	}
- out:
- 	return ret;
--- 1.5.3.6
+I just don't think we can quietly go and slow everyone's machines down
+by this much.  The overhead of journalling is already pretty horrid.
 
+If we were seeing a significant number of "hey, my disk got wrecked"
+reports which attributable to this then yes, perhaps we should change
+the default.  But I've never seen _any_, although I've seen claims that
+others have seen reports.
+
+There are no happy solutions here, and I'm inclined to let this dog
+remain asleep and continue to leave it up to distributors to decide
+what their default should be.
+
+Do we know which distros are enabling barriers by default?
