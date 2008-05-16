@@ -1,156 +1,63 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH] JBD2: Fix DIO EIO error caused by race between free buffer
-	and commit trasanction
-Date: Fri, 16 May 2008 14:01:41 -0700
-Message-ID: <1210971701.3608.47.camel@localhost.localdomain>
-References: <20080429124321.GD1987@duck.suse.cz>
-	 <1209654981.27240.19.camel@badari-desktop>
-	 <20080505170636.GK25722@duck.suse.cz>
-	 <1210372072.3639.52.camel@localhost.localdomain>
-	 <20080512155419.GD15856@duck.suse.cz>
-	 <1210639184.3661.43.camel@localhost.localdomain>
-	 <20080513145449.GC20806@duck.suse.cz>
-	 <1210717389.3638.24.camel@localhost.localdomain>
-	 <20080514170856.GH24363@duck.suse.cz>
-	 <1210786872.3657.48.camel@localhost.localdomain>
-	 <20080514181444.GI24363@duck.suse.cz>
-	 <1210947250.3608.18.camel@localhost.localdomain>
-	 <1210957976.4231.31.camel@badari-desktop>
-Reply-To: cmm@us.ibm.com
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Fri, 16 May 2008 22:45:16 +0100
+Message-ID: <20080516214516.GA15334@shareable.org>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516135814.1c973bd5.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
-	Badari Pulavarty <pbadari@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:53782 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761763AbYEPVBx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 May 2008 17:01:53 -0400
-In-Reply-To: <1210957976.4231.31.camel@badari-desktop>
+Received: from mail2.shareable.org ([80.68.89.115]:60031 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751490AbYEPVpY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 May 2008 17:45:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20080516135814.1c973bd5.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-JBD2: fix DIO error caused by race with DIO free_buffers and jbd2 commit transaction
+Andrew Morton wrote:
+> > I suppose alternately I could send another patch to remove "remember
+> > that ext3/4 by default offers higher data integrity guarantees than
+> > most." from Documentation/filesystems/ext4.txt  ;)
+> 
+> We could add a big scary printk at mount time and provide a document?
 
-From: Mingming Cao <cmm@us.ibm.com>
+Can I suggest making /proc/mounts say "barrier=0" when journal is not
+enabled, instead of omitting the option.
 
-This patch fixed a few races between direct IO and kjournlad commit transaction.
-An unexpected EIO error gets returned to direct IO caller when it failed to
-free those data buffers. This could be reproduced easily with parallel 
-direct write and buffered write to the same file
+Boot logs are too large to pay close attention to unless it's really
+obvious.  (2.4 kernels _do_ have a similar message about "data
+integrity not guaranteed" with USB drivers - I never understood what
+it was getting it, and why it was removed for 2.6).
 
-More specific, those races could cause jbd2_journal_try_to_free_buffers()
-fail to free the data buffers, when jbd is committing the transaction that has
-those data buffers on its t_syncdata_list or t_locked_list. 
-jbd2_journal_commit_transaction() still holds the reference to those buffers
- before data reach to disk and buffers are removed from the 
-t_syncdata_list of t_locked_list. This prevent the concurrent 
-jbd2_journal_try_to_free_buffers() to free those buffers at the same time, but cause
-EIO error returns back to direct IO.
+However, if I saw barrier=0 in /proc/mounts it would at least prompt
+me to look it up and then making an informed decision.
 
-With this patch, in case of direct IO and when try_to_free_buffers() failed,
-let's waiting for jbd2_journal_commit_transaction() to finish
-flushing the current committing transaction's data buffers to disk, 
-then try to free those buffers again.
+Personally I had assumed barriers were enabled by default with ext3,
+as some distros do that, the 2.4 patches did that, and:
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
----
- fs/jbd2/transaction.c |   57 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 55 insertions(+), 2 deletions(-)
+   I *have* experienced corruption following power loss without
+   barriers, and none with barriers.
 
-Index: linux-2.6.26-rc2/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.26-rc2.orig/fs/jbd2/transaction.c	2008-05-16 11:16:56.000000000 -0700
-+++ linux-2.6.26-rc2/fs/jbd2/transaction.c	2008-05-16 13:52:04.000000000 -0700
-@@ -1656,12 +1656,39 @@ out:
- 	return;
- }
- 
-+/*
-+ * jbd2_journal_try_to_free_buffers() could race with jbd2_journal_commit_transaction()
-+ * The later might still hold the reference count to the buffers when inspecting
-+ * them on t_syncdata_list or t_locked_list.
-+ *
-+ * jbd2_journal_try_to_free_buffers() will call this function to
-+ * wait for the current transaction to finish syncing data buffers, before
-+ * try to free that buffer.
-+ *
-+ * Called with journal->j_state_lock hold.
-+ */
-+static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
-+{
-+	transaction_t *transaction = NULL;
-+	tid_t tid;
-+
-+	transaction = journal->j_committing_transaction;
-+
-+	if (!transaction)
-+		return;
-+
-+	tid = transaction->t_tid;
-+	spin_unlock(&journal->j_state_lock);
-+	jbd2_log_wait_commit(journal, tid);
-+	spin_lock(&journal->j_state_lock);
-+}
- 
- /**
-  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
-  * @journal: journal for operation
-  * @page: to try and free
-- * @unused_gfp_mask: unused
-+ * @gfp_mask: unused for allocation purpose. Here is used
-+ * 	      as a flag to tell if direct IO is attemping to free buffers.
-  *
-  *
-  * For all the buffers on this page,
-@@ -1690,9 +1717,11 @@ out:
-  * journal_try_to_free_buffer() is changing its state.  But that
-  * cannot happen because we never reallocate freed data as metadata
-  * while the data is part of a transaction.  Yes?
-+ *
-+ * Return 0 on failure, 1 on success
-  */
- int jbd2_journal_try_to_free_buffers(journal_t *journal,
--				struct page *page, gfp_t unused_gfp_mask)
-+				struct page *page, gfp_t gfp_mask)
- {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
-@@ -1721,7 +1750,31 @@ int jbd2_journal_try_to_free_buffers(jou
- 		if (buffer_jbd(bh))
- 			goto busy;
- 	} while ((bh = bh->b_this_page) != head);
-+
- 	ret = try_to_free_buffers(page);
-+
-+ 	/*
-+	 * In the case of concurrent direct IO and buffered IO,
-+	 * There are a number of places where we
-+	 * could race with jbd2_journal_commit_transaction(), the later still
-+	 * holds the reference to the buffers to free while processing them.
-+	 * try_to_free_buffers() failed to free those buffers,
-+	 * resulting in an unexpected EIO error
-+	 * returns back to the generic_file_direct_IO()
-+	 *
-+	 * So let's wait for the current transaction to finish flush of
-+	 * dirty data buffers before we try to free those buffers
-+	 * again. This wait is needed by direct IO code path only,
-+	 * gfp_mask __GFP_REPEAT is passed from the direct IO code
-+	 * path to flag if we need to wait and retry free buffers.
-+	 */
-+	if (ret == 0 && gfp_mask & __GFP_REPEAT) {
-+        	spin_lock(&journal->j_state_lock);
-+		jbd2_journal_wait_for_transaction_sync_data(journal);
-+		ret = try_to_free_buffers(page);
-+		spin_unlock(&journal->j_state_lock);
-+	}
-+
- busy:
- 	return ret;
- }
+   When I mentioned that turning off write cache or using barriers is
+   a solution to a programmer working on the same project, she said
+   "oh, yes, we've had reports of disk corruption too - thanks for the
+   advice", and the advice worked, so I am not the only one.
 
+   (In the interests of perspective, that's with ext3 on patched 2.4
+   kernels on a ARM device, but still - the barriers seem to work).
 
+On a related note, there is advice floating about the net to run with
+IDE write cache turned off if you're running a database and care about
+integrity.  That has much worse performance than barriers.
+
+I guess the patch which fixes fsync is particularly useful for those
+database users, as it means they can run with write cache enabled and
+depend on fsync() to give equivalent integrity now.  (Enabling
+journalling is not really relevant to this).
+
+-- Jamie
 
