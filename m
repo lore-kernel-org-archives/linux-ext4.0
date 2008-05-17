@@ -1,123 +1,101 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sat, 17 May 2008 09:43:44 -0400
-Message-ID: <20080517134344.GA7411@mit.edu>
-References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <20080516225304.GG15334@shareable.org> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org>
+Subject: New ext4 patchset 2.6.26-rc2-git5-ext4-1
+Date: Sat, 17 May 2008 13:02:23 -0400
+Message-ID: <20080517170223.GC8009@mit.edu>
+References: <E1JwMp9-0002pJ-9b@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37796 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752049AbYEQRCY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 May 2008 13:02:24 -0400
 Content-Disposition: inline
-In-Reply-To: <20080516173552.e88183d9.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <E1JwMp9-0002pJ-9b@closure.thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 16, 2008 at 05:35:52PM -0700, Andrew Morton wrote:
-> Journal wrapping could cause the commit block to get written before its
-> data blocks.  We could improve that by changing the journal layout a bit:
-> wrap the entire commit rather than just its tail.  Such a change might
-> be intrusive though.
+There's a new ext4 patchset available, here:
 
-Or we backport jbd2's checksum support in the commit block to jbd;
-with the checksum support, if the commit block is written out-of-order
-with the rest of the blocks in the commit, the commit will simply not
-be recognized as valid, and we'll use the previous commit block as the
-last valid commit.
+As a git tree:
 
-So with ext4, the only problems we should actually have w/o a barrier
-are:
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.26-rc2-git5-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.26-rc2-git5-ext4-1
 
-	* Writes that were supposed to happen only *after* the journal
-          commit is written get reordered *before* the journal commit.
-          (But normally these writes, while _allowed_ after a journal
-          commit are not forced by the kernel.)
+As a patchset:
 
-	* In data=ordered mode, data blocks that *should* have been
-          written out before the journal commit, get reordered until
-          *after* the journal commit.
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-rc2-git5-ext4-1
 
-And in both cases, where the crash has to happen sometime *very*
-shortly after commit record has been forced out.
+This patch set removes the stable patches that have been accepted by
+Linus, two unstable patches at the end of the series that caused ext4
+to instantly lock up, and a few bug fixes since the last commit.  The
+DIO race patches have also been removed, since they are still being
+reworked and not quite ready for prime time.
 
-Thinking about this some more, the most likely way I can think of some
-problems happening would be an unexpected power failure that happened
-exactly right as an unmount (or filesystem snapshot) was taking place.
-That's one of the few cases I can think of where, a journal commit
-write is followed immediately by the metadata writes.  And in
-data=ordered more, that sequence would be data writes, followed
-immediately by journal writes, followed immediately by metadata
-writes.
+New patches since the last patchset have been marked with a '+'
+character.
 
+        	    	      	     	    - Ted
 
-So if you want to demonstrate that this really *could* happen in real
-life, without an artificially contrived, horribly fragmented journal
-inode, here's a worst case scenario I would try to arrange.
+Stable series (to be included in linux-next):
 
-(1) Pre-fill the disk 100% with some string, such as "my secret love
-letters".
+Alexey Dobriyan (1):
+      ext4: switch to seq_files
 
-(2) In data=ordered mode, unpack a very large tarball, ideally with
-the files ad directory ordered maximally pessimized so that files are
-created in directory #1, then directory #6, then directory #4, then
-directory #1, then directory #2, etc.  (AKA the anti-Reiser4 benchmark
-tarball, because Hans would do kernel unpack benchmarks using
-specially prepared tarballs that were in an optimal order for a
-particular reiser4 filesystem hash; this is the exact opposite.  :-)
+Aneesh Kumar K.V (3):
+    + ext4: Fix use of uninitialized data with debug enabled.
+    + ext4: Use inode preallocation with -o noextents
+      ext4: start seraching for the right extent from the goal group.
 
-(3) With lots of dirty files in the page cache, (and for extra fun,
-try this with ext4's unstable patch queue with delayed allocation
-enabled), unmount the filesystem ---- and crash the system in the
-middle of the unmount.
+Julia Lawall (1):
+      ext4: Use BUG_ON() instead of BUG()
 
-(4) Check to see if the filesystem metadata checks out cleanly using
-e2fsck -f.
+Shen Feng (1):
+    + ext4: fix error ext number comments
 
-(5) Check all of the files on the disk to see if any of them contain
-the string, "my secret love letters".
+Theodore Ts'o (1):
+      jbd2: Add commit time into the commit block
 
 
-So all of this is not to argue one way or another about whether or not
-barriers are a good idea.  It's really so we (and system
-administrators) can make some informed decisions about choices.
+Development series (still needs some work):
 
+Akira Fujita (7):
+      ext4: online defrag-- Exchange the blocks between two inodes
+      ext4: online defrag-- Read and write file data with memory page
+      ext4: online defrag-- Allocate new contiguous blocks with mballoc
+      ext4: online defrag-- Main function of defrag and ioctl implementation
+      ext4: online defrag-- Defragmentation for the relevant files (-r mode)
+      ext4: online defrag-- Check the free space fragmentation (-f mode)
+      ext4: online defrag-- Move victim files for the target file (-f mode)
 
-One thing which we *can* definitely do is add a flag in the superblock
-to change the default mount option to enable barriers on a
-per-filesystem basis, settable by tune2fs/mke2fs.
+Alex Tomas (2):
+      vfs: add basic delayed allocation support
+      ext4: Add basic delayed allocation support
 
+Aneesh Kumar K.V (4):
+      ext4: Use page_mkwrite vma_operations to get mmap write notification.
+      ext4:  Update i_diskzie during writepage for delayed allocation.
+      ext4: Enable delalloc and mballoc by default.
+      ext4: Show delalloc options
 
-Another question is whether we can do better in our implementation of
-a barrier, and the way the jbd layer uses barriers.  The way we do it
-in the jbd layer is actually pretty bad:
+Eric Sandeen (4):
+    + ext4: call blkdev_issue_flush on fsync
+      vfs: vfs-level fiemap interface
+      ext4: reinstate ext4_ext_walk_space()
+      ext4: fiemap implementation
 
-	if (journal->j_flags & JFS_BARRIER) {
-		set_buffer_ordered(bh);
-		barrier_done = 1;
-	}
-	ret = sync_dirty_buffer(bh);
-	if (barrier_done)
-		clear_buffer_ordered(bh);
+Jose R. Santos (1):
+      ext4: New inode allocation for FLEX_BG meta-data groups.
 
-This means that while we are waiting for commit record to be written
-out, any other writes that are happening via buffer heads (which
-includes directory operations) are getting done with strict ordering.
-All set_buffer_ordered() does is change make the submit_bh() done in
-sync_dirty_buffer() actually be submitted with WRITE_BARRIER instead
-of WRITE.  So fixing sync_dirty_buffer() so that there is an
-_sync_dirty_buffer() which takes two arguments, so we can do something
-like this instead:
+Mingming Cao (4):
+      ext4: fix  delalloc write_begin failure case
+      ext4: Handling preallocated blocks in delayed allocation
+      jbd: blocks reservation fix for large block support
+      jbd2: blocks reservation fix for large block support
 
-	ret = _sync_dirty_buffer(bh, WRITE_BARRIER);
+Theodore Ts'o (1):
+    + ext4: Add EXT4_DEFM_BARRIER and EXT4_DEFM_I_VERSION default mount options
 
-Should hopefully reduce the hit on the benchmarks.
-
-On disks with real tagged command queuing it might be possible to do
-even better by sending the hard drives the real data dependencies,
-since in fact a barrier is a stronger guarantee than what we really
-need.  Unfortunatelly, TCQ seems to be getting obsoleted by the dumber
-NCQ, where we don't get to make explicit write ordering requests to
-the drive (and my drives ignored the ordering requests anyway).
-
-    	       	  	 	     	      - Ted
+Valerie Clement (1):
+      ext4: Fix filesystem corruption on FS mounted with delalloc
