@@ -1,57 +1,90 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sat, 17 May 2008 11:59:58 -0600
-Message-ID: <20080517175958.GL3491@webber.adilger.int>
-References: <482DDA56.6000301@redhat.com>
- <20080516130545.845a3be9.akpm@linux-foundation.org>
- <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org>
- <482E08E6.4030507@redhat.com> <20080516225304.GG15334@shareable.org>
- <20080517002030.GA7374@mit.edu>
- <20080516173552.e88183d9.akpm@linux-foundation.org>
- <20080517134344.GA7411@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: barriers off by default?
+Date: Sat, 17 May 2008 14:02:57 -0500
+Message-ID: <482F2BE1.3040705@redhat.com>
+References: <482868A5.1000102@redhat.com> <20080515144355.GB19325@atrey.karlin.mff.cuni.cz> <482CA094.20703@redhat.com> <20080516002145.GA24369@duck.suse.cz> <482CDC27.4090505@redhat.com> <20080517173840.GD8009@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-To: Theodore Tso <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vge
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54412 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752868AbYEQSAJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 May 2008 14:00:09 -0400
-In-reply-to: <20080517134344.GA7411@mit.edu>
-Content-disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:57557 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751798AbYEQTDA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 May 2008 15:03:00 -0400
+In-Reply-To: <20080517173840.GD8009@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 17, 2008  09:43 -0400, Theodore Ts'o wrote:
-> On Fri, May 16, 2008 at 05:35:52PM -0700, Andrew Morton wrote:
-> > Journal wrapping could cause the commit block to get written before its
-> > data blocks.  We could improve that by changing the journal layout a bit:
-> > wrap the entire commit rather than just its tail.  Such a change might
-> > be intrusive though.
+Theodore Tso wrote:
+> Given the discussion on the other thread about the performance impact
+> and hard-to-hit nature of barrier problems, how about this?
+
+I still want to do a bit of testing to see if it's really that hard to
+hit :)  (trying to hook up my x10-power-killer is a challenge with no
+serial ports....)
+
+But in any case, adding these to potential default mount options sounds
+good to me.
+
+-Eric
+
+>     		       	  	  	    	- Ted
 > 
-> Or we backport jbd2's checksum support in the commit block to jbd;
-> with the checksum support, if the commit block is written out-of-order
-> with the rest of the blocks in the commit, the commit will simply not
-> be recognized as valid, and we'll use the previous commit block as the
-> last valid commit.
-
-The jbd2 journal checksum support, along with the 64-bit journal block
-layout is designed to be 100% compatible with jbd, so it would be
-trivial to "back port" jbd2.  Just copy jbd2 into jbd, and add the
-option to set (or set by default) the JBD_FEATURE_COMPAT_CHECKSUM
-feature in the journal.
-
-I was going to suggest complete removal of jbd2 at that point, but
-the ordered-mode rewrite is still pending and should live in ext4
-for a reasonably long while before going back to ext3.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> ext4: Add EXT4_DEFM_BARRIER and EXT4_DEFM_I_VERSION default mount options
+> 
+> Allow the i_version and barrier mount options to be set by default via
+> flags in the ext4 superblock.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b7ffb91..afeba1f 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -785,6 +785,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>  #define EXT4_DEFM_JMODE_DATA	0x0020
+>  #define EXT4_DEFM_JMODE_ORDERED	0x0040
+>  #define EXT4_DEFM_JMODE_WBACK	0x0060
+> +#define EXT4_DEFM_BARRIER	0x0080
+> +#define EXT4_DEFM_I_VERSION	0x0100
+>  
+>  /*
+>   * Structure of a directory entry
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 09d9359..c0a657c 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -729,7 +729,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  		seq_printf(seq, ",commit=%u",
+>  			   (unsigned) (sbi->s_commit_interval / HZ));
+>  	}
+> -	if (test_opt(sb, BARRIER))
+> +	if (test_opt(sb, BARRIER) && !(def_mount_opts & EXT4_DEFM_BARRIER))
+>  		seq_puts(seq, ",barrier=1");
+>  	if (test_opt(sb, NOBH))
+>  		seq_puts(seq, ",nobh");
+> @@ -737,7 +737,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  		seq_puts(seq, ",noextents");
+>  	if (!test_opt(sb, MBALLOC))
+>  		seq_puts(seq, ",nomballoc");
+> -	if (test_opt(sb, I_VERSION))
+> +	if (test_opt(sb, I_VERSION) && !(def_mount_opts & EXT4_DEFM_I_VERSION))
+>  		seq_puts(seq, ",i_version");
+>  
+>  	if (sbi->s_stripe)
+> @@ -1896,6 +1896,12 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+>  	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_WBACK)
+>  		sbi->s_mount_opt |= EXT4_MOUNT_WRITEBACK_DATA;
+>  
+> +	if (def_mount_opts & EXT4_DEFM_BARRIER)
+> +		set_opt(sbi->s_mount_opt, BARRIER);
+> +
+> +	if (def_mount_opts & EXT4_DEFM_I_VERSION)
+> +		sb->s_flags |= MS_I_VERSION;
+> +
+>  	if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_PANIC)
+>  		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+>  	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT4_ERRORS_CONTINUE)
 
