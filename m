@@ -1,61 +1,54 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: EXT4-fs error (device sdb): ext4_mb_generate_buddy: EXT4-fs: group
-	1: 912 blocks in bitmap, 898 in gd
-Date: Sun, 18 May 2008 02:06:26 +0530
-Message-ID: <20080517203625.GA18235@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Sat, 17 May 2008 16:44:37 -0400
+Message-ID: <20080517204437.GB16496@mit.edu>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <20080516225304.GG15334@shareable.org> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <20080517134344.GA7411@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: ext4 development <linux-ext4@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:53461 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758776AbYEQUga (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 May 2008 16:36:30 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m4HKaSH1006186
-	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 02:06:28 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4HKaHnD1491108
-	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 02:06:17 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m4HKaDvs012717
-	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 02:06:13 +0530
-Received: from skywalker ([9.124.216.121])
-	by d28av01.in.ibm.com (8.13.1/8.12.11) with ESMTP id m4HKaB3e012677
-	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 02:06:12 +0530
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51760 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758100AbYEQUox (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 May 2008 16:44:53 -0400
 Content-Disposition: inline
+In-Reply-To: <20080517134344.GA7411@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-After almost 15 minutes into the test
+On Sat, May 17, 2008 at 09:43:44AM -0400, Theodore Tso wrote:
+> Another question is whether we can do better in our implementation of
+> a barrier, and the way the jbd layer uses barriers.  The way we do it
+> in the jbd layer is actually pretty bad:
+> 
+> This means that while we are waiting for commit record to be written
+> out, any other writes that are happening via buffer heads (which
+> includes directory operations) are getting done with strict ordering.
+> All set_buffer_ordered() does is change make the submit_bh() done in
+> sync_dirty_buffer() actually be submitted with WRITE_BARRIER instead
+> of WRITE.  
 
-dd if=/dev/zero of=test bs=1M count=51200
+Never mind, I was confused when I wrote this; I somehow thought we
+were setting ordered mode on a per queue basis, instead of on a
+per-buffer-head basis.
 
-Ext4 file system mounted with -o noextents gives me 
+Also, looking more closely on the jbd2 implementation, it looks like
+using the async_commit option, which relies on the checksum for more
+efficient commit, completely disables any barrier support.  That's
+because the only place we go into ordered more is if we are writing a
+synchronous journal commit.  If async journal commit is enabled, then
+we don't write a barrier at all, which leaves us in potential trouble
+with if data blocks end up getting reordered with respect to the
+journal commit in data=ordered more.
 
+I *think* what we need to do is to issue an empty barrier request
+between the data blocks and the journal writes in data=ordered mode,
+and still issue a WRITE_BARRIER request when writing the commit block,
+but to not actually wait for the write to complete.  I think if we do
+that, we should be safe, and hopefully by not waiting for the commit
+block to complete, the performance hit shouldn't be as bad as
+previously reported.
 
-EXT4-fs error (device sdb): ext4_mb_generate_buddy: EXT4-fs: group 1: 912 blocks in bitmap, 898 in gd
-
-Call Trace:
-[c0000000e64f6ac0] [c00000000000fbe0] .show_stack+0x70/0x1bc (unreliable)
-[c0000000e64f6b70] [c0000000001a0674] .ext4_error+0x74/0x9c
-[c0000000e64f6c10] [c0000000001ad490] .ext4_mb_init_cache+0x5d0/0x95c
-[c0000000e64f6d80] [c0000000001aeb04] .ext4_mb_load_buddy+0x24c/0x350
-[c0000000e64f6e30] [c0000000001b04d0] .ext4_mb_regular_allocator+0x4fc/0xe08
-[c0000000e64f6f70] [c0000000001b3acc] .ext4_mb_new_blocks+0x158/0x700
-[c0000000e64f7040] [c000000000191f58] .ext4_new_blocks+0xc4/0xf8
-[c0000000e64f7140] [c0000000001963dc] .ext4_get_blocks_handle+0x444/0xb60
-[c0000000e64f7320] [c000000000196c50] .ext4_get_blocks_wrap+0x158/0x1cc
-[c0000000e64f73f0] [c000000000196fd8] .ext4_get_block+0xd0/0x140
-[c0000000e64f74b0] [c000000000112804] .__block_prepare_write+0x1f8/0x4a8
-[c0000000e64f75f0] [c000000000112bc0] .block_write_begin+0xa8/0x13c
-[c0000000e64f76b0] [c000000000198cf0] .ext4_write_begin+0x128/0x240
-[c0000000e64f77b0] [c0000000000a941c] .generic_file_buffered_write+0x154/0x708
-[c0000000e64f78f0] [c0000000000a9d48] .__generic_file_aio_write_nolock+0x378/0x3ec
-[c0000000e64f79f0] [c0000000000a9e3c] .generic_file_aio_write+0x80/0x114
-[c0000000e64f7ab0] [c000000000192d60] .ext4_file_write+0xc8/0x180
-[c0000000e64f7b60] [c0000000000e3a3c] .do_sync_write+0xc4/0x124
-[c0000000e64f7cf0] [c0000000000e4264] .vfs_write+0xd8/0x1bc
-[c0000000e64f7d90] [c0000000000e4be0] .sys_write+0x4c/0x8c
-[c0000000e64f7e30] [c00000000000872c] syscall_exit+0x0/0x40
-
+						- Ted
