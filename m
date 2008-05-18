@@ -1,87 +1,97 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: Re: Scripting e2fsck: no errors, but still exit code 1 "FILE	SYSTEM
- WAS MODIFIED"
-Date: Sun, 18 May 2008 18:18:36 +0200
-Message-ID: <483056DC.4060108@tuxes.nl>
-References: <483006F1.6080008@tuxes.nl> <20080518122853.GB31413@mit.edu>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Sun, 18 May 2008 10:49:49 -0400
+Message-ID: <4830420D.4080608@gmail.com>
+References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com> <20080518013641.GH16496@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-ker
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from castor.sshunet.nl ([145.97.192.41]:47324 "EHLO
-	castor.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751499AbYERQSl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 May 2008 12:18:41 -0400
-In-Reply-To: <20080518122853.GB31413@mit.edu>
+Received: from an-out-0708.google.com ([209.85.132.250]:7318 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761096AbYERSt7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 May 2008 14:49:59 -0400
+Received: by an-out-0708.google.com with SMTP id d40so376848and.103
+        for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 11:49:58 -0700 (PDT)
+In-Reply-To: <20080518013641.GH16496@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Theodore Tso wrote:
-> On Sun, May 18, 2008 at 12:37:37PM +0200, Bas van Schaik wrote:
+> On Sat, May 17, 2008 at 08:48:33PM -0400, Chris Mason wrote:
 >   
->> However, there is a slight
->> problem with scripting e2fsck: it seems that e2fsck /always/ exits with
->> exit code 1 just because of the fact that the snapshot journal has been
->> replayed. Because of this, the script cannot tell whether there is a
->> real problem or not and keeps e-mailing me. This is a typical output of
->> such an e2fsck run:
+>> Well, the barriers happen like so (even if we actually only do one
+>> barrier in submit_bh, it turns into two)
+>>
+>> write log blocks
+>> flush #1
+>> write commit block
+>> flush #2
+>> write metadata blocks
+>>
+>> I'd agree with Ted, there's a fairly small chance of things get reordered 
+>> around flush #1.  flush #2 is likely to have lots of reordering though.  It 
+>> should be easy to create situations where the metadata for a transaction is 
+>> written before the log blocks ever see the disk.
 >>     
 >
-> Simply replying the journal should not cause e2fsck to have an exit
-> code of 1.  It must have done something else.  The common one was
-> clearing the LARGE_FILES feature flag if the filesystem didn't have
-> one, but that was removed as of 1.40.7.  Can you take a snapshot, run
-> dumpe2fs, run e2fsck -fy /dev/loop1, and then run dumpe2fs again, and
-> send me a before and after?
-For now, the dumpe2fs before the e2fsck. As you will probably remember,
-the filesystem is quite large and and the check takes a few hours... I
-will send the other dumpe2fs ASAP.
+> True, but even with a very heavy fsync() workload, a commit doesn't
+> cause the metadata blocks to be written until we have to do a journal
+> truncate operation.  A heavy fsync() workload would increase how
+> quickly we would use up the journal and need to do a journal truncate,
+> though.
+>
+>   
+>> EMC did a ton of automated testing around this when Jens and I did
+>> the initial barrier implementations, and they were able to trigger
+>> corruptions in fsync heavy workloads with randomized power offs.
+>> I'll dig up the workload they used.
+>>     
+>
+> I could imagine a mode which forces a barrier operation for commits
+> triggered by fsync()'s, but not commits that occur due to a natural
+> closing of transactions.  I'm not sure it's worth it, though, since
+> many of the benchmarks that we care about (like Postmark) do use
+> fsync() fairly heavily.
+>
+> The really annoying thing is that what is really needed is a way to
+> make write barriers cheaper; we don't need to do a synchronous flush,
+> but unfortunately for most drives there isn't any other way of keeping
+> disk writes from getting reordered.
+>
+>   
+The workload we used was to run our existing Centera application on a 
+rack of boxes. The application is a bit special in that it does a 
+digital signature on each file and never returns success for the client 
+until an fsync is done on the server (kind of like synchronous NFS).
 
+What we did for our test was to pound away on a rack of these boxes (say 
+32 boxes, each with 4 large ATA or S-ATA drives) and then drop power to 
+the whole rack.
 
-> # dumpe2fs /dev/loop1
-> dumpe2fs 1.40-WIP (14-Nov-2006)
-> Filesystem volume name:   <none>
-> Last mounted on:          <not available>
-> Filesystem UUID:          5e561184-65a5-4e19-9b57-7acf31ef209b
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal dir_index filetype
-> needs_recovery sparse_super large_file
-> Filesystem flags:         signed directory hash
-> Default mount options:    journal_data_writeback
-> Filesystem state:         clean
-> Errors behavior:          Remount read-only
-> Filesystem OS type:       Linux
-> Inode count:              275251200
-> Block count:              550502400
-> Reserved block count:     0
-> Free blocks:              64737800
-> Free inodes:              262708704
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         16384
-> Inode blocks per group:   512
-> Filesystem created:       Fri Oct  6 20:46:50 2006
-> Last mount time:          Tue May 13 00:30:58 2008
-> Last write time:          Tue May 13 00:30:58 2008
-> Mount count:              1
-> Maximum mount count:      24
-> Last checked:             Mon May 12 15:38:20 2008
-> Check interval:           15552000 (6 months)
-> Next check after:         Sat Nov  8 14:38:20 2008
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               128
-> Journal inode:            8
-> Default directory hash:   tea
-> Directory Hash Seed:      46c1768d-baa8-44f8-a823-200942db69b5
-> Journal backup:           inode blocks
-> Journal size:             32M
+All of our data file systems were reiserfs, some of the system 
+partitions were ext2.
 
-  -- Bas
+The test would be marked as passed if we could reboot all of the boxes 
+and have the client validate  that the digital signature of all files 
+written and ack'ed were valid. We also looked for issues seen during the 
+reboot (fsck grumbles, corrupted directories, etc).
+
+I didn't run the tests personally, but seem to recall that without 
+barriers we routinely saw file system corruption on that reboot.
+
+The hard thing is to figure out how to test this kind of scenario 
+without dropping power. To expose the failure mode, it might be 
+sufficient to drop power to a drive with smartctl (or, if you have hot 
+swap bays, just pull them).
+
+Just a personal note, my last day at EMC was this past Friday. Monday, I 
+start working for Red Hat (focused on file systems) so I will have to 
+figure out to get this kind of test going without all of my big EMC toys ;-)
+
+ric
+
