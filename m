@@ -1,56 +1,90 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sat, 17 May 2008 21:36:41 -0400
-Message-ID: <20080518013641.GH16496@mit.edu>
-References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Scripting e2fsck: no errors, but still exit code 1 "FILE SYSTEM WAS
+ MODIFIED"
+Date: Sun, 18 May 2008 12:37:37 +0200
+Message-ID: <483006F1.6080008@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <200805172048.34455.chris.mason@oracle.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from pollux.sshunet.nl ([145.97.192.42]:37296 "EHLO
+	pollux.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751352AbYERLHd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 May 2008 07:07:33 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by pollux.sshunet.nl (Postfix) with ESMTP id 41D6A580006
+	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 12:37:41 +0200 (CEST)
+Received: from pollux.sshunet.nl ([127.0.0.1])
+	by localhost (pollux.sshunet.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 6P3YlZvxXbrl for <linux-ext4@vger.kernel.org>;
+	Sun, 18 May 2008 12:37:41 +0200 (CEST)
+Received: from guust.tuxes.nl (15pc197.sshunet.nl [145.97.197.15])
+	by pollux.sshunet.nl (Postfix) with ESMTP
+	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 12:37:41 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by guust.tuxes.nl (Postfix) with ESMTP id E3CA0A80B3
+	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 12:37:40 +0200 (CEST)
+Received: from guust.tuxes.nl ([127.0.0.1])
+	by localhost (guust.tuxes.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id GKTPn+Ms3cHw for <linux-ext4@vger.kernel.org>;
+	Sun, 18 May 2008 12:37:38 +0200 (CEST)
+Received: from [192.168.101.158] (15pc197.sshunet.nl [145.97.197.15])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by guust.tuxes.nl (Postfix) with ESMTP id B4FC2A8094
+	for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 12:37:38 +0200 (CEST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 17, 2008 at 08:48:33PM -0400, Chris Mason wrote:
-> 
-> Well, the barriers happen like so (even if we actually only do one
-> barrier in submit_bh, it turns into two)
-> 
-> write log blocks
-> flush #1
-> write commit block
-> flush #2
-> write metadata blocks
-> 
-> I'd agree with Ted, there's a fairly small chance of things get reordered 
-> around flush #1.  flush #2 is likely to have lots of reordering though.  It 
-> should be easy to create situations where the metadata for a transaction is 
-> written before the log blocks ever see the disk.
+Hi all,
 
-True, but even with a very heavy fsync() workload, a commit doesn't
-cause the metadata blocks to be written until we have to do a journal
-truncate operation.  A heavy fsync() workload would increase how
-quickly we would use up the journal and need to do a journal truncate,
-though.
+Lately I encountered some vague corruptions on my filesystem which were
+probably caused several weeks ago. My setup is quite extraordinary
+(using ATA over Ethernet, RAID5, LVM, LUKS), a simple undetected network
+failure did most probably cause these corruptions.
 
-> EMC did a ton of automated testing around this when Jens and I did
-> the initial barrier implementations, and they were able to trigger
-> corruptions in fsync heavy workloads with randomized power offs.
-> I'll dig up the workload they used.
+After I recovered the filesystem I decided to set up a weekly cron job
+to perform an automatic e2fsck on a snapshot. This way, no
+inconsistencies go undetected for longer than a week and problems can be
+fixed before additional corruption occurs. However, there is a slight
+problem with scripting e2fsck: it seems that e2fsck /always/ exits with
+exit code 1 just because of the fact that the snapshot journal has been
+replayed. Because of this, the script cannot tell whether there is a
+real problem or not and keeps e-mailing me. This is a typical output of
+such an e2fsck run:
+> # e2fsck.static -f -y -v /dev/loop1
+> e2fsck 1.40.8 (13-Mar-2008)
+> /dev/loop1: recovering journal
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+>
+> /dev/loop1: ***** FILE SYSTEM WAS MODIFIED *****
+>
+> 12609263 inodes used (4.58%)
+>   258729 non-contiguous inodes (2.1%)
+>          # of inodes with ind/dind/tind blocks: 1174647/20098/15
+> 485401393 blocks used (88.17%)
+>        0 bad blocks
+>      108 large files
+>
+>  8730706 regular files
+>  3867308 directories
+>        0 character device files
+>        3 block device files
+>       12 fifos
+> 95342096 links
+>    11090 symbolic links (9640 fast symbolic links)
+>      135 sockets
+> --------
+> 107951350 files
 
-I could imagine a mode which forces a barrier operation for commits
-triggered by fsync()'s, but not commits that occur due to a natural
-closing of transactions.  I'm not sure it's worth it, though, since
-many of the benchmarks that we care about (like Postmark) do use
-fsync() fairly heavily.
+As you can see: no additional errors. Does anyone have any ideas on how
+to work around this?
 
-The really annoying thing is that what is really needed is a way to
-make write barriers cheaper; we don't need to do a synchronous flush,
-but unfortunately for most drives there isn't any other way of keeping
-disk writes from getting reordered.
+Cheers,
 
-							- Ted
+  Bas
