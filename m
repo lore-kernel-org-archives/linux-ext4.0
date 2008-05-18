@@ -1,42 +1,58 @@
-From: Andi Kleen <andi@firstfloor.org>
+From: Ric Wheeler <ricwheeler@gmail.com>
 Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sun, 18 May 2008 22:03:55 +0200
-Message-ID: <8763tbcrbo.fsf@basil.nowhere.org>
-References: <482DDA56.6000301@redhat.com>
-	<20080516130545.845a3be9.akpm@linux-foundation.org>
-	<482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org>
-	<482E08E6.4030507@redhat.com>
+Date: Sun, 18 May 2008 12:07:22 -0400
+Message-ID: <4830543A.1000804@gmail.com>
+References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu>	<20080516173552.e88183d9.akpm@linux-foundation.org>	<200805172048.34455.chris.mason@oracle.com>	<20080518013641.GH16496@mit.edu>	<4830420D.4080608__28835.4277647615$1211137279$gmane$org@gmail.com> <87abincrir.fsf@basil.nowhere.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <482E08E6.4030507@redhat.com> (Eric Sandeen's message of "Fri, 16 May 2008 17:21:26 -0500")
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-ker@firstfloor.org
+To: Andi Kleen <andi@firstfloor.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wx-out-0506.google.com ([66.249.82.236]:27427 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757547AbYERUH3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 May 2008 16:07:29 -0400
+Received: by wx-out-0506.google.com with SMTP id h29so1313758wxd.4
+        for <linux-ext4@vger.kernel.org>; Sun, 18 May 2008 13:07:26 -0700 (PDT)
+In-Reply-To: <87abincrir.fsf@basil.nowhere.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen <sandeen@redhat.com> writes:
+Andi Kleen wrote:
+> Ric Wheeler <ricwheeler@gmail.com> writes:
+>   
+>> The hard thing is to figure out how to test this kind of scenario
+>> without dropping power. To expose the failure mode, it might be
+>>     
 >
-> Right, that was the plan.  I wasn't really going to stand there and pull
-> the plug.  :)  I'd like to get to "out of $NUMBER power-loss events
-> under this usage, I saw $THIS corruption $THISMANY times ..."
+> Why not drop power? (see test scenario in previous mail) 
+>
+> There are lots of cheap ways available to do that.
+> I personally keep my test machines on cheap USB power switches and 
+> can switch them any time. 
+>
+> It will probably lower the MTBF of your test boxes somewhat 
+> though, but that's the price for good testing.
+>   
+The concern, as you mentioned above, is that you wear the equipment out 
+with this kind of thing. Power supplies are probably the most impacted ;-)
 
-I'm not sure how good such exact numbers would do. Surely power down
-behaviour that would depend on the exact disk/controller/system
-combination? Some might be better at getting data out at 
-power less, some might be worse.
+>   
+>> Just a personal note, my last day at EMC was this past Friday. Monday,
+>> I start working for Red Hat (focused on file systems) so I will have
+>> to figure out to get this kind of test going without all of my big EMC
+>> toys ;-)
+>>     
+>
+> Congratulations on the new job. I don't think you need any big toys though.
+>
+> -Andi
+>   
+Thanks!
 
-To get a good picture, you would probably need to do such tests
-over a wide range of systems and put all the data together, but
-even then you couldn't be sure you covered all well.
+ric
 
-For a distributor it would probably make more sense to do such
-tests as part of system certification and then modify the defaults
-to match all tested systems. But that doesn't really work
-for good mainline defaults.
-
-I suspect for mainline the only good default is to be very conservative.
-
--Andi
