@@ -1,49 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sun, 18 May 2008 21:29:30 -0500
-Message-ID: <4830E60A.2010809@redhat.com>
-References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <8763tbcrbo.fsf@basil.nowhere.org> <20080519004325.GC8335@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/4] jbd: ordered data integrity fix (rebased)
+Date: Mon, 19 May 2008 05:11:51 +0200
+Message-ID: <20080519031151.GB10233@duck.suse.cz>
+References: <482A6E00.6080303@hitachi.com> <482A6F2B.3020605@hitachi.com> <20080514131007.GD24363@duck.suse.cz> <482D6128.6060200@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
+	adilger@clusterfs.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Josef Bacik <jbacik@redhat.com>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>,
+	sugita <yumiko.sugita.yf@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:55337 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754783AbYESCaK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 May 2008 22:30:10 -0400
-In-Reply-To: <20080519004325.GC8335@mit.edu>
+Received: from styx.suse.cz ([82.119.242.94]:41074 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752772AbYESDLx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 May 2008 23:11:53 -0400
+Content-Disposition: inline
+In-Reply-To: <482D6128.6060200@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-...
+  Hello,
 
-> Given how rarely people have reported problems, I think it's a really
-> good idea to understand what exactly our exposure is for
-> $COMMON_HARDWARE. 
+On Fri 16-05-08 19:25:44, Hidehiro Kawai wrote:
+> Jan Kara wrote:
+> 
+> > On Wed 14-05-08 13:48:43, Hidehiro Kawai wrote:
+> > 
+> >>Subject: [PATCH 2/4] jbd: ordered data integrity fix
+> >>
+> >>In ordered mode, if a buffer being dirtied exists in the committing
+> >>transaction, we write the buffer to the disk, move it from the
+> >>committing transaction to the running transaction, then dirty it.
+> >>But we don't have to remove the buffer from the committing
+> >>transaction when the buffer couldn't be written out, otherwise it
+> >>breaks the ordered mode rule.
+> > 
+> >   Hmm, could you elaborate a bit more what exactly is broken and how does
+> > this help to fix it? Because even if we find EIO happened on data buffer,
+> > we currently don't do anything else than just remove the buffer from the
+> > transaction and abort the journal. And even if we later managed to write
+> > the data buffer from other process before the journal is aborted, ordered
+> > mode guarantees are satisfied - we only guarantee that too old data cannot
+> > be seen, newer can be seen easily... Thanks.
+> 
+> In the case where I stated the above, error checking is postponed to
+> the next (currently running) transaction because the buffer is removed
+> from the committing transaction before checked for an error.  This can
+> happen repeatedly, then the error won't be detected "for a long time".
+> However, finally the error is detected by, for example,
+> journal_commit_transaction(), we can abort the journal.  So this
+> problem is not so serious than the other patches which I sent.
+  OK, I see. So I agree with the change but please add this explanation
+(like: cannot remove buffer with io error from the committing transaction
+because otherwise it would miss the error and commit would not abort) to
+the comment in journal_dirty_data(). Thanks.
 
-I'll propose that very close to 0% of users will ever report "having
-barriers off seems to have corrupted my disk on power loss!" even if
-that's exactly what happened.  And it'd be very tricky to identify in a
-post-mortem.  Instead we'd probably see other weird things caught down
-the road during some later fsck or during filesystem use, and then
-suggest that they go check their cables, run memtest86 or something...
-
-Perhaps it's not the intent of this reply, Ted, but various other bits
-of this thread have struck me as trying to rationalize away the problem.
- If the discussion were about proper locking to avoid corruption, would
-we really be  saying well, gosh, it's a *really* small window, and
-*most* people won't hit it very often, and proper locking would slow
-things down....
-
-So I think that as you suggest, looking for ways to make barriers less
-painful is the far better route, rather than sacrificing correctness for
-speed by turning them off by default when we know there is a chance for
-problems.  People running journaling filesystems most likely expect to
-be safe from this sort of thing, not most of the time, but all of the time.
-
--Eric
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
