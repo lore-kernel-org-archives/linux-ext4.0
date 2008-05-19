@@ -1,241 +1,194 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Mon, 19 May 2008 14:39:36 -0400
-Message-ID: <200805191439.36577.chris.mason@oracle.com>
-References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] JBD: Fix DIO EIO error caused by race between free
+	buffer and commit trasanction
+Date: Mon, 19 May 2008 12:59:18 -0700
+Message-ID: <1211227158.3663.25.camel@localhost.localdomain>
+References: <20080512155419.GD15856@duck.suse.cz>
+	 <1210639184.3661.43.camel@localhost.localdomain>
+	 <20080513145449.GC20806@duck.suse.cz>
+	 <1210717389.3638.24.camel@localhost.localdomain>
+	 <20080514170856.GH24363@duck.suse.cz>
+	 <1210786872.3657.48.camel@localhost.localdomain>
+	 <20080514181444.GI24363@duck.suse.cz>
+	 <1210947250.3608.18.camel@localhost.localdomain>
+	 <1210957976.4231.31.camel@badari-desktop>
+	 <1210971693.3608.46.camel@localhost.localdomain>
+	 <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_olcMIIDiLovdise"
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	Andi Kleen <andi@firstfloor.org>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, Badari Pulavarty <pbadari@us.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:42329 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751011AbYESSlM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2008 14:41:12 -0400
-In-Reply-To: <200805191316.27551.chris.mason@oracle.com>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:44962 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758836AbYEST71 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2008 15:59:27 -0400
+In-Reply-To: <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Boundary-00=_olcMIIDiLovdise
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Mon, 2008-05-19 at 00:37 +0200, Jan Kara wrote:
+>   Hi,
+> 
+> > This patch fixed a few races between direct IO and kjournald commit
+> > transaction.  An unexpected EIO error gets returned to direct IO
+> > caller when it failed to free those data buffers. This could be
+> > reproduced easily with parallel direct write and buffered write to the
+> > same file
+> > 
+> > More specific, those races could cause journal_try_to_free_buffers()
+> > fail to free the data buffers, when jbd is committing the transaction
+> > that has those data buffers on its t_syncdata_list or t_locked_list.
+> > journal_commit_transaction() still holds the reference to those
+> > buffers before data reach to disk and buffers are removed from the
+> > t_syncdata_list of t_locked_list. This prevent the concurrent
+> > journal_try_to_free_buffers() to free those buffers at the same time,
+> > but cause EIO error returns back to direct IO.
+> > 
+> > With this patch, in case of direct IO and when try_to_free_buffers() failed,
+> > let's waiting for journal_commit_transaction() to finish
+> > flushing the current committing transaction's data buffers to disk, 
+> > then try to free those buffers again.
+>   If Andrew or Christoph wouldn't beat you for "inventive use" of
+> gfp_mask, I'm fine with the patch as well ;). You can add
+>   Acked-by: Jan Kara <jack@suse.cz>
+> 
 
-On Monday 19 May 2008, Chris Mason wrote:
->
-> Here's a test workload that corrupts ext3 50% of the time on power fail
-> testing for me.  The machine in this test is my poor dell desktop (3ghz,
-> dual core, 2GB of ram), and the power controller is me walking over and
-> ripping the plug out the back.
+This is less intrusive way to fix this problem. The gfp_mask was marked
+as unused in try_to_free_page(). I looked at filesystems in the kernel,
+there is only a few defined releasepage() callback, and only xfs checks
+the flag(but not used). btrfs is actually using it though. I thought
+about the way you have suggested, i.e.clean up this gfp_mask and and
+replace with a flag.  I am not entirely sure if it we need to change the
+address_space_operations and fix all the filesystems for this matter.
 
-Here's a new version that still gets about corruptions 50% of the time, but 
-does it with fewer files by using longer file names (240 chars instead of 160 
-chars).
+Andrew, what do you think? Is this approach acceptable? 
 
-I tested this one with a larger FS (40GB instead of 2GB) and larger log (128MB 
-instead of 32MB).  barrier-test -s 32 -p 1500 was still able to get a 50% 
-corruption rate on the larger FS.
 
--chris
+Thanks and regards,
+Mingming
+> > 
+> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> > Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
+> > ---
+> >  fs/jbd/transaction.c |   57 +++++++++++++++++++++++++++++++++++++++++++++++++--
+> >  mm/truncate.c        |    3 +-
+> >  2 files changed, 57 insertions(+), 3 deletions(-)
+> > 
+> > Index: linux-2.6.26-rc2/fs/jbd/transaction.c
+> > ===================================================================
+> > --- linux-2.6.26-rc2.orig/fs/jbd/transaction.c	2008-05-16 11:51:02.000000000 -0700
+> > +++ linux-2.6.26-rc2/fs/jbd/transaction.c	2008-05-16 13:43:02.000000000 -0700
+> > @@ -1648,12 +1648,39 @@ out:
+> >  	return;
+> >  }
+> >  
+> > +/*
+> > + * journal_try_to_free_buffers() could race with journal_commit_transaction()
+> > + * The later might still hold the reference count to the buffers when inspecting
+> > + * them on t_syncdata_list or t_locked_list.
+> > + *
+> > + * Journal_try_to_free_buffers() will call this function to
+> > + * wait for the current transaction to finish syncing data buffers, before
+> > + * try to free that buffer.
+> > + *
+> > + * Called with journal->j_state_lock hold.
+> > + */
+> > +static void journal_wait_for_transaction_sync_data(journal_t *journal)
+> > +{
+> > +	transaction_t *transaction = NULL;
+> > +	tid_t tid;
+> > +
+> > +	transaction = journal->j_committing_transaction;
+> > +
+> > +	if (!transaction)
+> > +		return;
+> > +
+> > +	tid = transaction->t_tid;
+> > +	spin_unlock(&journal->j_state_lock);
+> > +	log_wait_commit(journal, tid);
+> > +	spin_lock(&journal->j_state_lock);
+> > +}
+> >  
+> >  /**
+> >   * int journal_try_to_free_buffers() - try to free page buffers.
+> >   * @journal: journal for operation
+> >   * @page: to try and free
+> > - * @unused_gfp_mask: unused
+> > + * @gfp_mask: unused for allocation purpose. Here is used
+> > + * 	      as a flag to tell if direct IO is attemping to free buffers.
+> >   *
+> >   *
+> >   * For all the buffers on this page,
+> > @@ -1682,9 +1709,11 @@ out:
+> >   * journal_try_to_free_buffer() is changing its state.  But that
+> >   * cannot happen because we never reallocate freed data as metadata
+> >   * while the data is part of a transaction.  Yes?
+> > + *
+> > + * Return 0 on failure, 1 on success
+> >   */
+> >  int journal_try_to_free_buffers(journal_t *journal,
+> > -				struct page *page, gfp_t unused_gfp_mask)
+> > +				struct page *page, gfp_t gfp_mask)
+> >  {
+> >  	struct buffer_head *head;
+> >  	struct buffer_head *bh;
+> > @@ -1713,7 +1742,31 @@ int journal_try_to_free_buffers(journal_
+> >  		if (buffer_jbd(bh))
+> >  			goto busy;
+> >  	} while ((bh = bh->b_this_page) != head);
+> > +
+> >  	ret = try_to_free_buffers(page);
+> > +
+> > + 	/*
+> > +	 * In the case of concurrent direct IO and buffered IO,
+> > +	 * There are a number of places where we
+> > +	 * could race with journal_commit_transaction(), the later still
+> > +	 * holds the reference to the buffers to free while processing them.
+> > +	 * try_to_free_buffers() failed to free those buffers,
+> > +	 * resulting in an unexpected EIO error
+> > +	 * returns back to the generic_file_direct_IO()
+> > +	 *
+> > +	 * So let's wait for the current transaction to finish flush of
+> > +	 * dirty data buffers before we try to free those buffers
+> > +	 * again. This wait is needed by direct IO code path only,
+> > +	 * gfp_mask __GFP_REPEAT is passed from the direct IO code
+> > +	 * path to flag if we need to wait and retry free buffers.
+> > +	 */
+> > +	if (ret == 0 && gfp_mask & __GFP_REPEAT) {
+> > +        	spin_lock(&journal->j_state_lock);
+> > +		journal_wait_for_transaction_sync_data(journal);
+> > +		ret = try_to_free_buffers(page);
+> > +		spin_unlock(&journal->j_state_lock);
+> > +	}
+> > +
+> >  busy:
+> >  	return ret;
+> >  }
+> > Index: linux-2.6.26-rc2/mm/truncate.c
+> > ===================================================================
+> > --- linux-2.6.26-rc2.orig/mm/truncate.c	2008-05-16 11:51:02.000000000 -0700
+> > +++ linux-2.6.26-rc2/mm/truncate.c	2008-05-16 13:42:18.000000000 -0700
+> > @@ -346,7 +346,8 @@ invalidate_complete_page2(struct address
+> >  	if (page->mapping != mapping)
+> >  		return 0;
+> >  
+> > -	if (PagePrivate(page) && !try_to_release_page(page, GFP_KERNEL))
+> > +	if (PagePrivate(page) &&
+> > +			!try_to_release_page(page,GFP_KERNEL|__GFP_REPEAT))
+> >  		return 0;
+> >  
+> >  	write_lock_irq(&mapping->tree_lock);
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Please read the FAQ at  http://www.tux.org/lkml/
+> 
+> 								Honza
 
---Boundary-00=_olcMIIDiLovdise
-Content-Type: application/x-python;
-  name="barrier-test"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="barrier-test"
-
-#!/usr/bin/env python
-#
-# This is a test program meant to heavily exercise log and metadata
-# writeback.  If you combine this with power failures, it should result
-# in filesystem corruptions a significant percent of the time.
-#
-# The workload has 4 parts:
-#
-# 1) A directory tree full of empty files with very long names (240 chars)
-# 2) A process hogging a significant percent of system ram.  This must
-#    be enough to force constant metadata writeback due to memory pressure
-# 3) A process constantly writing, fsyncing and truncating to zero a single 64k
-#    file
-# 4) A process constantly renaming the files with very long names from (1) 
-#    between long-named-file.0 and long-named-file.1
-#
-# In order to consistently cause corruptions, the size of the directory from
-# (1) needs to be at least as large as the ext3 log.  This is controlled with
-# the -s command line option
-#
-# The amount of memory pinned down is controlled with -p
-#
-# Usage:
-# The program first creates the files in a directory called barrier-test
-# then it starts procs to pin ram and run the constant fsyncs.  After
-# each phase has run long enough, they print out a statement about
-# being ready, along with some other debugging output:
-#
-# Memory pin ready
-# fsyncs ready
-# Renames ready
-#
-# Once you see all three ready lines, turn off power.  Don't use the
-# power button on the front of the machine, either pull the plug, use
-# the power switch on the back of the machine, or use an external controller
-#
-# Written by Chris Mason <chris.mason@oracle.com>
-
-import sys, os, sha, random, mmap
-from optparse import OptionParser
-
-total_name_bytes = 0
-counter = 0
-errors = 0
-sha = sha.new()
-salt = file("/dev/urandom").read(256)
-sha.update(salt)
-VERSION = "0.2"
-
-def read_files(basedir, base_names):
-    global total_name_bytes
-    global counter
-    global errors
-
-    for x in os.listdir(basedir):
-        total_name_bytes += len(x)
-        counter += 1
-
-        full = os.path.join(basedir, x)
-        if not full.endswith(".0") and not full.endswith(".1"):
-            continue
-        num = int(x[-1])
-        short = x[0:-2]
-        if short in base_names:
-            sys.stderr.write("warning: conflict on %s first %d dup %d\n" %
-                            (short[0:10], base_names[short], num))
-            errors += 1
-        else:
-            base_names[short] = num
-
-def create_files(sha, basedir, base_names, size):
-    global total_name_bytes
-    global counter
-
-    while total_name_bytes < size:
-        s = str(counter)
-        counter += 1
-
-        sha.update(s)
-        s = sha.hexdigest() * 6
-        total_name_bytes += len(s)
-        base_names[s] = 0
-        fp = file(os.path.join(basedir, s + ".0"), 'w')
-        fp.close()
-        if counter % 10000 == 0:
-            print "%d files %d MB total" % (counter,
-                                            total_name_bytes / (1024 * 1024))
-
-def run_fsyncs(basedir):
-    pid = os.fork()
-    if pid:
-        os.waitpid(pid, os.WNOHANG)
-        return
-    fp = file(os.path.join(basedir, "bigfile"), 'w')
-    buf = "a" * (64 * 1024)
-    operations = 0
-    while True:
-        fp.write(buf)
-        os.fsync(fp.fileno())
-        fp.truncate(0)
-        fp.seek(0)
-        operations += 1
-        if operations % 100 == 0:
-            sys.stderr.write("f:%d " % operations)
-            if operations == 300:
-                sys.stderr.write("\nfsyncs ready\n")
-
-def run_hog(hogmb):
-    pid = os.fork()
-    if pid:
-        os.waitpid(pid, os.WNOHANG)
-        return
-
-    fp = file("/dev/zero", 'w+')
-    hogmb *= 1024 * 1024
-    mm = mmap.mmap(fp.fileno(), hogmb, mmap.MAP_PRIVATE,
-                   mmap.PROT_READ | mmap.PROT_WRITE)
-    operations = 0
-    pos = 0
-    didprint = 0
-    buf = 'b' * 1024 * 1024
-    while True:
-        mm.write(buf)
-        if mm.tell() >= hogmb:
-            mm.seek(0)
-            pos = 0
-            operations += 1
-            if not didprint:
-                sys.stderr.write("\nMemory pin ready\n")
-                didprint = 1
-
-def run_renames(basedir, base_names):
-    keys = base_names.keys()
-    operations = 0
-    while True:
-        name = random.choice(keys)
-        num = base_names[name]
-        next = (num + 1) % 2
-        os.rename(os.path.join(basedir, name + "." + str(num)),
-                  os.path.join(basedir, name + "." + str(next)))
-        base_names[name] = next
-        operations += 1
-        if operations % 1000 == 0:
-            sys.stderr.write("r:%d " % operations)
-            if operations == 10000:
-                sys.stderr.write("\nRenames ready\n")
-
-        
-base_names = {}
-usage = "usage: %prog [options]"
-parser = OptionParser(usage=usage)
-parser.add_option("-i", "--init", help="Init directory", default=False,
-                  action="store_true")
-parser.add_option("-d", "--dir", help="working dir", default="barrier-test")
-parser.add_option("-s", "--size", help="Working set in MB",
-                  type="int", default=32)
-parser.add_option("-c", "--check", help="Check directory only",
-                  default=False, action="store_true")
-parser.add_option("-p", "--pin-mb", help="Amount of ram (MB) to pin",
-                  default=512, type="int")
-(options, args) = parser.parse_args()
-
-sys.stderr.write("barrier-test version %s\n" % VERSION)
-sys.stderr.write("Run init, don't cut the power yet\n")
-
-if not os.path.exists(options.dir):
-    os.makedirs(options.dir, 0700)
-    options.init = True
-else:
-    read_files(options.dir, base_names)
-    print "found %d files %d MB in %s" % (counter,
-                                          total_name_bytes / (1024 * 1024),
-                                          options.dir)
-options.size *= 1024 * 1024
-if options.check:
-    print "Check complete found %d errors" % errors
-    if errors:
-        sys.exit(1)
-    else:
-        sys.exit(0)
-
-if total_name_bytes < options.size:
-    create_files(sha, options.dir, base_names, options.size)
-    
-sys.stderr.write("Starting metadata operations now\n")
-run_fsyncs(options.dir)
-run_hog(options.pin_mb)
-run_renames(options.dir, base_names)
-
---Boundary-00=_olcMIIDiLovdise--
