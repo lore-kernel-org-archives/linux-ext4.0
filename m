@@ -1,8 +1,8 @@
 From: Bas van Schaik <bas@tuxes.nl>
 Subject: Re: Scripting e2fsck: no errors, but still exit code 1 "FILE	SYSTEM
  WAS MODIFIED"
-Date: Mon, 19 May 2008 13:32:53 +0200
-Message-ID: <48316565.1040501@tuxes.nl>
+Date: Mon, 19 May 2008 13:23:24 +0200
+Message-ID: <4831632C.4010509@tuxes.nl>
 References: <483006F1.6080008@tuxes.nl> <20080518122853.GB31413@mit.edu> <483056DC.4060108@tuxes.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,10 +10,10 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from a-eskwadraat.nl ([131.211.39.72]:52866 "EHLO a-eskwadraat.nl"
+Received: from a-eskwadraat.nl ([131.211.39.72]:56207 "EHLO a-eskwadraat.nl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758322AbYESLcz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 May 2008 07:32:55 -0400
+	id S1756115AbYESLuW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2008 07:50:22 -0400
 In-Reply-To: <483056DC.4060108@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -90,17 +90,7 @@ Bas van Schaik wrote:
 >> Journal size:             32M
 >>     
 
-And now the (complete) output of dumpe2fs after the e2fsck:
-
-> Filesystem volume name:   <none>
-> Last mounted on:          <not available>
-> Filesystem UUID:          5e561184-65a5-4e19-9b57-7acf31ef209b
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal dir_index filetype sparse_super
-> large_file
-> Filesystem flags:         signed directory hash
-> Default mount options:    journal_data_writeback
+And now the output of dumpe2fs after the e2fsck:
 > Filesystem state:         clean
 > Errors behavior:          Remount read-only
 > Filesystem OS type:       Linux
