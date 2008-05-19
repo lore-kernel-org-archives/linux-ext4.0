@@ -1,88 +1,49 @@
-From: Theodore Tso <tytso@MIT.EDU>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Sun, 18 May 2008 20:43:25 -0400
-Message-ID: <20080519004325.GC8335@mit.edu>
-References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <8763tbcrbo.fsf@basil.nowhere.org>
+Date: Sun, 18 May 2008 21:29:30 -0500
+Message-ID: <4830E60A.2010809@redhat.com>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <8763tbcrbo.fsf@basil.nowhere.org> <20080519004325.GC8335@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
+	Eric Sandeen <sandeen@redhat.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>
+	linux-ext4@vger.kernel.org, linux-kernel@
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:61233 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753518AbYESAoh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 May 2008 20:44:37 -0400
-Content-Disposition: inline
-In-Reply-To: <8763tbcrbo.fsf@basil.nowhere.org>
+Received: from mx1.redhat.com ([66.187.233.31]:55337 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754783AbYESCaK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 May 2008 22:30:10 -0400
+In-Reply-To: <20080519004325.GC8335@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, May 18, 2008 at 10:03:55PM +0200, Andi Kleen wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
-> >
-> > Right, that was the plan.  I wasn't really going to stand there and pull
-> > the plug.  :)  I'd like to get to "out of $NUMBER power-loss events
-> > under this usage, I saw $THIS corruption $THISMANY times ..."
-> 
-> I'm not sure how good such exact numbers would do. Surely power down
-> behaviour that would depend on the exact disk/controller/system
-> combination? Some might be better at getting data out at 
-> power less, some might be worse.
+Theodore Tso wrote:
+...
 
-Given how rarely people have reported problems, I think it's a really
-good idea to understand what exactly our exposure is for
-$COMMON_HARDWARE.  And I suspect the biggest question isn't the
-hardware, but the workload.  Here are the questions that I think are
-worth asking:
+> Given how rarely people have reported problems, I think it's a really
+> good idea to understand what exactly our exposure is for
+> $COMMON_HARDWARE. 
 
-* How often can we get corruption on a common desktop workload?  Given
-  that we're mostly kernel developers, and kernbench is probably worst
-  case for desktops, that's useful.
+I'll propose that very close to 0% of users will ever report "having
+barriers off seems to have corrupted my disk on power loss!" even if
+that's exactly what happened.  And it'd be very tricky to identify in a
+post-mortem.  Instead we'd probably see other weird things caught down
+the road during some later fsck or during filesystem use, and then
+suggest that they go check their cables, run memtest86 or something...
 
-* What is the performance hit on a common desktop workload (let's use
-  kernbench for consistency).
+Perhaps it's not the intent of this reply, Ted, but various other bits
+of this thread have struck me as trying to rationalize away the problem.
+ If the discussion were about proper locking to avoid corruption, would
+we really be  saying well, gosh, it's a *really* small window, and
+*most* people won't hit it very often, and proper locking would slow
+things down....
 
-* How often can we get corruption on a hard-core enterprise
-  application with lots of fsync()'s?   (i.e., postmark, et. al)
+So I think that as you suggest, looking for ways to make barriers less
+painful is the far better route, rather than sacrificing correctness for
+speed by turning them off by default when we know there is a chance for
+problems.  People running journaling filesystems most likely expect to
+be safe from this sort of thing, not most of the time, but all of the time.
 
-* What is the performance hit on a an fsync()-heavy workload?
-
-I have a feeling that the likelihood of corruption when running
-kernbench is minimal, but the performance hit is probably minimal as
-well.  And that the corruption for potential is higher for an
-fsync-heavy workload, but that's also where we are seeing the
-(reported) 30% hit.
-
-The other thing which we should consider is that I suspect we can do
-much better for ext4 given that we have journal checksums.  As Chris
-pointed out, right now, with barriers turned on, we are doing this:
-
-write log blocks
-flush #1
-write commit block
-flush #2
-write metadata blocks
-
-If we don't mind mixing bh and bio functions, we could change it to
-this for ext4 (when journal checksumming is enabled)
-
-write log blocks
-write commit block
-flush (via submitting an empty barrier block I/O request)
-write metadata blocks
-
-This should hopefully reduce the performance hit by half, since we're
-eliminating one of the flushes.  Even more interesting would be moving
-the flush until right before we attempt to write the metadata blocks,
-and allowing data writes which don't require metadata updates through.
-That should be safe, even in data=ordered mode.  The point is we
-should think about ways that we can optimize barrier mode for ext4.
-If we do this, then it may be that people will find it interesting to
-mount ext3 filesystems using ext4, even without making any additional
-changes, because of the better choices of speed/safety tradeoffs.
-
-							- Ted
+-Eric
