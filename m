@@ -1,53 +1,140 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Group meta-data blocks together.
-Date: Mon, 19 May 2008 15:27:52 +0530
-Message-ID: <20080519095752.GA2762@skywalker>
-References: <1210866839-7195-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1210866839-7195-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080515160626.GB23507@skywalker> <482C617B.8090909@redhat.com>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Re: Scripting e2fsck: no errors, but still exit code 1 "FILE	SYSTEM
+ WAS MODIFIED"
+Date: Mon, 19 May 2008 13:32:53 +0200
+Message-ID: <48316565.1040501@tuxes.nl>
+References: <483006F1.6080008@tuxes.nl> <20080518122853.GB31413@mit.edu> <483056DC.4060108@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:37459 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754628AbYESJ6J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2008 05:58:09 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m4J9ve9B032732
-	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2008 19:57:40 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4JA2DLs243202
-	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2008 20:02:13 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4J9w6F3014329
-	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2008 19:58:06 +1000
-Content-Disposition: inline
-In-Reply-To: <482C617B.8090909@redhat.com>
+Received: from a-eskwadraat.nl ([131.211.39.72]:52866 "EHLO a-eskwadraat.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758322AbYESLcz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2008 07:32:55 -0400
+In-Reply-To: <483056DC.4060108@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 15, 2008 at 11:14:51AM -0500, Eric Sandeen wrote:
-> Aneesh Kumar K.V wrote:
-> > On Thu, May 15, 2008 at 09:23:59PM +0530, Aneesh Kumar K.V wrote:
-> >> This adds a per inode meta-block prealloc space from which
-> >> meta-data block requests are served. This help in making
-> >> sure meta-data block are closer. This is needed to speedup
-> >> unlink of the file. Any new prealloc space is allocated near
-> >> the goal block specified. The goal block is the last block
-> >> allocated for the file. So we don't keep the data-block and
-> >> meta-data block far apart.
-> >>
-> > 
-> > The result can be found at
-> > 
-> > http://www.radian.org/~kvaneesh/ext4/meta-group/
-> 
-> Out of curiosity, do you have graphs similar to
-> http://www.radian.org/~kvaneesh/ext4/meta-group/ext4-noextents-metagroup.png
-> 
-> before and after your change?
+Bas van Schaik wrote:
+> Theodore Tso wrote:
+>   
+>> On Sun, May 18, 2008 at 12:37:37PM +0200, Bas van Schaik wrote:
+>>   
+>>     
+>>> However, there is a slight
+>>> problem with scripting e2fsck: it seems that e2fsck /always/ exits with
+>>> exit code 1 just because of the fact that the snapshot journal has been
+>>> replayed. Because of this, the script cannot tell whether there is a
+>>> real problem or not and keeps e-mailing me. This is a typical output of
+>>> such an e2fsck run:
+>>>     
+>>>       
+>> Simply replying the journal should not cause e2fsck to have an exit
+>> code of 1.  It must have done something else.  The common one was
+>> clearing the LARGE_FILES feature flag if the filesystem didn't have
+>> one, but that was removed as of 1.40.7.  Can you take a snapshot, run
+>> dumpe2fs, run e2fsck -fy /dev/loop1, and then run dumpe2fs again, and
+>> send me a before and after?
+>>     
+> For now, the dumpe2fs before the e2fsck. As you will probably remember,
+> the filesystem is quite large and and the check takes a few hours... I
+> will send the other dumpe2fs ASAP.
+>
+>
+>   
+>> # dumpe2fs /dev/loop1
+>> dumpe2fs 1.40-WIP (14-Nov-2006)
+>> Filesystem volume name:   <none>
+>> Last mounted on:          <not available>
+>> Filesystem UUID:          5e561184-65a5-4e19-9b57-7acf31ef209b
+>> Filesystem magic number:  0xEF53
+>> Filesystem revision #:    1 (dynamic)
+>> Filesystem features:      has_journal dir_index filetype
+>> needs_recovery sparse_super large_file
+>> Filesystem flags:         signed directory hash
+>> Default mount options:    journal_data_writeback
+>> Filesystem state:         clean
+>> Errors behavior:          Remount read-only
+>> Filesystem OS type:       Linux
+>> Inode count:              275251200
+>> Block count:              550502400
+>> Reserved block count:     0
+>> Free blocks:              64737800
+>> Free inodes:              262708704
+>> First block:              0
+>> Block size:               4096
+>> Fragment size:            4096
+>> Blocks per group:         32768
+>> Fragments per group:      32768
+>> Inodes per group:         16384
+>> Inode blocks per group:   512
+>> Filesystem created:       Fri Oct  6 20:46:50 2006
+>> Last mount time:          Tue May 13 00:30:58 2008
+>> Last write time:          Tue May 13 00:30:58 2008
+>> Mount count:              1
+>> Maximum mount count:      24
+>> Last checked:             Mon May 12 15:38:20 2008
+>> Check interval:           15552000 (6 months)
+>> Next check after:         Sat Nov  8 14:38:20 2008
+>> Reserved blocks uid:      0 (user root)
+>> Reserved blocks gid:      0 (group root)
+>> First inode:              11
+>> Inode size:               128
+>> Journal inode:            8
+>> Default directory hash:   tea
+>> Directory Hash Seed:      46c1768d-baa8-44f8-a823-200942db69b5
+>> Journal backup:           inode blocks
+>> Journal size:             32M
+>>     
 
-http://www.radian.org/~kvaneesh/ext4/meta-group/exp1/
+And now the (complete) output of dumpe2fs after the e2fsck:
 
--aneesh
+> Filesystem volume name:   <none>
+> Last mounted on:          <not available>
+> Filesystem UUID:          5e561184-65a5-4e19-9b57-7acf31ef209b
+> Filesystem magic number:  0xEF53
+> Filesystem revision #:    1 (dynamic)
+> Filesystem features:      has_journal dir_index filetype sparse_super
+> large_file
+> Filesystem flags:         signed directory hash
+> Default mount options:    journal_data_writeback
+> Filesystem state:         clean
+> Errors behavior:          Remount read-only
+> Filesystem OS type:       Linux
+> Inode count:              275251200
+> Block count:              550502400
+> Reserved block count:     0
+> Free blocks:              76760569
+> Free inodes:              262667659
+> First block:              0
+> Block size:               4096
+> Fragment size:            4096
+> Blocks per group:         32768
+> Fragments per group:      32768
+> Inodes per group:         16384
+> Inode blocks per group:   512
+> Filesystem created:       Fri Oct  6 20:46:50 2006
+> Last mount time:          Mon May 19 02:15:24 2008
+> Last write time:          Mon May 19 02:16:08 2008
+> Mount count:              0
+> Maximum mount count:      24
+> Last checked:             Mon May 19 02:16:08 2008
+> Check interval:           15552000 (6 months)
+> Next check after:         Sat Nov 15 01:16:08 2008
+> Reserved blocks uid:      0 (user root)
+> Reserved blocks gid:      0 (group root)
+> First inode:              11
+> Inode size:               128
+> Journal inode:            8
+> Default directory hash:   tea
+> Directory Hash Seed:      46c1768d-baa8-44f8-a823-200942db69b5
+> Journal backup:           inode blocks
+> Journal size:             32M
+
+Does this tell you anything?
+
+  -- Bas
+
