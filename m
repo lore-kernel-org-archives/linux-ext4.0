@@ -1,43 +1,55 @@
 From: Pavel Machek <pavel@suse.cz>
-Subject: Re: [PATCH 1/4] ext3: enable barriers by default
-Date: Mon, 19 May 2008 10:58:42 +0200
-Message-ID: <20080519085842.GA2013@elf.ucw.cz>
-References: <482DDA56.6000301@redhat.com> <482DDB13.1050708@redhat.com>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Mon, 19 May 2008 11:04:01 +0200
+Message-ID: <20080519090401.GB2013@elf.ucw.cz>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jamie Lokier <jamie@shareable.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	jamie@shareable.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:57273 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:54415 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751433AbYESI5o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2008 04:57:44 -0400
+	with ESMTP id S1751417AbYESJDE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2008 05:03:04 -0400
 Content-Disposition: inline
-In-Reply-To: <482DDB13.1050708@redhat.com>
+In-Reply-To: <20080516130545.845a3be9.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 2008-05-16 14:05:55, Eric Sandeen wrote:
-> I can't think of any valid reason for ext3 to not use barriers when
-> they are available;  I believe this is necessary for filesystem
-> integrity in the face of a volatile write cache on storage.
-> 
-> An administrator who trusts that the cache is sufficiently battery-
-> backed (and power supplies are sufficiently redundant, etc...)
-> can always turn it back off again.
-> 
-> SuSE has carried such a patch for quite some time now.
-> 
-> Also document the mount option while we're at it.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> Acked-by: Jan Kara <jack@suse.cz>
+Hi!
 
-Yes please. Safe defaults are the way to go.
+On Fri 2008-05-16 13:05:45, Andrew Morton wrote:
+> On Fri, 16 May 2008 14:02:46 -0500 Eric Sandeen <sandeen@redhat.com> wrote:
+> 
+> > A collection of patches to make ext3 & 4 use barriers by
+> > default, and to call blkdev_issue_flush on fsync if they
+> > are enabled.
+> 
+> Last time this came up lots of workloads slowed down by 30% so I
+> dropped the patches in horror.
+> 
+> I just don't think we can quietly go and slow everyone's machines down
+> by this much.  The overhead of journalling is already pretty horrid.
+> 
+> If we were seeing a significant number of "hey, my disk got wrecked"
+> reports which attributable to this then yes, perhaps we should change
+> the default.  But I've never seen _any_, although I've seen claims that
+> others have seen reports.
+
+Do you remember seeing "my disk was wrecked" for reiserfs?
+
+I believe I got some corruption, but it was 
+
+a) long time ago
+
+b) took half a year of hard powerdowns to provoke
+
+c) I did not report it anywhere because ... it just was not
+reproducible.
+
 								Pavel
 -- 
 (english) http://www.livejournal.com/~pavelmachek
