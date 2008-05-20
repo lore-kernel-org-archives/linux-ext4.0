@@ -1,122 +1,113 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of	device,
- freeing blocks not in datazone
-Date: Wed, 21 May 2008 00:02:42 +0200
-Message-ID: <48334A82.6020508@tuxes.nl>
-References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Tue, 20 May 2008 23:26:09 +0100
+Message-ID: <20080520222609.GC27853@shareable.org>
+References: <482DDA56.6000301@redhat.com> <200805201202.54420.chris.mason@oracle.com> <20080520162710.GM16676@shareable.org> <200805201308.03956.chris.mason@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from castor.sshunet.nl ([145.97.192.41]:60535 "EHLO
-	castor.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757768AbYETWCr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 18:02:47 -0400
-In-Reply-To: <20080520123505.GP15035@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Chris Mason <chris.mason@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <200805201308.03956.chris.mason@oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
->> After running e2fsck everything is fine again for a week or a little
->> longer...
->>     
->
-> Did e2fsck report any errors?  You didn't say; but if this kind of
-> corruption were really on the hard drive itself, it would cause e2fsck
-> to scream bloody murder. 
->   
-Yeah, I'm sorry: e2fsck did scream bloody murder. After the check, the
-filesystem is clean again and remains clean for about a week. I still
-haven't found out what operation exactly is causing the problems, the
-only thing I can think of is rsync eating too much memory. The system is
-used for backups of about 50 rsync clients, but the system should be
-able to handle this even under high load.
+Chris Mason wrote:
+> Jens and I talked about tossing the barriers completely and just
+> doing FUA for all metadata writes.  For drives with NCQ, we'll get
+> something close to optimal because the higher layer elevators are
+> already doing most of the hard work.
 
->>> May 20 09:13:14 infinity kernel: attempt to access beyond end of device
->>> May 20 09:13:14 infinity kernel: loop0: rw=0, want=15629775440, limit=4404019200
->>>       
-> So for these, you had
->
-> 15629775440 / 8 = 0x74736E4A   (or in ascii 'Jnst')
-> 13075964688 / 8 = 0x616C6C62   (or in ascii 'blla')
-> 15354014352 / 8 = 0x72657552   (or in ascii 'Ruer')
->
-> These errors errors happen when deleting a file with a bogus indirect
-> block (or garbage in the inode, but that's much less likely and
-> probably would have triggered additional complaints).
->
->   
->>> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1953721929, count = 1
->>>       
-> Converting these numbers to hex:
->
-> 1953721929 = 0x74736E49  (or in ascii 'Jnst')
-> 1634495585 = 0x616C6C61  (or in ascii 'alla'
->  543517044 = 0x20656974  (or in ascii 'tie ')
-> 1919251793 = 0x72657551  (or in ascii 'Quer')
->
-> Given that it's all ascii, it looks like the indirect block somehow
-> was overwritten, or was substituted by text.
->   
-Ah, such a lead was exactly what I was looking for, now I at least know
-where those bogus numbers were coming from. Maybe a very dump question:
-you seem to have reverse the ascii "translation", why? And shouldn't
-"Jnst" be "Inst"? Note also that the "translations" seem to resemble
-each other a little bit: "Jnst" = "Jnst", "alla" looks like "blla" and
-"Ruer" looks like "Quer". Coincidence?
+Will need benchmarking, but might just work.
 
-Summarizing all this: there is clearly something writing garbage to the
-wrong place. It must be something above the encryption layer, since
-that's the only way ascii can be written to the device.
+Still need barriers for reasonable performance + integrity on systems
+without NCQ, like the kit on my desk.  Without barriers I have to turn
+write-cache off (I do see those power-off errors).  But that's too slow.
 
-Remember the different layers:
-  ext3 on decrypted /dev/loop0
-  LVM logical volume (encrypted)
-  RAID5 arrays
-  Imported AoE-devices
-  Physical disks
+> Either way, you do want the flush to cover all the data=ordered writes, at 
+> least all the ordered writes from the transaction you're about to commit.  
+> Telling the difference between data=ordered from an old transaction or from 
+> the running transaction gets into pushing ordering down to the lower levels 
+> (see below)
 
-This conclusion kind of worries me, I was assuming that there was
-something wrong at the networking level (AoE) or below. If that were the
-case, the encrypted data would get modified and the corruptions would
-look totally different. Or am I missing something?
+I grant you, it is all about pushing ordering down as far as reasonable.
 
-Some other "magic numbers" to test the ascii hypothesis:
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1279611658, count = 1
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 779051620, count = 1
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1701409346, count = 1
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1634366310, count = 1
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1869573218, count = 1
-> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1783836270, count = 1
-1279611658 = 0x4C45530A = "SEL"
-779051620 = 0x2E6F6264 = "dbo."
-1701409346 = 0x65697242 = "Brie"
-1634366310 = 0x616A7366 = "fsja"
-1869573218 = 0x6F6F6C62 = "bloo"
-1783836270 = 0x6A532E6E = "n.Sj"
+> > > But, it complicates the decision about when you're allowed to dirty
+> > > a metadata block for writeback.  It used to be dirty-after-commit
+> > > and it would change to dirty-after-barrier.  I suspect that is some
+> > > significant surgery into jbd.
+> >
+> > Rather than tracking when it's "allowed" to dirty a metadata block, it
+> > will be simpler to keep a flag saying "barrier needed", and just issue
+> > the barrier prior to writing a metadata block, if the flag is set.
+> 
+> Adding explicit ordering into the IO path is really interesting.  We
+> toss a bunch of IO down to the lower layers with information about
+> dependencies and let the lower layers figure it out.
 
-If you ask me: enough certainty that it is indeed ascii text that was
-written to the wrong place. Point is that I have another storage
-"cluster" with almost exactly the same setup (main difference: LUKS is
-used in favour of some AES cryptoloop). This cluster appears to be
-having exactly the same problems:
+That's right.  You can keep it quite simple: just distinguish barriers
+from flushes.  Or make it more detailed, distinguishing different
+block sets and partial barriers between them.
 
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 4292870144, count = 1
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 3137339670, count = 1
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 892220416, count = 1
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1919240224, count = 1
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1768710504, count = 1
-> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1920165742, count = 1
-Convert these numbers to hex and ascii and you'll see that the outcome
-doesn't look like "plain" ascii. This can mean two things (correct me if
-I'm wrong):
- 1) there is a totally different problem
- 2) the data which was written to the wrong place wasn't plain ascii
+> James had a bunch of ideas here, but I'm afraid the only people that
+> understood it were James and the whiteboard he was scribbling on.
 
-I would really like to hear your thoughts on all this, maybe there is a
-simple explanation out there after all...
+I think simply distinguishing barrier from flush is relatively
+understandable, isn't it?
 
-  -- Bas
-**
+> The trick is to code the ordering in such a way that an IO failure breaks the 
+> chain, and that the filesystem has some sensible chance to deal with all 
+> these requests that have failed because an earlier write failed.
+
+Yeah, if you're going to do it _properly_ that's the way :-)
+
+But the I/O failure strategy is really a different problem, and shouldn't
+necessarily distract from barrier I/O elevator scheduling.
+
+The I/O failure strategy applies just the same even with no barriers
+and no disk cache at all.  Even there, you want a failed write to
+block subsequent dependent writes.
+
+> Also, once we go down the ordering road, it is really tempting to forget that 
+> ordering does ensure consistency but doesn't tell us the write actually 
+> happened.  fsync and friends need to hook into the dependency chain to wait 
+> for the barrier instead of waiting for the commit.
+
+True, but fortunately it's quite a simple thing.  fsync et al need to
+ask for flush, nothing else does.  You simply don't need consistency
+from journalling writes without fsync.  Journal writes without fsync
+happen at times determined by arcane kernel daemons.  Applications and
+even users don't have any say, and therefore no particular
+expectation.
+
+> My test prog is definitely a worst case, but I'm pretty confident that most 
+> mail server workloads end up doing similar IO.
+
+Mail servers seem like the most vulnerable systems to me too.
+
+They are often designed to relay a successful fsync() result across
+the network.  RAID doesn't protect against power-fails with flushless
+fsync, and SMTP does not redundantly hold the same email at different
+locations for recovery.  (The most solid email services will use a
+distributed database which is not vulnerable to these problems.  But
+the most common mail systems are).
+
+> A 16MB or 32MB disk cache is common these days, and that is a very sizable 
+> percentage of the jbd log size.  I think the potential for corruptions on 
+> power failure is only growing over time.
+
+That depends on the disk implementation.  Another use of the 32MB is
+to hold write-through NCQ commands in flight while they are sorted.
+If the trend is towards that, perhaps it's quite resistant to power
+failure.
+
+Still, I'm on the side of safety - having witnessed these power-fail
+corruptions myself.  The type I've seen will get more common, as the
+trend in home "appliances" is towards pulling the plug to turn them
+off, and to have these larger storage devices in them.
+
+-- Jamie
