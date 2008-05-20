@@ -1,362 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 3/3] libext2fs: add ext2fs_extent_set_bmap
-Date: Tue, 20 May 2008 10:17:46 -0500
-Message-ID: <4832EB9A.2040507@redhat.com>
-References: <4832EA22.2070301@redhat.com>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH, RFC] ext4: Fix use of write barrier in commit logic
+Date: Tue, 20 May 2008 16:23:10 +0100
+Message-ID: <20080520152310.GG16676__34854.5180088424$1211297177$gmane$org@shareable.org>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <87ej7zcrqv.fsf@basil.nowhere.org> <200805190926.41970.chris.mason@oracle.com> <20080519144654.GC15035@mit.edu> <20080520025112.GN15035@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, lin
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44205 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752358AbYETPRt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 11:17:49 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m4KFHnsl022382
-	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:17:49 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4KFHmm6013768
-	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:17:48 -0400
-Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4KFHkvv020213
-	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:17:47 -0400
-In-Reply-To: <4832EA22.2070301@redhat.com>
+Received: from mail2.shareable.org ([80.68.89.115]:38139 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934059AbYETPYJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 11:24:09 -0400
+Content-Disposition: inline
+In-Reply-To: <20080520025112.GN15035@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allows unmapping or remapping single mapped logical blocks,
-and mapping currently unmapped blocks.
+Theodore Tso wrote:
+> As I mentioned earlier, adding blkdev_issue_flush() to ext[34]/fsync.c
+> is I believe not necessary.  We should be doing the right thing in the
+> commit.c file.  In the future, if we want some extra bonus points, in
+> the case where writes have taken place to the inode, but no metadata
+> operations have taken place (the common case when a database is
+> writing to a pre-existing tablespace), it would be nice if fsync()
+> could notice this case, force out the datablocks the old-fashioned way
+> without forcing an journal commit, and then calling
+> blkdev_issue_flush().  That should give us some nice performance wins
+> for database workloads; unfortunately it probably won't do us any good
+> on mailserver workloads.
 
-Also implements ext2fs_extent_fix_parents() to fix parent
-index logical starts, if the first index of a node changes
-its logical start block.
+Last time I looked, the database write + fsync case did not result in
+a journal commit in some cases, and therefore no blkdev_issue_flush().
+The problem was one of correctness.  Has this been fixed?
 
-Currently this results in new single-block extents; I think
-perhaps ext2fs_extent_insert should grow a flag to request
-merging with a nearby extent?
+A database had no way to issue a hard disk barrier in these cases
+without doing weird stuff like forcing metadata changes prior to fsync
+(e.g. toggling permissions bits), which causes an intolerable two disk
+seeks per fsync.  That is _way_ expensive.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
- lib/ext2fs/ext2fs.h      |    2 +
- lib/ext2fs/extent.c      |  263 ++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/extent_dbg.ct |    3 +
- 3 files changed, 268 insertions(+), 0 deletions(-)
+There is also no way in ext3 to _just_ fdatasync() (no metadata even
+if it has changed), with disk barrier/flush.
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 30ca906..c6ac317 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -814,6 +814,8 @@ extern errcode_t ext2fs_extent_replace(ext2_extent_handle_t handle, int flags,
- 				       struct ext2fs_extent *extent);
- extern errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
- 				      struct ext2fs_extent *extent);
-+extern errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
-+                                 blk64_t logical, blk64_t physical);
- extern errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, int flags);
- extern errcode_t ext2fs_extent_get_info(ext2_extent_handle_t handle,
- 					struct ext2_extent_info *info);
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 34719d5..357ca34 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -637,6 +637,64 @@ errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
- 	return extent_goto(handle, 0, blk);
- }
- 
-+/*
-+ * Traverse back up to root fixing parents of current node as needed.
-+ *
-+ * If we changed start of first entry in a node, fix parent index start
-+ * and so on.
-+ *
-+ * Safe to call for any position in node; if not at the first entry,
-+ * will  simply return.
-+ */
-+static errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
-+{
-+	int				retval = 0;
-+	blk64_t				start;
-+	struct extent_path		*path;
-+	struct ext2fs_extent		extent;
-+
-+	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
-+
-+	if (!(handle->fs->flags & EXT2_FLAG_RW))
-+		return EXT2_ET_RO_FILSYS;
-+
-+	if (!handle->path)
-+		return EXT2_ET_NO_CURRENT_NODE;
-+
-+	path = handle->path + handle->level;
-+	if (!path->curr)
-+		return EXT2_ET_NO_CURRENT_NODE;
-+
-+	retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT, &extent);
-+	if (retval)
-+		goto done;
-+
-+	/* modified node's start block */
-+	start = extent.e_lblk;
-+
-+	/* traverse up until index not first, or startblk matches, or top */
-+	while (handle->level > 0 &&
-+	       (path->left == path->entries - 1)) {
-+		retval = ext2fs_extent_get(handle, EXT2_EXTENT_UP, &extent);
-+		if (retval)
-+			goto done;
-+		if (extent.e_lblk == start)
-+			break;
-+		path = handle->path + handle->level;
-+		extent.e_len += (extent.e_lblk - start);
-+		extent.e_lblk = start;
-+		retval = ext2fs_extent_replace(handle, 0, &extent);
-+		if (retval)
-+			goto done;
-+		update_path(handle);
-+	}
-+
-+	/* put handle back to where we started */
-+	retval = ext2fs_extent_goto(handle, start);
-+done:
-+	return retval;
-+}
-+
- errcode_t ext2fs_extent_replace(ext2_extent_handle_t handle, 
- 				int flags EXT2FS_ATTR((unused)),
- 				struct ext2fs_extent *extent)
-@@ -942,6 +1000,175 @@ errout:
- 	return retval;
- }
- 
-+/*
-+ * Sets the physical block for a logical file block in the extent tree.
-+ *
-+ * May: map unmapped, unmap mapped, or remap mapped blocks.
-+ *
-+ * Mapping an unmapped block adds a single-block extent.
-+ *
-+ * Unmapping first or last block modifies extent in-place
-+ *  - But may need to fix parent's starts too in first-block case
-+ *
-+ * Mapping any unmapped block requires adding a (single-block) extent
-+ * and inserting into proper point in tree.
-+ *
-+ * Modifying (unmapping or remapping) a block in the middle
-+ * of an extent requires splitting the extent.
-+ *  - Remapping case requires new single-block extent.
-+ *
-+ * Remapping first or last block adds an extent.
-+ *
-+ * We really need extent adding to be smart about merging.
-+ */
-+
-+errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
-+				 blk64_t logical, blk64_t physical)
-+{
-+	int			retval = 0;
-+	int			mapped = 1; /* logical is mapped? */
-+	struct extent_path	*path;
-+	struct ext2fs_extent	extent;
-+	struct ext2fs_extent	newextent;
-+
-+	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
-+
-+	if (!(handle->fs->flags & EXT2_FLAG_RW))
-+		return EXT2_ET_RO_FILSYS;
-+
-+	/* go to the logical spot we want to (re/un)map */
-+	retval = ext2fs_extent_goto(handle, logical);
-+	if (retval) {
-+		if (retval == EXT2_ET_EXTENT_NOT_FOUND) {
-+			retval = 0;
-+			mapped = 0;
-+			if (!physical) {
-+				dbg_printf("block already unmapped\n");
-+				goto done;
-+			}
-+		} else
-+			goto done;
-+	}
-+
-+	if (!handle->path)
-+		return EXT2_ET_NO_CURRENT_NODE;
-+
-+	path = handle->path + handle->level;
-+	if (!path->curr)
-+		return EXT2_ET_NO_CURRENT_NODE;
-+
-+	/*
-+	 * This may be the extent *before* the requested logical,
-+	 * if it's currently unmapped.
-+	 */
-+	retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT, &extent);
-+	if (retval)
-+		goto done;
-+
-+	/* check if already pointing to the requested physical */
-+	if (mapped && extent.e_pblk + (logical - extent.e_lblk) == physical) {
-+		dbg_printf("physical block unchanged\n");
-+		goto done;
-+	}
-+
-+	/* if (re)mapping, set up new extent, we'll insert it later */
-+	if (physical) {
-+		newextent.e_len = 1;
-+		newextent.e_pblk = physical;
-+		newextent.e_lblk = logical;
-+		newextent.e_flags = EXT2_EXTENT_FLAGS_LEAF;
-+	}
-+
-+	if (!mapped) {
-+		dbg_printf("mapping unmapped logical block\n");
-+		retval = ext2fs_extent_insert(handle,
-+				EXT2_EXTENT_INSERT_AFTER, &newextent);
-+		if (retval)
-+			goto done;
-+		retval = ext2fs_extent_fix_parents(handle);
-+		if (retval)
-+			goto done;
-+	} else if (logical == extent.e_lblk + extent.e_len - 1 &&
-+		   extent.e_len == 1)  {
-+		dbg_printf("(re/un)mapping only block in extent\n");
-+		if (physical) {
-+			extent.e_pblk = physical;
-+			retval = ext2fs_extent_replace(handle, 0, &extent);
-+		} else {
-+			retval = ext2fs_extent_delete(handle, 0);
-+			if (retval)
-+				goto done;
-+			retval = ext2fs_extent_fix_parents(handle);
-+		}
-+
-+		if (retval)
-+			goto done;
-+	} else if (logical == extent.e_lblk + extent.e_len - 1)  {
-+		dbg_printf("(re/un)mapping last block in extent\n");
-+		extent.e_len--;
-+		retval = ext2fs_extent_replace(handle, 0, &extent);
-+		if (retval)
-+			goto done;
-+		if (physical) {
-+			retval = ext2fs_extent_insert(handle,
-+					EXT2_EXTENT_INSERT_AFTER, &newextent);
-+			if (retval)
-+				goto done;
-+		}
-+	} else if (logical == extent.e_lblk) {
-+		dbg_printf("(re/un)mapping first block in extent\n");
-+		extent.e_pblk++;
-+		extent.e_lblk++;
-+		extent.e_len--;
-+		retval = ext2fs_extent_replace(handle, 0, &extent);
-+		if (retval)
-+			goto done;
-+		if (physical) {
-+			/* insert new extent ahead of current */
-+			retval = ext2fs_extent_insert(handle,
-+					0, &newextent);
-+			if (retval)
-+				goto done;
-+		} else {
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto done;
-+		}
-+	} else {
-+		__u32	orig_length;
-+
-+		dbg_printf("(re/un)mapping in middle of extent\n");
-+		/* need to split this extent; later */
-+
-+		orig_length = extent.e_len;
-+
-+		/* shorten pre-split extent */
-+		extent.e_len = (logical - extent.e_lblk);
-+		retval = ext2fs_extent_replace(handle, 0, &extent);
-+		if (retval)
-+			goto done;
-+		/* insert our new extent, if any */
-+		if (physical) {
-+			/* insert new extent after current */
-+			retval = ext2fs_extent_insert(handle,
-+					EXT2_EXTENT_INSERT_AFTER, &newextent);
-+			if (retval)
-+				goto done;
-+		}
-+		/* add post-split extent */
-+		extent.e_pblk += extent.e_len + 1;
-+		extent.e_lblk += extent.e_len + 1;
-+		extent.e_len = orig_length - extent.e_len - 1;
-+		retval = ext2fs_extent_insert(handle,
-+				EXT2_EXTENT_INSERT_AFTER, &extent);
-+		if (retval)
-+			goto done;
-+	}
-+
-+done:
-+	return retval;
-+}
-+
- errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, 
- 			       int flags EXT2FS_ATTR((unused)))
- {
-@@ -1281,6 +1508,42 @@ void do_insert_node(int argc, char *argv[])
- 	do_current_node(argc, argv);
- }
- 
-+void do_set_bmap(int argc, char **argv)
-+{
-+	errcode_t	retval;
-+	blk_t		logical;
-+	blk_t		physical;
-+	char *cmd;
-+	int err;
-+
-+	if (check_fs_read_write(argv[0]))
-+		return;
-+
-+	cmd = argv[0];
-+
-+	if (argc != 3) {
-+		fprintf(stderr, "usage: %s <lblk> <pblk>\n", cmd);
-+		return;
-+	}
-+
-+	logical = parse_ulong(argv[1], cmd,
-+				    "logical block", &err);
-+	if (err)
-+		return;
-+
-+	physical = parse_ulong(argv[2], cmd,
-+				    "physical block", &err);
-+	if (err)
-+		return;
-+
-+	retval = ext2fs_extent_set_bmap(current_handle, logical, (blk64_t) physical);
-+	if (retval) {
-+		com_err(cmd, retval, 0);
-+		return;
-+	}
-+	do_current_node(argc, argv);
-+}
-+
- void do_print_all(int argc, char **argv)
- {
- 	struct ext2fs_extent	extent;
-diff --git a/lib/ext2fs/extent_dbg.ct b/lib/ext2fs/extent_dbg.ct
-index 788fdab..d0571f4 100644
---- a/lib/ext2fs/extent_dbg.ct
-+++ b/lib/ext2fs/extent_dbg.ct
-@@ -55,6 +55,9 @@ request do_insert_node, "Insert node",
- request do_split_node, "Split node",
- 	split_node, split;
- 
-+request do_set_bmap, "Set block mapping",
-+	set_bmap;
-+
- request do_replace_node, "Insert node",
- 	replace_node, replace;
- 
--- 1.5.4.1
+Imho a good place to call blkdev_issue_flush() is in the VFS, after
+it's written all the data blocks, unless the filesystem has a better
+override.  That would work with most filesystems automatically.
+Request queue optimisations may trivially remove redundant flushes.
 
+-- Jamie
