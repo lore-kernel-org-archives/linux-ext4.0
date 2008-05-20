@@ -1,7 +1,8 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH-v2] JBD: Fix race between free buffer and commit trasanction
-Date: Tue, 20 May 2008 11:02:55 -0700
-Message-ID: <1211306575.3664.19.camel@localhost.localdomain>
+Subject: [PATCH -v2] JBD2: Fix race between journal free buffer and commit
+	trasanction
+Date: Tue, 20 May 2008 11:03:51 -0700
+Message-ID: <1211306631.3664.21.camel@localhost.localdomain>
 References: <20080512155419.GD15856@duck.suse.cz>
 	 <1210639184.3661.43.camel@localhost.localdomain>
 	 <20080513145449.GC20806@duck.suse.cz>
@@ -24,19 +25,15 @@ Cc: jack@suse.cz, pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:51771 "EHLO e6.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:35529 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758202AbYETSDN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 14:03:13 -0400
+	id S1755222AbYETSD6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2008 14:03:58 -0400
 In-Reply-To: <1211234829.3663.39.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Updated patch to use existing GFP_KERNEL mask to indicating synchornous
-wait in journal_try_to_free_buffers() to resolve the race with
-journal_commit_transaction().
-
-JBD: fix race between journal_try_to_free_buffers() and jbd commit transaction
+JBD2: fix race between jbd2_journal_try_to_free_buffers() and jbd2 commit transaction
 
 From: Mingming Cao <cmm@us.ibm.com>
 
@@ -56,30 +53,29 @@ journal_commit_transaction() to finish commit the current committing transaction
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
 ---
- fs/jbd/transaction.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++--
- mm/filemap.c         |    3 --
- 2 files changed, 54 insertions(+), 4 deletions(-)
+ fs/jbd2/transaction.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 54 insertions(+), 2 deletions(-)
 
-Index: linux-2.6.26-rc2/fs/jbd/transaction.c
+Index: linux-2.6.26-rc2/fs/jbd2/transaction.c
 ===================================================================
---- linux-2.6.26-rc2.orig/fs/jbd/transaction.c	2008-05-11 17:09:41.000000000 -0700
-+++ linux-2.6.26-rc2/fs/jbd/transaction.c	2008-05-19 16:16:41.000000000 -0700
-@@ -1648,12 +1648,39 @@ out:
+--- linux-2.6.26-rc2.orig/fs/jbd2/transaction.c	2008-05-11 17:09:41.000000000 -0700
++++ linux-2.6.26-rc2/fs/jbd2/transaction.c	2008-05-19 17:20:01.000000000 -0700
+@@ -1656,12 +1656,39 @@ out:
  	return;
  }
  
 +/*
-+ * journal_try_to_free_buffers() could race with journal_commit_transaction()
++ * jbd2_journal_try_to_free_buffers() could race with jbd2_journal_commit_transaction()
 + * The later might still hold the reference count to the buffers when inspecting
 + * them on t_syncdata_list or t_locked_list.
 + *
-+ * Journal_try_to_free_buffers() will call this function to
++ * jbd2_journal_try_to_free_buffers() will call this function to
 + * wait for the current transaction to finish syncing data buffers, before
 + * try to free that buffer.
 + *
 + * Called with journal->j_state_lock hold.
 + */
-+static void journal_wait_for_transaction_sync_data(journal_t *journal)
++static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
 +{
 +	transaction_t *transaction = NULL;
 +	tid_t tid;
@@ -91,12 +87,12 @@ Index: linux-2.6.26-rc2/fs/jbd/transaction.c
 +
 +	tid = transaction->t_tid;
 +	spin_unlock(&journal->j_state_lock);
-+	log_wait_commit(journal, tid);
++	jbd2_log_wait_commit(journal, tid);
 +	spin_lock(&journal->j_state_lock);
 +}
  
  /**
-  * int journal_try_to_free_buffers() - try to free page buffers.
+  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
   * @journal: journal for operation
   * @page: to try and free
 - * @unused_gfp_mask: unused
@@ -105,20 +101,20 @@ Index: linux-2.6.26-rc2/fs/jbd/transaction.c
   *
   *
   * For all the buffers on this page,
-@@ -1682,9 +1709,11 @@ out:
+@@ -1690,9 +1717,11 @@ out:
   * journal_try_to_free_buffer() is changing its state.  But that
   * cannot happen because we never reallocate freed data as metadata
   * while the data is part of a transaction.  Yes?
 + *
 + * Return 0 on failure, 1 on success
   */
- int journal_try_to_free_buffers(journal_t *journal,
+ int jbd2_journal_try_to_free_buffers(journal_t *journal,
 -				struct page *page, gfp_t unused_gfp_mask)
 +				struct page *page, gfp_t gfp_mask)
  {
  	struct buffer_head *head;
  	struct buffer_head *bh;
-@@ -1713,7 +1742,30 @@ int journal_try_to_free_buffers(journal_
+@@ -1721,7 +1750,30 @@ int jbd2_journal_try_to_free_buffers(jou
  		if (buffer_jbd(bh))
  			goto busy;
  	} while ((bh = bh->b_this_page) != head);
@@ -126,8 +122,8 @@ Index: linux-2.6.26-rc2/fs/jbd/transaction.c
  	ret = try_to_free_buffers(page);
 +
 + 	/*
-+	 * There are a number of places where journal_try_to_free_buffers()
-+	 * could race with journal_commit_transaction(), the later still
++	 * There are a number of places where jbd2_journal_try_to_free_buffers()
++	 * could race with jbd2_journal_commit_transaction(), the later still
 +	 * holds the reference to the buffers to free while processing them.
 +	 * try_to_free_buffers() failed to free those buffers. Some of the
 +	 * caller of releasepage() request page buffers to be dropped, otherwise
@@ -141,7 +137,7 @@ Index: linux-2.6.26-rc2/fs/jbd/transaction.c
 +	 */
 +	if (ret == 0 && gfp_mask & GFP_KERNEL) {
 +        	spin_lock(&journal->j_state_lock);
-+		journal_wait_for_transaction_sync_data(journal);
++		jbd2_journal_wait_for_transaction_sync_data(journal);
 +		ret = try_to_free_buffers(page);
 +		spin_unlock(&journal->j_state_lock);
 +	}
@@ -149,20 +145,5 @@ Index: linux-2.6.26-rc2/fs/jbd/transaction.c
  busy:
  	return ret;
  }
-Index: linux-2.6.26-rc2/mm/filemap.c
-===================================================================
---- linux-2.6.26-rc2.orig/mm/filemap.c	2008-05-19 16:00:01.000000000 -0700
-+++ linux-2.6.26-rc2/mm/filemap.c	2008-05-19 16:01:34.000000000 -0700
-@@ -2581,9 +2581,8 @@ out:
-  * Otherwise return zero.
-  *
-  * The @gfp_mask argument specifies whether I/O may be performed to release
-- * this page (__GFP_IO), and whether the call may block (__GFP_WAIT).
-+ * this page (__GFP_IO), and whether the call may block (__GFP_WAIT & __GFP_FS).
-  *
-- * NOTE: @gfp_mask may go away, and this function may become non-blocking.
-  */
- int try_to_release_page(struct page *page, gfp_t gfp_mask)
- {
 
 
