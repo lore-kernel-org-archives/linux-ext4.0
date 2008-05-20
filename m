@@ -1,98 +1,142 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Tue, 20 May 2008 13:08:03 -0400
-Message-ID: <200805201308.03956.chris.mason@oracle.com>
-References: <482DDA56.6000301@redhat.com> <200805201202.54420.chris.mason@oracle.com> <20080520162710.GM16676@shareable.org>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] JBD: Fix DIO EIO error caused by race between free
+	buffer and commit trasanction
+Date: Tue, 20 May 2008 10:47:15 -0700
+Message-ID: <1211305635.3664.3.camel@localhost.localdomain>
+References: <20080514170856.GH24363@duck.suse.cz>
+	 <1210786872.3657.48.camel@localhost.localdomain>
+	 <20080514181444.GI24363@duck.suse.cz>
+	 <1210947250.3608.18.camel@localhost.localdomain>
+	 <1210957976.4231.31.camel@badari-desktop>
+	 <1210971693.3608.46.camel@localhost.localdomain>
+	 <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
+	 <1211227158.3663.25.camel@localhost.localdomain>
+	 <20080519132553.de9b78b0.akpm@linux-foundation.org>
+	 <1211234829.3663.39.camel@localhost.localdomain>
+	 <20080520093020.GL22369@kernel.dk>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andi Kleen <andi@firstfloor.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jamie Lokier <jamie@shareable.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:19730 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754869AbYETRJc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 13:09:32 -0400
-In-Reply-To: <20080520162710.GM16676@shareable.org>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
+	pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760960AbYETRrg@vger.kernel.org>
+In-Reply-To: <20080520093020.GL22369@kernel.dk>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tuesday 20 May 2008, Jamie Lokier wrote:
-> Chris Mason wrote:
-> > > You don't need the barrier after in some cases, or it can be deferred
-> > > until a better time.  E.g. when the disk write cache is probably empty
-> > > (some time after write-idle), barrier flushes may take the same time
-> > > as NOPs.
-> >
-> > I hesitate to get too fancy here, if the disk is idle we probably
-> > won't notice the performance gain.
->
-> I think you're right, but it's hard to be sure.  One of the problems
-> with barrier-implemented-as-flush-all is that it flushes data=ordered
-> data, even when that's not wanted, and there can be a lot of data in
-> the disk's write cache, spread over many seeks.
-
-Jens and I talked about tossing the barriers completely and just doing FUA for 
-all metadata writes.  For drives with NCQ, we'll get something close to 
-optimal because the higher layer elevators are already doing most of the hard 
-work.
-
-Either way, you do want the flush to cover all the data=ordered writes, at 
-least all the ordered writes from the transaction you're about to commit.  
-Telling the difference between data=ordered from an old transaction or from 
-the running transaction gets into pushing ordering down to the lower levels 
-(see below)
-
->
-> Then it's good to delay barrier-flushes to batch metadata commits, but
-> good to issue the barrier-flushes prior to large batches of
-> data=ordered data, so the latter can be survive in the disk write
-> cache for seek optimisations with later requests which aren't yet
-> known.
->
-> All this sounds complicated at the JBD layer, and IMHO much simpler at
-> the request elevator layer.
->
-> > But, it complicates the decision about when you're allowed to dirty
-> > a metadata block for writeback.  It used to be dirty-after-commit
-> > and it would change to dirty-after-barrier.  I suspect that is some
-> > significant surgery into jbd.
->
-> Rather than tracking when it's "allowed" to dirty a metadata block, it
-> will be simpler to keep a flag saying "barrier needed", and just issue
-> the barrier prior to writing a metadata block, if the flag is set.
->
-
-Adding explicit ordering into the IO path is really interesting.  We toss a 
-bunch of IO down to the lower layers with information about dependencies and 
-let the lower layers figure it out.  James had a bunch of ideas here, but I'm 
-afraid the only people that understood it were James and the whiteboard he 
-was scribbling on.
-
-The trick is to code the ordering in such a way that an IO failure breaks the 
-chain, and that the filesystem has some sensible chance to deal with all 
-these requests that have failed because an earlier write failed.
-
-Also, once we go down the ordering road, it is really tempting to forget that 
-ordering does ensure consistency but doesn't tell us the write actually 
-happened.  fsync and friends need to hook into the dependency chain to wait 
-for the barrier instead of waiting for the commit.
-
-But, back to the short term for a second, what we need are some benchmarks for 
-barriers on and off and some guidance from the ext34 maintainers about 
-turning them on by default.  We shouldn't be pushing this FS integrity 
-decision off on the distros.
-
-My test prog is definitely a worst case, but I'm pretty confident that most 
-mail server workloads end up doing similar IO.
-
-A 16MB or 32MB disk cache is common these days, and that is a very sizable 
-percentage of the jbd log size.  I think the potential for corruptions on 
-power failure is only growing over time.
-
--chris
+On Tue, 2008-05-20 at 11:30 +0200, Jens Axboe wrote:
+> On Mon, May 19 2008, Mingming Cao wrote:
+> > On Mon, 2008-05-19 at 13:25 -0700, Andrew Morton wrote:
+> > > On Mon, 19 May 2008 12:59:18 -0700
+> > > Mingming Cao <cmm@us.ibm.com> wrote:
+> > > 
+> > > > On Mon, 2008-05-19 at 00:37 +0200, Jan Kara wrote:
+> > > > >   Hi,
+> > > > > 
+> > > > > > This patch fixed a few races between direct IO and kjournald commit
+> > > > > > transaction.  An unexpected EIO error gets returned to direct IO
+> > > > > > caller when it failed to free those data buffers. This could be
+> > > > > > reproduced easily with parallel direct write and buffered write to the
+> > > > > > same file
+> > > > > > 
+> > > > > > More specific, those races could cause journal_try_to_free_buffers()
+> > > > > > fail to free the data buffers, when jbd is committing the transaction
+> > > > > > that has those data buffers on its t_syncdata_list or t_locked_list.
+> > > > > > journal_commit_transaction() still holds the reference to those
+> > > > > > buffers before data reach to disk and buffers are removed from the
+> > > > > > t_syncdata_list of t_locked_list. This prevent the concurrent
+> > > > > > journal_try_to_free_buffers() to free those buffers at the same time,
+> > > > > > but cause EIO error returns back to direct IO.
+> > > > > > 
+> > > > > > With this patch, in case of direct IO and when try_to_free_buffers() failed,
+> > > > > > let's waiting for journal_commit_transaction() to finish
+> > > > > > flushing the current committing transaction's data buffers to disk, 
+> > > > > > then try to free those buffers again.
+> > > > >   If Andrew or Christoph wouldn't beat you for "inventive use" of
+> > > > > gfp_mask, I'm fine with the patch as well ;). You can add
+> > > > >   Acked-by: Jan Kara <jack@suse.cz>
+> > > > > 
+> > > > 
+> > > > This is less intrusive way to fix this problem. The gfp_mask was marked
+> > > > as unused in try_to_free_page(). I looked at filesystems in the kernel,
+> > > > there is only a few defined releasepage() callback, and only xfs checks
+> > > > the flag(but not used). btrfs is actually using it though. I thought
+> > > > about the way you have suggested, i.e.clean up this gfp_mask and and
+> > > > replace with a flag.  I am not entirely sure if it we need to change the
+> > > > address_space_operations and fix all the filesystems for this matter.
+> > > > 
+> > > > Andrew, what do you think? Is this approach acceptable? 
+> > > > 
+> > > 
+> > > <wakes up>
+> > > 
+> > > Please ensure that the final patch is sufficiently well changelogged to
+> > > permit me to remain asleep ;)
+> > :-)
+> > > The ->releasepage semantics are fairly ad-hoc and have grown over time.
+> > > It'd be nice to prevent them from becoming vaguer than they are.
+> > > 
+> > > It has been (approximately?) the case that code paths which really care
+> > > about having the page released will set __GFP_WAIT (via GFP_KERNEL)
+> > > whereas code paths which are happy with best-effort will clear
+> > > __GFP_WAIT (with a "0').  And that's reasonsable - __GFP_WAIT here
+> > > means "be synchronous" whereas !__GFP_WAIT means "be non-blocking".
+> > > 
+> > 
+> > This make sense to me.
+> > 
+> > > Is that old convention not sufficient here as well?  Two problem areas
+> > > I see are mm/vmscan.c and fs/splice.c (there may be others).
+> > > 
+> > 
+> > > In mm/vmscan.c we probably don't want your new synchronous behaviour
+> > > and it might well be deadlockable anyway.  No probs, that's what
+> > > __GFP_FS is for.
+> > > 
+> > Sure. We could check __GFP_FS and __GFP_WAIT, and that make sense.
+> > 
+> > > In fs/splice.c, reading the comment there I have a feeling that you've
+> > > found another bug, and that splice _does_ want your new synchronous
+> > > behaviour?
+> > 
+> > Yes, it looks like page_cache_pipe_buf_steal() expects page is free
+> > before removeing it by passing the GFP_KERNEL flag, but currently ext3
+> > could fails to releasepage when it called. In fact
+> > try_to_release_page() return value is ignored in
+> > page_cache_pipe_buf_steal(), should probably checked the failure case.
+> > 
+> > 
+> > The other caller of try_to_release_page() in mm/splice.c is
+> > fallback_migrate_page(), which does want the synchronous behaviour to
+> > make sure buffers are dropped.
+> 
+> So something like this, then?
+> 
+Acked-by: Mingming Cao <cmm@us.ibm.com>
+> diff --git a/fs/splice.c b/fs/splice.c
+> index 7815003..e08a2f5 100644
+> --- a/fs/splice.c
+> +++ b/fs/splice.c
+> @@ -58,8 +58,8 @@ static int page_cache_pipe_buf_steal(struct pipe_inode_info *pipe,
+>  		 */
+>  		wait_on_page_writeback(page);
+> 
+> -		if (PagePrivate(page))
+> -			try_to_release_page(page, GFP_KERNEL);
+> +		if (PagePrivate(page) && !try_to_release_page(page, GFP_KERNEL))
+> +			goto out_unlock;
+> 
+>  		/*
+>  		 * If we succeeded in removing the mapping, set LRU flag
+> @@ -75,6 +75,7 @@ static int page_cache_pipe_buf_steal(struct pipe_inode_info *pipe,
+>  	 * Raced with truncate or failed to remove page from current
+>  	 * address space, unlock and return failure.
+>  	 */
+> +out_unlock:
+>  	unlock_page(page);
+>  	return 1;
+>  }
+> 
