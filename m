@@ -1,73 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of
-	device, freeing blocks not in datazone
-Date: Tue, 20 May 2008 08:35:05 -0400
-Message-ID: <20080520123505.GP15035@mit.edu>
-References: <4832941A.70806@tuxes.nl>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Tue, 20 May 2008 15:42:34 +0100
+Message-ID: <20080520144233.GA16676@shareable.org>
+References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com> <20080518013641.GH16496@mit.edu> <4830420D.4080608@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bas van Schaik <bas@tuxes.nl>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:55436 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1763473AbYETMf3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 08:35:29 -0400
+Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4832941A.70806@tuxes.nl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4830420D.4080608@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> After running e2fsck everything is fine again for a week or a little
-> longer...
+Ric Wheeler wrote:
+> I will have to figure out to get this kind of test going without all
+> of my big EMC toys ;-)
 
-Did e2fsck report any errors?  You didn't say; but if this kind of
-corruption were really on the hard drive itself, it would cause e2fsck
-to scream bloody murder.  
+Fwiw, you can test correctness by running a nested VM-in-VM guest
+which simulates disk write cache and flush operations (which flush to
+the host kernel).  I believe recent QEMU/KVM has this as an option.
+Data written by the innermost guest will reside in the middle kernel's
+write cache.
 
-If e2fsck didn't report any problems, then the problem is certainly on
-the read path, and your system is sometimes returning corrupted data
---- probably because in some cases when the system asked for a disk
-block #1234, it somehow got disk block #1257, or something like that.
-In any case, you should have gotten some errors that inodes were
-referring to invalid block numbers; that's what the Linux kernel was
-complaining about.
+Disk cache flush commands from the innermost kernel will cause the
+middle kernel to write dirty sectors to the outer kernel.  Killing the
+outermost host process is roughly equivalent to pulling the plug on a
+real machine, but faster and without hurting real hardware.
 
-> What I would like to know: what are the possible underlying causes for
-> the "attempt to access beyond en of device" error? Does anyone see any
-> meaning in the block (?) numbers mentioned in my syslog?
+This might not tell you much about performance, but you should be able
+to run a lot of repeatable filesystem barrier tests this way.
 
-The errors you have here indicate a corrupt indirect block.  So when
-trying to read from an inode with the corrupted indirect block, it
-asked the block I/O layer to read from a block far larger than the
-size of the block device.  
-
-The errors from the block I/O error are in units of sectors, so you
-need to divide them by 8 to get 4k block numbers:
-
-> > May 20 09:13:14 infinity kernel: attempt to access beyond end of device
-> > May 20 09:13:14 infinity kernel: loop0: rw=0, want=15629775440, limit=4404019200
-
-So for these, you had
-
-15629775440 / 8 = 0x74736E4A   (or in ascii 'Jnst')
-13075964688 / 8 = 0x616C6C62   (or in ascii 'blla')
-15354014352 / 8 = 0x72657552   (or in ascii 'Ruer')
-
-These errors errors happen when deleting a file with a bogus indirect
-block (or garbage in the inode, but that's much less likely and
-probably would have triggered additional complaints).
-
-> > May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1953721929, count = 1
-
-Converting these numbers to hex:
-
-1953721929 = 0x74736E49  (or in ascii 'Jnst')
-1634495585 = 0x616C6C61  (or in ascii 'alla'
- 543517044 = 0x20656974  (or in ascii 'tie ')
-1919251793 = 0x72657551  (or in ascii 'Quer')
-
-Given that it's all ascii, it looks like the indirect block somehow
-was overwritten, or was substituted by text.
-
-					- Ted
+-- Jamie
