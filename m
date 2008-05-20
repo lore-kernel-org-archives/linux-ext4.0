@@ -1,82 +1,88 @@
-From: Shen Feng <shen@cn.fujitsu.com>
-Subject: [PATCH] ext4: improve some code in rb tree part of dir.c
-Date: Tue, 20 May 2008 12:07:50 +0800
-Message-ID: <48324E96.5050705@cn.fujitsu.com>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Tue, 20 May 2008 10:25:18 +0200
+Message-ID: <20080520082517.GH22369@kernel.dk>
+References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com> <200805191439.36577.chris.mason@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56609 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1759926AbYETEKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 00:10:20 -0400
+Received: from brick.kernel.dk ([87.55.233.238]:27209 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752044AbYETIZX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2008 04:25:23 -0400
+Content-Disposition: inline
+In-Reply-To: <200805191439.36577.chris.mason@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-*remove unnecessary code in free_rb_tree_fname
-*rename free_rb_tree_fname to ext4_htree_create_dir_info
- since it and ext4_htree_free_dir_info are a pair
-*replace kmalloc with kzalloc in ext4_htree_free_dir_info
+On Mon, May 19 2008, Chris Mason wrote:
+> On Monday 19 May 2008, Chris Mason wrote:
+> >
+> > Here's a test workload that corrupts ext3 50% of the time on power fail
+> > testing for me.  The machine in this test is my poor dell desktop (3ghz,
+> > dual core, 2GB of ram), and the power controller is me walking over and
+> > ripping the plug out the back.
+> 
+> Here's a new version that still gets about corruptions 50% of the
+> time, but does it with fewer files by using longer file names (240
+> chars instead of 160 chars).
+> 
+> I tested this one with a larger FS (40GB instead of 2GB) and larger
+> log (128MB instead of 32MB).  barrier-test -s 32 -p 1500 was still
+> able to get a 50% corruption rate on the larger FS.
 
-All these make the code more readable and simple.
-PS: this patch is also suitable for ext3.
+I ran this twice, killing power after 'renames ready'. The first time it
+was fine, the second time I got:
 
-Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
----
- fs/ext4/dir.c |   14 ++++----------
- 1 files changed, 4 insertions(+), 10 deletions(-)
+centera:~/e2fsprogs-1.40.9/e2fsck # ./e2fsck -f /dev/sdb1
+e2fsck 1.40.9 (27-Apr-2008)
+/dev/sdb1: recovering journal
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Problem in HTREE directory inode 2395569: node (281) has bad max hash
+Problem in HTREE directory inode 2395569: node (849) has bad max hash
+Problem in HTREE directory inode 2395569: node (1077) has bad max hash
+Problem in HTREE directory inode 2395569: node (1718) has bad max hash
+Problem in HTREE directory inode 2395569: node (4609) has bad max hash
+Problem in HTREE directory inode 2395569: node (4864) has bad max hash
+Problem in HTREE directory inode 2395569: node (5092) has bad max hash
+Problem in HTREE directory inode 2395569: node (5148) has bad max hash
+Problem in HTREE directory inode 2395569: node (5853) has bad max hash
+Problem in HTREE directory inode 2395569: node (7588) has bad max hash
+Problem in HTREE directory inode 2395569: node (8663) has bad max hash
+Invalid HTREE directory inode 2395569 (/barrier-test).  Clear HTree
+index<y>? yes
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 2bf0331..5ed5108 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -272,7 +272,7 @@ static void free_rb_tree_fname(struct rb_root *root)
+Pass 3: Checking directory connectivity
+Pass 3A: Optimizing directories
+Duplicate entry
+'0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a.0'
+in /barrier-test (2395569) found.  Clear? yes
 
- 	while (n) {
- 		/* Do the node's children first */
--		if ((n)->rb_left) {
-+		if (n->rb_left) {
- 			n = n->rb_left;
- 			continue;
- 		}
-@@ -301,24 +301,18 @@ static void free_rb_tree_fname(struct rb_root *root)
- 			parent->rb_right = NULL;
- 		n = parent;
- 	}
--	root->rb_node = NULL;
- }
+and tons of 'duplicate entry' errors after that. And then
 
+Pass 4: Checking reference counts
+Inode 168 ref count is 0, should be 1.  Fix? yes
 
--static struct dir_private_info *create_dir_info(loff_t pos)
-+static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
- {
- 	struct dir_private_info *p;
+Unattached zero-length inode 255.  Clear? yes
 
--	p = kmalloc(sizeof(struct dir_private_info), GFP_KERNEL);
-+	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
- 	if (!p)
- 		return NULL;
--	p->root.rb_node = NULL;
--	p->curr_node = NULL;
--	p->extra_fname = NULL;
--	p->last_pos = 0;
- 	p->curr_hash = pos2maj_hash(pos);
- 	p->curr_minor_hash = pos2min_hash(pos);
--	p->next_hash = 0;
- 	return p;
- }
+Inode 1221 ref count is 0, should be 1.  Fix? yes
 
-@@ -433,7 +427,7 @@ static int ext4_dx_readdir(struct file * filp,
- 	int	ret;
+Inode 1253 ref count is 1, should be 2.  Fix? yes
 
- 	if (!info) {
--		info = create_dir_info(filp->f_pos);
-+		info = ext4_htree_create_dir_info(filp->f_pos);
- 		if (!info)
- 			return -ENOMEM;
- 		filp->private_data = info;
+Inode 2692 ref count is 0, should be 1.  Fix? yes
+
+Inode 3465 ref count is 0, should be 1.  Fix? yes
+
+and lots of those too. So definitely easy to trigger. Test fs was ext3
+of 40gb on a 320gb maxtor drive.
+
 -- 
-1.5.4.5
+Jens Axboe
+
