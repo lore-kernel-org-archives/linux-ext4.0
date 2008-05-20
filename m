@@ -1,96 +1,122 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 4/4] ext4: call blkdev_issue_flush on fsync
-Date: Tue, 20 May 2008 23:02:42 +0100
-Message-ID: <20080520220242.GB27853@shareable.org>
-References: <482DDA56.6000301@redhat.com> <482DDC04.7020706@redhat.com> <20080520023454.GM15035@mit.edu> <20080520154313.GI16676@shareable.org> <20080520195437.GZ22369@kernel.dk>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of	device,
+ freeing blocks not in datazone
+Date: Wed, 21 May 2008 00:02:42 +0200
+Message-ID: <48334A82.6020508@tuxes.nl>
+References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jens Axboe <jens.axboe@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080520195437.GZ22369@kernel.dk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from castor.sshunet.nl ([145.97.192.41]:60535 "EHLO
+	castor.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757768AbYETWCr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 18:02:47 -0400
+In-Reply-To: <20080520123505.GP15035@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jens Axboe wrote:
-> On Tue, May 20 2008, Jamie Lokier wrote:
-> > Does WRITE_BARRIER always cause a flush?  It does not have to
-> > according to Documentation/block/barrier.txt.  There are caveats about
-> > tagged queuing "not yet implemented" in the text, but can we rely on
-> > that?  The documentation is older than the current implementation;
-> > those caveats might no longer apply.
-> 
-> It does, if you use ordered tags then that assumes write through
-> caching (or ordered tag + drain + flush after completion).
+Theodore Tso wrote:
+>> After running e2fsck everything is fine again for a week or a little
+>> longer...
+>>     
+>
+> Did e2fsck report any errors?  You didn't say; but if this kind of
+> corruption were really on the hard drive itself, it would cause e2fsck
+> to scream bloody murder. 
+>   
+Yeah, I'm sorry: e2fsck did scream bloody murder. After the check, the
+filesystem is clean again and remains clean for about a week. I still
+haven't found out what operation exactly is causing the problems, the
+only thing I can think of is rsync eating too much memory. The system is
+used for backups of about 50 rsync clients, but the system should be
+able to handle this even under high load.
 
-Oh.  That's really unclear from the opening paragraph of barrier.txt,
-which _defines_ what I/O barriers are for, and does not mention flushing:
+>>> May 20 09:13:14 infinity kernel: attempt to access beyond end of device
+>>> May 20 09:13:14 infinity kernel: loop0: rw=0, want=15629775440, limit=4404019200
+>>>       
+> So for these, you had
+>
+> 15629775440 / 8 = 0x74736E4A   (or in ascii 'Jnst')
+> 13075964688 / 8 = 0x616C6C62   (or in ascii 'blla')
+> 15354014352 / 8 = 0x72657552   (or in ascii 'Ruer')
+>
+> These errors errors happen when deleting a file with a bogus indirect
+> block (or garbage in the inode, but that's much less likely and
+> probably would have triggered additional complaints).
+>
+>   
+>>> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1953721929, count = 1
+>>>       
+> Converting these numbers to hex:
+>
+> 1953721929 = 0x74736E49  (or in ascii 'Jnst')
+> 1634495585 = 0x616C6C61  (or in ascii 'alla'
+>  543517044 = 0x20656974  (or in ascii 'tie ')
+> 1919251793 = 0x72657551  (or in ascii 'Quer')
+>
+> Given that it's all ascii, it looks like the indirect block somehow
+> was overwritten, or was substituted by text.
+>   
+Ah, such a lead was exactly what I was looking for, now I at least know
+where those bogus numbers were coming from. Maybe a very dump question:
+you seem to have reverse the ascii "translation", why? And shouldn't
+"Jnst" be "Inst"? Note also that the "translations" seem to resemble
+each other a little bit: "Jnst" = "Jnst", "alla" looks like "blla" and
+"Ruer" looks like "Quer". Coincidence?
 
-   I/O barrier requests are used to guarantee ordering around the barrier
-   requests.  Unless you're crazy enough to use disk drives for
-   implementing synchronization constructs (wow, sounds interesting...),
-   the ordering is meaningful only for write requests for things like
-   journal checkpoints.  All requests queued before a barrier request
-   must be finished (made it to the physical medium) before the barrier
-   request is started, and all requests queued after the barrier request
-   must be started only after the barrier request is finished (again,
-   made it to the physical medium).
+Summarizing all this: there is clearly something writing garbage to the
+wrong place. It must be something above the encryption layer, since
+that's the only way ascii can be written to the device.
 
-So I assumed the reason flush is talked about later was only because
-most devices don't offer an alternative.
+Remember the different layers:
+  ext3 on decrypted /dev/loop0
+  LVM logical volume (encrypted)
+  RAID5 arrays
+  Imported AoE-devices
+  Physical disks
 
-Later in barrier.txt, in the section about flushing, it says:
+This conclusion kind of worries me, I was assuming that there was
+something wrong at the networking level (AoE) or below. If that were the
+case, the encrypted data would get modified and the corruptions would
+look totally different. Or am I missing something?
 
-   the reason you use I/O barriers is mainly to protect filesystem
-   integrity when power failure or some other events abruptly stop the
-   drive from operating and possibly make the drive lose data in its
-   cache.  So, I/O barriers need to guarantee that requests actually
-   get written to non-volatile medium in order
+Some other "magic numbers" to test the ascii hypothesis:
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1279611658, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 779051620, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1701409346, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1634366310, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1869573218, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1783836270, count = 1
+1279611658 = 0x4C45530A = "SEL"
+779051620 = 0x2E6F6264 = "dbo."
+1701409346 = 0x65697242 = "Brie"
+1634366310 = 0x616A7366 = "fsja"
+1869573218 = 0x6F6F6C62 = "bloo"
+1783836270 = 0x6A532E6E = "n.Sj"
 
-Woa!  Nothing about flushing being important, just "to guarantee
-... in order".
+If you ask me: enough certainty that it is indeed ascii text that was
+written to the wrong place. Point is that I have another storage
+"cluster" with almost exactly the same setup (main difference: LUKS is
+used in favour of some AES cryptoloop). This cluster appears to be
+having exactly the same problems:
 
-Thus flushing looks like an implementation detail - all we could do at
-the time.  It does not seem to be the _point_ of WRITE_BARRIER
-(according to the text), which is to ensure journalling integrity by
-ordering writes.
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 4292870144, count = 1
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 3137339670, count = 1
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 892220416, count = 1
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1919240224, count = 1
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1768710504, count = 1
+> May 20 01:09:09 dust kernel: EXT3-fs error (device dm-10): ext3_free_blocks: Freeing blocks not in datazone - block = 1920165742, count = 1
+Convert these numbers to hex and ascii and you'll see that the outcome
+doesn't look like "plain" ascii. This can mean two things (correct me if
+I'm wrong):
+ 1) there is a totally different problem
+ 2) the data which was written to the wrong place wasn't plain ascii
 
-Really, the main reason I was confused was that I imagine some
-SCSI-like devices letting you do partially ordered writes to
-write-back cache - with their cache preserving ordering constraints
-the same way as some CPU or database caches.  (Perhaps I've been
-thinking about CPUs too long!)
+I would really like to hear your thoughts on all this, maybe there is a
+simple explanation out there after all...
 
-Anyway, moving on....  Let's admit I am wrong about that :-)
-
-And get back to my idea.  Ignoring actual disks for a moment ( ;-) ),
-there are some I/O scheduling optimisations possible in the kernel
-itself by distinguishing between barriers (for journalling) and
-flushes (for fsync).
-
-Basically, barriers can be moved around between ordered writes,
-including postponing indefinitely (i.e. a "needs barrier" flag).
-Unordered writes (in-place data?) can be reordered somewhat around
-barriers and other writes.  Nobody should wait for a barrier to complete.
-
-On the other hand, flushes must be issued soon, and fdatasync/fsync
-wait for the result.  Reordering possibilities are different: all
-writes can be moved before a flush (unless it's a barrier too), and
-in-place data writes cannot be moved after one.
-
-Both barriers and flushes can be merged if there are no intervening
-writes except unordered writes.  Double flushing, e.g. calling fsync
-twice, or calling blkdev_issue_flush just to be sure somewhere,
-shouldn't have any overhead.
-
-The request elevator seems a good place to apply those heuristics.
-I've written earlier about how to remove some barriers from ext3/4
-journalling.  This stuff seems to suggest even more I/O scheduling
-optimisations with tree-like journalling (as in BTRFS?).
-
--- Jamie
+  -- Bas
+**
