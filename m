@@ -1,44 +1,40 @@
 From: Jamie Lokier <jamie@shareable.org>
 Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Wed, 21 May 2008 00:44:17 +0100
-Message-ID: <20080520234417.GL27853@shareable.org>
-References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com>
+Date: Wed, 21 May 2008 00:48:20 +0100
+Message-ID: <20080520234820.GM27853@shareable.org>
+References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com> <20080518013641.GH16496@mit.edu> <4830420D.4080608@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>,
+Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:35102 "EHLO
+Received: from mail2.shareable.org ([80.68.89.115]:36553 "EHLO
 	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753719AbYETXoj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 19:44:39 -0400
+	with ESMTP id S1753561AbYETXsm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 19:48:42 -0400
 Content-Disposition: inline
-In-Reply-To: <200805172048.34455.chris.mason@oracle.com>
+In-Reply-To: <4830420D.4080608@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Chris Mason wrote:
-> write log blocks
-> flush #1
-> write commit block
-> flush #2
-> write metadata blocks
-> 
-> I'd agree with Ted, there's a fairly small chance of things get reordered 
-> around flush #1.
 
-Except when it crosses an MD disk boundary.  Then it's really likely.
+Ric Wheeler wrote:
+> The hard thing is to figure out how to test this kind of scenario 
+> without dropping power.
 
-We could also ask if there's _any_ possibility, when they are a merged
-single I/O, of them not getting written in the expected order?
-What about when FUA is set, does that imply any order?
+Apart from using virtual machines, you mean?
 
-But it's all moot: Checksumming is the way forward here, no doubt.
-Checksumming makes the multi-sector write "atomic or corrupt".  That's
-the same expectation as a commit sector provides by itself, but
-generalised to the whole journal entry.
+> To expose the failure mode, it might be 
+> sufficient to drop power to a drive with smartctl (or, if you have hot 
+> swap bays, just pull them).
+
+I wonder, does sending any kind of reset commands to drives cause them
+to discard their write cache?
+
+If the hot swap power switch is accessible from software, that would
+be a nice trick :-)
 
 -- Jamie
