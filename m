@@ -1,37 +1,34 @@
 From: Jamie Lokier <jamie@shareable.org>
 Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Tue, 20 May 2008 15:42:34 +0100
-Message-ID: <20080520144233.GA16676@shareable.org>
-References: <482DDA56.6000301@redhat.com> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <200805172048.34455.chris.mason@oracle.com> <20080518013641.GH16496@mit.edu> <4830420D.4080608@gmail.com>
+Date: Tue, 20 May 2008 15:45:50 +0100
+Message-ID: <20080520144550.GB16676@shareable.org>
+References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org> <482DF44B.50204@redhat.com> <20080516220315.GB15334@shareable.org> <482E08E6.4030507@redhat.com> <20080516225304.GG15334@shareable.org> <20080517002030.GA7374@mit.edu> <20080516173552.e88183d9.akpm@linux-foundation.org> <20080517134344.GA7411@mit.edu> <20080517204437.GB16496@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+To: Theodore Tso <tytso@mit.edu>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
+	linux-kernel@vger.kernel.org, linux-fsdevel@vge
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4830420D.4080608@gmail.com>
+In-Reply-To: <20080517204437.GB16496@mit.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ric Wheeler wrote:
-> I will have to figure out to get this kind of test going without all
-> of my big EMC toys ;-)
+Theodore Tso wrote:
+> Also, looking more closely on the jbd2 implementation, it looks like
+> using the async_commit option, which relies on the checksum for more
+> efficient commit, completely disables any barrier support.  That's
+> because the only place we go into ordered more is if we are writing a
+> synchronous journal commit.  If async journal commit is enabled, then
+> we don't write a barrier at all, which leaves us in potential trouble
+> with if data blocks end up getting reordered with respect to the
+> journal commit in data=ordered more.
 
-Fwiw, you can test correctness by running a nested VM-in-VM guest
-which simulates disk write cache and flush operations (which flush to
-the host kernel).  I believe recent QEMU/KVM has this as an option.
-Data written by the innermost guest will reside in the middle kernel's
-write cache.
+That is a great optimisation to make the filesystem safe against power
+fails without barriers.  Upon replay, the filesystem is consistent.
 
-Disk cache flush commands from the innermost kernel will cause the
-middle kernel to write dirty sectors to the outer kernel.  Killing the
-outermost host process is roughly equivalent to pulling the plug on a
-real machine, but faster and without hurting real hardware.
-
-This might not tell you much about performance, but you should be able
-to run a lot of repeatable filesystem barrier tests this way.
+But does it break fsync()?  Consistency isn't enough for fsync().
+Returning from fsync() means "this data is committed now".
 
 -- Jamie
