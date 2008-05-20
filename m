@@ -1,54 +1,73 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Scripting e2fsck: no errors, but still exit code 1 "FILE
-	SYSTEM WAS MODIFIED"
-Date: Tue, 20 May 2008 08:09:53 -0400
-Message-ID: <20080520120953.GO15035@mit.edu>
-References: <483006F1.6080008@tuxes.nl> <20080518122853.GB31413@mit.edu> <483056DC.4060108@tuxes.nl> <48316565.1040501@tuxes.nl>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Tue, 20 May 2008 08:17:16 -0400
+Message-ID: <200805200817.17059.chris.mason@oracle.com>
+References: <482DDA56.6000301@redhat.com> <200805191439.36577.chris.mason@oracle.com> <20080520082517.GH22369@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bas van Schaik <bas@tuxes.nl>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:61566 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760600AbYETMK4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 08:10:56 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:33926 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758559AbYETMTM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 08:19:12 -0400
+In-Reply-To: <20080520082517.GH22369@kernel.dk>
 Content-Disposition: inline
-In-Reply-To: <48316565.1040501@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 19, 2008 at 01:32:53PM +0200, Bas van Schaik wrote:
-> 
-> Does this tell you anything?
-> 
+On Tuesday 20 May 2008, Jens Axboe wrote:
+> On Mon, May 19 2008, Chris Mason wrote:
+> > On Monday 19 May 2008, Chris Mason wrote:
+> > > Here's a test workload that corrupts ext3 50% of the time on power fail
+> > > testing for me.  The machine in this test is my poor dell desktop
+> > > (3ghz, dual core, 2GB of ram), and the power controller is me walking
+> > > over and ripping the plug out the back.
+> >
+> > Here's a new version that still gets about corruptions 50% of the
+> > time, but does it with fewer files by using longer file names (240
+> > chars instead of 160 chars).
+> >
+> > I tested this one with a larger FS (40GB instead of 2GB) and larger
+> > log (128MB instead of 32MB).  barrier-test -s 32 -p 1500 was still
+> > able to get a 50% corruption rate on the larger FS.
+>
+> I ran this twice, killing power after 'renames ready'. The first time it
+> was fine, the second time I got:
 
-Unfortunately comparing the two dumpe2fs outputs don't show anything
-interesting.  It did rule out a few cases where e2fsck can silently
-mark the filesystem has having been modified (setting the directory
-hash hint, moving the journal inode, which it does silently without
-informing the user --- and I should fix that one of these days; I'll
-create some bug reports to remind myself they need to be fixed), but I
-don't see why it happened for your case.
+Great, thanks Jens.
 
-It's definitely not normal; doing a journal replay does not cause fsck
-to exit with a non-zero status, if it didn't make any other changes.
-I just tested that with e2fsprogs 1.40.8 just in case something had
-gotten screwed up, and it worked as expected.
+So, one compromise may be to change the barriers on ext3 to look like the 
+patch Ted just sent out for ext4.  It should be mostly safe to skip the 
+barrier between the log blocks and the commit block since the drive is likely 
+to do those sequentially anyway.  A little extra logic could be added to 
+detect log wrapping and force an extra barrier in that case.
 
-I know how to debug it if you are really motiviated to get to the
-bottom of this.  It would involve running a modified e2fsck/e2fsprogs
-which changes ext2fs_mark_changed() and ext2fs_mark_super_dirty() to
-be real functions, and setting breakpoints in gdb so we can trap any
-calls made to those functions and dump out a stack backtrace, and then
-continuing the e2fsck run, and then reporting to me the stack
-backtraces where gdb trapped calls to ext2fs_mark_changed() and/or
-ext2fs_mark_super_dirty().
+Reiserfs saw some significant performance gains when I changed the code from:
 
-Andreas is right though that if you are taking a proper snapshot, the
-disk really should be quiesced and no journal replay should be
-required at all.  That's how a devicemapper snapshot works in LVM ---
-so one good question to explore is how *are* you doing your snapshots.
+write log blocks
+barrier
+wait on log blocks
+write commit
+barrier
+wait on commit
 
-       	    	     		   - Ted
+to
+
+write log blocks
+barrier
+write commit
+barrier
+wait on all of them
+
+Both were tested with the great big emc power failure machine and both passed.  
+In the event of an IO error on log blocks, we should zero out the commit.
+
+-chris
