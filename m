@@ -1,9 +1,12 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] JBD: Fix DIO EIO error caused by race between free
-	buffer and commit trasanction
-Date: Tue, 20 May 2008 10:47:15 -0700
-Message-ID: <1211305635.3664.3.camel@localhost.localdomain>
-References: <20080514170856.GH24363@duck.suse.cz>
+Subject: [PATCH-v2] JBD: Fix race between free buffer and commit trasanction
+Date: Tue, 20 May 2008 11:02:55 -0700
+Message-ID: <1211306575.3664.19.camel@localhost.localdomain>
+References: <20080512155419.GD15856@duck.suse.cz>
+	 <1210639184.3661.43.camel@localhost.localdomain>
+	 <20080513145449.GC20806@duck.suse.cz>
+	 <1210717389.3638.24.camel@localhost.localdomain>
+	 <20080514170856.GH24363@duck.suse.cz>
 	 <1210786872.3657.48.camel@localhost.localdomain>
 	 <20080514181444.GI24363@duck.suse.cz>
 	 <1210947250.3608.18.camel@localhost.localdomain>
@@ -13,130 +16,153 @@ References: <20080514170856.GH24363@duck.suse.cz>
 	 <1211227158.3663.25.camel@localhost.localdomain>
 	 <20080519132553.de9b78b0.akpm@linux-foundation.org>
 	 <1211234829.3663.39.camel@localhost.localdomain>
-	 <20080520093020.GL22369@kernel.dk>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jens Axboe <jens.axboe@oracle.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760960AbYETRrg@vger.kernel.org>
-In-Reply-To: <20080520093020.GL22369@kernel.dk>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: jack@suse.cz, pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:51771 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758202AbYETSDN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2008 14:03:13 -0400
+In-Reply-To: <1211234829.3663.39.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-05-20 at 11:30 +0200, Jens Axboe wrote:
-> On Mon, May 19 2008, Mingming Cao wrote:
-> > On Mon, 2008-05-19 at 13:25 -0700, Andrew Morton wrote:
-> > > On Mon, 19 May 2008 12:59:18 -0700
-> > > Mingming Cao <cmm@us.ibm.com> wrote:
-> > > 
-> > > > On Mon, 2008-05-19 at 00:37 +0200, Jan Kara wrote:
-> > > > >   Hi,
-> > > > > 
-> > > > > > This patch fixed a few races between direct IO and kjournald commit
-> > > > > > transaction.  An unexpected EIO error gets returned to direct IO
-> > > > > > caller when it failed to free those data buffers. This could be
-> > > > > > reproduced easily with parallel direct write and buffered write to the
-> > > > > > same file
-> > > > > > 
-> > > > > > More specific, those races could cause journal_try_to_free_buffers()
-> > > > > > fail to free the data buffers, when jbd is committing the transaction
-> > > > > > that has those data buffers on its t_syncdata_list or t_locked_list.
-> > > > > > journal_commit_transaction() still holds the reference to those
-> > > > > > buffers before data reach to disk and buffers are removed from the
-> > > > > > t_syncdata_list of t_locked_list. This prevent the concurrent
-> > > > > > journal_try_to_free_buffers() to free those buffers at the same time,
-> > > > > > but cause EIO error returns back to direct IO.
-> > > > > > 
-> > > > > > With this patch, in case of direct IO and when try_to_free_buffers() failed,
-> > > > > > let's waiting for journal_commit_transaction() to finish
-> > > > > > flushing the current committing transaction's data buffers to disk, 
-> > > > > > then try to free those buffers again.
-> > > > >   If Andrew or Christoph wouldn't beat you for "inventive use" of
-> > > > > gfp_mask, I'm fine with the patch as well ;). You can add
-> > > > >   Acked-by: Jan Kara <jack@suse.cz>
-> > > > > 
-> > > > 
-> > > > This is less intrusive way to fix this problem. The gfp_mask was marked
-> > > > as unused in try_to_free_page(). I looked at filesystems in the kernel,
-> > > > there is only a few defined releasepage() callback, and only xfs checks
-> > > > the flag(but not used). btrfs is actually using it though. I thought
-> > > > about the way you have suggested, i.e.clean up this gfp_mask and and
-> > > > replace with a flag.  I am not entirely sure if it we need to change the
-> > > > address_space_operations and fix all the filesystems for this matter.
-> > > > 
-> > > > Andrew, what do you think? Is this approach acceptable? 
-> > > > 
-> > > 
-> > > <wakes up>
-> > > 
-> > > Please ensure that the final patch is sufficiently well changelogged to
-> > > permit me to remain asleep ;)
-> > :-)
-> > > The ->releasepage semantics are fairly ad-hoc and have grown over time.
-> > > It'd be nice to prevent them from becoming vaguer than they are.
-> > > 
-> > > It has been (approximately?) the case that code paths which really care
-> > > about having the page released will set __GFP_WAIT (via GFP_KERNEL)
-> > > whereas code paths which are happy with best-effort will clear
-> > > __GFP_WAIT (with a "0').  And that's reasonsable - __GFP_WAIT here
-> > > means "be synchronous" whereas !__GFP_WAIT means "be non-blocking".
-> > > 
-> > 
-> > This make sense to me.
-> > 
-> > > Is that old convention not sufficient here as well?  Two problem areas
-> > > I see are mm/vmscan.c and fs/splice.c (there may be others).
-> > > 
-> > 
-> > > In mm/vmscan.c we probably don't want your new synchronous behaviour
-> > > and it might well be deadlockable anyway.  No probs, that's what
-> > > __GFP_FS is for.
-> > > 
-> > Sure. We could check __GFP_FS and __GFP_WAIT, and that make sense.
-> > 
-> > > In fs/splice.c, reading the comment there I have a feeling that you've
-> > > found another bug, and that splice _does_ want your new synchronous
-> > > behaviour?
-> > 
-> > Yes, it looks like page_cache_pipe_buf_steal() expects page is free
-> > before removeing it by passing the GFP_KERNEL flag, but currently ext3
-> > could fails to releasepage when it called. In fact
-> > try_to_release_page() return value is ignored in
-> > page_cache_pipe_buf_steal(), should probably checked the failure case.
-> > 
-> > 
-> > The other caller of try_to_release_page() in mm/splice.c is
-> > fallback_migrate_page(), which does want the synchronous behaviour to
-> > make sure buffers are dropped.
-> 
-> So something like this, then?
-> 
-Acked-by: Mingming Cao <cmm@us.ibm.com>
-> diff --git a/fs/splice.c b/fs/splice.c
-> index 7815003..e08a2f5 100644
-> --- a/fs/splice.c
-> +++ b/fs/splice.c
-> @@ -58,8 +58,8 @@ static int page_cache_pipe_buf_steal(struct pipe_inode_info *pipe,
->  		 */
->  		wait_on_page_writeback(page);
-> 
-> -		if (PagePrivate(page))
-> -			try_to_release_page(page, GFP_KERNEL);
-> +		if (PagePrivate(page) && !try_to_release_page(page, GFP_KERNEL))
-> +			goto out_unlock;
-> 
->  		/*
->  		 * If we succeeded in removing the mapping, set LRU flag
-> @@ -75,6 +75,7 @@ static int page_cache_pipe_buf_steal(struct pipe_inode_info *pipe,
->  	 * Raced with truncate or failed to remove page from current
->  	 * address space, unlock and return failure.
->  	 */
-> +out_unlock:
->  	unlock_page(page);
->  	return 1;
->  }
-> 
+Updated patch to use existing GFP_KERNEL mask to indicating synchornous
+wait in journal_try_to_free_buffers() to resolve the race with
+journal_commit_transaction().
+
+JBD: fix race between journal_try_to_free_buffers() and jbd commit transaction
+
+From: Mingming Cao <cmm@us.ibm.com>
+
+journal_try_to_free_buffers() could race with jbd commit transaction when
+the later is holding the buffer reference while waiting for the data buffer
+to flush to disk. If the caller of journal_try_to_free_buffers() request
+tries hard to release the buffers, it will treat the failure as error and return
+back to the caller. We have seen the directo IO failed due to this race. 
+Some of the caller of releasepage() also expecting the buffer to be dropped
+when passed with GFP_KERNEL mask to the releasepage()->journal_try_to_free_buffers().
+
+With this patch, if the caller is passing the GFP_KERNEL to indicating this
+call could wait, in case of try_to_free_buffers() failed, let's waiting for
+journal_commit_transaction() to finish commit the current committing transaction
+, then try to free those buffers again with journal locked.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
+---
+ fs/jbd/transaction.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ mm/filemap.c         |    3 --
+ 2 files changed, 54 insertions(+), 4 deletions(-)
+
+Index: linux-2.6.26-rc2/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.26-rc2.orig/fs/jbd/transaction.c	2008-05-11 17:09:41.000000000 -0700
++++ linux-2.6.26-rc2/fs/jbd/transaction.c	2008-05-19 16:16:41.000000000 -0700
+@@ -1648,12 +1648,39 @@ out:
+ 	return;
+ }
+ 
++/*
++ * journal_try_to_free_buffers() could race with journal_commit_transaction()
++ * The later might still hold the reference count to the buffers when inspecting
++ * them on t_syncdata_list or t_locked_list.
++ *
++ * Journal_try_to_free_buffers() will call this function to
++ * wait for the current transaction to finish syncing data buffers, before
++ * try to free that buffer.
++ *
++ * Called with journal->j_state_lock hold.
++ */
++static void journal_wait_for_transaction_sync_data(journal_t *journal)
++{
++	transaction_t *transaction = NULL;
++	tid_t tid;
++
++	transaction = journal->j_committing_transaction;
++
++	if (!transaction)
++		return;
++
++	tid = transaction->t_tid;
++	spin_unlock(&journal->j_state_lock);
++	log_wait_commit(journal, tid);
++	spin_lock(&journal->j_state_lock);
++}
+ 
+ /**
+  * int journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+  * @page: to try and free
+- * @unused_gfp_mask: unused
++ * @gfp_mask: specifies whether the call may block
++ * 		(__GFP_WAIT & __GFP_FS via GFP_KERNEL)
+  *
+  *
+  * For all the buffers on this page,
+@@ -1682,9 +1709,11 @@ out:
+  * journal_try_to_free_buffer() is changing its state.  But that
+  * cannot happen because we never reallocate freed data as metadata
+  * while the data is part of a transaction.  Yes?
++ *
++ * Return 0 on failure, 1 on success
+  */
+ int journal_try_to_free_buffers(journal_t *journal,
+-				struct page *page, gfp_t unused_gfp_mask)
++				struct page *page, gfp_t gfp_mask)
+ {
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
+@@ -1713,7 +1742,30 @@ int journal_try_to_free_buffers(journal_
+ 		if (buffer_jbd(bh))
+ 			goto busy;
+ 	} while ((bh = bh->b_this_page) != head);
++
+ 	ret = try_to_free_buffers(page);
++
++ 	/*
++	 * There are a number of places where journal_try_to_free_buffers()
++	 * could race with journal_commit_transaction(), the later still
++	 * holds the reference to the buffers to free while processing them.
++	 * try_to_free_buffers() failed to free those buffers. Some of the
++	 * caller of releasepage() request page buffers to be dropped, otherwise
++	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
++	 *
++	 * So, if the caller of try_to_release_page() wants the synchronous
++	 * behaviour(i.e make sure buffers are dropped upon return),
++	 * let's wait for the current transaction to finish flush of
++	 * dirty data buffers, then try to free those buffers again,
++	 * with the journal locked.
++	 */
++	if (ret == 0 && gfp_mask & GFP_KERNEL) {
++        	spin_lock(&journal->j_state_lock);
++		journal_wait_for_transaction_sync_data(journal);
++		ret = try_to_free_buffers(page);
++		spin_unlock(&journal->j_state_lock);
++	}
++
+ busy:
+ 	return ret;
+ }
+Index: linux-2.6.26-rc2/mm/filemap.c
+===================================================================
+--- linux-2.6.26-rc2.orig/mm/filemap.c	2008-05-19 16:00:01.000000000 -0700
++++ linux-2.6.26-rc2/mm/filemap.c	2008-05-19 16:01:34.000000000 -0700
+@@ -2581,9 +2581,8 @@ out:
+  * Otherwise return zero.
+  *
+  * The @gfp_mask argument specifies whether I/O may be performed to release
+- * this page (__GFP_IO), and whether the call may block (__GFP_WAIT).
++ * this page (__GFP_IO), and whether the call may block (__GFP_WAIT & __GFP_FS).
+  *
+- * NOTE: @gfp_mask may go away, and this function may become non-blocking.
+  */
+ int try_to_release_page(struct page *page, gfp_t gfp_mask)
+ {
+
+
