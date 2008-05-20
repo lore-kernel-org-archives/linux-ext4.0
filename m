@@ -1,88 +1,89 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Tue, 20 May 2008 10:25:18 +0200
-Message-ID: <20080520082517.GH22369@kernel.dk>
-References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com> <200805191439.36577.chris.mason@oracle.com>
+From: Bas van Schaik <bas@tuxes.nl>
+Subject: Reoccurring ext3 errors: attempt to access beyond end of device,
+ freeing blocks not in datazone
+Date: Tue, 20 May 2008 11:04:26 +0200
+Message-ID: <4832941A.70806@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([87.55.233.238]:27209 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752044AbYETIZX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 04:25:23 -0400
-Content-Disposition: inline
-In-Reply-To: <200805191439.36577.chris.mason@oracle.com>
+Received: from castor.sshunet.nl ([145.97.192.41]:42833 "EHLO
+	castor.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763565AbYETJEc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 May 2008 05:04:32 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by castor.sshunet.nl (Postfix) with ESMTP id DCBF257C00D
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:04:29 +0200 (CEST)
+Received: from castor.sshunet.nl ([127.0.0.1])
+	by localhost (castor.sshunet.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id gSDWOu+3ZpQO for <linux-ext4@vger.kernel.org>;
+	Tue, 20 May 2008 11:04:29 +0200 (CEST)
+Received: from guust.tuxes.nl (15pc197.sshunet.nl [145.97.197.15])
+	by castor.sshunet.nl (Postfix) with ESMTP
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:04:29 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by guust.tuxes.nl (Postfix) with ESMTP id 8B296A80B3
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:04:29 +0200 (CEST)
+Received: from guust.tuxes.nl ([127.0.0.1])
+	by localhost (guust.tuxes.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id I9u1H2v6Hri8 for <linux-ext4@vger.kernel.org>;
+	Tue, 20 May 2008 11:04:27 +0200 (CEST)
+Received: from [192.168.101.4] (15pc197.sshunet.nl [145.97.197.15])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by guust.tuxes.nl (Postfix) with ESMTP id 50778A8094
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 11:04:27 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 19 2008, Chris Mason wrote:
-> On Monday 19 May 2008, Chris Mason wrote:
-> >
-> > Here's a test workload that corrupts ext3 50% of the time on power fail
-> > testing for me.  The machine in this test is my poor dell desktop (3ghz,
-> > dual core, 2GB of ram), and the power controller is me walking over and
-> > ripping the plug out the back.
-> 
-> Here's a new version that still gets about corruptions 50% of the
-> time, but does it with fewer files by using longer file names (240
-> chars instead of 160 chars).
-> 
-> I tested this one with a larger FS (40GB instead of 2GB) and larger
-> log (128MB instead of 32MB).  barrier-test -s 32 -p 1500 was still
-> able to get a 50% corruption rate on the larger FS.
+Dear all,
 
-I ran this twice, killing power after 'renames ready'. The first time it
-was fine, the second time I got:
+First of all, I'm very sorry to post such a vague question. I've been
+working this it for months now, but the ext3 errors keep reoccurring
+every once in a while. That is, every week or sometimes once a month.
+The errors I get in such a situation:
 
-centera:~/e2fsprogs-1.40.9/e2fsck # ./e2fsck -f /dev/sdb1
-e2fsck 1.40.9 (27-Apr-2008)
-/dev/sdb1: recovering journal
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Problem in HTREE directory inode 2395569: node (281) has bad max hash
-Problem in HTREE directory inode 2395569: node (849) has bad max hash
-Problem in HTREE directory inode 2395569: node (1077) has bad max hash
-Problem in HTREE directory inode 2395569: node (1718) has bad max hash
-Problem in HTREE directory inode 2395569: node (4609) has bad max hash
-Problem in HTREE directory inode 2395569: node (4864) has bad max hash
-Problem in HTREE directory inode 2395569: node (5092) has bad max hash
-Problem in HTREE directory inode 2395569: node (5148) has bad max hash
-Problem in HTREE directory inode 2395569: node (5853) has bad max hash
-Problem in HTREE directory inode 2395569: node (7588) has bad max hash
-Problem in HTREE directory inode 2395569: node (8663) has bad max hash
-Invalid HTREE directory inode 2395569 (/barrier-test).  Clear HTree
-index<y>? yes
+> May 20 09:13:14 infinity kernel: attempt to access beyond end of device
+> May 20 09:13:14 infinity kernel: loop0: rw=0, want=15629775440, limit=4404019200
+> May 20 09:13:14 infinity kernel: attempt to access beyond end of device
+> May 20 09:13:14 infinity kernel: loop0: rw=0, want=13075964688, limit=4404019200
+> May 20 09:13:14 infinity kernel: attempt to access beyond end of device
+> May 20 09:13:14 infinity kernel: loop0: rw=0, want=15354014352, limit=4404019200
+> (...)
+>   
+and a little bit later:
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1953721929, count = 1
+> May 20 09:15:07 infinity kernel: Remounting filesystem read-only
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1634495585, count = 1
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks_sb: bit already cleared for block 543517044
+> May 20 09:15:07 infinity kernel: EXT3-fs error (device loop0): ext3_free_blocks: Freeing blocks not in datazone - block = 1919251793, count = 1
+> (...)
+>   
 
-Pass 3: Checking directory connectivity
-Pass 3A: Optimizing directories
-Duplicate entry
-'0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a0650419c70f3beadaa9a2c2f4999745a9c02066a.0'
-in /barrier-test (2395569) found.  Clear? yes
+After running e2fsck everything is fine again for a week or a little
+longer...
 
-and tons of 'duplicate entry' errors after that. And then
+The situation is not really trivial: I'm importing block devices from
+several other machines using ATA over Ethernet (AoE). These block
+devices are combined in a set of RAID5 arrays, each of them a physical
+volume for LVM. Inside one large LVM volume group there exists a
+cryptoloop encrypted logical volume, of which the 'plain' version is
+accessible via /dev/loop0.
 
-Pass 4: Checking reference counts
-Inode 168 ref count is 0, should be 1.  Fix? yes
+As you can see, there are a lot of possible failure points, I don't
+expect you to identify those for me. I already performed thorough tests
+on all servers (from memtest to I/O stressing to networking) and another
+point is: this configuration did work flawlessly for about two years!
 
-Unattached zero-length inode 255.  Clear? yes
+What I would like to know: what are the possible underlying causes for
+the "attempt to access beyond en of device" error? Does anyone see any
+meaning in the block (?) numbers mentioned in my syslog?
 
-Inode 1221 ref count is 0, should be 1.  Fix? yes
+I would really like to hear from you, this problem is really causing me
+headaches!
 
-Inode 1253 ref count is 1, should be 2.  Fix? yes
+Regards,
 
-Inode 2692 ref count is 0, should be 1.  Fix? yes
-
-Inode 3465 ref count is 0, should be 1.  Fix? yes
-
-and lots of those too. So definitely easy to trigger. Test fs was ext3
-of 40gb on a 320gb maxtor drive.
-
--- 
-Jens Axboe
+  Bas
 
