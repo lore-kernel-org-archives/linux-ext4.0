@@ -1,47 +1,35 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Mon, 19 May 2008 20:29:21 -0400
-Message-ID: <200805192029.21688.chris.mason@oracle.com>
-References: <482DDA56.6000301@redhat.com> <200805191439.36577.chris.mason@oracle.com> <20080519223959.GA14602@atrey.karlin.mff.cuni.cz>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH 4/4] ext4: call blkdev_issue_flush on fsync
+Date: Mon, 19 May 2008 22:34:55 -0400
+Message-ID: <20080520023454.GM15035@mit.edu>
+References: <482DDA56.6000301@redhat.com> <482DDC04.7020706@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080519223959.GA14602@atrey.karlin.mff.cuni.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jamie Lokier <jamie@shareable.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:62243 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756582AbYETChS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2008 22:37:18 -0400
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <482DDC04.7020706@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday 19 May 2008, Jan Kara wrote:
-> > On Monday 19 May 2008, Chris Mason wrote:
-> > > Here's a test workload that corrupts ext3 50% of the time on power fail
-> > > testing for me.  The machine in this test is my poor dell desktop
-> > > (3ghz, dual core, 2GB of ram), and the power controller is me walking
-> > > over and ripping the plug out the back.
-> >
-> > Here's a new version that still gets about corruptions 50% of the time,
-> > but does it with fewer files by using longer file names (240 chars
-> > instead of 160 chars).
-> >
-> > I tested this one with a larger FS (40GB instead of 2GB) and larger log
-> > (128MB instead of 32MB).  barrier-test -s 32 -p 1500 was still able to
-> > get a 50% corruption rate on the larger FS.
->
->   Hmm, this is worse than I'd have expected :( If it is that bad, I
-> think we should really enable them by default... I can give your script
-> a try on my test machine when I get back (which is next week).
+On Fri, May 16, 2008 at 02:09:56PM -0500, Eric Sandeen wrote:
+> To ensure that bits are truly on-disk after an fsync,
+> we should call blkdev_issue_flush if barriers are supported.
 
-That would be great, I'd like to confirm that my machine isn't the only one on 
-the planet so easily broken ;)
+This patch isn't necessary, and in fact will cause a double flush.
+When you call fsync(), it calls ext4_force_commit(), and we do a the
+equivalent of a blkdev_issue_flush() today (which is what happenes
+when you do a submit_bh(WRITE_BARRIER, bh), which is what setting
+set_ordered_mode(bh) ends up causing.
 
-I was also able to trigger corruptions on XFS (one run out of two), so it is 
-unlikely I'm seeing bugs in the ext3 replay or logging code.
-
--chris
+						- Ted
