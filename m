@@ -1,149 +1,96 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH -v2] JBD2: Fix race between journal free buffer and commit
-	trasanction
-Date: Tue, 20 May 2008 11:03:51 -0700
-Message-ID: <1211306631.3664.21.camel@localhost.localdomain>
-References: <20080512155419.GD15856@duck.suse.cz>
-	 <1210639184.3661.43.camel@localhost.localdomain>
-	 <20080513145449.GC20806@duck.suse.cz>
-	 <1210717389.3638.24.camel@localhost.localdomain>
-	 <20080514170856.GH24363@duck.suse.cz>
-	 <1210786872.3657.48.camel@localhost.localdomain>
-	 <20080514181444.GI24363@duck.suse.cz>
-	 <1210947250.3608.18.camel@localhost.localdomain>
-	 <1210957976.4231.31.camel@badari-desktop>
-	 <1210971693.3608.46.camel@localhost.localdomain>
-	 <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
-	 <1211227158.3663.25.camel@localhost.localdomain>
-	 <20080519132553.de9b78b0.akpm@linux-foundation.org>
-	 <1211234829.3663.39.camel@localhost.localdomain>
+Subject: Re: [PATCH] ext4: improve some code in rb tree part of dir.c
+Date: Tue, 20 May 2008 11:46:36 -0700
+Message-ID: <1211309196.3644.0.camel@localhost.localdomain>
+References: <48324E96.5050705@cn.fujitsu.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Jens Axboe <jens.axboe@oracle.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@MIT.EDU>
+To: Shen Feng <shen@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:35529 "EHLO e4.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:42754 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755222AbYETSD6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2008 14:03:58 -0400
-In-Reply-To: <1211234829.3663.39.camel@localhost.localdomain>
+	id S1758064AbYETSqr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2008 14:46:47 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4KIkimf020192
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 14:46:44 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4KIkgnq160626
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 14:46:42 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4KIkg6K026845
+	for <linux-ext4@vger.kernel.org>; Tue, 20 May 2008 14:46:42 -0400
+In-Reply-To: <48324E96.5050705@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-JBD2: fix race between jbd2_journal_try_to_free_buffers() and jbd2 commit transaction
-
-From: Mingming Cao <cmm@us.ibm.com>
-
-journal_try_to_free_buffers() could race with jbd commit transaction when
-the later is holding the buffer reference while waiting for the data buffer
-to flush to disk. If the caller of journal_try_to_free_buffers() request
-tries hard to release the buffers, it will treat the failure as error and return
-back to the caller. We have seen the directo IO failed due to this race. 
-Some of the caller of releasepage() also expecting the buffer to be dropped
-when passed with GFP_KERNEL mask to the releasepage()->journal_try_to_free_buffers().
-
-With this patch, if the caller is passing the GFP_KERNEL to indicating this
-call could wait, in case of try_to_free_buffers() failed, let's waiting for
-journal_commit_transaction() to finish commit the current committing transaction
-, then try to free those buffers again with journal locked.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
----
- fs/jbd2/transaction.c |   56 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 54 insertions(+), 2 deletions(-)
-
-Index: linux-2.6.26-rc2/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.26-rc2.orig/fs/jbd2/transaction.c	2008-05-11 17:09:41.000000000 -0700
-+++ linux-2.6.26-rc2/fs/jbd2/transaction.c	2008-05-19 17:20:01.000000000 -0700
-@@ -1656,12 +1656,39 @@ out:
- 	return;
- }
- 
-+/*
-+ * jbd2_journal_try_to_free_buffers() could race with jbd2_journal_commit_transaction()
-+ * The later might still hold the reference count to the buffers when inspecting
-+ * them on t_syncdata_list or t_locked_list.
-+ *
-+ * jbd2_journal_try_to_free_buffers() will call this function to
-+ * wait for the current transaction to finish syncing data buffers, before
-+ * try to free that buffer.
-+ *
-+ * Called with journal->j_state_lock hold.
-+ */
-+static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
-+{
-+	transaction_t *transaction = NULL;
-+	tid_t tid;
-+
-+	transaction = journal->j_committing_transaction;
-+
-+	if (!transaction)
-+		return;
-+
-+	tid = transaction->t_tid;
-+	spin_unlock(&journal->j_state_lock);
-+	jbd2_log_wait_commit(journal, tid);
-+	spin_lock(&journal->j_state_lock);
-+}
- 
- /**
-  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
-  * @journal: journal for operation
-  * @page: to try and free
-- * @unused_gfp_mask: unused
-+ * @gfp_mask: specifies whether the call may block
-+ * 		(__GFP_WAIT & __GFP_FS via GFP_KERNEL)
-  *
-  *
-  * For all the buffers on this page,
-@@ -1690,9 +1717,11 @@ out:
-  * journal_try_to_free_buffer() is changing its state.  But that
-  * cannot happen because we never reallocate freed data as metadata
-  * while the data is part of a transaction.  Yes?
-+ *
-+ * Return 0 on failure, 1 on success
-  */
- int jbd2_journal_try_to_free_buffers(journal_t *journal,
--				struct page *page, gfp_t unused_gfp_mask)
-+				struct page *page, gfp_t gfp_mask)
- {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
-@@ -1721,7 +1750,30 @@ int jbd2_journal_try_to_free_buffers(jou
- 		if (buffer_jbd(bh))
- 			goto busy;
- 	} while ((bh = bh->b_this_page) != head);
-+
- 	ret = try_to_free_buffers(page);
-+
-+ 	/*
-+	 * There are a number of places where jbd2_journal_try_to_free_buffers()
-+	 * could race with jbd2_journal_commit_transaction(), the later still
-+	 * holds the reference to the buffers to free while processing them.
-+	 * try_to_free_buffers() failed to free those buffers. Some of the
-+	 * caller of releasepage() request page buffers to be dropped, otherwise
-+	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
-+	 *
-+	 * So, if the caller of try_to_release_page() wants the synchronous
-+	 * behaviour(i.e make sure buffers are dropped upon return),
-+	 * let's wait for the current transaction to finish flush of
-+	 * dirty data buffers, then try to free those buffers again,
-+	 * with the journal locked.
-+	 */
-+	if (ret == 0 && gfp_mask & GFP_KERNEL) {
-+        	spin_lock(&journal->j_state_lock);
-+		jbd2_journal_wait_for_transaction_sync_data(journal);
-+		ret = try_to_free_buffers(page);
-+		spin_unlock(&journal->j_state_lock);
-+	}
-+
- busy:
- 	return ret;
- }
-
+On Tue, 2008-05-20 at 12:07 +0800, Shen Feng wrote:
+> *remove unnecessary code in free_rb_tree_fname
+> *rename free_rb_tree_fname to ext4_htree_create_dir_info
+>  since it and ext4_htree_free_dir_info are a pair
+> *replace kmalloc with kzalloc in ext4_htree_free_dir_info
+> 
+> All these make the code more readable and simple.
+> PS: this patch is also suitable for ext3.
+> 
+Reviewed-by: Mingming Cao <cmm@us.ibm.com>
+> Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+> ---
+>  fs/ext4/dir.c |   14 ++++----------
+>  1 files changed, 4 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 2bf0331..5ed5108 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -272,7 +272,7 @@ static void free_rb_tree_fname(struct rb_root *root)
+> 
+>  	while (n) {
+>  		/* Do the node's children first */
+> -		if ((n)->rb_left) {
+> +		if (n->rb_left) {
+>  			n = n->rb_left;
+>  			continue;
+>  		}
+> @@ -301,24 +301,18 @@ static void free_rb_tree_fname(struct rb_root *root)
+>  			parent->rb_right = NULL;
+>  		n = parent;
+>  	}
+> -	root->rb_node = NULL;
+>  }
+> 
+> 
+> -static struct dir_private_info *create_dir_info(loff_t pos)
+> +static struct dir_private_info *ext4_htree_create_dir_info(loff_t pos)
+>  {
+>  	struct dir_private_info *p;
+> 
+> -	p = kmalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+> +	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+>  	if (!p)
+>  		return NULL;
+> -	p->root.rb_node = NULL;
+> -	p->curr_node = NULL;
+> -	p->extra_fname = NULL;
+> -	p->last_pos = 0;
+>  	p->curr_hash = pos2maj_hash(pos);
+>  	p->curr_minor_hash = pos2min_hash(pos);
+> -	p->next_hash = 0;
+>  	return p;
+>  }
+> 
+> @@ -433,7 +427,7 @@ static int ext4_dx_readdir(struct file * filp,
+>  	int	ret;
+> 
+>  	if (!info) {
+> -		info = create_dir_info(filp->f_pos);
+> +		info = ext4_htree_create_dir_info(filp->f_pos);
+>  		if (!info)
+>  			return -ENOMEM;
+>  		filp->private_data = info;
 
