@@ -1,47 +1,66 @@
-From: Pavel Machek <pavel@suse.cz>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Wed, 21 May 2008 13:22:25 +0200
-Message-ID: <20080521112224.GD5028@ucw.cz>
-References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com> <200805191439.36577.chris.mason@oracle.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of
+	device, freeing blocks not in datazone
+Date: Wed, 21 May 2008 07:38:55 -0400
+Message-ID: <20080521113855.GD8581@mit.edu>
+References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu> <48334A82.6020508@tuxes.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
+Cc: linux-ext4@vger.kernel.org
+To: Bas van Schaik <bas@tuxes.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.31.123]:48882 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756916AbYEULWd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2008 07:22:33 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:56699 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756462AbYEULjP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2008 07:39:15 -0400
 Content-Disposition: inline
-In-Reply-To: <200805191439.36577.chris.mason@oracle.com>
+In-Reply-To: <48334A82.6020508@tuxes.nl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
-> >
-> > Here's a test workload that corrupts ext3 50% of the time on power fail
-> > testing for me.  The machine in this test is my poor dell desktop (3ghz,
-> > dual core, 2GB of ram), and the power controller is me walking over and
-> > ripping the plug out the back.
-> 
-> Here's a new version that still gets about corruptions 50% of the time, but 
-> does it with fewer files by using longer file names (240 chars instead of 160 
-> chars).
-> 
-> I tested this one with a larger FS (40GB instead of 2GB) and larger log (128MB 
-> instead of 32MB).  barrier-test -s 32 -p 1500 was still able to get a 50% 
-> corruption rate on the larger FS.
+On Wed, May 21, 2008 at 12:02:42AM +0200, Bas van Schaik wrote:
+> Ah, such a lead was exactly what I was looking for, now I at least know
+> where those bogus numbers were coming from. Maybe a very dump question:
+> you seem to have reverse the ascii "translation", why? 
 
-Ok, Andrew, is this enough to get barrier patch applied and stop
-corrupting data in default config, or do you want some more testing?
+x86 (and the ext3 indirect blocks) are stored in little endian format.
+If you doubt me, try running this program:
 
-I guess 20% benchmark regression is bad, but seldom and impossible to
-debug data corruption is worse...
-							Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+main(int argc, char **argv)
+{
+	char	a[5];
+	int	*b;
+
+	b = (int *) a;
+	*b = 0x61626364;
+	a[4] = 0;
+	printf("%s\n", a);
+}
+
+> Summarizing all this: there is clearly something writing garbage to the
+> wrong place. It must be something above the encryption layer, since
+> that's the only way ascii can be written to the device.
+> 
+> Remember the different layers:
+>   ext3 on decrypted /dev/loop0
+>   LVM logical volume (encrypted)
+>   RAID5 arrays
+>   Imported AoE-devices
+>   Physical disks
+> 
+> This conclusion kind of worries me, I was assuming that there was
+> something wrong at the networking level (AoE) or below. If that were the
+> case, the encrypted data would get modified and the corruptions would
+> look totally different. Or am I missing something?
+
+Not necessarily, this could be simply valid data getting written to
+the wrong place.  
+
+How are you encrypting your loop device, and what encryption system
+are you using?
+
+What sort of workload are you using with your filesystem, what version
+of the kernel are your running, and does the machine crash often
+(i.e., forcing journal replays)?
+
+							- Ted
