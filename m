@@ -1,62 +1,166 @@
-From: Daniel Phillips <phillips@phunq.net>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Wed, 21 May 2008 15:30:14 -0700
-Message-ID: <200805211530.14831.phillips@phunq.net>
-References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com>
+From: Mingming <cmm@us.ibm.com>
+Subject: [PATCH 1/2][TAKE3] JBD: Fix race between free buffer and commit
+	trasanction
+Date: Wed, 21 May 2008 16:38:07 -0700
+Message-ID: <1211413087.8596.9.camel@BVR-FS.beaverton.ibm.com>
+References: <20080512155419.GD15856@duck.suse.cz>
+	 <1210639184.3661.43.camel@localhost.localdomain>
+	 <20080513145449.GC20806@duck.suse.cz>
+	 <1210717389.3638.24.camel@localhost.localdomain>
+	 <20080514170856.GH24363@duck.suse.cz>
+	 <1210786872.3657.48.camel@localhost.localdomain>
+	 <20080514181444.GI24363@duck.suse.cz>
+	 <1210947250.3608.18.camel@localhost.localdomain>
+	 <1210957976.4231.31.camel@badari-desktop>
+	 <1210971693.3608.46.camel@localhost.localdomain>
+	 <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
+	 <1211227158.3663.25.camel@localhost.localdomain>
+	 <20080519132553.de9b78b0.akpm@linux-foundation.org>
+	 <1211234829.3663.39.camel@localhost.localdomain>
+	 <1211306575.3664.19.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <200805191316.27551.chris.mason@oracle.com>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, pbadari@us.ibm.com, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:54669 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932631AbYEUXiM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 May 2008 19:38:12 -0400
+In-Reply-To: <1211306575.3664.19.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday 19 May 2008 10:16, Chris Mason wrote:
-> root@opti:~# fsck -f /dev/sda2
-> fsck 1.40.8 (13-Mar-2008)
-> e2fsck 1.40.8 (13-Mar-2008)
-> /dev/sda2: recovering journal
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Problem in HTREE directory inode 281377 (/barrier-test): bad block number 
-> 13543.
-> Clear HTree index<y>?    
+Changes since take 2:
+- fix a bug pointed by Jan, and updated the comments
 
-Nice, htree as a canary for disk corruption.  This makes sense since
-directory data is the only verifiable structure at the logical data
-level and htree offers the only large scale, verifiable structure.
 
-Thanks for the lovely test methodology example.  Let me additionally
-offer this tool:
+journal_try_to_free_buffers() could race with jbd commit transaction when
+the later is holding the buffer reference while waiting for the data buffer
+to flush to disk. If the caller of journal_try_to_free_buffers() request
+tries hard to release the buffers, it will treat the failure as error and return
+back to the caller. We have seen the directo IO failed due to this race. 
+Some of the caller of releasepage() also expecting the buffer to be dropped
+when passed with GFP_KERNEL mask to the releasepage()->journal_try_to_free_buffers().
 
-   http://code.google.com/p/zumastor/source/browse/trunk/ddsnap/tests/devspam.c?r=1564
-   devspam
+With this patch, if the caller is passing the GFP_KERNEL to indicating this
+call could wait, in case of try_to_free_buffers() failed, let's waiting for
+journal_commit_transaction() to finish commit the current committing transaction
+, then try to free those buffers again with journal locked.
 
-The idea is to write an efficiently verifiable pattern across a range
-of a file, including a mix of position-dependent codes and a user
-supplied code.  In read mode, devspam will check that the position
-dependent codes are correct and match the user supplied code.  This
-can be easily extended to a "check that all the user supplied codes
-are the same" mode, which would help detect consistency failure in
-regular data files much as htree does with directories.  Hmm, this
-probably wants to incorporate a sequence number as well, to detect
-corruption under a random block update load as you have triggered
-with htree.
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
+---
+ fs/jbd/transaction.c |   57 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ mm/filemap.c         |    3 --
+ 2 files changed, 56 insertions(+), 4 deletions(-)
 
-I used this tool to exorcise the majority of bugs in ddsnap.  It is
-a wonderful canary, not only catching bugs early but showing where
-where they occurred.
+Index: linux-2.6.26-rc3/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.26-rc3.orig/fs/jbd/transaction.c	2008-05-21 16:17:51.000000000 -0700
++++ linux-2.6.26-rc3/fs/jbd/transaction.c	2008-05-21 16:20:11.000000000 -0700
+@@ -1648,12 +1648,40 @@ out:
+ 	return;
+ }
+ 
++/*
++ * journal_try_to_free_buffers() could race with journal_commit_transaction()
++ * The later might still hold the reference count to the buffers when inspecting
++ * them on t_syncdata_list or t_locked_list.
++ *
++ * Journal_try_to_free_buffers() will call this function to
++ * wait for the current transaction to finish syncing data buffers, before
++ * try to free that buffer.
++ *
++ * Called with journal->j_state_lock hold.
++ */
++static void journal_wait_for_transaction_sync_data(journal_t *journal)
++{
++	transaction_t *transaction = NULL;
++	tid_t tid;
++
++	transaction = journal->j_committing_transaction;
++
++	if (!transaction)
++		return;
++
++	tid = transaction->t_tid;
++	spin_unlock(&journal->j_state_lock);
++	log_wait_commit(journal, tid);
++	spin_lock(&journal->j_state_lock);
++}
+ 
+ /**
+  * int journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+  * @page: to try and free
+- * @unused_gfp_mask: unused
++ * @gfp_mask: we use the mask to detect how hard should we try to release
++ * buffers. If __GFP_WAIT and __GFP_FS is set, we wait for commit code to
++ * release the buffers.
+  *
+  *
+  * For all the buffers on this page,
+@@ -1682,9 +1710,11 @@ out:
+  * journal_try_to_free_buffer() is changing its state.  But that
+  * cannot happen because we never reallocate freed data as metadata
+  * while the data is part of a transaction.  Yes?
++ *
++ * Return 0 on failure, 1 on success
+  */
+ int journal_try_to_free_buffers(journal_t *journal,
+-				struct page *page, gfp_t unused_gfp_mask)
++				struct page *page, gfp_t gfp_mask)
+ {
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
+@@ -1713,7 +1743,30 @@ int journal_try_to_free_buffers(journal_
+ 		if (buffer_jbd(bh))
+ 			goto busy;
+ 	} while ((bh = bh->b_this_page) != head);
++
+ 	ret = try_to_free_buffers(page);
++
++ 	/*
++	 * There are a number of places where journal_try_to_free_buffers()
++	 * could race with journal_commit_transaction(), the later still
++	 * holds the reference to the buffers to free while processing them.
++	 * try_to_free_buffers() failed to free those buffers. Some of the
++	 * caller of releasepage() request page buffers to be dropped, otherwise
++	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
++	 *
++	 * So, if the caller of try_to_release_page() wants the synchronous
++	 * behaviour(i.e make sure buffers are dropped upon return),
++	 * let's wait for the current transaction to finish flush of
++	 * dirty data buffers, then try to free those buffers again,
++	 * with the journal locked.
++	 */
++	if (ret == 0 && (gfp_mask & GFP_KERNEL == GFP_KERNEL)) {
++        	spin_lock(&journal->j_state_lock);
++		journal_wait_for_transaction_sync_data(journal);
++		ret = try_to_free_buffers(page);
++		spin_unlock(&journal->j_state_lock);
++	}
++
+ busy:
+ 	return ret;
+ }
+Index: linux-2.6.26-rc3/mm/filemap.c
+===================================================================
+--- linux-2.6.26-rc3.orig/mm/filemap.c	2008-05-21 16:17:51.000000000 -0700
++++ linux-2.6.26-rc3/mm/filemap.c	2008-05-21 16:17:58.000000000 -0700
+@@ -2581,9 +2581,8 @@ out:
+  * Otherwise return zero.
+  *
+  * The @gfp_mask argument specifies whether I/O may be performed to release
+- * this page (__GFP_IO), and whether the call may block (__GFP_WAIT).
++ * this page (__GFP_IO), and whether the call may block (__GFP_WAIT & __GFP_FS).
+  *
+- * NOTE: @gfp_mask may go away, and this function may become non-blocking.
+  */
+ int try_to_release_page(struct page *page, gfp_t gfp_mask)
+ {
 
->From what I have seen, Sun seems to rely mostly on MD5 checksums for
-detecting corruption in ZFS.  We should do more of that too.
 
-Regards,
-
-Daniel
