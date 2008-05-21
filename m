@@ -1,33 +1,60 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Wed, 21 May 2008 08:32:55 -0400
-Message-ID: <20080521123255.GG8581@mit.edu>
-References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com> <200805191439.36577.chris.mason@oracle.com> <20080521112224.GD5028@ucw.cz>
+From: Kalpak Shah <Kalpak.Shah@Sun.COM>
+Subject: [PATCH] Display bad depth in error message
+Date: Wed, 21 May 2008 18:19:59 +0530
+Message-ID: <1211374199.7317.4.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Andi Kleen <andi@firstfloor.org>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Pavel Machek <pavel@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080521112224.GD5028@ucw.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: TheodoreTso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sineb-mail-1.sun.com ([192.18.19.6]:65430 "EHLO
+	sineb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753812AbYEUMt6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2008 08:49:58 -0400
+Received: from fe-apac-06.sun.com (fe-apac-06.sun.com [192.18.19.177] (may be forged))
+	by sineb-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m4LCoE46021546
+	for <linux-ext4@vger.kernel.org>; Wed, 21 May 2008 12:50:15 GMT
+Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
+ (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+ id <0K1700801Y8ZSW00@mail-apac.sun.com>
+ (original mail from Kalpak.Shah@Sun.COM) for linux-ext4@vger.kernel.org; Wed,
+ 21 May 2008 20:48:35 +0800 (SGT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 21, 2008 at 01:22:25PM +0200, Pavel Machek wrote:
-> 
-> Ok, Andrew, is this enough to get barrier patch applied and stop
-> corrupting data in default config, or do you want some more testing?
+Hi,
 
-It is for me; I think we have to enable barriers for ext3/4, and then
-work to improve the overhead in ext4/jbd2.  It's probably true that
-the vast majority of systems don't run under conditions similar to
-what Chris used to demonstrate the problem, but the default has to be
-filesystem safety.  People who are sure they are extremely unlikely to
-run into this problem can turn barriers off (and I suspect they won't
-see that much difference in the most common workloads anyway).
+It would be good to actually print the bad htree depth as part of the error message.
 
-    	      		    	     - Ted
+Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+
+Index: e2fsprogs-1.40.7/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs-1.40.7.orig/e2fsck/pass2.c
++++ e2fsprogs-1.40.7/e2fsck/pass2.c
+@@ -213,6 +213,7 @@ void e2fsck_pass2(e2fsck_t ctx)
+                        if (dx_db->type == DX_DIRBLOCK_LEAF) {
+                                depth = htree_depth(dx_dir, dx_db);
+                                if (depth != dx_dir->depth) {
++                                       pctx.num = dx_dir->depth;
+                                        code = PR_2_HTREE_BAD_DEPTH;
+                                        fix_problem(ctx, code, &pctx);
+                                        bad_dir++;
+Index: e2fsprogs-1.40.7/e2fsck/problem.c
+===================================================================
+--- e2fsprogs-1.40.7.orig/e2fsck/problem.c
++++ e2fsprogs-1.40.7/e2fsck/problem.c
+@@ -1288,7 +1288,7 @@ static struct e2fsck_problem problem_tab
+
+        /* Node in HTREE directory has invalid depth */
+        { PR_2_HTREE_BAD_DEPTH,
+-         N_("@p @h %d: node (%B) has @n depth\n"),
++         N_("@p @h %d: node (%B) has @n depth (%N)\n"),
+          PROMPT_NONE, 0 },
+
+        /* Duplicate directory entry found */
+
+Thanks,
+Kalpak
+
