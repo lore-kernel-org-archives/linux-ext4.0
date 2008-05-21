@@ -1,66 +1,33 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of
-	device, freeing blocks not in datazone
-Date: Wed, 21 May 2008 07:38:55 -0400
-Message-ID: <20080521113855.GD8581@mit.edu>
-References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu> <48334A82.6020508@tuxes.nl>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Wed, 21 May 2008 08:32:55 -0400
+Message-ID: <20080521123255.GG8581@mit.edu>
+References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com> <200805191439.36577.chris.mason@oracle.com> <20080521112224.GD5028@ucw.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Bas van Schaik <bas@tuxes.nl>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:56699 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756462AbYEULjP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2008 07:39:15 -0400
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Andi Kleen <andi@firstfloor.org>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Pavel Machek <pavel@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <48334A82.6020508@tuxes.nl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080521112224.GD5028@ucw.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 21, 2008 at 12:02:42AM +0200, Bas van Schaik wrote:
-> Ah, such a lead was exactly what I was looking for, now I at least know
-> where those bogus numbers were coming from. Maybe a very dump question:
-> you seem to have reverse the ascii "translation", why? 
-
-x86 (and the ext3 indirect blocks) are stored in little endian format.
-If you doubt me, try running this program:
-
-main(int argc, char **argv)
-{
-	char	a[5];
-	int	*b;
-
-	b = (int *) a;
-	*b = 0x61626364;
-	a[4] = 0;
-	printf("%s\n", a);
-}
-
-> Summarizing all this: there is clearly something writing garbage to the
-> wrong place. It must be something above the encryption layer, since
-> that's the only way ascii can be written to the device.
+On Wed, May 21, 2008 at 01:22:25PM +0200, Pavel Machek wrote:
 > 
-> Remember the different layers:
->   ext3 on decrypted /dev/loop0
->   LVM logical volume (encrypted)
->   RAID5 arrays
->   Imported AoE-devices
->   Physical disks
-> 
-> This conclusion kind of worries me, I was assuming that there was
-> something wrong at the networking level (AoE) or below. If that were the
-> case, the encrypted data would get modified and the corruptions would
-> look totally different. Or am I missing something?
+> Ok, Andrew, is this enough to get barrier patch applied and stop
+> corrupting data in default config, or do you want some more testing?
 
-Not necessarily, this could be simply valid data getting written to
-the wrong place.  
+It is for me; I think we have to enable barriers for ext3/4, and then
+work to improve the overhead in ext4/jbd2.  It's probably true that
+the vast majority of systems don't run under conditions similar to
+what Chris used to demonstrate the problem, but the default has to be
+filesystem safety.  People who are sure they are extremely unlikely to
+run into this problem can turn barriers off (and I suspect they won't
+see that much difference in the most common workloads anyway).
 
-How are you encrypting your loop device, and what encryption system
-are you using?
-
-What sort of workload are you using with your filesystem, what version
-of the kernel are your running, and does the machine crash often
-(i.e., forcing journal replays)?
-
-							- Ted
+    	      		    	     - Ted
