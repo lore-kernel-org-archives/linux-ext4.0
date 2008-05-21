@@ -1,87 +1,62 @@
-From: Bas van Schaik <bas@tuxes.nl>
-Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of	device,
- freeing blocks not in datazone
-Date: Thu, 22 May 2008 00:27:02 +0200
-Message-ID: <4834A1B6.7090803@tuxes.nl>
-References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu> <48334A82.6020508@tuxes.nl> <20080521113855.GD8581@mit.edu>
+From: Daniel Phillips <phillips@phunq.net>
+Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
+Date: Wed, 21 May 2008 15:30:14 -0700
+Message-ID: <200805211530.14831.phillips@phunq.net>
+References: <482DDA56.6000301@redhat.com> <20080518211140.b29bee30.akpm@linux-foundation.org> <200805191316.27551.chris.mason@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pollux.sshunet.nl ([145.97.192.42]:38876 "EHLO
-	pollux.sshunet.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761485AbYEUW1L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2008 18:27:11 -0400
-In-Reply-To: <20080521113855.GD8581@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Theodore Tso <tytso@mit.edu>, Andi Kleen <andi@firstfloor.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Chris Mason <chris.mason@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <200805191316.27551.chris.mason@oracle.com>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Wed, May 21, 2008 at 12:02:42AM +0200, Bas van Schaik wrote:
->   
->> Ah, such a lead was exactly what I was looking for, now I at least know
->> where those bogus numbers were coming from. Maybe a very dump question:
->> you seem to have reverse the ascii "translation", why? 
->>     
->
-> x86 (and the ext3 indirect blocks) are stored in little endian format.
-> If you doubt me, try running this program:
->
-> main(int argc, char **argv)
-> {
-> 	char	a[5];
-> 	int	*b;
->
-> 	b = (int *) a;
-> 	*b = 0x61626364;
-> 	a[4] = 0;
-> 	printf("%s\n", a);
-> }
->   
-No, I certainly do most certainly not doubt you. I was just wondering...
+On Monday 19 May 2008 10:16, Chris Mason wrote:
+> root@opti:~# fsck -f /dev/sda2
+> fsck 1.40.8 (13-Mar-2008)
+> e2fsck 1.40.8 (13-Mar-2008)
+> /dev/sda2: recovering journal
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Problem in HTREE directory inode 281377 (/barrier-test): bad block number 
+> 13543.
+> Clear HTree index<y>?    
 
->> Summarizing all this: there is clearly something writing garbage to the
->> wrong place. It must be something above the encryption layer, since
->> that's the only way ascii can be written to the device.
->>
->> Remember the different layers:
->>   ext3 on decrypted /dev/loop0
->>   LVM logical volume (encrypted)
->>   RAID5 arrays
->>   Imported AoE-devices
->>   Physical disks
->>
->> This conclusion kind of worries me, I was assuming that there was
->> something wrong at the networking level (AoE) or below. If that were the
->> case, the encrypted data would get modified and the corruptions would
->> look totally different. Or am I missing something?
->>     
->
-> Not necessarily, this could be simply valid data getting written to
-> the wrong place. 
->   
-Of course, but there are no processes performing direct I/O to one of
-the underlying block devices. So how could plain ascii data get written
-to the wrong place and still appear as plain ascii after decrypting it?
+Nice, htree as a canary for disk corruption.  This makes sense since
+directory data is the only verifiable structure at the logical data
+level and htree offers the only large scale, verifiable structure.
 
-> How are you encrypting your loop device, and what encryption system
-> are you using?
->   
-I think this tells you everything:
-> cat $KEYFILE | losetup -e aes128 -p0 /dev/loop0 /dev/vg_backups2/backups
+Thanks for the lovely test methodology example.  Let me additionally
+offer this tool:
 
-However, the other system I was mentioning is using LUKS (dm-crypt) to
-achieve the same goal.
+   http://code.google.com/p/zumastor/source/browse/trunk/ddsnap/tests/devspam.c?r=1564
+   devspam
 
-> What sort of workload are you using with your filesystem, what version
-> of the kernel are your running, and does the machine crash often
-> (i.e., forcing journal replays)?
-The system is under high load: sometimes there are about 20 rsync server
-processes fighting for some time. As you might know, rsync is not really
-thrifty with claiming resoures, especially not when building file lists.
-The machine itself doesn't crash, it seems to be perfectly stable. These
-corruptions are the only problem...
+The idea is to write an efficiently verifiable pattern across a range
+of a file, including a mix of position-dependent codes and a user
+supplied code.  In read mode, devspam will check that the position
+dependent codes are correct and match the user supplied code.  This
+can be easily extended to a "check that all the user supplied codes
+are the same" mode, which would help detect consistency failure in
+regular data files much as htree does with directories.  Hmm, this
+probably wants to incorporate a sequence number as well, to detect
+corruption under a random block update load as you have triggered
+with htree.
 
-  -- Bas
+I used this tool to exorcise the majority of bugs in ddsnap.  It is
+a wonderful canary, not only catching bugs early but showing where
+where they occurred.
+
+>From what I have seen, Sun seems to rely mostly on MD5 checksums for
+detecting corruption in ZFS.  We should do more of that too.
+
+Regards,
+
+Daniel
