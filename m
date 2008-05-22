@@ -1,70 +1,63 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
-	inversion
-Date: Thu, 22 May 2008 11:10:17 -0700
-Message-ID: <1211479817.8596.42.camel@BVR-FS.beaverton.ibm.com>
-References: <1211391859-17399-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1211391859-17399-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1211391859-17399-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1211391859-17399-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Reoccurring ext3 errors: attempt to access beyond end of	device,
+ freeing blocks not in datazone
+Date: Thu, 22 May 2008 12:18:27 -0600
+Message-ID: <20080522181827.GA3516@webber.adilger.int>
+References: <4832941A.70806@tuxes.nl> <20080520123505.GP15035@mit.edu>
+ <48334A82.6020508@tuxes.nl>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Bas van Schaik <bas@tuxes.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:46963 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758519AbYEVSKj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 May 2008 14:10:39 -0400
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e32.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4MI6sWx009764
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2008 14:06:54 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4MIAKTS141382
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2008 12:10:20 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4MIAGrI013997
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2008 12:10:17 -0600
-In-Reply-To: <1211391859-17399-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42414 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759317AbYEVSSd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 May 2008 14:18:33 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m4MIIVBO017598
+	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2008 11:18:32 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K1A00D01834R000@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 22 May 2008 11:18:31 -0700 (PDT)
+In-reply-to: <48334A82.6020508@tuxes.nl>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On May 21, 2008  00:02 +0200, Bas van Schaik wrote:
+> Theodore Tso wrote:
+> > 15629775440 / 8 = 0x74736E4A   (or in ascii 'Inst')
+> > 13075964688 / 8 = 0x616C6C62   (or in ascii 'blla')
+> > 15354014352 / 8 = 0x72657552   (or in ascii 'Ruer')
+> >
+> > Converting these numbers to hex:
+> >
+> > 1953721929 = 0x74736E49  (or in ascii 'Jnst')
+> > 1634495585 = 0x616C6C61  (or in ascii 'alla'
+> >  543517044 = 0x20656974  (or in ascii 'tie ')
+> > 1919251793 = 0x72657551  (or in ascii 'Quer')
+> >
+> > Given that it's all ascii, it looks like the indirect block somehow
+> > was overwritten, or was substituted by text.
+>
+> Ah, such a lead was exactly what I was looking for, now I at least know
+> where those bogus numbers were coming from. Maybe a very dump question:
+> you seem to have reverse the ascii "translation", why? And shouldn't
+> "Jnst" be "Inst"? Note also that the "translations" seem to resemble
+> each other a little bit: "Jnst" = "Jnst", "alla" looks like "blla" and
+> "Ruer" looks like "Quer". Coincidence?
 
-On Wed, 2008-05-21 at 23:14 +0530, Aneesh Kumar K.V wrote:
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/inode.c |   10 +++++++---
->  1 files changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 46cc610..076d00f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1571,13 +1571,17 @@ static int ext4_da_writepages(struct address_space *mapping,
->  		 */
->  		if (wbc->nr_to_write > EXT4_MAX_WRITEBACK_PAGES)
->  			wbc->nr_to_write = EXT4_MAX_WRITEBACK_PAGES;
-> -		to_write -= wbc->nr_to_write;
-> 
-> +		to_write -= wbc->nr_to_write;
->  		ret = mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
->  		ext4_journal_stop(handle);
-> -		to_write +=wbc->nr_to_write;
-> +		if (wbc->nr_to_write) {
-> +			/* We failed to write what we requested for */
-> +			to_write += wbc->nr_to_write;
-> +			break;
-> +		}
+Or it is possible you are getting single-bit errors somewhere along
+your IO path, and another single-bit error has resulted in this data
+being written to the wrong block to begin with...
 
-Not sure about the break here...
-> +		wbc->nr_to_write = to_write;
 
-Looks right. thanks.
-
->  	}
-> -
->  out_writepages:
->  	wbc->nr_to_write = to_write;
->  	wbc->range_cyclic = range_cyclic;
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
