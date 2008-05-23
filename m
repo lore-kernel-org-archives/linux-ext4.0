@@ -1,25 +1,56 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: ext4 still busted on ext4
-Date: Thu, 22 May 2008 23:55:02 -0700
-Message-ID: <20080522235502.7a759927.akpm@linux-foundation.org>
-References: <20080522235441.1d1a495b.akpm@linux-foundation.org>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: [PATCH] ext4: remove double definitions of xattr macros
+Date: Fri, 23 May 2008 17:28:59 +0800
+Message-ID: <48368E5B.7010909@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org,
-	Geert Uytterhoeven <geert@linux-m68k.org>
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38993 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753711AbYEWGzO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 May 2008 02:55:14 -0400
-In-Reply-To: <20080522235441.1d1a495b.akpm@linux-foundation.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:56539 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1757785AbYEWJbf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 May 2008 05:31:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 22 May 2008 23:54:41 -0700 Andrew Morton <akpm@linux-foundation.org> wrote:
+remove the definitions of macros:
+XATTR_TRUSTED_PREFIX
+XATTR_USER_PREFIX
+since they are defined in linux/xattr.h
 
-> Subject: ext4 still busted on ext4
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+---
+ fs/ext4/xattr_trusted.c |    4 +---
+ fs/ext4/xattr_user.c    |    4 +---
+ 2 files changed, 2 insertions(+), 6 deletions(-)
 
-err, on m68k.
+diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
+index fff3338..ac1a52c 100644
+--- a/fs/ext4/xattr_trusted.c
++++ b/fs/ext4/xattr_trusted.c
+@@ -13,13 +13,11 @@
+ #include "ext4.h"
+ #include "xattr.h"
+
+-#define XATTR_TRUSTED_PREFIX "trusted."
+-
+ static size_t
+ ext4_xattr_trusted_list(struct inode *inode, char *list, size_t list_size,
+ 			const char *name, size_t name_len)
+ {
+-	const size_t prefix_len = sizeof(XATTR_TRUSTED_PREFIX)-1;
++	const size_t prefix_len = XATTR_TRUSTED_PREFIX_LEN;
+ 	const size_t total_len = prefix_len + name_len + 1;
+
+ 	if (!capable(CAP_SYS_ADMIN))
+diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
+index 67be723..d91aa61 100644
+--- a/fs/ext4/xattr_user.c
++++ b/fs/ext4/xattr_user.c
+@@ -12,13 +12,11 @@
+ #include "ext4.h"
+ #include "xattr.h"
+
+-#define XATTR_USER_PREFIX "user."
