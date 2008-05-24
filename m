@@ -1,76 +1,86 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [Take2 PATCH 00/10][e2fsprogs] Initial blk64_t capable API
-	calls.
-Date: Sat, 24 May 2008 19:28:36 -0400
-Message-ID: <20080524232835.GB5970@mit.edu>
-References: <20080521175325.18810.25160.stgit@gara>
+Subject: Re: What's in e2fsprogs.git (stable)
+Date: Sat, 24 May 2008 19:49:04 -0400
+Message-ID: <20080524234904.GC5970@mit.edu>
+References: <20080211044108.GA25089@mit.edu> <20080219050347.GT25098@mit.edu> <20080229142830.GB8968@mit.edu> <20080313180503.GC31653@mit.edu> <20080320202243.GO13719@mit.edu> <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu> <20080418183935.GA25797@mit.edu> <20080421162726.GF9700@mit.edu> <20080428025302.GC30840@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:56612 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:57672 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751108AbYEXX3d (ORCPT
+	by vger.kernel.org with ESMTP id S1753466AbYEXXtM (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 24 May 2008 19:29:33 -0400
+	Sat, 24 May 2008 19:49:12 -0400
 Content-Disposition: inline
-In-Reply-To: <20080521175325.18810.25160.stgit@gara>
+In-Reply-To: <20080428025302.GC30840@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 21, 2008 at 12:53:25PM -0500, Jose R. Santos wrote:
-> 
-> The following series of patches implement API call needed to handle
-> 64-bit block numbers.  Im concentrating mainly in providing the API
-> call first and if the interfaces are sane, we can go ahead and start
-> using them in the rest of libext2fs and the user space programs.
-> 
-> I've run checkpatch and make check on each individual patch in the
-> series so they should be ready to add to the main repository if the
-> interfaces are acceptable.
+The maint branch has been updated for 1.40.10 e2fsprogs release.
 
-Jose, running "make check" with these configure options resulted in a
-failure:
+The master branch is proceeding towards a 1.41 release; there are only
+a few more topics which are cooking (see the topic's message) before
+we should be ready for 1.41.
 
-'--enable-elf-shlibs' '--enable-blkid-debug' '--enable-testio-debug' '--enable-maintainer-mode' '--enable-blkid-devmapper' '--enable-jbd-debug'
+    	  	     	  	      	      		- Ted
 
-Part of the problem was the test_io manager didn't have 64-bit
-support.  I fixed that, and rebased your patch series, but it still
-died with a seg fault in the test u_undoe2fs_mke2fs.  
+* The 'maint' branch has these fixes since the last announcement.
 
-Checking out the undo_io manager, it's obvious why; it doesn't yet
-have 64-bit support.  I'm not sure how you missed this, if you were
-running "make check" after each patch.  What version of e2fsprogs was
-your patches based off of?
+Benno Schulenberg (1):
+  po: update nl.po (from translationproject.org)
 
-          					- Ted
+Clytie Siddall (1):
+  po: update vi.po (from translationproject.org)
+
+G=F6ran Uddeborg (1):
+  po: update sv.po (from translationproject.org)
+
+Maciej W. Rozycki (1):
+  Remove default sizeof sizes in configure script when
+      cross-compiling
+
+Matthias Koenig (1):
+  libuuid: don't use unitialized variable
+
+Philipp Thomas (1):
+  po: update de.po (from translationproject.org)
+
+Theodore Ts'o (4):
+  Fix German translation bug (y,n) -> (j,n)
+  e2fsck: Fix potential data corruptor bug in journal recovery
+  blkid: If the device mtime is newer that the cache time, force a
+      revalidation
+  Update release notes and debian changelog for 1.40.10 release
 
 
-% more u_undoe2fs_mke2fs.log 
-mke2fs -q -F -o Linux -b 1024 test.img
-mke2fs 1.41-WIP (27-Apr-2008)
-Filesystem label=
-OS type: Linux
-Block size=1024 (log=0)
-Fragment size=1024 (log=0)
-64 inodes, 512 blocks
-25 blocks (4.88%) reserved for the super user
-First data block=1
-Maximum filesystem blocks=524288
-1 block group
-8192 blocks per group, 8192 fragments per group
-64 inodes per group
+* The 'master' branch has these since the last announcement
+  in addition to the above.
 
-Writing inode tables: done                            
-Writing superblocks and filesystem accounting information: done
+Eric Sandeen (2):
+  - fix swap sanity tests in blkid, and blkid tests
+  fix extent_goto for non-0 leaf levels
 
-md5sum before mke2fs 4a393ac4351a41501aca1ad2917430b9
-using mke2fs to test undoe2fs
-Overwriting existing filesystem; this can be undone using the command:
-    e2undo .//mke2fs-test.img.e2undo ./test.img
+Theodore Ts'o (8):
+  Fix parallel build problem
+  mke2fs: Add the ability to configure default extended options in
+      mke2fs.conf
+  Add ext4dev stanza to mke2fs.conf
+  Install {mkfs,fsck}.{ext4,ext4dev} binary and man pages
+  ext2fs.h: Add l_i_file_acl_high and l_version_hi to on-disk inode
+      structure
+  debugfs: Print the nanosecond field and i_version field of an inode
+  Fix m_large_file and r_inline_xattr tests to match with recent
+      changes
+  Add 64-bit support to the test_io manager
 
-md5sum after mke2fs a34e9c16307770eb318a6afa39e127f6
-check_filesystem: Unknown code ext2 104 Failed tdb_fetch Record does not exist
-
-md5sum after undoe2fs a34e9c16307770eb318a6afa39e127f6
+------
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
