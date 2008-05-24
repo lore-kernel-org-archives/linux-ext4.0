@@ -1,76 +1,90 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: What to do when the journal checksum is incorrect
-Date: Sat, 24 May 2008 18:34:21 -0400
-Message-ID: <E1K02Jh-0002wf-2e@closure.thunk.org>
-Cc: Andreas Dilger <adilger@clusterfs.com>,
-	Girish Shilamkar <girish@clusterfs.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH-v2] JBD: Fix race between free buffer and commit trasanction
+Date: Sun, 25 May 2008 00:44:47 +0200
+Message-ID: <20080524224447.GE20563@atrey.karlin.mff.cuni.cz>
+References: <1210947250.3608.18.camel@localhost.localdomain> <1210957976.4231.31.camel@badari-desktop> <1210971693.3608.46.camel@localhost.localdomain> <20080518223739.GB11006@atrey.karlin.mff.cuni.cz> <1211227158.3663.25.camel@localhost.localdomain> <20080519132553.de9b78b0.akpm@linux-foundation.org> <1211234829.3663.39.camel@localhost.localdomain> <1211306575.3664.19.camel@localhost.localdomain> <20080520235303.GB23521@atrey.karlin.mff.cuni.cz> <1211390093.5571.16.camel@BVR-FS.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, pbadari@us.ibm.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Jens Axboe <jens.axboe@oracle.com>
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:53411 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755318AbYEXWeb (ORCPT
+Received: from [195.113.26.193] ([195.113.26.193]:46177 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-FAIL-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750802AbYEXWos (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 24 May 2008 18:34:31 -0400
+	Sat, 24 May 2008 18:44:48 -0400
+Content-Disposition: inline
+In-Reply-To: <1211390093.5571.16.camel@BVR-FS.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+> On Wed, 2008-05-21 at 01:53 +0200, Jan Kara wrote:
+> > >  fs/jbd/transaction.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++--
+> > >  mm/filemap.c         |    3 --
+> > >  2 files changed, 54 insertions(+), 4 deletions(-)
+> > > 
+> > > Index: linux-2.6.26-rc2/fs/jbd/transaction.c
+> > > ===================================================================
+> > > --- linux-2.6.26-rc2.orig/fs/jbd/transaction.c	2008-05-11 17:09:41.000000000 -0700
+> > > +++ linux-2.6.26-rc2/fs/jbd/transaction.c	2008-05-19 16:16:41.000000000 -0700
+> > > @@ -1648,12 +1648,39 @@ out:
+> > >  	return;
+> > >  }
+> > >  
+> > > +/*
+> > > + * journal_try_to_free_buffers() could race with journal_commit_transaction()
+> > > + * The later might still hold the reference count to the buffers when inspecting
+> > > + * them on t_syncdata_list or t_locked_list.
+> > > + *
+> > > + * Journal_try_to_free_buffers() will call this function to
+> > > + * wait for the current transaction to finish syncing data buffers, before
+> > > + * try to free that buffer.
+> > > + *
+> > > + * Called with journal->j_state_lock hold.
+> > > + */
+> > > +static void journal_wait_for_transaction_sync_data(journal_t *journal)
+> > > +{
+> > > +	transaction_t *transaction = NULL;
+> > > +	tid_t tid;
+> > > +
+> > > +	transaction = journal->j_committing_transaction;
+> > > +
+> > > +	if (!transaction)
+> > > +		return;
+> > > +
+> > > +	tid = transaction->t_tid;
+> > > +	spin_unlock(&journal->j_state_lock);
+> > > +	log_wait_commit(journal, tid);
+> > > +	spin_lock(&journal->j_state_lock);
+> > > +}
+> >   What is actually the point of entering the function with j_state_lock
+> > held and also keeping it after return? It should be enough to take it
+> > and release it just inside this function, shouldn't it?
+> > 
+> 
+> I was worried about the case when we call try_to_free_buffers() again,
+> it races with the current transaction commit again. Is it possible? I
+> guess the question is whether it is possible to have buffers on the same
+> page attached to different transaction.  If so, I think we need to keep
+> the journal state lock while retry try_to_free_buffers(), so that the
+> retry won't race with the commit transaction again...
+  Well, but by the time log_wait_commit() finishes, it may well
+happen that a new transaction is already started so your lock doesn't
+help you much. And the page you are called on is actually locked, so
+noone can really mess with it until you unlock it... So I think you can
+just use the lock for obtaining tid and then drop it.
 
-I've been taking a much closer look at the ext4's journal checksum code
-as I integrated it into e2fsck, and I'm finding that what it's doing
-doesn't make a whole lot of sense.
+								Honza
 
-Suppose the journal has five commits, with transaction ID's 2, 3, 4, 5,
-and 6.  And suppose the CRC in the commit block delineating the end of
-transaction #4 is bad.  At the moment, due to a bug in the code, it
-stops processing at transaction #4, meaning that transactions #2, #3,
-and #4 are replayed into the filesystem --- even though transaction #4
-failed the CRC checksum.  Worse yet, no indication of any problems is
-sent back to the ext4 filesystem code.
+PS: For JBD2 you'd need to be a bit more careful because you cannot call
+log_wait_commit() while holding page lock (we have reversed locking
+order for ext4) - but ordered-mode rewrite patch actually fixes this
+problem and I'm going to submit the splitted patches on Monday or
+Tuesday (I only need to test them that I didn't do something stupid
+while porting them to ext4)...
 
-Even far worse, though, is that the filesystem is now in a potentially
-very compromised state.  Stopping the journal replay after transaction
-#3 is no better, because the rest of the filesystem may had changes made
-to it since then which would have been overwritten by replaying
-only transactions #2 and #3.
-
-What this means is that the only time when it's OK for us to proceed
-when there is a checksum failure is if it's the very last commit block,
-and journal_async_commit's are enabled.   At any other time, we have to
-assume that filesystem is corrupted.
-
-The next question is what should we do the journal.  For the root
-filesystem, we need to be able to mount it in order to run e2fsck.  If
-we fail the mount because of the bad journal, then the user is forced to
-use a rescue CD, at which point e2fsck is going to have to do something
-automatic or force the user to start using a disk editor to recover.
-
-So I think the right thing to do is to replay the *entire* journal,
-including the commits with the failed checksums (except in the case
-where journal_async_commit is enabled and the last commit has a bad
-checksum, in which case we skip the last transaction).  By replaying the
-entire journal, we don't lose any of the revoke blocks, which is
-critical in making sure we don't overwrite any data blocks, and
-replaying subsequent metadata blocks will probably leave us in a much
-better position for e2fsck to be able to recover the filesystem.
-
-But if there are any non-terminal commits that have bad checksums, we
-need to pass a flag back to the filesystem, and have the filesystem call
-ext4_error() indicating that the journal was corrupt; this will mark the
-filesystem has containing errors, and use the filesystem policy to
-decide whether to remount the filesystem read-only, continue, or panic.
-Then e2fsck at boot time can try to sort out the mess.
-
-If e2fsck is replaying the journal, it will do the same thing; play it
-back despite the checksum errors, and then force a full check of the
-filesystem since it is quite likely corrupted as a result.
-
-Does this make sense?  It's the direction I plan to go in terms of
-making changes to the kernel and the e2fsck's recovery code, so please
-let me know if you disagree with this strategy.
-
-							- Ted
-
-
-
-
-
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
