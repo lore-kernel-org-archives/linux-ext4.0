@@ -1,46 +1,42 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: remove bashism in lib/blkid/test_probe.in
-Date: Sun, 25 May 2008 18:00:06 +0200 (CEST)
-Message-ID: <alpine.DEB.1.10.0805251750250.4890@sheep.housecafe.de>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [RFC PATCH 1/3] Implement generic freeze feature
+Date: Sun, 25 May 2008 15:32:11 -0400
+Message-ID: <20080525193211.GA24328@infradead.org>
+References: <20080522175020t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:53106 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751001AbYEYQAI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 May 2008 12:00:08 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"dm-devel@redhat.com" <dm-devel@redhat.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20080522175020t-sato@mail.jp.nec.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+> +	if (test_and_set_bit(BD_FREEZE_OP, &bdev->bd_state))
+> +		return ERR_PTR(-EBUSY);
+> +
+> +	sb = get_super_without_lock(bdev);
+> +
+> +	/* If super_block has been already frozen, return. */
+> +	if (sb && sb->s_frozen != SB_UNFROZEN) {
+> +		put_super(sb);
+> +		clear_bit(BD_FREEZE_OP, &bdev->bd_state);
+> +		return sb;
+> +	}
 
-while running "make check" on a current e2fsprogs.pu git tree fails with:
+The BD_FREEZE_OP flag in the block_device already prevents multiple
+freezes for a singe block device, so there is no need for this
+additional check and the get_super_without_lock helper.
 
-----
-cramfs: + test ! -f ./tests/cramfs.img.bz2 -a ! -f ./tests/cramfs.results
-+ bunzip2
-+ [ cramfs == swap0 ]
-[: 1: ==: unexpected operator
-+ [ cramfs == swap1 ]
-[: 1: ==: unexpected operator
-----
+>  	down(&bdev->bd_mount_sem);
 
-My /bin/sh is not linked to bash but to dash (which is basically "sh") and 
-thus "==" comparisons fail. checkbashisms (part of Debian's devscripts)
-catches this too:
+And with that flag bd_mount_sem is also obsolete for preventing the
+multiple freeze operations.  We still need investigate what
+synchronization we need vs unmount which also takes bd_mount_sem without
+every having document what it exactly protects.
 
-----
-possible bashism in ./test_probe line 26 (should be 'b = a'):
-         if [ "$i" == "swap0" ]; then
-----
-
-Changing == to = makes "make check" happy :)
-http://nerdbynature.de/bits/e2fsprogs.pu/test_probe.in.diff.txt
-
-Thanks,
-Christian.
--- 
-BOFH excuse #169:
-
-broadcast packets on wrong frequency
