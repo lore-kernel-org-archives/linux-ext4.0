@@ -1,42 +1,57 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFC PATCH 1/3] Implement generic freeze feature
-Date: Sun, 25 May 2008 15:32:11 -0400
-Message-ID: <20080525193211.GA24328@infradead.org>
-References: <20080522175020t-sato@mail.jp.nec.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: bh_count undeclared
+Date: Sun, 25 May 2008 19:38:09 -0400
+Message-ID: <20080525233809.GG5970@mit.edu>
+References: <alpine.DEB.1.10.0805251727040.4890@sheep.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Takashi Sato <t-sato@yk.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Christian Kujau <lists@nerdbynature.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64801 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750834AbYEYXid (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 May 2008 19:38:33 -0400
 Content-Disposition: inline
-In-Reply-To: <20080522175020t-sato@mail.jp.nec.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.DEB.1.10.0805251727040.4890@sheep.housecafe.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> +	if (test_and_set_bit(BD_FREEZE_OP, &bdev->bd_state))
-> +		return ERR_PTR(-EBUSY);
-> +
-> +	sb = get_super_without_lock(bdev);
-> +
-> +	/* If super_block has been already frozen, return. */
-> +	if (sb && sb->s_frozen != SB_UNFROZEN) {
-> +		put_super(sb);
-> +		clear_bit(BD_FREEZE_OP, &bdev->bd_state);
-> +		return sb;
-> +	}
+On Sun, May 25, 2008 at 05:35:12PM +0200, Christian Kujau wrote:
+> Hi,
+>
+> while trying to build the current e2fsprogs.pu git tree, I got:
+>
+> journal.c: In function =E2=80=98getblk=E2=80=99:
+> journal.c:76: error: =E2=80=98bh_count=E2=80=99 undeclared (first use=
+ in this function)
+>
+> When looking at journal.c I see 'bh_count' declared within an #ifdef,=
+ but=20
+> even when compiling with --enable-jfs-debug the error persists. Right=
+ now I=20
+> just removed the #ifdef so that the build succeeds.
+>
+> But, what's the real issue here?
 
-The BD_FREEZE_OP flag in the block_device already prevents multiple
-freezes for a singe block device, so there is no need for this
-additional check and the get_super_without_lock helper.
+Whoops, my bad.  I was compiling with --enable-jfs-debug, and I didn't
+notice the change I made broke things without that configuration
+option.
 
->  	down(&bdev->bd_mount_sem);
+The right fix is just to surround the bh_count reference with an
+#ifdef CONFIG_JBD_DEBUG.
 
-And with that flag bd_mount_sem is also obsolete for preventing the
-multiple freeze operations.  We still need investigate what
-synchronization we need vs unmount which also takes bd_mount_sem without
-every having document what it exactly protects.
+It's part of a quickie mechanism for detecting buffer head leaks,
+which (for example) was how I detected a problem in ext4's journal
+checksum recovery code.  I had made some changes to how it worked
+while I was tracking down the problem, and accidentally introduced
+that compile time bug.  My bad, I'll fix it.
 
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
