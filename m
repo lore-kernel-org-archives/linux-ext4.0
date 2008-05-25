@@ -1,57 +1,46 @@
 From: Christian Kujau <lists@nerdbynature.de>
-Subject: bh_count undeclared
-Date: Sun, 25 May 2008 17:35:12 +0200 (CEST)
-Message-ID: <alpine.DEB.1.10.0805251727040.4890@sheep.housecafe.de>
+Subject: remove bashism in lib/blkid/test_probe.in
+Date: Sun, 25 May 2008 18:00:06 +0200 (CEST)
+Message-ID: <alpine.DEB.1.10.0805251750250.4890@sheep.housecafe.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.188]:64376 "EHLO
+Received: from moutng.kundenserver.de ([212.227.126.186]:53106 "EHLO
 	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755481AbYEYPfO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 May 2008 11:35:14 -0400
+	with ESMTP id S1751001AbYEYQAI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 May 2008 12:00:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
-while trying to build the current e2fsprogs.pu git tree, I got:
+while running "make check" on a current e2fsprogs.pu git tree fails with:
 
-# CFLAGS=3D"-g" ./configure --prefix=3D/opt/e2fsprogs --enable-htree
-# make
-[....]
-making all in e2fsck
-make[2]: Entering directory `/data/Scratch/scm/e2fsprogs-git/e2fsck'
- 	CC journal.c
-journal.c: In function =E2=80=98getblk=E2=80=99:
-journal.c:76: error: =E2=80=98bh_count=E2=80=99 undeclared (first use i=
-n this function)
-journal.c:76: error: (Each undeclared identifier is reported only once
-journal.c:76: error: for each function it appears in.)
-make[2]: *** [journal.o] Error 1
-make[2]: Leaving directory `/data/Scratch/scm/e2fsprogs-git/e2fsck'
-make[1]: *** [all-progs-recursive] Error 1
-make[1]: Leaving directory `/data/Scratch/scm/e2fsprogs-git'
-make: *** [all] Error 2
+----
+cramfs: + test ! -f ./tests/cramfs.img.bz2 -a ! -f ./tests/cramfs.results
++ bunzip2
++ [ cramfs == swap0 ]
+[: 1: ==: unexpected operator
++ [ cramfs == swap1 ]
+[: 1: ==: unexpected operator
+----
 
-When looking at journal.c I see 'bh_count' declared within an #ifdef, b=
-ut=20
-even when compiling with --enable-jfs-debug the error persists. Right n=
-ow=20
-I just removed the #ifdef so that the build succeeds.
+My /bin/sh is not linked to bash but to dash (which is basically "sh") and 
+thus "==" comparisons fail. checkbashisms (part of Debian's devscripts)
+catches this too:
 
-But, what's the real issue here?
+----
+possible bashism in ./test_probe line 26 (should be 'b = a'):
+         if [ "$i" == "swap0" ]; then
+----
+
+Changing == to = makes "make check" happy :)
+http://nerdbynature.de/bits/e2fsprogs.pu/test_probe.in.diff.txt
 
 Thanks,
 Christian.
---=20
-BOFH excuse #331:
+-- 
+BOFH excuse #169:
 
-those damn raccoons!
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+broadcast packets on wrong frequency
