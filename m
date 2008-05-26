@@ -1,42 +1,30 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: bh_count undeclared
-Date: Mon, 26 May 2008 02:19:10 +0200 (CEST)
-Message-ID: <alpine.DEB.1.10.0805260216110.4890@sheep.housecafe.de>
-References: <alpine.DEB.1.10.0805251727040.4890@sheep.housecafe.de> <20080525233809.GG5970@mit.edu>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: remove bashism in lib/blkid/test_probe.in
+Date: Sun, 25 May 2008 20:27:23 -0400
+Message-ID: <20080526002723.GH5970@mit.edu>
+References: <alpine.DEB.1.10.0805251750250.4890@sheep.housecafe.de>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.174]:57452 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751562AbYEZATO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 25 May 2008 20:19:14 -0400
-In-Reply-To: <20080525233809.GG5970@mit.edu>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:34666 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751562AbYEZA1l (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 May 2008 20:27:41 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.1.10.0805251750250.4890@sheep.housecafe.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 25 May 2008, Theodore Tso wrote:
-> Whoops, my bad.  I was compiling with --enable-jfs-debug, and I didn't
-> notice the change I made broke things without that configuration
-> option.
+On Sun, May 25, 2008 at 06:00:06PM +0200, Christian Kujau wrote:
+> while running "make check" on a current e2fsprogs.pu git tree fails with:
+>
+> [: 1: ==: unexpected operator
+> + [ cramfs == swap1 ]
 
-But even *with* --enable-jfs-debug the error occured.
+Thanks, fixed.  I've updated the git repository to deal with the
+problems you reported.
 
-> The right fix is just to surround the bh_count reference with an
-> #ifdef CONFIG_JBD_DEBUG.
-
-Right now the declaration of bh_count is surrounded with an #ifdef:
-
-#ifdef CONFIG_JBD_DEBUG     /* Enabled by configure --enable-jfs-debug */
-static int bh_count = 0;
-#endif
-
-But you want the refence surrounded by this #ifdef, right?
-
-Thanks,
-Christian.
--- 
-BOFH excuse #192:
-
-runaway cat on system.
+						- Ted
