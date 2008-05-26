@@ -1,64 +1,61 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-Subject: Re: [Bug 421482] Firefox 3 uses fsync excessively
-Date: Mon, 26 May 2008 14:52:10 +0200
-Message-ID: <20080526125209.GC20623@logfs.org>
-References: <bug-421482-310856@https.bugzilla.mozilla.org/> <200805260513.m4Q5DAU8018498@mrapp54.mozilla.org> <20080526000506.1d0fb047.akpm@linux-foundation.org> <20080526100751.GB24507@mit.edu> <20080526111015.GB20623@logfs.org> <20080526113846.GE24507@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Re: Soft lockups in mballoc code
+Date: Mon, 26 May 2008 10:27:37 -0400
+Message-ID: <18517.1211812057@gamaville.dokosmarshall.org>
+References: <25037.1210612895@alphaville.zko.hp.com> <1210785517.3657.42.camel@localhost.localdomain> <27364.1210787137@alphaville.zko.hp.com> <18481.37660.871969.813688@frecb006361.adech.frec.bull.fr>  <18490.27904.103939.811128@frecb006361.adech.frec.bull.fr>
+Reply-To: nicholas.dokos@hp.com
+Cc: nicholas.dokos@hp.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
+To: Solofo.Ramangalahy@bull.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lazybastard.de ([212.112.238.170]:46628 "EHLO
-	longford.logfs.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752027AbYEZMwY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 08:52:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20080526113846.GE24507@mit.edu>
+Received: from qmta09.emeryville.ca.mail.comcast.net ([76.96.30.96]:37759 "EHLO
+	QMTA09.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752059AbYEZO2L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 May 2008 10:28:11 -0400
+In-Reply-To: Message from Solofo.Ramangalahy@bull.net
+   of "Mon, 26 May 2008 09:55:44 +0200." <18490.27904.103939.811128@frecb006361.adech.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 26 May 2008 07:38:46 -0400, Theodore Tso wrote:
->=20
-> On Mon, May 26, 2008 at 01:10:16PM +0200, J=C3=B6rn Engel wrote:
-> > Don't we already have this bit since Linux 2.4.0-test12?  I_DIRTY_S=
-YNC
-> > is admittedly not well-named for "smudged".  But it used to mean ju=
-st
-> > that.  I_DIRTY_DATASYNC was the real dirty bit.  Which, in I_DIRTY_=
-PAGES,
-                                                               ^^^^^^^^=
-^^^^^
-That should have been "2.4.0-prerelease".
+Solofo.Ramangalahy@bull.net wrote:
 
-> > has been split into I_DIRTY_DATASYNC and I_DIRTY_PAGES.
-> >=20
-> > Now we just have to use sane names.
->=20
-> We're currently forcing a new commit if I_DIRTY_SYNC or
-> I_DIRTY_DATASYNC (but not necessarily I_DIRTY_PAGES) is set.  If
-> I_DIRTY_SYNC really means "smudged" (I believe you but I'll want to g=
-o
-> through the code and prove it to myself :-),
+> I have not been able to reproduce it on 2.6.26-rc3 and
+> 2.6.25-14.fc9.x86_64 (fedora 9 kernel).
+> 
+> besides, on 2.6.25.4, it was much more longer than
+> > # /home/nick/src/fsstress/fsstress -d /mnt2/fsstress -l 10 -n 100 -p 20
+> to reproduce (I also changed -n and -p).
+> 
+> Could you confirm that you still easily see the soft lockups?
+> If yes, could you attach your x86-64 .config?
+> (On my side, I have been using defconfig + ext4dev:
+> > CONFIG_EXT4DEV_FS=m
+> > CONFIG_EXT4DEV_FS_XATTR=y
+> > CONFIG_EXT4DEV_FS_POSIX_ACL=y
+> > CONFIG_EXT4DEV_FS_SECURITY=y
+> )
 
-Proving it to yourself is good advice indeed.  I'm sure it used to mean
-"smudged" in 2.4.0 time.  Whether any changes since have damaged that
-property I haven't checked.
+No, I am not seeing them any more: it does seem to be a config problem.
 
-> then this might be a very
-> easy fix.  We'll need to make sure that unmount time we do actually
-> force out all inodes even if only I_DIRTY_SYNC is set.
->=20
-> (And then, we should rename things to more sane names.  :-)
+I got my original config from the distro that I was running on the box
+at the time (RHEL5.1), doing "make oldconfig" and adding ext4dev. I was
+trying to get 2.6.26-rc3 going with the same method, but I was running
+into severe problems, even without ext4 in the picture (soft lockups
+whenever any significant disk IO was done: since the configuration
+included a readahead init script for optimization, the machine was
+getting hung late in the boot.)
 
-J=C3=B6rn
+So I got a config file from a colleague's setup and that got me past the
+2.6.26-rc3 problem. I also had no problem with ext4 on top of that.  I
+went back and tried a similar config file on 2.6.25.3 and that also did
+not show the problem. So it seems to be entirely caused by my bad choice
+of a config file.
 
---=20
-Joern's library part 11:
-http://www.unicom.com/pw/reply-to-harmful.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+As a matter of good practice, is defconfig+ext4dev the best way of
+producing a kernel for ext4 testing purposes? Are there any settings
+that should be added/delete/modified from the default?
+
+Thanks,
+Nick
+
+
