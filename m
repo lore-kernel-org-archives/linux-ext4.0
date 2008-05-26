@@ -1,61 +1,103 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: Soft lockups in mballoc code
-Date: Mon, 26 May 2008 10:27:37 -0400
-Message-ID: <18517.1211812057@gamaville.dokosmarshall.org>
-References: <25037.1210612895@alphaville.zko.hp.com> <1210785517.3657.42.camel@localhost.localdomain> <27364.1210787137@alphaville.zko.hp.com> <18481.37660.871969.813688@frecb006361.adech.frec.bull.fr>  <18490.27904.103939.811128@frecb006361.adech.frec.bull.fr>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com, cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: Solofo.Ramangalahy@bull.net
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: What to do when the journal checksum is incorrect
+Date: Mon, 26 May 2008 10:54:44 -0400
+Message-ID: <20080526145440.GA9893@mit.edu>
+References: <E1K02Jh-0002wf-2e@closure.thunk.org> <20080525063024.GG3516@webber.adilger.int> <20080525113842.GE5970@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Girish Shilamkar <Girish.Shilamkar@sun.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qmta09.emeryville.ca.mail.comcast.net ([76.96.30.96]:37759 "EHLO
-	QMTA09.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752059AbYEZO2L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 May 2008 10:28:11 -0400
-In-Reply-To: Message from Solofo.Ramangalahy@bull.net
-   of "Mon, 26 May 2008 09:55:44 +0200." <18490.27904.103939.811128@frecb006361.adech.frec.bull.fr>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:41502 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752233AbYEZQaH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 12:30:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20080525113842.GE5970@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Solofo.Ramangalahy@bull.net wrote:
-
-> I have not been able to reproduce it on 2.6.26-rc3 and
-> 2.6.25-14.fc9.x86_64 (fedora 9 kernel).
+On Sun, May 25, 2008 at 07:38:42AM -0400, Theodore Tso wrote:
+> So the other alternative I seriously considered was not replaying the
+> journal at all, and bailing out after seeing the bad checksum --- but
+> that just defers the problem to e2fsck, and e2fsck can't really do
+> anything much different, and the tools to allow a human to make a
+> decision on a block by block basis in the journal don't exist, and
+> even if they did would make more system administrators run screaming.
 > 
-> besides, on 2.6.25.4, it was much more longer than
-> > # /home/nick/src/fsstress/fsstress -d /mnt2/fsstress -l 10 -n 100 -p 20
-> to reproduce (I also changed -n and -p).
-> 
-> Could you confirm that you still easily see the soft lockups?
-> If yes, could you attach your x86-64 .config?
-> (On my side, I have been using defconfig + ext4dev:
-> > CONFIG_EXT4DEV_FS=m
-> > CONFIG_EXT4DEV_FS_XATTR=y
-> > CONFIG_EXT4DEV_FS_POSIX_ACL=y
-> > CONFIG_EXT4DEV_FS_SECURITY=y
-> )
+> I suspect the *best* approach is to change the journal format one more
+> time, and include a CRC on a per-block basis in the descriptor blocks,
+> and a CRC for the entire descriptor block.  That way, we can decide
+> what to replay or not on a per-block basis.
 
-No, I am not seeing them any more: it does seem to be a config problem.
+One other alternative I forgot to mention is that e2fsck (or the
+kernel) could skip the bad (non-terminal) commit, and continue
+replaying the rest of the good commits.  That's a much coarser grain
+alternative to the above, given that there could be hundred or more
+blocks in a particular commit that we would be skipping.
 
-I got my original config from the distro that I was running on the box
-at the time (RHEL5.1), doing "make oldconfig" and adding ext4dev. I was
-trying to get 2.6.26-rc3 going with the same method, but I was running
-into severe problems, even without ext4 in the picture (soft lockups
-whenever any significant disk IO was done: since the configuration
-included a readahead init script for optimization, the machine was
-getting hung late in the boot.)
+E2fsck could also save the journal to an external file which could
+allow an expert to paw over the results and try to do something sane
+with the results.  Given that *very* few experts would know what to
+do, I'm not entirely sure it's worth the effort --- although perhaps
+some of the folks who are working on ext3grep might be interested
+writing some journal forensic tools.
 
-So I got a config file from a colleague's setup and that got me past the
-2.6.26-rc3 problem. I also had no problem with ext4 on top of that.  I
-went back and tried a similar config file on 2.6.25.3 and that also did
-not show the problem. So it seems to be entirely caused by my bad choice
-of a config file.
+> Nope, right now the mount will silently succeed, even though part of
+> the journal (include the commit with the bad CRC, but no commits
+> beyond that) have been replayed, and then the entire journal is
+> truncated and thrown away.
 
-As a matter of good practice, is defconfig+ext4dev the best way of
-producing a kernel for ext4 testing purposes? Are there any settings
-that should be added/delete/modified from the default?
+BTW, here's the patch that will cause fs/jbd2/recovery.c to terminate
+upon finding the non-terminal commit with the failed CRC.  It's not a
+complete fix, since apparently fs/jbd2/recovery.c is also currently
+noting the in the journal-async-commit, terminal-commit with bad CRC
+case, fs/jbd2/recovery.c is noting the bad CRC --- and then replaying
+it, which means that journal-async-commit is currently NOT safe.  (Not
+yet fixed with my current patch; I had been so focused on the
+non-terminal bad CRC case, that I only recently noticed that the
+terminal async journal case was also busted.)
 
-Thanks,
-Nick
+All of this was found by porting over the fs/jbd2/recovery.c changes
+into e2fsck/recovery.c, compiling e2fsprogs with --enable-jbd-debug,
+and then setting the JBD_DEBUG environment variable, then watching
+journal recoveries with selectively corrupted journals using lde.
+That's also how I found the buffer head memory leak which sent to
+linux-ext4 a few days ago --- and why I try hard to keep
+e2fsck/recover.c in sync with fs/jbd[2]/recovery.c.
 
+The Lesson of the Week is that running tests in userspace is easier
+and faster, which encourages more testing --- which means bugs get
+found faster.  :-)
 
+      		      	      	  	      	   - Ted
+
+commit 78c061f21271968e24c434bb8a5ec41602ad0b99
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat May 24 15:45:31 2008 -0400
+
+    jbd2: Fix handling of a bad checksum of a non-terminal commit
+    
+    If there is a checksum problem in transaction n, and it is not the
+    last transaction, the problem isn't until the commit block for
+    transaction n+1 is found. So we need to decrement the commit_ID
+    counter so the right transaction is marked as the troublemaker, and we
+    don't replay the corrupted transaction.
+    
+    Cc: Andreas Dilger <adilger@clusterfs.com>
+    Cc: Girish Shilamkar <girish@clusterfs.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 7199db5..2d48448 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -611,6 +611,7 @@ static int do_one_pass(journal_t *journal,
+ 				chksum_err = chksum_seen = 0;
+ 
+ 				if (info->end_transaction) {
++					next_commit_ID--;
+ 					printk(KERN_ERR "JBD: Transaction %u "
+ 						"found to be corrupt.\n",
+ 						next_commit_ID - 1);
