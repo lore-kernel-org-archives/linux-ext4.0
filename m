@@ -1,195 +1,124 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Delayed allocation and page_lock vs transaction start ordering
-Date: Mon, 26 May 2008 23:30:43 +0530
-Message-ID: <20080526180043.GB14718@skywalker>
-References: <20080415161430.GC28699@duck.suse.cz> <20080521082109.GA18746@skywalker> <20080526172124.GK32407@duck.suse.cz>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: What to do when the journal checksum is incorrect
+Date: Mon, 26 May 2008 12:24:28 -0600
+Message-ID: <20080526182428.GT3516@webber.adilger.int>
+References: <E1K02Jh-0002wf-2e@closure.thunk.org>
+ <20080525063024.GG3516@webber.adilger.int> <20080525113842.GE5970@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org,
+	Girish Shilamkar <Girish.Shilamkar@sun.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:57836 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753807AbYEZSAw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 14:00:52 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m4QI0M5B013723
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 04:00:22 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4QI4xan271558
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 04:04:59 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4QI0nNe003175
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 04:00:50 +1000
-Content-Disposition: inline
-In-Reply-To: <20080526172124.GK32407@duck.suse.cz>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:64903 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754452AbYEZSYb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 14:24:31 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m4QIOUNG027851
+	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 11:24:31 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K1H00G01N3ZIF00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 26 May 2008 11:24:30 -0700 (PDT)
+In-reply-to: <20080525113842.GE5970@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 26, 2008 at 07:21:24PM +0200, Jan Kara wrote:
-> On Wed 21-05-08 13:51:09, Aneesh Kumar K.V wrote:
-
-[....snip.....]
-
-> >  {
-> > @@ -3837,7 +3850,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-> >  	if (ext4_should_writeback_data(inode))
-> >  		ret = __ext4_writeback_writepage(page, &wbc);
-> >  	else if (ext4_should_order_data(inode))
-> > -		ret = __ext4_ordered_writepage(page, &wbc);
-> > +		ret = __ext4_ordered_alloc_and_writepage(page, &wbc, 1);
-> >  	else
-> >  		ret = __ext4_journalled_writepage(page, &wbc);
-> >  	/* Page got unlocked in writepage */
-> > 
-> > 
-> > 
-> > ie we call __ext4_ordered_alloc_and_writepage with alloc = 1 only in
-> > case of page_mkwrite. All the other case we should have all the buffer
-> > heads mapped. Otherwise we will try to allocate new blocks which starts
-> > a new transaction holding page lock.
->   When do we try to allocate new blocks in writepage now? ext4_page_mkwrite()
-> should have done the allocation before writepage() was called so there
-> should be no need to allocate anything... But maybe I miss something.
-
-That's what i also meant by the above changes. The block are allocated
-only in ext4_page_mkwrite and not during writepage. So calling
-ext4_*_writepage during mkwrite confuse quiet a lot. Instead i was
-trying to make it explicit by making page_mkwrite call
-ext4_ordered_alloc_and_writepage and  by adding BUG() in writepage
-callback if it ever get called by an unmapped buffer.
-
-
-I have got another question now related to page_mkwrite. AFAIU writepage
-writeout dirty buffer_heads. It also looks at whether the pages are
-dirty or not. In the page_mkwrite callback both are not true. ie we call
-set_page_dirty from do_wp_page after calling page_mkwrite. I haven't
-verified whether the above is correct or not. Just thinking reading the
-code.
-
-
+On May 25, 2008  07:38 -0400, Theodore Ts'o wrote:
+> Well, what are the alternatives?  Remember, we could have potentially
+> 50-100 megabytes of stale metadata that haven't been written to
+> filesystem.  And unlike ext2, we've deliberately held back writing
+> back metadata by pinning it so, things could be much worse.  So let's
+> tick off the possibilities:
 > 
-> > > -static int ext4_writeback_writepage(struct page *page,
-> > > +static int __ext4_writeback_writepage(struct page *page,
-> > >  				struct writeback_control *wbc)
-> > >  {
-> > >  	struct inode *inode = page->mapping->host;
-> > > +
-> > > +	if (test_opt(inode->i_sb, NOBH))
-> > > +		return nobh_writepage(page, ext4_get_block, wbc);
-> > > +	else
-> > > +		return block_write_full_page(page, ext4_get_block, wbc);
-> > > +}
-> > > +
-> > > +
-> > > +static int ext4_writeback_writepage(struct page *page,
-> > > +				struct writeback_control *wbc)
-> > > +{
-> > > +	if (!ext4_journal_current_handle())
-> > > +		return __ext4_writeback_writepage(page, wbc);
-> > > +
-> > > +	redirty_page_for_writepage(wbc, page);
-> > > +	unlock_page(page);
-> > > +	return 0;
-> > > +}
-> > > +
-> > > +static int __ext4_journalled_writepage(struct page *page,
-> > > +				struct writeback_control *wbc)
-> > > +{
-> > > +	struct address_space *mapping = page->mapping;
-> > > +	struct inode *inode = mapping->host;
-> > > +	struct buffer_head *page_bufs;
-> > >  	handle_t *handle = NULL;
-> > >  	int ret = 0;
-> > >  	int err;
-> > > 
-> > > -	if (ext4_journal_current_handle())
-> > > -		goto out_fail;
-> > > +	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
-> > > +	if (ret != 0)
-> > > +		goto out_unlock;
-> > > +
-> > > +	page_bufs = page_buffers(page);
-> > > +	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
-> > > +								bget_one);
-> > > +	/* As soon as we unlock the page, it can go away, but we have
-> > > +	 * references to buffers so we are safe */
-> > > +	unlock_page(page);
-> > > 
-> > >  	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-> > >  	if (IS_ERR(handle)) {
-> > >  		ret = PTR_ERR(handle);
-> > > -		goto out_fail;
-> > > +		goto out;
-> > >  	}
-> > > 
-> > > -	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-> > > -		ret = nobh_writepage(page, ext4_get_block, wbc);
-> > > -	else
-> > > -		ret = block_write_full_page(page, ext4_get_block, wbc);
-> > > +	ret = walk_page_buffers(handle, page_bufs, 0,
-> > > +			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-> > > 
-> > > +	err = walk_page_buffers(handle, page_bufs, 0,
-> > > +				PAGE_CACHE_SIZE, NULL, write_end_fn);
-> > > +	if (ret == 0)
-> > > +		ret = err;
-> > >  	err = ext4_journal_stop(handle);
-> > >  	if (!ret)
-> > >  		ret = err;
-> > > -	return ret;
-> > > 
-> > > -out_fail:
-> > > -	redirty_page_for_writepage(wbc, page);
-> > > +	walk_page_buffers(handle, page_bufs, 0,
-> > > +				PAGE_CACHE_SIZE, NULL, bput_one);
-> > > +	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
-> > > +	goto out;
-> > > +
-> > > +out_unlock:
-> > >  	unlock_page(page);
-> > > +out:
-> > >  	return ret;
-> > >  }
-> > > 
-> > >  static int ext4_journalled_writepage(struct page *page,
-> > >  				struct writeback_control *wbc)
-> > >  {
-> > > -	struct inode *inode = page->mapping->host;
-> > > -	handle_t *handle = NULL;
-> > > -	int ret = 0;
-> > > -	int err;
-> > > -
-> > >  	if (ext4_journal_current_handle())
-> > >  		goto no_write;
-> > > 
-> > > -	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-> > > -	if (IS_ERR(handle)) {
-> > > -		ret = PTR_ERR(handle);
-> > > -		goto no_write;
-> > > -	}
-> > > -
-> > >  	if (!page_has_buffers(page) || PageChecked(page)) {
-> > 
-> > 
-> > This will never happen with writepage right ? And we don't call 
-> > ext4_journalled_writepage from page_mkwrite. So is this needed ?
-> > If not __ext4_journalled_writepage can handle everything in a single
-> > transaction right  and assume that it is called within a transaction.
->   I'm not sure I understand you. PageChecked() can happen from writepage
-> call path. We set PageChecked() when we do set_page_dirty() as far as I
-> remember... Basically, we use this flag to decide whether writepage should
-> do checkpointing or write into the journal.
+> * An individual data block is bad --- we write complete garbage into
+>   the filesystem, which means in the worst case we lose 32 inodes
+>   (unless that inode table block is repeated later in the journal), 1
+>   directory block (causing files to land in lost+found), one bitmap
+>   block (which e2fsck can regenerate), or a data block (if data=jouranalled).
+> 
+> * A journal descriptor block is bad --- if it's just a bit-flip, we
+>   could end up writing a data block in the wrong place, which would be
+>   bad; if it's complete garbage, we will probably assume the journal
+>   ended early, and leave the filesystem silently badly corrupted.
+> 
+> * The journal commit block is bad --- probably we will just silently
+>   assume the journal ended early, unless the bit-flip happened exactly
+>   in the CRC field.
+> 
+> The most common case is that one or more individual data blocks in the
+> journal are bad, and the question is whether writing that garbage into
+> the filesystem is better or worse than aborting the journal right then
+> and there.
 
+You are focussing on the case where 1 or 2 filesystem blocks in the
+journal are bad, but I suspect the real-world cases are more likely to
+be 1 or 2MB of data are bad, or more.  Considering that a disk sector
+is at least 4 or 64kB in size, and problems like track misalignment
+(overpowered seek), write failure (high-flying write), or device cache
+reordering problems will result in a large number of bad blocks in the
+journal, I don't think 1 or 2 filesystem is a realistic failure scenario
+anymore.
 
-What i meant by the above question was can ext4_journalled_writepage get
-called with page_buffers == NULL 
+> The problem with only replaying the "good" part of the journal is the
+> kernel then truncates the journal, and it leaves e2fsck with no way of
+> doing anything intelligent afterwards.  So another possibility is to
+> not replay the journal at all, and fail the mount unless the
+> filesystem is being mounted read-only; but the question is whether we
+> are better off not replaying the journal at *all*, or just replaying
+> part of it.
 
-So the check if (!page_has_buffers(page)) can go away right ?
+I'd think at a minimum to replay the journal up to the bad transaction.
+That the current code is broken and also replays the bad transaction is
+of course incorrect.  The probability that later transactions have
+begun checkpointing their blocks to the filesystem is decreasing for
+each later transaction after the bad one, so the probability of those
+changes corrupting the filesystem are correspondingly lower.
 
-I have posted some changes after this at
-http://article.gmane.org/gmane.comp.file-systems.ext4/6768
-Message-Id: <1211391859-17399-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+> Consider that if /boot/grub/menu.lst got written, and one of its data
+> block was previously directory block that had since gotten deleted,
+> but in the journal and had been revoked, replaying part of the journal
+> might make the system non-bootable.
 
+Sure, such scenarios exist, but the architecture of ext3/4 is that the
+data block will _likely_ have been rewritten in the same place.  The
+more likely case is that some important filesystem metadata (itable,
+indirect blocks of files, etc) is being overwritten and corruption in
+the journal is a laser-guided missile to finding all of the important
+blocks in the filesystem to spread that corruption to.
 
--aneesh
+> So the other alternative I seriously considered was not replaying the
+> journal at all, and bailing out after seeing the bad checksum --- but
+> that just defers the problem to e2fsck, and e2fsck can't really do
+> anything much different, and the tools to allow a human to make a
+> decision on a block by block basis in the journal don't exist, and
+> even if they did would make more system administrators run screaming.
+> 
+> I suspect the *best* approach is to change the journal format one more
+> time, and include a CRC on a per-block basis in the descriptor blocks,
+> and a CRC for the entire descriptor block.  That way, we can decide
+> what to replay or not on a per-block basis.
+
+Yes, I was thinking exactly this same thing.  This would give the maximum
+probability of the correct outcome, because only "correct" blocks are
+checkpointed into the filesystem, and at least an old version of the
+block is present in the filesystem (unless it is a new block).  The chance
+also exists that a later transaction will even overwrite the bad block,
+which will avoid even the need to invoke e2fsck.
+
+This would need:
+- a checksum in the per-block transaction record (tag).  One option is
+  to keep an 8- or 16-bit checksum in the "flags" field, to keep it
+  compatible with older JBD implementations.
+- a checksum of the commit header and tags to ensure we can trust the
+  per-block checksums, and we don't need a huge checksum for each block.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
