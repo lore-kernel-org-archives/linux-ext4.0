@@ -1,102 +1,86 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [Take2 PATCH 00/10][e2fsprogs] Initial blk64_t capable API
- calls.
-Date: Mon, 26 May 2008 22:16:20 -0500
-Message-ID: <20080526221620.2b43f171@gara>
-References: <20080521175325.18810.25160.stgit@gara>
-	<20080524232835.GB5970@mit.edu>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: [PATCH] ext4: error processing and coding enhancement for mballoc
+Date: Tue, 27 May 2008 16:34:30 +0800
+Message-ID: <483BC796.9020402@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=GB2312
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+To: alex@clusterfs.com, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:49502 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754087AbYE0DQA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 23:16:00 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4R3Fxpp009571
-	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 23:15:59 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4R3FxYR079896
-	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 21:15:59 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4R3FxDq022769
-	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 21:15:59 -0600
-In-Reply-To: <20080524232835.GB5970@mit.edu>
+Received: from cn.fujitsu.com ([222.73.24.84]:51576 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1756296AbYE0IhK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 May 2008 04:37:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 24 May 2008 19:28:36 -0400
-Theodore Tso <tytso@MIT.EDU> wrote:
+*ext4_mb_seq_history_open: check if sbi->s_mb_history is NULL
+*ext4_mb_history_init: replace kmalloc and memset with kzalloc
+*ext4_mb_init_backend: remove memset since kzalloc is used
+*ext4_mb_init: the return value of ext4_mb_init_backend is int,
+ but i is unsigned, replace it with a new int variable.
 
-> On Wed, May 21, 2008 at 12:53:25PM -0500, Jose R. Santos wrote:
-> > 
-> > The following series of patches implement API call needed to handle
-> > 64-bit block numbers.  Im concentrating mainly in providing the API
-> > call first and if the interfaces are sane, we can go ahead and start
-> > using them in the rest of libext2fs and the user space programs.
-> > 
-> > I've run checkpatch and make check on each individual patch in the
-> > series so they should be ready to add to the main repository if the
-> > interfaces are acceptable.
-> 
-> Jose, running "make check" with these configure options resulted in a
-> failure:
-> 
-> '--enable-elf-shlibs' '--enable-blkid-debug' '--enable-testio-debug' '--enable-maintainer-mode' '--enable-blkid-devmapper' '--enable-jbd-debug'
-> 
-> Part of the problem was the test_io manager didn't have 64-bit
-> support.  I fixed that, and rebased your patch series, but it still
-> died with a seg fault in the test u_undoe2fs_mke2fs.  
-> 
-> Checking out the undo_io manager, it's obvious why; it doesn't yet
-> have 64-bit support.  I'm not sure how you missed this, if you were
-> running "make check" after each patch.  What version of e2fsprogs was
-> your patches based off of?
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+---
+ fs/ext4/mballoc.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
 
-I did this off the "next" branch which has undo_io manager support but
-after "make check", the last line looks like this:
-
-u_undoe2fs_mke2fs: undoe2fs with mke2fs: u_undoe2fs_tune2fs: undoe2fs with tune2fs: 97 tests succeeded  0 tests failed
-
-There is no log file for any of the undo manager test case so it seems
-that they didn't even run.  I ran this on a system using Ubuntu, so it
-may be a bash vs. dash issues.
-
-> 
->           					- Ted
-> 
-> 
-> % more u_undoe2fs_mke2fs.log 
-> mke2fs -q -F -o Linux -b 1024 test.img
-> mke2fs 1.41-WIP (27-Apr-2008)
-> Filesystem label=
-> OS type: Linux
-> Block size=1024 (log=0)
-> Fragment size=1024 (log=0)
-> 64 inodes, 512 blocks
-> 25 blocks (4.88%) reserved for the super user
-> First data block=1
-> Maximum filesystem blocks=524288
-> 1 block group
-> 8192 blocks per group, 8192 fragments per group
-> 64 inodes per group
-> 
-> Writing inode tables: done                            
-> Writing superblocks and filesystem accounting information: done
-> 
-> md5sum before mke2fs 4a393ac4351a41501aca1ad2917430b9
-> using mke2fs to test undoe2fs
-> Overwriting existing filesystem; this can be undone using the command:
->     e2undo .//mke2fs-test.img.e2undo ./test.img
-> 
-> md5sum after mke2fs a34e9c16307770eb318a6afa39e127f6
-> check_filesystem: Unknown code ext2 104 Failed tdb_fetch Record does not exist
-> 
-> md5sum after undoe2fs a34e9c16307770eb318a6afa39e127f6
-
-
-
--JRS
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index add55f0..35c12db 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1963,6 +1963,8 @@ static int ext4_mb_seq_history_open(struct inode *inode, struct file *file)
+ 	int rc;
+ 	int size;
+ 
++	if (unlikely(sbi->s_mb_history == NULL))
++		return -ENOMEM;
+ 	s = kmalloc(sizeof(*s), GFP_KERNEL);
+ 	if (s == NULL)
+ 		return -ENOMEM;
+@@ -2165,9 +2167,7 @@ static void ext4_mb_history_init(struct super_block *sb)
+ 	sbi->s_mb_history_cur = 0;
+ 	spin_lock_init(&sbi->s_mb_history_lock);
+ 	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
+-	sbi->s_mb_history = kmalloc(i, GFP_KERNEL);
+-	if (likely(sbi->s_mb_history != NULL))
+-		memset(sbi->s_mb_history, 0, i);
++	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
+ 	/* if we can't allocate history, then we simple won't use it */
+ }
+ 
+@@ -2281,7 +2281,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 			i++;
+ 			goto err_freebuddy;
+ 		}
+-		memset(meta_group_info[j], 0, len);
+ 		set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,
+ 			&(meta_group_info[j]->bb_state));
+ 
+@@ -2336,6 +2335,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	unsigned i;
+ 	unsigned offset;
+ 	unsigned max;
++	int ret;
+ 
+ 	if (!test_opt(sb, MBALLOC))
+ 		return 0;
+@@ -2370,12 +2370,12 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	} while (i <= sb->s_blocksize_bits + 1);
+ 
+ 	/* init file for buddy data */
+-	i = ext4_mb_init_backend(sb);
+-	if (i) {
++	ret = ext4_mb_init_backend(sb);
++	if (ret != 0) {
+ 		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+-		return i;
++		return ret;
+ 	}
+ 
+ 	spin_lock_init(&sbi->s_md_lock);
+-- 
+1.5.4.5
