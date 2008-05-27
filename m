@@ -1,78 +1,102 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: What to do when the journal checksum is incorrect
-Date: Mon, 26 May 2008 17:28:30 -0400
-Message-ID: <483B2B7E.3060906@gmail.com>
-References: <E1K02Jh-0002wf-2e@closure.thunk.org> <20080525063024.GG3516@webber.adilger.int> <20080525113842.GE5970@mit.edu> <20080526182428.GT3516@webber.adilger.int>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [Take2 PATCH 00/10][e2fsprogs] Initial blk64_t capable API
+ calls.
+Date: Mon, 26 May 2008 22:16:20 -0500
+Message-ID: <20080526221620.2b43f171@gara>
+References: <20080521175325.18810.25160.stgit@gara>
+	<20080524232835.GB5970@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>
-To: Andreas Dilger <adilger@sun.com>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.251]:30249 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752853AbYEZV2f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 17:28:35 -0400
-Received: by an-out-0708.google.com with SMTP id d40so444979and.103
-        for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 14:28:34 -0700 (PDT)
-In-Reply-To: <20080526182428.GT3516@webber.adilger.int>
+Received: from e31.co.us.ibm.com ([32.97.110.149]:49502 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754087AbYE0DQA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2008 23:16:00 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4R3Fxpp009571
+	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 23:15:59 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4R3FxYR079896
+	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 21:15:59 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4R3FxDq022769
+	for <linux-ext4@vger.kernel.org>; Mon, 26 May 2008 21:15:59 -0600
+In-Reply-To: <20080524232835.GB5970@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On May 25, 2008  07:38 -0400, Theodore Ts'o wrote:
->> Well, what are the alternatives?  Remember, we could have potentially
->> 50-100 megabytes of stale metadata that haven't been written to
->> filesystem.  And unlike ext2, we've deliberately held back writing
->> back metadata by pinning it so, things could be much worse.  So let's
->> tick off the possibilities:
->>
->> * An individual data block is bad --- we write complete garbage into
->>   the filesystem, which means in the worst case we lose 32 inodes
->>   (unless that inode table block is repeated later in the journal), 1
->>   directory block (causing files to land in lost+found), one bitmap
->>   block (which e2fsck can regenerate), or a data block (if data=jouranalled).
->>
->> * A journal descriptor block is bad --- if it's just a bit-flip, we
->>   could end up writing a data block in the wrong place, which would be
->>   bad; if it's complete garbage, we will probably assume the journal
->>   ended early, and leave the filesystem silently badly corrupted.
->>
->> * The journal commit block is bad --- probably we will just silently
->>   assume the journal ended early, unless the bit-flip happened exactly
->>   in the CRC field.
->>
->> The most common case is that one or more individual data blocks in the
->> journal are bad, and the question is whether writing that garbage into
->> the filesystem is better or worse than aborting the journal right then
->> and there.
+On Sat, 24 May 2008 19:28:36 -0400
+Theodore Tso <tytso@MIT.EDU> wrote:
+
+> On Wed, May 21, 2008 at 12:53:25PM -0500, Jose R. Santos wrote:
+> > 
+> > The following series of patches implement API call needed to handle
+> > 64-bit block numbers.  Im concentrating mainly in providing the API
+> > call first and if the interfaces are sane, we can go ahead and start
+> > using them in the rest of libext2fs and the user space programs.
+> > 
+> > I've run checkpatch and make check on each individual patch in the
+> > series so they should be ready to add to the main repository if the
+> > interfaces are acceptable.
 > 
-> You are focussing on the case where 1 or 2 filesystem blocks in the
-> journal are bad, but I suspect the real-world cases are more likely to
-> be 1 or 2MB of data are bad, or more.  Considering that a disk sector
-> is at least 4 or 64kB in size, and problems like track misalignment
-> (overpowered seek), write failure (high-flying write), or device cache
-> reordering problems will result in a large number of bad blocks in the
-> journal, I don't think 1 or 2 filesystem is a realistic failure scenario
-> anymore.
+> Jose, running "make check" with these configure options resulted in a
+> failure:
+> 
+> '--enable-elf-shlibs' '--enable-blkid-debug' '--enable-testio-debug' '--enable-maintainer-mode' '--enable-blkid-devmapper' '--enable-jbd-debug'
+> 
+> Part of the problem was the test_io manager didn't have 64-bit
+> support.  I fixed that, and rebased your patch series, but it still
+> died with a seg fault in the test u_undoe2fs_mke2fs.  
+> 
+> Checking out the undo_io manager, it's obvious why; it doesn't yet
+> have 64-bit support.  I'm not sure how you missed this, if you were
+> running "make check" after each patch.  What version of e2fsprogs was
+> your patches based off of?
 
-Disk sectors are still (almost always) 512 bytes today, but the industry is 
-pushing hard to get 4k byte sectors out since that has a promise of getting 
-better data protection and denser layout. Disk arrays have internal "sectors" 
-that can be really big (64k or bigger).
+I did this off the "next" branch which has undo_io manager support but
+after "make check", the last line looks like this:
 
-What seems to be most common is a small number of bad sectors that will be 
-unreadable (IO errors on read). I would be surprised to see megabytes of 
-continuous errors, but you could see 10's of kilobytes.
+u_undoe2fs_mke2fs: undoe2fs with mke2fs: u_undoe2fs_tune2fs: undoe2fs with tune2fs: 97 tests succeeded  0 tests failed
 
-What the checksums will probably be most useful in catching is problems with 
-memory parts - either non-ECC DRAM in your server, bad DRAM in the disk cache 
-itself, etc. The interesting thing about these errors is that they will tend to 
-repeat (depending on where that stuck bit is) and you can see it all over the place.
+There is no log file for any of the undo manager test case so it seems
+that they didn't even run.  I ran this on a system using Ubuntu, so it
+may be a bash vs. dash issues.
 
-One thing that will be really neat is to actually put in counters to track the 
-rate and validate these assumptions.
+> 
+>           					- Ted
+> 
+> 
+> % more u_undoe2fs_mke2fs.log 
+> mke2fs -q -F -o Linux -b 1024 test.img
+> mke2fs 1.41-WIP (27-Apr-2008)
+> Filesystem label=
+> OS type: Linux
+> Block size=1024 (log=0)
+> Fragment size=1024 (log=0)
+> 64 inodes, 512 blocks
+> 25 blocks (4.88%) reserved for the super user
+> First data block=1
+> Maximum filesystem blocks=524288
+> 1 block group
+> 8192 blocks per group, 8192 fragments per group
+> 64 inodes per group
+> 
+> Writing inode tables: done                            
+> Writing superblocks and filesystem accounting information: done
+> 
+> md5sum before mke2fs 4a393ac4351a41501aca1ad2917430b9
+> using mke2fs to test undoe2fs
+> Overwriting existing filesystem; this can be undone using the command:
+>     e2undo .//mke2fs-test.img.e2undo ./test.img
+> 
+> md5sum after mke2fs a34e9c16307770eb318a6afa39e127f6
+> check_filesystem: Unknown code ext2 104 Failed tdb_fetch Record does not exist
+> 
+> md5sum after undoe2fs a34e9c16307770eb318a6afa39e127f6
 
 
-ric
+
+-JRS
