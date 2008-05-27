@@ -1,86 +1,73 @@
-From: Shen Feng <shen@cn.fujitsu.com>
-Subject: [PATCH] ext4: error processing and coding enhancement for mballoc
-Date: Tue, 27 May 2008 16:34:30 +0800
-Message-ID: <483BC796.9020402@cn.fujitsu.com>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: [RFC PATCH 1/3] Implement generic freeze feature
+Date: Tue, 27 May 2008 19:20:11 +0900
+Message-ID: <7654D29B4EC648FD8E32AB331941F941@nsl.ad.nec.co.jp>
+References: <20080522175020t-sato@mail.jp.nec.com>
+	<20080525193211.GA24328@infradead.org>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; format=flowed; charset="iso-8859-1";
+	reply-type=original
 Content-Transfer-Encoding: 7bit
-To: alex@clusterfs.com, Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51576 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756296AbYE0IhK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 May 2008 04:37:10 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, dm-devel@redhat.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+To: "Christoph Hellwig" <hch@infradead.org>
+Return-path: <dm-devel-bounces@redhat.com>
+In-Reply-To: <20080525193211.GA24328@infradead.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-*ext4_mb_seq_history_open: check if sbi->s_mb_history is NULL
-*ext4_mb_history_init: replace kmalloc and memset with kzalloc
-*ext4_mb_init_backend: remove memset since kzalloc is used
-*ext4_mb_init: the return value of ext4_mb_init_backend is int,
- but i is unsigned, replace it with a new int variable.
+Hi,
 
-Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
----
- fs/ext4/mballoc.c |   14 +++++++-------
- 1 files changed, 7 insertions(+), 7 deletions(-)
+>> +    if (test_and_set_bit(BD_FREEZE_OP, &bdev->bd_state))
+>> +        return ERR_PTR(-EBUSY);
+>> +
+>> +    sb = get_super_without_lock(bdev);
+>> +
+>> +    /* If super_block has been already frozen, return. */
+>> +    if (sb && sb->s_frozen != SB_UNFROZEN) {
+>> +        put_super(sb);
+>> +       clear_bit(BD_FREEZE_OP, &bdev->bd_state);
+>> +       return sb;
+>> +    }
+>
+> The BD_FREEZE_OP flag in the block_device already prevents multiple
+> freezes for a singe block device, so there is no need for this
+> additional check and the get_super_without_lock helper.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index add55f0..35c12db 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1963,6 +1963,8 @@ static int ext4_mb_seq_history_open(struct inode *inode, struct file *file)
- 	int rc;
- 	int size;
- 
-+	if (unlikely(sbi->s_mb_history == NULL))
-+		return -ENOMEM;
- 	s = kmalloc(sizeof(*s), GFP_KERNEL);
- 	if (s == NULL)
- 		return -ENOMEM;
-@@ -2165,9 +2167,7 @@ static void ext4_mb_history_init(struct super_block *sb)
- 	sbi->s_mb_history_cur = 0;
- 	spin_lock_init(&sbi->s_mb_history_lock);
- 	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
--	sbi->s_mb_history = kmalloc(i, GFP_KERNEL);
--	if (likely(sbi->s_mb_history != NULL))
--		memset(sbi->s_mb_history, 0, i);
-+	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
- 	/* if we can't allocate history, then we simple won't use it */
- }
- 
-@@ -2281,7 +2281,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 			i++;
- 			goto err_freebuddy;
- 		}
--		memset(meta_group_info[j], 0, len);
- 		set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,
- 			&(meta_group_info[j]->bb_state));
- 
-@@ -2336,6 +2335,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	unsigned i;
- 	unsigned offset;
- 	unsigned max;
-+	int ret;
- 
- 	if (!test_opt(sb, MBALLOC))
- 		return 0;
-@@ -2370,12 +2370,12 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 	} while (i <= sb->s_blocksize_bits + 1);
- 
- 	/* init file for buddy data */
--	i = ext4_mb_init_backend(sb);
--	if (i) {
-+	ret = ext4_mb_init_backend(sb);
-+	if (ret != 0) {
- 		clear_opt(sbi->s_mount_opt, MBALLOC);
- 		kfree(sbi->s_mb_offsets);
- 		kfree(sbi->s_mb_maxs);
--		return i;
-+		return ret;
- 	}
- 
- 	spin_lock_init(&sbi->s_md_lock);
--- 
-1.5.4.5
+I think the above check is needed because BD_FREEZE_OP is used to
+guarantee that the following two operations are done atomically.
+1. Check if the filesystem has already been frozen.
+   (sb->s_frozen != SB_UNFROZEN)
+2. Do the filesystem specific freeze operation
+   (write_super_lockfs)
+
+The freeze operation can be done again for the frozen filesystem
+unless the filesystem is checked.
+And if write_super_lockfs doesn't consider that the filesystem
+has already been frozen, a problem might occur.
+
+>>  down(&bdev->bd_mount_sem);
+> 
+> And with that flag bd_mount_sem is also obsolete for preventing the
+> multiple freeze operations.  
+
+bd_mount_sem is needed because it is used to guarantee that the freeze
+operation never run while mounting (get_sb_bdev()).
+
+> We still need investigate what
+> synchronization we need vs unmount which also takes bd_mount_sem without
+> every having document what it exactly protects.
+
+And s_umount (semaphore) is acquired in get_user() (called by freeze_bdev())
+to guarantee that unmount never run while the filesystem is frozen.
+
+Cheers, Takashi
