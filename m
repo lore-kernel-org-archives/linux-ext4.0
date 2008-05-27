@@ -1,62 +1,50 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Delayed allocation and page_lock vs transaction start ordering
-Date: Tue, 27 May 2008 20:41:28 +0530
-Message-ID: <20080527151128.GA13237@skywalker>
-References: <20080415161430.GC28699@duck.suse.cz> <20080521082109.GA18746@skywalker> <20080526172124.GK32407@duck.suse.cz> <20080526180043.GB14718@skywalker> <20080527124312.GG5178@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH e2fsprogs] blkid: return cached info on either EPERM or EACCESS
+Date: Tue, 27 May 2008 14:28:04 -0500
+Message-ID: <483C60C4.6020509@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:51355 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756501AbYE0PMC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 May 2008 11:12:02 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m4RFBmJe030766
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 20:41:48 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4RFBVE9815308
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 20:41:34 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m4RFBhPW018320
-	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 20:41:44 +0530
-Content-Disposition: inline
-In-Reply-To: <20080527124312.GG5178@duck.suse.cz>
+Received: from mx1.redhat.com ([66.187.233.31]:34250 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755480AbYE0T2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 May 2008 15:28:07 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m4RJS62c020414
+	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 15:28:06 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4RJS6Mb011830
+	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 15:28:06 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m4RJS49T018703
+	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2008 15:28:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 27, 2008 at 02:43:12PM +0200, Jan Kara wrote:
-> On Mon 26-05-08 23:30:43, Aneesh Kumar K.V wrote:
-> 
-> > I have got another question now related to page_mkwrite. AFAIU writepage
-> > writeout dirty buffer_heads. It also looks at whether the pages are
-> > dirty or not. In the page_mkwrite callback both are not true. ie we call
-> > set_page_dirty from do_wp_page after calling page_mkwrite. I haven't
-> > verified whether the above is correct or not. Just thinking reading the
-> > code.
->   Writepage call itself doesn't look at whether the page is dirty or not -
-> that flag is already cleared when writepage is called. You are right that
-> the page is marked dirty only after page_mkwrite is called - the meaning of
-> page_mkwrite() call is roughly "someone wants to do the first write to this
-> page via mmap, prepare filesystem for that". But we don't really care
-> whether the page is dirty or not - we know it carries correct data (it is
-> uptodate) and so we can write it if we want (and need).
-> 
+This is for RH bug #448591: blkid command does not work for unprivileged users
 
+commit 838f133c72a583eae67414368e46ee0303e0a51f made it so that
+any error except EPERM would flush cached filesystem info, but
+if I run blkid as an unprivileged user on F9, I get EACCES not
+EPERM; I think that in this case, as well, we should continue.
 
-I am looking at  __block_write_full_page and we have
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-if (!buffer_mapped(bh) && buffer_dirty(bh)) {
-	WARN_ON(bh->b_size != blocksize);
-	err = get_block(inode, block, bh, 1);
-	if (err)
-
-ie, we do get_block only if the buffer_head is dirty. So I am bit
-doubtful whether we are actually allocating blocks via page_mkwrite.
-
--aneesh
-
-
+Index: e2fsprogs/lib/blkid/probe.c
+===================================================================
+--- e2fsprogs.orig/lib/blkid/probe.c
++++ e2fsprogs/lib/blkid/probe.c
+@@ -1155,7 +1155,7 @@ blkid_dev blkid_verify(blkid_cache cache
+ 	if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
+ 	    (fstat(probe.fd, &st) < 0)) {
+ 		if (probe.fd >= 0) close(probe.fd);
+-		if (errno != EPERM) {
++		if (errno != EPERM && errno != EACCES) {
+ 			blkid_free_dev(dev);
+ 			return NULL;
+ 		}
 
 
