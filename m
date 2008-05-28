@@ -1,142 +1,240 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Circular locking dependency with delalloc
-Date: Wed, 28 May 2008 18:38:05 +0200
-Message-ID: <20080528163805.GB32634@atrey.karlin.mff.cuni.cz>
-References: <20080522095011.GA30056@skywalker>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH-v2] JBD: Fix race between free buffer and commit
+	trasanction
+Date: Wed, 28 May 2008 11:18:59 -0700
+Message-ID: <1211998739.3791.20.camel@localhost.localdomain>
+References: <1210947250.3608.18.camel@localhost.localdomain>
+	 <1210957976.4231.31.camel@badari-desktop>
+	 <1210971693.3608.46.camel@localhost.localdomain>
+	 <20080518223739.GB11006@atrey.karlin.mff.cuni.cz>
+	 <1211227158.3663.25.camel@localhost.localdomain>
+	 <20080519132553.de9b78b0.akpm@linux-foundation.org>
+	 <1211234829.3663.39.camel@localhost.localdomain>
+	 <1211306575.3664.19.camel@localhost.localdomain>
+	 <20080520235303.GB23521@atrey.karlin.mff.cuni.cz>
+	 <1211390093.5571.16.camel@BVR-FS.beaverton.ibm.com>
+	 <20080524224447.GE20563@atrey.karlin.mff.cuni.cz>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mingming <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, pbadari@us.ibm.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Jens Axboe <jens.axboe@oracle.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:33357 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751303AbYE1QiH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 May 2008 12:38:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20080522095011.GA30056@skywalker>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:33159 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751983AbYE1STH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 May 2008 14:19:07 -0400
+In-Reply-To: <20080524224447.GE20563@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Aneesh,
-
-  I think it was this lock inversion you mentioned in one of your
-emails...
-
-> =======================================================
-> [ INFO: possible circular locking dependency detected ]
-> 2.6.26-rc2 #56
-> -------------------------------------------------------
-> umount/2662 is trying to acquire lock:
-> (jbd2_handle){--..}, at: [<c01fa63b>] jbd2_journal_start+0xce/0xf0
-> 
-> but task is already holding lock:
-> (&type->s_lock_key#7){--..}, at: [<c0169685>] lock_super+0x1b/0x1d
-> 
-> which lock already depends on the new lock.
-> 
-> 
-> the existing dependency chain (in reverse order) is:
-> 
-> -> #2 (&type->s_lock_key#7){--..}:
-> [<c013cd50>] __lock_acquire+0x97f/0xb32
-> [<c013cf6f>] lock_acquire+0x6c/0x89
-> [<c043ac8a>] mutex_lock_nested+0xc9/0x248
-> [<c0169685>] lock_super+0x1b/0x1d
-> [<c01db851>] ext4_orphan_add+0x1b/0x12e
-> [<c01e5143>] ext4_ext_truncate+0x99/0x166
-> [<c01d7664>] ext4_truncate+0x84/0x40d
-> [<c01d88b0>] ext4_delete_inode+0x74/0xc0
-> [<c01790f4>] generic_delete_inode+0x61/0xcb
-> [<c0179170>] generic_drop_inode+0x12/0x137
-> [<c01787e3>] iput+0x4b/0x4e
-> [<c0170c4f>] do_unlinkat+0xd3/0x145
-> [<c0170cd1>] sys_unlink+0x10/0x12
-> [<c0103931>] sysenter_past_esp+0x6a/0xb1
-> [<ffffffff>] 0xffffffff
-> 
-> -> #1 (&ei->i_data_sem){----}:
-> [<c013cd50>] __lock_acquire+0x97f/0xb32
-> [<c013cf6f>] lock_acquire+0x6c/0x89
-> [<c043b1d0>] down_read+0x2b/0x65
-> [<c01d6afe>] ext4_get_blocks_wrap+0x2b/0xfc
-> [<c01d6ca5>] ext4_getblk+0x49/0x18a
-> [<c01da947>] ext4_find_entry+0x331/0x58b
-> [<c01dc7c3>] ext4_unlink+0x6e/0x18e
-> [<c016f236>] vfs_unlink+0x4d/0xa5
-> [<c0170c23>] do_unlinkat+0xa7/0x145
-> [<c0170cd1>] sys_unlink+0x10/0x12
-> [<c0103931>] sysenter_past_esp+0x6a/0xb1
-> [<ffffffff>] 0xffffffff
-> 
-> -> #0 (jbd2_handle){--..}:
-> [<c013cc77>] __lock_acquire+0x8a6/0xb32
-> [<c013cf6f>] lock_acquire+0x6c/0x89
-> [<c01fa650>] jbd2_journal_start+0xe3/0xf0
-> [<c01ddb4b>] ext4_journal_start_sb+0x40/0x42
-> [<c01d8c0c>] ext4_da_writepages+0x45/0xbb
-> [<c0150176>] do_writepages+0x23/0x34
-> [<c0180fe6>] __writeback_single_inode+0x12a/0x260
-> [<c01811bc>] write_inode_now+0x72/0xbc
-> [<c01791ef>] generic_drop_inode+0x91/0x137
-> [<c01787e3>] iput+0x4b/0x4e
-> [<c01ff465>] jbd2_journal_destroy+0x19f/0x1c9
-> [<c01de66c>] ext4_put_super+0x35/0x18d
-> [<c0169e19>] generic_shutdown_super+0x52/0xd3
-> [<c0169ea9>] kill_block_super+0xf/0x20
-> [<c0169f4a>] deactivate_super+0x3f/0x51
-> [<c017b4b3>] mntput_no_expire+0xba/0xdd
-> [<c017b955>] sys_umount+0x259/0x29b
-> [<c0103931>] sysenter_past_esp+0x6a/0xb1
-> [<ffffffff>] 0xffffffff
-  What has changed is that now we start a transaction before we find any
-pages to write. During dropping of journal inode (which is the trace
-above), there are actually no dirty pages so previously we didn't start
-a transaction but now we do start it... So this is mostly cosmetic error
-(I think no real deadlock can be triggered) but I agree we should fix
-it. Probably by somehow detecting that we are shutting down superblock
-in ext4_da_writepages() and simply return - if there are any dirty data
-by that time, we are screwed anyway...
-
-> other info that might help us debug this:
-> 
-> 2 locks held by umount/2662:
-> #0:  (&type->s_umount_key#17){----}, at: [<c0169f45>] deactivate_super+0x3a/0x51
-> #1:  (&type->s_lock_key#7){--..}, at: [<c0169685>] lock_super+0x1b/0x1d
-> 
-> stack backtrace:
-> Pid: 2662, comm: umount Not tainted 2.6.26-rc2 #56
-> [<c013af32>] print_circular_bug_tail+0x5b/0x66
-> [<c013cc77>] __lock_acquire+0x8a6/0xb32
-> [<c043c44d>] ? _spin_unlock+0x27/0x3c
-> [<c013cf6f>] lock_acquire+0x6c/0x89
-> [<c01fa63b>] ? jbd2_journal_start+0xce/0xf0
-> [<c01fa650>] jbd2_journal_start+0xe3/0xf0
-> [<c01fa63b>] ? jbd2_journal_start+0xce/0xf0
-> [<c01ddb4b>] ext4_journal_start_sb+0x40/0x42
-> [<c01d8c0c>] ext4_da_writepages+0x45/0xbb
-> [<c01d8bc7>] ? ext4_da_writepages+0x0/0xbb
-> [<c0150176>] do_writepages+0x23/0x34
-> [<c0180fe6>] __writeback_single_inode+0x12a/0x260
-> [<c01811bc>] write_inode_now+0x72/0xbc
-> [<c01791ef>] generic_drop_inode+0x91/0x137
-> [<c01787e3>] iput+0x4b/0x4e
-> [<c01ff465>] jbd2_journal_destroy+0x19f/0x1c9
-> [<c0132571>] ? autoremove_wake_function+0x0/0x33
-> [<c01de66c>] ext4_put_super+0x35/0x18d
-> [<c0169e19>] generic_shutdown_super+0x52/0xd3
-> [<c0169ea9>] kill_block_super+0xf/0x20
-> [<c0169f4a>] deactivate_super+0x3f/0x51
-> [<c017b4b3>] mntput_no_expire+0xba/0xdd
-> [<c017b955>] sys_umount+0x259/0x29b
-> [<c016b482>] ? vfs_stat+0x11/0x13
-> [<c010396c>] ? sysenter_past_esp+0xa5/0xb1
-> [<c0103931>] sysenter_past_esp+0x6a/0xb1
-> =======================
-> [ OK ]
+On Sun, 2008-05-25 at 00:44 +0200, Jan Kara wrote:
+> > On Wed, 2008-05-21 at 01:53 +0200, Jan Kara wrote:
+> > > >  fs/jbd/transaction.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++--
+> > > >  mm/filemap.c         |    3 --
+> > > >  2 files changed, 54 insertions(+), 4 deletions(-)
+> > > > 
+> > > > Index: linux-2.6.26-rc2/fs/jbd/transaction.c
+> > > > ===================================================================
+> > > > --- linux-2.6.26-rc2.orig/fs/jbd/transaction.c	2008-05-11 17:09:41.000000000 -0700
+> > > > +++ linux-2.6.26-rc2/fs/jbd/transaction.c	2008-05-19 16:16:41.000000000 -0700
+> > > > @@ -1648,12 +1648,39 @@ out:
+> > > >  	return;
+> > > >  }
+> > > >  
+> > > > +/*
+> > > > + * journal_try_to_free_buffers() could race with journal_commit_transaction()
+> > > > + * The later might still hold the reference count to the buffers when inspecting
+> > > > + * them on t_syncdata_list or t_locked_list.
+> > > > + *
+> > > > + * Journal_try_to_free_buffers() will call this function to
+> > > > + * wait for the current transaction to finish syncing data buffers, before
+> > > > + * try to free that buffer.
+> > > > + *
+> > > > + * Called with journal->j_state_lock hold.
+> > > > + */
+> > > > +static void journal_wait_for_transaction_sync_data(journal_t *journal)
+> > > > +{
+> > > > +	transaction_t *transaction = NULL;
+> > > > +	tid_t tid;
+> > > > +
+> > > > +	transaction = journal->j_committing_transaction;
+> > > > +
+> > > > +	if (!transaction)
+> > > > +		return;
+> > > > +
+> > > > +	tid = transaction->t_tid;
+> > > > +	spin_unlock(&journal->j_state_lock);
+> > > > +	log_wait_commit(journal, tid);
+> > > > +	spin_lock(&journal->j_state_lock);
+> > > > +}
+> > >   What is actually the point of entering the function with j_state_lock
+> > > held and also keeping it after return? It should be enough to take it
+> > > and release it just inside this function, shouldn't it?
+> > > 
+> > 
+> > I was worried about the case when we call try_to_free_buffers() again,
+> > it races with the current transaction commit again. Is it possible? I
+> > guess the question is whether it is possible to have buffers on the same
+> > page attached to different transaction.  If so, I think we need to keep
+> > the journal state lock while retry try_to_free_buffers(), so that the
+> > retry won't race with the commit transaction again...
+>   Well, but by the time log_wait_commit() finishes, it may well
+> happen that a new transaction is already started so your lock doesn't
+> help you much. And the page you are called on is actually locked, so
+> noone can really mess with it until you unlock it... So I think you can
+> just use the lock for obtaining tid and then drop it.
 > 
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+You are right that the page was locked during the process we are trying
+to free the buffer. so I agree it's safe to drop the lock. 
+
+> 								Honza
+> 
+> PS: For JBD2 you'd need to be a bit more careful because you cannot call
+> log_wait_commit() while holding page lock (we have reversed locking
+> order for ext4) - but ordered-mode rewrite patch actually fixes this
+> problem and I'm going to submit the splitted patches on Monday or
+> Tuesday (I only need to test them that I didn't do something stupid
+> while porting them to ext4)...
+> 
+Thanks for pointing this out. I think when we put back the reversed
+locking order and new ordered mode the jbd2 patch could go away...
+
+Updated patch for JBD (take 4) below.
+Mingming
+
+JBD: fix race between journal_try_to_free_buffers() and jbd commit transaction
+
+From: Mingming Cao <cmm@us.ibm.com>
+
+journal_try_to_free_buffers() could race with jbd commit transaction when
+the later is holding the buffer reference while waiting for the data buffer
+to flush to disk. If the caller of journal_try_to_free_buffers() request
+tries hard to release the buffers, it will treat the failure as error and return
+back to the caller. We have seen the directo IO failed due to this race. 
+Some of the caller of releasepage() also expecting the buffer to be dropped
+when passed with GFP_KERNEL mask to the releasepage()->journal_try_to_free_buffers().
+
+With this patch, if the caller is passing the GFP_KERNEL to indicating this
+call could wait, in case of try_to_free_buffers() failed, let's waiting for
+journal_commit_transaction() to finish commit the current committing transaction
+, then try to free those buffers again with journal locked.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Reviewed-by: Badari Pulavarty <pbadari@us.ibm.com> 
+---
+ fs/jbd/transaction.c |   57 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ mm/filemap.c         |    3 --
+ 2 files changed, 56 insertions(+), 4 deletions(-)
+
+Index: linux-2.6.26-rc3/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.26-rc3.orig/fs/jbd/transaction.c	2008-05-28 10:55:37.000000000 -0700
++++ linux-2.6.26-rc3/fs/jbd/transaction.c	2008-05-28 10:57:32.000000000 -0700
+@@ -1648,12 +1648,42 @@ out:
+ 	return;
+ }
+ 
++/*
++ * journal_try_to_free_buffers() could race with journal_commit_transaction()
++ * The later might still hold the reference count to the buffers when inspecting
++ * them on t_syncdata_list or t_locked_list.
++ *
++ * Journal_try_to_free_buffers() will call this function to
++ * wait for the current transaction to finish syncing data buffers, before
++ * try to free that buffer.
++ *
++ * Called with journal->j_state_lock hold.
++ */
++static void journal_wait_for_transaction_sync_data(journal_t *journal)
++{
++	transaction_t *transaction = NULL;
++	tid_t tid;
++
++	spin_lock(&journal->j_state_lock);
++	transaction = journal->j_committing_transaction;
++
++	if (!transaction) {
++		spin_unlock(&journal->j_state_lock);
++		return;
++	}
++
++	tid = transaction->t_tid;
++	spin_unlock(&journal->j_state_lock);
++	log_wait_commit(journal, tid);
++}
+ 
+ /**
+  * int journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+  * @page: to try and free
+- * @unused_gfp_mask: unused
++ * @gfp_mask: we use the mask to detect how hard should we try to release
++ * buffers. If __GFP_WAIT and __GFP_FS is set, we wait for commit code to
++ * release the buffers.
+  *
+  *
+  * For all the buffers on this page,
+@@ -1682,9 +1712,11 @@ out:
+  * journal_try_to_free_buffer() is changing its state.  But that
+  * cannot happen because we never reallocate freed data as metadata
+  * while the data is part of a transaction.  Yes?
++ *
++ * Return 0 on failure, 1 on success
+  */
+ int journal_try_to_free_buffers(journal_t *journal,
+-				struct page *page, gfp_t unused_gfp_mask)
++				struct page *page, gfp_t gfp_mask)
+ {
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
+@@ -1713,7 +1745,28 @@ int journal_try_to_free_buffers(journal_
+ 		if (buffer_jbd(bh))
+ 			goto busy;
+ 	} while ((bh = bh->b_this_page) != head);
++
+ 	ret = try_to_free_buffers(page);
++
++ 	/*
++	 * There are a number of places where journal_try_to_free_buffers()
++	 * could race with journal_commit_transaction(), the later still
++	 * holds the reference to the buffers to free while processing them.
++	 * try_to_free_buffers() failed to free those buffers. Some of the
++	 * caller of releasepage() request page buffers to be dropped, otherwise
++	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
++	 *
++	 * So, if the caller of try_to_release_page() wants the synchronous
++	 * behaviour(i.e make sure buffers are dropped upon return),
++	 * let's wait for the current transaction to finish flush of
++	 * dirty data buffers, then try to free those buffers again,
++	 * with the journal locked.
++	 */
++	if (ret == 0 && (gfp_mask & GFP_KERNEL == GFP_KERNEL)) {
++		journal_wait_for_transaction_sync_data(journal);
++		ret = try_to_free_buffers(page);
++	}
++
+ busy:
+ 	return ret;
+ }
+Index: linux-2.6.26-rc3/mm/filemap.c
+===================================================================
+--- linux-2.6.26-rc3.orig/mm/filemap.c	2008-05-28 10:55:38.000000000 -0700
++++ linux-2.6.26-rc3/mm/filemap.c	2008-05-28 10:55:43.000000000 -0700
+@@ -2581,9 +2581,8 @@ out:
+  * Otherwise return zero.
+  *
+  * The @gfp_mask argument specifies whether I/O may be performed to release
+- * this page (__GFP_IO), and whether the call may block (__GFP_WAIT).
++ * this page (__GFP_IO), and whether the call may block (__GFP_WAIT & __GFP_FS).
+  *
+- * NOTE: @gfp_mask may go away, and this function may become non-blocking.
+  */
+ int try_to_release_page(struct page *page, gfp_t gfp_mask)
+ {
+
+
