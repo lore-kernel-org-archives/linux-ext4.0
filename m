@@ -1,38 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsck: unknown feature flag in journal superblock
-Date: Thu, 29 May 2008 16:03:05 -0400
-Message-ID: <20080529200305.GG8065@mit.edu>
-References: <483EC202.8070408@bull.net>
+From: Harvey Harrison <harvey.harrison@gmail.com>
+Subject: [PATCH 24/37] ext3: use get/put_endian helpers
+Date: Thu, 29 May 2008 13:18:48 -0700
+Message-ID: <1212092328.28403.126.camel@brick>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42770 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755125AbYE2UDk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 May 2008 16:03:40 -0400
-Content-Disposition: inline
-In-Reply-To: <483EC202.8070408@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-arch <linux-arch@vger.kernel.org>,
+	ext-devel <linux-ext4@vger.kernel.org>,
+	"Stephen C. Tweedie" <sct@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-arch-owner@vger.kernel.org>
+Sender: linux-arch-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 29, 2008 at 04:47:30PM +0200, Valerie Clement wrote:
-> Hi Ted,
->
-> I don't know if you are aware of this, when running e2fsck on an ext4 
-> filesystem which was mounted with "journal_async_commit" option, the 
-> following error is reported:
->
-> e2fsck 1.41-WIP (27-Apr-2008)
-> Ext3 journal superblock has an unknown incompatible feature flag set.
-> Abort<y>?
->
-> Seen with e2fsck from the latest next branch (1.41-WIP)
+Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
+---
+ fs/ext3/super.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Support for the async journal flag is in the pu branch.  See recent
-discussions on the linux-ext4 list.  There is some disagreement about
-what is the right way to handle checksum failures, and what is
-currently in the kernel is definitely buggy.
-
-						- Ted
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index fe3119a..23804d7 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2595,8 +2595,8 @@ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf)
+ 	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
+ 	es->s_free_inodes_count = cpu_to_le32(buf->f_ffree);
+ 	buf->f_namelen = EXT3_NAME_LEN;
+-	fsid = le64_to_cpup((void *)es->s_uuid) ^
+-	       le64_to_cpup((void *)es->s_uuid + sizeof(u64));
++	fsid = get_le64((void *)es->s_uuid) ^
++	       get_le64((void *)es->s_uuid + sizeof(__le64));
+ 	buf->f_fsid.val[0] = fsid & 0xFFFFFFFFUL;
+ 	buf->f_fsid.val[1] = (fsid >> 32) & 0xFFFFFFFFUL;
+ 	return 0;
+-- 
+1.5.6.rc0.277.g804cf
