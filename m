@@ -1,88 +1,182 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Delayed allocation and journal locking order inversion.
-Date: Thu, 29 May 2008 14:27:39 +0200
-Message-ID: <20080529122739.GA29602@duck.suse.cz>
-References: <20080528091648.GA15851@skywalker> <20080528100833.GC8289@duck.suse.cz> <20080529075056.GA24919@skywalker>
+Subject: Re: [Updated PATCH] ext4: Use page_mkwrite vma_operations to get
+	mmap write notification.
+Date: Thu, 29 May 2008 14:52:50 +0200
+Message-ID: <20080529125250.GB29602@duck.suse.cz>
+References: <1212062625-22209-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:50405 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:51384 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751878AbYE2M1l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 May 2008 08:27:41 -0400
+	id S1752784AbYE2Mwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 May 2008 08:52:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20080529075056.GA24919@skywalker>
+In-Reply-To: <1212062625-22209-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 29-05-08 13:20:56, Aneesh Kumar K.V wrote:
-> On Wed, May 28, 2008 at 12:08:33PM +0200, Jan Kara wrote:
-> >   Hi Aneesh,
-> >   The question here is, who is holding the lock from the page we wait
-> > for here. The two processes you show below don't seem to hold it. I'll
-> > check the full log ... searching ... I see!
-> >   The problem is in generic_write_end()! It calls mark_inode_dirty() under
-> > page lock. That can possibly start a new transaction (which happened in
-> > your case) and that violates lock ordering (mark_inode_dirty() got stuck
-> > waiting for journal commit which is stuck waiting for other user to do
-> > journal_stop which waits for the page lock). Actually, there is no real
-> > need to call mark_inode_dirty() from under page lock - we just need to
-> > update i_size there. Something like the patch attached (untested)?
-> > 
+On Thu 29-05-08 17:33:45, Aneesh Kumar K.V wrote:
+> We would like to get notified when we are doing a write on mmap section.
+> This is needed with respect to preallocated area. We split the preallocated
+> area into initialzed extent and uninitialzed extent in the call back. This
+> let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
+> that would result in data loss. The changes are also needed to handle ENOSPC
+> when writing to an mmap section of files with holes.
 > 
-> The patch works.   Peter Zijlstra have patches to add lockdep annotation
-> to lock_page. I guess we will have to test the lock inversion patch with
-> the lockdep annotation to catch the deadlock scenarios like above.
->
-> http://programming.kicks-ass.net/kernel-patches/lockdep-page_lock/
-  Yes, that would be useful. Thanks for the pointer.
-
-> Regarding delalloc I still have issues. The writepage can get called
-> with buffer_head marked delay and dirty as show below. This will result
-> in block allocation under lock_page.
+> Acked-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h  |    1 +
+>  fs/ext4/file.c  |   19 +++++++++++++-
+>  fs/ext4/inode.c |   76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 95 insertions(+), 1 deletions(-)
 > 
-> RIP: 0010:[<ffffffff8030cc64>]  [<ffffffff8030cc64>] ext4_da_writepage+0x26/0xad
-> 
-> Call Trace:
->  [<ffffffff8026999f>] shrink_page_list+0x31e/0x588
->  [<ffffffff80269d35>] shrink_inactive_list+0x12c/0x40d
->  [<ffffffff805ce6a2>] ? _spin_unlock_irqrestore+0x3f/0x68
->  [<ffffffff8024e83a>] ? trace_hardirqs_on+0xf1/0x115
->  [<ffffffff805ce6af>] ? _spin_unlock_irqrestore+0x4c/0x68
->  [<ffffffff803975b7>] ? __up_read+0x8c/0x94
->  [<ffffffff8026a0f3>] shrink_zone+0xdd/0x103
->  [<ffffffff8026ad69>] kswapd+0x34b/0x53e
->  [<ffffffff80268e4d>] ? isolate_pages_global+0x0/0x34
->  [<ffffffff80243ff4>] ? autoremove_wake_function+0x0/0x36
->  [<ffffffff805ce6af>] ? _spin_unlock_irqrestore+0x4c/0x68
->  [<ffffffff8026aa1e>] ? kswapd+0x0/0x53e
->  [<ffffffff80243d1b>] kthread+0x44/0x6b
->  [<ffffffff8020c1f8>] child_rip+0xa/0x12
->  [<ffffffff8020b8e3>] ? restore_args+0x0/0x30
->  [<ffffffff80243fcf>] ? kthreadd+0x16b/0x190
->  [<ffffffff80243cd7>] ? kthread+0x0/0x6b
->  [<ffffffff8020c1ee>] ? child_rip+0x0/0x12
-  I see two options here:
-1) Just refuse to write the page if we see we have to do block allocation,
-   there's no transaction running and for_reclaim is set (or we could even
-   refuse the write if getting a new handle would mean blocking but that
-   starts to get ugly). The page will be eventually written out via
-   writepages call as far as I know.
-2) Do similar tricks as in ext4_journaled_writepage() if we see we need to
-   start a transaction - i.e., unlock the page, start the transaction, lock
-   the page again, check that it's still the page we are interested in,
-   proceed...
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 6605076..77cbb28 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1053,6 +1053,7 @@ extern void ext4_set_aops(struct inode *inode);
+>  extern int ext4_writepage_trans_blocks(struct inode *);
+>  extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+>  		struct address_space *mapping, loff_t from);
+> +extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+>  
+>  /* ioctl.c */
+>  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 4159be6..b9510ba 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -123,6 +123,23 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  	return ret;
+>  }
+>  
+> +static struct vm_operations_struct ext4_file_vm_ops = {
+> +	.fault		= filemap_fault,
+> +	.page_mkwrite   = ext4_page_mkwrite,
+> +};
+> +
+> +static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+> +{
+> +	struct address_space *mapping = file->f_mapping;
+> +
+> +	if (!mapping->a_ops->readpage)
+> +		return -ENOEXEC;
+> +	file_accessed(file);
+> +	vma->vm_ops = &ext4_file_vm_ops;
+> +	vma->vm_flags |= VM_CAN_NONLINEAR;
+> +	return 0;
+> +}
+> +
+>  const struct file_operations ext4_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> @@ -133,7 +150,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= ext4_compat_ioctl,
+>  #endif
+> -	.mmap		= generic_file_mmap,
+> +	.mmap		= ext4_file_mmap,
+>  	.open		= generic_file_open,
+>  	.release	= ext4_release_file,
+>  	.fsync		= ext4_sync_file,
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 4a7ed29..23e09eb 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3555,3 +3555,79 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  
+>  	return err;
+>  }
+> +
+> +static int ext4_bh_prepare_fill(handle_t *handle, struct buffer_head *bh)
+> +{
+> +	if (!buffer_mapped(bh)) {
+> +		/*
+> +		 * Mark buffer as dirty so that
+> +		 * block_write_full_page() writes it
+> +		 */
+> +		set_buffer_dirty(bh);
+> +	}
+> +	return 0;
+> +}
+> +
+> +static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
+> +{
+> +	return !buffer_mapped(bh);
+> +}
+> +
+> +int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> +{
+> +	loff_t size;
+> +	unsigned long len;
+> +	int ret = -EINVAL;
+> +	struct file *file = vma->vm_file;
+> +	struct inode *inode = file->f_path.dentry->d_inode;
+> +	struct address_space *mapping = inode->i_mapping;
+> +	struct writeback_control wbc = { .sync_mode = WB_SYNC_NONE,
+> +					 .nr_to_write = 1 };
+> +
+> +	/*
+> +	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+> +	 * get i_mutex because we are already holding mmap_sem.
+> +	 */
+> +	down_read(&inode->i_alloc_sem);
+> +	size = i_size_read(inode);
+> +	if (page->mapping != mapping || size <= page_offset(page)
+> +	    || !PageUptodate(page)) {
+> +		/* page got truncated from under us? */
+> +		goto out_unlock;
+> +	}
+> +	ret = 0;
+> +	if (PageMappedToDisk(page))
+> +		goto out_unlock;
+> +
+> +	if (page->index == size >> PAGE_CACHE_SHIFT)
+> +		len = size & ~PAGE_CACHE_MASK;
+> +	else
+> +		len = PAGE_CACHE_SIZE;
+> +
+> +	if (page_has_buffers(page)) {
+> +		/* return if we have all the buffers mapped */
+> +		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> +				       ext4_bh_unmapped))
+> +			goto out_unlock;
+> +		/*
+> +		 * Now mark all the  buffer head dirty so
+> +		 * that writepage can write it
+> +		 */
+> +		walk_page_buffers(NULL, page_buffers(page), 0, PAGE_CACHE_SIZE,
+> +					NULL, ext4_bh_prepare_fill);
+  Just a minor nit - probably use 'len' here instead of PAGE_CACHE_SIZE.
+It doesn't sound right to mark buffers dirty beyond end of file...
 
-Option 2) has the disadvantage that when we are looking for a page to evict
-(which usually means we are under memory pressure), we do complicated
-locking which may be slow. 1) has the disadvantage that there can be
-substantial portion of memory we will refuse to write out... I'm not sure
-what is better.
+> +	}
+> +	/*
+> +	 * OK, we need to fill the hole... Lock the page and do writepage.
+> +	 * We can't do write_begin and write_end here because we don't
+> +	 * have inode_mutex and that allow parallel write_begin, write_end call.
+> +	 * (lock_page prevent this from happening on the same page though)
+> +	 */
+> +	lock_page(page);
+> +	wbc.range_start = page_offset(page);
+> +	wbc.range_end = page_offset(page) + len;
+> +	ret = mapping->a_ops->writepage(page, &wbc);
+> +	/* writepage unlocks the page */
+> +out_unlock:
+> +	up_read(&inode->i_alloc_sem);
+> +	return ret;
+> +}
+> -- 
+> 1.5.5.1.357.g1af8b.dirty
 
-								Honza
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
