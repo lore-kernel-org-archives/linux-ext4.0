@@ -1,41 +1,60 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 0/4] (RESEND) ext3[34] barrier changes
-Date: Thu, 29 May 2008 08:36:17 -0500
-Message-ID: <483EB151.0@sandeen.net>
-References: <482DDA56.6000301@redhat.com> <20080516130545.845a3be9.akpm@linux-foundation.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 still busted on ext4
+Date: Thu, 29 May 2008 16:07:18 +0200
+Message-ID: <20080529140718.GB1180@atrey.karlin.mff.cuni.cz>
+References: <20080522235441.1d1a495b.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, jamie@shareable.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Geert Uytterhoeven <geert@linux-m68k.org>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080516130545.845a3be9.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:59657 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751781AbYE2OHU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 May 2008 10:07:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20080522235441.1d1a495b.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton wrote:
-> On Fri, 16 May 2008 14:02:46 -0500
-> Eric Sandeen <sandeen@redhat.com> wrote:
+> /usr/src/devel/fs/ext4/mballoc.c: In function 'mb_find_next_bit':
+> /usr/src/devel/fs/ext4/mballoc.c:399: error: implicit declaration of function 'generic_find_next_le_bit'
 > 
->> A collection of patches to make ext3 & 4 use barriers by
->> default, and to call blkdev_issue_flush on fsync if they
->> are enabled.
-> 
-> Last time this came up lots of workloads slowed down by 30% so I
-> dropped the patches in horror.
-> 
-> I just don't think we can quietly go and slow everyone's machines down
-> by this much.  The overhead of journalling is already pretty horrid.
-> 
-> If we were seeing a significant number of "hey, my disk got wrecked"
-> reports which attributable to this then yes, perhaps we should change
-> the default.  But I've never seen _any_, although I've seen claims that
-> others have seen reports.
+> This has been happening for months.
+  Is there anything wrong with the obvious fix (below)? I don't have a
+way to even compile-test this...
 
-Here's a recent one, just FYI.
+								Honza
 
-http://marc.info/?l=ext3-users&m=121205834608161&w=2
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
+---
 
--Eric
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] m68k: Fix compilation warning
+
+/usr/src/devel/fs/ext4/mballoc.c: In function 'mb_find_next_bit':
+/usr/src/devel/fs/ext4/mballoc.c:399: error: implicit declaration of function 'generic_find_next_le_bit'
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ include/asm-m68k/bitops.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/include/asm-m68k/bitops.h b/include/asm-m68k/bitops.h
+index 83d1f28..bb3a2fa 100644
+--- a/include/asm-m68k/bitops.h
++++ b/include/asm-m68k/bitops.h
+@@ -13,6 +13,7 @@
+ #endif
+ 
+ #include <linux/compiler.h>
++#include <asm-generic/bitops.h>
+ 
+ /*
+  * Require 68020 or better.
+-- 
+1.5.2.4
 
