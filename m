@@ -1,52 +1,63 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: [RFC][PATCH 0/8]ext4: online defrag (ver 0.9)
-Date: Fri, 30 May 2008 11:52:53 -0700
-Message-ID: <1212173573.8596.84.camel@BVR-FS.beaverton.ibm.com>
-References: <483FE24F.50105@rs.jp.nec.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] ext4: remove redundant code in ext4_fill_super()
+Date: Fri, 30 May 2008 13:57:27 -0700
+Message-ID: <1212181047.3719.10.camel@localhost.localdomain>
+References: <483F8D31.7090505@cn.fujitsu.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, Shen Feng <shen@cn.fujitsu.com>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Li Zefan <lizf@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:35146 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752754AbYE3Sw5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 14:52:57 -0400
-In-Reply-To: <483FE24F.50105@rs.jp.nec.com>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:51522 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753263AbYE3U5t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 May 2008 16:57:49 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4UKvXfn027989
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 16:57:33 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4UKvX6r156670
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 16:57:33 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4UKvWIo024433
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 16:57:32 -0400
+In-Reply-To: <483F8D31.7090505@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for the update.
-On Fri, 2008-05-30 at 20:17 +0900, Akira Fujita wrote:
-> - Current mballoc in the ext4 patch queue (linux-2.6.26-rc4) doesn't
->   work fine, ext4_mb_init_caches() which is changed by
->   ext4-add-error-handling-in-ext4-mb_laod_buddy.patch returns -EIO.
->   You can reproduce this kind of issue easily with following
-> procedure.
->   1. mke2fs -j -E test_fs /devname
->   2. mount -t ext4dev -o mballoc,extents /devname /mountpoint
->   3. mkdir DIR /mountpint
->      mkdir: cannot create directory `/mnt/mp2/DIR1': No space left on
-> device
+On Fri, 2008-05-30 at 13:14 +0800, Li Zefan wrote:
+> The previous sb_min_blocksize() has already set the block size.
 > 
+> This piece of code was introduced in commit:
+> 	afc7cbca5bfd556c3e12d3acefbee5ab0cbd4670
+> 	(ext4: Support large blocksize up to PAGESIZE)
+> And it should be a mistake.
 > 
-Ccing Shen Feng for this bug...
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-> Next steps:
-> 1. Implement FS_IOC_FIEMAP instead of EXT4_EXTENTS_INFO to reduce ioctl count.
-> 2. Remove the restriction of block size (Enable defrag with 1KB and 2KB).
-> 3. Remove the limit of target file size (now 128MB) in -f mode.
->    * The post about -f mode can be found at:
->    http://marc.info/?l=linux-ext4&m=118239067704899&w=4
+Added to  ext4 patch queue http://repo.or.cz/w/ext4-patch-queue.git
+> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+> ---
+>  fs/ext4/super.c |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
 > 
-> Summary of patches:
-> * The following patches are new ext4 online defrag patches.
->   Mingming, please replace these patches with the ext4 patch queue's.
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 09d9359..5d07aa9 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1843,11 +1843,6 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+>  		goto out_fail;
+>  	}
 > 
-Done.
-
-Regards,
-Mingming
+> -	if (!sb_set_blocksize(sb, blocksize)) {
+> -		printk(KERN_ERR "EXT4-fs: bad blocksize %d.\n", blocksize);
+> -		goto out_fail;
+> -	}
+> -
+>  	/*
+>  	 * The ext4 superblock will not be buffer aligned for other than 1kB
+>  	 * block sizes.  We need to calculate the offset from buffer start.
 
