@@ -1,180 +1,596 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Use page_mkwrite vma_operations to get mmap write notification.
-Date: Fri, 30 May 2008 19:09:24 +0530
-Message-ID: <1212154769-16486-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Inverse locking order of page_lock and transaction start.
+Date: Fri, 30 May 2008 19:09:25 +0530
+Message-ID: <1212154769-16486-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1212154769-16486-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1212154769-16486-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:40570 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751789AbYE3Njp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 09:39:45 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m4UDeKk5010945
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:40:20 +1000
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:50212 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751789AbYE3NkD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 09:40:03 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m4UDdTLv006004
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:39:29 +1000
 Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4UDdSMi4403340
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:39:28 +1000
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4UDiC0U255284
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:44:12 +1000
 Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4UDdhhU023822
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:39:43 +1000
-In-Reply-To: <1212154769-16486-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4UDe03I024033
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 23:40:01 +1000
+In-Reply-To: <1212154769-16486-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We would like to get notified when we are doing a write on mmap section.
-This is needed with respect to preallocated area. We split the preallocated
-area into initialzed extent and uninitialzed extent in the call back. This
-let us handle ENOSPC better. Otherwise we get ENOSPC in the writepage and
-that would result in data loss. The changes are also needed to handle ENOSPC
-when writing to an mmap section of files with holes.
+From: Jan Kara <jack@suse.cz>
 
-Acked-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/file.c  |   19 +++++++++++++-
- fs/ext4/inode.c |   76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 95 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h    |    4 +-
+ fs/ext4/extents.c |   15 +--
+ fs/ext4/inode.c   |  274 ++++++++++++++++++++++++-----------------------------
+ 3 files changed, 132 insertions(+), 161 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6605076..77cbb28 100644
+index 66cdd5c..e7da2cb 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1053,6 +1053,7 @@ extern void ext4_set_aops(struct inode *inode);
+@@ -1063,7 +1063,7 @@ extern void ext4_set_inode_flags(struct inode *);
+ extern void ext4_get_inode_flags(struct ext4_inode_info *);
+ extern void ext4_set_aops(struct inode *inode);
  extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
+-extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
++extern int ext4_block_truncate_page(handle_t *handle,
  		struct address_space *mapping, loff_t from);
-+extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
  
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 4159be6..b9510ba 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -123,6 +123,23 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+@@ -1222,7 +1222,7 @@ extern int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_lblk_t iblock,
+ 			unsigned long max_blocks, struct buffer_head *bh_result,
+ 			int create, int extend_disksize);
+-extern void ext4_ext_truncate(struct inode *, struct page *);
++extern void ext4_ext_truncate(struct inode *);
+ extern void ext4_ext_init(struct super_block *);
+ extern void ext4_ext_release(struct super_block *);
+ extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c58ebd8..1a90a23 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2744,7 +2744,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	return err ? err : allocated;
+ }
+ 
+-void ext4_ext_truncate(struct inode * inode, struct page *page)
++void ext4_ext_truncate(struct inode *inode)
+ {
+ 	struct address_space *mapping = inode->i_mapping;
+ 	struct super_block *sb = inode->i_sb;
+@@ -2757,18 +2757,11 @@ void ext4_ext_truncate(struct inode * inode, struct page *page)
+ 	 */
+ 	err = ext4_writepage_trans_blocks(inode) + 3;
+ 	handle = ext4_journal_start(inode, err);
+-	if (IS_ERR(handle)) {
+-		if (page) {
+-			clear_highpage(page);
+-			flush_dcache_page(page);
+-			unlock_page(page);
+-			page_cache_release(page);
+-		}
++	if (IS_ERR(handle))
+ 		return;
+-	}
+ 
+-	if (page)
+-		ext4_block_truncate_page(handle, page, mapping, inode->i_size);
++	if (inode->i_size & (sb->s_blocksize - 1))
++		ext4_block_truncate_page(handle, mapping, inode->i_size);
+ 
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	ext4_ext_invalidate_cache(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bc52ef5..a96c325 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1239,19 +1239,20 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  	to = from + len;
+ 
+ retry:
+- 	page = __grab_cache_page(mapping, index);
+- 	if (!page)
+- 		return -ENOMEM;
+- 	*pagep = page;
+-
+   	handle = ext4_journal_start(inode, needed_blocks);
+   	if (IS_ERR(handle)) {
+- 		unlock_page(page);
+- 		page_cache_release(page);
+   		ret = PTR_ERR(handle);
+   		goto out;
+ 	}
+ 
++	page = __grab_cache_page(mapping, index);
++	if (!page) {
++		ext4_journal_stop(handle);
++		ret = -ENOMEM;
++		goto out;
++	}
++	*pagep = page;
++
+ 	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
+ 							ext4_get_block);
+ 
+@@ -1261,8 +1262,8 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 
+ 	if (ret) {
+-		ext4_journal_stop(handle);
+  		unlock_page(page);
++		ext4_journal_stop(handle);
+  		page_cache_release(page);
+ 	}
+ 
+@@ -1291,29 +1292,6 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+ }
+ 
+ /*
+- * Generic write_end handler for ordered and writeback ext4 journal modes.
+- * We can't use generic_write_end, because that unlocks the page and we need to
+- * unlock the page after ext4_journal_stop, but ext4_journal_stop must run
+- * after block_write_end.
+- */
+-static int ext4_generic_write_end(struct file *file,
+-				struct address_space *mapping,
+-				loff_t pos, unsigned len, unsigned copied,
+-				struct page *page, void *fsdata)
+-{
+-	struct inode *inode = file->f_mapping->host;
+-
+-	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+-
+-	if (pos+copied > inode->i_size) {
+-		i_size_write(inode, pos+copied);
+-		mark_inode_dirty(inode);
+-	}
+-
+-	return copied;
+-}
+-
+-/*
+  * We need to pick up the new inode size which generic_commit_write gave us
+  * `file' can be NULL - eg, when called from page_symlink().
+  *
+@@ -1326,7 +1304,7 @@ static int ext4_ordered_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext4_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	unsigned from, to;
+ 	int ret = 0, ret2;
+ 
+@@ -1347,7 +1325,7 @@ static int ext4_ordered_write_end(struct file *file,
+ 		new_i_size = pos + copied;
+ 		if (new_i_size > EXT4_I(inode)->i_disksize)
+ 			EXT4_I(inode)->i_disksize = new_i_size;
+-		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
++		ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 		copied = ret2;
+ 		if (ret2 < 0)
+@@ -1356,8 +1334,6 @@ static int ext4_ordered_write_end(struct file *file,
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+-	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+ }
+@@ -1368,7 +1344,7 @@ static int ext4_writeback_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext4_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+ 	loff_t new_i_size;
+ 
+@@ -1376,7 +1352,7 @@ static int ext4_writeback_write_end(struct file *file,
+ 	if (new_i_size > EXT4_I(inode)->i_disksize)
+ 		EXT4_I(inode)->i_disksize = new_i_size;
+ 
+-	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
++	ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 	copied = ret2;
+ 	if (ret2 < 0)
+@@ -1385,8 +1361,6 @@ static int ext4_writeback_write_end(struct file *file,
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+-	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+ }
+@@ -1425,10 +1399,10 @@ static int ext4_journalled_write_end(struct file *file,
+ 			ret = ret2;
+ 	}
+ 
++	unlock_page(page);
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+ 	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+@@ -1506,11 +1480,10 @@ static int jbd2_journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+ }
+ 
+ /*
+- * Note that we always start a transaction even if we're not journalling
+- * data.  This is to preserve ordering: any hole instantiation within
+- * __block_write_full_page -> ext4_get_block() should be journalled
+- * along with the data so we don't crash and then get metadata which
+- * refers to old data.
++ * Note that we don't need to start a transaction unless we're journaling
++ * data because we should have holes filled from ext4_page_mkwrite(). If
++ * we are journaling data, we cannot start transaction directly because
++ * transaction start ranks above page lock so we have to do some magic...
+  *
+  * In all journalling modes block_write_full_page() will start the I/O.
+  *
+@@ -1554,10 +1527,8 @@ static int jbd2_journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+  * disastrous.  Any write() or metadata operation will sync the fs for
+  * us.
+  *
+- * AKPM2: if all the page's buffers are mapped to disk and !data=journal,
+- * we don't need to open a transaction here.
+  */
+-static int ext4_ordered_writepage(struct page *page,
++static int __ext4_ordered_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
+@@ -1566,22 +1537,6 @@ static int ext4_ordered_writepage(struct page *page,
+ 	int ret = 0;
+ 	int err;
+ 
+-	J_ASSERT(PageLocked(page));
+-
+-	/*
+-	 * We give up here if we're reentered, because it might be for a
+-	 * different filesystem.
+-	 */
+-	if (ext4_journal_current_handle())
+-		goto out_fail;
+-
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+-
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out_fail;
+-	}
+-
+ 	if (!page_has_buffers(page)) {
+ 		create_empty_buffers(page, inode->i_sb->s_blocksize,
+ 				(1 << BH_Dirty)|(1 << BH_Uptodate));
+@@ -1605,114 +1560,139 @@ static int ext4_ordered_writepage(struct page *page,
+ 	 * and generally junk.
+ 	 */
+ 	if (ret == 0) {
+-		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
++		handle = ext4_journal_start(inode,
++					ext4_writepage_trans_blocks(inode));
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out_put;
++		}
++
++		ret = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
+ 					NULL, jbd2_journal_dirty_data_fn);
++		err = ext4_journal_stop(handle);
+ 		if (!ret)
+ 			ret = err;
+ 	}
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bput_one);
+-	err = ext4_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
++out_put:
++	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
++			  bput_one);
+ 	return ret;
++}
++
++static int ext4_ordered_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	J_ASSERT(PageLocked(page));
++
++	/*
++	 * We give up here if we're reentered, because it might be for a
++	 * different filesystem.
++	 */
++	if (!ext4_journal_current_handle())
++		return __ext4_ordered_writepage(page, wbc);
+ 
+-out_fail:
+ 	redirty_page_for_writepage(wbc, page);
+ 	unlock_page(page);
+-	return ret;
++	return 0;
+ }
+ 
+-static int ext4_writeback_writepage(struct page *page,
++static int __ext4_writeback_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
++
++	if (test_opt(inode->i_sb, NOBH))
++		return nobh_writepage(page, ext4_get_block, wbc);
++	else
++		return block_write_full_page(page, ext4_get_block, wbc);
++}
++
++
++static int ext4_writeback_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	if (!ext4_journal_current_handle())
++		return __ext4_writeback_writepage(page, wbc);
++
++	redirty_page_for_writepage(wbc, page);
++	unlock_page(page);
++	return 0;
++}
++
++static int __ext4_journalled_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	struct address_space *mapping = page->mapping;
++	struct inode *inode = mapping->host;
++	struct buffer_head *page_bufs;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
+ 
+-	if (ext4_journal_current_handle())
+-		goto out_fail;
++	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
++	if (ret != 0)
++		goto out_unlock;
++
++	page_bufs = page_buffers(page);
++	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
++								bget_one);
++	/* As soon as we unlock the page, it can go away, but we have
++	 * references to buffers so we are safe */
++	unlock_page(page);
+ 
+ 	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+-		goto out_fail;
++		goto out;
+ 	}
+ 
+-	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+-		ret = nobh_writepage(page, ext4_get_block, wbc);
+-	else
+-		ret = block_write_full_page(page, ext4_get_block, wbc);
++	ret = walk_page_buffers(handle, page_bufs, 0,
++			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
+ 
++	err = walk_page_buffers(handle, page_bufs, 0,
++				PAGE_CACHE_SIZE, NULL, write_end_fn);
++	if (ret == 0)
++		ret = err;
+ 	err = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
+-	return ret;
+ 
+-out_fail:
+-	redirty_page_for_writepage(wbc, page);
++	walk_page_buffers(handle, page_bufs, 0,
++				PAGE_CACHE_SIZE, NULL, bput_one);
++	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
++	goto out;
++
++out_unlock:
+ 	unlock_page(page);
++out:
  	return ret;
  }
  
-+static struct vm_operations_struct ext4_file_vm_ops = {
-+	.fault		= filemap_fault,
-+	.page_mkwrite   = ext4_page_mkwrite,
-+};
-+
-+static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+
-+	if (!mapping->a_ops->readpage)
-+		return -ENOEXEC;
-+	file_accessed(file);
-+	vma->vm_ops = &ext4_file_vm_ops;
-+	vma->vm_flags |= VM_CAN_NONLINEAR;
-+	return 0;
-+}
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -133,7 +150,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
- #endif
--	.mmap		= generic_file_mmap,
-+	.mmap		= ext4_file_mmap,
- 	.open		= generic_file_open,
- 	.release	= ext4_release_file,
- 	.fsync		= ext4_sync_file,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4a7ed29..bc52ef5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3555,3 +3555,79 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ static int ext4_journalled_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
+-	handle_t *handle = NULL;
+-	int ret = 0;
+-	int err;
+-
+ 	if (ext4_journal_current_handle())
+ 		goto no_write;
  
- 	return err;
- }
-+
-+static int ext4_bh_prepare_fill(handle_t *handle, struct buffer_head *bh)
-+{
-+	if (!buffer_mapped(bh)) {
-+		/*
-+		 * Mark buffer as dirty so that
-+		 * block_write_full_page() writes it
-+		 */
-+		set_buffer_dirty(bh);
-+	}
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto no_write;
+-	}
+-
+ 	if (!page_has_buffers(page) || PageChecked(page)) {
+ 		/*
+ 		 * It's mmapped pagecache.  Add buffers and journal it.  There
+ 		 * doesn't seem much point in redirtying the page here.
+ 		 */
+ 		ClearPageChecked(page);
+-		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
+-					ext4_get_block);
+-		if (ret != 0) {
+-			ext4_journal_stop(handle);
+-			goto out_unlock;
+-		}
+-		ret = walk_page_buffers(handle, page_buffers(page), 0,
+-			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
+-
+-		err = walk_page_buffers(handle, page_buffers(page), 0,
+-				PAGE_CACHE_SIZE, NULL, write_end_fn);
+-		if (ret == 0)
+-			ret = err;
+-		EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
+-		unlock_page(page);
++		return __ext4_journalled_writepage(page, wbc);
+ 	} else {
+ 		/*
+ 		 * It may be a page full of checkpoint-mode buffers.  We don't
+ 		 * really know unless we go poke around in the buffer_heads.
+ 		 * But block_write_full_page will do the right thing.
+ 		 */
+-		ret = block_write_full_page(page, ext4_get_block, wbc);
++		return block_write_full_page(page, ext4_get_block, wbc);
+ 	}
+-	err = ext4_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+-out:
+-	return ret;
+-
+ no_write:
+ 	redirty_page_for_writepage(wbc, page);
+-out_unlock:
+ 	unlock_page(page);
+-	goto out;
 +	return 0;
-+}
+ }
+ 
+ static int ext4_readpage(struct file *file, struct page *page)
+@@ -1922,7 +1902,7 @@ void ext4_set_aops(struct inode *inode)
+  * This required during truncate. We need to physically zero the tail end
+  * of that block so it doesn't yield old data if the file is later grown.
+  */
+-int ext4_block_truncate_page(handle_t *handle, struct page *page,
++int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from)
+ {
+ 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+@@ -1931,8 +1911,13 @@ int ext4_block_truncate_page(handle_t *handle, struct page *page,
+ 	ext4_lblk_t iblock;
+ 	struct inode *inode = mapping->host;
+ 	struct buffer_head *bh;
++	struct page *page;
+ 	int err = 0;
+ 
++	page = grab_cache_page(mapping, from >> PAGE_CACHE_SHIFT);
++	if (!page)
++		return -EINVAL;
 +
-+static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
-+{
-+	return !buffer_mapped(bh);
-+}
-+
-+int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
-+{
-+	loff_t size;
-+	unsigned long len;
-+	int ret = -EINVAL;
-+	struct file *file = vma->vm_file;
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	struct address_space *mapping = inode->i_mapping;
-+	struct writeback_control wbc = { .sync_mode = WB_SYNC_NONE,
-+					 .nr_to_write = 1 };
-+
-+	/*
-+	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
-+	 * get i_mutex because we are already holding mmap_sem.
-+	 */
-+	down_read(&inode->i_alloc_sem);
-+	size = i_size_read(inode);
-+	if (page->mapping != mapping || size <= page_offset(page)
-+	    || !PageUptodate(page)) {
-+		/* page got truncated from under us? */
+ 	blocksize = inode->i_sb->s_blocksize;
+ 	length = blocksize - (offset & (blocksize - 1));
+ 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
+@@ -2396,7 +2381,6 @@ void ext4_truncate(struct inode *inode)
+ 	int n;
+ 	ext4_lblk_t last_block;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	struct page *page;
+ 
+ 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+ 	    S_ISLNK(inode->i_mode)))
+@@ -2406,41 +2390,21 @@ void ext4_truncate(struct inode *inode)
+ 	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+ 		return;
+ 
+-	/*
+-	 * We have to lock the EOF page here, because lock_page() nests
+-	 * outside jbd2_journal_start().
+-	 */
+-	if ((inode->i_size & (blocksize - 1)) == 0) {
+-		/* Block boundary? Nothing to do */
+-		page = NULL;
+-	} else {
+-		page = grab_cache_page(mapping,
+-				inode->i_size >> PAGE_CACHE_SHIFT);
+-		if (!page)
+-			return;
+-	}
+-
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
+-		ext4_ext_truncate(inode, page);
++		ext4_ext_truncate(inode);
+ 		return;
+ 	}
+ 
+ 	handle = start_transaction(inode);
+-	if (IS_ERR(handle)) {
+-		if (page) {
+-			clear_highpage(page);
+-			flush_dcache_page(page);
+-			unlock_page(page);
+-			page_cache_release(page);
+-		}
++	if (IS_ERR(handle))
+ 		return;		/* AKPM: return what? */
+-	}
+ 
+ 	last_block = (inode->i_size + blocksize-1)
+ 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
+ 
+-	if (page)
+-		ext4_block_truncate_page(handle, page, mapping, inode->i_size);
++	if (inode->i_size & (blocksize - 1))
++		if (ext4_block_truncate_page(handle, mapping, inode->i_size))
++			goto out_stop;
+ 
+ 	n = ext4_block_to_path(inode, last_block, offsets, NULL);
+ 	if (n == 0)
+@@ -3577,7 +3541,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+ {
+ 	loff_t size;
+ 	unsigned long len;
+-	int ret = -EINVAL;
++	int err, ret = -EINVAL;
++	handle_t *handle;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 	struct address_space *mapping = inode->i_mapping;
+@@ -3622,11 +3587,24 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+ 	 * have inode_mutex and that allow parallel write_begin, write_end call.
+ 	 * (lock_page prevent this from happening on the same page though)
+ 	 */
++	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
 +		goto out_unlock;
 +	}
-+	ret = 0;
-+	if (PageMappedToDisk(page))
-+		goto out_unlock;
-+
-+	if (page->index == size >> PAGE_CACHE_SHIFT)
-+		len = size & ~PAGE_CACHE_MASK;
+ 	lock_page(page);
+ 	wbc.range_start = page_offset(page);
+ 	wbc.range_end = page_offset(page) + len;
+-	ret = mapping->a_ops->writepage(page, &wbc);
+-	/* writepage unlocks the page */
++	if (ext4_should_writeback_data(inode))
++		ret = __ext4_writeback_writepage(page, &wbc);
++	else if (ext4_should_order_data(inode))
++		ret = __ext4_ordered_writepage(page, &wbc);
 +	else
-+		len = PAGE_CACHE_SIZE;
-+
-+	if (page_has_buffers(page)) {
-+		/* return if we have all the buffers mapped */
-+		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
-+				       ext4_bh_unmapped))
-+			goto out_unlock;
-+		/*
-+		 * Now mark all the  buffer head dirty so
-+		 * that writepage can write it
-+		 */
-+		walk_page_buffers(NULL, page_buffers(page), 0, len,
-+					NULL, ext4_bh_prepare_fill);
-+	}
-+	/*
-+	 * OK, we need to fill the hole... Lock the page and do writepage.
-+	 * We can't do write_begin and write_end here because we don't
-+	 * have inode_mutex and that allow parallel write_begin, write_end call.
-+	 * (lock_page prevent this from happening on the same page though)
-+	 */
-+	lock_page(page);
-+	wbc.range_start = page_offset(page);
-+	wbc.range_end = page_offset(page) + len;
-+	ret = mapping->a_ops->writepage(page, &wbc);
-+	/* writepage unlocks the page */
-+out_unlock:
-+	up_read(&inode->i_alloc_sem);
-+	return ret;
-+}
++		ret = __ext4_journalled_writepage(page, &wbc);
++	/* Page got unlocked in writepage */
++	err = ext4_journal_stop(handle);
++	if (!ret)
++		ret = err;
+ out_unlock:
+ 	up_read(&inode->i_alloc_sem);
+ 	return ret;
 -- 
 1.5.5.1.357.g1af8b.dirty
 
