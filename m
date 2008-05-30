@@ -1,168 +1,67 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH][take 5] JBD2: Fix race between free buffer and commit
-	trasanction
-Date: Fri, 30 May 2008 08:17:57 -0700
-Message-ID: <1212160677.3641.6.camel@localhost.localdomain>
-References: <20080519132553.de9b78b0.akpm@linux-foundation.org>
-	 <1211234829.3663.39.camel@localhost.localdomain>
-	 <1211306575.3664.19.camel@localhost.localdomain>
-	 <20080520235303.GB23521@atrey.karlin.mff.cuni.cz>
-	 <1211390093.5571.16.camel@BVR-FS.beaverton.ibm.com>
-	 <20080524224447.GE20563@atrey.karlin.mff.cuni.cz>
-	 <1211998739.3791.20.camel@localhost.localdomain>
-	 <20080528185554.GA16018@duck.suse.cz>
-	 <1212020216.3791.54.camel@localhost.localdomain>
-	 <1212020299.3791.57.camel@localhost.localdomain>
-	 <20080530062420.GA7450@skywalker>
-Reply-To: cmm@us.ibm.com
+From: Valerie Clement <valerie.clement@bull.net>
+Subject: Test results for ext4
+Date: Fri, 30 May 2008 17:50:43 +0200
+Message-ID: <48402253.8040407@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Mingming Cao <cmm@us.ibm.com>, "Jose R. Santos" <jrs@us.ibm.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:58759 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752997AbYE3PST (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 11:18:19 -0400
-In-Reply-To: <20080530062420.GA7450@skywalker>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:36848 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752015AbYE3PvV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 11:51:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-05-30 at 11:54 +0530, Aneesh Kumar K.V wrote:
-> On Wed, May 28, 2008 at 05:18:19PM -0700, Mingming Cao wrote:
-> > Index: linux-2.6.26-rc3/fs/jbd2/transaction.c
-> > ===================================================================
-> > --- linux-2.6.26-rc3.orig/fs/jbd2/transaction.c	2008-05-28 16:10:41.000000000 -0700
-> > +++ linux-2.6.26-rc3/fs/jbd2/transaction.c	2008-05-28 16:13:16.000000000 -0700
-> > @@ -1656,12 +1656,42 @@ out:
-> >  	return;
-> >  }
-> > 
-> > +/*
-> > + * jbd2_journal_try_to_free_buffers() could race with jbd2_journal_commit_transaction()
-> > + * The later might still hold the reference count to the buffers when inspecting
-> > + * them on t_syncdata_list or t_locked_list.
-> > + *
-> > + * jbd2_journal_try_to_free_buffers() will call this function to
-> > + * wait for the current transaction to finish syncing data buffers, before
-> > + * try to free that buffer.
-> > + *
-> > + * Called with journal->j_state_lock hold.
-> > + */
-> 
-> We are taking the spin_lock again in the function ??
-> 
+Hi all,
 
-Thanks.  I noticed this yesterday and have sent Andrew updated patch to 
-replace the one he just added to mm tree but forget to copy to the list. Here is the updated patch,
+Since a couple of weeks, I did batches of tests to have some performanc=
+e
+numbers for the new ext4 features like uninit_groups, flex_bg or
+journal_checksum on a 5TB filesystem.
+I tried to test allmost all combinations of mkfs and mount options, but
+I put only a subset of them in the result tables, the most significant
+for me.
 
-Mingming
+I had started to do these tests on a kernel 2.6.26-rc1, but I'd got sev=
+eral
+hangs and crashes occuring randomly outside ext4, sometimes in the slab
+code or in the scsi driver eg., and which were not reproductible.
+Since 2.6.26-rc2, no crash or hang occur with ext4 on my system.
 
----
- fs/jbd2/transaction.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 58 insertions(+), 3 deletions(-)
+The first results and the test description are available here:
+http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.html
+http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2.h=
+tml
 
-Index: linux-2.6.26-rc4/fs/jbd2/transaction.c
-===================================================================
---- linux-2.6.26-rc4.orig/fs/jbd2/transaction.c	2008-05-29 12:21:40.000000000 -0700
-+++ linux-2.6.26-rc4/fs/jbd2/transaction.c	2008-05-29 12:38:30.000000000 -0700
-@@ -1656,12 +1656,43 @@ out:
- 	return;
- }
- 
-+/*
-+ * jbd2_journal_try_to_free_buffers() could race with
-+ * jbd2_journal_commit_transaction(). The later might still hold the
-+ * reference count to the buffers when inspecting them on
-+ * t_syncdata_list or t_locked_list.
-+ *
-+ * jbd2_journal_try_to_free_buffers() will call this function to
-+ * wait for the current transaction to finish syncing data buffers, before
-+ * try to free that buffer.
-+ *
-+ */
-+static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
-+{
-+	transaction_t *transaction = NULL;
-+	tid_t tid;
-+
-+	spin_lock(&journal->j_state_lock);
-+	transaction = journal->j_committing_transaction;
-+
-+	if (!transaction) {
-+		spin_unlock(&journal->j_state_lock);
-+		return;
-+	}
-+
-+	tid = transaction->t_tid;
-+	spin_unlock(&journal->j_state_lock);
-+	jbd2_log_wait_commit(journal, tid);
-+}
- 
- /**
-  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
-  * @journal: journal for operation
-  * @page: to try and free
-- * @unused_gfp_mask: unused
-+ * @gfp_mask: we use the mask to detect how hard should we try to release
-+ * buffers. If __GFP_WAIT and __GFP_FS is set, we wait for commit code to
-+ * release the buffers.
-  *
-  *
-  * For all the buffers on this page,
-@@ -1690,9 +1721,11 @@ out:
-  * journal_try_to_free_buffer() is changing its state.  But that
-  * cannot happen because we never reallocate freed data as metadata
-  * while the data is part of a transaction.  Yes?
-+ *
-+ * Return 0 on failure, 1 on success
-  */
- int jbd2_journal_try_to_free_buffers(journal_t *journal,
--				struct page *page, gfp_t unused_gfp_mask)
-+				struct page *page, gfp_t gfp_mask)
- {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
-@@ -1708,7 +1741,8 @@ int jbd2_journal_try_to_free_buffers(jou
- 		/*
- 		 * We take our own ref against the journal_head here to avoid
- 		 * having to add tons of locking around each instance of
--		 * jbd2_journal_remove_journal_head() and jbd2_journal_put_journal_head().
-+		 * jbd2_journal_remove_journal_head() and
-+		 * jbd2_journal_put_journal_head().
- 		 */
- 		jh = jbd2_journal_grab_journal_head(bh);
- 		if (!jh)
-@@ -1721,7 +1755,28 @@ int jbd2_journal_try_to_free_buffers(jou
- 		if (buffer_jbd(bh))
- 			goto busy;
- 	} while ((bh = bh->b_this_page) != head);
-+
- 	ret = try_to_free_buffers(page);
-+
-+	/*
-+	 * There are a number of places where jbd2_journal_try_to_free_buffers()
-+	 * could race with jbd2_journal_commit_transaction(), the later still
-+	 * holds the reference to the buffers to free while processing them.
-+	 * try_to_free_buffers() failed to free those buffers. Some of the
-+	 * caller of releasepage() request page buffers to be dropped, otherwise
-+	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
-+	 *
-+	 * So, if the caller of try_to_release_page() wants the synchronous
-+	 * behaviour(i.e make sure buffers are dropped upon return),
-+	 * let's wait for the current transaction to finish flush of
-+	 * dirty data buffers, then try to free those buffers again,
-+	 * with the journal locked.
-+	 */
-+	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
-+		jbd2_journal_wait_for_transaction_sync_data(journal);
-+		ret = try_to_free_buffers(page);
-+	}
-+
- busy:
- 	return ret;
- }
+I will complete them in the next days.
+
+In the first batch of tests, I compare the I/O throughput to create
+1-GB files on disk in different configurations. The CPU usage is also
+given to show mainly how the delayed allocation feature reduces it.
+The average number of extents per file shows the impact of the
+multiblock allocator and the flex_bg grouping on the file fragmentation=
+=2E
+At last, the fsck time shows how the uninit_groups feature reduces the
+e2fsck duration.
+
+In the second batch of tests, the results show improvements in transact=
+ions
+-per-second throughput when doing small files writes, reads and creates
+when using the flex_bg grouping.
+The same ffsb test on an XFS filesystem hangs, I will try to have trace=
+s.
+
+If you are interested in other tests, please let me know.
+
+   Val=E9rie
 
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
