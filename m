@@ -1,238 +1,156 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 6/8]ext4: check the free space fragmentation (-f mode)
-Date: Fri, 30 May 2008 20:18:26 +0900
-Message-ID: <483FE282.1010003@rs.jp.nec.com>
+Subject: [RFC][PATCH 7/8]ext4: move victim files for the target file (-f mode)
+Date: Fri, 30 May 2008 20:18:33 +0900
+Message-ID: <483FE289.7050302@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:48671 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752025AbYE3LUf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 07:20:35 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4: online defrag-- Check the free space fragmentation (-f mode)
+ext4: online defrag-- Move victim files for the target file (-f mode)
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Check the free space fragmentation in the block group
-where target file is located.
+Move victim files to make sufficient space and reallocates
+the contiguous blocks for the target file.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- fs/ext4/balloc.c |    2 +-
- fs/ext4/defrag.c |  275 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/ext4.h   |   34 +++++++
- fs/ext4/ioctl.c  |    5 +-
- 4 files changed, 312 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c       |   10 +-
+ fs/ext4/defrag.c       |  460 +++++++++++++++++++++++++++++++++++++++++++++---
+ fs/ext4/ext4.h         |   29 +++-
+ fs/ext4/ext4_extents.h |    5 +
+ fs/ext4/extents.c      |   54 +++++--
+ fs/ext4/ioctl.c        |    5 +-
+ fs/ext4/mballoc.c      |    5 +
+ fs/ext4/mballoc.h      |    1 +
+ 8 files changed, 522 insertions(+), 47 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index b961ad1..a3fb70c 100644
+index a3fb70c..32e4e7e 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -919,7 +919,7 @@ static int ext4_test_allocatable(ext4_grpblk_t nr, struct buffer_head *bh)
-  * bitmap on disk and the last-committed copy in journal, until we find a
-  * bit free in both bitmaps.
+@@ -433,7 +433,7 @@ restart:
+  * If the goal block is within the reservation window, return 1;
+  * otherwise, return 0;
   */
--static ext4_grpblk_t
-+ext4_grpblk_t
- bitmap_search_next_usable_block(ext4_grpblk_t start, struct buffer_head *bh,
- 					ext4_grpblk_t maxblocks)
+-static int
++int
+ goal_in_my_reservation(struct ext4_reserve_window *rsv, ext4_grpblk_t grp_goal,
+ 			ext4_group_t group, struct super_block *sb)
  {
+@@ -538,7 +538,7 @@ void ext4_rsv_window_add(struct super_block *sb,
+  * from the filesystem reservation window rb tree. Must be called with
+  * rsv_lock hold.
+  */
+-static void rsv_window_remove(struct super_block *sb,
++void rsv_window_remove(struct super_block *sb,
+ 			      struct ext4_reserve_window_node *rsv)
+ {
+ 	rsv->rsv_start = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+@@ -553,7 +553,7 @@ static void rsv_window_remove(struct super_block *sb,
+  *
+  * returns 1 if the end block is EXT4_RESERVE_WINDOW_NOT_ALLOCATED.
+  */
+-static inline int rsv_is_empty(struct ext4_reserve_window *rsv)
++inline int rsv_is_empty(struct ext4_reserve_window *rsv)
+ {
+ 	/* a valid reservation end block could not be 0 */
+ 	return rsv->_rsv_end == EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+@@ -1289,7 +1289,7 @@ static int find_next_reservable_window(
+  *	@bitmap_bh: the block group block bitmap
+  *
+  */
+-static int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
++int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
+ 		ext4_grpblk_t grp_goal, struct super_block *sb,
+ 		ext4_group_t group, struct buffer_head *bitmap_bh)
+ {
+@@ -1433,7 +1433,7 @@ retry:
+  * expand the reservation window size if necessary on a best-effort
+  * basis before ext4_new_blocks() tries to allocate blocks,
+  */
+-static void try_to_extend_reservation(struct ext4_reserve_window_node *my_rsv,
++void try_to_extend_reservation(struct ext4_reserve_window_node *my_rsv,
+ 			struct super_block *sb, int size)
+ {
+ 	struct ext4_reserve_window_node *next_rsv;
 diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index 61f577b..ac85330 100644
+index ac85330..40fac20 100644
 --- a/fs/ext4/defrag.c
 +++ b/fs/ext4/defrag.c
-@@ -20,6 +20,12 @@
- #include "ext4_extents.h"
- #include "group.h"
-
-+#define EXT_SET_EXTENT_DATA(src, dest)  do {			\
-+		dest.block = le32_to_cpu(src->ee_block);	\
-+		dest.start = ext_pblock(src);			\
-+		dest.len = le16_to_cpu(src->ee_len);		\
-+					} while (0)
-+
- /**
-  * ext4_defrag_next_extent - Search for the next extent and set it to "extent"
-  *
-@@ -90,6 +96,223 @@ err:
- 	return -EIO;
+@@ -218,6 +218,267 @@ out:
  }
 
-+/**
-+ * ext4_defrag_extents_info - Get extents information
-+ *
-+ * @sb:				for ext4_iget()
-+ * @ext_info:			pointer to ext4_extents_info
-+ *  @ext_info->ino:		describe an inode which is used to get
-+ *				extent information
-+ *  @ext_info->max_entries:	defined by DEFRAG_MAX_ENT
-+ *  @ext_info->entries:		amount of extents (output)
-+ *  @ext_info->ext[]:		array of extent (output)
-+ *  @ext_info->offset:		starting block offset of targeted extent
-+ *				(file relative)
-+ *
-+ * This function returns 0 if the next extent(s) exists,
-+ * or returns 1 if the next extent doesn't exist,
-+ * otherwise returns error value.
-+ */
-+static int
-+ext4_defrag_extents_info(struct super_block *sb,
-+				struct ext4_extents_info *ext_info)
-+{
-+	struct ext4_ext_path *path = NULL;
-+	struct ext4_extent *ext = NULL;
-+	struct inode *inode = NULL;
-+	ext4_lblk_t offset = ext_info->f_offset;
-+	int max_entries = ext_info->max_entries;
-+	int depth, entries = 0;
-+	int err = 0;
-+	int ret = 0;
-+
-+	inode = ext4_iget(sb, ext_info->ino);
-+	if (IS_ERR(inode))
-+		return PTR_ERR(inode);
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+
-+	/* Return -ENOENT if a file does not exist */
-+	if (!inode->i_nlink || inode->i_ino < EXT4_GOOD_OLD_FIRST_INO ||
-+			!S_ISREG(inode->i_mode)) {
-+		ext_info->entries = 0;
-+		err = -ENOENT;
-+		goto out;
-+	}
-+
-+	path = ext4_ext_find_extent(inode, offset, NULL);
-+	if (IS_ERR(path)) {
-+		err = PTR_ERR(path);
-+		path = NULL;
-+		goto out;
-+	}
-+	depth = ext_depth(inode);
-+
-+	/* Skip the 0 size file */
-+	if (path[depth].p_ext == NULL) {
-+		ext_info->entries = 0;
-+		goto out;
-+	}
-+	ext = path[depth].p_ext;
-+	EXT_SET_EXTENT_DATA(ext, ext_info->ext[entries]);
-+	entries = 1;
-+
-+	/*
-+	 * The ioctl repeats this loop 'max_entries' times.
-+	 * So we have to call this function again if @inode had
-+	 * more the number of extents than 'max_entries'.
-+	 */
-+	while (entries < max_entries) {
-+		ret = ext4_defrag_next_extent(inode, path, &ext);
-+		if (ret == 0) {
-+			/* Found the next extent (it means not the last one) */
-+			EXT_SET_EXTENT_DATA(ext, ext_info->ext[entries]);
-+			entries++;
-+
-+			/*
-+			 * In case @inode has > 'max_entries' extents,
-+			 * we must call this function again and restart from
-+			 * 'max_entries * n + 1'th extent.
-+			 * 'n' is the number of calling this function
-+			 * at the same @inode.
-+			 */
-+			if (entries == max_entries) {
-+				ext_info->f_offset =
-+						le32_to_cpu(ext->ee_block) +
-+						le16_to_cpu(ext->ee_len);
-+				/* Check the extent is the last one or not */
-+				ret =
-+				    ext4_defrag_next_extent(inode, path, &ext);
-+				if (ret == 1) {
-+					err = ret;
-+				} else if (ret < 0) {
-+					/* Failed to get the next extent */
-+					err = ret;
-+					goto out;
-+				}
-+				break;
-+			}
-+
-+		} else if (ret == 1) {
-+			/* The extent is the last one */
-+			ext_info->f_offset = 0;
-+			err = ret;
-+			break;
-+		} else {
-+			/* Failed to get the next extent */
-+			err = ret;
-+			goto out;
-+		}
-+	}
-+
-+	ext_info->entries = entries;
-+
-+out:
-+	if (path) {
-+		ext4_ext_drop_refs(path);
-+		kfree(path);
-+	}
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+	iput(inode);
-+	return err;
-+}
-+
-+/**
-+ * ext4_defrag_fblocks_distribution - Search free blocks distribution
+ /**
++ * ext4_defrag_reserve_blocks - Reserve blocks for defrag
 + *
 + * @org_inode:	original inode
-+ * @ext_info:	ext4_extents_info
++ * @goal:	the goal offset of the block reservation
++ * @len:	blocks count we need to reserve
 + *
 + * This function returns 0 if succeed, otherwise returns error value.
 + */
++
 +static int
-+ext4_defrag_fblocks_distribution(struct inode *org_inode,
-+			struct ext4_extents_info *ext_info)
++ext4_defrag_reserve_blocks(struct inode *org_inode, ext4_fsblk_t goal, int len)
 +{
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct super_block *sb = org_inode->i_sb;
++	struct super_block *sb = NULL;
 +	handle_t *handle;
++	struct buffer_head *bitmap_bh = NULL;
++	struct ext4_block_alloc_info *block_i;
++	struct ext4_reserve_window_node *my_rsv = NULL;
++	unsigned short windowsz = 0;
 +	ext4_group_t group_no;
-+	ext4_grpblk_t start, end;
-+	ext4_fsblk_t start_block = 0;
-+	int i, err;
-+	int num = 0;
-+	int len = 0;
-+	int block_set = 0;
-+	int extra_block = 0;
++	ext4_grpblk_t grp_target_blk;
++	int err = 0;
 +
-+	if (!sb) {
-+		printk(KERN_ERR "ext4 defrag: Non-existent device\n");
-+		return -ENOSPC;
-+	}
++	down_write(&EXT4_I(org_inode)->i_data_sem);
 +
-+	group_no = (org_inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
-+	start = ext_info->g_offset;
-+	end = EXT4_BLOCKS_PER_GROUP(sb) - 1;
-+
-+	/* We consider about the boot block if bs = 1k */
-+	if (sb->s_blocksize == 1024)
-+		extra_block = 1;
-+
-+	handle = ext4_journal_start(org_inode, 1);
++	handle = ext4_journal_start(org_inode, EXT4_RESERVE_TRANS_BLOCKS);
 +	if (IS_ERR(handle)) {
 +		err = PTR_ERR(handle);
-+		return err;
++		handle = NULL;
++		goto out;
 +	}
++
++	if (S_ISREG(org_inode->i_mode) &&
++	    !EXT4_I(org_inode)->i_block_alloc_info) {
++		ext4_init_block_alloc_info(org_inode);
++	} else if (!S_ISREG(org_inode->i_mode)) {
++		printk(KERN_ERR "ext4 defrag: Invalid file type\n");
++		err = -EINVAL;
++		goto out;
++	}
++
++	sb = org_inode->i_sb;
++	if (!sb) {
++		printk(KERN_ERR "ext4 defrag: Non-existent device\n");
++		err = -ENXIO;
++		goto out;
++	}
++	ext4_get_group_no_and_offset(sb, goal, &group_no,
++				&grp_target_blk);
++
++	block_i = EXT4_I(org_inode)->i_block_alloc_info;
++	/* Block reservation should be enabled */
++	BUG_ON(!block_i);
++
++	windowsz = block_i->rsv_window_node.rsv_goal_size;
++	/* Goal size should be set */
++	BUG_ON(!windowsz);
++
++	my_rsv = &block_i->rsv_window_node;
 +
 +	bitmap_bh = read_block_bitmap(sb, group_no);
 +	if (!bitmap_bh) {
-+		err = -EIO;
++		err = -ENOSPC;
 +		goto out;
 +	}
 +
@@ -241,39 +159,20 @@ index 61f577b..ac85330 100644
 +	if (err)
 +		goto out;
 +
-+	for (i = start; i <= end ; i++) {
-+		if (bitmap_search_next_usable_block(i, bitmap_bh, i + 1) >= 0) {
-+			len++;
-+			/*
-+			 * Reset start_block if the free block is
-+			 * the head of region.
-+			 */
-+			if (!block_set) {
-+				start_block =
-+				 i + group_no * EXT4_BLOCKS_PER_GROUP(sb) +
-+				 extra_block;
-+				block_set = 1;
-+			}
-+		} else if (len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
-+			len = 0;
-+			block_set = 0;
-+			if (num == ext_info->max_entries) {
-+				ext_info->g_offset = i + 1;
-+				break;
-+			}
-+		}
-+		if (i == end && len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
-+		}
++	err = alloc_new_reservation(my_rsv, grp_target_blk, sb,
++						group_no, bitmap_bh);
++	if (err < 0) {
++		printk(KERN_ERR "ext4 defrag: Block reservation failed."
++			"offset [%d], bg[%lu]\n", grp_target_blk, group_no);
++		ext4_discard_reservation(org_inode);
++		goto out;
++	} else if (len > EXT4_DEFAULT_RESERVE_BLOCKS) {
++		try_to_extend_reservation(my_rsv, sb,
++			len - EXT4_DEFAULT_RESERVE_BLOCKS);
 +	}
 +
-+	ext_info->entries = num;
 +out:
++	up_write(&EXT4_I(org_inode)->i_data_sem);
 +	ext4_journal_release_buffer(handle, bitmap_bh);
 +	brelse(bitmap_bh);
 +
@@ -283,46 +182,182 @@ index 61f577b..ac85330 100644
 +	return err;
 +}
 +
- int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 			unsigned long arg)
- {
-@@ -114,6 +337,52 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 		block = ext4_bmap(mapping, block);
-
- 		return put_user(block, p);
-+	} else if (cmd == EXT4_IOC_GROUP_INFO) {
-+		struct ext4_group_data_info grp_data;
++/**
++ * ext4_defrag_block_within_rsv - Is target extent reserved ?
++ *
++ * @org_inode:	original inode
++ * @ex_start:	physical block offset of the extent which already moved
++ * @ex_len:	block length of the extent
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_block_within_rsv(struct inode *org_inode, ext4_fsblk_t ex_start,
++				int ex_len)
++{
++	struct super_block *sb = org_inode->i_sb;
++	struct ext4_block_alloc_info *block_i;
++	ext4_group_t group_no;
++	ext4_grpblk_t grp_blk;
++	struct ext4_reserve_window_node *rsv;
 +
-+		if (copy_from_user(&grp_data,
-+			(struct ext4_group_data_info __user *)arg,
-+			sizeof(grp_data)))
-+			return -EFAULT;
++	block_i = EXT4_I(org_inode)->i_block_alloc_info;
++	/* Block reservation should be enabled */
++	BUG_ON(!block_i);
 +
-+		grp_data.s_blocks_per_group =
-+			EXT4_BLOCKS_PER_GROUP(inode->i_sb);
-+		grp_data.s_inodes_per_group =
-+			EXT4_INODES_PER_GROUP(inode->i_sb);
++	/* Goal size should be set */
++	BUG_ON(!block_i->rsv_window_node.rsv_goal_size);
 +
-+		if (copy_to_user((struct ext4_group_data_info __user *)arg,
-+			&grp_data, sizeof(grp_data)))
-+			return -EFAULT;
-+	} else if (cmd == EXT4_IOC_FREE_BLOCKS_INFO) {
-+		struct ext4_extents_info ext_info;
++	rsv = &block_i->rsv_window_node;
++	if (rsv_is_empty(&rsv->rsv_window)) {
++		printk(KERN_ERR "ext4 defrag: Reservation window is empty\n");
++		return -ENOSPC;
++	}
 +
-+		if (copy_from_user(&ext_info,
-+			(struct ext4_extents_info __user *)arg,
-+			sizeof(ext_info)))
-+			return -EFAULT;
++	ext4_get_group_no_and_offset(sb, ex_start, &group_no, &grp_blk);
 +
-+		BUG_ON(ext_info.ino != inode->i_ino);
++	if (!goal_in_my_reservation(&rsv->rsv_window, grp_blk, group_no, sb)
++	    || !goal_in_my_reservation(&rsv->rsv_window,
++			grp_blk + ex_len - 1, group_no, sb)){
++		/* Goal blocks are not in the reservation window */
++		printk(KERN_ERR "ext4 defrag: %d or %d in bg %lu is "
++				"not in rsv_window\n", grp_blk,
++				grp_blk + ex_len - 1, group_no);
++		return -ENOSPC;
++	}
++	return 0;
++}
 +
-+		err = ext4_defrag_fblocks_distribution(inode, &ext_info);
++/*
++ * ext4_defrag_reserve_fblocks -
++ * 		Reserve free blocks with ext4_defrag_reserve_blocks
++ *
++ * @org_inode:		original inode to get a block group number
++ * @ext_info:		freeblocks distribution which stored extent-like style
++ *  @ext_info->ext[]:	an array of struct ext4_extents_data
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_reserve_fblocks(struct inode *org_inode,
++			struct ext4_extents_info *ext_info)
++{
++	ext4_fsblk_t ex_start = 0;
++	int i, len, ret;
 +
-+		if (!err)
-+			err = copy_to_user(
-+				(struct ext4_extents_info __user *)arg,
-+				&ext_info, sizeof(ext_info));
-+	} else if (cmd == EXT4_IOC_EXTENTS_INFO) {
++	for (i = 0; i < ext_info->entries; i++) {
++		ex_start = ext_info->ext[i].start;
++		len = ext_info->ext[i].len;
++
++		ret = ext4_defrag_reserve_blocks(org_inode, ex_start, len);
++		if (ret < 0) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Block reservation failed. offset [%llu], "
++				"length [%d]\n", ex_start, len);
++			goto err;
++		}
++
++		/* Confirm that blocks are in the reservation window */
++		ret = ext4_defrag_block_within_rsv(org_inode, ex_start, len);
++		if (ret < 0) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Reservation window is not set. "
++				"offset [%llu], length [%d]\n", ex_start, len);
++			goto err;
++		}
++	}
++	return ret;
++
++err:
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++	ext4_discard_reservation(org_inode);
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	return ret;
++}
++
++/**
++ * ext4_defrag_move_victim - Create free space for defrag
++ *
++ * @target_filp:	target file
++ * @ext_info:		target extents array to move
++ *
++ * This function returns 0 if succeed, otherwise
++ * returns error value.
++ */
++static int
++ext4_defrag_move_victim(struct file *target_filp,
++			struct ext4_extents_info *ext_info)
++{
++	struct inode *org_inode = target_filp->f_dentry->d_inode;
++	struct super_block *sb = org_inode->i_sb;
++	struct file victim_file;
++	struct dentry victim_dent;
++	struct inode *victim_inode;
++	struct ext4_extent_data ext;
++	ext4_fsblk_t goal = ext_info->goal;
++	ext4_group_t group;
++	ext4_grpblk_t grp_off;
++	int ret, i;
++
++	/* Setup dummy extent data */
++	ext.len = 0;
++
++	/* Get the inode of the victim file */
++	victim_inode = ext4_iget(sb, ext_info->ino);
++	if (IS_ERR(victim_inode))
++		return PTR_ERR(victim_inode);
++
++	/* Setup file for the victim file */
++	victim_dent.d_inode = victim_inode;
++	victim_file.f_dentry = &victim_dent;
++	victim_file.f_mapping = victim_inode->i_mapping;
++
++	/* Set the goal appropriate offset */
++	if (goal == -1) {
++		ext4_get_group_no_and_offset(victim_inode->i_sb,
++				ext_info->ext[0].start, &group, &grp_off);
++		goal = ext4_group_first_block_no(sb, group + 1);
++	}
++
++	for (i = 0; i < ext_info->entries; i++) {
++		/* Move original blocks to another block group */
++		ret = ext4_defrag(&victim_file, ext_info->ext[i].block,
++			ext_info->ext[i].len, goal, DEFRAG_FORCE_VICTIM, &ext);
++		if (ret < 0) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Moving victim file failed. ino [%llu]\n",
++				ext_info->ino);
++			goto err;
++		}
++
++		/* Sync journal blocks before reservation */
++		ret = ext4_force_commit(sb);
++		if (ret) {
++			printk(KERN_ERR "ext4 defrag: "
++				"ext4_force_commit failed(%d)\n", ret);
++			goto err;
++		}
++	}
++
++	iput(victim_inode);
++	return 0;
++err:
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++	ext4_discard_reservation(org_inode);
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	iput(victim_inode);
++	return ret;
++}
++
++/**
+  * ext4_defrag_fblocks_distribution - Search free blocks distribution
+  *
+  * @org_inode:	original inode
+@@ -383,6 +644,29 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ 				&ext_info, sizeof(ext_info)))
+ 				return -EFAULT;
+ 		}
++	} else if (cmd == EXT4_IOC_RESERVE_BLOCK) {
 +		struct ext4_extents_info ext_info;
 +
 +		if (copy_from_user(&ext_info,
@@ -330,118 +365,785 @@ index 61f577b..ac85330 100644
 +				sizeof(ext_info)))
 +			return -EFAULT;
 +
-+		err = ext4_defrag_extents_info(inode->i_sb, &ext_info);
-+		if (err >= 0) {
-+			if (copy_to_user((struct ext4_extents_info __user *)arg,
-+				&ext_info, sizeof(ext_info)))
-+				return -EFAULT;
-+		}
++		err = ext4_defrag_reserve_fblocks(inode, &ext_info);
++	} else if (cmd == EXT4_IOC_MOVE_VICTIM) {
++		struct ext4_extents_info ext_info;
++
++		if (copy_from_user(&ext_info,
++			(struct ext4_extents_info __user *)arg,
++			sizeof(ext_info)))
++			return -EFAULT;
++
++		err = ext4_defrag_move_victim(filp, &ext_info);
++
++	} else if (cmd == EXT4_IOC_BLOCK_RELEASE) {
++		down_write(&EXT4_I(inode)->i_data_sem);
++		ext4_discard_reservation(inode);
++		up_write(&EXT4_I(inode)->i_data_sem);
  	} else if (cmd == EXT4_IOC_DEFRAG) {
  		struct ext4_ext_defrag_data defrag;
  		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-@@ -1127,11 +1396,13 @@ out2:
+@@ -409,7 +693,8 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ 		}
+
+ 		err = ext4_defrag(filp, defrag.start_offset,
+-				defrag.defrag_size, defrag.goal);
++				defrag.defrag_size, defrag.goal, defrag.flag,
++				&defrag.ext);
+ 	}
+
+ 	return err;
+@@ -425,6 +710,7 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+  * @start_ext:		first new extent to be merged
+  * @new_ext:		middle of new extent to be merged
+  * @end_ext:		last new extent to be merged
++ * @phase:		phase of the force defrag mode
   *
-  * @org_inode:		original inode
-  * @defrag_size:	size of defrag in blocks
-+ * @goal:		poiter to block offset for allocation
+  * This function returns 0 if succeed, otherwise returns error value.
+  */
+@@ -432,14 +718,20 @@ static int
+ ext4_defrag_merge_across_blocks(handle_t *handle, struct inode *org_inode,
+ 		struct ext4_extent *o_start, struct ext4_extent *o_end,
+ 		struct ext4_extent *start_ext, struct ext4_extent *new_ext,
+-		struct ext4_extent *end_ext)
++		struct ext4_extent *end_ext, int phase)
+ {
+ 	struct ext4_ext_path *org_path = NULL;
+ 	ext4_lblk_t eblock = 0;
+ 	int new_flag = 0;
+ 	int end_flag = 0;
++	int defrag_flag;
+ 	int err;
+
++	if (phase == DEFRAG_FORCE_VICTIM)
++		defrag_flag = 1;
++	else
++		defrag_flag = 0;
++
+ 	if (le16_to_cpu(start_ext->ee_len) &&
+ 		le16_to_cpu(new_ext->ee_len) &&
+ 		le16_to_cpu(end_ext->ee_len)) {
+@@ -516,8 +808,8 @@ ext4_defrag_merge_across_blocks(handle_t *handle, struct inode *org_inode,
+ 			org_path = NULL;
+ 			goto out;
+ 		}
+-		err = ext4_ext_insert_extent(handle, org_inode,
+-					org_path, new_ext);
++		err = ext4_ext_insert_extent_defrag(handle, org_inode,
++					org_path, new_ext, defrag_flag);
+ 		if (err)
+ 			goto out;
+ 	}
+@@ -530,8 +822,8 @@ ext4_defrag_merge_across_blocks(handle_t *handle, struct inode *org_inode,
+ 			org_path = NULL;
+ 			goto out;
+ 		}
+-		err = ext4_ext_insert_extent(handle, org_inode,
+-					org_path, end_ext);
++		err = ext4_ext_insert_extent_defrag(handle, org_inode,
++					org_path, end_ext, defrag_flag);
+ 		if (err)
+ 			goto out;
+ 	}
+@@ -609,6 +901,7 @@ ext4_defrag_merge_inside_block(struct ext4_extent *o_start,
+  * @new_ext:	middle of new extent to be merged
+  * @end_ext:	last new extent to be merged
+  * @replaced:	the number of blocks which will be replaced with new_ext
++ * @phase:	phase of the force defrag mode
+  *
+  * This function returns 0 if succeed, otherwise returns error value.
+  */
+@@ -617,7 +910,7 @@ ext4_defrag_merge_extents(handle_t *handle, struct inode *org_inode,
+ 		struct ext4_ext_path *org_path,
+ 		struct ext4_extent *o_start, struct ext4_extent *o_end,
+ 		struct ext4_extent *start_ext, struct ext4_extent *new_ext,
+-		struct ext4_extent *end_ext, ext4_fsblk_t replaced)
++		struct ext4_extent *end_ext, ext4_fsblk_t replaced, int phase)
+ {
+ 	struct  ext4_extent_header *eh;
+ 	unsigned need_slots, slots_range;
+@@ -655,7 +948,7 @@ ext4_defrag_merge_extents(handle_t *handle, struct inode *org_inode,
+
+ 		ret = ext4_defrag_merge_across_blocks(handle, org_inode,
+ 					o_start, o_end, start_ext, new_ext,
+-					end_ext);
++					end_ext, phase);
+ 		if (ret < 0)
+ 			return ret;
+ 	} else {
+@@ -688,13 +981,14 @@ ext4_defrag_merge_extents(handle_t *handle, struct inode *org_inode,
+  * @org_path:		path indicates first extent to be defraged
+  * @dext:		destination extent
+  * @from:		start offset on the target file
++ * @phase:		phase of the force defrag mode
   *
   * This function returns 0 if succeed, otherwise returns error value.
   */
  static int
--ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size)
-+ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size,
-+		ext4_fsblk_t *goal)
+ ext4_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
+ 		struct ext4_ext_path *org_path, struct ext4_extent *dext,
+-		ext4_lblk_t *from)
++		ext4_lblk_t *from, int phase)
+ {
+ 	struct ext4_extent *oext, *o_start = NULL, *o_end = NULL, *prev_ext;
+ 	struct ext4_extent new_ext, start_ext, end_ext;
+@@ -795,7 +1089,7 @@ ext4_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
+ 				+ le16_to_cpu(oext->ee_len) - 1) {
+ 			ret = ext4_defrag_merge_extents(handle, org_inode,
+ 					org_path, o_start, o_end, &start_ext,
+-					&new_ext, &end_ext, replaced);
++					&new_ext, &end_ext, replaced, phase);
+ 			if (ret < 0)
+ 				return ret;
+
+@@ -847,6 +1141,7 @@ ext4_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
+  * @from_page:		page offset of org_inode
+  * @dest_from_page:	page offset of dest_inode
+  * @count_page:		page count to be replaced
++ * @phase:              phase of the force defrag mode
+  *
+  * This function returns 0 if succeed, otherwise returns error value.
+  * Replace extents for blocks from "from" to "from + count - 1".
+@@ -854,7 +1149,7 @@ ext4_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
+ static int
+ ext4_defrag_replace_branches(handle_t *handle, struct inode *org_inode,
+ 			struct inode *dest_inode, pgoff_t from_page,
+-			pgoff_t dest_from_page, pgoff_t count_page)
++			pgoff_t dest_from_page, pgoff_t count_page, int phase)
+ {
+ 	struct ext4_ext_path *org_path = NULL;
+ 	struct ext4_ext_path *dest_path = NULL;
+@@ -922,7 +1217,7 @@ ext4_defrag_replace_branches(handle_t *handle, struct inode *org_inode,
+
+ 		/* Loop for the original extent blocks */
+ 		err = ext4_defrag_leaf_block(handle, org_inode,
+-						org_path, dext, &from);
++						org_path, dext, &from, phase);
+ 		if (err < 0)
+ 			goto out;
+
+@@ -932,7 +1227,7 @@ ext4_defrag_replace_branches(handle_t *handle, struct inode *org_inode,
+ 		 * e.g. ext4_defrag_merge_extents()
+ 		 */
+ 		err = ext4_defrag_leaf_block(handle, dest_inode,
+-					dest_path, swap_ext, &dest_off);
++					dest_path, swap_ext, &dest_off, -1);
+ 		if (err < 0)
+ 			goto out;
+
+@@ -1028,6 +1323,7 @@ out:
+  * @req_blocks:		contiguous blocks count we need
+  * @iblock:		target file offset
+  * @goal:		goal offset
++ * @phase:              phase of the force defrag mode
+  *
+  */
+ static void
+@@ -1036,8 +1332,22 @@ ext4_defrag_fill_ar(struct inode *org_inode, struct inode *dest_inode,
+ 			struct ext4_ext_path *org_path,
+ 			struct ext4_ext_path *dest_path,
+ 			ext4_fsblk_t req_blocks, ext4_lblk_t iblock,
+-			ext4_fsblk_t goal)
++			ext4_fsblk_t goal, int phase)
+ {
++	ext4_group_t org_grp_no;
++	ext4_grpblk_t org_blk_off;
++	int org_depth = ext_depth(org_inode);
++
++	if (phase == DEFRAG_FORCE_VICTIM) {
++		ext4_get_group_no_and_offset(org_inode->i_sb,
++				ext_pblock(org_path[org_depth].p_ext),
++				&org_grp_no, &org_blk_off);
++		ar->excepted_group = org_grp_no;
++	} else {
++		/* Allocate contiguous blocks to any block group */
++		ar->excepted_group = -1;
++	}
++
+ 	ar->inode = dest_inode;
+ 	ar->len = req_blocks;
+ 	ar->logical = iblock;
+@@ -1103,19 +1413,70 @@ ext4_defrag_alloc_blocks(handle_t *handle, struct inode *org_inode,
+ }
+
+ /**
++ * ext4_defrag_check_phase
++ * 	- Check condition of the allocated blocks (only force defrag mode)
++ *
++ * @ar:			allocation request for multiple block allocation
++ * @dest_grp_no:	block group num of the allocated blocks
++ * @goal_grp_no:	block group num of the destination of block allocation
++ * @alloc_total:	sum total of the allocated blocks
++ * @req_blocks:		contiguous blocks count we need
++ * @phase:              phase of the force defrag mode
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_check_phase(struct ext4_allocation_request *ar,
++			ext4_group_t dest_grp_no, ext4_group_t goal_grp_no,
++			ext4_fsblk_t alloc_total, ext4_lblk_t req_blocks,
++			int phase)
++{
++	int err = 0;
++
++	switch (phase) {
++	case DEFRAG_FORCE_TRY:
++		/* If there is not enough space, return -ENOSPC. */
++		if (ar->len != req_blocks)
++			/* -ENOSPC triggers DEFRAG_FORCE_VICTIM phase. */
++			err = -ENOSPC;
++		break;
++	case DEFRAG_FORCE_VICTIM:
++		/* We can't allocate new blocks in the same block group. */
++		if (dest_grp_no == ar->excepted_group) {
++			printk(KERN_ERR "ext4 defrag: Failed to allocate"
++					" victim file to other block group\n");
++			err = -ENOSPC;
++		}
++		break;
++	case DEFRAG_FORCE_GATHER:
++		/* Maybe reserved blocks are already used by other process. */
++		if (dest_grp_no != goal_grp_no
++		    || alloc_total != req_blocks) {
++			printk(KERN_ERR "ext4 defrag: Reserved blocks are"
++					" already used by other process\n");
++			err = -EIO;
++		}
++		break;
++	}
++
++	return err;
++}
++
++/**
+  * ext4_defrag_partial - Defrag a file per page
+  *
+  * @tmp_inode:		temporary inode
+  * @filp:		pointer to file
+  * @org_offset:		page index on original file
+  * @dest_offset:	page index on temporary file
++ * @phase:		phase of the force defrag mode
+  *
+  *
+  * This function returns 0 if succeed, otherwise returns error value.
+  */
+ static int
+ ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
+-			pgoff_t org_offset, pgoff_t dest_offset)
++			pgoff_t org_offset, pgoff_t dest_offset, int phase)
+ {
+ 	struct inode *org_inode = filp->f_dentry->d_inode;
+ 	struct address_space *mapping = org_inode->i_mapping;
+@@ -1182,7 +1543,7 @@ ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
+ 	/* Release old bh and drop refs */
+ 	try_to_release_page(page, 0);
+ 	ret = ext4_defrag_replace_branches(handle, org_inode, tmp_inode,
+-					org_offset, dest_offset, 1);
++					org_offset, dest_offset, 1, phase);
+
+ 	if (ret < 0)
+ 		goto out;
+@@ -1229,6 +1590,7 @@ out:
+  * @tar_end:		the last block number of the allocated blocks
+  * @sum_tmp:		the extents count  in the allocated blocks
+  * @goal:		block offset for allocaton
++ * @phase:		phase of the force defrag mode
+  *
+  *
+  * This function returns the values as below.
+@@ -1239,7 +1601,7 @@ out:
+ static int
+ ext4_defrag_comp_ext_count(struct inode *org_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
+-			int sum_tmp, ext4_fsblk_t goal)
++			int sum_tmp, ext4_fsblk_t goal, int phase)
+ {
+ 	struct ext4_extent *ext = NULL;
+ 	int depth = ext_depth(org_inode);
+@@ -1266,7 +1628,8 @@ ext4_defrag_comp_ext_count(struct inode *org_inode,
+ 			if (sum_org == sum_tmp && !goal) {
+ 				/* Not improved */
+ 				ret = 1;
+-			} else if (sum_org < sum_tmp) {
++			} else if (sum_org < sum_tmp &&
++					phase != DEFRAG_FORCE_VICTIM) {
+ 				/* Fragment increased */
+ 				ret = -ENOSPC;
+ 				printk(KERN_ERR "ext4 defrag: "
+@@ -1295,6 +1658,7 @@ ext4_defrag_comp_ext_count(struct inode *org_inode,
+  * @tar_blocks:		the number of blocks to allocate
+  * @iblock:		file related offset
+  * @goal:		block offset for allocaton
++ * @phase:		phase of the force defrag mode
+  *
+  *
+  * This function returns the value as below:
+@@ -1306,7 +1670,7 @@ static int
+ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t tar_start,
+ 			ext4_lblk_t tar_blocks, ext4_lblk_t iblock,
+-			ext4_fsblk_t goal)
++			ext4_fsblk_t goal, int phase)
+ {
+ 	handle_t *handle;
+ 	struct ext4_extent_header *eh = NULL;
+@@ -1316,6 +1680,8 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 	ext4_fsblk_t alloc_total = 0;
+ 	ext4_fsblk_t newblock = 0;
+ 	ext4_lblk_t tar_end = tar_start + tar_blocks - 1;
++	ext4_group_t dest_group_no, goal_group_no;
++	ext4_grpblk_t dest_blk_off, goal_blk_off;
+ 	int sum_tmp = 0;
+ 	int metadata = 1;
+ 	int ret, ret2;
+@@ -1332,7 +1698,7 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+
+ 	/* Fill struct ext4_allocation_request with necessary info */
+ 	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
+-				dest_path, tar_blocks, iblock, goal);
++				dest_path, tar_blocks, iblock, goal, phase);
+
+ 	handle = ext4_journal_start(tmp_inode, 0);
+ 	if (IS_ERR(handle)) {
+@@ -1340,6 +1706,9 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 		goto out2;
+ 	}
+
++	ext4_get_group_no_and_offset(tmp_inode->i_sb, goal,
++				&goal_group_no, &goal_blk_off);
++
+ 	while (alloc_total != tar_blocks) {
+ 		/* Allocate blocks */
+ 		ret = ext4_defrag_alloc_blocks(handle, org_inode, tmp_inode,
+@@ -1347,8 +1716,20 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 		if (ret < 0)
+ 			goto out;
+
++		ext4_get_group_no_and_offset(tmp_inode->i_sb, newblock,
++					&dest_group_no, &dest_blk_off);
++
+ 		alloc_total += ar.len;
+
++		/* the checks that done in force mode */
++		if (phase) {
++			ret = ext4_defrag_check_phase(&ar, dest_group_no,
++					goal_group_no, alloc_total,
++					tar_blocks, phase);
++			if (ret < 0)
++				goto out;
++		}
++
+ 		newex.ee_block = cpu_to_le32(alloc_total - ar.len);
+ 		ext4_ext_store_pblock(&newex, newblock);
+ 		newex.ee_len = cpu_to_le16(ar.len);
+@@ -1358,13 +1739,14 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 		if (ret < 0)
+ 			goto out;
+
+-		ar.goal = newblock + ar.len;
++		if (!phase)
++			ar.goal = newblock + ar.len;
+ 		ar.len = tar_blocks - alloc_total;
+ 		sum_tmp++;
+ 	}
+
+ 	ret = ext4_defrag_comp_ext_count(org_inode, org_path, tar_end,
+-					sum_tmp, goal);
++					sum_tmp, goal, phase);
+
+ out:
+ 	if (ret < 0 || ret == 1) {
+@@ -1395,14 +1777,16 @@ out2:
+  * ext4_defrag_check - Check the enviroment whether a defrag can be done
+  *
+  * @org_inode:		original inode
++ * @ext:		extent to be moved (only defrag force mode)
+  * @defrag_size:	size of defrag in blocks
+  * @goal:		poiter to block offset for allocation
++ * @phase:		phase of the force defrag mode
+  *
+  * This function returns 0 if succeed, otherwise returns error value.
+  */
+ static int
+-ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size,
+-		ext4_fsblk_t *goal)
++ext4_defrag_check(struct inode *org_inode, struct ext4_extent_data *ext,
++		ext4_lblk_t defrag_size, ext4_fsblk_t *goal, int *phase)
  {
 
  	/* ext4 online defrag supports only 4KB block size */
-@@ -1242,7 +1513,7 @@ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+@@ -1419,6 +1803,17 @@ ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size,
+ 		return -EOPNOTSUPP;
+ 	}
+
++	if (ext->len) {
++		/* Setup for the force defrag mode */
++		if (ext->len < defrag_size) {
++			printk(KERN_ERR "ext4 defrag: "
++					"Invalid length of extent\n");
++			return -EINVAL;
++		}
++		*phase = DEFRAG_FORCE_GATHER;
++		*goal = ext->start;
++	}
++
+ 	return 0;
+ }
+
+@@ -1497,13 +1892,16 @@ out:
+  * @block_start:	starting offset to defrag in blocks
+  * @defrag_size:	size of defrag in blocks
+  * @goal:		block offset for allocation
++ * @phase:		phase of the force defrag mode
++ * @ext:		extent to be moved (only defrag force mode)
+  *
+  * This function returns the number of blocks if succeed, otherwise
+  * returns error value.
+  */
+ int
+ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+-		ext4_lblk_t defrag_size, ext4_fsblk_t goal)
++		ext4_lblk_t defrag_size, ext4_fsblk_t goal, int phase,
++		struct ext4_extent_data *ext)
+ {
+ 	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
+ 	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
+@@ -1513,7 +1911,7 @@ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
  	int ret, depth, seq_extents, last_extent = 0;
 
  	/* Check the filesystem enviroment whether defrag can be done */
--	ret = ext4_defrag_check(org_inode, defrag_size);
-+	ret = ext4_defrag_check(org_inode, defrag_size, &goal);
+-	ret = ext4_defrag_check(org_inode, defrag_size, &goal);
++	ret = ext4_defrag_check(org_inode, ext, defrag_size, &goal, &phase);
  	if (ret < 0)
  		return ret;
 
+@@ -1629,11 +2027,11 @@ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+
+ 		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
+ 					org_path, seq_start, seq_blocks,
+-					block_start, goal);
++					block_start, goal, phase);
+
+ 		if (ret < 0) {
+ 			break;
+-		} else if (ret == 1) {
++		} else if (ret == 1 && (!goal || (goal && !phase))) {
+ 			ret = 0;
+ 			seq_start = le32_to_cpu(ext_cur->ee_block);
+ 			goto CLEANUP;
+@@ -1657,7 +2055,7 @@ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+ 		while (page_offset <= seq_end_page) {
+ 			/* Swap original branches with new branches */
+ 			ret = ext4_defrag_partial(tmp_inode, filp,
+-					page_offset, dest_offset);
++					page_offset, dest_offset, phase);
+ 			if (ret < 0)
+ 				goto out;
+
+@@ -1710,6 +2108,10 @@ out:
+ 		kfree(holecheck_path);
+ 	}
+
++	if (phase == DEFRAG_FORCE_GATHER)
++		/* Release reserved block in force mode */
++		ext4_discard_reservation(org_inode);
++
+ 	up_write(&EXT4_I(org_inode)->i_data_sem);
+ 	mutex_unlock(&org_inode->i_mutex);
+
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 12b3fea..d0b1301 100644
+index d0b1301..88fd100 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -300,6 +300,9 @@ struct ext4_new_group_data {
- #define EXT4_IOC_MIGRATE		_IO('f', 7)
- #define EXT4_IOC_FIBMAP			_IOW('f', 9, ext4_fsblk_t)
- #define EXT4_IOC_DEFRAG		_IOW('f', 10, struct ext4_ext_defrag_data)
-+#define EXT4_IOC_GROUP_INFO	_IOW('f', 11, struct ext4_group_data_info)
-+#define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 12, struct ext4_extents_info)
-+#define EXT4_IOC_EXTENTS_INFO		_IOW('f', 13, struct ext4_extents_info)
+@@ -94,6 +94,11 @@ struct ext4_allocation_request {
+ 	unsigned long len;
+ 	/* flags. see above EXT4_MB_HINT_* */
+ 	unsigned long flags;
++	/*
++	 * for ext4 online defrag:
++	 * the block group which is excepted from allocation target
++	 */
++	long long excepted_group;
+ };
+
+ /*
+@@ -303,6 +308,9 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_GROUP_INFO	_IOW('f', 11, struct ext4_group_data_info)
+ #define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 12, struct ext4_extents_info)
+ #define EXT4_IOC_EXTENTS_INFO		_IOW('f', 13, struct ext4_extents_info)
++#define EXT4_IOC_RESERVE_BLOCK		_IOW('f', 14, struct ext4_extents_info)
++#define EXT4_IOC_MOVE_VICTIM		_IOW('f', 15, struct ext4_extents_info)
++#define EXT4_IOC_BLOCK_RELEASE		_IO('f', 8)
 
  /*
   * ioctl commands in 32 bit emulation
-@@ -323,12 +326,41 @@ struct ext4_new_group_data {
+@@ -331,8 +339,15 @@ struct ext4_new_group_data {
+  *
+  * DEFRAG_MAX_ENT:	the maximum number of extents for exchanging between
+  *			kernel-space and user-space per an ioctl
++ * DEFRAG_FORCE_TRY:	check whether we have free space fragmentation or not
++ * DEFRAG_FORCE_VICTIM:	move victim extents to make sufficient space
++ * DEFRAG_FORCE_GATHER:	move the target file into the free space made in the
++ *			DEFRAG_FORCE_VICTIM phase
   */
- #define DEFRAG_BLOCK_SIZE	4096
+ #define DEFRAG_MAX_ENT		32
++#define DEFRAG_FORCE_TRY	1
++#define DEFRAG_FORCE_VICTIM	2
++#define DEFRAG_FORCE_GATHER	3
 
-+/*
-+ * The following four macros are used for the defrag force mode.
-+ *
-+ * DEFRAG_MAX_ENT:	the maximum number of extents for exchanging between
-+ *			kernel-space and user-space per an ioctl
-+ */
-+#define DEFRAG_MAX_ENT		32
-+
-+struct ext4_extent_data {
-+	ext4_lblk_t block;		/* start logical block number */
-+	ext4_fsblk_t start;		/* start physical block number */
-+	int len;			/* blocks count */
-+};
-+
- struct ext4_ext_defrag_data {
+ struct ext4_extent_data {
+ 	ext4_lblk_t block;		/* start logical block number */
+@@ -344,6 +359,8 @@ struct ext4_ext_defrag_data {
  	ext4_lblk_t start_offset;	/* start offset to defrag in blocks */
  	ext4_lblk_t defrag_size;	/* size of defrag in blocks */
  	ext4_fsblk_t goal;		/* block offset for allocation */
++	int flag;			/* free space mode flag */
++	struct ext4_extent_data ext;
  };
 
-+struct ext4_group_data_info {
-+	int s_blocks_per_group;		/* blocks per group */
-+	int s_inodes_per_group;		/* inodes per group */
-+};
-+
-+struct ext4_extents_info {
-+	unsigned long long ino;		/* inode number */
-+	int max_entries;		/* maximum extents count */
-+	int entries;			/* extent number/count */
-+	ext4_lblk_t f_offset;		/* file offset */
-+	ext4_grpblk_t g_offset;		/* group offset */
-+	ext4_fsblk_t goal;		/* block offset for allocation */
-+	struct ext4_extent_data ext[DEFRAG_MAX_ENT];
-+};
-+
- #define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
-
- /*
-@@ -1010,6 +1042,8 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ struct ext4_group_data_info {
+@@ -1042,8 +1059,17 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
  extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
  extern void ext4_init_block_alloc_info(struct inode *);
  extern void ext4_rsv_window_add(struct super_block *sb, struct ext4_reserve_window_node *rsv);
-+extern ext4_grpblk_t bitmap_search_next_usable_block(ext4_grpblk_t,
-+				struct buffer_head *, ext4_grpblk_t);
++extern void try_to_extend_reservation(struct ext4_reserve_window_node *,
++					struct super_block *, int);
++extern int alloc_new_reservation(struct ext4_reserve_window_node *,
++				ext4_grpblk_t, struct super_block *,
++				ext4_group_t, struct buffer_head *);
+ extern ext4_grpblk_t bitmap_search_next_usable_block(ext4_grpblk_t,
+ 				struct buffer_head *, ext4_grpblk_t);
++extern int rsv_is_empty(struct ext4_reserve_window *rsv);
++extern int goal_in_my_reservation(struct ext4_reserve_window *rsv,
++				ext4_grpblk_t grp_goal, ext4_group_t group,
++				struct super_block *sb);
 
  /* dir.c */
  extern int ext4_check_dir_entry(const char *, struct inode *,
+@@ -1169,7 +1195,8 @@ extern void ext4_inode_table_set(struct super_block *sb,
+ extern handle_t *ext4_ext_journal_restart(handle_t *handle, int needed);
+ /* defrag.c */
+ extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+-			ext4_lblk_t defrag_size, ext4_fsblk_t goal);
++			ext4_lblk_t defrag_size, ext4_fsblk_t goal,
++			int flag, struct ext4_extent_data *ext);
+ extern int ext4_defrag_ioctl(struct inode *, struct file *, unsigned int,
+ 				unsigned long);
+
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 734c1c7..d9a6a73 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -233,5 +233,10 @@ extern void ext4_ext_drop_refs(struct ext4_ext_path *path);
+ extern ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 					struct ext4_ext_path *path,
+ 					ext4_lblk_t block);
++extern int ext4_ext_insert_extent_defrag(handle_t *handle, struct inode *inode,
++					struct ext4_ext_path *path,
++					struct ext4_extent *newext, int defrag);
++extern ext4_lblk_t ext4_ext_next_allocated_block(struct ext4_ext_path *path);
++
+ #endif /* _EXT4_EXTENTS */
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c6835b5..9bc5814 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -183,11 +183,17 @@ ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ static ext4_fsblk_t
+ ext4_ext_new_block(handle_t *handle, struct inode *inode,
+ 			struct ext4_ext_path *path,
+-			struct ext4_extent *ex, int *err)
++			struct ext4_extent *ex, int *err,
++			ext4_fsblk_t defrag_goal)
+ {
+ 	ext4_fsblk_t goal, newblock;
+
+-	goal = ext4_ext_find_goal(inode, path, le32_to_cpu(ex->ee_block));
++	if (defrag_goal)
++		goal = defrag_goal;
++	else
++		goal = ext4_ext_find_goal(inode, path,
++					le32_to_cpu(ex->ee_block));
++
+ 	newblock = ext4_new_meta_block(handle, inode, goal, err);
+ 	return newblock;
+ }
+@@ -638,7 +644,8 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
+  */
+ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 				struct ext4_ext_path *path,
+-				struct ext4_extent *newext, int at)
++				struct ext4_extent *newext, int at,
++				ext4_fsblk_t defrag_goal)
+ {
+ 	struct buffer_head *bh = NULL;
+ 	int depth = ext_depth(inode);
+@@ -688,7 +695,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	/* allocate all needed blocks */
+ 	ext_debug("allocate %d blocks for indexes/leaf\n", depth - at);
+ 	for (a = 0; a < depth - at; a++) {
+-		newblock = ext4_ext_new_block(handle, inode, path, newext, &err);
++		newblock = ext4_ext_new_block(handle, inode, path,
++						newext, &err, defrag_goal);
+ 		if (newblock == 0)
+ 			goto cleanup;
+ 		ablocks[a] = newblock;
+@@ -875,7 +883,8 @@ cleanup:
+  */
+ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 					struct ext4_ext_path *path,
+-					struct ext4_extent *newext)
++					struct ext4_extent *newext,
++					ext4_fsblk_t defrag_goal)
+ {
+ 	struct ext4_ext_path *curp = path;
+ 	struct ext4_extent_header *neh;
+@@ -884,7 +893,8 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	ext4_fsblk_t newblock;
+ 	int err = 0;
+
+-	newblock = ext4_ext_new_block(handle, inode, path, newext, &err);
++	newblock = ext4_ext_new_block(handle, inode, path,
++					newext, &err, defrag_goal);
+ 	if (newblock == 0)
+ 		return err;
+
+@@ -960,7 +970,8 @@ out:
+  */
+ static int ext4_ext_create_new_leaf(handle_t *handle, struct inode *inode,
+ 					struct ext4_ext_path *path,
+-					struct ext4_extent *newext)
++					struct ext4_extent *newext,
++					ext4_fsblk_t defrag_goal)
+ {
+ 	struct ext4_ext_path *curp;
+ 	int depth, i, err = 0;
+@@ -980,7 +991,8 @@ repeat:
+ 	if (EXT_HAS_FREE_INDEX(curp)) {
+ 		/* if we found index with free entry, then use that
+ 		 * entry: create all needed subtree and add new leaf */
+-		err = ext4_ext_split(handle, inode, path, newext, i);
++		err = ext4_ext_split(handle, inode, path,
++					newext, i, defrag_goal);
+
+ 		/* refill path */
+ 		ext4_ext_drop_refs(path);
+@@ -991,7 +1003,8 @@ repeat:
+ 			err = PTR_ERR(path);
+ 	} else {
+ 		/* tree is full, time to grow in depth */
+-		err = ext4_ext_grow_indepth(handle, inode, path, newext);
++		err = ext4_ext_grow_indepth(handle, inode, path,
++						newext, defrag_goal);
+ 		if (err)
+ 			goto out;
+
+@@ -1171,7 +1184,7 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
+  * allocated block. Thus, index entries have to be consistent
+  * with leaves.
+  */
+-static ext4_lblk_t
++ext4_lblk_t
+ ext4_ext_next_allocated_block(struct ext4_ext_path *path)
+ {
+ 	int depth;
+@@ -1437,6 +1450,19 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 				struct ext4_ext_path *path,
+ 				struct ext4_extent *newext)
+ {
++	return ext4_ext_insert_extent_defrag(handle, inode, path, newext, 0);
++}
++
++/*
++ * ext4_ext_insert_extent_defrag:
++ * The difference from ext4_ext_insert_extent is to use the first block
++ * in newext as the goal of the new index block.
++ */
++int
++ext4_ext_insert_extent_defrag(handle_t *handle, struct inode *inode,
++				struct ext4_ext_path *path,
++				struct ext4_extent *newext, int defrag)
++{
+ 	struct ext4_extent_header * eh;
+ 	struct ext4_extent *ex, *fex;
+ 	struct ext4_extent *nearex; /* nearest extent */
+@@ -1444,6 +1470,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	int depth, len, err;
+ 	ext4_lblk_t next;
+ 	unsigned uninitialized = 0;
++	ext4_fsblk_t defrag_goal;
+
+ 	BUG_ON(ext4_ext_get_actual_len(newext) == 0);
+ 	depth = ext_depth(inode);
+@@ -1504,11 +1531,16 @@ repeat:
+ 			  le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
+ 	}
+
++	if (defrag)
++		defrag_goal = ext_pblock(newext);
++	else
++		defrag_goal = 0;
+ 	/*
+ 	 * There is no free space in the found leaf.
+ 	 * We're gonna add a new leaf in the tree.
+ 	 */
+-	err = ext4_ext_create_new_leaf(handle, inode, path, newext);
++	err = ext4_ext_create_new_leaf(handle, inode, path,
++					newext, defrag_goal);
+ 	if (err)
+ 		goto cleanup;
+ 	depth = ext_depth(inode);
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index e1b9c10..e012193 100644
+index e012193..9daa40a 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -242,7 +242,10 @@ setversion_out:
- 		return err;
- 	}
- 	case EXT4_IOC_FIBMAP:
--	case EXT4_IOC_DEFRAG: {
-+	case EXT4_IOC_DEFRAG:
-+	case EXT4_IOC_GROUP_INFO:
-+	case EXT4_IOC_FREE_BLOCKS_INFO:
-+	case EXT4_IOC_EXTENTS_INFO: {
+@@ -245,7 +245,10 @@ setversion_out:
+ 	case EXT4_IOC_DEFRAG:
+ 	case EXT4_IOC_GROUP_INFO:
+ 	case EXT4_IOC_FREE_BLOCKS_INFO:
+-	case EXT4_IOC_EXTENTS_INFO: {
++	case EXT4_IOC_EXTENTS_INFO:
++	case EXT4_IOC_RESERVE_BLOCK:
++	case EXT4_IOC_MOVE_VICTIM:
++	case EXT4_IOC_BLOCK_RELEASE: {
  		return ext4_defrag_ioctl(inode, filp, cmd, arg);
  	}
  	case EXT4_IOC_GROUP_ADD: {
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5302ac6..e273279 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1765,6 +1765,10 @@ repeat:
+ 			if (group == EXT4_SB(sb)->s_groups_count)
+ 				group = 0;
+
++			if (ac->ac_excepted_group != -1 &&
++			    group == ac->ac_excepted_group)
++				continue;
++
+ 			/* quick check to skip empty groups */
+ 			grp = ext4_get_group_info(ac->ac_sb, group);
+ 			if (grp->bb_free == 0)
+@@ -3956,6 +3960,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 	ac->ac_bitmap_page = NULL;
+ 	ac->ac_buddy_page = NULL;
+ 	ac->ac_lg = NULL;
++	ac->ac_excepted_group = ar->excepted_group;
+
+ 	/* we have to define context: we'll we work with a file or
+ 	 * locality group. this is a policy, actually */
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index bfe6add..1141ad5 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -205,6 +205,7 @@ struct ext4_allocation_context {
+ 	struct page *ac_buddy_page;
+ 	struct ext4_prealloc_space *ac_pa;
+ 	struct ext4_locality_group *ac_lg;
++	long long ac_excepted_group;
+ };
+
+ #define AC_STATUS_CONTINUE	1
 
