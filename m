@@ -1,70 +1,35 @@
-From: Valerie Clement <valerie.clement@bull.net>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: Test results for ext4
-Date: Fri, 30 May 2008 18:21:16 +0200
-Message-ID: <4840297C.7030809@bull.net>
-References: <48402253.8040407@bull.net> <484024EF.7080304@redhat.com>
+Date: Fri, 30 May 2008 11:23:59 -0500
+Message-ID: <48402A1F.8080108@redhat.com>
+References: <48402253.8040407@bull.net> <484024EF.7080304@redhat.com> <4840297C.7030809@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:40981 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752263AbYE3QVi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 12:21:38 -0400
-In-Reply-To: <484024EF.7080304@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:57947 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753679AbYE3QYv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 May 2008 12:24:51 -0400
+In-Reply-To: <4840297C.7030809@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Valerie Clement wrote:
->> Hi all,
->>
->> Since a couple of weeks, I did batches of tests to have some perform=
-ance
->> numbers for the new ext4 features like uninit_groups, flex_bg or
->> journal_checksum on a 5TB filesystem.
->> I tried to test allmost all combinations of mkfs and mount options, =
-but
->> I put only a subset of them in the result tables, the most significa=
-nt
->> for me.
->>
->> I had started to do these tests on a kernel 2.6.26-rc1, but I'd got =
-several
->> hangs and crashes occuring randomly outside ext4, sometimes in the s=
-lab
->> code or in the scsi driver eg., and which were not reproductible.
->> Since 2.6.26-rc2, no crash or hang occur with ext4 on my system.
->>
->> The first results and the test description are available here:
->> http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.ht=
-ml
->> http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc=
-2.html
->=20
-> To be fair in your comparisons with xfs, you should probably either t=
-urn
-> barriers off for xfs, or on for ext[34], just FWIW.
->=20
+Valerie Clement wrote:
+> Eric Sandeen wrote:
 
-Oops, I did the test on a device mapper /dev/md0. I forgot to change it=
- in
-the test description. I will do it.
+> Oops, I did the test on a device mapper /dev/md0. I forgot to change it in
+> the test description. I will do it.
+> 
+> When mounting the xfs filesystem, I've got the following message:
+>   Filesystem "md0": Disabling barriers, not supported by the underlying device
+> 
+> It means barriers are not supported by my device, isn' it?
 
-When mounting the xfs filesystem, I've got the following message:
-  Filesystem "md0": Disabling barriers, not supported by the underlying=
- device
+Yep, it should be a fair fight then.  :)  I saw /dev/sde in the writeup
+and figured it probably had barriers on.
 
-It means barriers are not supported by my device, isn' it?
-
-   Val=E9rie
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+-Eric
