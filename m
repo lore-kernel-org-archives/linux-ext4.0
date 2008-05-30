@@ -1,97 +1,133 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: Test results for ext4
-Date: Fri, 30 May 2008 13:12:39 -0500
-Message-ID: <20080530131239.6d93f1d9@rx8>
-References: <48402253.8040407@bull.net>
+From: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
+Subject: [PATCH e2fsprogs] Add ZFS detection to libblkid
+Date: Fri, 30 May 2008 19:20:47 +0100
+Message-ID: <1212171647.7508.46.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>
-To: Valerie Clement <valerie.clement@bull.net>
+Cc: Andreas Dilger <adilger@Sun.COM>
+To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:35707 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751737AbYE3SOI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 14:14:08 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m4UIDvkU026467
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 14:13:57 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m4UIDvu5103262
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 14:13:57 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m4UIDvUJ032399
-	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 14:13:57 -0400
-In-Reply-To: <48402253.8040407@bull.net>
+Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:41529 "EHLO
+	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752988AbYE3S2G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 14:28:06 -0400
+Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe1.eu.sun.com [192.18.6.10])
+	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m4UIKp2I011099
+	for <linux-ext4@vger.kernel.org>; Fri, 30 May 2008 18:20:53 GMT
+Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K1P002011JD6K00@fe-emea-09.sun.com>
+ (original mail from Ricardo.M.Correia@Sun.COM) for linux-ext4@vger.kernel.org;
+ Fri, 30 May 2008 19:20:51 +0100 (BST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 30 May 2008 17:50:43 +0200
-Valerie Clement <valerie.clement@bull.net> wrote:
+This patch adds ZFS filesystem detection to libblkid.
 
-> Hi all,
->=20
-> Since a couple of weeks, I did batches of tests to have some
-> performance numbers for the new ext4 features like uninit_groups,
-> flex_bg or journal_checksum on a 5TB filesystem.
-> I tried to test allmost all combinations of mkfs and mount options,
-> but I put only a subset of them in the result tables, the most
-> significant for me.
->=20
-> I had started to do these tests on a kernel 2.6.26-rc1, but I'd got
-> several hangs and crashes occuring randomly outside ext4, sometimes
-> in the slab code or in the scsi driver eg., and which were not
-> reproductible. Since 2.6.26-rc2, no crash or hang occur with ext4 on
-> my system.
->=20
-> The first results and the test description are available here:
-> http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.htm=
-l
-> http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2=
-=2Ehtml
->=20
-> I will complete them in the next days.
->=20
-> In the first batch of tests, I compare the I/O throughput to create
-> 1-GB files on disk in different configurations. The CPU usage is also
-> given to show mainly how the delayed allocation feature reduces it.
-> The average number of extents per file shows the impact of the
-> multiblock allocator and the flex_bg grouping on the file
-> fragmentation. At last, the fsck time shows how the uninit_groups
-> feature reduces the e2fsck duration.
->=20
-> In the second batch of tests, the results show improvements in
-> transactions -per-second throughput when doing small files writes,
-> reads and creates when using the flex_bg grouping.
-> The same ffsb test on an XFS filesystem hangs, I will try to have
-> traces.
->=20
-> If you are interested in other tests, please let me know.
+It probes for VDEV_BOOT_MAGIC in the first 2 ZFS labels in big-endian
+and little-endian formats.
+Unfortunately the probe table doesn't support probing from the end of
+the device, otherwise we could also probe in the 3rd and 4th labels (in
+case the first 2 labels were accidentally overwritten)..
 
-How about adding the following in "[filesystem0]" to age the filesystem=
-:
+Eventually we would set the =EF=BB=BFUUID from the ZFS pool GUID and th=
+e LABEL tag
+from the pool name, but that requires parsing an XDR encoding of the po=
+ol
+configuration which is not trivial.
 
-        agefs=3D1
-        [threadgroup0]
-                num_threads=3D10
-                write_size=3D40960
-                write_blocksize=3D4096
-                create_weight=3D10
-                append_weight=3D10
-                delete_weight=3D1
-        [end0]
-                desired_util=3D0.80
+Signed-off-by: Ricardo M. Correia <Ricardo.M.Correia@Sun.COM>
+Signed-off-by: Andreas Dilger <adilger@sun.com>
+---
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index c8bc840..cad0860 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -774,6 +774,18 @@ static int probe_jfs(struct blkid_probe *probe,
+ 	return 0;
+ }
+=20
++static int probe_zfs(struct blkid_probe *probe, struct blkid_magic *id=
+,
++		     unsigned char *buf)
++{
++	char *vdev_label;
++	const char *pool_name =3D 0;
++
++	/* read nvpair data for pool name, pool GUID (complex) */
++	//blkid_set_tag(probe->dev, "LABEL", pool_name, sizeof(pool_name));
++	//set_uuid(probe->dev, pool_guid, 0);
++	return 0;
++}
++
+ static int probe_luks(struct blkid_probe *probe,
+ 		       struct blkid_magic *id __BLKID_ATTR((unused)),
+ 		       unsigned char *buf)
+@@ -1095,15 +1107,6 @@ static int probe_lvm2(struct blkid_probe *probe,
+ 	return 0;
+ }
+ /*
+- * BLKID_BLK_OFFS is at least as large as the highest bim_kboff define=
+d
+- * in the type_array table below + bim_kbalign.
+- *
+- * When probing for a lot of magics, we handle everything in 1kB
+buffers so
+- * that we don't have to worry about reading each combination of block
+sizes.
+- */
+-#define BLKID_BLK_OFFS	64	/* currently reiserfs */
+-
+-/*
+  * Various filesystem magics that we can check for.  Note that kboff
+and
+  * sboff are in kilobytes and bytes respectively.  All magics are in
+  * byte strings so we don't worry about endian issues.
+@@ -1153,6 +1156,10 @@ static struct blkid_magic type_array[] =3D {
+   { "iso9660",	32,	 1,  5, "CD001",		probe_iso9660 },
+   { "iso9660",	32,	 9,  5, "CDROM",		probe_iso9660 },
+   { "jfs",	32,	 0,  4, "JFS1",			probe_jfs },
++  { "zfs",       8,	 0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c",
+probe_zfs },
++  { "zfs",       8,	 0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0",
+probe_zfs },
++  { "zfs",     264,	 0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c",
+probe_zfs },
++  { "zfs",     264,	 0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0",
+probe_zfs },
+   { "hfsplus",	 1,	 0,  2, "BD",			probe_hfsplus },
+   { "hfsplus",	 1,	 0,  2, "H+",			0 },
+   { "hfs",	 1,	 0,  2, "BD",			0 },
+@@ -1288,7 +1295,7 @@ try_again:
+ 		if (!buf)
+ 			continue;
+=20
+-		if (memcmp(id->bim_magic, buf + (id->bim_sboff&0x3ff),
++		if (memcmp(id->bim_magic, buf + (id->bim_sboff & 0x3ff),
+ 			   id->bim_len))
+ 			continue;
+=20
+@@ -1318,7 +1325,7 @@ try_again:
+ 		dev =3D 0;
+ 		goto found_type;
+ 	}
+-	=09
++
+ found_type:
+ 	if (dev && type) {
+ 		dev->bid_devno =3D st.st_rdev;
+@@ -1327,7 +1334,7 @@ found_type:
+ 		cache->bic_flags |=3D BLKID_BIC_FL_CHANGED;
+=20
+ 		blkid_set_tag(dev, "TYPE", type, 0);
+-			=09
++
+ 		DBG(DEBUG_PROBE, printf("%s: devno 0x%04llx, type %s\n",
+ 			   dev->bid_name, (long long)st.st_rdev, type));
+ 	}
 
-This will age the filesystem until it reaches 80% utilization before
-starting the benchmark.  Since a 5TB disk will take a while to age, I
-suggest trying this on just a few runs.
 
->=20
->    Val=C3=A9rie
->=20
-
--JRS
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
