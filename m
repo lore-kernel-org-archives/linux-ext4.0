@@ -1,82 +1,421 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH][take 5] JBD2: Fix race between free buffer and commit
-	trasanction
-Date: Fri, 30 May 2008 11:54:20 +0530
-Message-ID: <20080530062420.GA7450@skywalker>
-References: <20080519132553.de9b78b0.akpm@linux-foundation.org> <1211234829.3663.39.camel@localhost.localdomain> <1211306575.3664.19.camel@localhost.localdomain> <20080520235303.GB23521@atrey.karlin.mff.cuni.cz> <1211390093.5571.16.camel@BVR-FS.beaverton.ibm.com> <20080524224447.GE20563@atrey.karlin.mff.cuni.cz> <1211998739.3791.20.camel@localhost.localdomain> <20080528185554.GA16018@duck.suse.cz> <1212020216.3791.54.camel@localhost.localdomain> <1212020299.3791.57.camel@localhost.localdomain>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC][PATCH 2/8]ext4: allocate new contiguous blocks with mballoc
+Date: Fri, 30 May 2008 20:17:57 +0900
+Message-ID: <483FE265.1060504@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:34072 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753507AbYE3GYq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 02:24:46 -0400
-Content-Disposition: inline
-In-Reply-To: <1212020299.3791.57.camel@localhost.localdomain>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:64687 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753741AbYE3LSQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2008 07:18:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 28, 2008 at 05:18:19PM -0700, Mingming Cao wrote:
-> Index: linux-2.6.26-rc3/fs/jbd2/transaction.c
-> ===================================================================
-> --- linux-2.6.26-rc3.orig/fs/jbd2/transaction.c	2008-05-28 16:10:41.000000000 -0700
-> +++ linux-2.6.26-rc3/fs/jbd2/transaction.c	2008-05-28 16:13:16.000000000 -0700
-> @@ -1656,12 +1656,42 @@ out:
->  	return;
->  }
-> 
-> +/*
-> + * jbd2_journal_try_to_free_buffers() could race with jbd2_journal_commit_transaction()
-> + * The later might still hold the reference count to the buffers when inspecting
-> + * them on t_syncdata_list or t_locked_list.
-> + *
-> + * jbd2_journal_try_to_free_buffers() will call this function to
-> + * wait for the current transaction to finish syncing data buffers, before
-> + * try to free that buffer.
-> + *
-> + * Called with journal->j_state_lock hold.
-> + */
+ext4: online defrag-- Allocate new contiguous blocks with mballoc
 
-We are taking the spin_lock again in the function ??
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
+Search contiguous free blocks with mutil-block allocation
+and allocate them for the temporary inode.
 
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+---
+ fs/ext4/defrag.c       |  281 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/ext4.h         |    4 +
+ fs/ext4/ext4_extents.h |    3 +
+ fs/ext4/extents.c      |    6 +-
+ 4 files changed, 289 insertions(+), 5 deletions(-)
 
-> +static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
-> +{
-> +	transaction_t *transaction = NULL;
-> +	tid_t tid;
-> +
-> +	spin_lock(&journal->j_state_lock);
-> +	transaction = journal->j_committing_transaction;
-> +
-> +	if (!transaction) {
-> +		spin_unlock(&journal->j_state_lock);
-> +		return;
-> +	}
-> +
-> +	tid = transaction->t_tid;
-> +	spin_unlock(&journal->j_state_lock);
-> +	jbd2_log_wait_commit(journal, tid);
-> +}
+diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
+index a591e11..621276b 100644
+--- a/fs/ext4/defrag.c
++++ b/fs/ext4/defrag.c
+@@ -34,7 +34,60 @@ static int
+ ext4_defrag_next_extent(struct inode *inode, struct ext4_ext_path *path,
+ 			struct ext4_extent **extent)
+ {
+-	return 0;
++	int ppos, leaf_ppos = path->p_depth;
++
++	ppos = leaf_ppos;
++	if (EXT_LAST_EXTENT(path[ppos].p_hdr) > path[ppos].p_ext) {
++		/* leaf block */
++		*extent = ++path[ppos].p_ext;
++		return 0;
++	}
++
++	while (--ppos >= 0) {
++		if (EXT_LAST_INDEX(path[ppos].p_hdr) >
++		    path[ppos].p_idx) {
++			int cur_ppos = ppos;
++
++			/* index block */
++			path[ppos].p_idx++;
++			path[ppos].p_block = idx_pblock(path[ppos].p_idx);
++			if (path[ppos+1].p_bh)
++				brelse(path[ppos+1].p_bh);
++			path[ppos+1].p_bh =
++				sb_bread(inode->i_sb, path[ppos].p_block);
++			if (!path[ppos+1].p_bh)
++				goto err;
++			path[ppos+1].p_hdr =
++				ext_block_hdr(path[ppos+1].p_bh);
++
++			/* Halfway index block */
++			while (++cur_ppos < leaf_ppos) {
++				path[cur_ppos].p_idx =
++					EXT_FIRST_INDEX(path[cur_ppos].p_hdr);
++				path[cur_ppos].p_block =
++					idx_pblock(path[cur_ppos].p_idx);
++				if (path[cur_ppos+1].p_bh)
++					brelse(path[cur_ppos+1].p_bh);
++				path[cur_ppos+1].p_bh = sb_bread(inode->i_sb,
++					path[cur_ppos].p_block);
++				if (!path[cur_ppos+1].p_bh)
++					goto err;
++				path[cur_ppos+1].p_hdr =
++					ext_block_hdr(path[cur_ppos+1].p_bh);
++			}
++
++			/* leaf block */
++			path[leaf_ppos].p_ext = *extent =
++				EXT_FIRST_EXTENT(path[leaf_ppos].p_hdr);
++			return 0;
++		}
++	}
++	/* We found the last extent */
++	return 1;
++err:
++	if (path)
++		ext4_ext_drop_refs(path);
++	return -EIO;
+ }
 
+ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+@@ -81,6 +134,86 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ }
 
-[.... snip.... ]
+ /**
++ * ext4_defrag_fill_ar - Prepare to multiple block allocate for tmp inode
++ *
++ * @org_inode:		original inode
++ * @dest_inode:		temporary inode
++ * @ar:			allocation request for multiple block allocation
++ * @org_path:		indicating the original inode's extent
++ * @dest_path:		indicating the temporary inode's extent
++ * @req_blocks:		contiguous blocks count we need
++ * @iblock:		target file offset
++ *
++ */
++static void
++ext4_defrag_fill_ar(struct inode *org_inode, struct inode *dest_inode,
++			struct ext4_allocation_request *ar,
++			struct ext4_ext_path *org_path,
++			struct ext4_ext_path *dest_path,
++			ext4_fsblk_t req_blocks, ext4_lblk_t iblock)
++{
++	ar->inode = dest_inode;
++	ar->len = req_blocks;
++	ar->logical = iblock;
++	ar->flags = EXT4_MB_HINT_DATA | EXT4_MB_HINT_RESERVED
++		| EXT4_MB_HINT_NOPREALLOC;
++	ar->lleft = 0;
++	ar->pleft = 0;
++	ar->lright = 0;
++	ar->pright = 0;
++
++	ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
++}
++
++/**
++ * ext4_defrag_alloc_blocks - Allocate contiguous blocks to temporary inode
++ *
++ * @handle:		journal handle
++ * @org_inode:		original inode
++ * @dest_inode:		temporary inode for multiple block allocation
++ * @ar:			allocation request for multiple block allocation
++ * @dest_path:		indicating the temporary inode's extent
++ * @newblock:		start offset of contiguous blocks
++ *
++ * This function returns 0 if succeeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_alloc_blocks(handle_t *handle, struct inode *org_inode,
++		struct inode *dest_inode, struct ext4_allocation_request *ar,
++		struct ext4_ext_path *dest_path, ext4_fsblk_t *newblock)
++{
++	struct super_block *sb = org_inode->i_sb;
++	struct buffer_head *bh = NULL;
++	int err, i, credits = 0;
++
++	credits = ext4_ext_calc_credits_for_insert(dest_inode, dest_path);
++	handle = ext4_ext_journal_restart(handle,
++				credits + EXT4_TRANS_META_BLOCKS);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		return err;
++	}
++
++	*newblock = ext4_mb_new_blocks(handle, ar, &err);
++	if (err)
++		return err;
++
++	/*
++	 * Dirty buffer_head causes the overwriting
++	 * if ext4_mb_new_blocks() allocates the block
++	 * which used to be the metadata block.
++	 * We should call unmap_underlying_metadata()
++	 * to clear the dirty flag.
++	 */
++	for (i = 0; i < ar->len; i++) {
++		bh = sb_find_get_block(sb, *newblock + i);
++		unmap_underlying_metadata(sb->s_bdev, *newblock + i);
++	}
++
++	return err;
++}
++
++/**
+  * ext4_defrag_partial - Defrag a file per page
+  *
+  * @tmp_inode:		temporary inode
+@@ -99,6 +232,70 @@ ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
+ }
 
+ /**
++ * ext4_defrag_comp_ext_count- Check whether fragments are improved or not
++ *
++ * @org_inode:		original inode
++ * @path:		the structure holding some info about
++ *			original extent tree
++ * @tar_end:		the last block number of the allocated blocks
++ * @sum_tmp:		the extents count  in the allocated blocks
++ *
++ *
++ * This function returns the values as below.
++ *	0 (improved)
++ *	1 (not improved)
++ *	negative value (error case)
++ */
++static int
++ext4_defrag_comp_ext_count(struct inode *org_inode,
++			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
++			int sum_tmp)
++{
++	struct ext4_extent *ext = NULL;
++	int depth = ext_depth(org_inode);
++	int last_extent = 0;
++	int sum_org = 0;
++	int ret = 0;
++
++	ext = org_path[depth].p_ext;
++
++	/*
++	 * Compare the number of the newly allocated extents to
++	 * that of existing one.
++	 */
++	while (1) {
++		if (!last_extent)
++			++sum_org;
++		if (tar_end <= (le32_to_cpu(ext->ee_block) +
++			       le16_to_cpu(ext->ee_len) - 1) ||
++			       last_extent) {
++			/*
++			 * Fail if goal is not set and the fragmentation
++			 * is not improved.
++			 */
++			if (sum_org == sum_tmp) {
++				/* Not improved */
++				ret = 1;
++			} else if (sum_org < sum_tmp) {
++				/* Fragment increased */
++				ret = -ENOSPC;
++				printk(KERN_ERR "ext4 defrag: "
++					"Insufficient free blocks\n");
++			}
++			break;
++		}
++		last_extent =
++			ext4_defrag_next_extent(org_inode, org_path, &ext);
++		if (last_extent < 0) {
++			ret = last_extent;
++			break;
++		}
++	}
++
++	return ret;
++}
++
++/**
+  * ext4_defrag_new_extent_tree - Get contiguous blocks and build an extent tree
+  *
+  * @org_inode:		original inode
+@@ -119,7 +316,87 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t tar_start,
+ 			ext4_lblk_t tar_blocks, ext4_lblk_t iblock)
+ {
+-	return 0;
++	handle_t *handle;
++	struct ext4_extent_header *eh = NULL;
++	struct ext4_allocation_request ar;
++	struct ext4_ext_path *dest_path = NULL;
++	struct ext4_extent newex;
++	ext4_fsblk_t alloc_total = 0;
++	ext4_fsblk_t newblock = 0;
++	ext4_lblk_t tar_end = tar_start + tar_blocks - 1;
++	int sum_tmp = 0;
++	int metadata = 1;
++	int ret, ret2;
++
++	eh = ext_inode_hdr(tmp_inode);
++	eh->eh_depth = 0;
++
++	dest_path = ext4_ext_find_extent(tmp_inode, iblock, NULL);
++	if (IS_ERR(dest_path)) {
++		ret = PTR_ERR(dest_path);
++		dest_path = NULL;
++		goto out2;
++	}
++
++	/* Fill struct ext4_allocation_request with necessary info */
++	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
++				dest_path, tar_blocks, iblock);
++
++	handle = ext4_journal_start(tmp_inode, 0);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out2;
++	}
++
++	while (alloc_total != tar_blocks) {
++		/* Allocate blocks */
++		ret = ext4_defrag_alloc_blocks(handle, org_inode, tmp_inode,
++						&ar, dest_path, &newblock);
++		if (ret < 0)
++			goto out;
++
++		alloc_total += ar.len;
++
++		newex.ee_block = cpu_to_le32(alloc_total - ar.len);
++		ext4_ext_store_pblock(&newex, newblock);
++		newex.ee_len = cpu_to_le16(ar.len);
++
++		ret = ext4_ext_insert_extent(handle, tmp_inode,
++						dest_path, &newex);
++		if (ret < 0)
++			goto out;
++
++		ar.goal = newblock + ar.len;
++		ar.len = tar_blocks - alloc_total;
++		sum_tmp++;
++	}
++
++	ret = ext4_defrag_comp_ext_count(org_inode, org_path, tar_end,
++					sum_tmp);
++
++out:
++	if (ret < 0 || ret == 1) {
++		if (ar.len)
++			ext4_free_blocks(handle, tmp_inode, newblock, ar.len,
++					metadata);
++		/* Faild case: We have to remove halfway blocks */
++		ret2 = ext4_ext_remove_space(tmp_inode, 0);
++		if (ret2) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Failed to remove temporary inode blocks\n");
++			ret = ret2;
++		}
++	}
++
++	ext4_journal_stop(handle);
++
++out2:
++	if (dest_path) {
++		ext4_ext_drop_refs(dest_path);
++		kfree(dest_path);
++	}
++
++	return ret;
+ }
 
-> +	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
-> +        	spin_lock(&journal->j_state_lock);
-> +		jbd2_journal_wait_for_transaction_sync_data(journal);
-> +		ret = try_to_free_buffers(page);
-> +		spin_unlock(&journal->j_state_lock);
-> +	}
-> +
->  busy:
->  	return ret;
->  }
-> 
-> 
+ /**
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 67281ad..d64a4ae 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -328,6 +328,7 @@ struct ext4_ext_defrag_data {
+ 	ext4_fsblk_t goal;		/* block offset for allocation */
+ };
 
--aneesh
++#define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
+
+ /*
+  *  Mount options
+@@ -1126,6 +1127,8 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_table_set(struct super_block *sb,
+ 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
++/* extents.c */
++extern handle_t *ext4_ext_journal_restart(handle_t *handle, int needed);
+ /* defrag.c */
+ extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+ 			ext4_lblk_t defrag_size);
+@@ -1248,6 +1251,7 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
+ 			sector_t block, unsigned long max_blocks,
+ 			struct buffer_head *bh, int create,
+ 			int extend_disksize);
++extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start);
+ #endif	/* __KERNEL__ */
+
+ #endif	/* _EXT4_H */
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 9868c02..734c1c7 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -230,5 +230,8 @@ extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *,
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *);
+ extern ext4_fsblk_t ext_pblock(struct ext4_extent *ex);
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *path);
++extern ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
++					struct ext4_ext_path *path,
++					ext4_lblk_t block);
+ #endif /* _EXT4_EXTENTS */
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ffced61..c6835b5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -92,7 +92,7 @@ static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+ }
+
+-static handle_t *ext4_ext_journal_restart(handle_t *handle, int needed)
++handle_t *ext4_ext_journal_restart(handle_t *handle, int needed)
+ {
+ 	int err;
+
+@@ -142,7 +142,7 @@ static int ext4_ext_dirty(handle_t *handle, struct inode *inode,
+ 	return err;
+ }
+
+-static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
++ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 			      struct ext4_ext_path *path,
+ 			      ext4_lblk_t block)
+ {
+@@ -1956,7 +1956,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ 	return 1;
+ }
+
+-static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
++int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+
