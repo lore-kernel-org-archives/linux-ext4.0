@@ -1,8 +1,7 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 5/8]ext4: defragmentation for the relevant files (-r
- mode)
-Date: Fri, 30 May 2008 20:18:19 +0900
-Message-ID: <483FE27B.2060805@rs.jp.nec.com>
+Subject: [RFC][PATCH 0/8]ext4: online defrag (ver 0.9)
+Date: Fri, 30 May 2008 20:17:35 +0900
+Message-ID: <483FE24F.50105@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
@@ -13,242 +12,123 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4: online defrag-- Defragmentation for the relevant files (-r mode)
+Hello,
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+I've updated the ext4 online defragmentation patches.
+I've addressed the review comment from Mingming, and there are some cleanups
+but no functional changes since the previous version.
 
-Relevant file fragmentation could be solved by moving
-the files under the specified directory close together with
-the block containing the directory data.
+Changelog:
+- 0.9 (May 30, 2008)
+  - Create some new functions (ext4_defrag_fill_ar(),
+    ext4_defrag_check_phase() ...) to separate block allocation function,
+    since the phase mode plug into the allocation function isn't good.
+  - Add the description of ext4_defrag() which is main function.
+  - Add the capability check.
+  - Some cleanups.
+- 0.8 (April 8, 2008)
+    Fix sparse warnings and change the construction of patches.
+- 0.7 (January 10, 2008)
+    Interchange the data blocks of the target and temporary files
+    in an atomic manner.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
----
- fs/ext4/defrag.c |   48 +++++++++++++++++++++++++++++++++++-------------
- fs/ext4/ext4.h   |    4 +++-
- fs/ext4/inode.c  |    2 +-
- fs/ext4/ioctl.c  |    1 +
- 4 files changed, 40 insertions(+), 15 deletions(-)
+Outline for ext4 online defragmentation:
+Ext4 online defrag has the following three functions.
 
-diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index 8ae5a48..61f577b 100644
---- a/fs/ext4/defrag.c
-+++ b/fs/ext4/defrag.c
-@@ -95,13 +95,26 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- {
- 	int err = 0;
+ no option  Solving a single file fragmentation.
+            Single file fragmentation is solved by moving file
+            data to contiguous free blocks.
 
--	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)) {
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL ||
-+					cmd == EXT4_IOC_FIBMAP)) {
- 		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
- 					"based file\n", inode->i_ino);
- 		return -EOPNOTSUPP;
- 	}
+    -r      Solving a relevant file fragmentation.
+            Relevant file fragmentation could be solved by moving
+            the files under the specified directory close together with
+            the block containing the directory data.
 
--	if (cmd == EXT4_IOC_DEFRAG) {
-+	if (cmd == EXT4_IOC_FIBMAP) {
-+		ext4_fsblk_t __user *p = (ext4_fsblk_t __user *)arg;
-+		ext4_fsblk_t block = 0;
-+		struct address_space *mapping = filp->f_mapping;
-+
-+		if (copy_from_user(&block, (ext4_fsblk_t __user *)arg,
-+					sizeof(block)))
-+			return -EFAULT;
-+
-+		block = ext4_bmap(mapping, block);
-+
-+		return put_user(block, p);
-+	} else if (cmd == EXT4_IOC_DEFRAG) {
- 		struct ext4_ext_defrag_data defrag;
- 		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+    -f      Solving a free space fragmentation.
+            If there is no contiguous free blocks in the filesystem,
+            the other files are moved to make sufficient space to allocate
+            contiguous blocks for the target file.
 
-@@ -127,7 +140,7 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 		}
+Notes:
+- Ext4 online defarg needs "mballoc" and "extents" mount options,
+  and it only supports 4KB block size (It will go away soon).
+- Current mballoc in the ext4 patch queue (linux-2.6.26-rc4) doesn't
+  work fine, ext4_mb_init_caches() which is changed by
+  ext4-add-error-handling-in-ext4-mb_laod_buddy.patch returns -EIO.
+  You can reproduce this kind of issue easily with following procedure.
+  1. mke2fs -j -E test_fs /devname
+  2. mount -t ext4dev -o mballoc,extents /devname /mountpoint
+  3. mkdir DIR /mountpint
+     mkdir: cannot create directory `/mnt/mp2/DIR1': No space left on device
 
- 		err = ext4_defrag(filp, defrag.start_offset,
--				defrag.defrag_size);
-+				defrag.defrag_size, defrag.goal);
- 	}
+Next steps:
+1. Implement FS_IOC_FIEMAP instead of EXT4_EXTENTS_INFO to reduce ioctl count.
+2. Remove the restriction of block size (Enable defrag with 1KB and 2KB).
+3. Remove the limit of target file size (now 128MB) in -f mode.
+   * The post about -f mode can be found at:
+   http://marc.info/?l=linux-ext4&m=118239067704899&w=4
 
- 	return err;
-@@ -745,6 +758,7 @@ out:
-  * @dest_path:		indicating the temporary inode's extent
-  * @req_blocks:		contiguous blocks count we need
-  * @iblock:		target file offset
-+ * @goal:		goal offset
-  *
-  */
- static void
-@@ -752,7 +766,8 @@ ext4_defrag_fill_ar(struct inode *org_inode, struct inode *dest_inode,
- 			struct ext4_allocation_request *ar,
- 			struct ext4_ext_path *org_path,
- 			struct ext4_ext_path *dest_path,
--			ext4_fsblk_t req_blocks, ext4_lblk_t iblock)
-+			ext4_fsblk_t req_blocks, ext4_lblk_t iblock,
-+			ext4_fsblk_t goal)
- {
- 	ar->inode = dest_inode;
- 	ar->len = req_blocks;
-@@ -764,7 +779,10 @@ ext4_defrag_fill_ar(struct inode *org_inode, struct inode *dest_inode,
- 	ar->lright = 0;
- 	ar->pright = 0;
+Summary of patches:
+* The following patches are new ext4 online defrag patches.
+  Mingming, please replace these patches with the ext4 patch queue's.
 
--	ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
-+	if (goal)
-+		ar->goal = goal;
-+	else
-+		ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
- }
+[PATCH 1/8] Main function of ext4 online defrag and ioctl implementation
+- Create the temporary inode and do defrag per
+  defrag_size (defalut 64MB).
 
- /**
-@@ -941,6 +959,7 @@ out:
-  *			original extent tree
-  * @tar_end:		the last block number of the allocated blocks
-  * @sum_tmp:		the extents count  in the allocated blocks
-+ * @goal:		block offset for allocaton
-  *
-  *
-  * This function returns the values as below.
-@@ -951,7 +970,7 @@ out:
- static int
- ext4_defrag_comp_ext_count(struct inode *org_inode,
- 			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
--			int sum_tmp)
-+			int sum_tmp, ext4_fsblk_t goal)
- {
- 	struct ext4_extent *ext = NULL;
- 	int depth = ext_depth(org_inode);
-@@ -975,7 +994,7 @@ ext4_defrag_comp_ext_count(struct inode *org_inode,
- 			 * Fail if goal is not set and the fragmentation
- 			 * is not improved.
- 			 */
--			if (sum_org == sum_tmp) {
-+			if (sum_org == sum_tmp && !goal) {
- 				/* Not improved */
- 				ret = 1;
- 			} else if (sum_org < sum_tmp) {
-@@ -1006,6 +1025,7 @@ ext4_defrag_comp_ext_count(struct inode *org_inode,
-  * @tar_start:		starting offset to allocate in blocks
-  * @tar_blocks:		the number of blocks to allocate
-  * @iblock:		file related offset
-+ * @goal:		block offset for allocaton
-  *
-  *
-  * This function returns the value as below:
-@@ -1016,7 +1036,8 @@ ext4_defrag_comp_ext_count(struct inode *org_inode,
- static int
- ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
- 			struct ext4_ext_path *org_path, ext4_lblk_t tar_start,
--			ext4_lblk_t tar_blocks, ext4_lblk_t iblock)
-+			ext4_lblk_t tar_blocks, ext4_lblk_t iblock,
-+			ext4_fsblk_t goal)
- {
- 	handle_t *handle;
- 	struct ext4_extent_header *eh = NULL;
-@@ -1042,7 +1063,7 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+[PATCH 2/8] Allocate new contiguous blocks with mballoc
+- Search contiguous free blocks with mutil-block allocation
+  and allocate them for the temporary inode.
 
- 	/* Fill struct ext4_allocation_request with necessary info */
- 	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
--				dest_path, tar_blocks, iblock);
-+				dest_path, tar_blocks, iblock, goal);
+[PATCH 3/8] Read and write file data with memory page
+- Read the file data from the old blocks to the page cache and
+  write the file data on the page into the new blocks.
 
- 	handle = ext4_journal_start(tmp_inode, 0);
- 	if (IS_ERR(handle)) {
-@@ -1074,7 +1095,7 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
- 	}
+[PATCH 4/8]  Exchange the blocks between two inodes
+- Exchange the data blocks between the temporary inode and
+  the original inode.
 
- 	ret = ext4_defrag_comp_ext_count(org_inode, org_path, tar_end,
--					sum_tmp);
-+					sum_tmp, goal);
+[PATCH 5/8] Defragmentation for the relevant files (-r mode)
+- Relevant file fragmentation could be solved by moving
+  the files under the specified directory close together with
+  the block containing the directory data.
 
- out:
- 	if (ret < 0 || ret == 1) {
-@@ -1204,13 +1225,14 @@ out:
-  * @filp:		pointer to file
-  * @block_start:	starting offset to defrag in blocks
-  * @defrag_size:	size of defrag in blocks
-+ * @goal:		block offset for allocation
-  *
-  * This function returns the number of blocks if succeed, otherwise
-  * returns error value.
-  */
- int
- ext4_defrag(struct file *filp, ext4_lblk_t block_start,
--		ext4_lblk_t defrag_size)
-+		ext4_lblk_t defrag_size, ext4_fsblk_t goal)
- {
- 	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
- 	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
-@@ -1329,14 +1351,14 @@ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
- 		}
+[PATCH 6/8] Check the free space fragmentation (-f mode)
+- Check the free space fragmentation in the block group
+  where target file is located.
 
- 		/* Found an isolated block */
--		if (seq_extents == 1) {
-+		if (seq_extents == 1 && !goal) {
- 			seq_start = le32_to_cpu(ext_cur->ee_block);
- 			goto CLEANUP;
- 		}
+[PATCH 7/8] Move victim files for the target file (-f mode)
+- Move victim files to make sufficient space and reallocate
+  the contiguous blocks for the target file.
 
- 		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
- 					org_path, seq_start, seq_blocks,
--					block_start);
-+					block_start, goal);
+[PATCH 8/8] Online defrag command
+- The defrag command. Usage is as follows:
+  - Defrag for a single file.
+    # e4defrag file-name
+  - Defrag for all files on ext4.
+    # e4defrag device-name
+  - Put the multiple files closer together.
+    # e4defrag -r directory-name
+  - Defrag for free space fragmentation.
+    # e4defrag -f file-name
 
- 		if (ret < 0) {
- 			break;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1e9ce39..12b3fea 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -298,6 +298,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
- #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
- #define EXT4_IOC_MIGRATE		_IO('f', 7)
-+#define EXT4_IOC_FIBMAP			_IOW('f', 9, ext4_fsblk_t)
- #define EXT4_IOC_DEFRAG		_IOW('f', 10, struct ext4_ext_defrag_data)
+Performance test:
+I created 1GB files with parallel writing then ran the e4defrag to it.
+As a result, I got the following improvement.
 
- /*
-@@ -1018,6 +1019,7 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
-+extern sector_t ext4_bmap(struct address_space *mapping, sector_t block);
+                        <Before>           <After>
+--------------------------------------------------------------------
+Fragments                  127      ->       20
+I/O performance(sec)       40.3     ->       36 (10% improved)
 
- /* fsync.c */
- extern int ext4_sync_file (struct file *, struct dentry *, int);
-@@ -1133,7 +1135,7 @@ extern void ext4_inode_table_set(struct super_block *sb,
- extern handle_t *ext4_ext_journal_restart(handle_t *handle, int needed);
- /* defrag.c */
- extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
--			ext4_lblk_t defrag_size);
-+			ext4_lblk_t defrag_size, ext4_fsblk_t goal);
- extern int ext4_defrag_ioctl(struct inode *, struct file *, unsigned int,
- 				unsigned long);
+		Kernel: 2.6.26-rc4 + ext4 patch queue Arch: x86_64
+		Mount options: extents, mballoc, delalloc, data=writeback
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a30f56c..27f3d2c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1648,7 +1648,7 @@ out:
-  * So, if we see any bmap calls here on a modified, data-journaled file,
-  * take extra steps to flush any blocks which might be in the cache.
-  */
--static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
-+sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- {
- 	struct inode *inode = mapping->host;
- 	journal_t *journal;
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 4c7fca1..e1b9c10 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -241,6 +241,7 @@ setversion_out:
+* "Fragments" is the number of fragments in 1GB file shown by filefrag.
+  "I/O performance" is the execution time for reading 1GB file
+   with "cat" command (cat file* > /dev/null).
 
- 		return err;
- 	}
-+	case EXT4_IOC_FIBMAP:
- 	case EXT4_IOC_DEFRAG: {
- 		return ext4_defrag_ioctl(inode, filp, cmd, arg);
- 	}
+Any comments are welcome.
 
+Regards,
+Akira Fujita
