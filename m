@@ -1,32 +1,45 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH e2fsprogs] delete unused nodes in ext2fs_extent_delete
-Date: Sat, 31 May 2008 00:19:06 -0400
-Message-ID: <20080531041906.GF3380@mit.edu>
-References: <48333F05.6080608@redhat.com> <20080529222401.GA19617@mit.edu> <483F5453.5060400@redhat.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] ext2 : correct comments in fs/ext2/balloc.c
+Date: Sat, 31 May 2008 23:45:56 +0530
+Message-ID: <ea11fea30805311115t72773c4u66999762bb53d157@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:39327 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752191AbYEaMuF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 May 2008 08:50:05 -0400
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	kernel-janitors@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <483F5453.5060400@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-One more addition.  If we delete the last entry in the root inode, we
-need to set the depth of the tree to 0.
+This patch corrects the wrong function name mentioned in the comments
+of ext2_free_blocks()  function
 
-					- Ted
+========================================================
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 19d7feb..65b2003 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1248,7 +1248,8 @@ errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, int flags)
- 	} else {
- 		eh = (struct ext3_extent_header *) path->buf;
- 		eh->eh_entries = ext2fs_cpu_to_le16(path->entries);
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+
+--- a/fs/ext2/balloc.c   2008-05-11 23:54:40.000000000 +0530
++++ b/fs/ext2/balloc.c        2008-05-31 23:44:20.000000000 +0530
+@@ -478,7 +478,7 @@
+ }
+
+ /**
+- * ext2_free_blocks_sb() -- Free given blocks and update quota and i_blocks
++ * ext2_free_blocks() -- Free given blocks and update quota and i_blocks
+  * @inode:             inode
+  * @block:             start physcial block to free
+  * @count:             number of blocks to free
+
+
+==========================================================
+
+-- 
+Thanks & Regards,
+********************************************
+Manish Katiyar ( http://mkatiyar.googlepages.com )
+3rd Floor, Fair Winds Block
+EGL Software Park
+Off Intermediate Ring Road
+Bangalore 560071, India
+***********************************************
