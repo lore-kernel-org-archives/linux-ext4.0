@@ -1,52 +1,46 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: [PATCH] ext3 : Remove redundant condition in ext3_free_blocks_sb()
-Date: Sun, 1 Jun 2008 00:40:32 +0530
-Message-ID: <ea11fea30805311210o15de2373m71d91228356f9bfd@mail.gmail.com>
-References: <ea11fea30805311156q7488714ftf8b0b8b8cea85b76@mail.gmail.com>
-	 <20080531190527.GG28946@ZenIV.linux.org.uk>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Test results for ext4
+Date: Sat, 31 May 2008 14:35:13 -0500
+Message-ID: <4841A871.3020500@redhat.com>
+References: <48402253.8040407@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: "Al Viro" <viro@zeniv.linux.org.uk>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	"Jose R. Santos" <jrs@us.ibm.com>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.185]:30118 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754614AbYEaTKf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 May 2008 15:10:35 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so129083tic.23
-        for <linux-ext4@vger.kernel.org>; Sat, 31 May 2008 12:10:32 -0700 (PDT)
-In-Reply-To: <20080531190527.GG28946@ZenIV.linux.org.uk>
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:32929 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752033AbYEaThK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 31 May 2008 15:37:10 -0400
+In-Reply-To: <48402253.8040407@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 1, 2008 at 12:35 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
-> On Sun, Jun 01, 2008 at 12:26:41AM +0530, Manish Katiyar wrote:
->> For two unsigned values the check "block+count < block"  is always
->> false. Thus the below patch removes that condition.
->
-> Really?  Always?
->
->        unsigned block = 1;
->        unsigned count = ~0U;
->
-> What will be the value and type of block + count?  What will be the
-> value of block + count < block?
+Valerie Clement wrote:
+> Hi all,
+> 
+> Since a couple of weeks, I did batches of tests to have some performance
+> numbers for the new ext4 features like uninit_groups, flex_bg or
+> journal_checksum on a 5TB filesystem.
+> I tried to test allmost all combinations of mkfs and mount options, but
+> I put only a subset of them in the result tables, the most significant
+> for me.
+> 
+> I had started to do these tests on a kernel 2.6.26-rc1, but I'd got several
+> hangs and crashes occuring randomly outside ext4, sometimes in the slab
+> code or in the scsi driver eg., and which were not reproductible.
+> Since 2.6.26-rc2, no crash or hang occur with ext4 on my system.
+> 
+> The first results and the test description are available here:
+> http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.html
+> http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2.html
+> 
 
-Oooops....my bad, but I doubt if we pass such values in ext* code anywhere.
+One other question on the tests; am I reading correctly that ext3 used
+"data=writeback" but ext4 used the default data=ordered mode?
 
->
-
-
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
+Thanks,
+-Eric
