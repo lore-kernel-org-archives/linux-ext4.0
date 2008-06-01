@@ -1,73 +1,99 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [RFC][PATCH 1/6] delalloc ENOSPC: Add per-inode counters to store
-	reserved blocks
-Date: Sun, 01 Jun 2008 16:35:33 -0700
-Message-ID: <1212363333.4368.64.camel@localhost.localdomain>
+Subject: [RFC][PATCH 2/6] delalloc ENOSPC: estimate metadata blocks needed
+	to reserve
+Date: Sun, 01 Jun 2008 16:35:46 -0700
+Message-ID: <1212363346.4368.65.camel@localhost.localdomain>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:43071 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757328AbYFAXfl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 19:35:41 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m51NZdIQ013761
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 19:35:39 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m51NZcLs089686
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 17:35:38 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m51NZc0Z004317
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 17:35:38 -0600
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:45557 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755869AbYFAXfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jun 2008 19:35:51 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m51NZpYv004253
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 19:35:51 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m51NZpLR144316
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 19:35:51 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m51NZorM031693
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 19:35:50 -0400
 Received: from [9.67.174.55] (wecm-9-67-174-55.wecm.ibm.com [9.67.174.55])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m51NZbC9004290
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 17:35:38 -0600
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m51NZo3F031686
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 19:35:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: delalloc -- Adding per inode counters to store reserved blocks
+ext4: delalloc --estimate need metadata blocks to reserve
 
 From: Mingming cao <cmm@us.ibm.com>
 
-Add per-inode counters to store number of resreved data blocks
-and metadata blocks, due to delayed allocation.
+Calculate the number of metadata blocks needed to allocate blocks
+Worse case is one block per extent
 
 Signed-off-by: Mingming cao <cmm@us.ibm.com>
----
- fs/ext4/ext4_i.h |    4 ++++
- fs/ext4/super.c  |    2 ++
- 2 files changed, 6 insertions(+)
 
-Index: linux-2.6.26-rc4/fs/ext4/ext4_i.h
+---
+ fs/ext4/ext4_extents.h |    1 +
+ fs/ext4/extents.c      |   30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
+
+Index: linux-2.6.26-rc4/fs/ext4/ext4_extents.h
 ===================================================================
---- linux-2.6.26-rc4.orig/fs/ext4/ext4_i.h	2008-06-01 13:06:25.000000000 -0700
-+++ linux-2.6.26-rc4/fs/ext4/ext4_i.h	2008-06-01 14:26:14.000000000 -0700
-@@ -162,6 +162,10 @@ struct ext4_inode_info {
- 	/* mballoc */
- 	struct list_head i_prealloc_list;
- 	spinlock_t i_prealloc_lock;
-+
-+	/* allocation reservation info for delalloc */
-+	unsigned long i_reserved_data_blocks;
-+	unsigned long i_reserved_meta_blocks;
- };
- 
- #endif	/* _EXT4_I */
-Index: linux-2.6.26-rc4/fs/ext4/super.c
-===================================================================
---- linux-2.6.26-rc4.orig/fs/ext4/super.c	2008-06-01 14:22:03.000000000 -0700
-+++ linux-2.6.26-rc4/fs/ext4/super.c	2008-06-01 14:26:14.000000000 -0700
-@@ -572,6 +572,8 @@ static struct inode *ext4_alloc_inode(st
- 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
-+	ei->i_reserved_data_blocks = 0;
-+	ei->i_reserved_meta_blocks = 0;
- 	return &ei->vfs_inode;
+--- linux-2.6.26-rc4.orig/fs/ext4/ext4_extents.h	2008-06-01 14:22:03.000000000 -0700
++++ linux-2.6.26-rc4/fs/ext4/ext4_extents.h	2008-06-01 14:57:57.000000000 -0700
+@@ -212,6 +212,7 @@ static inline int ext4_ext_get_actual_le
+ 		(le16_to_cpu(ext->ee_len) - EXT_INIT_MAX_LEN));
  }
  
++extern int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks);
+ extern ext4_fsblk_t idx_pblock(struct ext4_extent_idx *);
+ extern void ext4_ext_store_pblock(struct ext4_extent *, ext4_fsblk_t);
+ extern int ext4_extent_tree_init(handle_t *, struct inode *);
+Index: linux-2.6.26-rc4/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.26-rc4.orig/fs/ext4/extents.c	2008-06-01 14:22:03.000000000 -0700
++++ linux-2.6.26-rc4/fs/ext4/extents.c	2008-06-01 14:57:57.000000000 -0700
+@@ -246,6 +246,36 @@ static int ext4_ext_space_root_idx(struc
+ 	return size;
+ }
+ 
++/*
++ * Calculate the number of metadata blocks needed
++ * to allocate @blocks
++ * Worse case is one block per extent
++ */
++int ext4_ext_calc_metadata_amount(struct inode *inode, int blocks)
++{
++	int lcap, icap, rcap, leafs, idxs, num;
++	int newextents = blocks;
++
++	rcap = ext4_ext_space_root_idx(inode);
++	lcap = ext4_ext_space_block(inode);
++	icap = ext4_ext_space_block_idx(inode);
++
++	/* number of new leaf blocks needed */
++	num = leafs = (newextents + lcap - 1) / lcap;
++
++	/*
++	 * Worse case, we need separate index block(s)
++	 * to link all new leaf blocks
++	 */
++	idxs = (leafs + icap - 1) / icap;
++	do {
++	        num += idxs;
++	        idxs = (idxs + icap - 1) / icap;
++	} while (idxs > rcap);
++
++	return num;
++}
++
+ static int
+ ext4_ext_max_entries(struct inode *inode, int depth)
+ {
 
 
