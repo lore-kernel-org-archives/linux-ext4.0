@@ -1,94 +1,51 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: [PATCH] ext4 : Remove redundant condition in ext4_free_blocks_sb()
-Date: Sun, 1 Jun 2008 12:00:02 +0530
-Message-ID: <ea11fea30805312330s48dadc55x442dfc3e5f40b046@mail.gmail.com>
-References: <ea11fea30805311156vff13c10mdb2d5e399112d0bc@mail.gmail.com>
-	 <5d4p8du0xc.fsf@Hurtta06k.keh.iki.fi>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH]ext4: Fix ext4_mb_init_cache return error
+Date: Sun, 01 Jun 2008 14:02:26 -0700
+Message-ID: <1212354146.4368.3.camel@localhost.localdomain>
+References: <483FE24F.50105@rs.jp.nec.com>
+	 <1212173573.8596.84.camel@BVR-FS.beaverton.ibm.com>
+Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: "Kari Hurtta" <hurtta+gmane@siilo.fmi.fi>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Shen Feng <shen@cn.fujitsu.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>
+To: Theodore Tso <tytso@mit.edu>, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:23682 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751456AbYFAGaE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 02:30:04 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so149208tic.23
-        for <linux-ext4@vger.kernel.org>; Sat, 31 May 2008 23:30:02 -0700 (PDT)
-In-Reply-To: <5d4p8du0xc.fsf@Hurtta06k.keh.iki.fi>
-Content-Disposition: inline
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:48636 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751276AbYFAVCd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jun 2008 17:02:33 -0400
+In-Reply-To: <1212173573.8596.84.camel@BVR-FS.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 1, 2008 at 11:55 AM, Kari Hurtta <hurtta+gmane@siilo.fmi.fi> wrote:
-> "Manish Katiyar" <mkatiyar@gmail.com> writes in
-> gmane.linux.file-systems:
->
->> For two unsigned values the check "block+count < block"  is always
->> false. Thus the below patch removes that condition.
->>
->> =============================================================
->>
->> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
->>
->> --- a/fs/ext4/balloc.c  2008-05-18 18:07:45.000000000 +0530
->> +++ b/fs/ext4/balloc.c  2008-06-01 00:05:48.000000000 +0530
->> @@ -619,7 +619,6 @@
->>         sbi = EXT4_SB(sb);
->>         es = sbi->s_es;
->>         if (block < le32_to_cpu(es->s_first_data_block) ||
->> -           block + count < block ||
->>             block + count > ext4_blocks_count(es)) {
->>                 ext4_error (sb, "ext4_free_blocks",
->>                             "Freeing blocks not in datazone - "
->>
->>
->> =============================================================
->
-> Hmm. Consider situation where   block + count > max unsigned value
->     mathematically
->
->     in that case
->           block + count < block
->     expression may be true
+ext4: Fix ext4_mb_init_cache return error
 
-Yeah.... my bad..... Al Viro pointed it out. Sorry for that
+From: Mingming Cao <cmm@us.ibm.com>
+
+ext4_mb_init_cache() incorrectly always return EIO on success. This
+causes the caller of ext4_mb_init_cache() fail when it checks
+ the return value.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/mballoc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-2.6.26-rc4/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.26-rc4.orig/fs/ext4/mballoc.c	2008-06-01 12:55:19.000000000 -0700
++++ linux-2.6.26-rc4/fs/ext4/mballoc.c	2008-06-01 12:55:23.000000000 -0700
+@@ -798,7 +798,7 @@ static int ext4_mb_init_cache(struct pag
+ 	for (i = 0; i < groups_per_page && bh[i]; i++)
+ 		wait_on_buffer(bh[i]);
+ 
+-	err = -EIO;
++	err = 0;
+ 	for (i = 0; i < groups_per_page && bh[i]; i++)
+ 		if (!buffer_uptodate(bh[i]))
+ 			goto out;
 
 
->
->
->> --
->> Thanks & Regards,
->> ********************************************
->> Manish Katiyar ( http://mkatiyar.googlepages.com )
->> 3rd Floor, Fair Winds Block
->> EGL Software Park
->> Off Intermediate Ring Road
->> Bangalore 560071, India
->> ***********************************************
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> / Kari Hurtta
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
-
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
