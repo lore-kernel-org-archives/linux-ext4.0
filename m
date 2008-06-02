@@ -1,63 +1,44 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 6/6] delalloc ENOSPC: improve percpu	counter	accounting
- accurate
-Date: Mon, 02 Jun 2008 11:45:12 +0900
-Message-ID: <48435EB8.2070806@rs.jp.nec.com>
-References: <1212363385.4368.69.camel@localhost.localdomain>	 <48433CAA.1050209@rs.jp.nec.com> <1212373825.4368.74.camel@localhost.localdomain>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Need clear buffer_delay after page writeout for
+	delayed allocation
+Date: Mon, 2 Jun 2008 08:44:33 +0530
+Message-ID: <20080602031433.GA17678@skywalker>
+References: <1212154769-16486-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212354602.4368.12.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
 To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:46587 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753601AbYFBCrP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 22:47:15 -0400
-In-Reply-To: <1212373825.4368.74.camel@localhost.localdomain>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:55086 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753438AbYFBDOt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 23:14:49 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m523Dslu007917
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 13:13:54 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m523IwFW273752
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 13:18:58 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m523EkNY009878
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 13:14:46 +1000
+Content-Disposition: inline
+In-Reply-To: <1212354602.4368.12.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming Cao wrote:
-> On Mon, 2008-06-02 at 09:19 +0900, Akira Fujita wrote:
->> Hi,
->>
->>> Mingming Cao wrote:
->>> percpu counter: update center counter when sum per-cpu counter
->>>
->>> From: Mingming cao <cmm@us.ibm.com>
->>>
->>> Delayed allocation need to check free blocks at every write time.
->>> percpu_counter_read_positive() is not quit accurate
->>>  but using percpu_counter_sum_positive() for every write
->>> frequently is quite expensive.
->> I couldn't compile the latest ext4 patch qeueu.
->>
->>   LD      fs/ext3/ext3.o
->>   LD      fs/ext3/built-in.o
->>   CC      fs/ext4/balloc.o
->> fs/ext4/balloc.c: In function =E2=80=98ext4_has_free_blocks=E2=80=99=
-:
->> fs/ext4/balloc.c:1629: error: implicit declaration of function =E2=80=
-=98percpu_counter_sum_positive_set=E2=80=99
->>
->>
->>> +		    percpu_counter_sum_positive_set(&sbi->s_freeblocks_counter);
->> Maybe the above line which in percpucounter-add-sum-and-set-function=
-=2Epatch
->> is percpu_counter_sum_and_set(&sbi->s_freeblocks_couter).
->>
->=20
-> oops. Updated patch queue, please check again.
+On Sun, Jun 01, 2008 at 02:10:02PM -0700, Mingming Cao wrote:
+> ext4:  Need clear buffer_delay after page writeout for delayed allocation
+> 
+> From: Mingming Cao <cmm@us.ibm.com>
+> 
+> Need clear buffer_delay in ext4_da_writepage() after page has been writeout
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> 
+> ---
 
-I confirmed that I could compile the latest ext4 patch queue correctly.
-Thanks.   :-)
+We do that in mpage_put_bnr_to_bhs.
 
-Regards,
-Akira Fujita
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-aneesh
