@@ -1,57 +1,48 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix use of uninitialized data
-Date: Sun, 1 Jun 2008 20:08:42 -0400
-Message-ID: <20080602000842.GA24339@mit.edu>
-References: <1210790832-20680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1210790832-20680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 6/6] delalloc ENOSPC: improve percpu counter	accounting
+ accurate
+Date: Mon, 02 Jun 2008 09:19:54 +0900
+Message-ID: <48433CAA.1050209@rs.jp.nec.com>
+References: <1212363385.4368.69.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	alex@clusterfs.com, adilger@sun.com
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:53473 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752566AbYFBAKA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 20:10:00 -0400
-Content-Disposition: inline
-In-Reply-To: <1210790832-20680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41018 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752751AbYFBAT6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 20:19:58 -0400
+In-Reply-To: <1212363385.4368.69.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 15, 2008 at 12:17:11AM +0530, Aneesh Kumar K.V wrote:
-> @@ -3134,8 +3135,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
->  static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
->  				struct ext4_prealloc_space *pa)
->  {
-> -	unsigned len = ac->ac_o_ex.fe_len;
-> -
-> +	unsigned int len = ac->ac_o_ex.fe_len;
->  	ext4_get_group_no_and_offset(ac->ac_sb, pa->pa_pstart,
->  					&ac->ac_b_ex.fe_group,
->  					&ac->ac_b_ex.fe_start);
-> -- 
+Hi,
 
-This change had nothing to do with fixing the use of unitialized data,
-but when I started looking more closely, it raised a potential signed
-vs. unsigned issue: ac_o_ex is a struct ext4_free_extent, and fe_len
-is an int.
+> Mingming Cao wrote:
+> percpu counter: update center counter when sum per-cpu counter
+>
+> From: Mingming cao <cmm@us.ibm.com>
+>
+> Delayed allocation need to check free blocks at every write time.
+> percpu_counter_read_positive() is not quit accurate
+>  but using percpu_counter_sum_positive() for every write
+> frequently is quite expensive.
 
-So here we are assigning an int to an unsigned int.  Later, len is
-assigned to ac_b_ex.len, which means assigning an unsigned int to an
-int.  In other places, fe_len (an int) is compared against pa_free
-(which is an unsigned short), and fe_len gets assined to pa_free, once
-again mixing signed and unsigned.
+I couldn't compile the latest ext4 patch qeueu.
 
-Can someone who is really familiar with this code check this out?  I
-think the following pseudo-patch to mballoc.h might be in order:
-
- struct ext4_free_extent {
- 	ext4_lblk_t fe_logical;
- 	ext4_grpblk_t fe_start;
- 	ext4_group_t fe_group;
--	int fe_len;
-+	unsigned int fe_len;
- };
+  LD      fs/ext3/ext3.o
+  LD      fs/ext3/built-in.o
+  CC      fs/ext4/balloc.o
+fs/ext4/balloc.c: In function ‘ext4_has_free_blocks’:
+fs/ext4/balloc.c:1629: error: implicit declaration of function ‘percpu_counter_sum_positive_set’
 
 
-						- Ted
+> +		    percpu_counter_sum_positive_set(&sbi->s_freeblocks_counter);
+
+Maybe the above line which in percpucounter-add-sum-and-set-function.patch
+is percpu_counter_sum_and_set(&sbi->s_freeblocks_couter).
+
+Thanks,
+Akira Fujita
