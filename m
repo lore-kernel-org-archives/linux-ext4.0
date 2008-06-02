@@ -1,77 +1,77 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH]ext4: Fix ext4_mb_init_cache return error
-Date: Sun, 01 Jun 2008 19:27:08 -0700
-Message-ID: <1212373628.4368.70.camel@localhost.localdomain>
-References: <483FE24F.50105@rs.jp.nec.com>
-	 <1212173573.8596.84.camel@BVR-FS.beaverton.ibm.com>
-	 <1212354146.4368.3.camel@localhost.localdomain>
-	 <484349D5.2020104@cn.fujitsu.com>
+Subject: Re: [RFC][PATCH 6/6] delalloc ENOSPC: improve percpu
+	counter	accounting accurate
+Date: Sun, 01 Jun 2008 19:30:25 -0700
+Message-ID: <1212373825.4368.74.camel@localhost.localdomain>
+References: <1212363385.4368.69.camel@localhost.localdomain>
+	 <48433CAA.1050209@rs.jp.nec.com>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Akira Fujita <a-fujita@rs.jp.nec.com>
-To: Shen Feng <shen@cn.fujitsu.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:33349 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752999AbYFBC1R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2008 22:27:17 -0400
-In-Reply-To: <484349D5.2020104@cn.fujitsu.com>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:35738 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753563AbYFBCar (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Jun 2008 22:30:47 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m522UUmX025793
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 22:30:30 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m522UUlJ150122
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 22:30:30 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m522UUaF009482
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Jun 2008 22:30:30 -0400
+In-Reply-To: <48433CAA.1050209@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2008-06-02 at 09:16 +0800, Shen Feng wrote:
-> 
-> Mingming Cao Wrote:
-> > ext4: Fix ext4_mb_init_cache return error
-> > 
-> > From: Mingming Cao <cmm@us.ibm.com>
-> > 
-> > ext4_mb_init_cache() incorrectly always return EIO on success. This
-> > causes the caller of ext4_mb_init_cache() fail when it checks
-> >  the return value.
-> > 
-> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> > ---
-> >  fs/ext4/mballoc.c |    2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > Index: linux-2.6.26-rc4/fs/ext4/mballoc.c
-> > ===================================================================
-> > --- linux-2.6.26-rc4.orig/fs/ext4/mballoc.c	2008-06-01 12:55:19.000000000 -0700
-> > +++ linux-2.6.26-rc4/fs/ext4/mballoc.c	2008-06-01 12:55:23.000000000 -0700
-> > @@ -798,7 +798,7 @@ static int ext4_mb_init_cache(struct pag
-> >  	for (i = 0; i < groups_per_page && bh[i]; i++)
-> >  		wait_on_buffer(bh[i]);
-> >  
-> > -	err = -EIO;
-> > +	err = 0;
-> >  	for (i = 0; i < groups_per_page && bh[i]; i++)
-> >  		if (!buffer_uptodate(bh[i]))
-> >  			goto out;
-> > 
-> > 
-> 
-> I think the fix should be
-> 
->    	err = -EIO;
->   	for (i = 0; i < groups_per_page && bh[i]; i++)
->   		if (!buffer_uptodate(bh[i]))
->   			goto out;
->  +	err = 0;
-> 
-> Is that right?
-> 
+On Mon, 2008-06-02 at 09:19 +0900, Akira Fujita wrote:
+> Hi,
+>=20
+> > Mingming Cao wrote:
+> > percpu counter: update center counter when sum per-cpu counter
+> >
+> > From: Mingming cao <cmm@us.ibm.com>
+> >
+> > Delayed allocation need to check free blocks at every write time.
+> > percpu_counter_read_positive() is not quit accurate
+> >  but using percpu_counter_sum_positive() for every write
+> > frequently is quite expensive.
+>=20
+> I couldn't compile the latest ext4 patch qeueu.
+>=20
+>   LD      fs/ext3/ext3.o
+>   LD      fs/ext3/built-in.o
+>   CC      fs/ext4/balloc.o
+> fs/ext4/balloc.c: In function =E2=80=98ext4_has_free_blocks=E2=80=99:
+> fs/ext4/balloc.c:1629: error: implicit declaration of function =E2=80=
+=98percpu_counter_sum_positive_set=E2=80=99
+>=20
+>=20
+> > +		    percpu_counter_sum_positive_set(&sbi->s_freeblocks_counter);
+>=20
+> Maybe the above line which in percpucounter-add-sum-and-set-function.=
+patch
+> is percpu_counter_sum_and_set(&sbi->s_freeblocks_couter).
+>=20
 
-you are right, thanks for point this out.
+oops. Updated patch queue, please check again.
 
 Mingming
-> Shen Feng
+> Thanks,
+> Akira Fujita
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
