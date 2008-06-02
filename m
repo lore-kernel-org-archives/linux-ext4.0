@@ -1,113 +1,93 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH 5/5] ext3: abort ext3 if the journal has aborted
-Date: Mon, 02 Jun 2008 19:48:41 +0900
-Message-ID: <4843D009.9010200@hitachi.com>
-References: <4843CE15.6080506@hitachi.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/5] jbd: ordered data integrity fix
+Date: Mon, 2 Jun 2008 13:59:02 +0200
+Message-ID: <20080602115902.GI30613@duck.suse.cz>
+References: <4843CE15.6080506@hitachi.com> <4843CF30.9050801@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
 	sugita <yumiko.sugita.yf@hitachi.com>,
 	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:57802 "EHLO
-	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750986AbYFBKsu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 06:48:50 -0400
-In-Reply-To: <4843CE15.6080506@hitachi.com>
+Received: from styx.suse.cz ([82.119.242.94]:39574 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753900AbYFBL7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2008 07:59:06 -0400
+Content-Disposition: inline
+In-Reply-To: <4843CF30.9050801@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Subject: [PATCH 5/5] ext3: abort ext3 if the journal has aborted
+On Mon 02-06-08 19:45:04, Hidehiro Kawai wrote:
+> Subject: [PATCH 2/5] jbd: ordered data integrity fix
+> 
+> In ordered mode, if a buffer being dirtied exists in the committing
+> transaction, we write the buffer to the disk, move it from the
+> committing transaction to the running transaction, then dirty it.
+> But we don't have to remove the buffer from the committing
+> transaction when the buffer couldn't be written out, otherwise it
+> would miss the error and the committing transaction would not abort.
+> 
+> This patch adds an error check before removing the buffer from the
+> committing transaction.
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+  You can add
+  Acked-by: Jan Kara <jack@suse.cz>
 
-If the journal has aborted due to a checkpointing failure, we
-have to keep the contents of the journal space.  ext3_put_super()
-detects the journal abort, then it invokes ext3_abort() to make
-the filesystem read only and keep needs_recovery flag.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
----
- fs/ext3/ioctl.c |   12 ++++++------
- fs/ext3/super.c |   11 +++++++++--
- 2 files changed, 15 insertions(+), 8 deletions(-)
-
-Index: linux-2.6.26-rc4/fs/ext3/ioctl.c
-===================================================================
---- linux-2.6.26-rc4.orig/fs/ext3/ioctl.c
-+++ linux-2.6.26-rc4/fs/ext3/ioctl.c
-@@ -239,7 +239,7 @@ setrsvsz_out:
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -254,16 +254,16 @@ setrsvsz_out:
- 		}
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- group_extend_out:
- 		mnt_drop_write(filp->f_path.mnt);
--		return err;
-+		return (err) ? err : err2;
- 	}
- 	case EXT3_IOC_GROUP_ADD: {
- 		struct ext3_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -280,11 +280,11 @@ group_extend_out:
- 
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- group_add_out:
- 		mnt_drop_write(filp->f_path.mnt);
--		return err;
-+		return (err) ? err : err2;
- 	}
- 
- 
-Index: linux-2.6.26-rc4/fs/ext3/super.c
-===================================================================
---- linux-2.6.26-rc4.orig/fs/ext3/super.c
-+++ linux-2.6.26-rc4/fs/ext3/super.c
-@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
- 	int i;
- 
- 	ext3_xattr_put_super(sb);
--	journal_destroy(sbi->s_journal);
-+	if (journal_destroy(sbi->s_journal) < 0)
-+		ext3_abort(sb, __func__, "Couldn't clean up the journal");
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -2373,7 +2374,13 @@ static void ext3_write_super_lockfs(stru
- 
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+
-+		/*
-+		 * We don't want to clear needs_recovery flag when we failed
-+		 * to flush the journal.
-+		 */
-+		if (journal_flush(journal) < 0)
-+			return;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-
-
+								Honza
+> ---
+>  fs/jbd/transaction.c |   16 +++++++++++++---
+>  1 file changed, 13 insertions(+), 3 deletions(-)
+> 
+> Index: linux-2.6.26-rc4/fs/jbd/transaction.c
+> ===================================================================
+> --- linux-2.6.26-rc4.orig/fs/jbd/transaction.c
+> +++ linux-2.6.26-rc4/fs/jbd/transaction.c
+> @@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
+>  	journal_t *journal = handle->h_transaction->t_journal;
+>  	int need_brelse = 0;
+>  	struct journal_head *jh;
+> +	int ret = 0;
+>  
+>  	if (is_handle_aborted(handle))
+> -		return 0;
+> +		return ret;
+>  
+>  	jh = journal_add_journal_head(bh);
+>  	JBUFFER_TRACE(jh, "entry");
+> @@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
+>  				   time if it is redirtied */
+>  			}
+>  
+> -			/* journal_clean_data_list() may have got there first */
+> +			/*
+> +			 * We cannot remove the buffer with io error from the
+> +			 * committing transaction, because otherwise it would
+> +			 * miss the error and the commit would not abort.
+> +			 */
+> +			if (unlikely(!buffer_uptodate(bh))) {
+> +				ret = -EIO;
+> +				goto no_journal;
+> +			}
+> +
+>  			if (jh->b_transaction != NULL) {
+>  				JBUFFER_TRACE(jh, "unfile from commit");
+>  				__journal_temp_unlink_buffer(jh);
+> @@ -1108,7 +1118,7 @@ no_journal:
+>  	}
+>  	JBUFFER_TRACE(jh, "exit");
+>  	journal_put_journal_head(jh);
+> -	return 0;
+> +	return ret;
+>  }
+>  
+>  /**
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
