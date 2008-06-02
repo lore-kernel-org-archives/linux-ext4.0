@@ -1,75 +1,77 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
+From: Valerie Clement <valerie.clement@bull.net>
 Subject: Re: Test results for ext4
-Date: Mon, 2 Jun 2008 09:44:10 -0500
-Message-ID: <20080602094410.390f0f22@rx8>
-References: <48402253.8040407@bull.net>
-	<20080530131239.6d93f1d9@rx8>
-	<4843F924.1050109@bull.net>
+Date: Mon, 02 Jun 2008 16:51:45 +0200
+Message-ID: <48440901.2050809@bull.net>
+References: <48402253.8040407@bull.net> <48406A7D.6020300@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Valerie Clement <valerie.clement@bull.net>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:38705 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751215AbYFBOpz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 10:45:55 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m52EjrqI019996
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 10:45:53 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m52Eji4i120116
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 08:45:47 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m52Ejh12016789
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 08:45:43 -0600
-Received: from austin.ibm.com (netmail2.austin.ibm.com [9.41.248.176])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m52Ejgmv016760
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 08:45:42 -0600
-In-Reply-To: <4843F924.1050109@bull.net>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47922 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752194AbYFBOwH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 10:52:07 -0400
+In-Reply-To: <48406A7D.6020300@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 02 Jun 2008 15:44:04 +0200
-Valerie Clement <valerie.clement@bull.net> wrote:
+Eric Sandeen wrote:
+> Valerie, would you be interested in any xfs tuning?  :)
+Yes, if you give me inputs.
 
-> Jose R. Santos wrote:
-> >         agefs=3D1
-> >         [threadgroup0]
-> >                 num_threads=3D10
-> >                 write_size=3D40960
-> >                 write_blocksize=3D4096
-> >                 create_weight=3D10
-> >                 append_weight=3D10
-> >                 delete_weight=3D1
-> >         [end0]
-> >                 desired_util=3D0.80
-> >=20
-> > This will age the filesystem until it reaches 80% utilization befor=
-e
-> > starting the benchmark.  Since a 5TB disk will take a while to age,
-> > I suggest trying this on just a few runs.
-> Ok to do it only on a few runs (creating a 4TB file on my device take=
-s
-> more than 12 hours...)
->    Val=C3=A9rie
+>=20
+> I don't know how much tuning is "fair" for the comparison... but I th=
+ink
+> in real usage xfs would/should get tuned a bit for a workload like th=
+is.
+>=20
+> At the 5T range xfs gets into a funny allocation mode...
 
-Wow...
+Look at the tests I'd done one year ago:
+  http://www.bullopensource.org/ext4/20070404/ffsb-write.html
+Large sequential writes were done on a smaller device. With 4 threads,
+xfs is better than ext3 and ext4. But when the thread number is increas=
+ed,
+xfs becomes less good.
 
-Maybe running aging on a 5TB fs is not such a good idea.  I think it
-would be better to run it on a smaller array size (1TB maybe).  I
-suspect that one of the reasons this is taking so long is that with 4TB
-of small files, the rbtree in FFSB would be huge and could be larger
-than the 2GB of memory you are running on your system, causing you to
-swap.
+To run my tests with 128 threads, maybe I have to tune something in xfs=
+=2E
 
+>=20
+> If you mount with "-o inode64" I bet you see a lot better performance=
+=2E
+>=20
+> Or, you could do sysctl -w fs.xfs.rotorstep=3D256
+>=20
+> which would probably help too.
+>=20
+> with a large fs like this, the allocator gets into a funny mode to ke=
+ep
+> inodes in the lower part of the fs to keep them under 32 bits, and
+> scatters the data allocations around the higher portions of the fs.
+>=20
+> Either -o inode64 will completely avoid this, or the rotorstep should
+> stop it from scattering each file, but instead switching AGs only eve=
+ry
+> 256 files.
+>=20
+> Could you also include the xfsprogs version on your summary pages, an=
+d
+> maybe even the output of xfs_info /mount/point so we can see the full=
+ fs
+> geometry?  (I'd suggest maybe tune2fs output for the ext[34] filesyst=
+ems
+> too, for the same reason)
+>=20
+> When future generations look at the results it'll be nice to have as
+> much specificity about the setup as possible, I think.
+Yes, I agree. Thank you very much for yours comments. They help me much=
+=2E
+    Val=E9rie
 
-Running on a smaller FS should still give a good idea of how well the
-filesystems avoid fragmentation.
-
-
--JRS
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
