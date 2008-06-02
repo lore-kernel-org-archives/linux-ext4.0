@@ -1,126 +1,90 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Add validation to jbd lock inversion patch and
-	split and writepage
-Date: Mon, 2 Jun 2008 12:40:48 +0200
-Message-ID: <20080602104048.GH30613@duck.suse.cz>
-References: <1212154769-16486-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093106.GB30613@duck.suse.cz> <20080602095222.GA9225@skywalker>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: [PATCH 0/5] jbd: possible filesystem corruption fixes (take 2)
+Date: Mon, 02 Jun 2008 19:40:21 +0900
+Message-ID: <4843CE15.6080506@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36069 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756104AbYFBKkt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jun 2008 06:40:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20080602095222.GA9225@skywalker>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:50709 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751192AbYFBKkl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 06:40:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 02-06-08 15:22:22, Aneesh Kumar K.V wrote:
-> Hi Jan,
-> 
-> 
-> On Mon, Jun 02, 2008 at 11:31:06AM +0200, Jan Kara wrote:
-> >   Hi Aneesh,
-> > 
-> >   Thanks for the patch but I though we decided to do this a bit differently -
-> > see below.
-> 
-> Please feel free to merge the changes back to the lock inversion
-> patches. I sent it as a separate the patches to make it easier for review.
-  OK, thanks. I'll look into this.
+Subject: [PATCH 0/5] jbd: possible filesystem corruption fixes (take 2)
 
-> > >  
-> > > +	if (walk_page_buffers(NULL, page_bufs, 0,
-> > > +				len, NULL, ext4_bh_unmapped_or_delay)) {
-> > > +		printk(KERN_CRIT "%s called with unmapped or delay buffer\n",
-> > > +								__func__);
-> > > +		BUG();
-> > > +	}
-> > > +	/* FIXME!! do we need to call prepare_write for a mapped buffer */
-> >   This can go to ext4_journalled_writepage(). What is actually this FIXME
-> > about? I'm not sure I get it...
-> > 
-> I was wondering whether we need to call prepare_write in writepage ?. We
-> are not allocating any new blocks in writepage with these changes.
-  Ah, I see. I'm only not sure whether we can rely on all buffers in the
-page being uptodate... Otherwise I think block_prepare_write() is not
-needed.
+This patch set is the take 2 of fixing error handling problem in
+ext3/JBD.  The previous discussion can be found here:
+http://lkml.org/lkml/2008/5/14/10
 
-> > >  	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
-> > >  	if (ret != 0)
-> > >  		goto out_unlock;
-> > >  
-> > > -	page_bufs = page_buffers(page);
-> > >  	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
-> > >  								bget_one);
-> > >  	/* As soon as we unlock the page, it can go away, but we have
-> > > @@ -1671,14 +1713,13 @@ static int __ext4_journalled_writepage(struct page *page,
-> > >  static int ext4_journalled_writepage(struct page *page,
-> > >  				struct writeback_control *wbc)
-> > >  {
-> > > +	BUG_ON(!page_has_buffers(page));
-> > > +
-> > >  	if (ext4_journal_current_handle())
-> > >  		goto no_write;
-> > >  
-> > > -	if (!page_has_buffers(page) || PageChecked(page)) {
-> > > -		/*
-> > > -		 * It's mmapped pagecache.  Add buffers and journal it.  There
-> > > -		 * doesn't seem much point in redirtying the page here.
-> > > -		 */
-> > > +	if (PageChecked(page)) {
-> > > +		/* dirty pages in data=journal mode */
-> > >  		ClearPageChecked(page);
-> > >  		return __ext4_journalled_writepage(page, wbc);
-> > >  	} else {
-> > > @@ -3520,6 +3561,96 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
-> > >  	return err;
-> > >  }
-> > >  
-> > > +static int __ext4_journalled_allocpage(struct page *page,
-> > > +				struct writeback_control *wbc)
-> > > +{
-> > > +	int ret = 0, err;
-> > > +	handle_t *handle = NULL;
-> > > +	struct address_space *mapping = page->mapping;
-> > > +	struct inode *inode = mapping->host;
-> > > +	struct buffer_head *page_bufs;
-> > > +
-> > > +	/* if alloc we are called after statring a journal */
-> > > +	handle = ext4_journal_current_handle();
-> > > +	BUG_ON(!handle);
-> > > +
-> > > +	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
-> > > +	if (ret != 0)
-> > > +		goto out_unlock;
-> > > +
-> > > +	/* FIXME!! should we do a bget_one */
-> > > +	page_bufs = page_buffers(page);
-> > > +	ret = walk_page_buffers(handle, page_bufs, 0,
-> > > +			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-> > > +
-> I also have a FIXME here. I am not sure whether unlocking the page have
-> some effect. Can you verify this ?
-  Well, you unlock the page only after you're completely done with it as
-far as I read the code. So that is correct. You only need to get references
-to buffers when you need to access them after you unlock the page.
+The same problem should also be in ext4/JBD, but I haven't prepared
+it yet.
 
-> > > +	err = walk_page_buffers(handle, page_bufs, 0,
-> > > +				PAGE_CACHE_SIZE, NULL, write_end_fn);
-> > > +	if (ret == 0)
-> > > +		ret = err;
-> > > +	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
-> > > +
-> > > +out_unlock:
-> > > +	unlock_page(page);
-> > > +	return ret;
-> > > +}
-> > > +
 
-									Honza
+Problem
+=======
+Currently some error checkings are missing, so the journal cannot abort
+correctly.  This causes breakage of the ordered mode rule and filesystem
+corruption.  Missing error checkings are:
+
+(1) error check for dirty buffers flushed before the commit
+    (addressed by PATCH 1/5 and 2/5)
+(2) error check for the metadata writes to the journal before the
+    commit (addressed by PATCH 3/5)
+(3) error check for checkpointing and replay (addressed by PATCH 4/5
+    and 5/5)
+
+
+Changes from take 1
+===================
+[PATCH 1/5]
+o not changed
+
+[PATCH 2/5]
+o rewrite my coment in journal_dirty_data() comprehensibly
+
+[PATCH 3/5]
+o check for errors and abort the journal just before
+  journal_write_commit_record() instead of after writing metadata
+  buffers
+
+[PATCH 4/5 and 5/5]
+o separate the ext3 part from the jbd part in a patch
+o use JFS_ABORT for checkpointing failures instead of introducing
+  JFS_CP_ABORT flag
+o don't update only the journal super block, but also j_tail and
+  j_tail_sequence when the journal has aborted (at least we only
+  have to avoid updating the super block, but keeping j_tail*'s
+  values will be good thing because it may protect someone from
+  adding bugs in the future)
+o journal_destroy() returns -EIO when the journal has aborted so that
+  ext3_put_super() can detect the abort
+o journal_flush() uses j_checkpoint_mutex to avoid a race with
+  __log_wait_for_space()
+
+The last item targets a newly found problem.  journal_flush() can be
+called while processing __log_wait_for_space().  In this case,
+cleanup_journal_tail() can be called between
+__journal_drop_transaction() and journal_abort(), then 
+the transaction with checkpointing failure is lost from the journal.
+Using j_checkpoint_mutex which is used by __log_wait_for_space(),
+we should avoid the race condition.  But the test is not so sufficient
+because it is very difficult to produce this race.  So I hope that
+this locking is reviewed carefully (including a possibility of
+deadlock.)
+
+Regards,
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
+
+
