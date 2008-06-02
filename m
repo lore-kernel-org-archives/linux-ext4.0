@@ -1,44 +1,39 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsck: Device or resource busy
-Date: Mon, 2 Jun 2008 16:21:44 -0400
-Message-ID: <20080602202144.GD23119@mit.edu>
-References: <alpine.DEB.1.10.0806021951460.6160@sheep.housecafe.de>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
+Date: Mon, 2 Jun 2008 22:58:09 +0200
+Message-ID: <20080602205809.GG3242@nb.net.home>
+References: <1212171647.7508.46.camel@localhost> <20080602074102.GA3242@nb.net.home> <1212418863.7337.34.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@Sun.COM>
+To: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:55542 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754180AbYFBUV7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 16:21:59 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:56965 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751467AbYFBU6f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2008 16:58:35 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.10.0806021951460.6160@sheep.housecafe.de>
+In-Reply-To: <1212418863.7337.34.camel@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 02, 2008 at 08:29:24PM +0200, Christian Kujau wrote:
-> Hi there,
->
-> I'm trying to repair a severely damaged ext4 partition. Actually, I don't 
-> care any more for the data, I just wanted to see how far I could get, 
-> because the "damage" here is: the partition was 1/3 of a RAID-0 setup :)
+On Mon, Jun 02, 2008 at 04:01:03PM +0100, Ricardo M. Correia wrote:
+> Hi Karel,
+> 
+> On Seg, 2008-06-02 at 09:41 +0200, Karel Zak wrote:
+> 
+> >  It'd be nice to add ZFS detection to libvolume_id from udev package.
+> 
+> 
+> Interesting, I didn't know libvolume_id existed.
+> Is there a reason why there should be 2 different libraries doing what
+> appears to be essentially the same thing?
 
-The key thing that you need to do when trying to recover from RAID
-setups where you are missing one or more disks is to align the pieces
-so they are in their original places, with the missing pieces replaced
-with a /dev/zero device.
+ I'm just merging these two libraries to libfsprobe :-)
+ http://git.kernel.org/?p=utils/util-linux-ng/util-linux-ng.git;a=shortlog;h=topic/fsprobe
 
-There is a starting point here which you may find helpful:
+    Karel
 
-      http://debian.co.nz/Recovery+of+RAID+and+LVM2.html
-
-      http://tldp.org/HOWTO/LVM-HOWTO/index.html
-
-      http://www.tldp.org/HOWTO/Software-RAID-HOWTO.html 
-
-(I'm assuming here you were using software RAID; if this was a
-hardware RAID setup, then you need to know what sort of low-level
-format was used by your hardware RAID device.)
-
-						- Ted
+-- 
+ Karel Zak  <kzak@redhat.com>
