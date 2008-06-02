@@ -1,31 +1,39 @@
-From: Thomas King <kingttx@tomslinux.homelinux.org>
-Subject: Questions for article
-Date: Mon, 2 Jun 2008 16:50:37 -0500 (CDT)
-Message-ID: <27337.143.166.226.57.1212443437.squirrel@tomslinux.homelinux.org>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: e2fsck: Device or resource busy
+Date: Tue, 3 Jun 2008 00:23:48 +0200 (CEST)
+Message-ID: <alpine.DEB.1.10.0806030020310.6160@sheep.housecafe.de>
+References: <alpine.DEB.1.10.0806021951460.6160@sheep.housecafe.de> <20080602202144.GD23119@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.123]:33000 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752301AbYFBVuw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 17:50:52 -0400
-Received: from tomslinux.homelinux.org ([24.28.24.180])
-          by hrndva-omta06.mail.rr.com with ESMTP
-          id <20080602215047.WEF9231.hrndva-omta06.mail.rr.com@tomslinux.homelinux.org>
-          for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 21:50:47 +0000
-Received: from tomslinux.homelinux.org (localhost [127.0.0.1])
-	by tomslinux.homelinux.org (8.13.7/8.13.7) with ESMTP id m52Locge017576
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Jun 2008 16:50:38 -0500
+Received: from moutng.kundenserver.de ([212.227.126.187]:52131 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752138AbYFBWYL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 18:24:11 -0400
+In-Reply-To: <20080602202144.GD23119@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Folks,
+On Mon, 2 Jun 2008, Theodore Tso wrote:
+> The key thing that you need to do when trying to recover from RAID
+> setups where you are missing one or more disks is to align the pieces
+> so they are in their original places, with the missing pieces replaced
+> with a /dev/zero device.
 
-I am writing an article for Linux.com to answer Henry Newman's at
-http://www.enterprisestorageforum.com/sans/features/article.php/3749926. Is
-there anyone that can field a few questions on ext4?
+Hm, interesting, I did not consider that yet. Thanks for the links, I'll 
+have a look. But again: I don't really care for the data, I was just 
+playing around and wondering why it reported "Device or resource busy"
+when I expected something like "unable to find superblock".
 
-Thanks!
-Tom King
+> (I'm assuming here you were using software RAID; if this was a
+
+Yes, it was software RAID.
+
+Thanks again,
+Christian.
+-- 
+BOFH excuse #112:
+
+The monitor is plugged into the serial port
