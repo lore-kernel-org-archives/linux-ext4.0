@@ -1,38 +1,30 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsck: Device or resource busy
-Date: Mon, 2 Jun 2008 20:00:38 -0400
-Message-ID: <20080603000037.GF23119@mit.edu>
-References: <alpine.DEB.1.10.0806021951460.6160@sheep.housecafe.de> <20080602202144.GD23119@mit.edu> <alpine.DEB.1.10.0806030020310.6160@sheep.housecafe.de>
+Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
+Date: Mon, 2 Jun 2008 20:05:50 -0400
+Message-ID: <20080603000550.GG23119@mit.edu>
+References: <1212171647.7508.46.camel@localhost> <20080602074102.GA3242@nb.net.home> <1212418863.7337.34.camel@localhost> <20080602205809.GG3242@nb.net.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Cc: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>,
+	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@Sun.COM>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:57743 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33958 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752633AbYFCAAw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 20:00:52 -0400
+	with ESMTP id S1753399AbYFCAGC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 20:06:02 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.10.0806030020310.6160@sheep.housecafe.de>
+In-Reply-To: <20080602205809.GG3242@nb.net.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 03, 2008 at 12:23:48AM +0200, Christian Kujau wrote:
-> On Mon, 2 Jun 2008, Theodore Tso wrote:
->> The key thing that you need to do when trying to recover from RAID
->> setups where you are missing one or more disks is to align the pieces
->> so they are in their original places, with the missing pieces replaced
->> with a /dev/zero device.
->
-> Hm, interesting, I did not consider that yet. Thanks for the links, I'll 
-> have a look. But again: I don't really care for the data, I was just 
-> playing around and wondering why it reported "Device or resource busy"
-> when I expected something like "unable to find superblock".
+On Mon, Jun 02, 2008 at 10:58:09PM +0200, Karel Zak wrote:
+> 
+>  I'm just merging these two libraries to libfsprobe :-)
+>  http://git.kernel.org/?p=utils/util-linux-ng/util-linux-ng.git;a=shortlog;h=topic/fsprobe
+> 
 
-That will only happen if someone else has opened the device with
-O_EXCL.  Are you sure you didn't ^Z an e2fsck or some such and then
-started a second one, or some such?  
+Note that libfsprobe does not currently have proper support for ext4
+and ext4dev filesystem types.
 
-Is this repeatable?
-
-							- Ted
+						- Ted
