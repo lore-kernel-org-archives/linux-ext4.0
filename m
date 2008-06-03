@@ -1,71 +1,36 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: + ext3-fix-online-resize-bug.patch added to -mm tree
-Date: Mon, 2 Jun 2008 17:22:37 -0700
-Message-ID: <20080602172237.1bfdeb12.akpm@linux-foundation.org>
-References: <200806030017.m530HMTB007165@imap1.linux-foundation.org>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Correct EXT3_TOPDIR_FL behaviour
+Date: Tue, 3 Jun 2008 01:27:10 +0100
+Message-ID: <e9e943910806021727h111b0e57qeea0032d164e0ffb@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: jbacik@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59738 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753995AbYFCAW7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 20:22:59 -0400
-In-Reply-To: <200806030017.m530HMTB007165@imap1.linux-foundation.org>
+Received: from wx-out-0506.google.com ([66.249.82.239]:37909 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753254AbYFCA1M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 20:27:12 -0400
+Received: by wx-out-0506.google.com with SMTP id h29so855770wxd.4
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Jun 2008 17:27:11 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 02 Jun 2008 17:17:22 -0700
-akpm@linux-foundation.org wrote:
+Hi folks,
 
-> 
-> The patch titled
->      ext3: fix online resize bug
-> has been added to the -mm tree.  Its filename is
->      ext3-fix-online-resize-bug.patch
-> 
-> Before you just go and hit "reply", please:
->    a) Consider who else should be cc'ed
->    b) Prefer to cc a suitable mailing list as well
->    c) Ideally: find the original patch on the mailing list and do a
->       reply-to-all to that, adding suitable additional cc's
-> 
-> *** Remember to use Documentation/SubmitChecklist when testing your code ***
-> 
-> See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-> out what to do about this
-> 
-> The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-> 
-> ------------------------------------------------------
-> Subject: ext3: fix online resize bug
-> From: Josef Bacik <jbacik@redhat.com>
-> 
-> There is a bug when we are trying to verify that the reserve inode's
-> double indirect blocks point back to the primary gdt blocks.  The fix is
-> obvious, we need to mod the gdb count by the addr's per block.  You can
-> verify this with the following test case
-> 
-> dd if=/dev/zero of=disk1 seek=1024 count=1 bs=100M
-> losetup /dev/loop1 disk1
-> pvcreate /dev/loop1
-> vgcreate loopvg1 /dev/loop1
-> lvcreate -l 100%VG loopvg1 -n looplv1
-> mkfs.ext3 -J size=64 -b 1024 /dev/loopvg1/looplv1
-> mount /dev/loopvg1/looplv1 /mnt/loop
-> dd if=/dev/zero of=disk2 seek=1024 count=1 bs=50M
-> losetup /dev/loop2 disk2
-> pvcreate /dev/loop2
-> vgextend loopvg1 /dev/loop2
-> lvextend -l 100%VG /dev/loopvg1/looplv1
-> resize2fs /dev/loopvg1/looplv1
-> 
-> without this patch the resize2fs fails, with it the resize2fs succeeds.
-> 
+I'm looking at http://bugzilla.kernel.org/show_bug.cgi?id=9866, where
+the reporter is claiming that EXT3_TOPDIR_FL (chattr +T) is behaving
+incorrectly by being inherited from the parent. As mentioned in the
+bug, it also only seems to only make sense for directories but
+ext{2,3,4} is happy to set it on anything. It seems to me that the
+reporter is correct and the behaviour should be changed to prevent the
+flag being inherited and to limit it to directories only. If there is
+no disagreement I'll follow-up with patches accordingly.
 
-Could I please gather some reviews and ackings on this?
+Cheers,
+Duane.
 
-Also, do we think it is 2.6.25.x material?
-
-Thanks.
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
