@@ -1,72 +1,71 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-fix-online-resize-bug.patch added to -mm tree
-Date: Mon, 02 Jun 2008 17:20:09 -0700
-Message-ID: <200806030020.m530K9Bx007256@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: jbacik@redhat.com, adilger@sun.com, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org, tytso@mit.edu
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: + ext3-fix-online-resize-bug.patch added to -mm tree
+Date: Mon, 2 Jun 2008 17:22:37 -0700
+Message-ID: <20080602172237.1bfdeb12.akpm@linux-foundation.org>
+References: <200806030017.m530HMTB007165@imap1.linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: jbacik@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59738 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753995AbYFCAW7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 20:22:59 -0400
+In-Reply-To: <200806030017.m530HMTB007165@imap1.linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, 02 Jun 2008 17:17:22 -0700
+akpm@linux-foundation.org wrote:
 
-The patch titled
-     ext4: fix online resize bug
-has been added to the -mm tree.  Its filename is
-     ext4-fix-online-resize-bug.patch
+> 
+> The patch titled
+>      ext3: fix online resize bug
+> has been added to the -mm tree.  Its filename is
+>      ext3-fix-online-resize-bug.patch
+> 
+> Before you just go and hit "reply", please:
+>    a) Consider who else should be cc'ed
+>    b) Prefer to cc a suitable mailing list as well
+>    c) Ideally: find the original patch on the mailing list and do a
+>       reply-to-all to that, adding suitable additional cc's
+> 
+> *** Remember to use Documentation/SubmitChecklist when testing your code ***
+> 
+> See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+> out what to do about this
+> 
+> The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+> 
+> ------------------------------------------------------
+> Subject: ext3: fix online resize bug
+> From: Josef Bacik <jbacik@redhat.com>
+> 
+> There is a bug when we are trying to verify that the reserve inode's
+> double indirect blocks point back to the primary gdt blocks.  The fix is
+> obvious, we need to mod the gdb count by the addr's per block.  You can
+> verify this with the following test case
+> 
+> dd if=/dev/zero of=disk1 seek=1024 count=1 bs=100M
+> losetup /dev/loop1 disk1
+> pvcreate /dev/loop1
+> vgcreate loopvg1 /dev/loop1
+> lvcreate -l 100%VG loopvg1 -n looplv1
+> mkfs.ext3 -J size=64 -b 1024 /dev/loopvg1/looplv1
+> mount /dev/loopvg1/looplv1 /mnt/loop
+> dd if=/dev/zero of=disk2 seek=1024 count=1 bs=50M
+> losetup /dev/loop2 disk2
+> pvcreate /dev/loop2
+> vgextend loopvg1 /dev/loop2
+> lvextend -l 100%VG /dev/loopvg1/looplv1
+> resize2fs /dev/loopvg1/looplv1
+> 
+> without this patch the resize2fs fails, with it the resize2fs succeeds.
+> 
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+Could I please gather some reviews and ackings on this?
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+Also, do we think it is 2.6.25.x material?
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: fix online resize bug
-From: Josef Bacik <jbacik@redhat.com>
-
-There is a bug when we are trying to verify that the reserve inode's
-double indirect blocks point back to the primary gdt blocks.  The fix is
-obvious, we need to mod the gdb count by the addr's per block.  This was
-verified using the same testcase as with the ext3 equivalent of this
-patch.
-
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Andreas Dilger <adilger@sun.com>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff -puN fs/ext4/resize.c~ext4-fix-online-resize-bug fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-fix-online-resize-bug
-+++ a/fs/ext4/resize.c
-@@ -563,7 +563,8 @@ static int reserve_backup_gdb(handle_t *
- 	}
- 
- 	blk = EXT4_SB(sb)->s_sbh->b_blocknr + 1 + EXT4_SB(sb)->s_gdb_count;
--	data = (__le32 *)dind->b_data + EXT4_SB(sb)->s_gdb_count;
-+	data = (__le32 *)dind->b_data + (EXT4_SB(sb)->s_gdb_count %
-+					 EXT4_ADDR_PER_BLOCK(sb));
- 	end = (__le32 *)dind->b_data + EXT4_ADDR_PER_BLOCK(sb);
- 
- 	/* Get each reserved primary GDT block and verify it holds backups */
-_
-
-Patches currently in -mm which might be from jbacik@redhat.com are
-
-ext3-fix-online-resize-bug.patch
-ext4-fix-online-resize-bug.patch
-
+Thanks.
