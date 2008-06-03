@@ -1,64 +1,109 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 3/5] jbd: abort when failed to log metadata buffers
-Date: Tue, 3 Jun 2008 15:35:06 -0700
-Message-ID: <20080603153506.8a9ca2a4.akpm@linux-foundation.org>
-References: <4843CE15.6080506@hitachi.com>
-	<4843CF6A.7090107@hitachi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+From: akpm@linux-foundation.org
+Subject: + jbd-ordered-data-integrity-fix.patch added to -mm tree
+Date: Tue, 03 Jun 2008 15:40:06 -0700
+Message-ID: <200806032240.m53Me6Q8023572@imap1.linux-foundation.org>
+Cc: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
+	linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36095 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:45746 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752008AbYFCWgx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 18:36:53 -0400
-In-Reply-To: <4843CF6A.7090107@hitachi.com>
+	by vger.kernel.org with ESMTP id S1751429AbYFCWkM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 18:40:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 02 Jun 2008 19:46:02 +0900
-Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com> wrote:
 
-> Subject: [PATCH 3/5] jbd: abort when failed to log metadata buffers
-> 
-> If we failed to write metadata buffers to the journal space and
-> succeeded to write the commit record, stale data can be written
-> back to the filesystem as metadata in the recovery phase.
-> 
-> To avoid this, when we failed to write out metadata buffers,
-> abort the journal before writing the commit record.
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-> ---
->  fs/jbd/commit.c |    3 +++
->  1 file changed, 3 insertions(+)
-> 
-> Index: linux-2.6.26-rc4/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.26-rc4.orig/fs/jbd/commit.c
-> +++ linux-2.6.26-rc4/fs/jbd/commit.c
-> @@ -734,6 +734,9 @@ wait_for_iobuf:
->  		/* AKPM: bforget here */
->  	}
->  
-> +	if (err)
-> +		journal_abort(journal, err);
-> +
->  	jbd_debug(3, "JBD: commit phase 6\n");
->  
->  	if (journal_write_commit_record(journal, commit_transaction))
-> 
+The patch titled
+     jbd: ordered data integrity fix
+has been added to the -mm tree.  Its filename is
+     jbd-ordered-data-integrity-fix.patch
 
-I assume this has all been tested?
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-How are you finding these problems and testing the fixes?  Fault
-injection?
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-Does it make sense to proceed into phase 6 here, or should we bale out
-of commit at this point?
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: jbd: ordered data integrity fix
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+
+In ordered mode, if a file data buffer being dirtied exists in the
+committing transaction, we write the buffer to the disk, move it from the
+committing transaction to the running transaction, then dirty it.  But we
+don't have to remove the buffer from the committing transaction when the
+buffer couldn't be written out, otherwise it would miss the error and the
+committing transaction would not abort.
+
+This patch adds an error check before removing the buffer from the
+committing transaction.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/transaction.c |   16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff -puN fs/jbd/transaction.c~jbd-ordered-data-integrity-fix fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-ordered-data-integrity-fix
++++ a/fs/jbd/transaction.c
+@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
+ 	journal_t *journal = handle->h_transaction->t_journal;
+ 	int need_brelse = 0;
+ 	struct journal_head *jh;
++	int ret = 0;
+ 
+ 	if (is_handle_aborted(handle))
+-		return 0;
++		return ret;
+ 
+ 	jh = journal_add_journal_head(bh);
+ 	JBUFFER_TRACE(jh, "entry");
+@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
+ 				   time if it is redirtied */
+ 			}
+ 
+-			/* journal_clean_data_list() may have got there first */
++			/*
++			 * We cannot remove the buffer with io error from the
++			 * committing transaction, because otherwise it would
++			 * miss the error and the commit would not abort.
++			 */
++			if (unlikely(!buffer_uptodate(bh))) {
++				ret = -EIO;
++				goto no_journal;
++			}
++
+ 			if (jh->b_transaction != NULL) {
+ 				JBUFFER_TRACE(jh, "unfile from commit");
+ 				__journal_temp_unlink_buffer(jh);
+@@ -1108,7 +1118,7 @@ no_journal:
+ 	}
+ 	JBUFFER_TRACE(jh, "exit");
+ 	journal_put_journal_head(jh);
+-	return 0;
++	return ret;
+ }
+ 
+ /**
+_
+
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
+
+jbd-strictly-check-for-write-errors-on-data-buffers.patch
+jbd-ordered-data-integrity-fix.patch
+jbd-abort-when-failed-to-log-metadata-buffers.patch
+jbd-fix-error-handling-for-checkpoint-io.patch
+ext3-abort-ext3-if-the-journal-has-aborted.patch
 
