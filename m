@@ -1,23 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + jbd-ordered-data-integrity-fix.patch added to -mm tree
-Date: Tue, 03 Jun 2008 15:40:06 -0700
-Message-ID: <200806032240.m53Me6Q8023572@imap1.linux-foundation.org>
+Subject: + jbd-abort-when-failed-to-log-metadata-buffers.patch added to -mm tree
+Date: Tue, 03 Jun 2008 15:40:12 -0700
+Message-ID: <200806032240.m53MeCD5023575@imap1.linux-foundation.org>
 Cc: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
 	linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:45746 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:33543 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751429AbYFCWkM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 18:40:12 -0400
+	by vger.kernel.org with ESMTP id S1751824AbYFCWkR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 18:40:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd: ordered data integrity fix
+     jbd: abort when failed to log metadata buffers
 has been added to the -mm tree.  Its filename is
-     jbd-ordered-data-integrity-fix.patch
+     jbd-abort-when-failed-to-log-metadata-buffers.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -33,18 +33,15 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: ordered data integrity fix
+Subject: jbd: abort when failed to log metadata buffers
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-In ordered mode, if a file data buffer being dirtied exists in the
-committing transaction, we write the buffer to the disk, move it from the
-committing transaction to the running transaction, then dirty it.  But we
-don't have to remove the buffer from the committing transaction when the
-buffer couldn't be written out, otherwise it would miss the error and the
-committing transaction would not abort.
+If we failed to write metadata buffers to the journal space and succeeded
+to write the commit record, stale data can be written back to the
+filesystem as metadata in the recovery phase.
 
-This patch adds an error check before removing the buffer from the
-committing transaction.
+To avoid this, when we failed to write out metadata buffers, abort the
+journal before writing the commit record.
 
 Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Acked-by: Jan Kara <jack@suse.cz>
@@ -52,51 +49,22 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/transaction.c |   16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+ fs/jbd/commit.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
-diff -puN fs/jbd/transaction.c~jbd-ordered-data-integrity-fix fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~jbd-ordered-data-integrity-fix
-+++ a/fs/jbd/transaction.c
-@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
- 	journal_t *journal = handle->h_transaction->t_journal;
- 	int need_brelse = 0;
- 	struct journal_head *jh;
-+	int ret = 0;
- 
- 	if (is_handle_aborted(handle))
--		return 0;
-+		return ret;
- 
- 	jh = journal_add_journal_head(bh);
- 	JBUFFER_TRACE(jh, "entry");
-@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
- 				   time if it is redirtied */
- 			}
- 
--			/* journal_clean_data_list() may have got there first */
-+			/*
-+			 * We cannot remove the buffer with io error from the
-+			 * committing transaction, because otherwise it would
-+			 * miss the error and the commit would not abort.
-+			 */
-+			if (unlikely(!buffer_uptodate(bh))) {
-+				ret = -EIO;
-+				goto no_journal;
-+			}
-+
- 			if (jh->b_transaction != NULL) {
- 				JBUFFER_TRACE(jh, "unfile from commit");
- 				__journal_temp_unlink_buffer(jh);
-@@ -1108,7 +1118,7 @@ no_journal:
+diff -puN fs/jbd/commit.c~jbd-abort-when-failed-to-log-metadata-buffers fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-abort-when-failed-to-log-metadata-buffers
++++ a/fs/jbd/commit.c
+@@ -734,6 +734,9 @@ wait_for_iobuf:
+ 		/* AKPM: bforget here */
  	}
- 	JBUFFER_TRACE(jh, "exit");
- 	journal_put_journal_head(jh);
--	return 0;
-+	return ret;
- }
  
- /**
++	if (err)
++		journal_abort(journal, err);
++
+ 	jbd_debug(3, "JBD: commit phase 6\n");
+ 
+ 	if (journal_write_commit_record(journal, commit_transaction))
 _
 
 Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
