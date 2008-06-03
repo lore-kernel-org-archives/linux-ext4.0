@@ -1,112 +1,116 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Questions for article
-Date: Mon, 02 Jun 2008 19:40:44 -0500
-Message-ID: <4844930C.8010503@redhat.com>
-References: <27337.143.166.226.57.1212443437.squirrel@tomslinux.homelinux.org> <20080602225942.GQ2961@webber.adilger.int>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: Re: [PATCH] ext4: Fix use of uninitialized data
+Date: Tue, 03 Jun 2008 08:57:41 +0800
+Message-ID: <48449705.1070101@cn.fujitsu.com>
+References: <1210790832-20680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1210790832-20680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602000842.GA24339@mit.edu> <4843C52D.20400@cn.fujitsu.com> <20080602103225.GA12240@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Thomas King <kingttx@tomslinux.homelinux.org>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: Theodore Tso <tytso@mit.edu>, cmm@us.ibm.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org, alex@clusterfs.com, adilger@sun.com
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59320 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750803AbYFCAk6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jun 2008 20:40:58 -0400
-In-Reply-To: <20080602225942.GQ2961@webber.adilger.int>
+Received: from cn.fujitsu.com ([222.73.24.84]:63865 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753156AbYFCBAc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2008 21:00:32 -0400
+In-Reply-To: <20080602103225.GA12240@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jun 02, 2008  16:50 -0500, Thomas King wrote:
->> I am writing an article for Linux.com to answer Henry Newman's at
->> http://www.enterprisestorageforum.com/sans/features/article.php/3749926. Is
->> there anyone that can field a few questions on ext4?
-> 
-> It depends on what you are proposing to write...  Henry's comments are
-> mostly accurate.  
 
-But others are way off base IMHO, to the point where I don't put a lot
-of stock in the article.  fsck only checks the log?  Hardly.  No linux
-filesystem does proper geometry alignment?  XFS has for years.
 
-He seems to take ext3 weaknesses and extrapolate to all linux
-filesystems.   The fact that he suggests testing a 500T ext3 filesystem
-indicates a ... lack of research.  Never mind that had he done that
-research he'd have found that you, well... you can't do it.  :)  On the
-one hand it proves his point about scalibility (of ext3) but on the
-other hand indicates that he's not completely investigated the problem
-of linux filesystem scalability, himself.
+Aneesh Kumar K.V Wrote:
+> On Mon, Jun 02, 2008 at 06:02:21PM +0800, Shen Feng wrote:
+>>
+>> Theodore Tso Wrote:
+>>> On Thu, May 15, 2008 at 12:17:11AM +0530, Aneesh Kumar K.V wrote:
+>>>> @@ -3134,8 +3135,7 @@ static void ext4_mb_use_inode_pa(struct ext4_allocation_context *ac,
+>>>>  static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
+>>>>  				struct ext4_prealloc_space *pa)
+>>>>  {
+>>>> -	unsigned len = ac->ac_o_ex.fe_len;
+>>>> -
+>>>> +	unsigned int len = ac->ac_o_ex.fe_len;
+>>>>  	ext4_get_group_no_and_offset(ac->ac_sb, pa->pa_pstart,
+>>>>  					&ac->ac_b_ex.fe_group,
+>>>>  					&ac->ac_b_ex.fe_start);
+>>>> -- 
+>>> This change had nothing to do with fixing the use of unitialized data,
+>>> but when I started looking more closely, it raised a potential signed
+>>> vs. unsigned issue: ac_o_ex is a struct ext4_free_extent, and fe_len
+>>> is an int.
+>>>
+>>> So here we are assigning an int to an unsigned int.  Later, len is
+>>> assigned to ac_b_ex.len, which means assigning an unsigned int to an
+>>> int.  In other places, fe_len (an int) is compared against pa_free
+>>> (which is an unsigned short), and fe_len gets assined to pa_free, once
+>>> again mixing signed and unsigned.
+>>>
+>>> Can someone who is really familiar with this code check this out?  I
+>>> think the following pseudo-patch to mballoc.h might be in order:
+>>>
+>>>  struct ext4_free_extent {
+>>>  	ext4_lblk_t fe_logical;
+>>>  	ext4_grpblk_t fe_start;
+>>>  	ext4_group_t fe_group;
+>>> -	int fe_len;
+>>> +	unsigned int fe_len;
+>>>  };
+>>>
+>> I'm studying the ext4 code these days.
+>> The data types always confuse me.
+>>
+>> The length of a ext4_extent ee_len is define as unsigned short.
+>>
+>> struct ext4_extent {
+>> 	__le32	ee_block;	/* first logical block extent covers */
+>> 	__le16	ee_len;		/* number of blocks covered by extent */
+>> 	__le16	ee_start_hi;	/* high 16 bits of physical block */
+>> 	__le32	ee_start_lo;	/* low 32 bits of physical block */
+>> };
+>>
+>> So I think fe_len should also be defined as unsigned short.
+>> Is that right?
+> 
+> Extents and each prealloc space have at max 2**16 blocks. So the length
+> of both should be unsigned short. With respect to ext4_free_extent we
+> use fe_len to store the number of blocks requested for allocation.
+> ( ext4_mb_initialize_context )
 
-Of the tests he proposes, he's clearly not bothered to do them himself.
- A 100 million inode filesystem is not that uncommon on xfs, and some of
-the tests he proposes are probably in daily use at SGI customers.
+In ext4_mb_initialize_context, we have
 
-So writing an article about ext4 to refute all his arguments might be
-premature, but dismissing all linux filesystems based on ext3
-shortcomings is also shortsighted.  He has some valid points but saying
-"fscking a multi-terabyte fs is too slow on linux" without showing that
-it actually *is* slow on linux, or that it *is* fast on $whatever_else,
-is just hand-waving.  On the other hand  it's a very hard test for mere
-mortals to run.  :)
+	/* just a dirty hack to filter too big requests  */
+	if (len >= EXT4_BLOCKS_PER_GROUP(sb) - 10)
+		len = EXT4_BLOCKS_PER_GROUP(sb) - 10;
 
--Eric
+This means that we cannot allocate blocks which is bigger then
+EXT4_BLOCKS_PER_GROUP(sb) - 10 ( max 2**16-10 ) with MBALLOC.
+But ext4_new_blocks_old can do that.
 
-> There isn't even support for > 16TB filesystems in
-> e2fsprogs today, so I wouldn't go rushing into an email saying "ext4
-> can support a single 100TB filesystem today".  It wouldn't be too hard
-> to take a 100TB Lustre filesystem and run it on a single node, but I
-> doubt anyone would actually want to do that and it still doesn't meet
-> the requirements of "a single instance filesystem".
-> 
-> What is noteworthy is that the comments about IO not being aligned
-> to RAID boundaries is only partly correct.  This is actually done in
-> ext4 with mballoc (assuming you set these boundaries in the superblock
-> manually), and is also done by XFS automatically.  The RAID geometry
-> detection code should be added to mke2fs also, if someone would be
-> interested.  The ext4/mballoc code does NOT align the metadata to RAID
-> boundaries, though this is being worked on also.
-> 
-> The mballoc code also does efficient block allocations (multi-MB at a
-> time), BUT there is no userspace interface for this yet, except O_DIRECT.
-> The delayed allocation (delalloc) patches for ext4 are still in the unstable
-> part of the patch series...  What Henry is misunderstanding here is that
-> the filesystem blocksize isn't necessarily the maximum unit for space
-> allocation.  I agree we could do this more efficiently (e.g. allocate an
-> entire 128MB block group at a time for large files), but we haven't gotten
-> there yet.
-> 
-> There are a large number of IO performance improvements in ext4 due to
-> work to improve IO server performance for Lustre (which Henry is of
-> course familiar with), and for Lustre at least we are able to get IO
-> performance in the 2GB/s range on 42 50MB/s disks with software RAID 0
-> (Sun x4500), but these are with O_DIRECT.
-> 
-> For the fsck front, there have been performance improvements recently
-> (uninit_bg), and more arriving soon (flex_bg and block metadata
-> clustering), but that is still a far way from removing the need for
-> e2fsck in case of corruption.
-> 
-> Similarly, Lustre (with ext3) can scale to a 10M file directory reasonably
-> (though not superbly) for a certain kind of workload.  On the other hand,
-> this can be really nasty with a "readdir+stat" kind of workload.  Lustre
-> also runs with filesystems > 250M files total, but I haven't heard of
-> e2fsck performance for such filesystems.
-> 
-> 
-> I'd personally tend to keep quiet until we CAN show that ext4
-> runs well on a 100TB filesystem, that e2fsck time isn't fatal, etc.
-> 
-> 
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So ext4_new_blocks may be changed as
 
+ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+		ext4_fsblk_t goal, unsigned long *count, int *errp)
+{
+	struct ext4_allocation_request ar;
+	ext4_fsblk_t ret;
+
+-	if (!test_opt(inode->i_sb, MBALLOC)) {
++	if (!test_opt(inode->i_sb, MBALLOC) || 
++		(*count >= EXT4_BLOCKS_PER_GROUP(inode->i_sb) - 10)) {
+		ret = ext4_new_blocks_old(handle, inode, goal, count, errp);
+		return ret;
+	}
+
+	memset(&ar, 0, sizeof(ar));
+	ar.inode = inode;
+	ar.goal = goal;
+	ar.len = *count;
+	ret = ext4_mb_new_blocks(handle, &ar, errp);
+	*count = ar.len;
+	return ret;
+}
+
+
+-Shen Feng
