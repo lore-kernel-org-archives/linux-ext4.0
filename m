@@ -1,164 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libext2fs: Add 64-bit support to the undo manager
-Date: Mon,  2 Jun 2008 22:44:50 -0400
-Message-ID: <1212461090-18989-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Test results for ext4
+Date: Mon, 02 Jun 2008 22:14:39 -0500
+Message-ID: <4844B71F.3070906@redhat.com>
+References: <48402253.8040407@bull.net> <4841A871.3020500@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	"Jose R. Santos" <jrs@us.ibm.com>
+To: Valerie Clement <valerie.clement@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40899 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753274AbYFCCpB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2008 22:45:01 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:44945 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751795AbYFCD1y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2008 23:27:54 -0400
+In-Reply-To: <4841A871.3020500@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/undo_io.c |   55 ++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 45 insertions(+), 10 deletions(-)
+Eric Sandeen wrote:
+> Valerie Clement wrote:
+>> Hi all,
+>>
+>> Since a couple of weeks, I did batches of tests to have some performance
+>> numbers for the new ext4 features like uninit_groups, flex_bg or
+>> journal_checksum on a 5TB filesystem.
+>> I tried to test allmost all combinations of mkfs and mount options, but
+>> I put only a subset of them in the result tables, the most significant
+>> for me.
+>>
+>> I had started to do these tests on a kernel 2.6.26-rc1, but I'd got several
+>> hangs and crashes occuring randomly outside ext4, sometimes in the slab
+>> code or in the scsi driver eg., and which were not reproductible.
+>> Since 2.6.26-rc2, no crash or hang occur with ext4 on my system.
+>>
+>> The first results and the test description are available here:
+>> http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.html
+>> http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2.html
+>>
+> 
+> One other question on the tests; am I reading correctly that ext3 used
+> "data=writeback" but ext4 used the default data=ordered mode?
 
-diff --git a/lib/ext2fs/undo_io.c b/lib/ext2fs/undo_io.c
-index e1e6458..1499972 100644
---- a/lib/ext2fs/undo_io.c
-+++ b/lib/ext2fs/undo_io.c
-@@ -67,6 +67,10 @@ struct undo_private_data {
- static errcode_t undo_open(const char *name, int flags, io_channel *channel);
- static errcode_t undo_close(io_channel channel);
- static errcode_t undo_set_blksize(io_channel channel, int blksize);
-+static errcode_t undo_read_blk64(io_channel channel, unsigned long long block,
-+				 int count, void *data);
-+static errcode_t undo_write_blk64(io_channel channel, unsigned long long block,
-+				  int count, const void *data);
- static errcode_t undo_read_blk(io_channel channel, unsigned long block,
- 			       int count, void *data);
- static errcode_t undo_write_blk(io_channel channel, unsigned long block,
-@@ -76,6 +80,7 @@ static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
- 				int size, const void *data);
- static errcode_t undo_set_option(io_channel channel, const char *option,
- 				 const char *arg);
-+static errcode_t undo_get_stats(io_channel channel, io_stats *stats);
- 
- static struct struct_io_manager struct_undo_manager = {
- 	EXT2_ET_MAGIC_IO_MANAGER,
-@@ -87,7 +92,10 @@ static struct struct_io_manager struct_undo_manager = {
- 	undo_write_blk,
- 	undo_flush,
- 	undo_write_byte,
--	undo_set_option
-+	undo_set_option,
-+	undo_get_stats,
-+	undo_read_blk64,
-+	undo_write_blk64,
- };
- 
- io_manager undo_io_manager = &struct_undo_manager;
-@@ -180,17 +188,17 @@ static errcode_t write_block_size(TDB_CONTEXT *tdb, int block_size)
- }
- 
- static errcode_t undo_write_tdb(io_channel channel,
--				unsigned long block, int count)
-+				unsigned long long block, int count)
- 
- {
- 	int size, i, sz;
--	unsigned long block_num, backing_blk_num;
-+	unsigned long long block_num, backing_blk_num;
- 	errcode_t retval = 0;
- 	ext2_loff_t offset;
- 	struct undo_private_data *data;
- 	TDB_DATA tdb_key, tdb_data;
- 	char *read_ptr;
--	unsigned long end_block;
-+	unsigned long long end_block;
- 
- 	data = (struct undo_private_data *) channel->private_data;
- 
-@@ -256,7 +264,7 @@ static errcode_t undo_write_tdb(io_channel channel,
- 			sz = count / channel->block_size;
- 		else
- 			sz = -count;
--		retval = io_channel_read_blk(data->real, backing_blk_num,
-+		retval = io_channel_read_blk64(data->real, backing_blk_num,
- 					     sz, read_ptr);
- 		if (retval) {
- 			if (retval != EXT2_ET_SHORT_READ) {
-@@ -275,7 +283,7 @@ static errcode_t undo_write_tdb(io_channel channel,
- 		tdb_data.dptr = read_ptr +
- 				((offset - data->offset) % channel->block_size);
- #ifdef DEBUG
--		printf("Printing with key %ld data %x and size %d\n",
-+		printf("Printing with key %lld data %x and size %d\n",
- 		       block_num,
- 		       tdb_data.dptr,
- 		       tdb_data.dsize);
-@@ -443,7 +451,7 @@ static errcode_t undo_set_blksize(io_channel channel, int blksize)
- 	return retval;
- }
- 
--static errcode_t undo_read_blk(io_channel channel, unsigned long block,
-+static errcode_t undo_read_blk64(io_channel channel, unsigned long long block,
- 			       int count, void *buf)
- {
- 	errcode_t	retval;
-@@ -454,12 +462,18 @@ static errcode_t undo_read_blk(io_channel channel, unsigned long block,
- 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
- 
- 	if (data->real)
--		retval = io_channel_read_blk(data->real, block, count, buf);
-+		retval = io_channel_read_blk64(data->real, block, count, buf);
- 
- 	return retval;
- }
- 
--static errcode_t undo_write_blk(io_channel channel, unsigned long block,
-+static errcode_t undo_read_blk(io_channel channel, unsigned long block,
-+			       int count, void *buf)
-+{
-+	return undo_read_blk64(channel, block, count, buf);
-+}
-+
-+static errcode_t undo_write_blk64(io_channel channel, unsigned long long block,
- 				int count, const void *buf)
- {
- 	struct undo_private_data *data;
-@@ -475,11 +489,17 @@ static errcode_t undo_write_blk(io_channel channel, unsigned long block,
- 	if (retval)
- 		 return retval;
- 	if (data->real)
--		retval = io_channel_write_blk(data->real, block, count, buf);
-+		retval = io_channel_write_blk64(data->real, block, count, buf);
- 
- 	return retval;
- }
- 
-+static errcode_t undo_write_blk(io_channel channel, unsigned long block,
-+				int count, const void *buf)
-+{
-+	return undo_write_blk64(channel, block, count, buf);
-+}
-+
- static errcode_t undo_write_byte(io_channel channel, unsigned long offset,
- 				 int size, const void *buf)
- {
-@@ -573,3 +593,18 @@ static errcode_t undo_set_option(io_channel channel, const char *option,
- 	}
- 	return retval;
- }
-+
-+static errcode_t undo_get_stats(io_channel channel, io_stats *stats)
-+{
-+	errcode_t	retval;
-+	struct undo_private_data *data;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct undo_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-+
-+	if (data->real)
-+		retval = (data->real->manager->get_stats)(data->real, stats);
-+
-+	return retval;
-+}
--- 
-1.5.4.1.144.gdfee-dirty
+I was interested in the results, especially since ext3 seemed to pretty
+well match ext4 for throughput, although the cpu utilization differed.
 
+I re-ran the same ffsb profiles on an 8G, 4-way opteron box, connected
+to a "Vendor: WINSYS   Model: SF2372" 2T hardware raid array with 512MB
+cache, connected via fibrechannel.
+
+Reads go pretty fast:
+
+# dd if=/dev/sdc bs=16M count=512 iflag=direct of=/dev/null
+8589934592 bytes (8.6 GB) copied, 23.2257 seconds, 370 MB/s
+
+I got some different numbers....
+
+This was with e2fsprogs-1.39 for ext3, e2fsprogs-1.40.10 for ext4, and
+xfsprogs-2.9.8 for xfs.
+
+I used defaults except; data=writeback for ext[34] and the nobarrier
+option for xfs.  ext3 was made with 128 byte inodes, ext4 with 256-byte
+(new default).  XFS used stock mkfs.  I formatted the entire block
+device /dev/sdc.
+
+For the large file write test:
+
+	MB/s	CPU %
+ext3	140	 90.7
+ext4	182	 50.2
+xfs	222	145.0
+
+And for the small random readwrite test:
+
+	trans/s	CPU %
+ext3	 9830	 12.2
+ext4	11996	 18.1
+xfs	13863	 23.5
+
+Not sure what the difference is ...
+
+If you have your tests scripted up I'd be interested to run all the
+variations on this hardware as well, as it seems to show more throughput
+differences...
+
+Thanks!
+
+-Eric
