@@ -1,9 +1,9 @@
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: [PATCH 0/5] jbd: possible filesystem corruption fixes (take 2)
-Date: Tue, 03 Jun 2008 13:30:07 +0900
-Message-ID: <4844C8CF.8060700@hitachi.com>
-References: <4843CE15.6080506@hitachi.com>
-    <20080602120538.GK30613@duck.suse.cz>
+Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
+Date: Tue, 03 Jun 2008 13:31:52 +0900
+Message-ID: <4844C938.7030401@hitachi.com>
+References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com>
+    <20080602124409.GL30613@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -14,30 +14,42 @@ Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
 	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail4.hitachi.co.jp ([133.145.228.5]:34587 "EHLO
-	mail4.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751300AbYFCEaR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 00:30:17 -0400
-In-Reply-To: <20080602120538.GK30613@duck.suse.cz>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:38301 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750874AbYFCEb5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 00:31:57 -0400
+In-Reply-To: <20080602124409.GL30613@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hello,
 
+Thank you for reviewing.
+
 Jan Kara wrote:
-> On Mon 02-06-08 19:40:21, Hidehiro Kawai wrote:
-> 
->>Subject: [PATCH 0/5] jbd: possible filesystem corruption fixes (take 2)
-> 
->   Just a small note - repeating the subject in the changelog makes it a bit
-> harder for Andrew to merge the patches. Standard merging scripts prepend
-> subject of the email to the changelog below and so in your case the message
-> would be there twice... Just that you know when you create the patch series
-> next time.
 
-Thank you for letting me know.  I'll not do such odd thing next time.
+>>@@ -347,6 +361,8 @@ restart:
+>> 				break;
+>> 			}
+>> 			retry = __process_buffer(journal, jh, bhs,&batch_count);
+>>+			if (retry < 0)
+>>+				result = retry;
+> 
+>   Here you update result whenever retry is < 0 and below when result == 0.
+> I think it's better to have these two consistent (not that it would be
+> currently any functional difference).
 
-Regards,
+I fixed it.
+
+> Only please add a comment in front of
+> log_do_checkpoint() that it's supposed to be called with j_checkpoint_mutex
+> held so that EIO propagation works correctly.
+
+I added a comment.
+
+I'll send the revised patch soon.
+
+Thanks,
 -- 
 Hidehiro Kawai
 Hitachi, Systems Development Laboratory
