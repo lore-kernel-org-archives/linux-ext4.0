@@ -1,59 +1,87 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ftest01:16876 blocked for more than 120 seconds
-Date: Wed, 4 Jun 2008 18:56:24 +0200
-Message-ID: <20080604165624.GB5228@atrey.karlin.mff.cuni.cz>
-References: <20080603200006.GA9823@martell.zuzino.mipt.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Alexey Dobriyan <adobriyan@gmail.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: Two questions on VFS/mm
+Date: Wed, 04 Jun 2008 19:10:42 +0200
+Message-ID: <E1K3wVW-0001Hv-QD@pomaz-ex.szeredi.hu>
+References: <20080604163412.GL16572@duck.suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	akpm@linux-foundation.org
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36068 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752318AbYFDQ4Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 12:56:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20080603200006.GA9823@martell.zuzino.mipt.ru>
+Received: from fxip-0047f.externet.hu ([88.209.222.127]:33072 "EHLO
+	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752443AbYFDRKw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 13:10:52 -0400
+In-reply-to: <20080604163412.GL16572@duck.suse.cz> (message from Jan Kara on
+	Wed, 4 Jun 2008 18:34:12 +0200)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+(Added some CCs)
 
-> This happened during LTP run together with mass-compiling kernels.
-> Kernel is 2.6.26-rc4-1beee8dc8cf58e3f605bd7b34d7a39939be7d8d2
-> fs is ext3 mounted with noatime.
-  Thanks for report.
-
-> INFO: task ftest01:16876 blocked for more than 120 seconds.
-> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> ftest01       D 0000000000000000     0 16876  16863
->  ffff810066fd3d68 0000000000000046 ffff810066fd3d08 ffffffff80254aae
->  ffff81005e7ab3c0 ffff810075530000 ffff81005e7ab600 0000000000000002
->  ffff810066fd3d28 ffffffff80254c55 ffff81000c043440 0000000000000282
-> Call Trace:
->  [<ffffffff80254aae>] ? mark_held_locks+0x3e/0x80
->  [<ffffffff80254c55>] ? trace_hardirqs_on+0xd5/0x160
->  [<ffffffff80460722>] ? _spin_unlock_irqrestore+0x42/0x80
->  [<ffffffff802a54a9>] inode_wait+0x9/0x10
->  [<ffffffff8045dfd5>] __wait_on_bit+0x55/0x80
->  [<ffffffff802a54a0>] ? inode_wait+0x0/0x10
->  [<ffffffff802b164a>] __writeback_single_inode+0x21a/0x320
->  [<ffffffff80247860>] ? wake_bit_function+0x0/0x30
->  [<ffffffff802b1bff>] sync_sb_inodes+0x1df/0x2d0
->  [<ffffffff802b1d8f>] sync_inodes_sb+0x9f/0xc0
->  [<ffffffff802b1e3a>] __sync_inodes+0x8a/0xe0
->  [<ffffffff802b1ebe>] sync_inodes+0x2e/0x40
->  [<ffffffff802b4f54>] do_sync+0x34/0x70
->  [<ffffffff802b4f9e>] sys_sync+0xe/0x20
->  [<ffffffff8020b68b>] system_call_after_swapgs+0x7b/0x80
+>   could some kind soul knowledgable in VFS/mm help me with the following
+> two questions? I've spotted them when testing some ext4 for patches...
+>   1) In write_cache_pages() we do:
+> ...
+> 	lock_page(page);
+> 	...
+> 	if (!wbc->range_cyclic && page->index > end) {
+>                    done = 1;
+>                    unlock_page(page);
+>                    continue;
+>         }
+> 	...
+> 	ret = (*writepage)(page, wbc, data);
 > 
-> 1 lock held by ftest01/16876:
->  #0:  (&type->s_umount_key#3){----}, at: [<ffffffff802b1e28>] __sync_inodes+0x78/0xe0
-  We are waiting for __I_SYNC - i.e., some other process is syncing
-the inode and it took it longer than 120 sec to write this inode which
-is well possible on heavily loaded system. I'm not sure we can do much here...
+>   Now the problem is that if range_cyclic is set, it can happen that the
+> page we give to the filesystem is beyond the current end of file (and can
+> be already processed by invalidatepage()). Is the filesystem supposed to
+> handle this (what would it be good for to give such a page to the fs?) or
+> is it just a bug in write_cache_pages()?
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+There may be a bug somewhere, but write_cache_pages() looks correct.
+It locks the page then checks for page->mapping to make sure the page
+wasn't truncated.  And truncation (including invalidatepage()) happens
+with the page locked, so that can't race with page writeback.
+
+However the do_invalidatepage() in block_write_full_page() looks
+suspicious.  It calls invalidatepage(), but doesn't perform all the
+other things needed for truncation.  Maybe there's a valid reason for
+that, but I really don't have any idea what.
+
+Miklos
+
+> 
+>   2) I have the following problem with page_mkwrite() when blocksize <
+> pagesize. What we want to do is to fill in a potential hole under a page
+> somebody wants to write to. But consider following scenario with a
+> filesystem with 1k blocksize:
+>   truncate("file", 1024);
+>   ptr = mmap("file");
+>   *ptr = 'a'
+>      -> page_mkwrite() is called.
+>         but "file" is only 1k large and we cannot really allocate blocks
+>         beyond end of file. So we allocate just one 1k block.
+>   truncate("file", 4096);
+>   *(ptr + 2048) = 'a'
+>      - nothing is called and later during writepage() time we are surprised
+>        we have a dirty page which is not backed by a filesystem block.
+> 
+>   How to solve this? One idea I have here is that when we handle truncate(),
+> we mark the original last page (if it is partial) as read-only again so
+> that page_mkwrite() is called on the next write to it. Is something like
+> this possible? Pointers to code doing something similar are welcome, I don't
+> really know these things ;).
+> 
+> 								Thanks
+> 									Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+> 
+
