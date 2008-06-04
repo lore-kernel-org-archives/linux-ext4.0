@@ -1,28 +1,54 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data
-	buffers
-Date: Wed, 4 Jun 2008 17:22:02 -0400
-Message-ID: <20080604212202.GA8727@mit.edu>
-References: <4843CE15.6080506@hitachi.com> <4843CEED.9080002@hitachi.com> <20080603153050.fb99ac8a.akpm@linux-foundation.org> <20080604101925.GB16572@duck.suse.cz> <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data	buffers
+Date: Wed, 04 Jun 2008 15:58:34 -0600
+Message-ID: <20080604215834.GA2961@webber.adilger.int>
+References: <4843CE15.6080506@hitachi.com> <4843CEED.9080002@hitachi.com>
+ <20080603153050.fb99ac8a.akpm@linux-foundation.org>
+ <20080604101925.GB16572@duck.suse.cz>
+ <20080604111911.c1fe09c6.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
 Cc: Jan Kara <jack@suse.cz>,
 	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>, sct@redhat.com,
-	adilger@sun.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
 	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:40308 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751237AbYFDVWw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 17:22:52 -0400
-Content-Disposition: inline
-In-Reply-To: <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:36162 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752063AbYFDV6q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 17:58:46 -0400
+In-reply-to: <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 04, 2008 at 11:19:11AM -0700, Andrew Morton wrote:
+On Jun 04, 2008  11:19 -0700, Andrew Morton wrote:
+> On Wed, 4 Jun 2008 12:19:25 +0200 Jan Kara <jack@suse.cz> wrote:
+> 
+> > On Tue 03-06-08 15:30:50, Andrew Morton wrote:
+> > > On Mon, 02 Jun 2008 19:43:57 +0900
+> > > Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com> wrote:
+> > > 
+> > > > 
+> > > > In ordered mode, we should abort journaling when an I/O error has
+> > > > occurred on a file data buffer in the committing transaction.
+> > > 
+> > > Why should we do that?
+> >   I see two reasons:
+> > 1) If fs below us is returning IO errors, we don't really know how severe
+> > it is so it's safest to stop accepting writes. Also user notices the
+> > problem early this way. I agree that with the growing size of disks and
+> > thus probability of seeing IO error, we should probably think of something
+> > cleverer than this but aborting seems better than just doing nothing.
+> > 
+> > 2) If the IO error is just transient (i.e., link to NAS is disconnected for
+> > a while), we would silently break ordering mode guarantees (user could be
+> > able to see old / uninitialized data).
+> > 
+> 
 > Does any other filesystem driver turn the fs read-only on the first
 > write-IO-error?
 > 
@@ -30,55 +56,36 @@ On Wed, Jun 04, 2008 at 11:19:11AM -0700, Andrew Morton wrote:
 > it's effectively a complete outage and people might get a bit upset if
 > this happens on the first blip from their NAS.
 
-As I told Kawai-san when I met with him and his colleagues in Tokyo
-last week, it is the responsibility of the storage stack to retry
-errors as appropriate.  From the filesystem perspective, a read or a
-write operation succeeds, or fails.  A read or write operation could
-take a long time before returning, but the storage stack doesn't get
-to return a "fail, but try again at some point; maybe we'll succeed
-later, or if you try writing to a different block".  The only sane
-thing for a filesystem to do is to treat any failure as a hard
-failure.
+I agree with Andrew.  The historical policy of ext2/3/4 is that write
+errors for FILE DATA propagate to the application via EIO, regardless
+of whether ordered mode is active or not.  If filesystem METADATA is
+involved, yes this should cause an ext3_error() to be called and the
+policy for what to do next is controlled by the administrator.
 
-It is similarly insane to ask a filesystem to figure out that a newly
-plugged in USB stick is the same one that the user had accidentally
-unplugged 30 seconds ago.  We don't want to put that kind of low-level
-knowlede about storage details in each different filesystem.
+If the journal is aborted for a file data write error, the node maybe
+panics (errors=panic) or is rebooted by the administrator, then e2fsck
+is run and no problem is found (which it will not because e2fsck does
+not check file data), then all that has been accomplished is to reboot
+the node.
 
-A much better place to put that kind of smarts is in a multipath
-module which sits in between the device and the filesystem.  It can
-retry writes from a transient failure, if a path goes down or if a
-iSCSI device temporarily drops off the network.  But if a filesystem
-gets a write failure, it has to assume that the write failure is
-permanent.
+Applications should check the error return codes from their writes,
+and call fsync on the file before closing it if they are really worried
+about whether the data made it to disk safely, otherwise even a read-only
+filesystem will not cause the application to notice anything.
 
-The question though is what should you do if you have a write failure
-in various different parts of the disk?  If you have a write failure
-in a data block, you can return -EIO to the user.  You could try
-reallocating to find another block, and try writing to that alternate
-location (although with modern filesystems that do block remapping,
-this is largely pointless, since an EIO failure on write probably
-means you've lost connectivity to the disk or the disk as run out of
-spare blocks).  But for a failure to write to the a critical part of
-the filesystem, like the inode table, or failure to write to the
-journal, what the heck can you do?  Remounting read-only is probably
-the best thing you can do.
+Now, if we have a problem where the write error from the journal checkpoint
+is not being propagated back to the original buffer, that is a different
+issue.  For ordered-mode data I don't _think_ that the data buffers are
+mirrored when a transaction is closed, so as long as the !buffer_uptodate()
+error is propagated back to the caller on fsync() that is enough.
 
-In theory, if it is a failure to write to the journal, you could fall
-back to no-journaled operation, and if ext3 could support running w/o
-a journal, that is possibly an option --- but again, it's very likely
-that the disk is totally gone (i.e., the user pulled the USB stick
-without unmounting), or the disk is out of spare blocks in its bad
-block remapping pool, and the system is probably going to be in deep
-trouble --- and the next failure to write some data might be critical
-application data.  You probably *are* better off failing the system
-hard, and letting the HA system swap in the hot spare backup, if this
-is some critical service.
+We might also consider having a separate mechanism to handle write failures,
+but I don't think that that should be intermixed with the ext3 error handling
+for metadata errors.
 
-That being said, ext3 can be tuned (and it is the default today,
-although I should probably change the default to be remount-ro), so
-that its behaviour on write errors is, "don't worry, be happy", and
-just leave the filesystem mounted read/write.  That's actually quite
-dangerous for a critical production server, however.....
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-							- Ted
