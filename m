@@ -1,142 +1,91 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: + jbd-strictly-check-for-write-errors-on-data-buffers.patch	added
- to -mm tree
-Date: Tue, 03 Jun 2008 21:53:37 -0600
-Message-ID: <20080604035337.GS2961@webber.adilger.int>
-References: <200806032236.m53MaNpB023385@imap1.linux-foundation.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Wed, 4 Jun 2008 09:31:01 +0530
+Message-ID: <20080604040101.GA22348@skywalker>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: akpm@linux-foundation.org
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:33461 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751660AbYFDDxl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2008 23:53:41 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m543rehM029164
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Jun 2008 20:53:40 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K1X006016O72A00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 03 Jun 2008 20:53:40 -0700 (PDT)
-In-reply-to: <200806032236.m53MaNpB023385@imap1.linux-foundation.org>
-Content-disposition: inline
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:49883 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750814AbYFDEBQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 00:01:16 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5440eWC010187
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 14:00:40 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m5445OTN207474
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 14:05:24 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5441DRm005285
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 14:01:13 +1000
+Content-Disposition: inline
+In-Reply-To: <20080604022356.GA7094@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 03, 2008  15:36 -0700, Andrew Morton wrote:
-> ------------------------------------------------------
-> Subject: jbd: strictly check for write errors on data buffers
-> From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+On Tue, Jun 03, 2008 at 10:23:56PM -0400, Theodore Tso wrote:
+> On Tue, May 20, 2008 at 02:04:22AM +0530, Aneesh Kumar K.V wrote:
+> > When mouting ext4 with -o noextents, request for
+> > file data blocks from inode prealloc space.
 > 
-> In ordered mode, we should abort journaling when an I/O error has occurred
-> on a file data buffer in the committing transaction.  But there can be
-> data buffers which are not checked for error:
+> Aneesh, can you expand on this patch set?  Why is this important?
+> What was it doing beforehand?  Is this to replace the use of the block
+> reservations code that had been introduced by Mingming in ext3?  Or is
+> that a long-term goal?
 > 
->   (a) the buffer which has already been written out by pdflush
->   (b) the buffer which has been unlocked before scanned in the
->       t_locked_list loop
+> Also, it would be nice to add some comments at the beginning of the
+> changed functions, explaining what the functions do, what they are
+> intended for, what they assumptions they make (i.e., do they assume
+> that certain locks are taken), any side effects they make (i.e., this
+> function calls get_bh or put_bh to change the refcount on a passed-in
+> buffer head).   
 > 
-> This patch adds missing error checks and aborts journaling
-> appropriately.
+> I assume there was a good reason that you renamed the function
+> ext4_new_block() to ext4_fsblk_t ext4_new_meta_block(), but why?  Some
+> comments would really be useful.
+> 
+> I asked Mingming what this patch did when I was reviewing it this
+> afternoon, since we were both in New Hampshire at the btrfs
+> conference.  I couldn't parse the english for the comments, and after
+> looking at the patch, it wasn't at all obvious what the patch was
+> trying to accomplish.  Even though Mingming had reviewed it maybe two
+> weeks ago, she couldn't figure it out completely after looking over
+> the patch.  Consider how a someone who isn't intimately familiar with
+> the code would be able to figure out either (a) the code, or (b)
+> looking over the changeset.  Good code has to be long-term
+> maintainable, and some comments would really help in this department.
+> 
+> Since neither of us couldn't figure it out what the motivation of this
+> patch, we've decided to move it to the unstable portion of the patch
+> since without some better comments, it's probably not a good idea to
+> push it to Linus in this form.
+> 
+> 						- Ted
 
-Should we actually abort the journal for file data write errors?
+When we mount the filesystem with -o noextents currently the block
+allocation requests are not using the preallocation feature of mballoc.
+mballoc consider the allocation request that doesn't have
+ar.flags = EXT4_MB_HINT_DATA set as meta-data allocation and force
+them to get the blocks via regular allocator ext4_mb_regular_allocator.
+In order to make sure -o noextents (or ext3 format) block allocation
+use the preallocation feature we need to set the EXT4_MB_HINT_DATA
+while requesting for the blocks. mballoc also needs the
+logical block number of the requested block so that it call nicely place
+it in the inode prealloc space. This means that we need to differentiate
+between data allocation request and meta-data allocation request. The
+meta-data allocation is done without setting EXT4_MB_HINT_DATA flag
+and they would use the regular allocator where as the data blocks
+are requested with EXT4_MB_HINT_DATA set and along with logical block
+number so that they can allocate the blocks nicely from the inode prealloc
+space. Now with -o noextents we request for blocks via
+ext4_alloc_blocks.  Earlier we request for both the data and meta-block
+together. Now we can't do that since the data-blocks are allocated based
+on the logical block number of the request. So the changes was to split
+it such that we first request for meta-data blocks and then request
+for data-blocks with the logical block number.
 
-It appears journal_submit_data_buffers() is only for file data
-(BJ_SyncData) and not any metadata (BJ_Metadata).  In data=ordered
-mode there is no risk to the filesystem integrity.
 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitacih.com>
-> Acked-by: Jan Kara <jack@suse.cz>
-> Cc: <linux-ext4@vger.kernel.org>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
-> 
->  fs/jbd/commit.c |   14 +++++++++-----
->  1 file changed, 9 insertions(+), 5 deletions(-)
-> 
-> diff -puN fs/jbd/commit.c~jbd-strictly-check-for-write-errors-on-data-buffers fs/jbd/commit.c
-> --- a/fs/jbd/commit.c~jbd-strictly-check-for-write-errors-on-data-buffers
-> +++ a/fs/jbd/commit.c
-> @@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
->  /*
->   *  Submit all the data buffers to disk
->   */
-> -static void journal_submit_data_buffers(journal_t *journal,
-> +static int journal_submit_data_buffers(journal_t *journal,
->  				transaction_t *commit_transaction)
->  {
->  	struct journal_head *jh;
-> @@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
->  	int locked;
->  	int bufs = 0;
->  	struct buffer_head **wbuf = journal->j_wbuf;
-> +	int err = 0;
->  
->  	/*
->  	 * Whenever we unlock the journal and sleep, things can get added
-> @@ -253,6 +254,8 @@ write_out_data:
->  			put_bh(bh);
->  		} else {
->  			BUFFER_TRACE(bh, "writeout complete: unfile");
-> +			if (unlikely(!buffer_uptodate(bh)))
-> +				err = -EIO;
->  			__journal_unfile_buffer(jh);
->  			jbd_unlock_bh_state(bh);
->  			if (locked)
-> @@ -271,6 +274,8 @@ write_out_data:
->  	}
->  	spin_unlock(&journal->j_list_lock);
->  	journal_do_submit_data(wbuf, bufs);
-> +
-> +	return err;
->  }
->  
->  /*
-> @@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
-> -	err = 0;
-> -	journal_submit_data_buffers(journal, commit_transaction);
-> +	err = journal_submit_data_buffers(journal, commit_transaction);
->  
->  	/*
->  	 * Wait for all previously submitted IO to complete.
-> @@ -426,10 +430,10 @@ void journal_commit_transaction(journal_
->  		if (buffer_locked(bh)) {
->  			spin_unlock(&journal->j_list_lock);
->  			wait_on_buffer(bh);
-> -			if (unlikely(!buffer_uptodate(bh)))
-> -				err = -EIO;
->  			spin_lock(&journal->j_list_lock);
->  		}
-> +		if (unlikely(!buffer_uptodate(bh)))
-> +			err = -EIO;
->  		if (!inverted_lock(journal, bh)) {
->  			put_bh(bh);
->  			spin_lock(&journal->j_list_lock);
-> _
-> 
-> Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
-> 
-> jbd-strictly-check-for-write-errors-on-data-buffers.patch
-> jbd-ordered-data-integrity-fix.patch
-> jbd-abort-when-failed-to-log-metadata-buffers.patch
-> jbd-fix-error-handling-for-checkpoint-io.patch
-> ext3-abort-ext3-if-the-journal-has-aborted.patch
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+-aneesh
