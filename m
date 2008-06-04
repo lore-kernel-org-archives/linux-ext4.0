@@ -1,69 +1,59 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Ordered mode rewrite for jbd2/ext4
-Date: Wed, 4 Jun 2008 18:52:04 +0200
-Message-ID: <20080604165204.GA5228@atrey.karlin.mff.cuni.cz>
-References: <20080604154435.GE16572@duck.suse.cz>
+Subject: Re: ftest01:16876 blocked for more than 120 seconds
+Date: Wed, 4 Jun 2008 18:56:24 +0200
+Message-ID: <20080604165624.GB5228@atrey.karlin.mff.cuni.cz>
+References: <20080603200006.GA9823@martell.zuzino.mipt.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Alexey Dobriyan <adobriyan@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:43278 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36068 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751409AbYFDQwF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 12:52:05 -0400
+	with ESMTP id S1752318AbYFDQ4Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 12:56:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20080604154435.GE16572@duck.suse.cz>
+In-Reply-To: <20080603200006.GA9823@martell.zuzino.mipt.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+  Hi,
 
-  Sorry for replying to myself but I remembered one more thing :)
+> This happened during LTP run together with mass-compiling kernels.
+> Kernel is 2.6.26-rc4-1beee8dc8cf58e3f605bd7b34d7a39939be7d8d2
+> fs is ext3 mounted with noatime.
+  Thanks for report.
 
->   So I've split and ported ordered mode rewrite for ext4+jbd2.
-> The core of the rewrite are two patches
+> INFO: task ftest01:16876 blocked for more than 120 seconds.
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> ftest01       D 0000000000000000     0 16876  16863
+>  ffff810066fd3d68 0000000000000046 ffff810066fd3d08 ffffffff80254aae
+>  ffff81005e7ab3c0 ffff810075530000 ffff81005e7ab600 0000000000000002
+>  ffff810066fd3d28 ffffffff80254c55 ffff81000c043440 0000000000000282
+> Call Trace:
+>  [<ffffffff80254aae>] ? mark_held_locks+0x3e/0x80
+>  [<ffffffff80254c55>] ? trace_hardirqs_on+0xd5/0x160
+>  [<ffffffff80460722>] ? _spin_unlock_irqrestore+0x42/0x80
+>  [<ffffffff802a54a9>] inode_wait+0x9/0x10
+>  [<ffffffff8045dfd5>] __wait_on_bit+0x55/0x80
+>  [<ffffffff802a54a0>] ? inode_wait+0x0/0x10
+>  [<ffffffff802b164a>] __writeback_single_inode+0x21a/0x320
+>  [<ffffffff80247860>] ? wake_bit_function+0x0/0x30
+>  [<ffffffff802b1bff>] sync_sb_inodes+0x1df/0x2d0
+>  [<ffffffff802b1d8f>] sync_inodes_sb+0x9f/0xc0
+>  [<ffffffff802b1e3a>] __sync_inodes+0x8a/0xe0
+>  [<ffffffff802b1ebe>] sync_inodes+0x2e/0x40
+>  [<ffffffff802b4f54>] do_sync+0x34/0x70
+>  [<ffffffff802b4f9e>] sys_sync+0xe/0x20
+>  [<ffffffff8020b68b>] system_call_after_swapgs+0x7b/0x80
 > 
-> jbd2-Implement-data-ordered-mode-handling-via-inode.patch
-> ext4-Use-new-framework-for-data-ordered-mode-in-JBD.patch
-> 
-> They also need two trivial fixes:
-> vfs-export-filemap_fdatawrite_range.patch
-> ext4-Use-new-framework-for-data-ordered-mode-in-JBD.patch
-> 
-> And finally there's a patch removing old ordered mode from jbd2:
-> jbd2-Remove-data-ordered-mode-support-using-jbd-buf.patch
-> 
-> I've created the patches to be added to the ext4 patch queue just
-> after inversion of page lock and transaction start.
-> 
-> I have refreshed the following patches in the ext4 queue to apply cleanly
-> and also fixed some typos in them and added one BUG_ON():
-  I've fixed one more problem - during umount, we were calling
-ext4_da_writepages() which starts a transaction and lockdep complains
-(because superblock lock ranks below transaction start). Because during
-this time, we can be actually called only for special inodes (like
-journal inode) from iput() we don't really need to start a transaction.
-So I've added check into ext4_da_writepages() to bail out if mapping has
-no pages (hmm, maybe adding there a check for mapping_tagged(mapping,
-PAGECACHE_TAG_DIRTY) would be even better than what I've added).
-
-> ext4-delalloc-sync-hang-with-journal-lock-inverse-fix.patch
-> ext4-delalloc-inverse-jbd-and-page-lock-ordering.patch
-> ext4-inverse-jbd-and-page-locking-order.patch
-> 
-> Finally, I've rewritten checks in writepage so
-> ext4-Add-validation-to-jbd-lock-inversion-patch-and.patch
-> should be replaced with
-> ext4-add-checks-to-writepage
-> 
-> as we spoke about it with Aneesh.
-> 
-> All the patches are attached and I'll also post the new ones separately for
-> more convenient review. The tests for 4k blocksize run fine for me. The
-> kernel oopses for 1k blocksize because of a problem in ext4_page_mkwrite()
-> - I'll post that in a separate mail. If noone objects, patches can be added
-> to ext4 patch queue.
+> 1 lock held by ftest01/16876:
+>  #0:  (&type->s_umount_key#3){----}, at: [<ffffffff802b1e28>] __sync_inodes+0x78/0xe0
+  We are waiting for __I_SYNC - i.e., some other process is syncing
+the inode and it took it longer than 120 sec to write this inode which
+is well possible on heavily loaded system. I'm not sure we can do much here...
 
 									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
