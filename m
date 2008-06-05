@@ -1,57 +1,56 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Thu, 5 Jun 2008 14:38:54 -0400
-Message-ID: <20080605183854.GN25477@mit.edu>
-References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org> <20080528070637.GA10393@deprecation.cyrius.com> <20080605111148.GA4483@deprecation.cyrius.com> <1212664977.4840.6.camel@sd048.hel.movial.fi>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Fri, 6 Jun 2008 00:16:16 +0530
+Message-ID: <20080605184616.GA4723@skywalker>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain> <20080605182455.GV2961@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Martin Michlmayr <tbm@cyrius.com>,
-	Ralf Baechle <ralf@linux-mips.org>,
-	Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
-	linux-mips@linux-mips.org, linux-ext4@vger.kernel.org
-To: Dmitri Vorobiev <dmitri.vorobiev@movial.fi>
+Cc: Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>,
+	sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:36314 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758695AbYFESjR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 14:39:17 -0400
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:37187 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752941AbYFESqp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 14:46:45 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m55IkDhe031948
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 04:46:13 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m55Ior4T242488
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 04:50:53 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m55IkgtY015265
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 04:46:42 +1000
 Content-Disposition: inline
-In-Reply-To: <1212664977.4840.6.camel@sd048.hel.movial.fi>
+In-Reply-To: <20080605182455.GV2961@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 05, 2008 at 02:22:57PM +0300, Dmitri Vorobiev wrote:
+On Thu, Jun 05, 2008 at 12:24:55PM -0600, Andreas Dilger wrote:
+> On Jun 05, 2008  07:55 -0700, Mingming Cao wrote:
+> > >  /**
+> > > - * ext4_new_blocks_old() -- core block(s) allocation function
+> > > + * ext4_orlov_new_blocks() -- core block(s) allocation function
+> > 
+> > what is orlov means? this is core function for non extent based without
+> > mballoc block allocation, right? 
 > 
-> It looks like the discussion related to this issue has faded out. Ralf
-> seemed to have some objections to using ZERO_PAGE() outside of the
-> context of getting a user-mapped page, but I think that ext4 driver is
-> still doing that.
+> Orlov is the name of the INODE allocator, not the block allocator.  I'm
+> not sure there is a name for the block allocator except "old" or "bitmap".
+
+What do you suggest to rename it as ?  I actually got the name from
+http://lwn.net/Articles/14633/. But since the old allocator the block
+location depends more closely on where the inodes are place i guess we
+can name even the block as orlov allocator.
+
+
+> In the future I suspect we won't want to keep this version at all, using
+> the mballoc allocator even for block-mapped files, but it is useful for
+> now for performance comparisons.
 > 
 
-I thought I had sent a reply indicating that yes, we are using
-ZERO_PAGE outside of getting a user-mapped page, because this is
-happening when we need to write zero's to directly to a filesystem
-block.  This case arises when we have a file which contains
-preallocated space that has not yet been initialized, and the user
-program seeks into the middle of the unitialized extent range, and
-writes into the middle of that space.
+The patch which is marked in the subject is exactly doing that.
 
-In some cases, it is more efficient to zero out a small range of
-blocks on disk rather than splitting the extent in the middle.  We
-could explicitly allocate a page, and zero it out, and use it to write
-zeros from the ext4 filesystem, code, but that seems silly, given that
-ZERO_PAGE exists and is available on all other architectures.
 
-Cristoph Hellwig had complained about the use of ZERO_PAGE, but when I
-gave him the above explanation, he agreed that this was indeed
-probably the best way to do things.
-
-If you really insist I suppose we could have a MIPS specific patch
-where we allocate a 4k page and zero it, so we can use it from our
-kernel code because you don't want to export and make available the
-ZERO_PAGE that gets used by the rest of the kernel, but that seems
-awfully silly, and would be a waste of 4k of memory.....  Someone from
-MIPS land would have to test it, as well, as I dont think any of the
-ext4 developers have access to a MIPS platform.
-
-						- Ted
+-aneesh
