@@ -1,55 +1,86 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: FS_DIRECTIO_FL in VFS
-Date: Thu, 05 Jun 2008 00:06:52 -0600
-Message-ID: <20080605060652.GP2961@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Two questions on VFS/mm
+Date: Thu, 5 Jun 2008 10:12:20 +0200
+Message-ID: <20080605081220.GA27370@duck.suse.cz>
+References: <20080604163412.GL16572@duck.suse.cz> <E1K3wVW-0001Hv-QD@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	akpm@linux-foundation.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49733 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751731AbYFEGGy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 02:06:54 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5566sEf015975
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 23:06:54 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K1Z000017K1MP00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 04 Jun 2008 23:06:54 -0700 (PDT)
-Content-disposition: inline
+Received: from styx.suse.cz ([82.119.242.94]:45023 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751255AbYFEIMW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jun 2008 04:12:22 -0400
+Content-Disposition: inline
+In-Reply-To: <E1K3wVW-0001Hv-QD@pomaz-ex.szeredi.hu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was just looking at the FS_*_FL flags in a recent linux/fs.h, and
-I see that there is now a FS_DIRECTIO_FL defined as 0x100000.  This
-does not originate from ext* or e2fsprogs, and could result in a
-conflict with a future ext* flag allocation without some attention
-(at least defining it in e2fsprogs, along with EXT4_HUGE_FILE_FL 0x40000
-which hasn't made it into e2fsprogs yet either).
+On Wed 04-06-08 19:10:42, Miklos Szeredi wrote:
+> (Added some CCs)
+> 
+> >   could some kind soul knowledgable in VFS/mm help me with the following
+> > two questions? I've spotted them when testing some ext4 for patches...
+> >   1) In write_cache_pages() we do:
+> > ...
+> > 	lock_page(page);
+> > 	...
+> > 	if (!wbc->range_cyclic && page->index > end) {
+> >                    done = 1;
+> >                    unlock_page(page);
+> >                    continue;
+> >         }
+> > 	...
+> > 	ret = (*writepage)(page, wbc, data);
+> > 
+> >   Now the problem is that if range_cyclic is set, it can happen that the
+> > page we give to the filesystem is beyond the current end of file (and can
+> > be already processed by invalidatepage()). Is the filesystem supposed to
+> > handle this (what would it be good for to give such a page to the fs?) or
+> > is it just a bug in write_cache_pages()?
+> 
+> There may be a bug somewhere, but write_cache_pages() looks correct.
+> It locks the page then checks for page->mapping to make sure the page
+> wasn't truncated.  And truncation (including invalidatepage()) happens
+> with the page locked, so that can't race with page writeback.
+  You are right, write_cache_pages() is correct - I've wrongly undrestood
+what 'end' means.
 
-There are a few things that worry me here:
-- The migration of the EXT*_FL flags from ext*.h into fs.h has
-  hidden the fact that these flags define the on-disk format of
-  ext* inodes.  There is no comment that these flags even need
-  to remain constant, and being part of an ioctl() interface
-  makes this less likely to change than an internal constant,
-  but it doesn't have the permanence of an on-disk (forever) constant.
-- Since these values have been usurped from ext* into the VFS, we need
-  to add a translation function in ext*_ioctl() to convert from the
-  ioctl parameter into ext* values.  There is no guarantee that these
-  mappings will remain identical.
-- The ext2 code was changed to use the FS_*_FL values, but not
-  ext3 and ext4.
-- The inode attribute flag is only a 32-bit value, and if these flags
-  are shared among all filesystems it could lead to exhaustion of the
-  flags before we would have wanted for ext* or the VFS.
+> However the do_invalidatepage() in block_write_full_page() looks
+> suspicious.  It calls invalidatepage(), but doesn't perform all the
+> other things needed for truncation.  Maybe there's a valid reason for
+> that, but I really don't have any idea what.
+  Hmm, the fact is I've seen in my tests writepage() being called on a page
+which had its buffers removed. And because we attach buffers to a page in
+page_mkwrite() and in write_begin() I think we should not see such page.
+I've added more debug printings to the code to verify that the page has
+indeed been truncated but so far I did not reproduce the problem again.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> >   2) I have the following problem with page_mkwrite() when blocksize <
+> > pagesize. What we want to do is to fill in a potential hole under a page
+> > somebody wants to write to. But consider following scenario with a
+> > filesystem with 1k blocksize:
+> >   truncate("file", 1024);
+> >   ptr = mmap("file");
+> >   *ptr = 'a'
+> >      -> page_mkwrite() is called.
+> >         but "file" is only 1k large and we cannot really allocate blocks
+> >         beyond end of file. So we allocate just one 1k block.
+> >   truncate("file", 4096);
+> >   *(ptr + 2048) = 'a'
+> >      - nothing is called and later during writepage() time we are surprised
+> >        we have a dirty page which is not backed by a filesystem block.
+> > 
+> >   How to solve this? One idea I have here is that when we handle truncate(),
+> > we mark the original last page (if it is partial) as read-only again so
+> > that page_mkwrite() is called on the next write to it. Is something like
+> > this possible? Pointers to code doing something similar are welcome, I don't
+> > really know these things ;).
 
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
