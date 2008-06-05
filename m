@@ -1,42 +1,99 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data buffers
-Date: Wed, 4 Jun 2008 23:28:09 -0400
-Message-ID: <170fa0d20806042028r738795d2h6b6452ecb3e0f4b7@mail.gmail.com>
-References: <4843CE15.6080506@hitachi.com> <4843CEED.9080002@hitachi.com>
-	 <20080603153050.fb99ac8a.akpm@linux-foundation.org>
-	 <20080604101925.GB16572@duck.suse.cz>
-	 <20080604111911.c1fe09c6.akpm@linux-foundation.org>
-	 <20080604212202.GA8727@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Theodore Tso" <tytso@mit.edu>,
-	"Andrew Morton" <akpm@linux-foundation.org>,
-	"Jan Kara" <jack@suse.cz>,
-	"Hidehiro Kawai" <hidehiro.kawai.ez@hitachi.com>, sct@redhat.com,
-	adilger@sun.
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.183]:55313 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752351AbYFED2K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 23:28:10 -0400
-Received: by wa-out-1112.google.com with SMTP id j37so259733waf.23
-        for <linux-ext4@vger.kernel.org>; Wed, 04 Jun 2008 20:28:09 -0700 (PDT)
-In-Reply-To: <20080604212202.GA8727@mit.edu>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch added to -mm tree
+Date: Wed, 04 Jun 2008 21:37:52 -0700
+Message-ID: <200806050437.m554bqsc025546@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 4, 2008 at 5:22 PM, Theodore Tso <tytso@mit.edu> wrote:
 
-> That being said, ext3 can be tuned (and it is the default today,
-> although I should probably change the default to be remount-ro), so
-> that its behaviour on write errors is, "don't worry, be happy", and
-> just leave the filesystem mounted read/write.  That's actually quite
-> dangerous for a critical production server, however.....
+The patch titled
+     ext2: don't inherit inappropriate inode flags from parent
+has been added to the -mm tree.  Its filename is
+     ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
 
-I'm not completely sure which "it" you mean in "it is the default
-today" (seems like you mean errors=continue) but isn't remount-ro
-already the ext3 default?
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-see commit: 1eca93f9cafdec4a332ace9b0fc0d3886d430c28
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext2: don't inherit inappropriate inode flags from parent
+From: "Duane Griffin" <duaneg@dghda.com>
+
+Fix the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
+
+  Some file attributes have sticky behaviour in ext2/3 whereas I believe
+  it should not.  Namely, a directory marked with chattr +T serves "to be
+  the top of directory hierarchies for the purposes of the Orlov block
+  allocator", as the manpage says.
+
+  It seems wrong that subdirectories stickily inherit the +T flag: they
+  are obviously not top-level!  Even files get the T attribute this way,
+  even though the chattr manpages only documents it for directories.
+
+Also prevent inheritance of other flags that Andreas Dilger identified as
+inappropriate to inherit
+
+At present BTREE is the only flag that new ext2 inodes do NOT inherit from
+their parent.  In addition prevent the flags DIRTY, ECOMPR, INDEX, IMAGIC
+and TOPDIR from being inherited.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/ialloc.c        |    2 +-
+ include/linux/ext2_fs.h |    4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff -puN fs/ext2/ialloc.c~ext2-dont-inherit-inappropriate-inode-flags-from-parent fs/ext2/ialloc.c
+--- a/fs/ext2/ialloc.c~ext2-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/fs/ext2/ialloc.c
+@@ -565,7 +565,7 @@ got:
+ 	inode->i_blocks = 0;
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
+ 	memset(ei->i_data, 0, sizeof(ei->i_data));
+-	ei->i_flags = EXT2_I(dir)->i_flags & ~EXT2_BTREE_FL;
++	ei->i_flags = EXT2_I(dir)->i_flags & EXT2_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT2_IMMUTABLE_FL|EXT2_APPEND_FL);
+ 	/* dirsync is only applied to directories */
+diff -puN include/linux/ext2_fs.h~ext2-dont-inherit-inappropriate-inode-flags-from-parent include/linux/ext2_fs.h
+--- a/include/linux/ext2_fs.h~ext2-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/include/linux/ext2_fs.h
+@@ -194,6 +194,10 @@ struct ext2_group_desc
+ #define EXT2_FL_USER_VISIBLE		FS_FL_USER_VISIBLE	/* User visible flags */
+ #define EXT2_FL_USER_MODIFIABLE		FS_FL_USER_MODIFIABLE	/* User modifiable flags */
+ 
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT2_FL_INHERITED ~(EXT2_DIRTY_FL | EXT2_ECOMPR_FL | EXT2_BTREE_FL |\
++			    EXT2_INDEX_FL | EXT2_IMAGIC_FL | EXT2_TOPDIR_FL)
++
+ /*
+  * ioctl commands
+  */
+_
+
+Patches currently in -mm which might be from duaneg@dghda.com are
+
+jbd-replace-potentially-false-assertion-with-if-block.patch
+jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
+jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
+ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch
+ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
+
