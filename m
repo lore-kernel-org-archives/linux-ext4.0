@@ -1,133 +1,104 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Patches for the patchqueue
-Date: Fri, 6 Jun 2008 00:29:04 +0530
-Message-ID: <20080605185904.GB4723@skywalker>
-References: <20080605095032.GE8942@skywalker> <20080605095158.GF8942@skywalker> <20080605095350.GG8942@skywalker> <20080605095510.GH8942@skywalker> <1212688960.3613.10.camel@localhost.localdomain>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Fri, 6 Jun 2008 00:42:51 +0530
+Message-ID: <20080605191251.GC4723@skywalker>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <20080605153701.GB25477@mit.edu> <20080605182830.GW2961@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: Theodore Tso <tytso@mit.edu>, cmm@us.ibm.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:50946 "EHLO
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:41290 "EHLO
 	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754327AbYFES7Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 14:59:25 -0400
+	with ESMTP id S1751162AbYFETNN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 15:13:13 -0400
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m55IxwsJ008383
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 04:59:58 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m55J3XKQ081582
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 05:03:33 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m55IxM1E013477
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 04:59:22 +1000
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m55JDkuX005640
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 05:13:46 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m55JHLFb133972
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 05:17:21 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m55JD9x2030746
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 05:13:10 +1000
 Content-Disposition: inline
-In-Reply-To: <1212688960.3613.10.camel@localhost.localdomain>
+In-Reply-To: <20080605182830.GW2961@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 05, 2008 at 11:02:40AM -0700, Mingming Cao wrote:
-> On Thu, 2008-06-05 at 15:25 +0530, Aneesh Kumar K.V wrote:
-> > f) clear the delay bit in ext4_da_get_block_write instead of
-> > __block_write_full_page
-> > so that we clear the delay bit for every successfull block allocation.
-> > We may fail
-> > while marking inode dirty in ext4_da_get_block_write after allocating
-> > block. So
-> > it is better to clear the delay bit in ext4_da_get_block_write rather
-> > than
-> > __block_write_full_page
+On Thu, Jun 05, 2008 at 12:28:30PM -0600, Andreas Dilger wrote:
+> On Jun 05, 2008  11:37 -0400, Theodore Ts'o wrote:
+> > This is better, but it still means that we are exporting a large
+> > number of functions to the callers.  It's not clear to me we need so
+> > many different variants of ext4_new_blocks_* --- what is their
+> > justification to exist?
 > > 
-> 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> 
-> > @@ -1555,7 +1565,15 @@ static int ext4_da_get_block_write(struct inode
-> > *inode, sector_t iblock,
-> >                 bh_result->b_size = (ret << inode->i_blkbits);
+> > For example, why not just have:
 > > 
-> >                 /* release reserved-but-unused meta blocks */
-> > -               ext4_da_release_space(inode, ret, 0);
-> > +               if (buffer_delay(bh_result)) {
-> > +                       ext4_da_release_space(inode, ret, 0);
-> > +                       /*
-> > +                        * clear the delay bit now that we allocated
-> > +                        * blocks. If it is not a single block request
-> > +                        * we clear the delay bit in
-> > mpage_put_bnr_to_bhs
-> > +                        */
-> > +                       clear_buffer_delay(bh_result);
-> > +               }
+> > static ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+> >        				ext4_lblk_t iblock, ext4_fsblk_t goal,
+> > 				unsigned long *count, int *errp, int meta)
 > > 
-> >                 /*
-> >                  * Update on-disk size along with block allocation
+> > where if inode is NULL, then you're allocating a metadata block, and
+> > if count is NULL, then you only want one block.  Of course, this needs
+> > to be carefully documented at the function.
 > 
-> It seems with this fix, the buffer_delay bit is still cleared before the
-> ext4_mark_inode_dirty() could return error? Actually the already
-> allocated blocks are leaked if mark_inode-dirty() returns error, and we
-> cleared the buffer_delay for the buffer needs block.
+> I don't necessarily agree that meta should be implied by inode != NULL.
+> We do want to cluster metadata allocations for a single inode if possible,
+> so keeping the inode information is useful.  We may want to keep a separate
+> "metadata goal block" from the "data goal block" in the inode...
+> 
+> That said, it seems you still have a "meta" parameter here?  I always hate
+> having an int for a boolean, and we may as well make this a "flags" so
+> that when we want to improve it later we don't need to rename it and change
+> all of the "1" parameters to "EXT4_META_BLOCK".  Do it right the first time.
 > 
 
-How abou the below ? For single block request we are ok to clear the
-delay bit as shown by the above patch. For multiple block request we
-clear the delay bit if the buffer_head passed to the get_block have
-its delay bit cleared. That should take care of the  block leaking you
-mentioned above.
+how about ?
 
-diff --git a/fs/mpage.c b/fs/mpage.c
-index c4376ec..2c90350 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -908,25 +908,41 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		new.b_blocknr = 0;
- 		new.b_size = remain;
- 		err = mpd->get_block(mpd->inode, next, &new, 1);
--		if (err) {
-+		/*
-+		 * we may have successfully allocated block. But
-+		 * failed to mark inode dirty. If we have allocated
-+		 * blocks update the buffer_head mappings
-+		 */
-+		if (buffer_new(&new)) {
- 			/*
--			 * Rather than implement own error handling
--			 * here, we just leave remaining blocks
--			 * unallocated and try again with ->writepage()
-+			 * buffer_head is only makred new if we have
-+			 * a successfull block allocation
- 			 */
--			break;
--		}
--		BUG_ON(new.b_size == 0);
--
--		if (buffer_new(&new))
- 			__unmap_underlying_blocks(mpd->inode, &new);
-+		}
- 
- 		/*
- 		 * If blocks are delayed marked, we need to
- 		 * put actual blocknr and drop delayed bit
- 		 */
--		if (buffer_delay(lbh))
-+		if (buffer_delay(lbh) && !buffer_delay(&new)) {
-+			/*
-+			 * get_block if successfully allocated
-+			 * block will clear the delay bit of
-+			 * new buffer_head
-+			 */
- 			mpage_put_bnr_to_bhs(mpd, next, &new);
-+		}
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index c6e6a6f..014e5b5 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1928,9 +1928,11 @@ ext4_fsblk_t ext4_orlov_new_blocks(handle_t *handle, struct inode *inode,
+        return 0;
+ }
+
++#defin EXT4_META_BLOCK 0x1
 +
-+		if (err) {
-+			/*
-+			 * Rather than implement own error handling
-+			 * here, we just leave remaining blocks
-+			 * unallocated and try again with ->writepage()
-+			 */
-+			break;
-+		}
-+		BUG_ON(new.b_size == 0);
- 
- 		/* go for the remaining blocks */
- 		next += new.b_size >> mpd->inode->i_blkbits;
+ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+                                ext4_lblk_t iblock, ext4_fsblk_t goal,
+-                               unsigned long *count, int *errp, int meta)
++                               unsigned long *count, int *errp, int flags)
+ {
+        struct ext4_allocation_request ar;
+        ext4_fsblk_t ret;
+@@ -1950,7 +1952,7 @@ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+        ar.goal = goal;
+        ar.len = *count;
+        ar.logical = iblock;
+-       if (S_ISREG(inode->i_mode) && !meta)
++       if (S_ISREG(inode->i_mode) && !(flags & EXT4_META_BLOCK))
+                ar.flags = EXT4_MB_HINT_DATA;
+        else
+                /* disable in-core preallocation for non-regular files */
+@@ -1965,13 +1967,15 @@ ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+                ext4_fsblk_t goal, int *errp)
+ {
+        unsigned long count = 1;
+-       return do_blk_alloc(handle, inode, 0, goal, &count, errp, 1);
++       return do_blk_alloc(handle, inode, 0, goal, &count,
++                                               errp, EXT4_META_BLOCK);
+ }
+
+ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+                ext4_fsblk_t goal, unsigned long *count, int *errp)
+ {
+-       return do_blk_alloc(handle, inode, 0, goal, count, errp, 1);
++       return do_blk_alloc(handle, inode, 0, goal, count,
++                                       errp, EXT4_META_BLOCK);
+ }
+
+ ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+
