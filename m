@@ -1,40 +1,123 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
-Date: Thu, 5 Jun 2008 11:37:01 -0400
-Message-ID: <20080605153701.GB25477@mit.edu>
-References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: New ext4 patchset 2.6.26-rc4-ext4-1
+Date: Thu, 05 Jun 2008 11:53:52 -0400
+Message-ID: <E1K4Hmi-0007lG-Vd@closure.thunk.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:35251 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37047 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752928AbYFEPh6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 11:37:58 -0400
-Content-Disposition: inline
-In-Reply-To: <20080605084329.GB8942@skywalker>
+	with ESMTP id S1753628AbYFEPxz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 11:53:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 05, 2008 at 02:13:29PM +0530, Aneesh Kumar K.V wrote:
-> 
-> Something like below ? . I will send a final patch once I get the
-> patchqueu updated. I am not able to reach repo.or.cz currently.
+As a git tree:
 
-This is better, but it still means that we are exporting a large
-number of functions to the callers.  It's not clear to me we need so
-many different variants of ext4_new_blocks_* --- what is their
-justification to exist?
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.26-rc4-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.26-rc4-ext4-1
 
-For example, why not just have:
+As a patchset:
 
-static ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
-       				ext4_lblk_t iblock, ext4_fsblk_t goal,
-				unsigned long *count, int *errp, int meta)
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-rc4-ext4-1
 
-where if inode is NULL, then you're allocating a metadata block, and
-if count is NULL, then you only want one block.  Of course, this needs
-to be carefully documented at the function.
+Bug fixes patches marked with a (*) will be pushed to Linus shortly.
 
-						- Ted
+							- Ted
+
+Akira Fujita (7):
+      ext4: online defrag-- Main function of defrag and ioctl implementation
+      ext4: online defrag-- Allocate new contiguous blocks with mballoc
+      ext4: online defrag-- Read and write file data with memory page
+      ext4: online defrag-- Exchange the blocks between two inodes
+      ext4: online defrag-- Defragmentation for the relevant files (-r mode)
+      ext4: online defrag-- Check the free space fragmentation (-f mode)
+      ext4: online defrag-- Move victim files for the target file (-f mode)
+
+Alex Tomas (2):
+      vfs: add basic delayed allocation support
+      ext4: Add basic delayed allocation support
+
+Alexey Dobriyan (1):
+      ext4: switch to seq_files
+
+Aneesh Kumar K.V (9):
+    * ext4: Fix use of uninitialized data with debug enabled.
+    * ext4: start searching for the right extent from the goal group.
+      ext4: undo the stable boundary patch changes
+      ext4: Use inode preallocation with -o noextents
+      ext4: Use page_mkwrite vma_operations to get mmap write notification.
+      ext4: Update i_disksize during writepage for delayed allocation.
+      ext4: Fix delalloc sync hang with journal lock inversion
+      ext4: Enable delalloc and mballoc by default.
+      ext4: Show delalloc options
+
+Eric Sandeen (5):
+    * ext4: enable barriers by default
+      ext4: call blkdev_issue_flush on fsync
+      vfs: vfs-level fiemap interface
+      ext4: reinstate ext4_ext_walk_space()
+      ext4: fiemap implementation
+
+Jan Kara (8):
+      vfs: Move mark_inode_dirty() from under page lock in generic_write_end()
+      ext4: Inverse locking order of page_lock and transaction start.
+      ext4: Add checks to writepage()
+      ext4: Set journal pointer to NULL when journal is released
+      vfs: export filemap_fdatawrite_range()
+      jbd2: Implement data=ordered mode handling via inodes
+      ext4: Use new framework for data=ordered mode in JBD2
+      jbd2: Remove data=ordered mode support using jbd buffer heads
+
+Jose R. Santos (1):
+      ext4: Fix uninit block group initialization with FLEX_BG
+
+Josef Bacik (1):
+    * ext4: fix online resize bug
+
+Julia Lawall (1):
+      ext4: Use BUG_ON() instead of BUG()
+
+Li Zefan (1):
+      ext4: remove redundant code in ext4_fill_super()
+
+Mingming Cao (9):
+      ext4: Fix ext4_mb_init_cache return error
+      JBD2: fix race between jbd2_journal_try_to_free_buffers() and jbd2 commit transaction
+      ext4: mballoc avoid use root reserved blocks for non root allocation
+      ext4: Need clear buffer_delay in block_write_full_page() after allocation
+      ext4: fix delalloc write_begin failure case
+      ext4: Handling preallocated blocks in delayed allocation
+      ext4: Invert lock ordering of page_lock and transaction start in delalloc
+      jbd: blocks reservation fix for large block support
+      jbd2: blocks reservation fix for large block support
+
+Mingming cao (6):
+      ext4: delalloc -- Adding per inode counters to store reserved blocks
+      ext4: delalloc --estimate need metadata blocks to reserve
+      ext4: delalloc ENOSPC handling core
+      ext4: delalloc block reservation avoid double accounting
+      ext4: delalloc block reservation unlink/truncate handling
+      percpu counter: update center counter when sum per-cpu counter
+
+Shen Feng (6):
+      ext4: fix error ext number comments
+      ext4: improve some code in rb tree part of dir.c
+      ext4: add error processing when calling ext4_mb_init_cache in mballoc
+      ext4: error processing and coding enhancement for mballoc
+      ext4: remove double definitions of xattr macros
+      ext4: remove quota allocation when ext4_mb_new_blocks fails
+
+Theodore Ts'o (6):
+    * jbd2: Fix memory leak when verifying checksums in the journal
+    * jbd2: If a journal checksum error is detected, propagate the error to ext4
+    * ext4: Display the journal_async_commit mount option in /proc/mounts
+    * jbd2: Fix barrier fallback code to re-lock the buffer head
+      jbd2: Add commit time into the commit block
+      ext4: Stable/Unstable boundary
+
+Valerie Clement (1):
+      ext4: Fix filesystem corruption on FS mounted with delalloc
+
+\"Jose R. Santos\ (1):
+      ext4: New inode allocation for FLEX_BG meta-data groups.
+
