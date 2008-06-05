@@ -1,57 +1,74 @@
-From: Dmitri Vorobiev <dmitri.vorobiev@movial.fi>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Thu, 05 Jun 2008 14:22:57 +0300
-Message-ID: <1212664977.4840.6.camel@sd048.hel.movial.fi>
-References: <20080512130604.GA15008@deprecation.cyrius.com>
-	 <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com>
-	 <20080512143426.GB7029@mit.edu>
-	 <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com>
-	 <20080513045028.GC22226@linux-mips.org>
-	 <20080528070637.GA10393@deprecation.cyrius.com>
-	 <20080605111148.GA4483@deprecation.cyrius.com>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data	buffers
+Date: Thu, 05 Jun 2008 20:33:27 +0900
+Message-ID: <4847CF07.1020904@hitachi.com>
+References: <4843CE15.6080506@hitachi.com> <4843CEED.9080002@hitachi.com>
+    <20080603153050.fb99ac8a.akpm@linux-foundation.org>
+    <20080604101925.GB16572@duck.suse.cz>
+    <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+    <20080604212202.GA8727@mit.edu>
+    <20080604145848.e3da6f20.akpm@linux-foundation.org>
+    <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Ralf Baechle <ralf@linux-mips.org>,
-	Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-mips@linux-mips.org,
-	linux-ext4@vger.kernel.org
-To: Martin Michlmayr <tbm@cyrius.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
+	adilger@sun.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
+	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.movial.fi ([62.236.91.34]:48274 "EHLO smtp.movial.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754850AbYFELW7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jun 2008 07:22:59 -0400
-In-Reply-To: <20080605111148.GA4483@deprecation.cyrius.com>
+Received: from mail9.hitachi.co.jp ([133.145.228.44]:48146 "EHLO
+	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754861AbYFELdh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 07:33:37 -0400
+In-Reply-To: <20080605093536.GE27370@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-06-05 at 13:11 +0200, Martin Michlmayr wrote:
-> * Martin Michlmayr <tbm@cyrius.com> [2008-05-28 09:06]:
-> > * Ralf Baechle <ralf@linux-mips.org> [2008-05-13 05:50]:
-> > > I prefer to do it myself so I can apply it at the same time to the MIPS
-> > > -stable branches.
-> > > 
-> > > I'm a little irriated that this thread seems to be only about
-> > > empty_zero_page but apparently not zero_page_mask?  empty_zero_page is
-> > > actualy an array of pages on MIPS and ZERO_PAGE() will pick the right one
-> > > for a particular user space mapping based on the virtual address but
-> > > ZERO_PAGE() also references zero_page_mask.  So I sense more brokenness
-> > > here.
-> > 
-> > Just as a reminder, this issue is still there (at least with rc4).
+
+Jan Kara wrote:
+
+> On Wed 04-06-08 18:51:55, Theodore Tso wrote:
 > 
-> Still present in rc5.
+>>On Wed, Jun 04, 2008 at 02:58:48PM -0700, Andrew Morton wrote:
+>>
+>>>On Wed, 4 Jun 2008 17:22:02 -0400
+>>>Theodore Tso <tytso@mit.edu> wrote:
+>>>
+>>>>On Wed, Jun 04, 2008 at 11:19:11AM -0700, Andrew Morton wrote:
 
-It looks like the discussion related to this issue has faded out. Ralf
-seemed to have some objections to using ZERO_PAGE() outside of the
-context of getting a user-mapped page, but I think that ext4 driver is
-still doing that.
+>>>But afaict this patch changes things so that if we get a write failure
+>>>in a data block we make the entire fs read-only.  Which, as I said, is
+>>>often "dead box".
+>>>
+>>>This seems like a quite major policy change to me.
 
-Ralf, will it be possible to use the patch I sent earlier as a temporary
-solution? Just to make sure the kernel builds?
+My patch doesn't change the policy.  JBD aborts the journal when
+it detects I/O error in file data since 2.6.11.  Perhaps this patch:
+http://marc.info/?l=linux-kernel&m=110483888632225
+I just added missing error checkings.
+
+>>Agreed, and it's not appropriate.  I could imagine that for some
+>>setups it is the right policy, but the kernel should not be setting
+>>policy like this.  Maybe as a new tunable in the superblock, or maybe
+>>via a round-trip to userspace via a uevent, but certainly not as the
+>>new default behavior.
+> 
+>   Yes, I believe a tunable in superblock controlling how do we behave on
+> EIO error in data block would be the best solution.
+
+I agree.  I understood that there is a case where we don't want to
+make the fs read-only when writing file data failed.  OTOH there are
+people who want to make the fs read-only to avoid the damage from
+expanding.  Introducing the tunable would be better.
+I'm going to send a patch to make this behavior tunable if some of you
+agree on this way.
 
 Thanks,
-Dmitri
-> 
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
 
