@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch added to -mm tree
-Date: Wed, 04 Jun 2008 21:37:54 -0700
-Message-ID: <200806050437.m554bsQA025549@imap1.linux-foundation.org>
+Subject: + ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch added to -mm tree
+Date: Wed, 04 Jun 2008 21:37:56 -0700
+Message-ID: <200806050437.m554buOx025552@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
@@ -11,9 +11,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: don't inherit inappropriate inode flags from parent
+     ext4: don't inherit inappropriate inode flags from parent
 has been added to the -mm tree.  Its filename is
-     ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch
+     ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -29,7 +29,7 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: don't inherit inappropriate inode flags from parent
+Subject: ext4: don't inherit inappropriate inode flags from parent
 From: "Duane Griffin" <duaneg@dghda.com>
 
 Fix the TOPDIR flag inheritance bug reported at
@@ -47,45 +47,46 @@ http://bugzilla.kernel.org/show_bug.cgi?id=9866.
 Also prevent inheritance of other flags that Andreas Dilger identified as
 inappropriate to inherit
 
-At present INDEX is the only flag that new ext3 inodes do NOT inherit from
-their parent. In addition prevent the flags DIRTY, ECOMPR, IMAGIC and
-TOPDIR from being inherited.
+At present INDEX and EXTENTS are the only flagis that new ext4 inodes do
+NOT inherit from their parent. In addition prevent the flags DIRTY, ECOMPR,
+IMAGIC, TOPDIR and HUGE_FILE from being inherited.
 
 Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ialloc.c        |    2 +-
- include/linux/ext3_fs.h |    4 ++++
- 2 files changed, 5 insertions(+), 1 deletion(-)
+ fs/ext4/ext4.h   |    5 +++++
+ fs/ext4/ialloc.c |    2 +-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
 
-diff -puN fs/ext3/ialloc.c~ext3-dont-inherit-inappropriate-inode-flags-from-parent fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~ext3-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/fs/ext3/ialloc.c
-@@ -559,7 +559,7 @@ got:
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_disksize = 0;
- 
--	ei->i_flags = EXT3_I(dir)->i_flags & ~EXT3_INDEX_FL;
-+	ei->i_flags = EXT3_I(dir)->i_flags & EXT3_FL_INHERITED;
- 	if (S_ISLNK(mode))
- 		ei->i_flags &= ~(EXT3_IMMUTABLE_FL|EXT3_APPEND_FL);
- 	/* dirsync only applies to directories */
-diff -puN include/linux/ext3_fs.h~ext3-dont-inherit-inappropriate-inode-flags-from-parent include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/include/linux/ext3_fs.h
-@@ -178,6 +178,10 @@ struct ext3_group_desc
- #define EXT3_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
- #define EXT3_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
+diff -puN fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ext4.h
+--- a/fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/fs/ext4/ext4.h
+@@ -249,6 +249,11 @@ struct flex_groups {
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
  
 +/* Flags that should be inherited by new inodes from their parent. */
-+#define EXT3_FL_INHERITED ~(EXT3_DIRTY_FL | EXT3_ECOMPR_FL | EXT3_INDEX_FL |\
-+			    EXT3_IMAGIC_FL | EXT3_TOPDIR_FL)
++#define EXT4_FL_INHERITED ~(EXT4_DIRTY_FL | EXT4_ECOMPR_FL | EXT4_INDEX_FL |\
++			    EXT4_IMAGIC_FL | EXT4_TOPDIR_FL |\
++			    EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL)
 +
  /*
   * Inode dynamic state flags
   */
+diff -puN fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/fs/ext4/ialloc.c
+@@ -798,7 +798,7 @@ got:
+ 	 * newly created directory and file only if -o extent mount option is
+ 	 * specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
++	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
 _
 
 Patches currently in -mm which might be from duaneg@dghda.com are
