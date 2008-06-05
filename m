@@ -1,86 +1,218 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Two questions on VFS/mm
-Date: Thu, 5 Jun 2008 10:12:20 +0200
-Message-ID: <20080605081220.GA27370@duck.suse.cz>
-References: <20080604163412.GL16572@duck.suse.cz> <E1K3wVW-0001Hv-QD@pomaz-ex.szeredi.hu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Thu, 5 Jun 2008 14:13:29 +0530
+Message-ID: <20080605084329.GB8942@skywalker>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	akpm@linux-foundation.org
-To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:45023 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751255AbYFEIMW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jun 2008 04:12:22 -0400
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:47352 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751721AbYFEIrN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 04:47:13 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m558kHZN026574
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:46:17 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m558jbRI4350014
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:45:37 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m558js2w007994
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:45:54 +1000
 Content-Disposition: inline
-In-Reply-To: <E1K3wVW-0001Hv-QD@pomaz-ex.szeredi.hu>
+In-Reply-To: <20080605032220.GC10488@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-06-08 19:10:42, Miklos Szeredi wrote:
-> (Added some CCs)
+On Wed, Jun 04, 2008 at 11:22:20PM -0400, Theodore Tso wrote:
+> when I moved this patch to the beginning of the unstable patch queue,
+> it didn't apply.  When I tried to look at it, my head started
+> spinning.  The patch applied to the wrong function, apparently,
+> because there is so much code duplication "patch" got confused.  I
+> can't blame it, though, because *I* got confused.  
 > 
-> >   could some kind soul knowledgable in VFS/mm help me with the following
-> > two questions? I've spotted them when testing some ext4 for patches...
-> >   1) In write_cache_pages() we do:
-> > ...
-> > 	lock_page(page);
-> > 	...
-> > 	if (!wbc->range_cyclic && page->index > end) {
-> >                    done = 1;
-> >                    unlock_page(page);
-> >                    continue;
-> >         }
-> > 	...
-> > 	ret = (*writepage)(page, wbc, data);
-> > 
-> >   Now the problem is that if range_cyclic is set, it can happen that the
-> > page we give to the filesystem is beyond the current end of file (and can
-> > be already processed by invalidatepage()). Is the filesystem supposed to
-> > handle this (what would it be good for to give such a page to the fs?) or
-> > is it just a bug in write_cache_pages()?
+> fs/ext4/balloc.c is a complete disaster right now.  We have:
 > 
-> There may be a bug somewhere, but write_cache_pages() looks correct.
-> It locks the page then checks for page->mapping to make sure the page
-> wasn't truncated.  And truncation (including invalidatepage()) happens
-> with the page locked, so that can't race with page writeback.
-  You are right, write_cache_pages() is correct - I've wrongly undrestood
-what 'end' means.
+> ext4_new_blocks_old()
+> ext4_new_meta_block()
+> ext4_new_meta_blocks()
+> ext4_new_blocks()
+> 
+> ... and without any comments, it is extremely impenetrable.  Someone
+> needs to document what the heck all of the various functions have to
+> do with each other, when they get used (i.e., with which mount options). 
+> 
+> Why aren't we factoring out the last three into a single function?  
 
-> However the do_invalidatepage() in block_write_full_page() looks
-> suspicious.  It calls invalidatepage(), but doesn't perform all the
-> other things needed for truncation.  Maybe there's a valid reason for
-> that, but I really don't have any idea what.
-  Hmm, the fact is I've seen in my tests writepage() being called on a page
-which had its buffers removed. And because we attach buffers to a page in
-page_mkwrite() and in write_begin() I think we should not see such page.
-I've added more debug printings to the code to verify that the page has
-indeed been truncated but so far I did not reproduce the problem again.
+Something like below ? . I will send a final patch once I get the
+patchqueu updated. I am not able to reach repo.or.cz currently.
 
-> >   2) I have the following problem with page_mkwrite() when blocksize <
-> > pagesize. What we want to do is to fill in a potential hole under a page
-> > somebody wants to write to. But consider following scenario with a
-> > filesystem with 1k blocksize:
-> >   truncate("file", 1024);
-> >   ptr = mmap("file");
-> >   *ptr = 'a'
-> >      -> page_mkwrite() is called.
-> >         but "file" is only 1k large and we cannot really allocate blocks
-> >         beyond end of file. So we allocate just one 1k block.
-> >   truncate("file", 4096);
-> >   *(ptr + 2048) = 'a'
-> >      - nothing is called and later during writepage() time we are surprised
-> >        we have a dirty page which is not backed by a filesystem block.
-> > 
-> >   How to solve this? One idea I have here is that when we handle truncate(),
-> > we mark the original last page (if it is partial) as read-only again so
-> > that page_mkwrite() is called on the next write to it. Is something like
-> > this possible? Pointers to code doing something similar are welcome, I don't
-> > really know these things ;).
-
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index bd18ceb..abbc500 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1656,7 +1656,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ }
+ 
+ /**
+- * ext4_new_blocks_old() -- core block(s) allocation function
++ * ext4_orlov_new_blocks() -- core block(s) allocation function
+  * @handle:		handle to this transaction
+  * @inode:		file inode
+  * @goal:		given target block(filesystem wide)
+@@ -1669,7 +1669,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+  * any specific goal block.
+  *
+  */
+-ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
++ext4_fsblk_t ext4_orlov_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -1942,88 +1942,68 @@ ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
+ 	return 0;
+ }
+ 
+-ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+-		ext4_fsblk_t goal, int *errp)
++static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
++				ext4_lblk_t iblock, ext4_fsblk_t goal,
++				unsigned long *count, int *errp, int meta)
+ {
+ 	struct ext4_allocation_request ar;
+ 	ext4_fsblk_t ret;
+ 
+ 	if (!test_opt(inode->i_sb, MBALLOC)) {
+-		unsigned long count = 1;
+-		ret = ext4_new_blocks_old(handle, inode, goal, &count, errp);
++		ret = ext4_orlov_new_blocks(handle, inode, goal, count, errp);
+ 		return ret;
+ 	}
+ 
+ 	memset(&ar, 0, sizeof(ar));
++	/* Fill with neighbour allocated blocks */
++	ar.lleft  = 0;
++	ar.pleft  = 0;
++	ar.lright = 0;
++	ar.pright = 0;
++
+ 	ar.inode = inode;
+ 	ar.goal = goal;
+-	ar.len = 1;
++	ar.len = *count;
++	ar.logical = iblock;
++	if (S_ISREG(inode->i_mode) && !meta)
++		ar.flags = EXT4_MB_HINT_DATA;
++	else
++		/* disable in-core preallocation for non-regular files */
++		ar.flags = 0;
+ 	ret = ext4_mb_new_blocks(handle, &ar, errp);
++	*count = ar.len;
+ 	/*
+ 	 * Account for the allocated meta blocks
+ 	 */
+-	if (!(*errp)) {
++	if (!(*errp) && meta) {
+ 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	}
+-
+ 	return ret;
+ }
++
++
++ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
++		ext4_fsblk_t goal, int *errp)
++{
++	unsigned long count = 1;
++	return do_blk_alloc(handle, inode, 0, goal, &count, errp, 1);
++}
++
+ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_fsblk_t goal, unsigned long *count, int *errp)
+ {
+-	struct ext4_allocation_request ar;
+-	ext4_fsblk_t ret;
+-
+-	if (!test_opt(inode->i_sb, MBALLOC)) {
+-		ret = ext4_new_blocks_old(handle, inode, goal, count, errp);
+-		return ret;
+-	}
+-
+-	memset(&ar, 0, sizeof(ar));
+-	ar.inode = inode;
+-	ar.goal = goal;
+-	ar.len = *count;
+-	ret = ext4_mb_new_blocks(handle, &ar, errp);
+-	*count = ar.len;
+-	return ret;
++	return do_blk_alloc(handle, inode, 0, goal, count, errp, 1);
+ }
+ 
+ ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+ 				ext4_lblk_t iblock, ext4_fsblk_t goal,
+ 				unsigned long *count, int *errp)
+ {
+-	struct ext4_allocation_request ar;
+-	ext4_fsblk_t ret;
+-
+-	if (!test_opt(inode->i_sb, MBALLOC)) {
+-		ret = ext4_new_blocks_old(handle, inode, goal, count, errp);
+-		return ret;
+-	}
+-
+-	memset(&ar, 0, sizeof(ar));
+-	/* Fill with neighbour allocated blocks */
+-	ar.lleft  = 0;
+-	ar.pleft  = 0;
+-	ar.lright = 0;
+-	ar.pright = 0;
+-
+-	ar.inode = inode;
+-	ar.goal = goal;
+-	ar.len = *count;
+-	ar.logical = iblock;
+-	if (S_ISREG(inode->i_mode))
+-		ar.flags = EXT4_MB_HINT_DATA;
+-	else
+-		/* disable in-core preallocation for non-regular files */
+-		ar.flags = 0;
+-	ret = ext4_mb_new_blocks(handle, &ar, errp);
+-	*count = ar.len;
+-	return ret;
++	return do_blk_alloc(handle, inode, iblock, goal, count, errp, 0);
+ }
+ 
+-
+ /**
+  * ext4_count_free_blocks() -- count filesystem free blocks
+  * @sb:		superblock
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 19d48dd..c401253 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1049,7 +1049,7 @@ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+ 					ext4_lblk_t iblock, ext4_fsblk_t goal,
+ 					unsigned long *count, int *errp);
+-extern ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
++extern ext4_fsblk_t ext4_orlov_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
+ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 09922ae..a810a21 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4048,7 +4048,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	sbi = EXT4_SB(sb);
+ 
+ 	if (!test_opt(sb, MBALLOC)) {
+-		block = ext4_new_blocks_old(handle, ar->inode, ar->goal,
++		block = ext4_orlov_new_blocks(handle, ar->inode, ar->goal,
+ 					    &(ar->len), errp);
+ 		return block;
+ 	}
