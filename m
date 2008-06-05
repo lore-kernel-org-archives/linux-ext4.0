@@ -1,99 +1,149 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
-	inversion
-Date: Fri, 6 Jun 2008 00:49:09 +0530
-Message-ID: <20080605191909.GD4723@skywalker>
-References: <1212154769-16486-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker> <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker> <20080605162209.GG27370@duck.suse.cz>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap write
+ notification.
+Date: Thu, 5 Jun 2008 12:30:45 -0700
+Message-ID: <20080605123045.445e380a.akpm@linux-foundation.org>
+References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	aneesh.kumar@linux.vnet.ibm.com, linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:48031 "EHLO
-	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751118AbYFETTT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 15:19:19 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m55JJHh2017258
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 00:49:17 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m55JJ24E1450020
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 00:49:02 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m55JJGkv003161
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 00:49:17 +0530
-Content-Disposition: inline
-In-Reply-To: <20080605162209.GG27370@duck.suse.cz>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:53157 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750767AbYFETbA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 15:31:00 -0400
+In-Reply-To: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 05, 2008 at 06:22:09PM +0200, Jan Kara wrote:
->   I like it. I'm only not sure whether there cannot be two users of
-> write_cache_pages() operating on the same mapping at the same time. Because
-> then they could alter writeback_index under each other and that would
-> probably result in unpleasant behavior. I think there can be two parallel
-> calls for example from sync_single_inode() and sync_page_range().
->   In that case we'd need something like writeback_index inside wbc (or
-> maybe just alter range_start automatically when range_cont is set?) so that
-> parallel callers do no influence each other.
+On Thu,  5 Jun 2008 22:35:12 +0530
+"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+
+> We would like to get notified when we are doing a write on mmap
+> section.  The changes are needed to handle ENOSPC when writing to an
+> mmap section of files with holes.
 > 
 
-commit e56edfdeea0d336e496962782f08e1224a101cf2
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Fri Jun 6 00:47:35 2008 +0530
+Whoa.  You didn't copy anything like enough mailing lists for a change
+of this magnitude.  I added some.
 
-    mm: Add range_cont mode for writeback.
-    
-    Filesystems like ext4 needs to start a new transaction in
-    the writepages for block allocation. This happens with delayed
-    allocation and there is limit to how many credits we can request
-    from the journal layer. So we call write_cache_pages multiple
-    times with wbc->nr_to_write set to the maximum possible value
-    limitted by the max journal credits available.
-    
-    Add a new mode to writeback that enables us to handle this
-    behaviour. If mapping->writeback_index is not set we use
-    wbc->range_start to find the start index and then at the end
-    of write_cache_pages we store the index in writeback_index. Next
-    call to write_cache_pages will start writeout from writeback_index.
-    Also we limit writing to the specified wbc->range_end.
-    
-    
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+This is a large change in behaviour!
 
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index f462439..0d8573e 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -63,6 +63,7 @@ struct writeback_control {
- 	unsigned for_writepages:1;	/* This is a writepages() call */
- 	unsigned range_cyclic:1;	/* range_start is cyclic */
- 	unsigned more_io:1;		/* more io to be dispatched */
-+	unsigned range_cont:1;
- };
- 
- /*
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 789b6ad..182233b 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -882,6 +882,9 @@ int write_cache_pages(struct address_space *mapping,
- 	if (wbc->range_cyclic) {
- 		index = mapping->writeback_index; /* Start from prev offset */
- 		end = -1;
-+	} else if (wbc->range_cont) {
-+		index = wbc->range_start >> PAGE_CACHE_SHIFT;
-+		end = wbc->range_end >> PAGE_CACHE_SHIFT;
- 	} else {
- 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
- 		end = wbc->range_end >> PAGE_CACHE_SHIFT;
-@@ -956,6 +959,9 @@ int write_cache_pages(struct address_space *mapping,
- 	}
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		mapping->writeback_index = index;
-+
-+	if (wbc->range_cont)
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
- 	return ret;
- }
- EXPORT_SYMBOL(write_cache_pages);
+a) applications will now get a synchronous SIGBUS when modifying a
+   page over an ENOSPC filesystem.  Whereas previously they could have
+   proceeded to completion and then detected the error via an fsync().
+
+   It's going to take more than one skimpy little paragraph to
+   justify this, and to demonstrate that it is preferable, and to
+   convince us that nothing will break from this user-visible behaviour
+   change.
+
+b) we're now doing fs operations (and some I/O) in the pagefault
+   code.  This has several implications:
+
+   - performance changes
+
+   - potential for deadlocks when a process takes the fault from
+     within a copy_to_user() in, say, mm/filemap.c
+
+   - performing additional memory allocations within that
+     copy_to_user().  Possibility that these will reenter the
+     filesystem.
+
+And that's just ext2.
+
+For ext3 things are even more complex, because we have the
+journal_start/journal_end pair which is effectively another "lock" for
+ranking/deadlock purposes.  And now we're taking i_alloc_sem and
+lock_page and we're doing ->writepage() and its potential
+journal_start(), all potentially within the context of a
+copy_to_user().
+
+Now, things become easier because copy_to_user() only happens on the
+read() side of things, where we don't hold lock_page() and things are
+generally simpler.
+
+But still, this is a high-risk change.  I think we should require a lot
+of convincing that issues such as the above have been suitably
+considered and addressed, and that the change has had *intense*
+testing.
+
+> index 47d88da..cc2e106 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -136,6 +136,7 @@ extern void ext2_get_inode_flags(struct ext2_inode_info *);
+>  int __ext2_write_begin(struct file *file, struct address_space *mapping,
+>  		loff_t pos, unsigned len, unsigned flags,
+>  		struct page **pagep, void **fsdata);
+> +extern int ext2_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+>  
+>  /* ioctl.c */
+>  extern long ext2_ioctl(struct file *, unsigned int, unsigned long);
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 5f2fa9c..d539dcf 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -18,6 +18,7 @@
+>   * 	(jj@sunsite.ms.mff.cuni.cz)
+>   */
+>  
+> +#include <linux/mm.h>
+>  #include <linux/time.h>
+>  #include "ext2.h"
+>  #include "xattr.h"
+> @@ -38,6 +39,24 @@ static int ext2_release_file (struct inode * inode, struct file * filp)
+>  	return 0;
+>  }
+>  
+> +static struct vm_operations_struct ext2_file_vm_ops = {
+> +	.fault		= filemap_fault,
+> +	.page_mkwrite   = ext2_page_mkwrite,
+> +};
+> +
+> +static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+> +{
+> +	struct address_space *mapping = file->f_mapping;
+> +
+> +	if (!mapping->a_ops->readpage)
+> +		return -ENOEXEC;
+
+this copied-and-pasted test can now be removed.
+
+> +	file_accessed(file);
+> +	vma->vm_ops = &ext2_file_vm_ops;
+> +	vma->vm_flags |= VM_CAN_NONLINEAR;
+> +	return 0;
+> +}
+> +
+> +
+>  /*
+>   * We have mostly NULL's here: the current defaults are ok for
+>   * the ext2 filesystem.
+> @@ -52,7 +71,7 @@ static int ext2_release_file (struct inode * inode, struct file * filp)
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= ext2_compat_ioctl,
+>  #endif
+> -	.mmap		= generic_file_mmap,
+> +	.mmap		= ext2_file_mmap,
+>  	.open		= generic_file_open,
+>  	.release	= ext2_release_file,
+>  	.fsync		= ext2_sync_file,
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 384fc0d..d4c5c23 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1443,3 +1443,8 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
+>  		error = ext2_acl_chmod(inode);
+>  	return error;
+>  }
+> +
+> +int ext2_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+> +{
+> +	return block_page_mkwrite(vma, page, ext2_get_block);
+> +}
+> -- 
+> 1.5.5.1.357.g1af8b.dirty
