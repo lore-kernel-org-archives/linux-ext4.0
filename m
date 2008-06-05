@@ -1,100 +1,45 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch added to -mm tree
-Date: Wed, 04 Jun 2008 21:37:56 -0700
-Message-ID: <200806050437.m554buOx025552@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: +	ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
+ added	to -mm tree
+Date: Wed, 04 Jun 2008 23:30:43 -0600
+Message-ID: <20080605053043.GO2961@webber.adilger.int>
+References: <200806050437.m554bqsc025546@imap1.linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: mm-commits@vger.kernel.org, duaneg@dghda.com,
+	linux-ext4@vger.kernel.org
+To: akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56188 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751476AbYFEFar (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 01:30:47 -0400
+In-reply-to: <200806050437.m554bqsc025546@imap1.linux-foundation.org>
+Content-disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Jun 04, 2008  21:37 -0700, Andrew Morton wrote:
+> +/* Flags that should be inherited by new inodes from their parent. */
+> +#define EXT2_FL_INHERITED ~(EXT2_DIRTY_FL | EXT2_ECOMPR_FL | EXT2_BTREE_FL |\
+> +			    EXT2_INDEX_FL | EXT2_IMAGIC_FL | EXT2_TOPDIR_FL)
 
-The patch titled
-     ext4: don't inherit inappropriate inode flags from parent
-has been added to the -mm tree.  Its filename is
-     ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
+This doesn't make things much better, unless it is just as a stop-gap
+measure to get into the kernel while there is more discussion about which
+flags need to be inherited...  Duane did mention follow-up patches, so
+I have no real objection to this patch as-is, so long as we don't consider
+the matter closed.
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+Minor nit - "EXT2_BTREE_FL" is the long-deprecated name for "EXT2_INDEX_FL",
+so we may as well just avoid it entirely here.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+Yes, this patch avoids a few more of the cases that are bad, but will
+again be incorrect as soon as some new flag enters use.
 
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: don't inherit inappropriate inode flags from parent
-From: "Duane Griffin" <duaneg@dghda.com>
-
-Fix the TOPDIR flag inheritance bug reported at
-http://bugzilla.kernel.org/show_bug.cgi?id=9866.
-
-  Some file attributes have sticky behaviour in ext2/3 whereas I believe
-  it should not.  Namely, a directory marked with chattr +T serves "to be
-  the top of directory hierarchies for the purposes of the Orlov block
-  allocator", as the manpage says.
-
-  It seems wrong that subdirectories stickily inherit the +T flag: they
-  are obviously not top-level!  Even files get the T attribute this way,
-  even though the chattr manpages only documents it for directories.
-
-Also prevent inheritance of other flags that Andreas Dilger identified as
-inappropriate to inherit
-
-At present INDEX and EXTENTS are the only flagis that new ext4 inodes do
-NOT inherit from their parent. In addition prevent the flags DIRTY, ECOMPR,
-IMAGIC, TOPDIR and HUGE_FILE from being inherited.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/ext4.h   |    5 +++++
- fs/ext4/ialloc.c |    2 +-
- 2 files changed, 6 insertions(+), 1 deletion(-)
-
-diff -puN fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/fs/ext4/ext4.h
-@@ -249,6 +249,11 @@ struct flex_groups {
- #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
- 
-+/* Flags that should be inherited by new inodes from their parent. */
-+#define EXT4_FL_INHERITED ~(EXT4_DIRTY_FL | EXT4_ECOMPR_FL | EXT4_INDEX_FL |\
-+			    EXT4_IMAGIC_FL | EXT4_TOPDIR_FL |\
-+			    EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL)
-+
- /*
-  * Inode dynamic state flags
-  */
-diff -puN fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/fs/ext4/ialloc.c
-@@ -798,7 +798,7 @@ got:
- 	 * newly created directory and file only if -o extent mount option is
- 	 * specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
-+	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
- 	if (S_ISLNK(mode))
- 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
- 	/* dirsync only applies to directories */
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-jbd-replace-potentially-false-assertion-with-if-block.patch
-jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
-jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
-ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
