@@ -1,130 +1,173 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
-	inversion
-Date: Thu, 5 Jun 2008 18:22:09 +0200
-Message-ID: <20080605162209.GG27370@duck.suse.cz>
-References: <1212154769-16486-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker> <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext3: Use page_mkwrite vma_operations to get mmap write notification.
+Date: Thu,  5 Jun 2008 22:35:13 +0530
+Message-ID: <1212685513-32237-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, akpm@linux-foundation.org, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:41497 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1759199AbYFEQWL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jun 2008 12:22:11 -0400
-Content-Disposition: inline
-In-Reply-To: <20080605135413.GI8942@skywalker>
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:48842 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752574AbYFERFe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 13:05:34 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m55H5OSe032554
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 22:35:24 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m55H585Y1056796
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 22:35:08 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m55H5NMF019445
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 22:35:23 +0530
+In-Reply-To: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-06-08 19:24:13, Aneesh Kumar K.V wrote:
-> >   Hmm, I've just got an idea that it may be better to introduce a new flag
-> > for wbc like range_cont and it would mean that we start scan at
-> > writeback_index (we use range_start if writeback_index is not set) and
-> > end with range_end. That way we don't have to be afraid of interference
-> > with other range_cyclic users and in principle, range_cyclic is originally
-> > meant for other uses...
-> > 
-> 
-> something like below ?. With this ext4_da_writepages have
-> 
-> pgoff_t writeback_index = 0;
-> .....
-> if (!wbc->range_cyclic) {
-> 	/*
-> 	 * If range_cyclic is not set force range_cont
-> 	 * and save  the old  writeback_index
-> 	 */
-> 	wbc->range_cont = 1;
-> 	writeback_index = mapping->writeback_index;
-> 	mapping->writeback_index = 0;
-> }
-> ...
-> mpage_da_writepages(..)
-> ..
-> if (writeback_index)
->            mapping->writeback_index = writeback_index;
-> return ret;
-> 
-> 
-> 
-> mm: Add range_cont mode for writeback.
-> 
-> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> Filesystems like ext4 needs to start a new transaction in
-> the writepages for block allocation. This happens with delayed
-> allocation and there is limit to how many credits we can request
-> from the journal layer. So we call write_cache_pages multiple
-> times with wbc->nr_to_write set to the maximum possible value
-> limitted by the max journal credits available.
-> 
-> Add a new mode to writeback that enables us to handle this
-> behaviour. If mapping->writeback_index is not set we use
-> wbc->range_start to find the start index and then at the end
-> of write_cache_pages we store the index in writeback_index. Next
-> call to write_cache_pages will start writeout from writeback_index.
-> Also we limit writing to the specified wbc->range_end.
-> 
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
-> 
->  include/linux/writeback.h |    1 +
->  mm/page-writeback.c       |   10 +++++++++-
->  2 files changed, 10 insertions(+), 1 deletions(-)
-  I like it. I'm only not sure whether there cannot be two users of
-write_cache_pages() operating on the same mapping at the same time. Because
-then they could alter writeback_index under each other and that would
-probably result in unpleasant behavior. I think there can be two parallel
-calls for example from sync_single_inode() and sync_page_range().
-  In that case we'd need something like writeback_index inside wbc (or
-maybe just alter range_start automatically when range_cont is set?) so that
-parallel callers do no influence each other.
+We would like to get notified when we are doing a write on mmap section.
+The changes are needed to handle ENOSPC when writing to an mmap section
+of files with holes.
 
-								Honza
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext3/file.c          |   19 +++++++++++-
+ fs/ext3/inode.c         |   76 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/ext3_fs.h |    1 +
+ 3 files changed, 95 insertions(+), 1 deletions(-)
 
-> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-> index f462439..0d8573e 100644
-> --- a/include/linux/writeback.h
-> +++ b/include/linux/writeback.h
-> @@ -63,6 +63,7 @@ struct writeback_control {
->  	unsigned for_writepages:1;	/* This is a writepages() call */
->  	unsigned range_cyclic:1;	/* range_start is cyclic */
->  	unsigned more_io:1;		/* more io to be dispatched */
-> +	unsigned range_cont:1;
->  };
->  
->  /*
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 789b6ad..014a9f2 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -882,6 +882,12 @@ int write_cache_pages(struct address_space *mapping,
->  	if (wbc->range_cyclic) {
->  		index = mapping->writeback_index; /* Start from prev offset */
->  		end = -1;
-> +	} else if (wbc->range_cont) {
-> +		if (!mapping->writeback_index)
-> +			index = wbc->range_start >> PAGE_CACHE_SHIFT;
-> +		else
-> +			index = mapping->writeback_index;
-> +		end = wbc->range_end >> PAGE_CACHE_SHIFT;
->  	} else {
->  		index = wbc->range_start >> PAGE_CACHE_SHIFT;
->  		end = wbc->range_end >> PAGE_CACHE_SHIFT;
-> @@ -954,7 +960,9 @@ int write_cache_pages(struct address_space *mapping,
->  		index = 0;
->  		goto retry;
->  	}
-> -	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-> +	if (wbc->range_cyclic ||
-> +			(range_whole && wbc->nr_to_write > 0) ||
-> +			wbc->range_cont)
->  		mapping->writeback_index = index;
->  	return ret;
->  }
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index acc4913..09e22e4 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -106,6 +106,23 @@ ext3_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 	return ret;
+ }
+ 
++static struct vm_operations_struct ext3_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite   = ext3_page_mkwrite,
++};
++
++static int ext3_file_mmap(struct file *file, struct vm_area_struct *vma)
++{
++	struct address_space *mapping = file->f_mapping;
++
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext3_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
++}
++
+ const struct file_operations ext3_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+@@ -116,7 +133,7 @@ ext3_file_write(struct kiocb *iocb, const struct iovec *iov,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext3_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext3_release_file,
+ 	.fsync		= ext3_sync_file,
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 6ae4ecf..c8261f0 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -3295,3 +3295,79 @@ int ext3_change_inode_journal_flag(struct inode *inode, int val)
+ 
+ 	return err;
+ }
++
++static int ext3_bh_prepare_fill(handle_t *handle, struct buffer_head *bh)
++{
++	if (!buffer_mapped(bh)) {
++		/*
++		 * Mark buffer as dirty so that
++		 * block_write_full_page() writes it
++		 */
++		set_buffer_dirty(bh);
++	}
++	return 0;
++}
++
++static int ext3_bh_unmapped(handle_t *handle, struct buffer_head *bh)
++{
++	return !buffer_mapped(bh);
++}
++
++int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page)
++{
++	loff_t size;
++	unsigned long len;
++	int ret = -EINVAL;
++	struct file *file = vma->vm_file;
++	struct inode *inode = file->f_path.dentry->d_inode;
++	struct address_space *mapping = inode->i_mapping;
++	struct writeback_control wbc = { .sync_mode = WB_SYNC_NONE,
++					 .nr_to_write = 1 };
++
++	/*
++	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
++	 * get i_mutex because we are already holding mmap_sem.
++	 */
++	down_read(&inode->i_alloc_sem);
++	size = i_size_read(inode);
++	if (page->mapping != mapping || size <= page_offset(page)
++	    || !PageUptodate(page)) {
++		/* page got truncated from under us? */
++		goto out_unlock;
++	}
++	ret = 0;
++	if (PageMappedToDisk(page))
++		goto out_unlock;
++
++	if (page->index == size >> PAGE_CACHE_SHIFT)
++		len = size & ~PAGE_CACHE_MASK;
++	else
++		len = PAGE_CACHE_SIZE;
++
++	if (page_has_buffers(page)) {
++		/* return if we have all the buffers mapped */
++		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++				       ext3_bh_unmapped))
++			goto out_unlock;
++		/*
++		 * Now mark all the  buffer head dirty so
++		 * that writepage can write it
++		 */
++		walk_page_buffers(NULL, page_buffers(page), 0, len,
++					NULL, ext3_bh_prepare_fill);
++	}
++	/*
++	 * OK, we need to fill the hole... Lock the page and do writepage.
++	 * We can't do write_begin and write_end here because we don't
++	 * have inode_mutex and that allow parallel write_begin, write_end call.
++	 * (lock_page prevent this from happening on the same page though)
++	 */
++	lock_page(page);
++	wbc.range_start = page_offset(page);
++	wbc.range_end = page_offset(page) + len;
++	ret = mapping->a_ops->writepage(page, &wbc);
++	/* writepage unlocks the page */
++out_unlock:
++	up_read(&inode->i_alloc_sem);
++	return ret;
++}
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 36c5403..715c35e 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -836,6 +836,7 @@ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
++extern int ext3_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+ 
+ /* ioctl.c */
+ extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.5.5.1.357.g1af8b.dirty
+
