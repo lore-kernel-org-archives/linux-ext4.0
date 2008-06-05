@@ -1,80 +1,57 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Ordered mode rewrite for jbd2/ext4
-Date: Wed, 04 Jun 2008 19:40:36 -0700
-Message-ID: <1212633637.3645.15.camel@localhost.localdomain>
-References: <20080604154435.GE16572@duck.suse.cz>
-Reply-To: cmm@us.ibm.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] jbd2: If a journal checksum error is detected,
+	propagate the error to ext4
+Date: Wed, 04 Jun 2008 21:17:12 -0600
+Message-ID: <20080605031712.GK2961@webber.adilger.int>
+References: <20080604234057.GA9641@mit.edu>
+ <1212623794-10183-1-git-send-email-tytso@mit.edu>
+ <1212623794-10183-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Girish.Shilamkar@sun.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:54309 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750942AbYFECkn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 22:40:43 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m552eg5E012370
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 22:40:42 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m552egBU099162
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 20:40:42 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m552efwP026005
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 20:40:42 -0600
-In-Reply-To: <20080604154435.GE16572@duck.suse.cz>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:46625 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751450AbYFEDRP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2008 23:17:15 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m553HEdI010532
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2008 20:17:14 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K1Y00C01ZPRWI00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 04 Jun 2008 20:17:14 -0700 (PDT)
+In-reply-to: <1212623794-10183-2-git-send-email-tytso@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-06-04 at 17:44 +0200, Jan Kara wrote:
->   Hi,
+On Jun 04, 2008  19:56 -0400, Theodore Ts'o wrote:
+> If a journal checksum error is detected, the ext4 filesystem will call
+> ext4_error(), and the mount will either continue, become a read-only
+> mount, or cause a kernel panic based on the superblock flags
+> indicating the user's preference of what to do in case of filesystem
+> corruption being detected.
 > 
->   So I've split and ported ordered mode rewrite for ext4+jbd2.
-> The core of the rewrite are two patches
-> 
-> jbd2-Implement-data-ordered-mode-handling-via-inode.patch
-> ext4-Use-new-framework-for-data-ordered-mode-in-JBD.patch
-> 
-> They also need two trivial fixes:
-> vfs-export-filemap_fdatawrite_range.patch
-> ext4-Use-new-framework-for-data-ordered-mode-in-JBD.patch
-> 
-> And finally there's a patch removing old ordered mode from jbd2:
-> jbd2-Remove-data-ordered-mode-support-using-jbd-buf.patch
-> 
-> I've created the patches to be added to the ext4 patch queue just
-> after inversion of page lock and transaction start.
-> 
-> I have refreshed the following patches in the ext4 queue to apply cleanly
-> and also fixed some typos in them and added one BUG_ON():
-> 
-> ext4-delalloc-sync-hang-with-journal-lock-inverse-fix.patch
-> ext4-delalloc-inverse-jbd-and-page-lock-ordering.patch
-> ext4-inverse-jbd-and-page-locking-order.patch
-> 
-> Finally, I've rewritten checks in writepage so
-> ext4-Add-validation-to-jbd-lock-inversion-patch-and.patch
-> should be replaced with
-> ext4-add-checks-to-writepage
-> 
-> as we spoke about it with Aneesh.
-> 
-> All the patches are attached and I'll also post the new ones separately for
-> more convenient review. The tests for 4k blocksize run fine for me. The
-> kernel oopses for 1k blocksize because of a problem in ext4_page_mkwrite()
-> - I'll post that in a separate mail. If noone objects, patches can be added
-> to ext4 patch queue.
-> 
+> XXX should we simply fail the mount instead in the panic case?
 
-Thanks!
+It does seem that if someone has a bad ext4 root filesystem it would be
+easy to get an unusable system.  That is why there are no "ext3_error"
+or "ext4_error" calls anywhere in ext[34]_fill_super().  They are all
+instead "printk(KERN_ERR ...)" and the mount fails.
 
-I have added the patches to the patch queue, will take a close look
-later.
+> diff --git a/scripts/package/Makefile b/scripts/package/Makefile
+> index 5e32607..f758b75 100644
+> --- a/scripts/package/Makefile
+> +++ b/scripts/package/Makefile
 
+Not sure what the rest of this patch is...
 
-Regards,
-Mingming
-> 								Honza
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
