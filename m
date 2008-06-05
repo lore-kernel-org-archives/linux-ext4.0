@@ -1,218 +1,111 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
-Date: Thu, 5 Jun 2008 14:13:29 +0530
-Message-ID: <20080605084329.GB8942@skywalker>
-References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data
+	buffers
+Date: Thu, 5 Jun 2008 11:35:37 +0200
+Message-ID: <20080605093536.GE27370@duck.suse.cz>
+References: <4843CE15.6080506@hitachi.com> <4843CEED.9080002@hitachi.com> <20080603153050.fb99ac8a.akpm@linux-foundation.org> <20080604101925.GB16572@duck.suse.cz> <20080604111911.c1fe09c6.akpm@linux-foundation.org> <20080604212202.GA8727@mit.edu> <20080604145848.e3da6f20.akpm@linux-foundation.org> <20080604225155.GB8727@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	hidehiro.kawai.ez@hitachi.com, sct@redhat.com, adilger@sun.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:47352 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751721AbYFEIrN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 04:47:13 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m558kHZN026574
-	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:46:17 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m558jbRI4350014
-	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:45:37 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m558js2w007994
-	for <linux-ext4@vger.kernel.org>; Thu, 5 Jun 2008 18:45:54 +1000
+Received: from styx.suse.cz ([82.119.242.94]:48712 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751551AbYFEJfj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jun 2008 05:35:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20080605032220.GC10488@mit.edu>
+In-Reply-To: <20080604225155.GB8727@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 04, 2008 at 11:22:20PM -0400, Theodore Tso wrote:
-> when I moved this patch to the beginning of the unstable patch queue,
-> it didn't apply.  When I tried to look at it, my head started
-> spinning.  The patch applied to the wrong function, apparently,
-> because there is so much code duplication "patch" got confused.  I
-> can't blame it, though, because *I* got confused.  
+On Wed 04-06-08 18:51:55, Theodore Tso wrote:
+> On Wed, Jun 04, 2008 at 02:58:48PM -0700, Andrew Morton wrote:
+> > On Wed, 4 Jun 2008 17:22:02 -0400
+> > Theodore Tso <tytso@mit.edu> wrote:
+> > 
+> > > On Wed, Jun 04, 2008 at 11:19:11AM -0700, Andrew Morton wrote:
+> > > > Does any other filesystem driver turn the fs read-only on the first
+> > > > write-IO-error?
+> > 
 > 
-> fs/ext4/balloc.c is a complete disaster right now.  We have:
+> For failures to write to data blocks, I don't think any other
+> filesystems turn the filesystem read-only.  Not that many other
+> filesystems do the remount on read-only thing in general; remounting
+> read/only is something that might be unique to ext2/3/4.
 > 
-> ext4_new_blocks_old()
-> ext4_new_meta_block()
-> ext4_new_meta_blocks()
-> ext4_new_blocks()
+> > > It is similarly insane to ask a filesystem to figure out that a newly
+> > > plugged in USB stick is the same one that the user had accidentally
+> > > unplugged 30 seconds ago.  We don't want to put that kind of low-level
+> > > knowlede about storage details in each different filesystem.
+> > > 
+> > > A much better place to put that kind of smarts is in a multipath
+> > > module which sits in between the device and the filesystem.  It can
+> > > retry writes from a transient failure, if a path goes down or if a
+> > > iSCSI device temporarily drops off the network.
+> > 
+> > That's fine in theory, but we don't do any if that right now, do we?
 > 
-> ... and without any comments, it is extremely impenetrable.  Someone
-> needs to document what the heck all of the various functions have to
-> do with each other, when they get used (i.e., with which mount options). 
+> No, but I think it's insane to put any of this into the filesystem.  I
+> don't want to put words in other people's mouths, but Mingming and I
+> were chatting with Chris Mason the last two days at a BTRFS workshop
+> (which is why we've been a bit slow on responding), and when discussed
+> this thread informally, he agreed that it was really bad idea to try
+> to put this kind of retry logic in an individual filesystem.
 > 
-> Why aren't we factoring out the last three into a single function?  
+> > >  But if a filesystem
+> > > gets a write failure, it has to assume that the write failure is
+> > > permanent.
+> > 
+> > To that sector, yes.  But to the entire partition?
+> 
+> I agree it's a bad idea.  OTOH, we really need a good way of notifying
+> a system daemon or administrator, and not just rely on the application
+> to DTRT when it receives an -EIO.  Probably what we should do is (1)
+> return -EIO, (2) send a uevent that includes as much information as
+> possible.  At the minimum, the block that had the write (or read)
+> error, and if available the file name involved, and application and/or
+> pid involved.  That way, the policy of what should happen in case of a
+> data I/O error can be informed by what write just failed.  It might be
+> that if the failure is to some critical application data, the right
+> thing to do is to kill of the application server and let the HA system
+> bring up the hotbackup.  Or if the failure is writing to a log file,
+> some other recovery procedure is the right thing.   
+> 
+> But forcing the entire filesystem read-only just because of a write
+> failure to a data block is probably not the best way to go.
+  OK, you've convinced me that aborting journal because of EIO on data
+block isn't the best thing to do. But it is a bit problematic to return EIO
+to userspace - we usually find this in commit code so we work on behalf of
+kjournald and user already thinks the write has succeeded (which is
+basically problem of any cached write). So the best thing we can do is set
+AS_EIO on the mapping and hope userspace will notice (we report such error
+when user does fsync/sync/sync_file_range).
+  Sending some event to userspace is certainly possible but can hardly be
+more specific than "IO error at block %lu of file %s".
 
-Something like below ? . I will send a final patch once I get the
-patchqueu updated. I am not able to reach repo.or.cz currently.
+> > But afaict this patch changes things so that if we get a write failure
+> > in a data block we make the entire fs read-only.  Which, as I said, is
+> > often "dead box".
+> > 
+> > This seems like a quite major policy change to me.
+> 
+> Agreed, and it's not appropriate.  I could imagine that for some
+> setups it is the right policy, but the kernel should not be setting
+> policy like this.  Maybe as a new tunable in the superblock, or maybe
+> via a round-trip to userspace via a uevent, but certainly not as the
+> new default behavior.
+  Yes, I believe a tunable in superblock controlling how do we behave on
+EIO error in data block would be the best solution.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index bd18ceb..abbc500 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1656,7 +1656,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
- }
- 
- /**
-- * ext4_new_blocks_old() -- core block(s) allocation function
-+ * ext4_orlov_new_blocks() -- core block(s) allocation function
-  * @handle:		handle to this transaction
-  * @inode:		file inode
-  * @goal:		given target block(filesystem wide)
-@@ -1669,7 +1669,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
-  * any specific goal block.
-  *
-  */
--ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
-+ext4_fsblk_t ext4_orlov_new_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp)
- {
- 	struct buffer_head *bitmap_bh = NULL;
-@@ -1942,88 +1942,68 @@ ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
- 	return 0;
- }
- 
--ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
--		ext4_fsblk_t goal, int *errp)
-+static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
-+				ext4_lblk_t iblock, ext4_fsblk_t goal,
-+				unsigned long *count, int *errp, int meta)
- {
- 	struct ext4_allocation_request ar;
- 	ext4_fsblk_t ret;
- 
- 	if (!test_opt(inode->i_sb, MBALLOC)) {
--		unsigned long count = 1;
--		ret = ext4_new_blocks_old(handle, inode, goal, &count, errp);
-+		ret = ext4_orlov_new_blocks(handle, inode, goal, count, errp);
- 		return ret;
- 	}
- 
- 	memset(&ar, 0, sizeof(ar));
-+	/* Fill with neighbour allocated blocks */
-+	ar.lleft  = 0;
-+	ar.pleft  = 0;
-+	ar.lright = 0;
-+	ar.pright = 0;
-+
- 	ar.inode = inode;
- 	ar.goal = goal;
--	ar.len = 1;
-+	ar.len = *count;
-+	ar.logical = iblock;
-+	if (S_ISREG(inode->i_mode) && !meta)
-+		ar.flags = EXT4_MB_HINT_DATA;
-+	else
-+		/* disable in-core preallocation for non-regular files */
-+		ar.flags = 0;
- 	ret = ext4_mb_new_blocks(handle, &ar, errp);
-+	*count = ar.len;
- 	/*
- 	 * Account for the allocated meta blocks
- 	 */
--	if (!(*errp)) {
-+	if (!(*errp) && meta) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 	}
--
- 	return ret;
- }
-+
-+
-+ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
-+		ext4_fsblk_t goal, int *errp)
-+{
-+	unsigned long count = 1;
-+	return do_blk_alloc(handle, inode, 0, goal, &count, errp, 1);
-+}
-+
- ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 		ext4_fsblk_t goal, unsigned long *count, int *errp)
- {
--	struct ext4_allocation_request ar;
--	ext4_fsblk_t ret;
--
--	if (!test_opt(inode->i_sb, MBALLOC)) {
--		ret = ext4_new_blocks_old(handle, inode, goal, count, errp);
--		return ret;
--	}
--
--	memset(&ar, 0, sizeof(ar));
--	ar.inode = inode;
--	ar.goal = goal;
--	ar.len = *count;
--	ret = ext4_mb_new_blocks(handle, &ar, errp);
--	*count = ar.len;
--	return ret;
-+	return do_blk_alloc(handle, inode, 0, goal, count, errp, 1);
- }
- 
- ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
- 				ext4_lblk_t iblock, ext4_fsblk_t goal,
- 				unsigned long *count, int *errp)
- {
--	struct ext4_allocation_request ar;
--	ext4_fsblk_t ret;
--
--	if (!test_opt(inode->i_sb, MBALLOC)) {
--		ret = ext4_new_blocks_old(handle, inode, goal, count, errp);
--		return ret;
--	}
--
--	memset(&ar, 0, sizeof(ar));
--	/* Fill with neighbour allocated blocks */
--	ar.lleft  = 0;
--	ar.pleft  = 0;
--	ar.lright = 0;
--	ar.pright = 0;
--
--	ar.inode = inode;
--	ar.goal = goal;
--	ar.len = *count;
--	ar.logical = iblock;
--	if (S_ISREG(inode->i_mode))
--		ar.flags = EXT4_MB_HINT_DATA;
--	else
--		/* disable in-core preallocation for non-regular files */
--		ar.flags = 0;
--	ret = ext4_mb_new_blocks(handle, &ar, errp);
--	*count = ar.len;
--	return ret;
-+	return do_blk_alloc(handle, inode, iblock, goal, count, errp, 0);
- }
- 
--
- /**
-  * ext4_count_free_blocks() -- count filesystem free blocks
-  * @sb:		superblock
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 19d48dd..c401253 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1049,7 +1049,7 @@ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
- 					ext4_lblk_t iblock, ext4_fsblk_t goal,
- 					unsigned long *count, int *errp);
--extern ext4_fsblk_t ext4_new_blocks_old(handle_t *handle, struct inode *inode,
-+extern ext4_fsblk_t ext4_orlov_new_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
- extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
- 						ext4_fsblk_t nblocks);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 09922ae..a810a21 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4048,7 +4048,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 	sbi = EXT4_SB(sb);
- 
- 	if (!test_opt(sb, MBALLOC)) {
--		block = ext4_new_blocks_old(handle, ar->inode, ar->goal,
-+		block = ext4_orlov_new_blocks(handle, ar->inode, ar->goal,
- 					    &(ar->len), errp);
- 		return block;
- 	}
+> Apologies, I'm still catching up on patches sent in the past few days,
+> so I haven't had a chance to do a detailed review on Kawai-san's
+> patches yet.  I do agree that if this patch is forcing the entire
+> filesystem read-only on a write-failure to a data block, it's probably
+> not appropriate.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
