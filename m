@@ -1,64 +1,76 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: mballoc avoid use root reserved blocks for non
-	root allocation
-Date: Fri, 06 Jun 2008 11:59:24 -0700
-Message-ID: <1212778764.22102.6.camel@localhost.localdomain>
-References: <1212354413.4368.7.camel@localhost.localdomain>
-	 <20080606023345.GH30272@mit.edu>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Fri, 06 Jun 2008 14:33:12 -0700
+Message-ID: <1212787992.22102.39.camel@localhost.localdomain>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	 <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker>
+	 <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker>
+	 <1212677741.3645.44.camel@localhost.localdomain>
+	 <20080605182455.GV2961@webber.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:54845 "EHLO e5.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:35805 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754436AbYFFS7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Jun 2008 14:59:32 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m56IxVDB012444
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 14:59:31 -0400
+	id S933192AbYFFVdR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Jun 2008 17:33:17 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m56LXEKn005405
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 17:33:14 -0400
 Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m56IxPVN234808
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 14:59:25 -0400
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m56LXE9Q232838
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 17:33:14 -0400
 Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m56IxPa6010032
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 14:59:25 -0400
-In-Reply-To: <20080606023345.GH30272@mit.edu>
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m56LXEKP010800
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Jun 2008 17:33:14 -0400
+In-Reply-To: <20080605182455.GV2961@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-06-05 at 22:33 -0400, Theodore Tso wrote:
-> On Sun, Jun 01, 2008 at 02:06:53PM -0700, Mingming Cao wrote:
-> > ext4: mballoc avoid use root reserved blocks for non root allocation
+On Thu, 2008-06-05 at 12:24 -0600, Andreas Dilger wrote:
+> On Jun 05, 2008  07:55 -0700, Mingming Cao wrote:
+> > >  /**
+> > > - * ext4_new_blocks_old() -- core block(s) allocation function
+> > > + * ext4_orlov_new_blocks() -- core block(s) allocation function
 > > 
-> > From: Mingming Cao <cmm@us.ibm.com>
-> > 
-> > mballoc allocation missed check for blocks reserved for root users. Add
-> > ext4_has_free_blocks() check before allocation. Also modified
-> > ext4_has_free_blocks() to support multiple block allocation request.
+> > what is orlov means? this is core function for non extent based without
+> > mballoc block allocation, right? 
 > 
-> This was discovered by a Gentoo user who tried compiling on a UP system.....
-> 
-> > Index: linux-2.6.26-rc4/fs/ext4/balloc.c
-> > ....
-> > +	if (free_blocks - root_blocks < FBC_BATCH)
-> > +		free_blocks =
-> > +			percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
-> 
-> 
-> FBC_BATCH is only defined if CONFIG_SMP is defined.  I believe the
-> simplest fix is surround the above if statement with an "#ifdef
-> CONFIG_SMP", since on UP systems, the percpu counters are always
-> exactly correct.
-> 
+> Orlov is the name of the INODE allocator, not the block allocator.  I'm
+> not sure there is a name for the block allocator except "old" or "bitmap".
 
-Works for me. One up system the counter is always accurate.
+I think rename it as ext4_old_new_blocks() seems better, better than
+orlov. This is the block allocator that is only used when mballoc is
+turned off. I think we should update the function description.
 
-FBC_BATCH is just some value to trigger sum up from per cpu counters to
-get the accurate value, we don't need to do this for single UP.
+> In the future I suspect we won't want to keep this version at all, using
+> the mballoc allocator even for block-mapped files, but it is useful for
+> now for performance comparisons.
 
-Mingming
-> 					- Ted
+In fact I found the mballoc is enabled even for block-mapped files. what
+Aneesh's patch "Use inode preallocation with -o noextents" does is
+enable the per-inode in-core preallocation for block allocation for
+block-mapped files, whem mballoc is turned on. Without this patch, there
+is not old ext3 block reservation(as mblloc turned off ext3 block
+reservation automatically) and non in-core preallocation in the new
+mballoc.
+
+Anessh, Could you clarify this and update in the change log? 
+
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
