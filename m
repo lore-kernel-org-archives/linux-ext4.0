@@ -1,44 +1,51 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
-Date: Fri, 6 Jun 2008 09:15:47 -0400
-Message-ID: <20080606131547.GB9033@mit.edu>
-References: <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org> <20080528070637.GA10393@deprecation.cyrius.com> <20080605111148.GA4483@deprecation.cyrius.com> <1212664977.4840.6.camel@sd048.hel.movial.fi> <20080605183854.GN25477@mit.edu> <38408.84.249.59.97.1212701650.squirrel@webmail.movial.fi> <20080605215152.GB15504@networkno.de>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Fri, 6 Jun 2008 21:56:33 +0530
+Message-ID: <20080606162633.GA22364@skywalker>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <20080605153701.GB25477@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Vorobiev Dmitri <dmitri.vorobiev@movial.fi>,
-	Martin Michlmayr <tbm@cyrius.com>,
-	Ralf Baechle <ralf@linux-mips.org>,
-	Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
-	linux-mips@linux-mips.org, linux-ext4@vger.kernel.org
-To: Thiemo Seufer <ths@networkno.de>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:59409 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754315AbYFFNQS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jun 2008 09:16:18 -0400
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:35690 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754896AbYFFQ0t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jun 2008 12:26:49 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m56GQGgs027583
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jun 2008 02:26:16 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m56GUv2j242862
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jun 2008 02:30:57 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m56GQjDV030539
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jun 2008 02:26:46 +1000
 Content-Disposition: inline
-In-Reply-To: <20080605215152.GB15504@networkno.de>
+In-Reply-To: <20080605153701.GB25477@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 05, 2008 at 10:51:52PM +0100, Thiemo Seufer wrote:
-> > Ted, Ralf seems to be unwilling to accept the ZERO_PAGE() export. If you
-> > send the MIPS-specific patch, I can do the testing for you as I have a
-> > MIPS Malta board at my disposal.
+On Thu, Jun 05, 2008 at 11:37:01AM -0400, Theodore Tso wrote:
+> On Thu, Jun 05, 2008 at 02:13:29PM +0530, Aneesh Kumar K.V wrote:
+> > 
+> > Something like below ? . I will send a final patch once I get the
+> > patchqueu updated. I am not able to reach repo.or.cz currently.
+> 
+> This is better, but it still means that we are exporting a large
+> number of functions to the callers.  It's not clear to me we need so
+> many different variants of ext4_new_blocks_* --- what is their
+> justification to exist?
+> 
+> For example, why not just have:
+> 
+> static ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+>        				ext4_lblk_t iblock, ext4_fsblk_t goal,
+> 				unsigned long *count, int *errp, int meta)
+> 
 
-Ralf sent me a private note saying he would take care of this, but
-that he had been very busy with real-world life items.
+Now that we have moved all the code to do_blk_alloc, we can be assured
+that we won't miss bug fixes to those allocation APIs when fixing one of
+them. IMHO having separate APIs reduces the risk of misusing them
 
-> AFAIU the problematic case are systems with R4000/R4400 SC/MC CPUs
-> since they use 8 zero pages of different color. Have a look at
-> arch/mips/mm/init.c:setup_zero_pages.
-
-Right.  So we're not actually going to ever write to the page, but we
-are going to add the page to a bio and submit for writing.  I assume
-that's not going to cause VECI/VCED exceptions, right?  If the act of
-DMA'ing, or worse yet, for older devices/drivers which have to use PIO
-to write out a block device is going to cause "thousand and thousands
-of exceptions", it sounds like MIPS CPU designers need to be slapped
-silly....
-
-					- Ted
+-aneesh
