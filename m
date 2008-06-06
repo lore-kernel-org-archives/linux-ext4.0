@@ -1,61 +1,47 @@
-From: akpm@linux-foundation.org
-Subject: [patch 52/64] ext3: fix online resize bug
-Date: Thu, 05 Jun 2008 22:46:47 -0700
-Message-ID: <200806060546.m565klxX016020@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jbacik@redhat.com, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: Dmitri Vorobiev <dmitri.vorobiev@movial.fi>
+Subject: Re: ext4dev build failure on mips: "empty_zero_page" undefined
+Date: Fri, 06 Jun 2008 09:57:48 +0300
+Message-ID: <4848DFEC.1010800@movial.fi>
+References: <20080512130604.GA15008@deprecation.cyrius.com> <90edad820805120654n50f7a00cm3c7b4a4f9346d5ea@mail.gmail.com> <20080512143426.GB7029@mit.edu> <90edad820805120746l61e67362vbd177d63e8b05dc8@mail.gmail.com> <20080513045028.GC22226@linux-mips.org> <20080528070637.GA10393@deprecation.cyrius.com> <20080605111148.GA4483@deprecation.cyrius.com> <1212664977.4840.6.camel@sd048.hel.movial.fi> <20080605183854.GN25477@mit.edu> <38408.84.249.59.97.1212701650.squirrel@webmail.movial.fi> <20080605215152.GB15504@networkno.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@MIT.EDU>, Martin Michlmayr <tbm@cyrius.com>,
+	Ralf Baechle <ralf@linux-mips.org>,
+	Dmitri Vorobiev <dmitri.vorobiev@gmail.com>,
+	linux-mips@linux-mips.org, linux-ext4@vger.kernel.org
+To: Thiemo Seufer <ths@networkno.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:35451 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753421AbYFFFrX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jun 2008 01:47:23 -0400
+Received: from smtp.movial.fi ([62.236.91.34]:34982 "EHLO smtp.movial.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753403AbYFFG5p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Jun 2008 02:57:45 -0400
+In-Reply-To: <20080605215152.GB15504@networkno.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Josef Bacik <jbacik@redhat.com>
+Thiemo Seufer wrote:
+> Vorobiev Dmitri wrote:
+>> Theodore Tso wrote:
+>>> If you really insist I suppose we could have a MIPS specific patch
+>>> where we allocate a 4k page and zero it, so we can use it from our
+>>> kernel code because you don't want to export and make available the
+>>> ZERO_PAGE that gets used by the rest of the kernel, but that seems
+>>> awfully silly, and would be a waste of 4k of memory.....  Someone from
+>>> MIPS land would have to test it, as well, as I dont think any of the
+>>> ext4 developers have access to a MIPS platform.
+>> Ted, Ralf seems to be unwilling to accept the ZERO_PAGE() export. If you
+>> send the MIPS-specific patch, I can do the testing for you as I have a
+>> MIPS Malta board at my disposal.
+> 
+> AFAIU the problematic case are systems with R4000/R4400 SC/MC CPUs
+> since they use 8 zero pages of different color. Have a look at
+> arch/mips/mm/init.c:setup_zero_pages.
 
-There is a bug when we are trying to verify that the reserve inode's
-double indirect blocks point back to the primary gdt blocks.  The fix is
-obvious, we need to mod the gdb count by the addr's per block.  You can
-verify this with the following test case
+OK, thanks for the info. However, I won't be able to tackle into the
+issue during this and the next week as I'm having a business trip.
+Therefore, if the issue is urgent, I'd be grateful if someone could take
+over.
 
-dd if=/dev/zero of=disk1 seek=1024 count=1 bs=100M
-losetup /dev/loop1 disk1
-pvcreate /dev/loop1
-vgcreate loopvg1 /dev/loop1
-lvcreate -l 100%VG loopvg1 -n looplv1
-mkfs.ext3 -J size=64 -b 1024 /dev/loopvg1/looplv1
-mount /dev/loopvg1/looplv1 /mnt/loop
-dd if=/dev/zero of=disk2 seek=1024 count=1 bs=50M
-losetup /dev/loop2 disk2
-pvcreate /dev/loop2
-vgextend loopvg1 /dev/loop2
-lvextend -l 100%VG /dev/loopvg1/looplv1
-resize2fs /dev/loopvg1/looplv1
-
-without this patch the resize2fs fails, with it the resize2fs succeeds.
-
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff -puN fs/ext3/resize.c~ext3-fix-online-resize-bug fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-fix-online-resize-bug
-+++ a/fs/ext3/resize.c
-@@ -580,7 +580,8 @@ static int reserve_backup_gdb(handle_t *
- 	}
- 
- 	blk = EXT3_SB(sb)->s_sbh->b_blocknr + 1 + EXT3_SB(sb)->s_gdb_count;
--	data = (__le32 *)dind->b_data + EXT3_SB(sb)->s_gdb_count;
-+	data = (__le32 *)dind->b_data + (EXT3_SB(sb)->s_gdb_count %
-+					 EXT3_ADDR_PER_BLOCK(sb));
- 	end = (__le32 *)dind->b_data + EXT3_ADDR_PER_BLOCK(sb);
- 
- 	/* Get each reserved primary GDT block and verify it holds backups */
-_
+Thanks,
+Dmitri
