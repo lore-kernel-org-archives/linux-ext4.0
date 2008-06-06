@@ -1,44 +1,61 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: mballoc avoid use root reserved blocks for non
-	root allocation
-Date: Thu, 5 Jun 2008 22:33:45 -0400
-Message-ID: <20080606023345.GH30272@mit.edu>
-References: <1212354413.4368.7.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+From: akpm@linux-foundation.org
+Subject: [patch 52/64] ext3: fix online resize bug
+Date: Thu, 05 Jun 2008 22:46:47 -0700
+Message-ID: <200806060546.m565klxX016020@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, jbacik@redhat.com, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:58255 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752082AbYFFCei (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jun 2008 22:34:38 -0400
-Content-Disposition: inline
-In-Reply-To: <1212354413.4368.7.camel@localhost.localdomain>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35451 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753421AbYFFFrX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jun 2008 01:47:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 01, 2008 at 02:06:53PM -0700, Mingming Cao wrote:
-> ext4: mballoc avoid use root reserved blocks for non root allocation
-> 
-> From: Mingming Cao <cmm@us.ibm.com>
-> 
-> mballoc allocation missed check for blocks reserved for root users. Add
-> ext4_has_free_blocks() check before allocation. Also modified
-> ext4_has_free_blocks() to support multiple block allocation request.
+From: Josef Bacik <jbacik@redhat.com>
 
-This was discovered by a Gentoo user who tried compiling on a UP system.....
+There is a bug when we are trying to verify that the reserve inode's
+double indirect blocks point back to the primary gdt blocks.  The fix is
+obvious, we need to mod the gdb count by the addr's per block.  You can
+verify this with the following test case
 
-> Index: linux-2.6.26-rc4/fs/ext4/balloc.c
-> ....
-> +	if (free_blocks - root_blocks < FBC_BATCH)
-> +		free_blocks =
-> +			percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
+dd if=/dev/zero of=disk1 seek=1024 count=1 bs=100M
+losetup /dev/loop1 disk1
+pvcreate /dev/loop1
+vgcreate loopvg1 /dev/loop1
+lvcreate -l 100%VG loopvg1 -n looplv1
+mkfs.ext3 -J size=64 -b 1024 /dev/loopvg1/looplv1
+mount /dev/loopvg1/looplv1 /mnt/loop
+dd if=/dev/zero of=disk2 seek=1024 count=1 bs=50M
+losetup /dev/loop2 disk2
+pvcreate /dev/loop2
+vgextend loopvg1 /dev/loop2
+lvextend -l 100%VG /dev/loopvg1/looplv1
+resize2fs /dev/loopvg1/looplv1
 
+without this patch the resize2fs fails, with it the resize2fs succeeds.
 
-FBC_BATCH is only defined if CONFIG_SMP is defined.  I believe the
-simplest fix is surround the above if statement with an "#ifdef
-CONFIG_SMP", since on UP systems, the percpu counters are always
-exactly correct.
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-					- Ted
+ fs/ext3/resize.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff -puN fs/ext3/resize.c~ext3-fix-online-resize-bug fs/ext3/resize.c
+--- a/fs/ext3/resize.c~ext3-fix-online-resize-bug
++++ a/fs/ext3/resize.c
+@@ -580,7 +580,8 @@ static int reserve_backup_gdb(handle_t *
+ 	}
+ 
+ 	blk = EXT3_SB(sb)->s_sbh->b_blocknr + 1 + EXT3_SB(sb)->s_gdb_count;
+-	data = (__le32 *)dind->b_data + EXT3_SB(sb)->s_gdb_count;
++	data = (__le32 *)dind->b_data + (EXT3_SB(sb)->s_gdb_count %
++					 EXT3_ADDR_PER_BLOCK(sb));
+ 	end = (__le32 *)dind->b_data + EXT3_ADDR_PER_BLOCK(sb);
+ 
+ 	/* Get each reserved primary GDT block and verify it holds backups */
+_
