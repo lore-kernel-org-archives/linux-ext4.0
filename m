@@ -1,97 +1,90 @@
-From: David Brownell <david-b@pacbell.net>
-Subject: verifying filesystem images on resume
-Date: Fri, 6 Jun 2008 16:26:54 -0700
-Message-ID: <200806061626.54950.david-b@pacbell.net>
-Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@osdl.org>,
-	Alan Stern <stern@rowland.harvard.edu>
-To: linux-ext4@vger.kernel.org
+From: Chris Wright <chrisw@sous-sol.org>
+Subject: [patch 09/50] ext3/4: fix uninitialized bs in ext3/4_xattr_set_handle()
+Date: Fri, 06 Jun 2008 18:02:24 -0700
+Message-ID: <20080607010554.457330224@sous-sol.org>
+References: <20080607010215.358296706@sous-sol.org>
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, Tiger Yang <tiger.yang@oracle.com>,
+	<linux-ext4@vger.kernel.org>, Andreas Gruenbacher <agruen@suse.de>,
+	Andreas Dilger <adilger@sun.com>,
+	Greg Kroah-Hartman <gregkh@suse.de>
+To: linux-kernel@vger.kernel.org, stable@kernel.org, jejb@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp115.sbc.mail.sp1.yahoo.com ([69.147.64.88]:21586 "HELO
-	smtp115.sbc.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1757858AbYFFXdg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jun 2008 19:33:36 -0400
-Content-Disposition: inline
+Received: from sous-sol.org ([216.99.217.87]:42575 "EHLO sous-sol.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755735AbYFGBJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Jun 2008 21:09:34 -0400
+Content-Disposition: inline; filename=ext3-4-fix-uninitialized-bs-in-ext3-4_xattr_set_handle.patch
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+-stable review patch.  If anyone has any objections, please let us know.
+---------------------
 
-I'm scrubbing out some old email, and this one encapsulates some
-thoughts of mine that I hope would still be addressible in the
-context of ext4.
+From: Tiger Yang <tiger.yang@oracle.com>
 
-Briefly, consider the scenario of a *mounted* filesystem (say, ext4)
-on some removable media such as a USB, Firewire, or external SATA
-disk (or flash drive) during a suspend/resume cycle.  If that media
-isn't removed, no problems should appear.  Ditto when the media can
-report it's been removed ... like USB drives when the host stays in
-the USB "suspend" state instead of powering off the USB hardware.
-(In that case the backing media would just vanish ... which may have
-some issues of its own.)
+commit 7e01c8e5420b6c7f9d85d34c15d8c7a15c9fc720 upstream
 
-BUT ... when it's removed and then modified on a different system
-before being replaced and then resumed, and the hardware doesn't
-report the removal, then problems could appear when in-kernel data
-structures related to that mounted device (like metadata caches)
-become invalid.  Problems like filesystem corruption.
+This fix the uninitialized bs when we try to replace a xattr entry in
+ibody with the new value which require more than free space.
 
-My observation was that at some level on-disk data structures
-would need to be validated against in-kernel structures, and
-one type of check could involve a simple generation number that's
-updated before the suspend.  (Or check the journal, etc.)
+This situation only happens we format ext3/4 with inode size more than 128 and
+we have put xattr entries both in ibody and block.  The consequences about
+this bug is we will lost the xattr block which pointed by i_file_acl with all
+xattr entires in it.  We will alloc a new xattr block and put that large value
+entry in it.  The old xattr block will become orphan block.
 
-Appended is some intial reaction from Linus, which observes that
-more than the filesystem layers are affected.
+Signed-off-by: Tiger Yang <tiger.yang@oracle.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Andreas Gruenbacher <agruen@suse.de>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+Signed-off-by: Chris Wright <chrisw@sous-sol.org>
 
-Comments?  Do any Linux filesystems handle these things today?
-If they don't ... shouldn't they do so?
+---
+ fs/ext3/xattr.c |    5 +++++
+ fs/ext4/xattr.c |    5 +++++
+ 2 files changed, 10 insertions(+)
 
-- Dave
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -1000,6 +1000,11 @@ ext3_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT3_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext3_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext3_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1011,6 +1011,11 @@ ext4_xattr_set_handle(handle_t *handle, 
+ 			i.value = NULL;
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 		} else if (error == -ENOSPC) {
++			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
++				error = ext4_xattr_block_find(inode, &i, &bs);
++				if (error)
++					goto cleanup;
++			}
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+ 			if (error)
+ 				goto cleanup;
 
-
-
-----------  Forwarded Message  ----------
-
-Subject: Re: CONFIG_USB_PERSIST..
-Date: Friday 22 February 2008
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Alan Stern <stern@rowland.harvard.edu>
-Cc: David Brownell <david-b@pacbell.net>, greg@kroah.com
-
-On Fri, 22 Feb 2008, Alan Stern wrote:
-> 
-> >  - that image includes a generation number;
-> >  - on resume, verify the generation number is what we expected.
-> > 
-> > If the image is clean, then no data should ever get lost when the
-> > media is moved to a different system.  Seeing the right generation
-> > number on resume can avoid problems like clobbering data that got
-> > written by some other system ... if the number is wrong, cached
-> > FS data can/should be invalidated.
-> 
-> That would help a lot.  But some filesystems probably don't have any 
-> space in the on-disk superblock for storing such a generation number.
-
-We could try to do a callback to openers along the lines of "please 
-double-check the image", and then filesystems that can do so could try 
-their best.
-
-But that would require data structures that we don't yet have (and much 
-more complex ones than just a counter). At *least* a pointer to the 
-associated "struct block_device"s (and then you can walk those and find 
-the super-blocks that have a s_bdev that has a ->container_of that points 
-to the top-level block device, and then for each such superblock you can 
-do the callback).
-
-So it's possible, but it needs much more than the lock bit, and would 
-require the filesystems to be able to double-check too. Most of them 
-probably could do at least *some* sanity-checks, so it does sound like a 
-good idea..
-
-		Linus
-
--------------------------------------------------------
+-- 
