@@ -1,124 +1,48 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-abort-ext3-if-the-journal-has-aborted.patch removed from -mm tree
-Date: Mon, 09 Jun 2008 15:12:16 -0700
-Message-ID: <200806092212.m59MCGvR010904@imap1.linux-foundation.org>
-To: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Subject: [patch (for 2.6.26?) 1/1] ext4: fix online resize bug
+Date: Mon, 09 Jun 2008 16:49:22 -0700
+Message-ID: <200806092349.m59NnMZh015687@imap1.linux-foundation.org>
+Cc: cmm@us.ibm.com, akpm@linux-foundation.org, jbacik@redhat.com,
+	adilger@sun.com, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36773 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59241 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758152AbYFIWMY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 18:12:24 -0400
+	by vger.kernel.org with ESMTP id S1755596AbYFIXup (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 19:50:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Josef Bacik <jbacik@redhat.com>
 
-The patch titled
-     ext3: abort ext3 if the journal has aborted
-has been removed from the -mm tree.  Its filename was
-     ext3-abort-ext3-if-the-journal-has-aborted.patch
+There is a bug when we are trying to verify that the reserve inode's
+double indirect blocks point back to the primary gdt blocks.  The fix is
+obvious, we need to mod the gdb count by the addr's per block.  This was
+verified using the same testcase as with the ext3 equivalent of this
+patch.
 
-This patch was dropped because I don't think we want to go read-only on file data write errors
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: abort ext3 if the journal has aborted
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-
-If the journal has aborted due to a checkpointing failure, we have to keep
-the contents of the journal space.  ext3_put_super() detects the journal
-abort, then it invokes ext3_abort() to make the filesystem read only and
-keep needs_recovery flag.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Acked-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: Mingming Cao <cmm@us.ibm.com>
+Acked-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ioctl.c |   12 ++++++------
- fs/ext3/super.c |   11 +++++++++--
- 2 files changed, 15 insertions(+), 8 deletions(-)
+ fs/ext4/resize.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff -puN fs/ext3/ioctl.c~ext3-abort-ext3-if-the-journal-has-aborted fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-abort-ext3-if-the-journal-has-aborted
-+++ a/fs/ext3/ioctl.c
-@@ -239,7 +239,7 @@ setrsvsz_out:
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -254,16 +254,16 @@ setrsvsz_out:
- 		}
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- group_extend_out:
- 		mnt_drop_write(filp->f_path.mnt);
--		return err;
-+		return (err) ? err : err2;
- 	}
- 	case EXT3_IOC_GROUP_ADD: {
- 		struct ext3_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -280,11 +280,11 @@ group_extend_out:
- 
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- group_add_out:
- 		mnt_drop_write(filp->f_path.mnt);
--		return err;
-+		return (err) ? err : err2;
+diff -puN fs/ext4/resize.c~ext4-fix-online-resize-bug fs/ext4/resize.c
+--- a/fs/ext4/resize.c~ext4-fix-online-resize-bug
++++ a/fs/ext4/resize.c
+@@ -563,7 +563,8 @@ static int reserve_backup_gdb(handle_t *
  	}
  
+ 	blk = EXT4_SB(sb)->s_sbh->b_blocknr + 1 + EXT4_SB(sb)->s_gdb_count;
+-	data = (__le32 *)dind->b_data + EXT4_SB(sb)->s_gdb_count;
++	data = (__le32 *)dind->b_data + (EXT4_SB(sb)->s_gdb_count %
++					 EXT4_ADDR_PER_BLOCK(sb));
+ 	end = (__le32 *)dind->b_data + EXT4_ADDR_PER_BLOCK(sb);
  
-diff -puN fs/ext3/super.c~ext3-abort-ext3-if-the-journal-has-aborted fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-abort-ext3-if-the-journal-has-aborted
-+++ a/fs/ext3/super.c
-@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
- 	int i;
- 
- 	ext3_xattr_put_super(sb);
--	journal_destroy(sbi->s_journal);
-+	if (journal_destroy(sbi->s_journal) < 0)
-+		ext3_abort(sb, __func__, "Couldn't clean up the journal");
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -2388,7 +2389,13 @@ static void ext3_write_super_lockfs(stru
- 
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+
-+		/*
-+		 * We don't want to clear needs_recovery flag when we failed
-+		 * to flush the journal.
-+		 */
-+		if (journal_flush(journal) < 0)
-+			return;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 	/* Get each reserved primary GDT block and verify it holds backups */
 _
-
-Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
-
-ext3-abort-ext3-if-the-journal-has-aborted.patch
-ext3-abort-ext3-if-the-journal-has-aborted-warning-fix.patch
-
