@@ -1,110 +1,124 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data buffers
-Date: Mon, 09 Jun 2008 19:09:25 +0900
-Message-ID: <484D0155.4040701@hitachi.com>
-References: <20080603153050.fb99ac8a.akpm@linux-foundation.org>
-    <20080604101925.GB16572@duck.suse.cz>
-    <20080604111911.c1fe09c6.akpm@linux-foundation.org>
-    <20080604212202.GA8727@mit.edu>
-    <20080604145848.e3da6f20.akpm@linux-foundation.org>
-    <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz>
-    <4847CF07.1020904@hitachi.com> <20080605142948.GA25477@mit.edu>
-    <20080605092006.ba7dceef.akpm@linux-foundation.org>
-    <20080605184941.GX2961@webber.adilger.int>
+From: Kasper Sandberg <lkml@metanurb.dk>
+Subject: Re: [PATCH] Make some ext3 kernel messages useful by showing device
+Date: Mon, 09 Jun 2008 15:38:10 +0200
+Message-ID: <1213018690.10545.7.camel@localhost>
+References: <1212951761.32756.4.camel@localhost>
+	 <20080609025926.0ecb6aea.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	sct@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
-	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
-To: Andreas Dilger <adilger@sun.com>
+Cc: LKML Mailinglist <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:53282 "EHLO
-	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758966AbYFIKJg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 06:09:36 -0400
-In-Reply-To: <20080605184941.GX2961@webber.adilger.int>
+Received: from pasmtpa.tele.dk ([80.160.77.114]:48643 "EHLO pasmtpA.tele.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750966AbYFINjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jun 2008 09:39:12 -0400
+In-Reply-To: <20080609025926.0ecb6aea.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jun 05, 2008  09:20 -0700, Andrew Morton wrote:
-
->>I guess we need to undo this.  And yes, propagating errors into AS_EIO
->>is the way.  I guess that's safe without holding lock_page(), as long
->>as the bh is pinned.
+On Mon, 2008-06-09 at 02:59 -0700, Andrew Morton wrote:
+> On Sun, 08 Jun 2008 21:02:41 +0200 Kasper Sandberg <lkml@metanurb.dk> wrote:
 > 
-> Something like the following instead if -EIO and journal abort:
+> > Hello.
+> > 
+> > Some of the ext3 warnings in super.c are not really as useful as they
+> > can be, for instance the "EXT3-fs warning: maximal mount count reached,
+> > running e2fsck is recommended" message, does not tell which device it
+> > actually is.
 > 
-> 		if (!buffer_uptodate(bh)) {
-> 			set_bit(AS_EIO, &bh->b_page->mapping->flags);
-> 			SetPageError(bh->b_page);
-> 		}
+> Seems sensible.
 > 
-> It seems end_buffer_async_write() does this already, but
-> journal_do_submit_data() uses end_buffer_write_sync() and it does not
-> do either of those operations.
+> > Below is patch(both inlined, and in attached form, since i dont trust my
+> > mailer),
+> 
+> That really tricks me.  Because the resulting file applies nicely with
+> `patch --dry-run' but doesn't apply with plain old `patch'.  Inlined is
+> preferred, attached is grumpily accepted, but please avoid duplicating
+> the patch.
 
-Thank you for your suggestion.  I wrote an additional patch to do
-that below.  Please apply it as the 6th patch of this patch series.
+I do not know what happened, i did with diff -Naur. I attached because
+of the fact that i _KNOW_ evolution is not to be trusted with inlined,
+but i also know inlined is easier for review, even if it is not properly
+accepted as input for patch.
 
-BTW, I'm developing a patch which makes "abort the journal if a file
-data buffer has an error" tunable.  I'll send it in another thread
-because it's not a bug fix patch.
-
-Regards,
--- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
-
-
-Subject: JBD: don't abort if flushing file data failed
-
-In ordered mode, it is not appropriate behavior to abort the journal
-when we failed to write file data.  This patch calls printk()
-instead of aborting the journal.  Additionally, set AS_EIO into
-the address_space object of the buffer which is written out by
-journal_do_submit_data() and failed so that fsync() can get -EIO.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
----
- fs/jbd/commit.c |   12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
-
-Index: linux-2.6.26-rc4/fs/jbd/commit.c
-===================================================================
---- linux-2.6.26-rc4.orig/fs/jbd/commit.c
-+++ linux-2.6.26-rc4/fs/jbd/commit.c
-@@ -432,8 +432,11 @@ void journal_commit_transaction(journal_
- 			wait_on_buffer(bh);
- 			spin_lock(&journal->j_list_lock);
- 		}
--		if (unlikely(!buffer_uptodate(bh)))
-+		if (unlikely(!buffer_uptodate(bh))) {
-+			set_bit(AS_EIO, &bh->b_page->mapping->flags);
-+			SetPageError(bh->b_page);
- 			err = -EIO;
-+		}
- 		if (!inverted_lock(journal, bh)) {
- 			put_bh(bh);
- 			spin_lock(&journal->j_list_lock);
-@@ -452,8 +455,11 @@ void journal_commit_transaction(journal_
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 
--	if (err)
--		journal_abort(journal, err);
-+	if (err) {
-+		printk(KERN_WARNING
-+		       "JBD: Detected IO errors during flushing file data\n");
-+		err = 0;
-+	}
- 
- 	journal_write_revoke_records(journal, commit_transaction);
- 
-
-
+> 
+> > to a patch which fixes that particular message, and a few more.
+> > I could look at the rest if anyones interrested?
+> 
+> We like to keep ext3 and ext4 in sync as much as poss, please.
+Yes, i will do this soon, i have a few things to do first though.
+> 
+> > Oh, and i dont really know if this is nessecary, but:
+> > Signed-off-by: Kasper Sandberg <lkml@metanurb.dk>
+> 
+> It is very much preferred, thanks.
+> 
+> (patch retained for linux-ext4 review)
+> 
+> > 
+> > --- super.c.orig	2008-06-08 20:49:26.153047364 +0200
+> > +++ super.c	2008-06-08 20:45:20.812047463 +0200
+> > @@ -1188,31 +1188,31 @@
+> >  	int res = 0;
+> >  
+> >  	if (le32_to_cpu(es->s_rev_level) > EXT3_MAX_SUPP_REV) {
+> > -		printk (KERN_ERR "EXT3-fs warning: revision level too high, "
+> > -			"forcing read-only mode\n");
+> > +		printk (KERN_ERR "EXT3-fs on %s warning: revision level too high, "
+> > +			"forcing read-only mode\n", sb->s_id);
+> >  		res = MS_RDONLY;
+> >  	}
+> >  	if (read_only)
+> >  		return res;
+> >  	if (!(sbi->s_mount_state & EXT3_VALID_FS))
+> > -		printk (KERN_WARNING "EXT3-fs warning: mounting unchecked fs, "
+> > -			"running e2fsck is recommended\n");
+> > +		printk (KERN_WARNING "EXT3-fs on %s warning: mounting unchecked fs, "
+> > +			"running e2fsck is recommended\n", sb->s_id);
+> >  	else if ((sbi->s_mount_state & EXT3_ERROR_FS))
+> >  		printk (KERN_WARNING
+> > -			"EXT3-fs warning: mounting fs with errors, "
+> > -			"running e2fsck is recommended\n");
+> > +			"EXT3-fs on %s warning: mounting fs with errors, "
+> > +			"running e2fsck is recommended\n", sb->s_id);
+> >  	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) >= 0 &&
+> >  		 le16_to_cpu(es->s_mnt_count) >=
+> >  		 (unsigned short) (__s16) le16_to_cpu(es->s_max_mnt_count))
+> >  		printk (KERN_WARNING
+> > -			"EXT3-fs warning: maximal mount count reached, "
+> > -			"running e2fsck is recommended\n");
+> > +			"EXT3-fs on %s warning: maximal mount count reached, "
+> > +			"running e2fsck is recommended\n", sb->s_id);
+> >  	else if (le32_to_cpu(es->s_checkinterval) &&
+> >  		(le32_to_cpu(es->s_lastcheck) +
+> >  			le32_to_cpu(es->s_checkinterval) <= get_seconds()))
+> >  		printk (KERN_WARNING
+> > -			"EXT3-fs warning: checktime reached, "
+> > -			"running e2fsck is recommended\n");
+> > +			"EXT3-fs on %s warning: checktime reached, "
+> > +			"running e2fsck is recommended\n", sb->s_id);
+> >  #if 0
+> >  		/* @@@ We _will_ want to clear the valid bit if we find
+> >                     inconsistencies, to force a fsck at reboot.  But for
+> > @@ -1339,8 +1339,8 @@
+> >  	}
+> >  
+> >  	if (bdev_read_only(sb->s_bdev)) {
+> > -		printk(KERN_ERR "EXT3-fs: write access "
+> > -			"unavailable, skipping orphan cleanup.\n");
+> > +		printk(KERN_ERR "EXT3-fs on %s: write access "
+> > +			"unavailable, skipping orphan cleanup.\n", sb->s_id);
+> >  		return;
+> >  	}
+> >  
+> > 
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
