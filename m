@@ -1,96 +1,115 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-ordered-data-integrity-fix.patch removed from -mm tree
-Date: Mon, 09 Jun 2008 15:12:08 -0700
-Message-ID: <200806092212.m59MC8VO010893@imap1.linux-foundation.org>
-To: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:34188 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752709AbYFIWMN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 18:12:13 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: - jbd-strictly-check-for-write-errors-on-data-buffers.patch removed from -mm tree
+Date: Mon, 09 Jun 2008 15:12:04 -0700
+Message-ID: <200806092212.m59MC553010889@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: hidehiro.kawai.ez@hitachi.com, hidehiro.kawai.ez@hitacih.com,
+	jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd: ordered data integrity fix
+     jbd: strictly check for write errors on data buffers
 has been removed from the -mm tree.  Its filename was
-     jbd-ordered-data-integrity-fix.patch
+     jbd-strictly-check-for-write-errors-on-data-buffers.patch
 
 This patch was dropped because I don't think we want to go read-only on file data write errors
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: ordered data integrity fix
+Subject: jbd: strictly check for write errors on data buffers
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-In ordered mode, if a file data buffer being dirtied exists in the
-committing transaction, we write the buffer to the disk, move it from the
-committing transaction to the running transaction, then dirty it.  But we
-don't have to remove the buffer from the committing transaction when the
-buffer couldn't be written out, otherwise it would miss the error and the
-committing transaction would not abort.
+In ordered mode, we should abort journaling when an I/O error has occurred
+on a file data buffer in the committing transaction.  But there can be
+data buffers which are not checked for error:
 
-This patch adds an error check before removing the buffer from the
-committing transaction.
+  (a) the buffer which has already been written out by pdflush
+  (b) the buffer which has been unlocked before scanned in the
+      t_locked_list loop
 
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+This patch adds missing error checks and aborts journaling
+appropriately.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitacih.com>
 Acked-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/transaction.c |   16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+ fs/jbd/commit.c |   14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff -puN fs/jbd/transaction.c~jbd-ordered-data-integrity-fix fs/jbd/transaction.c
---- a/fs/jbd/transaction.c~jbd-ordered-data-integrity-fix
-+++ a/fs/jbd/transaction.c
-@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
- 	journal_t *journal = handle->h_transaction->t_journal;
- 	int need_brelse = 0;
+diff -puN fs/jbd/commit.c~jbd-strictly-check-for-write-errors-on-data-buffers fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-strictly-check-for-write-errors-on-data-buffers
++++ a/fs/jbd/commit.c
+@@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
+ /*
+  *  Submit all the data buffers to disk
+  */
+-static void journal_submit_data_buffers(journal_t *journal,
++static int journal_submit_data_buffers(journal_t *journal,
+ 				transaction_t *commit_transaction)
+ {
  	struct journal_head *jh;
-+	int ret = 0;
+@@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
+ 	int locked;
+ 	int bufs = 0;
+ 	struct buffer_head **wbuf = journal->j_wbuf;
++	int err = 0;
  
- 	if (is_handle_aborted(handle))
--		return 0;
-+		return ret;
- 
- 	jh = journal_add_journal_head(bh);
- 	JBUFFER_TRACE(jh, "entry");
-@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
- 				   time if it is redirtied */
- 			}
- 
--			/* journal_clean_data_list() may have got there first */
-+			/*
-+			 * We cannot remove the buffer with io error from the
-+			 * committing transaction, because otherwise it would
-+			 * miss the error and the commit would not abort.
-+			 */
-+			if (unlikely(!buffer_uptodate(bh))) {
-+				ret = -EIO;
-+				goto no_journal;
-+			}
-+
- 			if (jh->b_transaction != NULL) {
- 				JBUFFER_TRACE(jh, "unfile from commit");
- 				__journal_temp_unlink_buffer(jh);
-@@ -1108,7 +1118,7 @@ no_journal:
+ 	/*
+ 	 * Whenever we unlock the journal and sleep, things can get added
+@@ -253,6 +254,8 @@ write_out_data:
+ 			put_bh(bh);
+ 		} else {
+ 			BUFFER_TRACE(bh, "writeout complete: unfile");
++			if (unlikely(!buffer_uptodate(bh)))
++				err = -EIO;
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+ 			if (locked)
+@@ -271,6 +274,8 @@ write_out_data:
  	}
- 	JBUFFER_TRACE(jh, "exit");
- 	journal_put_journal_head(jh);
--	return 0;
-+	return ret;
+ 	spin_unlock(&journal->j_list_lock);
+ 	journal_do_submit_data(wbuf, bufs);
++
++	return err;
  }
  
- /**
+ /*
+@@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
+ 	 * Now start flushing things to disk, in the order they appear
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+-	err = 0;
+-	journal_submit_data_buffers(journal, commit_transaction);
++	err = journal_submit_data_buffers(journal, commit_transaction);
+ 
+ 	/*
+ 	 * Wait for all previously submitted IO to complete.
+@@ -426,10 +430,10 @@ void journal_commit_transaction(journal_
+ 		if (buffer_locked(bh)) {
+ 			spin_unlock(&journal->j_list_lock);
+ 			wait_on_buffer(bh);
+-			if (unlikely(!buffer_uptodate(bh)))
+-				err = -EIO;
+ 			spin_lock(&journal->j_list_lock);
+ 		}
++		if (unlikely(!buffer_uptodate(bh)))
++			err = -EIO;
+ 		if (!inverted_lock(journal, bh)) {
+ 			put_bh(bh);
+ 			spin_lock(&journal->j_list_lock);
 _
 
 Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
 
+jbd-strictly-check-for-write-errors-on-data-buffers.patch
 jbd-ordered-data-integrity-fix.patch
 jbd-abort-when-failed-to-log-metadata-buffers.patch
 jbd-fix-error-handling-for-checkpoint-io.patch
