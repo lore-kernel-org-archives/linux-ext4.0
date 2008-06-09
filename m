@@ -1,56 +1,99 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] Make some ext3 kernel messages useful by showing device
-Date: Mon, 09 Jun 2008 16:08:02 -0600
-Message-ID: <20080609220802.GF3726@webber.adilger.int>
-References: <1212951761.32756.4.camel@localhost>
- <20080609025926.0ecb6aea.akpm@linux-foundation.org>
- <484D3378.9090708@redhat.com>
- <20080609134918.ed83d0d7.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Andrew Morton <akpm@linux-foundation.org>, lkml@metanurb.dk,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <esandeen@redhat.com>
+From: akpm@linux-foundation.org
+Subject: - jbd-ordered-data-integrity-fix.patch removed from -mm tree
+Date: Mon, 09 Jun 2008 15:12:08 -0700
+Message-ID: <200806092212.m59MC8VO010893@imap1.linux-foundation.org>
+To: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50546 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751760AbYFIWI0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 18:08:26 -0400
-In-reply-to: <20080609134918.ed83d0d7.akpm@linux-foundation.org>
-Content-disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:34188 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752709AbYFIWMN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 18:12:13 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen <sandeen@redhat.com> wrote:
-> The patch itself looks fine to me, and is a good idea.  I recently saw a
-> confused user on another fs where successful mount messages were
-> followed by failure mount messages with no indication of which fs had
-> the trouble...
-> 
-> There probably are more spots in extX which could use this treatment...
-> should we maybe just be using ext3_warning in more places, which
-> automatically prints the sb, function name, etc?
 
-Most of the messages in ext[234]_fill_super() should really be ext3_error(),
-but because the superblock isn't properly set up calling ext3_error() is a
-way to oops the kernel.
+The patch titled
+     jbd: ordered data integrity fix
+has been removed from the -mm tree.  Its filename was
+     jbd-ordered-data-integrity-fix.patch
 
-Probably the cleanest solution is to split ext3_error() into a helper function
-ext3_error_msg() that can be called from ext3_fill_super(), and the rest
-of the code that now lives in ext3_handle_error().
+This patch was dropped because I don't think we want to go read-only on file data write errors
 
-Alternately, a flag could be set in the superblock ("EXT3_SETUP_DONE")
-once everything is initialized, and then ext3_error() calls
-ext3_handle_error(), and otherwise just prints the message and the
-mount will fail by itself.  This has the benefit that we can use
-ext3_error() everywhere there is a fatal problem, but the drawback that
-it may become confusing due to the added "errors=*" semantics that will
-not behave as they do in other functions.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+------------------------------------------------------
+Subject: jbd: ordered data integrity fix
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+
+In ordered mode, if a file data buffer being dirtied exists in the
+committing transaction, we write the buffer to the disk, move it from the
+committing transaction to the running transaction, then dirty it.  But we
+don't have to remove the buffer from the committing transaction when the
+buffer couldn't be written out, otherwise it would miss the error and the
+committing transaction would not abort.
+
+This patch adds an error check before removing the buffer from the
+committing transaction.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/transaction.c |   16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff -puN fs/jbd/transaction.c~jbd-ordered-data-integrity-fix fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-ordered-data-integrity-fix
++++ a/fs/jbd/transaction.c
+@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
+ 	journal_t *journal = handle->h_transaction->t_journal;
+ 	int need_brelse = 0;
+ 	struct journal_head *jh;
++	int ret = 0;
+ 
+ 	if (is_handle_aborted(handle))
+-		return 0;
++		return ret;
+ 
+ 	jh = journal_add_journal_head(bh);
+ 	JBUFFER_TRACE(jh, "entry");
+@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
+ 				   time if it is redirtied */
+ 			}
+ 
+-			/* journal_clean_data_list() may have got there first */
++			/*
++			 * We cannot remove the buffer with io error from the
++			 * committing transaction, because otherwise it would
++			 * miss the error and the commit would not abort.
++			 */
++			if (unlikely(!buffer_uptodate(bh))) {
++				ret = -EIO;
++				goto no_journal;
++			}
++
+ 			if (jh->b_transaction != NULL) {
+ 				JBUFFER_TRACE(jh, "unfile from commit");
+ 				__journal_temp_unlink_buffer(jh);
+@@ -1108,7 +1118,7 @@ no_journal:
+ 	}
+ 	JBUFFER_TRACE(jh, "exit");
+ 	journal_put_journal_head(jh);
+-	return 0;
++	return ret;
+ }
+ 
+ /**
+_
+
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
+
+jbd-ordered-data-integrity-fix.patch
+jbd-abort-when-failed-to-log-metadata-buffers.patch
+jbd-fix-error-handling-for-checkpoint-io.patch
+ext3-abort-ext3-if-the-journal-has-aborted.patch
+ext3-abort-ext3-if-the-journal-has-aborted-warning-fix.patch
 
