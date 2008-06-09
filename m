@@ -1,37 +1,94 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Bug 10871] New: Apparent infinite loop on reading broken filesystem
-Date: Sun, 08 Jun 2008 22:38:57 -0500
-Message-ID: <484CA5D1.8050709@redhat.com>
-References: <bug-10871-27@http.bugzilla.kernel.org/> <20080606111712.7c241070.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Update i_disksize correctly in ext4_get_block
+Date: Mon,  9 Jun 2008 13:39:30 +0530
+Message-ID: <1212998970-3618-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38883 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756662AbYFIDjA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 Jun 2008 23:39:00 -0400
-In-Reply-To: <20080606111712.7c241070.akpm@linux-foundation.org>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:51186 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754834AbYFIIJg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 04:09:36 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5989V42001388
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 13:39:31 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m5989FvP1278008
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 13:39:15 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5989UPp010143
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 13:39:30 +0530
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton wrote:
-> On Fri,  6 Jun 2008 05:43:38 -0700 (PDT) bugme-daemon@bugzilla.kernel.org wrote:
-> 
->> http://bugzilla.kernel.org/show_bug.cgi?id=10871
->>
->>            Summary: Apparent infinite loop on reading broken filesystem
-> 
-> This gentleman has fuzzed his ext2 filesystem and it apparently broke.
-> 
-> ext3 broke worse, but no details on that yet.
-> 
-> I cheekily cc'ed Eric on the report as he likes this stuff so much :)
+With delayed allocation we delay the allocation of blocks
+and request for blocks in multiple chunks. We should not
+update i_disksize to inode.i_size unless we are allocating
+blocks corresponding to the end of file.
 
-Love it... LOVE IT!  :)
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/extents.c |   10 ++++++++--
+ fs/ext4/inode.c   |   10 ++++++++--
+ 2 files changed, 16 insertions(+), 4 deletions(-)
 
-But seriously, it's hard to argue with a reproducible testcase.  :)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index dae3b60..a6d7165 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2698,6 +2698,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	int err = 0, depth, ret;
+ 	unsigned long allocated = 0;
+ 	struct ext4_allocation_request ar;
++	loff_t disksize;
+ 
+ 	__clear_bit(BH_New, &bh_result->b_state);
+ 	ext_debug("blocks %u/%lu requested for inode %u\n",
+@@ -2885,8 +2886,13 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 		goto out2;
+ 	}
+ 
+-	if (extend_disksize && inode->i_size > EXT4_I(inode)->i_disksize)
+-		EXT4_I(inode)->i_disksize = inode->i_size;
++	if (extend_disksize) {
++		disksize = ((loff_t) newblock + ar.len) << inode->i_blkbits;
++		if (disksize > i_size_read(inode))
++			disksize = i_size_read(inode);
++		if (disksize > EXT4_I(inode)->i_disksize)
++			EXT4_I(inode)->i_disksize = disksize;
++	}
+ 
+ 	/* previous routine could use block we allocated */
+ 	newblock = ext_pblock(&newex);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a51d5f4..5265933 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -846,6 +846,7 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	int count = 0;
+ 	ext4_fsblk_t first_block = 0;
++	loff_t disksize;
+ 
+ 
+ 	J_ASSERT(!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL));
+@@ -921,8 +922,13 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	 * protect it if you're about to implement concurrent
+ 	 * ext4_get_block() -bzzz
+ 	*/
+-	if (!err && extend_disksize && inode->i_size > ei->i_disksize)
+-		ei->i_disksize = inode->i_size;
++	if (!err && extend_disksize) {
++		disksize = ((loff_t) iblock + count) << inode->i_blkbits;
++		if (disksize > i_size_read(inode))
++			disksize = i_size_read(inode);
++		if (disksize > ei->i_disksize)
++			ei->i_disksize = disksize;
++	}
+ 	if (err)
+ 		goto cleanup;
+ 
+-- 
+1.5.6.rc2.15.g457bb.dirty
 
--Eric
