@@ -1,94 +1,110 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH v2] ext4: Update i_disksize correctly in ext4_get_block
-Date: Mon,  9 Jun 2008 15:33:03 +0530
-Message-ID: <1213005784-10539-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data buffers
+Date: Mon, 09 Jun 2008 19:09:25 +0900
+Message-ID: <484D0155.4040701@hitachi.com>
+References: <20080603153050.fb99ac8a.akpm@linux-foundation.org>
+    <20080604101925.GB16572@duck.suse.cz>
+    <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+    <20080604212202.GA8727@mit.edu>
+    <20080604145848.e3da6f20.akpm@linux-foundation.org>
+    <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz>
+    <4847CF07.1020904@hitachi.com> <20080605142948.GA25477@mit.edu>
+    <20080605092006.ba7dceef.akpm@linux-foundation.org>
+    <20080605184941.GX2961@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	sct@redhat.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
+	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:54382 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758714AbYFIKD0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 06:03:26 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m59A35fK015855
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 15:33:05 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m59A2R1M864306
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 15:32:27 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m59A34mE019702
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2008 15:33:04 +0530
+Received: from mail9.hitachi.co.jp ([133.145.228.44]:53282 "EHLO
+	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758966AbYFIKJg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jun 2008 06:09:36 -0400
+In-Reply-To: <20080605184941.GX2961@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With delayed allocation we delay the allocation of blocks
-and request for blocks in multiple chunks. We should not
-update i_disksize to inode.i_size unless we are allocating
-blocks corresponding to the end of file.
+Andreas Dilger wrote:
+> On Jun 05, 2008  09:20 -0700, Andrew Morton wrote:
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/extents.c |   10 ++++++++--
- fs/ext4/inode.c   |   10 ++++++++--
- 2 files changed, 16 insertions(+), 4 deletions(-)
+>>I guess we need to undo this.  And yes, propagating errors into AS_EIO
+>>is the way.  I guess that's safe without holding lock_page(), as long
+>>as the bh is pinned.
+> 
+> Something like the following instead if -EIO and journal abort:
+> 
+> 		if (!buffer_uptodate(bh)) {
+> 			set_bit(AS_EIO, &bh->b_page->mapping->flags);
+> 			SetPageError(bh->b_page);
+> 		}
+> 
+> It seems end_buffer_async_write() does this already, but
+> journal_do_submit_data() uses end_buffer_write_sync() and it does not
+> do either of those operations.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index dae3b60..27cfd30 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2698,6 +2698,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	int err = 0, depth, ret;
- 	unsigned long allocated = 0;
- 	struct ext4_allocation_request ar;
-+	loff_t disksize;
- 
- 	__clear_bit(BH_New, &bh_result->b_state);
- 	ext_debug("blocks %u/%lu requested for inode %u\n",
-@@ -2885,8 +2886,13 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 		goto out2;
- 	}
- 
--	if (extend_disksize && inode->i_size > EXT4_I(inode)->i_disksize)
--		EXT4_I(inode)->i_disksize = inode->i_size;
-+	if (extend_disksize) {
-+		disksize = ((loff_t) iblock + ar.len) << inode->i_blkbits;
-+		if (disksize > i_size_read(inode))
-+			disksize = i_size_read(inode);
-+		if (disksize > EXT4_I(inode)->i_disksize)
-+			EXT4_I(inode)->i_disksize = disksize;
-+	}
- 
- 	/* previous routine could use block we allocated */
- 	newblock = ext_pblock(&newex);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a51d5f4..5265933 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -846,6 +846,7 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	int count = 0;
- 	ext4_fsblk_t first_block = 0;
-+	loff_t disksize;
- 
- 
- 	J_ASSERT(!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL));
-@@ -921,8 +922,13 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	 * protect it if you're about to implement concurrent
- 	 * ext4_get_block() -bzzz
- 	*/
--	if (!err && extend_disksize && inode->i_size > ei->i_disksize)
--		ei->i_disksize = inode->i_size;
-+	if (!err && extend_disksize) {
-+		disksize = ((loff_t) iblock + count) << inode->i_blkbits;
-+		if (disksize > i_size_read(inode))
-+			disksize = i_size_read(inode);
-+		if (disksize > ei->i_disksize)
-+			ei->i_disksize = disksize;
-+	}
- 	if (err)
- 		goto cleanup;
- 
+Thank you for your suggestion.  I wrote an additional patch to do
+that below.  Please apply it as the 6th patch of this patch series.
+
+BTW, I'm developing a patch which makes "abort the journal if a file
+data buffer has an error" tunable.  I'll send it in another thread
+because it's not a bug fix patch.
+
+Regards,
 -- 
-1.5.6.rc2.15.g457bb.dirty
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
+
+
+Subject: JBD: don't abort if flushing file data failed
+
+In ordered mode, it is not appropriate behavior to abort the journal
+when we failed to write file data.  This patch calls printk()
+instead of aborting the journal.  Additionally, set AS_EIO into
+the address_space object of the buffer which is written out by
+journal_do_submit_data() and failed so that fsync() can get -EIO.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+---
+ fs/jbd/commit.c |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+Index: linux-2.6.26-rc4/fs/jbd/commit.c
+===================================================================
+--- linux-2.6.26-rc4.orig/fs/jbd/commit.c
++++ linux-2.6.26-rc4/fs/jbd/commit.c
+@@ -432,8 +432,11 @@ void journal_commit_transaction(journal_
+ 			wait_on_buffer(bh);
+ 			spin_lock(&journal->j_list_lock);
+ 		}
+-		if (unlikely(!buffer_uptodate(bh)))
++		if (unlikely(!buffer_uptodate(bh))) {
++			set_bit(AS_EIO, &bh->b_page->mapping->flags);
++			SetPageError(bh->b_page);
+ 			err = -EIO;
++		}
+ 		if (!inverted_lock(journal, bh)) {
+ 			put_bh(bh);
+ 			spin_lock(&journal->j_list_lock);
+@@ -452,8 +455,11 @@ void journal_commit_transaction(journal_
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+ 
+-	if (err)
+-		journal_abort(journal, err);
++	if (err) {
++		printk(KERN_WARNING
++		       "JBD: Detected IO errors during flushing file data\n");
++		err = 0;
++	}
+ 
+ 	journal_write_revoke_records(journal, commit_transaction);
+ 
+
+
 
