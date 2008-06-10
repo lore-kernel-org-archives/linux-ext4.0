@@ -1,36 +1,55 @@
-From: Thomas King <kingttx@tomslinux.homelinux.org>
-Subject: Filesystem article up, thank you all!
-Date: Tue, 10 Jun 2008 09:05:57 -0500 (CDT)
-Message-ID: <2927.143.166.255.42.1213106757.squirrel@tomslinux.homelinux.org>
+From: "=?utf-8?B?VGhlb2RvcmUgVHNv?=" <tytso@mit.edu>
+Subject: Re: [patch (for 2.6.26?) 1/1] ext4: fix online resize bug
+Date: Tue, 10 Jun 2008 14:08:13 +0000
+Message-ID: <298970815-1213106897-cardhu_decombobulator_blackberry.rim.net-47959647-@bxe006.bisx.prod.on.blackberry>
+Reply-To: tytso@mit.edu
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: base64
+Cc: cmm@us.ibm.com, jbacik@redhat.com, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.123]:37879 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751685AbYFJOGL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jun 2008 10:06:11 -0400
-Received: from tomslinux.homelinux.org ([24.28.24.180])
-          by hrndva-omta04.mail.rr.com with ESMTP
-          id <20080610140610.RZKD2027.hrndva-omta04.mail.rr.com@tomslinux.homelinux.org>
-          for <linux-ext4@vger.kernel.org>; Tue, 10 Jun 2008 14:06:10 +0000
-Received: from tomslinux.homelinux.org (localhost [127.0.0.1])
-	by tomslinux.homelinux.org (8.13.7/8.13.7) with ESMTP id m5AE5wP6007609
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jun 2008 09:05:58 -0500
+Received: from smtp02.bis.na.blackberry.com ([216.9.248.49]:3846 "EHLO
+	smtp02.bis.na.blackberry.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754030AbYFJOSE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jun 2008 10:18:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Folks,
+SXQncyBoYXJtbGVzcyB0byBwdXNoIHRvIC1zdGFibGUsIGJ1dCBvbmxpbmUgcmVzaXplIGZvciBl
+eHQ0IGlzIHNvIGJhZGx5IGJyb2tlbiB0aGF0IHRoaXMgcGF0Y2ggaXMgdGhlIGxlYXN0IG9mIDIu
+MjYuMjYncyBwcm9ibGVtcywgYW5kIGluIGZhY3QgSSB3b25kZXIgaG93IEpvc2VmIGNvdWxkIGhh
+dmUgcG9zc2libHkgdGVzdGVkIGl0Lg0KDQpTdGlsbCwgdGhlIHBhdGNoIGluIHF1ZXN0aW9uIGRv
+ZXMgZml4IGEgcmVhbCBidWcuDQoNCi1UZWQNCg0KLS0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0t
+LQ0KRnJvbTogYWtwbUBsaW51eC1mb3VuZGF0aW9uLm9yZw0KVG86IHR5dHNvQG1pdC5lZHUNCkNj
+OiBjbW1AdXMuaWJtLmNvbQ0KQ2M6IGFrcG1AbGludXgtZm91bmRhdGlvbi5vcmcNCkNjOiBqYmFj
+aWtAcmVkaGF0LmNvbQ0KQ2M6IGFkaWxnZXJAc3VuLmNvbQ0KQ2M6IGxpbnV4LWV4dDRAdmdlci5r
+ZXJuZWwub3JnDQpTZW50OiBKdW4gOSwgMjAwOCA3OjQ5IFBNDQpTdWJqZWN0OiBbcGF0Y2ggKGZv
+ciAyLjYuMjY/KSAxLzFdIGV4dDQ6IGZpeCBvbmxpbmUgcmVzaXplIGJ1Zw0KDQpGcm9tOiBKb3Nl
+ZiBCYWNpayA8amJhY2lrQHJlZGhhdC5jb20+DQoNClRoZXJlIGlzIGEgYnVnIHdoZW4gd2UgYXJl
+IHRyeWluZyB0byB2ZXJpZnkgdGhhdCB0aGUgcmVzZXJ2ZSBpbm9kZSdzDQpkb3VibGUgaW5kaXJl
+Y3QgYmxvY2tzIHBvaW50IGJhY2sgdG8gdGhlIHByaW1hcnkgZ2R0IGJsb2Nrcy4gIFRoZSBmaXgg
+aXMNCm9idmlvdXMsIHdlIG5lZWQgdG8gbW9kIHRoZSBnZGIgY291bnQgYnkgdGhlIGFkZHIncyBw
+ZXIgYmxvY2suICBUaGlzIHdhcw0KdmVyaWZpZWQgdXNpbmcgdGhlIHNhbWUgdGVzdGNhc2UgYXMg
+d2l0aCB0aGUgZXh0MyBlcXVpdmFsZW50IG9mIHRoaXMNCnBhdGNoLg0KDQpTaWduZWQtb2ZmLWJ5
+OiBKb3NlZiBCYWNpayA8amJhY2lrQHJlZGhhdC5jb20+DQpDYzogPGxpbnV4LWV4dDRAdmdlci5r
+ZXJuZWwub3JnPg0KQWNrZWQtYnk6IEFuZHJlYXMgRGlsZ2VyIDxhZGlsZ2VyQHN1bi5jb20+DQpD
+YzogTWluZ21pbmcgQ2FvIDxjbW1AdXMuaWJtLmNvbT4NCkFja2VkLWJ5OiBUaGVvZG9yZSBUcydv
+IDx0eXRzb0BtaXQuZWR1Pg0KU2lnbmVkLW9mZi1ieTogQW5kcmV3IE1vcnRvbiA8YWtwbUBsaW51
+eC1mb3VuZGF0aW9uLm9yZz4NCi0tLQ0KDQogZnMvZXh0NC9yZXNpemUuYyB8ICAgIDMgKystDQog
+MSBmaWxlIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC1w
+dU4gZnMvZXh0NC9yZXNpemUuY35leHQ0LWZpeC1vbmxpbmUtcmVzaXplLWJ1ZyBmcy9leHQ0L3Jl
+c2l6ZS5jDQotLS0gYS9mcy9leHQ0L3Jlc2l6ZS5jfmV4dDQtZml4LW9ubGluZS1yZXNpemUtYnVn
+DQorKysgYS9mcy9leHQ0L3Jlc2l6ZS5jDQpAQCAtNTYzLDcgKzU2Myw4IEBAIHN0YXRpYyBpbnQg
+cmVzZXJ2ZV9iYWNrdXBfZ2RiKGhhbmRsZV90ICoNCiAJfQ0KIA0KIAlibGsgPSBFWFQ0X1NCKHNi
+KS0+c19zYmgtPmJfYmxvY2tuciArIDEgKyBFWFQ0X1NCKHNiKS0+c19nZGJfY291bnQ7DQotCWRh
+dGEgPSAoX19sZTMyICopZGluZC0+Yl9kYXRhICsgRVhUNF9TQihzYiktPnNfZ2RiX2NvdW50Ow0K
+KwlkYXRhID0gKF9fbGUzMiAqKWRpbmQtPmJfZGF0YSArIChFWFQ0X1NCKHNiKS0+c19nZGJfY291
+bnQgJQ0KKwkJCQkJIEVYVDRfQUREUl9QRVJfQkxPQ0soc2IpKTsNCiAJZW5kID0gKF9fbGUzMiAq
+KWRpbmQtPmJfZGF0YSArIEVYVDRfQUREUl9QRVJfQkxPQ0soc2IpOw0KIA0KIAkvKiBHZXQgZWFj
+aCByZXNlcnZlZCBwcmltYXJ5IEdEVCBibG9jayBhbmQgdmVyaWZ5IGl0IGhvbGRzIGJhY2t1cHMg
+Ki8NCl8NCg0K
 
-My article answering Henry Newman is up. If you wish to clarify or correct
-anything in the article, please do so in the comments.
-http://lxer.com/module/newswire/view/103802/index.html
 
-Thanks!
-Tom King
-
--------
-"Concern for man and his fate must always form the chief interest of all
-technical endeavors. Never forget this in the midst of your diagrams and
-equations." --Albert Einstein
