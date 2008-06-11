@@ -1,68 +1,51 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH 2/6] ext3: don't inherit inappropriate inode flags from parent
-Date: Wed, 11 Jun 2008 01:04:05 +0100
-Message-ID: <1213142649-32685-3-git-send-email-duaneg@dghda.com>
-References: <1213142649-32685-1-git-send-email-duaneg@dghda.com>
- <1213142649-32685-2-git-send-email-duaneg@dghda.com>
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Duane Griffin <duaneg@dghda.com>
-To: akpm@linux-foundation.org
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Wed, 11 Jun 2008 11:26:01 +0800
+Message-ID: <484F45C9.3030804@cn.fujitsu.com>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain> <20080605182455.GV2961@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:3323 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755514AbYFKAEQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jun 2008 20:04:16 -0400
-In-Reply-To: <1213142649-32685-2-git-send-email-duaneg@dghda.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:53889 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755276AbYFKD3t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jun 2008 23:29:49 -0400
+In-Reply-To: <20080605182455.GV2961@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At present INDEX is the only flag that new ext3 inodes do NOT inherit from
-their parent. In addition prevent the flags DIRTY, ECOMPR, IMAGIC and
-TOPDIR from being inherited. List inheritable flags explicitly to prevent
-future flags from accidentally being inherited.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
---
 
-This is v2 with inheritable flags now explicitly specified, as per Andreas'
-request.
+Andreas Dilger Wrote:
+> On Jun 05, 2008  07:55 -0700, Mingming Cao wrote:
+>>>  /**
+>>> - * ext4_new_blocks_old() -- core block(s) allocation function
+>>> + * ext4_orlov_new_blocks() -- core block(s) allocation function
+>> what is orlov means? this is core function for non extent based without
+>> mballoc block allocation, right? 
+> 
+> Orlov is the name of the INODE allocator, not the block allocator.  I'm
+> not sure there is a name for the block allocator except "old" or "bitmap".
+> In the future I suspect we won't want to keep this version at all, using
+> the mballoc allocator even for block-mapped files, but it is useful for
+> now for performance comparisons.
+> 
 
----
- fs/ext3/ialloc.c        |    2 +-
- include/linux/ext3_fs.h |    7 +++++++
- 2 files changed, 8 insertions(+), 1 deletions(-)
+Is that true?
 
-diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-index 7712682..1d9fe3f 100644
---- a/fs/ext3/ialloc.c
-+++ b/fs/ext3/ialloc.c
-@@ -559,7 +559,7 @@ got:
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_disksize = 0;
- 
--	ei->i_flags = EXT3_I(dir)->i_flags & ~EXT3_INDEX_FL;
-+	ei->i_flags = EXT3_I(dir)->i_flags & EXT3_FL_INHERITED;
- 	if (S_ISLNK(mode))
- 		ei->i_flags &= ~(EXT3_IMMUTABLE_FL|EXT3_APPEND_FL);
- 	/* dirsync only applies to directories */
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 36c5403..140190d 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -178,6 +178,13 @@ struct ext3_group_desc
- #define EXT3_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
- #define EXT3_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
- 
-+/* Flags that should be inherited by new inodes from their parent. */
-+#define EXT3_FL_INHERITED (EXT3_SECRM_FL | EXT3_UNRM_FL | EXT3_COMPR_FL |\
-+			   EXT3_SYNC_FL | EXT3_IMMUTABLE_FL | EXT3_APPEND_FL |\
-+			   EXT3_NODUMP_FL | EXT3_NOATIME_FL | EXT3_COMPRBLK_FL|\
-+			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
-+			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
-+
- /*
-  * Inode dynamic state flags
-  */
--- 
-1.5.3.7
+I got the following from the kernel ext4 documentation.
+orlov		(*)	This enables the new Orlov block allocator. It is
+			enabled by default.
 
+oldalloc		This disables the Orlov block allocator and enables
+			the old block allocator.  Orlov should have better
+			performance - we'd like to get some feedback if it's
+			the contrary for you.
+
+-Shen Feng
