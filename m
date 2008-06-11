@@ -1,98 +1,70 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
-	inversion
-Date: Wed, 11 Jun 2008 14:41:57 +0200
-Message-ID: <20080611124157.GB8121@duck.suse.cz>
-References: <1212154769-16486-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker> <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker> <20080605162209.GG27370@duck.suse.cz> <20080605191909.GD4723@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Performance of ext4
+Date: Wed, 11 Jun 2008 09:54:43 -0400
+Message-ID: <20080611135443.GK8397@mit.edu>
+References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:46998 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752231AbYFKMl6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 08:41:58 -0400
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Holger Kiehl <Holger.Kiehl@dwd.de>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754734AbYFKNzM@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080605191909.GD4723@skywalker>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 06-06-08 00:49:09, Aneesh Kumar K.V wrote:
-> On Thu, Jun 05, 2008 at 06:22:09PM +0200, Jan Kara wrote:
-> >   I like it. I'm only not sure whether there cannot be two users of
-> > write_cache_pages() operating on the same mapping at the same time. Because
-> > then they could alter writeback_index under each other and that would
-> > probably result in unpleasant behavior. I think there can be two parallel
-> > calls for example from sync_single_inode() and sync_page_range().
-> >   In that case we'd need something like writeback_index inside wbc (or
-> > maybe just alter range_start automatically when range_cont is set?) so that
-> > parallel callers do no influence each other.
-> > 
-> 
-> commit e56edfdeea0d336e496962782f08e1224a101cf2
-> Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> Date:   Fri Jun 6 00:47:35 2008 +0530
-> 
->     mm: Add range_cont mode for writeback.
->     
->     Filesystems like ext4 needs to start a new transaction in
->     the writepages for block allocation. This happens with delayed
->     allocation and there is limit to how many credits we can request
->     from the journal layer. So we call write_cache_pages multiple
->     times with wbc->nr_to_write set to the maximum possible value
->     limitted by the max journal credits available.
->     
->     Add a new mode to writeback that enables us to handle this
->     behaviour. If mapping->writeback_index is not set we use
->     wbc->range_start to find the start index and then at the end
->     of write_cache_pages we store the index in writeback_index. Next
->     call to write_cache_pages will start writeout from writeback_index.
->     Also we limit writing to the specified wbc->range_end.
-  I think this changelog is out of date...
+On Wed, Jun 11, 2008 at 08:02:32AM +0000, Holger Kiehl wrote:
+>
+> Doing some performance test between ext3 and ext4 I noticed that ext4
+> is not much faster or in some cases slower then ext3. Two years ago when
+> I tested ext4 it was a lot faster then ext3 (see my mail:
+> http://lkml.org/lkml/2006/6/6/65). Doing some simple tests with bonnie++
+> I got the following results:
 
->     Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-> index f462439..0d8573e 100644
-> --- a/include/linux/writeback.h
-> +++ b/include/linux/writeback.h
-> @@ -63,6 +63,7 @@ struct writeback_control {
->  	unsigned for_writepages:1;	/* This is a writepages() call */
->  	unsigned range_cyclic:1;	/* range_start is cyclic */
->  	unsigned more_io:1;		/* more io to be dispatched */
-> +	unsigned range_cont:1;
->  };
->  
->  /*
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 789b6ad..182233b 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -882,6 +882,9 @@ int write_cache_pages(struct address_space *mapping,
->  	if (wbc->range_cyclic) {
->  		index = mapping->writeback_index; /* Start from prev offset */
->  		end = -1;
-> +	} else if (wbc->range_cont) {
-> +		index = wbc->range_start >> PAGE_CACHE_SHIFT;
-> +		end = wbc->range_end >> PAGE_CACHE_SHIFT;
-  Hmm, why isn't this in the next else?
+Hi Holger,
 
->  	} else {
->  		index = wbc->range_start >> PAGE_CACHE_SHIFT;
->  		end = wbc->range_end >> PAGE_CACHE_SHIFT;
-> @@ -956,6 +959,9 @@ int write_cache_pages(struct address_space *mapping,
->  	}
->  	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
->  		mapping->writeback_index = index;
-> +
-> +	if (wbc->range_cont)
-> +		wbc->range_start = index << PAGE_CACHE_SHIFT;
->  	return ret;
->  }
->  EXPORT_SYMBOL(write_cache_pages);
+You didn't say exactly which version of the kernel/ext4 you were
+testing, but a recent change which we made to ext4, but which hasn't
+been made to ext3 yet is that barrier support has been enabled to
+improve filesystem safety; unfortunately this does imply with it a
+slight performance slowdown, which would be more pronounced on
+benchmarks with small filesystems.  So when you mount the filesystem
+for ext3 and ext4 for benchmarking purposes, you should consistently
+use a mount options of barrier=1 or barrier=0.  With ext4, you can use
+the mount option "barrier=1,journal_async_commit" which should
+ameliorate part of the performance decrease.  The reason why it is not
+yet the default is it requires support from e2fsprogs that has not
+been released except in development git branches; but as long as you
+don't require running e2fsck on uncleanly shutdown systems (probably
+not necessary if you are just benchmarking), you can use
+journal_async_commit in good health.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Another change which might help out the bonnie benchmark, but which
+again requires the latest version of e2fsprogs is to create the
+filesystem with flex_bg filesystem feature.  In fact, for
+convenience's sake, if you are using the latest development version of
+e2fsprogs, you can just use the command "mke2fs -t ext4dev /dev/hdXX"
+and it will set up the filesystem with the correct filesystem features
+for ext4.  (The "ext4dev" sets the test_fs feature, and is basically
+there so it's clear we are still trying to finish up ext4 support.)
+
+> 2 years ago I used 2.6.16.8 but the hardware is still the same. So what has
+> happened with the performance of ext4? I noticed that 2 years ago I could
+> use extents+mballoc+delalloc, now there is only extents+mballoc in the
+> current kernels. Could delalloc make the big difference? I saw that
+> in Andrew Morton mm tree delalloc is included. Unfortunately when I tried 
+> using
+> 2.6.26-rc2-mm1 a sync would never return and there where lot of other
+> odd things, so I could not do any tests with delalloc.
+
+As Aneesh has mentioned, there were some bugs in version of ext4's
+delalloc caused by insufficient testing of the ext4 patch queue some
+changes to our locking strategy went in.  That's been fixed in the
+latest patch queue, and we're in the process of cleaning up delalloc
+before merging it into the mainline kernel.  (When you tested ext4 two
+years ago, none of this was yet in mainline, so it's not a matter of
+things delalloc "disappearing", but rather that we've been slow
+getting to the point where it was ready for merging.
+
+	       	     	      	  - Ted
