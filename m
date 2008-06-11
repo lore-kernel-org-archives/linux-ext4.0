@@ -1,85 +1,63 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 6/6] ext4: tighten restrictions on inode flags
-Date: Wed, 11 Jun 2008 17:01:04 +0530
-Message-ID: <20080611113104.GC9008@skywalker>
-References: <1213142649-32685-1-git-send-email-duaneg@dghda.com> <1213142649-32685-2-git-send-email-duaneg@dghda.com> <1213142649-32685-3-git-send-email-duaneg@dghda.com> <1213142649-32685-4-git-send-email-duaneg@dghda.com> <1213142649-32685-5-git-send-email-duaneg@dghda.com> <1213142649-32685-6-git-send-email-duaneg@dghda.com> <1213142649-32685-7-git-send-email-duaneg@dghda.com>
+Subject: Re: [PATCH] ext4: Fix the loop condition in
+	ext4_mb_free_committed_blocks
+Date: Wed, 11 Jun 2008 17:04:35 +0530
+Message-ID: <20080611113435.GD9008@skywalker>
+References: <484F4CC1.3000109@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Duane Griffin <duaneg@dghda.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@MIT.EDU>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Shen Feng <shen@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:39135 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750890AbYFKLbQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2008 07:31:16 -0400
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:48886 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752713AbYFKLgB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2008 07:36:01 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5BBZn0N006932
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 21:35:49 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.7) with ESMTP id m5BBYO1p3833892
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 21:34:24 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5BBYgJ7007060
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 21:34:43 +1000
 Content-Disposition: inline
-In-Reply-To: <1213142649-32685-7-git-send-email-duaneg@dghda.com>
+In-Reply-To: <484F4CC1.3000109@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 11, 2008 at 01:04:09AM +0100, Duane Griffin wrote:
-> At the moment there are few restrictions on which flags may be set on which
-> inodes. Specifically DIRSYNC may only be set on directories and IMMUTABLE
-> and APPEND may not be set on links. Tighten that to disallow TOPDIR being
-> set on non-directories and SECRM, UNRM, COMPR, SYNC, DIRTY, COMPRBLK,
-> NOCOMPR, ECOMPR, INDEX, JOURNAL_DATA, NOTAIL, HUGE_FILE, EXTENTS or
-> EXT_MIGRATE being set on anything but regular files or directories.
+On Wed, Jun 11, 2008 at 11:55:45AM +0800, Shen Feng wrote:
 > 
-> Introduce a flags masking function which masks flags based on mode and use
-> it during inode creation and when flags are set via the ioctl to facilitate
-> future consistency.
+> Since md is freed before the do-while checks it,
+> it's better to change it to while(1).
 > 
-> Signed-off-by: Duane Griffin <duaneg@dghda.com>
-> --
-> 
-> The specific flags masked out here are those suggested by Andreas, as well
-> as IMMUTABLE, which I included to match the behaviour of the existing code,
-> and EXT_MIGRATE.
-> 
-> It would be good to get some review of these.
-> 
+> Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+
 > ---
->  fs/ext4/ext4.h   |   24 ++++++++++++++++++++++++
->  fs/ext4/ialloc.c |   14 +++++---------
->  fs/ext4/ioctl.c  |    3 +--
->  3 files changed, 30 insertions(+), 11 deletions(-)
+>  fs/ext4/mballoc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1a4faa5..2aafd1b 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -243,6 +243,30 @@ struct ext4_group_desc
->  			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
->  			   EXT4_DIRSYNC_FL)
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 42553f6..063f820 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2572,7 +2572,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+>  		kfree(md);
+>  		ext4_mb_release_desc(&e4b);
 > 
-> +/* Flags that are inappropriate for regular files. */
-> +#define EXT4_REG_FLMASK (EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL)
-> +
-> +/* Flags that are inappropriate for non-directories/regular files. */
-> +#define EXT4_OTHER_FLMASK (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-> +			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
-> +			   EXT4_DIRTY_FL | EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL|\
-> +			   EXT4_ECOMPR_FL | EXT4_INDEX_FL |\
-> +			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL |\
-> +			   EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL |\
-> +			   EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL |\
-> +			   EXT4_EXT_MIGRATE)
-> +
-> +/* Mask out flags that are inappropriate for the given type of inode. */
-> +static inline __le32 ext4_mask_flags(__le16 mode, __le32 flags)
-> +{
-> +	if (S_ISDIR(mode))
-> +		return flags;
-> +	else if (S_ISREG(mode))
-> +		return flags & ~EXT4_REG_FLMASK;
-> +	else
-> +		return flags & ~EXT4_OTHER_FLMASK;
-> +}
-> +
-
-why are the arguments __le32 ? They should be in host order.
-
-static inline  __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-
--aneesh
+> -	} while (md);
+> +	} while (1);
+> 
+>  	mb_debug("freed %u blocks in %u structures\n", count, count2);
+>  }
+> -- 
+> 1.5.4.5
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
