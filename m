@@ -1,110 +1,98 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data
-	buffers
-Date: Wed, 11 Jun 2008 14:35:57 +0200
-Message-ID: <20080611123556.GA8121@duck.suse.cz>
-References: <20080604111911.c1fe09c6.akpm@linux-foundation.org> <20080604212202.GA8727@mit.edu> <20080604145848.e3da6f20.akpm@linux-foundation.org> <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz> <4847CF07.1020904@hitachi.com> <20080605142948.GA25477@mit.edu> <20080605092006.ba7dceef.akpm@linux-foundation.org> <20080605184941.GX2961@webber.adilger.int> <484D0155.4040701@hitachi.com>
+Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
+	inversion
+Date: Wed, 11 Jun 2008 14:41:57 +0200
+Message-ID: <20080611124157.GB8121@duck.suse.cz>
+References: <1212154769-16486-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker> <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker> <20080605162209.GG27370@duck.suse.cz> <20080605191909.GD4723@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	sct@redhat.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
-	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:46768 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:46998 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750850AbYFKMf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 08:35:59 -0400
+	id S1752231AbYFKMl6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 08:41:58 -0400
 Content-Disposition: inline
-In-Reply-To: <484D0155.4040701@hitachi.com>
+In-Reply-To: <20080605191909.GD4723@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 09-06-08 19:09:25, Hidehiro Kawai wrote:
-> Andreas Dilger wrote:
-> > On Jun 05, 2008  09:20 -0700, Andrew Morton wrote:
-> 
-> >>I guess we need to undo this.  And yes, propagating errors into AS_EIO
-> >>is the way.  I guess that's safe without holding lock_page(), as long
-> >>as the bh is pinned.
+On Fri 06-06-08 00:49:09, Aneesh Kumar K.V wrote:
+> On Thu, Jun 05, 2008 at 06:22:09PM +0200, Jan Kara wrote:
+> >   I like it. I'm only not sure whether there cannot be two users of
+> > write_cache_pages() operating on the same mapping at the same time. Because
+> > then they could alter writeback_index under each other and that would
+> > probably result in unpleasant behavior. I think there can be two parallel
+> > calls for example from sync_single_inode() and sync_page_range().
+> >   In that case we'd need something like writeback_index inside wbc (or
+> > maybe just alter range_start automatically when range_cont is set?) so that
+> > parallel callers do no influence each other.
 > > 
-> > Something like the following instead if -EIO and journal abort:
-> > 
-> > 		if (!buffer_uptodate(bh)) {
-> > 			set_bit(AS_EIO, &bh->b_page->mapping->flags);
-> > 			SetPageError(bh->b_page);
-> > 		}
-> > 
-> > It seems end_buffer_async_write() does this already, but
-> > journal_do_submit_data() uses end_buffer_write_sync() and it does not
-> > do either of those operations.
 > 
-> Thank you for your suggestion.  I wrote an additional patch to do
-> that below.  Please apply it as the 6th patch of this patch series.
+> commit e56edfdeea0d336e496962782f08e1224a101cf2
+> Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Date:   Fri Jun 6 00:47:35 2008 +0530
 > 
-> BTW, I'm developing a patch which makes "abort the journal if a file
-> data buffer has an error" tunable.  I'll send it in another thread
-> because it's not a bug fix patch.
-> 
-> -- 
-> Hidehiro Kawai
-> Hitachi, Systems Development Laboratory
-> Linux Technology Center
-> 
-> 
-> Subject: JBD: don't abort if flushing file data failed
-> 
-> In ordered mode, it is not appropriate behavior to abort the journal
-> when we failed to write file data.  This patch calls printk()
-> instead of aborting the journal.  Additionally, set AS_EIO into
-> the address_space object of the buffer which is written out by
-> journal_do_submit_data() and failed so that fsync() can get -EIO.
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-> ---
->  fs/jbd/commit.c |   12 +++++++++---
->  1 file changed, 9 insertions(+), 3 deletions(-)
-> 
-> Index: linux-2.6.26-rc4/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.26-rc4.orig/fs/jbd/commit.c
-> +++ linux-2.6.26-rc4/fs/jbd/commit.c
-> @@ -432,8 +432,11 @@ void journal_commit_transaction(journal_
->  			wait_on_buffer(bh);
->  			spin_lock(&journal->j_list_lock);
->  		}
-> -		if (unlikely(!buffer_uptodate(bh)))
-> +		if (unlikely(!buffer_uptodate(bh))) {
-> +			set_bit(AS_EIO, &bh->b_page->mapping->flags);
-> +			SetPageError(bh->b_page);
->  			err = -EIO;
-> +		}
-  Actually, you should be more careful here because if the data buffer has
-been truncated in the currently running transaction, it can happen that
-b_page->mapping is NULL. It is a question how to safely access
-page->mapping - probably you'll need page lock for that...
+>     mm: Add range_cont mode for writeback.
+>     
+>     Filesystems like ext4 needs to start a new transaction in
+>     the writepages for block allocation. This happens with delayed
+>     allocation and there is limit to how many credits we can request
+>     from the journal layer. So we call write_cache_pages multiple
+>     times with wbc->nr_to_write set to the maximum possible value
+>     limitted by the max journal credits available.
+>     
+>     Add a new mode to writeback that enables us to handle this
+>     behaviour. If mapping->writeback_index is not set we use
+>     wbc->range_start to find the start index and then at the end
+>     of write_cache_pages we store the index in writeback_index. Next
+>     call to write_cache_pages will start writeout from writeback_index.
+>     Also we limit writing to the specified wbc->range_end.
+  I think this changelog is out of date...
 
->  		if (!inverted_lock(journal, bh)) {
->  			put_bh(bh);
->  			spin_lock(&journal->j_list_lock);
-> @@ -452,8 +455,11 @@ void journal_commit_transaction(journal_
+>     Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> 
+> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+> index f462439..0d8573e 100644
+> --- a/include/linux/writeback.h
+> +++ b/include/linux/writeback.h
+> @@ -63,6 +63,7 @@ struct writeback_control {
+>  	unsigned for_writepages:1;	/* This is a writepages() call */
+>  	unsigned range_cyclic:1;	/* range_start is cyclic */
+>  	unsigned more_io:1;		/* more io to be dispatched */
+> +	unsigned range_cont:1;
+>  };
+>  
+>  /*
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 789b6ad..182233b 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -882,6 +882,9 @@ int write_cache_pages(struct address_space *mapping,
+>  	if (wbc->range_cyclic) {
+>  		index = mapping->writeback_index; /* Start from prev offset */
+>  		end = -1;
+> +	} else if (wbc->range_cont) {
+> +		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+> +		end = wbc->range_end >> PAGE_CACHE_SHIFT;
+  Hmm, why isn't this in the next else?
+
+>  	} else {
+>  		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+>  		end = wbc->range_end >> PAGE_CACHE_SHIFT;
+> @@ -956,6 +959,9 @@ int write_cache_pages(struct address_space *mapping,
 >  	}
->  	spin_unlock(&journal->j_list_lock);
->  
-> -	if (err)
-> -		journal_abort(journal, err);
-> +	if (err) {
-> +		printk(KERN_WARNING
-> +		       "JBD: Detected IO errors during flushing file data\n");
-> +		err = 0;
-> +	}
->  
->  	journal_write_revoke_records(journal, commit_transaction);
+>  	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+>  		mapping->writeback_index = index;
+> +
+> +	if (wbc->range_cont)
+> +		wbc->range_start = index << PAGE_CACHE_SHIFT;
+>  	return ret;
+>  }
+>  EXPORT_SYMBOL(write_cache_pages);
 
-								Honza
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
