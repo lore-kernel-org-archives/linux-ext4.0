@@ -1,56 +1,42 @@
 From: Shen Feng <shen@cn.fujitsu.com>
-Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
-Date: Wed, 11 Jun 2008 11:44:12 +0800
-Message-ID: <484F4A0C.1080801@cn.fujitsu.com>
-References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>	 <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker>	 <20080605032220.GC10488@mit.edu>  <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain>
+Subject: [PATCH] ext4: Fix the loop condition in ext4_mb_free_committed_blocks
+Date: Wed, 11 Jun 2008 11:55:45 +0800
+Message-ID: <484F4CC1.3000109@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: cmm@us.ibm.com
+To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@MIT.EDU>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57280 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:65132 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755336AbYFKDrs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jun 2008 23:47:48 -0400
-In-Reply-To: <1212677741.3645.44.camel@localhost.localdomain>
+	id S1755847AbYFKD7M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jun 2008 23:59:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
+Since md is freed before the do-while checks it,
+it's better to change it to while(1).
 
-Mingming Cao Wrote:
-> On Thu, 2008-06-05 at 14:13 +0530, Aneesh Kumar K.V wrote:
->> On Wed, Jun 04, 2008 at 11:22:20PM -0400, Theodore Tso wrote:
->>> when I moved this patch to the beginning of the unstable patch queue,
->>> it didn't apply.  When I tried to look at it, my head started
->>> spinning.  The patch applied to the wrong function, apparently,
->>> because there is so much code duplication "patch" got confused.  I
->>> can't blame it, though, because *I* got confused.  
->>>
->>> fs/ext4/balloc.c is a complete disaster right now.  We have:
->>>
->>> ext4_new_blocks_old()
->>> ext4_new_meta_block()
->>> ext4_new_meta_blocks()
->>> ext4_new_blocks()
->>>
->>> ... and without any comments, it is extremely impenetrable.  Someone
->>> needs to document what the heck all of the various functions have to
->>> do with each other, when they get used (i.e., with which mount options). 
->>>
-> 
-> One more thing, I feel we should clean up inode.c, move the functions
-> related to non extent file allocation from inode.c into balloc.c, and
-> try to keep balloc.c the single file to handle allocation for non extent
-> files. 
-> 
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+---
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I don't agree this.
-balloc.c is for non mballoc allocation, not for non extent files.
-Maybe we need a noextent.c for non extent file allocation, now it's done
-in inode.c.
-
--Shen Feng
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 42553f6..063f820 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2572,7 +2572,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 		kfree(md);
+ 		ext4_mb_release_desc(&e4b);
+ 
+-	} while (md);
++	} while (1);
+ 
+ 	mb_debug("freed %u blocks in %u structures\n", count, count2);
+ }
+-- 
+1.5.4.5
