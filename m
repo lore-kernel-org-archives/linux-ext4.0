@@ -1,99 +1,68 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap write
- notification.
-Date: Wed, 11 Jun 2008 12:07:49 -0700
-Message-ID: <20080611120749.d0c5a7de.akpm@linux-foundation.org>
-References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<20080605123045.445e380a.akpm@linux-foundation.org>
-	<20080611150845.GA21910@skywalker>
+From: Holger Kiehl <Holger.Kiehl@dwd.de>
+Subject: Re: Performance of ext4
+Date: Wed, 11 Jun 2008 19:58:53 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
+References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
+ <20080611105945.GB9008@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48561 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753905AbYFKTIf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 15:08:35 -0400
-In-Reply-To: <20080611150845.GA21910@skywalker>
+Received: from dwdmx4.dwd.de ([141.38.3.230]:35034 "EHLO dwdmx4.dwd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751263AbYFKT6z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 15:58:55 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by node4.dwd.de (Postfix) with ESMTP id 570EC71C43D
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 19:58:54 +0000 (UTC)
+Received: from localhost ([127.0.0.1])
+	by localhost (node4.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
+	with SMTP id 30257-40 for <linux-ext4@vger.kernel.org>;
+	Wed, 11 Jun 2008 19:58:54 +0000 (UTC)
+In-Reply-To: <20080611105945.GB9008@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 11 Jun 2008 20:38:45 +0530
-"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+On Wed, 11 Jun 2008, Aneesh Kumar K.V wrote:
 
-> On Thu, Jun 05, 2008 at 12:30:45PM -0700, Andrew Morton wrote:
-> > On Thu,  5 Jun 2008 22:35:12 +0530
-> > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > 
-> > > We would like to get notified when we are doing a write on mmap
-> > > section.  The changes are needed to handle ENOSPC when writing to an
-> > > mmap section of files with holes.
-> > > 
-> > 
-> > Whoa.  You didn't copy anything like enough mailing lists for a change
-> > of this magnitude.  I added some.
-> > 
-> > This is a large change in behaviour!
-> > 
-> > a) applications will now get a synchronous SIGBUS when modifying a
-> >    page over an ENOSPC filesystem.  Whereas previously they could have
-> >    proceeded to completion and then detected the error via an fsync().
-> 
-> Or not detect the error at all if we don't call fsync() right ? Isn't a
-> synchronous SIGBUS the right behaviour ?
+> On Wed, Jun 11, 2008 at 08:02:32AM +0000, Holger Kiehl wrote:
+>>
+>> 2 years ago I used 2.6.16.8 but the hardware is still the same. So what has
+>> happened with the performance of ext4? I noticed that 2 years ago I could
+>> use extents+mballoc+delalloc, now there is only extents+mballoc in the
+>> current kernels. Could delalloc make the big difference? I saw that
+>> in Andrew Morton mm tree delalloc is included. Unfortunately when I tried using
+>> 2.6.26-rc2-mm1 a sync would never return and there where lot of other
+>> odd things, so I could not do any tests with delalloc.
 >
+>
+> The sync and other related hangs should be fix with the latest patches
+> vailable at http://repo.or.cz/w/ext4-patch-queue.git. Using mballoc have
+> an impact on CPU utilization because we try to build an in-memory extent
+> map of free blocks available in the group. The cold cache run (the first
+> run) would take more time because of the time needed to build the extent
+> map. So repeating the same test and looking at the numbers would help us
+> understand the impact of in-memory extent building code.
+>
+Not sure if I understand this. I first formated the file system and run the
+test three times.
 
-Not according to POSIX.  Or at least posix-several-years-ago, when this
-last was discussed.  The spec doesn't have much useful to say about any
-of this.
+>>
+>> So any idea what I am doing wrong or what I could do to improve those numbers?
+>> Please CC me since I am not subscribed to the list.
+>>
+>
+> You should be able to apply the patches in the patchqueue mentioned above  to 2.6.26-rc5
+> Can you test with the same and get the numbers. ? Also delalloc enabled
+> by default with changes from patchqueue force writeback mode for
+> journal. So you may want to enable writeback for ext3.
+>
+Against a clean 2.6.26-rc5 the patchqueue does not apply. Lots of rejects.
+The patchqueue also contains changes for defrag that are not in 2.6.26-rc5.
+Or did you mean to apply those against the mm tree?
 
-It's a significant change in the userspace interface.
-
-> 
-> > 
-> >    It's going to take more than one skimpy little paragraph to
-> >    justify this, and to demonstrate that it is preferable, and to
-> >    convince us that nothing will break from this user-visible behaviour
-> >    change.
-> > 
-> > b) we're now doing fs operations (and some I/O) in the pagefault
-> >    code.  This has several implications:
-> > 
-> >    - performance changes
-> > 
-> >    - potential for deadlocks when a process takes the fault from
-> >      within a copy_to_user() in, say, mm/filemap.c
-> > 
-> >    - performing additional memory allocations within that
-> >      copy_to_user().  Possibility that these will reenter the
-> >      filesystem.
-> > 
-> > And that's just ext2.
-> > 
-> > For ext3 things are even more complex, because we have the
-> > journal_start/journal_end pair which is effectively another "lock" for
-> > ranking/deadlock purposes.  And now we're taking i_alloc_sem and
-> > lock_page and we're doing ->writepage() and its potential
-> > journal_start(), all potentially within the context of a
-> > copy_to_user().
-> 
-> One of the reason why we would need this in ext3/ext4 is that we cannot
-> do block allocation in the writepage with the recent locking changes.
-
-Perhaps those recent locking changes were wrong.
-
-> The locking changes involve changing the locking order of journal_start
-> and page_lock. With writepage we are already called with page_lock and
-> we can't start new transaction needed for block allocation.
-
-ext3_write_begin() has journal_start() nesting inside the lock_page().
-
-> But if we agree that we should not do block allocation in page_mkwrite
-> we need to add writepages and allocate blocks in writepages.
-
-I'm not sure what writepages has to do with pagefaults?
+Thanks,
+Holger
 
